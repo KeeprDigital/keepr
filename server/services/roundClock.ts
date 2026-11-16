@@ -7,12 +7,14 @@ import { roundService } from '~~/server/services/round';
  * (ADR-0066): the Round it picks, or the Current Round when it picks none. A
  * Round outside the Event, or no Current Round yet, shows none.
  */
-export async function findRoundClockRound(eventId: number, roundId: number | undefined): Promise<ScreenOutputRoundClockResponse> {
+export async function findRoundClockRound(
+	eventId: number,
+	roundId: number | undefined,
+): Promise<ScreenOutputRoundClockResponse> {
 	const round = roundId
 		? await roundService().findById(roundId, eventId)
 		: (await loadCurrentRound(eventId)).current;
-	if (!round)
-		return { round: null };
+	if (!round) return { round: null };
 
 	return {
 		round: {

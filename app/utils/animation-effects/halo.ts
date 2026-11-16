@@ -87,19 +87,22 @@ export default function createHaloEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'halo'>,
 ): AnimationEffectInstance<AnimationEffectParams<'halo'>> {
-	return createShaderPlaneEffect({
-		three: THREE,
-		host,
-		fragmentShader: HALO_FRAGMENT_SHADER,
-		feedback: true,
-		uniforms: current => ({
-			tintColor: current.tintColor,
-			backgroundColor: current.backgroundColor,
-			petalDepth: current.petalDepth,
-			size: current.size,
-			centerX: current.centerX,
-			centerY: current.centerY,
-		}),
-		timeScale: current => current.speed,
-	}, params);
+	return createShaderPlaneEffect(
+		{
+			three: THREE,
+			host,
+			fragmentShader: HALO_FRAGMENT_SHADER,
+			feedback: true,
+			uniforms: (current) => ({
+				tintColor: current.tintColor,
+				backgroundColor: current.backgroundColor,
+				petalDepth: current.petalDepth,
+				size: current.size,
+				centerX: current.centerX,
+				centerY: current.centerY,
+			}),
+			timeScale: (current) => current.speed,
+		},
+		params,
+	);
 }

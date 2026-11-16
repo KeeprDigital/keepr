@@ -3,12 +3,13 @@ import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
 import { SUPPORTED_SOCIAL_NETWORK_BY_KEY } from '~~/shared/socialProfiles';
 import { foundationTokenVar, foundationTypographyStyle } from '~/modules/screen-mode';
 
-const { config, error, ready, isEmpty, headerText, talents } = useTalentModeData(useScreenContext());
+const { config, error, ready, isEmpty, headerText, talents } =
+	useTalentModeData(useScreenContext());
 
 /** The photos the read answers, only while the Screen shows them, resolved through its capability (ADR-0070). */
-const photos = computed<GraphicAssetReference[]>(() => talents.value.flatMap(talent => talent.photo
-	? [talent.photo]
-	: []));
+const photos = computed<GraphicAssetReference[]>(() =>
+	talents.value.flatMap((talent) => (talent.photo ? [talent.photo] : [])),
+);
 const { contentUrl, contentUrlsSettled } = useScreenGraphicAssetContentUrls(() => photos.value);
 
 const titleStyle = {
@@ -40,16 +41,17 @@ const profileStyle = {
 
 /** A name's initials, shown where a Talent has no photo. */
 function initials(name: string): string {
-	return name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]!.toUpperCase()).join('');
+	return name
+		.split(/\s+/)
+		.filter(Boolean)
+		.slice(0, 2)
+		.map((word) => word[0]!.toUpperCase())
+		.join('');
 }
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="error"
-		:ready="ready"
-		:empty="isEmpty"
-	>
+	<ScreenModeBase :error="error" :ready="ready" :empty="isEmpty">
 		<div
 			class="talent-display"
 			:class="`talent-display--${config.layout}`"
@@ -80,8 +82,10 @@ function initials(name: string): string {
 							v-if="talent.photo && contentUrl(talent.photo)"
 							:src="contentUrl(talent.photo)"
 							:alt="talent.name"
-						>
-						<span v-else class="talent-initials" :style="nameStyle">{{ initials(talent.name) }}</span>
+						/>
+						<span v-else class="talent-initials" :style="nameStyle">{{
+							initials(talent.name)
+						}}</span>
 					</div>
 
 					<div class="talent-details">

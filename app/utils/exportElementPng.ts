@@ -16,9 +16,11 @@ const EXPORT_READINESS_SELECTOR = '[data-export-ready]';
 const EXPORT_NOT_READY_SELECTOR = '[data-export-ready="false"]';
 
 function nextFrame(): Promise<void> {
-	return new Promise(resolve => (typeof requestAnimationFrame === 'function'
-		? requestAnimationFrame(() => resolve())
-		: setTimeout(resolve, 16)));
+	return new Promise((resolve) =>
+		typeof requestAnimationFrame === 'function'
+			? requestAnimationFrame(() => resolve())
+			: setTimeout(resolve, 16),
+	);
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | undefined> {
@@ -30,20 +32,17 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 				timeoutId = setTimeout(resolve, timeoutMs, undefined);
 			}),
 		]);
-	}
-	finally {
-		if (timeoutId)
-			clearTimeout(timeoutId);
+	} finally {
+		if (timeoutId) clearTimeout(timeoutId);
 	}
 }
 
 function waitForExportReadyMarkers(element: HTMLElement): Promise<void> {
 	const isReady = () =>
-		element.querySelector(EXPORT_READINESS_SELECTOR) !== null
-		&& element.querySelector(EXPORT_NOT_READY_SELECTOR) === null;
+		element.querySelector(EXPORT_READINESS_SELECTOR) !== null &&
+		element.querySelector(EXPORT_NOT_READY_SELECTOR) === null;
 
-	if (isReady())
-		return Promise.resolve();
+	if (isReady()) return Promise.resolve();
 
 	return new Promise((resolve) => {
 		const observer = new MutationObserver(() => {
@@ -63,8 +62,7 @@ function waitForExportReadyMarkers(element: HTMLElement): Promise<void> {
 
 async function waitForFonts() {
 	const fonts = document.fonts;
-	if (fonts?.ready)
-		await fonts.ready;
+	if (fonts?.ready) await fonts.ready;
 }
 
 async function waitForImages(element: HTMLElement) {
@@ -75,14 +73,18 @@ async function waitForVideos(element: HTMLElement) {
 	await Promise.all(Array.from(element.querySelectorAll('video')).map(waitForVideo));
 }
 
-export async function waitForElementExportReadiness(element: HTMLElement, options: ExportReadinessOptions = {}) {
+export async function waitForElementExportReadiness(
+	element: HTMLElement,
+	options: ExportReadinessOptions = {},
+) {
 	const timeoutMs = options.timeoutMs ?? 5000;
 	await withTimeout(waitForExportReadyMarkers(element), timeoutMs);
-	await withTimeout(Promise.all([
-		waitForFonts(),
-		waitForImages(element),
-		waitForVideos(element),
-	]).then(() => undefined), timeoutMs);
+	await withTimeout(
+		Promise.all([waitForFonts(), waitForImages(element), waitForVideos(element)]).then(
+			() => undefined,
+		),
+		timeoutMs,
+	);
 	await nextFrame();
 	await nextFrame();
 }
@@ -90,7 +92,10 @@ export async function waitForElementExportReadiness(element: HTMLElement, option
 function inlineComputedStyles(source: Element, target: Element) {
 	const computed = window.getComputedStyle(source);
 	for (const property of computed) {
-		target.setAttribute('style', `${target.getAttribute('style') ?? ''}${property}:${computed.getPropertyValue(property)};`);
+		target.setAttribute(
+			'style',
+			`${target.getAttribute('style') ?? ''}${property}:${computed.getPropertyValue(property)};`,
+		);
 	}
 
 	const sourceChildren = Array.from(source.children);
@@ -110,8 +115,7 @@ function replaceCanvasSnapshots(source: Element, target: Element) {
 
 	for (const [index, sourceCanvas] of sourceCanvases.entries()) {
 		const targetCanvas = targetCanvases[index];
-		if (!targetCanvas)
-			continue;
+		if (!targetCanvas) continue;
 
 		try {
 			const image = document.createElement('img');
@@ -122,8 +126,7 @@ function replaceCanvasSnapshots(source: Element, target: Element) {
 			image.setAttribute('style', targetCanvas.getAttribute('style') ?? '');
 			image.setAttribute('aria-hidden', 'true');
 			targetCanvas.replaceWith(image);
-		}
-		catch {
+		} catch {
 			// A tainted canvas cannot be serialized. Leave it in place so the rest of the export can continue.
 		}
 	}
@@ -132,9 +135,10 @@ function replaceCanvasSnapshots(source: Element, target: Element) {
 function blobDataUrl(blob: Blob): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
-		reader.onload = () => typeof reader.result === 'string'
-			? resolve(reader.result)
-			: reject(new Error('Failed to read export image'));
+		reader.onload = () =>
+			typeof reader.result === 'string'
+				? resolve(reader.result)
+				: reject(new Error('Failed to read export image'));
 		reader.onerror = () => reject(reader.error ?? new Error('Failed to read export image'));
 		reader.readAsDataURL(blob);
 	});
@@ -159,9 +163,11 @@ function elementImageSource(element: Element): string {
 	if (element instanceof HTMLImageElement)
 		return element.currentSrc || element.src || element.getAttribute('src') || '';
 
-	return element.getAttribute('href')
-		|| element.getAttributeNS('http://www.w3.org/1999/xlink', 'href')
-		|| '';
+	return (
+		element.getAttribute('href') ||
+		element.getAttributeNS('http://www.w3.org/1999/xlink', 'href') ||
+		''
+	);
 }
 
 /**
@@ -177,42 +183,45 @@ export async function inlineExportImageSources(source: Element, target: Element)
 	const targetImages = Array.from(target.querySelectorAll('img, svg image'));
 	const dataUrls = new Map<string, Promise<string>>();
 
-	await Promise.all(sourceImages.map(async (sourceImage, index) => {
-		const targetImage = targetImages[index];
-		const imageSource = elementImageSource(sourceImage);
-		if (!targetImage || !imageSource || imageSource.startsWith('data:'))
-			return;
+	await Promise.all(
+		sourceImages.map(async (sourceImage, index) => {
+			const targetImage = targetImages[index];
+			const imageSource = elementImageSource(sourceImage);
+			if (!targetImage || !imageSource || imageSource.startsWith('data:')) return;
 
-		const embeddedSource = await fetchedDataUrl(imageSource, dataUrls, 'image');
-		if (targetImage instanceof HTMLImageElement) {
-			targetImage.removeAttribute('srcset');
-			targetImage.src = embeddedSource;
-		}
-		else {
-			targetImage.setAttribute('href', embeddedSource);
-			targetImage.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', embeddedSource);
-		}
-	}));
+			const embeddedSource = await fetchedDataUrl(imageSource, dataUrls, 'image');
+			if (targetImage instanceof HTMLImageElement) {
+				targetImage.removeAttribute('srcset');
+				targetImage.src = embeddedSource;
+			} else {
+				targetImage.setAttribute('href', embeddedSource);
+				targetImage.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', embeddedSource);
+			}
+		}),
+	);
 }
 
 function videoFrameDataUrl(video: HTMLVideoElement) {
 	const width = video.videoWidth || video.clientWidth;
 	const height = video.videoHeight || video.clientHeight;
-	if (width <= 0 || height <= 0)
-		throw new Error('Video frame is not ready for export');
+	if (width <= 0 || height <= 0) throw new Error('Video frame is not ready for export');
 
 	const canvas = document.createElement('canvas');
 	canvas.width = width;
 	canvas.height = height;
 	const context = canvas.getContext('2d');
-	if (!context)
-		throw new Error('Canvas is not available');
+	if (!context) throw new Error('Canvas is not available');
 	context.drawImage(video, 0, 0, width, height);
 	return canvas.toDataURL('image/png');
 }
 
 async function seekVideo(video: HTMLVideoElement, time: number) {
-	if (!Number.isFinite(time) || time <= 0 || !Number.isFinite(video.duration) || video.duration <= 0)
+	if (
+		!Number.isFinite(time) ||
+		time <= 0 ||
+		!Number.isFinite(video.duration) ||
+		video.duration <= 0
+	)
 		return;
 
 	const targetTime = Math.min(time, Math.max(0, video.duration - 0.001));
@@ -226,18 +235,14 @@ async function seekVideo(video: HTMLVideoElement, time: number) {
 async function cleanVideoFrameDataUrl(video: HTMLVideoElement) {
 	try {
 		return videoFrameDataUrl(video);
-	}
-	catch (error) {
-		if (!(error instanceof DOMException && error.name === 'SecurityError'))
-			throw error;
+	} catch (error) {
+		if (!(error instanceof DOMException && error.name === 'SecurityError')) throw error;
 	}
 
 	const source = video.currentSrc || video.src || video.getAttribute('src');
-	if (!source)
-		throw new Error('Video source is unavailable for export');
+	if (!source) throw new Error('Video source is unavailable for export');
 	const response = await fetch(source);
-	if (!response.ok)
-		throw new Error(`Failed to load export video (status ${response.status})`);
+	if (!response.ok) throw new Error(`Failed to load export video (status ${response.status})`);
 	const objectUrl = URL.createObjectURL(await response.blob());
 	try {
 		const cleanVideo = document.createElement('video');
@@ -247,8 +252,7 @@ async function cleanVideoFrameDataUrl(video: HTMLVideoElement) {
 		await waitForVideo(cleanVideo);
 		await seekVideo(cleanVideo, video.currentTime);
 		return videoFrameDataUrl(cleanVideo);
-	}
-	finally {
+	} finally {
 		URL.revokeObjectURL(objectUrl);
 	}
 }
@@ -257,21 +261,21 @@ async function replaceVideoSnapshots(source: Element, target: Element) {
 	const sourceVideos = Array.from(source.querySelectorAll('video'));
 	const targetVideos = Array.from(target.querySelectorAll('video'));
 
-	await Promise.all(sourceVideos.map(async (sourceVideo, index) => {
-		const targetVideo = targetVideos[index];
-		if (!targetVideo)
-			return;
+	await Promise.all(
+		sourceVideos.map(async (sourceVideo, index) => {
+			const targetVideo = targetVideos[index];
+			if (!targetVideo) return;
 
-		const image = document.createElement('img');
-		for (const attribute of Array.from(targetVideo.attributes)) {
-			if (attribute.name !== 'src')
-				image.setAttribute(attribute.name, attribute.value);
-		}
-		image.src = await cleanVideoFrameDataUrl(sourceVideo);
-		image.alt = '';
-		image.setAttribute('aria-hidden', 'true');
-		targetVideo.replaceWith(image);
-	}));
+			const image = document.createElement('img');
+			for (const attribute of Array.from(targetVideo.attributes)) {
+				if (attribute.name !== 'src') image.setAttribute(attribute.name, attribute.value);
+			}
+			image.src = await cleanVideoFrameDataUrl(sourceVideo);
+			image.alt = '';
+			image.setAttribute('aria-hidden', 'true');
+			targetVideo.replaceWith(image);
+		}),
+	);
 }
 
 function cssUrls(style: string): string[] {
@@ -279,26 +283,24 @@ function cssUrls(style: string): string[] {
 	// An unquoted CSS url cannot contain whitespace, quotes, or parentheses.
 	return Array.from(
 		style.matchAll(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^\s"'()]+))\s*\)/g),
-		match => match[1] ?? match[2] ?? match[3] ?? '',
+		(match) => match[1] ?? match[2] ?? match[3] ?? '',
 	).filter(Boolean);
 }
 
 function internalFragmentUrl(source: string): string | undefined {
-	if (source.startsWith('#'))
-		return source;
+	if (source.startsWith('#')) return source;
 	try {
 		const resolved = new URL(source, document.baseURI);
 		const page = new URL(document.URL);
 		if (
-			resolved.origin === page.origin
-			&& resolved.pathname === page.pathname
-			&& resolved.search === page.search
-			&& resolved.hash
+			resolved.origin === page.origin &&
+			resolved.pathname === page.pathname &&
+			resolved.search === page.search &&
+			resolved.hash
 		) {
 			return resolved.hash;
 		}
-	}
-	catch {
+	} catch {
 		// An unreadable URL will fail explicitly when fetched below.
 	}
 	return undefined;
@@ -310,26 +312,24 @@ function internalFragmentUrl(source: string): string | undefined {
  */
 export async function inlineExportStyleUrls(target: Element) {
 	const dataUrls = new Map<string, Promise<string>>();
-	const elements = [
-		target,
-		...Array.from(target.querySelectorAll('*')),
-	];
+	const elements = [target, ...Array.from(target.querySelectorAll('*'))];
 
-	await Promise.all(elements.map(async (element) => {
-		let style = element.getAttribute('style') ?? '';
-		for (const source of new Set(cssUrls(style))) {
-			if (source.startsWith('data:'))
-				continue;
-			const fragment = internalFragmentUrl(source);
-			if (fragment) {
-				style = style.split(source).join(fragment);
-				continue;
+	await Promise.all(
+		elements.map(async (element) => {
+			let style = element.getAttribute('style') ?? '';
+			for (const source of new Set(cssUrls(style))) {
+				if (source.startsWith('data:')) continue;
+				const fragment = internalFragmentUrl(source);
+				if (fragment) {
+					style = style.split(source).join(fragment);
+					continue;
+				}
+				const embeddedSource = await fetchedDataUrl(source, dataUrls, 'style resource');
+				style = style.split(source).join(embeddedSource);
 			}
-			const embeddedSource = await fetchedDataUrl(source, dataUrls, 'style resource');
-			style = style.split(source).join(embeddedSource);
-		}
-		element.setAttribute('style', style);
-	}));
+			element.setAttribute('style', style);
+		}),
+	);
 }
 
 interface ExportFontSource {
@@ -341,22 +341,17 @@ function exportFontSources(target: Element): ExportFontSource[] {
 	const sources = new Map<string, ExportFontSource>();
 	for (const marker of target.querySelectorAll('[data-export-font-sources]')) {
 		const value = marker.getAttribute('data-export-font-sources');
-		if (!value)
-			continue;
+		if (!value) continue;
 		try {
 			for (const source of JSON.parse(value) as ExportFontSource[]) {
-				if (source?.family && source.url)
-					sources.set(`${source.family}\0${source.url}`, source);
+				if (source?.family && source.url) sources.set(`${source.family}\0${source.url}`, source);
 			}
-		}
-		catch {
+		} catch {
 			throw new Error('Export font metadata is invalid');
 		}
 		marker.removeAttribute('data-export-font-sources');
 	}
-	return [
-		...sources.values(),
-	];
+	return [...sources.values()];
 }
 
 /**
@@ -366,15 +361,16 @@ function exportFontSources(target: Element): ExportFontSource[] {
  */
 export async function inlineExportFontSources(target: Element) {
 	const sources = exportFontSources(target);
-	if (sources.length === 0)
-		return;
+	if (sources.length === 0) return;
 
 	const dataUrls = new Map<string, Promise<string>>();
-	const declarations = await Promise.all(sources.map(async ({ family, url }) => {
-		const dataUrl = await fetchedDataUrl(url, dataUrls, 'font');
-		const escapedFamily = family.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
-		return `@font-face{font-family:"${escapedFamily}";src:url("${dataUrl}")}`;
-	}));
+	const declarations = await Promise.all(
+		sources.map(async ({ family, url }) => {
+			const dataUrl = await fetchedDataUrl(url, dataUrls, 'font');
+			const escapedFamily = family.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+			return `@font-face{font-family:"${escapedFamily}";src:url("${dataUrl}")}`;
+		}),
+	);
 	const style = document.createElement('style');
 	style.textContent = declarations.join('\n');
 	target.insertBefore(style, target.firstChild);
@@ -445,10 +441,8 @@ export async function exportElementPng(element: HTMLElement, options: ExportElem
 
 	const blob = await new Promise<Blob>((resolve, reject) => {
 		canvas.toBlob((result) => {
-			if (result)
-				resolve(result);
-			else
-				reject(new Error('Failed to encode PNG'));
+			if (result) resolve(result);
+			else reject(new Error('Failed to encode PNG'));
 		}, 'image/png');
 	});
 	downloadBlob(blob, options.filename);

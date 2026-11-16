@@ -1,8 +1,4 @@
-import type {
-	CreateMatchInput,
-	Match,
-	UpdateMatchInput,
-} from '~/types';
+import type { CreateMatchInput, Match, UpdateMatchInput } from '~/types';
 import { useEventDataResource } from '~/modules/event-data/client';
 
 export function useMatchRepository() {

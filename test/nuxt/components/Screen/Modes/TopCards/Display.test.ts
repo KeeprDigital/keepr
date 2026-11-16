@@ -10,7 +10,7 @@ const measured = vi.hoisted(() => ({ width: 0, height: 0 }));
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const { ref } = await import('vue');
 	return {
-		...await importOriginal<typeof import('@vueuse/core')>(),
+		...(await importOriginal<typeof import('@vueuse/core')>()),
 		useElementSize: () => ({
 			width: ref(measured.width),
 			height: ref(measured.height),
@@ -79,7 +79,9 @@ mockNuxtImport('useTopCardsModeData', () => () => ({
 	emptyMessage: computed(() => 'No card data available'),
 	headerText: computed(() => config.value.headerText ?? 'Most Played Cards'),
 	entries: computed(() => entries.value),
-	pageEntries: computed(() => pageEntries.value ?? entries.value.map((entry, index) => ({ entry, rank: index + 1 }))),
+	pageEntries: computed(
+		() => pageEntries.value ?? entries.value.map((entry, index) => ({ entry, rank: index + 1 })),
+	),
 	currentPage: computed(() => currentPage.value),
 	totalPages: computed(() => totalPages.value),
 	pageCapacity: computed(() => pageCapacity.value),
@@ -165,16 +167,14 @@ describe('screenTopCardsDisplay', () => {
 	});
 
 	it('renders only the current page, ranking each card across the whole ranking', async () => {
-		pageEntries.value = [
-			{ entry: entries.value[1], rank: 7 },
-		];
+		pageEntries.value = [{ entry: entries.value[1], rank: 7 }];
 		currentPage.value = 2;
 		totalPages.value = 3;
 
 		const wrapper = await mountComponent();
 
 		const items = wrapper.findAll('[data-testid="top-cards-item"]');
-		expect(items.map(item => item.text())).toEqual(['7:Counterspell:60%:true:false']);
+		expect(items.map((item) => item.text())).toEqual(['7:Counterspell:60%:true:false']);
 		expect(wrapper.get('[data-testid="top-cards-page-indicator"]').text()).toBe('2 / 3');
 	});
 
@@ -246,34 +246,37 @@ describe('screenTopCardsDisplay', () => {
 			cardWidth: 0,
 			gap: 0,
 		},
-	])('lays the grid out as its Card Layout solves: $name', async ({ layout, size, columns, rows, cardWidth, gap }) => {
-		config.value = {
-			...config.value,
-			...layout,
-		};
-		pageCapacity.value = 5;
-		[measured.width, measured.height] = size as [number, number];
+	])(
+		'lays the grid out as its Card Layout solves: $name',
+		async ({ layout, size, columns, rows, cardWidth, gap }) => {
+			config.value = {
+				...config.value,
+				...layout,
+			};
+			pageCapacity.value = 5;
+			[measured.width, measured.height] = size as [number, number];
 
-		const wrapper = await mountComponent();
+			const wrapper = await mountComponent();
 
-		const grid = wrapper.get('[data-testid="top-cards-grid"]');
-		expect(grid.attributes('data-columns')).toBe(columns);
-		expect(grid.attributes('data-rows')).toBe(rows);
-		const style = (grid.get('.grid').element as HTMLElement).style;
-		const [, tracks, trackWidth] = style.gridTemplateColumns.match(/^repeat\((\d+), ([\d.]+)px\)$/)!;
-		expect(tracks).toBe(columns);
-		expect(Number(trackWidth)).toBeCloseTo(cardWidth);
-		expect(Number.parseFloat(style.gap)).toBeCloseTo(gap);
-	});
+			const grid = wrapper.get('[data-testid="top-cards-grid"]');
+			expect(grid.attributes('data-columns')).toBe(columns);
+			expect(grid.attributes('data-rows')).toBe(rows);
+			const style = (grid.get('.grid').element as HTMLElement).style;
+			const [, tracks, trackWidth] = style.gridTemplateColumns.match(
+				/^repeat\((\d+), ([\d.]+)px\)$/,
+			)!;
+			expect(tracks).toBe(columns);
+			expect(Number(trackWidth)).toBeCloseTo(cardWidth);
+			expect(Number.parseFloat(style.gap)).toBeCloseTo(gap);
+		},
+	);
 
 	// A page is laid out at a full page's capacity, so a short last page keeps its card size.
 	it('lays a short last page out as a full one', async () => {
 		config.value = { ...config.value, columns: 5, cardGap: 9 };
 		pageCapacity.value = 10;
 		[measured.width, measured.height] = [1036, 5000];
-		pageEntries.value = [
-			{ entry: entries.value[1], rank: 7 },
-		];
+		pageEntries.value = [{ entry: entries.value[1], rank: 7 }];
 
 		const wrapper = await mountComponent();
 
@@ -294,20 +297,27 @@ describe('screenTopCardsDisplay', () => {
 			statBadgePosition: 'top-right',
 			statBadgeTextSize: 10,
 		},
-	] as const)('places and sizes each badge: rank $rankBadgePosition, stat $statBadgePosition', async (badges) => {
-		config.value = {
-			...config.value,
-			...badges,
-		};
+	] as const)(
+		'places and sizes each badge: rank $rankBadgePosition, stat $statBadgePosition',
+		async (badges) => {
+			config.value = {
+				...config.value,
+				...badges,
+			};
 
-		const wrapper = await mountComponent();
+			const wrapper = await mountComponent();
 
-		const card = wrapper.get('[data-testid="top-cards-item"]');
-		expect(card.attributes('data-rank-badge-class')).toBe(CARD_BADGE_POSITION_CLASSES[badges.rankBadgePosition]);
-		expect(card.attributes('data-rank-badge-size')).toBe(`${badges.rankBadgeTextSize}px`);
-		expect(card.attributes('data-stat-badge-class')).toBe(CARD_BADGE_POSITION_CLASSES[badges.statBadgePosition]);
-		expect(card.attributes('data-stat-badge-size')).toBe(`${badges.statBadgeTextSize}px`);
-	});
+			const card = wrapper.get('[data-testid="top-cards-item"]');
+			expect(card.attributes('data-rank-badge-class')).toBe(
+				CARD_BADGE_POSITION_CLASSES[badges.rankBadgePosition],
+			);
+			expect(card.attributes('data-rank-badge-size')).toBe(`${badges.rankBadgeTextSize}px`);
+			expect(card.attributes('data-stat-badge-class')).toBe(
+				CARD_BADGE_POSITION_CLASSES[badges.statBadgePosition],
+			);
+			expect(card.attributes('data-stat-badge-size')).toBe(`${badges.statBadgeTextSize}px`);
+		},
+	);
 
 	// An Auto badge follows its card's solved width: 14 px, today's size, on the former default 160 px card.
 	it.each([
@@ -341,29 +351,34 @@ describe('screenTopCardsDisplay', () => {
 		{ showPointsBadges: true, highlanderPoints: 0, shown: '0' },
 		{ showPointsBadges: true, highlanderPoints: null, shown: undefined },
 		{ showPointsBadges: false, highlanderPoints: 2, shown: undefined },
-	])('badges a card with $highlanderPoints points, badges $showPointsBadges: $shown', async ({ showPointsBadges, highlanderPoints, shown }) => {
-		config.value = {
-			...config.value,
-			showPointsBadges,
-			pointsBadgePosition: 'left',
-			pointsBadgeTextSize: 20,
-		};
-		entries.value[0] = { ...entries.value[0], highlanderPoints };
+	])(
+		'badges a card with $highlanderPoints points, badges $showPointsBadges: $shown',
+		async ({ showPointsBadges, highlanderPoints, shown }) => {
+			config.value = {
+				...config.value,
+				showPointsBadges,
+				pointsBadgePosition: 'left',
+				pointsBadgeTextSize: 20,
+			};
+			entries.value[0] = { ...entries.value[0], highlanderPoints };
 
-		const wrapper = await mountComponent();
+			const wrapper = await mountComponent();
 
-		const card = wrapper.get('[data-testid="top-cards-item"]');
-		expect(card.attributes('data-points')).toBe(shown);
-		expect(card.attributes('data-points-badge-class')).toBe(CARD_BADGE_POSITION_CLASSES.left);
-		expect(card.attributes('data-points-badge-size')).toBe('20px');
-	});
+			const card = wrapper.get('[data-testid="top-cards-item"]');
+			expect(card.attributes('data-points')).toBe(shown);
+			expect(card.attributes('data-points-badge-class')).toBe(CARD_BADGE_POSITION_CLASSES.left);
+			expect(card.attributes('data-points-badge-size')).toBe('20px');
+		},
+	);
 
 	it('passes no stat text when the stat badge is off', async () => {
 		config.value = { ...config.value, statBadge: 'none' };
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.findAll('[data-testid="top-cards-item"]')[0]!.text()).toBe('1:Lightning Bolt:-:true:false');
+		expect(wrapper.findAll('[data-testid="top-cards-item"]')[0]!.text()).toBe(
+			'1:Lightning Bolt:-:true:false',
+		);
 	});
 
 	it('shows deck count when selected as the stat', async () => {
@@ -371,6 +386,8 @@ describe('screenTopCardsDisplay', () => {
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.findAll('[data-testid="top-cards-item"]')[0]!.text()).toBe('1:Lightning Bolt:4:true:false');
+		expect(wrapper.findAll('[data-testid="top-cards-item"]')[0]!.text()).toBe(
+			'1:Lightning Bolt:4:true:false',
+		);
 	});
 });

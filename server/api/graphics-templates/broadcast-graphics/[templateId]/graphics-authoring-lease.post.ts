@@ -14,15 +14,20 @@ import { requireBrowserSessionId } from '~~/server/utils/auth';
  * answer depends on the stored lease rather than on which verb the client chose.
  * The client composable is reused unchanged; it takes an endpoint, not a Screen.
  */
-const acquireSchema = z.object({
-	takeover: z.boolean().optional(),
-	heartbeatIntervalMs: z.number().int().positive().max(300_000).optional(),
-}).strict();
+const acquireSchema = z
+	.object({
+		takeover: z.boolean().optional(),
+		heartbeatIntervalMs: z.number().int().positive().max(300_000).optional(),
+	})
+	.strict();
 
 export default defineEventHandler(async (event) => {
 	const sessionId = await requireBrowserSessionId(event);
-	const { templateId } = await getValidatedRouterParams(event, broadcastGraphicTemplateParamsSchema.parse);
-	const body = acquireSchema.parse(await readBody(event) ?? {});
+	const { templateId } = await getValidatedRouterParams(
+		event,
+		broadcastGraphicTemplateParamsSchema.parse,
+	);
+	const body = acquireSchema.parse((await readBody(event)) ?? {});
 
 	// A lease on an artifact that does not exist would be a claim nobody could ever
 	// release or discover.

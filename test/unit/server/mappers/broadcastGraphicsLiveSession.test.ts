@@ -53,10 +53,12 @@ describe('mapBroadcastGraphicsLiveSessionToResponse', () => {
 	});
 
 	it('replaces live state it cannot read with one that has nothing on air', () => {
-		const mapped = mapBroadcastGraphicsLiveSessionToResponse(row({
-			playout: { slate: 'yes' },
-			inputs: {},
-		}));
+		const mapped = mapBroadcastGraphicsLiveSessionToResponse(
+			row({
+				playout: { slate: 'yes' },
+				inputs: {},
+			}),
+		);
 
 		expect(mapped.recoveryFault?.reason).toBe('corrupt');
 		expect(mapped.currentState).toEqual({ playout: {}, inputs: {}, sources: {} });
@@ -89,10 +91,13 @@ describe('mapBroadcastGraphicsCommandResult', () => {
 		// handed a recovered snapshot alongside the raw unreadable state and apply the
 		// latter as authoritative — so this is the invariant, not an implementation
 		// detail: whatever a reader is told is on air must be one answer.
-		const result = mapBroadcastGraphicsCommandResult(row({
-			playout: { slate: 'yes' },
-			inputs: {},
-		}), 'Take');
+		const result = mapBroadcastGraphicsCommandResult(
+			row({
+				playout: { slate: 'yes' },
+				inputs: {},
+			}),
+			'Take',
+		);
 
 		expect(result.currentState).toEqual(result.session.currentState);
 		expect(result.currentState).toEqual({ playout: {}, inputs: {}, sources: {} });

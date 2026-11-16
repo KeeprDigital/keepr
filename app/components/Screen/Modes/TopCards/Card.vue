@@ -58,7 +58,7 @@ watch(imageUrl, () => {
 					class="w-full h-full object-cover"
 					loading="eager"
 					@error="imageError = true"
-				>
+				/>
 				<div v-else class="w-full h-full flex items-center justify-center text-xs text-center p-1">
 					{{ entry.name }}
 				</div>
@@ -91,11 +91,7 @@ watch(imageUrl, () => {
 				{{ pointsText }}
 			</div>
 		</div>
-		<div
-			v-if="showName"
-			data-testid="top-cards-name"
-			class="top-cards-name text-center truncate"
-		>
+		<div v-if="showName" data-testid="top-cards-name" class="top-cards-name text-center truncate">
 			{{ entry.name }}
 		</div>
 	</div>

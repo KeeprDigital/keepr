@@ -9,7 +9,10 @@ export const VARIANT_SELECT_OPTIONS: { label: string; value: Variant }[] = [
 	{ label: 'Commander', value: 'commander' },
 ];
 
-export const FEATURE_MATCH_ORIENTATION_SELECT_OPTIONS: { label: string; value: FeatureMatchOrientation }[] = [
+export const FEATURE_MATCH_ORIENTATION_SELECT_OPTIONS: {
+	label: string;
+	value: FeatureMatchOrientation;
+}[] = [
 	{ label: 'Horizontal', value: 'horizontal' },
 	{ label: 'Vertical', value: 'vertical' },
 ];

@@ -7,8 +7,7 @@
  */
 export function isTypingTarget(target: EventTarget | null): boolean {
 	const element = target as Partial<HTMLElement> | null;
-	if (!element || typeof element.closest !== 'function')
-		return false;
+	if (!element || typeof element.closest !== 'function') return false;
 	if (element.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName ?? ''))
 		return true;
 	return element.closest('[role="dialog"], [role="menu"], [role="listbox"]') !== null;

@@ -13,8 +13,7 @@ export default defineEventHandler(async (event) => {
 			initiatedBy,
 			evidence,
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

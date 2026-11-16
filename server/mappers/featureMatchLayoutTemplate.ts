@@ -27,9 +27,7 @@ export function mapFeatureMatchLayoutTemplateToSummary(
 		// caller through the Feature Match Layout Template library module instead.
 		authored: true,
 		// A four-Seat layout is offered to Commander Events alone (ADR-0087).
-		...(isFourSeatFeatureMatchLayout(template.document)
-			? { fourSeat: true as const }
-			: {}),
+		...(isFourSeatFeatureMatchLayout(template.document) ? { fourSeat: true as const } : {}),
 		// Graphic Group children are Graphic Items in their own right and count as such,
 		// exactly as they do against the Screen's own Graphic Item caps. Source Items are
 		// counted apart because they are host-owned and budgeted apart.

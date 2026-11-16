@@ -25,17 +25,14 @@ const db = new Proxy(realDb, {
 				screens: {
 					...target.query.screens,
 					findFirst: async (...args: Parameters<typeof target.query.screens.findFirst>) => {
-						if (storageUnavailable)
-							throw new Error('D1_ERROR: network error');
+						if (storageUnavailable) throw new Error('D1_ERROR: network error');
 						return await target.query.screens.findFirst(...args);
 					},
 				},
 			};
 		}
 		const value = Reflect.get(target, property, target);
-		return typeof value === 'function'
-			? value.bind(target)
-			: value;
+		return typeof value === 'function' ? value.bind(target) : value;
 	},
 });
 vi.doMock('~~/server/db', () => ({ db }));
@@ -44,12 +41,13 @@ vi.doMock('~~/server/db', () => ({ db }));
 let signedIn = false;
 vi.doMock('~~/server/utils/auth', () => ({
 	requireUserId: async () => 'user-1',
-	optionalUserSession: async () => signedIn
-		? {
-				user: { id: 'user-1' },
-				session: { id: 'session-1' },
-			}
-		: null,
+	optionalUserSession: async () =>
+		signedIn
+			? {
+					user: { id: 'user-1' },
+					session: { id: 'session-1' },
+				}
+			: null,
 }));
 
 interface StubEvent {
@@ -61,26 +59,37 @@ interface StubEvent {
 }
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
 vi.stubGlobal('useRuntimeConfig', () => ({ screenOutputCapabilitySigningKey: signingKey }));
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
 vi.stubGlobal('getRequestHeader', (event: StubEvent, name: string) => event.headers[name]);
 vi.stubGlobal('setResponseHeader', (event: StubEvent, name: string, value: unknown) => {
 	event.responseHeaders[name] = value;
 });
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 // h3 refuses a body that is not JSON with its own 400; the route must not pass that on.
 vi.stubGlobal('readBody', async (event: StubEvent) => {
-	if (event.bodyIsNotJson)
-		throw Object.assign(new Error('Invalid JSON body'), { statusCode: 400 });
+	if (event.bodyIsNotJson) throw Object.assign(new Error('Invalid JSON body'), { statusCode: 400 });
 	return event.body;
 });
 
 type Handler = (event: H3Event) => Promise<unknown>;
-const exchangeLink = (await import('~~/server/api/screen-output/link.post')).default as unknown as Handler;
-const getAssetCapability = (await import('~~/server/api/events/[id]/screens/[screenId]/asset-capability.get')).default as unknown as Handler;
-const rotateAssetCapability = (await import('~~/server/api/events/[id]/screens/[screenId]/asset-capability.post')).default as unknown as Handler;
-const getOutputScreen = (await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/index.get')).default as unknown as Handler;
-const { createScreenOutputAssetCapabilityManager } = await import('~~/server/modules/screen-output-assets/manager');
+const exchangeLink = (await import('~~/server/api/screen-output/link.post'))
+	.default as unknown as Handler;
+const getAssetCapability = (
+	await import('~~/server/api/events/[id]/screens/[screenId]/asset-capability.get')
+).default as unknown as Handler;
+const rotateAssetCapability = (
+	await import('~~/server/api/events/[id]/screens/[screenId]/asset-capability.post')
+).default as unknown as Handler;
+const getOutputScreen = (
+	await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/index.get')
+).default as unknown as Handler;
+const { createScreenOutputAssetCapabilityManager } =
+	await import('~~/server/modules/screen-output-assets/manager');
 const { screenService } = await import('~~/server/services/screen');
 
 const manager = createScreenOutputAssetCapabilityManager({
@@ -88,8 +97,15 @@ const manager = createScreenOutputAssetCapabilityManager({
 	screens: screenService(),
 });
 
-interface Issued { assetCapability: string; outputLink: string }
-interface Exchanged { eventId: number; screenId: number; assetCapability: string }
+interface Issued {
+	assetCapability: string;
+	outputLink: string;
+}
+interface Exchanged {
+	eventId: number;
+	screenId: number;
+	assetCapability: string;
+}
 
 let eventId: number;
 let screenId: number;
@@ -99,7 +115,8 @@ let screenSeq = 0;
 async function createScreen(): Promise<number> {
 	screenSeq += 1;
 	const prepared = await manager.prepare();
-	const [screen] = await realDb.insert(schema.screens)
+	const [screen] = await realDb
+		.insert(schema.screens)
 		.values({
 			eventId,
 			name: `Output ${screenSeq}`,
@@ -131,34 +148,45 @@ function exchangeRequest(body: unknown, extra: Partial<StubEvent> = {}): StubEve
 }
 
 async function issued(id = screenId): Promise<Issued> {
-	return await getAssetCapability(stubH3Event({
-		...sessionRequest(id),
-	})) as Issued;
+	return (await getAssetCapability(
+		stubH3Event({
+			...sessionRequest(id),
+		}),
+	)) as Issued;
 }
 
 async function rotated(id = screenId): Promise<Issued> {
-	return await rotateAssetCapability(stubH3Event({
-		...sessionRequest(id),
-	})) as Issued;
+	return (await rotateAssetCapability(
+		stubH3Event({
+			...sessionRequest(id),
+		}),
+	)) as Issued;
 }
 
 async function exchange(body: unknown): Promise<Exchanged> {
-	return await exchangeLink(stubH3Event({
-		...exchangeRequest(body),
-	})) as Exchanged;
+	return (await exchangeLink(
+		stubH3Event({
+			...exchangeRequest(body),
+		}),
+	)) as Exchanged;
 }
 
 /** A Screen Output read of the Screen itself, presenting only this bearer. */
 async function readScreenAsOutput(capability: string | null, id = screenId) {
-	return await getOutputScreen(stubH3Event({
-		...sessionRequest(id),
-		headers: capability
-			? { authorization: `Bearer ${capability}` }
-			: {},
-	})) as { id: number };
+	return (await getOutputScreen(
+		stubH3Event({
+			...sessionRequest(id),
+			headers: capability ? { authorization: `Bearer ${capability}` } : {},
+		}),
+	)) as { id: number };
 }
 
-function refusalShape(failure: { statusCode?: number; statusMessage?: string; message?: string; data?: unknown }) {
+function refusalShape(failure: {
+	statusCode?: number;
+	statusMessage?: string;
+	message?: string;
+	data?: unknown;
+}) {
 	return {
 		statusCode: failure.statusCode,
 		statusMessage: failure.statusMessage,
@@ -168,13 +196,12 @@ function refusalShape(failure: { statusCode?: number; statusMessage?: string; me
 }
 
 function lastCharacterChanged(text: string): string {
-	return `${text.slice(0, -1)}${text.endsWith('2')
-		? '3'
-		: '2'}`;
+	return `${text.slice(0, -1)}${text.endsWith('2') ? '3' : '2'}`;
 }
 
 beforeAll(async () => {
-	const [event] = await realDb.insert(schema.events)
+	const [event] = await realDb
+		.insert(schema.events)
 		.values({ name: 'Output Links', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	eventId = event!.id;
@@ -194,8 +221,7 @@ afterAll(async () => {
 describe('what an operator is handed for a Screen', () => {
 	it('answers the Screen Output Link beside the capability, which is unchanged by it', async () => {
 		const current = await manager.current({ eventId, screenId });
-		if (current.outcome !== 'available')
-			throw new Error('expected a current capability');
+		if (current.outcome !== 'available') throw new Error('expected a current capability');
 
 		expect(await issued()).toEqual({
 			assetCapability: current.capability,
@@ -217,8 +243,7 @@ describe('exchanging a Screen Output Link', () => {
 	it('answers the Screen, its Event, and exactly the capability current() gives', async () => {
 		const { outputLink } = await issued();
 		const current = await manager.current({ eventId, screenId });
-		if (current.outcome !== 'available')
-			throw new Error('expected a current capability');
+		if (current.outcome !== 'available') throw new Error('expected a current capability');
 
 		expect(await exchange({ link: outputLink })).toEqual({
 			eventId,
@@ -234,14 +259,16 @@ describe('exchanging a Screen Output Link', () => {
 		await expect(readScreenAsOutput(null)).rejects.toMatchObject({ statusCode: 404 });
 	});
 
-	it('answers each Screen for its own link, and neither for the other\'s', async () => {
+	it("answers each Screen for its own link, and neither for the other's", async () => {
 		const own = await exchange({ link: (await issued()).outputLink });
 		const neighbours = await exchange({ link: (await issued(neighbourId)).outputLink });
 
 		expect(own.screenId).toBe(screenId);
 		expect(neighbours.screenId).toBe(neighbourId);
 		expect(neighbours.assetCapability).not.toBe(own.assetCapability);
-		await expect(readScreenAsOutput(neighbours.assetCapability)).rejects.toMatchObject({ statusCode: 404 });
+		await expect(readScreenAsOutput(neighbours.assetCapability)).rejects.toMatchObject({
+			statusCode: 404,
+		});
 	});
 
 	it('must not be stored by anything between the output and here', async () => {
@@ -255,7 +282,9 @@ describe('exchanging a Screen Output Link', () => {
 	// Regenerating the capability regenerates the link: before it the old one exchanges, after it only the new.
 	it('stops exchanging a link once its capability is regenerated', async () => {
 		const before = await issued();
-		expect((await exchange({ link: before.outputLink })).assetCapability).toBe(before.assetCapability);
+		expect((await exchange({ link: before.outputLink })).assetCapability).toBe(
+			before.assetCapability,
+		);
 
 		const after = await rotated();
 
@@ -269,34 +298,17 @@ describe('exchanging a Screen Output Link', () => {
 
 	// One refusal, the Screen Output surface's own, so nothing says which part was wrong.
 	it.each<[string, (current: Issued) => Promise<Partial<StubEvent>> | Partial<StubEvent>]>([
-		[
-			'no body',
-			() => ({ body: undefined }),
-		],
-		[
-			'a body that is not JSON',
-			() => ({ bodyIsNotJson: true }),
-		],
-		[
-			'a null body',
-			() => ({ body: null }),
-		],
-		[
-			'a body that is the link alone',
-			({ outputLink }) => ({ body: outputLink }),
-		],
+		['no body', () => ({ body: undefined })],
+		['a body that is not JSON', () => ({ bodyIsNotJson: true })],
+		['a null body', () => ({ body: null })],
+		['a body that is the link alone', ({ outputLink }) => ({ body: outputLink })],
 		[
 			'a body that is a list',
 			({ outputLink }) => ({
-				body: [
-					{ link: outputLink },
-				],
+				body: [{ link: outputLink }],
 			}),
 		],
-		[
-			'a body with no link',
-			() => ({ body: {} }),
-		],
+		['a body with no link', () => ({ body: {} })],
 		[
 			'a link that is not text',
 			() => ({

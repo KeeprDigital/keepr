@@ -23,13 +23,7 @@ function canvasContext(options: { fallbackDependent?: boolean } = {}) {
 		getImageData: () => {
 			const exact = font.includes('stream-keepr-font-validation-');
 			const mono = font.includes('monospace');
-			const marker = exact
-				? (options.fallbackDependent && mono
-						? 4
-						: 1)
-				: mono
-					? 3
-					: 2;
+			const marker = exact ? (options.fallbackDependent && mono ? 4 : 1) : mono ? 3 : 2;
 			return {
 				data: Uint8ClampedArray.of(marker, 0, 0, 255),
 			};
@@ -58,43 +52,40 @@ describe('static font browser challenge proof', () => {
 
 	it('binds every server-selected code point to identical exact-face rasters across distinct fallbacks', async () => {
 		const context = canvasContext();
-		vi.spyOn(HTMLCanvasElement.prototype, 'getContext')
-			.mockReturnValue(context);
+		vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
 
 		const evidence = await verifyStaticFontBrowserLoad(
-			new Blob([
-				Uint8Array.of(1, 2, 3),
-			]),
+			new Blob([Uint8Array.of(1, 2, 3)]),
 			challenge,
 		);
 
 		expect(evidence).toMatchObject({
 			outcome: 'font-loaded',
 			challengeDigest: challenge.digest,
-			glyphProofs: challenge.codePoints.map(codePoint => ({
+			glyphProofs: challenge.codePoints.map((codePoint) => ({
 				codePoint,
 				exactWithSansDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
 				exactWithMonoDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
 			})),
 		});
-		if (evidence.outcome !== 'font-loaded')
-			throw new Error('Expected loaded evidence');
-		expect(evidence.glyphProofs.every(proof =>
-			proof.exactWithSansDigest === proof.exactWithMonoDigest
-			&& proof.sansFallbackDigest !== proof.monoFallbackDigest,
-		)).toBe(true);
+		if (evidence.outcome !== 'font-loaded') throw new Error('Expected loaded evidence');
+		expect(
+			evidence.glyphProofs.every(
+				(proof) =>
+					proof.exactWithSansDigest === proof.exactWithMonoDigest &&
+					proof.sansFallbackDigest !== proof.monoFallbackDigest,
+			),
+		).toBe(true);
 	});
 
 	it('rejects a challenged glyph when changing the fallback changes its raster', async () => {
-		vi.spyOn(HTMLCanvasElement.prototype, 'getContext')
-			.mockReturnValue(canvasContext({ fallbackDependent: true }));
+		vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+			canvasContext({ fallbackDependent: true }),
+		);
 
-		await expect(verifyStaticFontBrowserLoad(
-			new Blob([
-				Uint8Array.of(1, 2, 3),
-			]),
-			challenge,
-		)).resolves.toMatchObject({
+		await expect(
+			verifyStaticFontBrowserLoad(new Blob([Uint8Array.of(1, 2, 3)]), challenge),
+		).resolves.toMatchObject({
 			outcome: 'font-rejected',
 			challengeDigest: challenge.digest,
 			stage: 'render',

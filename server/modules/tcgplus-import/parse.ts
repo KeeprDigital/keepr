@@ -23,8 +23,7 @@ const MAX_NICKNAME_LENGTH = 100;
 function boundedNickname(nickname: string): string {
 	let bounded = '';
 	for (const character of nickname) {
-		if (bounded.length + character.length > MAX_NICKNAME_LENGTH)
-			break;
+		if (bounded.length + character.length > MAX_NICKNAME_LENGTH) break;
 		bounded += character;
 	}
 	return bounded;
@@ -62,73 +61,66 @@ function csvRecords(text: string): string[][] {
 			if (char === '"' && text[index + 1] === '"') {
 				value += '"';
 				index++;
-			}
-			else if (char === '"') {
+			} else if (char === '"') {
 				quoted = false;
-			}
-			else {
+			} else {
 				value += char;
 			}
-		}
-		else if (char === '"') {
+		} else if (char === '"') {
 			quoted = true;
-		}
-		else if (char === ',') {
+		} else if (char === ',') {
 			record.push(value);
 			value = '';
-		}
-		else if (char === '\n' || char === '\r') {
-			if (char === '\r' && text[index + 1] === '\n')
-				index++;
+		} else if (char === '\n' || char === '\r') {
+			if (char === '\r' && text[index + 1] === '\n') index++;
 			record.push(value);
 			records.push(record);
 			record = [];
 			value = '';
-		}
-		else {
+		} else {
 			value += char;
 		}
 	}
-	if (quoted)
-		throw new TcgPlusExportError('The file ends inside a quoted field.');
+	if (quoted) throw new TcgPlusExportError('The file ends inside a quoted field.');
 	if (value !== '' || record.length > 0) {
 		record.push(value);
 		records.push(record);
 	}
-	return records.filter(row => row.some(cell => cell.trim() !== ''));
+	return records.filter((row) => row.some((cell) => cell.trim() !== ''));
 }
 
 /** The export's entries, one per member number, in the order the file first names them. */
 export function parseTcgPlusExport(text: string): TcgPlusExportEntry[] {
 	const [header, ...rows] = csvRecords(text.replace(/^\uFEFF/, ''));
-	const headers = (header ?? []).map(cell => cell.trim());
-	const missing = Object.values(COLUMNS).filter(name => !headers.includes(name));
+	const headers = (header ?? []).map((cell) => cell.trim());
+	const missing = Object.values(COLUMNS).filter((name) => !headers.includes(name));
 	if (missing.length > 0)
-		throw new TcgPlusExportError(`This is not a TCG+ deck list export: it has no ${missing.join(', ')} column.`);
-	const column = Object.fromEntries(Object.entries(COLUMNS).map(([key, name]) => [
-		key,
-		headers.indexOf(name),
-	])) as Record<keyof typeof COLUMNS, number>;
+		throw new TcgPlusExportError(
+			`This is not a TCG+ deck list export: it has no ${missing.join(', ')} column.`,
+		);
+	const column = Object.fromEntries(
+		Object.entries(COLUMNS).map(([key, name]) => [key, headers.indexOf(name)]),
+	) as Record<keyof typeof COLUMNS, number>;
 
-	const byMember = new Map<string, TcgPlusExportEntry & { byNumber: Map<string, OpDeckListLine> }>();
+	const byMember = new Map<
+		string,
+		TcgPlusExportEntry & { byNumber: Map<string, OpDeckListLine> }
+	>();
 	rows.forEach((row, index) => {
 		const line = index + 2;
 		const cell = (key: keyof typeof COLUMNS) => (row[column[key]] ?? '').trim();
 		const memberNumber = cell('memberNumber');
 		const number = parseOpCardNumber(cell('cardNumber'));
 		const quantity = Number(cell('quantity'));
-		if (!memberNumber)
-			throw new TcgPlusExportError(`Line ${line} has no member number.`);
-		if (!number)
-			throw new TcgPlusExportError(`Line ${line} has no readable card number.`);
+		if (!memberNumber) throw new TcgPlusExportError(`Line ${line} has no member number.`);
+		if (!number) throw new TcgPlusExportError(`Line ${line} has no readable card number.`);
 		if (!Number.isInteger(quantity) || quantity < 1)
 			throw new TcgPlusExportError(`Line ${line} has no readable quantity.`);
 
 		let entry = byMember.get(memberNumber);
 		if (!entry) {
 			const nickname = boundedNickname(cell('nickname'));
-			if (!nickname)
-				throw new TcgPlusExportError(`Line ${line} has no Nickname.`);
+			if (!nickname) throw new TcgPlusExportError(`Line ${line} has no Nickname.`);
 			entry = {
 				memberNumber,
 				nickname,
@@ -143,16 +135,12 @@ export function parseTcgPlusExport(text: string): TcgPlusExportEntry[] {
 		const held = entry.byNumber.get(number);
 		if (held) {
 			held.quantity += quantity;
-		}
-		else {
+		} else {
 			const added = { number, quantity };
 			entry.byNumber.set(number, added);
 			entry.entries.push(added);
 		}
 	});
-	if (byMember.size === 0)
-		throw new TcgPlusExportError('The export holds no players.');
-	return [
-		...byMember.values(),
-	].map(({ byNumber: _byNumber, ...entry }) => entry);
+	if (byMember.size === 0) throw new TcgPlusExportError('The export holds no players.');
+	return [...byMember.values()].map(({ byNumber: _byNumber, ...entry }) => entry);
 }

@@ -11,10 +11,9 @@ const playerStore = usePlayerStore();
 const { openDeckLists } = usePlayerDeckListModal();
 
 function openDeckListModal() {
-	if (!props.playerData?.deckList)
-		return;
+	if (!props.playerData?.deckList) return;
 	const player = playerStore.players.find(
-		p => p.name.toLowerCase() === props.playerData!.playerName.toLowerCase(),
+		(p) => p.name.toLowerCase() === props.playerData!.playerName.toLowerCase(),
 	);
 	openDeckLists({
 		playerName: props.playerData.playerName,
@@ -31,7 +30,8 @@ const highlanderImageUrlsByCardName = computed<Record<string, string | null>>(()
 		imageUrls[card.name] = card.mtgCard?.imageData?.front?.normal ?? null;
 	}
 	if (props.playerData?.deckList?.companion) {
-		imageUrls[props.playerData.deckList.companion.name] = props.playerData.deckList.companion.scryfallId
+		imageUrls[props.playerData.deckList.companion.name] = props.playerData.deckList.companion
+			.scryfallId
 			? `https://api.scryfall.com/cards/${props.playerData.deckList.companion.scryfallId}?format=image&version=normal`
 			: null;
 	}
@@ -43,12 +43,7 @@ const highlanderImageUrlsByCardName = computed<Record<string, string | null>>(()
 	<div class="flex flex-col">
 		<!-- No player -->
 		<template v-if="!playerData">
-			<UIEmptyState
-				variant="inline"
-				icon="i-lucide-user-x"
-				title="No player"
-				class="flex-1"
-			/>
+			<UIEmptyState variant="inline" icon="i-lucide-user-x" title="No player" class="flex-1" />
 		</template>
 
 		<template v-else>
@@ -56,7 +51,11 @@ const highlanderImageUrlsByCardName = computed<Record<string, string | null>>(()
 			<div class="flex items-center gap-2 mb-3 px-1">
 				<span class="font-semibold text-lg truncate">{{ playerData.playerName }}</span>
 				<template v-if="playerData.deckList">
-					<button type="button" class="flex items-center gap-1 text-muted truncate hover:text-primary transition-colors cursor-pointer" @click="openDeckListModal">
+					<button
+						type="button"
+						class="flex items-center gap-1 text-muted truncate hover:text-primary transition-colors cursor-pointer"
+						@click="openDeckListModal"
+					>
 						<UIcon name="i-lucide-list" class="w-3.5 h-3.5 shrink-0" />
 						{{ playerData.deckList.name }}
 					</button>

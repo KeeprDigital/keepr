@@ -18,38 +18,41 @@ const archetypeStore = useArchetypeStore();
 useConsumedEventData(['archetypes']);
 
 onMounted(async () => {
-	if (!archetypeStore.isLoaded)
-		await archetypeStore.loadByEventId(props.eventId);
+	if (!archetypeStore.isLoaded) await archetypeStore.loadByEventId(props.eventId);
 });
 
-const archetype = computed(() => archetypeStore.archetypes.find(item => item.id === props.archetypeId));
+const archetype = computed(() =>
+	archetypeStore.archetypes.find((item) => item.id === props.archetypeId),
+);
 const pinned = computed(() => archetype.value?.chartSeries ?? null);
 
 function pinnedBy(series: number) {
-	return archetypeStore.archetypes.filter(item => item.id !== props.archetypeId && item.chartSeries === series);
+	return archetypeStore.archetypes.filter(
+		(item) => item.id !== props.archetypeId && item.chartSeries === series,
+	);
 }
 
 const items = computed(() => [
 	{ label: 'None', value: null },
 	...Array.from({ length: METAGAME_CHART_SERIES_COUNT }, (_, index) => {
 		const series = index + 1;
-		const others = pinnedBy(series).map(item => item.name);
+		const others = pinnedBy(series).map((item) => item.name);
 		return {
-			label: others.length > 0
-				? `Series ${series} (pinned by ${others.join(', ')})`
-				: `Series ${series}`,
+			label:
+				others.length > 0
+					? `Series ${series} (pinned by ${others.join(', ')})`
+					: `Series ${series}`,
 			value: series,
 		};
 	}),
 ]);
 
-const takenBy = computed(() => pinned.value == null
-	? []
-	: pinnedBy(pinned.value).map(item => item.name));
+const takenBy = computed(() =>
+	pinned.value == null ? [] : pinnedBy(pinned.value).map((item) => item.name),
+);
 
 async function pin(chartSeries: number | null) {
-	if (chartSeries === pinned.value)
-		return;
+	if (chartSeries === pinned.value) return;
 	await archetypeStore.updateArchetype(props.eventId, props.archetypeId, { chartSeries });
 }
 </script>

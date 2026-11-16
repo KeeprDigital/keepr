@@ -12,7 +12,11 @@ describe('metagame API', () => {
 		// Create MTG event
 		const event = (await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Metagame Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Metagame Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		})) as any;
 		eventId = event.id;
 
@@ -108,8 +112,7 @@ describe('metagame API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	// ──────────────── Summary ────────────────
@@ -134,9 +137,11 @@ describe('metagame API', () => {
 			expect(data.totalDecks).toBe(0);
 			expect(data.totalArchetypes).toBe(2);
 			expect(data.scopedArchetypeCount).toBe(2);
-			expect(data.facts).toEqual(expect.arrayContaining([
-				expect.objectContaining({ key: 'mostPlayedArchetype', value: 'Mono Red' }),
-			]));
+			expect(data.facts).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ key: 'mostPlayedArchetype', value: 'Mono Red' }),
+				]),
+			);
 		});
 	});
 
@@ -157,7 +162,9 @@ describe('metagame API', () => {
 		});
 
 		it('respects scope=playerList', async () => {
-			const data = (await $fetch(`/api/events/${eventId}/metagame/archetypes?scope=playerList&playerListId=${playerListId}`)) as any;
+			const data = (await $fetch(
+				`/api/events/${eventId}/metagame/archetypes?scope=playerList&playerListId=${playerListId}`,
+			)) as any;
 			expect(data.totalPlayers).toBe(2);
 		});
 	});
@@ -193,7 +200,9 @@ describe('metagame API', () => {
 
 	describe('archetype detail endpoint', () => {
 		it('returns 200 with full archetype detail', async () => {
-			const data = (await $fetch(`/api/events/${eventId}/metagame/archetypes/${archetypeId1}`)) as any;
+			const data = (await $fetch(
+				`/api/events/${eventId}/metagame/archetypes/${archetypeId1}`,
+			)) as any;
 
 			expect(data.id).toBe(archetypeId1);
 			expect(data.name).toBe('Mono Red');
@@ -211,22 +220,32 @@ describe('metagame API', () => {
 	// ──────────────── Archetype Spotlight Screen Output ────────────────
 
 	describe('archetype spotlight Screen Output read', () => {
-		it('answers the archetype page\'s numbers for the Screen\'s Archetype and scope, and its Event\'s Conversion Target', async () => {
+		it("answers the archetype page's numbers for the Screen's Archetype and scope, and its Event's Conversion Target", async () => {
 			const screen = await $fetch<{ id: number }>(`/api/events/${eventId}/screens`, {
 				method: 'POST',
-				body: { name: 'Spotlight', slug: `spotlight-${eventId}`, currentMode: 'archetype-spotlight' },
+				body: {
+					name: 'Spotlight',
+					slug: `spotlight-${eventId}`,
+					currentMode: 'archetype-spotlight',
+				},
 			});
 			const { assetCapability } = await $fetch<{ assetCapability: string }>(
 				`/api/events/${eventId}/screens/${screen.id}/asset-capability`,
 			);
 			async function outputSpotlight() {
-				const response = await anonymousFetch(`/api/screen-output/events/${eventId}/screens/${screen.id}/archetype-spotlight`, {
-					headers: { authorization: `Bearer ${assetCapability}` },
-				});
-				return { status: response.status, data: await response.json() as any };
+				const response = await anonymousFetch(
+					`/api/screen-output/events/${eventId}/screens/${screen.id}/archetype-spotlight`,
+					{
+						headers: { authorization: `Bearer ${assetCapability}` },
+					},
+				);
+				return { status: response.status, data: (await response.json()) as any };
 			}
 			async function configure(config: Record<string, unknown>) {
-				await $fetch(`/api/events/${eventId}/screens/${screen.id}/config/archetype-spotlight`, { method: 'PATCH', body: config });
+				await $fetch(`/api/events/${eventId}/screens/${screen.id}/config/archetype-spotlight`, {
+					method: 'PATCH',
+					body: config,
+				});
 			}
 
 			// No Archetype picked: nothing to publish.
@@ -274,16 +293,23 @@ describe('metagame API', () => {
 			// A Player List scope narrows the pilots and the numbers, as on the page.
 			await configure({ scope: 'playerList', playerListId });
 			const listed = await outputSpotlight();
-			const listedPage = (await $fetch(`/api/events/${eventId}/metagame/archetypes/${archetypeId1}`, {
-				query: {
-					scope: 'playerList',
-					playerListId,
-					board: 'full',
-					conversionMetric: 'topN',
-					conversionThreshold: 2,
+			const listedPage = (await $fetch(
+				`/api/events/${eventId}/metagame/archetypes/${archetypeId1}`,
+				{
+					query: {
+						scope: 'playerList',
+						playerListId,
+						board: 'full',
+						conversionMetric: 'topN',
+						conversionThreshold: 2,
+					},
 				},
-			})) as any;
-			expect(listed.data).toMatchObject({ playerCount: listedPage.playerCount, metaShare: listedPage.metaShare, conversionRate: listedPage.conversionRate });
+			)) as any;
+			expect(listed.data).toMatchObject({
+				playerCount: listedPage.playerCount,
+				metaShare: listedPage.metaShare,
+				conversionRate: listedPage.conversionRate,
+			});
 			expect(listed.data.pilots.map((pilot: { name: string }) => pilot.name)).toEqual(['Player 1']);
 		});
 	});
@@ -334,29 +360,40 @@ describe('metagame reads with a hundred and more represented Archetypes', () => 
 	beforeAll(async () => {
 		const event = await $fetch<{ id: number }>('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Large Metagame Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Large Metagame Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 
-		const archetypeOf = (index: number) => `(SELECT id FROM archetypes WHERE event_id = ${eventId} AND name = '${archetypeName(index)}')`;
+		const archetypeOf = (index: number) =>
+			`(SELECT id FROM archetypes WHERE event_id = ${eventId} AND name = '${archetypeName(index)}')`;
 		const classified = [
 			...[1, 2, 3, 4].map(() => 1),
 			...Array.from({ length: REPRESENTED - 1 }, (_, index) => index + 2),
 		];
-		await executeIntegrationD1([
-			...Array.from({ length: REPRESENTED + 1 }, (_, index) =>
-				`INSERT INTO archetypes (event_id, name) VALUES (${eventId}, '${archetypeName(index + 1)}');`),
-			...classified.map((archetype, index) =>
-				`INSERT INTO players (event_id, name, archetype_id, wins, losses) VALUES (${eventId}, 'Player ${index}', ${archetypeOf(archetype)}, 1, 1);`),
-			`INSERT INTO players (event_id, name) VALUES (${eventId}, 'Unclassified A'), (${eventId}, 'Unclassified B');`,
-		].join('\n'));
+		await executeIntegrationD1(
+			[
+				...Array.from(
+					{ length: REPRESENTED + 1 },
+					(_, index) =>
+						`INSERT INTO archetypes (event_id, name) VALUES (${eventId}, '${archetypeName(index + 1)}');`,
+				),
+				...classified.map(
+					(archetype, index) =>
+						`INSERT INTO players (event_id, name, archetype_id, wins, losses) VALUES (${eventId}, 'Player ${index}', ${archetypeOf(archetype)}, 1, 1);`,
+				),
+				`INSERT INTO players (event_id, name) VALUES (${eventId}, 'Unclassified A'), (${eventId}, 'Unclassified B');`,
+			].join('\n'),
+		);
 	});
 
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('answers a capability-authorised Screen Output read of the breakdown its Screen renders', async () => {
@@ -368,13 +405,22 @@ describe('metagame reads with a hundred and more represented Archetypes', () => 
 			`/api/events/${eventId}/screens/${screen.id}/asset-capability`,
 		);
 		async function outputBreakdown() {
-			const response = await anonymousFetch(`/api/screen-output/events/${eventId}/screens/${screen.id}/metagame`, {
-				headers: { authorization: `Bearer ${assetCapability}` },
-			});
-			return { status: response.status, data: await response.json() as { viewMode: string; breakdown: { entries: unknown[] } } };
+			const response = await anonymousFetch(
+				`/api/screen-output/events/${eventId}/screens/${screen.id}/metagame`,
+				{
+					headers: { authorization: `Bearer ${assetCapability}` },
+				},
+			);
+			return {
+				status: response.status,
+				data: (await response.json()) as { viewMode: string; breakdown: { entries: unknown[] } },
+			};
 		}
 		async function configure(config: Record<string, unknown>) {
-			await $fetch(`/api/events/${eventId}/screens/${screen.id}/config/metagame`, { method: 'PATCH', body: config });
+			await $fetch(`/api/events/${eventId}/screens/${screen.id}/config/metagame`, {
+				method: 'PATCH',
+				body: config,
+			});
 		}
 
 		await configure({ viewMode: 'archetype', scope: 'all', archetypeLimit: null });
@@ -413,6 +459,6 @@ describe('metagame reads with a hundred and more represented Archetypes', () => 
 			},
 		});
 		expect(converted.data.breakdown).toEqual(page);
-		expect(page.entries.some(entry => entry.conversionRate != null)).toBe(true);
+		expect(page.entries.some((entry) => entry.conversionRate != null)).toBe(true);
 	});
 });

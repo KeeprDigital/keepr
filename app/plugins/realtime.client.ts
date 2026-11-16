@@ -95,11 +95,8 @@ export default defineNuxtPlugin({
 						),
 					});
 					callback(null, tokenRequest);
-				}
-				catch (error) {
-					const message = error instanceof Error
-						? error.message
-						: String(error);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
 					callback(message, null);
 				}
 			},
@@ -130,9 +127,7 @@ export default defineNuxtPlugin({
 		const tokenError = ref<Error | null>(null);
 
 		function toError(err: unknown) {
-			return err instanceof Error
-				? err
-				: new Error(String(err));
+			return err instanceof Error ? err : new Error(String(err));
 		}
 
 		/**
@@ -155,10 +150,10 @@ export default defineNuxtPlugin({
 		async function attachPending(predicate: (eventId: number | null) => boolean) {
 			const refusals = await Promise.all(
 				[...pendingSubscriptions]
-					.filter(subscription => predicate(subscription.eventId))
-					.map(subscription => subscription.attach()),
+					.filter((subscription) => predicate(subscription.eventId))
+					.map((subscription) => subscription.attach()),
 			);
-			return refusals.find(refusal => refusal !== null) ?? null;
+			return refusals.find((refusal) => refusal !== null) ?? null;
 		}
 
 		/**
@@ -171,7 +166,7 @@ export default defineNuxtPlugin({
 		}
 
 		function wait(ms: number) {
-			return new Promise<void>(resolve => setTimeout(resolve, ms));
+			return new Promise<void>((resolve) => setTimeout(resolve, ms));
 		}
 
 		/** Ends the recovery wait in progress early. Only `supersedeMint` and `stopRecoveryIfUnwanted` call it. */
@@ -182,8 +177,7 @@ export default defineNuxtPlugin({
 				let timer: ReturnType<typeof setTimeout> | undefined;
 				const finish = () => {
 					clearTimeout(timer);
-					if (cancelRecoveryWait === finish)
-						cancelRecoveryWait = null;
+					if (cancelRecoveryWait === finish) cancelRecoveryWait = null;
 					resolve();
 				};
 				timer = setTimeout(finish, ms);
@@ -223,32 +217,28 @@ export default defineNuxtPlugin({
 			// reconnect, before expiry) back to the Event the token in hand covers. Left
 			// on this one, they would trade a working token for one that cannot be minted.
 			const stop = () => {
-				if (flight.current && coveredEventId != null)
-					activeEventId = coveredEventId;
+				if (flight.current && coveredEventId != null) activeEventId = coveredEventId;
 				return false;
 			};
 
 			const attempt = async () => {
 				if (coveredEventId !== eventId) {
 					await ably.auth.authorize();
-					if (flight.stale)
-						return null;
+					if (flight.stale) return null;
 					claimCoverage(eventId);
 					giveVerdict(true);
 				}
-				return attachPending(pendingEventId => pendingEventId === eventId);
+				return attachPending((pendingEventId) => pendingEventId === eventId);
 			};
 
 			for (let attemptIndex = 0; ; attemptIndex++) {
 				let failure: Error | null;
 				try {
 					failure = await attempt();
-				}
-				catch (err) {
+				} catch (err) {
 					failure = toError(err);
 				}
-				if (flight.stale)
-					return false;
+				if (flight.stale) return false;
 				if (failure === null) {
 					tokenError.value = null;
 					return true;
@@ -257,8 +247,7 @@ export default defineNuxtPlugin({
 				const quickDelay = AUTHORIZE_RETRY_DELAYS_MS[attemptIndex];
 				if (quickDelay !== undefined) {
 					await wait(quickDelay);
-					if (flight.stale)
-						return false;
+					if (flight.stale) return false;
 					continue;
 				}
 
@@ -268,14 +257,14 @@ export default defineNuxtPlugin({
 					tokenError.value = failure;
 					giveVerdict(false);
 					// Nothing desired waits — the mint was for an action, which has its answer now.
-					if (!awaitsRecovery(eventId))
-						return stop();
+					if (!awaitsRecovery(eventId)) return stop();
 				}
 
 				const backedOff = attemptIndex - AUTHORIZE_RETRY_DELAYS_MS.length;
-				await recoveryWait(RECOVERY_RETRY_DELAYS_MS[Math.min(backedOff, RECOVERY_RETRY_DELAYS_MS.length - 1)]!);
-				if (flight.stale)
-					return false;
+				await recoveryWait(
+					RECOVERY_RETRY_DELAYS_MS[Math.min(backedOff, RECOVERY_RETRY_DELAYS_MS.length - 1)]!,
+				);
+				if (flight.stale) return false;
 				if (!awaitsRecovery(eventId)) {
 					// Everything that waited on this Event was disposed, so nothing is
 					// failing for anyone any more.
@@ -287,8 +276,7 @@ export default defineNuxtPlugin({
 
 		/** Stop the recovery in progress if nothing desired waits on its Event any more. */
 		function stopRecoveryIfUnwanted() {
-			if (pendingAuthorize && !awaitsRecovery(pendingAuthorize.eventId))
-				cancelRecoveryWait?.();
+			if (pendingAuthorize && !awaitsRecovery(pendingAuthorize.eventId)) cancelRecoveryWait?.();
 		}
 
 		function beginRecovery(eventId: number): Promise<boolean> {
@@ -307,8 +295,7 @@ export default defineNuxtPlugin({
 			void recoverEvent(eventId, flight, giveVerdict)
 				.then(giveVerdict, () => giveVerdict(false))
 				.finally(() => {
-					if (pendingAuthorize === pending)
-						pendingAuthorize = null;
+					if (pendingAuthorize === pending) pendingAuthorize = null;
 				});
 			return verdict;
 		}
@@ -330,8 +317,7 @@ export default defineNuxtPlugin({
 		 */
 		function ensureChannelCoverage(channelName: string): true | Promise<boolean> {
 			const eventId = realtimeChannelEventId(channelName);
-			if (eventId == null)
-				return true;
+			if (eventId == null) return true;
 
 			if (eventId === coveredEventId) {
 				// Covered means a token for this Event is in hand, so whatever failed to
@@ -340,15 +326,13 @@ export default defineNuxtPlugin({
 				// standing on a client that is working perfectly. Not while a recovery is
 				// still running, though: something is still waiting on it, and the fault
 				// is about that.
-				if (!pendingAuthorize)
-					tokenError.value = null;
+				if (!pendingAuthorize) tokenError.value = null;
 				return true;
 			}
 
 			// A mint for this same Event may still be in flight; wait on it instead of
 			// subscribing before the token upgrade actually lands.
-			if (pendingAuthorize?.eventId === eventId)
-				return pendingAuthorize.verdict;
+			if (pendingAuthorize?.eventId === eventId) return pendingAuthorize.verdict;
 
 			return beginRecovery(eventId);
 		}
@@ -384,11 +368,14 @@ export default defineNuxtPlugin({
 		 * covers it, or a Realtime Subscription not yet attached.
 		 */
 		function awaitsRecovery(eventId: number) {
-			if (eventId !== coveredEventId && currentRoom != null && realtimeChannelEventId(currentRoom) === eventId)
+			if (
+				eventId !== coveredEventId &&
+				currentRoom != null &&
+				realtimeChannelEventId(currentRoom) === eventId
+			)
 				return true;
 			for (const subscription of pendingSubscriptions) {
-				if (subscription.eventId === eventId)
-					return true;
+				if (subscription.eventId === eventId) return true;
 			}
 			return false;
 		}
@@ -420,9 +407,7 @@ export default defineNuxtPlugin({
 		 */
 		function watchContinuity(channelName: string, channel: Ably.RealtimeChannel) {
 			const watched: ChannelContinuity = {
-				state: isOutOfTouch(connectionSnapshot.connectionState)
-					? 'lost'
-					: 'unstarted',
+				state: isOutOfTouch(connectionSnapshot.connectionState) ? 'lost' : 'unstarted',
 				onLost: new Set(),
 				onNextAttach: new Set(),
 			};
@@ -430,10 +415,8 @@ export default defineNuxtPlugin({
 			const onAttached = (stateChange: Ably.ChannelStateChange) => {
 				const before = watched.state;
 				watched.state = 'held';
-				if (stateChange.resumed || before === 'unstarted')
-					return;
-				for (const handler of [...watched.onLost])
-					handler();
+				if (stateChange.resumed || before === 'unstarted') return;
+				for (const handler of [...watched.onLost]) handler();
 			};
 			channel.on('attached', onAttached);
 			channel.on('update', onAttached);
@@ -442,8 +425,7 @@ export default defineNuxtPlugin({
 			channel.on('attached', () => {
 				const waiting = [...watched.onNextAttach];
 				watched.onNextAttach.clear();
-				for (const handler of waiting)
-					handler();
+				for (const handler of waiting) handler();
 			});
 		}
 
@@ -468,8 +450,7 @@ export default defineNuxtPlugin({
 		function onceAttached(channelName: string, handler: () => void): Unsubscribe {
 			// `getChannel` is what creates the channel's continuity record.
 			const channel = getChannel(channelName);
-			if (channel.state === 'attached')
-				return () => {};
+			if (channel.state === 'attached') return () => {};
 			const { onNextAttach } = continuity.get(channelName)!;
 			// Its own entry, so the same handler waiting twice is told twice and
 			// disposing one wait leaves the other.
@@ -485,8 +466,7 @@ export default defineNuxtPlugin({
 			// published meanwhile, so its first attach is a loss like any other.
 			if (isOutOfTouch(state)) {
 				for (const watched of continuity.values()) {
-					if (watched.state === 'unstarted')
-						watched.state = 'lost';
+					if (watched.state === 'unstarted') watched.state = 'lost';
 				}
 			}
 			connectionSnapshot = {
@@ -510,7 +490,7 @@ export default defineNuxtPlugin({
 			// A channel that refused an attach while the link was down gets another go
 			// now it is back, on the token in hand — the only retry a channel carrying
 			// no Event gets. An Event the token does not cover is its recovery's to attach.
-			void attachPending(eventId => eventId == null || eventId === coveredEventId);
+			void attachPending((eventId) => eventId == null || eventId === coveredEventId);
 		});
 
 		ably.connection.on('suspended', (stateChange) => {
@@ -528,22 +508,25 @@ export default defineNuxtPlugin({
 		});
 
 		function disconnect() {
-			if (connectionSnapshot.connectionState === 'closed' || connectionSnapshot.connectionState === 'closing')
+			if (
+				connectionSnapshot.connectionState === 'closed' ||
+				connectionSnapshot.connectionState === 'closing'
+			)
 				return;
 
 			try {
 				ably.connection.close();
-			}
-			catch (err) {
-				const error = err instanceof Error
-					? err
-					: new Error('Disconnection failed');
+			} catch (err) {
+				const error = err instanceof Error ? err : new Error('Disconnection failed');
 				updateConnectionState('failed', error);
 				throw error;
 			}
 		}
 
-		function unsubscribeMapEntries(map: Map<string, Unsubscribe>, predicate?: (key: string) => boolean) {
+		function unsubscribeMapEntries(
+			map: Map<string, Unsubscribe>,
+			predicate?: (key: string) => boolean,
+		) {
 			for (const [key, unsubscribe] of [...map]) {
 				if (!predicate || predicate(key)) {
 					unsubscribe();
@@ -605,23 +588,18 @@ export default defineNuxtPlugin({
 				eventId: realtimeChannelEventId(spec.channelName),
 				async attach() {
 					pendingSubscriptions.delete(subscription);
-					if (!active)
-						return null;
+					if (!active) return null;
 
-					if (refused)
-						spec.detach(channel);
+					if (refused) spec.detach(channel);
 					try {
 						// From `failed` Ably refuses a subscribe outright; only an explicit
 						// attach recovers the channel (ably@2.29).
-						if (channel.state === 'failed')
-							await channel.attach();
+						if (channel.state === 'failed') await channel.attach();
 						await spec.subscribe(channel);
 						refused = false;
 						return null;
-					}
-					catch (err) {
-						if (!active)
-							return null;
+					} catch (err) {
+						if (!active) return null;
 
 						refused = true;
 						pendingSubscriptions.add(subscription);
@@ -632,8 +610,7 @@ export default defineNuxtPlugin({
 						if (eventId != null && eventId === coveredEventId && !pendingAuthorize)
 							void beginRecovery(eventId);
 						return toError(err);
-					}
-					finally {
+					} finally {
 						settle();
 					}
 				},
@@ -642,19 +619,16 @@ export default defineNuxtPlugin({
 			const coverage = ensureChannelCoverage(spec.channelName);
 			if (coverage === true) {
 				void subscription.attach();
-			}
-			else {
+			} else {
 				pendingSubscriptions.add(subscription);
 				void coverage.then((covered) => {
-					if (!covered)
-						settle();
+					if (!covered) settle();
 				});
 			}
 
 			return {
 				dispose: () => {
-					if (!active)
-						return;
+					if (!active) return;
 
 					active = false;
 					spec.detach(channel);
@@ -671,8 +645,7 @@ export default defineNuxtPlugin({
 			type: T,
 			handler: RealtimeHandler<T>,
 		) {
-			if (!currentRoom)
-				return;
+			if (!currentRoom) return;
 
 			const key = roomSubscriptionKey(owner, type);
 			roomSubscriptions.get(key)?.();
@@ -685,8 +658,8 @@ export default defineNuxtPlugin({
 			const { dispose } = holdSubscription({
 				label: `${type} on ${currentRoom}`,
 				channelName: currentRoom,
-				subscribe: channel => channel.subscribe(type, messageHandler),
-				detach: channel => channel.unsubscribe(type, messageHandler),
+				subscribe: (channel) => channel.subscribe(type, messageHandler),
+				detach: (channel) => channel.unsubscribe(type, messageHandler),
 			});
 
 			roomSubscriptions.set(key, () => {
@@ -697,8 +670,7 @@ export default defineNuxtPlugin({
 
 		function subscribeOwnerToRoom(owner: string) {
 			const handlers = roomHandlers.get(owner);
-			if (!handlers || !currentRoom)
-				return;
+			if (!handlers || !currentRoom) return;
 
 			for (const [type, handler] of handlers) {
 				subscribeRoomHandler(owner, type as MessageType, handler);
@@ -706,8 +678,7 @@ export default defineNuxtPlugin({
 		}
 
 		function setRoom(room: string | null) {
-			if (currentRoom === room)
-				return;
+			if (currentRoom === room) return;
 
 			unsubscribeMapEntries(roomSubscriptions);
 			currentRoom = room;
@@ -717,8 +688,7 @@ export default defineNuxtPlugin({
 				// is declared intent, and handlers registered later gate on the
 				// same coverage.
 				const coverage = ensureChannelCoverage(currentRoom);
-				if (coverage !== true)
-					void coverage.catch(() => {});
+				if (coverage !== true) void coverage.catch(() => {});
 				for (const owner of roomHandlers.keys()) {
 					subscribeOwnerToRoom(owner);
 				}
@@ -732,8 +702,9 @@ export default defineNuxtPlugin({
 			offRoom(owner);
 
 			const filteredHandlers = new Map(
-				Object.entries(handlers)
-					.filter((entry): entry is [MessageType, RealtimeHandler<MessageType>] => entry[1] !== undefined),
+				Object.entries(handlers).filter(
+					(entry): entry is [MessageType, RealtimeHandler<MessageType>] => entry[1] !== undefined,
+				),
 			);
 
 			roomHandlers.set(owner, filteredHandlers);
@@ -741,7 +712,7 @@ export default defineNuxtPlugin({
 		}
 
 		function offRoom(owner: string) {
-			unsubscribeMapEntries(roomSubscriptions, key => key.startsWith(`room:${owner}:`));
+			unsubscribeMapEntries(roomSubscriptions, (key) => key.startsWith(`room:${owner}:`));
 			roomHandlers.delete(owner);
 		}
 
@@ -758,8 +729,8 @@ export default defineNuxtPlugin({
 			const { dispose } = holdSubscription({
 				label: `${type} on ${channelName}`,
 				channelName,
-				subscribe: channel => channel.subscribe(type, messageHandler),
-				detach: channel => channel.unsubscribe(type, messageHandler),
+				subscribe: (channel) => channel.subscribe(type, messageHandler),
+				detach: (channel) => channel.unsubscribe(type, messageHandler),
 			});
 
 			const unsubscribe = () => {
@@ -783,8 +754,7 @@ export default defineNuxtPlugin({
 		 * entry either way.
 		 */
 		async function enterPresence(channelName: string, data: RealtimePresenceData): Promise<void> {
-			if (presenceEntries.has(channelName))
-				return updatePresence(channelName, data);
+			if (presenceEntries.has(channelName)) return updatePresence(channelName, data);
 
 			const entry: PresenceEntry = {
 				data,
@@ -808,13 +778,11 @@ export default defineNuxtPlugin({
 
 		async function leavePresence(channelName: string): Promise<void> {
 			const entry = presenceEntries.get(channelName);
-			if (!entry)
-				return;
+			if (!entry) return;
 
 			presenceEntries.delete(channelName);
 			entry.dispose();
-			if (entry.entered)
-				await getChannel(channelName).presence.leave();
+			if (entry.entered) await getChannel(channelName).presence.leave();
 		}
 
 		async function updatePresence(channelName: string, data: RealtimePresenceData): Promise<void> {
@@ -822,12 +790,10 @@ export default defineNuxtPlugin({
 			// entered would enter it, and entering is enterPresence's job with its own
 			// coverage check. A held entry enters with whatever data is latest.
 			const entry = presenceEntries.get(channelName);
-			if (!entry)
-				return;
+			if (!entry) return;
 
 			entry.data = data;
-			if (entry.entered)
-				await getChannel(channelName).presence.update(data);
+			if (entry.entered) await getChannel(channelName).presence.update(data);
 		}
 
 		function watchPresence<Data extends RealtimePresenceData>(
@@ -841,16 +807,14 @@ export default defineNuxtPlugin({
 			const handlePresenceChange = async () => {
 				try {
 					const members = await channel.presence.get();
-					if (!active)
-						return;
+					if (!active) return;
 
 					// The one place the presence payload is asserted rather than checked:
 					// the wire carries whatever a member entered with, and this is the
 					// boundary it arrives at. Declared partial, so every reader still has
 					// to look before it reads a field.
 					callback(members as RealtimePresenceMessage<Data>[]);
-				}
-				catch (err) {
+				} catch (err) {
 					console.warn(`Failed to refresh presence for ${channelName}:`, err);
 				}
 			};
@@ -858,19 +822,21 @@ export default defineNuxtPlugin({
 			// `present` is how Ably reports the members already on a channel each time
 			// it attaches and syncs; without it a watch whose read below failed, or
 			// whose channel re-attached, would wait on the next enter, leave or update.
-			const disposals = (['enter', 'present', 'leave', 'update'] as const).map(action => holdSubscription({
-				label: `presence ${action} on ${channelName}`,
-				channelName,
-				subscribe: channel => channel.presence.subscribe(action, handlePresenceChange),
-				detach: channel => channel.presence.unsubscribe(action, handlePresenceChange),
-			}).dispose);
+			const disposals = (['enter', 'present', 'leave', 'update'] as const).map(
+				(action) =>
+					holdSubscription({
+						label: `presence ${action} on ${channelName}`,
+						channelName,
+						subscribe: (channel) => channel.presence.subscribe(action, handlePresenceChange),
+						detach: (channel) => channel.presence.unsubscribe(action, handlePresenceChange),
+					}).dispose,
+			);
 
 			const unsubscribe = () => {
-				if (!active)
-					return;
+				if (!active) return;
 
 				active = false;
-				disposals.forEach(dispose => dispose());
+				disposals.forEach((dispose) => dispose());
 				presenceSubscriptions.delete(key);
 			};
 
@@ -884,8 +850,7 @@ export default defineNuxtPlugin({
 			unsubscribeMapEntries(roomSubscriptions);
 			unsubscribeMapEntries(channelSubscriptions);
 			unsubscribeMapEntries(presenceSubscriptions);
-			for (const entry of presenceEntries.values())
-				entry.dispose();
+			for (const entry of presenceEntries.values()) entry.dispose();
 			presenceEntries.clear();
 			roomHandlers.clear();
 			currentRoom = null;
@@ -894,9 +859,8 @@ export default defineNuxtPlugin({
 			for (const channel of channels.values()) {
 				try {
 					void channel.detach();
-				}
-				catch {
-				// Ignore detach errors during browser teardown.
+				} catch {
+					// Ignore detach errors during browser teardown.
 				}
 			}
 			channels.clear();
@@ -912,18 +876,27 @@ export default defineNuxtPlugin({
 		// A page restored from the back/forward cache was torn down above, and its
 		// handlers are gone: load it afresh rather than show it deaf.
 		window.addEventListener('pageshow', (event) => {
-			if (event.persisted)
-				window.location.reload();
+			if (event.persisted) window.location.reload();
 		});
 
 		return {
 			provide: {
 				realtime: {
-					get connectionId() { return ably.connection.id; },
-					get connectionState() { return connectionState.value.connectionState; },
-					get isConnected() { return connectionState.value.isConnected; },
-					get error() { return connectionState.value.error; },
-					get tokenError() { return tokenError.value; },
+					get connectionId() {
+						return ably.connection.id;
+					},
+					get connectionState() {
+						return connectionState.value.connectionState;
+					},
+					get isConnected() {
+						return connectionState.value.isConnected;
+					},
+					get error() {
+						return connectionState.value.error;
+					},
+					get tokenError() {
+						return tokenError.value;
+					},
 					setRoom,
 					onRoom,
 					offRoom,

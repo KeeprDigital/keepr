@@ -1,7 +1,18 @@
-import type { BroadcastGraphicConfig, GraphicGroupChildConfig, GraphicGroupItemConfig, GraphicItemConfig } from '~~/shared/types/graphics';
-import type { GraphicAssetReference, GraphicAssetReferenceStatus } from '~~/shared/types/graphicsAsset';
+import type {
+	BroadcastGraphicConfig,
+	GraphicGroupChildConfig,
+	GraphicGroupItemConfig,
+	GraphicItemConfig,
+} from '~~/shared/types/graphics';
+import type {
+	GraphicAssetReference,
+	GraphicAssetReferenceStatus,
+} from '~~/shared/types/graphicsAsset';
 import type { GraphicThemeBindings, GraphicThemeSlot } from '~~/shared/types/graphicThemeBindings';
-import type { FeatureMatchLayoutConfig, FeatureMatchSourceItemConfig } from '~~/shared/types/screenConfig';
+import type {
+	FeatureMatchLayoutConfig,
+	FeatureMatchSourceItemConfig,
+} from '~~/shared/types/screenConfig';
 import { MAX_FEATURE_MATCH_SOURCE_ITEMS } from '~~/shared/featureMatchSourceItems';
 import {
 	cloneGraphicItem,
@@ -78,18 +89,18 @@ export interface CopiedStyle {
 export type GraphicsClipboardEntry = CopiedLayers | CopiedStyle;
 
 /** Why a paste was refused. Nothing is pasted when one is. */
-export type ClipboardPasteRefusal
-	= | { reason: 'other-host'; from: GraphicsClipboardHost }
-		| { reason: 'item-cap'; scope: 'screen' | 'graphic' | 'layout' | 'group'; limit: number }
-		| { reason: 'source-cap'; limit: number }
-		/** Items pinning a Graphic Asset that is retired, trashed, missing or unavailable, by label. */
-		| { reason: 'unselectable'; items: string[] }
-		/** Items reading a Social Profile Projection outside its Presentation Group, by label. */
-		| { reason: 'projection'; items: string[] }
-		/** A style pasted onto a kind that shares none of it. */
-		| { reason: 'incompatible' }
-		/** Nothing selected that could take the paste. */
-		| { reason: 'no-destination' };
+export type ClipboardPasteRefusal =
+	| { reason: 'other-host'; from: GraphicsClipboardHost }
+	| { reason: 'item-cap'; scope: 'screen' | 'graphic' | 'layout' | 'group'; limit: number }
+	| { reason: 'source-cap'; limit: number }
+	/** Items pinning a Graphic Asset that is retired, trashed, missing or unavailable, by label. */
+	| { reason: 'unselectable'; items: string[] }
+	/** Items reading a Social Profile Projection outside its Presentation Group, by label. */
+	| { reason: 'projection'; items: string[] }
+	/** A style pasted onto a kind that shares none of it. */
+	| { reason: 'incompatible' }
+	/** Nothing selected that could take the paste. */
+	| { reason: 'no-destination' };
 
 /* ────────────────────────────────────────────────
  * Copy
@@ -97,8 +108,7 @@ export type ClipboardPasteRefusal
 
 /** Where a Graphic Item's container places its origin on the canvas. */
 function containerOrigin(group: GraphicGroupItemConfig | undefined): { x: number; y: number } {
-	if (!group)
-		return { x: 0, y: 0 };
+	if (!group) return { x: 0, y: 0 };
 	const padding = Math.max(0, group.padding);
 	return { x: group.x + padding, y: group.y + padding };
 }
@@ -114,13 +124,20 @@ function detached<T>(value: T): T {
  */
 export function copyGraphicLayers(
 	host: GraphicsClipboardHost,
-	source: { composition: BroadcastGraphicConfig; sources?: readonly FeatureMatchSourceItemConfig[] },
+	source: {
+		composition: BroadcastGraphicConfig;
+		sources?: readonly FeatureMatchSourceItemConfig[];
+	},
 	layers: readonly ClipboardLayer[],
 ): CopiedLayers | null {
-	const itemIds = new Set(layers.filter(layer => layer.type === 'item').map(layer => layer.itemId));
-	const sourceIds = new Set(layers.filter(layer => layer.type === 'source').map(layer => layer.itemId));
+	const itemIds = new Set(
+		layers.filter((layer) => layer.type === 'item').map((layer) => layer.itemId),
+	);
+	const sourceIds = new Set(
+		layers.filter((layer) => layer.type === 'source').map((layer) => layer.itemId),
+	);
 	const items = flattenGraphicItems(source.composition)
-		.filter(item => itemIds.has(item.id))
+		.filter((item) => itemIds.has(item.id))
 		.map((item) => {
 			const location = findGraphicItem(source.composition, item.id)!;
 			return {
@@ -128,15 +145,14 @@ export function copyGraphicLayers(
 				origin: containerOrigin(location.group),
 			};
 		});
-	const sources = (source.sources ?? [])
-		.filter(item => sourceIds.has(item.id))
-		.map(detached);
-	return items.length + sources.length > 0
-		? { kind: 'layers', host, items, sources }
-		: null;
+	const sources = (source.sources ?? []).filter((item) => sourceIds.has(item.id)).map(detached);
+	return items.length + sources.length > 0 ? { kind: 'layers', host, items, sources } : null;
 }
 
-export function copyGraphicStyle(host: GraphicsClipboardHost, item: GraphicItemConfig): CopiedStyle {
+export function copyGraphicStyle(
+	host: GraphicsClipboardHost,
+	item: GraphicItemConfig,
+): CopiedStyle {
 	return {
 		kind: 'style',
 		host,
@@ -149,9 +165,10 @@ export function copyGraphicStyle(host: GraphicsClipboardHost, item: GraphicItemC
  * ──────────────────────────────────────────────── */
 
 function graphicItemCount(items: readonly GraphicItemConfig[]): number {
-	return items.reduce((total, item) => total + 1 + (item.type === 'group'
-		? item.children.length
-		: 0), 0);
+	return items.reduce(
+		(total, item) => total + 1 + (item.type === 'group' ? item.children.length : 0),
+		0,
+	);
 }
 
 export interface PasteOptions {
@@ -180,37 +197,35 @@ function pasteIntoComposition(
 	options: PasteOptions,
 ): CompositionPaste {
 	const candidate = options.groupId
-		? composition.items.find(item => item.id === options.groupId)
+		? composition.items.find((item) => item.id === options.groupId)
 		: undefined;
-	const group = candidate?.type === 'group' && copied.every(entry => entry.item.type !== 'group')
-		? candidate
-		: undefined;
+	const group =
+		candidate?.type === 'group' && copied.every((entry) => entry.item.type !== 'group')
+			? candidate
+			: undefined;
 	const destination = containerOrigin(group);
-	const label = copyLabeller(flattenGraphicItems(composition).map(item => item.label), { keep: true });
+	const label = copyLabeller(
+		flattenGraphicItems(composition).map((item) => item.label),
+		{ keep: true },
+	);
 	const copies = copied.map(({ item, origin }) => {
 		const copy = cloneGraphicItem(item, { nextId: options.nextId, label });
 		copy.x += origin.x - destination.x + GRAPHIC_ITEM_DUPLICATE_OFFSET;
 		copy.y += origin.y - destination.y + GRAPHIC_ITEM_DUPLICATE_OFFSET;
 		// Only a row or column group reads a child's sizing, and only a child may carry one.
-		if (!group)
-			delete copy.sizing;
+		if (!group) delete copy.sizing;
 		return copy;
 	});
-	const itemIds = copies.map(copy => copy.id);
+	const itemIds = copies.map((copy) => copy.id);
 	if (group) {
 		const next = {
 			...group,
-			children: [
-				...group.children,
-				...copies as GraphicGroupChildConfig[],
-			],
+			children: [...group.children, ...(copies as GraphicGroupChildConfig[])],
 		};
 		return {
 			composition: {
 				...composition,
-				items: composition.items.map(item => item.id === group.id
-					? next
-					: item),
+				items: composition.items.map((item) => (item.id === group.id ? next : item)),
 			},
 			group: next,
 			itemIds,
@@ -219,10 +234,7 @@ function pasteIntoComposition(
 	return {
 		composition: {
 			...composition,
-			items: [
-				...composition.items,
-				...copies,
-			],
+			items: [...composition.items, ...copies],
 		},
 		group,
 		itemIds,
@@ -232,16 +244,16 @@ function pasteIntoComposition(
 /** The Social Profile Projections one item reads, by key. */
 function projectionKeysRead(item: GraphicItemConfig): string[] {
 	if (item.type === 'social-network-icon') {
-		return typeof item.network === 'object'
-			? [item.network.projectionKey]
-			: [];
+		return typeof item.network === 'object' ? [item.network.projectionKey] : [];
 	}
-	if (item.type !== 'text')
-		return [];
+	if (item.type !== 'text') return [];
 	return [
-		...graphicTextTemplateProjectedValueReferences(item.text).map(reference => reference.projectionKey),
-		...Object.keys(item.placeholderStyles ?? {})
-			.flatMap(key => readSocialProfileProjectedValueReference(key)?.projectionKey ?? []),
+		...graphicTextTemplateProjectedValueReferences(item.text).map(
+			(reference) => reference.projectionKey,
+		),
+		...Object.keys(item.placeholderStyles ?? {}).flatMap(
+			(key) => readSocialProfileProjectedValueReference(key)?.projectionKey ?? [],
+		),
 	];
 }
 
@@ -250,24 +262,38 @@ function projectionKeysRead(item: GraphicItemConfig): string[] {
  * Group in `graphic`, which the write path refuses: a projection does not travel
  * with the items reading it.
  */
-function strandedProjectionReaders(graphic: BroadcastGraphicConfig, itemIds: readonly string[]): string[] {
-	const groups = new Map((graphic.socialProfileProjections ?? []).map(projection => [projection.key, projection.presentationGroupId]));
+function strandedProjectionReaders(
+	graphic: BroadcastGraphicConfig,
+	itemIds: readonly string[],
+): string[] {
+	const groups = new Map(
+		(graphic.socialProfileProjections ?? []).map((projection) => [
+			projection.key,
+			projection.presentationGroupId,
+		]),
+	);
 	return itemIds.flatMap((itemId) => {
 		const location = findGraphicItem(graphic, itemId)!;
-		const readers = location.item.type === 'group'
-			? location.item.children.map(child => ({ item: child as GraphicItemConfig, groupId: location.item.id as string | undefined }))
-			: [
-					{ item: location.item, groupId: location.group?.id },
-				];
+		const readers =
+			location.item.type === 'group'
+				? location.item.children.map((child) => ({
+						item: child as GraphicItemConfig,
+						groupId: location.item.id as string | undefined,
+					}))
+				: [{ item: location.item, groupId: location.group?.id }];
 		return readers
-			.filter(({ item, groupId }) => projectionKeysRead(item).some(key => groups.get(key) === undefined || groups.get(key) !== groupId))
+			.filter(({ item, groupId }) =>
+				projectionKeysRead(item).some(
+					(key) => groups.get(key) === undefined || groups.get(key) !== groupId,
+				),
+			)
 			.map(({ item }) => item.label);
 	});
 }
 
-export type BroadcastGraphicLayersPaste
-	= | { ok: true; graphics: BroadcastGraphicConfig[]; pasted: string[] }
-		| { ok: false; refusal: ClipboardPasteRefusal };
+export type BroadcastGraphicLayersPaste =
+	| { ok: true; graphics: BroadcastGraphicConfig[]; pasted: string[] }
+	| { ok: false; refusal: ClipboardPasteRefusal };
 
 /** Paste copied layers into one Broadcast Graphic of a Screen's stack. */
 export function pasteBroadcastGraphicLayers(
@@ -281,7 +307,7 @@ export function pasteBroadcastGraphicLayers(
 			refusal: { reason: 'other-host', from: copied.host },
 		};
 	}
-	const graphic = destination.graphics.find(entry => entry.id === destination.graphicId);
+	const graphic = destination.graphics.find((entry) => entry.id === destination.graphicId);
 	if (!graphic) {
 		return {
 			ok: false,
@@ -290,18 +316,29 @@ export function pasteBroadcastGraphicLayers(
 	}
 
 	const paste = pasteIntoComposition(graphic, copied.items, options);
-	const added = graphicItemCount(copied.items.map(entry => entry.item));
-	const onScreen = destination.graphics.reduce((total, entry) => total + graphicItemCount(entry.items), 0);
+	const added = graphicItemCount(copied.items.map((entry) => entry.item));
+	const onScreen = destination.graphics.reduce(
+		(total, entry) => total + graphicItemCount(entry.items),
+		0,
+	);
 	if (onScreen + added > MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN) {
 		return {
 			ok: false,
-			refusal: { reason: 'item-cap', scope: 'screen', limit: MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN },
+			refusal: {
+				reason: 'item-cap',
+				scope: 'screen',
+				limit: MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN,
+			},
 		};
 	}
 	if (paste.composition.items.length > MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC) {
 		return {
 			ok: false,
-			refusal: { reason: 'item-cap', scope: 'graphic', limit: MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC },
+			refusal: {
+				reason: 'item-cap',
+				scope: 'graphic',
+				limit: MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC,
+			},
 		};
 	}
 	if (paste.group && paste.group.children.length > MAX_GRAPHIC_GROUP_CHILDREN) {
@@ -325,9 +362,9 @@ export function pasteBroadcastGraphicLayers(
 	};
 }
 
-export type FeatureMatchLayersPaste
-	= | { ok: true; layout: FeatureMatchLayoutConfig; pasted: ClipboardLayer[] }
-		| { ok: false; refusal: ClipboardPasteRefusal };
+export type FeatureMatchLayersPaste =
+	| { ok: true; layout: FeatureMatchLayoutConfig; pasted: ClipboardLayer[] }
+	| { ok: false; refusal: ClipboardPasteRefusal };
 
 /** Paste copied layers into a Feature Match Layout: Source Items in front of its Source Items. */
 export function pasteFeatureMatchLayers(
@@ -346,7 +383,11 @@ export function pasteFeatureMatchLayers(
 	if (graphicItemCount(paste.composition.items) > MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT) {
 		return {
 			ok: false,
-			refusal: { reason: 'item-cap', scope: 'layout', limit: MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT },
+			refusal: {
+				reason: 'item-cap',
+				scope: 'layout',
+				limit: MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT,
+			},
 		};
 	}
 	if (paste.group && paste.group.children.length > MAX_GRAPHIC_GROUP_CHILDREN) {
@@ -362,9 +403,12 @@ export function pasteFeatureMatchLayers(
 		};
 	}
 
-	const label = copyLabeller(layout.sources.map(source => source.label), { keep: true });
+	const label = copyLabeller(
+		layout.sources.map((source) => source.label),
+		{ keep: true },
+	);
 	// A copy lands unlocked, as a pasted Graphic Item does (`cloneGraphicItem`).
-	const sources = copied.sources.map(source => ({
+	const sources = copied.sources.map((source) => ({
 		...detached(withoutLayerLock(source)),
 		id: options.nextId(),
 		label: label(source.label),
@@ -376,14 +420,11 @@ export function pasteFeatureMatchLayers(
 		layout: {
 			...layout,
 			composition: paste.composition,
-			sources: [
-				...layout.sources,
-				...sources,
-			],
+			sources: [...layout.sources, ...sources],
 		},
 		pasted: [
-			...paste.itemIds.map(itemId => ({ type: 'item' as const, itemId })),
-			...sources.map(source => ({ type: 'source' as const, itemId: source.id })),
+			...paste.itemIds.map((itemId) => ({ type: 'item' as const, itemId })),
+			...sources.map((source) => ({ type: 'source' as const, itemId: source.id })),
 		],
 	};
 }
@@ -395,9 +436,7 @@ function isSelectable(status: GraphicAssetReferenceStatus): boolean {
 
 /** Every Graphic Asset Revision one item pins itself, a Graphic Group's children aside. */
 function pinnedReferences(item: GraphicItemConfig): GraphicAssetReference[] {
-	const own = item.type === 'group'
-		? { ...item, children: [] }
-		: item;
+	const own = item.type === 'group' ? { ...item, children: [] } : item;
 	return broadcastGraphicsGraphicAssetReferences({
 		graphics: [
 			{
@@ -406,18 +445,13 @@ function pinnedReferences(item: GraphicItemConfig): GraphicAssetReference[] {
 				items: [own],
 			},
 		],
-	})
-		.map(entry => entry.reference);
+	}).map((entry) => entry.reference);
 }
 
 /** What a style paste pins: a library font in its typography, the only style group that names an asset. */
 function stylePinnedReferences(item: GraphicItemConfig): GraphicAssetReference[] {
-	const font = 'typography' in item
-		? item.typography.font
-		: undefined;
-	return font?.kind === 'asset'
-		? [font.reference]
-		: [];
+	const font = 'typography' in item ? item.typography.font : undefined;
+	return font?.kind === 'asset' ? [font.reference] : [];
 }
 
 /**
@@ -430,33 +464,33 @@ export async function unselectableCopiedItems(
 	copied: GraphicsClipboardEntry,
 	status: (reference: GraphicAssetReference) => Promise<GraphicAssetReferenceStatus>,
 ): Promise<string[]> {
-	const pinned = copied.kind === 'style'
-		? [
-				{
-					label: copied.item.label,
-					references: stylePinnedReferences(copied.item),
-				},
-			]
-		: copied.items
-				.flatMap(({ item }) => item.type === 'group'
-					? [item, ...item.children]
-					: [item])
-				.map(item => ({
-					label: item.label,
-					references: pinnedReferences(item),
-				}));
+	const pinned =
+		copied.kind === 'style'
+			? [
+					{
+						label: copied.item.label,
+						references: stylePinnedReferences(copied.item),
+					},
+				]
+			: copied.items
+					.flatMap(({ item }) => (item.type === 'group' ? [item, ...item.children] : [item]))
+					.map((item) => ({
+						label: item.label,
+						references: pinnedReferences(item),
+					}));
 	const statuses = new Map<string, Promise<boolean>>();
 	function selectable(reference: GraphicAssetReference) {
 		const key = `${reference.assetId}\0${reference.revisionId}`;
-		if (!statuses.has(key))
-			statuses.set(key, status(reference).then(isSelectable));
+		if (!statuses.has(key)) statuses.set(key, status(reference).then(isSelectable));
 		return statuses.get(key)!;
 	}
-	const verdicts = await Promise.all(pinned.map(async entry => ({
-		label: entry.label,
-		selectable: (await Promise.all(entry.references.map(selectable))).every(Boolean),
-	})));
-	return verdicts.filter(entry => !entry.selectable).map(entry => entry.label);
+	const verdicts = await Promise.all(
+		pinned.map(async (entry) => ({
+			label: entry.label,
+			selectable: (await Promise.all(entry.references.map(selectable))).every(Boolean),
+		})),
+	);
+	return verdicts.filter((entry) => !entry.selectable).map((entry) => entry.label);
 }
 
 /* ────────────────────────────────────────────────
@@ -486,12 +520,14 @@ function styleGroups(item: GraphicItemConfig): StyleGroup[] {
 					},
 				]
 			: []),
-		...Object.keys(definition.surfaceStyles ?? {}).map(slot => slot === 'surfaceStyle'
-			? SURFACE
-			: {
-					field: slot,
-					slots: [slot as GraphicThemeSlot],
-				}),
+		...Object.keys(definition.surfaceStyles ?? {}).map((slot) =>
+			slot === 'surfaceStyle'
+				? SURFACE
+				: {
+						field: slot,
+						slots: [slot as GraphicThemeSlot],
+					},
+		),
 		...(definition.shapeGeometry
 			? [
 					{
@@ -507,15 +543,19 @@ function paintsSurface(item: GraphicItemConfig): boolean {
 	return styleGroups(item).includes(SURFACE);
 }
 
-export type StylePaste
-	= | { ok: true; item: GraphicItemConfig; scope: 'style' | 'surface' }
-		| { ok: false; refusal: ClipboardPasteRefusal };
+export type StylePaste =
+	| { ok: true; item: GraphicItemConfig; scope: 'style' | 'surface' }
+	| { ok: false; refusal: ClipboardPasteRefusal };
 
 /**
  * Paste a copied style onto one item (E26). Each pasted group takes the source's
  * value, or its absence, and its binding state.
  */
-export function pasteGraphicStyle(copied: CopiedStyle, host: GraphicsClipboardHost, target: GraphicItemConfig): StylePaste {
+export function pasteGraphicStyle(
+	copied: CopiedStyle,
+	host: GraphicsClipboardHost,
+	target: GraphicItemConfig,
+): StylePaste {
 	if (copied.host !== host) {
 		return {
 			ok: false,
@@ -523,11 +563,12 @@ export function pasteGraphicStyle(copied: CopiedStyle, host: GraphicsClipboardHo
 		};
 	}
 	const source = copied.item;
-	const scope = source.type === target.type
-		? 'style'
-		: paintsSurface(source) && paintsSurface(target)
-			? 'surface'
-			: null;
+	const scope =
+		source.type === target.type
+			? 'style'
+			: paintsSurface(source) && paintsSurface(target)
+				? 'surface'
+				: null;
 	if (!scope) {
 		return {
 			ok: false,
@@ -538,25 +579,17 @@ export function pasteGraphicStyle(copied: CopiedStyle, host: GraphicsClipboardHo
 	const from = source as unknown as Record<string, unknown>;
 	const item = { ...target } as unknown as Record<string, unknown>;
 	const bindings: GraphicThemeBindings = { ...target.themeBindings };
-	for (const group of scope === 'style'
-		? styleGroups(source)
-		: [SURFACE]) {
-		if (from[group.field] === undefined)
-			delete item[group.field];
-		else
-			item[group.field] = detached(from[group.field]);
+	for (const group of scope === 'style' ? styleGroups(source) : [SURFACE]) {
+		if (from[group.field] === undefined) delete item[group.field];
+		else item[group.field] = detached(from[group.field]);
 		for (const slot of group.slots) {
 			const token = source.themeBindings?.[slot];
-			if (token === undefined)
-				delete bindings[slot];
-			else
-				bindings[slot] = token;
+			if (token === undefined) delete bindings[slot];
+			else bindings[slot] = token;
 		}
 	}
-	if (Object.keys(bindings).length > 0)
-		item.themeBindings = bindings;
-	else
-		delete item.themeBindings;
+	if (Object.keys(bindings).length > 0) item.themeBindings = bindings;
+	else delete item.themeBindings;
 	return { ok: true, item: item as unknown as GraphicItemConfig, scope };
 }
 
@@ -578,19 +611,20 @@ type ClipboardStorage = Pick<Storage, 'getItem' | 'setItem'>;
 function browserStorage(): ClipboardStorage | undefined {
 	try {
 		return globalThis.localStorage;
-	}
-	catch {
+	} catch {
 		return undefined;
 	}
 }
 
 /** Keep what was copied in this browser. Answers whether it was kept. */
-export function writeGraphicsClipboard(entry: GraphicsClipboardEntry, storage = browserStorage()): boolean {
+export function writeGraphicsClipboard(
+	entry: GraphicsClipboardEntry,
+	storage = browserStorage(),
+): boolean {
 	try {
 		storage?.setItem(STORAGE_KEYS[entry.kind], JSON.stringify(entry));
 		return storage !== undefined;
-	}
-	catch {
+	} catch {
 		return false;
 	}
 }
@@ -606,19 +640,14 @@ export function readGraphicsClipboard<K extends GraphicsClipboardEntry['kind']>(
 ): Extract<GraphicsClipboardEntry, { kind: K }> | null {
 	try {
 		const raw = storage?.getItem(STORAGE_KEYS[kind]);
-		const entry = raw
-			? JSON.parse(raw) as Record<string, unknown>
-			: null;
-		if (!entry || entry.kind !== kind || !isHost(entry.host))
-			return null;
-		const shaped = kind === 'layers'
-			? Array.isArray(entry.items) && Array.isArray(entry.sources)
-			: typeof entry.item === 'object' && entry.item !== null;
-		return shaped
-			? entry as unknown as Extract<GraphicsClipboardEntry, { kind: K }>
-			: null;
-	}
-	catch {
+		const entry = raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+		if (!entry || entry.kind !== kind || !isHost(entry.host)) return null;
+		const shaped =
+			kind === 'layers'
+				? Array.isArray(entry.items) && Array.isArray(entry.sources)
+				: typeof entry.item === 'object' && entry.item !== null;
+		return shaped ? (entry as unknown as Extract<GraphicsClipboardEntry, { kind: K }>) : null;
+	} catch {
 		return null;
 	}
 }
@@ -632,15 +661,16 @@ const HOST_NAMES: Record<GraphicsClipboardHost, string> = {
 	'broadcast-graphics': 'a Broadcast Graphic',
 };
 
-const CAP_SCOPES: Record<Extract<ClipboardPasteRefusal, { reason: 'item-cap' }>['scope'], string> = {
-	screen: 'this Screen',
-	graphic: 'one Broadcast Graphic',
-	layout: 'one Feature Match Layout',
-	group: 'one Graphic Group',
-};
+const CAP_SCOPES: Record<Extract<ClipboardPasteRefusal, { reason: 'item-cap' }>['scope'], string> =
+	{
+		screen: 'this Screen',
+		graphic: 'one Broadcast Graphic',
+		layout: 'one Feature Match Layout',
+		group: 'one Graphic Group',
+	};
 
 function quoted(labels: readonly string[]): string {
-	return labels.map(label => `"${label}"`).join(', ');
+	return labels.map((label) => `"${label}"`).join(', ');
 }
 
 /** The reason an author reads for a refused paste. */

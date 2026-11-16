@@ -20,7 +20,7 @@ describe('useClockControls', () => {
 		mockEventStore.displayEvent = createMockEvent({ featureMatchDefaultClockDuration: 45 });
 	});
 
-	it('resets the clock to the Event\'s default duration', () => {
+	it("resets the clock to the Event's default duration", () => {
 		const controls = useClockControls(10);
 
 		void controls.resetToDefault();

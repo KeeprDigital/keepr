@@ -1,5 +1,8 @@
 import type { MatchResponse } from '~~/shared/api';
-import type { PlayerHistory, PlayerMatchHistoryEntry } from '~/composables/screen/usePlayerHistoryModeData';
+import type {
+	PlayerHistory,
+	PlayerMatchHistoryEntry,
+} from '~/composables/screen/usePlayerHistoryModeData';
 import type { ScreenModeDependencies } from '~/modules/screen-mode/freshness';
 import type { Player } from '~/types';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
@@ -12,20 +15,27 @@ import { useScreenModeFreshness } from '~/modules/screen-mode/freshness';
  * a history row, so any of them re-reads, except a sync of Round Standings,
  * which the history does not show.
  */
-export function playerHistoryDependencies(playerId: () => number | null): ScreenModeDependencies<PlayerHistory> {
+export function playerHistoryDependencies(
+	playerId: () => number | null,
+): ScreenModeDependencies<PlayerHistory> {
 	const involvesPlayer = (match: MatchResponse) =>
 		match.player1Id === playerId() || match.player2Id === playerId();
-	const holdsMatch = (held: PlayerHistory, matchId: number) => held.rows.some(row => row.id === matchId);
-	const holdsRound = (held: PlayerHistory, roundId: number) => held.rows.some(row => row.roundId === roundId);
-	const holdsOpponent = (held: PlayerHistory, id: number) => held.rows.some(row => row.opponentId === id);
+	const holdsMatch = (held: PlayerHistory, matchId: number) =>
+		held.rows.some((row) => row.id === matchId);
+	const holdsRound = (held: PlayerHistory, roundId: number) =>
+		held.rows.some((row) => row.roundId === roundId);
+	const holdsOpponent = (held: PlayerHistory, id: number) =>
+		held.rows.some((row) => row.opponentId === id);
 	// An opponent's deck name may come from their Archetype.
-	const showsOpponentDeck = (_message: unknown, held: PlayerHistory) => held.rows.some(row => row.opponentDeckName != null);
+	const showsOpponentDeck = (_message: unknown, held: PlayerHistory) =>
+		held.rows.some((row) => row.opponentDeckName != null);
 
 	return {
-		'player:updated': ({ player }, held) => player.id === playerId() || holdsOpponent(held, player.id),
+		'player:updated': ({ player }, held) =>
+			player.id === playerId() || holdsOpponent(held, player.id),
 		// Naming no Player, it may have re-projected any of them (ADR-0084).
 		'player:deckProjectionsChanged': ({ playerIds }, held) =>
-			playerIds === null || playerIds.some(id => id === playerId() || holdsOpponent(held, id)),
+			playerIds === null || playerIds.some((id) => id === playerId() || holdsOpponent(held, id)),
 		'player:deleted': ({ playerId: id }, held) => id === playerId() || holdsOpponent(held, id),
 		'match:created': ({ match }) => involvesPlayer(match),
 		'match:updated': ({ match }, held) => involvesPlayer(match) || holdsMatch(held, match.id),
@@ -58,16 +68,14 @@ export function usePlayerMatchHistory(playerId: () => number | null) {
 	const dependsOn = playerHistoryDependencies(playerId);
 	const freshness = useScreenModeFreshness<PlayerHistory>({
 		hearing: () => ({
-			channel: eventId.value
-				? eventRealtimeChannel(eventId.value)
-				: null,
+			channel: eventId.value ? eventRealtimeChannel(eventId.value) : null,
 			dependsOn,
 		}),
-		source: () => eventId.value && playerId()
-			? `${eventId.value}:${playerId()}`
-			: null,
+		source: () => (eventId.value && playerId() ? `${eventId.value}:${playerId()}` : null),
 		read: async () => {
-			const data = await $fetch<{ player: Player; history: PlayerMatchHistoryEntry[] }>(`/api/events/${eventId.value}/players/${playerId()}/match-history`);
+			const data = await $fetch<{ player: Player; history: PlayerMatchHistoryEntry[] }>(
+				`/api/events/${eventId.value}/players/${playerId()}/match-history`,
+			);
 			return { player: data.player, rows: data.history };
 		},
 		initialData: { player: null, rows: [] },
@@ -78,13 +86,11 @@ export function usePlayerMatchHistory(playerId: () => number | null) {
 	const answersPlayer = computed(() => freshness.data.value.player?.id === playerId());
 
 	return {
-		player: computed(() => answersPlayer.value
-			? freshness.data.value.player
-			: null),
-		history: computed(() => answersPlayer.value
-			? freshness.data.value.rows
-			: []),
-		loading: computed(() => !!eventId.value && !!playerId() && !answersPlayer.value && !freshness.error.value),
+		player: computed(() => (answersPlayer.value ? freshness.data.value.player : null)),
+		history: computed(() => (answersPlayer.value ? freshness.data.value.rows : [])),
+		loading: computed(
+			() => !!eventId.value && !!playerId() && !answersPlayer.value && !freshness.error.value,
+		),
 		error: freshness.error,
 	};
 }

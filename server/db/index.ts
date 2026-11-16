@@ -23,10 +23,10 @@ let database: Database | undefined;
  */
 function connect(): Database {
 	if (!database) {
-		const binding = (process.env as Record<string, unknown>).DB
-			|| (globalThis as { __env__?: { DB?: D1Database } }).__env__?.DB;
-		if (!binding)
-			throw new Error('DB binding not found');
+		const binding =
+			(process.env as Record<string, unknown>).DB ||
+			(globalThis as { __env__?: { DB?: D1Database } }).__env__?.DB;
+		if (!binding) throw new Error('DB binding not found');
 		database = drizzle(binding as D1Database, { schema });
 	}
 	return database;

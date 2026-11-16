@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { FeatureMatchOverlayBorderSides } from '~~/shared/types/screenConfig';
 import type { FeatureMatchOverlayBorderSide } from '~/utils/featureMatchOverlayGeometry';
-import { FEATURE_MATCH_OVERLAY_BORDER_SIDES, featureMatchOverlayBorderSideEnabled } from '~/utils/featureMatchOverlayGeometry';
+import {
+	FEATURE_MATCH_OVERLAY_BORDER_SIDES,
+	featureMatchOverlayBorderSideEnabled,
+} from '~/utils/featureMatchOverlayGeometry';
 
 /**
  * Which sides of a Frame or Source Item border show. The border itself, its

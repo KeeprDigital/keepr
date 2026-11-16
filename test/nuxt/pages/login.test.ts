@@ -31,7 +31,11 @@ async function mountLogin() {
 	});
 }
 
-async function submitCredentials(wrapper: Awaited<ReturnType<typeof mountLogin>>, email: string, password: string) {
+async function submitCredentials(
+	wrapper: Awaited<ReturnType<typeof mountLogin>>,
+	email: string,
+	password: string,
+) {
 	await wrapper.find('input[type="email"]').setValue(email);
 	await wrapper.find('input[type="password"]').setValue(password);
 	await wrapper.find('form').trigger('submit');

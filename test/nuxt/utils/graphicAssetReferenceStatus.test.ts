@@ -8,10 +8,8 @@ const { mockApiFetch } = vi.hoisted(() => ({
 
 mockNuxtImport('$fetch', () => mockApiFetch);
 
-const {
-	graphicAssetReferenceStatus,
-	graphicAssetReferenceStatusOrUnavailable,
-} = await import('~~/app/utils/graphicAssetReferenceStatus');
+const { graphicAssetReferenceStatus, graphicAssetReferenceStatusOrUnavailable } =
+	await import('~~/app/utils/graphicAssetReferenceStatus');
 
 const REFERENCE = {
 	assetId: 'asset badge' as GraphicAssetId,
@@ -26,7 +24,11 @@ const REFERENCE = {
 describe('asking the Graphics Asset Library about one exact revision', () => {
 	beforeEach(() => {
 		mockApiFetch.mockReset();
-		mockApiFetch.mockResolvedValue({ outcome: 'available', lifecycleState: 'active', kind: 'image' });
+		mockApiFetch.mockResolvedValue({
+			outcome: 'available',
+			lifecycleState: 'active',
+			kind: 'image',
+		});
 	});
 
 	it('addresses exactly the revision it was given, escaping what it puts in the path', async () => {
@@ -44,9 +46,10 @@ describe('asking the Graphics Asset Library about one exact revision', () => {
 		// temporary one and send the operator to repair something that is not broken.
 		mockApiFetch.mockRejectedValue(new Error('Network error'));
 
-		await expect(graphicAssetReferenceStatusOrUnavailable(REFERENCE))
-			.resolves
-			.toEqual({ outcome: 'unavailable', retryable: true });
+		await expect(graphicAssetReferenceStatusOrUnavailable(REFERENCE)).resolves.toEqual({
+			outcome: 'unavailable',
+			retryable: true,
+		});
 	});
 
 	it('lets the failure through when the caller can tell why it failed', async () => {
@@ -61,8 +64,8 @@ describe('asking the Graphics Asset Library about one exact revision', () => {
 	it('passes the library’s own answer through untouched', async () => {
 		mockApiFetch.mockResolvedValue({ outcome: 'missing' });
 
-		await expect(graphicAssetReferenceStatusOrUnavailable(REFERENCE))
-			.resolves
-			.toEqual({ outcome: 'missing' });
+		await expect(graphicAssetReferenceStatusOrUnavailable(REFERENCE)).resolves.toEqual({
+			outcome: 'missing',
+		});
 	});
 });

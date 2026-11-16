@@ -24,28 +24,26 @@ export interface DeckArtInput {
  * label, gap or other board: at its set columns, or at whichever column count
  * gives the widest card. Whatever the Deck's layout solves is never wider.
  */
-function widestCard(count: number, layout: Pick<ResolvedDeckBoardLayout, 'columns' | 'maxCardSize'>, canvas: EventCanvas): number {
+function widestCard(
+	count: number,
+	layout: Pick<ResolvedDeckBoardLayout, 'columns' | 'maxCardSize'>,
+	canvas: EventCanvas,
+): number {
 	const cards = Math.max(1, count);
-	const widestAt = (columns: number) => Math.min(
-		canvas.width / columns,
-		canvas.height * CARD_ASPECT / Math.ceil(cards / columns),
-	);
+	const widestAt = (columns: number) =>
+		Math.min(canvas.width / columns, (canvas.height * CARD_ASPECT) / Math.ceil(cards / columns));
 	let widest = 0;
 	if (typeof layout.columns === 'number') {
 		widest = widestAt(Math.max(1, Math.min(cards, Math.floor(layout.columns))));
-	}
-	else {
-		for (let columns = 1; columns <= cards; columns++)
-			widest = Math.max(widest, widestAt(columns));
+	} else {
+		for (let columns = 1; columns <= cards; columns++) widest = Math.max(widest, widestAt(columns));
 	}
 	return Math.min(widest, layout.maxCardSize ?? Number.POSITIVE_INFINITY);
 }
 
 /** The smallest Scryfall image no narrower than `width` output pixels; `normal` past it. */
 function artFor(width: number): DeckArtSize {
-	return width <= DECK_ART_WIDTHS.small
-		? 'small'
-		: 'normal';
+	return width <= DECK_ART_WIDTHS.small ? 'small' : 'normal';
 }
 
 /**
@@ -56,7 +54,12 @@ function artFor(width: number): DeckArtSize {
  * a switch to that grid draws. A stacked strip shows a card whole, so it is
  * sized as one card; so is the companion, which may stand alone.
  */
-export function deckArtSizes({ config, counts, canvas, pixelRatio }: DeckArtInput): Record<DeckArtBoard, DeckArtSize> {
+export function deckArtSizes({
+	config,
+	counts,
+	canvas,
+	pixelRatio,
+}: DeckArtInput): Record<DeckArtBoard, DeckArtSize> {
 	const boards = resolveDeckBoards(config);
 	const art = (count: number, layout: Pick<ResolvedDeckBoardLayout, 'columns' | 'maxCardSize'>) =>
 		artFor(widestCard(count, layout, canvas) * pixelRatio);
@@ -64,9 +67,7 @@ export function deckArtSizes({ config, counts, canvas, pixelRatio }: DeckArtInpu
 		// A Seat's Commanders are laid out as the sideboard's cards are, in columns of their own (ADR-0087).
 		commanders: art(counts.commanders, { ...boards.sideboard, columns: undefined }),
 		mainboard: art(counts.mainboard, boards.mainboard),
-		sideboard: art(boards.sideboard.view === 'stack'
-			? 1
-			: counts.sideboard, boards.sideboard),
+		sideboard: art(boards.sideboard.view === 'stack' ? 1 : counts.sideboard, boards.sideboard),
 		companion: art(1, { ...boards.sideboard, columns: undefined }),
 	};
 }

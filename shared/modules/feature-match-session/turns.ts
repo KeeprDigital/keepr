@@ -2,9 +2,7 @@ import type { PlayerSide, Seat } from '~~/shared/types/enums';
 import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 
 export function otherFeatureMatchPlayer(player: PlayerSide): PlayerSide {
-	return player === 'player1'
-		? 'player2'
-		: 'player1';
+	return player === 'player1' ? 'player2' : 'player1';
 }
 
 /**
@@ -13,16 +11,16 @@ export function otherFeatureMatchPlayer(player: PlayerSide): PlayerSide {
  * `commander.ts` (ADR-0087).
  */
 export function pairSeatOf(seat: Seat | null | undefined): PlayerSide | null {
-	return seat === 'player1' || seat === 'player2'
-		? seat
-		: null;
+	return seat === 'player1' || seat === 'player2' ? seat : null;
 }
 
-export function applyFeatureMatchTurnStep(state: FeatureMatchState, delta: number): FeatureMatchState {
+export function applyFeatureMatchTurnStep(
+	state: FeatureMatchState,
+	delta: number,
+): FeatureMatchState {
 	const firstPlayer = pairSeatOf(state.firstPlayer);
 	const startingPlayer = pairSeatOf(state.activePlayer);
-	if (!firstPlayer || !startingPlayer)
-		return state;
+	if (!firstPlayer || !startingPlayer) return state;
 
 	// Represent normal play as a zero-based half-turn index. Turn zero is a
 	// historical MTG pre-turn state with asymmetric rewind semantics, so retain
@@ -31,55 +29,43 @@ export function applyFeatureMatchTurnStep(state: FeatureMatchState, delta: numbe
 	let turnNumber: number;
 	let activePlayer: PlayerSide;
 	if (state.turnNumber <= 0) {
-		const zeroTurnPosition = startingPlayer === firstPlayer
-			? 0
-			: 1;
+		const zeroTurnPosition = startingPlayer === firstPlayer ? 0 : 1;
 		if (requestedDelta <= 0) {
 			turnNumber = 0;
-			activePlayer = requestedDelta < 0 && zeroTurnPosition === 1
-				? firstPlayer
-				: startingPlayer;
-		}
-		else {
+			activePlayer = requestedDelta < 0 && zeroTurnPosition === 1 ? firstPlayer : startingPlayer;
+		} else {
 			const nextPosition = zeroTurnPosition + requestedDelta;
 			if (nextPosition < 2) {
 				turnNumber = 0;
-				activePlayer = nextPosition === 0
-					? firstPlayer
-					: otherFeatureMatchPlayer(firstPlayer);
-			}
-			else {
+				activePlayer = nextPosition === 0 ? firstPlayer : otherFeatureMatchPlayer(firstPlayer);
+			} else {
 				const normalIndex = nextPosition - 2;
 				turnNumber = Math.floor(normalIndex / 2) + 1;
-				activePlayer = normalIndex % 2 === 0
-					? firstPlayer
-					: otherFeatureMatchPlayer(firstPlayer);
+				activePlayer = normalIndex % 2 === 0 ? firstPlayer : otherFeatureMatchPlayer(firstPlayer);
 			}
 		}
-	}
-	else {
-		const currentIndex = (state.turnNumber - 1) * 2
-			+ (startingPlayer === firstPlayer
-				? 0
-				: 1);
+	} else {
+		const currentIndex = (state.turnNumber - 1) * 2 + (startingPlayer === firstPlayer ? 0 : 1);
 		const nextIndex = Math.max(0, currentIndex + requestedDelta);
 		turnNumber = Math.floor(nextIndex / 2) + 1;
-		activePlayer = nextIndex % 2 === 0
-			? firstPlayer
-			: otherFeatureMatchPlayer(firstPlayer);
+		activePlayer = nextIndex % 2 === 0 ? firstPlayer : otherFeatureMatchPlayer(firstPlayer);
 	}
 
 	return { ...state, turnNumber, activePlayer };
 }
 
-export function applyFeatureMatchOvertimeStep(state: FeatureMatchState, delta: number): FeatureMatchState {
-	if (!state.overtime)
-		return state;
+export function applyFeatureMatchOvertimeStep(
+	state: FeatureMatchState,
+	delta: number,
+): FeatureMatchState {
+	if (!state.overtime) return state;
 
 	const requestedSteps = Math.abs(Math.trunc(delta));
 	const forward = delta > 0;
 	const availableSteps = forward
-		? (state.overtime.active ? state.overtime.turnsRemaining : 0)
+		? state.overtime.active
+			? state.overtime.turnsRemaining
+			: 0
 		: state.overtime.totalTurns - state.overtime.turnsRemaining;
 	const appliedSteps = Math.min(requestedSteps, Math.max(0, availableSteps));
 	const turnsRemaining = forward
@@ -90,12 +76,9 @@ export function applyFeatureMatchOvertimeStep(state: FeatureMatchState, delta: n
 	// replay semantics identical without looping through the payload.
 	const playerToggleSteps = forward ? appliedSteps : requestedSteps;
 	const seated = pairSeatOf(state.activePlayer);
-	const activePlayer = seated && playerToggleSteps % 2 === 1
-		? otherFeatureMatchPlayer(seated)
-		: state.activePlayer;
-	const active = forward
-		? turnsRemaining > 0
-		: requestedSteps > 0 || state.overtime.active;
+	const activePlayer =
+		seated && playerToggleSteps % 2 === 1 ? otherFeatureMatchPlayer(seated) : state.activePlayer;
+	const active = forward ? turnsRemaining > 0 : requestedSteps > 0 || state.overtime.active;
 
 	return {
 		...state,

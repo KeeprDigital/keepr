@@ -15,9 +15,13 @@ import { GRAPHIC_ASSET_LIFECYCLE_STATES } from '~~/shared/types/graphicsAsset';
  * (#309).
  */
 export const graphicAssetListQuerySchema = z.object({
-	search: z.string().optional().transform(value => (value ?? '').slice(0, 200)),
-	lifecycleStates: z.string()
-		.transform(value => value.split(','))
+	search: z
+		.string()
+		.optional()
+		.transform((value) => (value ?? '').slice(0, 200)),
+	lifecycleStates: z
+		.string()
+		.transform((value) => value.split(','))
 		.pipe(z.array(z.enum(GRAPHIC_ASSET_LIFECYCLE_STATES)).min(1))
 		.optional(),
 });

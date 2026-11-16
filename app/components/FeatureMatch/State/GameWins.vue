@@ -1,23 +1,29 @@
 <script setup lang="ts">
-const props = withDefaults(defineProps<{
-	matchId: number;
-	player: PlayerSide;
-	playerName?: string;
-	gameWins: number;
-	bestOf: number;
-	/** Scales up dots and badge for touch-screen use */
-	touch?: boolean;
-	/** Layout direction for the win markers */
-	orientation?: 'horizontal' | 'vertical';
-	/** Keeps the win markers visible but removes interaction affordances */
-	readonly?: boolean;
-}>(), {
-	touch: false,
-	orientation: 'horizontal',
-	readonly: false,
-});
+const props = withDefaults(
+	defineProps<{
+		matchId: number;
+		player: PlayerSide;
+		playerName?: string;
+		gameWins: number;
+		bestOf: number;
+		/** Scales up dots and badge for touch-screen use */
+		touch?: boolean;
+		/** Layout direction for the win markers */
+		orientation?: 'horizontal' | 'vertical';
+		/** Keeps the win markers visible but removes interaction affordances */
+		readonly?: boolean;
+	}>(),
+	{
+		touch: false,
+		orientation: 'horizontal',
+		readonly: false,
+	},
+);
 
-const playerControls = usePlayerControls(() => props.matchId, () => props.player);
+const playerControls = usePlayerControls(
+	() => props.matchId,
+	() => props.player,
+);
 const featureMatchStateStore = useFeatureMatchStateStore();
 const { runRequest } = useRequestFeedback();
 
@@ -26,7 +32,9 @@ const isVertical = computed(() => props.orientation === 'vertical');
 const isTouchVertical = computed(() => props.touch && isVertical.value);
 const winsNeeded = computed(() => Math.ceil(props.bestOf / 2));
 // Decided by either Player's wins, so both sides stop offering a new one.
-const isMatchDecided = computed(() => featureMatchStateStore.featureMatchStates.get(props.matchId)?.isComplete ?? false);
+const isMatchDecided = computed(
+	() => featureMatchStateStore.featureMatchStates.get(props.matchId)?.isComplete ?? false,
+);
 
 // Modal state
 const showModal = ref(false);
@@ -54,35 +62,42 @@ async function handleModalConfirm(options: { resetLife: boolean; resetCounters: 
 	const name = props.playerName || 'this player';
 
 	if (modalMode.value === 'win') {
-		await runRequest(async () => {
-			await playerControls.recordWin({
-				resetLife: options.resetLife,
-				resetCounters: options.resetCounters,
-			});
-			return featureMatchStateStore.featureMatchStates.get(props.matchId) ?? {
-				isComplete: false,
-				currentGame: 2,
-			};
-		}, {
-			success: updatedState => ({
-				title: updatedState.isComplete
-					? `${name} wins the match`
-					: `${name} wins Game ${(updatedState.currentGame ?? 2) - 1}`,
-			}),
-			error: { title: 'Failed to record game win', color: 'error' },
-		});
-	}
-	else {
-		await runRequest(async () => {
-			await playerControls.undoWin({
-				resetLife: options.resetLife,
-				resetCounters: options.resetCounters,
-			});
-			return true;
-		}, {
-			success: { title: `Game win removed for ${name}` },
-			error: { title: 'Failed to remove game win', color: 'error' },
-		});
+		await runRequest(
+			async () => {
+				await playerControls.recordWin({
+					resetLife: options.resetLife,
+					resetCounters: options.resetCounters,
+				});
+				return (
+					featureMatchStateStore.featureMatchStates.get(props.matchId) ?? {
+						isComplete: false,
+						currentGame: 2,
+					}
+				);
+			},
+			{
+				success: (updatedState) => ({
+					title: updatedState.isComplete
+						? `${name} wins the match`
+						: `${name} wins Game ${(updatedState.currentGame ?? 2) - 1}`,
+				}),
+				error: { title: 'Failed to record game win', color: 'error' },
+			},
+		);
+	} else {
+		await runRequest(
+			async () => {
+				await playerControls.undoWin({
+					resetLife: options.resetLife,
+					resetCounters: options.resetCounters,
+				});
+				return true;
+			},
+			{
+				success: { title: `Game win removed for ${name}` },
+				error: { title: 'Failed to remove game win', color: 'error' },
+			},
+		);
 	}
 }
 
@@ -105,9 +120,7 @@ const winSlots = computed<WinSlot[]>(() =>
 );
 
 const slotClasses = computed(() => ({ filled, disabled }: WinSlot) => [
-	filled
-		? 'bg-success border-success game-wins-slot--filled'
-		: 'game-wins-slot--empty text-muted',
+	filled ? 'bg-success border-success game-wins-slot--filled' : 'game-wins-slot--empty text-muted',
 	!props.readonly && !disabled && filled
 		? 'cursor-pointer game-wins-slot--filled-hover hover:bg-transparent hover:border-error'
 		: '',
@@ -125,15 +138,13 @@ const slotContainerClass = computed(() => {
 });
 
 const gameWinsClass = computed(() => {
-	if (!isTouchVertical.value)
-		return '';
+	if (!isTouchVertical.value) return '';
 
 	return 'game-wins--clustered rounded-[1.75rem] px-3 py-3';
 });
 
 const slotSizeClass = computed(() => {
-	if (!props.touch)
-		return 'w-7 h-7 border-2';
+	if (!props.touch) return 'w-7 h-7 border-2';
 
 	return isVertical.value ? 'w-14 h-14 border-[3px]' : 'w-16 h-16 border-[3px]';
 });

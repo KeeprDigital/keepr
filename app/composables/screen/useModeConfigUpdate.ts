@@ -1,5 +1,9 @@
 import type { ScreenMode } from '~~/shared/types/enums';
-import type { ModeConfigsMap, ModeConfigTypeMap, ScreenModeConfigPatch } from '~~/shared/types/screenConfig';
+import type {
+	ModeConfigsMap,
+	ModeConfigTypeMap,
+	ScreenModeConfigPatch,
+} from '~~/shared/types/screenConfig';
 import { getDisplayResetForMode } from '~~/shared/screenModeDefinitions';
 import { getDefaultConfigForMode } from '~~/shared/types/screenConfig';
 
@@ -35,24 +39,27 @@ export function useModeConfigUpdate<M extends ScreenMode>(
 	const eventKind = useEventKind();
 	const { getServerTime } = useServerTime();
 
-	const { config, saving, saveState, saveError, updateConfig, retry, discard, flush } = useConfigUpdate<ConfigType, ScreenModeConfigPatch<M>>({
-		getStoreConfig: () => {
-			const screen = screenStore.screens.find(s => s.id === toValue(screenId));
-			const modeConfigs = (screen?.modeConfigs ?? {}) as ModeConfigsMap;
-			return (modeConfigs[mode] ?? {}) as Partial<ConfigType>;
-		},
-		saveToStore: updates =>
-			screenStore.updateModeConfig(toValue(eventId), toValue(screenId), mode, updates),
-		defaults,
-		debounceMs,
-		errorMessage: 'Failed to update screen config',
-	});
+	const { config, saving, saveState, saveError, updateConfig, retry, discard, flush } =
+		useConfigUpdate<ConfigType, ScreenModeConfigPatch<M>>({
+			getStoreConfig: () => {
+				const screen = screenStore.screens.find((s) => s.id === toValue(screenId));
+				const modeConfigs = (screen?.modeConfigs ?? {}) as ModeConfigsMap;
+				return (modeConfigs[mode] ?? {}) as Partial<ConfigType>;
+			},
+			saveToStore: (updates) =>
+				screenStore.updateModeConfig(toValue(eventId), toValue(screenId), mode, updates),
+			defaults,
+			debounceMs,
+			errorMessage: 'Failed to update screen config',
+		});
 
 	/**
 	 * Whether a display reset can write now. A Feature Match Overlay resets to
 	 * the layout its Event is offered, so it waits until the Event has loaded.
 	 */
-	const resetReady = computed(() => mode !== 'feature-match-overlay' || eventKind.value !== undefined);
+	const resetReady = computed(
+		() => mode !== 'feature-match-overlay' || eventKind.value !== undefined,
+	);
 
 	/**
 	 * Reset all display settings to defaults (preserves what the Screen points
@@ -61,9 +68,15 @@ export function useModeConfigUpdate<M extends ScreenMode>(
 	 * Event is offered.
 	 */
 	function resetConfig() {
-		if (!resetReady.value)
-			return;
-		updateConfig(getDisplayResetForMode(mode, config.value, getServerTime(), eventKind.value) as ScreenModeConfigPatch<M>);
+		if (!resetReady.value) return;
+		updateConfig(
+			getDisplayResetForMode(
+				mode,
+				config.value,
+				getServerTime(),
+				eventKind.value,
+			) as ScreenModeConfigPatch<M>,
+		);
 	}
 
 	return {

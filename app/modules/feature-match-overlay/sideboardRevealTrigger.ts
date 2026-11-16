@@ -1,5 +1,9 @@
 import type { PlayerSide } from '~~/shared/types/enums';
-import type { BroadcastGraphicConfig, DeckListGraphicItemConfig, GraphicItemConfig } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	DeckListGraphicItemConfig,
+	GraphicItemConfig,
+} from '~~/shared/types/graphics';
 import type { GraphicsAnimationProjection } from '~/modules/graphics/renderModel';
 import { graphicAnimationRecipeEndMs } from '~~/shared/modules/graphics';
 
@@ -43,12 +47,9 @@ function sideboardDeckListItems(
 ): DeckListGraphicItemConfig[] {
 	const items: DeckListGraphicItemConfig[] = [];
 	for (const item of composition.items) {
-		if (!item.visible)
-			continue;
-		if (item.type === 'deck-list' && item.playerSide === side)
-			items.push(item);
-		if (item.type !== 'group')
-			continue;
+		if (!item.visible) continue;
+		if (item.type === 'deck-list' && item.playerSide === side) items.push(item);
+		if (item.type !== 'group') continue;
 		for (const child of item.children) {
 			if (child.visible && child.type === 'deck-list' && child.playerSide === side)
 				items.push(child);
@@ -87,15 +88,14 @@ export function applyItemPhaseEdge(
 	shown: boolean,
 	now: number,
 ): SideboardRevealTrigger[] {
-	const phase = shown ? 'enter' as const : 'exit' as const;
-	const reachedIds = new Set(reached.map(item => item.id));
+	const phase = shown ? ('enter' as const) : ('exit' as const);
+	const reachedIds = new Set(reached.map((item) => item.id));
 
 	return [
-		...triggers.filter(trigger => !reachedIds.has(trigger.itemId)),
+		...triggers.filter((trigger) => !reachedIds.has(trigger.itemId)),
 		...reached.flatMap((item) => {
 			const recipe = item.animation?.[phase];
-			if (!recipe)
-				return [];
+			if (!recipe) return [];
 			return [
 				{
 					itemId: item.id,
@@ -120,7 +120,7 @@ export function settleSideboardRevealTriggers(
 	triggers: readonly SideboardRevealTrigger[],
 	now: number,
 ): SideboardRevealTrigger[] {
-	return triggers.filter(trigger => now < trigger.endsAt);
+	return triggers.filter((trigger) => now < trigger.endsAt);
 }
 
 /**
@@ -133,8 +133,7 @@ export function sideboardRevealItemAnimation(
 	triggers: readonly SideboardRevealTrigger[],
 	now: number,
 ): Record<string, GraphicsAnimationProjection[]> | undefined {
-	if (triggers.length === 0)
-		return undefined;
+	if (triggers.length === 0) return undefined;
 
 	const animation: Record<string, GraphicsAnimationProjection[]> = {};
 	for (const trigger of triggers) {

@@ -1,7 +1,4 @@
-import {
-	graphicAssetId,
-	graphicAssetRevisionId,
-} from '~~/server/modules/graphics-asset-library';
+import { graphicAssetId, graphicAssetRevisionId } from '~~/server/modules/graphics-asset-library';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
 import { requireUserId } from '~~/server/utils/auth';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
@@ -22,8 +19,7 @@ export default defineEventHandler(async (event) => {
 			assetId: graphicAssetId(getRouterParam(event, 'assetId') ?? ''),
 			revisionId: graphicAssetRevisionId(getRouterParam(event, 'revisionId') ?? ''),
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

@@ -38,7 +38,9 @@ describe('auth.global middleware', () => {
 
 		await runMiddleware('/event/12/matches?round=3');
 
-		expect(mockNavigateTo).toHaveBeenCalledWith('/login?redirect=%2Fevent%2F12%2Fmatches%3Fround%3D3');
+		expect(mockNavigateTo).toHaveBeenCalledWith(
+			'/login?redirect=%2Fevent%2F12%2Fmatches%3Fround%3D3',
+		);
 	});
 
 	it('lets a signed-in operator through', async () => {

@@ -21,15 +21,17 @@ const mockRead = vi.fn<() => Promise<string[]>>();
 
 function mountReading(options: { unavailable?: string } = {}) {
 	let reading!: ReturnType<typeof useReusableLibraryReading<string>>;
-	const wrapper = mount(defineComponent({
-		setup() {
-			reading = useReusableLibraryReading<string>({
-				read: mockRead,
-				unavailable: options.unavailable ?? 'The library could not be read.',
-			});
-			return () => h('div');
-		},
-	}));
+	const wrapper = mount(
+		defineComponent({
+			setup() {
+				reading = useReusableLibraryReading<string>({
+					read: mockRead,
+					unavailable: options.unavailable ?? 'The library could not be read.',
+				});
+				return () => h('div');
+			},
+		}),
+	);
 
 	return { wrapper, reading };
 }
@@ -52,10 +54,12 @@ describe('useReusableLibraryReading', () => {
 	});
 
 	it('quotes the sentence the library wrote about a refused read', async () => {
-		mockRead.mockRejectedValue(transportFailure({
-			status: 409,
-			body: { message: 'The library has moved on.' },
-		}));
+		mockRead.mockRejectedValue(
+			transportFailure({
+				status: 409,
+				body: { message: 'The library has moved on.' },
+			}),
+		);
 
 		const { reading } = mountReading();
 		await flushPromises();
@@ -74,10 +78,12 @@ describe('useReusableLibraryReading', () => {
 	});
 
 	it('recognises an ended session and marks the reading signed out', async () => {
-		mockRead.mockRejectedValue(transportFailure({
-			status: 401,
-			body: { message: 'Authentication is required' },
-		}));
+		mockRead.mockRejectedValue(
+			transportFailure({
+				status: 401,
+				body: { message: 'Authentication is required' },
+			}),
+		);
 
 		const { reading } = mountReading();
 		await flushPromises();
@@ -88,10 +94,12 @@ describe('useReusableLibraryReading', () => {
 
 	it('keeps the refusal message through the re-read that follows a refused write', async () => {
 		mockRead
-			.mockRejectedValueOnce(transportFailure({
-				status: 409,
-				body: { message: 'Write refused.' },
-			}))
+			.mockRejectedValueOnce(
+				transportFailure({
+					status: 409,
+					body: { message: 'Write refused.' },
+				}),
+			)
 			.mockResolvedValue(['fresh']);
 
 		const { reading } = mountReading();
@@ -110,12 +118,12 @@ describe('useReusableLibraryReading', () => {
 	});
 
 	it('keeps the previous entries when a refresh fails', async () => {
-		mockRead
-			.mockResolvedValueOnce(['kept'])
-			.mockRejectedValueOnce(transportFailure({
+		mockRead.mockResolvedValueOnce(['kept']).mockRejectedValueOnce(
+			transportFailure({
 				status: 409,
 				body: { message: 'Later refusal.' },
-			}));
+			}),
+		);
 
 		const { reading } = mountReading();
 		await flushPromises();

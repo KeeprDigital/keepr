@@ -101,11 +101,7 @@ const ownsGuideLayer = computed(() => props.render.canvasRole === 'screen-output
 					:data-broadcast-graphic="graphic.id"
 					:style="graphic.style"
 				>
-					<GraphicsCompositorItem
-						v-for="item in graphic.items"
-						:key="item.id"
-						:render="item"
-					/>
+					<GraphicsCompositorItem v-for="item in graphic.items" :key="item.id" :render="item" />
 				</div>
 			</div>
 		</template>

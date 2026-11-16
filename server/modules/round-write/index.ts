@@ -33,7 +33,11 @@ export function roundWriteModule() {
 	const publication = eventDataPublicationModule();
 	const rounds = roundService();
 
-	async function create({ eventId, input, originConnectionId }: CreateRoundParams): Promise<RoundResponse> {
+	async function create({
+		eventId,
+		input,
+		originConnectionId,
+	}: CreateRoundParams): Promise<RoundResponse> {
 		await requirePhaseInEvent(eventId, input.phaseId);
 
 		const newRound = await rounds.create(eventId, input);
@@ -45,7 +49,12 @@ export function roundWriteModule() {
 		});
 	}
 
-	async function update({ eventId, roundId, input, originConnectionId }: UpdateRoundParams): Promise<RoundResponse> {
+	async function update({
+		eventId,
+		roundId,
+		input,
+		originConnectionId,
+	}: UpdateRoundParams): Promise<RoundResponse> {
 		await requirePhaseInEvent(eventId, input.phaseId);
 
 		const updatedRound = await rounds.update(roundId, eventId, input);
@@ -61,7 +70,11 @@ export function roundWriteModule() {
 	}
 
 	/** "Start now": the Round starts at server time, so every Round Clock counts from one instant (ADR-0066). */
-	async function start({ eventId, roundId, originConnectionId }: StartRoundParams): Promise<RoundResponse> {
+	async function start({
+		eventId,
+		roundId,
+		originConnectionId,
+	}: StartRoundParams): Promise<RoundResponse> {
 		return await update({
 			eventId,
 			roundId,
@@ -72,7 +85,11 @@ export function roundWriteModule() {
 		});
 	}
 
-	async function remove({ eventId, roundId, originConnectionId }: RemoveRoundParams): Promise<void> {
+	async function remove({
+		eventId,
+		roundId,
+		originConnectionId,
+	}: RemoveRoundParams): Promise<void> {
 		const { deleted, clearedScreens } = await rounds.remove(roundId, eventId);
 
 		// Even for a Round already gone: the release committed either way (ADR-0060).

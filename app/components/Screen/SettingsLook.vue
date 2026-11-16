@@ -17,11 +17,12 @@ const props = defineProps<{
 
 const overrides = useScreenThemeOverrides();
 
-const names = computed(() => props.looks.flatMap(look => look.tokens));
-const overridden = computed(() => names.value.filter(name => overrides.overrides.value[name] !== undefined).length);
+const names = computed(() => props.looks.flatMap((look) => look.tokens));
+const overridden = computed(
+	() => names.value.filter((name) => overrides.overrides.value[name] !== undefined).length,
+);
 const summary = computed(() => {
-	if (overridden.value === 0)
-		return 'Default';
+	if (overridden.value === 0) return 'Default';
 	return overridden.value === 1
 		? '1 Screen Theme Override'
 		: `${overridden.value} Screen Theme Overrides`;

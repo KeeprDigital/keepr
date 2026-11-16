@@ -31,9 +31,7 @@ mockNuxtImport('onBeforeRouteLeave', () => () => {});
 
 // The Theme library the Theme picker offers.
 mockNuxtImport('useThemeRepository', () => () => ({
-	list: async () => [
-		{ id: 'theme-1', name: 'Summer Series' },
-	],
+	list: async () => [{ id: 'theme-1', name: 'Summer Series' }],
 }));
 
 const handleSubmit = vi.fn(async (_update: object): Promise<unknown> => true);
@@ -64,11 +62,14 @@ type Wrapper = VueWrapper<any>;
 const field = (wrapper: Wrapper, name: string) => wrapper.get(`[data-field="${name}"]`);
 const input = (wrapper: Wrapper, name: string) => field(wrapper, name).get('input');
 const toggle = (wrapper: Wrapper, name: string) => field(wrapper, name).get('[role="switch"]');
-const isOn = (wrapper: Wrapper, name: string) => toggle(wrapper, name).attributes('aria-checked') === 'true';
+const isOn = (wrapper: Wrapper, name: string) =>
+	toggle(wrapper, name).attributes('aria-checked') === 'true';
 const select = (wrapper: Wrapper, name: string) => field(wrapper, name).get('select');
-const shown = (wrapper: Wrapper, name: string) => (field(wrapper, name).get('input, select, textarea').element as HTMLInputElement).value;
+const shown = (wrapper: Wrapper, name: string) =>
+	(field(wrapper, name).get('input, select, textarea').element as HTMLInputElement).value;
 const error = (wrapper: Wrapper, name: string) => field(wrapper, name).find('[data-error]');
-const button = (wrapper: Wrapper, label: string) => wrapper.findAll('button').find(candidate => candidate.text() === label)!;
+const button = (wrapper: Wrapper, label: string) =>
+	wrapper.findAll('button').find((candidate) => candidate.text() === label)!;
 
 async function save(wrapper: Wrapper) {
 	await button(wrapper, 'Save').trigger('click');
@@ -84,8 +85,7 @@ async function submitOutOfRange(wrapper: Wrapper) {
 
 function submitted() {
 	const call = handleSubmit.mock.calls.at(-1);
-	if (!call)
-		throw new Error('The card saved nothing');
+	if (!call) throw new Error('The card saved nothing');
 	return call[0];
 }
 
@@ -97,14 +97,18 @@ interface CardCase {
 	edit: (wrapper: Wrapper) => Promise<unknown>;
 	saved: object;
 	/** A colleague's concurrent change to a field this operator leaves alone, and what the card then shows: one per component. */
-	colleague?: { change: Parameters<typeof createMockEvent>[0]; shows: (wrapper: Wrapper) => unknown; expected: unknown };
+	colleague?: {
+		change: Parameters<typeof createMockEvent>[0];
+		shows: (wrapper: Wrapper) => unknown;
+		expected: unknown;
+	};
 }
 
 const CARDS: CardCase[] = [
 	{
 		card: 'event',
 		component: ConfigEventSettings,
-		edit: wrapper => input(wrapper, 'name').setValue('Regional Championship 2026'),
+		edit: (wrapper) => input(wrapper, 'name').setValue('Regional Championship 2026'),
 		saved: { name: 'Regional Championship 2026' },
 	},
 	{
@@ -117,7 +121,7 @@ const CARDS: CardCase[] = [
 		saved: { themeId: 'theme-1' },
 		colleague: {
 			change: { displayRecordSeparator: '/' },
-			shows: wrapper => shown(wrapper, 'displayRecordSeparator'),
+			shows: (wrapper) => shown(wrapper, 'displayRecordSeparator'),
 			expected: '/',
 		},
 	},
@@ -134,63 +138,63 @@ const CARDS: CardCase[] = [
 	{
 		card: 'presentation formatting',
 		component: PresentationSettings,
-		edit: wrapper => toggle(wrapper, 'displayHideZeroDraws').trigger('click'),
+		edit: (wrapper) => toggle(wrapper, 'displayHideZeroDraws').trigger('click'),
 		saved: { displayHideZeroDraws: false },
 	},
 	{
 		card: 'presentation canvas',
 		component: PresentationSettings,
-		edit: wrapper => input(wrapper, 'canvasWidth').setValue('1280'),
+		edit: (wrapper) => input(wrapper, 'canvasWidth').setValue('1280'),
 		saved: { canvasWidth: 1280 },
 	},
 	{
 		card: 'presentation extra turns label',
 		component: PresentationSettings,
-		edit: wrapper => input(wrapper, 'extraTurnsLabel').setValue('Overtime'),
+		edit: (wrapper) => input(wrapper, 'extraTurnsLabel').setValue('Overtime'),
 		saved: { featureMatchDefaultExtraTurnsLabel: 'Overtime' },
 	},
 	{
 		card: 'presentation untimed label',
 		component: PresentationSettings,
-		edit: wrapper => input(wrapper, 'untimedLabel').setValue('Top 8'),
+		edit: (wrapper) => input(wrapper, 'untimedLabel').setValue('Top 8'),
 		saved: { featureMatchDefaultUntimedLabel: 'Top 8' },
 	},
 	{
 		card: 'card spotlight',
 		component: ConfigCardSpotlight,
-		edit: wrapper => input(wrapper, 'cardTimeout').setValue('30'),
+		edit: (wrapper) => input(wrapper, 'cardTimeout').setValue('30'),
 		saved: { cardTimeout: 30 },
 	},
 	{
 		card: 'feature match slots',
 		component: ConfigFeatureMatchSlots,
-		edit: wrapper => select(wrapper, 'featureMatchOrientation').setValue('vertical'),
+		edit: (wrapper) => select(wrapper, 'featureMatchOrientation').setValue('vertical'),
 		saved: { featureMatchOrientation: 'vertical' },
 		colleague: {
 			change: { numFeatureMatches: 4 },
-			shows: wrapper => shown(wrapper, 'numFeatureMatches'),
+			shows: (wrapper) => shown(wrapper, 'numFeatureMatches'),
 			expected: '4',
 		},
 	},
 	{
 		card: 'fields and tracking',
 		component: ConfigFieldsAndTracking,
-		edit: wrapper => toggle(wrapper, 'turnTrackingEnabled').trigger('click'),
+		edit: (wrapper) => toggle(wrapper, 'turnTrackingEnabled').trigger('click'),
 		saved: { featureMatchDefaultTurnTrackingEnabled: true },
 		colleague: {
 			change: { featureMatchNotesEnabled: true },
-			shows: wrapper => isOn(wrapper, 'featureMatchNotesEnabled'),
+			shows: (wrapper) => isOn(wrapper, 'featureMatchNotesEnabled'),
 			expected: true,
 		},
 	},
 	{
 		card: 'format',
 		component: ConfigFormatSettings,
-		edit: wrapper => input(wrapper, 'startingLife').setValue('40'),
+		edit: (wrapper) => input(wrapper, 'startingLife').setValue('40'),
 		saved: { featureMatchDefaultStartingLife: 40 },
 		colleague: {
 			change: { featureMatchDefaultBestOf: 5 },
-			shows: wrapper => shown(wrapper, 'bestOf'),
+			shows: (wrapper) => shown(wrapper, 'bestOf'),
 			expected: '5',
 		},
 	},
@@ -198,7 +202,9 @@ const CARDS: CardCase[] = [
 
 /** One case per card component: the shared form tracks every field of a card one way. */
 function onePerComponent(cases: CardCase[]): CardCase[] {
-	return cases.filter((card, index) => cases.findIndex(other => other.component === card.component) === index);
+	return cases.filter(
+		(card, index) => cases.findIndex((other) => other.component === card.component) === index,
+	);
 }
 
 beforeEach(() => {
@@ -207,44 +213,53 @@ beforeEach(() => {
 });
 
 describe('event config cards', () => {
-	it.each(onePerComponent(CARDS))('the $card card tells its page it has unsaved changes until reset', async ({ component, event, edit }) => {
-		const { wrapper, pageIsDirty } = mountUnderPageGuard<Wrapper>(component, {
-			...mountOptions,
-			props: {
-				event: configEvent(event),
-			},
-		});
-		await flushPromises();
-		expect(pageIsDirty()).toBe(false);
+	it.each(onePerComponent(CARDS))(
+		'the $card card tells its page it has unsaved changes until reset',
+		async ({ component, event, edit }) => {
+			const { wrapper, pageIsDirty } = mountUnderPageGuard<Wrapper>(component, {
+				...mountOptions,
+				props: {
+					event: configEvent(event),
+				},
+			});
+			await flushPromises();
+			expect(pageIsDirty()).toBe(false);
 
-		await edit(wrapper);
-		expect(pageIsDirty()).toBe(true);
+			await edit(wrapper);
+			expect(pageIsDirty()).toBe(true);
 
-		await button(wrapper, 'Reset').trigger('click');
-		expect(pageIsDirty()).toBe(false);
-	});
+			await button(wrapper, 'Reset').trigger('click');
+			expect(pageIsDirty()).toBe(false);
+		},
+	);
 
-	it.each(CARDS)('the $card card saves its edit under the Event\'s own names', async ({ component, event, edit, saved }) => {
-		const wrapper = mountCard(component, configEvent(event));
+	it.each(CARDS)(
+		"the $card card saves its edit under the Event's own names",
+		async ({ component, event, edit, saved }) => {
+			const wrapper = mountCard(component, configEvent(event));
 
-		await edit(wrapper);
-		await save(wrapper);
+			await edit(wrapper);
+			await save(wrapper);
 
-		expect(submitted()).toEqual(saved);
-	});
+			expect(submitted()).toEqual(saved);
+		},
+	);
 
-	it.each(CARDS.filter(card => card.colleague))('the $card card saves only what was edited, keeping a colleague\'s change (#612)', async ({ component, edit, saved, colleague }) => {
-		const wrapper = mountCard(component);
+	it.each(CARDS.filter((card) => card.colleague))(
+		"the $card card saves only what was edited, keeping a colleague's change (#612)",
+		async ({ component, edit, saved, colleague }) => {
+			const wrapper = mountCard(component);
 
-		await edit(wrapper);
-		await wrapper.setProps({
-			event: configEvent(colleague!.change),
-		});
-		await save(wrapper);
+			await edit(wrapper);
+			await wrapper.setProps({
+				event: configEvent(colleague!.change),
+			});
+			await save(wrapper);
 
-		expect(colleague!.shows(wrapper)).toBe(colleague!.expected);
-		expect(submitted()).toEqual(saved);
-	});
+			expect(colleague!.shows(wrapper)).toBe(colleague!.expected);
+			expect(submitted()).toEqual(saved);
+		},
+	);
 });
 
 describe('event settings card', () => {
@@ -269,9 +284,12 @@ describe('event settings card', () => {
 
 	it('holds Save while the save is in flight', async () => {
 		let land = () => {};
-		handleSubmit.mockImplementation(() => new Promise((resolve) => {
-			land = () => resolve(true);
-		}));
+		handleSubmit.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					land = () => resolve(true);
+				}),
+		);
 		const wrapper = mountCard(ConfigEventSettings);
 
 		await input(wrapper, 'name').setValue('Regional Championship 2026');
@@ -317,14 +335,17 @@ describe('event presentation settings card', () => {
 	});
 
 	it('shows the canvas, formatting and wording the event already carries', () => {
-		const wrapper = mountCard(PresentationSettings, configEvent({
-			canvasWidth: 1080,
-			canvasHeight: 1920,
-			displayRecordSeparator: '/',
-			displayPositionFormat: 'number',
-			featureMatchDefaultExtraTurnsLabel: 'Overtime',
-			featureMatchDefaultUntimedLabel: 'Top 8',
-		}));
+		const wrapper = mountCard(
+			PresentationSettings,
+			configEvent({
+				canvasWidth: 1080,
+				canvasHeight: 1920,
+				displayRecordSeparator: '/',
+				displayPositionFormat: 'number',
+				featureMatchDefaultExtraTurnsLabel: 'Overtime',
+				featureMatchDefaultUntimedLabel: 'Top 8',
+			}),
+		);
 
 		expect(shown(wrapper, 'canvasWidth')).toBe('1080');
 		expect(shown(wrapper, 'canvasHeight')).toBe('1920');
@@ -363,7 +384,10 @@ describe('event presentation settings card', () => {
 
 describe('feature match slots card', () => {
 	it('shows the slots the event already carries', () => {
-		const wrapper = mountCard(ConfigFeatureMatchSlots, configEvent({ numFeatureMatches: 2, featureMatchOrientation: 'horizontal' }));
+		const wrapper = mountCard(
+			ConfigFeatureMatchSlots,
+			configEvent({ numFeatureMatches: 2, featureMatchOrientation: 'horizontal' }),
+		);
 
 		expect(shown(wrapper, 'numFeatureMatches')).toBe('2');
 		expect(shown(wrapper, 'featureMatchOrientation')).toBe('horizontal');
@@ -400,7 +424,10 @@ describe('card spotlight card', () => {
 
 describe('fields and tracking card', () => {
 	it('shows the fields and tracking the event already carries', () => {
-		const wrapper = mountCard(ConfigFieldsAndTracking, configEvent({ featureMatchDefaultTurnTrackingEnabled: true, lgsEnabled: true }));
+		const wrapper = mountCard(
+			ConfigFieldsAndTracking,
+			configEvent({ featureMatchDefaultTurnTrackingEnabled: true, lgsEnabled: true }),
+		);
 
 		expect(isOn(wrapper, 'turnTrackingEnabled')).toBe(true);
 		expect(isOn(wrapper, 'lgsEnabled')).toBe(true);
@@ -409,17 +436,9 @@ describe('fields and tracking card', () => {
 	});
 
 	it.each([
-		[
-			'Feature Match Notes',
-			'featureMatchNotesEnabled',
-			{ featureMatchNotesEnabled: true },
-		],
-		[
-			'an event-level toggle',
-			'pronounsEnabled',
-			{ pronounsEnabled: false },
-		],
-	])('saves %s under the event\'s own column', async (_, name, saved) => {
+		['Feature Match Notes', 'featureMatchNotesEnabled', { featureMatchNotesEnabled: true }],
+		['an event-level toggle', 'pronounsEnabled', { pronounsEnabled: false }],
+	])("saves %s under the event's own column", async (_, name, saved) => {
 		const wrapper = mountCard(ConfigFieldsAndTracking);
 
 		await toggle(wrapper, name).trigger('click');
@@ -431,7 +450,10 @@ describe('fields and tracking card', () => {
 
 describe('format settings card', () => {
 	it('shows the match format the event already carries', () => {
-		const wrapper = mountCard(ConfigFormatSettings, configEvent({ featureMatchDefaultClockDuration: 45 }));
+		const wrapper = mountCard(
+			ConfigFormatSettings,
+			configEvent({ featureMatchDefaultClockDuration: 45 }),
+		);
 
 		expect(shown(wrapper, 'bestOf')).toBe('3');
 		expect(shown(wrapper, 'startingLife')).toBe('20');
@@ -449,14 +471,14 @@ describe('format settings card', () => {
 	});
 
 	it('drops the timing settings once the clock is untimed', async () => {
-		const wrapper = mountCard(ConfigFormatSettings, configEvent({ featureMatchDefaultExtraTurnsEnabled: true }));
-		const offered = () => [
-			'clockDuration',
-			'countUpAfterCountdown',
-			'extraTurnsEnabled',
-			'extraTurns',
-		]
-			.filter(name => wrapper.find(`[data-field="${name}"]`).exists());
+		const wrapper = mountCard(
+			ConfigFormatSettings,
+			configEvent({ featureMatchDefaultExtraTurnsEnabled: true }),
+		);
+		const offered = () =>
+			['clockDuration', 'countUpAfterCountdown', 'extraTurnsEnabled', 'extraTurns'].filter((name) =>
+				wrapper.find(`[data-field="${name}"]`).exists(),
+			);
 		expect(offered()).toHaveLength(4);
 
 		await select(wrapper, 'clockType').setValue('untimed');
@@ -492,7 +514,11 @@ describe('format settings card', () => {
 	});
 
 	it('offers the points system only to an MTG event, saving it beside the mapped defaults', async () => {
-		expect(mountCard(ConfigFormatSettings, configEvent({ game: 'op' })).find('[data-field="pointsSystem"]').exists()).toBe(false);
+		expect(
+			mountCard(ConfigFormatSettings, configEvent({ game: 'op' }))
+				.find('[data-field="pointsSystem"]')
+				.exists(),
+		).toBe(false);
 
 		const mtg = mountCard(ConfigFormatSettings);
 		await select(mtg, 'pointsSystem').setValue('7ph');

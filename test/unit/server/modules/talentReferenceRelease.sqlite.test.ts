@@ -10,17 +10,19 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
 const publication = new Proxy({} as Record<string, Mock>, {
-	get: (spies, name: string) => spies[name] ??= vi.fn(async (input?: { entity?: unknown }) => input?.entity),
+	get: (spies, name: string) =>
+		(spies[name] ??= vi.fn(async (input?: { entity?: unknown }) => input?.entity)),
 });
-vi.doMock('~~/server/modules/event-data-publication', async importOriginal => ({
-	...await importOriginal<object>(),
+vi.doMock('~~/server/modules/event-data-publication', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	eventDataPublicationModule: () => publication,
 }));
 
@@ -32,11 +34,17 @@ beforeEach(() => vi.clearAllMocks());
 afterAll(async () => await harness.close());
 
 let seeded = 0;
-async function seed(talentConfig: (ids: { doomed: number; first: number; last: number }) => Record<string, unknown>) {
+async function seed(
+	talentConfig: (ids: { doomed: number; first: number; last: number }) => Record<string, unknown>,
+) {
 	const label = `talent-${++seeded}`;
-	const [event] = await db.insert(schema.events).values({ name: label, game: 'mtg', featureMatchOrientation: 'horizontal' }).returning();
+	const [event] = await db
+		.insert(schema.events)
+		.values({ name: label, game: 'mtg', featureMatchOrientation: 'horizontal' })
+		.returning();
 	const eventId = event!.id;
-	const [first, doomed, last] = await db.insert(schema.eventTalents)
+	const [first, doomed, last] = await db
+		.insert(schema.eventTalents)
 		.values([
 			{ eventId, name: 'First' },
 			{ eventId, name: 'Doomed' },
@@ -44,21 +52,29 @@ async function seed(talentConfig: (ids: { doomed: number; first: number; last: n
 		])
 		.returning({ id: schema.eventTalents.id });
 	const ids = { first: first!.id, doomed: doomed!.id, last: last!.id };
-	const screen = await screenService().create(eventId, {
-		name: label,
-		slug: label,
-		currentMode: 'talent',
-		modeConfigs: {
-			talent: talentConfig(ids),
+	const screen = await screenService().create(
+		eventId,
+		{
+			name: label,
+			slug: label,
+			currentMode: 'talent',
+			modeConfigs: {
+				talent: talentConfig(ids),
+			},
+		} as never,
+		{
+			assetCapabilitySeed: `seed-${label}`,
+			assetCapabilityVersion: 1,
+			assetCapabilityDigest: `digest-${label}`,
 		},
-	} as never, { assetCapabilitySeed: `seed-${label}`, assetCapabilityVersion: 1, assetCapabilityDigest: `digest-${label}` });
+	);
 	return { eventId, ids, screen };
 }
 
 describe('deleting a Talent releases the Talent Screens naming it', () => {
 	it.each([
 		{
-			name: 'unsets a one-Talent Screen\'s Talent',
+			name: "unsets a one-Talent Screen's Talent",
 			config: ({ doomed }: { doomed: number }) => ({ selection: 'one', talentId: doomed }),
 			released: () => ({ selection: 'one' }),
 		},
@@ -88,7 +104,11 @@ describe('deleting a Talent releases the Talent Screens naming it', () => {
 	])('$name, announcing the Screen first', async ({ config, released }) => {
 		const { eventId, ids, screen } = await seed(config);
 
-		await talentWriteModule().deleteTalent({ eventId, talentId: ids.doomed, originConnectionId: 'origin' });
+		await talentWriteModule().deleteTalent({
+			eventId,
+			talentId: ids.doomed,
+			originConnectionId: 'origin',
+		});
 
 		const stored = await screenService().findById(screen.id, eventId);
 		expect(stored?.stateVersion).toBe(screen.stateVersion + 1);
@@ -101,15 +121,19 @@ describe('deleting a Talent releases the Talent Screens naming it', () => {
 				},
 			],
 		]);
-		expect(publication.screenUpdated!.mock.invocationCallOrder[0]).toBeLessThan(publication.talentDeleted!.mock.invocationCallOrder[0]!);
+		expect(publication.screenUpdated!.mock.invocationCallOrder[0]).toBeLessThan(
+			publication.talentDeleted!.mock.invocationCallOrder[0]!,
+		);
 
 		// The released Screen can be written whole again.
-		await expect(screenWriteModule().updateScreen({
-			authoringSessionId: undefined,
-			eventId,
-			screenId: screen.id,
-			input: { stateVersion: stored!.stateVersion, modeConfigs: stored!.modeConfigs } as never,
-		})).resolves.toMatchObject({ stateVersion: stored!.stateVersion + 1 });
+		await expect(
+			screenWriteModule().updateScreen({
+				authoringSessionId: undefined,
+				eventId,
+				screenId: screen.id,
+				input: { stateVersion: stored!.stateVersion, modeConfigs: stored!.modeConfigs } as never,
+			}),
+		).resolves.toMatchObject({ stateVersion: stored!.stateVersion + 1 });
 	});
 
 	it('leaves a Screen naming other Talents alone', async () => {
@@ -121,7 +145,10 @@ describe('deleting a Talent releases the Talent Screens naming it', () => {
 
 		await talentWriteModule().deleteTalent({ eventId, talentId: ids.doomed });
 
-		expect(await screenService().findById(screen.id, eventId)).toMatchObject({ stateVersion: screen.stateVersion, modeConfigs: screen.modeConfigs });
+		expect(await screenService().findById(screen.id, eventId)).toMatchObject({
+			stateVersion: screen.stateVersion,
+			modeConfigs: screen.modeConfigs,
+		});
 		expect(publication.screenUpdated).not.toHaveBeenCalled();
 	});
 });

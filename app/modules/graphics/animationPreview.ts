@@ -1,5 +1,9 @@
 import type { GraphicAnimationTimelineSegment } from '~~/shared/modules/graphics';
-import type { BroadcastGraphicConfig, GraphicAnimationPhase, GraphicItemConfig } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicAnimationPhase,
+	GraphicItemConfig,
+} from '~~/shared/types/graphics';
 import type { GraphicsPreviewAnimationPlan } from './previewMessages';
 import { broadcastGraphicAnimationTimeline, flattenGraphicItems } from '~~/shared/modules/graphics';
 import { GRAPHIC_ANIMATION_PHASE_VALUES } from '~~/shared/types/graphics';
@@ -29,11 +33,9 @@ export function resolveGraphicAnimationPreview(
 	plan: GraphicsPreviewAnimationPlan,
 	lifecycle: readonly GraphicAnimationPhase[] = GRAPHIC_ANIMATION_PHASE_VALUES,
 ): { graphic: BroadcastGraphicConfig; timeline: GraphicAnimationTimelineSegment[] } {
-	if (!lifecycle.includes(plan.phase))
-		return { graphic, timeline: [] };
-	const phases = plan.scope === 'phase'
-		? [plan.phase]
-		: lifecycle.slice(lifecycle.indexOf(plan.phase));
+	if (!lifecycle.includes(plan.phase)) return { graphic, timeline: [] };
+	const phases =
+		plan.scope === 'phase' ? [plan.phase] : lifecycle.slice(lifecycle.indexOf(plan.phase));
 
 	if (plan.itemId === undefined) {
 		return {
@@ -43,22 +45,18 @@ export function resolveGraphicAnimationPreview(
 	}
 
 	const itemId = plan.itemId;
-	const subject = flattenGraphicItems(graphic).find(item => item.id === itemId);
-	if (!subject)
-		return { graphic, timeline: [] };
+	const subject = flattenGraphicItems(graphic).find((item) => item.id === itemId);
+	if (!subject) return { graphic, timeline: [] };
 
 	const isolated: BroadcastGraphicConfig = {
 		...atRest(graphic),
 		items: graphic.items.map((item) => {
-			if (item.id === itemId)
-				return item;
+			if (item.id === itemId) return item;
 			const rested = atRest(item);
 			return rested.type === 'group'
 				? {
 						...rested,
-						children: rested.children.map(child => child.id === itemId
-							? child
-							: atRest(child)),
+						children: rested.children.map((child) => (child.id === itemId ? child : atRest(child))),
 					}
 				: rested;
 		}),
@@ -68,19 +66,26 @@ export function resolveGraphicAnimationPreview(
 	// its children, measured from the run's start.
 	return {
 		graphic: isolated,
-		timeline: broadcastGraphicAnimationTimeline({
-			items: [subject],
-		}, phases),
+		timeline: broadcastGraphicAnimationTimeline(
+			{
+				items: [subject],
+			},
+			phases,
+		),
 	};
 }
 
 function atRest<T extends BroadcastGraphicConfig | GraphicItemConfig>(owner: T): T {
 	const { animation: _animation, themeBindings, ...rest } = owner;
-	const kept = Object.entries(themeBindings ?? {}).filter(([slot]) => !slot.startsWith('animation.'));
-	return (kept.length > 0
-		? {
-				...rest,
-				themeBindings: Object.fromEntries(kept),
-			}
-		: rest) as T;
+	const kept = Object.entries(themeBindings ?? {}).filter(
+		([slot]) => !slot.startsWith('animation.'),
+	);
+	return (
+		kept.length > 0
+			? {
+					...rest,
+					themeBindings: Object.fromEntries(kept),
+				}
+			: rest
+	) as T;
 }

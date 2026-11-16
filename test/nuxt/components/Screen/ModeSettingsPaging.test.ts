@@ -41,8 +41,7 @@ const mockRealtime = reactive({
 	tokenError: null as Error | null,
 	onChannel: (channel: string, type: string, handler: Handler) => {
 		const key = `${channel}|${type}`;
-		if (!channelHandlers.has(key))
-			channelHandlers.set(key, new Set());
+		if (!channelHandlers.has(key)) channelHandlers.set(key, new Set());
 		channelHandlers.get(key)!.add(handler);
 		return () => channelHandlers.get(key)!.delete(handler);
 	},
@@ -58,9 +57,11 @@ function deliver(type: string, payload: Record<string, unknown>) {
 
 mockNuxtImport('$fetch', () => mockFetch);
 mockNuxtImport('tryUseRealtime', () => () => mockRealtime);
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
-	getServerTime: () => 1_000_000,
-})));
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+		getServerTime: () => 1_000_000,
+	})),
+);
 mockNuxtImport('useRoundStore', () => () => ({
 	rounds: [
 		{
@@ -150,9 +151,10 @@ async function mountSettings(roundId: number | undefined = savedConfig.roundId) 
 	return wrapper;
 }
 
-const pageSelection = (wrapper: Awaited<ReturnType<typeof mountSettings>>) => wrapper.get('[role="group"][aria-label="Page selection"]');
+const pageSelection = (wrapper: Awaited<ReturnType<typeof mountSettings>>) =>
+	wrapper.get('[role="group"][aria-label="Page selection"]');
 
-describe('a paginated mode\'s page selection', () => {
+describe("a paginated mode's page selection", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockFetch.mockReset();
@@ -166,7 +168,10 @@ describe('a paginated mode\'s page selection', () => {
 
 		const wrapper = await mountSettings();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/screen-output/events/1/screens/1/pairings', expect.anything());
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/screen-output/events/1/screens/1/pairings',
+			expect.anything(),
+		);
 		expect(wrapper.get('[data-settings-card="live"]').text()).toContain('Page 1 of 2');
 	});
 
@@ -194,20 +199,23 @@ describe('a paginated mode\'s page selection', () => {
 				return wrapper;
 			},
 		},
-	])('shows the pages counting, not "Page 1 of 1", until the Round selected $selected is read', async ({ select }) => {
-		const read = deferred<ReturnType<typeof pairingsOf>>();
-		mockFetch.mockReturnValue(read.promise);
-		const wrapper = await select();
+	])(
+		'shows the pages counting, not "Page 1 of 1", until the Round selected $selected is read',
+		async ({ select }) => {
+			const read = deferred<ReturnType<typeof pairingsOf>>();
+			mockFetch.mockReturnValue(read.promise);
+			const wrapper = await select();
 
-		expect(pageSelection(wrapper).attributes('aria-busy')).toBe('true');
-		expect(pageSelection(wrapper).text()).toContain('Counting pages…');
+			expect(pageSelection(wrapper).attributes('aria-busy')).toBe('true');
+			expect(pageSelection(wrapper).text()).toContain('Counting pages…');
 
-		read.resolve(pairingsOf(10));
-		await flushPromises();
+			read.resolve(pairingsOf(10));
+			await flushPromises();
 
-		expect(pageSelection(wrapper).attributes('aria-busy')).toBe('false');
-		expect(pageSelection(wrapper).text()).toContain('Page 1 of 2');
-	});
+			expect(pageSelection(wrapper).attributes('aria-busy')).toBe('false');
+			expect(pageSelection(wrapper).text()).toContain('Page 1 of 2');
+		},
+	);
 
 	it('follows rows added after the Round was selected, as the Screen does', async () => {
 		mockFetch.mockResolvedValue(pairingsOf(8));
@@ -252,7 +260,10 @@ describe('a paginated mode\'s page selection', () => {
 		mockConfig.value = { ...savedConfig, currentPage: 2 };
 		const wrapper = await mountSettings();
 
-		await pageSelection(wrapper).findAll('button').find(button => button.text() === 'Next')!.trigger('click');
+		await pageSelection(wrapper)
+			.findAll('button')
+			.find((button) => button.text() === 'Next')!
+			.trigger('click');
 
 		expect(mockUpdateConfig).toHaveBeenCalledWith({ currentPage: 1 });
 	});
@@ -261,8 +272,13 @@ describe('a paginated mode\'s page selection', () => {
 		mockFetch.mockResolvedValue(pairingsOf(10));
 		const wrapper = await mountSettings();
 
-		await wrapper.get('[data-settings-card="live"] [data-settings-field="autoPageEnabled"] [role="switch"]').trigger('click');
+		await wrapper
+			.get('[data-settings-card="live"] [data-settings-field="autoPageEnabled"] [role="switch"]')
+			.trigger('click');
 
-		expect(mockUpdateConfig).toHaveBeenCalledWith({ autoPageEnabled: true, rotationAnchor: 1_000_000 });
+		expect(mockUpdateConfig).toHaveBeenCalledWith({
+			autoPageEnabled: true,
+			rotationAnchor: 1_000_000,
+		});
 	});
 });

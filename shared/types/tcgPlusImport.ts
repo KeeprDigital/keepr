@@ -47,7 +47,9 @@ export interface TcgPlusImportPreview {
 		/** Hand-edited Deck Lists the export differs from, which the import keeps. */
 		handEditConflicts: TcgPlusImportHeldPlayer[];
 		/** Players added by hand whose name or Nickname matches an incoming Nickname. Nothing is merged. */
-		possibleDuplicates: Array<TcgPlusImportHeldPlayer & { nickname: string; incomingMemberNumber: string }>;
+		possibleDuplicates: Array<
+			TcgPlusImportHeldPlayer & { nickname: string; incomingMemberNumber: string }
+		>;
 	};
 }
 

@@ -63,13 +63,13 @@ describe('screenFeatureMatchSlotField', () => {
 
 	it.each([
 		{
-			name: 'detailed: each Slot\'s deck names and colours',
+			name: "detailed: each Slot's deck names and colours",
 			detailed: true,
 			texts: ['Select a slot…', 'Match 1 — A vs B Mono Red vs Azorius Control', 'Match 2'],
 			colors: ['R', 'WU'],
 		},
 		{
-			name: 'plain: each Slot\'s label alone',
+			name: "plain: each Slot's label alone",
 			detailed: false,
 			texts: ['Select a slot…', 'Match 1 — A vs B', 'Match 2'],
 			colors: [],
@@ -86,11 +86,15 @@ describe('screenFeatureMatchSlotField', () => {
 			},
 		});
 
-		const optionText = (option: Element) => [
-			...option.querySelectorAll('span'),
-		].map(span => span.textContent).join(' ') || option.textContent!.trim();
+		const optionText = (option: Element) =>
+			[...option.querySelectorAll('span')].map((span) => span.textContent).join(' ') ||
+			option.textContent!.trim();
 
-		expect(wrapper.findAll('[data-testid="slot-option"]').map(option => optionText(option.element))).toEqual(texts);
-		expect(wrapper.findAll('[data-colors]').map(color => color.attributes('data-colors'))).toEqual(colors);
+		expect(
+			wrapper.findAll('[data-testid="slot-option"]').map((option) => optionText(option.element)),
+		).toEqual(texts);
+		expect(
+			wrapper.findAll('[data-colors]').map((color) => color.attributes('data-colors')),
+		).toEqual(colors);
 	});
 });

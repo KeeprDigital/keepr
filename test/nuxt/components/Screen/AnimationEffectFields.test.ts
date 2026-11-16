@@ -12,7 +12,8 @@ const UIColorPickerStub = defineComponent({
 		placeholder: { type: String, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<button type="button" data-testid="color-picker" @click="$emit(\'update:modelValue\', \'#123456\')">{{ modelValue }}</button>',
+	template:
+		'<button type="button" data-testid="color-picker" @click="$emit(\'update:modelValue\', \'#123456\')">{{ modelValue }}</button>',
 });
 
 const ScreenSettingsToggleStub = defineComponent({
@@ -22,10 +23,15 @@ const ScreenSettingsToggleStub = defineComponent({
 		modelValue: { type: Boolean, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<button type="button" data-testid="settings-toggle" :data-description="description" @click="$emit(\'update:modelValue\', !modelValue)">{{ label }}</button>',
+	template:
+		'<button type="button" data-testid="settings-toggle" :data-description="description" @click="$emit(\'update:modelValue\', !modelValue)">{{ label }}</button>',
 });
 
-async function mountComponent(selection: AnimationEffectSelection, onUpdate = vi.fn(), { realColorPicker = false } = {}) {
+async function mountComponent(
+	selection: AnimationEffectSelection,
+	onUpdate = vi.fn(),
+	{ realColorPicker = false } = {},
+) {
 	const wrapper = mount(AnimationEffectFields, {
 		props: {
 			selection,
@@ -34,9 +40,7 @@ async function mountComponent(selection: AnimationEffectSelection, onUpdate = vi
 		global: {
 			stubs: {
 				...nuxtUiStubs,
-				...(realColorPicker
-					? {}
-					: { UIColorPicker: UIColorPickerStub }),
+				...(realColorPicker ? {} : { UIColorPicker: UIColorPickerStub }),
 				ScreenSettingsToggle: ScreenSettingsToggleStub,
 			},
 		},
@@ -45,7 +49,9 @@ async function mountComponent(selection: AnimationEffectSelection, onUpdate = vi
 }
 
 /** Opens the first colour param's picker and returns its typed-value input. */
-async function openFirstColorPicker(wrapper: Awaited<ReturnType<typeof mountComponent>>['wrapper']) {
+async function openFirstColorPicker(
+	wrapper: Awaited<ReturnType<typeof mountComponent>>['wrapper'],
+) {
 	await wrapper.get('[aria-label="Choose color"]').trigger('click');
 	return wrapper.get('input[type="text"]');
 }
@@ -55,8 +61,10 @@ describe('screenAnimationEffectFields', () => {
 		const { wrapper } = await mountComponent({ effect: 'fog' });
 		const options = wrapper.findAll('select option');
 
-		expect(options.map(option => option.attributes('value'))).toEqual([...ANIMATION_EFFECT_VALUES]);
-		expect(options.map(option => option.text())).toContain('Fog');
+		expect(options.map((option) => option.attributes('value'))).toEqual([
+			...ANIMATION_EFFECT_VALUES,
+		]);
+		expect(options.map((option) => option.text())).toContain('Fog');
 	});
 
 	it('switching effect starts over from that effect’s schema defaults — no params carry over', async () => {
@@ -76,7 +84,10 @@ describe('screenAnimationEffectFields', () => {
 		const speedInput = wrapper.findAll('input[type="number"]').at(1)!;
 		await speedInput.setValue('2');
 
-		const selection = onUpdate.mock.calls.at(-1)?.[0] as { effect: string; params: Record<string, unknown> };
+		const selection = onUpdate.mock.calls.at(-1)?.[0] as {
+			effect: string;
+			params: Record<string, unknown>;
+		};
 		expect(selection.effect).toBe('fog');
 		expect(selection.params).toMatchObject({
 			speed: 2,
@@ -98,9 +109,13 @@ describe('screenAnimationEffectFields', () => {
 	it('renders a toggle param with its description and writes it into the bag', async () => {
 		const { wrapper, onUpdate } = await mountComponent({ effect: 'dots' });
 
-		const toggle = wrapper.findAll('[data-testid="settings-toggle"]').find(candidate => candidate.text() === 'Connecting lines');
+		const toggle = wrapper
+			.findAll('[data-testid="settings-toggle"]')
+			.find((candidate) => candidate.text() === 'Connecting lines');
 		expect(toggle).toBeDefined();
-		expect(toggle!.attributes('data-description')).toBe('Render connecting line segments between dots.');
+		expect(toggle!.attributes('data-description')).toBe(
+			'Render connecting line segments between dots.',
+		);
 
 		await toggle!.trigger('click');
 
@@ -121,13 +136,15 @@ describe('screenAnimationEffectFields', () => {
 		{ typed: '', written: null },
 		{ typed: '#abcdef', written: '#abcdef' },
 	])('typing "$typed" into an effect colour writes $written', async ({ typed, written }) => {
-		const { wrapper, onUpdate } = await mountComponent({ effect: 'fog' }, vi.fn(), { realColorPicker: true });
+		const { wrapper, onUpdate } = await mountComponent({ effect: 'fog' }, vi.fn(), {
+			realColorPicker: true,
+		});
 
 		await (await openFirstColorPicker(wrapper)).setValue(typed);
 
-		const highlightColors = onUpdate.mock.calls.map(([selection]) => (selection as { params: Record<string, unknown> }).params.highlightColor);
-		expect(highlightColors).toEqual(written === null
-			? []
-			: [written]);
+		const highlightColors = onUpdate.mock.calls.map(
+			([selection]) => (selection as { params: Record<string, unknown> }).params.highlightColor,
+		);
+		expect(highlightColors).toEqual(written === null ? [] : [written]);
 	});
 });

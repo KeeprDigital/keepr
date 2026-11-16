@@ -47,13 +47,10 @@ export function useServerTime() {
 	function appliedOffset(): number {
 		const target = serverTimeOffset.value;
 		const easing = correction.value;
-		if (!easing)
-			return target;
+		if (!easing) return target;
 		const eased = Math.max(0, Date.now() - easing.startedAt) * MAX_EASE_RATE;
 		const remaining = target - easing.from;
-		return Math.abs(remaining) <= eased
-			? target
-			: easing.from + Math.sign(remaining) * eased;
+		return Math.abs(remaining) <= eased ? target : easing.from + Math.sign(remaining) * eased;
 	}
 
 	/**
@@ -80,10 +77,13 @@ export function useServerTime() {
 		serverTimeOffset.value = offset;
 
 		if (eases) {
-			correctionEndId = setTimeout(() => {
-				correctionEndId = null;
-				correction.value = null;
-			}, Math.ceil(size / MAX_EASE_RATE));
+			correctionEndId = setTimeout(
+				() => {
+					correctionEndId = null;
+					correction.value = null;
+				},
+				Math.ceil(size / MAX_EASE_RATE),
+			);
 		}
 	}
 
@@ -125,22 +125,19 @@ export function useServerTime() {
 				try {
 					const sample = await fetchTimeSample();
 					samples.push(sample);
-				}
-				catch {
+				} catch {
 					// Ignore individual sample failures
 				}
 				// Small delay between samples
 				if (i < SAMPLE_COUNT - 1) {
-					await new Promise(resolve => setTimeout(resolve, SAMPLE_DELAY_MS));
+					await new Promise((resolve) => setTimeout(resolve, SAMPLE_DELAY_MS));
 				}
 			}
 
 			// A slow sample would replace a good offset with a loose one, so it counts
 			// only while no offset is held, when it still beats an unknown clock.
-			const trusted = samples.filter(sample => sample.rtt <= MAX_SAMPLE_RTT_MS);
-			const usable = trusted.length > 0 || isSynced.value
-				? trusted
-				: samples;
+			const trusted = samples.filter((sample) => sample.rtt <= MAX_SAMPLE_RTT_MS);
+			const usable = trusted.length > 0 || isSynced.value ? trusted : samples;
 
 			// A round trip bounds its sample's error to half of itself, so the
 			// shortest is the best estimate; averaging would only add the others' error.
@@ -151,7 +148,9 @@ export function useServerTime() {
 				// consumers read `false` as an unknown clock, and a missed re-sync
 				// leaves the offset already held as good as it was.
 				if (!hasWarned.value) {
-					console.warn('Server time sync unavailable; keeping the last known offset until the API responds.');
+					console.warn(
+						'Server time sync unavailable; keeping the last known offset until the API responds.',
+					);
 					hasWarned.value = true;
 				}
 				return;
@@ -162,14 +161,14 @@ export function useServerTime() {
 			isSynced.value = true;
 			hasWarned.value = false;
 			lastSyncedAt.value = Date.now();
-		}
-		catch {
+		} catch {
 			if (!hasWarned.value) {
-				console.warn('Server time sync failed; keeping the last known offset until the API responds.');
+				console.warn(
+					'Server time sync failed; keeping the last known offset until the API responds.',
+				);
 				hasWarned.value = true;
 			}
-		}
-		finally {
+		} finally {
 			syncsInFlight--;
 		}
 	}
@@ -190,13 +189,10 @@ export function useServerTime() {
 	 */
 	function deviceDelayFor(serverMs: number): number {
 		const remaining = serverTimeOffset.value - appliedOffset();
-		if (remaining === 0)
-			return serverMs;
+		if (remaining === 0) return serverMs;
 		const rate = 1 + Math.sign(remaining) * MAX_EASE_RATE;
-		const easedServerMs = Math.abs(remaining) / MAX_EASE_RATE * rate;
-		const deviceMs = serverMs <= easedServerMs
-			? serverMs / rate
-			: serverMs - remaining;
+		const easedServerMs = (Math.abs(remaining) / MAX_EASE_RATE) * rate;
+		const deviceMs = serverMs <= easedServerMs ? serverMs / rate : serverMs - remaining;
 		return Math.ceil(deviceMs - EASE_ROUNDING_MS);
 	}
 
@@ -208,18 +204,15 @@ export function useServerTime() {
 	 * reason to sync.
 	 */
 	function resyncUnlessRecent() {
-		const sinceLastSync = lastSyncedAt.value === null
-			? null
-			: Date.now() - lastSyncedAt.value;
-		const justSynced = sinceLastSync !== null && sinceLastSync >= 0 && sinceLastSync < RESYNC_MIN_GAP_MS;
-		if (syncsInFlight > 0 || justSynced)
-			return;
+		const sinceLastSync = lastSyncedAt.value === null ? null : Date.now() - lastSyncedAt.value;
+		const justSynced =
+			sinceLastSync !== null && sinceLastSync >= 0 && sinceLastSync < RESYNC_MIN_GAP_MS;
+		if (syncsInFlight > 0 || justSynced) return;
 		void sync();
 	}
 
 	function resyncWhenVisible() {
-		if (document.visibilityState === 'visible')
-			resyncUnlessRecent();
+		if (document.visibilityState === 'visible') resyncUnlessRecent();
 	}
 
 	/**
@@ -230,15 +223,12 @@ export function useServerTime() {
 	 * sooner than the gap after the last sync began.
 	 */
 	function resyncOnClockChange() {
-		if (offsetTakenAt === null)
-			return;
+		if (offsetTakenAt === null) return;
 		const monotonicNow = performance.now();
 		const deviceElapsed = Date.now() - offsetTakenAt.device;
 		const monotonicElapsed = monotonicNow - offsetTakenAt.monotonic;
-		if (Math.abs(deviceElapsed - monotonicElapsed) <= CLOCK_CHANGE_THRESHOLD_MS)
-			return;
-		if (lastSyncBeganAt !== null && monotonicNow - lastSyncBeganAt < RESYNC_MIN_GAP_MS)
-			return;
+		if (Math.abs(deviceElapsed - monotonicElapsed) <= CLOCK_CHANGE_THRESHOLD_MS) return;
+		if (lastSyncBeganAt !== null && monotonicNow - lastSyncBeganAt < RESYNC_MIN_GAP_MS) return;
 		resyncUnlessRecent();
 	}
 
@@ -246,8 +236,7 @@ export function useServerTime() {
 	 * Start periodic synchronization
 	 */
 	function startSync() {
-		if (globalSyncActive)
-			return;
+		if (globalSyncActive) return;
 
 		globalSyncActive = true;
 

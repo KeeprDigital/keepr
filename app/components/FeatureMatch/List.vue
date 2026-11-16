@@ -16,10 +16,7 @@ const props = defineProps<{
 		title="No matches yet"
 		description="Set the number of feature matches in event settings to get started."
 	/>
-	<div
-		v-else
-		class="grid grid-cols-1 gap-8"
-	>
+	<div v-else class="grid grid-cols-1 gap-8">
 		<FeatureMatchPanel
 			v-for="(match, index) in props.matches"
 			:key="match.id"

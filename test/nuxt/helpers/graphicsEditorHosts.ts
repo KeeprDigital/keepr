@@ -1,5 +1,9 @@
 import type { Ref } from 'vue';
-import type { BroadcastGraphicConfig, GraphicChannelConfig, GraphicItemConfig } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicChannelConfig,
+	GraphicItemConfig,
+} from '~~/shared/types/graphics';
 import type { FeatureMatchOverlayModeConfig } from '~~/shared/types/screenConfig';
 import type { GraphicsEditor } from '~/composables/useGraphicsEditor';
 import type { BroadcastGraphicsEditorLayer } from '~/modules/broadcast-graphics/editorHost';
@@ -18,7 +22,10 @@ import { featureMatchLayoutEditorHost } from '~/modules/feature-match-overlay/ed
  * whose edited composition holds the Graphic Items a case names. A test table
  * runs one case per host; a new host adds one entry to `GRAPHICS_EDITOR_HOSTS`.
  */
-export interface GraphicsEditorHarness<D = unknown, L extends GraphicsEditorLayer = GraphicsEditorLayer> {
+export interface GraphicsEditorHarness<
+	D = unknown,
+	L extends GraphicsEditorLayer = GraphicsEditorLayer,
+> {
 	editor: GraphicsEditor<D, L>;
 	/** Every document the editor wrote, in order. */
 	writes: D[];
@@ -44,38 +51,38 @@ export interface GraphicsEditorHostFixture {
 const CANVAS = { width: 1920, height: 1080 };
 
 /** A Feature Match Overlay editor over the default layout with `items` as its Graphic Items. */
-export function featureMatchLayoutEditing(options: { writable: boolean; items?: GraphicItemConfig[] }): GraphicsEditorHarness<
-	FeatureMatchOverlayModeConfig['layout'],
-	FeatureMatchLayoutEditorLayer
-> {
+export function featureMatchLayoutEditing(options: {
+	writable: boolean;
+	items?: GraphicItemConfig[];
+}): GraphicsEditorHarness<FeatureMatchOverlayModeConfig['layout'], FeatureMatchLayoutEditorLayer> {
 	const config = ref(structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG));
-	if (options.items)
-		config.value.layout.composition.items = structuredClone(options.items);
+	if (options.items) config.value.layout.composition.items = structuredClone(options.items);
 	const writes: FeatureMatchOverlayModeConfig['layout'][] = [];
 	const leased = ref(options.writable);
 	const held = ref(false);
-	const editor = useGraphicsEditor(featureMatchLayoutEditorHost({
-		config,
-		updateConfig: (patch) => {
-			if (patch.layout)
-				writes.push(patch.layout);
-			config.value = {
-				...config.value,
-				...patch,
-			};
-		},
-		canvasWidth: CANVAS.width,
-		canvasHeight: CANVAS.height,
-		writable: leased,
-		held,
-	}));
+	const editor = useGraphicsEditor(
+		featureMatchLayoutEditorHost({
+			config,
+			updateConfig: (patch) => {
+				if (patch.layout) writes.push(patch.layout);
+				config.value = {
+					...config.value,
+					...patch,
+				};
+			},
+			canvasWidth: CANVAS.width,
+			canvasHeight: CANVAS.height,
+			writable: leased,
+			held,
+		}),
+	);
 	return {
 		editor,
 		writes,
 		leased,
 		held,
 		document: () => config.value.layout,
-		layer: itemId => ({ type: 'item', itemId }),
+		layer: (itemId) => ({ type: 'item', itemId }),
 		composition: () => config.value.layout.composition,
 		storeItems: (items) => {
 			config.value = {
@@ -98,14 +105,15 @@ export const OTHER_GRAPHIC_ID = 'slate';
  * text item `s`, and `lower-third` in front holding `items`. `onAir` names the
  * graphics on a program output, `channels` the Screen's Graphic Channels.
  */
-export function broadcastGraphicsEditing(options: { writable: boolean; items?: GraphicItemConfig[] }) {
+export function broadcastGraphicsEditing(options: {
+	writable: boolean;
+	items?: GraphicItemConfig[];
+}) {
 	const graphics = ref<BroadcastGraphicConfig[]>([
 		{
 			id: OTHER_GRAPHIC_ID,
 			name: 'Slate',
-			items: [
-				text('s', { x: 40, y: 40 }),
-			],
+			items: [text('s', { x: 40, y: 40 })],
 		},
 		{
 			id: EDITED_GRAPHIC_ID,
@@ -132,23 +140,26 @@ export function broadcastGraphicsEditing(options: { writable: boolean; items?: G
 		canvasHeight: CANVAS.height,
 		writable: leased,
 		held,
-		onAir: graphicId => onAir.value.has(graphicId),
-		onStepWithheld: step => withheld.push(step),
+		onAir: (graphicId) => onAir.value.has(graphicId),
+		onStepWithheld: (step) => withheld.push(step),
 	});
 	const editor = useGraphicsEditor(host);
-	const graphic = (id: string) => graphics.value.find(entry => entry.id === id)!;
-	const harness: GraphicsEditorHarness<readonly BroadcastGraphicConfig[], BroadcastGraphicsEditorLayer> = {
+	const graphic = (id: string) => graphics.value.find((entry) => entry.id === id)!;
+	const harness: GraphicsEditorHarness<
+		readonly BroadcastGraphicConfig[],
+		BroadcastGraphicsEditorLayer
+	> = {
 		editor,
 		writes,
 		leased,
 		held,
 		document: () => graphics.value,
-		layer: itemId => ({ type: 'item', graphicId: EDITED_GRAPHIC_ID, itemId }),
+		layer: (itemId) => ({ type: 'item', graphicId: EDITED_GRAPHIC_ID, itemId }),
 		composition: () => graphic(EDITED_GRAPHIC_ID),
 		storeItems: (items) => {
-			graphics.value = graphics.value.map(entry => entry.id === EDITED_GRAPHIC_ID
-				? { ...entry, items }
-				: entry);
+			graphics.value = graphics.value.map((entry) =>
+				entry.id === EDITED_GRAPHIC_ID ? { ...entry, items } : entry,
+			);
 		},
 	};
 	return {
@@ -169,11 +180,11 @@ export const GRAPHICS_EDITOR_HOSTS: readonly GraphicsEditorHostFixture[] = [
 		name: 'Feature Match Overlay',
 		hostId: 'feature-match-overlay',
 		// One harness type for every host: the table only names layers through `layer`.
-		editing: options => featureMatchLayoutEditing(options) as unknown as GraphicsEditorHarness,
+		editing: (options) => featureMatchLayoutEditing(options) as unknown as GraphicsEditorHarness,
 	},
 	{
 		name: 'Broadcast Graphics',
 		hostId: 'broadcast-graphics',
-		editing: options => broadcastGraphicsEditing(options) as unknown as GraphicsEditorHarness,
+		editing: (options) => broadcastGraphicsEditing(options) as unknown as GraphicsEditorHarness,
 	},
 ];

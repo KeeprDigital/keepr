@@ -17,7 +17,7 @@ import { processSilentVideo } from './silent-video';
 import { processStillImage } from './still-image';
 
 export const GRAPHIC_ASSET_SOURCE_POLICIES = {
-	'image': {
+	image: {
 		label: 'Still image',
 		maximumByteLength: MAX_STILL_IMAGE_INGESTION_BYTES,
 		compatibilityProfile: STILL_IMAGE_COMPATIBILITY_PROFILE,
@@ -29,18 +29,24 @@ export const GRAPHIC_ASSET_SOURCE_POLICIES = {
 		compatibilityProfile: SILENT_VIDEO_COMPATIBILITY_PROFILE,
 		conflictingMimeCode: 'conflicting-video-mime',
 	},
-	'font': {
+	font: {
 		label: 'Static font',
 		maximumByteLength: MAX_STATIC_FONT_INGESTION_BYTES,
 		compatibilityProfile: STATIC_FONT_COMPATIBILITY_PROFILE,
 		conflictingMimeCode: 'conflicting-font-mime',
 	},
-} as const satisfies Record<GraphicAssetSourceKind, {
-	label: string;
-	maximumByteLength: number;
-	compatibilityProfile: GraphicAssetValidationReport['compatibilityProfile'];
-	conflictingMimeCode: Extract<GraphicAssetValidationReport, { outcome: 'rejected' }>['issues'][number]['code'];
-}>;
+} as const satisfies Record<
+	GraphicAssetSourceKind,
+	{
+		label: string;
+		maximumByteLength: number;
+		compatibilityProfile: GraphicAssetValidationReport['compatibilityProfile'];
+		conflictingMimeCode: Extract<
+			GraphicAssetValidationReport,
+			{ outcome: 'rejected' }
+		>['issues'][number]['code'];
+	}
+>;
 
 export async function processGraphicAssetSource(
 	kind: GraphicAssetSourceKind,

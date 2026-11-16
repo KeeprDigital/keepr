@@ -21,16 +21,12 @@ export function stubImageLoading() {
 			requested.push(value);
 			const settle = () => {
 				this.complete = true;
-				if (failed.has(value))
-					this.onerror?.();
-				else
-					this.onload?.();
+				if (failed.has(value)) this.onerror?.();
+				else this.onload?.();
 			};
 			const waiting = held.get(value);
-			if (waiting)
-				waiting.push(settle);
-			else
-				queueMicrotask(settle);
+			if (waiting) waiting.push(settle);
+			else queueMicrotask(settle);
 		}
 
 		get src() {
@@ -38,9 +34,7 @@ export function stubImageLoading() {
 		}
 
 		get naturalWidth() {
-			return failed.has(this.#src)
-				? 0
-				: 488;
+			return failed.has(this.#src) ? 0 : 488;
 		}
 
 		decode() {
@@ -63,8 +57,7 @@ export function stubImageLoading() {
 		release(url: string) {
 			const waiting = held.get(url) ?? [];
 			held.delete(url);
-			for (const settle of waiting)
-				settle();
+			for (const settle of waiting) settle();
 		},
 		reset() {
 			requested.length = 0;

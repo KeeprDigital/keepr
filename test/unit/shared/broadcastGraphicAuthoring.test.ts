@@ -1,4 +1,10 @@
-import type { BroadcastGraphicConfig, GraphicGroupChildConfig, GraphicGroupItemConfig, GraphicItemConfig, MediaGraphicItemConfig } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicGroupChildConfig,
+	GraphicGroupItemConfig,
+	GraphicItemConfig,
+	MediaGraphicItemConfig,
+} from '~~/shared/types/graphics';
 import { describe, expect, it } from 'vitest';
 import {
 	addGraphicGroupChild,
@@ -62,9 +68,8 @@ function withGroup() {
 }
 
 function group(built: BroadcastGraphicConfig): GraphicGroupItemConfig {
-	const item = built.items.find(entry => entry.id === 'cluster');
-	if (item?.type !== 'group')
-		throw new Error('expected a Graphic Group');
+	const item = built.items.find((entry) => entry.id === 'cluster');
+	if (item?.type !== 'group') throw new Error('expected a Graphic Group');
 	return item;
 }
 
@@ -72,7 +77,12 @@ function group(built: BroadcastGraphicConfig): GraphicGroupItemConfig {
 // Surface Style, so a reading of `surfaceStyle` has to say which kind it
 // expected to be looking at.
 function surfaced(item: GraphicItemConfig | GraphicGroupChildConfig | undefined) {
-	if (!item || item.type === 'media' || item.type === 'social-network-icon' || item.type === 'deck-list')
+	if (
+		!item ||
+		item.type === 'media' ||
+		item.type === 'social-network-icon' ||
+		item.type === 'deck-list'
+	)
 		throw new Error('expected a Graphic Item carrying a Graphic Surface Style');
 	return item;
 }
@@ -129,13 +139,16 @@ describe('broadcastGraphicAuthoring', () => {
 	});
 
 	it('associates an eligible existing Graphic Group with only one Social Profile Projection', () => {
-		const initial = addGraphicItem({
-			...graphic('a'),
-			sources: [
-				{ key: 'left-talent', label: 'Left Talent', kind: 'talent' },
-				{ key: 'right-talent', label: 'Right Talent', kind: 'talent' },
-			],
-		}, { kind: 'group', id: 'existing', ...CANVAS }).graphic;
+		const initial = addGraphicItem(
+			{
+				...graphic('a'),
+				sources: [
+					{ key: 'left-talent', label: 'Left Talent', kind: 'talent' },
+					{ key: 'right-talent', label: 'Right Talent', kind: 'talent' },
+				],
+			},
+			{ kind: 'group', id: 'existing', ...CANVAS },
+		).graphic;
 
 		const left = associateSocialProfileProjection(initial, {
 			label: 'Left profile',
@@ -158,20 +171,21 @@ describe('broadcastGraphicAuthoring', () => {
 	});
 
 	it('edits a Social Profile Projection within its authored dwell and transition bounds', () => {
-		const initial = addSocialProfileProjection({
-			...graphic('a'),
-			sources: [
-				{ key: 'talent', label: 'Talent', kind: 'talent' },
-			],
-		}, {
-			label: 'Profile',
-			sourceKey: 'talent',
-			projectionKey: 'profile',
-			presentationGroupId: 'group',
-			iconItemId: 'icon',
-			handleItemId: 'handle',
-			...CANVAS,
-		});
+		const initial = addSocialProfileProjection(
+			{
+				...graphic('a'),
+				sources: [{ key: 'talent', label: 'Talent', kind: 'talent' }],
+			},
+			{
+				label: 'Profile',
+				sourceKey: 'talent',
+				projectionKey: 'profile',
+				presentationGroupId: 'group',
+				iconItemId: 'icon',
+				handleItemId: 'handle',
+				...CANVAS,
+			},
+		);
 
 		const edited = patchSocialProfileProjection(initial, 'profile', {
 			label: 'Main Talent',
@@ -193,31 +207,38 @@ describe('broadcastGraphicAuthoring', () => {
 	});
 
 	it('refuses projection edits that the strict document schema cannot save', () => {
-		const initial = addSocialProfileProjection({
-			...graphic('a'),
-			sources: [
-				{ key: 'talent', label: 'Talent', kind: 'talent' },
-			],
-		}, {
-			label: 'Profile',
-			sourceKey: 'talent',
-			projectionKey: 'profile',
-			presentationGroupId: 'group',
-			iconItemId: 'icon',
-			handleItemId: 'handle',
-			...CANVAS,
-		});
+		const initial = addSocialProfileProjection(
+			{
+				...graphic('a'),
+				sources: [{ key: 'talent', label: 'Talent', kind: 'talent' }],
+			},
+			{
+				label: 'Profile',
+				sourceKey: 'talent',
+				projectionKey: 'profile',
+				presentationGroupId: 'group',
+				iconItemId: 'icon',
+				handleItemId: 'handle',
+				...CANVAS,
+			},
+		);
 
-		expect(patchSocialProfileProjection(initial, 'profile', {
-			label: 'x'.repeat(61),
-		})).toBe(initial);
+		expect(
+			patchSocialProfileProjection(initial, 'profile', {
+				label: 'x'.repeat(61),
+			}),
+		).toBe(initial);
 		expect(patchSocialProfileProjection(initial, 'profile', { dwellMs: 2_000.5 })).toBe(initial);
-		expect(patchSocialProfileProjection(initial, 'profile', { transitionDurationMs: Number.NaN })).toBe(initial);
-		expect(patchSocialProfileProjection(initial, 'profile', {
-			// The public edit seam deliberately excludes Presentation Group reassignment.
-			// This cast pins its runtime boundary against an untyped caller too.
-			presentationGroupId: 'other-group',
-		} as never)).toBe(initial);
+		expect(
+			patchSocialProfileProjection(initial, 'profile', { transitionDurationMs: Number.NaN }),
+		).toBe(initial);
+		expect(
+			patchSocialProfileProjection(initial, 'profile', {
+				// The public edit seam deliberately excludes Presentation Group reassignment.
+				// This cast pins its runtime boundary against an untyped caller too.
+				presentationGroupId: 'other-group',
+			} as never),
+		).toBe(initial);
 	});
 
 	it('refuses a projection past the strict per-graphic authoring budget without creating an orphan group', () => {
@@ -231,72 +252,83 @@ describe('broadcastGraphicAuthoring', () => {
 			transition: 'crossfade' as const,
 			transitionDurationMs: 250,
 		}));
-		const initial = addGraphicItem({
-			...graphic('a'),
-			sources: [source],
-			socialProfileProjections: projections,
-		}, { kind: 'group', id: 'existing', ...CANVAS }).graphic;
+		const initial = addGraphicItem(
+			{
+				...graphic('a'),
+				sources: [source],
+				socialProfileProjections: projections,
+			},
+			{ kind: 'group', id: 'existing', ...CANVAS },
+		).graphic;
 
-		expect(associateSocialProfileProjection(initial, {
-			label: 'Overflow',
-			projectionKey: 'overflow',
-			sourceKey: source.key,
-			presentationGroupId: 'existing',
-		})).toBe(initial);
-		expect(addSocialProfileProjection(initial, {
-			label: 'Overflow',
-			projectionKey: 'overflow',
-			sourceKey: source.key,
-			presentationGroupId: 'orphan-group',
-			iconItemId: 'orphan-icon',
-			handleItemId: 'orphan-handle',
-			...CANVAS,
-		})).toBe(initial);
+		expect(
+			associateSocialProfileProjection(initial, {
+				label: 'Overflow',
+				projectionKey: 'overflow',
+				sourceKey: source.key,
+				presentationGroupId: 'existing',
+			}),
+		).toBe(initial);
+		expect(
+			addSocialProfileProjection(initial, {
+				label: 'Overflow',
+				projectionKey: 'overflow',
+				sourceKey: source.key,
+				presentationGroupId: 'orphan-group',
+				iconItemId: 'orphan-icon',
+				handleItemId: 'orphan-handle',
+				...CANVAS,
+			}),
+		).toBe(initial);
 	});
 
 	it('requires an explicit combined deletion for a projection with dependent content', () => {
-		const projected = addSocialProfileProjection({
-			...graphic('a'),
-			sources: [
-				{ key: 'talent', label: 'Talent', kind: 'talent' },
-			],
-		}, {
-			label: 'Profile',
-			sourceKey: 'talent',
-			projectionKey: 'profile',
-			presentationGroupId: 'group',
-			iconItemId: 'icon',
-			handleItemId: 'handle',
-			...CANVAS,
-		});
+		const projected = addSocialProfileProjection(
+			{
+				...graphic('a'),
+				sources: [{ key: 'talent', label: 'Talent', kind: 'talent' }],
+			},
+			{
+				label: 'Profile',
+				sourceKey: 'talent',
+				projectionKey: 'profile',
+				presentationGroupId: 'group',
+				iconItemId: 'icon',
+				handleItemId: 'handle',
+				...CANVAS,
+			},
+		);
 
 		expect(deleteGraphicItem(projected, 'group')).toEqual(projected);
-		expect(deleteSocialProfileProjection(projected, 'profile', { deletePresentationGroup: false }))
-			.toEqual(projected);
+		expect(
+			deleteSocialProfileProjection(projected, 'profile', { deletePresentationGroup: false }),
+		).toEqual(projected);
 
-		const removed = deleteSocialProfileProjection(projected, 'profile', { deletePresentationGroup: true });
+		const removed = deleteSocialProfileProjection(projected, 'profile', {
+			deletePresentationGroup: true,
+		});
 		expect(removed.socialProfileProjections).toEqual([]);
 		expect(removed.items).toEqual([]);
 	});
 
 	it('treats a retained projected Placeholder Style as dependent content', () => {
-		const projected = addSocialProfileProjection({
-			...graphic('a'),
-			sources: [
-				{ key: 'talent', label: 'Talent', kind: 'talent' },
-			],
-		}, {
-			label: 'Profile',
-			sourceKey: 'talent',
-			projectionKey: 'profile',
-			presentationGroupId: 'group',
-			iconItemId: 'icon',
-			handleItemId: 'handle',
-			...CANVAS,
-		});
+		const projected = addSocialProfileProjection(
+			{
+				...graphic('a'),
+				sources: [{ key: 'talent', label: 'Talent', kind: 'talent' }],
+			},
+			{
+				label: 'Profile',
+				sourceKey: 'talent',
+				projectionKey: 'profile',
+				presentationGroupId: 'group',
+				iconItemId: 'icon',
+				handleItemId: 'handle',
+				...CANVAS,
+			},
+		);
 		const presentationGroup = projected.items[0];
-		if (presentationGroup?.type !== 'group')
-			throw new Error('expected starter Presentation Group');
+		if (presentationGroup?.type !== 'group') throw new Error('expected starter Presentation Group');
 		const styleOnly = {
 			...projected,
 			items: [
@@ -312,45 +344,44 @@ describe('broadcastGraphicAuthoring', () => {
 								},
 							};
 						}
-						if (child.id === 'icon')
-							return { ...child, network: 'twitch' as const };
+						if (child.id === 'icon') return { ...child, network: 'twitch' as const };
 						return child;
 					}),
 				},
 			],
 		};
 
-		expect(deleteSocialProfileProjection(styleOnly, 'profile', { deletePresentationGroup: false }))
-			.toBe(styleOnly);
+		expect(
+			deleteSocialProfileProjection(styleOnly, 'profile', { deletePresentationGroup: false }),
+		).toBe(styleOnly);
 	});
 
 	it('keeps a Talent source while a Social Profile Projection still references it', () => {
-		const projected = addSocialProfileProjection({
-			...graphic('a'),
-			sources: [
-				{ key: 'talent', label: 'Talent', kind: 'talent' },
-			],
-		}, {
-			label: 'Profile',
-			sourceKey: 'talent',
-			projectionKey: 'profile',
-			presentationGroupId: 'group',
-			iconItemId: 'icon',
-			handleItemId: 'handle',
-			...CANVAS,
-		});
+		const projected = addSocialProfileProjection(
+			{
+				...graphic('a'),
+				sources: [{ key: 'talent', label: 'Talent', kind: 'talent' }],
+			},
+			{
+				label: 'Profile',
+				sourceKey: 'talent',
+				projectionKey: 'profile',
+				presentationGroupId: 'group',
+				iconItemId: 'icon',
+				handleItemId: 'handle',
+				...CANVAS,
+			},
+		);
 
 		expect(deleteGraphicSourceSelection([projected], 'a', 'talent')).toEqual([projected]);
 	});
 
 	it('adds a Broadcast Graphic to the front of the Screen stack without mutating the stack', () => {
-		const stack = [
-			graphic('a'),
-		];
+		const stack = [graphic('a')];
 
 		const { graphics, graphicId } = createBroadcastGraphic(stack, { id: 'b' });
 
-		expect(graphics.map(entry => entry.id)).toEqual(['a', 'b']);
+		expect(graphics.map((entry) => entry.id)).toEqual(['a', 'b']);
 		expect(graphicId).toBe('b');
 		expect(stack).toHaveLength(1);
 	});
@@ -364,34 +395,23 @@ describe('broadcastGraphicAuthoring', () => {
 	});
 
 	it('reorders a Broadcast Graphic within the authored back-to-front stack', () => {
-		const stack = [
-			graphic('a'),
-			graphic('b'),
-			graphic('c'),
-		];
+		const stack = [graphic('a'), graphic('b'), graphic('c')];
 
-		expect(moveBroadcastGraphic(stack, 'a', 1).map(entry => entry.id)).toEqual(['b', 'a', 'c']);
-		expect(moveBroadcastGraphic(stack, 'c', -1).map(entry => entry.id)).toEqual(['a', 'c', 'b']);
+		expect(moveBroadcastGraphic(stack, 'a', 1).map((entry) => entry.id)).toEqual(['b', 'a', 'c']);
+		expect(moveBroadcastGraphic(stack, 'c', -1).map((entry) => entry.id)).toEqual(['a', 'c', 'b']);
 	});
 
 	it('leaves the stack order alone when a move would run off either end', () => {
-		const stack = [
-			graphic('a'),
-			graphic('b'),
-		];
+		const stack = [graphic('a'), graphic('b')];
 
-		expect(moveBroadcastGraphic(stack, 'a', -1).map(entry => entry.id)).toEqual(['a', 'b']);
-		expect(moveBroadcastGraphic(stack, 'b', 1).map(entry => entry.id)).toEqual(['a', 'b']);
+		expect(moveBroadcastGraphic(stack, 'a', -1).map((entry) => entry.id)).toEqual(['a', 'b']);
+		expect(moveBroadcastGraphic(stack, 'b', 1).map((entry) => entry.id)).toEqual(['a', 'b']);
 	});
 
 	it('deletes one Broadcast Graphic and keeps the rest in order', () => {
-		const stack = [
-			graphic('a'),
-			graphic('b'),
-			graphic('c'),
-		];
+		const stack = [graphic('a'), graphic('b'), graphic('c')];
 
-		expect(deleteBroadcastGraphic(stack, 'b').map(entry => entry.id)).toEqual(['a', 'c']);
+		expect(deleteBroadcastGraphic(stack, 'b').map((entry) => entry.id)).toEqual(['a', 'c']);
 	});
 
 	it('places a Graphic Item at the front of the Graphic Layer Order', () => {
@@ -400,11 +420,15 @@ describe('broadcastGraphicAuthoring', () => {
 			id: 'item-1',
 			...CANVAS,
 		});
-		const { graphic: withText } = addGraphicItem(updated, { kind: 'text', id: 'item-2', ...CANVAS });
+		const { graphic: withText } = addGraphicItem(updated, {
+			kind: 'text',
+			id: 'item-2',
+			...CANVAS,
+		});
 
 		expect(itemId).toBe('item-1');
-		expect(withText.items.map(item => item.type)).toEqual(['shape', 'text']);
-		expect(withText.items.map(item => item.label)).toEqual(['Shape 1', 'Text 1']);
+		expect(withText.items.map((item) => item.type)).toEqual(['shape', 'text']);
+		expect(withText.items.map((item) => item.label)).toEqual(['Shape 1', 'Text 1']);
 	});
 
 	it('reorders and deletes Graphic Items within one Broadcast Graphic', () => {
@@ -413,8 +437,11 @@ describe('broadcastGraphicAuthoring', () => {
 			{ kind: 'text', id: 'front', ...CANVAS },
 		).graphic;
 
-		expect(moveGraphicItem(built, 'back', 1).items.map(item => item.id)).toEqual(['front', 'back']);
-		expect(deleteGraphicItem(built, 'back').items.map(item => item.id)).toEqual(['front']);
+		expect(moveGraphicItem(built, 'back', 1).items.map((item) => item.id)).toEqual([
+			'front',
+			'back',
+		]);
+		expect(deleteGraphicItem(built, 'back').items.map((item) => item.id)).toEqual(['front']);
 	});
 
 	it('keeps sibling Shape Geometry fields when one corner is edited', () => {
@@ -492,19 +519,26 @@ describe('broadcastGraphicAuthoring', () => {
 		],
 		[
 			'a win box surface on a shape',
-			(built: BroadcastGraphicConfig) => applyGraphicSurfaceStyleEdit(built, 'bar', 'boxSurfaceStyle', { kind: 'solid-fill', color: '#000000' }),
+			(built: BroadcastGraphicConfig) =>
+				applyGraphicSurfaceStyleEdit(built, 'bar', 'boxSurfaceStyle', {
+					kind: 'solid-fill',
+					color: '#000000',
+				}),
 		],
 		[
 			'a Game Wins display mode on a shape',
-			(built: BroadcastGraphicConfig) => patchGameWinsGraphicItem(built, 'bar', { displayMode: 'number' }),
+			(built: BroadcastGraphicConfig) =>
+				patchGameWinsGraphicItem(built, 'bar', { displayMode: 'number' }),
 		],
 		[
 			'a life animation on a shape',
-			(built: BroadcastGraphicConfig) => patchPlayerLifeGraphicItem(built, 'bar', { lifeAnimation: 'pop' }),
+			(built: BroadcastGraphicConfig) =>
+				patchPlayerLifeGraphicItem(built, 'bar', { lifeAnimation: 'pop' }),
 		],
 		[
 			'a Text Overflow Policy on a shape',
-			(built: BroadcastGraphicConfig) => patchGraphicTextOverflow(built, 'bar', { overflowPolicy: 'clip' }),
+			(built: BroadcastGraphicConfig) =>
+				patchGraphicTextOverflow(built, 'bar', { overflowPolicy: 'clip' }),
 		],
 	])('ignores %s', (_name, edit) => {
 		const built = addGraphicItem(
@@ -540,8 +574,14 @@ describe('broadcastGraphicAuthoring', () => {
 				{ kind: 'solid-fill', color: '#123456' },
 			);
 
-			const gradient = applyGraphicSurfaceStyleEdit(built, 'bar', 'surfaceStyle', { kind: 'fill-kind', fillKind: 'linear-gradient' });
-			const back = applyGraphicSurfaceStyleEdit(gradient, 'bar', 'surfaceStyle', { kind: 'fill-kind', fillKind: 'solid' });
+			const gradient = applyGraphicSurfaceStyleEdit(built, 'bar', 'surfaceStyle', {
+				kind: 'fill-kind',
+				fillKind: 'linear-gradient',
+			});
+			const back = applyGraphicSurfaceStyleEdit(gradient, 'bar', 'surfaceStyle', {
+				kind: 'fill-kind',
+				fillKind: 'solid',
+			});
 
 			expect(gradient.items[0]).toMatchObject({
 				surfaceStyle: {
@@ -570,7 +610,10 @@ describe('broadcastGraphicAuthoring', () => {
 				{ kind: 'fill-kind', fillKind: 'linear-gradient' },
 			);
 
-			const grown = applyGraphicSurfaceStyleEdit(built, 'bar', 'surfaceStyle', { kind: 'stop-count', delta: 1 });
+			const grown = applyGraphicSurfaceStyleEdit(built, 'bar', 'surfaceStyle', {
+				kind: 'stop-count',
+				delta: 1,
+			});
 
 			expect(surfaced(grown.items[0]).surfaceStyle?.fill).toMatchObject({
 				stops: [
@@ -584,11 +627,9 @@ describe('broadcastGraphicAuthoring', () => {
 		it('adds and removes an outline and a glow without touching the fill', () => {
 			const built = addGraphicItem(graphic('a'), { kind: 'shape', id: 'bar', ...CANVAS }).graphic;
 
-			const styled = patchGraphicGlow(
-				patchGraphicOutline(built, 'bar', { width: 6 }),
-				'bar',
-				{ color: '#ff51c7' },
-			);
+			const styled = patchGraphicGlow(patchGraphicOutline(built, 'bar', { width: 6 }), 'bar', {
+				color: '#ff51c7',
+			});
 			const stripped = patchGraphicGlow(patchGraphicOutline(styled, 'bar', null), 'bar', null);
 
 			expect(surfaced(styled.items[0]).surfaceStyle).toMatchObject({
@@ -598,7 +639,10 @@ describe('broadcastGraphicAuthoring', () => {
 			});
 			expect(surfaced(stripped.items[0]).surfaceStyle?.outline).toBeUndefined();
 			expect(surfaced(stripped.items[0]).surfaceStyle?.glow).toBeUndefined();
-			expect(surfaced(stripped.items[0]).surfaceStyle?.fill).toEqual({ type: 'solid', color: '#0077a3' });
+			expect(surfaced(stripped.items[0]).surfaceStyle?.fill).toEqual({
+				type: 'solid',
+				color: '#0077a3',
+			});
 		});
 
 		it('gives a Text Graphic Item a Graphic Surface Style, and takes it away again', () => {
@@ -659,15 +703,19 @@ describe('broadcastGraphicAuthoring', () => {
 				...CANVAS,
 			}).graphic;
 
-			expect(group(built).children.map(child => child.id)).toEqual(['child', 'name']);
+			expect(group(built).children.map((child) => child.id)).toEqual(['child', 'name']);
 			expect(built.items).toHaveLength(1);
 		});
 
 		it('sizes a new child against its Graphic Group rather than the Screen canvas', () => {
 			const built = patchGraphicItem(withGroup(), 'cluster', { width: 500, height: 200 });
 
-			const added = addGraphicGroupChild(built, { kind: 'shape', groupId: 'cluster', id: 'inner' }).graphic;
-			const child = group(added).children.find(entry => entry.id === 'inner');
+			const added = addGraphicGroupChild(built, {
+				kind: 'shape',
+				groupId: 'cluster',
+				id: 'inner',
+			}).graphic;
+			const child = group(added).children.find((entry) => entry.id === 'inner');
 
 			expect(child).toMatchObject({ width: 200, height: 20 });
 		});
@@ -680,13 +728,15 @@ describe('broadcastGraphicAuthoring', () => {
 				...CANVAS,
 			}).graphic;
 
-			expect(group(built).children.map(child => child.label)).toEqual(['Shape 1', 'Shape 2']);
+			expect(group(built).children.map((child) => child.label)).toEqual(['Shape 1', 'Shape 2']);
 		});
 
 		it('refuses to add a child to something that is not a Graphic Group', () => {
 			const built = addGraphicItem(graphic('a'), { kind: 'shape', id: 'bar', ...CANVAS }).graphic;
 
-			expect(addGraphicGroupChild(built, { kind: 'text', groupId: 'bar', id: 'x' }).graphic).toEqual(built);
+			expect(
+				addGraphicGroupChild(built, { kind: 'text', groupId: 'bar', id: 'x' }).graphic,
+			).toEqual(built);
 		});
 
 		it('finds and flattens a Graphic Group child by id alone', () => {
@@ -698,7 +748,7 @@ describe('broadcastGraphicAuthoring', () => {
 			});
 			expect(findGraphicItem(built, 'cluster')?.group).toBeUndefined();
 			expect(findGraphicItem(built, 'nowhere')).toBeNull();
-			expect(flattenGraphicItems(built).map(item => item.id)).toEqual(['cluster', 'child']);
+			expect(flattenGraphicItems(built).map((item) => item.id)).toEqual(['cluster', 'child']);
 		});
 
 		it('reorders and deletes inside the group the child belongs to', () => {
@@ -709,8 +759,13 @@ describe('broadcastGraphicAuthoring', () => {
 				...CANVAS,
 			}).graphic;
 
-			expect(group(moveGraphicItem(built, 'child', 1)).children.map(child => child.id)).toEqual(['name', 'child']);
-			expect(group(deleteGraphicItem(built, 'child')).children.map(child => child.id)).toEqual(['name']);
+			expect(group(moveGraphicItem(built, 'child', 1)).children.map((child) => child.id)).toEqual([
+				'name',
+				'child',
+			]);
+			expect(group(deleteGraphicItem(built, 'child')).children.map((child) => child.id)).toEqual([
+				'name',
+			]);
 			// Deleting the group takes its children with it.
 			expect(deleteGraphicItem(built, 'cluster').items).toEqual([]);
 		});
@@ -734,7 +789,9 @@ describe('broadcastGraphicAuthoring', () => {
 		});
 
 		it('lets a child inherit or override the local style default of its Graphic Group', () => {
-			const built = patchGraphicGroupDefaultChildSurfaceStyle(withGroup(), 'cluster', { fillOpacity: 0.3 });
+			const built = patchGraphicGroupDefaultChildSurfaceStyle(withGroup(), 'cluster', {
+				fillOpacity: 0.3,
+			});
 
 			const inheriting = clearGraphicSurfaceStyle(built, 'child');
 			const overriding = patchGraphicSurfaceStyle(inheriting, 'child', { fillOpacity: 1 });
@@ -742,7 +799,9 @@ describe('broadcastGraphicAuthoring', () => {
 
 			expect(group(built).defaultChildSurfaceStyle).toMatchObject({ fillOpacity: 0.3 });
 			expect(surfaced(group(inheriting).children[0]).surfaceStyle).toBeUndefined();
-			expect(surfaced(group(overriding).children[0]).surfaceStyle).toMatchObject({ fillOpacity: 1 });
+			expect(surfaced(group(overriding).children[0]).surfaceStyle).toMatchObject({
+				fillOpacity: 1,
+			});
 			expect(group(removed).defaultChildSurfaceStyle).toBeUndefined();
 		});
 
@@ -790,9 +849,8 @@ describe('broadcastGraphicAuthoring', () => {
 		}
 
 		function media(built: BroadcastGraphicConfig): MediaGraphicItemConfig {
-			const item = built.items.find(entry => entry.id === 'logo');
-			if (item?.type !== 'media')
-				throw new Error('expected a Media Graphic Item');
+			const item = built.items.find((entry) => entry.id === 'logo');
+			if (item?.type !== 'media') throw new Error('expected a Media Graphic Item');
 			return item;
 		}
 
@@ -811,9 +869,15 @@ describe('broadcastGraphicAuthoring', () => {
 		it('keeps authored playback settings across a change of asset kind', () => {
 			// Playback rate and looping are the author's, not the asset's, so a detour
 			// through an image must not discard them.
-			const configured = patchMediaGraphicItem(withMedia(), 'logo', { playbackRate: 0.5, loop: false });
+			const configured = patchMediaGraphicItem(withMedia(), 'logo', {
+				playbackRate: 0.5,
+				loop: false,
+			});
 
-			const asImage = selectMediaGraphicItemAsset(configured, 'logo', { asset: REFERENCE, mediaKind: 'image' });
+			const asImage = selectMediaGraphicItemAsset(configured, 'logo', {
+				asset: REFERENCE,
+				mediaKind: 'image',
+			});
 			const asVideo = selectMediaGraphicItemAsset(asImage, 'logo', {
 				asset: REFERENCE,
 				mediaKind: 'silent-video',
@@ -894,16 +958,16 @@ describe('broadcastGraphicAuthoring', () => {
 			const built = withMedia();
 
 			expect(patchShapeGeometry(built, 'logo', { rightSlant: 30 })).toEqual(built);
-			expect(patchShapeCorner(built, 'logo', 'topLeft', { treatment: 'rounded', size: 8 })).toEqual(built);
+			expect(patchShapeCorner(built, 'logo', 'topLeft', { treatment: 'rounded', size: 8 })).toEqual(
+				built,
+			);
 			expect(applyShapeGeometryPreset(built, 'logo', 'corner-cut')).toEqual(built);
 		});
 
 		it('drops an authored clip rather than flattening it when clipping is switched off', () => {
-			const clipping = patchShapeGeometry(
-				setMediaClipGeometry(withMedia(), 'logo', true),
-				'logo',
-				{ leftSlant: 24 },
-			);
+			const clipping = patchShapeGeometry(setMediaClipGeometry(withMedia(), 'logo', true), 'logo', {
+				leftSlant: 24,
+			});
 
 			const off = setMediaClipGeometry(clipping, 'logo', false);
 			const onceMore = setMediaClipGeometry(off, 'logo', true);
@@ -926,55 +990,66 @@ describe('broadcastGraphicAuthoring', () => {
 		}
 
 		function itemOf(built: BroadcastGraphicConfig, id: string) {
-			const item = built.items.find(entry => entry.id === id);
-			if (!item)
-				throw new Error(`expected a ${id} Graphic Item`);
+			const item = built.items.find((entry) => entry.id === id);
+			if (!item) throw new Error(`expected a ${id} Graphic Item`);
 			return item;
 		}
 
-		it.each([
-			'clock',
-			'player-life',
-			'game-wins',
-			'deck-list',
-		] as const)('sets the base typography of a %s Item', (kind) => {
-			// Their string comes from the live Feature Match Session rather than from an
-			// author, which decides what they say and nothing about how it is set.
-			const unpatched = itemOf(withKind(kind), kind);
-			const built = patchGraphicTypography(withKind(kind), kind, { fontSize: 96 });
-			const item = itemOf(built, kind);
-			const typographyOf = (owner: typeof item) => owner.type !== 'shape'
-				&& owner.type !== 'media'
-				&& owner.type !== 'social-network-icon'
-				&& owner.type !== 'group'
-				&& owner.type !== 'seat-indicator'
-				&& owner.typography;
+		it.each(['clock', 'player-life', 'game-wins', 'deck-list'] as const)(
+			'sets the base typography of a %s Item',
+			(kind) => {
+				// Their string comes from the live Feature Match Session rather than from an
+				// author, which decides what they say and nothing about how it is set.
+				const unpatched = itemOf(withKind(kind), kind);
+				const built = patchGraphicTypography(withKind(kind), kind, { fontSize: 96 });
+				const item = itemOf(built, kind);
+				const typographyOf = (owner: typeof item) =>
+					owner.type !== 'shape' &&
+					owner.type !== 'media' &&
+					owner.type !== 'social-network-icon' &&
+					owner.type !== 'group' &&
+					owner.type !== 'seat-indicator' &&
+					owner.typography;
 
-			expect(typographyOf(item))
-				.toMatchObject({
+				expect(typographyOf(item)).toMatchObject({
 					...typographyOf(unpatched),
 					fontSize: 96,
 				});
-		});
+			},
+		);
 
-		it.each(['clock', 'player-life', 'game-wins'] as const)('gives a %s Item a Graphic Surface Style of its own', (kind) => {
-			const built = patchGraphicSurfaceStyle(withKind(kind), kind, { fillOpacity: 0.4 });
-			const item = itemOf(built, kind);
+		it.each(['clock', 'player-life', 'game-wins'] as const)(
+			'gives a %s Item a Graphic Surface Style of its own',
+			(kind) => {
+				const built = patchGraphicSurfaceStyle(withKind(kind), kind, { fillOpacity: 0.4 });
+				const item = itemOf(built, kind);
 
-			expect(
-				item.type !== 'media' && item.type !== 'social-network-icon' && item.type !== 'deck-list'
-				&& item.surfaceStyle,
-			).toMatchObject({ fillOpacity: 0.4 });
-		});
+				expect(
+					item.type !== 'media' &&
+						item.type !== 'social-network-icon' &&
+						item.type !== 'deck-list' &&
+						item.surfaceStyle,
+				).toMatchObject({ fillOpacity: 0.4 });
+			},
+		);
 
-		it.each(['clock', 'player-life'] as const)('bounds a %s Item with a Text Overflow Policy', (kind) => {
-			// A live string can be longer than the author ever saw, and text does not
-			// render with visible overflow beyond its authored bounds.
-			const built = patchGraphicTextOverflow(withKind(kind), kind, { overflowPolicy: 'shrink', minFontSize: 30 });
-			const item = itemOf(built, kind);
+		it.each(['clock', 'player-life'] as const)(
+			'bounds a %s Item with a Text Overflow Policy',
+			(kind) => {
+				// A live string can be longer than the author ever saw, and text does not
+				// render with visible overflow beyond its authored bounds.
+				const built = patchGraphicTextOverflow(withKind(kind), kind, {
+					overflowPolicy: 'shrink',
+					minFontSize: 30,
+				});
+				const item = itemOf(built, kind);
 
-			expect(item.type === kind && item).toMatchObject({ overflowPolicy: 'shrink', minFontSize: 30 });
-		});
+				expect(item.type === kind && item).toMatchObject({
+					overflowPolicy: 'shrink',
+					minFontSize: 30,
+				});
+			},
+		);
 
 		it('sets a Deck List Item’s view, quantity gate, and Player', () => {
 			const built = patchDeckListGraphicItem(withKind('deck-list'), 'deck-list', {
@@ -997,8 +1072,9 @@ describe('broadcastGraphicAuthoring', () => {
 			// than storing fields the wire schema refuses.
 			const built = withKind('deck-list');
 
-			expect(patchGraphicTextOverflow(built, 'deck-list', { overflowPolicy: 'shrink', minFontSize: 30 }))
-				.toEqual(built);
+			expect(
+				patchGraphicTextOverflow(built, 'deck-list', { overflowPolicy: 'shrink', minFontSize: 30 }),
+			).toEqual(built);
 			expect(patchGraphicSurfaceStyle(built, 'deck-list', { fillOpacity: 0.4 })).toEqual(built);
 		});
 
@@ -1037,10 +1113,16 @@ describe('broadcastGraphicAuthoring', () => {
 		it('shapes a Game Wins Item’s win box rather than its own bounds', () => {
 			// A win box is an ordinary painted surface, so a cut-corner one is authored
 			// with exactly the controls a Shape Graphic Item uses.
-			const built = patchShapeCorner(withKind('game-wins'), 'game-wins', 'topRight', { treatment: 'cut', size: 6 });
+			const built = patchShapeCorner(withKind('game-wins'), 'game-wins', 'topRight', {
+				treatment: 'cut',
+				size: 6,
+			});
 			const item = itemOf(built, 'game-wins');
 
-			expect(item.type === 'game-wins' && item.boxGeometry.topRight).toMatchObject({ treatment: 'cut', size: 6 });
+			expect(item.type === 'game-wins' && item.boxGeometry.topRight).toMatchObject({
+				treatment: 'cut',
+				size: 6,
+			});
 			// The indicator's own rectangle is untouched: the geometry is the box’s.
 			expect(item).toMatchObject({ width: 768, height: 108 });
 		});
@@ -1061,12 +1143,10 @@ describe('broadcastGraphicAuthoring', () => {
 			// is the distinction the indicator exists to make — so both are ordinary
 			// authored surfaces rather than one style with a hardcoded variant.
 			const built = applyGraphicSurfaceStyleEdit(
-				applyGraphicSurfaceStyleEdit(
-					withKind('game-wins'),
-					'game-wins',
-					'boxSurfaceStyle',
-					{ kind: 'solid-fill', color: '#123456' },
-				),
+				applyGraphicSurfaceStyleEdit(withKind('game-wins'), 'game-wins', 'boxSurfaceStyle', {
+					kind: 'solid-fill',
+					color: '#123456',
+				}),
 				'game-wins',
 				'wonBoxSurfaceStyle',
 				{
@@ -1075,8 +1155,7 @@ describe('broadcastGraphicAuthoring', () => {
 				},
 			);
 			const item = itemOf(built, 'game-wins');
-			if (item.type !== 'game-wins')
-				throw new Error('expected a Game Wins Item');
+			if (item.type !== 'game-wins') throw new Error('expected a Game Wins Item');
 
 			expect(item.boxSurfaceStyle.fill).toEqual({ type: 'solid', color: '#123456' });
 			expect(item.wonBoxSurfaceStyle.glow).toMatchObject({ size: 12 });
@@ -1091,10 +1170,18 @@ describe('broadcastGraphicAuthoring', () => {
 			// be authoring a shape no write accepts.
 			const built = withKind('game-wins');
 
-			expect(applyGraphicSurfaceStyleEdit(built, 'game-wins', 'boxSurfaceStyle', { kind: 'present', present: false }))
-				.toEqual(built);
-			expect(applyGraphicSurfaceStyleEdit(built, 'game-wins', 'wonBoxSurfaceStyle', { kind: 'present', present: false }))
-				.toEqual(built);
+			expect(
+				applyGraphicSurfaceStyleEdit(built, 'game-wins', 'boxSurfaceStyle', {
+					kind: 'present',
+					present: false,
+				}),
+			).toEqual(built);
+			expect(
+				applyGraphicSurfaceStyleEdit(built, 'game-wins', 'wonBoxSurfaceStyle', {
+					kind: 'present',
+					present: false,
+				}),
+			).toEqual(built);
 		});
 	});
 });
@@ -1106,16 +1193,23 @@ describe('duplicating and reordering a Graphic Item', () => {
 	}
 
 	it('duplicates a Graphic Item directly in front of itself, offset and uniquely labelled', () => {
-		const built = addGraphicItem(addGraphicItem(graphic('a'), { kind: 'text', id: 't', ...CANVAS }).graphic, { kind: 'shape', id: 's', ...CANVAS }).graphic;
+		const built = addGraphicItem(
+			addGraphicItem(graphic('a'), { kind: 'text', id: 't', ...CANVAS }).graphic,
+			{ kind: 'shape', id: 's', ...CANVAS },
+		).graphic;
 		const original = built.items[0]!;
 
 		const { graphic: next, itemId } = duplicateGraphicItem(built, 't', {
 			nextId: ids(),
 		});
 
-		expect(next.items.map(item => item.id)).toEqual(['t', 'copy-1', 's']);
+		expect(next.items.map((item) => item.id)).toEqual(['t', 'copy-1', 's']);
 		expect(itemId).toBe('copy-1');
-		expect(next.items[1]).toMatchObject({ label: `${original.label} copy`, x: original.x + 20, y: original.y + 20 });
+		expect(next.items[1]).toMatchObject({
+			label: `${original.label} copy`,
+			x: original.x + 20,
+			y: original.y + 20,
+		});
 
 		const again = duplicateGraphicItem(next, 't', {
 			nextId: ids(),
@@ -1130,21 +1224,27 @@ describe('duplicating and reordering a Graphic Item', () => {
 			nextId: ids(),
 		});
 
-		const copy = next.items.find(item => item.id === itemId) as GraphicGroupItemConfig;
-		expect(copy.children.map(child => child.id)).toEqual(['copy-2']);
-		expect(group(next).children.map(child => child.id)).toEqual(['child']);
-		expect(new Set(flattenGraphicItems(next).map(item => item.label)).size).toBe(flattenGraphicItems(next).length);
+		const copy = next.items.find((item) => item.id === itemId) as GraphicGroupItemConfig;
+		expect(copy.children.map((child) => child.id)).toEqual(['copy-2']);
+		expect(group(next).children.map((child) => child.id)).toEqual(['child']);
+		expect(new Set(flattenGraphicItems(next).map((item) => item.label)).size).toBe(
+			flattenGraphicItems(next).length,
+		);
 	});
 
 	it('duplicates a locked Graphic Group unlocked, its children too (ADR-0063)', () => {
-		const built = patchGraphicItem(patchGraphicItem(withGroup(), 'cluster', { locked: true }), 'child', { locked: true });
+		const built = patchGraphicItem(
+			patchGraphicItem(withGroup(), 'cluster', { locked: true }),
+			'child',
+			{ locked: true },
+		);
 
 		const { graphic: next, itemId } = duplicateGraphicItem(built, 'cluster', {
 			nextId: ids(),
 		});
 
-		const copy = next.items.find(item => item.id === itemId) as GraphicGroupItemConfig;
-		expect([copy, ...copy.children].map(item => 'locked' in item)).toEqual([false, false]);
+		const copy = next.items.find((item) => item.id === itemId) as GraphicGroupItemConfig;
+		expect([copy, ...copy.children].map((item) => 'locked' in item)).toEqual([false, false]);
 		expect(group(next).locked).toBe(true);
 	});
 
@@ -1153,15 +1253,17 @@ describe('duplicating and reordering a Graphic Item', () => {
 			nextId: ids(),
 		});
 
-		expect(group(next).children.map(child => child.id)).toEqual(['child', itemId]);
+		expect(group(next).children.map((child) => child.id)).toEqual(['child', itemId]);
 	});
 
 	it('duplicates nothing for an unknown item', () => {
 		const built = withGroup();
 
-		expect(duplicateGraphicItem(built, 'missing', {
-			nextId: ids(),
-		})).toEqual({ graphic: built, itemId: '' });
+		expect(
+			duplicateGraphicItem(built, 'missing', {
+				nextId: ids(),
+			}),
+		).toEqual({ graphic: built, itemId: '' });
 	});
 
 	it('moves a Graphic Item to the front or the back of its own sibling list', () => {
@@ -1169,8 +1271,16 @@ describe('duplicating and reordering a Graphic Item', () => {
 		for (const id of ['one', 'two', 'three'])
 			built = addGraphicItem(built, { kind: 'shape', id, ...CANVAS }).graphic;
 
-		expect(moveGraphicItemToEdge(built, 'one', 'front').items.map(item => item.id)).toEqual(['two', 'three', 'one']);
-		expect(moveGraphicItemToEdge(built, 'three', 'back').items.map(item => item.id)).toEqual(['three', 'one', 'two']);
+		expect(moveGraphicItemToEdge(built, 'one', 'front').items.map((item) => item.id)).toEqual([
+			'two',
+			'three',
+			'one',
+		]);
+		expect(moveGraphicItemToEdge(built, 'three', 'back').items.map((item) => item.id)).toEqual([
+			'three',
+			'one',
+			'two',
+		]);
 		expect(moveGraphicItemToEdge(built, 'three', 'front')).toBe(built);
 	});
 });
@@ -1206,30 +1316,18 @@ describe('placing a Graphic Item in or out of a Graphic Group (#741)', () => {
 	}
 
 	function childIds(built: BroadcastGraphicConfig, groupId: string) {
-		const found = built.items.find(item => item.id === groupId);
-		return found?.type === 'group'
-			? found.children.map(child => child.id)
-			: [];
+		const found = built.items.find((item) => item.id === groupId);
+		return found?.type === 'group' ? found.children.map((child) => child.id) : [];
 	}
 
 	it.each([
-		[
-			'to the front',
-			2,
-			['box', 'row', 'lone'],
-		],
-		[
-			'to the back',
-			0,
-			['lone', 'box', 'row'],
-		],
-		[
-			'past the front, clamped',
-			99,
-			['box', 'row', 'lone'],
-		],
+		['to the front', 2, ['box', 'row', 'lone']],
+		['to the back', 0, ['lone', 'box', 'row']],
+		['past the front, clamped', 99, ['box', 'row', 'lone']],
 	])('reorders a Graphic Item within its own sibling list %s', (_case, index, order) => {
-		expect(placeGraphicItem(stage(), 'lone', { groupId: null, index }).items.map(item => item.id)).toEqual(order);
+		expect(
+			placeGraphicItem(stage(), 'lone', { groupId: null, index }).items.map((item) => item.id),
+		).toEqual(order);
 	});
 
 	it('answers the same graphic when the item already sits there, or is unknown', () => {
@@ -1259,33 +1357,30 @@ describe('placing a Graphic Item in or out of a Graphic Group (#741)', () => {
 			parent: null,
 			item: { x: 300, y: 200 },
 		});
-		expect(out.items.map(item => item.id)).toEqual(['lone', 'box', 'row']);
+		expect(out.items.map((item) => item.id)).toEqual(['lone', 'box', 'row']);
 	});
 
 	// Top-left: unturning (300, 200) a quarter about the box's corner (100, 50) gives (250, -150).
 	// Centre: the item's centre (320, 210) unturned about the box's centre (300, 200) gives (310, 180).
 	it.each([
-		[
-			'top-left',
-			{ x: 140, y: -210 },
-		],
-		[
-			'center',
-			{ x: 180, y: 110 },
-		],
-	] as const)('keeps an item drawn where it was across a rotated canvas group, turned against the group, both anchored %s', (anchor, rebased) => {
-		let built = patchGraphicItem(stage({ boxRotation: 90 }), 'box', { anchor });
-		built = patchGraphicItem(built, 'lone', { anchor });
-		const into = placeGraphicItem(built, 'lone', { groupId: 'box', index: 1 });
+		['top-left', { x: 140, y: -210 }],
+		['center', { x: 180, y: 110 }],
+	] as const)(
+		'keeps an item drawn where it was across a rotated canvas group, turned against the group, both anchored %s',
+		(anchor, rebased) => {
+			let built = patchGraphicItem(stage({ boxRotation: 90 }), 'box', { anchor });
+			built = patchGraphicItem(built, 'lone', { anchor });
+			const into = placeGraphicItem(built, 'lone', { groupId: 'box', index: 1 });
 
-		expect(located(into, 'lone').item).toMatchObject({ ...rebased, rotation: -90 });
+			expect(located(into, 'lone').item).toMatchObject({ ...rebased, rotation: -90 });
 
-		const out = located(placeGraphicItem(into, 'lone', { groupId: null, index: 0 }), 'lone').item;
-		expect(out).toMatchObject({ x: 300, y: 200 });
-		expect(out.rotation ?? 0).toBe(0);
-	});
+			const out = located(placeGraphicItem(into, 'lone', { groupId: null, index: 0 }), 'lone').item;
+			expect(out).toMatchObject({ x: 300, y: 200 });
+			expect(out.rotation ?? 0).toBe(0);
+		},
+	);
 
-	it('takes a child out in canvas space, leaving its group sizing and its group\'s stagger behind', () => {
+	it("takes a child out in canvas space, leaving its group sizing and its group's stagger behind", () => {
 		let built = patchGraphicGroupChildSizing(stage(), 'inner', { mode: 'fill' });
 		built = patchGraphicItemAnimationStagger(built, 'box', 'enter', {
 			itemIds: ['inner'],
@@ -1298,8 +1393,10 @@ describe('placing a Graphic Item in or out of a Graphic Group (#741)', () => {
 			item: { x: 115, y: 66 },
 		});
 		expect(located(out, 'inner').item.sizing).toBeUndefined();
-		expect((out.items.find(item => item.id === 'box') as GraphicGroupItemConfig).animation?.stagger).toBeUndefined();
-		expect(out.items.map(item => item.id)).toEqual(['lone', 'box', 'row', 'inner']);
+		expect(
+			(out.items.find((item) => item.id === 'box') as GraphicGroupItemConfig).animation?.stagger,
+		).toBeUndefined();
+		expect(out.items.map((item) => item.id)).toEqual(['lone', 'box', 'row', 'inner']);
 	});
 
 	// E14: a row or column child has no rotation, so a rotated item is refused rather than straightened.
@@ -1311,50 +1408,18 @@ describe('placing a Graphic Item in or out of a Graphic Group (#741)', () => {
 			'row',
 			'rotated-into-arranged-group',
 		],
-		[
-			'a rotated item into a canvas group',
-			{ loneRotation: 15 },
-			'lone',
-			'box',
-			null,
-		],
-		[
-			'an unrotated item into a row group',
-			{},
-			'lone',
-			'row',
-			null,
-		],
-		[
-			'a whole turn into a row group',
-			{ loneRotation: 360 },
-			'lone',
-			'row',
-			null,
-		],
-		[
-			'a group into a group',
-			{},
-			'box',
-			'row',
-			'group-into-group',
-		],
-		[
-			'an item into something not a group',
-			{},
-			'inner',
-			'lone',
-			'not-a-group',
-		],
+		['a rotated item into a canvas group', { loneRotation: 15 }, 'lone', 'box', null],
+		['an unrotated item into a row group', {}, 'lone', 'row', null],
+		['a whole turn into a row group', { loneRotation: 360 }, 'lone', 'row', null],
+		['a group into a group', {}, 'box', 'row', 'group-into-group'],
+		['an item into something not a group', {}, 'inner', 'lone', 'not-a-group'],
 	] as const)('refuses or admits %s', (_case, options, itemId, groupId, refusal) => {
 		const built = stage(options);
 
 		expect(graphicItemPlacementRefusal(built, itemId, groupId)).toBe(refusal);
 		const placed = placeGraphicItem(built, itemId, { groupId, index: 0 });
-		if (refusal)
-			expect(placed).toBe(built);
-		else
-			expect(located(placed, itemId).parent).toBe(groupId);
+		if (refusal) expect(placed).toBe(built);
+		else expect(located(placed, itemId).parent).toBe(groupId);
 	});
 });
 
@@ -1377,26 +1442,26 @@ describe('grouping and ungrouping Graphic Items (#920)', () => {
 			width: 100,
 			height: 50,
 		});
-		for (const [id, patch] of Object.entries(patches))
-			built = patchGraphicItem(built, id, patch);
+		for (const [id, patch] of Object.entries(patches)) built = patchGraphicItem(built, id, patch);
 		return built;
 	}
 
 	function groupOf(built: BroadcastGraphicConfig, id: string): GraphicGroupItemConfig {
-		const found = built.items.find(item => item.id === id);
-		if (found?.type !== 'group')
-			throw new Error('expected a Graphic Group');
+		const found = built.items.find((item) => item.id === id);
+		if (found?.type !== 'group') throw new Error('expected a Graphic Group');
 		return found;
 	}
 
 	function rectOf(item: GraphicItemConfig | GraphicGroupChildConfig | undefined) {
-		return item && {
-			x: item.x,
-			y: item.y,
-			width: item.width,
-			height: item.height,
-			rotation: item.rotation ?? 0,
-		};
+		return (
+			item && {
+				x: item.x,
+				y: item.y,
+				width: item.width,
+				height: item.height,
+				rotation: item.rotation ?? 0,
+			}
+		);
 	}
 
 	// E11: the box is the union of what the members draw, and children keep where they are drawn.
@@ -1455,32 +1520,38 @@ describe('grouping and ungrouping Graphic Items (#920)', () => {
 				},
 			},
 		],
-	] as const)('wraps %s in a canvas group drawn where they were', (_case, patches, box, children) => {
-		const grouped = groupGraphicItems(stage(patches as Record<string, Partial<GraphicItemConfig>>), ['front', 'back'], { id: 'pack' });
+	] as const)(
+		'wraps %s in a canvas group drawn where they were',
+		(_case, patches, box, children) => {
+			const grouped = groupGraphicItems(
+				stage(patches as Record<string, Partial<GraphicItemConfig>>),
+				['front', 'back'],
+				{ id: 'pack' },
+			);
 
-		expect(grouped.itemId).toBe('pack');
-		expect(grouped.graphic.items.map(item => item.id)).toEqual(['mid', 'pack']);
-		const pack = groupOf(grouped.graphic, 'pack');
-		expect(pack).toMatchObject({
-			arrangement: 'canvas',
-			padding: 0,
-			clip: false,
-			visible: true,
-			...box,
-		});
-		expect(pack.surfaceStyle).toBeUndefined();
-		expect(pack.children.map(child => child.id)).toEqual(['back', 'front']);
-		expect(Object.fromEntries(pack.children.map(child => [
-			child.id,
-			rectOf(child),
-		]))).toEqual(children);
-	});
+			expect(grouped.itemId).toBe('pack');
+			expect(grouped.graphic.items.map((item) => item.id)).toEqual(['mid', 'pack']);
+			const pack = groupOf(grouped.graphic, 'pack');
+			expect(pack).toMatchObject({
+				arrangement: 'canvas',
+				padding: 0,
+				clip: false,
+				visible: true,
+				...box,
+			});
+			expect(pack.surfaceStyle).toBeUndefined();
+			expect(pack.children.map((child) => child.id)).toEqual(['back', 'front']);
+			expect(Object.fromEntries(pack.children.map((child) => [child.id, rectOf(child)]))).toEqual(
+				children,
+			);
+		},
+	);
 
-	it('takes the frontmost member\'s slot among the layers it leaves', () => {
+	it("takes the frontmost member's slot among the layers it leaves", () => {
 		const grouped = groupGraphicItems(stage(), ['back', 'mid'], { id: 'pack' }).graphic;
 
-		expect(grouped.items.map(item => item.id)).toEqual(['pack', 'front']);
-		expect(groupOf(grouped, 'pack').children.map(child => child.id)).toEqual(['back', 'mid']);
+		expect(grouped.items.map((item) => item.id)).toEqual(['pack', 'front']);
+		expect(groupOf(grouped, 'pack').children.map((child) => child.id)).toEqual(['back', 'mid']);
 	});
 
 	// E9: Graphic Groups do not nest, so only two or more top-level non-group items are grouped.
@@ -1488,53 +1559,25 @@ describe('grouping and ungrouping Graphic Items (#920)', () => {
 	it.each([
 		[MAX_GRAPHIC_GROUP_CHILDREN, null],
 		[MAX_GRAPHIC_GROUP_CHILDREN + 1, 'too-many'],
-	] as const)('refuses or admits grouping %i items against the group child cap', (count, refusal) => {
-		let built = graphic('a');
-		const ids = Array.from({ length: count }, (_, index) => `item-${index}`);
-		for (const id of ids)
-			built = addGraphicItem(built, { kind: 'shape', id, ...CANVAS }).graphic;
+	] as const)(
+		'refuses or admits grouping %i items against the group child cap',
+		(count, refusal) => {
+			let built = graphic('a');
+			const ids = Array.from({ length: count }, (_, index) => `item-${index}`);
+			for (const id of ids) built = addGraphicItem(built, { kind: 'shape', id, ...CANVAS }).graphic;
 
-		expect(graphicItemsGroupRefusal(built, ids)).toBe(refusal);
-	});
+			expect(graphicItemsGroupRefusal(built, ids)).toBe(refusal);
+		},
+	);
 
 	// Rows marked `packed` group `back` and `mid` into `pack` first.
 	it.each([
-		[
-			'one item',
-			false,
-			['back'],
-			'too-few',
-		],
-		[
-			'one item named twice',
-			false,
-			['back', 'back'],
-			'too-few',
-		],
-		[
-			'an item and an unknown id',
-			false,
-			['back', 'missing'],
-			'too-few',
-		],
-		[
-			'a group with an item',
-			true,
-			['pack', 'front'],
-			'group-into-group',
-		],
-		[
-			'a group child with an item',
-			true,
-			['back', 'front'],
-			'group-child',
-		],
-		[
-			'two top-level items',
-			false,
-			['mid', 'front'],
-			null,
-		],
+		['one item', false, ['back'], 'too-few'],
+		['one item named twice', false, ['back', 'back'], 'too-few'],
+		['an item and an unknown id', false, ['back', 'missing'], 'too-few'],
+		['a group with an item', true, ['pack', 'front'], 'group-into-group'],
+		['a group child with an item', true, ['back', 'front'], 'group-child'],
+		['two top-level items', false, ['mid', 'front'], null],
 	] as const)('refuses or admits grouping %s', (_case, packed, itemIds, refusal) => {
 		const built = packed
 			? groupGraphicItems(stage(), ['back', 'mid'], { id: 'pack' }).graphic
@@ -1542,14 +1585,15 @@ describe('grouping and ungrouping Graphic Items (#920)', () => {
 
 		expect(graphicItemsGroupRefusal(built, itemIds)).toBe(refusal);
 		const grouped = groupGraphicItems(built, itemIds, { id: 'next' });
-		if (refusal)
-			expect(grouped.graphic).toBe(built);
-		else
-			expect(grouped.itemId).toBe('next');
+		if (refusal) expect(grouped.graphic).toBe(built);
+		else expect(grouped.itemId).toBe('next');
 	});
 
 	/** Back to front: shape `lone`, then group `pack` holding shapes `a`, `b` and `c`, then shape `top`. */
-	function packed(groupPatch: Partial<GraphicGroupItemConfig>, children: Record<'a' | 'b' | 'c', Partial<GraphicGroupChildConfig>>) {
+	function packed(
+		groupPatch: Partial<GraphicGroupItemConfig>,
+		children: Record<'a' | 'b' | 'c', Partial<GraphicGroupChildConfig>>,
+	) {
 		let built = addGraphicItem(graphic('a'), { kind: 'shape', id: 'lone', ...CANVAS }).graphic;
 		built = addGraphicItem(built, { kind: 'group', id: 'pack', ...CANVAS }).graphic;
 		for (const id of ['a', 'b', 'c'] as const) {
@@ -1800,27 +1844,36 @@ describe('grouping and ungrouping Graphic Items (#920)', () => {
 			},
 		],
 	] as const)('ungroups %s without moving a child', (_case, groupPatch, children, landed) => {
-		const built = packed(groupPatch as Partial<GraphicGroupItemConfig>, children as Record<'a' | 'b' | 'c', Partial<GraphicGroupChildConfig>>);
+		const built = packed(
+			groupPatch as Partial<GraphicGroupItemConfig>,
+			children as Record<'a' | 'b' | 'c', Partial<GraphicGroupChildConfig>>,
+		);
 
 		const ungrouped = ungroupGraphicGroup(built, 'pack');
 
 		expect(ungrouped.itemIds).toEqual(['a', 'b', 'c']);
-		expect(ungrouped.graphic.items.map(item => item.id)).toEqual(['lone', 'a', 'b', 'c', 'top']);
-		expect(Object.fromEntries(['a', 'b', 'c'].map(id => [
-			id,
-			rectOf(findGraphicItem(ungrouped.graphic, id)?.item),
-		]))).toEqual(landed);
-		expect(ungrouped.graphic.items.some(item => item.sizing)).toBe(false);
+		expect(ungrouped.graphic.items.map((item) => item.id)).toEqual(['lone', 'a', 'b', 'c', 'top']);
+		expect(
+			Object.fromEntries(
+				['a', 'b', 'c'].map((id) => [id, rectOf(findGraphicItem(ungrouped.graphic, id)?.item)]),
+			),
+		).toEqual(landed);
+		expect(ungrouped.graphic.items.some((item) => item.sizing)).toBe(false);
 	});
 
 	it('ungroups what it grouped back where it was drawn', () => {
 		const built = stage({
 			back: { anchor: 'center', rotation: 90 },
 		});
-		const ungrouped = ungroupGraphicGroup(groupGraphicItems(built, ['back', 'front'], { id: 'pack' }).graphic, 'pack').graphic;
+		const ungrouped = ungroupGraphicGroup(
+			groupGraphicItems(built, ['back', 'front'], { id: 'pack' }).graphic,
+			'pack',
+		).graphic;
 
-		expect(ungrouped.items.map(item => item.id)).toEqual(['mid', 'back', 'front']);
-		expect(ungrouped.items.map(rectOf)).toEqual(['mid', 'back', 'front'].map(id => rectOf(findGraphicItem(built, id)?.item)));
+		expect(ungrouped.items.map((item) => item.id)).toEqual(['mid', 'back', 'front']);
+		expect(ungrouped.items.map(rectOf)).toEqual(
+			['mid', 'back', 'front'].map((id) => rectOf(findGraphicItem(built, id)?.item)),
+		);
 	});
 
 	// E12: what a child inherited is baked in; the group's clipping and animation go with it.
@@ -1828,7 +1881,7 @@ describe('grouping and ungrouping Graphic Items (#920)', () => {
 	// Hidden row: 380 inner less `kid`'s 50 leaves 330, packed to the end of a row padded 10 at (100, 50).
 	it.each([
 		[
-			'a Text Graphic Item holding no surface takes the group\'s default, bound as it was',
+			"a Text Graphic Item holding no surface takes the group's default, bound as it was",
 			'text',
 			{},
 			null,
@@ -1848,15 +1901,9 @@ describe('grouping and ungrouping Graphic Items (#920)', () => {
 				surfaceStyle: { fillOpacity: 0.25 },
 			},
 		],
+		['a Media Graphic Item paints no surface, so takes none', 'media', {}, null, { visible: true }],
 		[
-			'a Media Graphic Item paints no surface, so takes none',
-			'media',
-			{},
-			null,
-			{ visible: true },
-		],
-		[
-			'a hidden row group\'s child is hidden, where the row laid it out',
+			"a hidden row group's child is hidden, where the row laid it out",
 			'shape',
 			{
 				arrangement: 'row',
@@ -1880,7 +1927,7 @@ describe('grouping and ungrouping Graphic Items (#920)', () => {
 			},
 		],
 		[
-			'a locked group\'s child is locked (ADR-0063)',
+			"a locked group's child is locked (ADR-0063)",
 			'shape',
 			{ locked: true },
 			null,
@@ -1890,8 +1937,7 @@ describe('grouping and ungrouping Graphic Items (#920)', () => {
 		let built = addGraphicItem(graphic('a'), { kind: 'group', id: 'pack', ...CANVAS }).graphic;
 		built = addGraphicGroupChild(built, { kind, groupId: 'pack', id: 'kid' }).graphic;
 		built = patchGraphicItem(built, 'kid', { x: 0, y: 0, width: 50, height: 20 });
-		if (own !== null)
-			built = patchGraphicSurfaceStyle(built, 'kid', { fillOpacity: own });
+		if (own !== null) built = patchGraphicSurfaceStyle(built, 'kid', { fillOpacity: own });
 		built = patchGraphicGroupDefaultChildSurfaceStyle(built, 'pack', { fillOpacity: 0.5 });
 		built = patchGraphicItem(built, 'pack', {
 			arrangement: 'canvas',
@@ -1905,7 +1951,7 @@ describe('grouping and ungrouping Graphic Items (#920)', () => {
 
 		const ungrouped = ungroupGraphicGroup(built, 'pack').graphic;
 
-		expect(ungrouped.items.map(item => item.id)).toEqual(['kid']);
+		expect(ungrouped.items.map((item) => item.id)).toEqual(['kid']);
 		expect(ungrouped.items[0]).toMatchObject(baked);
 		expect('surfaceStyle' in ungrouped.items[0]!).toBe(kind !== 'media');
 		expect(ungrouped.items[0]!.animation).toBeUndefined();
@@ -1914,7 +1960,7 @@ describe('grouping and ungrouping Graphic Items (#920)', () => {
 	it.each([
 		['a Graphic Item that is not a group', 'lone'],
 		['an unknown id', 'missing'],
-		['a Social Profile Projection\'s Presentation Group', 'pack'],
+		["a Social Profile Projection's Presentation Group", 'pack'],
 	])('answers the same graphic ungrouping %s', (_case, itemId) => {
 		let built = packed({ arrangement: 'canvas' }, { a: {}, b: {}, c: {} });
 		built = {

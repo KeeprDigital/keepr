@@ -4,14 +4,18 @@ const mockGetRequestHeader = vi.fn();
 const mockGetRequestWebStream = vi.fn();
 const mockGetRouteRules = vi.fn();
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('getRequestHeader', mockGetRequestHeader);
 vi.stubGlobal('getRequestWebStream', mockGetRequestWebStream);
 vi.stubGlobal('getRouteRules', mockGetRouteRules);
-vi.stubGlobal('createError', (input: { statusCode: number; statusMessage: string; message: string }) => Object.assign(
-	new Error(input.message),
-	input,
-));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; statusMessage: string; message: string }) =>
+		Object.assign(new Error(input.message), input),
+);
 
 const handler = (await import('~~/server/middleware/request-body-limit')).default;
 
@@ -33,22 +37,26 @@ describe('request body limit middleware', () => {
 	});
 
 	it('rejects an unknown-length body as soon as streamed bytes cross the limit', async () => {
-		mockGetRequestWebStream.mockReturnValue(new ReadableStream<Uint8Array>({
-			start(controller) {
-				controller.enqueue(new Uint8Array(1024 * 1024));
-				controller.enqueue(new Uint8Array(1));
-				controller.close();
-			},
-		}));
+		mockGetRequestWebStream.mockReturnValue(
+			new ReadableStream<Uint8Array>({
+				start(controller) {
+					controller.enqueue(new Uint8Array(1024 * 1024));
+					controller.enqueue(new Uint8Array(1));
+					controller.close();
+				},
+			}),
+		);
 		const event = { method: 'PATCH' } as any;
 
 		handler(event);
 		const reader = (event._requestBody as ReadableStream<Uint8Array>).getReader();
-		await expect((async () => {
-			while (!(await reader.read()).done) {
-				// Drain until the limiting transform rejects.
-			}
-		})()).rejects.toMatchObject({ statusCode: 413 });
+		await expect(
+			(async () => {
+				while (!(await reader.read()).done) {
+					// Drain until the limiting transform rejects.
+				}
+			})(),
+		).rejects.toMatchObject({ statusCode: 413 });
 	});
 
 	it('leaves bodyless read requests untouched', () => {

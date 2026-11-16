@@ -10,37 +10,33 @@ describe.each([
 			gameData: { type: 'mtg', deckName: 'Burn' },
 		},
 	],
-	[
-		'updatePlayerSchema',
-		updatePlayerSchema,
-		{ name: 'Updated Name' },
-	],
+	['updatePlayerSchema', updatePlayerSchema, { name: 'Updated Name' }],
 ] as const)('%s', (_name, schema, manual) => {
 	it.each([
-		[
-			'externalId',
-			{ externalId: 'forged-id' },
-		],
-		[
-			'externalSource',
-			{ externalSource: 'melee' },
-		],
+		['externalId', { externalId: 'forged-id' }],
+		['externalSource', { externalSource: 'melee' }],
 	])('accepts a manual write but refuses the server-managed %s', (_field, managed) => {
 		expect(schema.safeParse(manual).success).toBe(true);
-		expect(schema.safeParse({
-			...manual,
-			...managed,
-		}).success).toBe(false);
+		expect(
+			schema.safeParse({
+				...manual,
+				...managed,
+			}).success,
+		).toBe(false);
 	});
 });
 
 describe('updatePlayerSchema', () => {
 	it('refuses legacy player-level deck review state', () => {
-		expect(updatePlayerSchema.safeParse({
-			gameData: { type: 'mtg', deckName: 'Control' },
-		}).success).toBe(true);
-		expect(updatePlayerSchema.safeParse({
-			gameData: { type: 'mtg', deckName: 'Control', deckReviewed: true },
-		}).success).toBe(false);
+		expect(
+			updatePlayerSchema.safeParse({
+				gameData: { type: 'mtg', deckName: 'Control' },
+			}).success,
+		).toBe(true);
+		expect(
+			updatePlayerSchema.safeParse({
+				gameData: { type: 'mtg', deckName: 'Control', deckReviewed: true },
+			}).success,
+		).toBe(false);
 	});
 });

@@ -1,9 +1,5 @@
 import type { EventDataLoadOptions } from '~/modules/event-data/lifecycle';
-import type {
-	CreateMatchInput,
-	Match,
-	UpdateMatchInput,
-} from '~/types';
+import type { CreateMatchInput, Match, UpdateMatchInput } from '~/types';
 import type { MessageData } from '~/types/realtime';
 import { useEventDataLifecycle } from '~/modules/event-data/lifecycle';
 
@@ -14,7 +10,7 @@ export const useMatchStore = defineStore('match', () => {
 		repository: matchRepo,
 		entityLabel: 'Match',
 		eventFilter: (match, currentEventId) => match.eventId === currentEventId,
-		remoteScopeFilter: match => !loadedRoundId.value || match.roundId === loadedRoundId.value,
+		remoteScopeFilter: (match) => !loadedRoundId.value || match.roundId === loadedRoundId.value,
 		onReset: () => {
 			loadedRoundId.value = null;
 		},
@@ -25,7 +21,11 @@ export const useMatchStore = defineStore('match', () => {
 	const isLoaded = lifecycle.isLoaded;
 	const currentEventId = lifecycle.currentEventId;
 
-	async function loadMatchesByRoundId(eventId: number, roundId: number, load?: EventDataLoadOptions) {
+	async function loadMatchesByRoundId(
+		eventId: number,
+		roundId: number,
+		load?: EventDataLoadOptions,
+	) {
 		loadedRoundId.value = roundId;
 		return lifecycle.loadFrom(eventId, () => matchRepo.list(eventId, roundId), load);
 	}
@@ -46,9 +46,8 @@ export const useMatchStore = defineStore('match', () => {
 	 */
 	function getFeatureMatchLabel(matchId: number): string | null {
 		const featureMatchStore = useFeatureMatchStore();
-		const idx = featureMatchStore.featureMatches.findIndex(fm => fm.matchId === matchId);
-		if (idx === -1)
-			return null;
+		const idx = featureMatchStore.featureMatches.findIndex((fm) => fm.matchId === matchId);
+		if (idx === -1) return null;
 		return `Match ${idx + 1}`;
 	}
 
@@ -65,13 +64,12 @@ export const useMatchStore = defineStore('match', () => {
 	}
 
 	/** Reloads the loaded Round's Matches when a message says that Round's Matches changed. */
-	async function applyRemoteMatchesRefreshed(data: Pick<MessageData<'round:matchesRefreshed'>, 'eventId' | 'roundId'>) {
-		if (data.eventId !== currentEventId.value)
-			return;
-		if (loadedRoundId.value !== data.roundId)
-			return;
-		if (!currentEventId.value)
-			return;
+	async function applyRemoteMatchesRefreshed(
+		data: Pick<MessageData<'round:matchesRefreshed'>, 'eventId' | 'roundId'>,
+	) {
+		if (data.eventId !== currentEventId.value) return;
+		if (loadedRoundId.value !== data.roundId) return;
+		if (!currentEventId.value) return;
 
 		await loadMatchesByRoundId(currentEventId.value, data.roundId);
 	}

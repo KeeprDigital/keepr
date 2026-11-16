@@ -6,9 +6,7 @@ import { defineComponent, h, nextTick, ref } from 'vue';
 const clockSynchronized = ref(false);
 const session = { id: 55, sequence: 1 };
 const sessionStore = {
-	sessions: new Map([
-		[7, session],
-	]),
+	sessions: new Map([[7, session]]),
 	get clockSynchronized() {
 		return clockSynchronized.value;
 	},
@@ -27,10 +25,13 @@ describe('useBroadcastGraphicsPlayoutClock', () => {
 		clockSynchronized.value = false;
 		nextFrame = undefined;
 		vi.clearAllMocks();
-		vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
-			nextFrame = callback;
-			return 17;
-		}));
+		vi.stubGlobal(
+			'requestAnimationFrame',
+			vi.fn((callback: FrameRequestCallback) => {
+				nextFrame = callback;
+				return 17;
+			}),
+		);
 		vi.stubGlobal('cancelAnimationFrame', vi.fn());
 		wrapper = undefined;
 	});
@@ -41,12 +42,14 @@ describe('useBroadcastGraphicsPlayoutClock', () => {
 	});
 
 	it('restarts projection frames when synchronized server time recovers without a session command', async () => {
-		wrapper = mount(defineComponent({
-			setup() {
-				useBroadcastGraphicsPlayoutClock(7, []);
-				return () => h('div');
-			},
-		}));
+		wrapper = mount(
+			defineComponent({
+				setup() {
+					useBroadcastGraphicsPlayoutClock(7, []);
+					return () => h('div');
+				},
+			}),
+		);
 		await nextTick();
 		nextFrame?.(1_000_000);
 		expect(cancelAnimationFrame).toHaveBeenCalledWith(17);
@@ -60,31 +63,31 @@ describe('useBroadcastGraphicsPlayoutClock', () => {
 
 	// A stored graphic or channel can start motion with no session command: a
 	// looping recipe saved onto a graphic resting on air.
-	it.each([
-		{ changed: 'graphics' },
-		{ changed: 'channels' },
-	] as const)('advances again when the stored $changed change', async ({ changed }) => {
-		const stored = {
-			graphics: ref<any[]>([]),
-			channels: ref<any[]>([]),
-		};
-		let now!: Readonly<{ value: number }>;
-		sessionStore.serverNow.mockReturnValue(1_000_000);
-		wrapper = mount(defineComponent({
-			setup() {
-				now = useBroadcastGraphicsPlayoutClock(7, stored.graphics, stored.channels);
-				return () => h('div');
-			},
-		}));
-		await nextTick();
-		nextFrame?.(1_000_000);
-		sessionStore.serverNow.mockReturnValue(1_000_500);
+	it.each([{ changed: 'graphics' }, { changed: 'channels' }] as const)(
+		'advances again when the stored $changed change',
+		async ({ changed }) => {
+			const stored = {
+				graphics: ref<any[]>([]),
+				channels: ref<any[]>([]),
+			};
+			let now!: Readonly<{ value: number }>;
+			sessionStore.serverNow.mockReturnValue(1_000_000);
+			wrapper = mount(
+				defineComponent({
+					setup() {
+						now = useBroadcastGraphicsPlayoutClock(7, stored.graphics, stored.channels);
+						return () => h('div');
+					},
+				}),
+			);
+			await nextTick();
+			nextFrame?.(1_000_000);
+			sessionStore.serverNow.mockReturnValue(1_000_500);
 
-		stored[changed].value = [
-			{ id: 'lower-third' },
-		];
-		await nextTick();
+			stored[changed].value = [{ id: 'lower-third' }];
+			await nextTick();
 
-		expect(now.value).toBe(1_000_500);
-	});
+			expect(now.value).toBe(1_000_500);
+		},
+	);
 });

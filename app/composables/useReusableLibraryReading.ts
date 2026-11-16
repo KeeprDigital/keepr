@@ -95,13 +95,10 @@ export function useReusableLibraryReading<Entry>(options: {
 		loading.value = true;
 		try {
 			entries.value = await options.read();
-			if (!keepError)
-				error.value = null;
-		}
-		catch (caught) {
+			if (!keepError) error.value = null;
+		} catch (caught) {
 			error.value = failureMessage(caught);
-		}
-		finally {
+		} finally {
 			loading.value = false;
 		}
 	}

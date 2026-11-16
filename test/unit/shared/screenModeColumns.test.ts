@@ -31,7 +31,7 @@ describe('withEveryColumn', () => {
 	});
 
 	it('returns a complete list as it is', () => {
-		const complete = defaults.map(column => ({ ...column, visible: false }));
+		const complete = defaults.map((column) => ({ ...column, visible: false }));
 
 		expect(withEveryColumn(complete, defaults)).toBe(complete);
 	});
@@ -52,7 +52,9 @@ describe('player History columns', () => {
 	it('accept a stored list of the original four, and one holding every column', () => {
 		const schema = playerHistoryModeConfigContract.schema.shape.columns;
 
-		expect(schema.safeParse(playerHistoryModeConfigContract.defaults.columns.slice(0, 4)).success).toBe(true);
+		expect(
+			schema.safeParse(playerHistoryModeConfigContract.defaults.columns.slice(0, 4)).success,
+		).toBe(true);
 		expect(schema.safeParse(playerHistoryModeConfigContract.defaults.columns).success).toBe(true);
 	});
 });

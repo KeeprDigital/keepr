@@ -15,13 +15,13 @@ const { initialLoading, initialError, retry } = useEventPageLoading([
 		consumes: 'featureMatchSlots',
 		isLoaded: () => featureMatchStore.isLoaded,
 		isLoading: () => featureMatchStore.loading,
-		load: id => featureMatchStore.loadFeatureMatchesByEventId(id, { failure: 'raise' }),
+		load: (id) => featureMatchStore.loadFeatureMatchesByEventId(id, { failure: 'raise' }),
 	},
 	{
 		consumes: 'screens',
 		isLoaded: () => screenStore.isLoaded,
 		isLoading: () => screenStore.loading,
-		load: id => screenStore.loadScreensByEventId(id, { failure: 'raise' }),
+		load: (id) => screenStore.loadScreensByEventId(id, { failure: 'raise' }),
 	},
 ]);
 </script>
@@ -39,7 +39,7 @@ const { initialLoading, initialError, retry } = useEventPageLoading([
 			:title="featureMatchStateStore.error"
 			color="error"
 			class="mb-4"
-			:close-button="{ onClick: () => featureMatchStateStore.error = null }"
+			:close-button="{ onClick: () => (featureMatchStateStore.error = null) }"
 		/>
 
 		<FeatureMatchList

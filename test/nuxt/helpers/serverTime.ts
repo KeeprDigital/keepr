@@ -19,11 +19,12 @@ interface FakeServerTime {
  */
 export function fakeServerTime(own: () => Partial<FakeServerTime> = () => ({})) {
 	let serverTime: FakeServerTime | undefined;
-	return () => serverTime ??= {
-		isSynced: ref(true),
-		serverTimeOffset: ref(0),
-		getServerTime: () => Date.now(),
-		deviceDelayFor: serverMs => serverMs,
-		...own(),
-	};
+	return () =>
+		(serverTime ??= {
+			isSynced: ref(true),
+			serverTimeOffset: ref(0),
+			getServerTime: () => Date.now(),
+			deviceDelayFor: (serverMs) => serverMs,
+			...own(),
+		});
 }

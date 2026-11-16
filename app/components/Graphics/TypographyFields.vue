@@ -36,23 +36,32 @@ import {
  *   style; letter spacing is in em, and the bounds are the token's. A cleared
  *   field emits nothing, since a token names every value.
  */
-type TypographyFieldKey = 'fontSize' | 'fontWeight' | 'letterSpacing' | 'lineHeight' | 'fontStyle' | 'textTransform';
+type TypographyFieldKey =
+	| 'fontSize'
+	| 'fontWeight'
+	| 'letterSpacing'
+	| 'lineHeight'
+	| 'fontStyle'
+	| 'textTransform';
 type TypographyFieldValues = Pick<GraphicTypography, TypographyFieldKey>;
 type NumericKey = 'fontSize' | 'fontWeight' | 'letterSpacing' | 'lineHeight';
 
-const props = withDefaults(defineProps<{
-	typography: Partial<TypographyFieldValues>;
-	variant?: 'base' | 'placeholder' | 'theme';
-	disabled?: boolean;
-	size?: 'sm' | 'xs';
-	/** Distinguishes this control's fields from another typography control on the panel. */
-	testIdPrefix: string;
-	/** Qualifies accessible names where one form shows several typographies. */
-	ariaLabelPrefix?: string;
-}>(), {
-	variant: 'base',
-	size: 'sm',
-});
+const props = withDefaults(
+	defineProps<{
+		typography: Partial<TypographyFieldValues>;
+		variant?: 'base' | 'placeholder' | 'theme';
+		disabled?: boolean;
+		size?: 'sm' | 'xs';
+		/** Distinguishes this control's fields from another typography control on the panel. */
+		testIdPrefix: string;
+		/** Qualifies accessible names where one form shows several typographies. */
+		ariaLabelPrefix?: string;
+	}>(),
+	{
+		variant: 'base',
+		size: 'sm',
+	},
+);
 
 const emit = defineEmits<{ update: [patch: Partial<TypographyFieldValues>] }>();
 
@@ -140,7 +149,7 @@ const numberFields = computed(() => {
 			return THEME_FIELDS;
 		// Line height lays out the whole block, so a placeholder's run cannot set it.
 		case 'placeholder':
-			return GRAPHIC_FIELDS.filter(field => field.key !== 'lineHeight');
+			return GRAPHIC_FIELDS.filter((field) => field.key !== 'lineHeight');
 		default:
 			return GRAPHIC_FIELDS;
 	}
@@ -149,20 +158,16 @@ const numberFields = computed(() => {
 const inheritable = computed(() => props.variant === 'placeholder');
 
 const fontStyleOptions = computed(() => [
-	...(inheritable.value
-		? [BASE_OPTION]
-		: []),
-	...GRAPHIC_FONT_STYLE_VALUES.map(value => ({
+	...(inheritable.value ? [BASE_OPTION] : []),
+	...GRAPHIC_FONT_STYLE_VALUES.map((value) => ({
 		label: optionLabel(value),
 		value,
 	})),
 ]);
 
 const caseOptions = computed(() => [
-	...(inheritable.value
-		? [BASE_OPTION]
-		: []),
-	...GRAPHIC_TEXT_TRANSFORM_VALUES.map(value => ({
+	...(inheritable.value ? [BASE_OPTION] : []),
+	...GRAPHIC_TEXT_TRANSFORM_VALUES.map((value) => ({
 		label: optionLabel(value),
 		value,
 	})),
@@ -170,15 +175,12 @@ const caseOptions = computed(() => [
 
 /** "Font weight" alone; "Heading font weight" where a prefix tells typographies apart. */
 function ariaLabel(label: string) {
-	return props.ariaLabelPrefix
-		? `${props.ariaLabelPrefix} ${label.toLowerCase()}`
-		: label;
+	return props.ariaLabelPrefix ? `${props.ariaLabelPrefix} ${label.toLowerCase()}` : label;
 }
 
 function updateNumber(field: NumberFieldSpec, value: number | null | undefined) {
 	if (value === null || value === undefined || !Number.isFinite(value)) {
-		if (props.variant === 'theme')
-			return;
+		if (props.variant === 'theme') return;
 		emit('update', {
 			[field.key]: inheritable.value ? undefined : DEFAULT_GRAPHIC_TYPOGRAPHY[field.key],
 		});
@@ -186,22 +188,18 @@ function updateNumber(field: NumberFieldSpec, value: number | null | undefined) 
 	}
 	const bounded = Math.min(field.max, Math.max(field.min, value));
 	emit('update', {
-		[field.key]: field.key === 'fontWeight'
-			? Math.round(bounded)
-			: bounded,
+		[field.key]: field.key === 'fontWeight' ? Math.round(bounded) : bounded,
 	});
 }
 
 function updateChoice(key: 'fontStyle' | 'textTransform', value: string) {
 	emit('update', {
-		[key]: value === BASE_OPTION.value
-			? undefined
-			: value,
+		[key]: value === BASE_OPTION.value ? undefined : value,
 	});
 }
 
 /** An unset choice reads as "same as base" in the placeholder variant, the only one it can be unset in. */
-const unsetChoice = computed(() => inheritable.value ? BASE_OPTION.value : undefined);
+const unsetChoice = computed(() => (inheritable.value ? BASE_OPTION.value : undefined));
 </script>
 
 <template>

@@ -30,22 +30,30 @@ function mountDelegate(overrides: Partial<AnimationEffectParams<'net'>> = {}) {
 }
 
 function netGroup(scene: THREE.Scene): THREE.Group {
-	const group = scene.children.find((child): child is THREE.Group => (child as THREE.Group).isGroup);
+	const group = scene.children.find(
+		(child): child is THREE.Group => (child as THREE.Group).isGroup,
+	);
 	expect(group).toBeDefined();
 	return group!;
 }
 
-function linesMesh(scene: THREE.Scene): THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial> {
+function linesMesh(
+	scene: THREE.Scene,
+): THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial> {
 	const lines = netGroup(scene).children.find(
-		(child): child is THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial> => (child as THREE.LineSegments).isLineSegments,
+		(child): child is THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial> =>
+			(child as THREE.LineSegments).isLineSegments,
 	);
 	expect(lines).toBeDefined();
 	return lines!;
 }
 
-function dotMeshes(scene: THREE.Scene): THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial>[] {
+function dotMeshes(
+	scene: THREE.Scene,
+): THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial>[] {
 	return netGroup(scene).children.filter(
-		(child): child is THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial> => (child as THREE.Mesh).isMesh,
+		(child): child is THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial> =>
+			(child as THREE.Mesh).isMesh,
 	);
 }
 
@@ -57,15 +65,11 @@ describe('createNetDelegate', () => {
 		expect(camera.position.toArray()).toEqual(start);
 	});
 
-	it('builds the fork\'s doubled grid of point markers inside its height band', () => {
+	it("builds the fork's doubled grid of point markers inside its height band", () => {
 		const { scene, params } = mountDelegate();
 		const dots = dotMeshes(scene);
 		expect(dots.length).toBe(11 * 11 * 2);
-		for (const dot of [
-			dots[0]!,
-			dots[100]!,
-			dots.at(-1)!,
-		]) {
+		for (const dot of [dots[0]!, dots[100]!, dots.at(-1)!]) {
 			expect(dot.geometry.parameters.radius).toBe(0.25);
 			expect(dot.material.color.getHexString()).toBe(params.lineColor.slice(1));
 			expect(Math.abs(dot.position.y)).toBeLessThanOrEqual(18);
@@ -79,7 +83,7 @@ describe('createNetDelegate', () => {
 		expect(netGroup(scene).children.length).toBe(11 * 11 * 2 + 1);
 	});
 
-	it('restores the fork\'s per-vertex line gradient, additive over a darker background', () => {
+	it("restores the fork's per-vertex line gradient, additive over a darker background", () => {
 		const { scene } = mountDelegate();
 		const material = linesMesh(scene).material;
 		// The restoration the port makes knowingly: the fork passed the removed
@@ -103,10 +107,7 @@ describe('createNetDelegate', () => {
 		expect(drawn).toBeGreaterThan(0);
 		expect(drawn % 2).toBe(0);
 		const position = lines.geometry.getAttribute('position') as THREE.BufferAttribute;
-		for (const segment of [
-			0,
-			Math.floor(drawn / 4),
-		]) {
+		for (const segment of [0, Math.floor(drawn / 4)]) {
 			const a = new THREE.Vector3().fromBufferAttribute(position, segment * 2);
 			const b = new THREE.Vector3().fromBufferAttribute(position, segment * 2 + 1);
 			expect(a.distanceTo(b)).toBeLessThan(22);
@@ -118,11 +119,15 @@ describe('createNetDelegate', () => {
 		// sit within the maximum connection distance of each other, so every
 		// distinct pair connects. The fork's self-pair segments are skipped and
 		// its heuristic buffer could overflow here; the exact bound cannot.
-		const { delegate, scene, context } = mountDelegate({ points: 2, spacing: 2, connectionDistance: 80 });
+		const { delegate, scene, context } = mountDelegate({
+			points: 2,
+			spacing: 2,
+			connectionDistance: 80,
+		});
 		const lines = linesMesh(scene);
 		delegate.update({ ...context, elapsedSeconds: 1 });
 		const pointCount = 3 * 3 * 2;
-		const distinctPairs = pointCount * (pointCount - 1) / 2;
+		const distinctPairs = (pointCount * (pointCount - 1)) / 2;
 		expect(lines.geometry.drawRange.count).toBe(distinctPairs * 2);
 		const position = lines.geometry.getAttribute('position') as THREE.BufferAttribute;
 		expect(position.count).toBe(distinctPairs * 2);
@@ -144,19 +149,18 @@ describe('createNetDelegate', () => {
 	it('orbits each point about the vertical axis, absolute in elapsed time', () => {
 		const { delegate, scene, context } = mountDelegate();
 		const dots = dotMeshes(scene);
-		const before = dots.map(dot => ({
+		const before = dots.map((dot) => ({
 			radius: Math.hypot(dot.position.x, dot.position.z),
 			y: dot.position.y,
 			x: dot.position.x,
 		}));
 		delegate.update({ ...context, elapsedSeconds: 40 });
-		const after = dots.map(dot => dot.position.clone());
+		const after = dots.map((dot) => dot.position.clone());
 		let moved = 0;
 		dots.forEach((dot, index) => {
 			expect(Math.hypot(dot.position.x, dot.position.z)).toBeCloseTo(before[index]!.radius);
 			expect(dot.position.y).toBe(before[index]!.y);
-			if (Math.abs(dot.position.x - before[index]!.x) > 0.01)
-				moved++;
+			if (Math.abs(dot.position.x - before[index]!.x) > 0.01) moved++;
 		});
 		expect(moved).toBeGreaterThan(0);
 		// Absolute: replaying the same time reproduces the same positions.

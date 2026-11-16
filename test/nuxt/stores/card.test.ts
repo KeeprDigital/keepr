@@ -12,9 +12,11 @@ const { mockFetch, mockGetServerTime } = vi.hoisted(() => ({
 }));
 mockNuxtImport('$fetch', () => mockFetch);
 
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
-	getServerTime: mockGetServerTime,
-})));
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+		getServerTime: mockGetServerTime,
+	})),
+);
 
 const mockCardRepo = {
 	saveScreenCard: vi.fn(),
@@ -32,19 +34,13 @@ function hasRevision(answer: unknown): answer is { revision: number } {
 	return typeof answer === 'object' && answer !== null && 'revision' in answer;
 }
 function asWrite(answer: unknown) {
-	return hasRevision(answer)
-		? answer
-		: { success: true, revision: ++serverRevision };
+	return hasRevision(answer) ? answer : { success: true, revision: ++serverRevision };
 }
 function asRead(answer: unknown) {
-	return hasRevision(answer)
-		? answer
-		: { card: answer, revision: serverRevision };
+	return hasRevision(answer) ? answer : { card: answer, revision: serverRevision };
 }
 function asAnnouncement(data: any) {
-	return hasRevision(data)
-		? data
-		: { ...data, revision: ++serverRevision };
+	return hasRevision(data) ? data : { ...data, revision: ++serverRevision };
 }
 
 const { deliver } = realtimeHandlersFor();
@@ -62,7 +58,8 @@ const mockEventStoreState = {
 mockNuxtImport('useCardRepository', () => () => ({
 	saveScreenCard: async (...args: unknown[]) => asWrite(await mockCardRepo.saveScreenCard(...args)),
 	getScreenCard: async (...args: unknown[]) => asRead(await mockCardRepo.getScreenCard(...args)),
-	deleteScreenCard: async (...args: unknown[]) => asWrite(await mockCardRepo.deleteScreenCard(...args)),
+	deleteScreenCard: async (...args: unknown[]) =>
+		asWrite(await mockCardRepo.deleteScreenCard(...args)),
 }));
 mockNuxtImport('useEventStore', () => () => mockEventStoreState);
 mockNuxtImport('useScryfallBatch', () => () => ({
@@ -210,13 +207,15 @@ describe('useCardStore', () => {
 		it('sends no Clear at expiry, so a replacement it has not heard of yet stands and shows once announced', async () => {
 			vi.useFakeTimers();
 			store.activeScreenId = 5;
-			mockCardRepo.getScreenCard.mockResolvedValue(createMockMtgCard({
-				id: 'x',
-				timeoutData: {
-					timeoutStartTimestamp: Date.now(),
-					timeoutDuration: 1_000,
-				},
-			}));
+			mockCardRepo.getScreenCard.mockResolvedValue(
+				createMockMtgCard({
+					id: 'x',
+					timeoutData: {
+						timeoutStartTimestamp: Date.now(),
+						timeoutDuration: 1_000,
+					},
+				}),
+			);
 			await store.loadActiveCard();
 
 			await vi.advanceTimersByTimeAsync(1_000);
@@ -243,7 +242,9 @@ describe('useCardStore', () => {
 				},
 			});
 			const outputRead = vi.fn().mockResolvedValue(card);
-			const uninstall = store.readActiveCardAsScreenOutput(async () => asRead(await outputRead()) as any);
+			const uninstall = store.readActiveCardAsScreenOutput(
+				async () => asRead(await outputRead()) as any,
+			);
 
 			await store.loadActiveCard();
 			expect(store.activeCard).toEqual(card);
@@ -259,9 +260,11 @@ describe('useCardStore', () => {
 
 		it('ignores a response for a screen that is no longer active', async () => {
 			let resolveCard!: (card: ReturnType<typeof createMockMtgCard>) => void;
-			mockCardRepo.getScreenCard.mockReturnValue(new Promise((resolve) => {
-				resolveCard = resolve;
-			}));
+			mockCardRepo.getScreenCard.mockReturnValue(
+				new Promise((resolve) => {
+					resolveCard = resolve;
+				}),
+			);
 			store.activeScreenId = 5;
 			const loading = store.loadActiveCard();
 
@@ -286,14 +289,17 @@ describe('useCardStore', () => {
 		function deferredRead() {
 			let resolve!: (card: ReturnType<typeof createMockMtgCard> | null) => void;
 			let reject!: (error: unknown) => void;
-			mockCardRepo.getScreenCard.mockReturnValueOnce(new Promise((res, rej) => {
-				resolve = res;
-				reject = rej;
-			}));
+			mockCardRepo.getScreenCard.mockReturnValueOnce(
+				new Promise((res, rej) => {
+					resolve = res;
+					reject = rej;
+				}),
+			);
 			return { resolve, reject };
 		}
 
-		const oldCard = (overrides?: Record<string, any>) => createMockMtgCard({ id: 'old', name: 'Old Card', ...overrides });
+		const oldCard = (overrides?: Record<string, any>) =>
+			createMockMtgCard({ id: 'old', name: 'Old Card', ...overrides });
 		const newCard = () => createMockMtgCard({ id: 'new', name: 'New Card' });
 
 		it('keeps a newer realtime Card over a read answered after it', async () => {
@@ -405,12 +411,14 @@ describe('useCardStore', () => {
 				screenId: 5,
 				card: newCard(),
 			});
-			read.resolve(oldCard({
-				timeoutData: {
-					timeoutStartTimestamp: Date.now(),
-					timeoutDuration: 1_000,
-				},
-			}));
+			read.resolve(
+				oldCard({
+					timeoutData: {
+						timeoutStartTimestamp: Date.now(),
+						timeoutDuration: 1_000,
+					},
+				}),
+			);
 			await loading;
 			await vi.advanceTimersByTimeAsync(1_000);
 
@@ -453,10 +461,12 @@ describe('useCardStore', () => {
 				screenId: 5,
 				card: newCard(),
 			});
-			read.reject(transportFailure({
-				status: 503,
-				body: { message: 'Unavailable' },
-			}));
+			read.reject(
+				transportFailure({
+					status: 503,
+					body: { message: 'Unavailable' },
+				}),
+			);
 			await loading;
 
 			expect(store.error).toBeNull();
@@ -467,9 +477,11 @@ describe('useCardStore', () => {
 		it('keeps loading on for a save still out when a superseded read answers', async () => {
 			store.setActiveScreen(5);
 			let acceptSave!: () => void;
-			mockCardRepo.saveScreenCard.mockReturnValueOnce(new Promise<void>((resolve) => {
-				acceptSave = resolve;
-			}));
+			mockCardRepo.saveScreenCard.mockReturnValueOnce(
+				new Promise<void>((resolve) => {
+					acceptSave = resolve;
+				}),
+			);
 			const read = deferredRead();
 			const loading = store.loadActiveCard();
 			const saving = store.saveActiveCard(newCard());
@@ -493,16 +505,20 @@ describe('useCardStore', () => {
 			let uninstall: () => void;
 
 			beforeEach(() => {
-				uninstall = store.readActiveCardAsScreenOutput(async () => asRead(await mockOutputRead()) as any);
+				uninstall = store.readActiveCardAsScreenOutput(
+					async () => asRead(await mockOutputRead()) as any,
+				);
 			});
 
 			afterEach(() => uninstall());
 
 			it('keeps a newer realtime Card over its read answered after it', async () => {
 				let resolve!: (card: unknown) => void;
-				mockOutputRead.mockReturnValueOnce(new Promise((res) => {
-					resolve = res;
-				}));
+				mockOutputRead.mockReturnValueOnce(
+					new Promise((res) => {
+						resolve = res;
+					}),
+				);
 				store.setActiveScreen(5);
 				const loading = store.loadActiveCard();
 
@@ -521,9 +537,11 @@ describe('useCardStore', () => {
 			it('arms no timer from its superseded read', async () => {
 				vi.useFakeTimers();
 				let resolve!: (card: unknown) => void;
-				mockOutputRead.mockReturnValueOnce(new Promise((res) => {
-					resolve = res;
-				}));
+				mockOutputRead.mockReturnValueOnce(
+					new Promise((res) => {
+						resolve = res;
+					}),
+				);
 				store.setActiveScreen(5);
 				const loading = store.loadActiveCard();
 
@@ -532,12 +550,14 @@ describe('useCardStore', () => {
 					screenId: 5,
 					card: newCard(),
 				});
-				resolve(oldCard({
-					timeoutData: {
-						timeoutStartTimestamp: Date.now(),
-						timeoutDuration: 1_000,
-					},
-				}));
+				resolve(
+					oldCard({
+						timeoutData: {
+							timeoutStartTimestamp: Date.now(),
+							timeoutDuration: 1_000,
+						},
+					}),
+				);
 				await loading;
 				await vi.advanceTimersByTimeAsync(1_000);
 
@@ -545,14 +565,16 @@ describe('useCardStore', () => {
 				expect(store.timeout.isActive).toBe(false);
 			});
 
-			it('still hides its current read\'s Card locally once it expires', async () => {
+			it("still hides its current read's Card locally once it expires", async () => {
 				vi.useFakeTimers();
-				mockOutputRead.mockResolvedValueOnce(createMockMtgCard({
-					timeoutData: {
-						timeoutStartTimestamp: Date.now(),
-						timeoutDuration: 1_000,
-					},
-				}));
+				mockOutputRead.mockResolvedValueOnce(
+					createMockMtgCard({
+						timeoutData: {
+							timeoutStartTimestamp: Date.now(),
+							timeoutDuration: 1_000,
+						},
+					}),
+				);
 				store.setActiveScreen(5);
 
 				await store.loadActiveCard();
@@ -624,10 +646,12 @@ describe('useCardStore', () => {
 			const read = deferred<ReturnType<typeof newCard>>();
 			mockCardRepo.getScreenCard.mockReturnValueOnce(read.promise);
 			const loading = store.loadActiveCard();
-			save.reject(transportFailure({
-				status: 409,
-				body: { message: 'Another operator is showing a card on this Screen' },
-			}));
+			save.reject(
+				transportFailure({
+					status: 409,
+					body: { message: 'Another operator is showing a card on this Screen' },
+				}),
+			);
 			await saving;
 
 			expect(store.error).toBeNull();
@@ -769,13 +793,15 @@ describe('useCardStore', () => {
 			it('keeps a Card hidden once its Card Timeout ran out while the DELETE was out', async () => {
 				vi.useFakeTimers();
 				mockCardRepo.saveScreenCard.mockResolvedValueOnce(undefined);
-				await store.saveActiveCard(createMockMtgCard({
-					id: 'timed',
-					timeoutData: {
-						timeoutStartTimestamp: Date.now(),
-						timeoutDuration: 1_000,
-					},
-				}));
+				await store.saveActiveCard(
+					createMockMtgCard({
+						id: 'timed',
+						timeoutData: {
+							timeoutStartTimestamp: Date.now(),
+							timeoutDuration: 1_000,
+						},
+					}),
+				);
 				const fail = clearThatFails();
 
 				await vi.advanceTimersByTimeAsync(1_000);
@@ -803,7 +829,10 @@ describe('useCardStore', () => {
 	 */
 	describe('card revision ordering', () => {
 		const committed = (revision: number) => ({ success: true, revision });
-		const read = (card: ReturnType<typeof createMockMtgCard> | null, revision: number) => ({ card, revision });
+		const read = (card: ReturnType<typeof createMockMtgCard> | null, revision: number) => ({
+			card,
+			revision,
+		});
 		const updated = (card: ReturnType<typeof createMockMtgCard> | null, revision: number) =>
 			announce('card:updated', {
 				eventId: 1,
@@ -811,7 +840,8 @@ describe('useCardStore', () => {
 				card,
 				revision,
 			});
-		const cleared = (revision: number) => announce('card:cleared', { eventId: 1, screenId: 5, revision });
+		const cleared = (revision: number) =>
+			announce('card:cleared', { eventId: 1, screenId: 5, revision });
 		const ours = () => createMockMtgCard({ id: 'ours', name: 'Our Card' });
 		const theirs = () => createMockMtgCard({ id: 'theirs', name: 'Their Card' });
 
@@ -954,10 +984,12 @@ describe('useCardStore', () => {
 		function deferredSave() {
 			let resolve!: (value: unknown) => void;
 			let reject!: (error: unknown) => void;
-			mockCardRepo.saveScreenCard.mockReturnValueOnce(new Promise((res, rej) => {
-				resolve = res;
-				reject = rej;
-			}));
+			mockCardRepo.saveScreenCard.mockReturnValueOnce(
+				new Promise((res, rej) => {
+					resolve = res;
+					reject = rej;
+				}),
+			);
 			return { resolve, reject };
 		}
 
@@ -978,9 +1010,13 @@ describe('useCardStore', () => {
 
 			expect((store.activeCard as MtgCard).displayData.flipped).toBe(true);
 			expect(held.displayData.flipped).toBe(false);
-			expect(mockCardRepo.saveScreenCard).toHaveBeenCalledWith(1, 5, expect.objectContaining({
-				displayData: expect.objectContaining({ flipped: true }),
-			}));
+			expect(mockCardRepo.saveScreenCard).toHaveBeenCalledWith(
+				1,
+				5,
+				expect.objectContaining({
+					displayData: expect.objectContaining({ flipped: true }),
+				}),
+			);
 			save.resolve({ success: true, revision: 2 });
 			await controlling;
 			expect((store.activeCard as MtgCard).displayData.flipped).toBe(true);
@@ -1006,7 +1042,10 @@ describe('useCardStore', () => {
 			flip.reject(unavailable());
 			await flipping;
 
-			expect((store.activeCard as MtgCard).displayData).toMatchObject({ flipped: false, rotated: true });
+			expect((store.activeCard as MtgCard).displayData).toMatchObject({
+				flipped: false,
+				rotated: true,
+			});
 			rotate.resolve({ success: true, revision: 2 });
 			await rotating;
 		});
@@ -1114,9 +1153,11 @@ describe('useCardStore', () => {
 		it('reports a read something newer superseded as not landed', async () => {
 			store.setActiveScreen(5);
 			let resolve!: (card: unknown) => void;
-			mockCardRepo.getScreenCard.mockReturnValueOnce(new Promise((res) => {
-				resolve = res;
-			}));
+			mockCardRepo.getScreenCard.mockReturnValueOnce(
+				new Promise((res) => {
+					resolve = res;
+				}),
+			);
 			const reread = storeReloaders().card();
 
 			announce('card:updated', {
@@ -1162,12 +1203,14 @@ describe('useCardStore', () => {
 			vi.useFakeTimers();
 			store.activeScreenId = 5;
 			mockCardRepo.saveScreenCard.mockResolvedValue(undefined);
-			await store.saveActiveCard(createMockMtgCard({
-				timeoutData: {
-					timeoutStartTimestamp: Date.now(),
-					timeoutDuration: 1_000,
-				},
-			}));
+			await store.saveActiveCard(
+				createMockMtgCard({
+					timeoutData: {
+						timeoutStartTimestamp: Date.now(),
+						timeoutDuration: 1_000,
+					},
+				}),
+			);
 
 			const replacement = createMockMtgCard({ id: 'card-2', name: 'Counterspell' });
 			await store.saveActiveCard(replacement);
@@ -1183,9 +1226,11 @@ describe('useCardStore', () => {
 			store.activeScreenId = 5;
 			mockCardRepo.saveScreenCard.mockResolvedValue(undefined);
 
-			await store.saveActiveCard(createMockMtgCard({
-				timeoutData: { timeoutStartTimestamp: Date.now() - 2_000, timeoutDuration: 1_000 },
-			}));
+			await store.saveActiveCard(
+				createMockMtgCard({
+					timeoutData: { timeoutStartTimestamp: Date.now() - 2_000, timeoutDuration: 1_000 },
+				}),
+			);
 
 			expect(store.activeCard).toBeNull();
 			await vi.advanceTimersByTimeAsync(1_000);
@@ -1194,12 +1239,14 @@ describe('useCardStore', () => {
 	});
 
 	describe('failure reporting', () => {
-		it('reports the server\'s sentence for a refused load', async () => {
+		it("reports the server's sentence for a refused load", async () => {
 			store.activeScreenId = 5;
-			mockCardRepo.getScreenCard.mockRejectedValue(transportFailure({
-				status: 404,
-				body: { message: 'Screen is not in Card Spotlight mode' },
-			}));
+			mockCardRepo.getScreenCard.mockRejectedValue(
+				transportFailure({
+					status: 404,
+					body: { message: 'Screen is not in Card Spotlight mode' },
+				}),
+			);
 
 			await store.loadActiveCard();
 
@@ -1207,14 +1254,16 @@ describe('useCardStore', () => {
 			expect(store.loading).toBe(false);
 		});
 
-		it('puts the cleared Card back on a refused clear, and reports the server\'s sentence', async () => {
+		it("puts the cleared Card back on a refused clear, and reports the server's sentence", async () => {
 			store.activeScreenId = 5;
 			const card = createMockMtgCard();
 			store.activeCard = card;
-			mockCardRepo.deleteScreenCard.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { message: 'The card timeout has already elapsed' },
-			}));
+			mockCardRepo.deleteScreenCard.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { message: 'The card timeout has already elapsed' },
+				}),
+			);
 
 			await store.clearActiveCard();
 
@@ -1244,7 +1293,7 @@ describe('useCardStore', () => {
 			expect(store.showCardControls).toBe(false);
 		});
 
-		it('showing it starts the Event\'s Card Timeout from the synchronized clock, rounded', async () => {
+		it("showing it starts the Event's Card Timeout from the synchronized clock, rounded", async () => {
 			store.activeScreenId = 5;
 			store.previewCard = createMockMtgCard();
 			mockEventStoreState.event = { id: 1, cardTimeout: 5 };
@@ -1253,17 +1302,21 @@ describe('useCardStore', () => {
 
 			await store.controlPreviewCard('show');
 
-			expect(mockCardRepo.saveScreenCard).toHaveBeenCalledWith(1, 5, expect.objectContaining({
-				timeoutData: {
-					timeoutDuration: 5_000,
-					timeoutStartTimestamp: 1_700_000_000_001,
-				},
-			}));
+			expect(mockCardRepo.saveScreenCard).toHaveBeenCalledWith(
+				1,
+				5,
+				expect.objectContaining({
+					timeoutData: {
+						timeoutDuration: 5_000,
+						timeoutStartTimestamp: 1_700_000_000_001,
+					},
+				}),
+			);
 		});
 	});
 
-	describe('a peer\'s Card messages', () => {
-		it('hold a Card for the active Screen and ignore another Screen\'s', () => {
+	describe("a peer's Card messages", () => {
+		it("hold a Card for the active Screen and ignore another Screen's", () => {
 			store.activeScreenId = 5;
 
 			announce('card:updated', {

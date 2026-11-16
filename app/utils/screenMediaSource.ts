@@ -12,10 +12,7 @@ export function screenMediaSourceUrl(
 	source: ScreenMediaSource | undefined,
 	contentUrl: (reference: GraphicAssetReference) => string,
 ): string {
-	if (source?.kind === 'url')
-		return source.url;
+	if (source?.kind === 'url') return source.url;
 	const reference = screenMediaSourceReference(source);
-	return reference
-		? contentUrl(reference)
-		: '';
+	return reference ? contentUrl(reference) : '';
 }

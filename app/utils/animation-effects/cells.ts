@@ -64,15 +64,18 @@ export default function createCellsEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'cells'>,
 ): AnimationEffectInstance<AnimationEffectParams<'cells'>> {
-	return createShaderPlaneEffect({
-		three: THREE,
-		host,
-		fragmentShader: CELLS_FRAGMENT_SHADER,
-		uniforms: current => ({
-			lowlightColor: current.lowlightColor,
-			highlightColor: current.highlightColor,
-			scale: current.scale,
-		}),
-		timeScale: current => current.speed,
-	}, params);
+	return createShaderPlaneEffect(
+		{
+			three: THREE,
+			host,
+			fragmentShader: CELLS_FRAGMENT_SHADER,
+			uniforms: (current) => ({
+				lowlightColor: current.lowlightColor,
+				highlightColor: current.highlightColor,
+				scale: current.scale,
+			}),
+			timeScale: (current) => current.speed,
+		},
+		params,
+	);
 }

@@ -6,7 +6,17 @@ import { solveCardGrid } from '~~/shared/utils/cardGrid';
 import { foundationTokenVar, foundationTypographyStyle, modeTokenVar } from '~/modules/screen-mode';
 import { CARD_BADGE_POSITION_CLASSES } from '~/utils/cardBadgePosition';
 
-const { config, error, ready, isEmpty, headerText, pageEntries, currentPage, totalPages, pageCapacity } = useTopCardsModeData(useScreenContext());
+const {
+	config,
+	error,
+	ready,
+	isEmpty,
+	headerText,
+	pageEntries,
+	currentPage,
+	totalPages,
+	pageCapacity,
+} = useTopCardsModeData(useScreenContext());
 
 // ── The Card Layout, from the space the grid really has ──
 // Pages hold cards, not rows (ADR-0054), so the Screen solves its grid from the
@@ -17,14 +27,16 @@ const { config, error, ready, isEmpty, headerText, pageEntries, currentPage, tot
 const gridElement = ref(null);
 const { width: gridWidth, height: gridHeight } = useElementSize(gridElement);
 
-const grid = computed(() => solveCardGrid({
-	count: pageCapacity.value,
-	width: gridWidth.value,
-	height: gridHeight.value,
-	columns: config.value.columns,
-	maxCardWidth: config.value.maxCardSize,
-	gap: config.value.cardGap,
-}));
+const grid = computed(() =>
+	solveCardGrid({
+		count: pageCapacity.value,
+		width: gridWidth.value,
+		height: gridHeight.value,
+		columns: config.value.columns,
+		maxCardWidth: config.value.maxCardSize,
+		gap: config.value.cardGap,
+	}),
+);
 const cardGap = computed(() => `${grid.value.gap}px`);
 const cardWidth = computed(() => `${grid.value.cardWidth}px`);
 
@@ -57,7 +69,9 @@ function badgeTextSize(size: number | undefined): string {
 
 const rankBadgeClass = computed(() => CARD_BADGE_POSITION_CLASSES[config.value.rankBadgePosition]);
 const statBadgeClass = computed(() => CARD_BADGE_POSITION_CLASSES[config.value.statBadgePosition]);
-const pointsBadgeClass = computed(() => CARD_BADGE_POSITION_CLASSES[config.value.pointsBadgePosition]);
+const pointsBadgeClass = computed(
+	() => CARD_BADGE_POSITION_CLASSES[config.value.pointsBadgePosition],
+);
 
 const rankBadgeStyle = computed(() => ({
 	...badgeStyle,
@@ -90,11 +104,16 @@ const cardStyle = {
 
 function statText(entry: CardBreakdownEntry): string | null {
 	switch (config.value.statBadge) {
-		case 'inclusionRate': return `${entry.inclusionRate}%`;
-		case 'avgCopies': return `${entry.avgCopies}`;
-		case 'totalCopies': return `${entry.totalCopies}`;
-		case 'deckCount': return `${entry.deckCount}`;
-		default: return null;
+		case 'inclusionRate':
+			return `${entry.inclusionRate}%`;
+		case 'avgCopies':
+			return `${entry.avgCopies}`;
+		case 'totalCopies':
+			return `${entry.totalCopies}`;
+		case 'deckCount':
+			return `${entry.deckCount}`;
+		default:
+			return null;
 	}
 }
 
@@ -107,11 +126,7 @@ function pointsText(entry: CardBreakdownEntry): string | null {
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="error"
-		:ready="ready"
-		:empty="isEmpty"
-	>
+	<ScreenModeBase :error="error" :ready="ready" :empty="isEmpty">
 		<div class="top-cards-display relative flex flex-col gap-4 h-full w-full" :style="displayStyle">
 			<div v-if="config.showHeader" class="top-cards-title">
 				<h2 class="text-3xl" :style="titleStyle">

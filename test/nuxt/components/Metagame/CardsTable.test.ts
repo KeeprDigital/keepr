@@ -75,15 +75,19 @@ describe('metagameCardsTable', () => {
 			entries: [usopp, gumGum],
 		});
 
-		expect(wrapper.findAll('th').map(column => column.attributes('data-column'))).not.toEqual(expect.arrayContaining(['manaCost']));
+		expect(wrapper.findAll('th').map((column) => column.attributes('data-column'))).not.toEqual(
+			expect.arrayContaining(['manaCost']),
+		);
 		expect(wrapper.find('[data-column="sideboardCount"]').exists()).toBe(false);
 		expect(wrapper.text()).not.toContain('Side');
-		const chips = wrapper.findAll('button').filter(button => ['Character', 'Event'].includes(button.text()));
-		expect(chips.map(chip => chip.text())).toEqual(['Character', 'Event']);
+		const chips = wrapper
+			.findAll('button')
+			.filter((button) => ['Character', 'Event'].includes(button.text()));
+		expect(chips.map((chip) => chip.text())).toEqual(['Character', 'Event']);
 
 		await chips[1]!.trigger('click');
 
-		expect(wrapper.findAll('td').map(cell => cell.text())).toEqual(['Usopp']);
+		expect(wrapper.findAll('td').map((cell) => cell.text())).toEqual(['Usopp']);
 	});
 
 	it('keeps the current rows on screen while a new read loads', async () => {
@@ -97,40 +101,38 @@ describe('metagameCardsTable', () => {
 
 	it.each([
 		[{}, true],
-		[
-			{ showDeckCount: false },
-			false,
-		],
+		[{ showDeckCount: false }, false],
 	])('shows the Decks column unless the host opts out (%o)', (props, shown) => {
 		expect(mountCardsTable(props).find('[data-column="deckCount"]').exists()).toBe(shown);
 	});
 
 	it.each([
 		[{}, false],
-		[
-			{ showPoints: true },
-			true,
-		],
-	])('shows the Points column and Pointed only toggle only with a points system (%o)', (props, shown) => {
-		const wrapper = mountCardsTable(props);
+		[{ showPoints: true }, true],
+	])(
+		'shows the Points column and Pointed only toggle only with a points system (%o)',
+		(props, shown) => {
+			const wrapper = mountCardsTable(props);
 
-		expect(wrapper.find('[data-column="highlanderPoints"]').exists()).toBe(shown);
-		expect(wrapper.text().includes('Pointed only')).toBe(shown);
-	});
+			expect(wrapper.find('[data-column="highlanderPoints"]').exists()).toBe(shown);
+			expect(wrapper.text().includes('Pointed only')).toBe(shown);
+		},
+	);
 
 	it.each([
 		[false, 'false', true],
 		[true, 'true', false],
-	])('with pointedOnly %s the toggle is pressed %s and asks for %s', async (pointedOnly, pressed, next) => {
-		const wrapper = mountCardsTable({ showPoints: true, pointedOnly });
-		const toggle = wrapper.findAll('button').find(button => button.text() === 'Pointed only')!;
+	])(
+		'with pointedOnly %s the toggle is pressed %s and asks for %s',
+		async (pointedOnly, pressed, next) => {
+			const wrapper = mountCardsTable({ showPoints: true, pointedOnly });
+			const toggle = wrapper.findAll('button').find((button) => button.text() === 'Pointed only')!;
 
-		expect(toggle.attributes('aria-pressed')).toBe(pressed);
-		await toggle.trigger('click');
-		expect(wrapper.emitted('update:pointedOnly')).toEqual([
-			[next],
-		]);
-	});
+			expect(toggle.attributes('aria-pressed')).toBe(pressed);
+			await toggle.trigger('click');
+			expect(wrapper.emitted('update:pointedOnly')).toEqual([[next]]);
+		},
+	);
 
 	it('shows pointed lands once the pointed view is on', async () => {
 		const stripMine = {

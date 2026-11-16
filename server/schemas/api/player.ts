@@ -9,55 +9,69 @@ import { storedOpLeader } from '~~/shared/utils/gameData';
 import { opCardNumberSchema } from './opCard';
 
 // Game-specific player data (discriminated union)
-const mtgGameDataSchema = z.object({
-	type: z.literal('mtg'),
-	deckName: z.string().max(200).nullable().optional(),
-	deckColors: z.string().max(50).nullable().optional(),
-}).strict();
+const mtgGameDataSchema = z
+	.object({
+		type: z.literal('mtg'),
+		deckName: z.string().max(200).nullable().optional(),
+		deckColors: z.string().max(50).nullable().optional(),
+	})
+	.strict();
 
 /**
  * A picked Leader as a save sends it. The server keeps only its number, a card
  * catalogue reference (ADR-0074); its image must be a bandai-keepr Printing image.
  */
-const opLeaderSchema = z.object({
-	number: opCardNumberSchema,
-	name: z.string().trim().min(1).max(200),
-	colors: z.array(z.enum(OP_CARD_COLORS)).max(OP_CARD_COLORS.length),
-	imageUrl: z.url().max(500).refine(isOpCardImageUrl, { message: 'Not a One Piece card image' }),
-}).strict();
+const opLeaderSchema = z
+	.object({
+		number: opCardNumberSchema,
+		name: z.string().trim().min(1).max(200),
+		colors: z.array(z.enum(OP_CARD_COLORS)).max(OP_CARD_COLORS.length),
+		imageUrl: z.url().max(500).refine(isOpCardImageUrl, { message: 'Not a One Piece card image' }),
+	})
+	.strict();
 
-const opGameDataSchema = z.object({
-	type: z.literal('op'),
-	// Free text typed before the Leader picker names no card, so it is read as none.
-	leader: z.preprocess(
-		value => value === undefined
-			? undefined
-			: storedOpLeader(value),
-		opLeaderSchema.nullable().optional(),
-	),
-}).strict();
+const opGameDataSchema = z
+	.object({
+		type: z.literal('op'),
+		// Free text typed before the Leader picker names no card, so it is read as none.
+		leader: z.preprocess(
+			(value) => (value === undefined ? undefined : storedOpLeader(value)),
+			opLeaderSchema.nullable().optional(),
+		),
+	})
+	.strict();
 
-export const playerGameDataSchema = z.discriminatedUnion('type', [mtgGameDataSchema, opGameDataSchema]);
+export const playerGameDataSchema = z.discriminatedUnion('type', [
+	mtgGameDataSchema,
+	opGameDataSchema,
+]);
 
 /**
  * A picked Commander as a save sends it: one printing of a Magic: The Gathering
  * card, by its Scryfall id (ADR-0087). Nothing checks that the card may be one.
  */
-const commanderSchema = z.object({
-	scryfallId: z.uuid(),
-	name: z.string().trim().min(1).max(200),
-	colorIdentity: z.string().regex(/^[WUBRG]*$/).refine(letters => new Set(letters).size === letters.length, {
-		message: 'A colour identity names each colour at most once',
-	}),
-	setCode: z.string().trim().min(1).max(10),
-	collectorNumber: z.string().trim().min(1).max(20),
-}).strict();
+const commanderSchema = z
+	.object({
+		scryfallId: z.uuid(),
+		name: z.string().trim().min(1).max(200),
+		colorIdentity: z
+			.string()
+			.regex(/^[WUBRG]*$/)
+			.refine((letters) => new Set(letters).size === letters.length, {
+				message: 'A colour identity names each colour at most once',
+			}),
+		setCode: z.string().trim().min(1).max(10),
+		collectorNumber: z.string().trim().min(1).max(20),
+	})
+	.strict();
 
 /** A Seat's Feature Match Deck List, by reference: the setup write checks it names one of the Slot's. */
-const featureMatchDeckListReferenceSchema = z.object({
-	id: z.number().int().positive(),
-	mainboardCount: z.number().int().nonnegative(),
-}).strict();
+const featureMatchDeckListReferenceSchema = z
+	.object({
+		id: z.number().int().positive(),
+		mainboardCount: z.number().int().nonnegative(),
+	})
+	.strict();
 
 /**
  * A Slot Seat's game data, as a setup save writes it: a One Piece side may also
@@ -68,14 +82,19 @@ const featureMatchDeckListReferenceSchema = z.object({
  */
 export const slotSeatGameDataSchema = z.discriminatedUnion('type', [
 	// Only a Commander Event's Seat holds Commanders or a Deck List of its own, which the setup write checks (ADR-0087).
-	mtgGameDataSchema.extend({
-		commanders: z.array(commanderSchema).max(MAX_SEAT_COMMANDERS).nullable().optional(),
-		featureMatchDeckList: featureMatchDeckListReferenceSchema.nullable().optional(),
-	}).strict(),
-	opGameDataSchema.extend({
-		featureMatchDeckList: featureMatchDeckListReferenceSchema.nullable().optional(),
-		deckList: z.unknown().optional(),
-	}).strict().transform(({ deckList: _deckList, ...gameData }) => gameData),
+	mtgGameDataSchema
+		.extend({
+			commanders: z.array(commanderSchema).max(MAX_SEAT_COMMANDERS).nullable().optional(),
+			featureMatchDeckList: featureMatchDeckListReferenceSchema.nullable().optional(),
+		})
+		.strict(),
+	opGameDataSchema
+		.extend({
+			featureMatchDeckList: featureMatchDeckListReferenceSchema.nullable().optional(),
+			deckList: z.unknown().optional(),
+		})
+		.strict()
+		.transform(({ deckList: _deckList, ...gameData }) => gameData),
 ]);
 
 // CREATE
@@ -155,9 +174,11 @@ export const playerParamsSchema = z.object({
 });
 
 // QUERY
-export const playerQuerySchema = z.object({
-	listId: z.coerce.number().int().positive().optional(),
-}).optional();
+export const playerQuerySchema = z
+	.object({
+		listId: z.coerce.number().int().positive().optional(),
+	})
+	.optional();
 
 /* TYPES */
 export type CreatePlayerInput = z.infer<typeof createPlayerSchema>;

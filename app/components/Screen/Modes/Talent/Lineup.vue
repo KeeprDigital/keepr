@@ -19,29 +19,32 @@ const emit = defineEmits<{
 const eventStore = useEventStore();
 const talents = computed(() => eventStore.event?.talents ?? []);
 
-const lineup = computed(() => props.talentIds.map(id => ({
-	id,
-	name: talents.value.find(talent => talent.id === id)?.name ?? 'Unknown Talent',
-})));
+const lineup = computed(() =>
+	props.talentIds.map((id) => ({
+		id,
+		name: talents.value.find((talent) => talent.id === id)?.name ?? 'Unknown Talent',
+	})),
+);
 
 const full = computed(() => props.talentIds.length >= TALENT_SCREEN_MAX_LINEUP);
 
 function add(talentId: number | null | undefined) {
-	if (talentId != null && !full.value)
-		emit('update', [...props.talentIds, talentId]);
+	if (talentId != null && !full.value) emit('update', [...props.talentIds, talentId]);
 }
 
 function move(index: number, offset: -1 | 1) {
 	const next = [...props.talentIds];
 	const target = index + offset;
-	if (target < 0 || target >= next.length)
-		return;
+	if (target < 0 || target >= next.length) return;
 	[next[index], next[target]] = [next[target]!, next[index]!];
 	emit('update', next);
 }
 
 function remove(index: number) {
-	emit('update', props.talentIds.filter((_, at) => at !== index));
+	emit(
+		'update',
+		props.talentIds.filter((_, at) => at !== index),
+	);
 }
 </script>
 
@@ -85,9 +88,7 @@ function remove(index: number) {
 					</span>
 				</li>
 			</ol>
-			<ScreenSettingsHint v-else>
-				No Talent in the lineup yet.
-			</ScreenSettingsHint>
+			<ScreenSettingsHint v-else> No Talent in the lineup yet. </ScreenSettingsHint>
 		</ScreenSettingsField>
 
 		<ScreenSettingsHint v-if="full">

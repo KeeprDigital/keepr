@@ -1,7 +1,13 @@
 import type { FeatureMatchClockCommandType } from '~~/shared/modules/feature-match-session';
 import type { BulkClockAction, PlayerSide, Seat } from '~~/shared/types/enums';
 import type { FeatureMatchSessionResponse } from '~~/shared/types/featureMatchSession';
-import type { CommanderSource, FeatureMatchOutcome, FeatureMatchState, GameWinOptions, PlayerFeatureMatchStateUpdate } from '~~/shared/types/featureMatchState';
+import type {
+	CommanderSource,
+	FeatureMatchOutcome,
+	FeatureMatchState,
+	GameWinOptions,
+	PlayerFeatureMatchStateUpdate,
+} from '~~/shared/types/featureMatchState';
 import type {
 	FeatureMatchCommandStateResult,
 	FeatureMatchResetOptions,
@@ -78,14 +84,13 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 			const apiUpdate: PlayerFeatureMatchStateUpdate = {};
 			if (entry.payload.hasAbsoluteLifeUpdate && entry.payload.intendedLifeTotal !== null) {
 				apiUpdate.lifeTotal = entry.payload.intendedLifeTotal;
-			}
-			else if (entry.payload.lifeDelta !== 0) {
+			} else if (entry.payload.lifeDelta !== 0) {
 				apiUpdate.lifeDelta = entry.payload.lifeDelta;
 			}
 			if (entry.payload.hasCounterUpdate) {
 				apiUpdate.counters = entry.payload.latestCounters;
 			}
-			const damage = (entry.payload.commanderDamage ?? []).filter(dealt => dealt.delta !== 0);
+			const damage = (entry.payload.commanderDamage ?? []).filter((dealt) => dealt.delta !== 0);
 			const updatesSeat = Object.keys(apiUpdate).length > 0;
 			// Commander Damage entered and taken back within one batch sends nothing.
 			if (entry.payload.commanderDamage && damage.length === 0 && !updatesSeat)
@@ -94,23 +99,27 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 			// life they saw with the damage already on it, so it lands last and holds.
 			let latest: FeatureMatchState | undefined;
 			for (const dealt of damage) {
-				latest = settleCommandResult(await repo.adjustCommanderDamage(
-					entry.payload.eventId,
-					entry.payload.matchId,
-					entry.payload.player,
-					dealt,
-					dealt.delta,
-				));
+				latest = settleCommandResult(
+					await repo.adjustCommanderDamage(
+						entry.payload.eventId,
+						entry.payload.matchId,
+						entry.payload.player,
+						dealt,
+						dealt.delta,
+					),
+				);
 				// A later refusal keeps what the Session already confirmed.
 				controls.commit(latest);
 			}
 			if (damage.length === 0 || updatesSeat) {
-				latest = settleCommandResult(await repo.updatePlayerFeatureMatchState(
-					entry.payload.eventId,
-					entry.payload.matchId,
-					entry.payload.player,
-					apiUpdate,
-				));
+				latest = settleCommandResult(
+					await repo.updatePlayerFeatureMatchState(
+						entry.payload.eventId,
+						entry.payload.matchId,
+						entry.payload.player,
+						apiUpdate,
+					),
+				);
 			}
 			return latest;
 		},
@@ -123,7 +132,14 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		totalDeltaMs: number;
 	}
 	const clockAdjustBatch = optimistic.batch<ClockAdjustPayload>({
-		flush: async entry => settleCommandResult(await repo.adjustClock(entry.payload.eventId, entry.payload.matchId, entry.payload.totalDeltaMs)),
+		flush: async (entry) =>
+			settleCommandResult(
+				await repo.adjustClock(
+					entry.payload.eventId,
+					entry.payload.matchId,
+					entry.payload.totalDeltaMs,
+				),
+			),
 	});
 
 	// Turn + overtime step batch. Both actions are user-clickable at the same time
@@ -143,14 +159,22 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		flush: async (entry, controls) => {
 			let latest: FeatureMatchState | undefined;
 			if (entry.payload.turnDelta !== 0) {
-				const result = await repo.stepTurn(entry.payload.eventId, entry.payload.matchId, entry.payload.turnDelta);
+				const result = await repo.stepTurn(
+					entry.payload.eventId,
+					entry.payload.matchId,
+					entry.payload.turnDelta,
+				);
 				latest = settleCommandResult(result);
 				// If the overtime step below fails, rollback keeps this confirmed
 				// turn step instead of reverting the whole batch.
 				controls.commit(latest);
 			}
 			if (entry.payload.overtimeDelta !== 0) {
-				const result = await repo.stepOvertime(entry.payload.eventId, entry.payload.matchId, entry.payload.overtimeDelta);
+				const result = await repo.stepOvertime(
+					entry.payload.eventId,
+					entry.payload.matchId,
+					entry.payload.overtimeDelta,
+				);
 				latest = settleCommandResult(result);
 			}
 			// Net-zero batch (or both deltas cancelled out) — skip API calls entirely.
@@ -165,14 +189,19 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 	}
 	const bulkAdjustBatch = optimistic.batch<BulkAdjustPayload>({
 		flush: async (entry) => {
-			if (entry.payload.totalDeltaMs === 0)
-				return null;
-			const result = await repo.bulkClockAction(entry.payload.eventId, 'adjust', entry.payload.totalDeltaMs);
+			if (entry.payload.totalDeltaMs === 0) return null;
+			const result = await repo.bulkClockAction(
+				entry.payload.eventId,
+				'adjust',
+				entry.payload.totalDeltaMs,
+			);
 			return cacheBulkUpdates(result?.updates);
 		},
 	});
 
-	function cacheBulkUpdates(updates: FeatureMatchCommandStateResult[] | undefined): ReadonlyMap<number, FeatureMatchState> {
+	function cacheBulkUpdates(
+		updates: FeatureMatchCommandStateResult[] | undefined,
+	): ReadonlyMap<number, FeatureMatchState> {
 		const states = new Map<number, FeatureMatchState>();
 		for (const update of updates ?? [])
 			states.set(update.session.slotId, settleCommandResult(update));
@@ -181,8 +210,7 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 
 	// Computed
 	const activeState = computed(() => {
-		if (!activeFeatureMatchId.value)
-			return null;
+		if (!activeFeatureMatchId.value) return null;
 		return featureMatchStates.value.get(activeFeatureMatchId.value) ?? null;
 	});
 
@@ -190,9 +218,7 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 
 	function heldSession(slotId: number) {
 		const sessionId = sessionIdBySlotId.value.get(slotId);
-		return sessionId === undefined
-			? undefined
-			: featureMatchSessions.value.get(sessionId);
+		return sessionId === undefined ? undefined : featureMatchSessions.value.get(sessionId);
 	}
 
 	/**
@@ -207,7 +233,10 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 	}
 
 	/** The Session one notification describes: every one carries the whole state it produced. */
-	function sessionOf(data: MessageData<'featureMatchSession:eventApplied'>, known?: FeatureMatchSessionResponse): FeatureMatchSessionResponse {
+	function sessionOf(
+		data: MessageData<'featureMatchSession:eventApplied'>,
+		known?: FeatureMatchSessionResponse,
+	): FeatureMatchSessionResponse {
 		const timestamp = new Date(data.timestamp);
 		return {
 			id: data.sessionId,
@@ -236,18 +265,17 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		FeatureMatchSessionResponse,
 		MessageData<'featureMatchSession:eventApplied'>
 	>({
-		keyOf: session => session.slotId,
+		keyOf: (session) => session.slotId,
 		held: heldSession,
 		applyState: holdSession,
 		withDifference: (known, data) => sessionOf(data, known),
 		forget: (slotId) => {
 			const sessionId = sessionIdBySlotId.value.get(slotId);
-			if (sessionId !== undefined)
-				featureMatchSessions.value.delete(sessionId);
+			if (sessionId !== undefined) featureMatchSessions.value.delete(sessionId);
 			sessionIdBySlotId.value.delete(slotId);
 			sessionSequenceBySlotId.value.delete(slotId);
 		},
-		snapshotOf: data => sessionOf(data, featureMatchSessions.value.get(data.sessionId)),
+		snapshotOf: (data) => sessionOf(data, featureMatchSessions.value.get(data.sessionId)),
 	});
 
 	/** Hold a Session known to be the newest this client has. */
@@ -279,9 +307,7 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		slot: OfferedSlot,
 		offer: (session: FeatureMatchSessionResponse) => { epochEnded: boolean },
 	): boolean {
-		return slot.activeSession
-			? !offer(slot.activeSession).epochEnded
-			: !heldSession(slot.id);
+		return slot.activeSession ? !offer(slot.activeSession).epochEnded : !heldSession(slot.id);
 	}
 
 	/**
@@ -299,13 +325,9 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 	 * Server-only update (no optimistic prediction). Settling its answer holds
 	 * the Session, which merges around every concurrent edit's pending fields.
 	 */
-	function withServerUpdate(
-		matchId: number,
-		apiCall: () => Promise<FeatureMatchState>,
-	) {
+	function withServerUpdate(matchId: number, apiCall: () => Promise<FeatureMatchState>) {
 		const current = featureMatchStates.value.get(matchId);
-		if (!current)
-			return null;
+		if (!current) return null;
 
 		return executeReporting(apiCall, { errorRef: error });
 	}
@@ -319,14 +341,16 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 	 * reading it. The operator surface that starts the Session publishes
 	 * `SessionStarted`, which this client then applies like any other event.
 	 */
-	let screenOutputRead: ((slotId: number) => Promise<FeatureMatchSessionResponse | null>) | null = null;
+	let screenOutputRead: ((slotId: number) => Promise<FeatureMatchSessionResponse | null>) | null =
+		null;
 
 	/** Install the rendering's Session read; the answer uninstalls it when the rendering goes away. */
-	function readSessionsAsScreenOutput(read: (slotId: number) => Promise<FeatureMatchSessionResponse | null>) {
+	function readSessionsAsScreenOutput(
+		read: (slotId: number) => Promise<FeatureMatchSessionResponse | null>,
+	) {
 		screenOutputRead = read;
 		return () => {
-			if (screenOutputRead === read)
-				screenOutputRead = null;
+			if (screenOutputRead === read) screenOutputRead = null;
 		};
 	}
 
@@ -336,11 +360,9 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return executeReporting(
 			async () => {
 				const held = await follower.load(matchId, async () => {
-					if (read)
-						return read(matchId);
+					if (read) return read(matchId);
 					const session = await repo.ensureSession(eventId, matchId);
-					if (!session)
-						throw new Error('Feature match session not found');
+					if (!session) throw new Error('Feature match session not found');
 					return session;
 				});
 				return held?.currentState ?? null;
@@ -381,9 +403,9 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 					// elapsedMs would show a countdown clock's complement.
 					clock: clock
 						? applyFeatureMatchClockCommand(current, 'SetClock', {
-							at: getServerTime(),
-							targetMs: clock.targetDisplayMs,
-						}).clock
+								at: getServerTime(),
+								targetMs: clock.targetDisplayMs,
+							}).clock
 						: current.clock,
 					overtime: overtime
 						? { active: true, turnsRemaining: overtime.totalTurns, totalTurns: overtime.totalTurns }
@@ -402,24 +424,25 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return optimistic.run(
 			`clock:start:${matchId}`,
 			matchId,
-			current => applyFeatureMatchClockCommand(current, 'StartClock', {
-				at: getServerTime(),
-			}),
+			(current) =>
+				applyFeatureMatchClockCommand(current, 'StartClock', {
+					at: getServerTime(),
+				}),
 			() => repo.startClock(eventId, matchId).then(settleCommandResult),
 		);
 	}
 
 	function pauseClock(eventId: number, matchId: number) {
 		const held = featureMatchStates.value.get(matchId);
-		if (!held || !storedClockRuns(held.clock))
-			return null;
+		if (!held || !storedClockRuns(held.clock)) return null;
 
 		return optimistic.run(
 			`clock:pause:${matchId}`,
 			matchId,
-			current => applyFeatureMatchClockCommand(current, 'PauseClock', {
-				at: getServerTime(),
-			}),
+			(current) =>
+				applyFeatureMatchClockCommand(current, 'PauseClock', {
+					at: getServerTime(),
+				}),
 			() => repo.pauseClock(eventId, matchId).then(settleCommandResult),
 		);
 	}
@@ -428,7 +451,7 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return optimistic.run(
 			`clock:reset:${matchId}`,
 			matchId,
-			current => applyFeatureMatchClockCommand(current, 'ResetClock', {}),
+			(current) => applyFeatureMatchClockCommand(current, 'ResetClock', {}),
 			() => repo.resetClock(eventId, matchId).then(settleCommandResult),
 			// `overtime` may already be unset — the server still clears it on reset.
 			{
@@ -441,9 +464,10 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return optimistic.run(
 			`clock:restart:${matchId}`,
 			matchId,
-			current => applyFeatureMatchClockCommand(current, 'RestartClock', {
-				at: getServerTime(),
-			}),
+			(current) =>
+				applyFeatureMatchClockCommand(current, 'RestartClock', {
+					at: getServerTime(),
+				}),
 			() => repo.restartClock(eventId, matchId).then(settleCommandResult),
 		);
 	}
@@ -452,11 +476,12 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		clockAdjustBatch.enqueue(
 			`${matchId}`,
 			matchId,
-			current => applyFeatureMatchClockCommand(current, 'AdjustClock', {
-				at: getServerTime(),
-				deltaMs,
-			}),
-			existing => ({
+			(current) =>
+				applyFeatureMatchClockCommand(current, 'AdjustClock', {
+					at: getServerTime(),
+					deltaMs,
+				}),
+			(existing) => ({
 				eventId,
 				matchId,
 				totalDeltaMs: (existing?.totalDeltaMs ?? 0) + deltaMs,
@@ -468,10 +493,11 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return optimistic.run(
 			`clock:set:${matchId}`,
 			matchId,
-			current => applyFeatureMatchClockCommand(current, 'SetClock', {
-				at: getServerTime(),
-				targetMs,
-			}),
+			(current) =>
+				applyFeatureMatchClockCommand(current, 'SetClock', {
+					at: getServerTime(),
+					targetMs,
+				}),
 			() => repo.setClock(eventId, matchId, targetMs).then(settleCommandResult),
 		);
 	}
@@ -504,17 +530,14 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 
 		return optimistic.run(
 			`bulk:${action}`,
-			[
-				...featureMatchStates.value.keys(),
-			],
+			[...featureMatchStates.value.keys()],
 			(state) => {
 				// A Slot the command leaves as it is takes no part in the action.
 				const predicted = predictBulkClockCommand(state, action, { at });
-				return predicted === state
-					? null
-					: predicted;
+				return predicted === state ? null : predicted;
 			},
-			async () => cacheBulkUpdates((await repo.bulkClockAction(eventId, action))?.updates ?? undefined),
+			async () =>
+				cacheBulkUpdates((await repo.bulkClockAction(eventId, action))?.updates ?? undefined),
 			// 'reset' clears overtime server-side even when it is already unset.
 			action === 'reset'
 				? {
@@ -540,11 +563,9 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		const at = getServerTime();
 		bulkAdjustBatch.enqueue(
 			'all',
-			[
-				...featureMatchStates.value.keys(),
-			],
-			state => predictBulkClockCommand(state, 'adjust', { at, deltaMs }),
-			existing => ({
+			[...featureMatchStates.value.keys()],
+			(state) => predictBulkClockCommand(state, 'adjust', { at, deltaMs }),
+			(existing) => ({
 				eventId,
 				totalDeltaMs: (existing?.totalDeltaMs ?? 0) + deltaMs,
 			}),
@@ -562,21 +583,21 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		const current = featureMatchStates.value.get(matchId);
 		// Seats 3 and 4 are a Commander Session's alone.
 		const currentPlayer = current?.[player];
-		if (!current || !currentPlayer)
-			return;
+		if (!current || !currentPlayer) return;
 
 		// Compute the optimistic display value from the latest local state so rapid
 		// button taps stay responsive while the server receives one batched command.
-		const newLifeTotal = update.lifeTotal !== undefined
-			? update.lifeTotal
-			: update.lifeDelta !== undefined
-				? currentPlayer.lifeTotal + update.lifeDelta
-				: currentPlayer.lifeTotal;
+		const newLifeTotal =
+			update.lifeTotal !== undefined
+				? update.lifeTotal
+				: update.lifeDelta !== undefined
+					? currentPlayer.lifeTotal + update.lifeDelta
+					: currentPlayer.lifeTotal;
 
 		playerBatch.enqueue(
 			`${matchId}-${player}`,
 			matchId,
-			current => ({
+			(current) => ({
 				...current,
 				[player]: {
 					...current[player],
@@ -585,7 +606,8 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 				},
 			}),
 			(existing) => {
-				const hasAbsoluteLifeUpdate = update.lifeTotal !== undefined || (existing?.hasAbsoluteLifeUpdate ?? false);
+				const hasAbsoluteLifeUpdate =
+					update.lifeTotal !== undefined || (existing?.hasAbsoluteLifeUpdate ?? false);
 				return {
 					...existing,
 					eventId,
@@ -628,9 +650,9 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 	) {
 		const snapshot = heldSession(matchId)?.sourceSnapshot;
 		const current = featureMatchStates.value.get(matchId);
-		const damaged = snapshot && current && applyCommanderDamage(current, snapshot, player, source, delta);
-		if (!damaged)
-			return;
+		const damaged =
+			snapshot && current && applyCommanderDamage(current, snapshot, player, source, delta);
+		if (!damaged) return;
 
 		playerBatch.enqueue(
 			`${matchId}-${player}`,
@@ -638,7 +660,9 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 			() => damaged,
 			(existing) => {
 				const dealt = existing?.commanderDamage ?? [];
-				const held = dealt.find(entry => entry.seat === source.seat && entry.commander === source.commander);
+				const held = dealt.find(
+					(entry) => entry.seat === source.seat && entry.commander === source.commander,
+				);
 				return {
 					eventId,
 					matchId,
@@ -649,15 +673,14 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 					hasCounterUpdate: false,
 					...existing,
 					// A life typed earlier in this window follows the damage down.
-					...(existing?.hasAbsoluteLifeUpdate && { intendedLifeTotal: damaged[player]?.lifeTotal ?? existing.intendedLifeTotal }),
+					...(existing?.hasAbsoluteLifeUpdate && {
+						intendedLifeTotal: damaged[player]?.lifeTotal ?? existing.intendedLifeTotal,
+					}),
 					commanderDamage: held
-						? dealt.map(entry => entry === held
-								? { ...entry, delta: entry.delta + delta }
-								: entry)
-						: [
-								...dealt,
-								{ seat: source.seat, commander: source.commander, delta },
-							],
+						? dealt.map((entry) =>
+								entry === held ? { ...entry, delta: entry.delta + delta } : entry,
+							)
+						: [...dealt, { seat: source.seat, commander: source.commander, delta }],
 				};
 			},
 		);
@@ -685,7 +708,7 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return optimistic.run(
 			`outcome:${matchId}`,
 			matchId,
-			current => ({
+			(current) => ({
 				...current,
 				outcome: outcome ?? undefined,
 				isComplete: outcome !== null,
@@ -711,7 +734,10 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 						}
 					: current;
 			},
-			() => repo.updatePlayerFeatureMatchState(eventId, matchId, player, { cardsKept }).then(settleCommandResult),
+			() =>
+				repo
+					.updatePlayerFeatureMatchState(eventId, matchId, player, { cardsKept })
+					.then(settleCommandResult),
 		);
 	}
 
@@ -724,15 +750,18 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return optimistic.run(
 			`sideboards:${matchId}`,
 			matchId,
-			current => ({
+			(current) => ({
 				...current,
 				player1: { ...current.player1, sideboardRevealed: revealed },
 				player2: { ...current.player2, sideboardRevealed: revealed },
 			}),
-			() => repo.updateState(eventId, matchId, {
-				player1: { sideboardRevealed: revealed },
-				player2: { sideboardRevealed: revealed },
-			}).then(settleCommandResult),
+			() =>
+				repo
+					.updateState(eventId, matchId, {
+						player1: { sideboardRevealed: revealed },
+						player2: { sideboardRevealed: revealed },
+					})
+					.then(settleCommandResult),
 		);
 	}
 
@@ -740,7 +769,7 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return optimistic.run(
 			`turnNumber:${matchId}`,
 			matchId,
-			current => ({ ...current, turnNumber }),
+			(current) => ({ ...current, turnNumber }),
 			() => repo.updateState(eventId, matchId, { turnNumber }).then(settleCommandResult),
 			// The server treats an explicit turn number as owning the field even
 			// when it matches the current value.
@@ -754,13 +783,20 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return optimistic.run(
 			`firstPlayer:${matchId}`,
 			matchId,
-			current => ({
+			(current) => ({
 				...current,
 				firstPlayer: player,
 				activePlayer: player,
 				turnNumber: 1,
 			}),
-			() => repo.updateState(eventId, matchId, { firstPlayer: player, activePlayer: player, turnNumber: 1 }).then(settleCommandResult),
+			() =>
+				repo
+					.updateState(eventId, matchId, {
+						firstPlayer: player,
+						activePlayer: player,
+						turnNumber: 1,
+					})
+					.then(settleCommandResult),
 			{
 				serverOwns: ['firstPlayer', 'activePlayer', 'turnNumber'],
 			},
@@ -769,16 +805,18 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 
 	function changeFirstPlayer(eventId: number, matchId: number) {
 		const firstPlayer = pairSeatOf(featureMatchStates.value.get(matchId)?.firstPlayer);
-		if (!firstPlayer)
-			return null;
+		if (!firstPlayer) return null;
 
 		const newFirstPlayer = otherFeatureMatchPlayer(firstPlayer);
 
 		return optimistic.run(
 			`firstPlayer:${matchId}`,
 			matchId,
-			state => ({ ...state, firstPlayer: newFirstPlayer }),
-			() => repo.updateState(eventId, matchId, { firstPlayer: newFirstPlayer }).then(settleCommandResult),
+			(state) => ({ ...state, firstPlayer: newFirstPlayer }),
+			() =>
+				repo
+					.updateState(eventId, matchId, { firstPlayer: newFirstPlayer })
+					.then(settleCommandResult),
 		);
 	}
 
@@ -786,7 +824,11 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 	 * One turn step, as the Session's reducer takes it (used for optimistic
 	 * updates): a half-turn of the pair, or the next Seat of a Commander game.
 	 */
-	function computeTurnStep(matchId: number, state: FeatureMatchState, delta: 1 | -1): FeatureMatchState {
+	function computeTurnStep(
+		matchId: number,
+		state: FeatureMatchState,
+		delta: 1 | -1,
+	): FeatureMatchState {
 		const snapshot = heldSession(matchId)?.sourceSnapshot;
 		return snapshot && isCommanderSession(snapshot)
 			? applyCommanderTurnStep(state, snapshot, delta)
@@ -795,22 +837,20 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 
 	function stepTurn(eventId: number, matchId: number, delta: 1 | -1) {
 		const current = featureMatchStates.value.get(matchId);
-		if (!current?.activePlayer || !current.firstPlayer)
-			return;
+		if (!current?.activePlayer || !current.firstPlayer) return;
 
 		// Boundary check: can't step back at turn 1 with first player active
 		if (delta === -1 && current.activePlayer === current.firstPlayer && current.turnNumber <= 1)
 			return;
 		// A Commander game's turn answers itself where it cannot move: back at its
 		// first turn, or on with no Seat left to take it. The pair's never does.
-		if (computeTurnStep(matchId, current, delta) === current)
-			return;
+		if (computeTurnStep(matchId, current, delta) === current) return;
 
 		turnBatch.enqueue(
 			`${matchId}`,
 			matchId,
-			current => computeTurnStep(matchId, current, delta),
-			existing => ({
+			(current) => computeTurnStep(matchId, current, delta),
+			(existing) => ({
 				eventId,
 				matchId,
 				turnDelta: (existing?.turnDelta ?? 0) + delta,
@@ -823,7 +863,7 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return optimistic.run(
 			`activePlayer:${matchId}`,
 			matchId,
-			current => ({ ...current, activePlayer: player }),
+			(current) => ({ ...current, activePlayer: player }),
 			() => repo.updateState(eventId, matchId, { activePlayer: player }).then(settleCommandResult),
 		);
 	}
@@ -836,9 +876,8 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		player: PlayerSide,
 		options: GameWinOptions = {},
 	) {
-		return withServerUpdate(
-			matchId,
-			() => repo.recordGameWin(eventId, matchId, player, options).then(settleCommandResult),
+		return withServerUpdate(matchId, () =>
+			repo.recordGameWin(eventId, matchId, player, options).then(settleCommandResult),
 		);
 	}
 
@@ -848,16 +887,14 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		player: PlayerSide,
 		options: GameWinOptions = {},
 	) {
-		return withServerUpdate(
-			matchId,
-			() => repo.undoGameWin(eventId, matchId, player, options).then(settleCommandResult),
+		return withServerUpdate(matchId, () =>
+			repo.undoGameWin(eventId, matchId, player, options).then(settleCommandResult),
 		);
 	}
 
 	function resetMatch(eventId: number, matchId: number, options: FeatureMatchResetOptions) {
-		return withServerUpdate(
-			matchId,
-			() => repo.resetMatch(eventId, matchId, options).then(settleCommandResult),
+		return withServerUpdate(matchId, () =>
+			repo.resetMatch(eventId, matchId, options).then(settleCommandResult),
 		);
 	}
 
@@ -867,7 +904,7 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return optimistic.run(
 			`overtime:start:${matchId}`,
 			matchId,
-			current => ({
+			(current) => ({
 				...current,
 				overtime: { active: true, turnsRemaining: totalTurns, totalTurns },
 			}),
@@ -881,14 +918,13 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 	}
 
 	function nextOvertimeTurn(eventId: number, matchId: number) {
-		if (!featureMatchStates.value.get(matchId)?.overtime?.active)
-			return;
+		if (!featureMatchStates.value.get(matchId)?.overtime?.active) return;
 
 		turnBatch.enqueue(
 			`${matchId}`,
 			matchId,
-			current => computeOvertimeStep(current, 1),
-			existing => ({
+			(current) => computeOvertimeStep(current, 1),
+			(existing) => ({
 				eventId,
 				matchId,
 				turnDelta: existing?.turnDelta ?? 0,
@@ -898,14 +934,13 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 	}
 
 	function prevOvertimeTurn(eventId: number, matchId: number) {
-		if (!featureMatchStates.value.get(matchId)?.overtime)
-			return;
+		if (!featureMatchStates.value.get(matchId)?.overtime) return;
 
 		turnBatch.enqueue(
 			`${matchId}`,
 			matchId,
-			current => computeOvertimeStep(current, -1),
-			existing => ({
+			(current) => computeOvertimeStep(current, -1),
+			(existing) => ({
 				eventId,
 				matchId,
 				turnDelta: existing?.turnDelta ?? 0,
@@ -942,8 +977,7 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 	// ──────────────── Realtime Handlers ────────────────
 
 	async function applyRemoteSessionEvent(data: MessageData<'featureMatchSession:eventApplied'>) {
-		if (follower.notify(data.slotId, data) === 'reload')
-			await loadState(data.eventId, data.slotId);
+		if (follower.notify(data.slotId, data) === 'reload') await loadState(data.eventId, data.slotId);
 	}
 
 	// ──────────────── Reset ────────────────

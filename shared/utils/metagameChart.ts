@@ -32,9 +32,7 @@ function isAggregate(entry: ArchetypeBreakdownEntry): boolean {
 
 function shareOf(count: number, classifiedPlayers: number): number {
 	// The breakdown's own rounding, so a folded Other reads like the server's.
-	return classifiedPlayers > 0
-		? Math.round((count / classifiedPlayers) * 10000) / 100
-		: 0;
+	return classifiedPlayers > 0 ? Math.round((count / classifiedPlayers) * 10000) / 100 : 0;
 }
 
 /**
@@ -47,7 +45,9 @@ function shareOf(count: number, classifiedPlayers: number): number {
  * cannot hold every id, so an unpinned Archetype entering or leaving the chart
  * can move one whose preferred slot it shares, and only that one.
  */
-function assignColorSlots(entries: Pick<ArchetypeBreakdownEntry, 'id' | 'chartSeries'>[]): Map<number, number> {
+function assignColorSlots(
+	entries: Pick<ArchetypeBreakdownEntry, 'id' | 'chartSeries'>[],
+): Map<number, number> {
 	const slots = new Map<number, number>();
 	const taken = new Set<number>();
 	const byId = [...entries].sort((a, b) => a.id - b.id);
@@ -60,9 +60,10 @@ function assignColorSlots(entries: Pick<ArchetypeBreakdownEntry, 'id' | 'chartSe
 	}
 
 	for (const { id } of byId) {
-		if (slots.has(id))
-			continue;
-		const preferred = ((id - 1) % METAGAME_CHART_MAX_ARCHETYPES + METAGAME_CHART_MAX_ARCHETYPES) % METAGAME_CHART_MAX_ARCHETYPES;
+		if (slots.has(id)) continue;
+		const preferred =
+			(((id - 1) % METAGAME_CHART_MAX_ARCHETYPES) + METAGAME_CHART_MAX_ARCHETYPES) %
+			METAGAME_CHART_MAX_ARCHETYPES;
 		for (let offset = 0; offset < METAGAME_CHART_MAX_ARCHETYPES; offset++) {
 			const slot = ((preferred + offset) % METAGAME_CHART_MAX_ARCHETYPES) + 1;
 			if (!taken.has(slot)) {
@@ -83,14 +84,15 @@ function assignColorSlots(entries: Pick<ArchetypeBreakdownEntry, 'id' | 'chartSe
  * {@link METAGAME_CHART_MAX_ARCHETYPES} join Other.
  */
 export function projectMetagameChart(breakdown: ArchetypeBreakdownResponse): MetagameChartBar[] {
-	const archetypes = breakdown.entries.filter(entry => !isAggregate(entry));
+	const archetypes = breakdown.entries.filter((entry) => !isAggregate(entry));
 	const shown = archetypes.slice(0, METAGAME_CHART_MAX_ARCHETYPES);
-	const otherCount = archetypes.slice(METAGAME_CHART_MAX_ARCHETYPES)
+	const otherCount = archetypes
+		.slice(METAGAME_CHART_MAX_ARCHETYPES)
 		.concat(breakdown.entries.filter(isAggregate))
 		.reduce((total, entry) => total + entry.count, 0);
 
 	const colorSlots = assignColorSlots(shown);
-	const rows: Omit<MetagameChartBar, 'length'>[] = shown.map(entry => ({
+	const rows: Omit<MetagameChartBar, 'length'>[] = shown.map((entry) => ({
 		id: entry.id,
 		name: entry.name,
 		colors: entry.colors,
@@ -108,11 +110,9 @@ export function projectMetagameChart(breakdown: ArchetypeBreakdownResponse): Met
 		});
 	}
 
-	const largestShare = Math.max(0, ...rows.map(row => row.metaShare));
-	return rows.map(row => ({
+	const largestShare = Math.max(0, ...rows.map((row) => row.metaShare));
+	return rows.map((row) => ({
 		...row,
-		length: largestShare > 0
-			? row.metaShare / largestShare
-			: 0,
+		length: largestShare > 0 ? row.metaShare / largestShare : 0,
 	}));
 }

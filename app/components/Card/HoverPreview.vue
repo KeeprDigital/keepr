@@ -11,27 +11,30 @@
  * ```
  */
 
-withDefaults(defineProps<{
-	/** Full image URL for the preview (Scryfall normal or art_crop) */
-	imageUrl: string | null;
-	/** Alt text for the image */
-	alt: string;
-	/** Whether this preview is currently active/visible */
-	isActive: boolean;
-	/** Image width in px */
-	width?: number;
-	/** Image height in px */
-	height?: number;
-	/** Popover side */
-	side?: 'top' | 'right' | 'bottom' | 'left';
-	/** Border radius style for the image */
-	borderRadius?: string;
-}>(), {
-	width: 244,
-	height: 340,
-	side: 'right',
-	borderRadius: 'var(--mtg-card-radius)',
-});
+withDefaults(
+	defineProps<{
+		/** Full image URL for the preview (Scryfall normal or art_crop) */
+		imageUrl: string | null;
+		/** Alt text for the image */
+		alt: string;
+		/** Whether this preview is currently active/visible */
+		isActive: boolean;
+		/** Image width in px */
+		width?: number;
+		/** Image height in px */
+		height?: number;
+		/** Popover side */
+		side?: 'top' | 'right' | 'bottom' | 'left';
+		/** Border radius style for the image */
+		borderRadius?: string;
+	}>(),
+	{
+		width: 244,
+		height: 340,
+		side: 'right',
+		borderRadius: 'var(--mtg-card-radius)',
+	},
+);
 
 const emit = defineEmits<{
 	(e: 'preview', open: boolean): void;
@@ -48,10 +51,7 @@ const emit = defineEmits<{
 		:content="{ side, align: 'start', sideOffset: 8 }"
 		@update:open="(val: boolean) => emit('preview', val)"
 	>
-		<span
-			class="cursor-pointer"
-			@click.stop="emit('pin')"
-		>
+		<span class="cursor-pointer" @click.stop="emit('pin')">
 			<slot />
 		</span>
 		<template #content>

@@ -59,11 +59,12 @@ function createLibrary(
 	const library: typeof libraryDelegate = {
 		...libraryDelegate,
 		async initiateGraphicsIngestion(input) {
-			const fixture = input.declaredMime === 'image/jpeg'
-				? jpegPixel
-				: input.declaredMime === 'image/webp'
-					? webpPixel
-					: transparentPixelPng;
+			const fixture =
+				input.declaredMime === 'image/jpeg'
+					? jpegPixel
+					: input.declaredMime === 'image/webp'
+						? webpPixel
+						: transparentPixelPng;
 			return await libraryDelegate.initiateGraphicsIngestion({
 				...input,
 				browserDecodeEvidence: input.declaredMime?.startsWith('video/')
@@ -117,25 +118,31 @@ describe('still-image ingestion through the Graphics Asset Library public module
 		});
 		if (available.outcome !== 'available')
 			throw new Error('Expected the pinned revision to resolve');
-		await expect(consumeBoundedByteStream({
-			body: available.body,
-			byteLength: available.byteLength,
-			maximumByteLength: available.byteLength,
-		})).resolves.toEqual(transparentPixelPng);
+		await expect(
+			consumeBoundedByteStream({
+				body: available.body,
+				byteLength: available.byteLength,
+				maximumByteLength: available.byteLength,
+			}),
+		).resolves.toEqual(transparentPixelPng);
 
-		await expect(library.resolveGraphicAssetRevision({
-			assetId: reference.assetId,
-			revisionId: graphicAssetRevisionId('missing-revision'),
-		})).resolves.toEqual({ outcome: 'missing' });
+		await expect(
+			library.resolveGraphicAssetRevision({
+				assetId: reference.assetId,
+				revisionId: graphicAssetRevisionId('missing-revision'),
+			}),
+		).resolves.toEqual({ outcome: 'missing' });
 		await expect(library.inspectGraphicAssetRevision(reference)).resolves.toEqual({
 			outcome: 'available',
 			lifecycleState: 'active',
 			kind: 'image',
 		});
-		await expect(library.inspectGraphicAssetRevision({
-			assetId: reference.assetId,
-			revisionId: graphicAssetRevisionId('missing-revision'),
-		})).resolves.toEqual({ outcome: 'missing' });
+		await expect(
+			library.inspectGraphicAssetRevision({
+				assetId: reference.assetId,
+				revisionId: graphicAssetRevisionId('missing-revision'),
+			}),
+		).resolves.toEqual({ outcome: 'missing' });
 
 		canonical.markUnavailable(
 			graphicsObjectIdentity(`sha256/${acceptedReport(completed.report).facts.sha256}`),
@@ -156,10 +163,10 @@ describe('still-image ingestion through the Graphics Asset Library public module
 	it('inspects a batch of revisions with one observation per distinct content', async () => {
 		const canonicalDelegate = createInMemoryCanonicalGraphicsObjectStore();
 		const readMetadata = vi.fn(canonicalDelegate.readMetadata);
-		const { library } = createLibrary(
-			createInMemoryStagingGraphicsObjectStore(),
-			{ ...canonicalDelegate, readMetadata },
-		);
+		const { library } = createLibrary(createInMemoryStagingGraphicsObjectStore(), {
+			...canonicalDelegate,
+			readMetadata,
+		});
 
 		async function ingested(key: string, bytes: Uint8Array, declaredMime?: string) {
 			const operation = await library.initiateGraphicsIngestion({
@@ -214,9 +221,11 @@ describe('still-image ingestion through the Graphics Asset Library public module
 		canonicalDelegate.markUnavailable(
 			graphicsObjectIdentity(`sha256/${acceptedReport(png.report).facts.sha256}`),
 		);
-		await expect(library.inspectGraphicAssetRevisions({
-			references: [png, jpeg, pngTwin],
-		})).resolves.toEqual([
+		await expect(
+			library.inspectGraphicAssetRevisions({
+				references: [png, jpeg, pngTwin],
+			}),
+		).resolves.toEqual([
 			{ outcome: 'unavailable', retryable: true },
 			{ outcome: 'available', lifecycleState: 'active', kind: 'image' },
 			{ outcome: 'unavailable', retryable: true },
@@ -226,10 +235,10 @@ describe('still-image ingestion through the Graphics Asset Library public module
 	it('threads an exact requested byte range to canonical storage', async () => {
 		const canonicalDelegate = createInMemoryCanonicalGraphicsObjectStore();
 		const read = vi.fn(canonicalDelegate.read);
-		const { library } = createLibrary(
-			createInMemoryStagingGraphicsObjectStore(),
-			{ ...canonicalDelegate, read },
-		);
+		const { library } = createLibrary(createInMemoryStagingGraphicsObjectStore(), {
+			...canonicalDelegate,
+			read,
+		});
 		const operation = await library.initiateGraphicsIngestion({
 			idempotencyKey: 'range-scoreboard-logo',
 			initiatedBy: 'graphics-author-1',
@@ -260,16 +269,15 @@ describe('still-image ingestion through the Graphics Asset Library public module
 			outcome: 'available',
 			byteLength: transparentPixelPng.byteLength,
 		});
-		if (resolved.outcome !== 'available')
-			throw new Error('Expected ranged content to resolve');
-		await expect(
-			new Response(resolved.body).arrayBuffer(),
-		).resolves.toEqual(transparentPixelPng.slice(24, 32).buffer);
+		if (resolved.outcome !== 'available') throw new Error('Expected ranged content to resolve');
+		await expect(new Response(resolved.body).arrayBuffer()).resolves.toEqual(
+			transparentPixelPng.slice(24, 32).buffer,
+		);
 	});
 
 	it('updates Graphic Asset metadata and Event associations without creating a Graphic Asset Revision', async () => {
 		const { library } = createLibrary();
-		await Promise.all([7, 9, 11].map(eventId => addEvent(harness, eventId)));
+		await Promise.all([7, 9, 11].map((eventId) => addEvent(harness, eventId)));
 		const operation = await library.initiateGraphicsIngestion({
 			idempotencyKey: 'metadata-original',
 			initiatedBy: 'graphics-author-1',
@@ -299,10 +307,12 @@ describe('still-image ingestion through the Graphics Asset Library public module
 			revisionId: completed.result?.revisionId,
 			revisionNumber: 1,
 		});
-		await expect(library.resolveGraphicAssetRevision({
-			assetId: completed.result!.assetId,
-			revisionId: completed.result!.revisionId,
-		})).resolves.toMatchObject({ outcome: 'available' });
+		await expect(
+			library.resolveGraphicAssetRevision({
+				assetId: completed.result!.assetId,
+				revisionId: completed.result!.revisionId,
+			}),
+		).resolves.toMatchObject({ outcome: 'available' });
 	});
 });
 
@@ -310,7 +320,11 @@ describe('still-image ingestion through the Graphics Asset Library public module
 // the catalogue and stores its discovery and delivery read. Ingestion's rules
 // are held at its own seam: graphicsAssetIngestion*.sqlite.test.ts.
 describe('each ingestion entry-point family wired into the Graphics Asset Library public module', () => {
-	async function uploadPng(library: ReturnType<typeof createLibrary>['library'], idempotencyKey: string, name: string) {
+	async function uploadPng(
+		library: ReturnType<typeof createLibrary>['library'],
+		idempotencyKey: string,
+		name: string,
+	) {
 		const operation = await library.initiateGraphicsIngestion({
 			idempotencyKey,
 			initiatedBy: 'graphics-author-1',
@@ -350,10 +364,12 @@ describe('each ingestion entry-point family wired into the Graphics Asset Librar
 				revisionId: expect.any(String),
 			},
 		});
-		await expect(library.getIngestionOperation({
-			operationId: operation.id,
-			initiatedBy: 'graphics-author-1',
-		})).resolves.toEqual(completed);
+		await expect(
+			library.getIngestionOperation({
+				operationId: operation.id,
+				initiatedBy: 'graphics-author-1',
+			}),
+		).resolves.toEqual(completed);
 		await expect(library.listGraphicAssets({ search: 'scoreboard' })).resolves.toEqual([
 			expect.objectContaining({
 				id: completed.result?.assetId,
@@ -419,14 +435,18 @@ describe('each ingestion entry-point family wired into the Graphics Asset Librar
 				revisionNumber: 2,
 			}),
 		]);
-		await expect(library.resolveGraphicAssetRevision({
-			assetId: original.result!.assetId,
-			revisionId: original.result!.revisionId,
-		})).resolves.toMatchObject({ outcome: 'available', contentType: 'image/png' });
-		await expect(library.resolveGraphicAssetRevision({
-			assetId: original.result!.assetId,
-			revisionId: changed.result!.revisionId,
-		})).resolves.toMatchObject({ outcome: 'available', contentType: 'image/jpeg' });
+		await expect(
+			library.resolveGraphicAssetRevision({
+				assetId: original.result!.assetId,
+				revisionId: original.result!.revisionId,
+			}),
+		).resolves.toMatchObject({ outcome: 'available', contentType: 'image/png' });
+		await expect(
+			library.resolveGraphicAssetRevision({
+				assetId: original.result!.assetId,
+				revisionId: changed.result!.revisionId,
+			}),
+		).resolves.toMatchObject({ outcome: 'available', contentType: 'image/jpeg' });
 	});
 
 	it('cancels an ingestion before publication', async () => {

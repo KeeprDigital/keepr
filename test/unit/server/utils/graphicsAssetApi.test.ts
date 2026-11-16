@@ -14,14 +14,14 @@ vi.mock('~~/server/utils/auth', () => ({
 const setResponseHeader = vi.fn();
 vi.stubGlobal('setResponseHeader', setResponseHeader);
 vi.stubGlobal('createError', (input: Record<string, unknown>) =>
-	Object.assign(new Error(input.message as string), input));
+	Object.assign(new Error(input.message as string), input),
+);
 
 function rethrown(error: unknown) {
 	const event = stubH3Event();
 	try {
 		rethrowGraphicsAssetApiError(error, event);
-	}
-	catch (thrown) {
+	} catch (thrown) {
 		return { thrown: thrown as Record<string, unknown>, event };
 	}
 	throw new Error('rethrowGraphicsAssetApiError returned');
@@ -40,21 +40,26 @@ describe('rethrowGraphicsAssetApiError', () => {
 		['staging-capacity-exhausted', 507, 'Insufficient Storage'],
 		['canonical-capacity-exhausted', 507, 'Insufficient Storage'],
 		['graphics-asset-library-unavailable', 503, 'Service Unavailable'],
-	] as const)('answers %s as %i %s, keeping the library\'s message', (code, statusCode, statusMessage) => {
-		const error = new GraphicsAssetLibraryError(`library says ${code}`, code);
+	] as const)(
+		"answers %s as %i %s, keeping the library's message",
+		(code, statusCode, statusMessage) => {
+			const error = new GraphicsAssetLibraryError(`library says ${code}`, code);
 
-		const { thrown } = rethrown(error);
+			const { thrown } = rethrown(error);
 
-		expect(thrown).toMatchObject({
-			statusCode,
-			statusMessage,
-			message: `library says ${code}`,
-			cause: error,
-		});
-	});
+			expect(thrown).toMatchObject({
+				statusCode,
+				statusMessage,
+				message: `library says ${code}`,
+				cause: error,
+			});
+		},
+	);
 
 	it('asks a client to retry an unavailable library, and only then', () => {
-		const { event } = rethrown(new GraphicsAssetLibraryError('down', 'graphics-asset-library-unavailable'));
+		const { event } = rethrown(
+			new GraphicsAssetLibraryError('down', 'graphics-asset-library-unavailable'),
+		);
 		expect(setResponseHeader).toHaveBeenCalledWith(event, 'retry-after', 5);
 
 		setResponseHeader.mockReset();
@@ -65,13 +70,18 @@ describe('rethrowGraphicsAssetApiError', () => {
 	it('carries the exhausted capacity to the client', () => {
 		const capacity = { scope: 'canonical' } as never;
 
-		const { thrown } = rethrown(new GraphicsAssetLibraryError('full', 'canonical-capacity-exhausted', { capacity }));
+		const { thrown } = rethrown(
+			new GraphicsAssetLibraryError('full', 'canonical-capacity-exhausted', { capacity }),
+		);
 
 		expect(thrown.data).toBe(capacity);
 	});
 
 	it('answers a malformed object input as 400', () => {
-		expect(rethrown(new GraphicsObjectInputError('empty identity')).thrown).toMatchObject({ statusCode: 400, message: 'empty identity' });
+		expect(rethrown(new GraphicsObjectInputError('empty identity')).thrown).toMatchObject({
+			statusCode: 400,
+			message: 'empty identity',
+		});
 	});
 
 	it('passes any other failure through untouched', () => {

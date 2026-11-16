@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { FeatureMatchOverlayModeConfig, FeatureMatchSourceItemConfig, FeatureMatchSourceRole } from '~~/shared/types/screenConfig';
+import type {
+	FeatureMatchOverlayModeConfig,
+	FeatureMatchSourceItemConfig,
+	FeatureMatchSourceRole,
+} from '~~/shared/types/screenConfig';
 import type { FeatureMatchOverlayConfigUpdater } from '~/composables/screen/useFeatureMatchOverlayConfigEditor';
 import type { Screen } from '~/types';
 import { featureMatchOverlayHostContract } from '~~/shared/modules/graphics';
@@ -28,8 +32,9 @@ const editor = useFeatureMatchOverlayConfigEditor({
 const eventKind = useEventKind();
 const sourceRoleOptions = computed<Array<{ label: string; value: FeatureMatchSourceRole }>>(() => [
 	{ label: 'Main', value: 'main' },
-	...(featureMatchOverlayHostContract(eventKind.value ?? 'mtg-two-player').seats ?? [])
-		.map(option => ({ label: option.label, value: option.seat })),
+	...(featureMatchOverlayHostContract(eventKind.value ?? 'mtg-two-player').seats ?? []).map(
+		(option) => ({ label: option.label, value: option.seat }),
+	),
 ]);
 </script>
 
@@ -63,8 +68,8 @@ const sourceRoleOptions = computed<Array<{ label: string; value: FeatureMatchSou
 				:rect="item"
 				:container="{ width: screenWidth, height: screenHeight }"
 				:anchor="item.anchor ?? 'top-left'"
-				@update:anchor="anchor => editor.updateSource(item.id, { anchor })"
-				@update="patch => editor.updateSource(item.id, patch)"
+				@update:anchor="(anchor) => editor.updateSource(item.id, { anchor })"
+				@update="(patch) => editor.updateSource(item.id, patch)"
 			/>
 		</ScreenSettingsSection>
 
@@ -110,7 +115,7 @@ const sourceRoleOptions = computed<Array<{ label: string; value: FeatureMatchSou
 			<div class="space-y-4">
 				<FeatureMatchOverlaySourceFramingStyleFields
 					:framing-style="item.framingStyle"
-					@update="updates => editor.updateSourceFramingStyle(item.id, updates)"
+					@update="(updates) => editor.updateSourceFramingStyle(item.id, updates)"
 				/>
 				<!-- Every Source Item shares this Look, so it writes a Screen Theme Override, not this item. -->
 				<ScreenThemeTokenGroup :screen="screen" :event-id="eventId" group="source-appearance" />

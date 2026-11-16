@@ -1,7 +1,4 @@
-import type {
-	GraphicAsset,
-	GraphicsIngestionOperation,
-} from '~~/shared/types/graphicsAsset';
+import type { GraphicAsset, GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -30,11 +27,13 @@ import { anotherUser } from './identities';
  * scope that rule has to survive.
  */
 
-const basePixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
-const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xC5, 0x85);
+const basePixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
+const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xc5, 0x85);
 
 /**
  * This suite's own still-image content, padded with a chunk count no other
@@ -45,11 +44,13 @@ const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0
  * lifecycle. `120` because every count this suite could collide with is
  * already spoken for.
  */
-const readSubjectPng = Uint8Array.from(Buffer.concat([
-	basePixelPng.slice(0, -12),
-	...Array.from({ length: 120 }).fill(emptyTextChunk) as Uint8Array[],
-	basePixelPng.slice(-12),
-]));
+const readSubjectPng = Uint8Array.from(
+	Buffer.concat([
+		basePixelPng.slice(0, -12),
+		...(Array.from({ length: 120 }).fill(emptyTextChunk) as Uint8Array[]),
+		basePixelPng.slice(-12),
+	]),
+);
 
 const digest = createHash('sha256').update(readSubjectPng).digest('hex');
 
@@ -79,7 +80,7 @@ const readRoutes: ReadRoute[] = [
 		path: () => '/api/graphics-assets',
 	},
 	{
-		label: 'reading the installation\'s storage occupancy',
+		label: "reading the installation's storage occupancy",
 		path: () => '/api/graphics-assets/capacity',
 	},
 	{
@@ -98,7 +99,7 @@ const readRoutes: ReadRoute[] = [
 		// Not one of the five #172 lists. #55 created this route and its sibling
 		// `content.get` together and guarded only that one, so the same revision's
 		// bytes were authenticated while the facts describing them were not.
-		label: 'inspecting a Graphic Asset Revision\'s delivery status',
+		label: "inspecting a Graphic Asset Revision's delivery status",
 		path: ({ assetId, revisionId }) =>
 			`/api/graphics-assets/${assetId}/revisions/${revisionId}/status`,
 	},
@@ -152,7 +153,7 @@ describe('the Graphics Asset Library read surface', () => {
 			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
 			{
 				method: 'PUT',
-				headers: { 'cookie': publishingAuthorCookie, 'content-type': 'image/png' },
+				headers: { cookie: publishingAuthorCookie, 'content-type': 'image/png' },
 				body: readSubjectPng,
 			},
 		);
@@ -166,8 +167,7 @@ describe('the Graphics Asset Library read surface', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	describe('any authenticated graphics author', () => {
@@ -184,10 +184,12 @@ describe('the Graphics Asset Library read surface', () => {
 		 * author published, and sees what it is attached to.
 		 */
 		it('discovers a Graphic Asset published by a different author', async () => {
-			await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-				headers: { cookie: readingAuthorCookie },
-				query: { search: SUBJECT_NAME },
-			})).resolves.toMatchObject([
+			await expect(
+				$fetch<GraphicAsset[]>('/api/graphics-assets', {
+					headers: { cookie: readingAuthorCookie },
+					query: { search: SUBJECT_NAME },
+				}),
+			).resolves.toMatchObject([
 				{
 					id: subject.assetId,
 					eventIds: [eventId],

@@ -76,35 +76,35 @@ export type BroadcastGraphicOperation<A extends unknown[] = []> = (
  * `named-graphic` follow no selection: they are aimed at the stack, or at a graphic
  * a panel names whether that graphic or one of its items is selected.
  */
-export type CompositorEdit
-	= | {
-		kind: 'author';
-		/** Applied while a Broadcast Graphic is selected. */
-		graphic?: BroadcastGraphicOperation;
-		/** Applied while a Graphic Item is selected. */
-		item?: GraphicItemOperation;
-	}
+export type CompositorEdit =
+	| {
+			kind: 'author';
+			/** Applied while a Broadcast Graphic is selected. */
+			graphic?: BroadcastGraphicOperation;
+			/** Applied while a Graphic Item is selected. */
+			item?: GraphicItemOperation;
+	  }
 	| { kind: 'bind-theme-token'; slot: GraphicThemeSlot; token: string }
 	| { kind: 'detach-theme-token'; slot: GraphicThemeSlot }
 	| {
-		/**
-		 * An edit to the stack as a whole: adding, moving, or deleting a Broadcast
-		 * Graphic. It is aimed at no selection, so it applies whatever is selected.
-		 */
-		kind: 'stack';
-		apply: (graphics: readonly BroadcastGraphicConfig[]) => BroadcastGraphicConfig[];
-	}
+			/**
+			 * An edit to the stack as a whole: adding, moving, or deleting a Broadcast
+			 * Graphic. It is aimed at no selection, so it applies whatever is selected.
+			 */
+			kind: 'stack';
+			apply: (graphics: readonly BroadcastGraphicConfig[]) => BroadcastGraphicConfig[];
+	  }
 	| {
-		/**
-		 * An operation on one Broadcast Graphic the panel names, whatever is selected:
-		 * Social Profile Projections' edits to the graphic it shows, whose shared
-		 * operations take one graphic rather than the stack. A graphic the stack no
-		 * longer carries refuses the edit.
-		 */
-		kind: 'named-graphic';
-		graphicId: string;
-		apply: (graphic: BroadcastGraphicConfig) => BroadcastGraphicConfig;
-	};
+			/**
+			 * An operation on one Broadcast Graphic the panel names, whatever is selected:
+			 * Social Profile Projections' edits to the graphic it shows, whose shared
+			 * operations take one graphic rather than the stack. A graphic the stack no
+			 * longer carries refuses the edit.
+			 */
+			kind: 'named-graphic';
+			graphicId: string;
+			apply: (graphic: BroadcastGraphicConfig) => BroadcastGraphicConfig;
+	  };
 
 /** The one Graphics Authoring Lease guard: fail closed. */
 function canAuthorCompositor(state: Pick<CompositorEditingState, 'writable'>): boolean {
@@ -124,26 +124,19 @@ export function editCompositorStack(
 	state: CompositorEditingState,
 	edit: CompositorEdit,
 ): BroadcastGraphicConfig[] | null {
-	if (!canAuthorCompositor(state))
-		return null;
+	if (!canAuthorCompositor(state)) return null;
 	const tokens = themeTokensOf(state);
 	const painted = paintGraphicsThemeBindings(state.graphics, tokens);
 	const edited = applyEdit({ ...state, graphics: painted }, edit);
-	if (!edited)
-		return null;
+	if (!edited) return null;
 	// A graphic the edit left alone goes back as it was stored, not as painted.
 	const next = edited.map((graphic) => {
 		const index = painted.indexOf(graphic);
-		if (index !== -1)
-			return state.graphics[index]!;
-		const before = painted.find(candidate => candidate.id === graphic.id);
-		return before
-			? releaseEditedGraphicThemeBindings(before, graphic)
-			: graphic;
+		if (index !== -1) return state.graphics[index]!;
+		const before = painted.find((candidate) => candidate.id === graphic.id);
+		return before ? releaseEditedGraphicThemeBindings(before, graphic) : graphic;
 	});
-	return !isSameStack(state.graphics, next)
-		? next
-		: null;
+	return !isSameStack(state.graphics, next) ? next : null;
 }
 
 function themeTokensOf(state: Pick<CompositorEditingState, 'themeTokens'>): GraphicThemeTokens {
@@ -155,22 +148,30 @@ function themeTokensOf(state: Pick<CompositorEditingState, 'themeTokens'>): Grap
  * order. Committing it would write the Screen for nothing, and a panel that moves the
  * selection after an admitted edit would move it onto something that was never made.
  */
-function isSameStack(stored: readonly BroadcastGraphicConfig[], next: readonly BroadcastGraphicConfig[]): boolean {
+function isSameStack(
+	stored: readonly BroadcastGraphicConfig[],
+	next: readonly BroadcastGraphicConfig[],
+): boolean {
 	return stored.length === next.length && stored.every((graphic, index) => graphic === next[index]);
 }
 
-function applyEdit(state: CompositorEditingState, edit: CompositorEdit): BroadcastGraphicConfig[] | null {
+function applyEdit(
+	state: CompositorEditingState,
+	edit: CompositorEdit,
+): BroadcastGraphicConfig[] | null {
 	switch (edit.kind) {
 		case 'stack':
 			return edit.apply(state.graphics);
 		case 'named-graphic': {
-			const graphic = state.graphics.find(candidate => candidate.id === edit.graphicId);
-			return graphic
-				? replaceBroadcastGraphic(state.graphics, edit.apply(graphic))
-				: null;
+			const graphic = state.graphics.find((candidate) => candidate.id === edit.graphicId);
+			return graphic ? replaceBroadcastGraphic(state.graphics, edit.apply(graphic)) : null;
 		}
 		default:
-			return applySelectionEdit(state, resolveGraphicsSelection(state.graphics, state.selectedTarget), edit);
+			return applySelectionEdit(
+				state,
+				resolveGraphicsSelection(state.graphics, state.selectedTarget),
+				edit,
+			);
 	}
 }
 
@@ -179,18 +180,13 @@ function applySelectionEdit(
 	selection: GraphicsSelection,
 	edit: Exclude<CompositorEdit, { kind: 'stack' | 'named-graphic' }>,
 ): BroadcastGraphicConfig[] | null {
-	if (selection.kind !== 'graphic' && selection.kind !== 'item')
-		return null;
-	const ownerId = selection.kind === 'item'
-		? selection.item.id
-		: null;
+	if (selection.kind !== 'graphic' && selection.kind !== 'item') return null;
+	const ownerId = selection.kind === 'item' ? selection.item.id : null;
 
 	switch (edit.kind) {
 		case 'author':
 			if (selection.kind === 'graphic') {
-				return edit.graphic
-					? edit.graphic(state.graphics, selection.graphic.id)
-					: null;
+				return edit.graphic ? edit.graphic(state.graphics, selection.graphic.id) : null;
 			}
 			return edit.item
 				? replaceBroadcastGraphic(state.graphics, edit.item(selection.graphic, selection.item.id))
@@ -198,7 +194,13 @@ function applySelectionEdit(
 		case 'bind-theme-token':
 			return replaceBroadcastGraphic(
 				state.graphics,
-				bindGraphicThemeToken(selection.graphic, ownerId, edit.slot, edit.token, themeTokensOf(state)),
+				bindGraphicThemeToken(
+					selection.graphic,
+					ownerId,
+					edit.slot,
+					edit.token,
+					themeTokensOf(state),
+				),
 			);
 		case 'detach-theme-token':
 			return replaceBroadcastGraphic(
@@ -226,8 +228,7 @@ export function useCompositorEditing(
 	/** Run one edit, committing its next stack. Answers whether it committed one. */
 	function edit(next: CompositorEdit): boolean {
 		const graphics = editCompositorStack(toValue(state), next);
-		if (graphics)
-			commit(graphics);
+		if (graphics) commit(graphics);
 		return graphics !== null;
 	}
 

@@ -118,7 +118,7 @@ const MATCH_TOKENS: readonly FeatureMatchToken[] = [
 	{ key: 'eventName', label: 'Event Name' },
 ];
 
-type SeatToken = typeof SEAT_TOKENS[number];
+type SeatToken = (typeof SEAT_TOKENS)[number];
 
 /** Whether an Event of this kind holds this token for this Seat: its Slots have the Seat, and it the value. */
 function offers(kind: EventKind, seat: Seat, token: SeatToken): boolean {
@@ -129,9 +129,7 @@ function seatToken(seat: Seat, token: SeatToken, kind: EventKind): FeatureMatchT
 	return {
 		key: `${seat}${token.suffix}`,
 		label: `${seatLabel(kind, seat)} ${token.label}`,
-		...(token.presentation
-			? { presentation: token.presentation }
-			: {}),
+		...(token.presentation ? { presentation: token.presentation } : {}),
 	};
 }
 
@@ -143,9 +141,11 @@ function seatToken(seat: Seat, token: SeatToken, kind: EventKind): FeatureMatchT
  */
 export function featureMatchTokenCatalogue(kind: EventKind): readonly FeatureMatchToken[] {
 	return [
-		...SEAT_VALUES.flatMap(seat => SEAT_TOKENS
-			.filter(token => offers(kind, seat, token))
-			.map(token => seatToken(seat, token, kind))),
+		...SEAT_VALUES.flatMap((seat) =>
+			SEAT_TOKENS.filter((token) => offers(kind, seat, token)).map((token) =>
+				seatToken(seat, token, kind),
+			),
+		),
 		...MATCH_TOKENS,
 	];
 }
@@ -155,23 +155,28 @@ export function featureMatchTokenCatalogue(kind: EventKind): readonly FeatureMat
  * may name and what a rendering declares, whatever Event it is drawn on.
  */
 const FEATURE_MATCH_TOKEN_VOCABULARY: readonly FeatureMatchToken[] = [
-	...SEAT_VALUES.flatMap(seat => SEAT_TOKENS
-		.filter(token => EVENT_KIND_VALUES.some(kind => offers(kind, seat, token)))
-		.map(token => seatToken(seat, token, 'mtg-commander'))),
+	...SEAT_VALUES.flatMap((seat) =>
+		SEAT_TOKENS.filter((token) => EVENT_KIND_VALUES.some((kind) => offers(kind, seat, token))).map(
+			(token) => seatToken(seat, token, 'mtg-commander'),
+		),
+	),
 	...MATCH_TOKENS,
 ];
 
-export const FEATURE_MATCH_TOKEN_KEYS: readonly string[]
-	= FEATURE_MATCH_TOKEN_VOCABULARY.map(token => token.key);
+export const FEATURE_MATCH_TOKEN_KEYS: readonly string[] = FEATURE_MATCH_TOKEN_VOCABULARY.map(
+	(token) => token.key,
+);
 
 /**
  * The Seat each per-Seat token reads, by key. A token of the Match, Round or
  * Event reads none. It is how a rendering knows an empty Seat's text.
  */
 export const FEATURE_MATCH_TOKEN_SEATS: Readonly<Record<string, Seat>> = Object.fromEntries(
-	SEAT_VALUES.flatMap(seat => FEATURE_MATCH_TOKEN_KEYS
-		.filter(key => key.startsWith(seat))
-		.map(key => [key, seat] as const)),
+	SEAT_VALUES.flatMap((seat) =>
+		FEATURE_MATCH_TOKEN_KEYS.filter((key) => key.startsWith(seat)).map(
+			(key) => [key, seat] as const,
+		),
+	),
 );
 
 export function isFeatureMatchTokenKey(key: string): boolean {
@@ -191,7 +196,7 @@ export function isFeatureMatchTokenKey(key: string): boolean {
  * one function to speak the shared mechanism's language.
  */
 export function featureMatchTokenDeclarations(): TextGraphicInputDeclaration[] {
-	return FEATURE_MATCH_TOKEN_VOCABULARY.map(token => ({
+	return FEATURE_MATCH_TOKEN_VOCABULARY.map((token) => ({
 		type: 'text',
 		key: token.key,
 		label: token.label,
@@ -205,16 +210,14 @@ export function featureMatchTokenDeclarations(): TextGraphicInputDeclaration[] {
 }
 
 /** Visual treatments the Feature Match host asks the shared compositor to paint on an Event of this kind. */
-export function featureMatchTokenPresentations(kind: EventKind): Readonly<Record<string, GraphicsHostTokenPresentation>> {
+export function featureMatchTokenPresentations(
+	kind: EventKind,
+): Readonly<Record<string, GraphicsHostTokenPresentation>> {
 	const game = EVENT_KIND_CARD_GAME[kind];
 	return Object.fromEntries(
 		featureMatchTokenCatalogue(kind).flatMap((token) => {
 			const presentation = token.presentation?.[game];
-			return presentation
-				? [
-						[token.key, presentation] as const,
-					]
-				: [];
+			return presentation ? [[token.key, presentation] as const] : [];
 		}),
 	);
 }

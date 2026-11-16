@@ -28,10 +28,8 @@ function commit(patch: Partial<Surface>) {
 		...props.modelValue,
 		...patch,
 	};
-	if (next.outline === undefined)
-		delete next.outline;
-	if (next.glow === undefined)
-		delete next.glow;
+	if (next.outline === undefined) delete next.outline;
+	if (next.glow === undefined) delete next.glow;
 	emit('commit', next);
 }
 
@@ -65,14 +63,18 @@ function edit(change: GraphicSurfaceStyleEdit) {
 			return;
 		default:
 			commit({
-				fill: applyGraphicFillEdit(props.modelValue.fill, change, { gradientEndColor: DEFAULT_COLOR }),
+				fill: applyGraphicFillEdit(props.modelValue.fill, change, {
+					gradientEndColor: DEFAULT_COLOR,
+				}),
 			});
 	}
 }
 
 /** A cleared colour leaves the one the token holds. */
 function withoutUndefined<T extends object>(patch: T): Partial<T> {
-	return Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) as Partial<T>;
+	return Object.fromEntries(
+		Object.entries(patch).filter(([, value]) => value !== undefined),
+	) as Partial<T>;
 }
 </script>
 

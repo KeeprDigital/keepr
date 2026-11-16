@@ -8,7 +8,10 @@ import { screenService } from '~~/server/services/screen';
 import { getOriginConnectionId } from '~~/server/utils/ably';
 import { optionalBrowserSessionId } from '~~/server/utils/auth';
 import { eventKind } from '~~/shared/config/games';
-import { isFeatureMatchLayoutOfferedTo, isFourSeatFeatureMatchLayout } from '~~/shared/featureMatchLayoutSeats';
+import {
+	isFeatureMatchLayoutOfferedTo,
+	isFourSeatFeatureMatchLayout,
+} from '~~/shared/featureMatchLayoutSeats';
 
 /**
  * Place a Feature Match Layout Template on this Screen as a fully unlinked copy.
@@ -41,7 +44,7 @@ import { isFeatureMatchLayoutOfferedTo, isFourSeatFeatureMatchLayout } from '~~/
  */
 export default defineEventHandler(async (event) => {
 	const { id: eventId, screenId } = await getValidatedRouterParams(event, screenParamsSchema.parse);
-	const body = placeFeatureMatchLayoutTemplateSchema.parse(await readBody(event) ?? {});
+	const body = placeFeatureMatchLayoutTemplateSchema.parse((await readBody(event)) ?? {});
 
 	const screen = await screenService().findById(screenId, eventId);
 	if (!screen)
@@ -104,8 +107,7 @@ export default defineEventHandler(async (event) => {
 
 		setResponseStatus(event, 201);
 		return { screen: updated, layout };
-	}
-	catch (error) {
+	} catch (error) {
 		throw templateOrientedPlacementError(error, template.name);
 	}
 });
@@ -121,15 +123,10 @@ export default defineEventHandler(async (event) => {
  * design* is unplaceable, and with a library of layouts that is the first thing they
  * need.
  */
-function templateOrientedPlacementError(
-	error: unknown,
-	templateName: string,
-): unknown {
+function templateOrientedPlacementError(error: unknown, templateName: string): unknown {
 	const failure = error as { statusCode?: number; message?: string };
-	if (failure?.statusCode !== 409 || typeof failure.message !== 'string')
-		return error;
-	if (!failure.message.startsWith('Graphic Asset Reference at '))
-		return error;
+	if (failure?.statusCode !== 409 || typeof failure.message !== 'string') return error;
+	if (!failure.message.startsWith('Graphic Asset Reference at ')) return error;
 
 	const slot = failure.message
 		.slice('Graphic Asset Reference at '.length)

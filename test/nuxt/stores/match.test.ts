@@ -29,7 +29,7 @@ describe('useMatchStore', () => {
 		mockRepo.list.mockResolvedValue([]);
 	});
 
-	describe('a peer\'s new Match while one Round is loaded', () => {
+	describe("a peer's new Match while one Round is loaded", () => {
 		it.each([
 			['that Round', 5, 1],
 			['another Round', 99, 0],
@@ -55,12 +55,10 @@ describe('useMatchStore', () => {
 		});
 	});
 
-	describe('a Round\'s refreshed Matches', () => {
+	describe("a Round's refreshed Matches", () => {
 		it('reload the Round when it is the one loaded', async () => {
 			await store.loadMatchesByRoundId(1, 5);
-			const refreshed = [
-				createMockMatch({ id: 20, eventId: 1, roundId: 5 }),
-			];
+			const refreshed = [createMockMatch({ id: 20, eventId: 1, roundId: 5 })];
 			mockRepo.list.mockResolvedValue(refreshed);
 
 			await store.applyRemoteMatchesRefreshed({ eventId: 1, roundId: 5 } as never);
@@ -70,14 +68,8 @@ describe('useMatchStore', () => {
 		});
 
 		it.each([
-			[
-				'another Round',
-				{ eventId: 1, roundId: 6 },
-			],
-			[
-				'another Event',
-				{ eventId: 2, roundId: 5 },
-			],
+			['another Round', { eventId: 1, roundId: 6 }],
+			['another Event', { eventId: 2, roundId: 5 }],
 		])('leave the Matches alone when they are for %s', async (_, data) => {
 			await store.loadMatchesByRoundId(1, 5);
 			mockRepo.list.mockClear();
@@ -89,10 +81,7 @@ describe('useMatchStore', () => {
 	});
 
 	it('labels a promoted Match by its Feature Match slot, and an unpromoted one not at all', () => {
-		featureMatches.value = [
-			{ matchId: 7 },
-			{ matchId: 3 },
-		];
+		featureMatches.value = [{ matchId: 7 }, { matchId: 3 }];
 
 		expect(store.getFeatureMatchLabel(3)).toBe('Match 2');
 		expect(store.getFeatureMatchLabel(4)).toBeNull();

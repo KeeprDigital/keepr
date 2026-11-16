@@ -21,7 +21,7 @@ const tables = getAuthTables(authStaticOptions);
 
 /** Independent spelling of the repo's SQL naming convention. */
 function snakeCase(name: string): string {
-	return name.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+	return name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 }
 
 const sqlTypeByFieldType: Record<string, string> = {
@@ -33,14 +33,10 @@ const sqlTypeByFieldType: Record<string, string> = {
 
 describe('better Auth drizzle schema', () => {
 	it('exports one table per Better Auth model, under the model name', () => {
-		const modelNames = Object.values(tables).map(table => table.modelName).toSorted();
-		expect(modelNames).toEqual([
-			'account',
-			'rateLimit',
-			'session',
-			'user',
-			'verification',
-		]);
+		const modelNames = Object.values(tables)
+			.map((table) => table.modelName)
+			.toSorted();
+		expect(modelNames).toEqual(['account', 'rateLimit', 'session', 'user', 'verification']);
 
 		for (const { modelName } of Object.values(tables)) {
 			const table = authSchema[modelName as keyof typeof authSchema];
@@ -49,7 +45,7 @@ describe('better Auth drizzle schema', () => {
 		}
 	});
 
-	describe.each(Object.values(tables).map(table => [table.modelName, table] as const))(
+	describe.each(Object.values(tables).map((table) => [table.modelName, table] as const))(
 		'model %s',
 		(modelName, model) => {
 			const table = authSchema[modelName as keyof typeof authSchema];
@@ -63,9 +59,7 @@ describe('better Auth drizzle schema', () => {
 					'id',
 					...Object.entries(model.fields).map(([key, field]) => field.fieldName ?? key),
 				].toSorted();
-				expect([
-					...columnsByKey.keys(),
-				].toSorted()).toEqual(expectedKeys);
+				expect([...columnsByKey.keys()].toSorted()).toEqual(expectedKeys);
 			});
 
 			it('names id as the text primary key', () => {
@@ -74,47 +68,53 @@ describe('better Auth drizzle schema', () => {
 				expect(id.getSQLType()).toBe('text');
 			});
 
-			describe.each(Object.entries(model.fields).map(([key, field]) => [field.fieldName ?? key, field] as const))(
-				'field %s',
-				(fieldName, field) => {
-					const column = columnsByKey.get(fieldName)!;
+			describe.each(
+				Object.entries(model.fields).map(
+					([key, field]) => [field.fieldName ?? key, field] as const,
+				),
+			)('field %s', (fieldName, field) => {
+				const column = columnsByKey.get(fieldName)!;
 
-					it('exists with the snake_case SQL name and contract type', () => {
-						expect(column).toBeDefined();
-						expect(column.name).toBe(snakeCase(fieldName));
-						expect(column.getSQLType()).toBe(sqlTypeByFieldType[field.type as string]);
+				it('exists with the snake_case SQL name and contract type', () => {
+					expect(column).toBeDefined();
+					expect(column.name).toBe(snakeCase(fieldName));
+					expect(column.getSQLType()).toBe(sqlTypeByFieldType[field.type as string]);
+				});
+
+				it('matches the contract on required', () => {
+					expect(column.notNull).toBe(field.required === true);
+				});
+
+				it('matches the contract on unique', () => {
+					expect(column.isUnique).toBe(field.unique === true);
+				});
+
+				if (field.references) {
+					it('references the contract target with the contract delete rule', () => {
+						const foreignKey = config.foreignKeys.find((candidate) =>
+							candidate.reference().columns.some((referencing) => referencing.name === column.name),
+						);
+						expect(foreignKey, `no foreign key on "${fieldName}"`).toBeDefined();
+						const reference = foreignKey!.reference();
+						expect(getTableConfig(reference.foreignTable).name).toBe(field.references!.model);
+						expect(reference.foreignColumns.map((target) => target.name)).toEqual([
+							field.references!.field,
+						]);
+						expect(foreignKey!.onDelete).toBe(field.references!.onDelete);
 					});
+				}
 
-					it('matches the contract on required', () => {
-						expect(column.notNull).toBe(field.required === true);
+				if (field.index) {
+					it('is covered by an index', () => {
+						const indexed = config.indexes.some((entry) =>
+							entry.config.columns.some(
+								(indexColumn) => 'name' in indexColumn && indexColumn.name === column.name,
+							),
+						);
+						expect(indexed).toBe(true);
 					});
-
-					it('matches the contract on unique', () => {
-						expect(column.isUnique).toBe(field.unique === true);
-					});
-
-					if (field.references) {
-						it('references the contract target with the contract delete rule', () => {
-							const foreignKey = config.foreignKeys.find(candidate =>
-								candidate.reference().columns.some(referencing => referencing.name === column.name));
-							expect(foreignKey, `no foreign key on "${fieldName}"`).toBeDefined();
-							const reference = foreignKey!.reference();
-							expect(getTableConfig(reference.foreignTable).name).toBe(field.references!.model);
-							expect(reference.foreignColumns.map(target => target.name)).toEqual([field.references!.field]);
-							expect(foreignKey!.onDelete).toBe(field.references!.onDelete);
-						});
-					}
-
-					if (field.index) {
-						it('is covered by an index', () => {
-							const indexed = config.indexes.some(entry =>
-								entry.config.columns.some(indexColumn =>
-									'name' in indexColumn && indexColumn.name === column.name));
-							expect(indexed).toBe(true);
-						});
-					}
-				},
-			);
+				}
+			});
 		},
 	);
 });

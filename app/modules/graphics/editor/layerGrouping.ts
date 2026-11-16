@@ -17,20 +17,22 @@ export function layerGroupRefusal<D, L extends GraphicsEditorLayer>(
 	document: D,
 	layers: readonly L[],
 ): LayerGroupRefusal | null {
-	const items = layers.map(layer => tree.item(document, layer));
-	if (items.includes(null))
-		return 'source-item';
+	const items = layers.map((layer) => tree.item(document, layer));
+	if (items.includes(null)) return 'source-item';
 	const composition = items[0]?.composition;
 	return composition
-		? graphicItemsGroupRefusal(composition, items.map(item => item!.itemId))
+		? graphicItemsGroupRefusal(
+				composition,
+				items.map((item) => item!.itemId),
+			)
 		: 'too-few';
 }
 
 /** What the editor shows for each refusal, beside the Group control it disables. */
 export const LAYER_GROUP_REFUSAL_REASONS: Record<LayerGroupRefusal, string> = {
-	'source-item': 'Source Items can\'t be grouped',
+	'source-item': "Source Items can't be grouped",
 	'too-few': 'Select two or more layers to group them',
 	'too-many': `A group holds at most ${MAX_GRAPHIC_GROUP_CHILDREN} layers`,
-	'group-into-group': 'A group can\'t go into another group',
-	'group-child': 'Layers already in a group can\'t be grouped again',
+	'group-into-group': "A group can't go into another group",
+	'group-child': "Layers already in a group can't be grouped again",
 };

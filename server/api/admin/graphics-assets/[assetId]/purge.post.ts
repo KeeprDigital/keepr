@@ -2,11 +2,16 @@ import { z } from 'zod';
 import { requireGraphicsAdministrator } from '~~/server/modules/graphics-administrator';
 import { graphicAssetId } from '~~/server/modules/graphics-asset-library';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
-import { graphicsAdministratorActor, rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
+import {
+	graphicsAdministratorActor,
+	rethrowGraphicsAssetApiError,
+} from '~~/server/utils/graphicsAssetApi';
 
-const purgeSchema = z.object({
-	confirmation: z.literal('purge-now'),
-}).strict();
+const purgeSchema = z
+	.object({
+		confirmation: z.literal('purge-now'),
+	})
+	.strict();
 
 /**
  * Explicit early purge of unreferenced Trash. It requires an administrator, a
@@ -21,8 +26,7 @@ export default defineEventHandler(async (event) => {
 			actor: await graphicsAdministratorActor(event),
 			confirmation,
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

@@ -21,9 +21,13 @@ import { createMiniflareD1Harness } from '~~/test/helpers/miniflare-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('readValidatedBody', async (event: { body: unknown }, parse: (body: unknown) => unknown) => parse(event.body));
+vi.stubGlobal(
+	'readValidatedBody',
+	async (event: { body: unknown }, parse: (body: unknown) => unknown) => parse(event.body),
+);
 vi.stubGlobal('setResponseStatus', () => {});
 
 const harness: MiniflareD1Harness = await createMiniflareD1Harness();
@@ -35,16 +39,22 @@ afterAll(async () => await harness.dispose());
 let refuseBatch: ((statements: string[]) => boolean) | null = null;
 
 function refuseNextBatchWriting(table: string) {
-	refuseBatch = statements => statements.some(statement => statement.startsWith(`insert into "${table}"`));
+	refuseBatch = (statements) =>
+		statements.some((statement) => statement.startsWith(`insert into "${table}"`));
 }
 
 const db = new Proxy(realDb, {
 	get(target, property, receiver) {
-		if (property !== 'batch')
-			return Reflect.get(target, property, receiver);
+		if (property !== 'batch') return Reflect.get(target, property, receiver);
 		return async (statements: BatchItem<'sqlite'>[]) => {
 			const refuse = refuseBatch;
-			if (refuse?.(statements.map(statement => (statement as unknown as { toSQL: () => { sql: string } }).toSQL().sql))) {
+			if (
+				refuse?.(
+					statements.map(
+						(statement) => (statement as unknown as { toSQL: () => { sql: string } }).toSQL().sql,
+					),
+				)
+			) {
 				refuseBatch = null;
 				throw new Error('injected D1 batch failure');
 			}
@@ -60,8 +70,8 @@ vi.doMock('~~/server/utils/ably', () => ({
 	publishScreenCommand: async () => {},
 	getOriginConnectionId: () => undefined,
 }));
-vi.doMock('~~/server/modules/broadcast-graphics-live-session', async importOriginal => ({
-	...await importOriginal<object>(),
+vi.doMock('~~/server/modules/broadcast-graphics-live-session', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	refreshBroadcastGraphicsBindings: async () => {},
 }));
 
@@ -73,7 +83,11 @@ beforeEach(() => {
 });
 
 async function createEvent(numFeatureMatches: number) {
-	return await (createEventRoute as unknown as (event: { body: unknown }) => Promise<{ id: number; numFeatureMatches: number }>)({
+	return await (
+		createEventRoute as unknown as (event: {
+			body: unknown;
+		}) => Promise<{ id: number; numFeatureMatches: number }>
+	)({
 		body: {
 			name: `Slots ${numFeatureMatches}`,
 			game: 'mtg',
@@ -87,10 +101,7 @@ async function slotsOf(eventId: number) {
 	return await realDb.query.featureMatches.findMany({
 		where: eq(schema.featureMatches.eventId, eventId),
 		with: { activeSession: true },
-		orderBy: [
-			asc(schema.featureMatches.sortOrder),
-			asc(schema.featureMatches.id),
-		],
+		orderBy: [asc(schema.featureMatches.sortOrder), asc(schema.featureMatches.id)],
 	});
 }
 
@@ -98,7 +109,7 @@ async function activeSessionsOf(eventId: number) {
 	const sessions = await realDb.query.featureMatchSessions.findMany({
 		where: eq(schema.featureMatchSessions.eventId, eventId),
 	});
-	return sessions.filter(session => session.status === 'active');
+	return sessions.filter((session) => session.status === 'active');
 }
 
 async function countOf(eventId: number) {
@@ -110,13 +121,13 @@ async function countOf(eventId: number) {
 
 /** Every Slot is in display order and holds one active Session of its own. */
 function expectInitialisedInOrder(slots: Awaited<ReturnType<typeof slotsOf>>) {
-	expect(slots.map(slot => slot.sortOrder)).toEqual(slots.map((_, index) => index));
+	expect(slots.map((slot) => slot.sortOrder)).toEqual(slots.map((_, index) => index));
 	for (const slot of slots) {
 		expect(slot.activeSession).toMatchObject({ slotId: slot.id, status: 'active', sequence: 1 });
 	}
 }
 
-describe('an Event\'s Feature Match Slot count on D1', () => {
+describe("an Event's Feature Match Slot count on D1", () => {
 	it('creates an Event with fifty Slots, each with its first Session', async () => {
 		const event = await createEvent(50);
 
@@ -146,7 +157,7 @@ describe('an Event\'s Feature Match Slot count on D1', () => {
 
 	it('decreases an Event from fifty Slots by removing them from the end of display order', async () => {
 		const event = await createEvent(50);
-		const kept = (await slotsOf(event.id)).slice(0, 20).map(slot => slot.id);
+		const kept = (await slotsOf(event.id)).slice(0, 20).map((slot) => slot.id);
 
 		const updated = await eventWriteModule().updateEvent({
 			eventId: event.id,
@@ -154,7 +165,7 @@ describe('an Event\'s Feature Match Slot count on D1', () => {
 		});
 
 		expect(updated.numFeatureMatches).toBe(20);
-		expect((await slotsOf(event.id)).map(slot => slot.id)).toEqual(kept);
+		expect((await slotsOf(event.id)).map((slot) => slot.id)).toEqual(kept);
 	});
 
 	it('keeps ordinary small counts working', async () => {
@@ -181,41 +192,43 @@ describe('an Event\'s Feature Match Slot count on D1', () => {
 			const before = await slotsOf(event.id);
 			refuseNextBatchWriting('feature_match_slots');
 
-			await expect(eventWriteModule().updateEvent({
-				eventId: event.id,
-				input: { numFeatureMatches: 40 },
-			}))
-				.rejects
-				.toThrow('injected D1 batch failure');
+			await expect(
+				eventWriteModule().updateEvent({
+					eventId: event.id,
+					input: { numFeatureMatches: 40 },
+				}),
+			).rejects.toThrow('injected D1 batch failure');
 
 			expect(await countOf(event.id)).toBe(3);
 			expect(await slotsOf(event.id)).toEqual(before);
 		});
 
-		it('leaves the count and the Slots as they were when the new Slots\' Sessions cannot be opened', async () => {
+		it("leaves the count and the Slots as they were when the new Slots' Sessions cannot be opened", async () => {
 			const event = await createEvent(3);
 			const before = await slotsOf(event.id);
 			refuseNextBatchWriting('feature_match_sessions');
 
-			await expect(eventWriteModule().updateEvent({
-				eventId: event.id,
-				input: { numFeatureMatches: 40 },
-			}))
-				.rejects
-				.toThrow('injected D1 batch failure');
+			await expect(
+				eventWriteModule().updateEvent({
+					eventId: event.id,
+					input: { numFeatureMatches: 40 },
+				}),
+			).rejects.toThrow('injected D1 batch failure');
 
 			expect(await countOf(event.id)).toBe(3);
 			expect(await slotsOf(event.id)).toEqual(before);
 			expect(await activeSessionsOf(event.id)).toHaveLength(3);
 		});
 
-		it('creates no Event when its Slots\' Sessions cannot be opened', async () => {
+		it("creates no Event when its Slots' Sessions cannot be opened", async () => {
 			const eventsBefore = await realDb.select({ id: schema.events.id }).from(schema.events);
 			refuseNextBatchWriting('feature_match_sessions');
 
 			await expect(createEvent(50)).rejects.toThrow('injected D1 batch failure');
 
-			expect(await realDb.select({ id: schema.events.id }).from(schema.events)).toEqual(eventsBefore);
+			expect(await realDb.select({ id: schema.events.id }).from(schema.events)).toEqual(
+				eventsBefore,
+			);
 		});
 	});
 });

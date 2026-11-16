@@ -24,12 +24,12 @@ import type { Player } from '~/types';
 type HeldHeadToHead = ScreenOutputHeadToHeadResponse | null;
 type HeldPairings = ScreenOutputPairingsResponse | null;
 type StandingsRead = ScreenOutputStandingsResponse;
-type LoadedDeckSource
-	= { type: 'player'; playerId: number }
-		| { type: 'broadcast'; broadcastDeckListId: number };
-type DeckSourceRead
-	= { type: 'player'; player: Player; deck: PlayerDeckResponse | null }
-		| { type: 'broadcast'; list: BroadcastDeckListResponse };
+type LoadedDeckSource =
+	| { type: 'player'; playerId: number }
+	| { type: 'broadcast'; broadcastDeckListId: number };
+type DeckSourceRead =
+	| { type: 'player'; player: Player; deck: PlayerDeckResponse | null }
+	| { type: 'broadcast'; list: BroadcastDeckListResponse };
 
 interface MetagameBreakdownScoping {
 	scope: MetagameScope;
@@ -37,9 +37,7 @@ interface MetagameBreakdownScoping {
 }
 
 function deckSourceStamp(updatedAt: Date | string | null | undefined): number | null {
-	return updatedAt == null
-		? null
-		: new Date(updatedAt).getTime();
+	return updatedAt == null ? null : new Date(updatedAt).getTime();
 }
 
 /**
@@ -49,32 +47,48 @@ function deckSourceStamp(updatedAt: Date | string | null | undefined): number | 
  * between them, and the Round Standings shown for a Player holding no record
  * of their own. Melee's wholesale syncs re-read.
  */
-export function headToHeadDependencies(boundSlotId: () => number | null): ScreenModeDependencies<HeldHeadToHead> {
+export function headToHeadDependencies(
+	boundSlotId: () => number | null,
+): ScreenModeDependencies<HeldHeadToHead> {
 	const isBoundSlot = (slotId: number) => slotId === boundSlotId();
-	const heldPlayerIds = (held: HeldHeadToHead) => [held?.player1?.id, held?.player2?.id].filter((id): id is number => id != null);
-	const holdsPlayer = (held: HeldHeadToHead, playerId: number) => heldPlayerIds(held).includes(playerId);
-	const seatsBoth = (held: HeldHeadToHead, match: { player1Id: number | null; player2Id: number | null }) => {
+	const heldPlayerIds = (held: HeldHeadToHead) =>
+		[held?.player1?.id, held?.player2?.id].filter((id): id is number => id != null);
+	const holdsPlayer = (held: HeldHeadToHead, playerId: number) =>
+		heldPlayerIds(held).includes(playerId);
+	const seatsBoth = (
+		held: HeldHeadToHead,
+		match: { player1Id: number | null; player2Id: number | null },
+	) => {
 		const ids = heldPlayerIds(held);
-		return ids.length === 2 && match.player1Id != null && match.player2Id != null
-			&& ids.includes(match.player1Id) && ids.includes(match.player2Id);
+		return (
+			ids.length === 2 &&
+			match.player1Id != null &&
+			match.player2Id != null &&
+			ids.includes(match.player1Id) &&
+			ids.includes(match.player2Id)
+		);
 	};
-	const holdsEarlierMatch = (held: HeldHeadToHead, matchId: number) => held?.earlierMatches.some(earlierMatch => earlierMatch.matchId === matchId) ?? false;
+	const holdsEarlierMatch = (held: HeldHeadToHead, matchId: number) =>
+		held?.earlierMatches.some((earlierMatch) => earlierMatch.matchId === matchId) ?? false;
 	/** The Slot's Session seats a held Player on the other side, as `SwapPlayers` does (ADR-0058). */
 	const seatsHeldOpposite = (held: HeldHeadToHead, snapshot: FeatureMatchSourceSnapshot) =>
-		(held?.player1 != null && held.player1.id === snapshot.player2?.playerId)
-		|| (held?.player2 != null && held.player2.id === snapshot.player1?.playerId);
+		(held?.player1 != null && held.player1.id === snapshot.player2?.playerId) ||
+		(held?.player2 != null && held.player2.id === snapshot.player1?.playerId);
 
 	return {
 		'featureMatch:updated': ({ featureMatch }) => isBoundSlot(featureMatch.id),
-		'featureMatchSession:eventApplied': ({ slotId, sourceSnapshot }, held) => isBoundSlot(slotId) && seatsHeldOpposite(held, sourceSnapshot),
+		'featureMatchSession:eventApplied': ({ slotId, sourceSnapshot }, held) =>
+			isBoundSlot(slotId) && seatsHeldOpposite(held, sourceSnapshot),
 		'featureMatch:deleted': ({ featureMatchId }) => isBoundSlot(featureMatchId),
 		'melee:featureMatchesSynced': ({ slotIds }) => slotIds.some(isBoundSlot),
 		'player:updated': ({ player }, held) => holdsPlayer(held, player.id),
 		'player:deleted': ({ playerId }, held) => holdsPlayer(held, playerId),
 		'match:created': ({ match }, held) => seatsBoth(held, match),
-		'match:updated': ({ match }, held) => seatsBoth(held, match) || holdsEarlierMatch(held, match.id),
+		'match:updated': ({ match }, held) =>
+			seatsBoth(held, match) || holdsEarlierMatch(held, match.id),
 		'match:deleted': ({ matchId }, held) => holdsEarlierMatch(held, matchId),
-		'round:updated': ({ round }, held) => held?.earlierMatches.some(earlierMatch => earlierMatch.roundId === round.id) ?? false,
+		'round:updated': ({ round }, held) =>
+			held?.earlierMatches.some((earlierMatch) => earlierMatch.roundId === round.id) ?? false,
 		'round:deleted': true,
 		'round:matchesRefreshed': true,
 		'phase:updated': true,
@@ -92,7 +106,9 @@ export function headToHeadDependencies(boundSlotId: () => number | null): Screen
 }
 
 /** A Talent Screen reads its Talents, so an edit or delete of one it shows re-reads (#782). */
-export function talentDependencies(shows: (talentId: number) => boolean): ScreenModeDependencies<ScreenOutputTalentResponse> {
+export function talentDependencies(
+	shows: (talentId: number) => boolean,
+): ScreenModeDependencies<ScreenOutputTalentResponse> {
 	return {
 		'talent:updated': ({ talent }) => shows(talent.id),
 		'talent:deleted': ({ talentId }) => shows(talentId),
@@ -105,11 +121,15 @@ export function talentDependencies(shows: (talentId: number) => boolean): Screen
  * re-read; a Round's synced Match Results or pairings re-read only for this
  * Round.
  */
-export function pairingsDependencies(roundId: () => number | undefined): ScreenModeDependencies<HeldPairings> {
+export function pairingsDependencies(
+	roundId: () => number | undefined,
+): ScreenModeDependencies<HeldPairings> {
 	const isRound = (id: number) => id === roundId();
-	const holdsMatch = (held: HeldPairings, matchId: number) => held?.matches.some(row => row.matchId === matchId) ?? false;
+	const holdsMatch = (held: HeldPairings, matchId: number) =>
+		held?.matches.some((row) => row.matchId === matchId) ?? false;
 	const holdsPlayer = (held: HeldPairings, playerId: number) =>
-		held?.matches.some(row => row.player1?.id === playerId || row.player2?.id === playerId) ?? false;
+		held?.matches.some((row) => row.player1?.id === playerId || row.player2?.id === playerId) ??
+		false;
 
 	return {
 		'player:updated': ({ player }, held) => holdsPlayer(held, player.id),
@@ -133,8 +153,11 @@ export function pairingsDependencies(roundId: () => number | undefined): ScreenM
  * update. The Current Round can move with any Round, Phase, Match or Melee
  * pairing, so following it re-reads on each. Melee's wholesale syncs re-read either way.
  */
-export function roundClockDependencies(roundId: () => number | undefined): ScreenModeDependencies<ScreenOutputRoundClockResponse> {
-	const follows = (id: number, held: ScreenOutputRoundClockResponse) => roundId() == null || id === roundId() || id === held.round?.id;
+export function roundClockDependencies(
+	roundId: () => number | undefined,
+): ScreenModeDependencies<ScreenOutputRoundClockResponse> {
+	const follows = (id: number, held: ScreenOutputRoundClockResponse) =>
+		roundId() == null || id === roundId() || id === held.round?.id;
 	const followsCurrent = () => roundId() == null;
 
 	return {
@@ -189,16 +212,21 @@ export function standingsDependencies(
 }
 
 function holdsRound(held: ScreenOutputTopCutResponse, roundId: number): boolean {
-	return held.bracket.columns.some(column => column.roundId === roundId);
+	return held.bracket.columns.some((column) => column.roundId === roundId);
 }
 
 function holdsMatch(held: ScreenOutputTopCutResponse, matchId: number): boolean {
-	return held.bracket.columns.some(column => column.positions.some(position => position.matchId === matchId));
+	return held.bracket.columns.some((column) =>
+		column.positions.some((position) => position.matchId === matchId),
+	);
 }
 
 function holdsPlayer(held: ScreenOutputTopCutResponse, playerId: number): boolean {
-	return held.bracket.columns.some(column => column.positions.some(position =>
-		position.entrants.some(entrant => entrant?.playerId === playerId)));
+	return held.bracket.columns.some((column) =>
+		column.positions.some((position) =>
+			position.entrants.some((entrant) => entrant?.playerId === playerId),
+		),
+	);
 }
 
 /**
@@ -229,7 +257,8 @@ export function topCutDependencies(
 		'round:deleted': true,
 		'round:matchesRefreshed': ({ roundId }, held) => holdsRound(held, roundId),
 		'match:created': ({ match }, held) => holdsRound(held, match.roundId),
-		'match:updated': ({ match }, held) => holdsRound(held, match.roundId) || holdsMatch(held, match.id),
+		'match:updated': ({ match }, held) =>
+			holdsRound(held, match.roundId) || holdsMatch(held, match.id),
 		'match:deleted': ({ matchId }, held) => holdsMatch(held, matchId),
 		'player:updated': ({ player }, held) => holdsPlayer(held, player.id),
 		'player:deleted': ({ playerId }, held) => holdsPlayer(held, playerId),
@@ -251,7 +280,9 @@ export function topCutDependencies(
  * them. Its Seeds and results are the Screen's own config, so an edit to them
  * re-reads through the read's source.
  */
-export function manualBracketDependencies(showsArchetypes: () => boolean): ScreenModeDependencies<ScreenOutputTopCutResponse> {
+export function manualBracketDependencies(
+	showsArchetypes: () => boolean,
+): ScreenModeDependencies<ScreenOutputTopCutResponse> {
 	return {
 		'player:updated': ({ player }, held) => holdsPlayer(held, player.id),
 		'player:deleted': ({ playerId }, held) => holdsPlayer(held, playerId),
@@ -265,11 +296,8 @@ export function manualBracketDependencies(showsArchetypes: () => boolean): Scree
 }
 
 function readRevision(read: DeckSourceRead | null): number | null | undefined {
-	if (!read)
-		return undefined;
-	return read.type === 'player'
-		? deckSourceStamp(read.player.updatedAt)
-		: read.list.revision;
+	if (!read) return undefined;
+	return read.type === 'player' ? deckSourceStamp(read.player.updatedAt) : read.list.revision;
 }
 
 /**
@@ -279,18 +307,16 @@ function readRevision(read: DeckSourceRead | null): number | null | undefined {
  * sync, a TCG+ Import, a deck review or a resolved deck card changes what a
  * Player's deck shows without one.
  */
-export function deckDependencies(selected: () => LoadedDeckSource | null): ScreenModeDependencies<DeckSourceRead | null> {
+export function deckDependencies(
+	selected: () => LoadedDeckSource | null,
+): ScreenModeDependencies<DeckSourceRead | null> {
 	const selectedPlayerId = () => {
 		const source = selected();
-		return source?.type === 'player'
-			? source.playerId
-			: null;
+		return source?.type === 'player' ? source.playerId : null;
 	};
 	const selectedListId = () => {
 		const source = selected();
-		return source?.type === 'broadcast'
-			? source.broadcastDeckListId
-			: null;
+		return source?.type === 'broadcast' ? source.broadcastDeckListId : null;
 	};
 	const showsPlayer = () => selectedPlayerId() !== null;
 	const showsArchetype = (archetypeId: number, held: DeckSourceRead | null) =>
@@ -327,7 +353,9 @@ export function deckDependencies(selected: () => LoadedDeckSource | null): Scree
  * review, a resolved deck card or a Player List membership change re-reads
  * without any Player record changing (#602, #648).
  */
-export function metagameBreakdownDependencies(scoping: () => MetagameBreakdownScoping): ScreenModeDependencies<unknown> {
+export function metagameBreakdownDependencies(
+	scoping: () => MetagameBreakdownScoping,
+): ScreenModeDependencies<unknown> {
 	// The server scopes by a Player List only while the scope names one.
 	const scopesOutput = (listId: number) => {
 		const { scope, playerListId } = scoping();

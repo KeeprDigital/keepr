@@ -54,21 +54,27 @@ export function opLeaderCatalogueRow(leader: OpLeader): DbCardInsert {
 }
 
 /** A Feature Match Deck List entry snapshotting a known card; `category: null` makes it number-only. */
-export function opDeckListEntry(number: string, quantity: number, category: OpCardCategory | null, cost: number | null = null): FeatureMatchDeckListEntry {
+export function opDeckListEntry(
+	number: string,
+	quantity: number,
+	category: OpCardCategory | null,
+	cost: number | null = null,
+): FeatureMatchDeckListEntry {
 	return {
 		number,
 		quantity,
-		card: category === null
-			? null
-			: {
-					name: `Card ${number}`,
-					category,
-					colors: ['Red'],
-					cost,
-					power: null,
-					counter: null,
-					imageUrl: `https://cards-img.keepr.digital/${number}.png`,
-				},
+		card:
+			category === null
+				? null
+				: {
+						name: `Card ${number}`,
+						category,
+						colors: ['Red'],
+						cost,
+						power: null,
+						counter: null,
+						imageUrl: `https://cards-img.keepr.digital/${number}.png`,
+					},
 	};
 }
 
@@ -79,9 +85,7 @@ export function opSlotSide(name: string, leader: OpLeader | null, deckListId: nu
 		gameData: {
 			type: 'op' as const,
 			leader,
-			featureMatchDeckList: deckListId === null
-				? null
-				: { id: deckListId, mainboardCount: 50 },
+			featureMatchDeckList: deckListId === null ? null : { id: deckListId, mainboardCount: 50 },
 		},
 	};
 }
@@ -118,7 +122,9 @@ export function bandaiKeeprCard(overrides: {
 }
 
 /** A card as the bulk lookup port answers it, imaged by its standard Printing. */
-export function knownOpCard(card: Pick<OpCardSummary, 'number' | 'name' | 'category' | 'colors'> & Partial<OpCardSummary>): OpCardSummary {
+export function knownOpCard(
+	card: Pick<OpCardSummary, 'number' | 'name' | 'category' | 'colors'> & Partial<OpCardSummary>,
+): OpCardSummary {
 	return opCardSummary({
 		cost: null,
 		life: null,
@@ -137,20 +143,19 @@ export function knownOpCard(card: Pick<OpCardSummary, 'number' | 'name' | 'categ
  * each call asked for since `reset()`; `fail()` makes every call throw.
  */
 export function fakeOpCardBulkLookup(cards: OpCardSummary[]) {
-	const byNumber = new Map(cards.map(card => [card.number, card]));
+	const byNumber = new Map(cards.map((card) => [card.number, card]));
 	let batches: string[][] = [];
 	let failure: Error | null = null;
 	return {
 		lookUpOpCards: async (_config: unknown, numbers: readonly string[]) => {
 			batches.push([...numbers]);
-			if (failure)
-				throw failure;
+			if (failure) throw failure;
 			return {
-				cards: numbers.flatMap(number => byNumber.get(number) ?? []),
-				notFound: numbers.filter(number => !byNumber.has(number)),
+				cards: numbers.flatMap((number) => byNumber.get(number) ?? []),
+				notFound: numbers.filter((number) => !byNumber.has(number)),
 			};
 		},
-		batches: () => batches.map(batch => [...batch]),
+		batches: () => batches.map((batch) => [...batch]),
 		know: (card: OpCardSummary) => {
 			byNumber.set(card.number, card);
 		},
@@ -178,7 +183,10 @@ export interface PublishedMessage {
  * refreshed, and the bulk lookup is whichever fake `lookup()` answers when
  * called. Call it before importing the server code under test.
  */
-export function mockOpWriteBoundaries(db: unknown, lookup: () => ReturnType<typeof fakeOpCardBulkLookup>): { published: PublishedMessage[] } {
+export function mockOpWriteBoundaries(
+	db: unknown,
+	lookup: () => ReturnType<typeof fakeOpCardBulkLookup>,
+): { published: PublishedMessage[] } {
 	const published: PublishedMessage[] = [];
 	const record = async (eventId: number, type: string, payload: unknown) => {
 		published.push({ eventId, type, payload });
@@ -190,13 +198,15 @@ export function mockOpWriteBoundaries(db: unknown, lookup: () => ReturnType<type
 		publishScreenCommand: async () => {},
 		getOriginConnectionId: () => undefined,
 	}));
-	vi.doMock('~~/server/modules/broadcast-graphics-live-session', async importOriginal => ({
-		...await importOriginal<object>(),
+	vi.doMock('~~/server/modules/broadcast-graphics-live-session', async (importOriginal) => ({
+		...(await importOriginal<object>()),
 		refreshBroadcastGraphicsBindings: async () => {},
 	}));
-	vi.doMock('~~/server/utils/bandaiKeepr', async importOriginal => ({
-		...await importOriginal<object>(),
-		lookUpOpCards: (...args: Parameters<ReturnType<typeof fakeOpCardBulkLookup>['lookUpOpCards']>) => lookup().lookUpOpCards(...args),
+	vi.doMock('~~/server/utils/bandaiKeepr', async (importOriginal) => ({
+		...(await importOriginal<object>()),
+		lookUpOpCards: (
+			...args: Parameters<ReturnType<typeof fakeOpCardBulkLookup>['lookUpOpCards']>
+		) => lookup().lookUpOpCards(...args),
 	}));
 	return { published };
 }

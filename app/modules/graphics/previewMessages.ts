@@ -1,6 +1,13 @@
-import type { BroadcastGraphicConfig, GraphicAnimationPhase, SocialProfileProjectionValues } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicAnimationPhase,
+	SocialProfileProjectionValues,
+} from '~~/shared/types/graphics';
 import type { GraphicsSelectionTarget } from './selection';
-import { canonicalSocialProfileUrl, SUPPORTED_SOCIAL_NETWORK_BY_KEY } from '~~/shared/socialProfiles';
+import {
+	canonicalSocialProfileUrl,
+	SUPPORTED_SOCIAL_NETWORK_BY_KEY,
+} from '~~/shared/socialProfiles';
 import { GRAPHIC_ANIMATION_PHASE_VALUES } from '~~/shared/types/graphics';
 import { isGraphicsSelectionTarget } from './selection';
 
@@ -67,7 +74,8 @@ export const GRAPHICS_PREVIEW_ANIMATION_MESSAGE = 'graphics-compositor:preview-a
 /** How much of a lifecycle one Graphic Animation Preview run plays. */
 export const GRAPHICS_PREVIEW_ANIMATION_SCOPE_VALUES = ['phase', 'lifecycle'] as const;
 
-export type GraphicsPreviewAnimationScope = typeof GRAPHICS_PREVIEW_ANIMATION_SCOPE_VALUES[number];
+export type GraphicsPreviewAnimationScope =
+	(typeof GRAPHICS_PREVIEW_ANIMATION_SCOPE_VALUES)[number];
 
 /**
  * One Graphic Animation Preview run, as an instruction rather than a stream of
@@ -141,31 +149,25 @@ export interface GraphicsPreviewState {
  * A malformed plan is dropped so the preview holds its Graphic Resting State
  * instead of running an unbounded or reversed clock.
  */
-export function readGraphicsPreviewAnimationPlan(value: unknown): GraphicsPreviewAnimationPlan | null {
-	if (typeof value !== 'object' || value === null)
-		return null;
+export function readGraphicsPreviewAnimationPlan(
+	value: unknown,
+): GraphicsPreviewAnimationPlan | null {
+	if (typeof value !== 'object' || value === null) return null;
 
 	const plan = value as Record<string, unknown>;
-	if (typeof plan.graphicId !== 'string' || plan.graphicId.length === 0)
-		return null;
-	if (plan.scope !== 'phase' && plan.scope !== 'lifecycle')
-		return null;
-	if (!GRAPHIC_ANIMATION_PHASE_VALUES.includes(plan.phase as GraphicAnimationPhase))
-		return null;
-	if (typeof plan.run !== 'number' || !Number.isFinite(plan.run))
-		return null;
+	if (typeof plan.graphicId !== 'string' || plan.graphicId.length === 0) return null;
+	if (plan.scope !== 'phase' && plan.scope !== 'lifecycle') return null;
+	if (!GRAPHIC_ANIMATION_PHASE_VALUES.includes(plan.phase as GraphicAnimationPhase)) return null;
+	if (typeof plan.run !== 'number' || !Number.isFinite(plan.run)) return null;
 	if (typeof plan.speed !== 'number' || !Number.isFinite(plan.speed) || plan.speed <= 0)
 		return null;
-	if (typeof plan.loop !== 'boolean')
-		return null;
+	if (typeof plan.loop !== 'boolean') return null;
 	if (plan.itemId !== undefined && (typeof plan.itemId !== 'string' || plan.itemId.length === 0))
 		return null;
 
 	return {
 		graphicId: plan.graphicId,
-		...(plan.itemId === undefined
-			? {}
-			: { itemId: plan.itemId }),
+		...(plan.itemId === undefined ? {} : { itemId: plan.itemId }),
 		scope: plan.scope,
 		phase: plan.phase as GraphicAnimationPhase,
 		run: plan.run,
@@ -203,28 +205,27 @@ export interface ExpectedSender {
  * exactly the moment there is nobody entitled to send one.
  */
 export function isFromExpectedSender(message: MessageEnvelope, expected: ExpectedSender): boolean {
-	return message.origin === expected.origin
-		&& message.source === expected.source
-		&& expected.source !== null
-		&& expected.source !== undefined
-		&& typeof message.data === 'object'
-		&& message.data !== null;
+	return (
+		message.origin === expected.origin &&
+		message.source === expected.source &&
+		expected.source !== null &&
+		expected.source !== undefined &&
+		typeof message.data === 'object' &&
+		message.data !== null
+	);
 }
 
 export function isGraphicsPreviewStateMessage(
 	message: MessageEnvelope,
 	expected: ExpectedSender,
 ): message is MessageEnvelope & { data: { type: string; state: GraphicsPreviewState } } {
-	if (!isFromExpectedSender(message, expected))
-		return false;
+	if (!isFromExpectedSender(message, expected)) return false;
 
 	const data = message.data as Record<string, unknown>;
-	if (data.type !== GRAPHICS_PREVIEW_STATE_MESSAGE)
-		return false;
+	if (data.type !== GRAPHICS_PREVIEW_STATE_MESSAGE) return false;
 
 	const state = data.state as Record<string, unknown> | undefined;
-	if (typeof state !== 'object' || state === null)
-		return false;
+	if (typeof state !== 'object' || state === null) return false;
 	if (!Array.isArray(state.graphics) || !isGraphicsSelectionTarget(state.selectedTarget))
 		return false;
 
@@ -244,32 +245,37 @@ export function isGraphicsPreviewStateMessage(
  * so it normalises to null rather than rejecting the whole push.
  */
 export function readGraphicsPreviewState(state: GraphicsPreviewState): GraphicsPreviewState {
-	const socialProfileValues = state.socialProfileValues ?? Object.fromEntries(
-		state.graphics.flatMap(graphic => (graphic.socialProfileProjections ?? []).length === 0
-			? []
-			: [
-					[
-						graphic.id,
-						Object.fromEntries(graphic.socialProfileProjections!.map(projection => [
-							projection.key,
-							{
-								network: 'twitch' as const,
-								networkLabel: SUPPORTED_SOCIAL_NETWORK_BY_KEY.twitch.label,
-								handle: 'example',
-								profileUrl: canonicalSocialProfileUrl('twitch', 'example'),
-							},
-						])),
-					],
-				]),
-	);
+	const socialProfileValues =
+		state.socialProfileValues ??
+		Object.fromEntries(
+			state.graphics.flatMap((graphic) =>
+				(graphic.socialProfileProjections ?? []).length === 0
+					? []
+					: [
+							[
+								graphic.id,
+								Object.fromEntries(
+									graphic.socialProfileProjections!.map((projection) => [
+										projection.key,
+										{
+											network: 'twitch' as const,
+											networkLabel: SUPPORTED_SOCIAL_NETWORK_BY_KEY.twitch.label,
+											handle: 'example',
+											profileUrl: canonicalSocialProfileUrl('twitch', 'example'),
+										},
+									]),
+								),
+							],
+						],
+			),
+		);
 	return {
 		...state,
-		...(Object.keys(socialProfileValues).length > 0
-			? { socialProfileValues }
-			: {}),
-		animation: state.animation === undefined || state.animation === null
-			? null
-			: readGraphicsPreviewAnimationPlan(state.animation),
+		...(Object.keys(socialProfileValues).length > 0 ? { socialProfileValues } : {}),
+		animation:
+			state.animation === undefined || state.animation === null
+				? null
+				: readGraphicsPreviewAnimationPlan(state.animation),
 	};
 }
 
@@ -278,11 +284,12 @@ export function isGraphicsPreviewSelectedTargetMessage(
 	message: MessageEnvelope,
 	expected: ExpectedSender,
 ): message is MessageEnvelope & { data: { type: string; target: GraphicsSelectionTarget } } {
-	if (!isFromExpectedSender(message, expected))
-		return false;
+	if (!isFromExpectedSender(message, expected)) return false;
 
 	const data = message.data as Record<string, unknown>;
-	return data.type === GRAPHICS_PREVIEW_SELECTED_TARGET_MESSAGE && isGraphicsSelectionTarget(data.target);
+	return (
+		data.type === GRAPHICS_PREVIEW_SELECTED_TARGET_MESSAGE && isGraphicsSelectionTarget(data.target)
+	);
 }
 
 /**
@@ -294,8 +301,7 @@ export function isGraphicsPreviewAnimationMessage(
 	message: MessageEnvelope,
 	expected: ExpectedSender,
 ): message is MessageEnvelope & { data: { type: string; plan: unknown } } {
-	if (!isFromExpectedSender(message, expected))
-		return false;
+	if (!isFromExpectedSender(message, expected)) return false;
 
 	return (message.data as Record<string, unknown>).type === GRAPHICS_PREVIEW_ANIMATION_MESSAGE;
 }
@@ -305,8 +311,7 @@ export function isGraphicsPreviewReadyMessage(
 	message: MessageEnvelope,
 	expected: ExpectedSender,
 ): boolean {
-	if (!isFromExpectedSender(message, expected))
-		return false;
+	if (!isFromExpectedSender(message, expected)) return false;
 
 	return (message.data as Record<string, unknown>).type === GRAPHICS_PREVIEW_READY_MESSAGE;
 }
@@ -316,17 +321,16 @@ export function isGraphicsPreviewReadyMessage(
  * type. `toggle` travels only when set, so a plain click's message is as it was.
  */
 export function previewSelectMessage<T>(type: string, target: T, toggle: boolean) {
-	return toggle
-		? { type, target, toggle: true as const }
-		: { type, target };
+	return toggle ? { type, target, toggle: true as const } : { type, target };
 }
 
 export function isGraphicsPreviewSelectMessage(
 	message: MessageEnvelope,
 	expected: ExpectedSender,
-): message is MessageEnvelope & { data: { type: string; target: GraphicsSelectionTarget; toggle?: unknown } } {
-	if (!isFromExpectedSender(message, expected))
-		return false;
+): message is MessageEnvelope & {
+	data: { type: string; target: GraphicsSelectionTarget; toggle?: unknown };
+} {
+	if (!isFromExpectedSender(message, expected)) return false;
 
 	const data = message.data as Record<string, unknown>;
 	return data.type === GRAPHICS_PREVIEW_SELECT_MESSAGE && isGraphicsSelectionTarget(data.target);
@@ -344,10 +348,11 @@ export function isGraphicsPreviewThemeMessage(
 	message: MessageEnvelope,
 	expected: ExpectedSender,
 ): message is MessageEnvelope & { data: { type: string; tokens: Record<string, unknown> | null } } {
-	if (!isFromExpectedSender(message, expected))
-		return false;
+	if (!isFromExpectedSender(message, expected)) return false;
 	const data = message.data as Record<string, unknown>;
-	return data.type === GRAPHICS_PREVIEW_THEME_MESSAGE
-		&& typeof data.tokens === 'object'
-		&& !Array.isArray(data.tokens);
+	return (
+		data.type === GRAPHICS_PREVIEW_THEME_MESSAGE &&
+		typeof data.tokens === 'object' &&
+		!Array.isArray(data.tokens)
+	);
 }

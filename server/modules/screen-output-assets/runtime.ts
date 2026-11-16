@@ -1,8 +1,5 @@
 import type { H3Event } from 'h3';
-import {
-	graphicAssetId,
-	graphicAssetRevisionId,
-} from '~~/server/modules/graphics-asset-library';
+import { graphicAssetId, graphicAssetRevisionId } from '~~/server/modules/graphics-asset-library';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 import { createR2CanonicalGraphicsObjectStore } from '~~/server/modules/graphics-asset-library/r2-object-store';
 import { graphicsCatalogueClient } from '~~/server/modules/graphics-asset-library/runtime';
@@ -38,12 +35,10 @@ function unavailable(reason: string) {
 
 function signingKey(event: H3Event): string {
 	const value = useRuntimeConfig(event).screenOutputCapabilitySigningKey;
-	if (typeof value !== 'string' || value.length === 0)
-		throw unavailable('is not set');
+	if (typeof value !== 'string' || value.length === 0) throw unavailable('is not set');
 	try {
 		assertScreenOutputCapabilitySigningKey(value);
-	}
-	catch {
+	} catch {
 		throw unavailable('is not 32-byte base64');
 	}
 	return value;
@@ -80,21 +75,24 @@ export async function screenOutputAssetDeliveryForEvent(event: H3Event) {
 				},
 		defer,
 	});
-	const cache = typeof caches === 'undefined'
-		? undefined
-		: await caches.open('screen-output-assets').catch(() => undefined);
+	const cache =
+		typeof caches === 'undefined'
+			? undefined
+			: await caches.open('screen-output-assets').catch(() => undefined);
 	return createScreenOutputAssetDelivery({
 		signingKey: signingKey(event),
 		authorize: createD1ScreenOutputAssetAuthorizer(graphicsCatalogueClient()).authorize,
-		inspect: async ({ assetId, revisionId }) => await graphicsAssets.inspectGraphicAssetRevisionContent({
-			assetId: graphicAssetId(assetId),
-			revisionId: graphicAssetRevisionId(revisionId),
-		}),
-		resolve: async ({ assetId, revisionId, range }) => await graphicsAssets.resolveGraphicAssetRevision({
-			assetId: graphicAssetId(assetId),
-			revisionId: graphicAssetRevisionId(revisionId),
-			range,
-		}),
+		inspect: async ({ assetId, revisionId }) =>
+			await graphicsAssets.inspectGraphicAssetRevisionContent({
+				assetId: graphicAssetId(assetId),
+				revisionId: graphicAssetRevisionId(revisionId),
+			}),
+		resolve: async ({ assetId, revisionId, range }) =>
+			await graphicsAssets.resolveGraphicAssetRevision({
+				assetId: graphicAssetId(assetId),
+				revisionId: graphicAssetRevisionId(revisionId),
+				range,
+			}),
 		cache,
 		defer,
 	});

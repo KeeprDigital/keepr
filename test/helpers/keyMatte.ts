@@ -24,7 +24,8 @@ const WHITE = /^#ffffff(?:[\da-f]{2})?$/i;
 const WHITE_GLOW = /^drop-shadow\(0 0 [\d.]+px (#ffffff[\da-f]{2})\)$/i;
 
 /** Anything that could be a colour; a false positive fails loudly, which is the safe direction. */
-const COLOUR_TOKEN = /#[\da-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\([^)]*\)|\b(?:red|green|blue|black|cyan|magenta|yellow|orange|purple|pink|brown|gray|grey|silver|gold|teal|navy|olive|lime|aqua|fuchsia|maroon|rebeccapurple|currentcolor)\b/gi;
+const COLOUR_TOKEN =
+	/#[\da-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\([^)]*\)|\b(?:red|green|blue|black|cyan|magenta|yellow|orange|purple|pink|brown|gray|grey|silver|gold|teal|navy|olive|lime|aqua|fuchsia|maroon|rebeccapurple|currentcolor)\b/gi;
 
 const RECOGNISED_COLOUR_KEYS = new Set(['color']);
 
@@ -81,12 +82,12 @@ const NON_PAINTING_KEYS = new Set([
 const MEDIA_NON_PAINTING_KEYS = new Set(['borderRadius', 'objectFit', 'objectPosition']);
 
 /** The one mask the Key Output may carry: a hard-edged white wipe, a stencil rather than paint. */
-const WHITE_WIPE_MASK = /^linear-gradient\(to (?:right|left|bottom|top), #ffffff 0 [\d.]+%, #ffffff00 [\d.]+%\)$/i;
+const WHITE_WIPE_MASK =
+	/^linear-gradient\(to (?:right|left|bottom|top), #ffffff 0 [\d.]+%, #ffffff00 [\d.]+%\)$/i;
 
 export function keyChannels(value: string): { luminance: number; alpha: number } {
 	const hex = /^#([\da-f]{6})([\da-f]{2})?$/i.exec(value.trim());
-	if (!hex)
-		throw new Error(`Key Output painted a colour this compositor cannot read: ${value}`);
+	if (!hex) throw new Error(`Key Output painted a colour this compositor cannot read: ${value}`);
 	const rgb = hex[1]!;
 	const red = Number.parseInt(rgb.slice(0, 2), 16) / 255;
 	const green = Number.parseInt(rgb.slice(2, 4), 16) / 255;
@@ -95,9 +96,7 @@ export function keyChannels(value: string): { luminance: number; alpha: number }
 		throw new Error(`Key Output must paint greyscale, got #${rgb}`);
 	return {
 		luminance: red,
-		alpha: hex[2] === undefined
-			? 1
-			: Number.parseInt(hex[2], 16) / 255,
+		alpha: hex[2] === undefined ? 1 : Number.parseInt(hex[2], 16) / 255,
 	};
 }
 
@@ -111,7 +110,7 @@ export function compositeKeyLuminance(backdrop: unknown, paints: KeyPaint[]): nu
 	return paints.reduce<number>((destination, paint) => {
 		const source = keyChannels(paint.color);
 		const alpha = source.alpha * paint.opacity;
-		return (source.luminance * alpha) + (destination * (1 - alpha));
+		return source.luminance * alpha + destination * (1 - alpha);
 	}, base.luminance * base.alpha);
 }
 
@@ -119,8 +118,7 @@ export function stylePaints(style: CSSProperties, path: string): KeyPaint[] {
 	const paints: KeyPaint[] = [];
 
 	for (const [key, value] of Object.entries(style)) {
-		if (value === undefined || value === null)
-			continue;
+		if (value === undefined || value === null) continue;
 
 		const text = String(value);
 
@@ -139,17 +137,17 @@ export function stylePaints(style: CSSProperties, path: string): KeyPaint[] {
 		}
 
 		if (!RECOGNISED_COLOUR_KEYS.has(key) && !NON_PAINTING_KEYS.has(key))
-			throw new Error(`${path}.${key} is an unrecognised style property in the Key Output: ${text}`);
+			throw new Error(
+				`${path}.${key} is an unrecognised style property in the Key Output: ${text}`,
+			);
 
 		const tokens = text.match(COLOUR_TOKEN) ?? [];
-		if (tokens.length === 0)
-			continue;
+		if (tokens.length === 0) continue;
 		if (!RECOGNISED_COLOUR_KEYS.has(key))
 			throw new Error(`${path}.${key} is an unrecognised paint in the Key Output: ${text}`);
 
 		for (const token of tokens) {
-			if (!WHITE.test(token))
-				throw new Error(`${path}.${key} must paint white, got: ${token}`);
+			if (!WHITE.test(token)) throw new Error(`${path}.${key} must paint white, got: ${token}`);
 			paints.push({ color: token, opacity: 1 });
 		}
 	}
@@ -158,31 +156,37 @@ export function stylePaints(style: CSSProperties, path: string): KeyPaint[] {
 }
 
 /** An image cannot be recoloured by CSS, so it must carry the alpha-as-white conversion; an unresolved one paints nothing. */
-function replacedElementPaints(element: { src: string; style: CSSProperties }, path: string, opacity: number): KeyPaint[] {
+function replacedElementPaints(
+	element: { src: string; style: CSSProperties },
+	path: string,
+	opacity: number,
+): KeyPaint[] {
 	for (const [key, value] of Object.entries(element.style)) {
-		if (value === undefined || value === null)
-			continue;
+		if (value === undefined || value === null) continue;
 		const text = String(value);
 
 		if (key === 'filter') {
 			if (text !== KEY_MEDIA_ALPHA_TO_WHITE)
-				throw new Error(`${path}.filter must be exactly the alpha-as-white conversion, got: ${text}`);
+				throw new Error(
+					`${path}.filter must be exactly the alpha-as-white conversion, got: ${text}`,
+				);
 			continue;
 		}
 
 		if (!MEDIA_NON_PAINTING_KEYS.has(key) && !NON_PAINTING_KEYS.has(key))
-			throw new Error(`${path}.${key} is an unrecognised style property in the Key Output: ${text}`);
+			throw new Error(
+				`${path}.${key} is an unrecognised style property in the Key Output: ${text}`,
+			);
 		if ((text.match(COLOUR_TOKEN) ?? []).length > 0)
 			throw new Error(`${path}.${key} is an unrecognised paint in the Key Output: ${text}`);
 	}
 
-	if (element.src === '')
-		return [];
+	if (element.src === '') return [];
 	if (element.style.filter !== KEY_MEDIA_ALPHA_TO_WHITE)
-		throw new Error(`${path} paints its own colours into the Key Output instead of its alpha as white`);
-	return [
-		{ color: '#ffffff', opacity },
-	];
+		throw new Error(
+			`${path} paints its own colours into the Key Output instead of its alpha as white`,
+		);
+	return [{ color: '#ffffff', opacity }];
 }
 
 function mediaPaints(media: GraphicMediaRenderDescriptor, path: string): KeyPaint[] {
@@ -199,8 +203,7 @@ function surfacePaints(surface: GraphicSurfaceRenderDescriptor, path: string): K
 				throw new Error(`${path} gradient stop must paint white, got: ${stop.color}`);
 			paints.push({ color: stop.color, opacity: stop.opacity * surface.fill.opacity });
 		}
-	}
-	else {
+	} else {
 		if (!WHITE.test(surface.fill.color))
 			throw new Error(`${path} fill must paint white, got: ${surface.fill.color}`);
 		paints.push({ color: surface.fill.color, opacity: surface.fill.opacity });
@@ -221,22 +224,13 @@ export function itemPaints(item: GraphicItemRenderDescriptor, prefix = ''): KeyP
 
 	return [
 		...stylePaints(item.style, path),
-		...(item.textStyle
-			? stylePaints(item.textStyle, `${path}.textStyle`)
-			: []),
+		...(item.textStyle ? stylePaints(item.textStyle, `${path}.textStyle`) : []),
 		...(item.textSegments ?? []).flatMap((segment, index) =>
-			segment.style
-				? stylePaints(segment.style, `${path}.textSegments[${index}]`)
-				: []),
-		...(item.surface
-			? surfacePaints(item.surface, path)
-			: []),
-		...(item.media
-			? mediaPaints(item.media, path)
-			: []),
-		...(item.icon
-			? stylePaints(item.icon.style, `${path}.icon`)
-			: []),
+			segment.style ? stylePaints(segment.style, `${path}.textSegments[${index}]`) : [],
+		),
+		...(item.surface ? surfacePaints(item.surface, path) : []),
+		...(item.media ? mediaPaints(item.media, path) : []),
+		...(item.icon ? stylePaints(item.icon.style, `${path}.icon`) : []),
 		...(item.deckList?.cards ?? []).flatMap((card, index) => [
 			...stylePaints(card.style, `${path}.deckList[${index}]`),
 			...(card.image
@@ -245,23 +239,22 @@ export function itemPaints(item: GraphicItemRenderDescriptor, prefix = ''): KeyP
 			...(card.placeholder
 				? [
 						...surfacePaints(card.placeholder.surface, `${path}.deckList[${index}].placeholder`),
-						...stylePaints(card.placeholder.textStyle, `${path}.deckList[${index}].placeholder.text`),
+						...stylePaints(
+							card.placeholder.textStyle,
+							`${path}.deckList[${index}].placeholder.text`,
+						),
 					]
 				: []),
-			...(card.badge
-				? stylePaints(card.badge.style, `${path}.deckList[${index}].badge`)
-				: []),
+			...(card.badge ? stylePaints(card.badge.style, `${path}.deckList[${index}].badge`) : []),
 		]),
-		...(item.children ?? []).flatMap(child => itemPaints(child, `${path}>`)),
+		...(item.children ?? []).flatMap((child) => itemPaints(child, `${path}>`)),
 		...(item.crossTransition
 			? [
 					...itemPaints(item.crossTransition.outgoing, `${path}~outgoing>`),
 					...itemPaints(item.crossTransition.incoming, `${path}~incoming>`),
 				]
 			: []),
-		...(item.enclosed
-			? itemPaints(item.enclosed, `${path}~enclosed>`)
-			: []),
+		...(item.enclosed ? itemPaints(item.enclosed, `${path}~enclosed>`) : []),
 	];
 }
 
@@ -277,13 +270,13 @@ export function graphicPaints(graphic: {
 		...(graphic.enclosingStyle
 			? stylePaints(graphic.enclosingStyle, `${graphic.id}.enclosingStyle`)
 			: []),
-		...(graphic.style
-			? stylePaints(graphic.style, `${graphic.id}.style`)
-			: []),
-		...graphic.items.flatMap(item => itemPaints(item, `${graphic.id}>`)),
+		...(graphic.style ? stylePaints(graphic.style, `${graphic.id}.style`) : []),
+		...graphic.items.flatMap((item) => itemPaints(item, `${graphic.id}>`)),
 		...(graphic.outgoing?.style
 			? stylePaints(graphic.outgoing.style, `${graphic.id}.outgoing.style`)
 			: []),
-		...(graphic.outgoing?.items ?? []).flatMap(item => itemPaints(item, `${graphic.id}~outgoing>`)),
+		...(graphic.outgoing?.items ?? []).flatMap((item) =>
+			itemPaints(item, `${graphic.id}~outgoing>`),
+		),
 	];
 }

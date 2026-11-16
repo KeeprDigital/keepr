@@ -12,7 +12,10 @@ import {
 
 describe('an integration server that tests no realtime', () => {
 	it('starts with the Ably key blank and the rest of its environment kept', () => {
-		const env = withoutAblyKey({ [INTEGRATION_ABLY_API_KEY_ENV]: 'app.key:secret', NUXT_OTHER: 'kept' });
+		const env = withoutAblyKey({
+			[INTEGRATION_ABLY_API_KEY_ENV]: 'app.key:secret',
+			NUXT_OTHER: 'kept',
+		});
 
 		expect(env).toEqual({ [INTEGRATION_ABLY_API_KEY_ENV]: '', NUXT_OTHER: 'kept' });
 	});

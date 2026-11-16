@@ -1,9 +1,16 @@
 import type { SocialProfilePresentationProjection } from '~~/shared/modules/broadcast-graphics-live-session';
 import type { GraphicThemeTokens } from '~~/shared/modules/graphics';
-import type { BroadcastGraphicConfig, GraphicInputValue, SocialProfileProjectionValues } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicInputValue,
+	SocialProfileProjectionValues,
+} from '~~/shared/types/graphics';
 import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
 import type { ScreenOutput } from '~~/shared/types/screenConfig';
-import type { GraphicsAnimationProjection, GraphicsCompositionRenderModel } from '~/modules/graphics/renderModel';
+import type {
+	GraphicsAnimationProjection,
+	GraphicsCompositionRenderModel,
+} from '~/modules/graphics/renderModel';
 import type { GraphicsSelectionTarget } from '~/modules/graphics/selection';
 import { resolveGraphicsCompositionRenderModel } from '~/modules/graphics/renderModel';
 
@@ -39,9 +46,13 @@ export interface BroadcastGraphicsRenderModelInput {
 	/** Current correlated values for every Social Profile Projection on program. */
 	socialProfileValues?: Readonly<Record<string, SocialProfileProjectionValues>>;
 	/** Sampled synchronized Presentation Group frames, keyed by graphic and projection. */
-	socialProfilePresentations?: Readonly<Record<string, Readonly<Record<string, SocialProfilePresentationProjection>>>>;
+	socialProfilePresentations?: Readonly<
+		Record<string, Readonly<Record<string, SocialProfilePresentationProjection>>>
+	>;
 	/** Sampled Presentation Group frames an update phase is transitioning away from. */
-	outgoingSocialProfilePresentations?: Readonly<Record<string, Readonly<Record<string, SocialProfilePresentationProjection>>>>;
+	outgoingSocialProfilePresentations?: Readonly<
+		Record<string, Readonly<Record<string, SocialProfilePresentationProjection>>>
+	>;
 	/** Correlated Social Profile values an update phase is transitioning away from. */
 	outgoingSocialProfileValues?: Readonly<Record<string, SocialProfileProjectionValues>>;
 	/**

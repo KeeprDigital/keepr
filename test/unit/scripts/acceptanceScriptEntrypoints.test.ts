@@ -11,16 +11,8 @@ vi.mock('../../../scripts/graphics-acceptance/harness.mjs', () => ({
  */
 const SCRIPTS: ReadonlyArray<readonly [script: string, harness: string, args?: string[]]> = [
 	['run-animation-effect-rendering-acceptance', 'animation-effect-v1'],
-	[
-		'run-browser-page-acceptance',
-		'silent-video-v1',
-		['silent-video'],
-	],
-	[
-		'run-browser-page-acceptance',
-		'still-image-v1',
-		['still-images'],
-	],
+	['run-browser-page-acceptance', 'silent-video-v1', ['silent-video']],
+	['run-browser-page-acceptance', 'still-image-v1', ['still-images']],
 	['run-font-browser-acceptance', 'static-font-v1'],
 	['run-graphics-delivery-acceptance', 'graphics-delivery-v1'],
 	['run-graphics-package-acceptance', 'graphics-package-v1'],
@@ -38,18 +30,21 @@ const SCRIPTS: ReadonlyArray<readonly [script: string, harness: string, args?: s
  * the module is the entry point, or by a test that has mocked the boundary.
  */
 describe('acceptance script entry points', () => {
-	it.each(SCRIPTS)('%s is inert at import and runs %s only through main()', async (script, harness, args = []) => {
-		const module = await import(`../../../scripts/${script}.mjs`);
+	it.each(SCRIPTS)(
+		'%s is inert at import and runs %s only through main()',
+		async (script, harness, args = []) => {
+			const module = await import(`../../../scripts/${script}.mjs`);
 
-		expect(runAcceptanceHarness).not.toHaveBeenCalled();
-		expect(module.main).toBeTypeOf('function');
+			expect(runAcceptanceHarness).not.toHaveBeenCalled();
+			expect(module.main).toBeTypeOf('function');
 
-		await module.main(['node', `scripts/${script}.mjs`, ...args]);
+			await module.main(['node', `scripts/${script}.mjs`, ...args]);
 
-		expect(runAcceptanceHarness).toHaveBeenCalledTimes(1);
-		expect(vi.mocked(runAcceptanceHarness).mock.calls[0]![0]).toMatchObject({
-			harness,
-			run: expect.any(Function),
-		});
-	});
+			expect(runAcceptanceHarness).toHaveBeenCalledTimes(1);
+			expect(vi.mocked(runAcceptanceHarness).mock.calls[0]![0]).toMatchObject({
+				harness,
+				run: expect.any(Function),
+			});
+		},
+	);
 });

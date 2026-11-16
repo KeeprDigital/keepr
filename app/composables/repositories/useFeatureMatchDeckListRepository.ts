@@ -32,13 +32,13 @@ export function useFeatureMatchDeckListRepository() {
 
 	/** `side` is the Slot's own side: a Session swap never moves a Deck List between Slot sides. */
 	const save = async (eventId: number, slotId: number, side: PlayerSide, text: string) =>
-		await eventData.command<SaveFeatureMatchDeckListAnswer<FeatureMatch>, { side: PlayerSide; text: string }>(
-			path(eventId, slotId, 'deck-lists'),
-			{
-				method: 'POST',
-				body: { side, text },
-			},
-		);
+		await eventData.command<
+			SaveFeatureMatchDeckListAnswer<FeatureMatch>,
+			{ side: PlayerSide; text: string }
+		>(path(eventId, slotId, 'deck-lists'), {
+			method: 'POST',
+			body: { side, text },
+		});
 
 	const read = async (eventId: number, slotId: number, deckListId: number) =>
 		await eventData.command<SavedFeatureMatchDeckList>(
@@ -58,14 +58,20 @@ export function useFeatureMatchDeckListRepository() {
 		);
 
 	/** `commanders` are the printings confirmed as the Seat's Commanders, by Scryfall id. */
-	const saveCommander = async (eventId: number, slotId: number, seat: Seat, text: string, commanders: string[]) =>
-		await eventData.command<SaveCommanderDeckListAnswer<FeatureMatch>, { seat: Seat; text: string; commanders: string[] }>(
-			path(eventId, slotId, 'commander-deck-lists'),
-			{
-				method: 'POST',
-				body: { seat, text, commanders },
-			},
-		);
+	const saveCommander = async (
+		eventId: number,
+		slotId: number,
+		seat: Seat,
+		text: string,
+		commanders: string[],
+	) =>
+		await eventData.command<
+			SaveCommanderDeckListAnswer<FeatureMatch>,
+			{ seat: Seat; text: string; commanders: string[] }
+		>(path(eventId, slotId, 'commander-deck-lists'), {
+			method: 'POST',
+			body: { seat, text, commanders },
+		});
 
 	const readCommander = async (eventId: number, slotId: number, deckListId: number) =>
 		await eventData.command<SavedCommanderDeckList>(

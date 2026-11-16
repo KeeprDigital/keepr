@@ -20,7 +20,12 @@ const SLOT_2 = 2;
 
 type Slot = DbFeatureMatchWithSession & { activeSession: DbFeatureMatchSession | null };
 
-function session(id: number, slotId: number, matchId: number | null, sequence = 1): DbFeatureMatchSession {
+function session(
+	id: number,
+	slotId: number,
+	matchId: number | null,
+	sequence = 1,
+): DbFeatureMatchSession {
 	return {
 		id,
 		eventId: EVENT,
@@ -35,7 +40,11 @@ function session(id: number, slotId: number, matchId: number | null, sequence = 
 	};
 }
 
-function slot(id: number, matchId: number | null, activeSession: DbFeatureMatchSession | null = null): Slot {
+function slot(
+	id: number,
+	matchId: number | null,
+	activeSession: DbFeatureMatchSession | null = null,
+): Slot {
 	return {
 		id,
 		eventId: EVENT,
@@ -43,9 +52,7 @@ function slot(id: number, matchId: number | null, activeSession: DbFeatureMatchS
 		externalId: null,
 		externalSource: null,
 		tableNumber: matchId,
-		roundName: matchId == null
-			? null
-			: 'Round 3',
+		roundName: matchId == null ? null : 'Round 3',
 		formatName: null,
 		player1Id: null,
 		player2Id: null,
@@ -61,7 +68,12 @@ function slot(id: number, matchId: number | null, activeSession: DbFeatureMatchS
 	} as Slot;
 }
 
-function assignment(id: number, slotId: number, matchId: number, note: string | null = null): DbFeatureMatchAssignment {
+function assignment(
+	id: number,
+	slotId: number,
+	matchId: number,
+	note: string | null = null,
+): DbFeatureMatchAssignment {
 	return {
 		id,
 		eventId: EVENT,
@@ -84,7 +96,7 @@ function pre(overrides: Partial<PromotionPreState> = {}): PromotionPreState {
 }
 
 function types(messages: { type: string }[]) {
-	return messages.map(message => message.type);
+	return messages.map((message) => message.type);
 }
 
 describe('feature Match Slot Promotion decision', () => {
@@ -97,17 +109,13 @@ describe('feature Match Slot Promotion decision', () => {
 		if (decision.outcome !== 'standing')
 			throw new Error(`expected a standing promotion, got ${decision.outcome}`);
 		const publication = decision.publication({
-			slots: [
-				slot(SLOT_1, null),
-				promoted,
-			],
+			slots: [slot(SLOT_1, null), promoted],
 			assignment: saved,
 			openedSessions: [opened],
 		});
 
 		expect(publication).toMatchObject({ outcome: 'won' });
-		if (publication.outcome === 'failed')
-			throw new Error(publication.message);
+		if (publication.outcome === 'failed') throw new Error(publication.message);
 		expect(types(publication.messages)).toEqual([
 			'featureMatchSession:eventApplied',
 			'featureMatchAssignment:created',
@@ -157,13 +165,16 @@ describe('feature Match Slot Promotion decision', () => {
 	});
 
 	it('fails a promotion whose Slot cannot be read back, or whose Slot holds the Match without its Assignment', () => {
-		expect(decidePromotion(pre(), { slot: undefined, assignment: undefined }))
-			.toEqual({ outcome: 'failed', message: 'Failed to retrieve updated feature match slot' });
-		expect(decidePromotion(pre(), {
-			slot: slot(SLOT_2, MATCH_M),
-			assignment: undefined,
-		}))
-			.toEqual({ outcome: 'failed', message: 'Failed to save feature match assignment' });
+		expect(decidePromotion(pre(), { slot: undefined, assignment: undefined })).toEqual({
+			outcome: 'failed',
+			message: 'Failed to retrieve updated feature match slot',
+		});
+		expect(
+			decidePromotion(pre(), {
+				slot: slot(SLOT_2, MATCH_M),
+				assignment: undefined,
+			}),
+		).toEqual({ outcome: 'failed', message: 'Failed to save feature match assignment' });
 	});
 
 	it('wins a move, continuing the Assignment and announcing every cleared Slot with its new Session before the promoted one', () => {
@@ -181,18 +192,13 @@ describe('feature Match Slot Promotion decision', () => {
 			}),
 			{ slot: promoted, assignment: moved },
 		);
-		if (decision.outcome !== 'standing')
-			throw new Error(decision.outcome);
+		if (decision.outcome !== 'standing') throw new Error(decision.outcome);
 		const publication = decision.publication({
-			slots: [
-				slot(SLOT_1, null, clearedSession),
-				promoted,
-			],
+			slots: [slot(SLOT_1, null, clearedSession), promoted],
 			assignment: moved,
 			openedSessions: [clearedSession, promotedSession],
 		});
-		if (publication.outcome === 'failed')
-			throw new Error(publication.message);
+		if (publication.outcome === 'failed') throw new Error(publication.message);
 
 		expect(publication.outcome).toBe('won');
 		expect(publication.messages).toMatchObject([
@@ -224,12 +230,10 @@ describe('feature Match Slot Promotion decision', () => {
 			},
 		]);
 		expect(publication.messages).toHaveLength(5);
-		expect(publication.response.clearedSlots).toMatchObject([
-			{ id: SLOT_1, matchId: null },
-		]);
+		expect(publication.response.clearedSlots).toMatchObject([{ id: SLOT_1, matchId: null }]);
 	});
 
-	it('announces the end of a different Match\'s Assignment it displaced, but not a re-promotion\'s own', () => {
+	it("announces the end of a different Match's Assignment it displaced, but not a re-promotion's own", () => {
 		const displaced = assignment(8, SLOT_2, MATCH_N);
 		const saved = assignment(9, SLOT_2, MATCH_M);
 		const promoted = slot(SLOT_2, MATCH_M, session(57, SLOT_2, MATCH_M));
@@ -239,12 +243,13 @@ describe('feature Match Slot Promotion decision', () => {
 			openedSessions: [],
 		};
 
-		const displacing = decidePromotion(pre({ displacedAssignment: displaced }), { slot: promoted, assignment: saved });
-		if (displacing.outcome !== 'standing')
-			throw new Error(displacing.outcome);
+		const displacing = decidePromotion(pre({ displacedAssignment: displaced }), {
+			slot: promoted,
+			assignment: saved,
+		});
+		if (displacing.outcome !== 'standing') throw new Error(displacing.outcome);
 		const displacingPublication = displacing.publication(current);
-		if (displacingPublication.outcome === 'failed')
-			throw new Error(displacingPublication.message);
+		if (displacingPublication.outcome === 'failed') throw new Error(displacingPublication.message);
 		expect(types(displacingPublication.messages)).toEqual([
 			'featureMatchAssignment:created',
 			'featureMatchAssignment:deleted',
@@ -253,13 +258,17 @@ describe('feature Match Slot Promotion decision', () => {
 		expect(displacingPublication.messages[1]!.payload).toEqual({ featureMatchAssignmentId: 8 });
 
 		// An Assignment row the upsert kept is the promotion's own, not one it ended.
-		const keeping = decidePromotion(pre({ displacedAssignment: saved, continuedAssignment: saved }), { slot: promoted, assignment: saved });
-		if (keeping.outcome !== 'standing')
-			throw new Error(keeping.outcome);
+		const keeping = decidePromotion(
+			pre({ displacedAssignment: saved, continuedAssignment: saved }),
+			{ slot: promoted, assignment: saved },
+		);
+		if (keeping.outcome !== 'standing') throw new Error(keeping.outcome);
 		const keepingPublication = keeping.publication(current);
-		if (keepingPublication.outcome === 'failed')
-			throw new Error(keepingPublication.message);
-		expect(types(keepingPublication.messages)).toEqual(['featureMatchAssignment:updated', 'featureMatch:updated']);
+		if (keepingPublication.outcome === 'failed') throw new Error(keepingPublication.message);
+		expect(types(keepingPublication.messages)).toEqual([
+			'featureMatchAssignment:updated',
+			'featureMatch:updated',
+		]);
 	});
 
 	it('still stands when moved off after its outcome was decided, publishing what it committed and answering as things are now', () => {
@@ -268,8 +277,7 @@ describe('feature Match Slot Promotion decision', () => {
 			slot: slot(SLOT_2, MATCH_M, session(57, SLOT_2, MATCH_M)),
 			assignment: saved,
 		});
-		if (decision.outcome !== 'standing')
-			throw new Error(decision.outcome);
+		if (decision.outcome !== 'standing') throw new Error(decision.outcome);
 
 		// Another promotion moved the Match to Slot 1 before the later reads.
 		const publication = decision.publication({
@@ -280,8 +288,7 @@ describe('feature Match Slot Promotion decision', () => {
 			assignment: assignment(9, SLOT_1, MATCH_M),
 			openedSessions: [],
 		});
-		if (publication.outcome === 'failed')
-			throw new Error(publication.message);
+		if (publication.outcome === 'failed') throw new Error(publication.message);
 
 		expect(publication.outcome).toBe('won-then-moved');
 		// Peers learn what this promotion committed; the move announces itself.
@@ -314,10 +321,7 @@ describe('feature Match Slot Promotion decision', () => {
 		const aSession = session(57, SLOT_2, MATCH_M);
 		const bCleared = session(63, SLOT_2, null);
 		const bPromoted = session(62, SLOT_1, MATCH_M);
-		const after = [
-			slot(SLOT_1, MATCH_M, bPromoted),
-			slot(SLOT_2, null, bCleared),
-		];
+		const after = [slot(SLOT_1, MATCH_M, bPromoted), slot(SLOT_2, null, bCleared)];
 
 		const a = decidePromotion(pre({ slotId: SLOT_2 }), {
 			slot: slot(SLOT_2, MATCH_M, aSession),
@@ -356,9 +360,7 @@ describe('feature Match Slot Promotion decision', () => {
 		});
 		expect(bPublication.response).toMatchObject({
 			promotedSlot: { id: SLOT_1, matchId: MATCH_M, activeSessionId: 62 },
-			clearedSlots: [
-				{ id: SLOT_2, matchId: null, activeSessionId: 63 },
-			],
+			clearedSlots: [{ id: SLOT_2, matchId: null, activeSessionId: 63 }],
 			assignment: { slotId: SLOT_1 },
 		});
 	});
@@ -366,23 +368,29 @@ describe('feature Match Slot Promotion decision', () => {
 	it('skips a cleared Slot deleted since, and fails when the promoted Slot itself is gone', () => {
 		const saved = assignment(9, SLOT_2, MATCH_M);
 		const promoted = slot(SLOT_2, MATCH_M, session(57, SLOT_2, MATCH_M));
-		const decision = decidePromotion(pre({
-			clearedSlotIds: [SLOT_1],
-		}), { slot: promoted, assignment: saved });
-		if (decision.outcome !== 'standing')
-			throw new Error(decision.outcome);
+		const decision = decidePromotion(
+			pre({
+				clearedSlotIds: [SLOT_1],
+			}),
+			{ slot: promoted, assignment: saved },
+		);
+		if (decision.outcome !== 'standing') throw new Error(decision.outcome);
 
 		const withoutCleared = decision.publication({
 			slots: [promoted],
 			assignment: saved,
 			openedSessions: [],
 		});
-		if (withoutCleared.outcome === 'failed')
-			throw new Error(withoutCleared.message);
+		if (withoutCleared.outcome === 'failed') throw new Error(withoutCleared.message);
 		expect(withoutCleared.response.clearedSlots).toEqual([]);
-		expect(types(withoutCleared.messages)).toEqual(['featureMatchAssignment:created', 'featureMatch:updated']);
+		expect(types(withoutCleared.messages)).toEqual([
+			'featureMatchAssignment:created',
+			'featureMatch:updated',
+		]);
 
-		expect(decision.publication({ slots: [], assignment: saved, openedSessions: [] }))
-			.toEqual({ outcome: 'failed', message: 'Failed to retrieve updated feature match slot' });
+		expect(decision.publication({ slots: [], assignment: saved, openedSessions: [] })).toEqual({
+			outcome: 'failed',
+			message: 'Failed to retrieve updated feature match slot',
+		});
 	});
 });

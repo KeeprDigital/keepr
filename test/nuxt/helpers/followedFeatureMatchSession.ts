@@ -24,10 +24,12 @@ interface SeatedSlot {
 }
 
 /** Follow a Session of `slot` that `SwapPlayers` has swapped: the Slot's player2 sits on player1's side (ADR-0058). */
-export function followSwappedSession(followed: FollowedFeatureMatchSessions, slot: SeatedSlot, sessionId = 90) {
-	followed.sessionIdBySlotId = new Map([
-		[slot.id, sessionId],
-	]);
+export function followSwappedSession(
+	followed: FollowedFeatureMatchSessions,
+	slot: SeatedSlot,
+	sessionId = 90,
+) {
+	followed.sessionIdBySlotId = new Map([[slot.id, sessionId]]);
 	followed.featureMatchSessions = new Map([
 		[
 			sessionId,

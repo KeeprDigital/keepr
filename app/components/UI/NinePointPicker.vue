@@ -14,15 +14,18 @@ import { NINE_POINTS } from '~~/shared/utils/ninePoints';
  * less some points (a badge on a Deck List Screen card has no centre); the arrow
  * keys step over them.
  */
-const props = withDefaults(defineProps<{
-	disabled?: boolean;
-	disabledPoints?: readonly NinePoint[];
-	size?: 'xs' | 'sm';
-}>(), {
-	disabled: false,
-	disabledPoints: () => [],
-	size: 'xs',
-});
+const props = withDefaults(
+	defineProps<{
+		disabled?: boolean;
+		disabledPoints?: readonly NinePoint[];
+		size?: 'xs' | 'sm';
+	}>(),
+	{
+		disabled: false,
+		disabledPoints: () => [],
+		size: 'xs',
+	},
+);
 
 const model = defineModel<NinePoint>({ required: true });
 
@@ -37,8 +40,7 @@ const ARROW_MOVES: Record<string, [row: number, column: number]> = {
 
 function moveFrom(index: number, event: KeyboardEvent) {
 	const move = ARROW_MOVES[event.key];
-	if (!move)
-		return;
+	if (!move) return;
 	event.preventDefault();
 	let row = Math.floor(index / 3);
 	let column = index % 3;
@@ -46,9 +48,8 @@ function moveFrom(index: number, event: KeyboardEvent) {
 	do {
 		row += move[0];
 		column += move[1];
-		if (row < 0 || row > 2 || column < 0 || column > 2)
-			return;
-		next = NINE_POINTS[(row * 3) + column]!.value;
+		if (row < 0 || row > 2 || column < 0 || column > 2) return;
+		next = NINE_POINTS[row * 3 + column]!.value;
 	} while (props.disabledPoints.includes(next));
 	model.value = next;
 	void nextTick(() => group.value?.querySelector<HTMLElement>(`[data-point="${next}"]`)?.focus());

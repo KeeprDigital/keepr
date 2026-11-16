@@ -8,12 +8,10 @@ const props = defineProps<{
 
 const eventStore = useEventStore();
 
-const sorting = ref([
-	{ id: 'inclusionRate', desc: true },
-]);
+const sorting = ref([{ id: 'inclusionRate', desc: true }]);
 
 const maxInclusionRate = computed(() =>
-	Math.max(...props.archetypes.map(a => a.inclusionRate), 1),
+	Math.max(...props.archetypes.map((a) => a.inclusionRate), 1),
 );
 
 const columns: TableColumn<CardArchetypeEntry>[] = [
@@ -32,9 +30,7 @@ const columns: TableColumn<CardArchetypeEntry>[] = [
 	<UCard :ui="{ body: 'p-0 sm:p-0' }">
 		<template #header>
 			<div class="flex items-center justify-between">
-				<h3 class="text-base font-semibold">
-					Archetypes
-				</h3>
+				<h3 class="text-base font-semibold">Archetypes</h3>
 				<UBadge variant="subtle" color="neutral">
 					{{ archetypes.length }}
 				</UBadge>
@@ -45,7 +41,10 @@ const columns: TableColumn<CardArchetypeEntry>[] = [
 			:data="archetypes"
 			:columns="columns"
 			:ui="{ tr: 'cursor-pointer transition-colors' }"
-			@select="(_e, row) => navigateTo(`/event/${eventStore.eventId}/metagame/archetype/${row.original.id}`)"
+			@select="
+				(_e, row) =>
+					navigateTo(`/event/${eventStore.eventId}/metagame/archetype/${row.original.id}`)
+			"
 		>
 			<template #inclusionRate-cell="{ row }">
 				<MetagameMetaShareBar :value="row.original.inclusionRate" :max="maxInclusionRate" />

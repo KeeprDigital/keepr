@@ -1,17 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { stubH3Event } from '~~/test/helpers/h3Event';
 
-const {
-	mockRequireUserId,
-	mockGetIngestionOperation,
-	mockSetResponseHeader,
-	mockRouterParam,
-} = vi.hoisted(() => ({
-	mockRequireUserId: vi.fn(),
-	mockGetIngestionOperation: vi.fn(),
-	mockSetResponseHeader: vi.fn(),
-	mockRouterParam: vi.fn(),
-}));
+const { mockRequireUserId, mockGetIngestionOperation, mockSetResponseHeader, mockRouterParam } =
+	vi.hoisted(() => ({
+		mockRequireUserId: vi.fn(),
+		mockGetIngestionOperation: vi.fn(),
+		mockSetResponseHeader: vi.fn(),
+		mockRouterParam: vi.fn(),
+	}));
 
 vi.mock('~~/server/utils/auth', () => ({
 	requireUserId: mockRequireUserId,
@@ -23,17 +19,20 @@ vi.mock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	}),
 }));
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('getRouterParam', mockRouterParam);
 vi.stubGlobal('setResponseHeader', mockSetResponseHeader);
-vi.stubGlobal('createError', (input: {
-	statusCode: number;
-	statusMessage?: string;
-	message: string;
-	cause?: unknown;
-}) => Object.assign(new Error(input.message), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; statusMessage?: string; message: string; cause?: unknown }) =>
+		Object.assign(new Error(input.message), input),
+);
 
-const routePath = '../../../../../../server/api/graphics-assets/ingestion-operations/[operationId].get';
+const routePath =
+	'../../../../../../server/api/graphics-assets/ingestion-operations/[operationId].get';
 
 describe('one Graphics Ingestion Operation, as its initiator polls it', () => {
 	beforeEach(() => {

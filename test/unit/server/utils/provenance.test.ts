@@ -52,7 +52,10 @@ describe('provenance', () => {
 		});
 
 		it('drops keys that are not classified as writable', () => {
-			const picked = pickManualWritable('players', { name: 'A', bogus: 1 } as Record<string, unknown>);
+			const picked = pickManualWritable('players', { name: 'A', bogus: 1 } as Record<
+				string,
+				unknown
+			>);
 
 			expect(picked).toEqual({ name: 'A' });
 		});
@@ -72,7 +75,7 @@ describe('provenance', () => {
 			expect(picked).toEqual({ roundName: 'Finals' });
 		});
 
-		it('strips a Match\'s result, which only Melee Sync writes', () => {
+		it("strips a Match's result, which only Melee Sync writes", () => {
 			const picked = pickManualWritable('matches', {
 				tableNumber: 4,
 				hasResult: true,

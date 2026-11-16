@@ -1,4 +1,7 @@
-import type { GraphicAnimationRecipe, GraphicOnScreenAnimationRecipe } from '~~/shared/types/graphics';
+import type {
+	GraphicAnimationRecipe,
+	GraphicOnScreenAnimationRecipe,
+} from '~~/shared/types/graphics';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { defineComponent } from 'vue';
@@ -62,7 +65,8 @@ const global = {
 				label: { type: String, required: false },
 				help: { type: String, required: false },
 			},
-			template: '<div><label><slot name="label">{{ label }}</slot></label><slot /><p v-if="help">{{ help }}</p></div>',
+			template:
+				'<div><label><slot name="label">{{ label }}</slot></label><slot /><p v-if="help">{{ help }}</p></div>',
 		}),
 		UFieldGroup: defineComponent({ template: '<div><slot /></div>' }),
 		UButton: UButtonStub,
@@ -83,11 +87,23 @@ const RECIPE: GraphicAnimationRecipe = {
 };
 
 /** A phase's recipe, or a motion token's, which may leave out its delay. */
-type FieldsRecipe = Omit<GraphicAnimationRecipe, 'delay'> & Partial<Pick<GraphicOnScreenAnimationRecipe, 'delay' | 'pause' | 'repeat'>>;
+type FieldsRecipe = Omit<GraphicAnimationRecipe, 'delay'> &
+	Partial<Pick<GraphicOnScreenAnimationRecipe, 'delay' | 'pause' | 'repeat'>>;
 
-interface SlideParent { width: number; height: number; name: 'canvas' | 'group' }
+interface SlideParent {
+	width: number;
+	height: number;
+	name: 'canvas' | 'group';
+}
 
-function mountFields(props: { recipe?: FieldsRecipe; cycling?: boolean; disabled?: boolean; slideParent?: SlideParent } = {}) {
+function mountFields(
+	props: {
+		recipe?: FieldsRecipe;
+		cycling?: boolean;
+		disabled?: boolean;
+		slideParent?: SlideParent;
+	} = {},
+) {
 	return mount(AnimationRecipeFields, {
 		global,
 		props: { recipe: RECIPE, testIdPrefix: 'recipe', ...props },
@@ -97,7 +113,9 @@ function mountFields(props: { recipe?: FieldsRecipe; cycling?: boolean; disabled
 type Wrapper = ReturnType<typeof mountFields>;
 
 function control(wrapper: Wrapper, name: string, testId: string) {
-	return wrapper.findAllComponents({ name }).find(entry => entry.attributes('data-testid') === `recipe-${testId}`);
+	return wrapper
+		.findAllComponents({ name })
+		.find((entry) => entry.attributes('data-testid') === `recipe-${testId}`);
 }
 
 async function enter(wrapper: Wrapper, name: string, testId: string, value: unknown) {
@@ -113,14 +131,7 @@ describe('graphic animation recipe fields', () => {
 		await enter(wrapper, 'UInputNumber', 'delay', undefined);
 
 		// Zero would be a duration the write refuses.
-		expect(wrapper.emitted('update')).toEqual([
-			[
-				{ duration: 50 },
-			],
-			[
-				{ delay: 0 },
-			],
-		]);
+		expect(wrapper.emitted('update')).toEqual([[{ duration: 50 }], [{ delay: 0 }]]);
 	});
 
 	it('shows a recipe with no delay of its own as starting immediately', () => {
@@ -152,14 +163,8 @@ describe('graphic animation recipe fields', () => {
 		await enter(wrapper, 'UInputNumber', 'scale-factor', 1.2);
 
 		expect(wrapper.emitted('channel')).toEqual([
-			[
-				'slide',
-				{ distanceMode: 'clear-parent' },
-			],
-			[
-				'scale',
-				{ factor: 1.2 },
-			],
+			['slide', { distanceMode: 'clear-parent' }],
+			['scale', { factor: 1.2 }],
 		]);
 	});
 
@@ -169,12 +174,7 @@ describe('graphic animation recipe fields', () => {
 		await enter(wrapper, 'UInputNumber', 'scale-factor', undefined);
 
 		// Zero would be a scale from nothing, which nobody asked for by clearing the field.
-		expect(wrapper.emitted('channel')).toEqual([
-			[
-				'scale',
-				{ factor: 1 },
-			],
-		]);
+		expect(wrapper.emitted('channel')).toEqual([['scale', { factor: 1 }]]);
 	});
 
 	it('hides the slide distance while the slide clears its parent instead', () => {
@@ -198,16 +198,11 @@ describe('graphic animation recipe fields', () => {
 			recipe: { ...RECIPE, pause: 250, repeat: 3 },
 		});
 		const pause = control(cycling, 'UInputNumber', 'pause')!;
-		expect([
-			pause.props('modelValue'),
-			pause.props('max'),
-		]).toEqual([250, 60000]);
+		expect([pause.props('modelValue'), pause.props('max')]).toEqual([250, 60000]);
 		const repeat = control(cycling, 'UInputNumber', 'repeat')!;
-		expect([
-			repeat.props('modelValue'),
-			repeat.props('min'),
-			repeat.props('max'),
-		]).toEqual([3, 1, 100]);
+		expect([repeat.props('modelValue'), repeat.props('min'), repeat.props('max')]).toEqual([
+			3, 1, 100,
+		]);
 	});
 
 	it('will not ask for a repeat count while the recipe repeats indefinitely', async () => {
@@ -223,17 +218,7 @@ describe('graphic animation recipe fields', () => {
 		await enter(wrapper, 'UInputNumber', 'repeat', 2.6);
 
 		// A whole count rather than nothing, which is a recipe the write accepts.
-		expect(wrapper.emitted('update')).toEqual([
-			[
-				{ repeat: 1 },
-			],
-			[
-				{ pause: 0 },
-			],
-			[
-				{ repeat: 3 },
-			],
-		]);
+		expect(wrapper.emitted('update')).toEqual([[{ repeat: 1 }], [{ pause: 0 }], [{ repeat: 3 }]]);
 	});
 
 	describe('slide distance in a Geometry Unit', () => {
@@ -247,12 +232,17 @@ describe('graphic animation recipe fields', () => {
 		}
 
 		async function chooseUnit(wrapper: Wrapper, label: 'px' | '%' | '±16') {
-			await wrapper.findAll('button').find(button => button.text() === label)!.trigger('click');
+			await wrapper
+				.findAll('button')
+				.find((button) => button.text() === label)!
+				.trigger('click');
 			await flushPromises();
 		}
 
 		function help(wrapper: Wrapper) {
-			return wrapper.findAll('[data-testid="recipe-slide-distance-help"]').map(entry => entry.text());
+			return wrapper
+				.findAll('[data-testid="recipe-slide-distance-help"]')
+				.map((entry) => entry.text());
 		}
 
 		beforeEach(() => {
@@ -264,7 +254,9 @@ describe('graphic animation recipe fields', () => {
 				recipe: slideRecipe('east'),
 			});
 
-			expect(wrapper.findAll('button').filter(button => ['px', '%', '±16'].includes(button.text()))).toEqual([]);
+			expect(
+				wrapper.findAll('button').filter((button) => ['px', '%', '±16'].includes(button.text())),
+			).toEqual([]);
 			expect(control(wrapper, 'UInputNumber', 'slide-distance')!.props('modelValue')).toBe(192);
 			expect(wrapper.text()).toContain('Fixed distance (px)');
 		});
@@ -277,20 +269,13 @@ describe('graphic animation recipe fields', () => {
 			await chooseUnit(wrapper, '%');
 
 			const distance = control(wrapper, 'UInputNumber', 'slide-distance')!;
-			expect([
-				distance.props('modelValue'),
-				distance.props('min'),
-				distance.props('max'),
-			]).toEqual([10, 0, 520.83]);
+			expect([distance.props('modelValue'), distance.props('min'), distance.props('max')]).toEqual([
+				10, 0, 520.83,
+			]);
 			expect(help(wrapper)).toEqual(['% of canvas width']);
 
 			await enter(wrapper, 'UInputNumber', 'slide-distance', 25);
-			expect(wrapper.emitted('channel')).toEqual([
-				[
-					'slide',
-					{ distance: 480 },
-				],
-			]);
+			expect(wrapper.emitted('channel')).toEqual([['slide', { distance: 480 }]]);
 		});
 
 		it('measures a vertical slide against the parent height', async () => {
@@ -304,15 +289,10 @@ describe('graphic animation recipe fields', () => {
 			expect(help(wrapper)).toEqual(['32-unit grid across group height']);
 
 			await enter(wrapper, 'UInputNumber', 'slide-distance', 16);
-			expect(wrapper.emitted('channel')).toEqual([
-				[
-					'slide',
-					{ distance: 540 },
-				],
-			]);
+			expect(wrapper.emitted('channel')).toEqual([['slide', { distance: 540 }]]);
 		});
 
-		it('measures a diagonal slide against the parent\'s shorter side', async () => {
+		it("measures a diagonal slide against the parent's shorter side", async () => {
 			const wrapper = mountFields({
 				recipe: slideRecipe('north-east', 108),
 				slideParent: CANVAS,
@@ -336,14 +316,8 @@ describe('graphic animation recipe fields', () => {
 			await enter(wrapper, 'UInputNumber', 'slide-distance', undefined);
 
 			expect(wrapper.emitted('channel')).toEqual([
-				[
-					'slide',
-					{ distance: 10000 },
-				],
-				[
-					'slide',
-					{ distance: 0 },
-				],
+				['slide', { distance: 10000 }],
+				['slide', { distance: 0 }],
 			]);
 		});
 

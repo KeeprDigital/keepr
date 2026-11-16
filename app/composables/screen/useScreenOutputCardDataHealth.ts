@@ -28,6 +28,6 @@ export function useScreenOutputCardDataHealth(
 
 	return computed(() => {
 		const members = screenStore.screenPresence.get(toValue(screenId))?.members ?? [];
-		return members.filter(member => member.data?.cardData === 'degraded').length;
+		return members.filter((member) => member.data?.cardData === 'degraded').length;
 	});
 }

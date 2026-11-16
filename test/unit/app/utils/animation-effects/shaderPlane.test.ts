@@ -12,13 +12,16 @@ interface Params {
 function mountEffect(params: Params = { tint: '#ff0000', strength: 2, speed: 0.5 }) {
 	const { three, renderers } = createThreeStub();
 	const host = createHostStub();
-	const instance = createShaderPlaneEffect<Params>({
-		three,
-		host,
-		fragmentShader: 'void main() {}',
-		uniforms: current => ({ tint: current.tint, strength: current.strength }),
-		timeScale: current => current.speed,
-	}, params);
+	const instance = createShaderPlaneEffect<Params>(
+		{
+			three,
+			host,
+			fragmentShader: 'void main() {}',
+			uniforms: (current) => ({ tint: current.tint, strength: current.strength }),
+			timeScale: (current) => current.speed,
+		},
+		params,
+	);
 	const renderer = renderers[0] as StubRenderer;
 	const material = StubMaterial.lastCreated!;
 	return { instance, renderer, material, host };
@@ -111,18 +114,12 @@ describe('createShaderPlaneEffect', () => {
 		{
 			name: 'ignores a frame with no usable time',
 			speed: 1,
-			frames: [
-				10,
-				Number.NaN,
-				Number.POSITIVE_INFINITY,
-				12,
-			],
+			frames: [10, Number.NaN, Number.POSITIVE_INFINITY, 12],
 			expected: 12,
 		},
 	])('$name', ({ speed, frames, expected }) => {
 		const { instance, material } = mountEffect({ tint: '#ff0000', strength: 2, speed });
-		for (const elapsedSeconds of frames)
-			instance.render(elapsedSeconds);
+		for (const elapsedSeconds of frames) instance.render(elapsedSeconds);
 		expect(material.uniforms.iTime!.value).toBe(expected);
 	});
 
@@ -138,12 +135,15 @@ describe('createShaderPlaneEffect', () => {
 
 	it('creates no feedback buffers unless the effect asks for them', () => {
 		const { three, renderers } = createThreeStub();
-		const instance = createShaderPlaneEffect<Params>({
-			three,
-			host: createHostStub(),
-			fragmentShader: 'void main() {}',
-			uniforms: () => ({}),
-		}, { tint: '#ff0000', strength: 2, speed: 0.5 });
+		const instance = createShaderPlaneEffect<Params>(
+			{
+				three,
+				host: createHostStub(),
+				fragmentShader: 'void main() {}',
+				uniforms: () => ({}),
+			},
+			{ tint: '#ff0000', strength: 2, speed: 0.5 },
+		);
 		const renderer = renderers[0] as StubRenderer;
 		instance.render(1);
 		expect(StubMaterial.lastCreated!.uniforms.iBuffer).toBeUndefined();
@@ -163,13 +163,16 @@ describe('createShaderPlaneEffect', () => {
 describe('createShaderPlaneEffect with a feedback buffer', () => {
 	function mountFeedbackEffect() {
 		const { three, renderers, renderTargets } = createThreeStub();
-		const instance = createShaderPlaneEffect<Params>({
-			three,
-			host: createHostStub(),
-			fragmentShader: 'void main() {}',
-			uniforms: () => ({}),
-			feedback: true,
-		}, { tint: '#ff0000', strength: 2, speed: 0.5 });
+		const instance = createShaderPlaneEffect<Params>(
+			{
+				three,
+				host: createHostStub(),
+				fragmentShader: 'void main() {}',
+				uniforms: () => ({}),
+				feedback: true,
+			},
+			{ tint: '#ff0000', strength: 2, speed: 0.5 },
+		);
 		const renderer = renderers[0] as StubRenderer;
 		const material = StubMaterial.lastCreated!;
 		return {

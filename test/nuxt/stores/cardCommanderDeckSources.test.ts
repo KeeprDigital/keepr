@@ -6,7 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { storedSeat } from '~~/test/helpers/commanders';
 import { deferred } from '~~/test/helpers/deferred';
 import { ANIMAR, ASHLING, deckListEntryOf, MOXFIELD_CARDS } from '~~/test/helpers/magicDeckText';
-import { createFollowedFeatureMatchSessions, followNoSession } from '~~/test/nuxt/helpers/followedFeatureMatchSession';
+import {
+	createFollowedFeatureMatchSessions,
+	followNoSession,
+} from '~~/test/nuxt/helpers/followedFeatureMatchSession';
 
 // Cards page Feature Match Deck Lists on a Commander Event (ADR-0087): the picked Slot's
 // Seats, each with its Commanders and the list it holds. The server's Deck List reads
@@ -20,7 +23,12 @@ const { mockFetch, scryfall } = vi.hoisted(() => ({
 }));
 mockNuxtImport('$fetch', () => mockFetch);
 // Imported inside the factory, which runs before this file's own imports.
-mockNuxtImport('useScryfallBatch', async () => (await import('~~/test/nuxt/helpers/scryfallBatch')).scryfallBatchAnswering(scryfallId => ({ id: scryfallId }), () => scryfall.up));
+mockNuxtImport('useScryfallBatch', async () =>
+	(await import('~~/test/nuxt/helpers/scryfallBatch')).scryfallBatchAnswering(
+		(scryfallId) => ({ id: scryfallId }),
+		() => scryfall.up,
+	),
+);
 
 mockNuxtImport('useEventStore', () => () => ({
 	eventId: 1,
@@ -46,9 +54,11 @@ mockNuxtImport('useFeatureMatchStateStore', () => () => followed);
 let deckLists: Map<number, CommanderDeckListEntry[]>;
 
 function seat(name: string, commanders: Commander[], deckListId?: number) {
-	return storedSeat(name, commanders, deckListId === undefined
-		? undefined
-		: { id: deckListId, mainboardCount: 3 });
+	return storedSeat(
+		name,
+		commanders,
+		deckListId === undefined ? undefined : { id: deckListId, mainboardCount: 3 },
+	);
 }
 
 /** Slot 7: Ana in Seat 1 with a list, nobody in Seats 2 and 3, Dee in Seat 4 with a Commander alone. */
@@ -66,11 +76,11 @@ function slot7(anaDeckListId = 301) {
 
 /** Each Seat shown, with its Commanders and Mainboard as the printings' card data. */
 function shown() {
-	return useCardStore().commanderDeckListSeats.map(seated => ({
+	return useCardStore().commanderDeckListSeats.map((seated) => ({
 		seat: seated.seat,
 		player: seated.playerName,
-		commanders: seated.commanders.map(card => card.mtgCard?.id),
-		mainboard: seated.mainboard.map(card => [card.quantity, card.mtgCard?.id]),
+		commanders: seated.commanders.map((card) => card.mtgCard?.id),
+		mainboard: seated.mainboard.map((card) => [card.quantity, card.mtgCard?.id]),
 		failed: seated.failed,
 	}));
 }
@@ -83,31 +93,16 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 		store.$reset();
 		scryfall.up = true;
 		followNoSession(followed);
-		featureMatchStore.featureMatches = [
-			slot7(),
-		];
+		featureMatchStore.featureMatches = [slot7()];
 		deckLists = new Map([
-			[
-				301,
-				[
-					deckListEntryOf(ashling),
-					deckListEntryOf(forest, 3),
-				],
-			],
-			[
-				302,
-				[
-					deckListEntryOf(ashling),
-					deckListEntryOf(hedgeMaze),
-				],
-			],
+			[301, [deckListEntryOf(ashling), deckListEntryOf(forest, 3)]],
+			[302, [deckListEntryOf(ashling), deckListEntryOf(hedgeMaze)]],
 		]);
 		mockFetch.mockReset();
 		mockFetch.mockImplementation(async (path: string) => {
 			const id = Number(/\/feature-match-slots\/7\/commander-deck-lists\/(\d+)$/.exec(path)?.[1]);
 			const entries = deckLists.get(id);
-			if (!entries)
-				throw Object.assign(new Error('Not found'), { statusCode: 404 });
+			if (!entries) throw Object.assign(new Error('Not found'), { statusCode: 404 });
 			return {
 				id,
 				slotId: 7,
@@ -125,9 +120,7 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 				seat: 'player1',
 				player: 'Ana',
 				commanders: [ashling.id],
-				mainboard: [
-					[3, forest.id],
-				],
+				mainboard: [[3, forest.id]],
 				failed: false,
 			},
 			{
@@ -145,14 +138,10 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 	it('reloads the shown Slot when a Seat names another list', async () => {
 		await store.loadMatchDeckLists(7);
 
-		featureMatchStore.featureMatches = [
-			slot7(302),
-		];
+		featureMatchStore.featureMatches = [slot7(302)];
 		await flushPromises();
 
-		expect(shown()[0]?.mainboard).toEqual([
-			[1, hedgeMaze.id],
-		]);
+		expect(shown()[0]?.mainboard).toEqual([[1, hedgeMaze.id]]);
 	});
 
 	// A paste to one Seat while the Slot is still loading must not leave the page loading for good.
@@ -163,9 +152,7 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 		await flushPromises();
 		expect(store.loadingDeckList).toBe(true);
 
-		featureMatchStore.featureMatches = [
-			slot7(302),
-		];
+		featureMatchStore.featureMatches = [slot7(302)];
 		await flushPromises();
 		firstRead.resolve({
 			id: 301,
@@ -176,9 +163,7 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 		await loading;
 
 		expect(store.loadingDeckList).toBe(false);
-		expect(shown()[0]?.mainboard).toEqual([
-			[1, hedgeMaze.id],
-		]);
+		expect(shown()[0]?.mainboard).toEqual([[1, hedgeMaze.id]]);
 	});
 
 	// The cadence and its rules are useDegradedRefetch's; this is the Cards page's wiring.
@@ -192,9 +177,7 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 
 			expect(shown()[0]).toMatchObject({
 				commanders: [undefined],
-				mainboard: [
-					[3, undefined],
-				],
+				mainboard: [[3, undefined]],
 			});
 			expect(store.cardDataDegraded).toBe(true);
 
@@ -203,14 +186,12 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 
 			expect(shown()[0]).toMatchObject({
 				commanders: [ashling.id],
-				mainboard: [
-					[3, forest.id],
-				],
+				mainboard: [[3, forest.id]],
 			});
 			expect(store.cardDataDegraded).toBe(false);
 		});
 
-		it('keeps a Seat\'s Commanders, says so, and reads its list again on the re-fetch cadence', async () => {
+		it("keeps a Seat's Commanders, says so, and reads its list again on the re-fetch cadence", async () => {
 			const entries = deckLists.get(301)!;
 			deckLists.delete(301);
 			await store.loadMatchDeckLists(7);
@@ -226,9 +207,7 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 			await vi.advanceTimersByTimeAsync(60_000);
 
 			expect(shown()[0]).toMatchObject({
-				mainboard: [
-					[3, forest.id],
-				],
+				mainboard: [[3, forest.id]],
 				failed: false,
 			});
 			expect(store.cardDataDegraded).toBe(false);
@@ -238,9 +217,7 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 	it.each([
 		{
 			slots: 'a Slot seating a Commander',
-			seats: () => [
-				slot7(),
-			],
+			seats: () => [slot7()],
 			offered: true,
 		},
 		{

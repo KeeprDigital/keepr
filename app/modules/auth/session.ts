@@ -49,7 +49,8 @@ export type AuthAttempt = { ok: true } | { ok: false; message: string };
  * 'Failed to fetch' — which name neither the thing that failed nor anything the
  * operator could do next.
  */
-export const SIGN_IN_FAILED_MESSAGE = 'Could not reach the sign-in service. Check your connection and try again.';
+export const SIGN_IN_FAILED_MESSAGE =
+	'Could not reach the sign-in service. Check your connection and try again.';
 
 /** The same, for the sign-out that could not be delivered. */
 export const SIGN_OUT_FAILED_MESSAGE = 'Could not sign out — the session is still open. Try again.';
@@ -107,16 +108,14 @@ export function useAuthSession() {
 		try {
 			const answer = await authClient.getSession();
 
-			if (answer.error)
-				return { status: 'unavailable', user: null };
+			if (answer.error) return { status: 'unavailable', user: null };
 
 			const found = answer.data?.user ?? null;
 			return {
 				status: found ? 'signed-in' : 'signed-out',
 				user: found,
 			};
-		}
-		catch {
+		} catch {
 			return { status: 'unavailable', user: null };
 		}
 	}
@@ -143,8 +142,7 @@ export function useAuthSession() {
 			}
 
 			return status.value;
-		}
-		finally {
+		} finally {
 			asking = null;
 		}
 	}
@@ -161,8 +159,7 @@ export function useAuthSession() {
 	 * the rest of the session.
 	 */
 	async function ensure(): Promise<AuthSessionStatus> {
-		if (status.value === 'signed-in' || status.value === 'signed-out')
-			return status.value;
+		if (status.value === 'signed-in' || status.value === 'signed-out') return status.value;
 
 		return load();
 	}
@@ -198,8 +195,7 @@ export function useAuthSession() {
 			user.value = answer.data?.user ?? null;
 			status.value = user.value ? 'signed-in' : 'unknown';
 			return { ok: true };
-		}
-		catch {
+		} catch {
 			return { ok: false, message: SIGN_IN_FAILED_MESSAGE };
 		}
 	}
@@ -226,8 +222,7 @@ export function useAuthSession() {
 			user.value = null;
 			status.value = 'signed-out';
 			return { ok: true };
-		}
-		catch {
+		} catch {
 			sessionReads.supersede();
 			status.value = 'unknown';
 			return { ok: false, message: SIGN_OUT_FAILED_MESSAGE };

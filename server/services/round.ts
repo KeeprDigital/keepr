@@ -14,30 +14,18 @@ export type RoundUpsertInput = CreateRoundInput & {
 };
 
 /** Build a Round sync timestamp update for composition into an atomic batch. */
-export function buildMarkRoundSyncedQuery(
-	id: number,
-	eventId: number,
-	syncedAt = new Date(),
-) {
+export function buildMarkRoundSyncedQuery(id: number, eventId: number, syncedAt = new Date()) {
 	return db
 		.update(rounds)
 		.set({ lastSyncedAt: syncedAt })
-		.where(
-			and(
-				eq(rounds.id, id),
-				eq(rounds.eventId, eventId),
-			),
-		)
+		.where(and(eq(rounds.id, id), eq(rounds.eventId, eventId)))
 		.returning();
 }
 
 export function roundService() {
 	const findById = async (id: number, eventId: number): Promise<DbRound | undefined> => {
 		return (await db.query.rounds.findFirst({
-			where: and(
-				eq(rounds.id, id),
-				eq(rounds.eventId, eventId),
-			),
+			where: and(eq(rounds.id, id), eq(rounds.eventId, eventId)),
 		})) as DbRound | undefined;
 	};
 
@@ -57,19 +45,11 @@ export function roundService() {
 		return await db
 			.select()
 			.from(rounds)
-			.where(
-				and(
-					eq(rounds.phaseId, phaseId),
-					eq(rounds.eventId, eventId),
-				),
-			)
+			.where(and(eq(rounds.phaseId, phaseId), eq(rounds.eventId, eventId)))
 			.orderBy(rounds.roundNumber, rounds.id);
 	};
 
-	const create = async (
-		eventId: number,
-		data: CreateRoundInput,
-	): Promise<DbRound> => {
+	const create = async (eventId: number, data: CreateRoundInput): Promise<DbRound> => {
 		const [newRound] = await db
 			.insert(rounds)
 			.values({
@@ -96,19 +76,17 @@ export function roundService() {
 		const [updatedRound] = await db
 			.update(rounds)
 			.set(pickManualWritable('rounds', data))
-			.where(
-				and(
-					eq(rounds.id, id),
-					eq(rounds.eventId, eventId),
-				),
-			)
+			.where(and(eq(rounds.id, id), eq(rounds.eventId, eventId)))
 			.returning();
 
 		return updatedRound;
 	};
 
 	/** Deletes the Round, and in the same write releases every Screen reference to it (ADR-0060). */
-	const remove = async (id: number, eventId: number): Promise<{ deleted: boolean; clearedScreens: DbScreen[] }> => {
+	const remove = async (
+		id: number,
+		eventId: number,
+	): Promise<{ deleted: boolean; clearedScreens: DbScreen[] }> => {
 		const [deleted, clearedScreens] = await db.batch([
 			db
 				.delete(rounds)
@@ -120,7 +98,11 @@ export function roundService() {
 		return { deleted: deleted.length > 0, clearedScreens };
 	};
 
-	const findByExternalId = async (eventId: number, externalId: string, externalSource: ExternalSource): Promise<DbRound | undefined> => {
+	const findByExternalId = async (
+		eventId: number,
+		externalId: string,
+		externalSource: ExternalSource,
+	): Promise<DbRound | undefined> => {
 		return (await db.query.rounds.findFirst({
 			where: and(
 				eq(rounds.eventId, eventId),
@@ -132,17 +114,16 @@ export function roundService() {
 
 	const exists = async (id: number, eventId: number): Promise<boolean> => {
 		const round = await db.query.rounds.findFirst({
-			where: and(
-				eq(rounds.id, id),
-				eq(rounds.eventId, eventId),
-			),
+			where: and(eq(rounds.id, id), eq(rounds.eventId, eventId)),
 			columns: { id: true },
 		});
 
 		return !!round;
 	};
 
-	const upsertByExternalId = async (data: RoundUpsertInput): Promise<{ round: DbRound; created: boolean }> => {
+	const upsertByExternalId = async (
+		data: RoundUpsertInput,
+	): Promise<{ round: DbRound; created: boolean }> => {
 		if (!data.externalId || !data.externalSource) {
 			const newRound = await create(data.eventId, data);
 			return { round: newRound, created: true };

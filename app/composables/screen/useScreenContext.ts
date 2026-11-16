@@ -91,8 +91,8 @@ export function useScreenContext(): ScreenContext {
 	const context = inject(SCREEN_CONTEXT_KEY);
 	if (!context) {
 		throw new Error(
-			'useScreenContext() was called outside of a screen context. '
-			+ 'Ensure provideScreenContext() is called by an ancestor component.',
+			'useScreenContext() was called outside of a screen context. ' +
+				'Ensure provideScreenContext() is called by an ancestor component.',
 		);
 	}
 	return context;
@@ -102,10 +102,15 @@ export function useScreenContext(): ScreenContext {
  * Get the resolved mode config for a given screen mode.
  * Merges stored config with defaults so consumers always get a complete config object.
  */
-export function useScreenModeConfig<M extends ScreenMode>(context: ScreenContext, mode: M): ComputedRef<ModeConfigTypeMap[M]> {
+export function useScreenModeConfig<M extends ScreenMode>(
+	context: ScreenContext,
+	mode: M,
+): ComputedRef<ModeConfigTypeMap[M]> {
 	const { screen } = context;
 
-	return computed<ModeConfigTypeMap[M]>(() => resolveScreenModeConfig(screen.value?.modeConfigs, mode));
+	return computed<ModeConfigTypeMap[M]>(() =>
+		resolveScreenModeConfig(screen.value?.modeConfigs, mode),
+	);
 }
 
 /**

@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import type { ScreenOutputMatchSide, ScreenOutputRoundMatch } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputMatchSide,
+	ScreenOutputRoundMatch,
+} from '~~/shared/types/screenOutputReads';
 import { foundationTokenVar, foundationTypographyStyle, modeTokenVar } from '~/modules/screen-mode';
 
-const { config, error, ready, isEmpty, headerText, pageData, pageSize, formatResult, winner } = usePairingsModeData(useScreenContext());
+const { config, error, ready, isEmpty, headerText, pageData, pageSize, formatResult, winner } =
+	usePairingsModeData(useScreenContext());
 
 const inset = useScreenInset();
 
@@ -37,8 +41,7 @@ const resultColors: Record<ResultState, string> = {
 };
 
 function resultState(row: ScreenOutputRoundMatch): ResultState {
-	if (row.isBye)
-		return 'bye';
+	if (row.isBye) return 'bye';
 	return row.hasResult ? 'reported' : 'pending';
 }
 
@@ -64,20 +67,22 @@ const displayStyle = computed(() => ({
 }));
 
 function sideName(row: ScreenOutputRoundMatch, side: ScreenOutputMatchSide | null) {
-	if (side)
-		return side.name;
+	if (side) return side.name;
 	return row.isBye ? 'BYE' : 'TBD';
 }
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="error"
-		:ready="ready"
-		:empty="isEmpty"
-	>
-		<div class="pairings-display broadcast-table-display flex flex-col h-full w-full" :style="displayStyle">
-			<div v-if="config.showHeader" class="pairings-header broadcast-table-title" :style="titleDividerStyle">
+	<ScreenModeBase :error="error" :ready="ready" :empty="isEmpty">
+		<div
+			class="pairings-display broadcast-table-display flex flex-col h-full w-full"
+			:style="displayStyle"
+		>
+			<div
+				v-if="config.showHeader"
+				class="pairings-header broadcast-table-title"
+				:style="titleDividerStyle"
+			>
 				<h2 :style="titleStyle">
 					{{ headerText }}
 				</h2>
@@ -94,13 +99,19 @@ function sideName(row: ScreenOutputRoundMatch, side: ScreenOutputMatchSide | nul
 					<div class="table" :style="secondaryTextStyle">
 						{{ row.tableNumber ?? '' }}
 					</div>
-					<div class="player player-1" :class="{ winner: winner(row) === 1 }" :style="primaryTextStyle">
+					<div
+						class="player player-1"
+						:class="{ winner: winner(row) === 1 }"
+						:style="primaryTextStyle"
+					>
 						{{ sideName(row, row.player1) }}
 					</div>
-					<div class="versus" :style="secondaryTextStyle">
-						vs
-					</div>
-					<div class="player player-2" :class="{ winner: winner(row) === 2 }" :style="row.isBye ? secondaryTextStyle : primaryTextStyle">
+					<div class="versus" :style="secondaryTextStyle">vs</div>
+					<div
+						class="player player-2"
+						:class="{ winner: winner(row) === 2 }"
+						:style="row.isBye ? secondaryTextStyle : primaryTextStyle"
+					>
 						{{ sideName(row, row.player2) }}
 					</div>
 					<div class="result" :data-result="resultState(row)" :style="resultStyle(row)">
@@ -120,7 +131,10 @@ function sideName(row: ScreenOutputRoundMatch, side: ScreenOutputMatchSide | nul
 }
 .pairing-row {
 	display: grid;
-	grid-template-columns: minmax(4rem, auto) minmax(12rem, 1fr) auto minmax(12rem, 1fr) minmax(7rem, auto);
+	grid-template-columns: minmax(4rem, auto) minmax(12rem, 1fr) auto minmax(12rem, 1fr) minmax(
+			7rem,
+			auto
+		);
 	gap: 1rem;
 	align-items: center;
 	height: var(--pairings-row-height, auto);

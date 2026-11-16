@@ -17,14 +17,20 @@ const {
 	seatLabel: defaultSeatLabel,
 	playerRecord,
 	playerLgs,
-} = usePlayerFeatureMatchData(() => props.matchId, () => props.playerSide);
+} = usePlayerFeatureMatchData(
+	() => props.matchId,
+	() => props.playerSide,
+);
 
-const playerControls = usePlayerControls(() => props.matchId, () => props.playerSide);
+const playerControls = usePlayerControls(
+	() => props.matchId,
+	() => props.playerSide,
+);
 const outputReads = useScreenOutputReads(useScreenContext());
 const { availableCounterTypes } = usePlayerDeckCounters(
 	() => props.matchId,
 	() => props.playerSide,
-	playerId => outputReads.playerDecks(playerId),
+	(playerId) => outputReads.playerDecks(playerId),
 );
 
 const {
@@ -46,19 +52,20 @@ const {
 } = usePlayerDisplayConfig(() => props.config, defaultSeatLabel);
 
 const featureMatchStateStore = useFeatureMatchStateStore();
-const matchState = computed(() => featureMatchStateStore.featureMatchStates.get(props.matchId) ?? null);
-
-const isActive = computed(() =>
-	activePlayerTrackingEnabled.value && matchState.value?.activePlayer === props.playerSide,
+const matchState = computed(
+	() => featureMatchStateStore.featureMatchStates.get(props.matchId) ?? null,
 );
 
-const isFirstPlayer = computed(() =>
-	activePlayerTrackingEnabled.value && matchState.value?.firstPlayer === props.playerSide,
+const isActive = computed(
+	() => activePlayerTrackingEnabled.value && matchState.value?.activePlayer === props.playerSide,
+);
+
+const isFirstPlayer = computed(
+	() => activePlayerTrackingEnabled.value && matchState.value?.firstPlayer === props.playerSide,
 );
 
 const showHandLine = computed(
-	() => showMulliganInfo.value
-		&& (mulliganPhase.value || player.value?.cardsKept !== undefined),
+	() => showMulliganInfo.value && (mulliganPhase.value || player.value?.cardsKept !== undefined),
 );
 
 const counterValue = computed(() => {
@@ -68,16 +75,15 @@ const counterValue = computed(() => {
 	return player.value?.lifeTotal ?? 0;
 });
 
-const counterMin = computed(() => mulliganPhase.value ? 0 : undefined);
-const counterMax = computed(() => mulliganPhase.value ? startingHandSize.value : undefined);
+const counterMin = computed(() => (mulliganPhase.value ? 0 : undefined));
+const counterMax = computed(() => (mulliganPhase.value ? startingHandSize.value : undefined));
 
 function handleLifeAdjust(delta: number) {
 	if (mulliganPhase.value) {
 		const current = player.value?.cardsKept ?? startingHandSize.value;
 		const newValue = Math.max(0, current + delta);
 		void playerControls.setCardsKept(newValue);
-	}
-	else {
+	} else {
 		void playerControls.adjustLife(delta);
 	}
 }
@@ -85,8 +91,7 @@ function handleLifeAdjust(delta: number) {
 function handleLifeSet(value: number) {
 	if (mulliganPhase.value) {
 		void playerControls.setCardsKept(Math.max(0, value));
-	}
-	else {
+	} else {
 		void playerControls.setLife(value);
 	}
 }
@@ -100,11 +105,7 @@ function handleLifeSet(value: number) {
 		:data-player-side="playerSide"
 		:data-active="String(isActive)"
 	>
-		<div
-			v-if="showName"
-			class="player-info"
-			:class="`side-${side}`"
-		>
+		<div v-if="showName" class="player-info" :class="`side-${side}`">
 			<div class="info-outside">
 				<span v-if="seatLabel" class="seat-badge">{{ seatLabel }}</span>
 			</div>
@@ -123,14 +124,25 @@ function handleLifeSet(value: number) {
 			</div>
 		</div>
 
-		<div v-if="showDeckName || showRecord || showLgs || (showPronouns && playerPronouns)" class="player-meta">
-			<div v-if="showDeckName" class="meta-deck" :class="deckName ? 'text-muted' : 'text-transparent'">
+		<div
+			v-if="showDeckName || showRecord || showLgs || (showPronouns && playerPronouns)"
+			class="player-meta"
+		>
+			<div
+				v-if="showDeckName"
+				class="meta-deck"
+				:class="deckName ? 'text-muted' : 'text-transparent'"
+			>
 				{{ deckName }}
 			</div>
 			<div v-if="showPronouns && playerPronouns" class="meta-pronouns text-muted">
 				{{ playerPronouns }}
 			</div>
-			<div v-if="showRecord" class="meta-record" :class="playerRecord ? 'text-muted' : 'text-transparent'">
+			<div
+				v-if="showRecord"
+				class="meta-record"
+				:class="playerRecord ? 'text-muted' : 'text-transparent'"
+			>
 				{{ playerRecord }}
 			</div>
 			<div v-if="showLgs" class="meta-lgs" :class="playerLgs ? 'text-dimmed' : 'text-transparent'">
@@ -158,10 +170,7 @@ function handleLifeSet(value: number) {
 					<span v-else>Kept {{ player.cardsKept }}</span>
 				</div>
 			</div>
-			<div
-				class="player-wins"
-				:class="side === 'left' ? 'player-wins-left' : 'player-wins-right'"
-			>
+			<div class="player-wins" :class="side === 'left' ? 'player-wins-left' : 'player-wins-right'">
 				<FeatureMatchStateGameWins
 					:match-id="matchId"
 					:player="playerSide"
@@ -379,7 +388,11 @@ function handleLifeSet(value: number) {
 			--active-dir: to right;
 		}
 
-		background: linear-gradient(var(--active-dir), var(--ui-primary-50, rgba(59, 130, 246, 0.06)), transparent);
+		background: linear-gradient(
+			var(--active-dir),
+			var(--ui-primary-50, rgba(59, 130, 246, 0.06)),
+			transparent
+		);
 
 		&::before {
 			content: '';

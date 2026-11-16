@@ -9,14 +9,17 @@ type Size = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
  * Leader. The One Piece counterpart of `MtgManaColorDisplay`. Monochrome paints
  * each pip as white coverage of the same size, for a Key Output's matte.
  */
-const props = withDefaults(defineProps<{
-	colors: readonly OpCardColor[];
-	size?: Size;
-	monochrome?: boolean;
-}>(), {
-	size: 'md',
-	monochrome: false,
-});
+const props = withDefaults(
+	defineProps<{
+		colors: readonly OpCardColor[];
+		size?: Size;
+		monochrome?: boolean;
+	}>(),
+	{
+		size: 'md',
+		monochrome: false,
+	},
+);
 
 const sizeClasses: Record<Size, string> = {
 	xs: 'text-xs',

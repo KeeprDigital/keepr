@@ -13,12 +13,24 @@ import { GAME_VALUES } from '~~/shared/types/enums';
 import { getDefaultConfigForMode } from '~~/shared/types/screenConfig';
 import { layersPinningNoAsset } from '~~/test/helpers/backgroundLayers';
 import { createMockEvent } from '~~/test/helpers/fixtures';
-import { nuxtUiStubs, UFormFieldBesideStub, UInputMenuStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
-import { fakeScreenThemeNetwork, overrideWrites, screenSettingsPage, seedThemedScreen } from '~~/test/nuxt/helpers/screenThemeOverrides';
+import {
+	nuxtUiStubs,
+	UFormFieldBesideStub,
+	UInputMenuStub,
+} from '~~/test/nuxt/helpers/nuxtUiStubs';
+import {
+	fakeScreenThemeNetwork,
+	overrideWrites,
+	screenSettingsPage,
+	seedThemedScreen,
+} from '~~/test/nuxt/helpers/screenThemeOverrides';
 import { getScreenModeSettingsComponent } from '~/modules/screen-mode';
 import { useEventStore } from '~/stores/event';
 
-vi.mock('~/modules/screen-mode/editorModeData', () => import('~~/test/helpers/editedScreenModeData'));
+vi.mock(
+	'~/modules/screen-mode/editorModeData',
+	() => import('~~/test/helpers/editedScreenModeData'),
+);
 
 // The generic settings renderer draws a mode's page from its config contract
 // and Mode Tokens: each field once, in the fixed card order, hidden when it
@@ -54,9 +66,11 @@ mockNuxtImport('useModeConfigUpdate', () => () => ({
 	resetConfig,
 	retry: vi.fn(),
 }));
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
-	getServerTime: () => 1_000_000,
-})));
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+		getServerTime: () => 1_000_000,
+	})),
+);
 
 // ── What each Event Reference picker offers: one entity of each kind ──
 
@@ -77,9 +91,7 @@ mockNuxtImport('usePlayerStore', () => () => ({
 }));
 mockNuxtImport('usePlayerListStore', () => () => ({
 	...loaded,
-	lists: [
-		{ id: 7, name: 'Feature Table', memberCount: 4 },
-	],
+	lists: [{ id: 7, name: 'Feature Table', memberCount: 4 }],
 	loadByEventId: vi.fn(),
 }));
 mockNuxtImport('useRoundStore', () => () => ({
@@ -96,16 +108,12 @@ mockNuxtImport('useRoundStore', () => () => ({
 }));
 mockNuxtImport('usePhaseStore', () => () => ({
 	...loaded,
-	phases: [
-		{ id: 3, name: 'Swiss', sortOrder: 1 },
-	],
+	phases: [{ id: 3, name: 'Swiss', sortOrder: 1 }],
 	loadPhasesByEventId: vi.fn(),
 }));
 mockNuxtImport('useArchetypeStore', () => () => ({
 	...loaded,
-	archetypes: [
-		{ id: 7, name: 'Burn' },
-	],
+	archetypes: [{ id: 7, name: 'Burn' }],
 	loadByEventId: vi.fn(),
 }));
 mockNuxtImport('useFeatureMatchStore', () => () => ({
@@ -113,9 +121,10 @@ mockNuxtImport('useFeatureMatchStore', () => () => ({
 	featureMatches: [],
 	loadFeatureMatchesByEventId: vi.fn(),
 }));
-mockNuxtImport('useFeatureMatchMenuItems', () => () => ref([
-	{ label: 'Table 1', value: 4, decks: [] },
-]));
+mockNuxtImport(
+	'useFeatureMatchMenuItems',
+	() => () => ref([{ label: 'Table 1', value: 4, decks: [] }]),
+);
 mockNuxtImport('useFeatureMatchStateStore', () => () => ({
 	...loaded,
 	featureMatchSessions: new Map(),
@@ -128,7 +137,9 @@ mockNuxtImport('useBroadcastDeckListStore', () => () => ({
 }));
 // The selected Player's Deck List, as the deck cache answers it: none until a test holds one.
 const { fetchDeck } = vi.hoisted(() => ({
-	fetchDeck: vi.fn(async (): Promise<{ cards: { name: string; compartment: string }[] } | null> => null),
+	fetchDeck: vi.fn(
+		async (): Promise<{ cards: { name: string; compartment: string }[] } | null> => null,
+	),
 }));
 mockNuxtImport('usePlayerDeckCache', () => () => ({ fetchDeck }));
 
@@ -142,9 +153,7 @@ const ThemeTokenFieldStub = defineComponent({
 
 /** An Event offering everything a Screen Mode can show. */
 const EVERY_FEATURE: Partial<DbEvent> & { talents?: unknown[] } = {
-	talents: [
-		{ id: 8, name: 'Kim' },
-	],
+	talents: [{ id: 8, name: 'Kim' }],
 	pronounsEnabled: true,
 	standingsEnabled: true,
 	lgsEnabled: true,
@@ -166,7 +175,10 @@ interface PageOptions {
 	overrides?: Record<string, unknown>;
 }
 
-async function mountPage(mode: ScreenMode, { game = 'mtg', config: variant = {}, event = {}, overrides = {} }: PageOptions = {}) {
+async function mountPage(
+	mode: ScreenMode,
+	{ game = 'mtg', config: variant = {}, event = {}, overrides = {} }: PageOptions = {},
+) {
 	fakeScreenThemeNetwork(mockFetch, mode);
 	const screen = seedThemedScreen(mode, overrides as never);
 	useEventStore().event = createMockEvent({
@@ -183,11 +195,13 @@ async function mountPage(mode: ScreenMode, { game = 'mtg', config: variant = {},
 	// The mode's settings as the page mounts them: the renderer, or the mode's own wrapping of it.
 	const Settings = getScreenModeSettingsComponent(mode)!;
 	await (Settings as { __asyncLoader?: () => Promise<unknown> }).__asyncLoader?.();
-	const Page = screenSettingsPage(screen, () => h(Settings, {
-		ref: exposed,
-		screen: screen(),
-		eventId: 1,
-	}));
+	const Page = screenSettingsPage(screen, () =>
+		h(Settings, {
+			ref: exposed,
+			screen: screen(),
+			eventId: 1,
+		}),
+	);
 	const wrapper = mount(Page, {
 		global: {
 			stubs: {
@@ -213,10 +227,8 @@ function declaredFields(mode: ScreenMode): Map<string, ScreenModeConfigField> {
 	const fields = new Map<string, ScreenModeConfigField>();
 	const visit = (views: Readonly<Record<string, ScreenModeConfigField>>, path: string[]) => {
 		for (const field of Object.values(views)) {
-			if (field.control === 'block' && field.fields)
-				visit(field.fields, [...path, field.key]);
-			else
-				fields.set([...path, field.key].join('.'), field);
+			if (field.control === 'block' && field.fields) visit(field.fields, [...path, field.key]);
+			else fields.set([...path, field.key].join('.'), field);
 		}
 	};
 	visit(screenModeConfigContract(mode).fields as Record<string, ScreenModeConfigField>, []);
@@ -227,30 +239,41 @@ function declaredFields(mode: ScreenMode): Map<string, ScreenModeConfigField> {
 function renderedFields(wrapper: VueWrapper): { path: string; card: string }[] {
 	return wrapper.findAll('[data-settings-field], [data-settings-fields]').flatMap((found) => {
 		const card = found.element.closest('[data-settings-card]')!.getAttribute('data-settings-card')!;
-		const paths = found.attributes('data-settings-field')?.split(' ')
-			?? found.attributes('data-settings-fields')!.split(' ');
-		return paths.map(path => ({ path, card }));
+		const paths =
+			found.attributes('data-settings-field')?.split(' ') ??
+			found.attributes('data-settings-fields')!.split(' ');
+		return paths.map((path) => ({ path, card }));
 	});
 }
 
 function cardsInOrder(wrapper: VueWrapper): string[] {
-	return wrapper.findAll('[data-settings-card]').map(card => card.attributes('data-settings-card')!);
+	return wrapper
+		.findAll('[data-settings-card]')
+		.map((card) => card.attributes('data-settings-card')!);
 }
 
 /** Changes a field's control to a value it does not hold, as an operator would. */
 async function edit(row: Omit<DOMWrapper<Element>, 'exists'>) {
 	const option = row.find('[role="option"]');
-	if (option.exists())
-		return option.trigger('click');
-	const point = row.findAll('[role="radio"]').find(found => found.attributes('aria-checked') !== 'true' && found.attributes('disabled') === undefined);
-	if (point)
-		return point.trigger('click');
+	if (option.exists()) return option.trigger('click');
+	const point = row
+		.findAll('[role="radio"]')
+		.find(
+			(found) =>
+				found.attributes('aria-checked') !== 'true' && found.attributes('disabled') === undefined,
+		);
+	if (point) return point.trigger('click');
 	const toggle = row.find('[role="switch"], [role="checkbox"]');
-	if (toggle.exists())
-		return toggle.trigger('click');
+	if (toggle.exists()) return toggle.trigger('click');
 	const select = row.find('select');
 	if (select.exists()) {
-		const other = select.findAll('option').find(found => !(found.element as HTMLOptionElement).selected && !['', 'null'].includes(found.attributes('value') ?? ''));
+		const other = select
+			.findAll('option')
+			.find(
+				(found) =>
+					!(found.element as HTMLOptionElement).selected &&
+					!['', 'null'].includes(found.attributes('value') ?? ''),
+			);
 		return select.setValue(other!.attributes('value'));
 	}
 	const number = row.find<HTMLInputElement>('input[type="number"]');
@@ -258,11 +281,11 @@ async function edit(row: Omit<DOMWrapper<Element>, 'exists'>) {
 		const held = Number(number.element.value);
 		const min = Number(number.attributes('min') ?? 1);
 		const max = Number(number.attributes('max') ?? Number.POSITIVE_INFINITY);
-		return number.setValue(String(Number.isNaN(held) || number.element.value === ''
-			? min
-			: held < max
-				? held + 1
-				: held - 1));
+		return number.setValue(
+			String(
+				Number.isNaN(held) || number.element.value === '' ? min : held < max ? held + 1 : held - 1,
+			),
+		);
 	}
 	return row.get('input').setValue('Edited');
 }
@@ -270,25 +293,13 @@ async function edit(row: Omit<DOMWrapper<Element>, 'exists'>) {
 // ── The migrated Screen Modes, and the configs that between them show every field ──
 
 const VARIANTS = {
-	'round-clock': [
-		{},
-		{ countUpAfterEnd: true },
-	],
-	'pairings': [
-		{},
-		{ autoPageEnabled: true },
-	],
-	'card': [{}],
-	'player-history': [
-		{},
-		{ autoPageEnabled: true },
-	],
-	'head-to-head': [
-		{},
-		{ playerSource: 'players' },
-	],
+	'round-clock': [{}, { countUpAfterEnd: true }],
+	pairings: [{}, { autoPageEnabled: true }],
+	card: [{}],
+	'player-history': [{}, { autoPageEnabled: true }],
+	'head-to-head': [{}, { playerSource: 'players' }],
 	'feature-match': [{}],
-	'standings': [
+	standings: [
 		{},
 		{ viewMode: 'range', autoPageEnabled: true },
 		{ viewMode: 'watchlist' },
@@ -300,7 +311,7 @@ const VARIANTS = {
 			],
 		},
 	],
-	'metagame': [
+	metagame: [
 		{},
 		{ viewMode: 'cards', scope: 'topN', autoPageEnabled: true },
 		{ viewMode: 'chart', scope: 'minPoints' },
@@ -319,18 +330,12 @@ const VARIANTS = {
 		// Kept while on, so a Screen whose Event lost its points system can turn them off.
 		{ scope: 'playerList', pointedOnly: true, showPointsBadges: true },
 	],
-	'talent': [
-		{},
-		{ selection: 'lineup', rotateSocialProfiles: true, showHeader: true },
-	],
-	'top-cut': [
-		{},
-		{ bracketSource: 'manual' },
-	],
-	'background': [{}],
+	talent: [{}, { selection: 'lineup', rotateSocialProfiles: true, showHeader: true }],
+	'top-cut': [{}, { bracketSource: 'manual' }],
+	background: [{}],
 	// Each board in each view: a grid mainboard and a stacked sideboard following it;
 	// a list mainboard and a customised grid sideboard; a customised list sideboard.
-	'deck': [
+	deck: [
 		{ showDeckStats: true },
 		{
 			mainboard: { view: 'list' },
@@ -370,7 +375,7 @@ const NOT_FOR_GAME: Partial<Record<RenderedMode, Partial<Record<Game, readonly s
 		op: ['bracketSource', 'phaseId', 'bracketSizeOverride'],
 	},
 	// A One Piece Deck List has a Leader and a mainboard only: no sideboard, companion, details row or points.
-	'deck': {
+	deck: {
 		mtg: ['showCostCurve'],
 		op: [
 			'board',
@@ -383,7 +388,7 @@ const NOT_FOR_GAME: Partial<Record<RenderedMode, Partial<Record<Game, readonly s
 				'listColumns',
 				'alignment',
 				'stackReveal',
-			].map(key => `sideboard.${key}`),
+			].map((key) => `sideboard.${key}`),
 			'showCompanion',
 			'showDeckStats',
 			'showDeckMetaPill',
@@ -402,35 +407,47 @@ const NOT_FOR_GAME: Partial<Record<RenderedMode, Partial<Record<Game, readonly s
 /** Keys a Page Rotation adds to an edit; never the field an operator edits (ADR-0039). */
 const ROTATION_KEYS = new Set(['currentPage', 'rotationAnchor']);
 
-const MODE_GAMES = RENDERED_MODES.flatMap(mode => GAME_VALUES.map(game => [mode, game] as const));
+const MODE_GAMES = RENDERED_MODES.flatMap((mode) =>
+	GAME_VALUES.map((game) => [mode, game] as const),
+);
 
 describe('the generic settings renderer', () => {
-	it.each(MODE_GAMES)('draws every %s field a %s Event can use once, in the fixed card order', async (mode, game) => {
-		const declared = declaredFields(mode);
-		const seen = new Set<string>();
+	it.each(MODE_GAMES)(
+		'draws every %s field a %s Event can use once, in the fixed card order',
+		async (mode, game) => {
+			const declared = declaredFields(mode);
+			const seen = new Set<string>();
 
-		for (const variant of VARIANTS[mode]) {
-			const wrapper = await mountPage(mode, { game, config: variant });
-			const rendered = renderedFields(wrapper);
-			const cards = cardsInOrder(wrapper);
+			for (const variant of VARIANTS[mode]) {
+				const wrapper = await mountPage(mode, { game, config: variant });
+				const rendered = renderedFields(wrapper);
+				const cards = cardsInOrder(wrapper);
 
-			expect(rendered.map(({ path }) => path), `${mode} ${JSON.stringify(variant)} renders a field twice`)
-				.toEqual([
-					...new Set(rendered.map(({ path }) => path)),
-				]);
-			expect(cards).toEqual([...cards].sort((a, b) => SCREEN_SETTINGS_CARDS.indexOf(a as never) - SCREEN_SETTINGS_CARDS.indexOf(b as never)));
-			for (const { path, card } of rendered) {
-				expect(declared.get(path)?.card, `${mode} renders "${path}" in the ${card} card`).toBe(card);
-				seen.add(path);
+				expect(
+					rendered.map(({ path }) => path),
+					`${mode} ${JSON.stringify(variant)} renders a field twice`,
+				).toEqual([...new Set(rendered.map(({ path }) => path))]);
+				expect(cards).toEqual(
+					[...cards].sort(
+						(a, b) =>
+							SCREEN_SETTINGS_CARDS.indexOf(a as never) - SCREEN_SETTINGS_CARDS.indexOf(b as never),
+					),
+				);
+				for (const { path, card } of rendered) {
+					expect(declared.get(path)?.card, `${mode} renders "${path}" in the ${card} card`).toBe(
+						card,
+					);
+					seen.add(path);
+				}
+				wrapper.unmount();
 			}
-			wrapper.unmount();
-		}
 
-		const unusable = NOT_FOR_GAME[mode]?.[game] ?? [];
-		expect([...seen].sort()).toEqual([
-			...declared.keys(),
-		].filter(path => !unusable.includes(path)).sort());
-	});
+			const unusable = NOT_FOR_GAME[mode]?.[game] ?? [];
+			expect([...seen].sort()).toEqual(
+				[...declared.keys()].filter((path) => !unusable.includes(path)).sort(),
+			);
+		},
+	);
 
 	// The renderer's side of a field's condition: it reads the Screen's config, its Event, and a nested
 	// block as stored, and a hidden block hides its fields. Each condition's own cases sit with its
@@ -475,14 +492,22 @@ describe('the generic settings renderer', () => {
 			field: 'sideboard.columns',
 			shown: true,
 		},
-	] as { mode: RenderedMode; config: Record<string, unknown>; event: Partial<DbEvent>; field: string; shown: boolean }[])(
+	] as {
+		mode: RenderedMode;
+		config: Record<string, unknown>;
+		event: Partial<DbEvent>;
+		field: string;
+		shown: boolean;
+	}[])(
 		'$mode with $config on an Event with $event shows $field: $shown',
 		async ({ mode, config: variant, event, field, shown }) => {
 			const wrapper = await mountPage(mode, { config: variant, event });
 
 			expect(renderedFields(wrapper).some(({ path }) => path === field)).toBe(shown);
 			// Hidden, never disabled.
-			expect(wrapper.find('[role="switch"][disabled], select[disabled], input[disabled]').exists()).toBe(false);
+			expect(
+				wrapper.find('[role="switch"][disabled], select[disabled], input[disabled]').exists(),
+			).toBe(false);
 		},
 	);
 
@@ -490,44 +515,62 @@ describe('the generic settings renderer', () => {
 		for (const variant of VARIANTS[mode]) {
 			const wrapper = await mountPage(mode, { config: variant });
 			const initial = JSON.parse(JSON.stringify(config.value));
-			const rows = wrapper.findAll('[data-settings-field], [data-settings-slot="columns"]')
-				.map(row => row.attributes('data-settings-field') ?? row.attributes('data-settings-fields')!);
+			const rows = wrapper
+				.findAll('[data-settings-field], [data-settings-slot="columns"]')
+				.map(
+					(row) => row.attributes('data-settings-field') ?? row.attributes('data-settings-fields')!,
+				);
 
 			for (const path of rows) {
 				config.value = structuredClone(initial);
 				await nextTick();
 				writes.length = 0;
-				await edit(wrapper.get(`[data-settings-field="${path}"], [data-settings-fields="${path}"]`));
+				await edit(
+					wrapper.get(`[data-settings-field="${path}"], [data-settings-fields="${path}"]`),
+				);
 
-				const named = writes.flatMap(patch => Object.keys(patch)).filter(key => !ROTATION_KEYS.has(key));
+				const named = writes
+					.flatMap((patch) => Object.keys(patch))
+					.filter((key) => !ROTATION_KEYS.has(key));
 				expect(named, `editing ${mode} "${path}"`).toEqual([path.split('.')[0]]);
 			}
 			wrapper.unmount();
 		}
 	});
 
-	it.each(RENDERED_MODES)('renders every %s Mode Token in its group\'s Look, at the end of that group\'s card', async (mode) => {
-		const groups = screenModeConfigContract(mode).groups as Record<string, { card: string }>;
-		const tokens = screenModeTokens(mode) as Record<string, { settingsGroup: string }>;
-		const seen = new Set<string>();
+	it.each(RENDERED_MODES)(
+		"renders every %s Mode Token in its group's Look, at the end of that group's card",
+		async (mode) => {
+			const groups = screenModeConfigContract(mode).groups as Record<string, { card: string }>;
+			const tokens = screenModeTokens(mode) as Record<string, { settingsGroup: string }>;
+			const seen = new Set<string>();
 
-		// A group that applies only sometimes shows its Look with it.
-		for (const variant of VARIANTS[mode]) {
-			const wrapper = await mountPage(mode, { config: variant });
-			for (const found of wrapper.findAll('[data-theme-token]')) {
-				const name = found.attributes('data-theme-token')!;
-				const group = tokens[name]!.settingsGroup;
-				expect(found.element.closest('[data-settings-look] [data-settings-group]')?.getAttribute('data-settings-group'), name).toBe(group);
-				expect(found.element.closest('[data-settings-card]')?.getAttribute('data-settings-card'), name).toBe(groups[group]!.card);
-				seen.add(name);
+			// A group that applies only sometimes shows its Look with it.
+			for (const variant of VARIANTS[mode]) {
+				const wrapper = await mountPage(mode, { config: variant });
+				for (const found of wrapper.findAll('[data-theme-token]')) {
+					const name = found.attributes('data-theme-token')!;
+					const group = tokens[name]!.settingsGroup;
+					expect(
+						found.element
+							.closest('[data-settings-look] [data-settings-group]')
+							?.getAttribute('data-settings-group'),
+						name,
+					).toBe(group);
+					expect(
+						found.element.closest('[data-settings-card]')?.getAttribute('data-settings-card'),
+						name,
+					).toBe(groups[group]!.card);
+					seen.add(name);
+				}
+				wrapper.unmount();
 			}
-			wrapper.unmount();
-		}
 
-		expect([...seen].sort()).toEqual(Object.keys(tokens).sort());
-	});
+			expect([...seen].sort()).toEqual(Object.keys(tokens).sort());
+		},
+	);
 
-	it('counts a card\'s overridden Mode Tokens while its Look is closed, and clears them in one write', async () => {
+	it("counts a card's overridden Mode Tokens while its Look is closed, and clears them in one write", async () => {
 		const wrapper = await mountPage('pairings', {
 			overrides: {
 				'pairings.result-reported': '#ff0000',
@@ -541,7 +584,10 @@ describe('the generic settings renderer', () => {
 		expect(toggle.text()).toContain('2 Screen Theme Overrides');
 
 		await toggle.trigger('click');
-		await look.findAll('button').find(button => button.text() === 'Clear 2 overrides')!.trigger('click');
+		await look
+			.findAll('button')
+			.find((button) => button.text() === 'Clear 2 overrides')!
+			.trigger('click');
 		await flushPromises();
 
 		expect(overrideWrites(mockFetch)).toEqual([
@@ -590,7 +636,7 @@ describe('the generic settings renderer', () => {
 		});
 		const list = wrapper.get('[data-settings-slot="columns"]');
 
-		expect(list.findAll('[data-testid="column-label"]').map(label => label.text())).toEqual([
+		expect(list.findAll('[data-testid="column-label"]').map((label) => label.text())).toEqual([
 			'Archetype',
 			'Count',
 			'Share',
@@ -622,7 +668,10 @@ describe('the generic settings renderer', () => {
 			},
 		});
 
-		await wrapper.get('[data-settings-field="socialNetworks"]').findAll('[role="checkbox"]')[0]!.trigger('click');
+		await wrapper
+			.get('[data-settings-field="socialNetworks"]')
+			.findAll('[role="checkbox"]')[0]!
+			.trigger('click');
 
 		expect(writes).toEqual([
 			{
@@ -656,28 +705,32 @@ describe('the generic settings renderer', () => {
 		async ({ mode, config: variant, rows }) => {
 			const wrapper = await mountPage(mode, { config: variant });
 
-			const drawn = wrapper.findAll('[data-settings-row]').map(row => [
-				row.attributes('aria-label'),
-				row.findAll('[data-settings-field]').map(field => field.attributes('data-settings-field')),
-			]);
+			const drawn = wrapper
+				.findAll('[data-settings-row]')
+				.map((row) => [
+					row.attributes('aria-label'),
+					row
+						.findAll('[data-settings-field]')
+						.map((field) => field.attributes('data-settings-field')),
+				]);
 
 			expect(Object.fromEntries(drawn)).toEqual(rows);
 		},
 	);
 
-	it('writes a card badge row\'s emptied size as the null that returns it to Auto', async () => {
+	it("writes a card badge row's emptied size as the null that returns it to Auto", async () => {
 		const wrapper = await mountPage('top-cards', {
 			config: { showRankBadges: true, rankBadgeTextSize: 20 },
 		});
-		const size = wrapper.get('[data-settings-row="rank-badge"] [data-settings-field="rankBadgeTextSize"] input[type="number"]');
+		const size = wrapper.get(
+			'[data-settings-row="rank-badge"] [data-settings-field="rankBadgeTextSize"] input[type="number"]',
+		);
 
 		expect(size.attributes('aria-label')).toBe('Badge size');
 
 		await size.setValue('');
 
-		expect(writes).toEqual([
-			{ rankBadgeTextSize: null },
-		]);
+		expect(writes).toEqual([{ rankBadgeTextSize: null }]);
 	});
 
 	// A block is written whole, and its schema has no `null` inside: an emptied value is Auto, its key left out.
@@ -699,23 +752,26 @@ describe('the generic settings renderer', () => {
 			stored: { view: 'grid', cardGap: 8, alignment: 'top' },
 			written: { view: 'grid', alignment: 'top' },
 		},
-	])('writes $path emptied as its whole block without it', async ({ path, block, stored, written }) => {
-		const wrapper = await mountPage('deck', {
-			config: { [block]: stored },
-		});
+	])(
+		'writes $path emptied as its whole block without it',
+		async ({ path, block, stored, written }) => {
+			const wrapper = await mountPage('deck', {
+				config: { [block]: stored },
+			});
 
-		await wrapper.get(`[data-settings-field="${path}"] input[type="number"]`).setValue('');
+			await wrapper.get(`[data-settings-field="${path}"] input[type="number"]`).setValue('');
 
-		expect(writes).toEqual([
-			{ [block]: written },
-		]);
-		expect(screenModeConfigContract('deck').schema.partial().safeParse(writes[0]).success).toBe(true);
-	});
+			expect(writes).toEqual([{ [block]: written }]);
+			expect(screenModeConfigContract('deck').schema.partial().safeParse(writes[0]).success).toBe(
+				true,
+			);
+		},
+	);
 
 	// Bounds follow the content: a max card size to the largest card the Event Canvas holds whole, columns to the cards ranked.
 	it.each([
 		{
-			name: 'a max card size by a canvas\'s height, at a card\'s 61:85 aspect',
+			name: "a max card size by a canvas's height, at a card's 61:85 aspect",
 			mode: 'deck',
 			options: {
 				event: { canvasWidth: 1280, canvasHeight: 720 },
@@ -741,14 +797,19 @@ describe('the generic settings renderer', () => {
 			field: 'columns',
 			max: '12',
 		},
-	] as { name: string; mode: RenderedMode; options: PageOptions; field: string; max: string }[])('bounds $name', async ({ mode, options, field, max }) => {
-		const wrapper = await mountPage(mode, options);
+	] as { name: string; mode: RenderedMode; options: PageOptions; field: string; max: string }[])(
+		'bounds $name',
+		async ({ mode, options, field, max }) => {
+			const wrapper = await mountPage(mode, options);
 
-		expect(wrapper.get(`[data-settings-field="${field}"] input[type="number"]`).attributes('max')).toBe(max);
-	});
+			expect(
+				wrapper.get(`[data-settings-field="${field}"] input[type="number"]`).attributes('max'),
+			).toBe(max);
+		},
+	);
 
 	// Each board's own columns run to the cards its Deck Source's Deck List gives that board (#1109).
-	it('bounds each Deck List board\'s columns by the cards its Deck Source\'s Deck List holds for it', async () => {
+	it("bounds each Deck List board's columns by the cards its Deck Source's Deck List holds for it", async () => {
 		fetchDeck.mockResolvedValue({
 			cards: [
 				{ name: 'Lightning Bolt', compartment: 'mainboard' },
@@ -765,25 +826,38 @@ describe('the generic settings renderer', () => {
 			},
 		});
 
-		expect(wrapper.get('[data-settings-field="mainboard.columns"] input[type="number"]').attributes('max')).toBe('3');
-		expect(wrapper.get('[data-settings-field="sideboard.columns"] input[type="number"]').attributes('max')).toBe('1');
+		expect(
+			wrapper
+				.get('[data-settings-field="mainboard.columns"] input[type="number"]')
+				.attributes('max'),
+		).toBe('3');
+		expect(
+			wrapper
+				.get('[data-settings-field="sideboard.columns"] input[type="number"]')
+				.attributes('max'),
+		).toBe('1');
 	});
 
 	it('offers a badge position every point but the centre, which a badge cannot take', async () => {
 		const wrapper = await mountPage('deck');
-		const points = wrapper.get('[data-settings-field="quantityPosition"]').findAll('[role="radio"]');
+		const points = wrapper
+			.get('[data-settings-field="quantityPosition"]')
+			.findAll('[role="radio"]');
 
-		expect(points.filter(point => point.attributes('disabled') !== undefined).map(point => point.attributes('data-point'))).toEqual(['center']);
+		expect(
+			points
+				.filter((point) => point.attributes('disabled') !== undefined)
+				.map((point) => point.attributes('data-point')),
+		).toEqual(['center']);
 	});
 
 	// One mode per settings component: the renderer itself, and each mode's own wrapping of it,
 	// which has to hand on what the renderer exposes for the page's reset to reach it.
 	it.each([
-		...new Map(RENDERED_MODES.map(mode => [
-			getScreenModeSettingsComponent(mode),
-			mode,
-		] as const)).values(),
-	])('hands the page the %s settings\' reset and saving state', async (mode) => {
+		...new Map(
+			RENDERED_MODES.map((mode) => [getScreenModeSettingsComponent(mode), mode] as const),
+		).values(),
+	])("hands the page the %s settings' reset and saving state", async (mode) => {
 		await mountPage(mode);
 		resetConfig.mockClear();
 
@@ -796,7 +870,7 @@ describe('the generic settings renderer', () => {
 	// A mode's own widget mounts in the slot its fields name, or heading its group, and writes through the page.
 	it.each([
 		{
-			name: 'Deck List\'s board toggles hide the mainboard',
+			name: "Deck List's board toggles hide the mainboard",
 			mode: 'deck',
 			config: {},
 			slot: '[data-settings-slot="board-toggles"]',
@@ -804,13 +878,17 @@ describe('the generic settings renderer', () => {
 			written: { board: 'sideboard' },
 		},
 		{
-			name: 'Deck List\'s Customise copies the mainboard\'s layout to the sideboard',
+			name: "Deck List's Customise copies the mainboard's layout to the sideboard",
 			mode: 'deck',
 			config: {
 				sideboard: { view: 'stack', stackReveal: 40 },
 			},
 			slot: '[data-settings-section="sideboard"] [data-settings-group-slot="before:sideboard"]',
-			act: (row: SlotRow) => row.findAll('button').find(button => button.text() === 'Customise')!.trigger('click'),
+			act: (row: SlotRow) =>
+				row
+					.findAll('button')
+					.find((button) => button.text() === 'Customise')!
+					.trigger('click'),
 			written: {
 				sideboard: {
 					view: 'stack',
@@ -821,7 +899,7 @@ describe('the generic settings renderer', () => {
 			},
 		},
 		{
-			name: 'Deck List\'s Use mainboard\'s keeps only the sideboard\'s view and reveal',
+			name: "Deck List's Use mainboard's keeps only the sideboard's view and reveal",
 			mode: 'deck',
 			config: {
 				sideboard: {
@@ -832,13 +910,17 @@ describe('the generic settings renderer', () => {
 				},
 			},
 			slot: '[data-settings-section="sideboard"] [data-settings-group-slot="before:sideboard"]',
-			act: (row: SlotRow) => row.findAll('button').find(button => button.text() === 'Use mainboard\'s')!.trigger('click'),
+			act: (row: SlotRow) =>
+				row
+					.findAll('button')
+					.find((button) => button.text() === "Use mainboard's")!
+					.trigger('click'),
 			written: {
 				sideboard: { view: 'stack', stackReveal: 40 },
 			},
 		},
 		{
-			name: 'Top Cut Bracket\'s Manual Bracket editor seats a Player',
+			name: "Top Cut Bracket's Manual Bracket editor seats a Player",
 			mode: 'top-cut',
 			config: { bracketSource: 'manual' },
 			slot: '[data-settings-card="live"] [data-settings-slot="manual-bracket"]',
@@ -846,15 +928,13 @@ describe('the generic settings renderer', () => {
 			written: {
 				manualBracket: {
 					size: 8,
-					entrants: [
-						{ playerId: 5 },
-					],
+					entrants: [{ playerId: 5 }],
 					results: [],
 				},
 			},
 		},
 		{
-			name: 'Top Cut Bracket\'s bracket size',
+			name: "Top Cut Bracket's bracket size",
 			mode: 'top-cut',
 			config: {},
 			slot: '[data-settings-slot="bracket-size"]',
@@ -862,7 +942,7 @@ describe('the generic settings renderer', () => {
 			written: { bracketSizeOverride: 16 },
 		},
 		{
-			name: 'Talent\'s lineup adds a Talent',
+			name: "Talent's lineup adds a Talent",
 			mode: 'talent',
 			config: { selection: 'lineup' },
 			slot: '[data-settings-slot="talent-lineup"]',
@@ -872,26 +952,34 @@ describe('the generic settings renderer', () => {
 			},
 		},
 		{
-			name: 'Background\'s Reset to Theme',
+			name: "Background's Reset to Theme",
 			mode: 'background',
 			config: {
 				layers: layersPinningNoAsset().slice(0, 1),
 			},
 			slot: '[data-settings-card="background-placement"] [data-settings-slot="background-layers"]',
-			act: (row: SlotRow) => row.findAll('button').find(button => button.text() === 'Reset to Theme')!.trigger('click'),
+			act: (row: SlotRow) =>
+				row
+					.findAll('button')
+					.find((button) => button.text() === 'Reset to Theme')!
+					.trigger('click'),
 			written: { layers: [] },
 		},
-	] as { name: string; mode: RenderedMode; config: Record<string, unknown>; slot: string; act: (row: SlotRow) => Promise<unknown>; written: Record<string, unknown> }[])(
-		'$name in one write',
-		async ({ mode, config: variant, slot, act, written }) => {
-			const wrapper = await mountPage(mode, { config: variant });
+	] as {
+		name: string;
+		mode: RenderedMode;
+		config: Record<string, unknown>;
+		slot: string;
+		act: (row: SlotRow) => Promise<unknown>;
+		written: Record<string, unknown>;
+	}[])('$name in one write', async ({ mode, config: variant, slot, act, written }) => {
+		const wrapper = await mountPage(mode, { config: variant });
 
-			await act(wrapper.get(slot));
-			await flushPromises();
+		await act(wrapper.get(slot));
+		await flushPromises();
 
-			expect(writes).toEqual([written]);
-		},
-	);
+		expect(writes).toEqual([written]);
+	});
 
 	it('draws no card a mode gives nothing to show', async () => {
 		const wrapper = await mountPage('card');

@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getDeckColumnCount, splitDeckGroupsIntoColumns } from '~~/shared/utils/deckColumns';
 
 function makeGroup(name: string, count: number) {
-	return [
-		name,
-		Array.from({ length: count }, (_, index) => index),
-	] as const;
+	return [name, Array.from({ length: count }, (_, index) => index)] as const;
 }
 
 describe('deckColumns', () => {
@@ -21,7 +18,7 @@ describe('deckColumns', () => {
 
 		const columns = splitDeckGroupsIntoColumns(groups, 3);
 
-		expect(columns.map(column => column.map(([type]) => type))).toEqual([
+		expect(columns.map((column) => column.map(([type]) => type))).toEqual([
 			['Creature', 'Planeswalker'],
 			['Instant', 'Sorcery'],
 			['Artifact', 'Land'],
@@ -29,15 +26,11 @@ describe('deckColumns', () => {
 	});
 
 	it('caps the number of columns at the number of groups', () => {
-		const groups = [
-			makeGroup('Creature', 4),
-			makeGroup('Instant', 4),
-			makeGroup('Land', 4),
-		];
+		const groups = [makeGroup('Creature', 4), makeGroup('Instant', 4), makeGroup('Land', 4)];
 
 		const columns = splitDeckGroupsIntoColumns(groups, 6);
 
-		expect(columns.map(column => column.map(([type]) => type))).toEqual([
+		expect(columns.map((column) => column.map(([type]) => type))).toEqual([
 			['Creature'],
 			['Instant'],
 			['Land'],

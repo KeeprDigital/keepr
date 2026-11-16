@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { pageRotationEdit } from '~~/shared/modules/page-rotation';
-import { DEFAULT_PAGE_ROTATION, pageRotationPageSize, pageRotationShape } from '~~/shared/screenModeConfigs/subShapes';
+import {
+	DEFAULT_PAGE_ROTATION,
+	pageRotationPageSize,
+	pageRotationShape,
+} from '~~/shared/screenModeConfigs/subShapes';
 import { getDisplayResetForMode } from '~~/shared/screenModeDefinitions';
 import { SCREEN_MODES } from '~~/shared/screenModes';
 import { SCREEN_MODE_VALUES } from '~~/shared/types/enums';
@@ -15,11 +19,7 @@ const NOW = 1_000_000.25; // fractional, like a synchronized clock estimate
 
 const paginated = SCREEN_MODE_VALUES.flatMap((mode) => {
 	const pageRotation = SCREEN_MODES[mode].pageRotation;
-	return pageRotation
-		? [
-				{ mode, pageRotation, declared: `${mode}.${pageRotation.pageSize}` },
-			]
-		: [];
+	return pageRotation ? [{ mode, pageRotation, declared: `${mode}.${pageRotation.pageSize}` }] : [];
 });
 
 describe('screen Mode Page Rotation', () => {
@@ -35,7 +35,7 @@ describe('screen Mode Page Rotation', () => {
 	});
 
 	it('leaves every other mode without a rotation field', () => {
-		const undeclared = SCREEN_MODE_VALUES.filter(mode => !SCREEN_MODES[mode].pageRotation);
+		const undeclared = SCREEN_MODE_VALUES.filter((mode) => !SCREEN_MODES[mode].pageRotation);
 		for (const mode of undeclared) {
 			for (const field of Object.keys(pageRotationShape))
 				expect(SCREEN_MODES[mode].config.shape, `${mode}.${field}`).not.toHaveProperty(field);
@@ -43,7 +43,7 @@ describe('screen Mode Page Rotation', () => {
 	});
 
 	it('a display reset of any other mode writes no rotation field', () => {
-		const undeclared = SCREEN_MODE_VALUES.filter(mode => !SCREEN_MODES[mode].pageRotation);
+		const undeclared = SCREEN_MODE_VALUES.filter((mode) => !SCREEN_MODES[mode].pageRotation);
 		for (const mode of undeclared) {
 			for (const field of Object.keys(pageRotationShape))
 				expect(getDisplayResetForMode(mode, {}, NOW), `${mode}.${field}`).not.toHaveProperty(field);
@@ -70,22 +70,30 @@ describe('screen Mode Page Rotation', () => {
 		});
 
 		it('a page size edit while auto-page is on resets to page 1 and moves the Rotation Anchor', () => {
-			expect(pageRotationEdit(pageRotation, { autoPageEnabled: true }, pageSizeEdit, NOW))
-				.toEqual({ ...pageSizeEdit, currentPage: 1, rotationAnchor: 1_000_000 });
+			expect(pageRotationEdit(pageRotation, { autoPageEnabled: true }, pageSizeEdit, NOW)).toEqual({
+				...pageSizeEdit,
+				currentPage: 1,
+				rotationAnchor: 1_000_000,
+			});
 		});
 
 		it('a page size edit with auto-page off resets to page 1 and writes no anchor', () => {
-			expect(pageRotationEdit(pageRotation, { autoPageEnabled: false }, pageSizeEdit, NOW))
-				.toEqual({ ...pageSizeEdit, currentPage: 1 });
+			expect(pageRotationEdit(pageRotation, { autoPageEnabled: false }, pageSizeEdit, NOW)).toEqual(
+				{ ...pageSizeEdit, currentPage: 1 },
+			);
 		});
 
 		it('a page duration edit while auto-page is on moves the Rotation Anchor, restarting from page 1', () => {
-			expect(pageRotationEdit(pageRotation, { autoPageEnabled: true }, durationEdit, NOW))
-				.toEqual({ ...durationEdit, rotationAnchor: 1_000_000 });
+			expect(pageRotationEdit(pageRotation, { autoPageEnabled: true }, durationEdit, NOW)).toEqual({
+				...durationEdit,
+				rotationAnchor: 1_000_000,
+			});
 		});
 
 		it('a page duration edit with auto-page off is written as it is', () => {
-			expect(pageRotationEdit(pageRotation, { autoPageEnabled: false }, durationEdit, NOW)).toEqual(durationEdit);
+			expect(pageRotationEdit(pageRotation, { autoPageEnabled: false }, durationEdit, NOW)).toEqual(
+				durationEdit,
+			);
 		});
 
 		it('a display reset turns auto-page off, restores the default page size and returns to page 1', () => {
@@ -98,7 +106,10 @@ describe('screen Mode Page Rotation', () => {
 				currentPage: 1,
 			});
 			// Named even where the default is Auto (absent), so the reset clears a set page size.
-			expect(reset).toHaveProperty([pageRotation.pageSize], (contract.defaults as Record<string, unknown>)[pageRotation.pageSize]);
+			expect(reset).toHaveProperty(
+				[pageRotation.pageSize],
+				(contract.defaults as Record<string, unknown>)[pageRotation.pageSize],
+			);
 			// Auto-page is off once reset, so the reset writes no Rotation Anchor.
 			expect(reset).not.toHaveProperty('rotationAnchor');
 		});

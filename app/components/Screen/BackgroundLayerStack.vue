@@ -3,7 +3,10 @@ import type { CSSProperties } from 'vue';
 import type { AnimationEffectRenderPlan } from '~~/shared/animationEffects';
 import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
 import type { BackgroundLayer, ScreenVideoPlayback } from '~~/shared/types/screenConfig';
-import { animationEffectRenderPlan, parseAnimationEffectSelection } from '~~/shared/animationEffects';
+import {
+	animationEffectRenderPlan,
+	parseAnimationEffectSelection,
+} from '~~/shared/animationEffects';
 import { screenMediaSourceReference } from '~~/shared/utils/graphicsAssetReferences';
 import { graphicFillCss } from '~/modules/screen/outputPaint';
 import { screenMediaSourceUrl } from '~/utils/screenMediaSource';
@@ -21,16 +24,13 @@ const props = defineProps<{
 	layers: BackgroundLayer[];
 }>();
 
-const enabledLayers = computed(() => props.layers.filter(layer => layer.enabled));
+const enabledLayers = computed(() => props.layers.filter((layer) => layer.enabled));
 
 const assetReferences = computed<GraphicAssetReference[]>(() =>
 	enabledLayers.value.flatMap((layer) => {
-		if (layer.type !== 'image' && layer.type !== 'video')
-			return [];
+		if (layer.type !== 'image' && layer.type !== 'video') return [];
 		const reference = screenMediaSourceReference(layer.source);
-		return reference
-			? [reference]
-			: [];
+		return reference ? [reference] : [];
 	}),
 );
 
@@ -64,9 +64,10 @@ function layerView(layer: BackgroundLayer): BackgroundLayerView {
 			break;
 		case 'gradient':
 			// A Background Layer is never keyed, so it paints its authored colours.
-			view.style.backgroundImage = typeof layer.gradient === 'string'
-				? layer.gradient
-				: graphicFillCss('overlay', layer.gradient);
+			view.style.backgroundImage =
+				typeof layer.gradient === 'string'
+					? layer.gradient
+					: graphicFillCss('overlay', layer.gradient);
 			break;
 		case 'image':
 			view.imageUrl = screenMediaSourceUrl(layer.source, contentUrl);
@@ -85,8 +86,7 @@ function layerView(layer: BackgroundLayer): BackgroundLayerView {
 			break;
 		case 'animation': {
 			const selection = parseAnimationEffectSelection(layer.animation);
-			if (selection)
-				view.animation = animationEffectRenderPlan(selection);
+			if (selection) view.animation = animationEffectRenderPlan(selection);
 			break;
 		}
 	}
@@ -116,11 +116,8 @@ const layerViews = computed(() => enabledLayers.value.map(layerView));
 				:style="{ objectFit: view.imageFit }"
 				alt=""
 				aria-hidden="true"
-			>
-			<ScreenMediaBackground
-				v-else-if="view.video"
-				:video="view.video"
 			/>
+			<ScreenMediaBackground v-else-if="view.video" :video="view.video" />
 			<ScreenAnimationEffectSurface
 				v-else-if="view.animation"
 				:effect="view.animation.effect"

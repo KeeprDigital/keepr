@@ -50,9 +50,10 @@ const wrangler = fileURLToPath(new URL('../node_modules/.bin/wrangler', import.m
 try {
 	const configuration = JSON.parse(readFileSync(new URL(`../${CONFIG}`, import.meta.url), 'utf8'));
 	assertWorkerConfigurationDoesNotArmLocalAuthBypass(configuration);
-}
-catch (error) {
-	process.stderr.write(`worker:dry-run: unsafe or unreadable generated configuration — ${error.message}\n`);
+} catch (error) {
+	process.stderr.write(
+		`worker:dry-run: unsafe or unreadable generated configuration — ${error.message}\n`,
+	);
 	process.exit(1);
 }
 
@@ -63,14 +64,7 @@ rmSync(outDir, { recursive: true, force: true });
 
 const dryRun = spawnSync(
 	wrangler,
-	[
-		'deploy',
-		'--dry-run',
-		'--config',
-		CONFIG,
-		'--outdir',
-		outDir,
-	],
+	['deploy', '--dry-run', '--config', CONFIG, '--outdir', outDir],
 	{ cwd: repositoryRoot, stdio: 'inherit' },
 );
 
@@ -80,8 +74,7 @@ if (dryRun.error) {
 }
 
 // A signalled wrangler reports a null status; that is a failure, not a pass.
-if (dryRun.status !== 0)
-	process.exit(dryRun.status ?? 1);
+if (dryRun.status !== 0) process.exit(dryRun.status ?? 1);
 
 const scans = [
 	runtimeWasmScan(outDir),
@@ -89,10 +82,7 @@ const scans = [
 	builtFontsScan(fileURLToPath(new URL(`../${PUBLIC_DIR}`, import.meta.url))),
 ];
 for (const scan of scans) {
-	for (const line of scan.lines)
-		(scan.ok ? process.stdout : process.stderr).write(`${line}\n`);
+	for (const line of scan.lines) (scan.ok ? process.stdout : process.stderr).write(`${line}\n`);
 }
 
-process.exit(scans.every(scan => scan.ok)
-	? 0
-	: 1);
+process.exit(scans.every((scan) => scan.ok) ? 0 : 1);

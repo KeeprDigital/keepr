@@ -22,7 +22,10 @@ vi.mock('~~/server/utils/auth', () => ({
 	serverAuth: () => ({ handler: mockBetterAuthHandler }),
 }));
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('getRequestURL', mockGetRequestURL);
 
 const handler = (await import('~~/server/api/auth/[...all]')).default;

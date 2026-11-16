@@ -15,38 +15,19 @@ function colorLayer(id: string): BackgroundLayer {
 	};
 }
 
-const themeStack = [
-	colorLayer('theme'),
-];
+const themeStack = [colorLayer('theme')];
 
 describe('the Background Layer stack a Screen paints', () => {
 	it.each([
 		[
-			'its own stack, in place of its Theme\'s',
-			[
-				colorLayer('own'),
-			],
+			"its own stack, in place of its Theme's",
+			[colorLayer('own')],
 			{ background: themeStack },
 			['own'],
 		],
-		[
-			'its Theme\'s, when it has no stack',
-			undefined,
-			{ background: themeStack },
-			['theme'],
-		],
-		[
-			'its Theme\'s, when its own stack is empty',
-			[],
-			{ background: themeStack },
-			['theme'],
-		],
-		[
-			'none, under the Default Theme',
-			undefined,
-			{},
-			[],
-		],
+		["its Theme's, when it has no stack", undefined, { background: themeStack }, ['theme']],
+		["its Theme's, when its own stack is empty", [], { background: themeStack }, ['theme']],
+		['none, under the Default Theme', undefined, {}, []],
 		[
 			'none, under a Theme whose stored background no longer reads',
 			undefined,
@@ -54,6 +35,6 @@ describe('the Background Layer stack a Screen paints', () => {
 			[],
 		],
 	])('is %s', (_case, own, theme, painted) => {
-		expect(screenBackgroundLayers(own, theme).map(layer => layer.id)).toEqual(painted);
+		expect(screenBackgroundLayers(own, theme).map((layer) => layer.id)).toEqual(painted);
 	});
 });

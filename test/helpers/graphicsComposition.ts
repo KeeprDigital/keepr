@@ -14,7 +14,11 @@ import type {
 	TextGraphicItemConfig,
 } from '~~/shared/types/graphics';
 import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
-import { DEFAULT_GRAPHIC_TYPOGRAPHY, getGraphicItemDefinition, squareShapeGeometry } from '~~/shared/modules/graphics';
+import {
+	DEFAULT_GRAPHIC_TYPOGRAPHY,
+	getGraphicItemDefinition,
+	squareShapeGeometry,
+} from '~~/shared/modules/graphics';
 import { resolveGraphicsCompositionRenderModel } from '~/modules/graphics/renderModel';
 
 /** Graphic Item builders and a one-graphic composition shorthand for render-model tests. */
@@ -39,7 +43,10 @@ export function surfaceStyle(overrides: Partial<GraphicSurfaceStyle> = {}): Grap
 	};
 }
 
-export function shape(id: string, overrides: Partial<ShapeGraphicItemConfig> = {}): ShapeGraphicItemConfig {
+export function shape(
+	id: string,
+	overrides: Partial<ShapeGraphicItemConfig> = {},
+): ShapeGraphicItemConfig {
 	return {
 		type: 'shape',
 		id,
@@ -56,7 +63,10 @@ export function shape(id: string, overrides: Partial<ShapeGraphicItemConfig> = {
 	};
 }
 
-export function text(id: string, overrides: Partial<TextGraphicItemConfig> = {}): TextGraphicItemConfig {
+export function text(
+	id: string,
+	overrides: Partial<TextGraphicItemConfig> = {},
+): TextGraphicItemConfig {
 	return {
 		type: 'text',
 		id,
@@ -75,7 +85,10 @@ export function text(id: string, overrides: Partial<TextGraphicItemConfig> = {})
 	};
 }
 
-export function media(id: string, overrides: Partial<MediaGraphicItemConfig> = {}): MediaGraphicItemConfig {
+export function media(
+	id: string,
+	overrides: Partial<MediaGraphicItemConfig> = {},
+): MediaGraphicItemConfig {
 	return {
 		type: 'media',
 		id,
@@ -145,7 +158,10 @@ export function group(
 	};
 }
 
-export function graphic(id: string, items: BroadcastGraphicConfig['items']): BroadcastGraphicConfig {
+export function graphic(
+	id: string,
+	items: BroadcastGraphicConfig['items'],
+): BroadcastGraphicConfig {
 	return { id, name: id, items };
 }
 
@@ -187,9 +203,7 @@ export function compose(
 ) {
 	return resolveGraphicsCompositionRenderModel({
 		output: 'overlay',
-		graphics: [
-			graphic('a', items),
-		],
+		graphics: [graphic('a', items)],
 		...CANVAS,
 		...options,
 	});

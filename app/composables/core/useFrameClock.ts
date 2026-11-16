@@ -27,8 +27,7 @@ export function useFrameClock(read: () => number, inMotion: (now: number) => boo
 	let frame: number | null = null;
 
 	function stop() {
-		if (frame !== null && import.meta.client)
-			cancelAnimationFrame(frame);
+		if (frame !== null && import.meta.client) cancelAnimationFrame(frame);
 		frame = null;
 	}
 
@@ -42,11 +41,9 @@ export function useFrameClock(read: () => number, inMotion: (now: number) => boo
 	}
 
 	function start() {
-		if (!import.meta.client)
-			return;
+		if (!import.meta.client) return;
 		now.value = read();
-		if (frame === null)
-			frame = requestAnimationFrame(advance);
+		if (frame === null) frame = requestAnimationFrame(advance);
 	}
 
 	onScopeDispose(stop);

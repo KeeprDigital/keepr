@@ -5,15 +5,17 @@ function loadImage(url: string): { image: HTMLImageElement; loaded: Promise<bool
 		let settled = false;
 
 		const finish = (result: boolean) => {
-			if (settled)
-				return;
+			if (settled) return;
 			settled = true;
 			resolve(result);
 		};
 
 		const decode = () => {
 			if (typeof image.decode === 'function') {
-				image.decode().then(() => finish(true), () => finish(false));
+				image.decode().then(
+					() => finish(true),
+					() => finish(false),
+				);
 				return;
 			}
 			finish(true);
@@ -40,17 +42,16 @@ function loadImage(url: string): { image: HTMLImageElement; loaded: Promise<bool
  * image settles as `false` rather than rejecting.
  */
 export function preloadImage(url: string): Promise<boolean> {
-	if (!import.meta.client)
-		return Promise.resolve(false);
+	if (!import.meta.client) return Promise.resolve(false);
 	return loadImage(url).loaded;
 }
 
 /** Preloads every distinct URL; answers the ones that failed. */
 export async function preloadImages(urls: Iterable<string>): Promise<Set<string>> {
-	const distinct = [
-		...new Set(urls),
-	].filter(url => url !== '');
-	const results = await Promise.all(distinct.map(async url => [url, await preloadImage(url)] as const));
+	const distinct = [...new Set(urls)].filter((url) => url !== '');
+	const results = await Promise.all(
+		distinct.map(async (url) => [url, await preloadImage(url)] as const),
+	);
 	return new Set(results.filter(([, loaded]) => !loaded).map(([url]) => url));
 }
 
@@ -66,16 +67,13 @@ export function createImageRetainer() {
 	return {
 		/** Holds exactly `urls`, loading the ones not held yet and releasing the rest. */
 		retain(urls: Iterable<string>) {
-			if (!import.meta.client)
-				return;
-			const wanted = new Set([...urls].filter(url => url !== ''));
+			if (!import.meta.client) return;
+			const wanted = new Set([...urls].filter((url) => url !== ''));
 			for (const url of held.keys()) {
-				if (!wanted.has(url))
-					held.delete(url);
+				if (!wanted.has(url)) held.delete(url);
 			}
 			for (const url of wanted) {
-				if (!held.has(url))
-					held.set(url, loadImage(url).image);
+				if (!held.has(url)) held.set(url, loadImage(url).image);
 			}
 		},
 		release() {

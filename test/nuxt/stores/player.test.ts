@@ -10,7 +10,7 @@ const mockRepo = vi.hoisted(() => ({
 	remove: vi.fn(),
 }));
 
-vi.mock('~/modules/event-data/client', async importOriginal => ({
+vi.mock('~/modules/event-data/client', async (importOriginal) => ({
 	...(await importOriginal<typeof import('~~/app/modules/event-data/client')>()),
 	useEventDataResource: () => mockRepo,
 }));
@@ -31,18 +31,14 @@ describe('usePlayerStore', () => {
 			[
 				'a load',
 				async (s: ReturnType<typeof usePlayerStore>) => {
-					mockRepo.list.mockResolvedValue([
-						createMockPlayer({ id: 1 }),
-					]);
+					mockRepo.list.mockResolvedValue([createMockPlayer({ id: 1 })]);
 					await s.loadPlayersByEventId(1);
 				},
 			],
 			[
 				'a delete',
 				async (s: ReturnType<typeof usePlayerStore>) => {
-					s.players = [
-						createMockPlayer({ id: 1 }),
-					];
+					s.players = [createMockPlayer({ id: 1 })];
 					mockRepo.remove.mockResolvedValue({ success: true });
 					await s.removePlayer(1, 1);
 				},
@@ -69,14 +65,18 @@ describe('usePlayerStore', () => {
 		it('reads one Player', async () => {
 			mockRepo.getById.mockResolvedValue(createMockPlayer({ id: 9, name: 'Alice' }));
 
-			await expect(store.getPlayerById(1, 9)).resolves.toEqual(expect.objectContaining({ id: 9, name: 'Alice' }));
+			await expect(store.getPlayerById(1, 9)).resolves.toEqual(
+				expect.objectContaining({ id: 9, name: 'Alice' }),
+			);
 		});
 
-		it('reports the server\'s sentence for a refused read', async () => {
-			mockRepo.getById.mockRejectedValue(transportFailure({
-				status: 404,
-				body: { message: 'That Player is not in this Event' },
-			}));
+		it("reports the server's sentence for a refused read", async () => {
+			mockRepo.getById.mockRejectedValue(
+				transportFailure({
+					status: 404,
+					body: { message: 'That Player is not in this Event' },
+				}),
+			);
 
 			await store.getPlayerById(1, 9);
 
@@ -90,7 +90,7 @@ describe('usePlayerStore', () => {
 			store.holdPlayer(createMockPlayer({ id: 2, name: 'Bob' }));
 			store.holdPlayer(createMockPlayer({ id: 1, name: 'Alicia' }));
 
-			expect(store.players.map(player => player.name)).toEqual(['Alicia', 'Bob']);
+			expect(store.players.map((player) => player.name)).toEqual(['Alicia', 'Bob']);
 		});
 	});
 });

@@ -1,6 +1,14 @@
 import type { PlayerSide, Seat } from '~~/shared/types/enums';
-import type { FeatureMatchCommandType, FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
-import type { CommanderNumber, CounterState, FeatureMatchOutcome, FeatureMatchState } from '~~/shared/types/featureMatchState';
+import type {
+	FeatureMatchCommandType,
+	FeatureMatchSourceSnapshot,
+} from '~~/shared/types/featureMatchSession';
+import type {
+	CommanderNumber,
+	CounterState,
+	FeatureMatchOutcome,
+	FeatureMatchState,
+} from '~~/shared/types/featureMatchState';
 import type { FeatureMatchClock } from './clock';
 import { getStartingTurnNumber } from '~~/shared/config/games';
 import { SEAT_VALUES } from '~~/shared/types/enums';
@@ -24,7 +32,12 @@ import {
 	withSeatsCorrected,
 	withSeatsSwapped,
 } from './commander';
-import { applyFeatureMatchOvertimeStep, applyFeatureMatchTurnStep, otherFeatureMatchPlayer, pairSeatOf } from './turns';
+import {
+	applyFeatureMatchOvertimeStep,
+	applyFeatureMatchTurnStep,
+	otherFeatureMatchPlayer,
+	pairSeatOf,
+} from './turns';
 
 export interface FeatureMatchSessionReducerResult {
 	currentState: FeatureMatchState;
@@ -33,10 +46,13 @@ export interface FeatureMatchSessionReducerResult {
 
 export type FeatureMatchSessionEventPayload = Record<string, unknown>;
 
-export function createInitialFeatureMatchSessionStateFromSnapshot(snapshot: FeatureMatchSourceSnapshot): FeatureMatchState {
-	const durationMs = snapshot.defaults.clockDuration != null
-		? minutesToMs(snapshot.defaults.clockDuration)
-		: DEFAULT_CLOCK_DURATION_MS;
+export function createInitialFeatureMatchSessionStateFromSnapshot(
+	snapshot: FeatureMatchSourceSnapshot,
+): FeatureMatchState {
+	const durationMs =
+		snapshot.defaults.clockDuration != null
+			? minutesToMs(snapshot.defaults.clockDuration)
+			: DEFAULT_CLOCK_DURATION_MS;
 
 	const initial = createInitialFeatureMatchState(
 		snapshot.defaults.startingLife ?? DEFAULT_STARTING_LIFE,
@@ -44,9 +60,7 @@ export function createInitialFeatureMatchSessionStateFromSnapshot(snapshot: Feat
 		durationMs,
 		snapshot.defaults.countUpAfterCountdown ?? false,
 		getStartingTurnNumber(snapshot.game),
-		snapshot.defaults.countUpLimit != null
-			? minutesToMs(snapshot.defaults.countUpLimit)
-			: null,
+		snapshot.defaults.countUpLimit != null ? minutesToMs(snapshot.defaults.countUpLimit) : null,
 	);
 	return isCommanderSession(snapshot)
 		? {
@@ -57,7 +71,9 @@ export function createInitialFeatureMatchSessionStateFromSnapshot(snapshot: Feat
 }
 
 /** Every Seat of a Commander game as it starts: at the Event's starting life (ADR-0087). */
-function commanderSeatStates(snapshot: FeatureMatchSourceSnapshot): Required<Pick<FeatureMatchState, Seat>> {
+function commanderSeatStates(
+	snapshot: FeatureMatchSourceSnapshot,
+): Required<Pick<FeatureMatchState, Seat>> {
 	const startingLife = commanderStartingLife(snapshot);
 	return {
 		player1: createInitialSeatState(startingLife),
@@ -73,16 +89,15 @@ interface FeatureMatchBatchedEvent {
 }
 
 /** The batch's command list, or null when its shape is malformed. */
-function batchedEvents(payload: FeatureMatchSessionEventPayload): FeatureMatchBatchedEvent[] | null {
-	if (!Array.isArray(payload.commands))
-		return null;
+function batchedEvents(
+	payload: FeatureMatchSessionEventPayload,
+): FeatureMatchBatchedEvent[] | null {
+	if (!Array.isArray(payload.commands)) return null;
 	const events: FeatureMatchBatchedEvent[] = [];
 	for (const command of payload.commands) {
-		if (typeof command !== 'object' || command === null)
-			return null;
+		if (typeof command !== 'object' || command === null) return null;
 		const { type, payload: commandPayload } = command as Record<string, unknown>;
-		if (commandPayload != null && typeof commandPayload !== 'object')
-			return null;
+		if (commandPayload != null && typeof commandPayload !== 'object') return null;
 		events.push({
 			type: type as FeatureMatchCommandType,
 			payload: (commandPayload ?? {}) as FeatureMatchSessionEventPayload,
@@ -103,15 +118,11 @@ function batchedEvents(payload: FeatureMatchSessionEventPayload): FeatureMatchBa
 /** Coerce like `Number(...)` but refuse to hand back a non-finite result. */
 function finiteNumber(value: unknown): number | null {
 	const coerced = Number(value);
-	return Number.isFinite(coerced)
-		? coerced
-		: null;
+	return Number.isFinite(coerced) ? coerced : null;
 }
 
 function playerSideOf(value: unknown): PlayerSide | null {
-	return value === 'player1' || value === 'player2'
-		? value
-		: null;
+	return value === 'player1' || value === 'player2' ? value : null;
 }
 
 /**
@@ -120,38 +131,38 @@ function playerSideOf(value: unknown): PlayerSide | null {
  * the game only while filled (ADR-0087).
  */
 function seatOf(value: unknown, sourceSnapshot: FeatureMatchSourceSnapshot): Seat | null {
-	if (!isCommanderSession(sourceSnapshot))
-		return playerSideOf(value);
-	const seat = SEAT_VALUES.find(candidate => candidate === value);
-	return seat && isSeatFilled(sourceSnapshot, seat)
-		? seat
-		: null;
+	if (!isCommanderSession(sourceSnapshot)) return playerSideOf(value);
+	const seat = SEAT_VALUES.find((candidate) => candidate === value);
+	return seat && isSeatFilled(sourceSnapshot, seat) ? seat : null;
 }
 
 function commanderNumberOf(value: unknown): CommanderNumber | null {
-	return COMMANDER_NUMBER_VALUES.find(candidate => candidate === value) ?? null;
+	return COMMANDER_NUMBER_VALUES.find((candidate) => candidate === value) ?? null;
 }
 
 /** A declared outcome: a winning Seat in the game, or `{ winner: null }` for a draw. */
-function outcomeOf(value: unknown, sourceSnapshot: FeatureMatchSourceSnapshot): FeatureMatchOutcome | null {
-	if (typeof value !== 'object' || value === null)
-		return null;
+function outcomeOf(
+	value: unknown,
+	sourceSnapshot: FeatureMatchSourceSnapshot,
+): FeatureMatchOutcome | null {
+	if (typeof value !== 'object' || value === null) return null;
 	const { winner } = value as { winner?: unknown };
-	if (winner === null)
-		return { winner: null };
+	if (winner === null) return { winner: null };
 	const seat = seatOf(winner, sourceSnapshot);
 	return seat && { winner: seat };
 }
 
 function countersOf(value: unknown): CounterState[] | null {
-	if (!Array.isArray(value))
-		return null;
+	if (!Array.isArray(value)) return null;
 	const counters: CounterState[] = [];
 	for (const entry of value) {
-		if (typeof entry !== 'object' || entry === null)
-			return null;
+		if (typeof entry !== 'object' || entry === null) return null;
 		const { type, value: counterValue } = entry as { type?: unknown; value?: unknown };
-		if (typeof type !== 'string' || typeof counterValue !== 'number' || !Number.isFinite(counterValue))
+		if (
+			typeof type !== 'string' ||
+			typeof counterValue !== 'number' ||
+			!Number.isFinite(counterValue)
+		)
 			return null;
 		counters.push({ type, value: counterValue });
 	}
@@ -166,11 +177,10 @@ export function normalizeFeatureMatchSessionCommandPayload(
 	if (type === 'Batch') {
 		const commands = batchedEvents(payload);
 		// A malformed batch shape is left untouched for the reducer to reject.
-		if (commands === null)
-			return payload;
+		if (commands === null) return payload;
 		return {
 			...payload,
-			commands: commands.map(command => ({
+			commands: commands.map((command) => ({
 				...command,
 				payload: normalizeFeatureMatchSessionCommandPayload(command.type, command.payload, now),
 			})),
@@ -178,11 +188,11 @@ export function normalizeFeatureMatchSessionCommandPayload(
 	}
 
 	if (
-		type === 'AdjustClock'
-		|| type === 'SetClock'
-		|| type === 'StartClock'
-		|| type === 'PauseClock'
-		|| type === 'RestartClock'
+		type === 'AdjustClock' ||
+		type === 'SetClock' ||
+		type === 'StartClock' ||
+		type === 'PauseClock' ||
+		type === 'RestartClock'
 	) {
 		return {
 			...payload,
@@ -220,14 +230,15 @@ function correctedSourceSnapshot(
 	rebuilt: FeatureMatchSourceSnapshot,
 	held: FeatureMatchSourceSnapshot,
 ): FeatureMatchSourceSnapshot {
-	const oriented = (held.playersSwapped ?? false)
-		? {
-				...rebuilt,
-				player1: rebuilt.player2,
-				player2: rebuilt.player1,
-				playersSwapped: true,
-			}
-		: rebuilt;
+	const oriented =
+		(held.playersSwapped ?? false)
+			? {
+					...rebuilt,
+					player1: rebuilt.player2,
+					player2: rebuilt.player1,
+					playersSwapped: true,
+				}
+			: rebuilt;
 
 	return { ...oriented, createdAt: held.createdAt };
 }
@@ -235,10 +246,9 @@ function correctedSourceSnapshot(
 /** Whether the match is decided, re-asked of the game wins it holds under a new best of. */
 function withMatchDecidedFor(currentState: FeatureMatchState, bestOf: number): FeatureMatchState {
 	const winsNeeded = Math.ceil(bestOf / 2);
-	const isComplete = Math.max(currentState.player1.gameWins, currentState.player2.gameWins) >= winsNeeded;
-	return isComplete === currentState.isComplete
-		? currentState
-		: { ...currentState, isComplete };
+	const isComplete =
+		Math.max(currentState.player1.gameWins, currentState.player2.gameWins) >= winsNeeded;
+	return isComplete === currentState.isComplete ? currentState : { ...currentState, isComplete };
 }
 
 const UNTIMED_REFUSED_COMMANDS = new Set<string>([
@@ -267,7 +277,9 @@ const COMMANDER_ONLY_COMMANDS = new Set<string>([
 ]);
 
 /** Seats 3 and 4, which only a Commander Slot has. */
-const COMMANDER_ONLY_SEATS: readonly unknown[] = SEAT_VALUES.filter(seat => playerSideOf(seat) === null);
+const COMMANDER_ONLY_SEATS: readonly unknown[] = SEAT_VALUES.filter(
+	(seat) => playerSideOf(seat) === null,
+);
 
 /**
  * Whether an operator's command is one a Session of this Variant never takes
@@ -281,13 +293,12 @@ export function isCommandOutsideSessionVariant(
 	payload: FeatureMatchSessionEventPayload,
 ): boolean {
 	if (type === 'Batch') {
-		return (batchedEvents(payload) ?? [])
-			.some(command => isCommandOutsideSessionVariant(sourceSnapshot, command.type, command.payload));
+		return (batchedEvents(payload) ?? []).some((command) =>
+			isCommandOutsideSessionVariant(sourceSnapshot, command.type, command.payload),
+		);
 	}
-	if (isCommanderSession(sourceSnapshot))
-		return COMMANDER_REFUSED_COMMANDS.has(type);
-	return COMMANDER_ONLY_COMMANDS.has(type)
-		|| COMMANDER_ONLY_SEATS.includes(payload.player);
+	if (isCommanderSession(sourceSnapshot)) return COMMANDER_REFUSED_COMMANDS.has(type);
+	return COMMANDER_ONLY_COMMANDS.has(type) || COMMANDER_ONLY_SEATS.includes(payload.player);
 }
 
 /** An untimed match refuses what would run, set or adjust its clock, and extra turns. */
@@ -313,7 +324,7 @@ const CLOCK_COMMAND_TYPES = [
 	'RestartClock',
 ] as const satisfies readonly FeatureMatchCommandType[];
 
-export type FeatureMatchClockCommandType = typeof CLOCK_COMMAND_TYPES[number];
+export type FeatureMatchClockCommandType = (typeof CLOCK_COMMAND_TYPES)[number];
 
 function isClockCommand(type: string): type is FeatureMatchClockCommandType {
 	return (CLOCK_COMMAND_TYPES as readonly string[]).includes(type);
@@ -332,11 +343,8 @@ function reduceClockCommand(
 ): FeatureMatchState | null {
 	const current = readStoredClock(currentState.clock);
 	if (type === 'ResetClock') {
-		const durationMs = payload.durationMs == null
-			? undefined
-			: finiteNumber(payload.durationMs);
-		if (durationMs === null)
-			return null;
+		const durationMs = payload.durationMs == null ? undefined : finiteNumber(payload.durationMs);
+		if (durationMs === null) return null;
 		return {
 			...currentState,
 			clock: writeStoredClock(clockTransitions.reset(current, durationMs)),
@@ -345,29 +353,22 @@ function reduceClockCommand(
 	}
 
 	const at = finiteNumber(payload.at);
-	if (at === null)
-		return null;
+	if (at === null) return null;
 
 	let clock: FeatureMatchClock;
 	if (type === 'AdjustClock') {
 		const deltaMs = finiteNumber(payload.deltaMs ?? 0);
-		if (deltaMs === null)
-			return null;
+		if (deltaMs === null) return null;
 		clock = clockTransitions.adjust(current, at, deltaMs);
-	}
-	else if (type === 'SetClock') {
+	} else if (type === 'SetClock') {
 		const targetMs = finiteNumber(payload.targetMs ?? 0);
-		if (targetMs === null)
-			return null;
+		if (targetMs === null) return null;
 		clock = clockTransitions.set(current, at, targetMs);
-	}
-	else if (type === 'StartClock') {
+	} else if (type === 'StartClock') {
 		clock = clockTransitions.start(current, at);
-	}
-	else if (type === 'PauseClock') {
+	} else if (type === 'PauseClock') {
 		clock = clockTransitions.pause(current, at);
-	}
-	else {
+	} else {
 		clock = clockTransitions.restart(current, at);
 	}
 
@@ -391,8 +392,7 @@ export function applyFeatureMatchClockCommand(
 	type: FeatureMatchClockCommandType,
 	payload: { at?: number; deltaMs?: number; targetMs?: number; durationMs?: number },
 ): FeatureMatchState {
-	if (isRefusedByUntimedMatch(currentState, type))
-		return currentState;
+	if (isRefusedByUntimedMatch(currentState, type)) return currentState;
 	return reduceClockCommand(currentState, type, payload) ?? currentState;
 }
 
@@ -402,8 +402,12 @@ export function applyFeatureMatchSessionEvent(
 	type: FeatureMatchCommandType | 'SessionStarted' | 'SnapshotCorrected',
 	payload: FeatureMatchSessionEventPayload,
 ): FeatureMatchSessionReducerResult {
-	return reduceFeatureMatchSessionEvent(currentState, sourceSnapshot, type, payload)
-		?? { currentState, sourceSnapshot };
+	return (
+		reduceFeatureMatchSessionEvent(currentState, sourceSnapshot, type, payload) ?? {
+			currentState,
+			sourceSnapshot,
+		}
+	);
 }
 
 /**
@@ -437,17 +441,17 @@ function reduceFeatureMatchSessionEvent(
 			};
 		}
 		return {
-			currentState: corrected.bestOf === sourceSnapshot.bestOf
-				? currentState
-				: withMatchDecidedFor(currentState, corrected.bestOf),
+			currentState:
+				corrected.bestOf === sourceSnapshot.bestOf
+					? currentState
+					: withMatchDecidedFor(currentState, corrected.bestOf),
 			sourceSnapshot: corrected,
 		};
 	}
 
 	// An untimed match has no clock to run and so no time to run out: nothing
 	// starts, sets or adjusts its clock, and no extra turns begin.
-	if (isRefusedByUntimedMatch(currentState, type))
-		return null;
+	if (isRefusedByUntimedMatch(currentState, type)) return null;
 
 	const isCommander = isCommanderSession(sourceSnapshot);
 	if (type !== 'Batch' && isCommandOutsideSessionVariant(sourceSnapshot, type, payload))
@@ -459,13 +463,16 @@ function reduceFeatureMatchSessionEvent(
 	// sub-command sinks the whole batch.
 	if (type === 'Batch') {
 		const commands = batchedEvents(payload);
-		if (commands === null)
-			return null;
+		if (commands === null) return null;
 		let result: FeatureMatchSessionReducerResult = { currentState, sourceSnapshot };
 		for (const command of commands) {
-			const next = reduceFeatureMatchSessionEvent(result.currentState, result.sourceSnapshot, command.type, command.payload);
-			if (next === null)
-				return null;
+			const next = reduceFeatureMatchSessionEvent(
+				result.currentState,
+				result.sourceSnapshot,
+				command.type,
+				command.payload,
+			);
+			if (next === null) return null;
 			result = next;
 		}
 		return result;
@@ -475,8 +482,7 @@ function reduceFeatureMatchSessionEvent(
 		const player = seatOf(payload.player, sourceSnapshot);
 		const seatState = player && currentState[player];
 		const delta = finiteNumber(payload.delta ?? 0);
-		if (!player || !seatState || delta === null)
-			return null;
+		if (!player || !seatState || delta === null) return null;
 		return {
 			sourceSnapshot,
 			currentState: {
@@ -493,8 +499,7 @@ function reduceFeatureMatchSessionEvent(
 		const player = seatOf(payload.player, sourceSnapshot);
 		const seatState = player && currentState[player];
 		const lifeTotal = finiteNumber(payload.lifeTotal);
-		if (!player || !seatState || lifeTotal === null)
-			return null;
+		if (!player || !seatState || lifeTotal === null) return null;
 		return {
 			sourceSnapshot,
 			currentState: {
@@ -511,8 +516,7 @@ function reduceFeatureMatchSessionEvent(
 		const player = seatOf(payload.player, sourceSnapshot);
 		const seatState = player && currentState[player];
 		const counters = countersOf(payload.counters);
-		if (!player || !seatState || counters === null)
-			return null;
+		if (!player || !seatState || counters === null) return null;
 		return {
 			sourceSnapshot,
 			currentState: {
@@ -529,8 +533,7 @@ function reduceFeatureMatchSessionEvent(
 		const player = seatOf(payload.player, sourceSnapshot);
 		const seatState = player && currentState[player];
 		const cardsKept = finiteNumber(payload.cardsKept);
-		if (!player || !seatState || cardsKept === null)
-			return null;
+		if (!player || !seatState || cardsKept === null) return null;
 		return {
 			sourceSnapshot,
 			currentState: {
@@ -548,9 +551,14 @@ function reduceFeatureMatchSessionEvent(
 		const from = seatOf(payload.from, sourceSnapshot);
 		const commanderNumber = commanderNumberOf(payload.commander);
 		const delta = finiteNumber(payload.delta);
-		if (!player || !from || commanderNumber === null || delta === null)
-			return null;
-		const damaged = applyCommanderDamage(currentState, sourceSnapshot, player, { seat: from, commander: commanderNumber }, delta);
+		if (!player || !from || commanderNumber === null || delta === null) return null;
+		const damaged = applyCommanderDamage(
+			currentState,
+			sourceSnapshot,
+			player,
+			{ seat: from, commander: commanderNumber },
+			delta,
+		);
 		return damaged && { sourceSnapshot, currentState: damaged };
 	}
 
@@ -558,8 +566,7 @@ function reduceFeatureMatchSessionEvent(
 		const player = seatOf(payload.player, sourceSnapshot);
 		const seatState = player && currentState[player];
 		const eliminated = payload.eliminated;
-		if (!player || !seatState || typeof eliminated !== 'boolean')
-			return null;
+		if (!player || !seatState || typeof eliminated !== 'boolean') return null;
 		return {
 			sourceSnapshot,
 			currentState: {
@@ -579,8 +586,7 @@ function reduceFeatureMatchSessionEvent(
 			};
 		}
 		const outcome = outcomeOf(payload.outcome, sourceSnapshot);
-		if (!outcome)
-			return null;
+		if (!outcome) return null;
 		return {
 			sourceSnapshot,
 			currentState: { ...currentState, outcome, isComplete: true },
@@ -588,11 +594,9 @@ function reduceFeatureMatchSessionEvent(
 	}
 
 	if (type === 'SwapSeats') {
-		const seats = Array.isArray(payload.seats)
-			? payload.seats
-			: [];
-		const first = SEAT_VALUES.find(seat => seat === seats[0]);
-		const second = SEAT_VALUES.find(seat => seat === seats[1]);
+		const seats = Array.isArray(payload.seats) ? payload.seats : [];
+		const first = SEAT_VALUES.find((seat) => seat === seats[0]);
+		const second = SEAT_VALUES.find((seat) => seat === seats[1]);
 		const swapped = payload.sourceSnapshot as FeatureMatchSourceSnapshot | null | undefined;
 		if (!first || !second || first === second || !swapped || !isCommanderSession(swapped))
 			return null;
@@ -600,10 +604,14 @@ function reduceFeatureMatchSessionEvent(
 		// it is: neither Seat joins or leaves, each player keeps what they held. A
 		// Session opened before a Commander Slot had four Seats gains the missing two.
 		return {
-			currentState: withSeatsSwapped({
-				...commanderSeatStates(swapped),
-				...currentState,
-			}, first, second),
+			currentState: withSeatsSwapped(
+				{
+					...commanderSeatStates(swapped),
+					...currentState,
+				},
+				first,
+				second,
+			),
 			sourceSnapshot: correctedSourceSnapshot(swapped, sourceSnapshot),
 		};
 	}
@@ -611,8 +619,7 @@ function reduceFeatureMatchSessionEvent(
 	if (type === 'SetSideboardRevealed') {
 		const player = playerSideOf(payload.player);
 		const revealed = payload.revealed;
-		if (!player || typeof revealed !== 'boolean')
-			return null;
+		if (!player || typeof revealed !== 'boolean') return null;
 		return {
 			sourceSnapshot,
 			currentState: {
@@ -632,8 +639,7 @@ function reduceFeatureMatchSessionEvent(
 
 	if (type === 'SelectFirstPlayer') {
 		const player = seatOf(payload.player, sourceSnapshot);
-		if (!player)
-			return null;
+		if (!player) return null;
 		return {
 			sourceSnapshot,
 			currentState: {
@@ -647,8 +653,7 @@ function reduceFeatureMatchSessionEvent(
 
 	if (type === 'SetFirstPlayer') {
 		const player = seatOf(payload.player, sourceSnapshot);
-		if (!player)
-			return null;
+		if (!player) return null;
 		return {
 			sourceSnapshot,
 			currentState: { ...currentState, firstPlayer: player },
@@ -657,8 +662,7 @@ function reduceFeatureMatchSessionEvent(
 
 	if (type === 'SetActivePlayer') {
 		const player = seatOf(payload.player, sourceSnapshot);
-		if (!player && payload.player != null)
-			return null;
+		if (!player && payload.player != null) return null;
 		return {
 			sourceSnapshot,
 			currentState: { ...currentState, activePlayer: player },
@@ -667,8 +671,7 @@ function reduceFeatureMatchSessionEvent(
 
 	if (type === 'SetTurnNumber') {
 		const turnNumber = finiteNumber(payload.turnNumber);
-		if (turnNumber === null)
-			return null;
+		if (turnNumber === null) return null;
 		return {
 			sourceSnapshot,
 			currentState: { ...currentState, turnNumber },
@@ -677,12 +680,12 @@ function reduceFeatureMatchSessionEvent(
 
 	if (type === 'RecordGameWin') {
 		const player = playerSideOf(payload.player);
-		const startingLife = finiteNumber(payload.startingLife ?? sourceSnapshot.defaults.startingLife ?? DEFAULT_STARTING_LIFE);
-		if (!player || startingLife === null)
-			return null;
+		const startingLife = finiteNumber(
+			payload.startingLife ?? sourceSnapshot.defaults.startingLife ?? DEFAULT_STARTING_LIFE,
+		);
+		if (!player || startingLife === null) return null;
 		// A decided match takes no further wins; undoing the deciding one reopens it.
-		if (currentState.isComplete)
-			return { currentState, sourceSnapshot };
+		if (currentState.isComplete) return { currentState, sourceSnapshot };
 		const opponent = otherFeatureMatchPlayer(player);
 		const resetLife = payload.resetLife !== false;
 		const resetCounters = payload.resetCounters !== false;
@@ -698,17 +701,13 @@ function reduceFeatureMatchSessionEvent(
 					...winner,
 					gameWins: wins,
 					lifeTotal: resetLife ? startingLife : winner.lifeTotal,
-					counters: resetCounters
-						? []
-						: winner.counters,
+					counters: resetCounters ? [] : winner.counters,
 					cardsKept: resetLife ? undefined : winner.cardsKept,
 				},
 				[opponent]: {
 					...currentState[opponent],
 					lifeTotal: resetLife ? startingLife : currentState[opponent].lifeTotal,
-					counters: resetCounters
-						? []
-						: currentState[opponent].counters,
+					counters: resetCounters ? [] : currentState[opponent].counters,
 					cardsKept: resetLife ? undefined : currentState[opponent].cardsKept,
 				},
 				currentGame: currentState.currentGame + 1,
@@ -722,16 +721,17 @@ function reduceFeatureMatchSessionEvent(
 
 	if (type === 'UndoGameWin') {
 		const player = playerSideOf(payload.player);
-		const startingLife = finiteNumber(payload.startingLife ?? sourceSnapshot.defaults.startingLife ?? DEFAULT_STARTING_LIFE);
-		if (!player || startingLife === null)
-			return null;
-		if (currentState[player].gameWins <= 0)
-			return { currentState, sourceSnapshot };
+		const startingLife = finiteNumber(
+			payload.startingLife ?? sourceSnapshot.defaults.startingLife ?? DEFAULT_STARTING_LIFE,
+		);
+		if (!player || startingLife === null) return null;
+		if (currentState[player].gameWins <= 0) return { currentState, sourceSnapshot };
 		const opponent = otherFeatureMatchPlayer(player);
 		const resetLife = payload.resetLife === true;
 		const resetCounters = payload.resetCounters === true;
 		const winsNeeded = Math.ceil(sourceSnapshot.bestOf / 2);
-		const stillDecided = Math.max(currentState[player].gameWins - 1, currentState[opponent].gameWins) >= winsNeeded;
+		const stillDecided =
+			Math.max(currentState[player].gameWins - 1, currentState[opponent].gameWins) >= winsNeeded;
 
 		return {
 			sourceSnapshot,
@@ -741,16 +741,12 @@ function reduceFeatureMatchSessionEvent(
 					...currentState[player],
 					gameWins: currentState[player].gameWins - 1,
 					lifeTotal: resetLife ? startingLife : currentState[player].lifeTotal,
-					counters: resetCounters
-						? []
-						: currentState[player].counters,
+					counters: resetCounters ? [] : currentState[player].counters,
 				},
 				[opponent]: {
 					...currentState[opponent],
 					lifeTotal: resetLife ? startingLife : currentState[opponent].lifeTotal,
-					counters: resetCounters
-						? []
-						: currentState[opponent].counters,
+					counters: resetCounters ? [] : currentState[opponent].counters,
 				},
 				currentGame: Math.max(1, currentState.currentGame - 1),
 				isComplete: stillDecided,
@@ -759,9 +755,10 @@ function reduceFeatureMatchSessionEvent(
 	}
 
 	if (type === 'ResetState') {
-		const startingLife = finiteNumber(payload.startingLife ?? sourceSnapshot.defaults.startingLife ?? DEFAULT_STARTING_LIFE);
-		if (startingLife === null)
-			return null;
+		const startingLife = finiteNumber(
+			payload.startingLife ?? sourceSnapshot.defaults.startingLife ?? DEFAULT_STARTING_LIFE,
+		);
+		if (startingLife === null) return null;
 		// A Commander Session's game is its whole Session, so either reset starts
 		// a new one with the same players (ADR-0087).
 		if (payload.type === 'match' || isCommander) {
@@ -786,8 +783,7 @@ function reduceFeatureMatchSessionEvent(
 
 	if (type === 'StartOvertime') {
 		const totalTurns = finiteNumber(payload.totalTurns);
-		if (totalTurns === null)
-			return null;
+		if (totalTurns === null) return null;
 		return {
 			sourceSnapshot,
 			currentState: {
@@ -799,8 +795,7 @@ function reduceFeatureMatchSessionEvent(
 
 	if (type === 'StepTurn') {
 		const delta = finiteNumber(payload.delta ?? 0);
-		if (delta === null)
-			return null;
+		if (delta === null) return null;
 		return {
 			sourceSnapshot,
 			currentState: isCommander
@@ -811,8 +806,7 @@ function reduceFeatureMatchSessionEvent(
 
 	if (type === 'StepOvertime') {
 		const delta = finiteNumber(payload.delta ?? 0);
-		if (delta === null)
-			return null;
+		if (delta === null) return null;
 		return {
 			sourceSnapshot,
 			currentState: applyFeatureMatchOvertimeStep(currentState, delta),

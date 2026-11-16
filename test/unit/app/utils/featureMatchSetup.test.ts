@@ -14,10 +14,12 @@ describe('featureMatchSetup payload helpers', () => {
 	});
 
 	it('turns completely empty player metadata into null', () => {
-		expect(normalizePlayerSlotData({
-			...DEFAULT_PLAYER_DATA,
-			gameData: { type: 'mtg', deckName: '', deckColors: null },
-		})).toBeNull();
+		expect(
+			normalizePlayerSlotData({
+				...DEFAULT_PLAYER_DATA,
+				gameData: { type: 'mtg', deckName: '', deckColors: null },
+			}),
+		).toBeNull();
 	});
 
 	it.each([
@@ -26,12 +28,14 @@ describe('featureMatchSetup payload helpers', () => {
 			gameData: { type: 'op', leader: ZORO },
 		},
 		{ leader: null, gameData: null },
-	])('saves a side\'s Leader $leader whole', ({ leader, gameData }) => {
-		expect(normalizePlayerSlotData({
-			...DEFAULT_PLAYER_DATA,
-			name: 'Ana',
-			gameData: { type: 'op', leader },
-		})?.gameData).toEqual(gameData);
+	])("saves a side's Leader $leader whole", ({ leader, gameData }) => {
+		expect(
+			normalizePlayerSlotData({
+				...DEFAULT_PLAYER_DATA,
+				name: 'Ana',
+				gameData: { type: 'op', leader },
+			})?.gameData,
+		).toEqual(gameData);
 	});
 
 	// The reference is how a side keeps its Deck List through a setup save.
@@ -44,11 +48,13 @@ describe('featureMatchSetup payload helpers', () => {
 			leader: null,
 			featureMatchDeckList: { id: 4, mainboardCount: 50 },
 		},
-	])('saves a side\'s Deck List reference with Leader $leader', (gameData) => {
-		expect(normalizePlayerSlotData({
-			...DEFAULT_PLAYER_DATA,
-			gameData: { type: 'op', ...gameData },
-		})?.gameData).toEqual({ type: 'op', ...gameData });
+	])("saves a side's Deck List reference with Leader $leader", (gameData) => {
+		expect(
+			normalizePlayerSlotData({
+				...DEFAULT_PLAYER_DATA,
+				gameData: { type: 'op', ...gameData },
+			})?.gameData,
+		).toEqual({ type: 'op', ...gameData });
 	});
 
 	it('turns blank numeric inputs into null', () => {
@@ -103,24 +109,28 @@ describe('featureMatchSetup payload helpers', () => {
 			},
 		},
 	])('saves a Seat holding Commanders as $held', ({ commanders, gameData, ...reference }) => {
-		expect(normalizePlayerSlotData({
-			...DEFAULT_PLAYER_DATA,
-			name: 'Cyd',
-			gameData: {
-				type: 'mtg',
-				commanders,
-				deckName: 'Atraxa / Tymna',
-				deckColors: 'WUBG',
-				...reference,
-			},
-		})?.gameData).toEqual(gameData);
+		expect(
+			normalizePlayerSlotData({
+				...DEFAULT_PLAYER_DATA,
+				name: 'Cyd',
+				gameData: {
+					type: 'mtg',
+					commanders,
+					deckName: 'Atraxa / Tymna',
+					deckColors: 'WUBG',
+					...reference,
+				},
+			})?.gameData,
+		).toEqual(gameData);
 	});
 
 	it('sends an edit to Seat 3 or 4 as it sends one to Seat 1', () => {
-		expect(buildFeatureMatchSetupUpdate({
-			player3Data: { ...DEFAULT_PLAYER_DATA, name: ' Cyd ' },
-			player4Data: { ...DEFAULT_PLAYER_DATA },
-		})).toEqual({
+		expect(
+			buildFeatureMatchSetupUpdate({
+				player3Data: { ...DEFAULT_PLAYER_DATA, name: ' Cyd ' },
+				player4Data: { ...DEFAULT_PLAYER_DATA },
+			}),
+		).toEqual({
 			player3Data: { name: 'Cyd' },
 			player4Data: null,
 		});

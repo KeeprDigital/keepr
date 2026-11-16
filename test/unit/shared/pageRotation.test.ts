@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { msUntilNextRotationFlip, pageRotationEdit, projectRotationPage, rotationAnchorForPage, rotationPageCount, rotationPageSize } from '~~/shared/modules/page-rotation';
+import {
+	msUntilNextRotationFlip,
+	pageRotationEdit,
+	projectRotationPage,
+	rotationAnchorForPage,
+	rotationPageCount,
+	rotationPageSize,
+} from '~~/shared/modules/page-rotation';
 
 // A Page Rotation's pages are the steps of an interval, whose own rules
 // `interval.test.ts` holds: here, what a step means as a page.
@@ -32,12 +39,13 @@ describe('page rotation projection', () => {
 		const now = 500_000;
 
 		const anchor = rotationAnchorForPage({ page: 3, pageDurationMs, now });
-		const pageAt = (instant: number) => projectRotationPage({
-			rotationAnchor: anchor,
-			pageDurationMs,
-			totalPages,
-			now: instant,
-		});
+		const pageAt = (instant: number) =>
+			projectRotationPage({
+				rotationAnchor: anchor,
+				pageDurationMs,
+				totalPages,
+				now: instant,
+			});
 
 		expect(pageAt(now)).toBe(3);
 		expect(pageAt(now + pageDurationMs - 1)).toBe(3);
@@ -47,7 +55,9 @@ describe('page rotation projection', () => {
 	it('mints integer anchors from a fractional clock estimate', () => {
 		// getServerTime() = Date.now() + an RTT-averaged float offset, but the
 		// config schema requires an integer — the anchor must round, not fail.
-		expect(rotationAnchorForPage({ page: 2, pageDurationMs: 10_000, now: 500_000.4375 })).toBe(490_000);
+		expect(rotationAnchorForPage({ page: 2, pageDurationMs: 10_000, now: 500_000.4375 })).toBe(
+			490_000,
+		);
 	});
 
 	it('reports the time to the next flip', () => {
@@ -86,7 +96,13 @@ describe('page rotation page size', () => {
 	});
 
 	it('an edit returning the page size to Auto is a page size edit', () => {
-		expect(pageRotationEdit(declaration, { autoPageEnabled: true }, { cardsPerPage: null }, 1_000_000.25))
-			.toEqual({ cardsPerPage: null, currentPage: 1, rotationAnchor: 1_000_000 });
+		expect(
+			pageRotationEdit(
+				declaration,
+				{ autoPageEnabled: true },
+				{ cardsPerPage: null },
+				1_000_000.25,
+			),
+		).toEqual({ cardsPerPage: null, currentPage: 1, rotationAnchor: 1_000_000 });
 	});
 });

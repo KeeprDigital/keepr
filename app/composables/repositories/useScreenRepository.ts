@@ -1,8 +1,4 @@
-import type {
-	CreateScreenInput,
-	Screen,
-	UpdateScreenInput,
-} from '~/types';
+import type { CreateScreenInput, Screen, UpdateScreenInput } from '~/types';
 import { screenOutputCapabilityHeaders } from '~~/shared/utils/screenOutput';
 import { useEventDataFetch, useEventDataResource } from '~/modules/event-data/client';
 
@@ -67,10 +63,8 @@ export function useScreenRepository() {
 			return await $fetch<Screen>(`/api/screen-output/events/${eventId}/screens/slug/${slug}`, {
 				headers: screenOutputCapabilityHeaders(assetCapability),
 			});
-		}
-		catch (failure) {
-			if (refusedByServer(failure))
-				return null;
+		} catch (failure) {
+			if (refusedByServer(failure)) return null;
 			throw new ScreenLookupUnavailable(failure);
 		}
 	};
@@ -89,8 +83,7 @@ export function useScreenRepository() {
 			return await $fetch<Screen>(`/api/screen-output/events/${eventId}/screens/${screenId}`, {
 				headers: screenOutputCapabilityHeaders(assetCapability),
 			});
-		}
-		catch {
+		} catch {
 			return null;
 		}
 	};

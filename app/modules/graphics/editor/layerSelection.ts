@@ -32,27 +32,45 @@ export function onlyLayer<L extends GraphicsEditorLayer>(layer: L): LayerSelecti
 	};
 }
 
-export function isLayerSelected<D, L extends GraphicsEditorLayer>(tree: GraphicsEditorTree<D, L>, layers: readonly L[], layer: L): boolean {
-	return layers.some(entry => isSameLayer(tree, entry, layer));
+export function isLayerSelected<D, L extends GraphicsEditorLayer>(
+	tree: GraphicsEditorTree<D, L>,
+	layers: readonly L[],
+	layer: L,
+): boolean {
+	return layers.some((entry) => isSameLayer(tree, entry, layer));
 }
 
 /** The composition a Graphic Item layer sits in; nothing for a host's own layer. */
-function compositionId<D, L extends GraphicsEditorLayer>(tree: GraphicsEditorTree<D, L>, document: D, layer: L): string | undefined {
+function compositionId<D, L extends GraphicsEditorLayer>(
+	tree: GraphicsEditorTree<D, L>,
+	document: D,
+	layer: L,
+): string | undefined {
 	return tree.item(document, layer)?.composition.id;
 }
 
 /** Whether two layers cannot be selected together: items of two compositions, a group with its own child, or children of two groups. */
-function conflicts<D, L extends GraphicsEditorLayer>(tree: GraphicsEditorTree<D, L>, document: D, a: L, b: L): boolean {
+function conflicts<D, L extends GraphicsEditorLayer>(
+	tree: GraphicsEditorTree<D, L>,
+	document: D,
+	a: L,
+	b: L,
+): boolean {
 	const compositionOfA = compositionId(tree, document, a);
 	const compositionOfB = compositionId(tree, document, b);
-	if (compositionOfA !== undefined && compositionOfB !== undefined && compositionOfA !== compositionOfB)
+	if (
+		compositionOfA !== undefined &&
+		compositionOfB !== undefined &&
+		compositionOfA !== compositionOfB
+	)
 		return true;
 	const groupOfA = layerParentGroup(tree, document, a);
 	const groupOfB = layerParentGroup(tree, document, b);
-	if (groupOfA && groupOfB)
-		return !isSameLayer(tree, groupOfA, groupOfB);
-	return (groupOfA !== undefined && isSameLayer(tree, groupOfA, b))
-		|| (groupOfB !== undefined && isSameLayer(tree, groupOfB, a));
+	if (groupOfA && groupOfB) return !isSameLayer(tree, groupOfA, groupOfB);
+	return (
+		(groupOfA !== undefined && isSameLayer(tree, groupOfA, b)) ||
+		(groupOfB !== undefined && isSameLayer(tree, groupOfB, a))
+	);
 }
 
 /** ⌘-click: add a layer, replacing a selection it cannot join, or take a selected one out. */
@@ -63,10 +81,10 @@ export function toggleLayer<D, L extends GraphicsEditorLayer>(
 	layer: L,
 ): LayerSelection<L> {
 	if (isLayerSelected(tree, selection.layers, layer)) {
-		const layers = selection.layers.filter(entry => !isSameLayer(tree, entry, layer));
+		const layers = selection.layers.filter((entry) => !isSameLayer(tree, entry, layer));
 		return { layers, anchor: layers.at(-1) ?? null };
 	}
-	if (selection.layers.some(entry => conflicts(tree, document, entry, layer)))
+	if (selection.layers.some((entry) => conflicts(tree, document, entry, layer)))
 		return onlyLayer(layer);
 	return {
 		layers: [...selection.layers, layer],
@@ -88,35 +106,32 @@ export function extendLayerSelection<D, L extends GraphicsEditorLayer>(
 	layer: L,
 ): LayerSelection<L> {
 	const order = tree.order(document);
-	const keys = order.map(entry => tree.key(entry));
-	const from = selection.anchor
-		? keys.indexOf(tree.key(selection.anchor))
-		: -1;
+	const keys = order.map((entry) => tree.key(entry));
+	const from = selection.anchor ? keys.indexOf(tree.key(selection.anchor)) : -1;
 	const to = keys.indexOf(tree.key(layer));
-	if (from < 0 || to < 0)
-		return onlyLayer(layer);
-	const run = from <= to
-		? order.slice(from, to + 1)
-		: order.slice(to, from + 1).reverse();
-	const inRun = new Set(run.map(entry => tree.key(entry)));
+	if (from < 0 || to < 0) return onlyLayer(layer);
+	const run = from <= to ? order.slice(from, to + 1) : order.slice(to, from + 1).reverse();
+	const inRun = new Set(run.map((entry) => tree.key(entry)));
 	const composition = compositionId(tree, document, layer);
 	const layers = run.filter((entry) => {
 		const group = layerParentGroup(tree, document, entry);
 		const within = compositionId(tree, document, entry);
-		return (group === undefined || !inRun.has(tree.key(group)))
-			&& (composition === undefined || within === undefined || within === composition);
+		return (
+			(group === undefined || !inRun.has(tree.key(group))) &&
+			(composition === undefined || within === undefined || within === composition)
+		);
 	});
 	const anchor = isLayerSelected(tree, layers, selection.anchor!)
 		? selection.anchor
-		: layers[0] ?? null;
+		: (layers[0] ?? null);
 	return { layers, anchor };
 }
 
 /** Escape: several layers collapse to the anchor, and one to none. */
-export function collapseLayerSelection<L extends GraphicsEditorLayer>(selection: LayerSelection<L>): LayerSelection<L> {
-	return selection.layers.length > 1 && selection.anchor
-		? onlyLayer(selection.anchor)
-		: NO_LAYERS;
+export function collapseLayerSelection<L extends GraphicsEditorLayer>(
+	selection: LayerSelection<L>,
+): LayerSelection<L> {
+	return selection.layers.length > 1 && selection.anchor ? onlyLayer(selection.anchor) : NO_LAYERS;
 }
 
 /** Drop the layers no longer in the document, whoever removed them. Answers the same selection when none went. */
@@ -125,11 +140,13 @@ export function pruneLayerSelection<D, L extends GraphicsEditorLayer>(
 	document: D,
 	selection: LayerSelection<L>,
 ): LayerSelection<L> {
-	const layers = selection.layers.filter(layer => layerConfig(tree, document, layer) !== undefined);
-	if (layers.length === selection.layers.length)
-		return selection;
-	const anchor = selection.anchor && isLayerSelected(tree, layers, selection.anchor)
-		? selection.anchor
-		: layers.at(-1) ?? null;
+	const layers = selection.layers.filter(
+		(layer) => layerConfig(tree, document, layer) !== undefined,
+	);
+	if (layers.length === selection.layers.length) return selection;
+	const anchor =
+		selection.anchor && isLayerSelected(tree, layers, selection.anchor)
+			? selection.anchor
+			: (layers.at(-1) ?? null);
 	return { layers, anchor };
 }

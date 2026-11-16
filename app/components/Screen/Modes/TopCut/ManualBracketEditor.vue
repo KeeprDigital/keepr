@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import type { BracketPosition, ManualBracket, ManualBracketEntrant, ManualBracketResult, TopCutBracketSize } from '~~/shared/modules/top-cut-bracket';
+import type {
+	BracketPosition,
+	ManualBracket,
+	ManualBracketEntrant,
+	ManualBracketResult,
+	TopCutBracketSize,
+} from '~~/shared/modules/top-cut-bracket';
 import {
 	deriveManualTopCutBracket,
 	manualBracketSeedsAt,
@@ -7,7 +13,11 @@ import {
 	withManualBracketEntrant,
 	withManualBracketResult,
 } from '~~/shared/modules/top-cut-bracket';
-import { MANUAL_BRACKET_ENTRANT_NAME_MAX, MANUAL_BRACKET_GAME_WINS_MAX, TOP_CUT_BRACKET_SIZES } from '~~/shared/screenModeConfigs/topCut';
+import {
+	MANUAL_BRACKET_ENTRANT_NAME_MAX,
+	MANUAL_BRACKET_GAME_WINS_MAX,
+	TOP_CUT_BRACKET_SIZES,
+} from '~~/shared/screenModeConfigs/topCut';
 import { playerLabel, playerMatchesSearch } from '~~/shared/utils/playerName';
 
 /**
@@ -26,30 +36,23 @@ const emit = defineEmits<{
 
 const playerStore = usePlayerStore();
 
-const sizeOptions = TOP_CUT_BRACKET_SIZES.map(size => ({ label: `Top ${size}`, value: size }));
+const sizeOptions = TOP_CUT_BRACKET_SIZES.map((size) => ({ label: `Top ${size}`, value: size }));
 
 const seeds = computed(() => Array.from({ length: props.manual.size }, (_, index) => index + 1));
 
 function playerName(playerId: number): string | null {
-	const player = playerStore.players.find(candidate => candidate.id === playerId);
-	return player
-		? playerLabel(player)
-		: null;
+	const player = playerStore.players.find((candidate) => candidate.id === playerId);
+	return player ? playerLabel(player) : null;
 }
 
 function entrantName(entrant: ManualBracketEntrant): string | null {
-	return 'playerId' in entrant
-		? playerName(entrant.playerId)
-		: entrant.name;
+	return 'playerId' in entrant ? playerName(entrant.playerId) : entrant.name;
 }
 
 /** An entrant as the picker names it: `player:<id>`, or `name:<typed name>`. */
 function entrantKey(entrant: ManualBracketEntrant | null | undefined): string | undefined {
-	if (!entrant)
-		return undefined;
-	return 'playerId' in entrant
-		? `player:${entrant.playerId}`
-		: `name:${entrant.name}`;
+	if (!entrant) return undefined;
+	return 'playerId' in entrant ? `player:${entrant.playerId}` : `name:${entrant.name}`;
 }
 
 function entrantOfKey(key: string): ManualBracketEntrant | null {
@@ -59,9 +62,7 @@ function entrantOfKey(key: string): ManualBracketEntrant | null {
 		};
 	}
 	const name = key.slice('name:'.length).trim().slice(0, MANUAL_BRACKET_ENTRANT_NAME_MAX);
-	return name
-		? { name }
-		: null;
+	return name ? { name } : null;
 }
 
 // Each Seed's picker finds a Player by name, Nickname or Bandai member number, or takes what was typed as a name.
@@ -70,8 +71,8 @@ const searches = ref<Record<number, string>>({});
 function seedItems(seed: number): Array<{ label: string; id: string }> {
 	const search = searches.value[seed] ?? '';
 	const items: Array<{ label: string; id: string }> = playerStore.players
-		.filter(player => playerMatchesSearch(player, search))
-		.map(player => ({
+		.filter((player) => playerMatchesSearch(player, search))
+		.map((player) => ({
 			label: playerLabel(player),
 			id: `player:${player.id}`,
 		}));
@@ -83,16 +84,14 @@ function seedItems(seed: number): Array<{ label: string; id: string }> {
 		});
 	}
 	const typed = search.trim();
-	if (typed && !items.some(item => item.label === typed))
+	if (typed && !items.some((item) => item.label === typed))
 		items.push({ label: `Use “${typed}” as a name`, id: `name:${typed}` });
 	return items;
 }
 
 function setEntrant(seed: number, key: string | null | undefined) {
 	searches.value = { ...searches.value, [seed]: '' };
-	emit('update', withManualBracketEntrant(props.manual, seed, key
-		? entrantOfKey(key)
-		: null));
+	emit('update', withManualBracketEntrant(props.manual, seed, key ? entrantOfKey(key) : null));
 }
 
 function setSize(size: TopCutBracketSize) {
@@ -100,27 +99,25 @@ function setSize(size: TopCutBracketSize) {
 }
 
 // The bracket as it will show, so each position offers its result once it seats two entrants.
-const bracket = computed(() => deriveManualTopCutBracket(props.manual, (entrant, seed) => {
-	const name = entrantName(entrant);
-	return name == null
-		? null
-		: {
-				playerId: 'playerId' in entrant
-					? entrant.playerId
-					: null,
-				name,
-				seed,
-			};
-}));
+const bracket = computed(() =>
+	deriveManualTopCutBracket(props.manual, (entrant, seed) => {
+		const name = entrantName(entrant);
+		return name == null
+			? null
+			: {
+					playerId: 'playerId' in entrant ? entrant.playerId : null,
+					name,
+					seed,
+				};
+	}),
+);
 
 function seedLabel(position: number, side: 0 | 1): string {
 	return `Seed ${manualBracketSeedsAt(props.manual.size, position)[side]}`;
 }
 
 function sideName(position: BracketPosition, side: 0 | 1): string {
-	return position.entrants[side]?.name ?? (position.status === 'bye'
-		? 'Bye'
-		: 'TBD');
+	return position.entrants[side]?.name ?? (position.status === 'bye' ? 'Bye' : 'TBD');
 }
 
 function resultAt(column: number, position: number): ManualBracketResult | null {
@@ -129,9 +126,7 @@ function resultAt(column: number, position: number): ManualBracketResult | null 
 
 function setWinner(column: number, position: number, winner: 0 | 1) {
 	const held = resultAt(column, position);
-	const next = held?.winner === winner
-		? null
-		: { winner, gameWins: held?.gameWins ?? null };
+	const next = held?.winner === winner ? null : { winner, gameWins: held?.gameWins ?? null };
 	emit('update', withManualBracketResult(props.manual, column, position, next));
 }
 
@@ -139,21 +134,26 @@ function gameWinsOf(column: number, position: number, side: 0 | 1): number | und
 	return resultAt(column, position)?.gameWins?.[side];
 }
 
-function setGameWins(column: number, position: number, side: 0 | 1, value: string | number | null | undefined) {
+function setGameWins(
+	column: number,
+	position: number,
+	side: 0 | 1,
+	value: string | number | null | undefined,
+) {
 	const held = resultAt(column, position);
-	if (!held)
-		return;
+	if (!held) return;
 	const wins = Number(value);
-	const clamped = value === '' || value == null || !Number.isFinite(wins)
-		? null
-		: Math.min(Math.max(Math.trunc(wins), 0), MANUAL_BRACKET_GAME_WINS_MAX);
+	const clamped =
+		value === '' || value == null || !Number.isFinite(wins)
+			? null
+			: Math.min(Math.max(Math.trunc(wins), 0), MANUAL_BRACKET_GAME_WINS_MAX);
 	const current = held.gameWins ?? [0, 0];
-	const gameWins: [number, number] | null = clamped == null
-		? null
-		: side === 0
-			? [clamped, current[1]]
-			: [current[0], clamped];
-	emit('update', withManualBracketResult(props.manual, column, position, { winner: held.winner, gameWins }));
+	const gameWins: [number, number] | null =
+		clamped == null ? null : side === 0 ? [clamped, current[1]] : [current[0], clamped];
+	emit(
+		'update',
+		withManualBracketResult(props.manual, column, position, { winner: held.winner, gameWins }),
+	);
 }
 
 /** A position takes a result once it seats both its entrants. */
@@ -178,19 +178,13 @@ function decidable(position: BracketPosition): boolean {
 		</ScreenSettingsField>
 
 		<fieldset class="flex flex-col gap-2" data-field="manualBracket.entrants">
-			<legend class="text-sm font-medium">
-				Entrants
-			</legend>
+			<legend class="text-sm font-medium">Entrants</legend>
 			<p class="text-xs text-muted">
-				List the top cut in Seed order; the bracket pairs them 1v8, 4v5, 2v7, 3v6. A Seed left empty is a bye. Pick a Player, or type a name.
+				List the top cut in Seed order; the bracket pairs them 1v8, 4v5, 2v7, 3v6. A Seed left empty
+				is a bye. Pick a Player, or type a name.
 			</p>
 			<ol class="flex flex-col gap-2">
-				<li
-					v-for="seed in seeds"
-					:key="seed"
-					class="flex items-center gap-2"
-					:data-seed="seed"
-				>
+				<li v-for="seed in seeds" :key="seed" class="flex items-center gap-2" :data-seed="seed">
 					<span class="w-8 text-xs text-muted tabular-nums">{{ seed }}</span>
 					<UInputMenu
 						v-model:search-term="searches[seed]"
@@ -219,11 +213,10 @@ function decidable(position: BracketPosition): boolean {
 		</fieldset>
 
 		<fieldset class="flex flex-col gap-2" data-field="manualBracket.results">
-			<legend class="text-sm font-medium">
-				Results
-			</legend>
+			<legend class="text-sm font-medium">Results</legend>
 			<p class="text-xs text-muted">
-				Pick who advanced from each match; the next round fills in. Add a game score if you want one shown.
+				Pick who advanced from each match; the next round fills in. Add a game score if you want one
+				shown.
 			</p>
 			<div class="flex flex-col gap-4">
 				<section
@@ -243,7 +236,7 @@ function decidable(position: BracketPosition): boolean {
 						:data-status="position.status"
 					>
 						<template v-if="decidable(position)">
-							<template v-for="side in ([0, 1] as const)" :key="side">
+							<template v-for="side in [0, 1] as const" :key="side">
 								<span v-if="side === 1" class="text-xs text-muted">vs</span>
 								<UButton
 									:data-testid="`manual-bracket-winner-${columnIndex}-${positionIndex}-${side}`"
@@ -257,7 +250,7 @@ function decidable(position: BracketPosition): boolean {
 							</template>
 							<template v-if="position.winner != null">
 								<UInput
-									v-for="side in ([0, 1] as const)"
+									v-for="side in [0, 1] as const"
 									:key="`score-${side}`"
 									:data-testid="`manual-bracket-score-${columnIndex}-${positionIndex}-${side}`"
 									:model-value="gameWinsOf(columnIndex, positionIndex, side)"
@@ -274,7 +267,8 @@ function decidable(position: BracketPosition): boolean {
 						</template>
 						<span v-else class="text-xs text-muted">
 							<template v-if="columnIndex === 0">
-								{{ position.entrants[0]?.name ?? seedLabel(positionIndex, 0) }} vs {{ position.entrants[1]?.name ?? seedLabel(positionIndex, 1) }}
+								{{ position.entrants[0]?.name ?? seedLabel(positionIndex, 0) }} vs
+								{{ position.entrants[1]?.name ?? seedLabel(positionIndex, 1) }}
 							</template>
 							<template v-else>
 								{{ sideName(position, 0) }} vs {{ sideName(position, 1) }}

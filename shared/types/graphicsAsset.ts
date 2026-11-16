@@ -89,36 +89,36 @@ export interface GraphicAssetUsage {
 	};
 }
 
-export type GraphicAssetLifecycleState = typeof GRAPHIC_ASSET_LIFECYCLE_STATES[number];
-export type GraphicAssetLifecycleAction = typeof GRAPHIC_ASSET_LIFECYCLE_ACTIONS[number];
+export type GraphicAssetLifecycleState = (typeof GRAPHIC_ASSET_LIFECYCLE_STATES)[number];
+export type GraphicAssetLifecycleAction = (typeof GRAPHIC_ASSET_LIFECYCLE_ACTIONS)[number];
 
-export type GraphicAssetLifecycle
-	= | {
-		state: 'active' | 'retired';
-	}
+export type GraphicAssetLifecycle =
 	| {
-		state: 'trashed';
-		priorState: 'active' | 'retired';
-		trashedAt: string;
-		recoverableUntil: string;
-	};
-
-export type GraphicAssetLifecycleActionOutcome
-	= | {
-		outcome: 'retired' | 'restored' | 'trashed';
-		asset: GraphicAsset;
-	}
+			state: 'active' | 'retired';
+	  }
 	| {
-		outcome: 'in-use';
-		usage: GraphicAssetUsage[];
-	};
+			state: 'trashed';
+			priorState: 'active' | 'retired';
+			trashedAt: string;
+			recoverableUntil: string;
+	  };
 
-export type GraphicAssetReferenceStatus
-	= | {
-		outcome: 'available';
-		lifecycleState: 'active' | 'retired' | 'trashed';
-		kind: 'image' | 'silent-video' | 'font';
-	}
+export type GraphicAssetLifecycleActionOutcome =
+	| {
+			outcome: 'retired' | 'restored' | 'trashed';
+			asset: GraphicAsset;
+	  }
+	| {
+			outcome: 'in-use';
+			usage: GraphicAssetUsage[];
+	  };
+
+export type GraphicAssetReferenceStatus =
+	| {
+			outcome: 'available';
+			lifecycleState: 'active' | 'retired' | 'trashed';
+			kind: 'image' | 'silent-video' | 'font';
+	  }
 	| { outcome: 'missing' }
 	| { outcome: 'unavailable'; retryable: true };
 
@@ -129,11 +129,11 @@ export type GraphicsDuplicateContentPolicy = 'reuse' | 'create-separate';
  * copy is a one-time transfer: the published Graphic Asset keeps no hotlink,
  * refresh schedule, or dependency on the remote host.
  */
-export type GraphicsIngestionSource
-	= | 'local-upload'
-		| 'remote-copy'
-		| 'replacement'
-		| 'template-package';
+export type GraphicsIngestionSource =
+	| 'local-upload'
+	| 'remote-copy'
+	| 'replacement'
+	| 'template-package';
 
 export interface GraphicAssetFontBrowserChallenge {
 	digest: string;
@@ -148,32 +148,31 @@ export interface GraphicAssetFontGlyphProof {
 	monoFallbackDigest: string;
 }
 
-export type GraphicAssetBrowserDecodeEvidence
-	= | {
-		outcome: 'decoded';
-		sourceDigest: string;
-		width: number;
-		height: number;
-	}
+export type GraphicAssetBrowserDecodeEvidence =
 	| {
-		outcome: 'rejected';
-		sourceDigest: string;
-	}
+			outcome: 'decoded';
+			sourceDigest: string;
+			width: number;
+			height: number;
+	  }
 	| {
-		outcome: 'font-loaded';
-		sourceDigest: string;
-		challengeDigest: string;
-		glyphProofs: GraphicAssetFontGlyphProof[];
-	}
+			outcome: 'rejected';
+			sourceDigest: string;
+	  }
 	| {
-		outcome: 'font-rejected';
-		sourceDigest: string;
-		challengeDigest: string;
-		stage: 'load' | 'render';
-	};
+			outcome: 'font-loaded';
+			sourceDigest: string;
+			challengeDigest: string;
+			glyphProofs: GraphicAssetFontGlyphProof[];
+	  }
+	| {
+			outcome: 'font-rejected';
+			sourceDigest: string;
+			challengeDigest: string;
+			stage: 'load' | 'render';
+	  };
 
-export type GraphicAssetBrowserValidationEvidence
-	= GraphicAssetBrowserDecodeEvidence;
+export type GraphicAssetBrowserValidationEvidence = GraphicAssetBrowserDecodeEvidence;
 
 export interface GraphicAssetSourceDeclarations {
 	sourceFileName?: string;
@@ -181,23 +180,23 @@ export interface GraphicAssetSourceDeclarations {
 	browserDecodeEvidence?: GraphicAssetBrowserValidationEvidence;
 }
 
-export type GraphicsIngestionStage
-	= | 'created'
-		| 'transferring'
-		| 'hashing'
-		| 'validating'
-		| 'generating-derivatives'
-		| 'awaiting-confirmation'
-		/**
-		 * A Template Package whose preflight succeeded and whose proposal the
-		 * author accepted, holding its verified staged result until installation
-		 * publishes it. Nothing it proposes is discoverable or addressable here.
-		 */
-		| 'awaiting-installation'
-		| 'publishing'
-		| 'completed'
-		| 'failed'
-		| 'cancelled';
+export type GraphicsIngestionStage =
+	| 'created'
+	| 'transferring'
+	| 'hashing'
+	| 'validating'
+	| 'generating-derivatives'
+	| 'awaiting-confirmation'
+	/**
+	 * A Template Package whose preflight succeeded and whose proposal the
+	 * author accepted, holding its verified staged result until installation
+	 * publishes it. Nothing it proposes is discoverable or addressable here.
+	 */
+	| 'awaiting-installation'
+	| 'publishing'
+	| 'completed'
+	| 'failed'
+	| 'cancelled';
 
 export interface GraphicAssetImageFacts {
 	kind: 'image';
@@ -264,10 +263,10 @@ export interface GraphicAssetSilentVideoFacts {
 	chromiumTransparencyPlayback?: true;
 }
 
-export type GraphicAssetCanonicalMime
-	= GraphicAssetImageFacts['canonicalMime']
-		| GraphicAssetSilentVideoFacts['canonicalMime']
-		| GraphicAssetFontFacts['canonicalMime'];
+export type GraphicAssetCanonicalMime =
+	| GraphicAssetImageFacts['canonicalMime']
+	| GraphicAssetSilentVideoFacts['canonicalMime']
+	| GraphicAssetFontFacts['canonicalMime'];
 
 export interface GraphicAssetValidationIssue {
 	severity: 'error';
@@ -349,33 +348,33 @@ export interface GraphicAssetValidationIssue {
 	message: string;
 }
 
-export type GraphicAssetValidationReport
-	= {
-		outcome: 'accepted';
-		compatibilityProfile: typeof STILL_IMAGE_COMPATIBILITY_PROFILE;
-		issues: [];
-		facts: GraphicAssetImageFacts;
-	}
+export type GraphicAssetValidationReport =
 	| {
-		outcome: 'rejected';
-		compatibilityProfile:
-			| typeof STILL_IMAGE_COMPATIBILITY_PROFILE
-			| typeof SILENT_VIDEO_COMPATIBILITY_PROFILE
-			| typeof STATIC_FONT_COMPATIBILITY_PROFILE;
-		issues: GraphicAssetValidationIssue[];
-	}
+			outcome: 'accepted';
+			compatibilityProfile: typeof STILL_IMAGE_COMPATIBILITY_PROFILE;
+			issues: [];
+			facts: GraphicAssetImageFacts;
+	  }
 	| {
-		outcome: 'accepted';
-		compatibilityProfile: typeof STATIC_FONT_COMPATIBILITY_PROFILE;
-		issues: [];
-		facts: GraphicAssetFontFacts;
-	}
+			outcome: 'rejected';
+			compatibilityProfile:
+				| typeof STILL_IMAGE_COMPATIBILITY_PROFILE
+				| typeof SILENT_VIDEO_COMPATIBILITY_PROFILE
+				| typeof STATIC_FONT_COMPATIBILITY_PROFILE;
+			issues: GraphicAssetValidationIssue[];
+	  }
 	| {
-		outcome: 'accepted';
-		compatibilityProfile: typeof SILENT_VIDEO_COMPATIBILITY_PROFILE;
-		issues: [];
-		facts: GraphicAssetSilentVideoFacts;
-	};
+			outcome: 'accepted';
+			compatibilityProfile: typeof STATIC_FONT_COMPATIBILITY_PROFILE;
+			issues: [];
+			facts: GraphicAssetFontFacts;
+	  }
+	| {
+			outcome: 'accepted';
+			compatibilityProfile: typeof SILENT_VIDEO_COMPATIBILITY_PROFILE;
+			issues: [];
+			facts: GraphicAssetSilentVideoFacts;
+	  };
 
 export interface GraphicsIngestionFailure {
 	code:
@@ -429,7 +428,7 @@ export const INSTALLED_GRAPHICS_TEMPLATE_KINDS = [
 	'feature-match-layout',
 ] as const;
 
-export type InstalledGraphicsTemplateKind = typeof INSTALLED_GRAPHICS_TEMPLATE_KINDS[number];
+export type InstalledGraphicsTemplateKind = (typeof INSTALLED_GRAPHICS_TEMPLATE_KINDS)[number];
 
 /**
  * One graphics Template a Template Package installed into this installation.
@@ -471,22 +470,22 @@ export interface InstalledGraphicsTemplate {
  */
 export type InstalledGraphicsTemplateSummary = Omit<InstalledGraphicsTemplate, 'references'>;
 
-export type GraphicsIngestionCapacityOutcome
-	= | {
-		outcome: 'canonical-growth-reserved';
-		growthBytes: number;
-		availableBytes: number;
-	}
+export type GraphicsIngestionCapacityOutcome =
 	| {
-		outcome: 'no-canonical-growth';
-		growthBytes: 0;
-		availableBytes: number;
-	}
+			outcome: 'canonical-growth-reserved';
+			growthBytes: number;
+			availableBytes: number;
+	  }
 	| {
-		outcome: 'canonical-capacity-blocked';
-		growthBytes: number;
-		availableBytes: number;
-	};
+			outcome: 'no-canonical-growth';
+			growthBytes: 0;
+			availableBytes: number;
+	  }
+	| {
+			outcome: 'canonical-capacity-blocked';
+			growthBytes: number;
+			availableBytes: number;
+	  };
 
 export interface GraphicsIngestionOperation extends GraphicAssetSourceDeclarations {
 	id: GraphicsIngestionOperationId;
@@ -559,15 +558,15 @@ export interface GraphicAsset {
 	operation: GraphicsIngestionOperation;
 }
 
-export type GraphicsAssetLibraryComponentHealth
-	= | { status: 'healthy' }
-		| {
+export type GraphicsAssetLibraryComponentHealth =
+	| { status: 'healthy' }
+	| {
 			status: 'unavailable';
 			reason: {
 				code: 'catalogue-unavailable' | 'byte-store-unavailable';
 				retryable: true;
 			};
-		};
+	  };
 
 export interface GraphicsAssetLibraryHealth {
 	status: 'healthy' | 'degraded';
@@ -583,41 +582,41 @@ export interface GraphicsAssetLibraryHealth {
  * Why a Graphic Asset Revision is retained, and when that retention ends.
  * Referenced and latest revisions have no deadline at all.
  */
-export type GraphicAssetRevisionRetention
-	= | { policy: 'latest-revision' }
-		| { policy: 'referenced'; referenceCount: number }
-		| {
+export type GraphicAssetRevisionRetention =
+	| { policy: 'latest-revision' }
+	| { policy: 'referenced'; referenceCount: number }
+	| {
 			policy: 'unreferenced-superseded';
 			unreferencedSince: string;
 			pruneAfter: string;
-		}
-		| {
+	  }
+	| {
 			policy: 'pruning-frozen';
 			unreferencedSince: string;
 			frozenAt: string;
 			remainingMilliseconds: number;
-		};
+	  };
 
-export type GraphicAssetPurgeReason = typeof GRAPHIC_ASSET_PURGE_REASONS[number];
+export type GraphicAssetPurgeReason = (typeof GRAPHIC_ASSET_PURGE_REASONS)[number];
 
-export type GraphicsRetentionEvidenceCategory
-	= typeof GRAPHICS_RETENTION_EVIDENCE_CATEGORIES[number];
+export type GraphicsRetentionEvidenceCategory =
+	(typeof GRAPHICS_RETENTION_EVIDENCE_CATEGORIES)[number];
 
-export type GraphicsReconciliationEvidenceCategory
-	= typeof GRAPHICS_RECONCILIATION_EVIDENCE_CATEGORIES[number];
+export type GraphicsReconciliationEvidenceCategory =
+	(typeof GRAPHICS_RECONCILIATION_EVIDENCE_CATEGORIES)[number];
 
 /** Every category the one shared Evidence ledger accepts. */
-export type GraphicsAssetEvidenceCategory
-	= | GraphicsRetentionEvidenceCategory
-		| GraphicsReconciliationEvidenceCategory;
+export type GraphicsAssetEvidenceCategory =
+	| GraphicsRetentionEvidenceCategory
+	| GraphicsReconciliationEvidenceCategory;
 
-export type GraphicsAssetEvidenceSubjectKind
-	= | 'graphics-ingestion-operation'
-		| 'graphic-asset'
-		| 'graphic-asset-revision'
-		| 'graphic-asset-content'
-		| 'graphics-derivative'
-		| 'graphics-discrepancy';
+export type GraphicsAssetEvidenceSubjectKind =
+	| 'graphics-ingestion-operation'
+	| 'graphic-asset'
+	| 'graphic-asset-revision'
+	| 'graphic-asset-content'
+	| 'graphics-derivative'
+	| 'graphics-discrepancy';
 
 /**
  * One durable administrator-facing record of an automated lifecycle decision.
@@ -840,27 +839,27 @@ export interface GraphicsRetentionOverview {
 	quarantinedContent: GraphicsContentQuarantineDeadline[];
 }
 
-export type GraphicAssetPurgeOutcome
-	= | {
-		outcome: 'purged';
-		assetId: GraphicAssetId;
-		purgedAt: string;
-		revisionCount: number;
-		/** References the fresh proof found across every revision; always 0 when purged. */
-		referenceCount: number;
-		reason: GraphicAssetPurgeReason;
-	}
+export type GraphicAssetPurgeOutcome =
 	| {
-		outcome: 'in-use';
-		usage: GraphicAssetUsage[];
-	};
+			outcome: 'purged';
+			assetId: GraphicAssetId;
+			purgedAt: string;
+			revisionCount: number;
+			/** References the fresh proof found across every revision; always 0 when purged. */
+			referenceCount: number;
+			reason: GraphicAssetPurgeReason;
+	  }
+	| {
+			outcome: 'in-use';
+			usage: GraphicAssetUsage[];
+	  };
 
-export type GraphicsDiscrepancyKind = typeof GRAPHICS_DISCREPANCY_KINDS[number];
-export type GraphicsDiscrepancyState = typeof GRAPHICS_DISCREPANCY_STATES[number];
-export type GraphicsDiscrepancyReasonCode = typeof GRAPHICS_DISCREPANCY_REASON_CODES[number];
-export type GraphicsDiscrepancyResolution = typeof GRAPHICS_DISCREPANCY_RESOLUTIONS[number];
-export type GraphicsDiscrepancyAction = typeof GRAPHICS_DISCREPANCY_ACTIONS[number];
-export type GraphicsRepairRejectionCode = typeof GRAPHICS_REPAIR_REJECTION_CODES[number];
+export type GraphicsDiscrepancyKind = (typeof GRAPHICS_DISCREPANCY_KINDS)[number];
+export type GraphicsDiscrepancyState = (typeof GRAPHICS_DISCREPANCY_STATES)[number];
+export type GraphicsDiscrepancyReasonCode = (typeof GRAPHICS_DISCREPANCY_REASON_CODES)[number];
+export type GraphicsDiscrepancyResolution = (typeof GRAPHICS_DISCREPANCY_RESOLUTIONS)[number];
+export type GraphicsDiscrepancyAction = (typeof GRAPHICS_DISCREPANCY_ACTIONS)[number];
+export type GraphicsRepairRejectionCode = (typeof GRAPHICS_REPAIR_REJECTION_CODES)[number];
 
 /**
  * One pinned use a discrepancy currently affects. Reconciliation never
@@ -975,22 +974,22 @@ export interface GraphicsReconciliationOverview {
 	discrepancies: GraphicsDiscrepancy[];
 }
 
-export type GraphicsDiscrepancyActionOutcome
-	= | {
-		outcome: 'resolved';
-		resolution: GraphicsDiscrepancyResolution;
-		discrepancy: GraphicsDiscrepancy;
-	}
+export type GraphicsDiscrepancyActionOutcome =
 	| {
-		outcome: 'unchanged';
-		discrepancy: GraphicsDiscrepancy;
-	}
+			outcome: 'resolved';
+			resolution: GraphicsDiscrepancyResolution;
+			discrepancy: GraphicsDiscrepancy;
+	  }
 	| {
-		outcome: 'rejected';
-		code: GraphicsRepairRejectionCode;
-		message: string;
-		discrepancy: GraphicsDiscrepancy;
-	};
+			outcome: 'unchanged';
+			discrepancy: GraphicsDiscrepancy;
+	  }
+	| {
+			outcome: 'rejected';
+			code: GraphicsRepairRejectionCode;
+			message: string;
+			discrepancy: GraphicsDiscrepancy;
+	  };
 
 export type GraphicsCanonicalCapacityPressure = 'normal' | 'warning' | 'critical' | 'full';
 
@@ -1029,11 +1028,11 @@ export interface GraphicsAssetLibraryCapacity {
  * the content it has recorded as unresolvable, and the canonical byte store
  * against the disagreements reconciliation has observed in it.
  */
-export type GraphicsLibraryDegradedReasonCode
+export type GraphicsLibraryDegradedReasonCode =
 	/** The catalogue answers and records content it cannot currently serve. */
-	= | 'catalogue-records-unavailable-content'
+	| 'catalogue-records-unavailable-content'
 	/** The byte store answers and its bytes disagree with what the catalogue expects. */
-		| 'canonical-bytes-disagree-with-catalogue';
+	| 'canonical-bytes-disagree-with-catalogue';
 
 /**
  * One library component's condition: whether it can answer at all, and whether
@@ -1045,9 +1044,9 @@ export type GraphicsLibraryDegradedReasonCode
  * disagreement is `degraded`; one that answers with nothing outstanding is
  * `healthy`.
  */
-export type GraphicsLibraryComponentCondition
-	= | { status: 'healthy' }
-		| {
+export type GraphicsLibraryComponentCondition =
+	| { status: 'healthy' }
+	| {
 			status: 'degraded';
 			reason: {
 				code: GraphicsLibraryDegradedReasonCode;
@@ -1055,14 +1054,14 @@ export type GraphicsLibraryComponentCondition
 				/** How many durable subjects currently hold it in this state. */
 				openCount: number;
 			};
-		}
-		| {
+	  }
+	| {
 			status: 'unavailable';
 			reason: {
 				code: 'catalogue-unavailable' | 'byte-store-unavailable';
 				retryable: true;
 			};
-		};
+	  };
 
 export type GraphicsLibraryConditionStatus = 'healthy' | 'degraded' | 'unavailable';
 
@@ -1243,25 +1242,25 @@ export interface GraphicsRecentOutcomeSummary {
  * alerts explaining it are present, and only the sections that genuinely
  * require the catalogue are absent.
  */
-export type GraphicsOperationsCockpit
-	= | {
-		outcome: 'complete';
-		checkedAt: string;
-		condition: GraphicsLibraryConditionSummary;
-		alerts: GraphicsStorageHealthAlertSummary;
-		capacity: GraphicsCockpitCapacity;
-		ingestion: GraphicsIngestionAttentionSummary;
-		reconciliation: GraphicsReconciliationBacklog;
-		lifecycle: GraphicsLifecycleSummary;
-		recentOutcomes: GraphicsRecentOutcomeSummary;
-	}
+export type GraphicsOperationsCockpit =
 	| {
-		/** The catalogue could not answer, so nothing it owns can be reported. */
-		outcome: 'catalogue-unavailable';
-		checkedAt: string;
-		condition: GraphicsLibraryConditionSummary;
-		alerts: GraphicsStorageHealthAlertSummary;
-	};
+			outcome: 'complete';
+			checkedAt: string;
+			condition: GraphicsLibraryConditionSummary;
+			alerts: GraphicsStorageHealthAlertSummary;
+			capacity: GraphicsCockpitCapacity;
+			ingestion: GraphicsIngestionAttentionSummary;
+			reconciliation: GraphicsReconciliationBacklog;
+			lifecycle: GraphicsLifecycleSummary;
+			recentOutcomes: GraphicsRecentOutcomeSummary;
+	  }
+	| {
+			/** The catalogue could not answer, so nothing it owns can be reported. */
+			outcome: 'catalogue-unavailable';
+			checkedAt: string;
+			condition: GraphicsLibraryConditionSummary;
+			alerts: GraphicsStorageHealthAlertSummary;
+	  };
 
 /**
  * What one queue item or inspection is about: an opaque domain identity and the
@@ -1331,32 +1330,32 @@ export interface GraphicsOperationalQueuesOverview {
  * reported; a Graphic Asset carries its lifecycle, its per-revision retention,
  * and its pinned usage; an operation carries its exact stage facts.
  */
-export type GraphicsQueueInspectionDetail
-	= | {
-		kind: 'graphics-discrepancy';
-		discrepancy: GraphicsDiscrepancy;
-	}
+export type GraphicsQueueInspectionDetail =
 	| {
-		kind: 'graphic-asset';
-		lifecycle: GraphicAssetLifecycle;
-		revisions: GraphicsRevisionPruningDeadline[];
-		usage: GraphicAssetUsage[];
-	}
+			kind: 'graphics-discrepancy';
+			discrepancy: GraphicsDiscrepancy;
+	  }
 	| {
-		kind: 'graphic-asset-revision';
-		assetId: GraphicAssetId;
-		revisionNumber: number;
-		retention: GraphicAssetRevisionRetention;
-		usage: GraphicAssetUsage[];
-	}
+			kind: 'graphic-asset';
+			lifecycle: GraphicAssetLifecycle;
+			revisions: GraphicsRevisionPruningDeadline[];
+			usage: GraphicAssetUsage[];
+	  }
 	| {
-		kind: 'graphics-ingestion-operation';
-		operation: GraphicsIngestionAttentionItem;
-	}
+			kind: 'graphic-asset-revision';
+			assetId: GraphicAssetId;
+			revisionNumber: number;
+			retention: GraphicAssetRevisionRetention;
+			usage: GraphicAssetUsage[];
+	  }
 	| {
-		kind: 'unreleased-staged-input';
-		strand: GraphicsUnreleasedStagedInput;
-	};
+			kind: 'graphics-ingestion-operation';
+			operation: GraphicsIngestionAttentionItem;
+	  }
+	| {
+			kind: 'unreleased-staged-input';
+			strand: GraphicsUnreleasedStagedInput;
+	  };
 
 /**
  * A terminal Graphics Ingestion Operation whose staged objects a failed release
@@ -1432,7 +1431,9 @@ export interface GraphicsActorNaming {
 export type GraphicsOperationsCockpitReading = GraphicsOperationsCockpit & GraphicsActorNaming;
 
 /** One queue inspection as its route serves it. */
-export interface GraphicsQueueInspectionReading extends GraphicsQueueInspection, GraphicsActorNaming {}
+export interface GraphicsQueueInspectionReading
+	extends GraphicsQueueInspection, GraphicsActorNaming {}
 
 /** One page of the Evidence ledger as its route serves it. */
-export interface GraphicsAssetEvidenceReading extends GraphicsAssetEvidencePage, GraphicsActorNaming {}
+export interface GraphicsAssetEvidenceReading
+	extends GraphicsAssetEvidencePage, GraphicsActorNaming {}

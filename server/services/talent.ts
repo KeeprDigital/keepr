@@ -12,7 +12,10 @@ import {
 	REQUIRED_GRAPHIC_ASSET_REFERENCES_RESOLVE,
 } from '~~/server/modules/graphic-asset-reference-resolution';
 import { buildReleaseScreenEventReferencesQuery } from '~~/server/services/screen';
-import { TALENT_PHOTO_SLOT, TALENT_REFERENCE_OWNER_KIND } from '~~/shared/utils/graphicsAssetReferences';
+import {
+	TALENT_PHOTO_SLOT,
+	TALENT_REFERENCE_OWNER_KIND,
+} from '~~/shared/utils/graphicsAssetReferences';
 
 /**
  * A photo write refused because the image revision it names stopped being
@@ -72,37 +75,31 @@ export function talentService() {
 
 	const findById = async (id: number, eventId: number) => {
 		return await db.query.eventTalents.findFirst({
-			where: and(
-				eq(eventTalents.id, id),
-				eq(eventTalents.eventId, eventId),
-			),
+			where: and(eq(eventTalents.id, id), eq(eventTalents.eventId, eventId)),
 		});
 	};
 
 	const findByEventId = async (eventId: number) => {
-		return await db
-			.select()
-			.from(eventTalents)
-			.where(eq(eventTalents.eventId, eventId));
+		return await db.select().from(eventTalents).where(eq(eventTalents.eventId, eventId));
 	};
 
 	/** The same columns by their stored names, for the photo write's own statements. */
-	const storedColumns = (fields: { name?: string; role?: string | null; socialProfiles?: SocialProfiles }): TalentColumnValues => {
+	const storedColumns = (fields: {
+		name?: string;
+		role?: string | null;
+		socialProfiles?: SocialProfiles;
+	}): TalentColumnValues => {
 		const values = {
-			...(fields.name === undefined
-				? {}
-				: { name: fields.name }),
-			...(fields.role === undefined
-				? {}
-				: { role: fields.role }),
-			...(fields.socialProfiles === undefined
-				? {}
-				: socialProfileColumns(fields.socialProfiles)),
+			...(fields.name === undefined ? {} : { name: fields.name }),
+			...(fields.role === undefined ? {} : { role: fields.role }),
+			...(fields.socialProfiles === undefined ? {} : socialProfileColumns(fields.socialProfiles)),
 		};
-		return Object.fromEntries(Object.entries(values).map(([key, value]) => [
-			eventTalents[key as keyof typeof values].name,
-			value,
-		]));
+		return Object.fromEntries(
+			Object.entries(values).map(([key, value]) => [
+				eventTalents[key as keyof typeof values].name,
+				value,
+			]),
+		);
 	};
 
 	const findByReferenceVersion = async (version: string) => {
@@ -134,17 +131,18 @@ export function talentService() {
 		const names = Object.keys(columns);
 		const client = db.$client;
 		await client.batch([
-			client.prepare(`
+			client
+				.prepare(`
 				INSERT INTO event_talents (${names.join(', ')})
 				SELECT ${names.map(() => '?').join(', ')}
 				WHERE 1 = 1
 					${REQUIRED_GRAPHIC_ASSET_REFERENCES_RESOLVE}
-			`).bind(...Object.values(columns), facts),
+			`)
+				.bind(...Object.values(columns), facts),
 			client.prepare(INSERT_PHOTO_REFERENCE).bind(now, now, facts, version),
 		]);
 		const created = await findByReferenceVersion(version);
-		if (!created)
-			throw new TalentPhotoReferenceConflict();
+		if (!created) throw new TalentPhotoReferenceConflict();
 		return created;
 	};
 
@@ -170,47 +168,40 @@ export function talentService() {
 		};
 		const client = db.$client;
 		const [written] = await client.batch([
-			client.prepare(`
+			client
+				.prepare(`
 				UPDATE event_talents
-				SET ${Object.keys(columns).map(name => `${name} = ?`).join(', ')}
+				SET ${Object.keys(columns)
+					.map((name) => `${name} = ?`)
+					.join(', ')}
 				WHERE id = ? AND event_id = ?
 					${facts ? REQUIRED_GRAPHIC_ASSET_REFERENCES_RESOLVE : ''}
-			`).bind(...Object.values(columns), id, eventId, ...(facts
-				? [facts]
-				: [])),
-			client.prepare(`
+			`)
+				.bind(...Object.values(columns), id, eventId, ...(facts ? [facts] : [])),
+			client
+				.prepare(`
 				DELETE FROM graphic_asset_references
 				WHERE owner_kind = '${TALENT_REFERENCE_OWNER_KIND}' AND owner_id = ? AND owner_slot = '${TALENT_PHOTO_SLOT}'
 					AND EXISTS (
 						SELECT 1 FROM event_talents WHERE id = ? AND graphic_asset_reference_version = ?
 					)
-			`).bind(String(id), id, version),
-			...(facts
-				? [
-						client.prepare(INSERT_PHOTO_REFERENCE).bind(now, now, facts, version),
-					]
-				: []),
+			`)
+				.bind(String(id), id, version),
+			...(facts ? [client.prepare(INSERT_PHOTO_REFERENCE).bind(now, now, facts, version)] : []),
 		]);
 		const talent = await findById(id, eventId);
-		if (talent && written?.meta.changes !== 1)
-			throw new TalentPhotoReferenceConflict();
+		if (talent && written?.meta.changes !== 1) throw new TalentPhotoReferenceConflict();
 		return talent;
 	};
 
-	const create = async (
-		eventId: number,
-		data: CreateTalentInput,
-	): Promise<DbEventTalent> => {
-		if (data.photo)
-			return await createWithPhoto(eventId, data, data.photo);
+	const create = async (eventId: number, data: CreateTalentInput): Promise<DbEventTalent> => {
+		if (data.photo) return await createWithPhoto(eventId, data, data.photo);
 		const { socialProfiles, photo: _none, ...fields } = data;
 		const [newTalent] = await db
 			.insert(eventTalents)
 			.values({
 				...fields,
-				...(socialProfiles === undefined
-					? {}
-					: socialProfileColumns(socialProfiles)),
+				...(socialProfiles === undefined ? {} : socialProfileColumns(socialProfiles)),
 				eventId,
 			})
 			.returning();
@@ -227,23 +218,15 @@ export function talentService() {
 		eventId: number,
 		data: UpdateTalentInput,
 	): Promise<DbEventTalent | undefined> => {
-		if (data.photo !== undefined)
-			return await updateWithPhoto(id, eventId, data, data.photo);
+		if (data.photo !== undefined) return await updateWithPhoto(id, eventId, data, data.photo);
 		const { socialProfiles, photo: _unchanged, ...fields } = data;
 		const [updatedTalent] = await db
 			.update(eventTalents)
 			.set({
 				...fields,
-				...(socialProfiles === undefined
-					? {}
-					: socialProfileColumns(socialProfiles)),
+				...(socialProfiles === undefined ? {} : socialProfileColumns(socialProfiles)),
 			})
-			.where(
-				and(
-					eq(eventTalents.id, id),
-					eq(eventTalents.eventId, eventId),
-				),
-			)
+			.where(and(eq(eventTalents.id, id), eq(eventTalents.eventId, eventId)))
 			.returning();
 
 		return updatedTalent;
@@ -253,14 +236,22 @@ export function talentService() {
 	 * Delete a Talent, releasing its photo and every Screen's Event Reference to
 	 * it in the same commit (ADR-0067, ADR-0070). Answers the Screens released.
 	 */
-	const remove = async (id: number, eventId: number): Promise<{ deleted: boolean; clearedScreens: DbScreen[] }> => {
+	const remove = async (
+		id: number,
+		eventId: number,
+	): Promise<{ deleted: boolean; clearedScreens: DbScreen[] }> => {
 		const [, deleted, clearedScreens] = await db.batch([
-			db.delete(graphicAssetReferences).where(and(
-				eq(graphicAssetReferences.ownerKind, TALENT_REFERENCE_OWNER_KIND),
-				eq(graphicAssetReferences.ownerId, String(id)),
-				eq(graphicAssetReferences.eventId, eventId),
-			)),
-			db.delete(eventTalents)
+			db
+				.delete(graphicAssetReferences)
+				.where(
+					and(
+						eq(graphicAssetReferences.ownerKind, TALENT_REFERENCE_OWNER_KIND),
+						eq(graphicAssetReferences.ownerId, String(id)),
+						eq(graphicAssetReferences.eventId, eventId),
+					),
+				),
+			db
+				.delete(eventTalents)
 				.where(and(eq(eventTalents.id, id), eq(eventTalents.eventId, eventId)))
 				.returning({ id: eventTalents.id }),
 			buildReleaseScreenEventReferencesQuery(eventId, ['talent', 'talentLineup']),

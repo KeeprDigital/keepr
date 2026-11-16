@@ -13,19 +13,18 @@ import { socialProfileValues } from '~~/shared/socialProfiles';
  * photo only while the Screen shows photos, so the answer names no revision the
  * Screen Output Asset Capability refuses (ADR-0070).
  */
-export async function findTalentScreen(eventId: number, config: TalentModeConfig): Promise<ScreenOutputTalentResponse> {
+export async function findTalentScreen(
+	eventId: number,
+	config: TalentModeConfig,
+): Promise<ScreenOutputTalentResponse> {
 	const ids = talentScreenTalentIds(config);
-	if (ids.length === 0)
-		return { talents: [] };
+	if (ids.length === 0) return { talents: [] };
 
 	const rows = await db
 		.select()
 		.from(eventTalents)
 		.where(and(eq(eventTalents.eventId, eventId), inArray(eventTalents.id, ids)));
-	const byId = new Map(rows.map(row => [
-		row.id,
-		mapTalentToResponse(row),
-	]));
+	const byId = new Map(rows.map((row) => [row.id, mapTalentToResponse(row)]));
 
 	return {
 		talents: ids.flatMap((id) => {
@@ -36,9 +35,7 @@ export async function findTalentScreen(eventId: number, config: TalentModeConfig
 							id: talent.id,
 							name: talent.name,
 							role: talent.role,
-							photo: config.showPhoto
-								? talent.photo
-								: null,
+							photo: config.showPhoto ? talent.photo : null,
 							socialProfiles: socialProfileValues(talent.socialProfiles, config.socialNetworks),
 						},
 					]

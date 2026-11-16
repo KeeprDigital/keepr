@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { ThemeAlignment } from '~~/shared/modules/theme';
-import { HORIZONTAL_ALIGN_SELECT_OPTIONS, VERTICAL_ALIGN_SELECT_OPTIONS } from '~~/shared/utils/selectOptions';
+import {
+	HORIZONTAL_ALIGN_SELECT_OPTIONS,
+	VERTICAL_ALIGN_SELECT_OPTIONS,
+} from '~~/shared/utils/selectOptions';
 
 // An alignment token: where a Screen host places its mode's content in the
 // Event Canvas, on each axis. Each pick commits the whole value.
@@ -19,7 +22,10 @@ function commit(edit: Partial<ThemeAlignment>) {
 		...props.modelValue,
 		...edit,
 	};
-	if (value.horizontal !== props.modelValue.horizontal || value.vertical !== props.modelValue.vertical)
+	if (
+		value.horizontal !== props.modelValue.horizontal ||
+		value.vertical !== props.modelValue.vertical
+	)
 		emit('commit', value);
 }
 </script>

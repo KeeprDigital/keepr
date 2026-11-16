@@ -94,25 +94,24 @@ export async function main(argv = process.argv) {
 				// alone left two failures under load with no cause to look at.
 				if (observed.outcome !== 'passed') {
 					const outcomes = {
-						'unavailable': 'browser-driver-unavailable',
-						'failed': 'animation-effect-page-failed',
+						unavailable: 'browser-driver-unavailable',
+						failed: 'animation-effect-page-failed',
 						'timed-out': 'browser-acceptance-timed-out',
 					};
-					const thrown = observed.outcome === 'failed'
-						? {
-								source: 'evaluate',
-								thrown: pageTextEvidence(observed.detail),
-							}
-						: {};
+					const thrown =
+						observed.outcome === 'failed'
+							? {
+									source: 'evaluate',
+									thrown: pageTextEvidence(observed.detail),
+								}
+							: {};
 					record([
 						{
 							code: outcomes[observed.outcome] ?? 'browser-acceptance-failed',
 							detail: {
 								page: HARNESS,
 								...thrown,
-								...(observed.diagnostics
-									? pageDiagnosticsEvidence(observed.diagnostics)
-									: {}),
+								...(observed.diagnostics ? pageDiagnosticsEvidence(observed.diagnostics) : {}),
 							},
 						},
 					]);
@@ -128,8 +127,7 @@ export async function main(argv = process.argv) {
 				let report;
 				try {
 					report = JSON.parse(observed.value);
-				}
-				catch {
+				} catch {
 					record([
 						{
 							code: 'animation-effect-page-failed',
@@ -139,15 +137,19 @@ export async function main(argv = process.argv) {
 					return { mode: 'local' };
 				}
 
-				record(judgeAnimationEffectReport(report).map(failure => failure.code === 'animation-effect-page-failed'
-					? {
-							...failure,
-							detail: {
-								...failure.detail,
-								...pageSaid,
-							},
-						}
-					: failure));
+				record(
+					judgeAnimationEffectReport(report).map((failure) =>
+						failure.code === 'animation-effect-page-failed'
+							? {
+									...failure,
+									detail: {
+										...failure.detail,
+										...pageSaid,
+									},
+								}
+							: failure,
+					),
+				);
 				return {
 					mode: 'local',
 					backend: report.backend,
@@ -155,13 +157,11 @@ export async function main(argv = process.argv) {
 					scenarios: (report.scenarios ?? []).length,
 					settles: (report.settles ?? []).length,
 				};
-			}
-			finally {
+			} finally {
 				await local.close();
 			}
 		},
 	});
 }
 
-if (import.meta.main)
-	await main();
+if (import.meta.main) await main();

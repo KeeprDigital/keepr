@@ -3,7 +3,10 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { acceptanceProfilePrefix, checkoutProfileMarker } from '../../../scripts/graphics-acceptance/chromium-profile.mjs';
+import {
+	acceptanceProfilePrefix,
+	checkoutProfileMarker,
+} from '../../../scripts/graphics-acceptance/chromium-profile.mjs';
 import {
 	discoverCheckoutRoots,
 	reapLeakedAcceptanceChrome,
@@ -15,7 +18,8 @@ import {
 const repositoryRoot = '/Users/dev/stream-keepr';
 const externalWorktreeRoot = '/Users/dev/.codex/worktrees/a1b2/stream-keepr';
 const checkoutRoots = [repositoryRoot, externalWorktreeRoot];
-const workerdPath = 'node_modules/.pnpm/@cloudflare+workerd-darwin-arm64@1.0.0/node_modules/@cloudflare/workerd-darwin-arm64/bin/workerd';
+const workerdPath =
+	'node_modules/.pnpm/@cloudflare+workerd-darwin-arm64@1.0.0/node_modules/@cloudflare/workerd-darwin-arm64/bin/workerd';
 const workerdBinary = `${repositoryRoot}/${workerdPath}`;
 
 describe('selecting orphaned workerd processes', () => {
@@ -57,13 +61,14 @@ describe('selecting orphaned workerd processes', () => {
 		expect(selectOrphanedWorkerd(psOutput, checkoutRoots)).toEqual([]);
 	});
 
-	it('leaves another repository\'s orphaned workerd alone', () => {
-		const psOutput = '50000     1 /Users/dev/other-project/node_modules/@cloudflare/workerd-darwin-arm64/bin/workerd serve\n';
+	it("leaves another repository's orphaned workerd alone", () => {
+		const psOutput =
+			'50000     1 /Users/dev/other-project/node_modules/@cloudflare/workerd-darwin-arm64/bin/workerd serve\n';
 
 		expect(selectOrphanedWorkerd(psOutput, checkoutRoots)).toEqual([]);
 	});
 
-	it('leaves an orphan alone in an unregistered checkout sharing a root\'s prefix', () => {
+	it("leaves an orphan alone in an unregistered checkout sharing a root's prefix", () => {
 		const psOutput = `50002     1 ${repositoryRoot}-scratch/${workerdPath} serve\n`;
 
 		expect(selectOrphanedWorkerd(psOutput, checkoutRoots)).toEqual([]);
@@ -82,8 +87,7 @@ describe('reaping orphaned workerd processes', () => {
 	it('terminates each orphan and reports the reaped pids', async () => {
 		const signals: Array<[number, string | number]> = [];
 		const kill = (pid: number, signal: string | number) => {
-			if (signal === 0)
-				throw Object.assign(new Error('gone'), { code: 'ESRCH' });
+			if (signal === 0) throw Object.assign(new Error('gone'), { code: 'ESRCH' });
 			signals.push([pid, signal]);
 		};
 
@@ -95,16 +99,13 @@ describe('reaping orphaned workerd processes', () => {
 		});
 
 		expect(reaped).toEqual([61019]);
-		expect(signals).toEqual([
-			[61019, 'SIGTERM'],
-		]);
+		expect(signals).toEqual([[61019, 'SIGTERM']]);
 	});
 
 	it('escalates to SIGKILL when an orphan survives SIGTERM', async () => {
 		const signals: Array<[number, string | number]> = [];
 		const kill = (pid: number, signal: string | number) => {
-			if (signal !== 0)
-				signals.push([pid, signal]);
+			if (signal !== 0) signals.push([pid, signal]);
 		};
 
 		await reapOrphanedWorkerd({
@@ -135,9 +136,7 @@ describe('reaping orphaned workerd processes', () => {
 		});
 
 		expect(reaped).toEqual([]);
-		expect(signals).toEqual([
-			[61019, 'SIGTERM'],
-		]);
+		expect(signals).toEqual([[61019, 'SIGTERM']]);
 	});
 
 	it('reaps nothing and skips the grace wait when no orphans exist', async () => {
@@ -147,7 +146,9 @@ describe('reaping orphaned workerd processes', () => {
 			psOutput: '',
 			checkoutRoots,
 			kill: () => {},
-			sleep: async () => { slept = true; },
+			sleep: async () => {
+				slept = true;
+			},
 		});
 
 		expect(reaped).toEqual([]);
@@ -163,7 +164,8 @@ describe('reaping orphaned workerd processes', () => {
  */
 describe('selecting leaked acceptance Chrome', () => {
 	const chrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-	const helper = '/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/155.0.8059.85/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)';
+	const helper =
+		'/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/155.0.8059.85/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)';
 	const profileOf = (root: string) =>
 		`/var/folders/h9/xyz/T/${acceptanceProfilePrefix(checkoutProfileMarker(root))}AbC123`;
 	const ours = profileOf(repositoryRoot);
@@ -172,7 +174,7 @@ describe('selecting leaked acceptance Chrome', () => {
 	const renderer = (profile: string) =>
 		`${helper} --type=renderer --user-data-dir=${profile} --headless=new --lang=en-GB`;
 
-	it('selects an orphaned headless browser with this repository\'s profile, and its helpers', () => {
+	it("selects an orphaned headless browser with this repository's profile, and its helpers", () => {
 		const psOutput = [
 			`81000     1 ${browser(ours)}`,
 			`81001 81000 ${renderer(ours)}`,
@@ -189,15 +191,12 @@ describe('selecting leaked acceptance Chrome', () => {
 	});
 
 	it('leaves the browser of a run still in progress alone', () => {
-		const psOutput = [
-			`81020 81019 ${browser(ours)}`,
-			`81021 81020 ${renderer(ours)}`,
-		].join('\n');
+		const psOutput = [`81020 81019 ${browser(ours)}`, `81021 81020 ${renderer(ours)}`].join('\n');
 
 		expect(selectLeakedAcceptanceChrome(psOutput, checkoutRoots)).toEqual([]);
 	});
 
-	it('leaves a person\'s own Chrome alone, orphaned or not', () => {
+	it("leaves a person's own Chrome alone, orphaned or not", () => {
 		const psOutput = [
 			`500     1 ${chrome}`,
 			`501   500 ${helper} --type=renderer --user-data-dir=/Users/dev/Library/Application Support/Google/Chrome`,
@@ -207,13 +206,13 @@ describe('selecting leaked acceptance Chrome', () => {
 		expect(selectLeakedAcceptanceChrome(psOutput, checkoutRoots)).toEqual([]);
 	});
 
-	it('leaves another repository\'s acceptance browser alone', () => {
+	it("leaves another repository's acceptance browser alone", () => {
 		const psOutput = `81030     1 ${browser(profileOf('/Users/dev/other-project'))}`;
 
 		expect(selectLeakedAcceptanceChrome(psOutput, checkoutRoots)).toEqual([]);
 	});
 
-	it('leaves an orphan with this repository\'s profile alone unless it is headless', () => {
+	it("leaves an orphan with this repository's profile alone unless it is headless", () => {
 		const psOutput = `81040     1 ${chrome} --user-data-dir=${ours}`;
 
 		expect(selectLeakedAcceptanceChrome(psOutput, checkoutRoots)).toEqual([]);
@@ -222,8 +221,7 @@ describe('selecting leaked acceptance Chrome', () => {
 	it('terminates a leaked browser and escalates to SIGKILL when it ignores SIGTERM', async () => {
 		const signals: Array<[number, string | number]> = [];
 		const kill = (pid: number, signal: string | number) => {
-			if (signal !== 0)
-				signals.push([pid, signal]);
+			if (signal !== 0) signals.push([pid, signal]);
 		};
 
 		const reaped = await reapLeakedAcceptanceChrome({
@@ -244,7 +242,7 @@ describe('selecting leaked acceptance Chrome', () => {
 });
 
 /** Discovery only reads what Git registered, so one layout is built once for both cases. */
-describe('discovering this repository\'s checkout roots', () => {
+describe("discovering this repository's checkout roots", () => {
 	let base: string;
 	let checkouts: { main: string; nested: string; external: string; unrelated: string };
 

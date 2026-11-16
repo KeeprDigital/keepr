@@ -26,9 +26,8 @@ async function onTheRoundClock(settling: () => Promise<void>) {
 	for (;;) {
 		vi.advanceTimersToNextTimer();
 		// One real turn of the event loop, for the promises between two round timers.
-		const turned = new Promise<'turned'>(resolve => setImmediate(resolve, 'turned'));
-		if (await Promise.race([settled, turned]) === 'settled')
-			return;
+		const turned = new Promise<'turned'>((resolve) => setImmediate(resolve, 'turned'));
+		if ((await Promise.race([settled, turned])) === 'settled') return;
 	}
 }
 
@@ -49,8 +48,7 @@ describe('settleUntil', () => {
 	it('fails when the condition never holds', async () => {
 		let rounds = 0;
 		const settled = settleUntil(() => {
-			if (++rounds === 3)
-				passTheBound();
+			if (++rounds === 3) passTheBound();
 			return false;
 		});
 
@@ -62,8 +60,7 @@ describe('settleUntilStill', () => {
 	it('returns once what it watches has held still', async () => {
 		let changes = 0;
 		const changing = setInterval(() => {
-			if (++changes === 10)
-				clearInterval(changing);
+			if (++changes === 10) clearInterval(changing);
 		}, 10);
 
 		await settleUntilStill(() => changes);
@@ -74,11 +71,12 @@ describe('settleUntilStill', () => {
 	it('fails when what it watches never holds still', async () => {
 		let rounds = 0;
 		const settled = settleUntilStill(() => {
-			if (++rounds === 3)
-				passTheBound();
+			if (++rounds === 3) passTheBound();
 			return rounds;
 		});
 
-		await expect(settled).rejects.toThrow(/settleUntilStill: the snapshot did not hold still within \d+ ms/);
+		await expect(settled).rejects.toThrow(
+			/settleUntilStill: the snapshot did not hold still within \d+ ms/,
+		);
 	});
 });

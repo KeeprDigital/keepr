@@ -13,7 +13,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -35,12 +36,17 @@ beforeEach(() => publishMessage.mockClear());
 afterAll(async () => await harness.close());
 
 async function stageRound(controlMode: RoundControlMode) {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Round Control Open', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning();
 	const eventId = event!.id;
-	const [phase] = await db.insert(schema.phases).values({ eventId, name: 'Swiss', sortOrder: 0 }).returning();
-	const [round] = await db.insert(schema.rounds)
+	const [phase] = await db
+		.insert(schema.phases)
+		.values({ eventId, name: 'Swiss', sortOrder: 0 })
+		.returning();
+	const [round] = await db
+		.insert(schema.rounds)
 		.values({
 			eventId,
 			phaseId: phase!.id,
@@ -56,31 +62,29 @@ describe('enabling manual override on a Round', () => {
 	it.each([
 		{ from: 'default', announces: 1 },
 		{ from: 'manual_override', announces: 0 },
-	] as const)('from $from leaves it under manual override and announces it $announces time(s)', async ({ from, announces }) => {
-		const { eventId, roundId } = await stageRound(from);
+	] as const)(
+		'from $from leaves it under manual override and announces it $announces time(s)',
+		async ({ from, announces }) => {
+			const { eventId, roundId } = await stageRound(from);
 
-		const round = await roundControlModule().enableManualOverride(request, eventId, roundId);
+			const round = await roundControlModule().enableManualOverride(request, eventId, roundId);
 
-		expect(round).toMatchObject({ id: roundId, controlMode: 'manual_override' });
-		const [stored] = await db.select().from(schema.rounds).where(eq(schema.rounds.id, roundId));
-		expect(stored?.controlMode).toBe('manual_override');
-		expect(publishMessage.mock.calls).toEqual([
-			[
-				eventId,
-				'round:updated',
-				{ round },
-				'origin-1',
-			],
-		].slice(0, announces));
-	});
+			expect(round).toMatchObject({ id: roundId, controlMode: 'manual_override' });
+			const [stored] = await db.select().from(schema.rounds).where(eq(schema.rounds.id, roundId));
+			expect(stored?.controlMode).toBe('manual_override');
+			expect(publishMessage.mock.calls).toEqual(
+				[[eventId, 'round:updated', { round }, 'origin-1']].slice(0, announces),
+			);
+		},
+	);
 
 	it('refuses a Round another Event holds, announcing nothing', async () => {
 		const { roundId } = await stageRound('default');
 		const other = await stageRound('default');
 
-		await expect(roundControlModule().enableManualOverride(request, other.eventId, roundId))
-			.rejects
-			.toMatchObject({ statusCode: 404 });
+		await expect(
+			roundControlModule().enableManualOverride(request, other.eventId, roundId),
+		).rejects.toMatchObject({ statusCode: 404 });
 
 		const [stored] = await db.select().from(schema.rounds).where(eq(schema.rounds.id, roundId));
 		expect(stored?.controlMode).toBe('default');

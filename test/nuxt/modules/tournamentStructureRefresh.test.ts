@@ -1,6 +1,12 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMockEvent, createMockFeatureMatch, createMockMatch, createMockPhase, createMockRound } from '~~/test/helpers/fixtures';
+import {
+	createMockEvent,
+	createMockFeatureMatch,
+	createMockMatch,
+	createMockPhase,
+	createMockRound,
+} from '~~/test/helpers/fixtures';
 import { settleUntil, settleUntilStill } from '~~/test/helpers/settle';
 import { realtimeHandlersFor } from '~~/test/nuxt/helpers/realtimeEventSession';
 
@@ -26,18 +32,10 @@ const EVENT = '/api/events/1';
 
 async function loadStructure() {
 	server.held = {
-		[`${EVENT}/phases`]: [
-			createMockPhase({ id: 1 }),
-		],
-		[`${EVENT}/rounds`]: [
-			createMockRound({ id: 5, phaseId: 1 }),
-		],
-		[`${EVENT}/matches`]: [
-			createMockMatch({ id: 7, roundId: 5 }),
-		],
-		[`${EVENT}/feature-match-slots`]: [
-			createMockFeatureMatch({ id: 3, matchId: 7 }),
-		],
+		[`${EVENT}/phases`]: [createMockPhase({ id: 1 })],
+		[`${EVENT}/rounds`]: [createMockRound({ id: 5, phaseId: 1 })],
+		[`${EVENT}/matches`]: [createMockMatch({ id: 7, roundId: 5 })],
+		[`${EVENT}/feature-match-slots`]: [createMockFeatureMatch({ id: 3, matchId: 7 })],
 	};
 	await Promise.all([
 		usePhaseStore().loadPhasesByEventId(1),
@@ -51,17 +49,15 @@ async function loadStructure() {
 function cascadeOnServer() {
 	server.held[`${EVENT}/rounds`] = [];
 	server.held[`${EVENT}/matches`] = [];
-	server.held[`${EVENT}/feature-match-slots`] = [
-		createMockFeatureMatch({ id: 3, matchId: null }),
-	];
+	server.held[`${EVENT}/feature-match-slots`] = [createMockFeatureMatch({ id: 3, matchId: null })];
 	server.reads = [];
 }
 
 function heldStructure() {
 	return {
-		rounds: useRoundStore().rounds.map(round => round.id),
-		matches: useMatchStore().matches.map(match => match.id),
-		slotMatches: useFeatureMatchStore().featureMatches.map(slot => slot.matchId),
+		rounds: useRoundStore().rounds.map((round) => round.id),
+		matches: useMatchStore().matches.map((match) => match.id),
+		slotMatches: useFeatureMatchStore().featureMatches.map((slot) => slot.matchId),
 	};
 }
 
@@ -75,16 +71,8 @@ describe('a Phase or Round delete', () => {
 	// The Round store drops this client's own deleted Round as the delete answers,
 	// before the re-read, so only that row still holds it here.
 	it.each([
-		[
-			'a peer deletes a Phase',
-			[],
-			() => deliver('phase:deleted', { phaseId: 1 }),
-		],
-		[
-			'a peer deletes a Round',
-			[],
-			() => deliver('round:deleted', { roundId: 5 }),
-		],
+		['a peer deletes a Phase', [], () => deliver('phase:deleted', { phaseId: 1 })],
+		['a peer deletes a Round', [], () => deliver('round:deleted', { roundId: 5 })],
 		[
 			'this client deleted a Phase',
 			[],
@@ -99,8 +87,11 @@ describe('a Phase or Round delete', () => {
 		cascadeOnServer();
 
 		await act();
-		await settleUntil(() => useFeatureMatchStore().featureMatches[0]?.matchId === null
-			&& useMatchStore().matches.length === 0);
+		await settleUntil(
+			() =>
+				useFeatureMatchStore().featureMatches[0]?.matchId === null &&
+				useMatchStore().matches.length === 0,
+		);
 
 		expect(heldStructure()).toEqual({
 			rounds,

@@ -4,14 +4,15 @@ import type {
 	GraphicAssetRevisionId,
 	GraphicsDiscrepancy,
 } from '~~/shared/types/graphicsAsset';
-import type { TestGraphicsLibrary, TestGraphicsLibraryOptions } from '~~/test/helpers/graphicsLibrary';
+import type {
+	TestGraphicsLibrary,
+	TestGraphicsLibraryOptions,
+} from '~~/test/helpers/graphicsLibrary';
 import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 
-import {
-	graphicsObjectIdentity,
-} from '~~/server/modules/graphics-asset-library/object-store';
+import { graphicsObjectIdentity } from '~~/server/modules/graphics-asset-library/object-store';
 import { evidenceOf } from '~~/test/helpers/graphicsEvidence';
 import {
 	digestOf,
@@ -70,12 +71,19 @@ function createReconciliationLibrary(dependencies: Partial<TestGraphicsLibraryOp
 	});
 }
 
-function ingestImage(context: TestGraphicsLibrary, options: { idempotencyKey: string; name: string; bytes?: Uint8Array }) {
+function ingestImage(
+	context: TestGraphicsLibrary,
+	options: { idempotencyKey: string; name: string; bytes?: Uint8Array },
+) {
 	return ingestSharedImage(context, { initiatedBy: 'reconciliation-author', ...options });
 }
 const publishedReference = publishedRevision;
 /** Each reference sits in its own slot, named after it. */
-function addReference(input: { referenceId: string; assetId: GraphicAssetId; revisionId: GraphicAssetRevisionId }) {
+function addReference(input: {
+	referenceId: string;
+	assetId: GraphicAssetId;
+	revisionId: GraphicAssetRevisionId;
+}) {
 	return addScreenReference(harness, { ...input, ownerSlot: input.referenceId });
 }
 
@@ -86,8 +94,7 @@ async function thumbnailDigest(revisionId: GraphicAssetRevisionId) {
 		args: [revisionId],
 	});
 	const digest = result.rows[0]?.content_digest;
-	if (typeof digest !== 'string')
-		throw new TypeError('The revision has no Graphics Derivative');
+	if (typeof digest !== 'string') throw new TypeError('The revision has no Graphics Derivative');
 	return digest;
 }
 
@@ -96,16 +103,17 @@ async function contentAvailability(digest: string) {
 		sql: 'SELECT availability, unavailable_reason_code FROM graphic_asset_contents WHERE digest = ?',
 		args: [digest],
 	});
-	return result.rows[0] as { availability: string; unavailable_reason_code: string | null } | undefined;
+	return result.rows[0] as
+		| { availability: string; unavailable_reason_code: string | null }
+		| undefined;
 }
 
 function openDiscrepancy(
 	discrepancies: readonly GraphicsDiscrepancy[],
 	kind: GraphicsDiscrepancy['kind'],
 ) {
-	const found = discrepancies.find(discrepancy => discrepancy.kind === kind);
-	if (!found)
-		throw new Error(`No open ${kind} discrepancy was recorded`);
+	const found = discrepancies.find((discrepancy) => discrepancy.kind === kind);
+	if (!found) throw new Error(`No open ${kind} discrepancy was recorded`);
 	return found;
 }
 
@@ -136,14 +144,16 @@ describe('graphics asset reconciliation', () => {
 
 			// The identity, its revision, and its pinned usage are untouched.
 			const assets = await context.library.listGraphicAssets({});
-			expect(assets.map(asset => asset.id)).toContain(reference.assetId);
+			expect(assets.map((asset) => asset.id)).toContain(reference.assetId);
 			const usage = await context.library.listGraphicAssetUsage({ assetId: reference.assetId });
 			expect(usage).toHaveLength(1);
 			expect(usage[0]?.reference).toEqual(reference);
 
 			// The revision resolves as retryably unavailable, never as missing.
-			expect(await context.library.inspectGraphicAssetRevision(reference))
-				.toEqual({ outcome: 'unavailable', retryable: true });
+			expect(await context.library.inspectGraphicAssetRevision(reference)).toEqual({
+				outcome: 'unavailable',
+				retryable: true,
+			});
 		});
 
 		it('keeps one persistent alert rather than a new incident every pass', async () => {
@@ -158,12 +168,13 @@ describe('graphics asset reconciliation', () => {
 			const after = await context.library.getReconciliationOverview();
 
 			expect(after.openCounts['unavailable-content']).toBe(1);
-			expect(after.discrepancies.filter(entry => entry.kind === 'unavailable-content'))
-				.toHaveLength(1);
+			expect(
+				after.discrepancies.filter((entry) => entry.kind === 'unavailable-content'),
+			).toHaveLength(1);
 			// The incident keeps its original detection instant and gains a fresh
 			// observation, so its age is real.
-			const [before] = first.discrepancies.filter(entry => entry.kind === 'unavailable-content');
-			const [now] = after.discrepancies.filter(entry => entry.kind === 'unavailable-content');
+			const [before] = first.discrepancies.filter((entry) => entry.kind === 'unavailable-content');
+			const [now] = after.discrepancies.filter((entry) => entry.kind === 'unavailable-content');
 			expect(now?.detectedAt).toBe(before?.detectedAt);
 			expect(now?.lastCheckedAt).not.toBe(before?.lastCheckedAt);
 			expect(second.evidence.recorded).toBe(0);
@@ -290,12 +301,14 @@ describe('graphics asset reconciliation', () => {
 
 			expect(outcome.outcome).toBe('resolved');
 			expect((await contentAvailability(digestOf(pixelPng)))?.availability).toBe('available');
-			expect(await context.library.inspectGraphicAssetRevision(reference))
-				.toMatchObject({ outcome: 'available' });
+			expect(await context.library.inspectGraphicAssetRevision(reference)).toMatchObject({
+				outcome: 'available',
+			});
 
 			// No revision was created and the pinned reference still points where it did.
-			const asset = (await context.library.listGraphicAssets({}))
-				.find(entry => entry.id === reference.assetId);
+			const asset = (await context.library.listGraphicAssets({})).find(
+				(entry) => entry.id === reference.assetId,
+			);
 			expect(asset?.revisions).toHaveLength(1);
 			const usage = await context.library.listGraphicAssetUsage({ assetId: reference.assetId });
 			expect(usage[0]?.reference).toEqual(reference);
@@ -318,8 +331,9 @@ describe('graphics asset reconciliation', () => {
 			expect(outcome).toMatchObject({ outcome: 'rejected' });
 			expect((await contentAvailability(digestOf(pixelPng)))?.availability).toBe('unavailable');
 			// Nothing was written under the expected identity.
-			expect(await context.canonical.readMetadata(canonicalIdentity(digestOf(pixelPng))))
-				.toEqual({ outcome: 'missing' });
+			expect(await context.canonical.readMetadata(canonicalIdentity(digestOf(pixelPng)))).toEqual({
+				outcome: 'missing',
+			});
 		});
 	});
 
@@ -421,10 +435,8 @@ describe('graphics asset reconciliation', () => {
 			// Nothing was adopted: no asset, revision, or content row was invented.
 			const assets = await context.library.listGraphicAssets({});
 			expect(assets).toHaveLength(1);
-			const contents = await harness.client.execute(
-				'SELECT digest FROM graphic_asset_contents',
-			);
-			expect(contents.rows.map(row => row.digest)).not.toContain(strayDigest);
+			const contents = await harness.client.execute('SELECT digest FROM graphic_asset_contents');
+			expect(contents.rows.map((row) => row.digest)).not.toContain(strayDigest);
 
 			const overview = await context.library.getReconciliationOverview();
 			const discrepancy = openDiscrepancy(overview.discrepancies, 'unexpected-object');
@@ -434,19 +446,22 @@ describe('graphics asset reconciliation', () => {
 			// Before the window elapses the retention sweep leaves the bytes alone.
 			context.advance(6 * DAY);
 			await context.library.runGraphicsRetention();
-			expect(await context.canonical.readMetadata(canonicalIdentity(strayDigest)))
-				.toMatchObject({ outcome: 'available' });
+			expect(await context.canonical.readMetadata(canonicalIdentity(strayDigest))).toMatchObject({
+				outcome: 'available',
+			});
 
 			context.advance(2 * DAY);
 			const retention = await context.library.runGraphicsRetention();
 			expect(retention.content.deleted).toBe(1);
-			expect(await context.canonical.readMetadata(canonicalIdentity(strayDigest)))
-				.toEqual({ outcome: 'missing' });
+			expect(await context.canonical.readMetadata(canonicalIdentity(strayDigest))).toEqual({
+				outcome: 'missing',
+			});
 
 			// The incident closes itself once the bytes it was about are gone.
 			await context.library.runGraphicsReconciliation();
-			expect((await context.library.getReconciliationOverview())
-				.openCounts['unexpected-object']).toBe(0);
+			expect(
+				(await context.library.getReconciliationOverview()).openCounts['unexpected-object'],
+			).toBe(0);
 		});
 
 		it('keeps quarantined bytes the catalogue has since started to expect', async () => {
@@ -457,8 +472,9 @@ describe('graphics asset reconciliation', () => {
 				metadata: canonicalMetadata(digestOf(pixelPng)),
 			});
 			await context.library.runGraphicsReconciliation();
-			expect((await context.library.getReconciliationOverview())
-				.openCounts['unexpected-object']).toBe(1);
+			expect(
+				(await context.library.getReconciliationOverview()).openCounts['unexpected-object'],
+			).toBe(1);
 
 			// An ordinary ingestion of identical bytes makes them expected. The
 			// bytes are reused rather than adopted: the asset is published by that
@@ -472,10 +488,12 @@ describe('graphics asset reconciliation', () => {
 			// The stale incident closes on its own once the catalogue agrees.
 			const sweep = await context.library.runGraphicsReconciliation();
 			expect(sweep.evidence.recorded).toBeGreaterThan(0);
-			expect((await context.library.getReconciliationOverview())
-				.openCounts['unexpected-object']).toBe(0);
-			expect(await context.canonical.readMetadata(canonicalIdentity(digestOf(pixelPng))))
-				.toMatchObject({ outcome: 'available' });
+			expect(
+				(await context.library.getReconciliationOverview()).openCounts['unexpected-object'],
+			).toBe(0);
+			expect(
+				await context.canonical.readMetadata(canonicalIdentity(digestOf(pixelPng))),
+			).toMatchObject({ outcome: 'available' });
 		});
 
 		it('isolates an object whose key is not a digest-owned identity', async () => {
@@ -498,9 +516,9 @@ describe('graphics asset reconciliation', () => {
 			// It is held, never deleted on a guess.
 			context.advance(30 * DAY);
 			await context.library.runGraphicsRetention();
-			expect(await context.canonical.readMetadata(
-				graphicsObjectIdentity('not-a-digest/strays-here'),
-			)).toMatchObject({ outcome: 'available' });
+			expect(
+				await context.canonical.readMetadata(graphicsObjectIdentity('not-a-digest/strays-here')),
+			).toMatchObject({ outcome: 'available' });
 		});
 	});
 
@@ -532,13 +550,17 @@ describe('graphics asset reconciliation', () => {
 
 			expect(outcome).toMatchObject({ outcome: 'resolved' });
 			expect((await contentAvailability(digestOf(pixelPng)))?.availability).toBe('available');
-			expect(await context.library.inspectGraphicAssetRevision(reference))
-				.toMatchObject({ outcome: 'available' });
+			expect(await context.library.inspectGraphicAssetRevision(reference)).toMatchObject({
+				outcome: 'available',
+			});
 		});
 
 		it('detects bytes that changed behind metadata that still agrees', async () => {
 			const context = createReconciliationLibrary();
-			await ingestImage(context, { idempotencyKey: 'silent-corruption', name: 'Silent corruption' });
+			await ingestImage(context, {
+				idempotencyKey: 'silent-corruption',
+				name: 'Silent corruption',
+			});
 			const identity = canonicalIdentity(digestOf(pixelPng));
 			await context.canonical.delete(identity);
 			await context.library.runGraphicsReconciliation();
@@ -546,7 +568,7 @@ describe('graphics asset reconciliation', () => {
 			// Same length, same media type, same recorded digest metadata — only the
 			// bytes differ. Nothing short of a full re-hash can tell.
 			const corrupted = Uint8Array.from(pixelPng);
-			corrupted[corrupted.length - 20] = corrupted[corrupted.length - 20]! ^ 0xFF;
+			corrupted[corrupted.length - 20] = corrupted[corrupted.length - 20]! ^ 0xff;
 			await context.canonical.createImmutable({
 				identity,
 				bytes: boundedBytes(corrupted),
@@ -573,7 +595,9 @@ describe('graphics asset reconciliation', () => {
 			expect(incident.reasonCode).toBe('canonical-object-digest-mismatch');
 			expect(incident.isolated).toBe(true);
 			// The conflicting bytes were left exactly where they were.
-			expect(await context.canonical.readMetadata(identity)).toMatchObject({ outcome: 'available' });
+			expect(await context.canonical.readMetadata(identity)).toMatchObject({
+				outcome: 'available',
+			});
 		});
 
 		it('gives an isolated incident a genuine closing action', async () => {
@@ -613,8 +637,11 @@ describe('graphics asset reconciliation', () => {
 			});
 
 			expect(outcome).toMatchObject({ outcome: 'resolved' });
-			expect((await context.library.getReconciliationOverview())
-				.openCounts['critical-integrity-incident']).toBe(0);
+			expect(
+				(await context.library.getReconciliationOverview()).openCounts[
+					'critical-integrity-incident'
+				],
+			).toBe(0);
 			expect((await contentAvailability(digestOf(pixelPng)))?.availability).toBe('available');
 		});
 
@@ -641,11 +668,7 @@ describe('graphics asset reconciliation', () => {
 						id, digest, byte_length, origin, quarantined_at, delete_after, created_at
 					) VALUES ('quarantined-copy', ?, ?, 'orphaned-content', 0, ?, 0)
 				`,
-				args: [
-					digestOf(pixelPng),
-					pixelPng.byteLength,
-					Date.now() + 7 * DAY,
-				],
+				args: [digestOf(pixelPng), pixelPng.byteLength, Date.now() + 7 * DAY],
 			});
 
 			const discrepancy = openDiscrepancy(
@@ -697,11 +720,13 @@ describe('graphics asset reconciliation', () => {
 				outcome: 'resolved',
 				resolution: 'derivative-regenerated',
 			});
-			expect(await context.library.resolveGraphicAssetThumbnail({ assetId: reference.assetId }))
-				.toMatchObject({ outcome: 'available', contentType: 'image/png' });
+			expect(
+				await context.library.resolveGraphicAssetThumbnail({ assetId: reference.assetId }),
+			).toMatchObject({ outcome: 'available', contentType: 'image/png' });
 			// The source revision is unchanged and no new revision appeared.
-			const asset = (await context.library.listGraphicAssets({}))
-				.find(entry => entry.id === reference.assetId);
+			const asset = (await context.library.listGraphicAssets({})).find(
+				(entry) => entry.id === reference.assetId,
+			);
 			expect(asset?.revisions).toHaveLength(1);
 			expect(asset?.revisionId).toBe(reference.revisionId);
 			expect(await thumbnailDigest(reference.revisionId)).toBe(derivativeDigest);
@@ -709,9 +734,11 @@ describe('graphics asset reconciliation', () => {
 			// A recovery is the one reconciliation action that puts bytes back, so
 			// its Evidence records the transition it made and the capacity those
 			// bytes landed in.
-			await expect(evidenceOf(context.library, {
-				categories: ['derivative-regenerated'],
-			})).resolves.toEqual([
+			await expect(
+				evidenceOf(context.library, {
+					categories: ['derivative-regenerated'],
+				}),
+			).resolves.toEqual([
 				expect.objectContaining({
 					actor: 'administrator',
 					detail: expect.objectContaining({
@@ -766,14 +793,16 @@ describe('graphics asset reconciliation', () => {
 			// Regeneration reproduced the exact recorded bytes, so the catalogue's
 			// derivative row never needed to change.
 			expect(await thumbnailDigest(reference.revisionId)).toBe(posterDigest);
-			expect(await context.library.resolveGraphicAssetThumbnail({ assetId: reference.assetId }))
-				.toMatchObject({ outcome: 'available' });
+			expect(
+				await context.library.resolveGraphicAssetThumbnail({ assetId: reference.assetId }),
+			).toMatchObject({ outcome: 'available' });
 
 			// The runtime read a staged working copy, and it was cleaned up after.
 			const regenerationSource = validator.stagedSources.at(-1)!;
 			expect(regenerationSource).toContain(`reconciliation-${discrepancy.id}`);
-			expect(await context.staging.readMetadata(graphicsObjectIdentity(regenerationSource)))
-				.toEqual({ outcome: 'missing' });
+			expect(
+				await context.staging.readMetadata(graphicsObjectIdentity(regenerationSource)),
+			).toEqual({ outcome: 'missing' });
 		});
 
 		it('refuses to regenerate while the canonical source is unavailable', async () => {
@@ -850,8 +879,9 @@ describe('graphics asset reconciliation', () => {
 			const reference = publishedReference(operation);
 			await context.canonical.delete(canonicalIdentity(digestOf(pixelPng)));
 			await context.library.runGraphicsReconciliation();
-			expect((await context.library.getReconciliationOverview())
-				.openCounts['unavailable-content']).toBe(1);
+			expect(
+				(await context.library.getReconciliationOverview()).openCounts['unavailable-content'],
+			).toBe(1);
 
 			// The asset is then purged, so nothing reaches the content any more.
 			await context.library.trashGraphicAsset({ assetId: reference.assetId });
@@ -864,8 +894,9 @@ describe('graphics asset reconciliation', () => {
 
 			await context.library.runGraphicsReconciliation();
 
-			expect((await context.library.getReconciliationOverview())
-				.openCounts['unavailable-content']).toBe(0);
+			expect(
+				(await context.library.getReconciliationOverview()).openCounts['unavailable-content'],
+			).toBe(0);
 		});
 	});
 
@@ -890,10 +921,14 @@ describe('graphics asset reconciliation', () => {
 				metadata: { contentType: 'image/png' },
 			});
 
-			expect(await context.library.resolveGraphicAssetRevision(reference))
-				.toEqual({ outcome: 'unavailable', retryable: true });
-			expect(await context.library.inspectGraphicAssetRevision(reference))
-				.toEqual({ outcome: 'unavailable', retryable: true });
+			expect(await context.library.resolveGraphicAssetRevision(reference)).toEqual({
+				outcome: 'unavailable',
+				retryable: true,
+			});
+			expect(await context.library.inspectGraphicAssetRevision(reference)).toEqual({
+				outcome: 'unavailable',
+				retryable: true,
+			});
 
 			const overview = await context.library.getReconciliationOverview();
 			const incident = openDiscrepancy(overview.discrepancies, 'critical-integrity-incident');
@@ -914,8 +949,9 @@ describe('graphics asset reconciliation', () => {
 			// A recorded Graphics Derivative whose bytes are missing is a retryable
 			// operational failure. Reporting it as missing would tell a caller
 			// there is no preview when there is one.
-			expect(await context.library.resolveGraphicAssetThumbnail({ assetId: reference.assetId }))
-				.toEqual({ outcome: 'unavailable', retryable: true });
+			expect(
+				await context.library.resolveGraphicAssetThumbnail({ assetId: reference.assetId }),
+			).toEqual({ outcome: 'unavailable', retryable: true });
 
 			// And the reader fed reconciliation on the way out, with no sweep run.
 			const overview = await context.library.getReconciliationOverview();
@@ -924,9 +960,11 @@ describe('graphics asset reconciliation', () => {
 
 		it('reports an asset with no preview recorded as missing', async () => {
 			const context = createReconciliationLibrary();
-			expect(await context.library.resolveGraphicAssetThumbnail({
-				assetId: 'no-such-asset' as GraphicAssetId,
-			})).toEqual({ outcome: 'missing' });
+			expect(
+				await context.library.resolveGraphicAssetThumbnail({
+					assetId: 'no-such-asset' as GraphicAssetId,
+				}),
+			).toEqual({ outcome: 'missing' });
 		});
 	});
 
@@ -945,7 +983,7 @@ describe('graphics asset reconciliation', () => {
 			// Corrupt bytes appear and deep verification isolates them, leaving two
 			// open rows on one digest: the original unavailability and the conflict.
 			const corrupted = Uint8Array.from(pixelPng);
-			corrupted[corrupted.length - 20] = corrupted[corrupted.length - 20]! ^ 0xFF;
+			corrupted[corrupted.length - 20] = corrupted[corrupted.length - 20]! ^ 0xff;
 			await context.canonical.createImmutable({
 				identity,
 				bytes: boundedBytes(corrupted),
@@ -955,8 +993,11 @@ describe('graphics asset reconciliation', () => {
 				discrepancyId: unavailable.id,
 				actor: 'administrator',
 			});
-			expect((await context.library.getReconciliationOverview())
-				.openCounts['critical-integrity-incident']).toBe(1);
+			expect(
+				(await context.library.getReconciliationOverview()).openCounts[
+					'critical-integrity-incident'
+				],
+			).toBe(1);
 
 			const outcome = await context.library.repairUnavailableGraphicAssetContent({
 				discrepancyId: unavailable.id,
@@ -971,8 +1012,7 @@ describe('graphics asset reconciliation', () => {
 				code: 'integrity-incident-isolated',
 			});
 			const stored = await context.canonical.readMetadata(identity);
-			expect(stored.outcome === 'available' && stored.object.byteLength)
-				.toBe(corrupted.byteLength);
+			expect(stored.outcome === 'available' && stored.object.byteLength).toBe(corrupted.byteLength);
 			const rejections = await evidenceOf(context.library, {
 				categories: ['repair-rejected'],
 			});
@@ -981,9 +1021,11 @@ describe('graphics asset reconciliation', () => {
 			// transition nor a quota reading rather than inventing either.
 			expect(rejections[0]!.detail).not.toHaveProperty('transition');
 			expect(rejections[0]!.detail).not.toHaveProperty('canonicalPressure');
-			expect(await evidenceOf(context.library, {
-				categories: ['content-repaired'],
-			})).toEqual([]);
+			expect(
+				await evidenceOf(context.library, {
+					categories: ['content-repaired'],
+				}),
+			).toEqual([]);
 		});
 	});
 
@@ -1028,27 +1070,31 @@ describe('graphics asset reconciliation', () => {
 			const overview = await context.library.getReconciliationOverview();
 			const discrepancy = openDiscrepancy(overview.discrepancies, 'unavailable-content');
 
-			expect(await context.library.recheckGraphicsDiscrepancy({
-				discrepancyId: discrepancy.id,
-				actor: 'administrator',
-			})).toMatchObject({ outcome: 'unchanged' });
+			expect(
+				await context.library.recheckGraphicsDiscrepancy({
+					discrepancyId: discrepancy.id,
+					actor: 'administrator',
+				}),
+			).toMatchObject({ outcome: 'unchanged' });
 
 			await context.canonical.createImmutable({
 				identity,
 				bytes: boundedBytes(pixelPng),
 				metadata: canonicalMetadata(digestOf(pixelPng)),
 			});
-			expect(await context.library.recheckGraphicsDiscrepancy({
-				discrepancyId: discrepancy.id,
-				actor: 'administrator',
-			})).toMatchObject({ outcome: 'resolved', resolution: 'byte-store-agrees' });
+			expect(
+				await context.library.recheckGraphicsDiscrepancy({
+					discrepancyId: discrepancy.id,
+					actor: 'administrator',
+				}),
+			).toMatchObject({ outcome: 'resolved', resolution: 'byte-store-agrees' });
 		});
 
 		it('reports an unknown discrepancy identity as not found', async () => {
 			const context = createReconciliationLibrary();
-			await expect(context.library.inspectGraphicsDiscrepancy({ discrepancyId: 'nope' }))
-				.rejects
-				.toThrow('Graphics discrepancy not found');
+			await expect(
+				context.library.inspectGraphicsDiscrepancy({ discrepancyId: 'nope' }),
+			).rejects.toThrow('Graphics discrepancy not found');
 		});
 	});
 });

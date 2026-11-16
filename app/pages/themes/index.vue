@@ -28,12 +28,15 @@ async function load() {
 
 async function create() {
 	const name = newName.value.trim();
-	if (!name || creating.value)
-		return;
+	if (!name || creating.value) return;
 	await runRequest(() => repository.create(name), {
 		loadingRef: creating,
 		success: false,
-		error: failure => ({ title: 'Could not create the Theme', description: failure.message, color: 'error' }),
+		error: (failure) => ({
+			title: 'Could not create the Theme',
+			description: failure.message,
+			color: 'error',
+		}),
 		onSuccess: async (theme) => {
 			newName.value = '';
 			await navigateTo(`/themes/${theme.id}`);
@@ -44,18 +47,24 @@ async function create() {
 async function remove(theme: ThemeSummary) {
 	deleting.value = theme.id;
 	try {
-		await runRequest(async () => {
-			await repository.remove(theme.id);
-			return true;
-		}, {
-			success: { title: 'Theme deleted', description: theme.name, color: 'success' },
-			error: failure => ({ title: 'Could not delete the Theme', description: failure.message, color: 'error' }),
-			onSuccess: () => {
-				themes.value = themes.value?.filter(listed => listed.id !== theme.id) ?? null;
+		await runRequest(
+			async () => {
+				await repository.remove(theme.id);
+				return true;
 			},
-		});
-	}
-	finally {
+			{
+				success: { title: 'Theme deleted', description: theme.name, color: 'success' },
+				error: (failure) => ({
+					title: 'Could not delete the Theme',
+					description: failure.message,
+					color: 'error',
+				}),
+				onSuccess: () => {
+					themes.value = themes.value?.filter((listed) => listed.id !== theme.id) ?? null;
+				},
+			},
+		);
+	} finally {
 		deleting.value = null;
 	}
 }
@@ -67,24 +76,17 @@ onMounted(load);
 	<NuxtLayout name="default">
 		<div class="mx-auto flex w-full max-w-4xl flex-col gap-6">
 			<div>
-				<h1 class="text-2xl font-semibold text-highlighted">
-					Themes
-				</h1>
+				<h1 class="text-2xl font-semibold text-highlighted">Themes</h1>
 				<p class="mt-1 text-sm text-muted">
-					A Theme gives every Screen of an Event one look. Pick one for an Event in its
-					Broadcast settings. Edits reach every Screen Output using the Theme at once.
+					A Theme gives every Screen of an Event one look. Pick one for an Event in its Broadcast
+					settings. Edits reach every Screen Output using the Theme at once.
 				</p>
 			</div>
 
 			<UCard>
 				<UForm :state="{ newName }" class="flex flex-wrap items-end gap-3" @submit="create">
 					<UFormField name="newName" label="New Theme" class="grow">
-						<UInput
-							v-model="newName"
-							placeholder="Theme name"
-							class="w-full"
-							maxlength="100"
-						/>
+						<UInput v-model="newName" placeholder="Theme name" class="w-full" maxlength="100" />
 					</UFormField>
 					<UButton
 						type="submit"
@@ -110,9 +112,7 @@ onMounted(load);
 				<ul class="divide-y divide-default" aria-label="Theme library">
 					<li class="flex items-center justify-between gap-4 px-4 py-3" data-theme="default">
 						<div>
-							<p class="font-medium text-highlighted">
-								Default Theme
-							</p>
+							<p class="font-medium text-highlighted">Default Theme</p>
 							<p class="text-xs text-muted">
 								Built in and read-only. Used by every Event that picks no Theme.
 							</p>
@@ -125,7 +125,10 @@ onMounted(load);
 						class="flex items-center justify-between gap-4 px-4 py-3"
 						:data-theme="theme.id"
 					>
-						<NuxtLink :to="`/themes/${theme.id}`" class="font-medium text-highlighted hover:underline">
+						<NuxtLink
+							:to="`/themes/${theme.id}`"
+							class="font-medium text-highlighted hover:underline"
+						>
 							{{ theme.name }}
 						</NuxtLink>
 						<div class="flex items-center gap-2">
@@ -151,9 +154,7 @@ onMounted(load);
 							</UButton>
 						</div>
 					</li>
-					<li v-if="loading && !themes" class="px-4 py-3 text-sm text-muted">
-						Loading…
-					</li>
+					<li v-if="loading && !themes" class="px-4 py-3 text-sm text-muted">Loading…</li>
 				</ul>
 			</UCard>
 		</div>

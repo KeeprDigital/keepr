@@ -26,46 +26,40 @@ export function useGraphicsPreviewTheme(eventThemeId: MaybeRefOrGetter<string | 
 
 	/** The Theme the choice names, or null for the Default Theme. */
 	const themeId = computed(() => {
-		if (choice.value === PREVIEW_DEFAULT_THEME)
-			return null;
-		if (choice.value === PREVIEW_EVENT_THEME)
-			return toValue(eventThemeId) ?? null;
+		if (choice.value === PREVIEW_DEFAULT_THEME) return null;
+		if (choice.value === PREVIEW_EVENT_THEME) return toValue(eventThemeId) ?? null;
 		return choice.value;
 	});
 
 	onMounted(async () => {
 		try {
 			const listed = await repository.list();
-			themes.value = Array.isArray(listed)
-				? listed
-				: [];
-		}
-		catch {
+			themes.value = Array.isArray(listed) ? listed : [];
+		} catch {
 			// The picker still offers the Event's Theme and the Default Theme.
 		}
 	});
 
-	watch(themeId, async (id) => {
-		if (!id) {
-			loaded.value = null;
-			return;
-		}
-		try {
-			const theme = await repository.get(id);
-			if (themeId.value === id)
-				loaded.value = { id, tokens: theme.tokens };
-		}
-		catch {
-			loaded.value = null;
-		}
-	}, { immediate: true });
+	watch(
+		themeId,
+		async (id) => {
+			if (!id) {
+				loaded.value = null;
+				return;
+			}
+			try {
+				const theme = await repository.get(id);
+				if (themeId.value === id) loaded.value = { id, tokens: theme.tokens };
+			} catch {
+				loaded.value = null;
+			}
+		},
+		{ immediate: true },
+	);
 
 	const loadedTokens = computed<StoredThemeTokens | undefined>(() => {
-		if (!themeId.value)
-			return DEFAULT_THEME_TOKENS;
-		return loaded.value?.id === themeId.value
-			? loaded.value.tokens
-			: undefined;
+		if (!themeId.value) return DEFAULT_THEME_TOKENS;
+		return loaded.value?.id === themeId.value ? loaded.value.tokens : undefined;
 	});
 
 	/**
@@ -73,17 +67,19 @@ export function useGraphicsPreviewTheme(eventThemeId: MaybeRefOrGetter<string | 
 	 * Theme, which the frame already follows live from its own Event context. A
 	 * picked Theme is sent only once loaded, so the frame never flashes another.
 	 */
-	const previewThemeValues = computed<StoredThemeTokens | null | undefined>(() => choice.value === PREVIEW_EVENT_THEME
-		? null
-		: loadedTokens.value);
+	const previewThemeValues = computed<StoredThemeTokens | null | undefined>(() =>
+		choice.value === PREVIEW_EVENT_THEME ? null : loadedTokens.value,
+	);
 
 	/** The Foundation Tokens the inspector shows bound properties in, and detaching copies in. */
-	const themeTokens = computed<GraphicThemeTokens>(() => resolveGraphicThemeTokens(loadedTokens.value));
+	const themeTokens = computed<GraphicThemeTokens>(() =>
+		resolveGraphicThemeTokens(loadedTokens.value),
+	);
 
 	const items = computed(() => [
-		{ label: 'Event\'s Theme', value: PREVIEW_EVENT_THEME },
+		{ label: "Event's Theme", value: PREVIEW_EVENT_THEME },
 		{ label: 'Default Theme', value: PREVIEW_DEFAULT_THEME },
-		...themes.value.map(theme => ({ label: theme.name, value: theme.id })),
+		...themes.value.map((theme) => ({ label: theme.name, value: theme.id })),
 	]);
 
 	return {

@@ -40,16 +40,18 @@ let auth: ThrowawayAuth;
 
 /** Sign in with the given headers and answer the session Better Auth stored for it. */
 async function sessionAfterSignIn(headers: Record<string, string>) {
-	const response = await auth.handler(new Request(`${LOCAL_ORIGIN}/api/auth/sign-in/email`, {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			'host': LOCAL_HOST,
-			'origin': LOCAL_ORIGIN,
-			...headers,
-		},
-		body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
-	}));
+	const response = await auth.handler(
+		new Request(`${LOCAL_ORIGIN}/api/auth/sign-in/email`, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				host: LOCAL_HOST,
+				origin: LOCAL_ORIGIN,
+				...headers,
+			},
+			body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+		}),
+	);
 	expect(response.status).toBe(200);
 
 	const cookie = response.headers.get('set-cookie');

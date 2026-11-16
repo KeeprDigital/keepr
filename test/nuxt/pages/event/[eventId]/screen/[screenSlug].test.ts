@@ -104,17 +104,12 @@ vi.mock('~/composables/screen/useScreenRealtimeSession', () => ({
 const serverNow = 1_700_000_000_000;
 
 mockNuxtImport('useBroadcastGraphicsLiveSessionStore', () => () => ({
-	sessions: new Map([
-		[
-			7,
-			{ id: 55, sequence: 1 },
-		],
-	]),
+	sessions: new Map([[7, { id: 55, sequence: 1 }]]),
 	serverNow: () => serverNow,
 	// Everything the Screen publishes is on air: what this test is about is whether a
 	// composed graphic's media resolves, not which graphics compose.
 	onAirGraphicIds: (_screenId: number, graphics: readonly BroadcastGraphicConfig[]) =>
-		graphics.map(graphic => graphic.id),
+		graphics.map((graphic) => graphic.id),
 	animationProjection: () => ({}),
 	renderedInputValues: () => ({ current: {}, outgoing: {} }),
 	socialProfileValues: () => ({}),
@@ -197,13 +192,16 @@ describe('screen output route', () => {
 		holder.presenceData = [];
 		requests = [];
 		useScreenStore().activeScreen = null;
-		vi.stubGlobal('fetch', vi.fn(async (input: string) => {
-			requests.push(String(input));
-			return new Response(JSON.stringify({}), {
-				status: 200,
-				headers: { 'content-type': 'application/json' },
-			});
-		}));
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (input: string) => {
+				requests.push(String(input));
+				return new Response(JSON.stringify({}), {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				});
+			}),
+		);
 	});
 
 	afterEach(() => {
@@ -215,9 +213,7 @@ describe('screen output route', () => {
 	 * an authored image on a graphic that is on air is on the Screen Output.
 	 */
 	it('renders an authored Media Graphic Item through the capability its URL carries', async () => {
-		const wrapper = await mountOutputRoute(
-			`/event/42/screen/main#asset-capability=${capability}`,
-		);
+		const wrapper = await mountOutputRoute(`/event/42/screen/main#asset-capability=${capability}`);
 
 		expect(wrapper.get('[data-graphic-item-kind="media"] img').attributes('src')).toBe(
 			'/api/screen-output/screens/7/assets/brand-asset/revisions/brand-revision-2/content',
@@ -253,24 +249,18 @@ describe('screen output route', () => {
 	 */
 	it('reports its asset access to the Screen when it joins presence', async () => {
 		await mountOutputRoute(`/event/42/screen/main#asset-capability=${capability}`);
-		expect(holder.presenceData).toEqual([
-			expect.objectContaining({ assetAccess: 'granted' }),
-		]);
+		expect(holder.presenceData).toEqual([expect.objectContaining({ assetAccess: 'granted' })]);
 
 		holder.presenceData = [];
 		await mountOutputRoute('/event/42/screen/main');
-		expect(holder.presenceData).toEqual([
-			expect.objectContaining({ assetAccess: 'absent' }),
-		]);
+		expect(holder.presenceData).toEqual([expect.objectContaining({ assetAccess: 'absent' })]);
 	});
 
 	// A control surface tells an output that follows its Screen's channel from one loaded before outputs did.
 	it('reports the realtime protocol it follows when it joins presence', async () => {
 		await mountOutputRoute(`/event/42/screen/main#asset-capability=${capability}`);
 
-		expect(holder.presenceData).toEqual([
-			expect.objectContaining({ protocol: 2 }),
-		]);
+		expect(holder.presenceData).toEqual([expect.objectContaining({ protocol: 2 })]);
 	});
 
 	/**

@@ -1,13 +1,20 @@
 import type { H3Event } from 'h3';
-import type { AfterAnswer, EventMessage, ScreenChannelDelivery, ScreenChannelFailure } from '~~/server/modules/screen-output-publication';
 import type {
-	MessagePayload,
-	MessageType,
-} from '../types/messages';
+	AfterAnswer,
+	EventMessage,
+	ScreenChannelDelivery,
+	ScreenChannelFailure,
+} from '~~/server/modules/screen-output-publication';
+import type { MessagePayload, MessageType } from '../types/messages';
 import Ably from 'ably';
 import { publishToScreenOutputs } from '~~/server/modules/screen-output-publication';
 import { eventRealtimeChannel, screenRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createMessage, MAX_REALTIME_MESSAGE_BYTES, realtimeMessageBytes, screenCommandMessageTypes } from '../types/messages';
+import {
+	createMessage,
+	MAX_REALTIME_MESSAGE_BYTES,
+	realtimeMessageBytes,
+	screenCommandMessageTypes,
+} from '../types/messages';
 import { ServiceConfigurationError } from './errors';
 import { publishFailureFields, RealtimePublishError } from './realtimePublishFailure';
 
@@ -60,8 +67,7 @@ const ORIGIN_CONNECTION_ID_SHAPE = /^[\w!-]{1,64}$/;
  */
 export function getOriginConnectionId(event: H3Event): string | undefined {
 	const raw = getHeader(event, 'x-realtime-connection-id');
-	if (!raw || !ORIGIN_CONNECTION_ID_SHAPE.test(raw))
-		return undefined;
+	if (!raw || !ORIGIN_CONNECTION_ID_SHAPE.test(raw)) return undefined;
 	return raw;
 }
 
@@ -86,16 +92,17 @@ function reportOversizedMessage<T extends MessageType>(
 	originConnectionId?: string,
 ): void {
 	const bytes = realtimeMessageBytes(eventId, messageType, payload, originConnectionId);
-	if (bytes <= MAX_REALTIME_MESSAGE_BYTES)
-		return;
+	if (bytes <= MAX_REALTIME_MESSAGE_BYTES) return;
 
-	console.error(JSON.stringify({
-		message: 'realtime_publish_oversized',
-		eventId,
-		messageType,
-		bytes,
-		limit: MAX_REALTIME_MESSAGE_BYTES,
-	}));
+	console.error(
+		JSON.stringify({
+			message: 'realtime_publish_oversized',
+			eventId,
+			messageType,
+			bytes,
+			limit: MAX_REALTIME_MESSAGE_BYTES,
+		}),
+	);
 }
 
 /** Ably publishes one batch request to at most this many channels. */
@@ -118,24 +125,23 @@ async function publishToScreenChannels(
 	for (let start = 0; start < deliveries.length; start += MAX_BATCH_PUBLISH_CHANNELS) {
 		const batch = deliveries.slice(start, start + MAX_BATCH_PUBLISH_CHANNELS);
 		try {
-			const answers = await client.batchPublish(batch.map(({ screenId, messages }) => ({
-				channels: [
-					screenRealtimeChannel(eventId, screenId),
-				],
-				messages: messages.map(({ type, payload, originConnectionId }) => ({
-					name: type,
-					data: JSON.stringify(createMessage(eventId, type, payload, originConnectionId)),
-					encoding: 'json',
+			const answers = await client.batchPublish(
+				batch.map(({ screenId, messages }) => ({
+					channels: [screenRealtimeChannel(eventId, screenId)],
+					messages: messages.map(({ type, payload, originConnectionId }) => ({
+						name: type,
+						data: JSON.stringify(createMessage(eventId, type, payload, originConnectionId)),
+						encoding: 'json',
+					})),
 				})),
-			})));
+			);
 			batch.forEach(({ screenId }, index) => {
 				// One channel a spec, so one result an answer: a refusal carries `error`.
 				const result = answers[index]?.results[0];
 				if (!result || 'error' in result)
 					failures.push({ screenId, error: result?.error ?? new Error('No batch publish result') });
 			});
-		}
-		catch (error) {
+		} catch (error) {
 			failures.push(...batch.map(({ screenId }) => ({ screenId, error })));
 		}
 	}
@@ -152,12 +158,13 @@ function requestAfterAnswer(): AfterAnswer | undefined {
 	try {
 		const request = useEvent();
 		const executionContext = request.context.cloudflare?.context;
-		return executionContext && {
-			request,
-			waitUntil: work => executionContext.waitUntil(work),
-		};
-	}
-	catch {
+		return (
+			executionContext && {
+				request,
+				waitUntil: (work) => executionContext.waitUntil(work),
+			}
+		);
+	} catch {
 		return undefined;
 	}
 }
@@ -211,18 +218,19 @@ export async function publishMessage<T extends MessageType>(
 		const messageData = createMessage(eventId, messageType, payload, originConnectionId);
 		reportOversizedMessage(eventId, messageType, payload, originConnectionId);
 		await channel.publish(messageType, messageData);
-	}
-	catch (error) {
+	} catch (error) {
 		// SDK errors can retain request metadata. Log the bounded routing
 		// identifiers and the provider's own account of the refusal, and nothing
 		// else; realtime delivery is best-effort for this API, so this line is the
 		// only witness that the publish was attempted and refused.
-		console.error(JSON.stringify({
-			message: 'realtime_publish_failed',
-			eventId,
-			messageType,
-			...publishFailureFields(error),
-		}));
+		console.error(
+			JSON.stringify({
+				message: 'realtime_publish_failed',
+				eventId,
+				messageType,
+				...publishFailureFields(error),
+			}),
+		);
 	}
 	await tellScreenOutputs(eventId, messageType, payload, originConnectionId);
 }
@@ -250,8 +258,7 @@ export async function publishMessageStrict<T extends MessageType>(
 		reportOversizedMessage(eventId, messageType, payload, originConnectionId);
 
 		await channel.publish(messageType, messageData);
-	}
-	finally {
+	} finally {
 		await tellScreenOutputs(eventId, messageType, payload, originConnectionId);
 	}
 }
@@ -284,15 +291,16 @@ export async function publishScreenCommand(
 
 	try {
 		await channel.publish(messageType, createMessage(eventId, messageType, { screenId }));
-	}
-	catch (error) {
-		console.error(JSON.stringify({
-			message: 'realtime_publish_failed',
-			eventId,
-			screenId,
-			messageType,
-			...publishFailureFields(error),
-		}));
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				message: 'realtime_publish_failed',
+				eventId,
+				screenId,
+				messageType,
+				...publishFailureFields(error),
+			}),
+		);
 		throw new RealtimePublishError(error);
 	}
 }

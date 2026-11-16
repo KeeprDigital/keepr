@@ -1,4 +1,7 @@
-import type { ScreenOutputArchetypePilot, ScreenOutputArchetypeSpotlightResponse } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputArchetypePilot,
+	ScreenOutputArchetypeSpotlightResponse,
+} from '~~/shared/types/screenOutputReads';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
 import { getMetagameRules } from '~~/shared/config/games';
 import { conversionTargetLabel, eventConversionTarget } from '~~/shared/conversionTarget';
@@ -17,7 +20,9 @@ export function useArchetypeSpotlightModeData(context: ScreenContext) {
 	const eventStore = useEventStore();
 	const game = useScreenCardGame(context);
 	/** Whether it shows standings: a Conversion Rate and each pilot's place and record (ADR-0074). */
-	const readsStandings = computed(() => game.value === undefined || getMetagameRules(game.value).readsStandings);
+	const readsStandings = computed(
+		() => game.value === undefined || getMetagameRules(game.value).readsStandings,
+	);
 
 	// The Event's Conversion Target (ADR-0061): an `event:updated` folded into the
 	// held Event context changes it, and so the read.
@@ -48,35 +53,37 @@ export function useArchetypeSpotlightModeData(context: ScreenContext) {
 	const error = freshness.error;
 	// A spotlight reaches program once its top cards' images have loaded.
 	const { shown: spotlight, staging } = useStagedScreenContent(
-		() => config.value.archetypeId != null
-			? freshness.data.value
-			: null,
-		read => (read?.topCards ?? []).flatMap(card => metagameCardImageUrl(card) ?? []),
+		() => (config.value.archetypeId != null ? freshness.data.value : null),
+		(read) => (read?.topCards ?? []).flatMap((card) => metagameCardImageUrl(card) ?? []),
 	);
 	const pilots = computed(() => spotlight.value?.pilots ?? []);
 	const topCards = computed(() => spotlight.value?.topCards ?? []);
 
-	const { pageData, rowCount, totalPages, currentPage } = usePaginatedScreenMode(context, { mode: 'archetype-spotlight', config, rows: pilots });
+	const { pageData, rowCount, totalPages, currentPage } = usePaginatedScreenMode(context, {
+		mode: 'archetype-spotlight',
+		config,
+		rows: pilots,
+	});
 
 	// ── Header ──
 	const scopeLabel = computed(() => {
 		switch (offeredMetagameScope(game.value, config.value.scope)) {
-			case 'topN': return `Top ${config.value.topN}`;
-			case 'minPoints': return `${config.value.minPoints}+ Points`;
-			case 'playerList': return 'List';
-			default: return null;
+			case 'topN':
+				return `Top ${config.value.topN}`;
+			case 'minPoints':
+				return `${config.value.minPoints}+ Points`;
+			case 'playerList':
+				return 'List';
+			default:
+				return null;
 		}
 	});
 
 	const headerText = computed(() => {
-		if (config.value.headerText)
-			return config.value.headerText;
+		if (config.value.headerText) return config.value.headerText;
 		const name = spotlight.value?.archetype.name;
-		if (!name)
-			return 'Archetype Spotlight';
-		return scopeLabel.value
-			? `${scopeLabel.value} Spotlight: ${name}`
-			: `Spotlight: ${name}`;
+		if (!name) return 'Archetype Spotlight';
+		return scopeLabel.value ? `${scopeLabel.value} Spotlight: ${name}` : `Spotlight: ${name}`;
 	});
 
 	/** The Event's Conversion Target, named as the app's archetype page names it. */
@@ -87,7 +94,11 @@ export function useArchetypeSpotlightModeData(context: ScreenContext) {
 	}
 
 	// Nothing to show until an Archetype is picked and has pilots in the scope.
-	const isEmpty = computed(() => freshness.answered.value && (config.value.archetypeId == null || (spotlight.value != null && pilots.value.length === 0)));
+	const isEmpty = computed(
+		() =>
+			freshness.answered.value &&
+			(config.value.archetypeId == null || (spotlight.value != null && pilots.value.length === 0)),
+	);
 
 	return {
 		config,

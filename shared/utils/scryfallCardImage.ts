@@ -5,8 +5,7 @@ const SCRYFALL_CARD_IMAGE_ORIGIN = 'https://cards.scryfall.io';
 export function isScryfallCardImageUrl(value: string): boolean {
 	try {
 		return new URL(value).origin === SCRYFALL_CARD_IMAGE_ORIGIN;
-	}
-	catch {
+	} catch {
 		return false;
 	}
 }
@@ -17,7 +16,6 @@ export function isScryfallCardImageUrl(value: string): boolean {
  * Format: https://cards.scryfall.io/normal/front/{char1}/{char2}/{uuid}.jpg
  */
 export function scryfallCardImageUrl(scryfallId: string | null | undefined): string | null {
-	if (!scryfallId)
-		return null;
+	if (!scryfallId) return null;
 	return `${SCRYFALL_CARD_IMAGE_ORIGIN}/normal/front/${scryfallId[0]}/${scryfallId[1]}/${scryfallId}.jpg`;
 }

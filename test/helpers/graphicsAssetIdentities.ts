@@ -24,7 +24,10 @@ export function testGraphicAssetRevisionId(value: string): GraphicAssetRevisionI
 	return value as GraphicAssetRevisionId;
 }
 
-export function testGraphicAssetReference(assetId: string, revisionId: string): GraphicAssetReference {
+export function testGraphicAssetReference(
+	assetId: string,
+	revisionId: string,
+): GraphicAssetReference {
 	return {
 		assetId: testGraphicAssetId(assetId),
 		revisionId: testGraphicAssetRevisionId(revisionId),

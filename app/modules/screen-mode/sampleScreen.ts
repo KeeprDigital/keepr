@@ -26,7 +26,9 @@ interface ScreenModeSampleContextOptions {
  * no Feature Match Slot shows the Feature Match Sample Dataset. Nothing else
  * builds a context with `sampleDataset`, so no Screen Output can.
  */
-export function createScreenModeSampleContext(options: ScreenModeSampleContextOptions): ScreenContext {
+export function createScreenModeSampleContext(
+	options: ScreenModeSampleContextOptions,
+): ScreenContext {
 	const screen: Screen = {
 		id: SAMPLE_ID,
 		eventId: SAMPLE_ID,

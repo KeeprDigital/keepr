@@ -6,7 +6,9 @@ export function useSendPlayerHistoryToScreen() {
 	const toast = useToast();
 	const { runRequest } = useRequestFeedback();
 
-	const playerHistoryScreens = computed(() => screenStore.screens.filter(s => s.currentMode === 'player-history'));
+	const playerHistoryScreens = computed(() =>
+		screenStore.screens.filter((s) => s.currentMode === 'player-history'),
+	);
 	const hasPlayerHistoryScreens = computed(() => playerHistoryScreens.value.length > 0);
 
 	async function sendToScreen(playerId: number, screen: Screen) {
@@ -16,13 +18,27 @@ export function useSendPlayerHistoryToScreen() {
 			return false;
 		}
 
-		const sent = await runRequest(async () => {
-			await screenStore.updateModeConfig(eventId, screen.id, 'player-history', { playerId, currentPage: 1 });
-			return true;
-		}, {
-			success: { title: 'Match history sent', description: `Player history sent to "${screen.name}"`, color: 'success' },
-			error: { title: 'Error', description: 'Failed to send match history to screen', color: 'error' },
-		});
+		const sent = await runRequest(
+			async () => {
+				await screenStore.updateModeConfig(eventId, screen.id, 'player-history', {
+					playerId,
+					currentPage: 1,
+				});
+				return true;
+			},
+			{
+				success: {
+					title: 'Match history sent',
+					description: `Player history sent to "${screen.name}"`,
+					color: 'success',
+				},
+				error: {
+					title: 'Error',
+					description: 'Failed to send match history to screen',
+					color: 'error',
+				},
+			},
+		);
 
 		return sent === true;
 	}
@@ -30,7 +46,11 @@ export function useSendPlayerHistoryToScreen() {
 	async function sendToFirstPlayerHistoryScreen(playerId: number) {
 		const screen = playerHistoryScreens.value[0];
 		if (!screen) {
-			toast.add({ title: 'No Player History Screen', description: 'No screen is configured for player history mode', color: 'warning' });
+			toast.add({
+				title: 'No Player History Screen',
+				description: 'No screen is configured for player history mode',
+				color: 'warning',
+			});
 			return false;
 		}
 		return sendToScreen(playerId, screen);

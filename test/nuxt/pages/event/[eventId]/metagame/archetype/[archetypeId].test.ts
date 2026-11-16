@@ -47,19 +47,20 @@ const mockMetagameStore = reactive({
 });
 mockNuxtImport('useMetagameStore', () => () => mockMetagameStore);
 const mockArchetypeStore = reactive({
-	archetypes: [
-		{ id: 7 },
-		{ id: 8 },
-	],
+	archetypes: [{ id: 7 }, { id: 8 }],
 	isLoaded: true,
 	loadByEventId: vi.fn(),
 });
 mockNuxtImport('useArchetypeStore', () => () => mockArchetypeStore);
-mockNuxtImport('usePlayerStore', () => () => reactive({
-	players: [],
-	isLoaded: true,
-	loadPlayersByEventId: vi.fn(),
-}));
+mockNuxtImport(
+	'usePlayerStore',
+	() => () =>
+		reactive({
+			players: [],
+			isLoaded: true,
+			loadPlayersByEventId: vi.fn(),
+		}),
+);
 const { navigateTo } = vi.hoisted(() => ({
 	navigateTo: vi.fn(),
 }));
@@ -71,7 +72,8 @@ mockNuxtImport('useToast', () => () => ({
 async function mountPage() {
 	route.params.archetypeId = '7';
 	mockFetch.mockResolvedValue(createMockArchetypeDetailResponse());
-	const pagePath = '../../../../../../../app/pages/event/[eventId]/metagame/archetype/[archetypeId].vue';
+	const pagePath =
+		'../../../../../../../app/pages/event/[eventId]/metagame/archetype/[archetypeId].vue';
 	const { default: ArchetypeDetailPage } = await import(pagePath);
 	return mount(ArchetypeDetailPage, {
 		global: {
@@ -125,20 +127,23 @@ describe('archetype metagame detail page', () => {
 		mockMetagameStore.invalidationVersion++;
 		await flushPromises();
 
-		expect(mockFetch).not.toHaveBeenCalledWith('/api/events/99/metagame/archetypes/7', expect.anything());
+		expect(mockFetch).not.toHaveBeenCalledWith(
+			'/api/events/99/metagame/archetypes/7',
+			expect.anything(),
+		);
 		expect(wrapper.find('[data-testid="stats"]').exists()).toBe(false);
 		wrapper.unmount();
-		mockArchetypeStore.archetypes = [
-			{ id: 7 },
-			{ id: 8 },
-		];
+		mockArchetypeStore.archetypes = [{ id: 7 }, { id: 8 }];
 	});
 
 	it('edits the Pinned Chart Series of the Archetype it shows', async () => {
 		const wrapper = await mountPage();
 		await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'MetagameArchetypeChartSeriesField' }).props()).toEqual({ eventId: 99, archetypeId: 1 });
+		expect(wrapper.findComponent({ name: 'MetagameArchetypeChartSeriesField' }).props()).toEqual({
+			eventId: 99,
+			archetypeId: 1,
+		});
 		wrapper.unmount();
 	});
 
@@ -153,7 +158,9 @@ describe('archetype metagame detail page', () => {
 
 		expect(wrapper.get('[data-testid="stats"]').text()).toBe(stats);
 		expect(wrapper.findComponent({ name: 'MetagameCardsTable' }).exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'MetagameArchetypeChartSeriesField' }).exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'MetagameArchetypeChartSeriesField' }).exists()).toBe(
+			true,
+		);
 		wrapper.unmount();
 		mockEventStore.event.game = 'mtg';
 	});
@@ -162,16 +169,23 @@ describe('archetype metagame detail page', () => {
 	it.each([
 		['mtg', true],
 		['op', false],
-	] as const)('on a %s Event, renames the Archetype, and merges or deletes it: %s', async (game, managed) => {
-		mockEventStore.event.game = game;
-		const wrapper = await mountPage();
-		await flushPromises();
+	] as const)(
+		'on a %s Event, renames the Archetype, and merges or deletes it: %s',
+		async (game, managed) => {
+			mockEventStore.event.game = game;
+			const wrapper = await mountPage();
+			await flushPromises();
 
-		expect(wrapper.findComponent({ name: 'MetagameArchetypeNameField' }).props()).toEqual({ eventId: 99, archetypeId: 1, mergeable: managed });
-		expect(wrapper.findComponent({ name: 'MetagameArchetypeActions' }).exists()).toBe(managed);
-		wrapper.unmount();
-		mockEventStore.event.game = 'mtg';
-	});
+			expect(wrapper.findComponent({ name: 'MetagameArchetypeNameField' }).props()).toEqual({
+				eventId: 99,
+				archetypeId: 1,
+				mergeable: managed,
+			});
+			expect(wrapper.findComponent({ name: 'MetagameArchetypeActions' }).exists()).toBe(managed);
+			wrapper.unmount();
+			mockEventStore.event.game = 'mtg';
+		},
+	);
 
 	// A Player can hold several Deck Lists: the one reviewed as this Archetype is the one reassigned.
 	it('opens Archetype Review on the deck a Player holds in this Archetype', async () => {

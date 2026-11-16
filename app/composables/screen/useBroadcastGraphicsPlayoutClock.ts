@@ -28,12 +28,16 @@ export function useBroadcastGraphicsPlayoutClock(
 	/** In flight while the Live Session has a phase to project, or a Social Profile Rotation runs. */
 	const clock = useFrameClock(
 		() => sessionStore.serverNow(),
-		now => Object.keys(sessionStore.animationProjection(
-			toValue(screenId),
-			toValue(graphics),
-			now,
-			toValue(channels),
-		)).length > 0 || sessionStore.hasActiveSocialProfileRotation(toValue(screenId), toValue(graphics)),
+		(now) =>
+			Object.keys(
+				sessionStore.animationProjection(
+					toValue(screenId),
+					toValue(graphics),
+					now,
+					toValue(channels),
+				),
+			).length > 0 ||
+			sessionStore.hasActiveSocialProfileRotation(toValue(screenId), toValue(graphics)),
 	);
 
 	// The stored graphics and channels restart it too: a looping recipe saved onto

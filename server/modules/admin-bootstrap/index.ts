@@ -1,5 +1,8 @@
 import type { H3Event } from 'h3';
-import { assertPasswordWithinBounds, normalizeAccountEmail } from '~~/server/utils/betterAuthCredentials';
+import {
+	assertPasswordWithinBounds,
+	normalizeAccountEmail,
+} from '~~/server/utils/betterAuthCredentials';
 import { requireSharedSecret } from '~~/server/utils/sharedSecretSurface';
 
 /**
@@ -83,7 +86,11 @@ export interface AdminBootstrapPort {
 	readonly minPasswordLength: number;
 	readonly maxPasswordLength: number;
 	findByEmail: (email: string) => Promise<AdminBootstrapAccount | null>;
-	createAdmin: (input: { email: string; password: string; name: string }) => Promise<AdminBootstrapAccount>;
+	createAdmin: (input: {
+		email: string;
+		password: string;
+		name: string;
+	}) => Promise<AdminBootstrapAccount>;
 	setPassword: (userId: string, password: string) => Promise<void>;
 	/** Replaces the account's roles with exactly these. */
 	setRoles: (userId: string, roles: readonly string[]) => Promise<void>;

@@ -23,10 +23,19 @@ const {
 	seatLabel: defaultSeatLabel,
 	playerLgs,
 	playerRecord,
-} = usePlayerFeatureMatchData(() => props.matchId, () => props.playerSide);
+} = usePlayerFeatureMatchData(
+	() => props.matchId,
+	() => props.playerSide,
+);
 
-const playerControls = usePlayerControls(() => props.matchId, () => props.playerSide);
-const { availableCounterTypes } = usePlayerDeckCounters(() => props.matchId, () => props.playerSide);
+const playerControls = usePlayerControls(
+	() => props.matchId,
+	() => props.playerSide,
+);
+const { availableCounterTypes } = usePlayerDeckCounters(
+	() => props.matchId,
+	() => props.playerSide,
+);
 
 const {
 	showName,
@@ -43,14 +52,16 @@ const {
 	seatLabel,
 } = usePlayerDisplayConfig(() => props.config, defaultSeatLabel);
 
-const matchState = computed(() => featureMatchStateStore.featureMatchStates.get(props.matchId) ?? null);
-
-const isActive = computed(() =>
-	activePlayerTrackingEnabled.value && matchState.value?.activePlayer === props.playerSide,
+const matchState = computed(
+	() => featureMatchStateStore.featureMatchStates.get(props.matchId) ?? null,
 );
 
-const isFirstPlayer = computed(() =>
-	activePlayerTrackingEnabled.value && matchState.value?.firstPlayer === props.playerSide,
+const isActive = computed(
+	() => activePlayerTrackingEnabled.value && matchState.value?.activePlayer === props.playerSide,
+);
+
+const isFirstPlayer = computed(
+	() => activePlayerTrackingEnabled.value && matchState.value?.firstPlayer === props.playerSide,
 );
 
 const counterValue = computed(() => {
@@ -60,16 +71,15 @@ const counterValue = computed(() => {
 	return player.value?.lifeTotal ?? 0;
 });
 
-const counterMin = computed(() => mulliganPhase.value ? 0 : undefined);
-const counterMax = computed(() => mulliganPhase.value ? startingHandSize.value : undefined);
+const counterMin = computed(() => (mulliganPhase.value ? 0 : undefined));
+const counterMax = computed(() => (mulliganPhase.value ? startingHandSize.value : undefined));
 
 function handleAdjust(delta: number) {
 	if (mulliganPhase.value) {
 		const current = player.value?.cardsKept ?? startingHandSize.value;
 		const newValue = Math.max(0, current + delta);
 		void playerControls.setCardsKept(newValue);
-	}
-	else {
+	} else {
 		void playerControls.adjustLife(delta);
 	}
 }
@@ -77,21 +87,18 @@ function handleAdjust(delta: number) {
 function handleSet(value: number) {
 	if (mulliganPhase.value) {
 		void playerControls.setCardsKept(Math.max(0, value));
-	}
-	else {
+	} else {
 		void playerControls.setLife(value);
 	}
 }
 
 const activeGradientDir = computed(() => {
-	return props.playerSide === 'player1'
-		? 'to left'
-		: 'to right';
+	return props.playerSide === 'player1' ? 'to left' : 'to right';
 });
 
-const panelStyle = computed(() => (isActive.value
-	? { '--active-dir': activeGradientDir.value }
-	: {}));
+const panelStyle = computed(() =>
+	isActive.value ? { '--active-dir': activeGradientDir.value } : {},
+);
 </script>
 
 <template>
@@ -109,7 +116,11 @@ const panelStyle = computed(() => (isActive.value
 				<span v-if="seatLabel" class="seat-badge">{{ seatLabel }}</span>
 			</div>
 			<div class="info-center">
-				<PlayerMatchHistoryButton class="font-semibold truncate" :player="linkedPlayer" :name="playerName" />
+				<PlayerMatchHistoryButton
+					class="font-semibold truncate"
+					:player="linkedPlayer"
+					:name="playerName"
+				/>
 				<span v-if="showPronouns" class="text-sm text-muted">
 					{{ playerPronouns ? `(${playerPronouns})` : '' }}
 				</span>
@@ -137,15 +148,27 @@ const panelStyle = computed(() => (isActive.value
 				<UIcon name="i-lucide-list" class="w-3.5 h-3.5 shrink-0" />
 				{{ deckName }}
 			</button>
-			<div v-else-if="showDeckName" class="meta-deck" :class="deckName ? 'text-muted' : 'text-transparent'">
+			<div
+				v-else-if="showDeckName"
+				class="meta-deck"
+				:class="deckName ? 'text-muted' : 'text-transparent'"
+			>
 				{{ deckName || '–' }}
 			</div>
 
-			<div v-if="showRecord" class="meta-record text-xs" :class="playerRecord ? 'text-muted' : 'text-transparent'">
+			<div
+				v-if="showRecord"
+				class="meta-record text-xs"
+				:class="playerRecord ? 'text-muted' : 'text-transparent'"
+			>
 				{{ playerRecord || '–' }}
 			</div>
 
-			<div v-if="showLgs" class="meta-lgs text-xs" :class="playerLgs ? 'text-muted' : 'text-transparent'">
+			<div
+				v-if="showLgs"
+				class="meta-lgs text-xs"
+				:class="playerLgs ? 'text-muted' : 'text-transparent'"
+			>
 				{{ playerLgs || '–' }}
 			</div>
 		</div>
@@ -160,7 +183,10 @@ const panelStyle = computed(() => (isActive.value
 				@adjust="handleAdjust"
 				@set="handleSet"
 			/>
-			<div v-if="mulliganPhase" class="flex items-center justify-center gap-1 text-xs text-muted mt-2">
+			<div
+				v-if="mulliganPhase"
+				class="flex items-center justify-center gap-1 text-xs text-muted mt-2"
+			>
 				<UIcon name="i-lucide-hand" class="w-3.5 h-3.5" />
 				<span>Hand</span>
 			</div>
@@ -323,7 +349,11 @@ const panelStyle = computed(() => (isActive.value
 
 /* ── Active player highlight ── */
 .player-panel.is-active {
-	background: linear-gradient(var(--active-dir, to left), var(--ui-primary-50, rgba(59, 130, 246, 0.06)), transparent);
+	background: linear-gradient(
+		var(--active-dir, to left),
+		var(--ui-primary-50, rgba(59, 130, 246, 0.06)),
+		transparent
+	);
 
 	&::before {
 		content: '';

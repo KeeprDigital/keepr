@@ -32,7 +32,10 @@ import { readJsonPayloadLimited } from '~~/server/utils/payloadLimits';
  */
 export default defineEventHandler(async (event) => {
 	await requireUserId(event);
-	const { templateId } = await getValidatedRouterParams(event, featureMatchLayoutTemplateParamsSchema.parse);
+	const { templateId } = await getValidatedRouterParams(
+		event,
+		featureMatchLayoutTemplateParamsSchema.parse,
+	);
 	refuseBuiltInFeatureMatchLayoutTemplate(templateId, 'revised');
 	await requireGraphicsTemplateWritable(event, templateId);
 
@@ -47,11 +50,13 @@ export default defineEventHandler(async (event) => {
 	const stored = body.document
 		? undefined
 		: await featureMatchLayoutTemplateService().findById(templateId);
-	const document = body.document ?? (stored?.revision === body.revision
-		? stored.document
-		: undefined);
+	const document =
+		body.document ?? (stored?.revision === body.revision ? stored.document : undefined);
 	if (document)
-		await assertFeatureMatchLayoutTemplateReferencesSelectable(graphicsAssetLibraryForEvent(event), document);
+		await assertFeatureMatchLayoutTemplateReferencesSelectable(
+			graphicsAssetLibraryForEvent(event),
+			document,
+		);
 
 	try {
 		const template = await featureMatchLayoutTemplateService().update(templateId, body);
@@ -65,8 +70,7 @@ export default defineEventHandler(async (event) => {
 		}
 
 		return mapFeatureMatchLayoutTemplateToResponse(template);
-	}
-	catch (error) {
+	} catch (error) {
 		if (error instanceof FeatureMatchLayoutTemplateReferenceConflict)
 			throw graphicsTemplateReferenceConflict('Feature Match Layout Template');
 		// A stale revision is the author's problem to resolve, not an internal fault:

@@ -11,8 +11,11 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  * and the release are the queries', not a mock's.
  */
 
-vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; statusMessage?: string }) =>
-	Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode?: number; message?: string; statusMessage?: string }) =>
+		Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -48,23 +51,30 @@ function capability(suffix: string) {
 }
 
 beforeAll(async () => {
-	const [mtgEvent, opEvent] = await db.insert(schema.events).values([
-		{ name: 'MTG Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
-		{ name: 'OP Event', game: 'op', featureMatchOrientation: 'horizontal' },
-	]).returning({ id: schema.events.id });
+	const [mtgEvent, opEvent] = await db
+		.insert(schema.events)
+		.values([
+			{ name: 'MTG Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			{ name: 'OP Event', game: 'op', featureMatchOrientation: 'horizontal' },
+		])
+		.returning({ id: schema.events.id });
 	mtgEventId = mtgEvent!.id;
 	opEventId = opEvent!.id;
 
-	const [archetype] = await db.insert(schema.archetypes)
+	const [archetype] = await db
+		.insert(schema.archetypes)
 		.values({ eventId: mtgEventId, name: 'Izzet Prowess', colors: 'UR' })
 		.returning({ id: schema.archetypes.id });
-	const [kim, lee, foreign, opPlayer, opNamed] = await db.insert(schema.players).values([
-		{ eventId: mtgEventId, name: 'Kim', archetypeId: archetype!.id },
-		{ eventId: mtgEventId, name: 'Lee' },
-		{ eventId: opEventId, name: 'Foreign' },
-		{ eventId: opEventId, name: '', nickname: 'luffy_fan' },
-		{ eventId: opEventId, name: 'Nami Reyes', nickname: 'navigator' },
-	]).returning({ id: schema.players.id });
+	const [kim, lee, foreign, opPlayer, opNamed] = await db
+		.insert(schema.players)
+		.values([
+			{ eventId: mtgEventId, name: 'Kim', archetypeId: archetype!.id },
+			{ eventId: mtgEventId, name: 'Lee' },
+			{ eventId: opEventId, name: 'Foreign' },
+			{ eventId: opEventId, name: '', nickname: 'luffy_fan' },
+			{ eventId: opEventId, name: 'Nami Reyes', nickname: 'navigator' },
+		])
+		.returning({ id: schema.players.id });
 	opNamedPlayerId = opNamed!.id;
 	mtg.kim = kim!.id;
 	mtg.lee = lee!.id;
@@ -89,21 +99,27 @@ function topCutConfig(manualBracket: ManualBracket, overrides: Record<string, un
 
 /** The first column's positions as entrant names, `-` for an empty seat. */
 function firstColumn(bracket: Awaited<ReturnType<typeof findTopCutBracket>>['bracket']) {
-	return bracket.columns[0]?.positions.map(position => position.entrants.map(entrant => entrant?.name ?? '-').join(' v '));
+	return bracket.columns[0]?.positions.map((position) =>
+		position.entrants.map((entrant) => entrant?.name ?? '-').join(' v '),
+	);
 }
 
 describe('a Manual Bracket as its Screen shows it', () => {
-	it('names each Seed\'s Player by their current name, a typed Seed by its name, and a Player of another Event by nothing', async () => {
-		const { bracket } = await findTopCutBracket(mtgEventId, 'mtg', topCutConfig({
-			size: 4,
-			entrants: [
-				{ playerId: mtg.kim },
-				{ name: 'Walk-in' },
-				{ playerId: mtg.lee },
-				{ playerId: mtg.foreign },
-			],
-			results: [],
-		}));
+	it("names each Seed's Player by their current name, a typed Seed by its name, and a Player of another Event by nothing", async () => {
+		const { bracket } = await findTopCutBracket(
+			mtgEventId,
+			'mtg',
+			topCutConfig({
+				size: 4,
+				entrants: [
+					{ playerId: mtg.kim },
+					{ name: 'Walk-in' },
+					{ playerId: mtg.lee },
+					{ playerId: mtg.foreign },
+				],
+				results: [],
+			}),
+		);
 
 		expect(firstColumn(bracket)).toEqual(['Kim v -', 'Walk-in v Lee']);
 		expect(bracket.columns[0]!.positions[0]!.status).toBe('bye');
@@ -136,85 +152,74 @@ describe('a Manual Bracket as its Screen shows it', () => {
 			],
 		],
 	])('shows a Seed and deck only while the Screen shows them: %j', async (shown, entrants) => {
-		const { bracket } = await findTopCutBracket(mtgEventId, 'mtg', topCutConfig({
-			size: 4,
-			entrants: [
-				{ playerId: mtg.kim },
-				null,
-				null,
-				{ name: 'Walk-in' },
-			],
-			results: [],
-		}, shown));
+		const { bracket } = await findTopCutBracket(
+			mtgEventId,
+			'mtg',
+			topCutConfig(
+				{
+					size: 4,
+					entrants: [{ playerId: mtg.kim }, null, null, { name: 'Walk-in' }],
+					results: [],
+				},
+				shown,
+			),
+		);
 
-		expect(bracket.columns[0]!.positions[0]!.entrants).toEqual(entrants.map(entrant => ({
-			...entrant,
-			playerId: entrant.playerId == null
-				? null
-				: mtg.kim,
-		})));
+		expect(bracket.columns[0]!.positions[0]!.entrants).toEqual(
+			entrants.map((entrant) => ({
+				...entrant,
+				playerId: entrant.playerId == null ? null : mtg.kim,
+			})),
+		);
 	});
 
 	it.each([
 		['phase', 'mtg', 'Phase', null],
-		[
-			'manual',
-			'mtg',
-			'Manual Bracket',
-			['Kim v -', '- v -'],
-		],
-		[
-			'phase',
-			'op',
-			'Manual Bracket',
-			['luffy_fan v -', '- v -'],
-		],
-	] as const)('reads a %s source on a %s Event from its %s', async (bracketSource, game, _, column) => {
-		const eventId = game === 'op'
-			? opEventId
-			: mtgEventId;
-		const playerId = game === 'op'
-			? opPlayerId
-			: mtg.kim;
-		const { phase, bracket } = await findTopCutBracket(eventId, game, topCutConfig({
-			size: 4,
-			entrants: [
-				{ playerId },
-			],
-			results: [],
-		}, { bracketSource }));
+		['manual', 'mtg', 'Manual Bracket', ['Kim v -', '- v -']],
+		['phase', 'op', 'Manual Bracket', ['luffy_fan v -', '- v -']],
+	] as const)(
+		'reads a %s source on a %s Event from its %s',
+		async (bracketSource, game, _, column) => {
+			const eventId = game === 'op' ? opEventId : mtgEventId;
+			const playerId = game === 'op' ? opPlayerId : mtg.kim;
+			const { phase, bracket } = await findTopCutBracket(
+				eventId,
+				game,
+				topCutConfig(
+					{
+						size: 4,
+						entrants: [{ playerId }],
+						results: [],
+					},
+					{ bracketSource },
+				),
+			);
 
-		expect(phase).toBeNull();
-		expect(firstColumn(bracket) ?? null).toEqual(column);
-	});
+			expect(phase).toBeNull();
+			expect(firstColumn(bracket) ?? null).toEqual(column);
+		},
+	);
 });
 
-describe('a One Piece Card Game bracket\'s Players by name or Nickname', () => {
+describe("a One Piece Card Game bracket's Players by name or Nickname", () => {
 	// The one the Screen picks shows, the other standing in when blank; a saved Screen shows the name (ADR-0077).
 	it.each([
-		[
-			{},
-			['Nami Reyes v luffy_fan', '- v -'],
-		],
-		[
-			{ playerNameShown: 'name' },
-			['Nami Reyes v luffy_fan', '- v -'],
-		],
-		[
-			{ playerNameShown: 'nickname' },
-			['navigator v luffy_fan', '- v -'],
-		],
+		[{}, ['Nami Reyes v luffy_fan', '- v -']],
+		[{ playerNameShown: 'name' }, ['Nami Reyes v luffy_fan', '- v -']],
+		[{ playerNameShown: 'nickname' }, ['navigator v luffy_fan', '- v -']],
 	])('with %j shows %j', async (shown, column) => {
-		const { bracket } = await findTopCutBracket(opEventId, 'op', topCutConfig({
-			size: 4,
-			entrants: [
-				{ playerId: opNamedPlayerId },
-				null,
-				null,
-				{ playerId: opPlayerId },
-			],
-			results: [],
-		}, shown));
+		const { bracket } = await findTopCutBracket(
+			opEventId,
+			'op',
+			topCutConfig(
+				{
+					size: 4,
+					entrants: [{ playerId: opNamedPlayerId }, null, null, { playerId: opPlayerId }],
+					results: [],
+				},
+				shown,
+			),
+		);
 
 		expect(firstColumn(bracket)).toEqual(column);
 	});
@@ -234,40 +239,44 @@ describe('deleting a Player a Manual Bracket names', () => {
 				],
 			],
 		};
-		const screen = await screenService().create(mtgEventId, {
-			name: slug,
-			slug,
-			currentMode: 'top-cut',
-			modeConfigs: {
-				'top-cut': { bracketSource: 'manual', manualBracket },
-			},
-		} as never, capability(slug));
+		const screen = await screenService().create(
+			mtgEventId,
+			{
+				name: slug,
+				slug,
+				currentMode: 'top-cut',
+				modeConfigs: {
+					'top-cut': { bracketSource: 'manual', manualBracket },
+				},
+			} as never,
+			capability(slug),
+		);
 		return { screen, manualBracket };
 	}
 
 	it('empties only the Seeds naming them, keeps every result, announces the Screen once, and keeps it writable', async () => {
-		const [doomed] = await db.insert(schema.players).values({ eventId: mtgEventId, name: 'Doomed' }).returning({ id: schema.players.id });
+		const [doomed] = await db
+			.insert(schema.players)
+			.values({ eventId: mtgEventId, name: 'Doomed' })
+			.returning({ id: schema.players.id });
 		const { screen } = await stage('names-doomed', [
 			{ playerId: mtg.kim },
 			{ name: 'Walk-in' },
 			null,
 			{ playerId: doomed!.id },
 		]);
-		const bystander = await stage('names-others', [
-			{ playerId: mtg.lee },
-		]);
+		const bystander = await stage('names-others', [{ playerId: mtg.lee }]);
 
-		await playerUpdateModule().deletePlayer({ eventId: mtgEventId, playerId: doomed!.id, originConnectionId: 'delete-origin' });
+		await playerUpdateModule().deletePlayer({
+			eventId: mtgEventId,
+			playerId: doomed!.id,
+			originConnectionId: 'delete-origin',
+		});
 
 		const released = await screenService().findById(screen.id, mtgEventId);
 		expect(released?.modeConfigs?.['top-cut']?.manualBracket).toEqual({
 			size: 4,
-			entrants: [
-				{ playerId: mtg.kim },
-				{ name: 'Walk-in' },
-				null,
-				null,
-			],
+			entrants: [{ playerId: mtg.kim }, { name: 'Walk-in' }, null, null],
 			results: [
 				[
 					{
@@ -283,48 +292,60 @@ describe('deleting a Player a Manual Bracket names', () => {
 			eventId: mtgEventId,
 			entity: expect.objectContaining({ id: screen.id, stateVersion: screen.stateVersion + 1 }),
 		});
-		expect((await screenService().findById(bystander.screen.id, mtgEventId))?.stateVersion).toBe(bystander.screen.stateVersion);
+		expect((await screenService().findById(bystander.screen.id, mtgEventId))?.stateVersion).toBe(
+			bystander.screen.stateVersion,
+		);
 
-		await expect(screenWriteModule().updateModeConfig({
-			authoringSessionId: undefined,
-			eventId: mtgEventId,
-			screenId: screen.id,
-			mode: 'top-cut',
-			config: { manualBracket: released!.modeConfigs!['top-cut']!.manualBracket, showSeeds: true },
-			stateVersion: released!.stateVersion,
-			graphicsAssets: () => ({
-				inspectGraphicAssetRevisions: vi.fn(),
+		await expect(
+			screenWriteModule().updateModeConfig({
+				authoringSessionId: undefined,
+				eventId: mtgEventId,
+				screenId: screen.id,
+				mode: 'top-cut',
+				config: {
+					manualBracket: released!.modeConfigs!['top-cut']!.manualBracket,
+					showSeeds: true,
+				},
+				stateVersion: released!.stateVersion,
+				graphicsAssets: () => ({
+					inspectGraphicAssetRevisions: vi.fn(),
+				}),
 			}),
-		})).resolves.toBeDefined();
+		).resolves.toBeDefined();
 		// A PATCH replaces the Manual Bracket whole, its empty Seeds kept in place.
-		expect((await screenService().findById(screen.id, mtgEventId))?.modeConfigs?.['top-cut']?.manualBracket?.entrants)
-			.toEqual([
-				{ playerId: mtg.kim },
-				{ name: 'Walk-in' },
-				null,
-				null,
-			]);
+		expect(
+			(await screenService().findById(screen.id, mtgEventId))?.modeConfigs?.['top-cut']
+				?.manualBracket?.entrants,
+		).toEqual([{ playerId: mtg.kim }, { name: 'Walk-in' }, null, null]);
 	});
 
 	it('empties the Seeds of the Players a Melee data reset deletes', async () => {
-		const [imported] = await db.insert(schema.players).values({
-			eventId: mtgEventId,
-			name: 'Imported',
-			externalSource: 'melee',
-			externalId: 'melee-manual-bracket',
-		}).returning({ id: schema.players.id });
+		const [imported] = await db
+			.insert(schema.players)
+			.values({
+				eventId: mtgEventId,
+				name: 'Imported',
+				externalSource: 'melee',
+				externalId: 'melee-manual-bracket',
+			})
+			.returning({ id: schema.players.id });
 		const { screen } = await stage('names-imported', [
 			{ playerId: imported!.id },
 			{ playerId: mtg.kim },
 		]);
 
-		const reset = await eventService().updateMeleeConfig(mtgEventId, { meleeEnabled: false, meleeEventId: null, meleeClientId: null });
+		const reset = await eventService().updateMeleeConfig(mtgEventId, {
+			meleeEnabled: false,
+			meleeEventId: null,
+			meleeClientId: null,
+		});
 
-		expect(reset?.clearedScreens).toContainEqual(expect.objectContaining({ id: screen.id, stateVersion: screen.stateVersion + 1 }));
-		expect((await screenService().findById(screen.id, mtgEventId))?.modeConfigs?.['top-cut']?.manualBracket?.entrants)
-			.toEqual([
-				null,
-				{ playerId: mtg.kim },
-			]);
+		expect(reset?.clearedScreens).toContainEqual(
+			expect.objectContaining({ id: screen.id, stateVersion: screen.stateVersion + 1 }),
+		);
+		expect(
+			(await screenService().findById(screen.id, mtgEventId))?.modeConfigs?.['top-cut']
+				?.manualBracket?.entrants,
+		).toEqual([null, { playerId: mtg.kim }]);
 	});
 });

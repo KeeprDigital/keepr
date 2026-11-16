@@ -10,7 +10,11 @@ describe('rounds API', () => {
 	beforeAll(async () => {
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Rounds Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Rounds Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 
@@ -24,8 +28,7 @@ describe('rounds API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('creates a round and returns 201', async () => {
@@ -112,9 +115,12 @@ describe('rounds API', () => {
 			},
 		});
 
-		const overrideRes = await $fetchRaw(`/api/events/${eventId}/rounds/${round.id}/state/manual-override`, {
-			method: 'POST',
-		});
+		const overrideRes = await $fetchRaw(
+			`/api/events/${eventId}/rounds/${round.id}/state/manual-override`,
+			{
+				method: 'POST',
+			},
+		);
 
 		expect(overrideRes.status).toBe(200);
 		expect(overrideRes._data.controlMode).toBe('manual_override');

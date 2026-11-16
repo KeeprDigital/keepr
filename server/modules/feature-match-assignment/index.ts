@@ -1,10 +1,19 @@
 import type { DbFeatureMatchAssignment } from '~~/server/db/schema';
-import type { SaveFeatureMatchAssignmentInput, UpdateFeatureMatchAssignmentInput } from '~~/shared/api';
+import type {
+	SaveFeatureMatchAssignmentInput,
+	UpdateFeatureMatchAssignmentInput,
+} from '~~/shared/api';
 import { mapFeatureMatchAssignmentToResponse } from '~~/server/mappers/featureMatchAssignment';
 import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
-import { featureMatchAssignmentService, isAssignmentDisplacementGuardViolation } from '~~/server/services/featureMatchAssignment';
+import {
+	featureMatchAssignmentService,
+	isAssignmentDisplacementGuardViolation,
+} from '~~/server/services/featureMatchAssignment';
 import { StateConflictError } from '~~/server/utils/errors';
-import { hasExactNoteDiscardConfirmation, throwFeatureMatchNoteDiscardRequired } from '~~/server/utils/featureMatchNoteDiscard';
+import {
+	hasExactNoteDiscardConfirmation,
+	throwFeatureMatchNoteDiscardRequired,
+} from '~~/server/utils/featureMatchNoteDiscard';
 import {
 	requireRoundInEvent,
 	validateFeatureMatchAssignmentCreateReferences,
@@ -29,23 +38,23 @@ export function featureMatchAssignmentModule() {
 		};
 	}
 
-	async function save(eventId: number, input: SaveFeatureMatchAssignmentInput, originConnectionId?: string) {
+	async function save(
+		eventId: number,
+		input: SaveFeatureMatchAssignmentInput,
+		originConnectionId?: string,
+	) {
 		const { confirmedNoteDiscards = [], ...assignmentInput } = input;
 		await validateFeatureMatchAssignmentCreateReferences(eventId, assignmentInput);
 		const [existingAtSlot, existingForMatch] = await Promise.all([
 			assignments.findByRoundAndSlot(eventId, assignmentInput.roundId, assignmentInput.slotId),
 			assignments.findByRoundAndMatch(eventId, assignmentInput.roundId, assignmentInput.matchId),
 		]);
-		const displacedAssignment = existingAtSlot?.matchId !== assignmentInput.matchId
-			? existingAtSlot
-			: undefined;
+		const displacedAssignment =
+			existingAtSlot?.matchId !== assignmentInput.matchId ? existingAtSlot : undefined;
 		const hasExactConfirmation = displacedAssignment
 			? hasExactNoteDiscardConfirmation(displacedAssignment, confirmedNoteDiscards)
 			: false;
-		if (
-			displacedAssignment?.note?.trim()
-			&& !hasExactConfirmation
-		) {
+		if (displacedAssignment?.note?.trim() && !hasExactConfirmation) {
 			await throwFeatureMatchNoteDiscardRequired(eventId, displacedAssignment);
 		}
 		if (confirmedNoteDiscards.length > 0 && !hasExactConfirmation) {
@@ -58,10 +67,8 @@ export function featureMatchAssignmentModule() {
 		let assignment: DbFeatureMatchAssignment;
 		try {
 			assignment = await assignments.upsert(eventId, assignmentInput, displacedAssignment);
-		}
-		catch (error) {
-			if (!isAssignmentDisplacementGuardViolation(error))
-				throw error;
+		} catch (error) {
+			if (!isAssignmentDisplacementGuardViolation(error)) throw error;
 			const current = await assignments.findByRoundAndSlot(
 				eventId,
 				assignmentInput.roundId,
@@ -69,30 +76,57 @@ export function featureMatchAssignmentModule() {
 			);
 			if (current?.matchId !== assignmentInput.matchId && current?.note?.trim())
 				await throwFeatureMatchNoteDiscardRequired(eventId, current);
-			throw new StateConflictError('Feature match assignment', displacedAssignment?.id ?? assignmentInput.slotId);
+			throw new StateConflictError(
+				'Feature match assignment',
+				displacedAssignment?.id ?? assignmentInput.slotId,
+			);
 		}
 		if (existingForMatch)
-			await eventData.featureMatchAssignmentUpdated({ eventId, entity: assignment, originConnectionId });
+			await eventData.featureMatchAssignmentUpdated({
+				eventId,
+				entity: assignment,
+				originConnectionId,
+			});
 		else
-			await eventData.featureMatchAssignmentCreated({ eventId, entity: assignment, originConnectionId });
+			await eventData.featureMatchAssignmentCreated({
+				eventId,
+				entity: assignment,
+				originConnectionId,
+			});
 		if (existingAtSlot && existingAtSlot.id !== assignment.id)
-			await eventData.featureMatchAssignmentDeleted({ eventId, id: existingAtSlot.id, originConnectionId });
+			await eventData.featureMatchAssignmentDeleted({
+				eventId,
+				id: existingAtSlot.id,
+				originConnectionId,
+			});
 		return mapFeatureMatchAssignmentToResponse(assignment);
 	}
 
-	async function requireExisting(eventId: number, assignmentId: number): Promise<DbFeatureMatchAssignment> {
+	async function requireExisting(
+		eventId: number,
+		assignmentId: number,
+	): Promise<DbFeatureMatchAssignment> {
 		const existing = await assignments.findById(eventId, assignmentId);
 		if (!existing)
 			throw createError({ statusCode: 404, message: 'Feature match assignment not found' });
 		return existing;
 	}
 
-	async function update(eventId: number, assignmentId: number, input: UpdateFeatureMatchAssignmentInput, originConnectionId?: string) {
+	async function update(
+		eventId: number,
+		assignmentId: number,
+		input: UpdateFeatureMatchAssignmentInput,
+		originConnectionId?: string,
+	) {
 		await requireExisting(eventId, assignmentId);
 		const assignment = await assignments.update(eventId, assignmentId, input);
 		if (!assignment)
 			throw createError({ statusCode: 404, message: 'Feature match assignment not found' });
-		await eventData.featureMatchAssignmentUpdated({ eventId, entity: assignment, originConnectionId });
+		await eventData.featureMatchAssignmentUpdated({
+			eventId,
+			entity: assignment,
+			originConnectionId,
+		});
 		return mapFeatureMatchAssignmentToResponse(assignment);
 	}
 
@@ -100,7 +134,11 @@ export function featureMatchAssignmentModule() {
 		const removed = await assignments.remove(eventId, assignmentId);
 		if (!removed)
 			throw createError({ statusCode: 404, message: 'Feature match assignment not found' });
-		await eventData.featureMatchAssignmentDeleted({ eventId, id: assignmentId, originConnectionId });
+		await eventData.featureMatchAssignmentDeleted({
+			eventId,
+			id: assignmentId,
+			originConnectionId,
+		});
 		return { success: true };
 	}
 

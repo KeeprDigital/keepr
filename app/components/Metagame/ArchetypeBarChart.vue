@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { DefaultLabelFormatterCallbackParams, TooltipComponentFormatterCallbackParams } from 'echarts';
+import type {
+	DefaultLabelFormatterCallbackParams,
+	TooltipComponentFormatterCallbackParams,
+} from 'echarts';
 import type { ArchetypeBreakdownEntry } from '~~/shared/types/metagame';
 import { formatPercent } from '~~/app/utils/metagame';
 
@@ -33,14 +36,11 @@ function formatCount(value: number) {
 }
 
 function formatPlayerCount(value: number) {
-	return `${formatCount(value)} player${value === 1
-		? ''
-		: 's'}`;
+	return `${formatCount(value)} player${value === 1 ? '' : 's'}`;
 }
 
 function sortByDefaultOrder(left: ArchetypeBreakdownEntry, right: ArchetypeBreakdownEntry) {
-	if (right.metaShare !== left.metaShare)
-		return right.metaShare - left.metaShare;
+	if (right.metaShare !== left.metaShare) return right.metaShare - left.metaShare;
 
 	return left.name.localeCompare(right.name);
 }
@@ -48,7 +48,7 @@ function sortByDefaultOrder(left: ArchetypeBreakdownEntry, right: ArchetypeBreak
 const sortedEntries = computed(() => [...props.entries].sort(sortByDefaultOrder));
 
 const chartData = computed<BarDatum[]>(() =>
-	sortedEntries.value.map(entry => ({
+	sortedEntries.value.map((entry) => ({
 		name: entry.name,
 		value: entry.count,
 		metaShare: entry.metaShare,
@@ -56,16 +56,19 @@ const chartData = computed<BarDatum[]>(() =>
 	})),
 );
 
-const chartHeight = computed(() => CHART_VERTICAL_PADDING + sortedEntries.value.length * BAR_ROW_HEIGHT);
-const loadingHeight = computed(() => CHART_VERTICAL_PADDING + Math.max(sortedEntries.value.length, LOADING_ROW_COUNT) * BAR_ROW_HEIGHT);
+const chartHeight = computed(
+	() => CHART_VERTICAL_PADDING + sortedEntries.value.length * BAR_ROW_HEIGHT,
+);
+const loadingHeight = computed(
+	() =>
+		CHART_VERTICAL_PADDING +
+		Math.max(sortedEntries.value.length, LOADING_ROW_COUNT) * BAR_ROW_HEIGHT,
+);
 
 function tooltipFormatter(params: TooltipComponentFormatterCallbackParams) {
-	const datum = Array.isArray(params)
-		? params[0]
-		: params;
+	const datum = Array.isArray(params) ? params[0] : params;
 	const entry = datum?.data as BarDatum | undefined;
-	if (!entry)
-		return '';
+	if (!entry) return '';
 
 	const lines = [
 		`<strong>${entry.name}</strong>`,
@@ -73,23 +76,22 @@ function tooltipFormatter(params: TooltipComponentFormatterCallbackParams) {
 		`${formatPercent(entry.metaShare)} of field`,
 	];
 
-	if (entry.winRate != null)
-		lines.push(`${formatPercent(entry.winRate)} win rate`);
+	if (entry.winRate != null) lines.push(`${formatPercent(entry.winRate)} win rate`);
 
 	return lines.join('<br/>');
 }
 
 function labelFormatter(params: DefaultLabelFormatterCallbackParams) {
-	const value = typeof params.value === 'number'
-		? params.value
-		: Number((params.data as BarDatum | undefined)?.value ?? 0);
+	const value =
+		typeof params.value === 'number'
+			? params.value
+			: Number((params.data as BarDatum | undefined)?.value ?? 0);
 
 	return formatCount(value);
 }
 
 function handleChartClick(params: { componentType?: string; name?: string | number }) {
-	if (params.componentType !== 'series' || typeof params.name !== 'string')
-		return;
+	if (params.componentType !== 'series' || typeof params.name !== 'string') return;
 
 	emit('select', params.name);
 }
@@ -117,7 +119,7 @@ const chartOption = computed<ECOption>(() => {
 		yAxis: {
 			type: 'category',
 			inverse: true,
-			data: sortedEntries.value.map(entry => entry.name),
+			data: sortedEntries.value.map((entry) => entry.name),
 			axisTick: { show: false },
 			axisLine: { show: false },
 			axisLabel: {
@@ -135,7 +137,8 @@ const chartOption = computed<ECOption>(() => {
 					show: true,
 					position: 'right',
 					distance: 8,
-					fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace',
+					fontFamily:
+						'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace',
 					formatter: labelFormatter,
 				},
 				itemStyle: {
@@ -168,11 +171,7 @@ const chartOption = computed<ECOption>(() => {
 			:style="{ height: `${chartHeight}px` }"
 			@click="handleChartClick"
 		/>
-		<div
-			v-else
-			class="w-full"
-			:style="{ height: `${loadingHeight}px` }"
-		/>
+		<div v-else class="w-full" :style="{ height: `${loadingHeight}px` }" />
 
 		<div
 			v-if="loading"

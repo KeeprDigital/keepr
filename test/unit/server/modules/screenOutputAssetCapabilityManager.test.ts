@@ -19,14 +19,10 @@ describe('screen Output Asset Capability lifecycle', () => {
 		vi.clearAllMocks();
 		Object.assign(stored, { assetCapabilitySeed: 'seed-1', assetCapabilityVersion: 1 });
 		findById.mockResolvedValue(stored);
-		findByIdInAnyEvent.mockImplementation(async (screenId: number) => screenId === stored.id
-			? stored
-			: undefined);
-		replaceAssetCapability.mockImplementation(async (
-			_screenId,
-			_eventId,
-			replacement,
-		) => ({
+		findByIdInAnyEvent.mockImplementation(async (screenId: number) =>
+			screenId === stored.id ? stored : undefined,
+		);
+		replaceAssetCapability.mockImplementation(async (_screenId, _eventId, replacement) => ({
 			id: 17,
 			eventId: 3,
 			...replacement,
@@ -68,15 +64,13 @@ describe('screen Output Asset Capability lifecycle', () => {
 		const result = await manager().current({ eventId: 3, screenId: 17 });
 
 		expect(result.outcome).toBe('available');
-		if (result.outcome !== 'available')
-			return;
+		if (result.outcome !== 'available') return;
 		expect(parseScreenOutputLink(result.link)).toEqual({ screenId: 17 });
 	});
 
 	it('exchanges the current link for the capability current() answers, and the Screen it is for', async () => {
 		const current = await manager().current({ eventId: 3, screenId: 17 });
-		if (current.outcome !== 'available')
-			throw new Error('expected a current capability');
+		if (current.outcome !== 'available') throw new Error('expected a current capability');
 
 		await expect(manager().exchange({ link: current.link })).resolves.toEqual({
 			outcome: 'available',
@@ -95,7 +89,9 @@ describe('screen Output Asset Capability lifecycle', () => {
 		Object.assign(stored, { assetCapabilitySeed: 'seed-2', assetCapabilityVersion: 2 });
 
 		expect(rotated.link).not.toBe(previous.link);
-		await expect(manager().exchange({ link: previous.link })).resolves.toEqual({ outcome: 'missing' });
+		await expect(manager().exchange({ link: previous.link })).resolves.toEqual({
+			outcome: 'missing',
+		});
 		await expect(manager().exchange({ link: rotated.link })).resolves.toEqual({
 			outcome: 'available',
 			eventId: 3,
@@ -105,45 +101,34 @@ describe('screen Output Asset Capability lifecycle', () => {
 	});
 
 	it.each<[string, (capability: string) => unknown]>([
-		[
-			'a value that is not a link',
-			() => 'not a link',
-		],
-		[
-			'the capability itself',
-			capability => capability,
-		],
-		[
-			'no value',
-			() => undefined,
-		],
+		['a value that is not a link', () => 'not a link'],
+		['the capability itself', (capability) => capability],
+		['no value', () => undefined],
 	])('exchanges nothing for %s, without reading a Screen', async (_what, presented) => {
 		const current = await manager().current({ eventId: 3, screenId: 17 });
-		if (current.outcome !== 'available')
-			throw new Error('expected a current capability');
+		if (current.outcome !== 'available') throw new Error('expected a current capability');
 
-		await expect(manager().exchange({
-			link: presented(current.capability),
-		}))
-			.resolves
-			.toEqual({ outcome: 'missing' });
+		await expect(
+			manager().exchange({
+				link: presented(current.capability),
+			}),
+		).resolves.toEqual({ outcome: 'missing' });
 		expect(findByIdInAnyEvent).not.toHaveBeenCalled();
 	});
 
 	// Timing must not say whether the Screen exists: both refusals sign once.
-	it('refuses a deleted Screen\'s link after the same signing work as a wrong one', async () => {
+	it("refuses a deleted Screen's link after the same signing work as a wrong one", async () => {
 		const current = await manager().current({ eventId: 3, screenId: 17 });
-		if (current.outcome !== 'available')
-			throw new Error('expected a current capability');
-		const wrong = `${current.link.slice(0, -1)}${current.link.endsWith('2')
-			? '3'
-			: '2'}`;
+		if (current.outcome !== 'available') throw new Error('expected a current capability');
+		const wrong = `${current.link.slice(0, -1)}${current.link.endsWith('2') ? '3' : '2'}`;
 		const sign = vi.spyOn(crypto.subtle, 'sign');
 
 		await expect(manager().exchange({ link: wrong })).resolves.toEqual({ outcome: 'missing' });
 		const signedForWrongLink = sign.mock.calls.length;
 		findByIdInAnyEvent.mockResolvedValue(undefined);
-		await expect(manager().exchange({ link: current.link })).resolves.toEqual({ outcome: 'missing' });
+		await expect(manager().exchange({ link: current.link })).resolves.toEqual({
+			outcome: 'missing',
+		});
 
 		expect(signedForWrongLink).toBe(1);
 		expect(sign.mock.calls.length - signedForWrongLink).toBe(1);
@@ -155,8 +140,7 @@ describe('screen Output Asset Capability lifecycle', () => {
 		const rotated = await manager().rotate({ eventId: 3, screenId: 17 });
 
 		expect(rotated.outcome).toBe('available');
-		if (previous.outcome !== 'available' || rotated.outcome !== 'available')
-			return;
+		if (previous.outcome !== 'available' || rotated.outcome !== 'available') return;
 		expect(rotated.capability).not.toBe(previous.capability);
 		expect(replaceAssetCapability).toHaveBeenCalledWith(
 			17,
@@ -173,11 +157,11 @@ describe('screen Output Asset Capability lifecycle', () => {
 	it('returns a non-retryable missing outcome after the Screen is deleted', async () => {
 		findById.mockResolvedValue(undefined);
 
-		await expect(manager().current({ eventId: 3, screenId: 17 }))
-			.resolves
-			.toEqual({ outcome: 'missing' });
-		await expect(manager().rotate({ eventId: 3, screenId: 17 }))
-			.resolves
-			.toEqual({ outcome: 'missing' });
+		await expect(manager().current({ eventId: 3, screenId: 17 })).resolves.toEqual({
+			outcome: 'missing',
+		});
+		await expect(manager().rotate({ eventId: 3, screenId: 17 })).resolves.toEqual({
+			outcome: 'missing',
+		});
 	});
 });

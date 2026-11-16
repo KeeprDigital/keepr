@@ -5,7 +5,11 @@ import { roundService } from '~~/server/services/round';
 import { getOriginConnectionId } from '~~/server/utils/ably';
 import { isManualOverrideRound } from '~~/shared/utils/roundControl';
 
-async function publishRoundUpdated(eventId: number, round: NonNullable<Awaited<ReturnType<ReturnType<typeof roundService>['findById']>>>, originConnectionId: string | undefined) {
+async function publishRoundUpdated(
+	eventId: number,
+	round: NonNullable<Awaited<ReturnType<ReturnType<typeof roundService>['findById']>>>,
+	originConnectionId: string | undefined,
+) {
 	return await eventDataPublicationModule().roundUpdated({
 		eventId,
 		entity: round,
@@ -25,7 +29,9 @@ export function roundControlModule() {
 			return mapRoundToResponse(round);
 		}
 
-		const updatedRound = await roundSvc.update(roundId, eventId, { controlMode: 'manual_override' });
+		const updatedRound = await roundSvc.update(roundId, eventId, {
+			controlMode: 'manual_override',
+		});
 		if (!updatedRound) {
 			throw createError({ statusCode: 500, message: 'Failed to enable manual override' });
 		}

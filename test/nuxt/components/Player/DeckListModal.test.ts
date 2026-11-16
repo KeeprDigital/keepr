@@ -10,9 +10,7 @@ import DeckListModal from '~/components/Player/DeckListModal.vue';
 mockNuxtImport('useEventStore', () => () => reactive({ eventId: 1 }));
 
 const mockPlayerStore = reactive({
-	players: [
-		createMockPlayer({ id: 7, name: 'Marcus' }),
-	],
+	players: [createMockPlayer({ id: 7, name: 'Marcus' })],
 });
 mockNuxtImport('usePlayerStore', () => () => mockPlayerStore);
 
@@ -45,7 +43,8 @@ mockNuxtImport('useScryfallBatch', () => () => ({
 }));
 
 const UModalStub = defineComponent({
-	template: '<div><header><slot name="title" /><slot name="description" /></header><main><slot name="body" /></main><slot name="footer" /></div>',
+	template:
+		'<div><header><slot name="title" /><slot name="description" /></header><main><slot name="body" /></main><slot name="footer" /></div>',
 });
 
 function currentRoundIn(phaseId: number) {
@@ -125,7 +124,8 @@ const stubs = {
 	UISegmentedTabs: {
 		props: ['items', 'modelValue'],
 		emits: ['update:modelValue'],
-		template: '<div role="tablist"><button v-for="item in items" :key="item.value" role="tab" :aria-selected="String(item.value === modelValue)" @click="$emit(\'update:modelValue\', item.value)">{{ item.label }}</button></div>',
+		template:
+			'<div role="tablist"><button v-for="item in items" :key="item.value" role="tab" :aria-selected="String(item.value === modelValue)" @click="$emit(\'update:modelValue\', item.value)">{{ item.label }}</button></div>',
 	},
 	UIEmptyState: true,
 	UILoadingSpinner: true,
@@ -148,9 +148,7 @@ describe('player deck list modal', () => {
 		// so the modal receives deep reactive proxies rather than plain objects.
 		const overlayProps = reactive({
 			playerName: 'Marcus',
-			deckLists: [
-				makeDeckList(),
-			],
+			deckLists: [makeDeckList()],
 		});
 
 		const wrapper = mount(DeckListModal, {
@@ -192,66 +190,59 @@ describe('player deck list modal', () => {
 
 		const label = wrapper.find('[data-deck-companion]');
 		expect(label.exists()).toBe(shown);
-		if (shown)
-			expect(label.text()).toContain('Kaheera, the Orphanguard');
+		if (shown) expect(label.text()).toContain('Kaheera, the Orphanguard');
 	});
 
 	it.each([
-		['a known Player\'s', 7, true],
+		["a known Player's", 7, true],
 		['a Player-less', undefined, false],
-	])('titles %s deck list with a name that opens their match history only when one is known', async (_, playerId, clickable) => {
-		const wrapper = mount(DeckListModal, {
-			props: {
-				playerName: 'Marcus',
-				playerId,
-				deckLists: [
-					makeDeckList(),
-				],
-			},
-			global: { stubs },
-		});
+	])(
+		'titles %s deck list with a name that opens their match history only when one is known',
+		async (_, playerId, clickable) => {
+			const wrapper = mount(DeckListModal, {
+				props: {
+					playerName: 'Marcus',
+					playerId,
+					deckLists: [makeDeckList()],
+				},
+				global: { stubs },
+			});
 
-		const name = wrapper.find('button[title="View Match History"]');
-		expect(name.exists()).toBe(clickable);
-		if (clickable) {
-			await name.trigger('click');
-			expect(openPlayerMatchHistory).toHaveBeenCalledWith(mockPlayerStore.players[0]);
-		}
-	});
+			const name = wrapper.find('button[title="View Match History"]');
+			expect(name.exists()).toBe(clickable);
+			if (clickable) {
+				await name.trigger('click');
+				expect(openPlayerMatchHistory).toHaveBeenCalledWith(mockPlayerStore.players[0]);
+			}
+		},
+	);
 
 	it.each([
 		['its own slot', false, 'Sideboard (2 + Companion)'],
 		['a sideboard copy', true, 'Sideboard (2)'],
-	])('counts a Companion taking %s in the sideboard heading', async (_, usesExistingSideboardSlot, heading) => {
-		const wrapper = mount(DeckListModal, {
-			props: {
-				playerName: 'Marcus',
-				deckLists: [
-					{
-						...makeDeckList(),
-						companion: { ...kaheera, usesExistingSideboardSlot },
-					},
-				],
-			},
-			global: { stubs },
-		});
+	])(
+		'counts a Companion taking %s in the sideboard heading',
+		async (_, usesExistingSideboardSlot, heading) => {
+			const wrapper = mount(DeckListModal, {
+				props: {
+					playerName: 'Marcus',
+					deckLists: [
+						{
+							...makeDeckList(),
+							companion: { ...kaheera, usesExistingSideboardSlot },
+						},
+					],
+				},
+				global: { stubs },
+			});
 
-		expect(wrapper.text()).toContain(heading);
-	});
+			expect(wrapper.text()).toContain(heading);
+		},
+	);
 
 	it.each([
-		[
-			'a reviewed',
-			true,
-			'reviewed',
-			'Reviewed',
-		],
-		[
-			'an unreviewed',
-			false,
-			'unreviewed',
-			'Unreviewed',
-		],
+		['a reviewed', true, 'reviewed', 'Reviewed'],
+		['an unreviewed', false, 'unreviewed', 'Unreviewed'],
 	])('badges %s deck', async (_, reviewed, state, label) => {
 		const wrapper = mount(DeckListModal, {
 			props: {
@@ -272,11 +263,7 @@ describe('player deck list modal', () => {
 	});
 
 	it.each([
-		[
-			'the Current Round\'s Phase',
-			() => Promise.resolve(currentRoundIn(2)),
-			'Constructed',
-		],
+		["the Current Round's Phase", () => Promise.resolve(currentRoundIn(2)), 'Constructed'],
 		[
 			'the primary deck with no Current Round',
 			() => Promise.resolve({ currentRound: null }),
@@ -297,10 +284,7 @@ describe('player deck list modal', () => {
 		const wrapper = mount(DeckListModal, {
 			props: {
 				playerName: 'Marcus',
-				deckLists: [
-					makeDeckList(),
-					constructedDeck,
-				],
+				deckLists: [makeDeckList(), constructedDeck],
 			},
 			global: { stubs },
 		});
@@ -315,10 +299,7 @@ describe('player deck list modal', () => {
 		const wrapper = mount(DeckListModal, {
 			props: {
 				playerName: 'Marcus',
-				deckLists: [
-					constructedDeck,
-					makeDeckList(),
-				],
+				deckLists: [constructedDeck, makeDeckList()],
 			},
 			global: { stubs },
 		});
@@ -339,10 +320,7 @@ describe('player deck list modal', () => {
 			props: {
 				playerName: 'Marcus',
 				playerId: 7,
-				deckLists: [
-					makeDeckList(),
-					constructedDeck,
-				],
+				deckLists: [makeDeckList(), constructedDeck],
 			},
 			global: {
 				stubs: {
@@ -354,12 +332,15 @@ describe('player deck list modal', () => {
 		await flushPromises();
 
 		await wrapper.findAll('[role="tab"]')[tab]!.trigger('click');
-		await wrapper.findAll('button').find(button => button.text() === 'Review deck')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Review deck')!
+			.trigger('click');
 
 		expect(navigateTo).toHaveBeenLastCalledWith(`/event/1/archetype-review?deckId=${deckId}`);
 	});
 
-	it('lists the deck\'s counter types with the cards, not in the header', async () => {
+	it("lists the deck's counter types with the cards, not in the header", async () => {
 		const deck = makeDeckList();
 		deck.cards[0]!.deckCounterTypes = ['energy'];
 		deck.cards[1]!.deckCounterTypes = ['poison', 'energy'];
@@ -373,6 +354,6 @@ describe('player deck list modal', () => {
 
 		expect(wrapper.get('header').text()).not.toContain('Counters');
 		const counters = wrapper.get('main [data-deck-counters]');
-		expect(counters.findAll('li').map(item => item.text())).toEqual(['Poison', 'Energy']);
+		expect(counters.findAll('li').map((item) => item.text())).toEqual(['Poison', 'Energy']);
 	});
 });

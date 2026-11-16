@@ -12,20 +12,20 @@ const DEFAULT_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
 const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
-export type MeleeEndpoint
-	= | 'event'
-		| 'players'
-		| 'current_standings'
-		| 'round_standings'
-		| 'round_matches';
+export type MeleeEndpoint =
+	| 'event'
+	| 'players'
+	| 'current_standings'
+	| 'round_standings'
+	| 'round_matches';
 
-export type MeleeFailureCategory
-	= | 'http'
-		| 'network'
-		| 'timeout'
-		| 'response_parse'
-		| 'response_size'
-		| 'schema_validation';
+export type MeleeFailureCategory =
+	| 'http'
+	| 'network'
+	| 'timeout'
+	| 'response_parse'
+	| 'response_size'
+	| 'schema_validation';
 
 export class MeleeTransportError extends Error {
 	readonly code = 'MELEE_UPSTREAM_FAILURE';
@@ -36,9 +36,7 @@ export class MeleeTransportError extends Error {
 		public readonly upstreamStatus: number | null = null,
 		options?: { cause?: unknown },
 	) {
-		super(message, options?.cause === undefined
-			? undefined
-			: { cause: options.cause });
+		super(message, options?.cause === undefined ? undefined : { cause: options.cause });
 		this.name = 'MeleeTransportError';
 	}
 }
@@ -134,7 +132,7 @@ function parseRetryAfter(value: string | null, nowMs: number): number | null {
 }
 
 function defaultSleep(delayMs: number): Promise<void> {
-	return new Promise(resolve => setTimeout(resolve, delayMs));
+	return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
 function elapsedMs(now: () => number, startedAt: number): number {
@@ -146,8 +144,9 @@ function isTimeoutError(error: unknown, signal: AbortSignal): boolean {
 		return true;
 	}
 
-	return error instanceof DOMException
-		&& (error.name === 'TimeoutError' || error.name === 'AbortError');
+	return (
+		error instanceof DOMException && (error.name === 'TimeoutError' || error.name === 'AbortError')
+	);
 }
 
 class MeleeResponseTooLargeError extends Error {
@@ -224,8 +223,7 @@ export function createMeleeTransport(
 	const log = (level: keyof MeleeTransportLogger, entry: MeleeTransportLogEntry): void => {
 		try {
 			logger[level](entry);
-		}
-		catch {
+		} catch {
 			// Observability must never alter sync behaviour.
 		}
 	};
@@ -248,9 +246,7 @@ export function createMeleeTransport(
 		outcome,
 		durationMs: elapsedMs(now, requestStartedAt),
 		attempt,
-		retryCount: outcome === 'retry'
-			? attempt
-			: attempt - 1,
+		retryCount: outcome === 'retry' ? attempt : attempt - 1,
 		status,
 		...details,
 	});
@@ -267,10 +263,7 @@ export function createMeleeTransport(
 			};
 		}
 
-		const exponentialDelay = Math.min(
-			baseRetryDelayMs * 2 ** (attempt - 1),
-			maxRetryDelayMs,
-		);
+		const exponentialDelay = Math.min(baseRetryDelayMs * 2 ** (attempt - 1), maxRetryDelayMs);
 		const jitter = 0.5 + Math.min(1, Math.max(0, random())) * 0.5;
 
 		return {
@@ -282,15 +275,18 @@ export function createMeleeTransport(
 	const cancelResponseBody = async (response: Response): Promise<void> => {
 		try {
 			await response.body?.cancel();
-		}
-		catch {
+		} catch {
 			// Best-effort resource cleanup before a retry.
 		}
 	};
 
 	const readJsonBody = async (response: Response): Promise<unknown> => {
 		const declaredLength = response.headers?.get('Content-Length');
-		if (declaredLength && /^\d+$/.test(declaredLength.trim()) && Number(declaredLength) > maxResponseBytes) {
+		if (
+			declaredLength &&
+			/^\d+$/.test(declaredLength.trim()) &&
+			Number(declaredLength) > maxResponseBytes
+		) {
 			await cancelResponseBody(response);
 			throw new MeleeResponseTooLargeError();
 		}
@@ -308,8 +304,7 @@ export function createMeleeTransport(
 		try {
 			while (true) {
 				const { done, value } = await reader.read();
-				if (done)
-					break;
+				if (done) break;
 				totalBytes += value.byteLength;
 				if (totalBytes > maxResponseBytes) {
 					await reader.cancel().catch(() => undefined);
@@ -317,8 +312,7 @@ export function createMeleeTransport(
 				}
 				chunks.push(value);
 			}
-		}
-		finally {
+		} finally {
 			reader.releaseLock();
 		}
 
@@ -330,8 +324,7 @@ export function createMeleeTransport(
 		}
 		try {
 			return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-		}
-		catch (error) {
+		} catch (error) {
 			throw new MeleeResponseParseError(error);
 		}
 	};
@@ -354,31 +347,36 @@ export function createMeleeTransport(
 			try {
 				response = await fetchImplementation(url, {
 					headers: {
-						'Authorization': authHeader,
+						Authorization: authHeader,
 						'Content-Type': 'application/json',
 					},
 					signal,
 				});
-			}
-			catch (error) {
+			} catch (error) {
 				const failureCategory: MeleeFailureCategory = isTimeoutError(error, signal)
 					? 'timeout'
 					: 'network';
 
 				if (attempt < maxAttempts) {
 					const delay = retryDelay(attempt, null);
-					log('warn', logEntry(context, requestStartedAt, attempt, null, 'retry', {
-						failureCategory,
-						retryDelayMs: delay.delayMs,
-						retryDelaySource: delay.source,
-					}));
+					log(
+						'warn',
+						logEntry(context, requestStartedAt, attempt, null, 'retry', {
+							failureCategory,
+							retryDelayMs: delay.delayMs,
+							retryDelaySource: delay.source,
+						}),
+					);
 					await sleep(delay.delayMs);
 					continue;
 				}
 
-				log('error', logEntry(context, requestStartedAt, attempt, null, 'failure', {
-					failureCategory,
-				}));
+				log(
+					'error',
+					logEntry(context, requestStartedAt, attempt, null, 'failure', {
+						failureCategory,
+					}),
+				);
 				throw new MeleeTransportError(
 					`Melee.gg API request failed: ${failureCategory}`,
 					failureCategory,
@@ -387,27 +385,31 @@ export function createMeleeTransport(
 				);
 			}
 
-			const status = Number.isInteger(response.status)
-				? response.status
-				: null;
+			const status = Number.isInteger(response.status) ? response.status : null;
 			if (!response.ok) {
 				const isRetryable = status !== null && RETRYABLE_STATUS_CODES.has(status);
 				if (isRetryable && attempt < maxAttempts) {
 					const delay = retryDelay(attempt, response.headers?.get('Retry-After') ?? null);
 					await cancelResponseBody(response);
-					log('warn', logEntry(context, requestStartedAt, attempt, status, 'retry', {
-						failureCategory: 'http',
-						retryDelayMs: delay.delayMs,
-						retryDelaySource: delay.source,
-					}));
+					log(
+						'warn',
+						logEntry(context, requestStartedAt, attempt, status, 'retry', {
+							failureCategory: 'http',
+							retryDelayMs: delay.delayMs,
+							retryDelaySource: delay.source,
+						}),
+					);
 					await sleep(delay.delayMs);
 					continue;
 				}
 
 				await cancelResponseBody(response);
-				log('error', logEntry(context, requestStartedAt, attempt, status, 'failure', {
-					failureCategory: 'http',
-				}));
+				log(
+					'error',
+					logEntry(context, requestStartedAt, attempt, status, 'failure', {
+						failureCategory: 'http',
+					}),
+				);
 				throw new MeleeTransportError(
 					`Melee.gg API request failed with status ${status ?? 'unknown'}`,
 					'http',
@@ -418,8 +420,7 @@ export function createMeleeTransport(
 			let raw: unknown;
 			try {
 				raw = await readJsonBody(response);
-			}
-			catch (error) {
+			} catch (error) {
 				const failureCategory: MeleeFailureCategory = isTimeoutError(error, signal)
 					? 'timeout'
 					: error instanceof MeleeResponseTooLargeError
@@ -431,18 +432,24 @@ export function createMeleeTransport(
 				if (retryableBodyFailure && attempt < maxAttempts) {
 					const delay = retryDelay(attempt, null);
 					await cancelResponseBody(response);
-					log('warn', logEntry(context, requestStartedAt, attempt, status, 'retry', {
-						failureCategory,
-						retryDelayMs: delay.delayMs,
-						retryDelaySource: delay.source,
-					}));
+					log(
+						'warn',
+						logEntry(context, requestStartedAt, attempt, status, 'retry', {
+							failureCategory,
+							retryDelayMs: delay.delayMs,
+							retryDelaySource: delay.source,
+						}),
+					);
 					await sleep(delay.delayMs);
 					continue;
 				}
 
-				log('error', logEntry(context, requestStartedAt, attempt, status, 'failure', {
-					failureCategory,
-				}));
+				log(
+					'error',
+					logEntry(context, requestStartedAt, attempt, status, 'failure', {
+						failureCategory,
+					}),
+				);
 				throw new MeleeTransportError(
 					failureCategory === 'response_parse'
 						? 'Melee.gg API returned an invalid JSON response'
@@ -458,20 +465,23 @@ export function createMeleeTransport(
 			const parsed = schema.safeParse(raw);
 			if (!parsed.success) {
 				const validationIssues = [
-					...new Set(parsed.error.issues.map((issue) => {
-						const path = issue.path
-							.map(segment => typeof segment === 'number'
-								? '[]'
-								: String(segment))
-							.join('.')
-							.replaceAll('.[]', '[]');
-						return `${issue.code}:${path || '<root>'}`;
-					})),
+					...new Set(
+						parsed.error.issues.map((issue) => {
+							const path = issue.path
+								.map((segment) => (typeof segment === 'number' ? '[]' : String(segment)))
+								.join('.')
+								.replaceAll('.[]', '[]');
+							return `${issue.code}:${path || '<root>'}`;
+						}),
+					),
 				].slice(0, 10);
-				log('error', logEntry(context, requestStartedAt, attempt, status, 'failure', {
-					failureCategory: 'schema_validation',
-					validationIssues,
-				}));
+				log(
+					'error',
+					logEntry(context, requestStartedAt, attempt, status, 'failure', {
+						failureCategory: 'schema_validation',
+						validationIssues,
+					}),
+				);
 				// Only issue codes and normalized field paths are logged. Zod messages
 				// and rejected values can contain upstream player data and must not escape.
 				throw new MeleeTransportError(

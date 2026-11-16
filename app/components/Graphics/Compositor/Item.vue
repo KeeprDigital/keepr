@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { GraphicItemRenderDescriptor, GraphicTextRenderSegment } from '~/modules/graphics/renderModel';
+import type {
+	GraphicItemRenderDescriptor,
+	GraphicTextRenderSegment,
+} from '~/modules/graphics/renderModel';
 import { graphicTextClampLines } from '~/modules/graphics/renderModel';
 import { fitGraphicTextFontSize } from '~/modules/graphics/textFit';
 
@@ -48,22 +51,17 @@ const media = computed(() => props.render.media);
  * without anything having to seek it there.
  */
 watchEffect(() => {
-	if (videoElement.value)
-		videoElement.value.playbackRate = media.value?.playbackRate ?? 1;
+	if (videoElement.value) videoElement.value.playbackRate = media.value?.playbackRate ?? 1;
 });
 
 function pixelValue(value: unknown): number {
-	return typeof value === 'string'
-		? Number.parseFloat(value) || 0
-		: 0;
+	return typeof value === 'string' ? Number.parseFloat(value) || 0 : 0;
 }
 
 const surface = computed(() => props.render.surface);
 /** A Text Graphic Item always has runs; a template with no placeholder has one. */
-const textSegments = computed<GraphicTextRenderSegment[]>(() =>
-	props.render.textSegments ?? [
-		{ text: props.render.text ?? '' },
-	],
+const textSegments = computed<GraphicTextRenderSegment[]>(
+	() => props.render.textSegments ?? [{ text: props.render.text ?? '' }],
 );
 
 /**
@@ -93,14 +91,15 @@ const rendersText = computed(() => props.render.textStyle !== undefined);
 const lifeChange = computed(() => props.render.lifeChange);
 const lifeAnimationKey = ref(0);
 
-watch(() => props.render.text, (next, previous) => {
-	// Arriving at or departing from the empty state is the session gaining or
-	// losing a total, which is not a life change.
-	if (!next || !previous || next === previous)
-		return;
-	if (lifeChange.value && lifeChange.value.animation !== 'none')
-		lifeAnimationKey.value += 1;
-});
+watch(
+	() => props.render.text,
+	(next, previous) => {
+		// Arriving at or departing from the empty state is the session gaining or
+		// losing a total, which is not a life change.
+		if (!next || !previous || next === previous) return;
+		if (lifeChange.value && lifeChange.value.animation !== 'none') lifeAnimationKey.value += 1;
+	},
+);
 
 const lifeClass = computed(() => {
 	const animation = lifeChange.value?.animation;
@@ -109,20 +108,23 @@ const lifeClass = computed(() => {
 		: undefined;
 });
 
-const lifeStyle = computed(() => lifeChange.value
-	? {
-			'--life-animation-duration': `${lifeChange.value.durationMs}ms`,
-			'--life-animation-accent': lifeChange.value.accentColor,
-		}
-	: undefined);
-const viewBox = computed(() => surface.value
-	? `0 0 ${Math.max(surface.value.width, 0)} ${Math.max(surface.value.height, 0)}`
-	: '0 0 0 0');
+const lifeStyle = computed(() =>
+	lifeChange.value
+		? {
+				'--life-animation-duration': `${lifeChange.value.durationMs}ms`,
+				'--life-animation-accent': lifeChange.value.accentColor,
+			}
+		: undefined,
+);
+const viewBox = computed(() =>
+	surface.value
+		? `0 0 ${Math.max(surface.value.width, 0)} ${Math.max(surface.value.height, 0)}`
+		: '0 0 0 0',
+);
 
 const textStyle = computed(() => {
 	const base = props.render.textStyle;
-	if (!base || fittedFontSize.value === null)
-		return base;
+	if (!base || fittedFontSize.value === null) return base;
 
 	return {
 		...base,
@@ -145,8 +147,7 @@ function fitText() {
 
 	const element = textElement.value;
 	const box = bounds.value;
-	if (!element || !box)
-		return;
+	if (!element || !box) return;
 
 	const restore = {
 		fontSize: element.style.fontSize,
@@ -340,7 +341,7 @@ watch(
 					:src="segment.cardImage.url"
 					:alt="segment.cardImage.alt"
 					data-card-image
-				>
+				/>
 				<template v-else>{{ segment.text }}</template>
 			</span>
 		</p>
@@ -414,12 +415,7 @@ watch(
 			:data-deck-card="card.name"
 			:style="card.style"
 		>
-			<img
-				v-if="card.image"
-				:src="card.image.src"
-				alt=""
-				:style="card.image.style"
-			>
+			<img v-if="card.image" :src="card.image.src" alt="" :style="card.image.style" />
 			<template v-else-if="card.placeholder">
 				<svg
 					:viewBox="`0 0 ${Math.max(card.placeholder.surface.width, 0)} ${Math.max(card.placeholder.surface.height, 0)}`"
@@ -444,7 +440,10 @@ watch(
 								:stop-opacity="stop.opacity"
 							/>
 						</linearGradient>
-						<clipPath v-if="card.placeholder.surface.outline" :id="card.placeholder.surface.outline.clipId">
+						<clipPath
+							v-if="card.placeholder.surface.outline"
+							:id="card.placeholder.surface.outline.clipId"
+						>
 							<path :d="card.placeholder.surface.path" />
 						</clipPath>
 					</defs>
@@ -464,11 +463,9 @@ watch(
 				</svg>
 				<span :style="card.placeholder.textStyle">{{ card.name }}</span>
 			</template>
-			<span
-				v-if="card.badge"
-				data-deck-card-quantity
-				:style="card.badge.style"
-			>{{ card.badge.text }}</span>
+			<span v-if="card.badge" data-deck-card-quantity :style="card.badge.style">{{
+				card.badge.text
+			}}</span>
 		</div>
 
 		<!--
@@ -496,12 +493,7 @@ watch(
 				render-model guard cannot catch that: it inspects the model, and this is a
 				DOM failure mode.
 			-->
-			<img
-				v-else
-				:src="media.src"
-				alt=""
-				:style="media.style"
-			>
+			<img v-else :src="media.src" alt="" :style="media.style" />
 		</template>
 
 		<UIcon
@@ -512,11 +504,7 @@ watch(
 			data-social-network-icon
 		/>
 
-		<Item
-			v-for="child in render.children"
-			:key="child.id"
-			:render="child"
-		/>
+		<Item v-for="child in render.children" :key="child.id" :render="child" />
 	</div>
 </template>
 
@@ -592,11 +580,13 @@ watch(
 }
 
 .graphics-compositor-item--life-pop {
-	animation: graphics-life-pop var(--life-animation-duration, 420ms) cubic-bezier(0.2, 0.9, 0.2, 1) both;
+	animation: graphics-life-pop var(--life-animation-duration, 420ms) cubic-bezier(0.2, 0.9, 0.2, 1)
+		both;
 }
 
 .graphics-compositor-item--life-slide {
-	animation: graphics-life-slide var(--life-animation-duration, 420ms) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+	animation: graphics-life-slide var(--life-animation-duration, 420ms)
+		cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .graphics-compositor-item--life-glow {

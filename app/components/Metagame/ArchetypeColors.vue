@@ -9,13 +9,16 @@ type Size = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
  * One Piece Leader's colours, which its Archetype holds as `Red/Green`
  * (ADR-0074).
  */
-const props = withDefaults(defineProps<{
-	colors: string;
-	game: Game | undefined;
-	size?: Size;
-}>(), {
-	size: 'md',
-});
+const props = withDefaults(
+	defineProps<{
+		colors: string;
+		game: Game | undefined;
+		size?: Size;
+	}>(),
+	{
+		size: 'md',
+	},
+);
 
 const opColors = computed(() => parseOpColors(props.colors));
 </script>

@@ -25,9 +25,11 @@ describe('graphic Asset Library discovery query', () => {
 	});
 
 	it('reads a comma-separated filter as the lifecycle states it names', () => {
-		expect(graphicAssetListQuerySchema.parse({
-			lifecycleStates: 'active,trashed',
-		}).lifecycleStates).toEqual(['active', 'trashed']);
+		expect(
+			graphicAssetListQuerySchema.parse({
+				lifecycleStates: 'active,trashed',
+			}).lifecycleStates,
+		).toEqual(['active', 'trashed']);
 	});
 
 	it('refuses a lifecycle state the library does not have', () => {
@@ -35,9 +37,11 @@ describe('graphic Asset Library discovery query', () => {
 	});
 
 	it('refuses a filter that names one real state and one invented one', () => {
-		expect(() => graphicAssetListQuerySchema.parse({
-			lifecycleStates: 'active,bogus',
-		})).toThrow();
+		expect(() =>
+			graphicAssetListQuerySchema.parse({
+				lifecycleStates: 'active,bogus',
+			}),
+		).toThrow();
 	});
 
 	it('refuses an empty filter rather than reading it as no filter', () => {

@@ -2,9 +2,7 @@ import type { RealtimeTransport } from '~/types/realtime';
 
 export function useApiHeaders(realtime: RealtimeTransport | undefined = tryUseRealtime()) {
 	function getHeaders(): Record<string, string> {
-		return realtime?.connectionId
-			? { 'x-realtime-connection-id': realtime.connectionId }
-			: {};
+		return realtime?.connectionId ? { 'x-realtime-connection-id': realtime.connectionId } : {};
 	}
 
 	return {

@@ -7,7 +7,9 @@ import { clock } from '~~/test/nuxt/helpers/featureMatchStateHarness';
 import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
 import Clock from '~/components/FeatureMatch/State/Clock.vue';
 
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime());
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(),
+);
 mockNuxtImport('useEventStore', () => () => ({
 	eventId: 1,
 	displayEvent: createMockEvent({ featureMatchDefaultUntimedLabel: 'Top 8' }),
@@ -57,32 +59,33 @@ describe('featureMatchStateClock', () => {
 		const wrapper = mountClock(state);
 
 		expect(wrapper.get('[data-clock-state]').classes()).toEqual(expect.arrayContaining(time));
-		expect(wrapper.get('[data-clock-state]').classes().includes('animate-pulse')).toBe(time.includes('animate-pulse'));
-		expect(wrapper.get('button[aria-label="Clock controls"]').classes().includes('ring-error')).toBe(ringed);
+		expect(wrapper.get('[data-clock-state]').classes().includes('animate-pulse')).toBe(
+			time.includes('animate-pulse'),
+		);
+		expect(
+			wrapper.get('button[aria-label="Clock controls"]').classes().includes('ring-error'),
+		).toBe(ringed);
 	});
 
-	it('shows an untimed match by the Event\'s Untimed Label', () => {
-		expect(mountClock(clock({ type: 'untimed' })).get('[data-clock-state]').text()).toBe('Top 8');
+	it("shows an untimed match by the Event's Untimed Label", () => {
+		expect(
+			mountClock(clock({ type: 'untimed' }))
+				.get('[data-clock-state]')
+				.text(),
+		).toBe('Top 8');
 	});
 
 	it.each([
-		[
-			'a running clock',
-			running(1000),
-			'i-lucide-pause',
-		],
-		[
-			'a stopped clock',
-			clock(),
-			'i-lucide-play',
-		],
+		['a running clock', running(1000), 'i-lucide-pause'],
+		['a stopped clock', clock(), 'i-lucide-play'],
 	])('offers %s the control that will act on it', async (_, state, icon) => {
 		const wrapper = mountClock(state);
 		await wrapper.get('button[aria-label="Clock controls"]').trigger('click');
 
-		const transport = wrapper.findAll('[data-icon]')
-			.map(found => found.attributes('data-icon'))
-			.filter(name => name === 'i-lucide-play' || name === 'i-lucide-pause');
+		const transport = wrapper
+			.findAll('[data-icon]')
+			.map((found) => found.attributes('data-icon'))
+			.filter((name) => name === 'i-lucide-play' || name === 'i-lucide-pause');
 		expect(transport).toEqual([icon]);
 	});
 });

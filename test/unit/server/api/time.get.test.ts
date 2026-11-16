@@ -5,7 +5,9 @@ import { afterEach, expect, it, vi } from 'vitest';
 
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
 
-const readTime = (await import('~~/server/api/time.get')).default as unknown as () => { serverTime: number };
+const readTime = (await import('~~/server/api/time.get')).default as unknown as () => {
+	serverTime: number;
+};
 
 afterEach(() => vi.useRealTimers());
 

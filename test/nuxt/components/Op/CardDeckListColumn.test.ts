@@ -21,7 +21,8 @@ const UCollapsibleStub = defineComponent({
 	props: {
 		defaultOpen: { type: Boolean, default: false },
 	},
-	template: '<section data-testid="deck-section"><slot :open="defaultOpen" /><div v-if="defaultOpen"><slot name="content" /></div></section>',
+	template:
+		'<section data-testid="deck-section"><slot :open="defaultOpen" /><div v-if="defaultOpen"><slot name="content" /></div></section>',
 });
 const UIEmptyStateStub = defineComponent({
 	props: {
@@ -68,10 +69,10 @@ function mountColumn(playerData: OpMatchPlayerDeckData | null, filter = '') {
 
 /** Each section's title and count badge, and the card numbers it shows. */
 function sections(wrapper: ReturnType<typeof mountColumn>) {
-	return wrapper.findAll('[data-testid="deck-section"]').map(section => ({
+	return wrapper.findAll('[data-testid="deck-section"]').map((section) => ({
 		title: section.get('h3').text(),
 		count: section.findComponent({ name: 'UBadge' }).text(),
-		cards: section.findAll('[data-card-number]').map(card => card.attributes('data-card-number')),
+		cards: section.findAll('[data-card-number]').map((card) => card.attributes('data-card-number')),
 	}));
 }
 
@@ -126,20 +127,8 @@ describe('opCardDeckListColumn', () => {
 	});
 
 	it.each([
-		[
-			'a card',
-			'OP01-025',
-			[
-				{ number: 'OP01-025' },
-			],
-		],
-		[
-			'the Leader',
-			ZORO.number,
-			[
-				{ number: ZORO.number },
-			],
-		],
+		['a card', 'OP01-025', [{ number: 'OP01-025' }]],
+		['the Leader', ZORO.number, [{ number: ZORO.number }]],
 	])('previews %s on Card Spotlight when chosen', async (_, number, calls) => {
 		const wrapper = mountColumn(sideData());
 
@@ -158,11 +147,7 @@ describe('opCardDeckListColumn', () => {
 
 	it.each([
 		['no player', null, 'No player'],
-		[
-			'a player with no Deck List',
-			sideData({ deckList: null }),
-			'No deck list',
-		],
+		['a player with no Deck List', sideData({ deckList: null }), 'No deck list'],
 		[
 			'a Deck List that failed to load',
 			sideData({ deckList: null, failed: true }),
@@ -173,18 +158,15 @@ describe('opCardDeckListColumn', () => {
 	});
 
 	it.each([
-		[
-			'opens a linked Player\'s Deck List read-only',
-			42,
-			[
-				[BOB],
-			],
-		],
-		['names a pasted Deck List\'s Leader without opening it', null, []],
+		["opens a linked Player's Deck List read-only", 42, [[BOB]]],
+		["names a pasted Deck List's Leader without opening it", null, []],
 	])('%s', async (_, playerId, opened) => {
 		const wrapper = mountColumn(sideData({ playerId }));
 
-		await wrapper.findAll('button').find(button => button.text() === 'Roronoa Zoro')?.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Roronoa Zoro')
+			?.trigger('click');
 
 		expect(wrapper.text()).toContain('Roronoa Zoro');
 		expect(openPlayerDeckList.mock.calls).toEqual(opened);

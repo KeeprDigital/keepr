@@ -40,9 +40,11 @@ interface SideboardSourceState {
  */
 function hasDeckListItem(config: FeatureMatchOverlayModeConfig, side: PlayerSide): boolean {
 	for (const item of config.layout.composition.items) {
-		if (item.type === 'deck-list' && item.playerSide === side)
-			return true;
-		if (item.type === 'group' && item.children.some(child => child.type === 'deck-list' && child.playerSide === side))
+		if (item.type === 'deck-list' && item.playerSide === side) return true;
+		if (
+			item.type === 'group' &&
+			item.children.some((child) => child.type === 'deck-list' && child.playerSide === side)
+		)
 			return true;
 	}
 	return false;
@@ -54,12 +56,10 @@ function hasDeckListItem(config: FeatureMatchOverlayModeConfig, side: PlayerSide
  */
 function snapshotDeckId(match: FeatureMatch | null, playerId: number): number | null {
 	const snapshot = match?.activeSession?.sourceSnapshot;
-	if (!snapshot)
-		return null;
+	if (!snapshot) return null;
 
 	for (const entry of [snapshot.player1, snapshot.player2]) {
-		if (entry?.playerId === playerId)
-			return entry.data?.deckId ?? null;
+		if (entry?.playerId === playerId) return entry.data?.deckId ?? null;
 	}
 	return null;
 }
@@ -109,8 +109,7 @@ export function useFeatureMatchOverlaySideboardData(
 		for (const side of PLAYER_SIDES) {
 			// The Session owns which side each player sits on (ADR-0058).
 			const { playerId } = featureMatchSidePlayer(match.value, side);
-			if (playerId == null || !hasDeckListItem(config.value, side))
-				continue;
+			if (playerId == null || !hasDeckListItem(config.value, side)) continue;
 			result[side] = {
 				playerId,
 				deckId: snapshotDeckId(match.value, playerId),
@@ -120,8 +119,10 @@ export function useFeatureMatchOverlaySideboardData(
 	});
 
 	function showsSameSources(next: SideboardSourceState) {
-		return next.stamps.player1 === displayed.stamps.player1
-			&& next.stamps.player2 === displayed.stamps.player2;
+		return (
+			next.stamps.player1 === displayed.stamps.player1 &&
+			next.stamps.player2 === displayed.stamps.player2
+		);
 	}
 
 	/**
@@ -135,7 +136,7 @@ export function useFeatureMatchOverlaySideboardData(
 		refetch: () => {
 			void load();
 		},
-		isUnchanged: next => showsSameSources(next),
+		isUnchanged: (next) => showsSameSources(next),
 		report: (degraded) => {
 			if (cardDataHealth) {
 				cardDataHealth.value = degraded ? 'degraded' : 'complete';
@@ -146,7 +147,11 @@ export function useFeatureMatchOverlaySideboardData(
 	async function resolveSide(
 		side: PlayerSide,
 		request: SideRequest | null,
-	): Promise<{ cards: ReadonlyArray<GraphicsDeckListCard> | null; degraded: boolean; stamp: string | null }> {
+	): Promise<{
+		cards: ReadonlyArray<GraphicsDeckListCard> | null;
+		degraded: boolean;
+		stamp: string | null;
+	}> {
 		if (!request) {
 			return {
 				cards: null,
@@ -156,36 +161,26 @@ export function useFeatureMatchOverlaySideboardData(
 		}
 
 		// The Player and their decks come through the Screen (#604).
-		const read = await outputReads.playerDecks(request.playerId, request.deckId != null
-			? { deckId: request.deckId }
-			: {})
+		const read = await outputReads
+			.playerDecks(request.playerId, request.deckId != null ? { deckId: request.deckId } : {})
 			.catch(() => null);
 		if (!read) {
 			// A read that failed is no answer about the side: what is on program for
 			// this Player stays, and the degraded cadence asks again, since the next
 			// announcement may be a long time coming.
-			const shown = displayed.stamps[side]?.startsWith(`${request.playerId}:`)
-				? side
-				: null;
+			const shown = displayed.stamps[side]?.startsWith(`${request.playerId}:`) ? side : null;
 			return {
-				cards: shown
-					? displayed.sideboards[shown]
-					: null,
+				cards: shown ? displayed.sideboards[shown] : null,
 				degraded: true,
-				stamp: shown
-					? displayed.stamps[shown]
-					: `${request.playerId}::none`,
+				stamp: shown ? displayed.stamps[shown] : `${request.playerId}::none`,
 			};
 		}
 
 		// A pinned deck the collection no longer holds falls back to the
 		// collection's own selection ladder rather than rendering nothing.
-		const deck = selectPlayerDeck(read.decks, request.deckId != null
-			? { deckId: request.deckId }
-			: {})
-		?? (request.deckId != null
-			? selectPlayerDeck(read.decks)
-			: null);
+		const deck =
+			selectPlayerDeck(read.decks, request.deckId != null ? { deckId: request.deckId } : {}) ??
+			(request.deckId != null ? selectPlayerDeck(read.decks) : null);
 		if (!deck) {
 			return {
 				cards: null,
@@ -195,8 +190,8 @@ export function useFeatureMatchOverlaySideboardData(
 		}
 
 		const sideboardCards = deck.cards
-			.filter(card => card.compartment === 'sideboard')
-			.map(card => ({
+			.filter((card) => card.compartment === 'sideboard')
+			.map((card) => ({
 				name: card.name,
 				setCode: null as string | null,
 				quantity: card.quantity,
@@ -214,12 +209,12 @@ export function useFeatureMatchOverlaySideboardData(
 		}
 
 		const { cards: cardDataMap, degraded } = await fetchScryfallCards(
-			sideboardCards.map(card => ({ name: card.name, scryfallId: card.scryfallId })),
+			sideboardCards.map((card) => ({ name: card.name, scryfallId: card.scryfallId })),
 		);
 		const { sideboard } = buildDeckListArrays(sideboardCards, cardDataMap);
 
 		return {
-			cards: sideboard.map(card => ({
+			cards: sideboard.map((card) => ({
 				name: card.name,
 				quantity: card.quantity,
 				// Deck List Screen parity: the Scryfall front face at `normal` size.
@@ -252,8 +247,7 @@ export function useFeatureMatchOverlaySideboardData(
 				resolveSide('player1', current.player1),
 				resolveSide('player2', current.player2),
 			]);
-			if (flight.stale)
-				return;
+			if (flight.stale) return;
 
 			const next: SideboardSourceState = {
 				sideboards: { player1: player1.cards, player2: player2.cards },
@@ -266,15 +260,12 @@ export function useFeatureMatchOverlaySideboardData(
 			// it recovers a degraded rendering.
 			const wasDegraded = degradedRefetch.degraded.value;
 			const outcome = degradedRefetch.completeLoad(player1.degraded || player2.degraded, next);
-			if (outcome === 'keep' || (!wasDegraded && showsSameSources(next)))
-				return;
+			if (outcome === 'keep' || (!wasDegraded && showsSameSources(next))) return;
 			displayed = next;
 			sideboards.value = next.sideboards;
-		}
-		catch (err) {
+		} catch (err) {
 			console.error('Failed to load Feature Match Overlay sideboard data:', err);
-			if (flight.stale)
-				return;
+			if (flight.stale) return;
 
 			// A failed attempt must not end a degraded rendering's recovery cadence,
 			// and program keeps what it has rather than blanking on a fetch error.
@@ -285,14 +276,10 @@ export function useFeatureMatchOverlaySideboardData(
 	watch(
 		() => {
 			const current = requests.value;
-			const parts: string[] = [
-				String(eventId.value ?? ''),
-			];
+			const parts: string[] = [String(eventId.value ?? '')];
 			for (const side of PLAYER_SIDES) {
 				const request = current[side];
-				parts.push(request
-					? `${request.playerId}:${request.deckId ?? ''}`
-					: '');
+				parts.push(request ? `${request.playerId}:${request.deckId ?? ''}` : '');
 			}
 			return parts.join('|');
 		},
@@ -315,15 +302,18 @@ export function useFeatureMatchOverlaySideboardData(
 			return slotId
 				? {
 						id: slotId,
-						playerIds: PLAYER_SIDES.flatMap(side => requests.value[side]?.playerId ?? []),
+						playerIds: PLAYER_SIDES.flatMap((side) => requests.value[side]?.playerId ?? []),
 					}
 				: null;
 		},
 	});
-	watch(() => hearing.value.channel, (_channel, _previous, onCleanup) => {
-		if (realtime)
-			onCleanup(listenToScreenModeHearing(realtime, hearing.value, reread));
-	}, { immediate: true });
+	watch(
+		() => hearing.value.channel,
+		(_channel, _previous, onCleanup) => {
+			if (realtime) onCleanup(listenToScreenModeHearing(realtime, hearing.value, reread));
+		},
+		{ immediate: true },
+	);
 
 	/**
 	 * The deck path's half of the Reconnect Resync rule (#307): a change
@@ -335,8 +325,7 @@ export function useFeatureMatchOverlaySideboardData(
 	 */
 	function reread() {
 		const current = requests.value;
-		if (!eventId.value || (!current.player1 && !current.player2))
-			return;
+		if (!eventId.value || (!current.player1 && !current.player2)) return;
 
 		void load();
 	}

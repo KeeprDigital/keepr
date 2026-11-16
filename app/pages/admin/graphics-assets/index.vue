@@ -44,10 +44,11 @@ const {
 	describeFailure,
 	load: loadCockpit,
 } = useGraphicsAdminReading<GraphicsOperationsCockpitReading>({
-	read: async headers => await $fetch<GraphicsOperationsCockpitReading>(
-		'/api/admin/graphics-assets/operations-cockpit',
-		{ headers },
-	),
+	read: async (headers) =>
+		await $fetch<GraphicsOperationsCockpitReading>(
+			'/api/admin/graphics-assets/operations-cockpit',
+			{ headers },
+		),
 	failureMessage: 'The Operations Cockpit could not be read.',
 });
 
@@ -68,11 +69,11 @@ async function runSweep(sweep: 'reconciliation' | 'retention') {
 					headers: administratorHeaders(),
 				},
 			);
-			sweepSummary.value = `Reconciliation checked ${result.content.checked} contents, `
-				+ `detected ${result.content.unavailableDetected} unavailable, `
-				+ `and restored ${result.content.availabilityRestored}.`;
-		}
-		else {
+			sweepSummary.value =
+				`Reconciliation checked ${result.content.checked} contents, ` +
+				`detected ${result.content.unavailableDetected} unavailable, ` +
+				`and restored ${result.content.availabilityRestored}.`;
+		} else {
 			const result = await $fetch<GraphicsRetentionSweepResult>(
 				'/api/admin/graphics-assets/retention',
 				{
@@ -80,23 +81,21 @@ async function runSweep(sweep: 'reconciliation' | 'retention') {
 					headers: administratorHeaders(),
 				},
 			);
-			sweepSummary.value = `Retention pruned ${result.revisions.pruned} revisions and `
-				+ `reclaimed ${formatByteCount(result.content.bytesReclaimed)}.`;
+			sweepSummary.value =
+				`Retention pruned ${result.revisions.pruned} revisions and ` +
+				`reclaimed ${formatByteCount(result.content.bytesReclaimed)}.`;
 		}
 		await loadCockpit();
-	}
-	catch (caught) {
+	} catch (caught) {
 		sweepError.value = describeFailure(caught, 'The sweep could not be run.');
-	}
-	finally {
+	} finally {
 		sweepPending.value = null;
 	}
 }
 
 const conditions = computed(() => {
 	const reading = cockpit.value;
-	if (!reading)
-		return [];
+	if (!reading) return [];
 	return [
 		{
 			label: 'D1 catalogue',
@@ -136,18 +135,17 @@ function conditionColor(condition: GraphicsLibraryComponentCondition) {
 }
 
 function conditionReason(condition: GraphicsLibraryComponentCondition) {
-	if (condition.status === 'healthy')
-		return 'Answering, with nothing outstanding.';
+	if (condition.status === 'healthy') return 'Answering, with nothing outstanding.';
 	if (condition.status === 'unavailable') {
 		return condition.reason.code === 'catalogue-unavailable'
 			? 'The catalogue could not answer. This is retryable.'
 			: 'The byte store could not answer. This is retryable.';
 	}
 	return condition.reason.code === 'catalogue-records-unavailable-content'
-		? `Answering, and recording ${condition.reason.openCount} `
-		+ 'Graphic Asset Contents it cannot currently serve.'
-		: `Answering, and disagreeing with the catalogue on ${condition.reason.openCount} `
-			+ 'subjects.';
+		? `Answering, and recording ${condition.reason.openCount} ` +
+				'Graphic Asset Contents it cannot currently serve.'
+		: `Answering, and disagreeing with the catalogue on ${condition.reason.openCount} ` +
+				'subjects.';
 }
 
 const ALERT_SUMMARIES: Record<GraphicsStorageHealthAlert['code'], string> = {
@@ -163,22 +161,19 @@ const ALERT_SUMMARIES: Record<GraphicsStorageHealthAlert['code'], string> = {
 	'canonical-quota-warning': 'The Canonical Graphics Quota has passed 80%',
 	'staging-allowance-exhausted': 'The Graphics Staging Allowance has no room left',
 	'graphics-ingestion-input-expired': 'Staged input passed its retention guarantee',
-	'graphics-staged-input-unreleased': 'Staged objects a failed release stranded still occupy the allowance',
+	'graphics-staged-input-unreleased':
+		'Staged objects a failed release stranded still occupy the allowance',
 };
 
 function alertColor(severity: GraphicsStorageHealthAlertSeverity) {
-	return severity === 'critical'
-		? 'error'
-		: severity === 'warning'
-			? 'warning'
-			: 'info';
+	return severity === 'critical' ? 'error' : severity === 'warning' ? 'warning' : 'info';
 }
 
 const ATTENTION_LABELS: Record<GraphicsIngestionAttentionItem['attention'], string> = {
 	'input-expired': 'Input expired',
-	'retryable': 'Retryable',
+	retryable: 'Retryable',
 	'awaiting-confirmation': 'Awaiting confirmation',
-	'active': 'Active',
+	active: 'Active',
 };
 
 const OUTCOME_GROUP_LABELS: Record<GraphicsRecentOutcomeGroup, string> = {
@@ -243,9 +238,7 @@ function boundaryMarkerStyle(fraction: number) {
 
 		<div class="mx-auto flex w-full max-w-6xl flex-col gap-6">
 			<div>
-				<h1 class="text-2xl font-semibold text-highlighted">
-					Graphics Asset Library Operations
-				</h1>
+				<h1 class="text-2xl font-semibold text-highlighted">Graphics Asset Library Operations</h1>
 				<p class="mt-1 text-sm text-muted">
 					Whether the library is safe, and what currently needs attention.
 				</p>
@@ -253,20 +246,14 @@ function boundaryMarkerStyle(fraction: number) {
 
 			<UCard v-if="!hasReading">
 				<template #header>
-					<h2 class="font-semibold text-highlighted">
-						Graphics Administrator access
-					</h2>
+					<h2 class="font-semibold text-highlighted">Graphics Administrator access</h2>
 				</template>
 				<div class="flex flex-col gap-4">
 					<UFormField
 						label="Graphics Administrator token"
 						description="The cockpit is administrator-only. The token is held for this session only and never stored."
 					>
-						<UInput
-							v-model="administratorToken"
-							type="password"
-							autocomplete="current-password"
-						/>
+						<UInput v-model="administratorToken" type="password" autocomplete="current-password" />
 					</UFormField>
 					<div>
 						<UButton
@@ -295,17 +282,23 @@ function boundaryMarkerStyle(fraction: number) {
 				<!-- Health first: the separate answers, before anything else. -->
 				<section class="flex flex-col gap-3">
 					<div class="flex items-center gap-3">
-						<h2 class="text-lg font-semibold text-highlighted">
-							Library condition
-						</h2>
+						<h2 class="text-lg font-semibold text-highlighted">Library condition</h2>
 						<UBadge
-							:color="cockpit.condition.status === 'healthy'
-								? 'success'
-								: cockpit.condition.status === 'degraded' ? 'warning' : 'error'"
+							:color="
+								cockpit.condition.status === 'healthy'
+									? 'success'
+									: cockpit.condition.status === 'degraded'
+										? 'warning'
+										: 'error'
+							"
 							variant="soft"
-							:label="cockpit.condition.status === 'healthy'
-								? 'Healthy'
-								: cockpit.condition.status === 'degraded' ? 'Degraded' : 'Unavailable'"
+							:label="
+								cockpit.condition.status === 'healthy'
+									? 'Healthy'
+									: cockpit.condition.status === 'degraded'
+										? 'Degraded'
+										: 'Unavailable'
+							"
 						/>
 					</div>
 					<div class="grid gap-4 md:grid-cols-3">
@@ -339,9 +332,7 @@ function boundaryMarkerStyle(fraction: number) {
 
 				<section class="flex flex-col gap-3">
 					<div class="flex flex-wrap items-center gap-3">
-						<h2 class="text-lg font-semibold text-highlighted">
-							Open alerts
-						</h2>
+						<h2 class="text-lg font-semibold text-highlighted">Open alerts</h2>
 						<UBadge
 							variant="soft"
 							color="error"
@@ -370,12 +361,7 @@ function boundaryMarkerStyle(fraction: number) {
 					>
 						<div class="flex flex-wrap items-center gap-2">
 							<span>{{ ALERT_SUMMARIES[alert.code] }} ({{ alert.openCount }})</span>
-							<UBadge
-								v-if="alert.persistent"
-								variant="subtle"
-								color="neutral"
-								label="Persistent"
-							/>
+							<UBadge v-if="alert.persistent" variant="subtle" color="neutral" label="Persistent" />
 						</div>
 					</UAlert>
 				</section>
@@ -395,9 +381,7 @@ function boundaryMarkerStyle(fraction: number) {
 						<UCard>
 							<template #header>
 								<div class="flex items-center justify-between gap-4">
-									<h2 class="font-semibold text-highlighted">
-										Canonical Graphics Quota
-									</h2>
+									<h2 class="font-semibold text-highlighted">Canonical Graphics Quota</h2>
 									<UBadge :label="cockpit.capacity.canonical.pressure" variant="soft" />
 								</div>
 							</template>
@@ -417,8 +401,14 @@ function boundaryMarkerStyle(fraction: number) {
 								/>
 								<div
 									v-for="boundary in [
-										{ label: '80%', fraction: cockpit.capacity.canonical.boundaries.warningFraction },
-										{ label: '95%', fraction: cockpit.capacity.canonical.boundaries.criticalFraction },
+										{
+											label: '80%',
+											fraction: cockpit.capacity.canonical.boundaries.warningFraction,
+										},
+										{
+											label: '95%',
+											fraction: cockpit.capacity.canonical.boundaries.criticalFraction,
+										},
 										{ label: '100%', fraction: cockpit.capacity.canonical.boundaries.fullFraction },
 									]"
 									:key="boundary.label"
@@ -428,25 +418,19 @@ function boundaryMarkerStyle(fraction: number) {
 							</div>
 							<dl class="mt-3 grid grid-cols-3 gap-3 text-sm">
 								<div>
-									<dt class="text-xs text-dimmed">
-										Warning at 80%
-									</dt>
+									<dt class="text-xs text-dimmed">Warning at 80%</dt>
 									<dd class="text-muted">
 										{{ formatByteCount(cockpit.capacity.canonical.boundaries.warningBytes) }}
 									</dd>
 								</div>
 								<div>
-									<dt class="text-xs text-dimmed">
-										Critical at 95%
-									</dt>
+									<dt class="text-xs text-dimmed">Critical at 95%</dt>
 									<dd class="text-muted">
 										{{ formatByteCount(cockpit.capacity.canonical.boundaries.criticalBytes) }}
 									</dd>
 								</div>
 								<div>
-									<dt class="text-xs text-dimmed">
-										Blocked at 100%
-									</dt>
+									<dt class="text-xs text-dimmed">Blocked at 100%</dt>
 									<dd class="text-muted">
 										{{ formatByteCount(cockpit.capacity.canonical.boundaries.fullBytes) }}
 									</dd>
@@ -461,14 +445,11 @@ function boundaryMarkerStyle(fraction: number) {
 
 						<UCard>
 							<template #header>
-								<h2 class="font-semibold text-highlighted">
-									Graphics Staging Allowance
-								</h2>
+								<h2 class="font-semibold text-highlighted">Graphics Staging Allowance</h2>
 							</template>
 							<p class="text-sm text-muted">
-								A separate budget for provisional transfers. It is never borrowed from
-								or lent to the Canonical Graphics Quota, and carries no canonical
-								boundary of its own.
+								A separate budget for provisional transfers. It is never borrowed from or lent to
+								the Canonical Graphics Quota, and carries no canonical boundary of its own.
 							</p>
 							<p class="mt-3 text-sm text-muted">
 								{{ formatByteCount(cockpit.capacity.staging.usedBytes) }} verified ·
@@ -487,17 +468,19 @@ function boundaryMarkerStyle(fraction: number) {
 					</section>
 
 					<section class="flex flex-col gap-3">
-						<h2 class="text-lg font-semibold text-highlighted">
-							Graphics Ingestion Operations
-						</h2>
+						<h2 class="text-lg font-semibold text-highlighted">Graphics Ingestion Operations</h2>
 						<div class="flex flex-wrap gap-2">
 							<UBadge
 								v-for="state in GRAPHICS_INGESTION_ATTENTION_STATES"
 								:key="state"
 								variant="soft"
-								:color="state === 'input-expired'
-									? 'warning'
-									: state === 'retryable' ? 'warning' : 'neutral'"
+								:color="
+									state === 'input-expired'
+										? 'warning'
+										: state === 'retryable'
+											? 'warning'
+											: 'neutral'
+								"
 								:label="`${ATTENTION_LABELS[state]}: ${cockpit.ingestion.counts[state]}`"
 							/>
 						</div>
@@ -511,17 +494,16 @@ function boundaryMarkerStyle(fraction: number) {
 										{{ item.name }}
 									</h3>
 									<p class="mt-1 text-sm text-muted">
-										{{ item.source }} · started by {{ graphicsActorName(cockpit.actorNames, item.initiatedBy) }} ·
-										stage {{ item.stage }}
+										{{ item.source }} · started by
+										{{ graphicsActorName(cockpit.actorNames, item.initiatedBy) }} · stage
+										{{ item.stage }}
 									</p>
 								</div>
 								<UBadge variant="soft" :label="ATTENTION_LABELS[item.attention]" />
 							</div>
 							<dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
 								<div>
-									<dt class="text-xs text-dimmed">
-										Transferred
-									</dt>
+									<dt class="text-xs text-dimmed">Transferred</dt>
 									<dd class="text-muted">
 										{{ formatByteCount(item.transferredByteLength) }} of
 										{{ formatByteCount(item.declaredByteLength) }}
@@ -529,17 +511,13 @@ function boundaryMarkerStyle(fraction: number) {
 									</dd>
 								</div>
 								<div>
-									<dt class="text-xs text-dimmed">
-										Staged input expires
-									</dt>
+									<dt class="text-xs text-dimmed">Staged input expires</dt>
 									<dd class="text-muted">
 										{{ formatInstant(item.inputExpiresAt) }}
 									</dd>
 								</div>
 								<div v-if="item.failureCode">
-									<dt class="text-xs text-dimmed">
-										Failure
-									</dt>
+									<dt class="text-xs text-dimmed">Failure</dt>
 									<dd class="text-muted">
 										{{ item.failureCode }}
 									</dd>
@@ -551,9 +529,7 @@ function boundaryMarkerStyle(fraction: number) {
 					<section class="grid gap-4 lg:grid-cols-2">
 						<UCard>
 							<template #header>
-								<h2 class="font-semibold text-highlighted">
-									Reconciliation backlog
-								</h2>
+								<h2 class="font-semibold text-highlighted">Reconciliation backlog</h2>
 							</template>
 							<div class="flex flex-wrap gap-2">
 								<UBadge
@@ -583,12 +559,12 @@ function boundaryMarkerStyle(fraction: number) {
 								</div>
 							</dl>
 							<p class="mt-3 text-sm text-muted">
-								{{ cockpit.reconciliation.isolatedIncidentCount }} isolated incidents fail
-								closed and are never repaired in place.
+								{{ cockpit.reconciliation.isolatedIncidentCount }} isolated incidents fail closed
+								and are never repaired in place.
 							</p>
 							<p class="mt-2 text-xs text-dimmed">
-								The catalogue decides expected reachability; the byte store decides which
-								bytes are present. The availability flag is advisory reconciliation state.
+								The catalogue decides expected reachability; the byte store decides which bytes are
+								present. The availability flag is advisory reconciliation state.
 							</p>
 							<p v-if="cockpit.reconciliation.lastSweep" class="mt-2 text-xs text-dimmed">
 								Last sweep completed
@@ -598,23 +574,17 @@ function boundaryMarkerStyle(fraction: number) {
 
 						<UCard>
 							<template #header>
-								<h2 class="font-semibold text-highlighted">
-									Recovery and cleanup deadlines
-								</h2>
+								<h2 class="font-semibold text-highlighted">Recovery and cleanup deadlines</h2>
 							</template>
 							<dl class="grid gap-3 text-sm sm:grid-cols-2">
 								<div>
-									<dt class="text-xs text-dimmed">
-										Retired
-									</dt>
+									<dt class="text-xs text-dimmed">Retired</dt>
 									<dd class="text-muted">
 										{{ cockpit.lifecycle.retired.count }} · reversible, no deadline
 									</dd>
 								</div>
 								<div>
-									<dt class="text-xs text-dimmed">
-										Trashed
-									</dt>
+									<dt class="text-xs text-dimmed">Trashed</dt>
 									<dd class="text-muted">
 										{{ cockpit.lifecycle.trashed.count }} ·
 										{{ formatGuarantee(cockpit.lifecycle.trashed.guaranteeMilliseconds) }}
@@ -623,39 +593,31 @@ function boundaryMarkerStyle(fraction: number) {
 									</dd>
 								</div>
 								<div>
-									<dt class="text-xs text-dimmed">
-										Superseded revisions
-									</dt>
+									<dt class="text-xs text-dimmed">Superseded revisions</dt>
 									<dd class="text-muted">
 										{{ cockpit.lifecycle.supersededRevisions.count }} ·
-										{{ formatGuarantee(
-											cockpit.lifecycle.supersededRevisions.guaranteeMilliseconds,
-										) }}
+										{{
+											formatGuarantee(cockpit.lifecycle.supersededRevisions.guaranteeMilliseconds)
+										}}
 										recovery · next
 										{{ formatInstant(cockpit.lifecycle.supersededRevisions.nextDeadline) }}
 									</dd>
 								</div>
 								<div>
-									<dt class="text-xs text-dimmed">
-										Frozen by Trash
-									</dt>
+									<dt class="text-xs text-dimmed">Frozen by Trash</dt>
 									<dd class="text-muted">
 										{{ cockpit.lifecycle.frozenRevisions.count }} revisions
 									</dd>
 								</div>
 								<div>
-									<dt class="text-xs text-dimmed">
-										Quarantined content
-									</dt>
+									<dt class="text-xs text-dimmed">Quarantined content</dt>
 									<dd class="text-muted">
 										{{ cockpit.lifecycle.quarantinedContent.count }} · next
 										{{ formatInstant(cockpit.lifecycle.quarantinedContent.nextDeadline) }}
 									</dd>
 								</div>
 								<div>
-									<dt class="text-xs text-dimmed">
-										Staged input
-									</dt>
+									<dt class="text-xs text-dimmed">Staged input</dt>
 									<dd class="text-muted">
 										{{ cockpit.lifecycle.stagedInput.count }} · next
 										{{ formatInstant(cockpit.lifecycle.stagedInput.nextDeadline) }}
@@ -669,9 +631,7 @@ function boundaryMarkerStyle(fraction: number) {
 					</section>
 
 					<section class="flex flex-col gap-3">
-						<h2 class="text-lg font-semibold text-highlighted">
-							Recent outcomes
-						</h2>
+						<h2 class="text-lg font-semibold text-highlighted">Recent outcomes</h2>
 						<div class="flex flex-wrap gap-2">
 							<UBadge
 								v-for="group in GRAPHICS_RECENT_OUTCOME_GROUPS"
@@ -699,12 +659,9 @@ function boundaryMarkerStyle(fraction: number) {
 					</section>
 
 					<section class="flex flex-col gap-3">
-						<h2 class="text-lg font-semibold text-highlighted">
-							Actions
-						</h2>
+						<h2 class="text-lg font-semibold text-highlighted">Actions</h2>
 						<p class="text-sm text-muted">
-							Both sweeps are safe to run at any time. Neither can shorten a recovery
-							guarantee.
+							Both sweeps are safe to run at any time. Neither can shorten a recovery guarantee.
 						</p>
 						<div class="flex flex-wrap gap-3">
 							<UButton
@@ -735,9 +692,7 @@ function boundaryMarkerStyle(fraction: number) {
 					</section>
 				</template>
 
-				<p class="text-xs text-dimmed">
-					Last read {{ formatInstant(cockpit.checkedAt) }}
-				</p>
+				<p class="text-xs text-dimmed">Last read {{ formatInstant(cockpit.checkedAt) }}</p>
 			</template>
 		</div>
 	</NuxtLayout>

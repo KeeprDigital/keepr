@@ -8,7 +8,7 @@ const selectedPlayerId = defineModel<number | undefined>('playerId');
 
 // Players with deck lists (deckName in gameData is the proxy for having a deck)
 const playersWithDecks = computed(() => {
-	return playerStore.players.filter(p => getMtgGameData(p.gameData).deckName);
+	return playerStore.players.filter((p) => getMtgGameData(p.gameData).deckName);
 });
 
 const playerOptions = computed(() => {
@@ -31,8 +31,7 @@ if (selectedPlayerId.value && !cardStore.playerDeckHasData)
 watch(selectedPlayerId, async (playerId) => {
 	if (playerId) {
 		await cardStore.loadPlayerDeck(playerId);
-	}
-	else {
+	} else {
 		cardStore.clearPlayerDeck();
 	}
 });
@@ -79,7 +78,11 @@ watch(selectedPlayerId, async (playerId) => {
 					size="sm"
 					icon="i-lucide-x"
 					aria-label="Clear filter"
-					@click="() => { cardStore.deckListFilter = '' }"
+					@click="
+						() => {
+							cardStore.deckListFilter = '';
+						}
+					"
 				/>
 			</template>
 		</UInput>

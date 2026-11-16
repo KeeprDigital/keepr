@@ -42,7 +42,7 @@ function accessUrlOptions(output?: ScreenOutput) {
 }
 
 function outputLabel(output: ScreenOutput) {
-	return SCREEN_OUTPUT_OPTIONS.find(option => option.value === output)!.label;
+	return SCREEN_OUTPUT_OPTIONS.find((option) => option.value === output)!.label;
 }
 
 /**
@@ -51,23 +51,25 @@ function outputLabel(output: ScreenOutput) {
  * the operator is looking at nothing having happened either way (#250, #258).
  */
 async function openOutput(output?: ScreenOutput) {
-	if (props.disabled)
-		return;
+	if (props.disabled) return;
 	const result = await openScreenOutput(accessUrlOptions(output));
-	if (result === 'opened')
-		return;
+	if (result === 'opened') return;
 
-	toast.add(result === 'window-blocked'
-		? {
-				title: 'Output not opened',
-				description: 'This browser blocked the new tab. Allow pop-ups for this site, then open the output again.',
-				color: 'error',
-			}
-		: {
-				title: 'Output not opened',
-				description: 'Asset access for this Screen could not be obtained, so the output would have rendered without its media. Try again.',
-				color: 'error',
-			});
+	toast.add(
+		result === 'window-blocked'
+			? {
+					title: 'Output not opened',
+					description:
+						'This browser blocked the new tab. Allow pop-ups for this site, then open the output again.',
+					color: 'error',
+				}
+			: {
+					title: 'Output not opened',
+					description:
+						'Asset access for this Screen could not be obtained, so the output would have rendered without its media. Try again.',
+					color: 'error',
+				},
+	);
 }
 
 /**
@@ -76,15 +78,13 @@ async function openOutput(output?: ScreenOutput) {
  * media-losing URL this refusal exists to withhold (#257).
  */
 async function copyOutputUrl(output?: ScreenOutput) {
-	if (props.disabled)
-		return;
+	if (props.disabled) return;
 	await copyToClipboard(await screenOutputAccessUrl(accessUrlOptions(output)), {
-		successTitle: output
-			? `${outputLabel(output)} output URL copied`
-			: 'Output URL copied',
-		successDescription: 'It carries asset access, so the output resolves this Screen\'s media.',
+		successTitle: output ? `${outputLabel(output)} output URL copied` : 'Output URL copied',
+		successDescription: "It carries asset access, so the output resolves this Screen's media.",
 		nothingToCopyTitle: 'Nothing copied',
-		nothingToCopyDescription: 'Asset access for this Screen could not be obtained, so the URL would have opened an output without its media. Try again.',
+		nothingToCopyDescription:
+			'Asset access for this Screen could not be obtained, so the URL would have opened an output without its media. Try again.',
 	});
 }
 
@@ -104,18 +104,23 @@ function menu(
 				onSelect: () => void handOut(),
 			},
 		],
-		(props.outputs ?? []).map(output => ({
+		(props.outputs ?? []).map((output) => ({
 			label: each(outputLabel(output).toLowerCase()),
-			icon: SCREEN_OUTPUT_OPTIONS.find(option => option.value === output)!.icon,
+			icon: SCREEN_OUTPUT_OPTIONS.find((option) => option.value === output)!.icon,
 			onSelect: () => void handOut(output),
 		})),
 	];
 }
 
-const openItems = computed(() => menu('Open output', label => `Open ${label} output`, 'i-lucide-external-link', openOutput));
-const copyItems = computed(() => menu('Copy output URL', label => `Copy ${label} output URL`, 'i-lucide-copy', copyOutputUrl));
+const openItems = computed(() =>
+	menu('Open output', (label) => `Open ${label} output`, 'i-lucide-external-link', openOutput),
+);
+const copyItems = computed(() =>
+	menu('Copy output URL', (label) => `Copy ${label} output URL`, 'i-lucide-copy', copyOutputUrl),
+);
 
-const OPEN_TITLE = 'Open a Screen Output in a new tab, with the asset access that resolves its media';
+const OPEN_TITLE =
+	'Open a Screen Output in a new tab, with the asset access that resolves its media';
 const COPY_TITLE = 'Copy a Screen Output URL, with the asset access that resolves its media';
 </script>
 

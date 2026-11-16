@@ -3,7 +3,11 @@ import type { FeatureMatchSourceRole } from '~~/shared/types/screenConfig';
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES } from '~~/shared/builtInFeatureMatchLayoutTemplates';
 import { createFeatureMatchLayoutComposition } from '~~/shared/featureMatchLayoutComposition';
-import { isFeatureMatchLayoutHeldBy, isFeatureMatchLayoutOfferedTo, isFourSeatFeatureMatchLayout } from '~~/shared/featureMatchLayoutSeats';
+import {
+	isFeatureMatchLayoutHeldBy,
+	isFeatureMatchLayoutOfferedTo,
+	isFourSeatFeatureMatchLayout,
+} from '~~/shared/featureMatchLayoutSeats';
 import { getGraphicItemDefinition } from '~~/shared/modules/graphics';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
 
@@ -11,13 +15,16 @@ import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConf
 
 const CANVAS = { canvasWidth: 1920, canvasHeight: 1080 };
 function make(kind: Parameters<typeof getGraphicItemDefinition>[0], fields: object = {}) {
-	return ({
+	return {
 		...getGraphicItemDefinition(kind).createDefault({ id: kind, label: kind, ...CANVAS }),
 		...fields,
-	}) as GraphicItemConfig;
+	} as GraphicItemConfig;
 }
 
-function layout(items: GraphicItemConfig[], roles: FeatureMatchSourceRole[] = ['main', 'player1', 'player2']) {
+function layout(
+	items: GraphicItemConfig[],
+	roles: FeatureMatchSourceRole[] = ['main', 'player1', 'player2'],
+) {
 	const [source] = DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG.layout.sources;
 	return {
 		sources: roles.map((sourceRole, index) => ({ ...source!, id: `source-${index}`, sourceRole })),
@@ -37,75 +44,64 @@ describe('a four-Seat Feature Match Layout', () => {
 		},
 		{
 			name: 'a Player Life item reading a fourth Seat',
-			build: () => layout([
-				make('player-life', { playerSide: 'player4' }),
-			]),
+			build: () => layout([make('player-life', { playerSide: 'player4' })]),
 			fourSeat: true,
 		},
 		{
-			name: 'text naming a third Seat\'s token',
-			build: () => layout([
-				make('text', { text: '{player3Name}' }),
-			]),
+			name: "text naming a third Seat's token",
+			build: () => layout([make('text', { text: '{player3Name}' })]),
 			fourSeat: true,
 		},
 		{
-			name: 'text naming a Commander\'s image on the first Seat',
-			build: () => layout([
-				make('text', { text: '{player1Commander1Image}' }),
-			]),
+			name: "text naming a Commander's image on the first Seat",
+			build: () => layout([make('text', { text: '{player1Commander1Image}' })]),
 			fourSeat: true,
 		},
 		{
-			name: 'a Graphic Placeholder Style keyed by a fourth Seat\'s token',
-			build: () => layout([
-				make('text', {
-					text: 'x',
-					placeholderStyles: { player4Deck: {} },
-				}),
-			]),
+			name: "a Graphic Placeholder Style keyed by a fourth Seat's token",
+			build: () =>
+				layout([
+					make('text', {
+						text: 'x',
+						placeholderStyles: { player4Deck: {} },
+					}),
+				]),
 			fourSeat: true,
 		},
 		{
 			name: 'a Commander Damage item on the first Seat',
-			build: () => layout([
-				make('commander-damage'),
-			]),
+			build: () => layout([make('commander-damage')]),
 			fourSeat: true,
 		},
 		{
 			name: 'an Eliminated indicator on the first Seat',
-			build: () => layout([
-				make('seat-indicator', { state: 'eliminated' }),
-			]),
+			build: () => layout([make('seat-indicator', { state: 'eliminated' })]),
 			fourSeat: true,
 		},
 		{
 			name: 'a term inside a Graphic Group',
-			build: () => layout([
-				make('group', {
-					children: [
-						make('player-life', { playerSide: 'player3' }),
-					],
-				}),
-			]),
+			build: () =>
+				layout([
+					make('group', {
+						children: [make('player-life', { playerSide: 'player3' })],
+					}),
+				]),
 			fourSeat: true,
 		},
 		{
 			name: 'an Active indicator on the second Seat',
-			build: () => layout([
-				make('seat-indicator', { playerSide: 'player2' }),
-			]),
+			build: () => layout([make('seat-indicator', { playerSide: 'player2' })]),
 			fourSeat: false,
 		},
 		{
-			name: 'the pair\'s tokens, life, wins and Sideboard',
-			build: () => layout([
-				make('text', { text: '{player1Name} {player2Record} {eventName}' }),
-				make('player-life'),
-				make('game-wins'),
-				make('deck-list'),
-			]),
+			name: "the pair's tokens, life, wins and Sideboard",
+			build: () =>
+				layout([
+					make('text', { text: '{player1Name} {player2Record} {eventName}' }),
+					make('player-life'),
+					make('game-wins'),
+					make('deck-list'),
+				]),
 			fourSeat: false,
 		},
 	])('reads $name as four-Seat: $fourSeat', ({ build, fourSeat }) => {
@@ -122,9 +118,11 @@ describe('a four-Seat Feature Match Layout', () => {
 			offered: ['commander-table'],
 		},
 	])('offers a $kind Event the built-ins $offered', ({ kind, offered }) => {
-		expect(BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES
-			.filter(template => isFeatureMatchLayoutOfferedTo(template.config.layout, kind))
-			.map(template => template.id)).toEqual(offered);
+		expect(
+			BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.filter((template) =>
+				isFeatureMatchLayoutOfferedTo(template.config.layout, kind),
+			).map((template) => template.id),
+		).toEqual(offered);
 	});
 
 	// Held is wider than offered: a Commander Event may hold the pair's layout its reset writes.
@@ -133,10 +131,11 @@ describe('a four-Seat Feature Match Layout', () => {
 		{ kind: 'mtg-commander' as const, fourSeat: true, held: true },
 		{ kind: 'mtg-commander' as const, fourSeat: false, held: true },
 		{ kind: 'op' as const, fourSeat: false, held: true },
-	])('lets a $kind Event hold a four-Seat layout ($fourSeat): $held', ({ kind, fourSeat, held }) => {
-		const built = fourSeat
-			? layout([], ['main', 'player3'])
-			: layout([]);
-		expect(isFeatureMatchLayoutHeldBy(built, kind)).toBe(held);
-	});
+	])(
+		'lets a $kind Event hold a four-Seat layout ($fourSeat): $held',
+		({ kind, fourSeat, held }) => {
+			const built = fourSeat ? layout([], ['main', 'player3']) : layout([]);
+			expect(isFeatureMatchLayoutHeldBy(built, kind)).toBe(held);
+		},
+	);
 });

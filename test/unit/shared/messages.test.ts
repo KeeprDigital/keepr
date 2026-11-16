@@ -12,7 +12,7 @@ describe('createMessage', () => {
 		vi.useRealTimers();
 	});
 
-	it('stamps the Event, the send time and the payload, plus the sender\'s connection when given', () => {
+	it("stamps the Event, the send time and the payload, plus the sender's connection when given", () => {
 		const msg = createMessage(1, 'event:deleted', { eventId: 1 }, 'conn-123');
 
 		expect(msg).toMatchObject({
@@ -27,7 +27,9 @@ describe('createMessage', () => {
 // Every holder orders Card states by the revision a write committed (#734).
 describe('the Card announcements', () => {
 	it('carry the Card revision', () => {
-		expect(createMessage(1, 'card:updated', { screenId: 2, card: null, revision: 7 }).revision).toBe(7);
+		expect(
+			createMessage(1, 'card:updated', { screenId: 2, card: null, revision: 7 }).revision,
+		).toBe(7);
 		expect(createMessage(1, 'card:cleared', { screenId: 2, revision: 8 }).revision).toBe(8);
 	});
 

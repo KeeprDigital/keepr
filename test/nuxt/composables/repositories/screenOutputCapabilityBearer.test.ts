@@ -16,12 +16,14 @@ const reads = [
 	{
 		name: 'the Screen by slug',
 		path: '/api/screen-output/events/1/screens/slug/main',
-		read: (capability: string | null | undefined) => useScreenRepository().getBySlug(1, 'main', capability ?? undefined),
+		read: (capability: string | null | undefined) =>
+			useScreenRepository().getBySlug(1, 'main', capability ?? undefined),
 	},
 	{
 		name: 'the selected Broadcast Deck List',
 		path: '/api/screen-output/events/1/screens/7/broadcast-deck-list',
-		read: (capability: string | null | undefined) => useScreenOutputBroadcastDeckListRepository().getSelected(1, 7, capability ?? null),
+		read: (capability: string | null | undefined) =>
+			useScreenOutputBroadcastDeckListRepository().getSelected(1, 7, capability ?? null),
 	},
 ];
 
@@ -39,16 +41,21 @@ describe('screen Output capability reads', () => {
 		});
 	});
 
-	it.each(reads)('reads $name with no authorization when the embed holds no capability', async ({ path, read }) => {
-		await read(null);
+	it.each(reads)(
+		'reads $name with no authorization when the embed holds no capability',
+		async ({ path, read }) => {
+			await read(null);
 
-		expect(mockFetch).toHaveBeenCalledWith(path, { headers: undefined });
-	});
+			expect(mockFetch).toHaveBeenCalledWith(path, { headers: undefined });
+		},
+	);
 
 	it('answers a refused Screen read with nothing to tell apart from a missing Screen', async () => {
 		mockFetch.mockRejectedValue(Object.assign(new Error('Not Found'), { statusCode: 404 }));
 
-		await expect(useScreenRepository().getBySlug(1, 'main', 'a-capability-for-another-screen')).resolves.toBeNull();
+		await expect(
+			useScreenRepository().getBySlug(1, 'main', 'a-capability-for-another-screen'),
+		).resolves.toBeNull();
 	});
 
 	// A lookup that could not be answered is not a missing Screen: its caller
@@ -65,6 +72,8 @@ describe('screen Output capability reads', () => {
 	])('says the Screen lookup is unavailable on $failure', async ({ error }) => {
 		mockFetch.mockRejectedValue(error);
 
-		await expect(useScreenRepository().getBySlug(1, 'main', 'a-capability')).rejects.toBeInstanceOf(ScreenLookupUnavailable);
+		await expect(useScreenRepository().getBySlug(1, 'main', 'a-capability')).rejects.toBeInstanceOf(
+			ScreenLookupUnavailable,
+		);
 	});
 });

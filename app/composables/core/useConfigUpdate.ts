@@ -31,9 +31,10 @@ interface UseConfigUpdateOptions<T, U extends Record<string, any> = Partial<T>> 
  * @typeParam T - The config type (values are non-null)
  * @typeParam U - The update payload type (may include null to signal "delete key")
  */
-export function useConfigUpdate<T extends Record<string, any>, U extends Record<string, any> = Partial<T>>(
-	options: UseConfigUpdateOptions<T, U>,
-) {
+export function useConfigUpdate<
+	T extends Record<string, any>,
+	U extends Record<string, any> = Partial<T>,
+>(options: UseConfigUpdateOptions<T, U>) {
 	const {
 		getStoreConfig,
 		saveToStore,
@@ -60,8 +61,9 @@ export function useConfigUpdate<T extends Record<string, any>, U extends Record<
 	 * edit of the refused field, or a retry, settles it. The sentence quoted is the
 	 * newest refusal still outstanding, so it names a slot that still needs repair.
 	 */
-	const saveError = computed<string | null>(() =>
-		Object.values(refusedFields.value).at(-1)?.message ?? null);
+	const saveError = computed<string | null>(
+		() => Object.values(refusedFields.value).at(-1)?.message ?? null,
+	);
 
 	/**
 	 * The save's answer as one state a surface can show (#381): `committed` is an
@@ -74,10 +76,8 @@ export function useConfigUpdate<T extends Record<string, any>, U extends Record<
 	 * flight will not land the refused edit, and only `failed` offers its Retry.
 	 */
 	const saveState = computed<'idle' | 'saving' | 'committed' | 'failed'>(() => {
-		if (saveError.value !== null)
-			return 'failed';
-		if (saving.value)
-			return 'saving';
+		if (saveError.value !== null) return 'failed';
+		if (saving.value) return 'saving';
 		return hasCommitted.value ? 'committed' : 'idle';
 	});
 
@@ -109,16 +109,17 @@ export function useConfigUpdate<T extends Record<string, any>, U extends Record<
 	 * longer speaks for that field.
 	 */
 	function isSuperseded(key: string, sentValue: unknown): boolean {
-		return pendingHasKey(key)
-			|| !Object.hasOwn(localOverrides.value, key)
-			|| (localOverrides.value as Record<string, unknown>)[key] !== sentValue;
+		return (
+			pendingHasKey(key) ||
+			!Object.hasOwn(localOverrides.value, key) ||
+			(localOverrides.value as Record<string, unknown>)[key] !== sentValue
+		);
 	}
 
 	function clearOverridesForSettledKeys(updates: U) {
 		const currentOverrides = { ...localOverrides.value } as Record<string, unknown>;
 		for (const [key, sentValue] of Object.entries(updates)) {
-			if (!isSuperseded(key, sentValue))
-				delete currentOverrides[key];
+			if (!isSuperseded(key, sentValue)) delete currentOverrides[key];
 		}
 		localOverrides.value = currentOverrides as U;
 	}
@@ -131,8 +132,7 @@ export function useConfigUpdate<T extends Record<string, any>, U extends Record<
 	function recordRefusedKeys(updates: U, message: string) {
 		const refused = { ...refusedFields.value };
 		for (const [key, sentValue] of Object.entries(updates)) {
-			if (isSuperseded(key, sentValue))
-				continue;
+			if (isSuperseded(key, sentValue)) continue;
 			// Re-inserted so the newest refusal stays last.
 			delete refused[key];
 			refused[key] = { value: sentValue, message };
@@ -142,8 +142,7 @@ export function useConfigUpdate<T extends Record<string, any>, U extends Record<
 
 	function forgetRefusedKeys(keys: string[]) {
 		const refused = { ...refusedFields.value };
-		for (const key of keys)
-			delete refused[key];
+		for (const key of keys) delete refused[key];
 		refusedFields.value = refused;
 	}
 
@@ -154,12 +153,10 @@ export function useConfigUpdate<T extends Record<string, any>, U extends Record<
 	 * here would name a Screen the store no longer holds (#703).
 	 */
 	async function flushPendingUpdates(handOff = false) {
-		if (inFlight.value > 0 && !handOff)
-			return;
+		if (inFlight.value > 0 && !handOff) return;
 
 		if (Object.keys(pendingUpdates.value).length === 0) {
-			if (inFlight.value === 0)
-				saving.value = false;
+			if (inFlight.value === 0) saving.value = false;
 			return;
 		}
 
@@ -170,29 +167,29 @@ export function useConfigUpdate<T extends Record<string, any>, U extends Record<
 
 		let saved = false;
 		try {
-			saved = Boolean(await runRequest(
-				async () => {
-					const result = await saveToStore(updates);
-					if (result === null || result === false)
-						throw new Error(errorMessage);
-					return true;
-				},
-				{
-					// Quote the failure's own sentence where it wrote one — a refusal
-					// names the slot to repair — and keep the caller's static wording
-					// for a failure that carries none. The widening #286 made safe.
-					error: ({ message }) => ({
-						title: 'Error',
-						description: message || errorMessage,
-						color: 'error',
-					}),
-					onFailure: ({ message }) => {
-						recordRefusedKeys(updates, message || errorMessage);
+			saved = Boolean(
+				await runRequest(
+					async () => {
+						const result = await saveToStore(updates);
+						if (result === null || result === false) throw new Error(errorMessage);
+						return true;
 					},
-				},
-			));
-		}
-		finally {
+					{
+						// Quote the failure's own sentence where it wrote one — a refusal
+						// names the slot to repair — and keep the caller's static wording
+						// for a failure that carries none. The widening #286 made safe.
+						error: ({ message }) => ({
+							title: 'Error',
+							description: message || errorMessage,
+							color: 'error',
+						}),
+						onFailure: ({ message }) => {
+							recordRefusedKeys(updates, message || errorMessage);
+						},
+					},
+				),
+			);
+		} finally {
 			inFlight.value--;
 		}
 
@@ -208,8 +205,7 @@ export function useConfigUpdate<T extends Record<string, any>, U extends Record<
 			return;
 		}
 
-		if (inFlight.value === 0)
-			saving.value = false;
+		if (inFlight.value === 0) saving.value = false;
 	}
 
 	const saveDebounce = createCancelableDebounce(flushPendingUpdates, debounceMs, maxWaitMs);
@@ -232,8 +228,7 @@ export function useConfigUpdate<T extends Record<string, any>, U extends Record<
 
 	async function retry() {
 		const refused = Object.entries(refusedFields.value);
-		if (refused.length === 0)
-			return;
+		if (refused.length === 0) return;
 		const retried = Object.fromEntries(refused.map(([key, { value }]) => [key, value])) as U;
 		pendingUpdates.value = {
 			...retried,
@@ -284,8 +279,7 @@ export function useConfigUpdate<T extends Record<string, any>, U extends Record<
 	 */
 	function handOffPendingEdits() {
 		saveDebounce.cancel();
-		if (Object.keys(pendingUpdates.value).length > 0)
-			void flushPendingUpdates(true);
+		if (Object.keys(pendingUpdates.value).length > 0) void flushPendingUpdates(true);
 	}
 
 	const unregisterPendingEditFlush = registerPendingEditFlush(handOffPendingEdits);
@@ -303,10 +297,8 @@ export function useConfigUpdate<T extends Record<string, any>, U extends Record<
 	async function flush(): Promise<boolean> {
 		saveDebounce.cancel();
 		while (inFlight.value > 0 || Object.keys(pendingUpdates.value).length > 0) {
-			if (inFlight.value > 0)
-				await until(inFlight).toBe(0);
-			else
-				await flushPendingUpdates();
+			if (inFlight.value > 0) await until(inFlight).toBe(0);
+			else await flushPendingUpdates();
 		}
 		return saveError.value === null;
 	}

@@ -18,12 +18,14 @@ export interface RecordDisplaySettings {
  * separator, and with no draws shown unless the Event asks for them. A missing
  * figure counts as none.
  */
-export function formatPlayerRecord(record: PlayerRecordFacts, settings: RecordDisplaySettings | null | undefined): string {
+export function formatPlayerRecord(
+	record: PlayerRecordFacts,
+	settings: RecordDisplaySettings | null | undefined,
+): string {
 	const separator = settings?.displayRecordSeparator ?? '-';
 	const hideZeroDraws = settings?.displayHideZeroDraws ?? true;
 	const draws = record.draws ?? 0;
 	const parts = [record.wins ?? 0, record.losses ?? 0];
-	if (!(hideZeroDraws && draws === 0))
-		parts.push(draws);
+	if (!(hideZeroDraws && draws === 0)) parts.push(draws);
 	return parts.join(separator);
 }

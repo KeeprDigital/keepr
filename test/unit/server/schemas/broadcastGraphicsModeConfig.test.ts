@@ -117,7 +117,7 @@ function textInput(key: string) {
 }
 
 function messages(result: { error?: { issues: Array<{ message: string }> } }) {
-	return result.error?.issues.map(issue => issue.message) ?? [];
+	return result.error?.issues.map((issue) => issue.message) ?? [];
 }
 
 /** A Text Graphic Item at the definition's defaults. */
@@ -132,9 +132,8 @@ function textItem(id: string) {
 
 describe('broadcastGraphicsModeConfigSchema', () => {
 	it('names the Broadcast Graphics cap rather than reporting a byte count', () => {
-		const graphics = Array.from(
-			{ length: MAX_BROADCAST_GRAPHICS_PER_SCREEN + 1 },
-			(_, index) => graphic(`graphic-${index}`),
+		const graphics = Array.from({ length: MAX_BROADCAST_GRAPHICS_PER_SCREEN + 1 }, (_, index) =>
+			graphic(`graphic-${index}`),
 		);
 
 		const result = broadcastGraphicsModeConfigSchema.safeParse({ graphics });
@@ -147,9 +146,7 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 
 	it('names the Graphic Item cap rather than reporting a byte count', () => {
 		const result = broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [
-				graphic('lower-third', MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC + 1),
-			],
+			graphics: [graphic('lower-third', MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC + 1)],
 		});
 
 		expect(result.success).toBe(false);
@@ -157,7 +154,7 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 		expect(messages(result)).toContain(
 			`A Broadcast Graphic must not contain more than ${MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC} Graphic Items`,
 		);
-		expect(messages(result).every(message => !message.includes('bytes'))).toBe(true);
+		expect(messages(result).every((message) => !message.includes('bytes'))).toBe(true);
 	});
 
 	it('names the whole-Screen Graphic Item cap rather than reporting a byte count', () => {
@@ -200,7 +197,9 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 					justify: 'start' as const,
 					clip: false,
 					geometry: GEOMETRY,
-					children: Array.from({ length: children }, (_, index) => shapeItem(`${id}-child-${index}`)),
+					children: Array.from({ length: children }, (_, index) =>
+						shapeItem(`${id}-child-${index}`),
+					),
 				},
 			],
 		});
@@ -226,16 +225,12 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 	it('accepts a stack at the whole-Screen Graphic Item cap', () => {
 		// One Broadcast Graphic filled to its own cap, and the rest sharing whatever
 		// the whole-Screen cap has left.
-		const spare = MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN - MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC;
-		const graphics = Array.from(
-			{ length: MAX_BROADCAST_GRAPHICS_PER_SCREEN },
-			(_, index) => graphic(
+		const spare =
+			MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN - MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC;
+		const graphics = Array.from({ length: MAX_BROADCAST_GRAPHICS_PER_SCREEN }, (_, index) =>
+			graphic(
 				`graphic-${index}`,
-				index === 0
-					? MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC
-					: (index <= spare
-							? 1
-							: 0),
+				index === 0 ? MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC : index <= spare ? 1 : 0,
 			),
 		);
 
@@ -243,9 +238,7 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 	});
 
 	it('accepts one Broadcast Graphic filled to the per-graphic Graphic Item cap', () => {
-		const graphics = [
-			graphic('lower-third', MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC),
-		];
+		const graphics = [graphic('lower-third', MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC)];
 
 		expect(broadcastGraphicsModeConfigSchema.safeParse({ graphics }).success).toBe(true);
 	});
@@ -262,9 +255,7 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 					channelId: 'thirds',
 				},
 			],
-			channels: [
-				{ id: 'thirds', name: 'Lower thirds', handoff: 'out-then-in' as const },
-			],
+			channels: [{ id: 'thirds', name: 'Lower thirds', handoff: 'out-then-in' as const }],
 		};
 
 		expect(broadcastGraphicsModeConfigSchema.safeParse(config).success).toBe(true);
@@ -281,14 +272,16 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 		const result = broadcastGraphicsModeConfigSchema.safeParse(config);
 
 		expect(result.success).toBe(false);
-		expect(messages(result)).toContain('Graphic Channel ids must be unique within one Broadcast Graphics Screen');
+		expect(messages(result)).toContain(
+			'Graphic Channel ids must be unique within one Broadcast Graphics Screen',
+		);
 	});
 
 	it('names the Graphic Channel cap rather than reporting a byte count', () => {
-		const channels = Array.from(
-			{ length: MAX_GRAPHIC_CHANNELS_PER_SCREEN + 1 },
-			(_, index) => ({ id: `channel-${index}`, name: `Channel ${index}` }),
-		);
+		const channels = Array.from({ length: MAX_GRAPHIC_CHANNELS_PER_SCREEN + 1 }, (_, index) => ({
+			id: `channel-${index}`,
+			name: `Channel ${index}`,
+		}));
 		const result = broadcastGraphicsModeConfigSchema.safeParse({ graphics: [], channels });
 
 		expect(result.success).toBe(false);
@@ -359,27 +352,29 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 		});
 
 		expect(patch.success).toBe(true);
-		expect(modeConfigPatchSchemaMap['broadcast-graphics'].safeParse({
-			background: { enabled: true, effect: 'vanta-birds', opacity: 0.35 },
-		}).success).toBe(false);
+		expect(
+			modeConfigPatchSchemaMap['broadcast-graphics'].safeParse({
+				background: { enabled: true, effect: 'vanta-birds', opacity: 0.35 },
+			}).success,
+		).toBe(false);
 	});
 
 	it('carries Graphic Channels through the mode-configuration patch path', () => {
 		// The path the editors write through rebuilds each mode from its field schemas,
 		// so a field that only validates in the whole-config schema never reaches it.
 		const patch = modeConfigPatchSchemaMap['broadcast-graphics'].safeParse({
-			channels: [
-				{ id: 'thirds', name: 'Lower thirds', handoff: 'out-then-in' },
-			],
+			channels: [{ id: 'thirds', name: 'Lower thirds', handoff: 'out-then-in' }],
 		});
 
 		expect(patch.success).toBe(true);
-		expect(modeConfigPatchSchemaMap['broadcast-graphics'].safeParse({
-			channels: [
-				{ id: 'thirds', name: 'A' },
-				{ id: 'thirds', name: 'B' },
-			],
-		}).success).toBe(false);
+		expect(
+			modeConfigPatchSchemaMap['broadcast-graphics'].safeParse({
+				channels: [
+					{ id: 'thirds', name: 'A' },
+					{ id: 'thirds', name: 'B' },
+				],
+			}).success,
+		).toBe(false);
 	});
 
 	// A PATCH stores what it parsed: a key the patch form dropped would be lost, and one it filled in invented.
@@ -410,12 +405,8 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 						],
 					},
 				],
-				sources: [
-					{ key: 'player', label: 'Player', kind: 'player' },
-				],
-				bindings: [
-					{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' },
-				],
+				sources: [{ key: 'player', label: 'Player', kind: 'player' }],
+				bindings: [{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' }],
 				items: [
 					{
 						...textItem('name-line'),
@@ -428,7 +419,10 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 			},
 		];
 
-		const patch = modeConfigPatchSchemaMap['broadcast-graphics'].parse({ graphics }) as Record<string, unknown>;
+		const patch = modeConfigPatchSchemaMap['broadcast-graphics'].parse({ graphics }) as Record<
+			string,
+			unknown
+		>;
 
 		expect(patch).toEqual({ graphics });
 		expect(parseModeConfigPatchResult({}, 'broadcast-graphics', patch)).toEqual({
@@ -463,10 +457,7 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 			graphics: [
 				{
 					...graphic('lower-third'),
-					inputs: [
-						textInput('name'),
-						textInput('name'),
-					],
+					inputs: [textInput('name'), textInput('name')],
 				},
 			],
 		});
@@ -474,12 +465,8 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 			graphics: [
 				{
 					...graphic('lower-third'),
-					inputs: [
-						textInput('name'),
-					],
-					sources: [
-						{ key: 'player', label: 'Player', kind: 'feature-match-slot' },
-					],
+					inputs: [textInput('name')],
+					sources: [{ key: 'player', label: 'Player', kind: 'feature-match-slot' }],
 					bindings: [
 						{ inputKey: 'name', sourceKey: 'player', fieldId: 'name' },
 						{ inputKey: 'name', sourceKey: 'player', fieldId: 'name' },
@@ -488,18 +475,17 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 			],
 		});
 
-		expect(messages(duplicateKeys)).toContain('Graphic Input keys must be unique within one Broadcast Graphic');
-		expect(messages(duplicateBindings)).toContain('A Graphic Input may have at most one Graphic Input Binding');
+		expect(messages(duplicateKeys)).toContain(
+			'Graphic Input keys must be unique within one Broadcast Graphic',
+		);
+		expect(messages(duplicateBindings)).toContain(
+			'A Graphic Input may have at most one Graphic Input Binding',
+		);
 	});
 
 	// Only a hand-written call reaches these: the authoring surface offers catalog fields alone.
 	it.each([
-		[
-			'accepts',
-			'a catalog field',
-			'player.name',
-			[],
-		],
+		['accepts', 'a catalog field', 'player.name', []],
 		[
 			'refuses',
 			'a field the catalog does not define',
@@ -511,15 +497,9 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 			graphics: [
 				{
 					...graphic('lower-third'),
-					inputs: [
-						textInput('name'),
-					],
-					sources: [
-						{ key: 'player', label: 'Player', kind: 'player' },
-					],
-					bindings: [
-						{ inputKey: 'name', sourceKey: 'player', fieldId },
-					],
+					inputs: [textInput('name')],
+					sources: [{ key: 'player', label: 'Player', kind: 'player' }],
+					bindings: [{ inputKey: 'name', sourceKey: 'player', fieldId }],
 				},
 			],
 		});
@@ -529,17 +509,14 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 
 	// A Match has a `player1`; a Player has none, so nothing an operator picks could ever resolve it.
 	it.each([
-		[
-			'accepts',
-			'a relationship that yields its kind',
-			'match',
-			[],
-		],
+		['accepts', 'a relationship that yields its kind', 'match', []],
 		[
 			'refuses',
 			'a relationship that cannot yield its kind',
 			'player',
-			['A derived Graphic Source Selection must follow a declared selection through a relationship that yields its own kind'],
+			[
+				'A derived Graphic Source Selection must follow a declared selection through a relationship that yields its own kind',
+			],
 		],
 	])('%s a derived Graphic Source Selection following %s', (_, __, parentKind, refusal) => {
 		const result = broadcastGraphicsModeConfigSchema.safeParse({
@@ -564,18 +541,9 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 
 	// Each declared type is its own branch of the declaration, with fields no other takes.
 	it.each<[string, Record<string, unknown>]>([
-		[
-			'text',
-			{ default: 'Unnamed', maxLength: 20 },
-		],
-		[
-			'number',
-			{ default: 0, integer: true, min: 0 },
-		],
-		[
-			'toggle',
-			{ default: false },
-		],
+		['text', { default: 'Unnamed', maxLength: 20 }],
+		['number', { default: 0, integer: true, min: 0 }],
+		['toggle', { default: false }],
 		[
 			'choice',
 			{
@@ -586,14 +554,8 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 				],
 			},
 		],
-		[
-			'color',
-			{ default: '#00d9ff' },
-		],
-		[
-			'media',
-			{ default: null, mediaKind: 'image' },
-		],
+		['color', { default: '#00d9ff' }],
+		['media', { default: null, mediaKind: 'image' }],
 	])('accepts a %s Graphic Input, keeping its declaration as written', (type, fields) => {
 		const declaration = {
 			type,
@@ -641,9 +603,7 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 			graphics: [
 				{
 					...graphic('lower-third'),
-					inputs: [
-						textInput('2 names'),
-					],
+					inputs: [textInput('2 names')],
 				},
 			],
 		});
@@ -652,12 +612,10 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 	});
 
 	it('caps the Graphic Placeholder Styles one Text Graphic Item may define', () => {
-		const styles = (count: number) => Object.fromEntries(
-			Array.from({ length: count }, (_, index) => [
-				`k${index}`,
-				{ fontWeight: 700 },
-			]),
-		);
+		const styles = (count: number) =>
+			Object.fromEntries(
+				Array.from({ length: count }, (_, index) => [`k${index}`, { fontWeight: 700 }]),
+			);
 		const withStyles = (count: number) => ({
 			graphics: [
 				{
@@ -672,12 +630,16 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 			],
 		});
 
-		expect(broadcastGraphicsModeConfigSchema.safeParse(
-			withStyles(MAX_GRAPHIC_PLACEHOLDER_STYLES_PER_TEXT_ITEM),
-		).success).toBe(true);
-		expect(broadcastGraphicsModeConfigSchema.safeParse(
-			withStyles(MAX_GRAPHIC_PLACEHOLDER_STYLES_PER_TEXT_ITEM + 1),
-		).success).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse(
+				withStyles(MAX_GRAPHIC_PLACEHOLDER_STYLES_PER_TEXT_ITEM),
+			).success,
+		).toBe(true);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse(
+				withStyles(MAX_GRAPHIC_PLACEHOLDER_STYLES_PER_TEXT_ITEM + 1),
+			).success,
+		).toBe(false);
 	});
 
 	// The patch form takes each field's own schema, so this one cap stands for every rule under `graphics`.
@@ -703,30 +665,22 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 	describe('social network icon Graphic Items', () => {
 		function withItems(items: Array<Record<string, unknown>>) {
 			return broadcastGraphicsModeConfigSchema.safeParse({
-				graphics: [
-					{ id: 'a', name: 'A', items },
-				],
+				graphics: [{ id: 'a', name: 'A', items }],
 			});
 		}
 
 		it('bounds opacity and rejects unread configuration fields', () => {
-			expect(withItems([
-				socialNetworkIconItem('icon', { opacity: 0 }),
-			]).success).toBe(true);
-			expect(withItems([
-				socialNetworkIconItem('icon', { opacity: 1 }),
-			]).success).toBe(true);
-			expect(withItems([
-				socialNetworkIconItem('icon', { opacity: -0.1 }),
-			]).success).toBe(false);
-			expect(withItems([
-				socialNetworkIconItem('icon', { opacity: 1.1 }),
-			]).success).toBe(false);
-			expect(withItems([
-				socialNetworkIconItem('icon', {
-					asset: { assetId: 'icon', revisionId: '1' },
-				}),
-			]).success).toBe(false);
+			expect(withItems([socialNetworkIconItem('icon', { opacity: 0 })]).success).toBe(true);
+			expect(withItems([socialNetworkIconItem('icon', { opacity: 1 })]).success).toBe(true);
+			expect(withItems([socialNetworkIconItem('icon', { opacity: -0.1 })]).success).toBe(false);
+			expect(withItems([socialNetworkIconItem('icon', { opacity: 1.1 })]).success).toBe(false);
+			expect(
+				withItems([
+					socialNetworkIconItem('icon', {
+						asset: { assetId: 'icon', revisionId: '1' },
+					}),
+				]).success,
+			).toBe(false);
 		});
 
 		it('accepts the icon in every ordinary Graphic Group arrangement', () => {
@@ -763,15 +717,17 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 
 		it('keeps Social Network Icons out of Feature Match Overlay documents', () => {
 			const config = structuredClone(getDefaultConfigForMode('feature-match-overlay'));
-			config.layout.composition.items = [
-				socialNetworkIconItem('social-icon'),
-			];
+			config.layout.composition.items = [socialNetworkIconItem('social-icon')];
 
-			expect(modeConfigsMapSchema.safeParse({ 'feature-match-overlay': config }).success).toBe(false);
+			expect(modeConfigsMapSchema.safeParse({ 'feature-match-overlay': config }).success).toBe(
+				false,
+			);
 		});
 
 		it('keeps dynamic Social Profile Projection icons and declarations out of Feature Match documents', () => {
-			const config = structuredClone(getDefaultConfigForMode('feature-match-overlay')) as unknown as Record<string, any>;
+			const config = structuredClone(
+				getDefaultConfigForMode('feature-match-overlay'),
+			) as unknown as Record<string, any>;
 			config.layout.composition.items = [
 				socialNetworkIconItem('social-icon', {
 					network: { projectionKey: 'profile' },
@@ -789,11 +745,15 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 				},
 			];
 
-			expect(modeConfigsMapSchema.safeParse({ 'feature-match-overlay': config }).success).toBe(false);
+			expect(modeConfigsMapSchema.safeParse({ 'feature-match-overlay': config }).success).toBe(
+				false,
+			);
 		});
 
 		it('keeps Social Profile Projection placeholder styles out of Feature Match documents', () => {
-			const config = structuredClone(getDefaultConfigForMode('feature-match-overlay')) as unknown as Record<string, any>;
+			const config = structuredClone(
+				getDefaultConfigForMode('feature-match-overlay'),
+			) as unknown as Record<string, any>;
 			const authored = addGraphicItem(
 				{ id: 'feature-match', name: 'Feature Match', items: [] },
 				{
@@ -803,125 +763,119 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 					canvasHeight: 1080,
 				},
 			).graphic.items[0];
-			if (authored?.type !== 'text')
-				throw new Error('expected a Feature Match Text Graphic Item');
+			if (authored?.type !== 'text') throw new Error('expected a Feature Match Text Graphic Item');
 			authored.placeholderStyles = {
 				'profile.handle': { color: '#ffffff' },
 			};
 			config.layout.composition.items = [authored];
 
-			expect(modeConfigsMapSchema.safeParse({ 'feature-match-overlay': config }).success).toBe(false);
+			expect(modeConfigsMapSchema.safeParse({ 'feature-match-overlay': config }).success).toBe(
+				false,
+			);
 		});
 	});
 
 	describe('media Graphic Items', () => {
 		function withItems(items: Array<Record<string, unknown>>) {
 			return broadcastGraphicsModeConfigSchema.safeParse({
-				graphics: [
-					{ id: 'a', name: 'A', items },
-				],
+				graphics: [{ id: 'a', name: 'A', items }],
 			});
 		}
 
 		it('accepts a Media Graphic Item pinning one exact identity and revision', () => {
-			const result = withItems([
-				mediaItem('logo'),
-			]);
+			const result = withItems([mediaItem('logo')]);
 
 			expect(result.success).toBe(true);
 			const item = result.data?.graphics[0]?.items[0];
-			expect(item?.type === 'media' && item.asset).toEqual({ assetId: 'asset-1', revisionId: 'revision-1' });
+			expect(item?.type === 'media' && item.asset).toEqual({
+				assetId: 'asset-1',
+				revisionId: 'revision-1',
+			});
 		});
 
 		it('accepts one with no asset pinned, and none with a partial reference', () => {
 			// An author places the rectangle before choosing content, so an absent asset
 			// is a complete item. Half a reference is not: it pins no exact revision.
-			expect(withItems([
-				mediaItem('logo', { asset: undefined }),
-			]).success).toBe(true);
-			expect(withItems([
-				mediaItem('logo', {
-					asset: { assetId: 'asset-1' },
-				}),
-			]).success).toBe(false);
-			expect(withItems([
-				mediaItem('logo', {
-					asset: { revisionId: 'revision-1' },
-				}),
-			]).success).toBe(false);
-			expect(withItems([
-				mediaItem('logo', {
-					asset: { assetId: 'asset-1', revisionId: 'revision-1', latest: true },
-				}),
-			]).success).toBe(false);
+			expect(withItems([mediaItem('logo', { asset: undefined })]).success).toBe(true);
+			expect(
+				withItems([
+					mediaItem('logo', {
+						asset: { assetId: 'asset-1' },
+					}),
+				]).success,
+			).toBe(false);
+			expect(
+				withItems([
+					mediaItem('logo', {
+						asset: { revisionId: 'revision-1' },
+					}),
+				]).success,
+			).toBe(false);
+			expect(
+				withItems([
+					mediaItem('logo', {
+						asset: { assetId: 'asset-1', revisionId: 'revision-1', latest: true },
+					}),
+				]).success,
+			).toBe(false);
 		});
 
 		it('bounds fitting, focal position, opacity, and playback rate', () => {
-			expect(withItems([
-				mediaItem('logo', { fit: 'stretch' }),
-			]).success).toBe(false);
-			expect(withItems([
-				mediaItem('logo', { mediaKind: 'audio' }),
-			]).success).toBe(false);
-			expect(withItems([
-				mediaItem('logo', {
-					focalPosition: { horizontal: 1.5, vertical: 0.5 },
-				}),
-			]).success).toBe(false);
-			expect(withItems([
-				mediaItem('logo', {
-					focalPosition: { horizontal: 0.5 },
-				}),
-			]).success).toBe(false);
-			expect(withItems([
-				mediaItem('logo', { opacity: -0.1 }),
-			]).success).toBe(false);
-			expect(withItems([
-				mediaItem('logo', { playbackRate: 0 }),
-			]).success).toBe(false);
-			expect(withItems([
-				mediaItem('logo', { playbackRate: 8 }),
-			]).success).toBe(false);
-			expect(withItems([
-				mediaItem('logo', { playbackRate: 0.25 }),
-			]).success).toBe(true);
-			expect(withItems([
-				mediaItem('logo', { playbackRate: 4 }),
-			]).success).toBe(true);
+			expect(withItems([mediaItem('logo', { fit: 'stretch' })]).success).toBe(false);
+			expect(withItems([mediaItem('logo', { mediaKind: 'audio' })]).success).toBe(false);
+			expect(
+				withItems([
+					mediaItem('logo', {
+						focalPosition: { horizontal: 1.5, vertical: 0.5 },
+					}),
+				]).success,
+			).toBe(false);
+			expect(
+				withItems([
+					mediaItem('logo', {
+						focalPosition: { horizontal: 0.5 },
+					}),
+				]).success,
+			).toBe(false);
+			expect(withItems([mediaItem('logo', { opacity: -0.1 })]).success).toBe(false);
+			expect(withItems([mediaItem('logo', { playbackRate: 0 })]).success).toBe(false);
+			expect(withItems([mediaItem('logo', { playbackRate: 8 })]).success).toBe(false);
+			expect(withItems([mediaItem('logo', { playbackRate: 0.25 })]).success).toBe(true);
+			expect(withItems([mediaItem('logo', { playbackRate: 4 })]).success).toBe(true);
 		});
 
 		it('clips with the canonical Shape Geometry, and rejects the discarded media-clip encoding', () => {
 			// The media-clip encoding #89 discarded must not creep back.
-			expect(withItems([
-				mediaItem('logo', { clipGeometry: GEOMETRY }),
-			]).success).toBe(true);
-			expect(withItems([
-				mediaItem('logo', { clipGeometry: undefined }),
-			]).success).toBe(true);
-			expect(withItems([
-				mediaItem('logo', {
-					clipGeometry: {
-						topLeft: { kind: 'rounded', size: 8 },
-						topRight: { kind: 'square' },
-						bottomRight: { kind: 'square' },
-						bottomLeft: { kind: 'square' },
-						leftEdgeSlant: 4,
-					},
-				}),
-			]).success).toBe(false);
+			expect(withItems([mediaItem('logo', { clipGeometry: GEOMETRY })]).success).toBe(true);
+			expect(withItems([mediaItem('logo', { clipGeometry: undefined })]).success).toBe(true);
+			expect(
+				withItems([
+					mediaItem('logo', {
+						clipGeometry: {
+							topLeft: { kind: 'rounded', size: 8 },
+							topRight: { kind: 'square' },
+							bottomRight: { kind: 'square' },
+							bottomLeft: { kind: 'square' },
+							leftEdgeSlant: 4,
+						},
+					}),
+				]).success,
+			).toBe(false);
 		});
 
 		it('rejects a Graphic Surface Style on a Media Graphic Item', () => {
 			// It paints an asset, not a surface, so a fill would be an unread field the
 			// compositor silently ignores.
-			expect(withItems([
-				mediaItem('logo', {
-					surfaceStyle: {
-						fill: { type: 'solid', color: '#ffffff' },
-						fillOpacity: 1,
-					},
-				}),
-			]).success).toBe(false);
+			expect(
+				withItems([
+					mediaItem('logo', {
+						surfaceStyle: {
+							fill: { type: 'solid', color: '#ffffff' },
+							fillOpacity: 1,
+						},
+					}),
+				]).success,
+			).toBe(false);
 		});
 
 		it('accepts a Media Graphic Item as a Graphic Group child with main-axis sizing', () => {
@@ -956,11 +910,13 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 
 		it('rejects main-axis sizing on a top-level Media Graphic Item', () => {
 			// Only a Graphic Group child has a group to be sized inside.
-			expect(withItems([
-				mediaItem('logo', {
-					sizing: { mode: 'fill', size: 0, weight: 2 },
-				}),
-			]).success).toBe(false);
+			expect(
+				withItems([
+					mediaItem('logo', {
+						sizing: { mode: 'fill', size: 0, weight: 2 },
+					}),
+				]).success,
+			).toBe(false);
 		});
 
 		it('counts a Media Graphic Item towards the whole-Screen Graphic Item cap', () => {
@@ -1019,9 +975,7 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 				{
 					id: 'a',
 					name: 'A',
-					items: [
-						shapeItem('bare', { surfaceStyle: undefined }),
-					],
+					items: [shapeItem('bare', { surfaceStyle: undefined })],
 				},
 			],
 		});
@@ -1030,41 +984,42 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 	});
 
 	it('bounds a Text Graphic Item to the shared text length, and no further', () => {
-		const withText = (length: number) => broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [
-				{
-					id: 'a',
-					name: 'A',
-					items: [
-						{
-							type: 'text',
-							id: 'name',
-							label: 'Text 1',
-							visible: true,
-							anchor: 'top-left',
-							x: 0,
-							y: 0,
-							width: 10,
-							height: 10,
-							text: 'T'.repeat(length),
-							typography: {
-								font: { kind: 'application', fontId: 'inter' },
-								fontSize: 64,
-								fontWeight: 700,
-								fontStyle: 'normal',
-								textTransform: 'none',
-								letterSpacing: 0,
-								lineHeight: 1.15,
-								textAlign: 'left',
-								color: '#ffffff',
+		const withText = (length: number) =>
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [
+					{
+						id: 'a',
+						name: 'A',
+						items: [
+							{
+								type: 'text',
+								id: 'name',
+								label: 'Text 1',
+								visible: true,
+								anchor: 'top-left',
+								x: 0,
+								y: 0,
+								width: 10,
+								height: 10,
+								text: 'T'.repeat(length),
+								typography: {
+									font: { kind: 'application', fontId: 'inter' },
+									fontSize: 64,
+									fontWeight: 700,
+									fontStyle: 'normal',
+									textTransform: 'none',
+									letterSpacing: 0,
+									lineHeight: 1.15,
+									textAlign: 'left',
+									color: '#ffffff',
+								},
+								overflowPolicy: 'ellipsis',
+								minFontSize: 24,
 							},
-							overflowPolicy: 'ellipsis',
-							minFontSize: 24,
-						},
-					],
-				},
-			],
-		}).success;
+						],
+					},
+				],
+			}).success;
 
 		expect(withText(MAX_GRAPHIC_TEXT_LENGTH)).toBe(true);
 		expect(withText(MAX_GRAPHIC_TEXT_LENGTH + 1)).toBe(false);
@@ -1091,69 +1046,47 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 			geometry: GEOMETRY,
 			children,
 		});
-		const parse = (items: unknown[]) => broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [
-				{ id: 'a', name: 'A', items },
-			],
-		});
+		const parse = (items: unknown[]) =>
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [{ id: 'a', name: 'A', items }],
+			});
 
-		expect(parse([
-			shapeItem('bar'),
-			shapeItem('bar'),
-		]).success).toBe(false);
-		expect(parse([
-			shapeItem('bar'),
-			group([
-				shapeItem('bar'),
-			]),
-		]).success).toBe(false);
-		expect(parse([
-			group([
-				shapeItem('one'),
-				shapeItem('one'),
-			]),
-		]).success).toBe(false);
-		expect(parse([
-			shapeItem('bar'),
-			group([
-				shapeItem('one'),
-			]),
-		]).success).toBe(true);
+		expect(parse([shapeItem('bar'), shapeItem('bar')]).success).toBe(false);
+		expect(parse([shapeItem('bar'), group([shapeItem('bar')])]).success).toBe(false);
+		expect(parse([group([shapeItem('one'), shapeItem('one')])]).success).toBe(false);
+		expect(parse([shapeItem('bar'), group([shapeItem('one')])]).success).toBe(true);
 		// Two Broadcast Graphics may each hold an item of the same id.
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [
-				{
-					id: 'a',
-					name: 'A',
-					items: [
-						shapeItem('bar'),
-					],
-				},
-				{
-					id: 'b',
-					name: 'B',
-					items: [
-						shapeItem('bar'),
-					],
-				},
-			],
-		}).success).toBe(true);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [
+					{
+						id: 'a',
+						name: 'A',
+						items: [shapeItem('bar')],
+					},
+					{
+						id: 'b',
+						name: 'B',
+						items: [shapeItem('bar')],
+					},
+				],
+			}).success,
+		).toBe(true);
 	});
 
 	it('bounds a Graphic Item id to the identity length this application writes', () => {
 		// Every id this application writes is a uuid; Template Package import proves
 		// documents against this same schema, so the bound holds there too.
-		const withId = (length: number) => broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [
-				{
-					id: 'a',
-					name: 'A',
-					items: [
-						shapeItem('i'.repeat(length)),
-					],
-				},
-			],
-		}).success;
+		const withId = (length: number) =>
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [
+					{
+						id: 'a',
+						name: 'A',
+						items: [shapeItem('i'.repeat(length))],
+					},
+				],
+			}).success;
 
 		expect(MAX_GRAPHIC_ITEM_ID_LENGTH).toBeGreaterThan(randomUuid().length);
 		expect(withId(MAX_GRAPHIC_ITEM_ID_LENGTH)).toBe(true);
@@ -1161,28 +1094,25 @@ describe('broadcastGraphicsModeConfigSchema', () => {
 	});
 
 	it('bounds a staggered id to the same length, because it names a Graphic Item', () => {
-		const withStaggeredId = (length: number) => broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [
-				{
-					id: 'a',
-					name: 'A',
-					items: [
-						shapeItem('bar'),
-					],
-					animation: {
-						stagger: {
-							enter: {
-								order: 'list',
-								step: 100,
-								itemIds: [
-									's'.repeat(length),
-								],
+		const withStaggeredId = (length: number) =>
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [
+					{
+						id: 'a',
+						name: 'A',
+						items: [shapeItem('bar')],
+						animation: {
+							stagger: {
+								enter: {
+									order: 'list',
+									step: 100,
+									itemIds: ['s'.repeat(length)],
+								},
 							},
 						},
 					},
-				},
-			],
-		}).success;
+				],
+			}).success;
 
 		expect(withStaggeredId(MAX_GRAPHIC_ITEM_ID_LENGTH)).toBe(true);
 		expect(withStaggeredId(MAX_GRAPHIC_ITEM_ID_LENGTH + 1)).toBe(false);
@@ -1214,9 +1144,7 @@ describe('graphic Animation bounds', () => {
 				{
 					id: 'a',
 					name: 'A',
-					items: [
-						shapeItem('bar', { animation }),
-					],
+					items: [shapeItem('bar', { animation })],
 				},
 			],
 		});
@@ -1228,9 +1156,7 @@ describe('graphic Animation bounds', () => {
 				{
 					id: 'a',
 					name: 'A',
-					items: [
-						shapeItem('bar'),
-					],
+					items: [shapeItem('bar')],
 					animation,
 				},
 			],
@@ -1248,16 +1174,8 @@ describe('graphic Animation bounds', () => {
 
 	it.each([
 		['no Graphic Animation at all', undefined, true],
-		[
-			'the shortest duration',
-			enter({ duration: MIN_GRAPHIC_ANIMATION_DURATION_MS }),
-			true,
-		],
-		[
-			'the longest duration',
-			enter({ duration: MAX_GRAPHIC_ANIMATION_DURATION_MS }),
-			true,
-		],
+		['the shortest duration', enter({ duration: MIN_GRAPHIC_ANIMATION_DURATION_MS }), true],
+		['the longest duration', enter({ duration: MAX_GRAPHIC_ANIMATION_DURATION_MS }), true],
 		[
 			'a duration under the minimum',
 			enter({ duration: MIN_GRAPHIC_ANIMATION_DURATION_MS - 1 }),
@@ -1268,26 +1186,10 @@ describe('graphic Animation bounds', () => {
 			enter({ duration: MAX_GRAPHIC_ANIMATION_DURATION_MS + 1 }),
 			false,
 		],
-		[
-			'the longest delay',
-			enter({ delay: MAX_GRAPHIC_ANIMATION_DELAY_MS }),
-			true,
-		],
-		[
-			'a delay over the maximum',
-			enter({ delay: MAX_GRAPHIC_ANIMATION_DELAY_MS + 1 }),
-			false,
-		],
-		[
-			'a negative delay',
-			enter({ delay: -1 }),
-			false,
-		],
-		[
-			'a free-form easing',
-			enter({ easing: 'cubic-bezier(0,0,1,1)' }),
-			false,
-		],
+		['the longest delay', enter({ delay: MAX_GRAPHIC_ANIMATION_DELAY_MS }), true],
+		['a delay over the maximum', enter({ delay: MAX_GRAPHIC_ANIMATION_DELAY_MS + 1 }), false],
+		['a negative delay', enter({ delay: -1 }), false],
+		['a free-form easing', enter({ easing: 'cubic-bezier(0,0,1,1)' }), false],
 		[
 			'a fade to zero',
 			enter({
@@ -1368,18 +1270,14 @@ describe('graphic Animation bounds', () => {
 		[
 			'a recipe for every lifecycle phase',
 			{
-				'enter': recipe,
+				enter: recipe,
 				'on-screen': { ...recipe, pause: 0, repeat: 1 },
-				'update': recipe,
-				'exit': recipe,
+				update: recipe,
+				exit: recipe,
 			},
 			true,
 		],
-		[
-			'an unknown lifecycle phase',
-			{ hover: recipe },
-			false,
-		],
+		['an unknown lifecycle phase', { hover: recipe }, false],
 		[
 			'a rotation',
 			enter({
@@ -1401,64 +1299,40 @@ describe('graphic Animation bounds', () => {
 			}),
 			false,
 		],
-		[
-			'keyframes',
-			enter({ keyframes: [] }),
-			false,
-		],
+		['keyframes', enter({ keyframes: [] }), false],
 	])('takes a Graphic Item animation with %s → %s', (_case, animation, accepted) => {
 		expect(withItemAnimation(animation).success).toBe(accepted);
 	});
 
 	it.each([
 		[{}, true],
-		[
-			{ repeat: 100 },
-			true,
-		],
-		[
-			{ repeat: 'indefinite' },
-			true,
-		],
-		[
-			{ pause: 60000 },
-			true,
-		],
-		[
-			{ repeat: 0 },
-			false,
-		],
-		[
-			{ repeat: 101 },
-			false,
-		],
-		[
-			{ repeat: 1.5 },
-			false,
-		],
-		[
-			{ repeat: 'forever' },
-			false,
-		],
-		[
-			{ pause: 60001 },
-			false,
-		],
+		[{ repeat: 100 }, true],
+		[{ repeat: 'indefinite' }, true],
+		[{ pause: 60000 }, true],
+		[{ repeat: 0 }, false],
+		[{ repeat: 101 }, false],
+		[{ repeat: 1.5 }, false],
+		[{ repeat: 'forever' }, false],
+		[{ pause: 60001 }, false],
 	])('bounds on-screen repetition and pause: %j → %s', (patch, accepted) => {
-		expect(withItemAnimation({
-			'on-screen': {
-				...recipe,
-				pause: 0,
-				repeat: 1,
-				...patch,
-			},
-		}).success).toBe(accepted);
+		expect(
+			withItemAnimation({
+				'on-screen': {
+					...recipe,
+					pause: 0,
+					repeat: 1,
+					...patch,
+				},
+			}).success,
+		).toBe(accepted);
 	});
 
 	it('refuses on-screen repetition and pause on a phase that does not cycle', () => {
-		expect(withItemAnimation({
-			enter: { ...recipe, pause: 0, repeat: 2 },
-		}).success).toBe(false);
+		expect(
+			withItemAnimation({
+				enter: { ...recipe, pause: 0, repeat: 2 },
+			}).success,
+		).toBe(false);
 	});
 
 	it('lets a Broadcast Graphic and a Graphic Group stagger their direct items, and nothing else', () => {
@@ -1468,25 +1342,30 @@ describe('graphic Animation bounds', () => {
 			itemIds: ['bar'],
 		};
 
-		expect(withGraphicAnimation({
-			stagger: { exit: stagger },
-		}).success).toBe(true);
+		expect(
+			withGraphicAnimation({
+				stagger: { exit: stagger },
+			}).success,
+		).toBe(true);
 		// A Text or Shape Graphic Item has no direct items to order.
-		expect(withItemAnimation({
-			stagger: { exit: stagger },
-		}).success).toBe(false);
+		expect(
+			withItemAnimation({
+				stagger: { exit: stagger },
+			}).success,
+		).toBe(false);
 	});
 
 	it('bounds a stagger step to ten seconds', () => {
-		const stagger = (step: number) => withGraphicAnimation({
-			stagger: {
-				enter: {
-					order: 'list',
-					step,
-					itemIds: ['bar'],
+		const stagger = (step: number) =>
+			withGraphicAnimation({
+				stagger: {
+					enter: {
+						order: 'list',
+						step,
+						itemIds: ['bar'],
+					},
 				},
-			},
-		}).success;
+			}).success;
 
 		expect(stagger(MAX_GRAPHIC_ANIMATION_STAGGER_STEP_MS)).toBe(true);
 		expect(stagger(MAX_GRAPHIC_ANIMATION_STAGGER_STEP_MS + 1)).toBe(false);
@@ -1495,37 +1374,40 @@ describe('graphic Animation bounds', () => {
 
 	it('accepts a stagger naming an item that is no longer in the composition', () => {
 		// Deleting a staggered Graphic Item must not refuse the author's next write.
-		expect(withGraphicAnimation({
-			stagger: {
-				enter: {
-					order: 'list',
-					step: 100,
-					itemIds: ['deleted'],
+		expect(
+			withGraphicAnimation({
+				stagger: {
+					enter: {
+						order: 'list',
+						step: 100,
+						itemIds: ['deleted'],
+					},
 				},
-			},
-		}).success).toBe(true);
+			}).success,
+		).toBe(true);
 	});
 
 	it('bounds a stagger to the number of Graphic Items its container holds', () => {
 		// A stagger names a subset of its container's direct Graphic Items (#99).
-		const staggerOf = (items: number, ids: number) => broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [
-				{
-					id: 'a',
-					name: 'A',
-					items: Array.from({ length: items }, (_, index) => shapeItem(`bar-${index}`)),
-					animation: {
-						stagger: {
-							enter: {
-								order: 'list' as const,
-								step: 100,
-								itemIds: Array.from({ length: ids }, (_, index) => `bar-${index}`),
+		const staggerOf = (items: number, ids: number) =>
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [
+					{
+						id: 'a',
+						name: 'A',
+						items: Array.from({ length: items }, (_, index) => shapeItem(`bar-${index}`)),
+						animation: {
+							stagger: {
+								enter: {
+									order: 'list' as const,
+									step: 100,
+									itemIds: Array.from({ length: ids }, (_, index) => `bar-${index}`),
+								},
 							},
 						},
 					},
-				},
-			],
-		});
+				],
+			});
 
 		expect(staggerOf(3, 3).success).toBe(true);
 		expect(staggerOf(3, 2).success).toBe(true);
@@ -1535,54 +1417,57 @@ describe('graphic Animation bounds', () => {
 		);
 	});
 
-	it('counts a Graphic Group\'s own children rather than the whole graphic', () => {
-		const groupWith = (children: number, ids: number) => broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [
-				{
-					id: 'a',
-					name: 'A',
-					items: [
-						{
-							type: 'group' as const,
-							id: 'cluster',
-							label: 'Cluster',
-							visible: true,
-							anchor: 'top-left' as const,
-							x: 0,
-							y: 0,
-							width: 100,
-							height: 100,
-							arrangement: 'row' as const,
-							padding: 0,
-							gap: 0,
-							align: 'stretch' as const,
-							justify: 'start' as const,
-							clip: false,
-							geometry: GEOMETRY,
-							children: Array.from({ length: children }, (_, index) => shapeItem(`child-${index}`)),
-							animation: {
-								stagger: {
-									exit: {
-										order: 'list' as const,
-										step: 100,
-										itemIds: Array.from({ length: ids }, (_, index) => `child-${index}`),
+	it("counts a Graphic Group's own children rather than the whole graphic", () => {
+		const groupWith = (children: number, ids: number) =>
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [
+					{
+						id: 'a',
+						name: 'A',
+						items: [
+							{
+								type: 'group' as const,
+								id: 'cluster',
+								label: 'Cluster',
+								visible: true,
+								anchor: 'top-left' as const,
+								x: 0,
+								y: 0,
+								width: 100,
+								height: 100,
+								arrangement: 'row' as const,
+								padding: 0,
+								gap: 0,
+								align: 'stretch' as const,
+								justify: 'start' as const,
+								clip: false,
+								geometry: GEOMETRY,
+								children: Array.from({ length: children }, (_, index) =>
+									shapeItem(`child-${index}`),
+								),
+								animation: {
+									stagger: {
+										exit: {
+											order: 'list' as const,
+											step: 100,
+											itemIds: Array.from({ length: ids }, (_, index) => `child-${index}`),
+										},
 									},
 								},
 							},
-						},
-					],
-					animation: {
-						stagger: {
-							exit: {
-								order: 'list' as const,
-								step: 100,
-								itemIds: ['cluster'],
+						],
+						animation: {
+							stagger: {
+								exit: {
+									order: 'list' as const,
+									step: 100,
+									itemIds: ['cluster'],
+								},
 							},
 						},
 					},
-				},
-			],
-		});
+				],
+			});
 
 		expect(groupWith(4, 4).success).toBe(true);
 		expect(groupWith(4, 5).success).toBe(false);
@@ -1613,35 +1498,26 @@ describe('a Layer Lock', () => {
 	});
 
 	it.each<[string, Record<string, unknown>[], boolean]>([
-		[
-			'a top-level item',
-			[LOCKED_ITEM],
-			false,
-		],
-		[
-			'a group child',
-			[LOCKED_CHILD],
-			false,
-		],
-		[
-			'a Source Item',
-			[
-				shapeItem('item'),
-			],
-			true,
-		],
-	])('is stored on a Feature Match Layout\'s %s', (_, items, lockSource) => {
-		const config = structuredClone(getDefaultConfigForMode('feature-match-overlay')) as unknown as Record<string, any>;
+		['a top-level item', [LOCKED_ITEM], false],
+		['a group child', [LOCKED_CHILD], false],
+		['a Source Item', [shapeItem('item')], true],
+	])("is stored on a Feature Match Layout's %s", (_, items, lockSource) => {
+		const config = structuredClone(
+			getDefaultConfigForMode('feature-match-overlay'),
+		) as unknown as Record<string, any>;
 		config.layout.composition.items = items;
 		config.layout.sources[0].locked = lockSource;
 
-		expect(modeConfigPatchSchemaMap['feature-match-overlay'].safeParse({ layout: config.layout }).success).toBe(true);
+		expect(
+			modeConfigPatchSchemaMap['feature-match-overlay'].safeParse({ layout: config.layout })
+				.success,
+		).toBe(true);
 	});
 
 	it.each<[string, Record<string, unknown>]>([
 		['top-level item', LOCKED_ITEM],
 		['group child', LOCKED_CHILD],
-	])('is stored on a Broadcast Graphic\'s %s', (_, item) => {
+	])("is stored on a Broadcast Graphic's %s", (_, item) => {
 		const result = modeConfigPatchSchemaMap['broadcast-graphics'].safeParse({
 			graphics: [
 				{
@@ -1656,15 +1532,15 @@ describe('a Layer Lock', () => {
 	});
 
 	it('leaves a Broadcast Graphic holding no lock alone', () => {
-		expect(modeConfigPatchSchemaMap['broadcast-graphics'].safeParse({
-			graphics: [
-				{
-					...graphic('graphic'),
-					items: [
-						groupOf(shapeItem('child')),
-					],
-				},
-			],
-		}).success).toBe(true);
+		expect(
+			modeConfigPatchSchemaMap['broadcast-graphics'].safeParse({
+				graphics: [
+					{
+						...graphic('graphic'),
+						items: [groupOf(shapeItem('child'))],
+					},
+				],
+			}).success,
+		).toBe(true);
 	});
 });

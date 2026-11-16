@@ -5,7 +5,10 @@ import { defineComponent, nextTick } from 'vue';
 import { squareShapeGeometry } from '~~/shared/modules/graphics';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import Preview from '~/components/Graphics/Compositor/Preview.vue';
-import { GRAPHICS_PREVIEW_SELECT_MESSAGE, GRAPHICS_PREVIEW_STATE_MESSAGE } from '~/modules/graphics/previewMessages';
+import {
+	GRAPHICS_PREVIEW_SELECT_MESSAGE,
+	GRAPHICS_PREVIEW_STATE_MESSAGE,
+} from '~/modules/graphics/previewMessages';
 
 enableAutoUnmount(afterEach);
 
@@ -58,7 +61,8 @@ const USelectMenuStub = defineComponent({
 		},
 	},
 	emits: ['update:modelValue'],
-	template: '<select @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="String(item.value)" :value="item.value">{{ item.label }}</option></select>',
+	template:
+		'<select @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="String(item.value)" :value="item.value">{{ item.label }}</option></select>',
 });
 
 const USelectStub = defineComponent({
@@ -71,7 +75,8 @@ const USelectStub = defineComponent({
 		},
 	},
 	emits: ['update:modelValue'],
-	template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
+	template:
+		'<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
 });
 
 const UInputStub = defineComponent({
@@ -80,7 +85,8 @@ const UInputStub = defineComponent({
 		modelValue: { type: String, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)">',
+	template:
+		'<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)">',
 });
 
 const UButtonStub = defineComponent({
@@ -147,19 +153,27 @@ describe('graphicsCompositorPreview', () => {
 		});
 
 		const sample = wrapper.get('[data-social-profile-sample="talent-profile"]');
-		expect(sample.get('[data-testid="social-profile-sample-network"]').getComponent(USelectStub).props('items'))
-			.toEqual([
-				{ label: 'Twitch', value: 'twitch' },
-				{ label: 'YouTube', value: 'youtube' },
-				{ label: 'X', value: 'x' },
-				{ label: 'Instagram', value: 'instagram' },
-				{ label: 'TikTok', value: 'tiktok' },
-				{ label: 'Bluesky', value: 'bluesky' },
-			]);
-		expect(sample.get('[data-testid="social-profile-sample-handle"]').attributes('value')).toBe('example');
+		expect(
+			sample
+				.get('[data-testid="social-profile-sample-network"]')
+				.getComponent(USelectStub)
+				.props('items'),
+		).toEqual([
+			{ label: 'Twitch', value: 'twitch' },
+			{ label: 'YouTube', value: 'youtube' },
+			{ label: 'X', value: 'x' },
+			{ label: 'Instagram', value: 'instagram' },
+			{ label: 'TikTok', value: 'tiktok' },
+			{ label: 'Bluesky', value: 'bluesky' },
+		]);
+		expect(sample.get('[data-testid="social-profile-sample-handle"]').attributes('value')).toBe(
+			'example',
+		);
 
 		await sample.get('[data-testid="social-profile-sample-network"]').setValue('bluesky');
-		await sample.get('[data-testid="social-profile-sample-handle"]').setValue('a-very-long-authoring-sample-handle-for-layout');
+		await sample
+			.get('[data-testid="social-profile-sample-handle"]')
+			.setValue('a-very-long-authoring-sample-handle-for-layout');
 		await wrapper.get('iframe').trigger('load');
 
 		expect(posted.at(-1)?.state.socialProfileValues).toEqual({
@@ -250,27 +264,23 @@ describe('graphicsCompositorPreview', () => {
 	// The shell checks who sent a selection; this host hands it on, a ⌘-click as a toggle.
 	it.each([
 		['a click', {}, false],
-		[
-			'a ⌘-click',
-			{ toggle: true },
-			true,
-		],
+		['a ⌘-click', { toggle: true }, true],
 	])('hands its workspace %s in the preview', async (_, extra, toggle) => {
 		const wrapper = await mountComponent();
 		const frame = wrapper.get('iframe').element;
 		Object.defineProperty(frame, 'contentWindow', { configurable: true, value: window });
 		const target = { type: 'item', graphicId: 'lower-third', itemId: 'bar' };
 
-		window.dispatchEvent(new MessageEvent('message', {
-			origin: window.location.origin,
-			source: window,
-			data: { type: GRAPHICS_PREVIEW_SELECT_MESSAGE, target, ...extra },
-		}));
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				origin: window.location.origin,
+				source: window,
+				data: { type: GRAPHICS_PREVIEW_SELECT_MESSAGE, target, ...extra },
+			}),
+		);
 		await nextTick();
 
-		expect(wrapper.emitted('selectTarget')).toEqual([
-			[target, toggle],
-		]);
+		expect(wrapper.emitted('selectTarget')).toEqual([[target, toggle]]);
 	});
 });
 
@@ -433,9 +443,12 @@ describe('graphicAnimationPreview', () => {
 		const toggle = wrapper.get('[data-testid="preview-animation-toggle"]');
 
 		expect(toggle.attributes('aria-expanded')).toBe('false');
-		expect(wrapper.get(`[id="${toggle.attributes('aria-controls')}"]`)
-			.find('[data-testid="animation-preview-controls"]')
-			.exists()).toBe(true);
+		expect(
+			wrapper
+				.get(`[id="${toggle.attributes('aria-controls')}"]`)
+				.find('[data-testid="animation-preview-controls"]')
+				.exists(),
+		).toBe(true);
 		expect(toggle.attributes('data-playing')).toBe('false');
 
 		await wrapper.get('[data-testid="animation-preview-play"]').trigger('click');
@@ -456,7 +469,7 @@ describe('graphicAnimationPreview', () => {
 		await wrapper.get('[data-testid="animation-preview-play"]').trigger('click');
 		await nextTick();
 
-		expect(messages.every(message => message.type === GRAPHICS_PREVIEW_STATE_MESSAGE)).toBe(true);
+		expect(messages.every((message) => message.type === GRAPHICS_PREVIEW_STATE_MESSAGE)).toBe(true);
 		expect(wrapper.emitted('update:graphics')).toBeUndefined();
 		expect(wrapper.emitted('selectTarget')).toBeUndefined();
 	});

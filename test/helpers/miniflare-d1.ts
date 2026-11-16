@@ -23,9 +23,7 @@ import { getPlatformProxy } from 'wrangler';
 const migrationsDirectory = fileURLToPath(
 	new URL('../../server/db/migrations/sqlite', import.meta.url),
 );
-const wranglerConfigPath = fileURLToPath(
-	new URL('../../wrangler.jsonc', import.meta.url),
-);
+const wranglerConfigPath = fileURLToPath(new URL('../../wrangler.jsonc', import.meta.url));
 
 /**
  * The deployed runtime's compatibility date, read from the real config so this
@@ -51,13 +49,14 @@ export interface MiniflareD1Harness {
 export async function createMiniflareD1Harness(): Promise<MiniflareD1Harness> {
 	const directory = mkdtempSync(join(tmpdir(), 'stream-keepr-miniflare-d1-'));
 	const configPath = join(directory, 'wrangler.json');
-	writeFileSync(configPath, JSON.stringify({
-		name: 'stream-keepr-d1-limits',
-		...deployedCompatibility(),
-		d1_databases: [
-			{ binding: 'DB', database_name: 'limits', database_id: 'limits' },
-		],
-	}));
+	writeFileSync(
+		configPath,
+		JSON.stringify({
+			name: 'stream-keepr-d1-limits',
+			...deployedCompatibility(),
+			d1_databases: [{ binding: 'DB', database_name: 'limits', database_id: 'limits' }],
+		}),
+	);
 
 	const proxy = await getPlatformProxy<{ DB: D1Database }>({
 		configPath,
@@ -66,13 +65,12 @@ export async function createMiniflareD1Harness(): Promise<MiniflareD1Harness> {
 	const database = proxy.env.DB;
 
 	for (const migration of readdirSync(migrationsDirectory)
-		.filter(entry => entry.endsWith('.sql'))
+		.filter((entry) => entry.endsWith('.sql'))
 		.toSorted()) {
 		const contents = readFileSync(join(migrationsDirectory, migration), 'utf8');
 		for (const statement of contents.split('--> statement-breakpoint')) {
 			const trimmed = statement.trim().replace(/;$/, '');
-			if (trimmed)
-				await database.prepare(trimmed).run();
+			if (trimmed) await database.prepare(trimmed).run();
 		}
 	}
 

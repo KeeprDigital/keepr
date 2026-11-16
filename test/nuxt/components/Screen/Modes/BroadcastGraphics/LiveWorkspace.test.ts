@@ -10,9 +10,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, ref } from 'vue';
-import {
-	createInitialBroadcastGraphicsLiveState,
-} from '~~/shared/modules/broadcast-graphics-live-session';
+import { createInitialBroadcastGraphicsLiveState } from '~~/shared/modules/broadcast-graphics-live-session';
 import { createEmptyGraphicBindingDataSet } from '~~/shared/modules/graphics';
 import { createContinuitySignal } from '~~/test/helpers/realtime-mock';
 import { liveSessionSelectors } from '~~/test/nuxt/helpers/broadcastGraphicsLiveSessionReads';
@@ -37,7 +35,9 @@ const mockResetLiveState = vi.fn();
 
 /** What the realtime transport reports; the workspace derives disconnection from it. */
 const continuity = createContinuitySignal();
-const mockConnectionState = ref<'connected' | 'disconnected' | 'suspended' | 'connecting'>('connected');
+const mockConnectionState = ref<'connected' | 'disconnected' | 'suspended' | 'connecting'>(
+	'connected',
+);
 
 mockNuxtImport('tryUseRealtime', () => () => ({
 	get connectionState() {
@@ -79,8 +79,12 @@ mockNuxtImport('useBroadcastGraphicsLiveSessionStore', () => () => ({
 	get sessions() {
 		return mockSessions.value;
 	},
-	...liveSessionSelectors(() => mockLiveState.value, () => mockServerNow.value),
-	isPending: (_screenId: number, graphicId: string) => mockPendingGraphicIds.value.includes(graphicId),
+	...liveSessionSelectors(
+		() => mockLiveState.value,
+		() => mockServerNow.value,
+	),
+	isPending: (_screenId: number, graphicId: string) =>
+		mockPendingGraphicIds.value.includes(graphicId),
 	setInput: vi.fn(),
 	setOverride: vi.fn(),
 	selectSource: vi.fn(),
@@ -101,12 +105,7 @@ const mockPresence = ref<Array<{ data?: { assetAccess?: 'granted' | 'absent' } }
 
 mockNuxtImport('useScreenStore', () => () => ({
 	get screenPresence() {
-		return new Map([
-			[
-				3,
-				{ count: mockPresence.value.length, members: mockPresence.value },
-			],
-		]);
+		return new Map([[3, { count: mockPresence.value.length, members: mockPresence.value }]]);
 	},
 }));
 
@@ -146,7 +145,8 @@ const UButtonStub = defineComponent({
 		disabled: { type: Boolean, default: false },
 	},
 	emits: ['click'],
-	template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+	template:
+		'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 });
 
 const lowerThird: BroadcastGraphicConfig = { id: 'lower-third', name: 'Lower Third', items: [] };
@@ -216,28 +216,27 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 	// Authoring a Graphic Source Selection or a Graphic Input Binding is the same kind of
 	// structural change as a template action, and belongs to the same side of the split: Live…
 	it('offers no Graphic Source Selection or Graphic Input Binding authoring', async () => {
-		const wrapper = await mountComponent([
-			{
-				...slate,
-				inputs: [
-					{
-						type: 'text',
-						key: 'name',
-						label: 'Name',
-						required: false,
-						updatePolicy: 'staged',
-						default: '',
-						maxLength: 200,
-					},
-				],
-				sources: [
-					{ key: 'player', label: 'Player', kind: 'player' },
-				],
-				bindings: [
-					{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' },
-				],
-			},
-		], 'slate');
+		const wrapper = await mountComponent(
+			[
+				{
+					...slate,
+					inputs: [
+						{
+							type: 'text',
+							key: 'name',
+							label: 'Name',
+							required: false,
+							updatePolicy: 'staged',
+							default: '',
+							maxLength: 200,
+						},
+					],
+					sources: [{ key: 'player', label: 'Player', kind: 'player' }],
+					bindings: [{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' }],
+				},
+			],
+			'slate',
+		);
 
 		expect(wrapper.find('[data-testid="graphic-event-data-bindings"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="graphic-source-add"]').exists()).toBe(false);
@@ -315,7 +314,7 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 	it('reports how many Broadcast Graphics are on air', async () => {
 		mockLiveState.value = {
 			playout: {
-				'slate': { onAir: true, effectiveStartedAt: 0, cut: false },
+				slate: { onAir: true, effectiveStartedAt: 0, cut: false },
 				'lower-third': { onAir: true, effectiveStartedAt: 0, cut: false },
 			},
 			inputs: {},
@@ -342,7 +341,9 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 		expect(slate.get('[data-testid="playout-take"]').attributes('disabled')).toBeDefined();
 		expect(slate.get('[data-testid="playout-out"]').attributes('disabled')).toBeDefined();
 		expect(slate.get('[data-testid="playout-cut-take"]').attributes('disabled')).toBeDefined();
-		expect(entryFor(wrapper, 'lower-third').get('[data-testid="playout-take"]').attributes('disabled')).toBeUndefined();
+		expect(
+			entryFor(wrapper, 'lower-third').get('[data-testid="playout-take"]').attributes('disabled'),
+		).toBeUndefined();
 	});
 
 	it('surfaces a failed playout action instead of failing silently on air', async () => {
@@ -361,8 +362,9 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 		// here is the residual race and the second operator on stale data — the moment an
 		// operator has nothing else to go on. "Playout action failed" said neither what
 		// was wrong nor what to do about it (#230).
-		mockError.value = 'Graphic Asset Reference at graphics.promo.items.sting.asset is missing, '
-			+ 'so this Broadcast Graphic cannot be taken on air';
+		mockError.value =
+			'Graphic Asset Reference at graphics.promo.items.sting.asset is missing, ' +
+			'so this Broadcast Graphic cannot be taken on air';
 		mockRefusal.value = { code: 'missing-asset-reference', message: mockError.value };
 
 		const wrapper = await mountComponent();
@@ -376,13 +378,16 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 	it('separates content that is only temporarily unavailable from a reference that has gone', async () => {
 		// Repair or replace it, versus retry: the two refusals prescribe opposite moves,
 		// and the title is what tells an operator which one they are looking at.
-		mockError.value = 'Graphic Asset Content at graphics.promo.items.sting.asset is temporarily '
-			+ 'unavailable, so this Broadcast Graphic cannot be taken on air';
+		mockError.value =
+			'Graphic Asset Content at graphics.promo.items.sting.asset is temporarily ' +
+			'unavailable, so this Broadcast Graphic cannot be taken on air';
 		mockRefusal.value = { code: 'unavailable-asset-content', message: mockError.value };
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.get('[data-testid="playout-error"]').text()).toContain('Unavailable Graphic Asset Content');
+		expect(wrapper.get('[data-testid="playout-error"]').text()).toContain(
+			'Unavailable Graphic Asset Content',
+		);
 	});
 
 	it('still reports a field-scoped refusal, which Live Control may not be on screen to show', async () => {
@@ -396,7 +401,9 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 		const wrapper = await mountComponent([lowerThird, slate], null);
 
 		expect(wrapper.find('[data-testid="live-control"]').exists()).toBe(false);
-		expect(wrapper.get('[data-testid="playout-error"]').text()).toContain('Missing Graphic Asset Reference');
+		expect(wrapper.get('[data-testid="playout-error"]').text()).toContain(
+			'Missing Graphic Asset Reference',
+		);
 	});
 
 	it('reports a refusal about the show as a refusal rather than as a fault', async () => {
@@ -425,9 +432,7 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 
 		await entryFor(wrapper, 'slate').get('[data-testid="playout-select"]').trigger('click');
 
-		expect(wrapper.emitted('select')).toEqual([
-			['slate'],
-		]);
+		expect(wrapper.emitted('select')).toEqual([['slate']]);
 		expect(mockTake).not.toHaveBeenCalled();
 	});
 
@@ -476,11 +481,13 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 			expect(entry.get('[data-testid="playout-cut-take"]').attributes('disabled')).toBeDefined();
 			// Named by the Graphic Item's authored label, which is what an operator can
 			// find on the canvas — not by the internal owner slot.
-			expect(wrapper.get('[data-testid="playout-asset-blocked-slate"]').text())
-				.toContain('Sponsor');
+			expect(wrapper.get('[data-testid="playout-asset-blocked-slate"]').text()).toContain(
+				'Sponsor',
+			);
 			// Only the owning graphic is invalidated; the rest of the stack still operates.
-			expect(entryFor(wrapper, 'lower-third').get('[data-testid="playout-take"]').attributes('disabled'))
-				.toBeUndefined();
+			expect(
+				entryFor(wrapper, 'lower-third').get('[data-testid="playout-take"]').attributes('disabled'),
+			).toBeUndefined();
 		});
 
 		it('keeps Out available on an invalidated Broadcast Graphic, so it can leave air', async () => {
@@ -507,7 +514,9 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 			mockReferenceStatus.value = { outcome: 'unavailable', retryable: true };
 			const unavailable = await mountComponent([withMedia]);
 
-			expect(unavailable.get('[data-testid="playout-asset-blocked-slate"]').text()).toContain('Retry');
+			expect(unavailable.get('[data-testid="playout-asset-blocked-slate"]').text()).toContain(
+				'Retry',
+			);
 			expect(unavailable.find('[data-testid="playout-retry-asset-content"]').exists()).toBe(true);
 
 			mockReferenceStatus.value = { outcome: 'missing' };
@@ -522,8 +531,9 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 			const wrapper = await mountComponent([withMedia]);
 
 			expect(wrapper.find('[data-testid="playout-asset-blocked-slate"]').exists()).toBe(false);
-			expect(entryFor(wrapper, 'slate').get('[data-testid="playout-take"]').attributes('disabled'))
-				.toBeUndefined();
+			expect(
+				entryFor(wrapper, 'slate').get('[data-testid="playout-take"]').attributes('disabled'),
+			).toBeUndefined();
 		});
 
 		it('keeps a known-broken graphic blocked while a re-check is in flight', async () => {
@@ -532,19 +542,18 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 			// broken — every time somebody touched an unrelated graphic.
 			mockReferenceStatus.value = { outcome: 'missing' };
 			const wrapper = await mountComponent([lowerThird, withMedia]);
-			expect(entryFor(wrapper, 'slate').get('[data-testid="playout-take"]').attributes('disabled'))
-				.toBeDefined();
+			expect(
+				entryFor(wrapper, 'slate').get('[data-testid="playout-take"]').attributes('disabled'),
+			).toBeDefined();
 
 			// A new stack array with the same pinned revision, as an unrelated edit yields.
 			await wrapper.setProps({
-				graphics: [
-					{ ...lowerThird, name: 'Renamed' },
-					{ ...withMedia },
-				],
+				graphics: [{ ...lowerThird, name: 'Renamed' }, { ...withMedia }],
 			});
 
-			expect(entryFor(wrapper, 'slate').get('[data-testid="playout-take"]').attributes('disabled'))
-				.toBeDefined();
+			expect(
+				entryFor(wrapper, 'slate').get('[data-testid="playout-take"]').attributes('disabled'),
+			).toBeDefined();
 			expect(wrapper.find('[data-testid="playout-asset-blocked-slate"]').exists()).toBe(true);
 		});
 
@@ -556,10 +565,11 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 			// made from here — the monitor is hoisted above the workspace switch.)
 			const statusRequests = mockApiFetch.mock.calls
 				.map(([path]) => String(path))
-				.filter(path => path.includes('/revisions/'));
+				.filter((path) => path.includes('/revisions/'));
 			expect(statusRequests).toEqual([]);
-			expect(entryFor(wrapper, 'lower-third').get('[data-testid="playout-take"]').attributes('disabled'))
-				.toBeUndefined();
+			expect(
+				entryFor(wrapper, 'lower-third').get('[data-testid="playout-take"]').attributes('disabled'),
+			).toBeUndefined();
 		});
 	});
 	describe('a disconnected Live Control', () => {
@@ -577,12 +587,7 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 			const wrapper = await mountComponent();
 
 			const entry = entryFor(wrapper, 'slate');
-			for (const action of [
-				'playout-take',
-				'playout-cut-take',
-				'playout-out',
-				'playout-cut-out',
-			])
+			for (const action of ['playout-take', 'playout-cut-take', 'playout-out', 'playout-cut-out'])
 				expect(entry.get(`[data-testid="${action}"]`).attributes('disabled')).toBeDefined();
 		});
 
@@ -642,7 +647,10 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 
 	describe('durable live state that could not be recovered', () => {
 		it('states the fault prominently and says what puts a graphic back on air', async () => {
-			mockRecoveryFault.value = { reason: 'corrupt', detail: 'the playout record for slate is not a record' };
+			mockRecoveryFault.value = {
+				reason: 'corrupt',
+				detail: 'the playout record for slate is not a record',
+			};
 
 			const wrapper = await mountComponent();
 
@@ -659,8 +667,9 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 
 			const wrapper = await mountComponent();
 
-			expect(entryFor(wrapper, 'slate').get('[data-testid="playout-take"]').attributes('disabled'))
-				.toBeUndefined();
+			expect(
+				entryFor(wrapper, 'slate').get('[data-testid="playout-take"]').attributes('disabled'),
+			).toBeUndefined();
 		});
 
 		it('shows no fault while live state reads normally', async () => {
@@ -699,9 +708,11 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 			await wrapper.get('[data-testid="playout-reset-live-state"]').trigger('click');
 			await flushPromises();
 
-			expect(mockConfirmOpen).toHaveBeenCalledWith(expect.objectContaining({
-				description: expect.stringMatching(/Graphic Input values are discarded/),
-			}));
+			expect(mockConfirmOpen).toHaveBeenCalledWith(
+				expect.objectContaining({
+					description: expect.stringMatching(/Graphic Input values are discarded/),
+				}),
+			);
 		});
 	});
 	describe('a rundown organised by Graphic Channel', () => {
@@ -717,20 +728,27 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 			items: [],
 			channelId: 'thirds',
 		};
-		const thirds: GraphicChannelConfig = { id: 'thirds', name: 'Lower thirds', handoff: 'out-then-in' };
+		const thirds: GraphicChannelConfig = {
+			id: 'thirds',
+			name: 'Lower thirds',
+			handoff: 'out-then-in',
+		};
 
-		it('groups each Graphic Channel\'s members together and names its Handoff Policy', async () => {
+		it("groups each Graphic Channel's members together and names its Handoff Policy", async () => {
 			const wrapper = await mountComponent([alpha, bravo, slate], null, [thirds]);
 
 			const headings = wrapper.findAll('[data-testid="playout-channel-heading"]');
-			expect(headings.map(heading => heading.text())).toEqual([
+			expect(headings.map((heading) => heading.text())).toEqual([
 				'Lower thirdsOut then in',
 				'No Graphic Channel',
 			]);
 
 			const channelled = wrapper.get('[data-playout-channel="thirds"]');
-			expect(channelled.findAll('[data-playout-entry]').map(entry => entry.attributes('data-playout-entry')))
-				.toEqual(['bravo', 'alpha']);
+			expect(
+				channelled
+					.findAll('[data-playout-entry]')
+					.map((entry) => entry.attributes('data-playout-entry')),
+			).toEqual(['bravo', 'alpha']);
 		});
 
 		it('states a Graphic Channel that declares no policy as Overlap', async () => {
@@ -745,8 +763,11 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 			const wrapper = await mountComponent();
 
 			expect(wrapper.find('[data-testid="playout-channel-heading"]').exists()).toBe(false);
-			expect(wrapper.findAll('[data-playout-entry]').map(entry => entry.attributes('data-playout-entry')))
-				.toEqual(['slate', 'lower-third']);
+			expect(
+				wrapper
+					.findAll('[data-playout-entry]')
+					.map((entry) => entry.attributes('data-playout-entry')),
+			).toEqual(['slate', 'lower-third']);
 		});
 
 		it('reads a Broadcast Graphic its channel is holding as waiting, and not as on air', async () => {
@@ -773,10 +794,11 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 					},
 				},
 			});
-			const wrapper = await mountComponent([
-				animated('alpha', 'Alpha'),
-				animated('bravo', 'Bravo'),
-			], null, [thirds]);
+			const wrapper = await mountComponent(
+				[animated('alpha', 'Alpha'), animated('bravo', 'Bravo')],
+				null,
+				[thirds],
+			);
 
 			expect(entryFor(wrapper, 'bravo').attributes('data-playout-state')).toBe('waiting');
 			expect(entryFor(wrapper, 'alpha').attributes('data-playout-state')).toBe('exiting');

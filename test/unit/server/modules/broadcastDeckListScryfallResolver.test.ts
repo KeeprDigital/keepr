@@ -27,23 +27,22 @@ function scryfallCard(overrides: Partial<ScryfallCardData> = {}): ScryfallCardDa
 
 describe('broadcast Deck List Scryfall resolver', () => {
 	it('applies Event overrides as names while preserving hints and normalizing split-card spellings', async () => {
-		const lookupByName = vi.fn(async (requests: ReadonlyArray<{ name: string; setCode: string | null }>) => (
-			requests.map(request => request.name.startsWith('Wear')
-				? scryfallCard({
-						name: 'Wear // Tear',
-						setCode: request.setCode ?? 'dgm',
-						collectorNumber: '152',
-						id: 'wear-tear-printing',
-					})
-				: null)
-		));
-		const lookupPrintings = vi.fn(async () => [
-			scryfallCard(),
-		]);
+		const lookupByName = vi.fn(
+			async (requests: ReadonlyArray<{ name: string; setCode: string | null }>) =>
+				requests.map((request) =>
+					request.name.startsWith('Wear')
+						? scryfallCard({
+								name: 'Wear // Tear',
+								setCode: request.setCode ?? 'dgm',
+								collectorNumber: '152',
+								id: 'wear-tear-printing',
+							})
+						: null,
+				),
+		);
+		const lookupPrintings = vi.fn(async () => [scryfallCard()]);
 		const resolver = createBroadcastDeckListScryfallResolver({
-			overrides: [
-				{ inputName: 'Bolt', inputSetCode: null, canonicalName: 'Lightning Bolt' },
-			],
+			overrides: [{ inputName: 'Bolt', inputSetCode: null, canonicalName: 'Lightning Bolt' }],
 			scryfall: { lookupByName, lookupPrintings },
 		});
 
@@ -54,15 +53,13 @@ describe('broadcast Deck List Scryfall resolver', () => {
 			{ name: 'Wear', setCode: null, collectorNumber: null },
 		]);
 
-		expect(lookupPrintings).toHaveBeenCalledWith([
-			{ setCode: 'sld', collectorNumber: '101' },
-		]);
+		expect(lookupPrintings).toHaveBeenCalledWith([{ setCode: 'sld', collectorNumber: '101' }]);
 		expect(lookupByName).toHaveBeenCalledWith([
 			{ name: 'Wear // Tear', setCode: null },
 			{ name: 'Wear', setCode: null },
 		]);
 		expect(result).toHaveLength(4);
-		expect(result.every(resolution => resolution.status === 'resolved')).toBe(true);
+		expect(result.every((resolution) => resolution.status === 'resolved')).toBe(true);
 		expect(result[0]).toEqual({
 			status: 'resolved',
 			card: {
@@ -87,17 +84,17 @@ describe('broadcast Deck List Scryfall resolver', () => {
 					scryfallCard({ name: 'Lightning Bolt', setCode: 'neo' }),
 					scryfallCard({ name: 'Shack', setCode: 'm21' }),
 				]),
-				lookupPrintings: vi.fn(async () => [
-					scryfallCard({ name: 'Shock' }),
-				]),
+				lookupPrintings: vi.fn(async () => [scryfallCard({ name: 'Shock' })]),
 			},
 		});
 
-		await expect(resolver.resolve([
-			{ name: 'Lightning Bolt', setCode: 'm21', collectorNumber: null },
-			{ name: 'Shock', setCode: null, collectorNumber: null },
-			{ name: 'Lightning Bolt', setCode: 'sld', collectorNumber: '101' },
-		])).resolves.toEqual([
+		await expect(
+			resolver.resolve([
+				{ name: 'Lightning Bolt', setCode: 'm21', collectorNumber: null },
+				{ name: 'Shock', setCode: null, collectorNumber: null },
+				{ name: 'Lightning Bolt', setCode: 'sld', collectorNumber: '101' },
+			]),
+		).resolves.toEqual([
 			{ status: 'unresolved' },
 			{ status: 'unresolved' },
 			{ status: 'unresolved' },
@@ -108,15 +105,18 @@ describe('broadcast Deck List Scryfall resolver', () => {
 		const resolver = createBroadcastDeckListScryfallResolver({
 			scryfall: {
 				lookupByName: vi.fn(async () => {
-					throw new ScryfallRequestError('private upstream detail', { status: 503, retryable: true });
+					throw new ScryfallRequestError('private upstream detail', {
+						status: 503,
+						retryable: true,
+					});
 				}),
 				lookupPrintings: vi.fn(async () => []),
 			},
 		});
 
-		const failure = await resolver.resolve([
-			{ name: 'Lightning Bolt', setCode: null, collectorNumber: null },
-		]).catch(error => error);
+		const failure = await resolver
+			.resolve([{ name: 'Lightning Bolt', setCode: null, collectorNumber: null }])
+			.catch((error) => error);
 
 		expect(failure).toBeInstanceOf(BroadcastDeckListCardProviderError);
 		expect(failure).toMatchObject({
@@ -132,16 +132,17 @@ describe('broadcast Deck List Scryfall resolver', () => {
 			const body = JSON.parse(init.body as string) as { identifiers: Array<{ name: string }> };
 			return {
 				ok: true,
-				json: () => Promise.resolve({
-					object: 'list',
-					not_found: [],
-					data: body.identifiers.map(identifier => ({
-						id: `${identifier.name}-printing`,
-						name: identifier.name,
-						set: 'dft',
-						collector_number: '1',
-					})),
-				}),
+				json: () =>
+					Promise.resolve({
+						object: 'list',
+						not_found: [],
+						data: body.identifiers.map((identifier) => ({
+							id: `${identifier.name}-printing`,
+							name: identifier.name,
+							set: 'dft',
+							collector_number: '1',
+						})),
+					}),
 			} as unknown as Response;
 		});
 		vi.stubGlobal('fetch', fetchMock);
@@ -156,12 +157,16 @@ describe('broadcast Deck List Scryfall resolver', () => {
 
 			expect(fetchMock).toHaveBeenCalledTimes(2);
 			expect(result).toHaveLength(80);
-			expect(result[79]).toEqual(expect.objectContaining({
-				status: 'resolved',
-				card: expect.objectContaining({ canonicalName: 'Card 79', scryfallId: 'Card 79-printing' }),
-			}));
-		}
-		finally {
+			expect(result[79]).toEqual(
+				expect.objectContaining({
+					status: 'resolved',
+					card: expect.objectContaining({
+						canonicalName: 'Card 79',
+						scryfallId: 'Card 79-printing',
+					}),
+				}),
+			);
+		} finally {
 			vi.unstubAllGlobals();
 		}
 	});
@@ -175,27 +180,30 @@ describe('broadcast Deck List Scryfall resolver', () => {
 				{ name: 'Lightning Bolt', setCode: null, collectorNumber: null },
 			]);
 
-			expect(result.map(resolution => resolution.status === 'resolved' && resolution.card.canonicalName)).toEqual([
-				'Emeritus of Conflict // Lightning Bolt',
-				'Lightning Bolt',
-			]);
-		}
-		finally {
+			expect(
+				result.map(
+					(resolution) => resolution.status === 'resolved' && resolution.card.canonicalName,
+				),
+			).toEqual(['Emeritus of Conflict // Lightning Bolt', 'Lightning Bolt']);
+		} finally {
 			vi.unstubAllGlobals();
 		}
 	});
 
 	// Moxfield's own copy names a Universes Within printing by its printed name (#1201).
 	it('resolves an exact printing named by the name printed on it, as the card it is', async () => {
-		vi.stubGlobal('fetch', createScryfallFake([
-			{
-				id: 'ragavan-fca-43',
-				name: 'Ragavan, Nimble Pilferer',
-				set: 'fca',
-				collector_number: '43',
-				flavor_name: 'Zidane Tribal',
-			},
-		]).fetch);
+		vi.stubGlobal(
+			'fetch',
+			createScryfallFake([
+				{
+					id: 'ragavan-fca-43',
+					name: 'Ragavan, Nimble Pilferer',
+					set: 'fca',
+					collector_number: '43',
+					flavor_name: 'Zidane Tribal',
+				},
+			]).fetch,
+		);
 
 		try {
 			const result = await createBroadcastDeckListScryfallResolver().resolve([
@@ -205,11 +213,13 @@ describe('broadcast Deck List Scryfall resolver', () => {
 			expect(result).toEqual([
 				{
 					status: 'resolved',
-					card: expect.objectContaining({ canonicalName: 'Ragavan, Nimble Pilferer', scryfallId: 'ragavan-fca-43' }),
+					card: expect.objectContaining({
+						canonicalName: 'Ragavan, Nimble Pilferer',
+						scryfallId: 'ragavan-fca-43',
+					}),
 				},
 			]);
-		}
-		finally {
+		} finally {
 			vi.unstubAllGlobals();
 		}
 	});
@@ -238,7 +248,7 @@ describe('broadcast Deck List Scryfall resolver', () => {
 			},
 			{
 				id: 'greymond-sld-143',
-				name: 'Greymond, Avacyn\'s Stalwart',
+				name: "Greymond, Avacyn's Stalwart",
 				set: 'sld',
 				collector_number: '143',
 				printed_name: 'Rick, Steadfast Leader',
@@ -272,7 +282,7 @@ describe('broadcast Deck List Scryfall resolver', () => {
 				name: 'Rick, Steadfast Leader',
 				setCode: null,
 				scryfallId: 'greymond-sld-143',
-				canonicalName: 'Greymond, Avacyn\'s Stalwart',
+				canonicalName: "Greymond, Avacyn's Stalwart",
 			},
 			{
 				line: 'a flavor name in a set',
@@ -288,25 +298,27 @@ describe('broadcast Deck List Scryfall resolver', () => {
 				scryfallId: 'quoted-printing',
 				canonicalName: 'Kongming, "Sleeping Dragon"',
 			},
-		])('resolves $line to the printing bearing it, as the card it is', async ({ name, setCode, scryfallId, canonicalName }) => {
-			vi.stubGlobal('fetch', createScryfallFake(printedNameCatalogue).fetch);
+		])(
+			'resolves $line to the printing bearing it, as the card it is',
+			async ({ name, setCode, scryfallId, canonicalName }) => {
+				vi.stubGlobal('fetch', createScryfallFake(printedNameCatalogue).fetch);
 
-			try {
-				const result = await createBroadcastDeckListScryfallResolver().resolve([
-					{ name, setCode, collectorNumber: null },
-				]);
+				try {
+					const result = await createBroadcastDeckListScryfallResolver().resolve([
+						{ name, setCode, collectorNumber: null },
+					]);
 
-				expect(result).toEqual([
-					{
-						status: 'resolved',
-						card: expect.objectContaining({ canonicalName, scryfallId }),
-					},
-				]);
-			}
-			finally {
-				vi.unstubAllGlobals();
-			}
-		});
+					expect(result).toEqual([
+						{
+							status: 'resolved',
+							card: expect.objectContaining({ canonicalName, scryfallId }),
+						},
+					]);
+				} finally {
+					vi.unstubAllGlobals();
+				}
+			},
+		);
 
 		// The fallback is one search for every name the collection misses, never a request per card.
 		it.each([
@@ -318,12 +330,7 @@ describe('broadcast Deck List Scryfall resolver', () => {
 			},
 			{
 				deck: 'names it misses',
-				names: [
-					'Lightning Bolt',
-					'Zidane Tribal',
-					'Rick, Steadfast Leader',
-					'Not A Card',
-				],
+				names: ['Lightning Bolt', 'Zidane Tribal', 'Rick, Steadfast Leader', 'Not A Card'],
 				searches: 1,
 				resolved: [true, true, true, false],
 			},
@@ -333,13 +340,12 @@ describe('broadcast Deck List Scryfall resolver', () => {
 
 			try {
 				const result = await createBroadcastDeckListScryfallResolver().resolve(
-					names.map(name => ({ name, setCode: null, collectorNumber: null })),
+					names.map((name) => ({ name, setCode: null, collectorNumber: null })),
 				);
 
-				expect(result.map(resolution => resolution.status === 'resolved')).toEqual(resolved);
+				expect(result.map((resolution) => resolution.status === 'resolved')).toEqual(resolved);
 				expect(scryfall.searches).toHaveLength(searches);
-			}
-			finally {
+			} finally {
 				vi.unstubAllGlobals();
 			}
 		});
@@ -348,60 +354,74 @@ describe('broadcast Deck List Scryfall resolver', () => {
 		it.each([
 			{ zidanePrintings: 2, rickResolved: true, searches: 3 },
 			{ zidanePrintings: 5, rickResolved: false, searches: 5 },
-		])('reads $searches pages for a search answering $zidanePrintings printings ahead of the last name', async ({ zidanePrintings, rickResolved, searches }) => {
-			const scryfall = createScryfallFake([
-				...Array.from({ length: zidanePrintings }, (_, index) => ({
-					id: `ragavan-fca-${index}`,
-					name: 'Ragavan, Nimble Pilferer',
-					set: 'fca',
-					collector_number: String(index),
-					flavor_name: 'Zidane Tribal',
-				})),
-				{
-					id: 'greymond-sld-143',
-					name: 'Greymond, Avacyn\'s Stalwart',
-					set: 'sld',
-					collector_number: '143',
-					printed_name: 'Rick, Steadfast Leader',
-				},
-			], { searchPageSize: 1 });
-			vi.stubGlobal('fetch', scryfall.fetch);
+		])(
+			'reads $searches pages for a search answering $zidanePrintings printings ahead of the last name',
+			async ({ zidanePrintings, rickResolved, searches }) => {
+				const scryfall = createScryfallFake(
+					[
+						...Array.from({ length: zidanePrintings }, (_, index) => ({
+							id: `ragavan-fca-${index}`,
+							name: 'Ragavan, Nimble Pilferer',
+							set: 'fca',
+							collector_number: String(index),
+							flavor_name: 'Zidane Tribal',
+						})),
+						{
+							id: 'greymond-sld-143',
+							name: "Greymond, Avacyn's Stalwart",
+							set: 'sld',
+							collector_number: '143',
+							printed_name: 'Rick, Steadfast Leader',
+						},
+					],
+					{ searchPageSize: 1 },
+				);
+				vi.stubGlobal('fetch', scryfall.fetch);
 
-			try {
-				const result = await createBroadcastDeckListScryfallResolver().resolve([
-					{ name: 'Zidane Tribal', setCode: null, collectorNumber: null },
-					{ name: 'Rick, Steadfast Leader', setCode: null, collectorNumber: null },
-				]);
+				try {
+					const result = await createBroadcastDeckListScryfallResolver().resolve([
+						{ name: 'Zidane Tribal', setCode: null, collectorNumber: null },
+						{ name: 'Rick, Steadfast Leader', setCode: null, collectorNumber: null },
+					]);
 
-				expect(result.map(resolution => resolution.status === 'resolved')).toEqual([true, rickResolved]);
-				expect(scryfall.searches).toHaveLength(searches);
-			}
-			finally {
-				vi.unstubAllGlobals();
-			}
-		});
+					expect(result.map((resolution) => resolution.status === 'resolved')).toEqual([
+						true,
+						rickResolved,
+					]);
+					expect(scryfall.searches).toHaveLength(searches);
+				} finally {
+					vi.unstubAllGlobals();
+				}
+			},
+		);
 
 		it('keeps a failed search a retryable import failure rather than an unresolved card', async () => {
 			const scryfall = createScryfallFake(printedNameCatalogue);
 			vi.stubGlobal('fetch', async (input: string | URL | Request, init?: RequestInit) =>
 				String(input).includes('/cards/search')
 					? new Response(null, { status: 400 })
-					: scryfall.fetch(input, init));
+					: scryfall.fetch(input, init),
+			);
 
 			try {
-				await expect(createBroadcastDeckListScryfallResolver().resolve([
-					{ name: 'Zidane Tribal', setCode: null, collectorNumber: null },
-				])).rejects.toBeInstanceOf(BroadcastDeckListCardProviderError);
-			}
-			finally {
+				await expect(
+					createBroadcastDeckListScryfallResolver().resolve([
+						{ name: 'Zidane Tribal', setCode: null, collectorNumber: null },
+					]),
+				).rejects.toBeInstanceOf(BroadcastDeckListCardProviderError);
+			} finally {
 				vi.unstubAllGlobals();
 			}
 		});
 	});
 
 	it('asks for every exact printing in one lookup, a printing pasted twice asked for once', async () => {
-		const lookupPrintings = vi.fn(async (requests: ReadonlyArray<{ setCode: string; collectorNumber: string }>) =>
-			requests.map(request => scryfallCard({ ...request, id: `printing-${request.collectorNumber}` })));
+		const lookupPrintings = vi.fn(
+			async (requests: ReadonlyArray<{ setCode: string; collectorNumber: string }>) =>
+				requests.map((request) =>
+					scryfallCard({ ...request, id: `printing-${request.collectorNumber}` }),
+				),
+		);
 		const resolver = createBroadcastDeckListScryfallResolver({
 			scryfall: {
 				lookupByName: vi.fn(async () => []),
@@ -409,28 +429,27 @@ describe('broadcast Deck List Scryfall resolver', () => {
 			},
 		});
 
-		const result = await resolver.resolve([1, 2, 3, 2].map(number => ({
-			name: 'Lightning Bolt',
-			setCode: 'sld',
-			collectorNumber: String(number),
-		})));
+		const result = await resolver.resolve(
+			[1, 2, 3, 2].map((number) => ({
+				name: 'Lightning Bolt',
+				setCode: 'sld',
+				collectorNumber: String(number),
+			})),
+		);
 
 		expect(lookupPrintings).toHaveBeenCalledExactlyOnceWith([
 			{ setCode: 'sld', collectorNumber: '1' },
 			{ setCode: 'sld', collectorNumber: '2' },
 			{ setCode: 'sld', collectorNumber: '3' },
 		]);
-		expect(result.map(resolution => resolution.status === 'resolved' && resolution.card.scryfallId)).toEqual([
-			'printing-1',
-			'printing-2',
-			'printing-3',
-			'printing-2',
-		]);
+		expect(
+			result.map((resolution) => resolution.status === 'resolved' && resolution.card.scryfallId),
+		).toEqual(['printing-1', 'printing-2', 'printing-3', 'printing-2']);
 	});
 
 	// ADR-0087: exact printings are fetched together, not one request each.
 	it('asks the real Scryfall boundary for exact printings in one request', async () => {
-		const catalogue = ['1', '2', '3'].map(number => ({
+		const catalogue = ['1', '2', '3'].map((number) => ({
 			id: `printing-${number}`,
 			name: `Card ${number}`,
 			set: 'ecl',
@@ -440,27 +459,25 @@ describe('broadcast Deck List Scryfall resolver', () => {
 		vi.stubGlobal('fetch', scryfall.fetch);
 
 		try {
-			const result = await createBroadcastDeckListScryfallResolver().resolve(catalogue.map(card => ({
-				name: card.name,
-				setCode: 'ECL',
-				collectorNumber: card.collector_number,
-			})));
+			const result = await createBroadcastDeckListScryfallResolver().resolve(
+				catalogue.map((card) => ({
+					name: card.name,
+					setCode: 'ECL',
+					collectorNumber: card.collector_number,
+				})),
+			);
 
-			expect(scryfall.collectionBatches).toEqual([
-				['ecl/1', 'ecl/2', 'ecl/3'],
-			]);
-			expect(result.map(resolution => resolution.status === 'resolved' && resolution.card.scryfallId))
-				.toEqual(catalogue.map(card => card.id));
-		}
-		finally {
+			expect(scryfall.collectionBatches).toEqual([['ecl/1', 'ecl/2', 'ecl/3']]);
+			expect(
+				result.map((resolution) => resolution.status === 'resolved' && resolution.card.scryfallId),
+			).toEqual(catalogue.map((card) => card.id));
+		} finally {
 			vi.unstubAllGlobals();
 		}
 	});
 
 	it('maps collector not-found to unresolved but keeps collector outages retryable', async () => {
-		const request = [
-			{ name: 'Lightning Bolt', setCode: 'sld', collectorNumber: '101' },
-		];
+		const request = [{ name: 'Lightning Bolt', setCode: 'sld', collectorNumber: '101' }];
 		const notFoundResolver = createBroadcastDeckListScryfallResolver({
 			scryfall: {
 				lookupByName: vi.fn(async () => []),
@@ -476,9 +493,7 @@ describe('broadcast Deck List Scryfall resolver', () => {
 			},
 		});
 
-		await expect(notFoundResolver.resolve(request)).resolves.toEqual([
-			{ status: 'unresolved' },
-		]);
+		await expect(notFoundResolver.resolve(request)).resolves.toEqual([{ status: 'unresolved' }]);
 		await expect(outageResolver.resolve(request)).rejects.toMatchObject({
 			code: 'BROADCAST_DECK_LIST_CARD_PROVIDER_UNAVAILABLE',
 			retryable: true,

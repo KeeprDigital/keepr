@@ -65,17 +65,15 @@ const ANONYMOUS_ERA_ACTOR = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0
  * Reads are chunked at `SAFE_INARRAY_SIZE` because a page of the ledger is
  * bounded at 500 entries and D1 binds at most 100 parameters per statement.
  */
-export async function graphicsActorNames(actors: Iterable<string>): Promise<Record<string, string>> {
-	const asked = [
-		...new Set(actors),
-	].filter(actor => actor.length > 0);
-	if (asked.length === 0)
-		return {};
+export async function graphicsActorNames(
+	actors: Iterable<string>,
+): Promise<Record<string, string>> {
+	const asked = [...new Set(actors)].filter((actor) => actor.length > 0);
+	if (asked.length === 0) return {};
 
 	const found = new Map<string, string>();
 	const directoryActors = asked.filter((actor) => {
-		if (!isLocalDeveloperUserId(actor))
-			return true;
+		if (!isLocalDeveloperUserId(actor)) return true;
 		found.set(actor, LOCAL_DEVELOPER_USER_NAME);
 		return false;
 	});
@@ -97,12 +95,12 @@ export async function graphicsActorNames(actors: Iterable<string>): Promise<Reco
 		}
 	}
 
-	return Object.fromEntries(asked.map(actor => [
-		actor,
-		found.get(actor) ?? (ANONYMOUS_ERA_ACTOR.test(actor)
-			? ANONYMOUS_ERA_ACTOR_NAME
-			: actor),
-	]));
+	return Object.fromEntries(
+		asked.map((actor) => [
+			actor,
+			found.get(actor) ?? (ANONYMOUS_ERA_ACTOR.test(actor) ? ANONYMOUS_ERA_ACTOR_NAME : actor),
+		]),
+	);
 }
 
 /**
@@ -141,8 +139,7 @@ export async function withActorNames<Reading>(
  * shows this says so in its own words rather than being handed an invented one.
  */
 export async function sessionHolderName(sessionId: string): Promise<string | null> {
-	if (isLocalDeveloperSessionId(sessionId))
-		return LOCAL_DEVELOPER_USER_NAME;
+	if (isLocalDeveloperSessionId(sessionId)) return LOCAL_DEVELOPER_USER_NAME;
 
 	const [holder] = await db
 		.select({ name: schema.user.name })

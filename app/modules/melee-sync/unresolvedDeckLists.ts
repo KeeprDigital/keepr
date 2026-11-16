@@ -27,11 +27,9 @@ export interface UnresolvedDeckCardGroup {
 }
 
 function errorMessage(error: unknown, fallback: string): string {
-	if (typeof error === 'string' && error.trim())
-		return error;
+	if (typeof error === 'string' && error.trim()) return error;
 
-	if (error instanceof Error && error.message.trim())
-		return error.message;
+	if (error instanceof Error && error.message.trim()) return error.message;
 
 	if (error && typeof error === 'object') {
 		const record = error as Record<string, unknown>;
@@ -39,13 +37,11 @@ function errorMessage(error: unknown, fallback: string): string {
 		if (data && typeof data === 'object') {
 			const dataRecord = data as Record<string, unknown>;
 			const nestedMessage = dataRecord.message ?? dataRecord.statusMessage;
-			if (typeof nestedMessage === 'string' && nestedMessage.trim())
-				return nestedMessage;
+			if (typeof nestedMessage === 'string' && nestedMessage.trim()) return nestedMessage;
 		}
 
 		const message = record.message ?? record.statusMessage;
-		if (typeof message === 'string' && message.trim())
-			return message;
+		if (typeof message === 'string' && message.trim()) return message;
 	}
 
 	return fallback;
@@ -96,37 +92,32 @@ export function groupUnresolvedDeckCards(
 		});
 	}
 
-	return [
-		...groups.values(),
-	]
+	return [...groups.values()]
 		.map((group) => {
-			const playerIds = new Set(group.entries.map(entry => entry.playerId));
-			const deckIds = new Set(group.entries.map(entry => entry.deckId));
+			const playerIds = new Set(group.entries.map((entry) => entry.playerId));
+			const deckIds = new Set(group.entries.map((entry) => entry.deckId));
 			return {
 				...group,
 				affectedPlayerCount: playerIds.size,
 				affectedDeckCount: deckIds.size,
 				entries: [...group.entries].sort((a, b) => {
-					if (a.playerName !== b.playerName)
-						return a.playerName.localeCompare(b.playerName);
-					if (a.deckId !== b.deckId)
-						return a.deckId - b.deckId;
+					if (a.playerName !== b.playerName) return a.playerName.localeCompare(b.playerName);
+					if (a.deckId !== b.deckId) return a.deckId - b.deckId;
 					return a.sortOrder - b.sortOrder;
 				}),
 			};
 		})
 		.sort((a, b) => {
-			if (b.entryCount !== a.entryCount)
-				return b.entryCount - a.entryCount;
-			if (a.entryType !== b.entryType)
-				return a.entryType.localeCompare(b.entryType);
+			if (b.entryCount !== a.entryCount) return b.entryCount - a.entryCount;
+			if (a.entryType !== b.entryType) return a.entryType.localeCompare(b.entryType);
 			return a.originalName.localeCompare(b.originalName);
 		});
 }
 
-export function formatUnresolvedDeckGroupEntryLabel(entry: MeleeUnresolvedDeckCardResponse): string {
-	if (entry.entryType === 'companion')
-		return 'Companion';
+export function formatUnresolvedDeckGroupEntryLabel(
+	entry: MeleeUnresolvedDeckCardResponse,
+): string {
+	if (entry.entryType === 'companion') return 'Companion';
 
 	return `${entry.quantity}x ${entry.compartment}`;
 }
@@ -136,14 +127,11 @@ export function getScryfallSearchImageUrl(card: ScryfallSearchResult): string | 
 }
 
 function unresolvedDeckCardsCountLabel(groupCount: number, entryCount: number): string {
-	if (groupCount === 0)
-		return '0 unresolved deck entries';
+	if (groupCount === 0) return '0 unresolved deck entries';
 
-	return `${groupCount} unresolved group${groupCount === 1
-		? ''
-		: 's'} across ${entryCount} entr${entryCount === 1
-		? 'y'
-		: 'ies'}`;
+	return `${groupCount} unresolved group${groupCount === 1 ? '' : 's'} across ${entryCount} entr${
+		entryCount === 1 ? 'y' : 'ies'
+	}`;
 }
 
 export function useMeleeSyncUnresolvedDeckListResolution(
@@ -168,20 +156,24 @@ export function useMeleeSyncUnresolvedDeckListResolution(
 	let resolveSearchGeneration = 0;
 	let resolveSearchController: AbortController | null = null;
 
-	const unresolvedDeckCardGroups = computed(() => groupUnresolvedDeckCards(unresolvedDeckCards.value));
+	const unresolvedDeckCardGroups = computed(() =>
+		groupUnresolvedDeckCards(unresolvedDeckCards.value),
+	);
 	const firstResolveSearchResult = computed(() => resolveSearchResults.value[0] ?? null);
-	const unresolvedDeckCardsCountText = computed(() => unresolvedDeckCardsCountLabel(
-		unresolvedDeckCardGroups.value.length,
-		unresolvedDeckCards.value.length,
-	));
+	const unresolvedDeckCardsCountText = computed(() =>
+		unresolvedDeckCardsCountLabel(
+			unresolvedDeckCardGroups.value.length,
+			unresolvedDeckCards.value.length,
+		),
+	);
 	const activeUnresolvedGroupIndex = computed(() =>
-		unresolvedDeckCardGroups.value.findIndex(group => group.key === selectedUnresolvedGroupKey.value),
+		unresolvedDeckCardGroups.value.findIndex(
+			(group) => group.key === selectedUnresolvedGroupKey.value,
+		),
 	);
 	const activeUnresolvedGroup = computed(() => {
 		const index = activeUnresolvedGroupIndex.value;
-		return index >= 0
-			? unresolvedDeckCardGroups.value[index]!
-			: null;
+		return index >= 0 ? unresolvedDeckCardGroups.value[index]! : null;
 	});
 
 	async function loadUnresolvedDeckCards() {
@@ -195,8 +187,7 @@ export function useMeleeSyncUnresolvedDeckListResolution(
 			return;
 		}
 
-		if (unresolvedLoadedEventId !== currentEventId)
-			unresolvedDeckCards.value = [];
+		if (unresolvedLoadedEventId !== currentEventId) unresolvedDeckCards.value = [];
 		unresolvedDeckCardsError.value = null;
 		unresolvedDeckCardsLoading.value = true;
 		try {
@@ -205,15 +196,15 @@ export function useMeleeSyncUnresolvedDeckListResolution(
 				unresolvedDeckCards.value = entries;
 				unresolvedLoadedEventId = currentEventId;
 			}
-		}
-		catch (error) {
+		} catch (error) {
 			if (generation === unresolvedLoadGeneration && toValue(options.eventId) === currentEventId) {
-				if (unresolvedLoadedEventId !== currentEventId)
-					unresolvedDeckCards.value = [];
-				unresolvedDeckCardsError.value = errorMessage(error, 'Could not load unresolved deck cards.');
+				if (unresolvedLoadedEventId !== currentEventId) unresolvedDeckCards.value = [];
+				unresolvedDeckCardsError.value = errorMessage(
+					error,
+					'Could not load unresolved deck cards.',
+				);
 			}
-		}
-		finally {
+		} finally {
 			if (generation === unresolvedLoadGeneration && toValue(options.eventId) === currentEventId)
 				unresolvedDeckCardsLoading.value = false;
 		}
@@ -251,29 +242,28 @@ export function useMeleeSyncUnresolvedDeckListResolution(
 		resolveSearchController = controller;
 		resolveSearchLoading.value = true;
 		try {
-			const response = await $fetch<{ data: ScryfallSearchResult[] }>('https://api.scryfall.com/cards/search', {
-				query: {
-					q: `${search} game:paper`,
-					unique: 'cards',
-					order: 'name',
+			const response = await $fetch<{ data: ScryfallSearchResult[] }>(
+				'https://api.scryfall.com/cards/search',
+				{
+					query: {
+						q: `${search} game:paper`,
+						unique: 'cards',
+						order: 'name',
+					},
+					signal: controller.signal,
+					timeout: SCRYFALL_CLIENT_TIMEOUT_MS,
 				},
-				signal: controller.signal,
-				timeout: SCRYFALL_CLIENT_TIMEOUT_MS,
-			});
+			);
 			if (generation === resolveSearchGeneration)
 				resolveSearchResults.value = response.data.slice(0, 8);
-		}
-		catch (error) {
+		} catch (error) {
 			if (generation === resolveSearchGeneration && !controller.signal.aborted) {
 				resolveSearchResults.value = [];
 				resolveSearchError.value = errorMessage(error, 'Could not search Scryfall.');
 			}
-		}
-		finally {
-			if (resolveSearchController === controller)
-				resolveSearchController = null;
-			if (generation === resolveSearchGeneration)
-				resolveSearchLoading.value = false;
+		} finally {
+			if (resolveSearchController === controller) resolveSearchController = null;
+			if (generation === resolveSearchGeneration) resolveSearchLoading.value = false;
 		}
 	}
 
@@ -290,72 +280,81 @@ export function useMeleeSyncUnresolvedDeckListResolution(
 
 		resolveSearchTerm.value = group.originalName;
 		resolveSearchResults.value = [];
-		if (resolveModalOpen.value)
-			void searchResolveCandidates();
+		if (resolveModalOpen.value) void searchResolveCandidates();
 	}
 
 	function openResolveModal(groupKey?: string) {
-		if (groupKey)
-			selectedUnresolvedGroupKey.value = groupKey;
+		if (groupKey) selectedUnresolvedGroupKey.value = groupKey;
 		resolveModalOpen.value = true;
 	}
 
 	function goToPreviousUnresolvedGroup() {
-		if (activeUnresolvedGroupIndex.value <= 0)
-			return;
+		if (activeUnresolvedGroupIndex.value <= 0) return;
 
-		selectedUnresolvedGroupKey.value = unresolvedDeckCardGroups.value[activeUnresolvedGroupIndex.value - 1]!.key;
+		selectedUnresolvedGroupKey.value =
+			unresolvedDeckCardGroups.value[activeUnresolvedGroupIndex.value - 1]!.key;
 	}
 
 	function goToNextUnresolvedGroup() {
-		if (activeUnresolvedGroupIndex.value < 0 || activeUnresolvedGroupIndex.value >= unresolvedDeckCardGroups.value.length - 1)
+		if (
+			activeUnresolvedGroupIndex.value < 0 ||
+			activeUnresolvedGroupIndex.value >= unresolvedDeckCardGroups.value.length - 1
+		)
 			return;
 
-		selectedUnresolvedGroupKey.value = unresolvedDeckCardGroups.value[activeUnresolvedGroupIndex.value + 1]!.key;
+		selectedUnresolvedGroupKey.value =
+			unresolvedDeckCardGroups.value[activeUnresolvedGroupIndex.value + 1]!.key;
 	}
 
 	async function resolveUnresolvedDeckCard(card: ScryfallSearchResult) {
 		const currentEventId = toValue(options.eventId);
-		if (!currentEventId || !activeUnresolvedGroup.value)
-			return;
+		if (!currentEventId || !activeUnresolvedGroup.value) return;
 
 		const previousIndex = Math.max(activeUnresolvedGroupIndex.value, 0);
 		const unresolvedId = activeUnresolvedGroup.value.entries[0]!.id;
 		resolvingScryfallId.value = card.id;
-		await runRequest(async () => {
-			const response = await eventRepo.resolveUnresolvedDeckCard(currentEventId, unresolvedId, {
-				scryfallId: card.id,
-			});
-			clearPlayerDeckCache();
-			// Every other browser hears `playerDeck:cardsResolved`; this one is its
-			// origin, so it skips the message and refreshes here (#648).
-			useMetagameStore().applyRemoteInvalidated();
-			// The resolution is stored. A Players reload that fails is this browser's
-			// to report, not the request's: failing it would invite a second resolve.
-			const reloaded = await playerStore.loadPlayersByEventId(currentEventId, { failure: 'raise' }).then(() => true, () => false);
-			await loadUnresolvedDeckCards();
+		await runRequest(
+			async () => {
+				const response = await eventRepo.resolveUnresolvedDeckCard(currentEventId, unresolvedId, {
+					scryfallId: card.id,
+				});
+				clearPlayerDeckCache();
+				// Every other browser hears `playerDeck:cardsResolved`; this one is its
+				// origin, so it skips the message and refreshes here (#648).
+				useMetagameStore().applyRemoteInvalidated();
+				// The resolution is stored. A Players reload that fails is this browser's
+				// to report, not the request's: failing it would invite a second resolve.
+				const reloaded = await playerStore
+					.loadPlayersByEventId(currentEventId, { failure: 'raise' })
+					.then(
+						() => true,
+						() => false,
+					);
+				await loadUnresolvedDeckCards();
 
-			if (unresolvedDeckCardGroups.value.length === 0) {
-				closeResolveModal();
-			}
-			else {
-				selectedUnresolvedGroupKey.value = unresolvedDeckCardGroups.value[Math.min(previousIndex, unresolvedDeckCardGroups.value.length - 1)]!.key;
-			}
+				if (unresolvedDeckCardGroups.value.length === 0) {
+					closeResolveModal();
+				} else {
+					selectedUnresolvedGroupKey.value =
+						unresolvedDeckCardGroups.value[
+							Math.min(previousIndex, unresolvedDeckCardGroups.value.length - 1)
+						]!.key;
+				}
 
-			return { ...response, reloaded };
-		}, {
-			success: ({ message, reloaded }) => {
-				const resolved = { title: 'Deck Card Resolved', description: message };
-				return reloaded
-					? { ...resolved, color: 'success' }
-					: reloadNeededToast(resolved);
+				return { ...response, reloaded };
 			},
-			error: ({ message }) => ({
-				title: 'Resolution Failed',
-				description: message,
-				color: 'error',
-			}),
-		});
+			{
+				success: ({ message, reloaded }) => {
+					const resolved = { title: 'Deck Card Resolved', description: message };
+					return reloaded ? { ...resolved, color: 'success' } : reloadNeededToast(resolved);
+				},
+				error: ({ message }) => ({
+					title: 'Resolution Failed',
+					description: message,
+					color: 'error',
+				}),
+			},
+		);
 		resolvingScryfallId.value = null;
 	}
 
@@ -364,39 +363,49 @@ export function useMeleeSyncUnresolvedDeckListResolution(
 			void resolveUnresolvedDeckCard(firstResolveSearchResult.value);
 	}
 
-	watch(unresolvedDeckCardGroups, (groups) => {
-		if (groups.length === 0) {
-			selectedUnresolvedGroupKey.value = null;
-			return;
-		}
+	watch(
+		unresolvedDeckCardGroups,
+		(groups) => {
+			if (groups.length === 0) {
+				selectedUnresolvedGroupKey.value = null;
+				return;
+			}
 
-		if (groups.some(group => group.key === selectedUnresolvedGroupKey.value))
-			return;
+			if (groups.some((group) => group.key === selectedUnresolvedGroupKey.value)) return;
 
-		selectedUnresolvedGroupKey.value = groups[0]!.key;
-	}, { immediate: true });
+			selectedUnresolvedGroupKey.value = groups[0]!.key;
+		},
+		{ immediate: true },
+	);
 
-	watch(() => activeUnresolvedGroup.value?.key, () => {
-		syncResolveSearchToGroup(activeUnresolvedGroup.value);
-	});
+	watch(
+		() => activeUnresolvedGroup.value?.key,
+		() => {
+			syncResolveSearchToGroup(activeUnresolvedGroup.value);
+		},
+	);
 
 	watch(resolveModalOpen, (isOpen) => {
-		if (isOpen)
-			syncResolveSearchToGroup(activeUnresolvedGroup.value);
+		if (isOpen) syncResolveSearchToGroup(activeUnresolvedGroup.value);
 	});
 
-	watch(resolveSearchTerm, () => {
-		// Invalidate visible results immediately, before the debounced replacement
-		// request starts, so a result for the previous term cannot be selected.
-		invalidateResolveSearch();
-	}, { flush: 'sync' });
+	watch(
+		resolveSearchTerm,
+		() => {
+			// Invalidate visible results immediately, before the debounced replacement
+			// request starts, so a result for the previous term cannot be selected.
+			invalidateResolveSearch();
+		},
+		{ flush: 'sync' },
+	);
 
-	watch([
-		() => toValue(options.eventId),
-		() => toValue(options.isSetupComplete),
-	], () => {
-		void loadUnresolvedDeckCards();
-	}, { immediate: true });
+	watch(
+		[() => toValue(options.eventId), () => toValue(options.isSetupComplete)],
+		() => {
+			void loadUnresolvedDeckCards();
+		},
+		{ immediate: true },
+	);
 
 	onScopeDispose(() => {
 		unresolvedLoadGeneration++;

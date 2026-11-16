@@ -37,7 +37,12 @@ const saving = ref(false);
 const takingImported = ref(false);
 
 /** A TCG+ Import keeps a hand edit it differs from; the operator may take the import's instead. */
-const canUseImported = computed(() => !props.readonly && props.player.externalSource === 'tcgplus' && saved.value?.handEdited === true);
+const canUseImported = computed(
+	() =>
+		!props.readonly &&
+		props.player.externalSource === 'tcgplus' &&
+		saved.value?.handEdited === true,
+);
 
 const leaderModel = computed<OpPlayerGameData>({
 	get: () => ({ type: 'op' as const, leader: pickedLeader.value }),
@@ -50,61 +55,48 @@ const leaderModel = computed<OpPlayerGameData>({
 function show(deckList: SavedOpPlayerDeckList | null) {
 	saved.value = deckList;
 	leaderNumber.value = deckList?.leaderNumber ?? null;
-	const leader = deckList?.entries.find(entry => entry.number === deckList.leaderNumber);
-	pickedLeader.value = leader?.card
-		? catalogueOpLeader(leader.number, leader.card)
-		: null;
+	const leader = deckList?.entries.find((entry) => entry.number === deckList.leaderNumber);
+	pickedLeader.value = leader?.card ? catalogueOpLeader(leader.number, leader.card) : null;
 }
 
 onMounted(async () => {
 	const eventId = eventStore.eventId;
-	if (!eventId)
-		return;
-	const answer = await runRequest(
-		() => repository.read(eventId, props.player.id),
-		{
-			loadingRef: loading,
-			error: { title: 'Failed to load the Deck List', color: 'error' },
-		},
-	);
-	if (!answer)
-		return;
+	if (!eventId) return;
+	const answer = await runRequest(() => repository.read(eventId, props.player.id), {
+		loadingRef: loading,
+		error: { title: 'Failed to load the Deck List', color: 'error' },
+	});
+	if (!answer) return;
 	show(answer.deckList);
-	if (!text.value)
-		text.value = answer.deckList?.sourceText ?? '';
+	if (!text.value) text.value = answer.deckList?.sourceText ?? '';
 });
 
 async function save() {
 	const eventId = eventStore.eventId;
-	if (!eventId)
-		return;
+	if (!eventId) return;
 	await runRequest(
 		() => repository.write(eventId, props.player.id, text.value, leaderNumber.value),
 		{
 			loadingRef: saving,
 			success: { title: 'Deck List saved', color: 'success' },
 			error: { title: 'Failed to save the Deck List', color: 'error' },
-			onSuccess: answer => show(answer.deckList),
+			onSuccess: (answer) => show(answer.deckList),
 		},
 	);
 }
 
 async function takeImported() {
 	const eventId = eventStore.eventId;
-	if (!eventId)
-		return;
-	await runRequest(
-		() => repository.takeImported(eventId, props.player.id),
-		{
-			loadingRef: takingImported,
-			success: { title: 'Imported Deck List restored', color: 'success' },
-			error: { title: 'Failed to restore the imported Deck List', color: 'error' },
-			onSuccess: (answer) => {
-				show(answer.deckList);
-				text.value = answer.deckList.sourceText;
-			},
+	if (!eventId) return;
+	await runRequest(() => repository.takeImported(eventId, props.player.id), {
+		loadingRef: takingImported,
+		success: { title: 'Imported Deck List restored', color: 'success' },
+		error: { title: 'Failed to restore the imported Deck List', color: 'error' },
+		onSuccess: (answer) => {
+			show(answer.deckList);
+			text.value = answer.deckList.sourceText;
 		},
-	);
+	});
 }
 </script>
 
@@ -112,8 +104,16 @@ async function takeImported() {
 	<UModal
 		open
 		:title="`Deck List: ${playerLabel(player)}`"
-		:description="readonly ? 'Their Leader and cards, as saved.' : 'One card per line: N[x] CARDNUMBER [name]. A Leader line sets the Leader.'"
-		@update:open="(open: boolean) => { if (!open) emit('close') }"
+		:description="
+			readonly
+				? 'Their Leader and cards, as saved.'
+				: 'One card per line: N[x] CARDNUMBER [name]. A Leader line sets the Leader.'
+		"
+		@update:open="
+			(open: boolean) => {
+				if (!open) emit('close');
+			}
+		"
 	>
 		<template #body>
 			<div class="flex flex-col gap-3">
@@ -130,7 +130,9 @@ async function takeImported() {
 
 				<template v-if="saved">
 					<p class="text-sm text-muted" data-deck-list :data-hand-edited="saved.handEdited">
-						{{ saved.mainboardCount }} Mainboard cards{{ saved.handEdited ? ', edited by hand' : '' }}
+						{{ saved.mainboardCount }} Mainboard cards{{
+							saved.handEdited ? ', edited by hand' : ''
+						}}
 					</p>
 					<ul class="flex flex-col gap-1" aria-label="Deck List warnings">
 						<li v-for="(warning, index) in saved.warnings" :key="`${warning.code}-${index}`">
@@ -176,12 +178,7 @@ async function takeImported() {
 					:disabled="loading || saving"
 					@click="takeImported"
 				/>
-				<UButton
-					label="Close"
-					color="neutral"
-					variant="ghost"
-					@click="emit('close')"
-				/>
+				<UButton label="Close" color="neutral" variant="ghost" @click="emit('close')" />
 				<UButton
 					v-if="!readonly"
 					label="Save"

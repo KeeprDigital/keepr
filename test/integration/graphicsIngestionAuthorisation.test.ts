@@ -13,19 +13,23 @@ import { expectResponseStatus } from './responseStatus';
 // identity they claim, and its owner reaches it from any browser. That a caller with no
 // Session is refused at all is `apiBoundary.test.ts`'s.
 
-const basePixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
-const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xC5, 0x85);
+const basePixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
+const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xc5, 0x85);
 
 // This suite's own still image. Identical bytes deduplicate into one Graphic Asset across
 // suites, so it is padded with a chunk count (70) no other suite uses.
-const transparentPixelPng = Uint8Array.from(Buffer.concat([
-	basePixelPng.slice(0, -12),
-	...Array.from({ length: 70 }).fill(emptyTextChunk) as Uint8Array[],
-	basePixelPng.slice(-12),
-]));
+const transparentPixelPng = Uint8Array.from(
+	Buffer.concat([
+		basePixelPng.slice(0, -12),
+		...(Array.from({ length: 70 }).fill(emptyTextChunk) as Uint8Array[]),
+		basePixelPng.slice(-12),
+	]),
+);
 
 // The author identity header the library once trusted, sent on every request here and
 // set to the owner's. It must buy nothing.
@@ -48,24 +52,24 @@ const operationRoutes: AuthorisedRoute[] = [
 	{
 		label: 'reading operation state',
 		method: 'GET',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}`,
 	},
 	{
 		label: 'cancelling an operation',
 		method: 'DELETE',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}`,
 	},
 	{
 		label: 'streaming source bytes',
 		method: 'PUT',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}/content`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}/content`,
 		bytes: transparentPixelPng,
 		contentType: 'image/png',
 	},
 	{
 		label: 'submitting browser decode evidence',
 		method: 'POST',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}/browser-evidence`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}/browser-evidence`,
 		json: {
 			outcome: 'decoded',
 			sourceDigest: digest,
@@ -76,7 +80,7 @@ const operationRoutes: AuthorisedRoute[] = [
 	{
 		label: 'submitting font browser evidence',
 		method: 'POST',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}/font-browser-evidence`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}/font-browser-evidence`,
 		json: {
 			outcome: 'font-rejected',
 			sourceDigest: digest,
@@ -87,41 +91,41 @@ const operationRoutes: AuthorisedRoute[] = [
 	{
 		label: 'starting a resumable transfer',
 		method: 'POST',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}/multipart`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}/multipart`,
 	},
 	{
 		label: 'uploading a resumable part',
 		method: 'PUT',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}/multipart/parts/1`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}/multipart/parts/1`,
 		bytes: transparentPixelPng,
 		contentType: 'application/octet-stream',
 	},
 	{
 		label: 'completing a resumable transfer',
 		method: 'POST',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}/multipart/complete`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}/multipart/complete`,
 	},
 	{
 		// A loopback URL, so a run in which scoping has failed still reaches no network.
 		label: 'copying an approved remote source',
 		method: 'POST',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}/remote-copy`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}/remote-copy`,
 		json: { sourceUrl: 'https://127.0.0.1/scoreboard.png' },
 	},
 	{
 		label: 'retrying an operation',
 		method: 'POST',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}/retry`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}/retry`,
 	},
 	{
 		label: 'reading provisional staged bytes',
 		method: 'GET',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}/staged-source`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}/staged-source`,
 	},
 	{
 		label: 'confirming a Template Package Preflight Report',
 		method: 'POST',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}/template-package-confirmation`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}/template-package-confirmation`,
 		json: {
 			fingerprint: '0'.repeat(64),
 		},
@@ -129,7 +133,7 @@ const operationRoutes: AuthorisedRoute[] = [
 	{
 		label: 'installing a confirmed Template Package',
 		method: 'POST',
-		path: id => `/api/graphics-assets/ingestion-operations/${id}/template-package-installation`,
+		path: (id) => `/api/graphics-assets/ingestion-operations/${id}/template-package-installation`,
 	},
 ];
 
@@ -157,20 +161,17 @@ describe('graphics author authorisation across the ingestion and lifecycle route
 	const parked: string[] = [];
 
 	async function initiateFontAs(cookie: string, idempotencyKey: string) {
-		return await $fetch<GraphicsIngestionOperation>(
-			'/api/graphics-assets/ingestion-operations',
-			{
-				method: 'POST',
-				headers: { cookie, ...UNHONOURED_AUTHOR_ID_HEADER },
-				body: graphicsIngestionRequest({
-					idempotencyKey,
-					name: idempotencyKey,
-					sourceFileName: 'mana.woff',
-					declaredMime: 'font/woff',
-					declaredByteLength: fontBytes.byteLength,
-				}),
-			},
-		);
+		return await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
+			method: 'POST',
+			headers: { cookie, ...UNHONOURED_AUTHOR_ID_HEADER },
+			body: graphicsIngestionRequest({
+				idempotencyKey,
+				name: idempotencyKey,
+				sourceFileName: 'mana.woff',
+				declaredMime: 'font/woff',
+				declaredByteLength: fontBytes.byteLength,
+			}),
+		});
 	}
 
 	async function uploadAs(
@@ -231,7 +232,7 @@ describe('graphics author authorisation across the ingestion and lifecycle route
 				headers: { cookie: authorCookie },
 				query: { search: 'Authorisation lifecycle subject' },
 			});
-			return assets.find(asset => asset.id === assetId);
+			return assets.find((asset) => asset.id === assetId);
 		}
 
 		beforeAll(async () => {
@@ -263,7 +264,12 @@ describe('graphics author authorisation across the ingestion and lifecycle route
 					}),
 				},
 			);
-			const published = await uploadAs(authorCookie, publishable.id, transparentPixelPng, 'image/png');
+			const published = await uploadAs(
+				authorCookie,
+				publishable.id,
+				transparentPixelPng,
+				'image/png',
+			);
 			expect(published.stage).toBe('completed');
 			assetId = published.result!.assetId;
 		});
@@ -271,8 +277,7 @@ describe('graphics author authorisation across the ingestion and lifecycle route
 		afterAll(async () => {
 			try {
 				await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-			}
-			catch {}
+			} catch {}
 		});
 
 		// The metadata write replaces the Event association set, so `[]` would detach them all.
@@ -312,33 +317,41 @@ describe('graphics author authorisation across the ingestion and lifecycle route
 			expect(intruderCookie).not.toBe(authorCookie);
 		});
 
-		it.each(operationRoutes)('cannot reach the operation for $label, which its author finds as they left it', async (route) => {
-			const operationId = await parkedProbe(`authorisation-scoping-probe-${operationRoutes.indexOf(route)}`);
+		it.each(operationRoutes)(
+			'cannot reach the operation for $label, which its author finds as they left it',
+			async (route) => {
+				const operationId = await parkedProbe(
+					`authorisation-scoping-probe-${operationRoutes.indexOf(route)}`,
+				);
 
-			const response = await fetch(
-				route.path(operationId),
-				requestInit(route, { cookie: intruderCookie, ...UNHONOURED_AUTHOR_ID_HEADER }),
-			);
+				const response = await fetch(
+					route.path(operationId),
+					requestInit(route, { cookie: intruderCookie, ...UNHONOURED_AUTHOR_ID_HEADER }),
+				);
 
-			expect(response.status).toBe(404);
-			expect(await operationAs(authorCookie, operationId)).toMatchObject({
-				id: operationId,
-				stage: 'awaiting-confirmation',
-			});
-			const staged = await fetch(
-				`/api/graphics-assets/ingestion-operations/${operationId}/staged-source`,
-				{
-					headers: { cookie: authorCookie, ...UNHONOURED_AUTHOR_ID_HEADER },
-				},
-			);
-			expect(staged.status).toBe(200);
-			expect(new Uint8Array(await staged.arrayBuffer())).toEqual(fontBytes);
-		});
+				expect(response.status).toBe(404);
+				expect(await operationAs(authorCookie, operationId)).toMatchObject({
+					id: operationId,
+					stage: 'awaiting-confirmation',
+				});
+				const staged = await fetch(
+					`/api/graphics-assets/ingestion-operations/${operationId}/staged-source`,
+					{
+						headers: { cookie: authorCookie, ...UNHONOURED_AUTHOR_ID_HEADER },
+					},
+				);
+				expect(staged.status).toBe(200);
+				expect(new Uint8Array(await staged.arrayBuffer())).toEqual(fontBytes);
+			},
+		);
 
 		it('cannot reconnect to an operation by reusing its idempotency key', async () => {
 			const operationId = await parkedProbe('authorisation-reused-key-probe');
 
-			const reconnectAttempt = await initiateFontAs(intruderCookie, 'authorisation-reused-key-probe');
+			const reconnectAttempt = await initiateFontAs(
+				intruderCookie,
+				'authorisation-reused-key-probe',
+			);
 
 			expect(reconnectAttempt.id).not.toBe(operationId);
 		});
@@ -350,7 +363,10 @@ describe('graphics author authorisation across the ingestion and lifecycle route
 		it('reconnects to their own operation rather than starting another', async () => {
 			const operationId = await parkedProbe('authorisation-second-browser-probe');
 
-			const reconnected = await initiateFontAs(await anotherBrowser(), 'authorisation-second-browser-probe');
+			const reconnected = await initiateFontAs(
+				await anotherBrowser(),
+				'authorisation-second-browser-probe',
+			);
 
 			expect(reconnected.id).toBe(operationId);
 		});
@@ -361,8 +377,7 @@ describe('graphics author authorisation across the ingestion and lifecycle route
 	describe('a session that ends mid-transfer', () => {
 		// A session cookie by name, carrying a token the server never issued: Better Auth finds
 		// nothing for it, as for an expired one. The suite's client signs a request with none.
-		const endedCookie
-			= 'better-auth.session_token=a7f1c0d2-ended-session-token-no-longer-stored';
+		const endedCookie = 'better-auth.session_token=a7f1c0d2-ended-session-token-no-longer-stored';
 
 		const bytes = new Uint8Array(GRAPHICS_MULTIPART_PART_BYTES + 1);
 
@@ -375,9 +390,10 @@ describe('graphics author authorisation across the ingestion and lifecycle route
 				{
 					method: 'PUT',
 					headers: { cookie, 'content-type': 'application/octet-stream' },
-					body: partNumber === 1
-						? bytes.subarray(0, GRAPHICS_MULTIPART_PART_BYTES)
-						: bytes.subarray(GRAPHICS_MULTIPART_PART_BYTES),
+					body:
+						partNumber === 1
+							? bytes.subarray(0, GRAPHICS_MULTIPART_PART_BYTES)
+							: bytes.subarray(GRAPHICS_MULTIPART_PART_BYTES),
 				},
 			);
 		}

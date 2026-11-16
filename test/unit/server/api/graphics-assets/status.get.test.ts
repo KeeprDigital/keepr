@@ -23,17 +23,20 @@ vi.mock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	}),
 }));
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('getRouterParam', mockRouterParam);
 vi.stubGlobal('setResponseHeader', mockSetResponseHeader);
-vi.stubGlobal('createError', (input: {
-	statusCode: number;
-	statusMessage?: string;
-	message: string;
-	cause?: unknown;
-}) => Object.assign(new Error(input.message), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; statusMessage?: string; message: string; cause?: unknown }) =>
+		Object.assign(new Error(input.message), input),
+);
 
-const routePath = '../../../../../server/api/graphics-assets/[assetId]/revisions/[revisionId]/status.get';
+const routePath =
+	'../../../../../server/api/graphics-assets/[assetId]/revisions/[revisionId]/status.get';
 
 describe('graphic Asset Revision status', () => {
 	beforeEach(() => {
@@ -41,17 +44,17 @@ describe('graphic Asset Revision status', () => {
 		mockRequireUserId.mockReset().mockResolvedValue('author-1');
 		mockInspectGraphicAssetRevision.mockReset().mockResolvedValue({ outcome: 'missing' });
 		mockSetResponseHeader.mockReset();
-		mockRouterParam.mockReset().mockImplementation((_event, name: string) =>
-			name === 'assetId'
-				? 'asset-1'
-				: 'revision-1');
+		mockRouterParam
+			.mockReset()
+			.mockImplementation((_event, name: string) =>
+				name === 'assetId' ? 'asset-1' : 'revision-1',
+			);
 	});
 
 	it('answers a blank revision segment with 400 rather than an unclassified failure', async () => {
 		mockRouterParam.mockImplementation((_event, name: string) =>
-			name === 'assetId'
-				? 'asset-1'
-				: '');
+			name === 'assetId' ? 'asset-1' : '',
+		);
 		const handler = (await import(routePath)).default;
 
 		await expect(handler(stubH3Event())).rejects.toMatchObject({
@@ -62,7 +65,10 @@ describe('graphic Asset Revision status', () => {
 	});
 
 	it('inspects the revision the route names', async () => {
-		mockInspectGraphicAssetRevision.mockResolvedValue({ outcome: 'available', kind: 'still-image' });
+		mockInspectGraphicAssetRevision.mockResolvedValue({
+			outcome: 'available',
+			kind: 'still-image',
+		});
 		const handler = (await import(routePath)).default;
 
 		await handler(stubH3Event());

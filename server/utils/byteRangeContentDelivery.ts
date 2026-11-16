@@ -14,27 +14,23 @@ function weakEtag(value: string): string {
 }
 
 export function ifNoneMatchMatches(value: string | null | undefined, etag: string): boolean {
-	if (!value)
-		return false;
-	return value.split(',').some(candidate =>
-		candidate.trim() === '*' || weakEtag(candidate) === weakEtag(etag),
-	);
+	if (!value) return false;
+	return value
+		.split(',')
+		.some((candidate) => candidate.trim() === '*' || weakEtag(candidate) === weakEtag(etag));
 }
 
 export function requestedByteRange(
 	value: string | null | undefined,
 	byteLength: number,
 ): ByteRange | 'unsatisfiable' | undefined {
-	if (!value)
-		return;
+	if (!value) return;
 	const match = /^bytes=(\d*)-(\d*)$/.exec(value.trim());
-	if (!match || (!match[1] && !match[2]))
-		return 'unsatisfiable';
+	if (!match || (!match[1] && !match[2])) return 'unsatisfiable';
 
 	if (!match[1]) {
 		const suffixLength = Number(match[2]);
-		if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0)
-			return 'unsatisfiable';
+		if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) return 'unsatisfiable';
 		return {
 			start: Math.max(0, byteLength - suffixLength),
 			end: byteLength - 1,
@@ -42,15 +38,13 @@ export function requestedByteRange(
 	}
 
 	const start = Number(match[1]);
-	const requestedEnd = match[2]
-		? Number(match[2])
-		: byteLength - 1;
+	const requestedEnd = match[2] ? Number(match[2]) : byteLength - 1;
 	if (
-		!Number.isSafeInteger(start)
-		|| !Number.isSafeInteger(requestedEnd)
-		|| start < 0
-		|| requestedEnd < start
-		|| start >= byteLength
+		!Number.isSafeInteger(start) ||
+		!Number.isSafeInteger(requestedEnd) ||
+		start < 0 ||
+		requestedEnd < start ||
+		start >= byteLength
 	) {
 		return 'unsatisfiable';
 	}
@@ -61,7 +55,6 @@ export function requestedByteRange(
 }
 
 export function rangePermitted(ifRange: string | null | undefined, etag: string): boolean {
-	if (!ifRange)
-		return true;
+	if (!ifRange) return true;
 	return ifRange.trim() === etag;
 }

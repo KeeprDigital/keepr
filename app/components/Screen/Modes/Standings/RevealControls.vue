@@ -15,8 +15,7 @@ const emit = defineEmits<{
 const isFullyRevealed = computed(() => props.revealedCount >= props.revealCount);
 
 function revealNext() {
-	if (!isFullyRevealed.value)
-		emit('update', { revealedCount: props.revealedCount + 1 });
+	if (!isFullyRevealed.value) emit('update', { revealedCount: props.revealedCount + 1 });
 }
 </script>
 
@@ -40,7 +39,11 @@ function revealNext() {
 				@click="emit('update', { revealedCount: 0 })"
 			/>
 		</div>
-		<UBadge variant="subtle" :color="isFullyRevealed ? 'success' : 'neutral'" data-testid="reveal-progress">
+		<UBadge
+			variant="subtle"
+			:color="isFullyRevealed ? 'success' : 'neutral'"
+			data-testid="reveal-progress"
+		>
 			{{ revealedCount }} of {{ revealCount }} revealed
 		</UBadge>
 	</div>

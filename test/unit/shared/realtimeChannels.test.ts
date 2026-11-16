@@ -31,6 +31,8 @@ describe('screenChannelWildcard', () => {
 	it('matches the concrete Screen channel format', () => {
 		// The wildcard grant and the concrete channel must never drift apart.
 		expect(screenChannelWildcard(5)).toBe('screen:5:*');
-		expect(screenRealtimeChannel(5, 9).startsWith(screenChannelWildcard(5).slice(0, -1))).toBe(true);
+		expect(screenRealtimeChannel(5, 9).startsWith(screenChannelWildcard(5).slice(0, -1))).toBe(
+			true,
+		);
 	});
 });

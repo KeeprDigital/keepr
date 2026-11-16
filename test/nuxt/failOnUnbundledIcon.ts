@@ -33,16 +33,16 @@ vi.mock('@iconify/vue', async (importOriginal) => {
  * last call, and forgets them. Exported so the guard's own test can prove it.
  */
 export function assertEveryIconBundled(): void {
-	if (unbundled.length === 0)
-		return;
-	const icons = unbundled.splice(0)
-		.map(({ name, testName }) => testName
-			? `\`${name}\` (rendered in "${testName}")`
-			: `\`${name}\``)
+	if (unbundled.length === 0) return;
+	const icons = unbundled
+		.splice(0)
+		.map(({ name, testName }) =>
+			testName ? `\`${name}\` (rendered in "${testName}")` : `\`${name}\``,
+		)
 		.join(', ');
 	throw new Error(
-		`Icon not in the test client bundle: ${icons}. Name it where `
-		+ '`clientBundle.scan` in nuxt.config.ts can find it, or add it to `clientBundle.icons`.',
+		`Icon not in the test client bundle: ${icons}. Name it where ` +
+			'`clientBundle.scan` in nuxt.config.ts can find it, or add it to `clientBundle.icons`.',
 	);
 }
 

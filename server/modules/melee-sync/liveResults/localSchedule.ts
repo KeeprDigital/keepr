@@ -13,16 +13,21 @@ import { startLocalCron } from '~~/server/utils/localCron';
  * `dev`: a deployed Worker has its real cron, and would tick twice. The gate is
  * this argument, not the caller's `if`, so the one place it lives is tested.
  */
-export function startLocalLiveResultsSchedule(nitroApp: Pick<NitroApp, 'hooks'>, { dev }: { dev: boolean }) {
-	if (!dev)
-		return;
+export function startLocalLiveResultsSchedule(
+	nitroApp: Pick<NitroApp, 'hooks'>,
+	{ dev }: { dev: boolean },
+) {
+	if (!dev) return;
 	const cron = startLocalCron({
 		intervalMs: LIVE_RESULTS_CRON_INTERVAL_MS,
 		fire: () => fireLiveResultsCron(nitroApp),
-		onError: error => console.error(JSON.stringify({
-			message: 'melee_live_results_local_schedule_failed',
-			errorName: errorNameOf(error),
-		})),
+		onError: (error) =>
+			console.error(
+				JSON.stringify({
+					message: 'melee_live_results_local_schedule_failed',
+					errorName: errorNameOf(error),
+				}),
+			),
 	});
 	nitroApp.hooks.hook('close', () => cron.stop());
 }

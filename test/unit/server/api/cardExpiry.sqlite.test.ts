@@ -38,9 +38,7 @@ const db = new Proxy(realDb, {
 			};
 		}
 		const value = Reflect.get(target, property, target);
-		return typeof value === 'function'
-			? value.bind(target)
-			: value;
+		return typeof value === 'function' ? value.bind(target) : value;
 	},
 });
 vi.doMock('~~/server/db', () => ({ db }));
@@ -60,19 +58,28 @@ const kv = new Map<string, unknown>();
 let kvUnavailable = false;
 vi.stubGlobal('useStorage', () => ({
 	set: async (key: string, value: unknown) => {
-		if (kvUnavailable)
-			throw new Error('KV unavailable');
+		if (kvUnavailable) throw new Error('KV unavailable');
 		kv.set(key, value);
 	},
 	del: async (key: string) => void kv.delete(key),
 }));
 
-interface StubEvent { params: Record<string, string>; body?: unknown; context?: Record<string, unknown> }
+interface StubEvent {
+	params: Record<string, string>;
+	body?: unknown;
+	context?: Record<string, unknown>;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.body));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) =>
+	parse(event.body),
+);
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 // Admission is ADR-0022's and pinned elsewhere; this suite is about what a read does once admitted.
 async function admitScreenOutputRead(event: StubEvent) {
@@ -91,14 +98,25 @@ vi.doMock('~~/server/utils/screenOutputAuthorization', () => ({
 }));
 
 type Handler = (event: H3Event) => Promise<unknown>;
-const putCard = (await import('~~/server/api/events/[id]/screens/[screenId]/card/index.put')).default as unknown as Handler;
-const getCard = (await import('~~/server/api/events/[id]/screens/[screenId]/card/index.get')).default as unknown as Handler;
-const deleteCard = (await import('~~/server/api/events/[id]/screens/[screenId]/card/index.delete')).default as unknown as Handler;
-const getOutputCard = (await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/card.get')).default as unknown as Handler;
-const listScreens = (await import('~~/server/api/events/[id]/screens/index.get')).default as unknown as Handler;
-const getScreen = (await import('~~/server/api/events/[id]/screens/[screenId]/index.get')).default as unknown as Handler;
-const getOutputScreen = (await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/index.get')).default as unknown as Handler;
-const getOutputScreenBySlug = (await import('~~/server/api/screen-output/events/[id]/screens/slug/[slug].get')).default as unknown as Handler;
+const putCard = (await import('~~/server/api/events/[id]/screens/[screenId]/card/index.put'))
+	.default as unknown as Handler;
+const getCard = (await import('~~/server/api/events/[id]/screens/[screenId]/card/index.get'))
+	.default as unknown as Handler;
+const deleteCard = (await import('~~/server/api/events/[id]/screens/[screenId]/card/index.delete'))
+	.default as unknown as Handler;
+const getOutputCard = (
+	await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/card.get')
+).default as unknown as Handler;
+const listScreens = (await import('~~/server/api/events/[id]/screens/index.get'))
+	.default as unknown as Handler;
+const getScreen = (await import('~~/server/api/events/[id]/screens/[screenId]/index.get'))
+	.default as unknown as Handler;
+const getOutputScreen = (
+	await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/index.get')
+).default as unknown as Handler;
+const getOutputScreenBySlug = (
+	await import('~~/server/api/screen-output/events/[id]/screens/slug/[slug].get')
+).default as unknown as Handler;
 const { cardService } = await import('~~/server/services/card');
 
 let eventId: number;
@@ -161,10 +179,11 @@ async function stored() {
 	};
 }
 
-const announced = () => published.map(message => message.type);
+const announced = () => published.map((message) => message.type);
 
 beforeAll(async () => {
-	const [event] = await realDb.insert(schema.events)
+	const [event] = await realDb
+		.insert(schema.events)
 		.values({ name: 'Card Expiry', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	eventId = event!.id;
@@ -176,7 +195,8 @@ beforeEach(async () => {
 	vi.setSystemTime(SAVED_AT);
 	screenSeq += 1;
 	screenSlug = `card-${screenSeq}`;
-	const [screen] = await realDb.insert(schema.screens)
+	const [screen] = await realDb
+		.insert(schema.screens)
 		.values({
 			eventId,
 			name: `Card ${screenSeq}`,
@@ -316,13 +336,17 @@ describe.each([
 	it('that loaded the row before a replacement leaves the replacement in storage (scenario 7)', async () => {
 		await putCard(request(card('bolt', D)));
 		vi.setSystemTime(SAVED_AT + D);
-		afterCardRowLoaded = async () => void await putCard(request(card('counterspell')));
+		afterCardRowLoaded = async () => void (await putCard(request(card('counterspell'))));
 		published.length = 0;
 
 		// Ordering this answer against the newer card:updated is the Card read's freshness (#704).
 		await expect(read(request())).resolves.toMatchObject({ card: null });
 
-		expect(await stored()).toMatchObject({ cardId: 'counterspell', version: 2, kv: 'counterspell' });
+		expect(await stored()).toMatchObject({
+			cardId: 'counterspell',
+			version: 2,
+			kv: 'counterspell',
+		});
 		expect(announced()).toEqual(['card:updated']);
 	});
 });
@@ -349,7 +373,7 @@ describe('a replacement saved just before the replaced Card expires', () => {
 	});
 });
 
-describe('the operator\'s explicit Clear', () => {
+describe("the operator's explicit Clear", () => {
 	it('clears the stored Card, advances the revision, and announces only card:cleared (scenario 8)', async () => {
 		await putCard(request(card('bolt', D)));
 		vi.setSystemTime(SAVED_AT + 1_000);
@@ -365,20 +389,14 @@ describe('the operator\'s explicit Clear', () => {
 describe.each([
 	[
 		'the operator Screen list',
-		async () => ((await listScreens(request())) as { screens: Array<{ id: number }> }).screens.find(screen => screen.id === screenId),
+		async () =>
+			((await listScreens(request())) as { screens: Array<{ id: number }> }).screens.find(
+				(screen) => screen.id === screenId,
+			),
 	],
-	[
-		'the operator Screen read',
-		async () => await getScreen(request()),
-	],
-	[
-		'the Screen Output Screen read by id',
-		async () => await getOutputScreen(request()),
-	],
-	[
-		'the Screen Output Screen read by slug',
-		async () => await getOutputScreenBySlug(request()),
-	],
+	['the operator Screen read', async () => await getScreen(request())],
+	['the Screen Output Screen read by id', async () => await getOutputScreen(request())],
+	['the Screen Output Screen read by slug', async () => await getOutputScreenBySlug(request())],
 ])('%s', (_route, readScreen) => {
 	it('carries no Card and no Card revision, expired or not (scenario 9)', async () => {
 		await putCard(request(card('bolt', D)));
@@ -404,7 +422,10 @@ describe('the Card revision', () => {
 	it('is answered by each save and Clear, and carried by its announcement', async () => {
 		await expect(putCard(request(card('bolt')))).resolves.toEqual({ success: true, revision: 1 });
 		await expect(deleteCard(request())).resolves.toEqual({ success: true, revision: 2 });
-		await expect(putCard(request(card('counterspell')))).resolves.toEqual({ success: true, revision: 3 });
+		await expect(putCard(request(card('counterspell')))).resolves.toEqual({
+			success: true,
+			revision: 3,
+		});
 
 		expect(published).toEqual([
 			{
@@ -451,7 +472,7 @@ describe('the Card revision', () => {
 
 	it('answered by a read that loaded the row before a replacement is the older one', async () => {
 		await putCard(request(card('bolt')));
-		afterCardRowLoaded = async () => void await putCard(request(card('counterspell')));
+		afterCardRowLoaded = async () => void (await putCard(request(card('counterspell'))));
 
 		await expect(getCard(request())).resolves.toEqual({
 			card: expect.objectContaining({ id: 'bolt' }),
@@ -477,7 +498,9 @@ describe('the derived KV copy', () => {
 	});
 
 	it('is never written for a Screen that is not there', async () => {
-		await expect(cardService().setScreenCard(eventId, screenId + 1_000, card('bolt') as never)).rejects.toThrow('Screen not found');
+		await expect(
+			cardService().setScreenCard(eventId, screenId + 1_000, card('bolt') as never),
+		).rejects.toThrow('Screen not found');
 
 		expect(kv.size).toBe(0);
 	});

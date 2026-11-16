@@ -20,7 +20,8 @@ const FocusPickerStub = defineComponent({
 		eventId: { type: Number, required: false },
 	},
 	emits: ['select', 'update:modelValue'],
-	template: '<div data-testid="source-asset" :data-asset-kind="assetKind" :data-event-id="eventId ?? \'none\'" />',
+	template:
+		'<div data-testid="source-asset" :data-asset-kind="assetKind" :data-event-id="eventId ?? \'none\'" />',
 });
 
 const global = {
@@ -30,7 +31,11 @@ const global = {
 	},
 };
 
-const librarySource: ScreenMediaSource = { kind: 'asset', assetId: 'plate' as never, revisionId: 'plate-1' as never };
+const librarySource: ScreenMediaSource = {
+	kind: 'asset',
+	assetId: 'plate' as never,
+	revisionId: 'plate-1' as never,
+};
 
 /** `withEvent: false` mounts it as the Theme editor does, with no Event's library to offer. */
 function mountField(modelValue: ScreenMediaSource | undefined, { withEvent = true } = {}) {
@@ -57,7 +62,10 @@ describe('the Screen Media Source field', () => {
 	});
 
 	it('refuses a root-relative path the application does not serve as media, and says where library media comes from', () => {
-		const wrapper = mountField({ kind: 'url', url: '/api/graphics-assets/plate/revisions/plate-1/content' });
+		const wrapper = mountField({
+			kind: 'url',
+			url: '/api/graphics-assets/plate/revisions/plate-1/content',
+		});
 
 		const error = wrapper.find('[data-error]');
 		expect(error.exists()).toBe(true);
@@ -76,10 +84,14 @@ describe('the Screen Media Source field', () => {
 		await wrapper.find('select').setValue('asset');
 
 		// A library source with no revision is not storable, so the switch is UI state.
-		expect(wrapper.find('[data-testid="source-asset"]').attributes('data-asset-kind')).toBe('silent-video');
+		expect(wrapper.find('[data-testid="source-asset"]').attributes('data-asset-kind')).toBe(
+			'silent-video',
+		);
 		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
 
-		wrapper.findComponent(FocusPickerStub).vm.$emit('select', {}, { assetId: 'loop', revisionId: 'loop-2' });
+		wrapper
+			.findComponent(FocusPickerStub)
+			.vm.$emit('select', {}, { assetId: 'loop', revisionId: 'loop-2' });
 
 		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
 			{ kind: 'asset', assetId: 'loop', revisionId: 'loop-2' },
@@ -91,9 +103,7 @@ describe('the Screen Media Source field', () => {
 
 		await wrapper.find('select').setValue('url');
 
-		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
-			{ kind: 'url', url: '' },
-		]);
+		expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([{ kind: 'url', url: '' }]);
 	});
 
 	it('answers the picker’s Clear with no source at all', () => {
@@ -111,10 +121,13 @@ describe('the Screen Media Source field', () => {
 		expect(wrapper.find('input').exists()).toBe(false);
 	});
 
-	it('offers the whole library without an Event, as a Theme\'s layers pick media', () => {
+	it("offers the whole library without an Event, as a Theme's layers pick media", () => {
 		const wrapper = mountField(undefined, { withEvent: false });
 
-		expect(wrapper.findAll('option').map(option => option.text())).toEqual(['Asset library', 'Remote URL']);
+		expect(wrapper.findAll('option').map((option) => option.text())).toEqual([
+			'Asset library',
+			'Remote URL',
+		]);
 		expect(wrapper.get('[data-testid="source-asset"]').attributes('data-event-id')).toBe('none');
 	});
 });

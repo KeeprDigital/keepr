@@ -7,7 +7,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
-	'populate': [match: Match];
+	populate: [match: Match];
 }>();
 
 const matchStore = useMatchStore();
@@ -15,16 +15,15 @@ const matchStore = useMatchStore();
 const selectedMatchId = ref<number | undefined>(undefined);
 
 const matchOptions = computed(() =>
-	matchStore.matches.map(m => ({
+	matchStore.matches.map((m) => ({
 		label: `Table ${m.tableNumber ?? '?'} — ${m.player1Data?.name ?? 'TBD'} vs ${m.player2Data?.name ?? 'TBD'}`,
 		value: m.id,
 	})),
 );
 
 const selectedMatch = computed(() => {
-	if (!selectedMatchId.value)
-		return null;
-	return matchStore.matches.find(m => m.id === selectedMatchId.value) ?? null;
+	if (!selectedMatchId.value) return null;
+	return matchStore.matches.find((m) => m.id === selectedMatchId.value) ?? null;
 });
 
 function confirm() {
@@ -87,14 +86,8 @@ useEnterToSubmit(confirm, {
 		</template>
 
 		<template #footer>
-			<UButton variant="ghost" color="neutral" @click="close">
-				Cancel
-			</UButton>
-			<UButton
-				color="primary"
-				:disabled="!selectedMatch"
-				@click="confirm"
-			>
+			<UButton variant="ghost" color="neutral" @click="close"> Cancel </UButton>
+			<UButton color="primary" :disabled="!selectedMatch" @click="confirm">
 				Populate Match
 			</UButton>
 		</template>

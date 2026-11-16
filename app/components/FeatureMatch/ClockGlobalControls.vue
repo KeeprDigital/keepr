@@ -7,11 +7,12 @@ const featureMatchStateStore = useFeatureMatchStateStore();
 const toast = useToast();
 
 // An untimed match has no clock, so it is neither counted here nor acted on.
-const untimedCount = computed(() => [
-	...featureMatchStateStore.featureMatchStates.values(),
-]
-	.filter(state => state.clock.type === 'untimed')
-	.length);
+const untimedCount = computed(
+	() =>
+		[...featureMatchStateStore.featureMatchStates.values()].filter(
+			(state) => state.clock.type === 'untimed',
+		).length,
+);
 const matchCount = computed(() => featureMatchStore.featureMatches.length - untimedCount.value);
 const isDisabled = computed(() => !eventStore.eventId || matchCount.value <= 0);
 
@@ -19,8 +20,7 @@ const isDisabled = computed(() => !eventStore.eventId || matchCount.value <= 0);
 const runStateCounts = computed(() => {
 	const counts = { running: 0, paused: 0, stopped: 0 };
 	for (const state of featureMatchStateStore.featureMatchStates.values()) {
-		if (state.clock.type !== 'untimed')
-			counts[clockRunState(readStoredClock(state.clock))]++;
+		if (state.clock.type !== 'untimed') counts[clockRunState(readStoredClock(state.clock))]++;
 	}
 	return counts;
 });
@@ -28,22 +28,15 @@ const runningCount = computed(() => runStateCounts.value.running);
 const pausedCount = computed(() => runStateCounts.value.paused);
 
 const statusText = computed(() => {
-	if (matchCount.value <= 0)
-		return 'Untimed';
-	if (runningCount.value > 0)
-		return `${runningCount.value} of ${matchCount.value} running`;
-	if (pausedCount.value > 0)
-		return `${pausedCount.value} of ${matchCount.value} paused`;
-	return `${matchCount.value} clock${matchCount.value === 1
-		? ''
-		: 's'} idle`;
+	if (matchCount.value <= 0) return 'Untimed';
+	if (runningCount.value > 0) return `${runningCount.value} of ${matchCount.value} running`;
+	if (pausedCount.value > 0) return `${pausedCount.value} of ${matchCount.value} paused`;
+	return `${matchCount.value} clock${matchCount.value === 1 ? '' : 's'} idle`;
 });
 
 const statusColor = computed(() => {
-	if (runningCount.value > 0)
-		return 'text-primary';
-	if (pausedCount.value > 0)
-		return 'text-warning';
+	if (runningCount.value > 0) return 'text-primary';
+	if (pausedCount.value > 0) return 'text-warning';
 	return 'text-muted';
 });
 
@@ -63,29 +56,25 @@ function getEventId(): number | null {
 
 async function handleStartAll() {
 	const eventId = getEventId();
-	if (!eventId)
-		return;
+	if (!eventId) return;
 	await featureMatchStateStore.startAllClocks(eventId);
 }
 
 async function handlePauseAll() {
 	const eventId = getEventId();
-	if (!eventId)
-		return;
+	if (!eventId) return;
 	await featureMatchStateStore.pauseAllClocks(eventId);
 }
 
 async function handleResetAll() {
 	const eventId = getEventId();
-	if (!eventId)
-		return;
+	if (!eventId) return;
 	await featureMatchStateStore.resetAllClocks(eventId);
 }
 
 async function handleAdjustAll(deltaMs: number) {
 	const eventId = getEventId();
-	if (!eventId)
-		return;
+	if (!eventId) return;
 	await featureMatchStateStore.adjustAllClocks(eventId, deltaMs);
 }
 </script>

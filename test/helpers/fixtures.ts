@@ -19,7 +19,18 @@
  * See "Wire shape" at the foot of this file.
  */
 
-import type { DbArchetype, DbEvent, DbEventTalent, DbFeatureMatch, DbMatch, DbPhase, DbPlayer, DbPlayerList, DbRound, DbScreen } from '~~/server/db/schema';
+import type {
+	DbArchetype,
+	DbEvent,
+	DbEventTalent,
+	DbFeatureMatch,
+	DbMatch,
+	DbPhase,
+	DbPlayer,
+	DbPlayerList,
+	DbRound,
+	DbScreen,
+} from '~~/server/db/schema';
 import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 import type { ArchetypeDetailResponse, CardResponse } from '~~/shared/types/metagame';
 
@@ -47,9 +58,7 @@ export function createMockEvent(overrides?: Partial<DbEvent>): DbEvent {
 		name: 'Test Event',
 		game: 'mtg',
 		// Only a Magic: The Gathering Event has a Variant (ADR-0087).
-		variant: (overrides?.game ?? 'mtg') === 'mtg'
-			? 'two-player'
-			: null,
+		variant: (overrides?.game ?? 'mtg') === 'mtg' ? 'two-player' : null,
 		featureMatchOrientation: 'horizontal',
 		cardTimeout: 0,
 		numFeatureMatches: 1,
@@ -184,7 +193,9 @@ export function createMockUiArchetype(overrides?: Partial<UiArchetype>): UiArche
 	} as UiArchetype;
 }
 
-export function createMockArchetypeDetailResponse(overrides?: Partial<ArchetypeDetailResponse>): ArchetypeDetailResponse {
+export function createMockArchetypeDetailResponse(
+	overrides?: Partial<ArchetypeDetailResponse>,
+): ArchetypeDetailResponse {
 	return {
 		id: 1,
 		name: 'Azorius Control',
@@ -275,7 +286,9 @@ export function createMockFeatureMatch(overrides?: Partial<DbFeatureMatch>): DbF
 
 // ──────────────── Feature Match State ────────────────
 
-export function createMockFeatureMatchState(overrides?: Partial<FeatureMatchState>): FeatureMatchState {
+export function createMockFeatureMatchState(
+	overrides?: Partial<FeatureMatchState>,
+): FeatureMatchState {
 	return {
 		...createInitialFeatureMatchState(),
 		...overrides,
@@ -397,7 +410,7 @@ export function toWire<T>(row: T): Wire<T> {
 
 /** Derives a `createWireMock*` sibling from a `createMock*` factory, overrides and all. */
 function wireFactory<O, T>(factory: (overrides?: O) => T): (overrides?: O) => Wire<T> {
-	return overrides => toWire(factory(overrides));
+	return (overrides) => toWire(factory(overrides));
 }
 
 /**

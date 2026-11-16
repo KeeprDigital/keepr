@@ -40,14 +40,15 @@ const committed = {
 /** Every Event Data reload lands, but those of one resource. */
 function reloadsLandBut(failing?: string) {
 	mockFetch.mockImplementation(async (path: string) => {
-		if (failing && path.endsWith(`/${failing}`))
-			throw new Error(`${failing} offline`);
+		if (failing && path.endsWith(`/${failing}`)) throw new Error(`${failing} offline`);
 		return [];
 	});
 }
 
 function syncRound(roundId = 20) {
-	return useMeleeOperationFeedback().reportMeleeOperation(() => useMeleeStore().syncSpecificRound(roundId));
+	return useMeleeOperationFeedback().reportMeleeOperation(() =>
+		useMeleeStore().syncSpecificRound(roundId),
+	);
 }
 
 describe('useMeleeOperationFeedback', () => {
@@ -96,7 +97,8 @@ describe('useMeleeOperationFeedback', () => {
 		},
 		{
 			outcome: 'a sync Melee refused',
-			arrange: () => mockEventRepo.syncSpecificRound.mockRejectedValue(new Error('Melee refused the sync')),
+			arrange: () =>
+				mockEventRepo.syncSpecificRound.mockRejectedValue(new Error('Melee refused the sync')),
 			toast: {
 				title: 'Round Sync Failed',
 				description: 'Melee refused the sync',
@@ -108,13 +110,11 @@ describe('useMeleeOperationFeedback', () => {
 
 		await syncRound();
 
-		expect(mockToast.add.mock.calls).toEqual([
-			[toast],
-		]);
+		expect(mockToast.add.mock.calls).toEqual([[toast]]);
 	});
 
 	// An operation that recorded nothing must not repeat what an earlier one recorded.
-	it('reports a refused start in its own words, not the earlier operation\'s', async () => {
+	it("reports a refused start in its own words, not the earlier operation's", async () => {
 		await syncRound();
 		mockToast.add.mockClear();
 		const running = deferred<typeof committed>();

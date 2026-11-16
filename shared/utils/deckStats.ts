@@ -42,11 +42,9 @@ function countPipsFromManaCost(manaCost: string): ManaPipCounts {
 			// Hybrid (W/U, 2/W) or Phyrexian (W/P) — count each color part
 			const parts = inner.split('/');
 			for (const part of parts) {
-				if (part in counts)
-					counts[part as keyof ManaPipCounts]++;
+				if (part in counts) counts[part as keyof ManaPipCounts]++;
 			}
-		}
-		else if (inner in counts) {
+		} else if (inner in counts) {
 			counts[inner as keyof ManaPipCounts]++;
 		}
 	}
@@ -73,31 +71,21 @@ export function calculateDeckStats(cards: StatCard[]): DeckListStats {
 	};
 
 	for (const card of cards) {
-		if (card.compartment !== 'mainboard')
-			continue;
+		if (card.compartment !== 'mainboard') continue;
 
 		const type = card.cardType?.toLowerCase() ?? '';
 		const qty = card.quantity;
 
 		// A land of a second type on its front face is a land, unless a creature.
-		if (type.includes('creature'))
-			stats.creatures += qty;
-		else if (type.split(' // ')[0]!.includes('land'))
-			stats.lands += qty;
-		else if (type.includes('instant'))
-			stats.instants += qty;
-		else if (type.includes('sorcery'))
-			stats.sorceries += qty;
-		else if (type.includes('enchantment'))
-			stats.enchantments += qty;
-		else if (type.includes('artifact'))
-			stats.artifacts += qty;
-		else if (type.includes('planeswalker'))
-			stats.planeswalkers += qty;
-		else if (type.includes('land'))
-			stats.lands += qty;
-		else if (type)
-			stats.other += qty;
+		if (type.includes('creature')) stats.creatures += qty;
+		else if (type.split(' // ')[0]!.includes('land')) stats.lands += qty;
+		else if (type.includes('instant')) stats.instants += qty;
+		else if (type.includes('sorcery')) stats.sorceries += qty;
+		else if (type.includes('enchantment')) stats.enchantments += qty;
+		else if (type.includes('artifact')) stats.artifacts += qty;
+		else if (type.includes('planeswalker')) stats.planeswalkers += qty;
+		else if (type.includes('land')) stats.lands += qty;
+		else if (type) stats.other += qty;
 	}
 
 	return stats;
@@ -112,8 +100,7 @@ export function calculateDeckPips(cards: PipCard[]): ManaPipCounts {
 	const totals: ManaPipCounts = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
 
 	for (const card of cards) {
-		if (card.compartment !== 'mainboard' || !card.manaCost)
-			continue;
+		if (card.compartment !== 'mainboard' || !card.manaCost) continue;
 
 		const cardPips = countPipsFromManaCost(card.manaCost);
 		totals.W += cardPips.W * card.quantity;
@@ -139,12 +126,9 @@ export function calculateDeckCurve(cards: CurveCard[]): ManaCurve {
 	const curve: ManaCurve = {};
 
 	for (const card of cards) {
-		if (card.compartment !== 'mainboard')
-			continue;
-		if (card.cmc == null)
-			continue;
-		if (isNonMdfcLand(card.cardType))
-			continue;
+		if (card.compartment !== 'mainboard') continue;
+		if (card.cmc == null) continue;
+		if (isNonMdfcLand(card.cardType)) continue;
 
 		const bucket = Math.min(Math.floor(card.cmc), CURVE_MAX_BUCKET);
 		curve[bucket] = (curve[bucket] ?? 0) + card.quantity;
@@ -157,26 +141,19 @@ export function calculateDeckCurve(cards: CurveCard[]): ManaCurve {
  * Format DeckListStats as a display array, omitting zero-count categories.
  * Usable on both panel and modal contexts.
  */
-export function formatStats(stats: DeckListStats | undefined): Array<{ type: string; count: number }> {
-	if (!stats)
-		return [];
+export function formatStats(
+	stats: DeckListStats | undefined,
+): Array<{ type: string; count: number }> {
+	if (!stats) return [];
 	const result: Array<{ type: string; count: number }> = [];
-	if (stats.creatures > 0)
-		result.push({ type: 'Creatures', count: stats.creatures });
-	if (stats.instants > 0)
-		result.push({ type: 'Instants', count: stats.instants });
-	if (stats.sorceries > 0)
-		result.push({ type: 'Sorceries', count: stats.sorceries });
-	if (stats.enchantments > 0)
-		result.push({ type: 'Enchantments', count: stats.enchantments });
-	if (stats.artifacts > 0)
-		result.push({ type: 'Artifacts', count: stats.artifacts });
-	if (stats.planeswalkers > 0)
-		result.push({ type: 'Planeswalkers', count: stats.planeswalkers });
-	if (stats.lands > 0)
-		result.push({ type: 'Lands', count: stats.lands });
-	if (stats.other > 0)
-		result.push({ type: 'Other', count: stats.other });
+	if (stats.creatures > 0) result.push({ type: 'Creatures', count: stats.creatures });
+	if (stats.instants > 0) result.push({ type: 'Instants', count: stats.instants });
+	if (stats.sorceries > 0) result.push({ type: 'Sorceries', count: stats.sorceries });
+	if (stats.enchantments > 0) result.push({ type: 'Enchantments', count: stats.enchantments });
+	if (stats.artifacts > 0) result.push({ type: 'Artifacts', count: stats.artifacts });
+	if (stats.planeswalkers > 0) result.push({ type: 'Planeswalkers', count: stats.planeswalkers });
+	if (stats.lands > 0) result.push({ type: 'Lands', count: stats.lands });
+	if (stats.other > 0) result.push({ type: 'Other', count: stats.other });
 	return result;
 }
 
@@ -184,21 +161,16 @@ export function formatStats(stats: DeckListStats | undefined): Array<{ type: str
  * Format ManaPipCounts as a display array, omitting zero-count colors.
  * Returned in WUBRG+C order.
  */
-export function formatPips(pips: ManaPipCounts | undefined): Array<{ color: string; count: number }> {
-	if (!pips)
-		return [];
+export function formatPips(
+	pips: ManaPipCounts | undefined,
+): Array<{ color: string; count: number }> {
+	if (!pips) return [];
 	const result: Array<{ color: string; count: number }> = [];
-	if (pips.W > 0)
-		result.push({ color: 'W', count: pips.W });
-	if (pips.U > 0)
-		result.push({ color: 'U', count: pips.U });
-	if (pips.B > 0)
-		result.push({ color: 'B', count: pips.B });
-	if (pips.R > 0)
-		result.push({ color: 'R', count: pips.R });
-	if (pips.G > 0)
-		result.push({ color: 'G', count: pips.G });
-	if (pips.C > 0)
-		result.push({ color: 'C', count: pips.C });
+	if (pips.W > 0) result.push({ color: 'W', count: pips.W });
+	if (pips.U > 0) result.push({ color: 'U', count: pips.U });
+	if (pips.B > 0) result.push({ color: 'B', count: pips.B });
+	if (pips.R > 0) result.push({ color: 'R', count: pips.R });
+	if (pips.G > 0) result.push({ color: 'G', count: pips.G });
+	if (pips.C > 0) result.push({ color: 'C', count: pips.C });
 	return result;
 }

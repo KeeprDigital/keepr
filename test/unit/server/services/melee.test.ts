@@ -30,11 +30,7 @@ const mockLogger = {
 	error: vi.fn(),
 };
 
-function jsonResponse(
-	body: unknown,
-	status: number = 200,
-	headers?: HeadersInit,
-): Response {
+function jsonResponse(body: unknown, status: number = 200, headers?: HeadersInit): Response {
 	return new Response(JSON.stringify(body), { status, headers });
 }
 
@@ -120,7 +116,8 @@ describe('meleeService', () => {
 	describe('transport reliability', () => {
 		it('passes a fresh configured timeout signal to each request attempt', async () => {
 			const signals = [new AbortController().signal, new AbortController().signal];
-			const createTimeoutSignal = vi.fn()
+			const createTimeoutSignal = vi
+				.fn()
 				.mockReturnValueOnce(signals[0])
 				.mockReturnValueOnce(signals[1]);
 
@@ -128,10 +125,13 @@ describe('meleeService', () => {
 				.mockResolvedValueOnce(jsonResponse({}, 503))
 				.mockResolvedValueOnce(jsonResponse(eventData));
 
-			await meleeService(credentials, transportOptions({
-				requestTimeoutMs: 1_234,
-				createTimeoutSignal,
-			})).fetchEvent();
+			await meleeService(
+				credentials,
+				transportOptions({
+					requestTimeoutMs: 1_234,
+					createTimeoutSignal,
+				}),
+			).fetchEvent();
 
 			expect(createTimeoutSignal).toHaveBeenNthCalledWith(1, 1_234);
 			expect(createTimeoutSignal).toHaveBeenNthCalledWith(2, 1_234);
@@ -151,19 +151,24 @@ describe('meleeService', () => {
 			expect(mockFetch).toHaveBeenCalledTimes(3);
 			expect(mockSleep).toHaveBeenNthCalledWith(1, 100);
 			expect(mockSleep).toHaveBeenNthCalledWith(2, 200);
-			expect(mockLogger.warn).toHaveBeenNthCalledWith(1, expect.objectContaining({
-				endpoint: 'event',
-				outcome: 'retry',
-				status: 429,
-				retryDelayMs: 100,
-				retryDelaySource: 'exponential_backoff',
-			}));
-			expect(mockLogger.info).toHaveBeenCalledWith(expect.objectContaining({
-				endpoint: 'event',
-				outcome: 'success',
-				attempt: 3,
-				retryCount: 2,
-			}));
+			expect(mockLogger.warn).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({
+					endpoint: 'event',
+					outcome: 'retry',
+					status: 429,
+					retryDelayMs: 100,
+					retryDelaySource: 'exponential_backoff',
+				}),
+			);
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				expect.objectContaining({
+					endpoint: 'event',
+					outcome: 'success',
+					attempt: 3,
+					retryCount: 2,
+				}),
+			);
 		});
 
 		it.each([408, 425, 429, 500, 502, 503, 504])('retries status %i', async (status) => {
@@ -184,10 +189,12 @@ describe('meleeService', () => {
 			await meleeService(credentials, transportOptions({ maxRetryDelayMs: 2_500 })).fetchEvent();
 
 			expect(mockSleep).toHaveBeenCalledWith(2_500);
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.objectContaining({
-				retryDelayMs: 2_500,
-				retryDelaySource: 'retry_after',
-			}));
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					retryDelayMs: 2_500,
+					retryDelaySource: 'retry_after',
+				}),
+			);
 		});
 
 		it('honours an HTTP-date Retry-After value', async () => {
@@ -204,9 +211,9 @@ describe('meleeService', () => {
 		it.each([400, 401, 403, 404])('does not retry deterministic HTTP status %i', async (status) => {
 			mockFetch.mockResolvedValue(jsonResponse({}, status));
 
-			await expect(
-				meleeService(credentials, transportOptions()).fetchEvent(),
-			).rejects.toThrow(`status ${status}`);
+			await expect(meleeService(credentials, transportOptions()).fetchEvent()).rejects.toThrow(
+				`status ${status}`,
+			);
 
 			expect(mockFetch).toHaveBeenCalledTimes(1);
 			expect(mockSleep).not.toHaveBeenCalled();
@@ -221,23 +228,26 @@ describe('meleeService', () => {
 				} as unknown as Response)
 				.mockResolvedValueOnce(jsonResponse({ ID: 'not-a-number', Name: 'Invalid', Phases: [] }));
 
-			await expect(
-				meleeService(credentials, transportOptions()).fetchEvent(),
-			).rejects.toThrow('invalid JSON response');
+			await expect(meleeService(credentials, transportOptions()).fetchEvent()).rejects.toThrow(
+				'invalid JSON response',
+			);
 
 			expect(mockFetch).toHaveBeenCalledTimes(1);
-			expect(mockLogger.error).toHaveBeenLastCalledWith(expect.objectContaining({
-				failureCategory: 'response_parse',
-			}));
+			expect(mockLogger.error).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					failureCategory: 'response_parse',
+				}),
+			);
 
 			mockFetch.mockReset();
-			mockFetch.mockResolvedValue(jsonResponse({ ID: 'not-a-number', Name: 'Invalid', Phases: [] }));
+			mockFetch.mockResolvedValue(
+				jsonResponse({ ID: 'not-a-number', Name: 'Invalid', Phases: [] }),
+			);
 
 			let validationError: unknown;
 			try {
 				await meleeService(credentials, transportOptions()).fetchEvent();
-			}
-			catch (error) {
+			} catch (error) {
 				validationError = error;
 			}
 
@@ -251,33 +261,25 @@ describe('meleeService', () => {
 			expect(String(validationError)).not.toContain('Invalid');
 
 			expect(mockFetch).toHaveBeenCalledTimes(1);
-			expect(mockLogger.error).toHaveBeenLastCalledWith(expect.objectContaining({
-				failureCategory: 'schema_validation',
-				validationIssues: expect.arrayContaining([
-					'invalid_type:ID',
-					'invalid_type:Game',
-				]),
-			}));
+			expect(mockLogger.error).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					failureCategory: 'schema_validation',
+					validationIssues: expect.arrayContaining(['invalid_type:ID', 'invalid_type:Game']),
+				}),
+			);
 			expect(JSON.stringify(mockLogger.error.mock.lastCall)).not.toContain('not-a-number');
 			expect(JSON.stringify(mockLogger.error.mock.lastCall)).not.toContain('Invalid');
 		});
 
 		it('rejects invalid UTF-8 response bytes as a parse failure', async () => {
 			const invalidUtf8Json = new Uint8Array([
-				0x7B,
-				0x22,
-				0x78,
-				0x22,
-				0x3A,
-				0x22,
-				0xC3,
-				0x28,
-				0x22,
-				0x7D,
+				0x7b, 0x22, 0x78, 0x22, 0x3a, 0x22, 0xc3, 0x28, 0x22, 0x7d,
 			]);
 			mockFetch.mockResolvedValue(new Response(invalidUtf8Json, { status: 200 }));
 
-			await expect(meleeService(credentials, transportOptions()).fetchEvent()).rejects.toMatchObject({
+			await expect(
+				meleeService(credentials, transportOptions()).fetchEvent(),
+			).rejects.toMatchObject({
 				code: 'MELEE_UPSTREAM_FAILURE',
 				category: 'response_parse',
 			});
@@ -288,7 +290,8 @@ describe('meleeService', () => {
 			const first = new AbortController();
 			first.abort(new DOMException('timed out', 'TimeoutError'));
 			const second = new AbortController();
-			const createTimeoutSignal = vi.fn()
+			const createTimeoutSignal = vi
+				.fn()
 				.mockReturnValueOnce(first.signal)
 				.mockReturnValueOnce(second.signal);
 			mockFetch
@@ -299,18 +302,25 @@ describe('meleeService', () => {
 				} as unknown as Response)
 				.mockResolvedValueOnce(jsonResponse(eventData));
 
-			await expect(meleeService(credentials, transportOptions({
-				maxAttempts: 2,
-				createTimeoutSignal,
-			})).fetchEvent()).resolves.toEqual(eventData);
+			await expect(
+				meleeService(
+					credentials,
+					transportOptions({
+						maxAttempts: 2,
+						createTimeoutSignal,
+					}),
+				).fetchEvent(),
+			).resolves.toEqual(eventData);
 
 			expect(mockFetch).toHaveBeenCalledTimes(2);
 			expect(mockSleep).toHaveBeenCalledOnce();
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.objectContaining({
-				failureCategory: 'timeout',
-				outcome: 'retry',
-				status: 200,
-			}));
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					failureCategory: 'timeout',
+					outcome: 'retry',
+					status: 200,
+				}),
+			);
 		});
 
 		it('retries transient network failures and classifies aborted requests as timeouts', async () => {
@@ -321,23 +331,32 @@ describe('meleeService', () => {
 			await meleeService(credentials, transportOptions()).fetchEvent();
 
 			expect(mockFetch).toHaveBeenCalledTimes(2);
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.objectContaining({
-				failureCategory: 'network',
-			}));
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					failureCategory: 'network',
+				}),
+			);
 
 			mockFetch.mockReset();
 			const controller = new AbortController();
 			controller.abort(new DOMException('timed out', 'TimeoutError'));
 			mockFetch.mockRejectedValue(controller.signal.reason);
 
-			await expect(meleeService(credentials, transportOptions({
-				maxAttempts: 1,
-				createTimeoutSignal: () => controller.signal,
-			})).fetchEvent()).rejects.toThrow('timeout');
+			await expect(
+				meleeService(
+					credentials,
+					transportOptions({
+						maxAttempts: 1,
+						createTimeoutSignal: () => controller.signal,
+					}),
+				).fetchEvent(),
+			).rejects.toThrow('timeout');
 
-			expect(mockLogger.error).toHaveBeenLastCalledWith(expect.objectContaining({
-				failureCategory: 'timeout',
-			}));
+			expect(mockLogger.error).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					failureCategory: 'timeout',
+				}),
+			);
 		});
 
 		it('logs redacted endpoint metadata without URLs, credentials, or payloads', async () => {
@@ -346,21 +365,25 @@ describe('meleeService', () => {
 				clientSecret: 'private-client-secret',
 				eventId: 'private-event-id',
 			};
-			mockFetch.mockResolvedValue(jsonResponse({
-				...eventData,
-				Name: 'private-response-payload',
-			}));
+			mockFetch.mockResolvedValue(
+				jsonResponse({
+					...eventData,
+					Name: 'private-response-payload',
+				}),
+			);
 
 			await meleeService(sensitiveCredentials, transportOptions()).fetchEvent();
 
-			expect(mockLogger.info).toHaveBeenCalledWith(expect.objectContaining({
-				service: 'melee',
-				event: 'api_request',
-				endpoint: 'event',
-				page: null,
-				durationMs: 0,
-				retryCount: 0,
-			}));
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				expect.objectContaining({
+					service: 'melee',
+					event: 'api_request',
+					endpoint: 'event',
+					page: null,
+					durationMs: 0,
+					retryCount: 0,
+				}),
+			);
 
 			const logs = JSON.stringify([
 				...mockLogger.info.mock.calls,
@@ -379,38 +402,57 @@ describe('meleeService', () => {
 
 			await meleeService(credentials, transportOptions()).fetchPlayers();
 
-			expect(mockLogger.info).toHaveBeenCalledWith(expect.objectContaining({
-				endpoint: 'players',
-				page: 1,
-				outcome: 'success',
-			}));
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				expect.objectContaining({
+					endpoint: 'players',
+					page: 1,
+					outcome: 'success',
+				}),
+			);
 		});
 
 		it('rejects unsafe transport configuration before making a request', () => {
 			expect(() => meleeService(credentials, { requestTimeoutMs: 0 })).toThrow('requestTimeoutMs');
 			expect(() => meleeService(credentials, { maxAttempts: 6 })).toThrow('maxAttempts');
-			expect(() => meleeService(credentials, { maxResponseBytes: 512 })).toThrow('maxResponseBytes');
-			expect(() => meleeService(credentials, { maxCollectionItems: 0 })).toThrow('maxCollectionItems');
-			expect(() => meleeService(credentials, { maxCollectionBytes: 512 })).toThrow('maxCollectionBytes');
-			expect(() => meleeService(credentials, {
-				baseRetryDelayMs: 1_000,
-				maxRetryDelayMs: 500,
-			})).toThrow('maxRetryDelayMs');
+			expect(() => meleeService(credentials, { maxResponseBytes: 512 })).toThrow(
+				'maxResponseBytes',
+			);
+			expect(() => meleeService(credentials, { maxCollectionItems: 0 })).toThrow(
+				'maxCollectionItems',
+			);
+			expect(() => meleeService(credentials, { maxCollectionBytes: 512 })).toThrow(
+				'maxCollectionBytes',
+			);
+			expect(() =>
+				meleeService(credentials, {
+					baseRetryDelayMs: 1_000,
+					maxRetryDelayMs: 500,
+				}),
+			).toThrow('maxRetryDelayMs');
 			expect(mockFetch).not.toHaveBeenCalled();
 		});
 
 		it('rejects a response body before it can consume unbounded Worker memory', async () => {
-			mockFetch.mockResolvedValue(jsonResponse({
-				...eventData,
-				Name: 'x'.repeat(2_000),
-			}));
+			mockFetch.mockResolvedValue(
+				jsonResponse({
+					...eventData,
+					Name: 'x'.repeat(2_000),
+				}),
+			);
 
-			await expect(meleeService(credentials, transportOptions({
-				maxResponseBytes: 1_024,
-			})).fetchEvent()).rejects.toThrow('configured size limit');
-			expect(mockLogger.error).toHaveBeenCalledWith(expect.objectContaining({
-				failureCategory: 'response_size',
-			}));
+			await expect(
+				meleeService(
+					credentials,
+					transportOptions({
+						maxResponseBytes: 1_024,
+					}),
+				).fetchEvent(),
+			).rejects.toThrow('configured size limit');
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					failureCategory: 'response_size',
+				}),
+			);
 		});
 	});
 
@@ -425,12 +467,8 @@ describe('meleeService', () => {
 				PronounsDescription: null,
 				Decklists: [],
 			});
-			const page1 = paginated([
-				player(1),
-			], { recordsTotal: 2, hasMore: true });
-			const page2 = paginated([
-				player(2),
-			], { page: 2, recordsTotal: 2 });
+			const page1 = paginated([player(1)], { recordsTotal: 2, hasMore: true });
+			const page2 = paginated([player(2)], { page: 2, recordsTotal: 2 });
 			mockFetch
 				.mockResolvedValueOnce({
 					ok: true,
@@ -448,7 +486,7 @@ describe('meleeService', () => {
 		});
 
 		it('bounds the number of items accumulated across pages', async () => {
-			const players = [1, 2].map(id => ({
+			const players = [1, 2].map((id) => ({
 				TeamId: id,
 				PlayerName: `Player ${id}`,
 				PronounsDescription: null,
@@ -459,9 +497,11 @@ describe('meleeService', () => {
 				json: () => Promise.resolve(paginated(players)),
 			});
 
-			await expect(meleeService(credentials, {
-				maxCollectionItems: 1,
-			}).fetchPlayers()).rejects.toThrow('exceeded 1 items');
+			await expect(
+				meleeService(credentials, {
+					maxCollectionItems: 1,
+				}).fetchPlayers(),
+			).rejects.toThrow('exceeded 1 items');
 		});
 
 		it('bounds the approximate bytes accumulated across pages', async () => {
@@ -476,9 +516,11 @@ describe('meleeService', () => {
 				json: () => Promise.resolve(paginated(players)),
 			});
 
-			await expect(meleeService(credentials, {
-				maxCollectionBytes: 1_024,
-			}).fetchPlayers()).rejects.toThrow('collection exceeded the configured size limit');
+			await expect(
+				meleeService(credentials, {
+					maxCollectionBytes: 1_024,
+				}).fetchPlayers(),
+			).rejects.toThrow('collection exceeded the configured size limit');
 		});
 
 		it('rejects an empty intermediate page instead of accepting a partial snapshot', async () => {
@@ -503,15 +545,11 @@ describe('meleeService', () => {
 			mockFetch
 				.mockResolvedValueOnce({
 					ok: true,
-					json: () => Promise.resolve(paginated([
-						player(1),
-					], { recordsTotal: 2, hasMore: true })),
+					json: () => Promise.resolve(paginated([player(1)], { recordsTotal: 2, hasMore: true })),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: () => Promise.resolve(paginated([
-						player(2),
-					], { page: 2, recordsTotal: 3 })),
+					json: () => Promise.resolve(paginated([player(2)], { page: 2, recordsTotal: 3 })),
 				});
 
 			await expect(meleeService(credentials).fetchPlayers()).rejects.toMatchObject({
@@ -529,9 +567,8 @@ describe('meleeService', () => {
 			});
 			mockFetch.mockResolvedValue({
 				ok: true,
-				json: () => Promise.resolve(paginated([
-					player(1),
-				], { recordsFiltered: 2, recordsTotal: 2 })),
+				json: () =>
+					Promise.resolve(paginated([player(1)], { recordsFiltered: 2, recordsTotal: 2 })),
 			});
 
 			await expect(meleeService(credentials).fetchPlayers()).rejects.toMatchObject({
@@ -549,14 +586,14 @@ describe('meleeService', () => {
 			});
 			mockFetch.mockResolvedValue({
 				ok: true,
-				json: () => Promise.resolve(paginated([
-					player(1),
-				], { recordsTotal: 1, hasMore: true })),
+				json: () => Promise.resolve(paginated([player(1)], { recordsTotal: 1, hasMore: true })),
 			});
 
 			await expect(meleeService(credentials).fetchPlayers()).rejects.toMatchObject({
 				category: 'schema_validation',
-				message: expect.stringContaining('more pages were declared after all records were received'),
+				message: expect.stringContaining(
+					'more pages were declared after all records were received',
+				),
 			});
 		});
 
@@ -570,15 +607,11 @@ describe('meleeService', () => {
 			mockFetch
 				.mockResolvedValueOnce({
 					ok: true,
-					json: () => Promise.resolve(paginated([
-						player(1),
-					], { recordsTotal: 3, hasMore: true })),
+					json: () => Promise.resolve(paginated([player(1)], { recordsTotal: 3, hasMore: true })),
 				})
 				.mockResolvedValueOnce({
 					ok: true,
-					json: () => Promise.resolve(paginated([
-						player(2),
-					], { page: 2, recordsTotal: 3 })),
+					json: () => Promise.resolve(paginated([player(2)], { page: 2, recordsTotal: 3 })),
 				});
 
 			await expect(meleeService(credentials).fetchPlayers()).rejects.toMatchObject({
@@ -609,19 +642,19 @@ describe('meleeService', () => {
 
 		it.each([
 			[
-				'current standings, bypassing Melee\'s cache',
+				"current standings, bypassing Melee's cache",
 				(service: ReturnType<typeof meleeService>) => service.fetchCurrentStandings(),
 				standing,
 				/\/standing\/list\/current\/.*ignoreCache=true/,
 			],
 			[
-				'a Round\'s standings',
+				"a Round's standings",
 				(service: ReturnType<typeof meleeService>) => service.fetchStandingsByRound(42),
 				standing,
 				/\/standing\/list\/round\/42/,
 			],
 			[
-				'a Round\'s Matches',
+				"a Round's Matches",
 				(service: ReturnType<typeof meleeService>) => service.fetchMatchesByRound(42),
 				match,
 				/\/match\/list\/round\/42/,

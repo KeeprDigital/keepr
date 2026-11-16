@@ -10,7 +10,11 @@ import { clampToShapeBounds } from '../../screenModeConfigs/fields';
 import { HORIZONTAL_ALIGN_VALUES, VERTICAL_ALIGN_VALUES } from '../../types/enums';
 import { GRAPHIC_TEXT_TRANSFORM_VALUES } from '../../types/graphics';
 import { GRAPHIC_FONT_IDS } from '../graphics/typography';
-import { backgroundLayerStackSchema, graphicAssetReferenceSchema, storedThemeBackgroundLayerStackSchema } from './background';
+import {
+	backgroundLayerStackSchema,
+	graphicAssetReferenceSchema,
+	storedThemeBackgroundLayerStackSchema,
+} from './background';
 import { STORED_THEME_COMPOSITE_VALUE_SCHEMAS, THEME_COMPOSITE_VALUE_SCHEMAS } from './composites';
 
 /**
@@ -31,7 +35,7 @@ export interface ThemeTypography {
 /** The kinds of Graphic Asset an asset Theme Token may name. */
 export const THEME_ASSET_KINDS = ['image', 'silent-video', 'font'] as const;
 
-export type ThemeAssetKind = typeof THEME_ASSET_KINDS[number];
+export type ThemeAssetKind = (typeof THEME_ASSET_KINDS)[number];
 
 /**
  * An asset Theme Token's value: one exact Graphic Asset Revision and its kind,
@@ -85,8 +89,8 @@ export type TokenDefinitionOf<T extends ThemeTokenType, Default> = {
 	type: T;
 	label: string;
 	default: Default;
-} & (T extends 'dimension' ? { bounds?: ThemeDimensionBounds } : unknown)
-& (T extends 'asset' ? { assetKinds: readonly ThemeAssetKind[] } : unknown);
+} & (T extends 'dimension' ? { bounds?: ThemeDimensionBounds } : unknown) &
+	(T extends 'asset' ? { assetKinds: readonly ThemeAssetKind[] } : unknown);
 
 /**
  * A Foundation Token: an application-wide role any Screen Mode may consume. It
@@ -120,10 +124,13 @@ export interface ThemeMotionFollow<Name extends string = string> {
 }
 
 /** A Mode Token's default: a Foundation Token it names or, for motion, follows, or a literal. */
-export type ModeTokenValue<T extends ThemeTokenType = ThemeTokenType, Name extends string = string>
-	= | ThemeTokenReference<Name>
-		| (T extends 'animation-recipe' ? ThemeMotionFollow<Name> : never)
-		| ThemeTokenValueTypes[T];
+export type ModeTokenValue<
+	T extends ThemeTokenType = ThemeTokenType,
+	Name extends string = string,
+> =
+	| ThemeTokenReference<Name>
+	| (T extends 'animation-recipe' ? ThemeMotionFollow<Name> : never)
+	| ThemeTokenValueTypes[T];
 
 /**
  * A Mode Token: a Theme Token a Screen Mode Definition declares for its own
@@ -151,27 +158,45 @@ export const THEME_TYPOGRAPHY_BOUNDS = {
 	tracking: { min: -0.5, max: 1 },
 } as const;
 
-const typographySchema = z.object({
-	font: z.discriminatedUnion('kind', [
-		z.object({
-			kind: z.literal('application'),
-			fontId: z.enum(GRAPHIC_FONT_IDS),
-		}).strict(),
-		z.object({
-			kind: z.literal('asset'),
-			reference: graphicAssetReferenceSchema,
-		}).strict(),
-	]),
-	weight: z.number().int().min(THEME_TYPOGRAPHY_BOUNDS.weight.min).max(THEME_TYPOGRAPHY_BOUNDS.weight.max),
-	lineHeight: z.number().min(THEME_TYPOGRAPHY_BOUNDS.lineHeight.min).max(THEME_TYPOGRAPHY_BOUNDS.lineHeight.max),
-	tracking: z.number().min(THEME_TYPOGRAPHY_BOUNDS.tracking.min).max(THEME_TYPOGRAPHY_BOUNDS.tracking.max),
-	case: z.enum(GRAPHIC_TEXT_TRANSFORM_VALUES),
-}).strict();
+const typographySchema = z
+	.object({
+		font: z.discriminatedUnion('kind', [
+			z
+				.object({
+					kind: z.literal('application'),
+					fontId: z.enum(GRAPHIC_FONT_IDS),
+				})
+				.strict(),
+			z
+				.object({
+					kind: z.literal('asset'),
+					reference: graphicAssetReferenceSchema,
+				})
+				.strict(),
+		]),
+		weight: z
+			.number()
+			.int()
+			.min(THEME_TYPOGRAPHY_BOUNDS.weight.min)
+			.max(THEME_TYPOGRAPHY_BOUNDS.weight.max),
+		lineHeight: z
+			.number()
+			.min(THEME_TYPOGRAPHY_BOUNDS.lineHeight.min)
+			.max(THEME_TYPOGRAPHY_BOUNDS.lineHeight.max),
+		tracking: z
+			.number()
+			.min(THEME_TYPOGRAPHY_BOUNDS.tracking.min)
+			.max(THEME_TYPOGRAPHY_BOUNDS.tracking.max),
+		case: z.enum(GRAPHIC_TEXT_TRANSFORM_VALUES),
+	})
+	.strict();
 
-const alignmentSchema = z.object({
-	horizontal: z.enum(HORIZONTAL_ALIGN_VALUES),
-	vertical: z.enum(VERTICAL_ALIGN_VALUES),
-}).strict();
+const alignmentSchema = z
+	.object({
+		horizontal: z.enum(HORIZONTAL_ALIGN_VALUES),
+		vertical: z.enum(VERTICAL_ALIGN_VALUES),
+	})
+	.strict();
 
 /**
  * A token of `definition`'s type within its bounds, in one of two forms. A
@@ -179,7 +204,10 @@ const alignmentSchema = z.object({
  * the same, and a composite or background colour naming a colour Foundation
  * Token, which a write once admitted.
  */
-function tokenValueSchema(definition: FoundationTokenDefinition | ModeTokenDefinition, form: 'written' | 'stored'): z.ZodType {
+function tokenValueSchema(
+	definition: FoundationTokenDefinition | ModeTokenDefinition,
+	form: 'written' | 'stored',
+): z.ZodType {
 	switch (definition.type) {
 		case 'color':
 			return z.string().min(1).max(500);
@@ -196,24 +224,29 @@ function tokenValueSchema(definition: FoundationTokenDefinition | ModeTokenDefin
 		case 'animationEffect':
 			return animationEffectSelectionSchema;
 		case 'asset':
-			return z.object({
-				kind: z.enum(definition.assetKinds as [ThemeAssetKind, ...ThemeAssetKind[]]),
-				...graphicAssetReferenceSchema.shape,
-			}).strict().nullable();
+			return z
+				.object({
+					kind: z.enum(definition.assetKinds as [ThemeAssetKind, ...ThemeAssetKind[]]),
+					...graphicAssetReferenceSchema.shape,
+				})
+				.strict()
+				.nullable();
 		case 'fill':
 		case 'surface-style':
 		case 'shape-geometry':
 		case 'animation-recipe':
-			return (form === 'written'
-				? THEME_COMPOSITE_VALUE_SCHEMAS
-				: STORED_THEME_COMPOSITE_VALUE_SCHEMAS)[definition.type];
+			return (
+				form === 'written' ? THEME_COMPOSITE_VALUE_SCHEMAS : STORED_THEME_COMPOSITE_VALUE_SCHEMAS
+			)[definition.type];
 		case 'alignment':
 			return alignmentSchema;
 	}
 }
 
 /** What a write may store for a token of `definition`'s type: a literal within its bounds, naming no other token. */
-export function themeTokenValueSchema(definition: FoundationTokenDefinition | ModeTokenDefinition): z.ZodType {
+export function themeTokenValueSchema(
+	definition: FoundationTokenDefinition | ModeTokenDefinition,
+): z.ZodType {
 	return tokenValueSchema(definition, 'written');
 }
 
@@ -224,13 +257,13 @@ export function themeTokenValueSchema(definition: FoundationTokenDefinition | Mo
  * does not fit is ignored, so the read falls through to the next source. A
  * colour naming a colour Foundation Token is kept for the resolver to read.
  */
-export function readTokenLiteral(definition: FoundationTokenDefinition | ModeTokenDefinition, stored: unknown): ThemeTokenValue | undefined {
-	if (stored === undefined)
-		return undefined;
+export function readTokenLiteral(
+	definition: FoundationTokenDefinition | ModeTokenDefinition,
+	stored: unknown,
+): ThemeTokenValue | undefined {
+	if (stored === undefined) return undefined;
 	const schema = tokenValueSchema(definition, 'stored');
 	const { value } = clampToShapeBounds({ value: schema }, { value: stored });
 	const parsed = schema.safeParse(value);
-	return parsed.success
-		? parsed.data as ThemeTokenValue
-		: undefined;
+	return parsed.success ? (parsed.data as ThemeTokenValue) : undefined;
 }

@@ -87,15 +87,15 @@ describe('useFeatureMatchOverlaySideboardRevealAnimation', () => {
 		nowMs += ms;
 		const pending = rafQueue;
 		rafQueue = [];
-		for (const callback of pending)
-			callback(nowMs);
+		for (const callback of pending) callback(nowMs);
 	}
 
 	function mounted(initialRevealed = false) {
 		const featureMatch = ref<GraphicsFeatureMatchContext | undefined>(context(initialRevealed));
 		const config = ref(overlayConfig());
 		const composable = scope.run(() =>
-			useFeatureMatchOverlaySideboardRevealAnimation(config, featureMatch))!;
+			useFeatureMatchOverlaySideboardRevealAnimation(config, featureMatch),
+		)!;
 		return { featureMatch, ...composable };
 	}
 
@@ -105,16 +105,12 @@ describe('useFeatureMatchOverlaySideboardRevealAnimation', () => {
 
 		featureMatch.value = context(true);
 		expect(itemAnimation.value).toEqual({
-			'side-1': [
-				{ phase: 'enter', elapsed: 0 },
-			],
+			'side-1': [{ phase: 'enter', elapsed: 0 }],
 		});
 
 		tick(250);
 		expect(itemAnimation.value).toEqual({
-			'side-1': [
-				{ phase: 'enter', elapsed: 250 },
-			],
+			'side-1': [{ phase: 'enter', elapsed: 250 }],
 		});
 	});
 
@@ -124,9 +120,7 @@ describe('useFeatureMatchOverlaySideboardRevealAnimation', () => {
 		featureMatch.value = context(false);
 		tick(250);
 		expect(itemAnimation.value).toEqual({
-			'side-1': [
-				{ phase: 'exit', elapsed: 250 },
-			],
+			'side-1': [{ phase: 'exit', elapsed: 250 }],
 		});
 
 		// Past delay + duration the trigger settles: the flag's renders-nothing
@@ -137,7 +131,7 @@ describe('useFeatureMatchOverlaySideboardRevealAnimation', () => {
 	});
 
 	// A Seat's turn arriving is an edge of the same kind; the turn it joins on is not (ADR-0087).
-	it('plays a Seat Indicator\'s enter when the turn reaches its Seat, and nothing for the turn it joined on', () => {
+	it("plays a Seat Indicator's enter when the turn reaches its Seat, and nothing for the turn it joined on", () => {
 		const featureMatch = ref<GraphicsFeatureMatchContext | undefined>({
 			...context(false),
 			activeSeat: 'player2',
@@ -160,7 +154,9 @@ describe('useFeatureMatchOverlaySideboardRevealAnimation', () => {
 				},
 			},
 		} as never);
-		const { itemAnimation } = scope.run(() => useFeatureMatchOverlaySideboardRevealAnimation(config, featureMatch))!;
+		const { itemAnimation } = scope.run(() =>
+			useFeatureMatchOverlaySideboardRevealAnimation(config, featureMatch),
+		)!;
 		expect(itemAnimation.value).toBeUndefined();
 
 		featureMatch.value = {
@@ -169,9 +165,7 @@ describe('useFeatureMatchOverlaySideboardRevealAnimation', () => {
 		};
 
 		expect(itemAnimation.value).toEqual({
-			turn: [
-				{ phase: 'enter', elapsed: 0 },
-			],
+			turn: [{ phase: 'enter', elapsed: 0 }],
 		});
 	});
 

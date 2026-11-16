@@ -6,9 +6,8 @@ type GivenLoadOptions = [load?: EventDataLoadOptions];
 
 /** Waits for every reload, so one that fails holds none back, then raises the first failure. */
 async function settleThenRaise(reloads: Array<Promise<unknown>>) {
-	const failed = (await Promise.allSettled(reloads)).find(reload => reload.status === 'rejected');
-	if (failed)
-		throw failed.reason;
+	const failed = (await Promise.allSettled(reloads)).find((reload) => reload.status === 'rejected');
+	if (failed) throw failed.reason;
 }
 
 /**
@@ -35,10 +34,12 @@ export function useMeleeDataRefresh() {
 	 * load answered, `null` when it did not land, and nothing when none are held.
 	 */
 	async function refreshCurrentMatchScope(eventId: number, ...load: GivenLoadOptions) {
-		if (!matchStore.isLoaded)
-			return;
+		if (!matchStore.isLoaded) return;
 
-		if (matchStore.loadedRoundId != null && roundStore.rounds.some(round => round.id === matchStore.loadedRoundId))
+		if (
+			matchStore.loadedRoundId != null &&
+			roundStore.rounds.some((round) => round.id === matchStore.loadedRoundId)
+		)
 			return await matchStore.loadMatchesByRoundId(eventId, matchStore.loadedRoundId, ...load);
 
 		return await matchStore.loadMatchesByEventId(eventId, ...load);
@@ -68,7 +69,9 @@ export function useMeleeDataRefresh() {
 			phaseStore.loadPhasesByEventId(eventId, ...load),
 			// Rounds first: the Match scope to re-read depends on which Rounds the
 			// reset kept, and a kept manual Round keeps its Matches (ADR-0040).
-			roundStore.loadRoundsByEventId(eventId, ...load).finally(async () => await refreshCurrentMatchScope(eventId, ...load)),
+			roundStore
+				.loadRoundsByEventId(eventId, ...load)
+				.finally(async () => await refreshCurrentMatchScope(eventId, ...load)),
 			playerStore.loadPlayersByEventId(eventId, ...load),
 			playerDeckStore.loadByEventId(eventId),
 			featureMatchStore.loadFeatureMatchesByEventId(eventId, ...load),

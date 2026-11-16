@@ -12,27 +12,21 @@ const props = defineProps<{
 	output: FeatureMatchOverlayOutput;
 }>();
 
-const isVisible = computed(() => props.output !== 'key' && (props.video?.url.trim().length ?? 0) > 0);
-const maskStyle = computed(() => featureMatchOverlayFrameContentMaskStyle(
-	props.canvasWidth,
-	props.canvasHeight,
-	props.cutoutPaths,
-));
+const isVisible = computed(
+	() => props.output !== 'key' && (props.video?.url.trim().length ?? 0) > 0,
+);
+const maskStyle = computed(() =>
+	featureMatchOverlayFrameContentMaskStyle(
+		props.canvasWidth,
+		props.canvasHeight,
+		props.cutoutPaths,
+	),
+);
 </script>
 
 <template>
-	<foreignObject
-		v-if="isVisible"
-		x="0"
-		y="0"
-		:width="canvasWidth"
-		:height="canvasHeight"
-	>
-		<div
-			xmlns="http://www.w3.org/1999/xhtml"
-			class="frame-media"
-			:style="maskStyle"
-		>
+	<foreignObject v-if="isVisible" x="0" y="0" :width="canvasWidth" :height="canvasHeight">
+		<div xmlns="http://www.w3.org/1999/xhtml" class="frame-media" :style="maskStyle">
 			<ScreenMediaBackground :video="video" />
 		</div>
 	</foreignObject>

@@ -63,7 +63,9 @@ export function useReconnectResync(
 	 * Screen Output's display session is handed its transport rather than looking
 	 * one up, and a composable that could only look one up would be unusable there.
 	 */
-	realtime: Pick<RealtimeTransport, 'connectionState' | 'onContinuityLost' | 'onceAttached'> | undefined = tryUseRealtime(),
+	realtime:
+		| Pick<RealtimeTransport, 'connectionState' | 'onContinuityLost' | 'onceAttached'>
+		| undefined = tryUseRealtime(),
 	options: {
 		/** Told once when the channel this starts listening on first attaches; see above. */
 		onFirstAttach?: () => void;
@@ -77,28 +79,31 @@ export function useReconnectResync(
 	 * every reload flash a fault at the operator.
 	 */
 	const disconnected = computed(() => {
-		if (!realtime)
-			return false;
-		return realtime.connectionState === 'disconnected'
-			|| realtime.connectionState === 'suspended'
-			|| realtime.connectionState === 'failed'
-			|| realtime.connectionState === 'closed';
+		if (!realtime) return false;
+		return (
+			realtime.connectionState === 'disconnected' ||
+			realtime.connectionState === 'suspended' ||
+			realtime.connectionState === 'failed' ||
+			realtime.connectionState === 'closed'
+		);
 	});
 
-	watch(() => toValue(channel), (listenedOn, _, onCleanup) => {
-		if (!realtime || !listenedOn)
-			return;
-		onCleanup(realtime.onContinuityLost(listenedOn, resync));
-		if (options.onFirstAttach)
-			onCleanup(realtime.onceAttached(listenedOn, options.onFirstAttach));
-	}, { immediate: true });
+	watch(
+		() => toValue(channel),
+		(listenedOn, _, onCleanup) => {
+			if (!realtime || !listenedOn) return;
+			onCleanup(realtime.onContinuityLost(listenedOn, resync));
+			if (options.onFirstAttach)
+				onCleanup(realtime.onceAttached(listenedOn, options.onFirstAttach));
+		},
+		{ immediate: true },
+	);
 
 	// Only the transition back to connected, and only while listening on nothing.
 	// Watching this rather than every connection state keeps a `connecting` →
 	// `connected` flap from firing a reload on top of the one the mount already did.
 	watch(disconnected, (isDisconnected, wasDisconnected) => {
-		if (wasDisconnected && !isDisconnected && !toValue(channel))
-			resync();
+		if (wasDisconnected && !isDisconnected && !toValue(channel)) resync();
 	});
 
 	return { disconnected };

@@ -25,7 +25,7 @@ export const topCutModeTokens = {
 		settingsGroup: 'bracket',
 		default: { token: 'accent' },
 	},
-	'connector': {
+	connector: {
 		type: 'color',
 		label: 'Bracket connector',
 		settingsGroup: 'bracket',

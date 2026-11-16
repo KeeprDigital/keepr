@@ -39,14 +39,11 @@ const METHOD_SUFFIX = /\.(?:get|post|put|patch|delete)$/;
 function requestPathFor(routeFile: string): string {
 	const withinApi = relative(API_DIRECTORY, routeFile).split(sep);
 	const segments = withinApi
-		.map(segment => segment.replace(/\.ts$/, '').replace(METHOD_SUFFIX, ''))
+		.map((segment) => segment.replace(/\.ts$/, '').replace(METHOD_SUFFIX, ''))
 		.flatMap((segment) => {
-			if (segment === 'index')
-				return [];
-			if (segment.startsWith('[...'))
-				return ['catch', 'all'];
-			if (segment.startsWith('['))
-				return ['a-parameter'];
+			if (segment === 'index') return [];
+			if (segment.startsWith('[...')) return ['catch', 'all'];
+			if (segment.startsWith('[')) return ['a-parameter'];
 			return [segment];
 		});
 
@@ -57,12 +54,12 @@ const routeFiles = typeScriptFilesUnder(API_DIRECTORY);
 
 /** Every route file the boundary lets through without a session, as repo paths. */
 const publicRouteFiles = routeFiles
-	.filter(file => !apiPathRequiresSession(requestPathFor(file)))
-	.map(file => relative(REPOSITORY_ROOT, file))
+	.filter((file) => !apiPathRequiresSession(requestPathFor(file)))
+	.map((file) => relative(REPOSITORY_ROOT, file))
 	.sort();
 
 const adminRouteFiles = typeScriptFilesUnder(ADMIN_DIRECTORY)
-	.map(file => relative(REPOSITORY_ROOT, file))
+	.map((file) => relative(REPOSITORY_ROOT, file))
 	.sort();
 
 describe('which API paths require a session', () => {
@@ -93,13 +90,7 @@ describe('which API paths require a session', () => {
 		// Pages and assets are unavoidably public under `ssr: false`, and are
 		// gated client-side as UX. The one that would matter if it were wrong is
 		// the SPA shell, since the whole application is served from it.
-		for (const path of [
-			'/',
-			'/login',
-			'/event/12/screen/main',
-			'/_nuxt/entry.js',
-			'/favicon.ico',
-		])
+		for (const path of ['/', '/login', '/event/12/screen/main', '/_nuxt/entry.js', '/favicon.ico'])
 			expect(apiPathRequiresSession(path)).toBe(false);
 	});
 
@@ -111,7 +102,9 @@ describe('which API paths require a session', () => {
 
 	it('exempts the auth router, the capability surface and the admin surface', () => {
 		expect(apiPathRequiresSession('/api/auth/sign-in/email')).toBe(false);
-		expect(apiPathRequiresSession('/api/screen-output/screens/7/asset-capability-session')).toBe(false);
+		expect(apiPathRequiresSession('/api/screen-output/screens/7/asset-capability-session')).toBe(
+			false,
+		);
 		expect(apiPathRequiresSession('/api/screen-output/link')).toBe(false);
 		expect(apiPathRequiresSession('/api/admin/graphics-assets/health')).toBe(false);
 		expect(apiPathRequiresSession('/api/public/events/1/on-air')).toBe(false);
@@ -160,8 +153,11 @@ describe('which API paths require a session', () => {
 	it('requires one for the resolved form of a path that climbs out of an exempt surface', () => {
 		// `getRequestURL` hands over a pathname the URL parser has already
 		// resolved, so this is the string the middleware really sees.
-		expect(apiPathRequiresSession(new URL('https://s.example/api/screen-output/../events/1/players').pathname))
-			.toBe(true);
+		expect(
+			apiPathRequiresSession(
+				new URL('https://s.example/api/screen-output/../events/1/players').pathname,
+			),
+		).toBe(true);
 	});
 });
 
@@ -173,197 +169,52 @@ describe('which state-changing requests are refused as cross-site', () => {
 
 	it.each([
 		// What the browser reports about itself decides, where it reports it.
-		[
-			'POST',
-			'same-origin',
-			`https://${HOST}`,
-			HOST,
-			false,
-		],
-		[
-			'POST',
-			'Same-Origin',
-			undefined,
-			HOST,
-			false,
-		],
+		['POST', 'same-origin', `https://${HOST}`, HOST, false],
+		['POST', 'Same-Origin', undefined, HOST, false],
 		['POST', 'none', undefined, HOST, false],
-		[
-			'POST',
-			'same-site',
-			`https://evil.keepr.digital`,
-			HOST,
-			true,
-		],
-		[
-			'POST',
-			'cross-site',
-			'https://not-this-installation.example',
-			HOST,
-			true,
-		],
-		[
-			'POST',
-			'cross-site',
-			`https://${HOST}`,
-			HOST,
-			true,
-		],
-		[
-			'POST',
-			'something-new',
-			undefined,
-			HOST,
-			true,
-		],
+		['POST', 'same-site', `https://evil.keepr.digital`, HOST, true],
+		['POST', 'cross-site', 'https://not-this-installation.example', HOST, true],
+		['POST', 'cross-site', `https://${HOST}`, HOST, true],
+		['POST', 'something-new', undefined, HOST, true],
 		// `wrangler dev` rewrites `Origin` to the route's host; the browser's own
 		// verdict still stands.
-		[
-			'POST',
-			'same-origin',
-			`http://${HOST}`,
-			'127.0.0.1:8787',
-			false,
-		],
+		['POST', 'same-origin', `http://${HOST}`, '127.0.0.1:8787', false],
 		// A browser that sends no `Sec-Fetch-Site`: `Origin` must name this host.
-		[
-			'POST',
-			undefined,
-			`https://${HOST}`,
-			HOST,
-			false,
-		],
-		[
-			'POST',
-			'',
-			`https://${HOST}`,
-			HOST,
-			false,
-		],
-		[
-			'POST',
-			undefined,
-			'http://localhost:3000',
-			'localhost:3000',
-			false,
-		],
-		[
-			'POST',
-			undefined,
-			'http://192.168.1.20:3000',
-			'192.168.1.20:3000',
-			false,
-		],
-		[
-			'POST',
-			undefined,
-			`https://evil.keepr.digital`,
-			HOST,
-			true,
-		],
-		[
-			'POST',
-			undefined,
-			`https://${HOST}.evil.example`,
-			HOST,
-			true,
-		],
-		[
-			'POST',
-			undefined,
-			`https://${HOST}:8443`,
-			HOST,
-			true,
-		],
-		[
-			'POST',
-			undefined,
-			'http://localhost:3001',
-			'localhost:3000',
-			true,
-		],
+		['POST', undefined, `https://${HOST}`, HOST, false],
+		['POST', '', `https://${HOST}`, HOST, false],
+		['POST', undefined, 'http://localhost:3000', 'localhost:3000', false],
+		['POST', undefined, 'http://192.168.1.20:3000', '192.168.1.20:3000', false],
+		['POST', undefined, `https://evil.keepr.digital`, HOST, true],
+		['POST', undefined, `https://${HOST}.evil.example`, HOST, true],
+		['POST', undefined, `https://${HOST}:8443`, HOST, true],
+		['POST', undefined, 'http://localhost:3001', 'localhost:3000', true],
 		['POST', undefined, 'null', HOST, true],
-		[
-			'POST',
-			undefined,
-			'not an origin',
-			HOST,
-			true,
-		],
+		['POST', undefined, 'not an origin', HOST, true],
 		// The scheme is not compared: the Worker does not reliably know its own.
-		[
-			'POST',
-			undefined,
-			`http://${HOST}`,
-			HOST,
-			false,
-		],
+		['POST', undefined, `http://${HOST}`, HOST, false],
 		// Neither header: not a browser, so not a browser being used against its user.
-		[
-			'POST',
-			undefined,
-			undefined,
-			HOST,
-			false,
-		],
-		[
-			'PUT',
-			undefined,
-			`https://evil.keepr.digital`,
-			HOST,
-			true,
-		],
-		[
-			'PATCH',
-			'same-site',
-			undefined,
-			HOST,
-			true,
-		],
-		[
-			'DELETE',
-			'cross-site',
-			undefined,
-			HOST,
-			true,
-		],
-		[
-			'delete',
-			'cross-site',
-			undefined,
-			HOST,
-			true,
-		],
+		['POST', undefined, undefined, HOST, false],
+		['PUT', undefined, `https://evil.keepr.digital`, HOST, true],
+		['PATCH', 'same-site', undefined, HOST, true],
+		['DELETE', 'cross-site', undefined, HOST, true],
+		['delete', 'cross-site', undefined, HOST, true],
 		// Reads change nothing, and a cross-site page cannot read their answers.
-		[
-			'GET',
-			'cross-site',
-			'https://not-this-installation.example',
-			HOST,
-			false,
-		],
-		[
-			'HEAD',
-			'cross-site',
-			'https://not-this-installation.example',
-			HOST,
-			false,
-		],
-		[
-			'OPTIONS',
-			'cross-site',
-			'https://not-this-installation.example',
-			HOST,
-			false,
-		],
-	] as const)('%s with Sec-Fetch-Site %j and Origin %j at %s: refused %s', (method, secFetchSite, origin, requestHost, refused) => {
-		expect(requestIsCrossSiteMutation({
-			method,
-			secFetchSite,
-			origin,
-			requestHost,
-		})).toBe(refused);
-	});
+		['GET', 'cross-site', 'https://not-this-installation.example', HOST, false],
+		['HEAD', 'cross-site', 'https://not-this-installation.example', HOST, false],
+		['OPTIONS', 'cross-site', 'https://not-this-installation.example', HOST, false],
+	] as const)(
+		'%s with Sec-Fetch-Site %j and Origin %j at %s: refused %s',
+		(method, secFetchSite, origin, requestHost, refused) => {
+			expect(
+				requestIsCrossSiteMutation({
+					method,
+					secFetchSite,
+					origin,
+					requestHost,
+				}),
+			).toBe(refused);
+		},
+	);
 });
 
 /**
@@ -382,7 +233,7 @@ describe('the public surface, counted against the routes on disk', () => {
 	});
 
 	it('is exactly these routes, and every one of them is a decision ADR-0010 records', () => {
-		expect(publicRouteFiles.filter(file => !file.startsWith('server/api/admin/'))).toEqual([
+		expect(publicRouteFiles.filter((file) => !file.startsWith('server/api/admin/'))).toEqual([
 			// Better Auth's own router. Sign-in must be reachable or nothing ever
 			// acquires a session.
 			'server/api/auth/[...all].ts',
@@ -445,7 +296,9 @@ describe('the public surface, counted against the routes on disk', () => {
 		// Stated as "all of them" rather than as a list, because the clause
 		// ADR-0010 records is about the surface: `x-graphics-admin-token` alone
 		// satisfies the boundary there, which is exactly today's posture.
-		expect(publicRouteFiles.filter(file => file.startsWith('server/api/admin/'))).toEqual(adminRouteFiles);
+		expect(publicRouteFiles.filter((file) => file.startsWith('server/api/admin/'))).toEqual(
+			adminRouteFiles,
+		);
 	});
 
 	it('has the Screen lookup by slug on the capability surface, where #397 put it', () => {
@@ -456,15 +309,17 @@ describe('the public surface, counted against the routes on disk', () => {
 		// credential" — and the route itself requires the capability the output holds
 		// in its URL fragment, or the session an operator's preview embed has instead.
 		expect(apiPathRequiresSession('/api/screen-output/events/1/screens/slug/main')).toBe(false);
-		expect(publicRouteFiles).toContain('server/api/screen-output/events/[id]/screens/slug/[slug].get.ts');
+		expect(publicRouteFiles).toContain(
+			'server/api/screen-output/events/[id]/screens/slug/[slug].get.ts',
+		);
 
 		// And the old path is gone rather than still answering. A route left behind at
 		// a private path would be a lookup nothing could reach, which is the shape
 		// that reads as a broken output rather than as a moved route.
 		expect(apiPathRequiresSession('/api/events/1/screens/slug/main')).toBe(true);
-		expect(routeFiles.map(file => relative(REPOSITORY_ROOT, file)))
-			.not
-			.toContain('server/api/events/[id]/screens/slug/[slug].get.ts');
+		expect(routeFiles.map((file) => relative(REPOSITORY_ROOT, file))).not.toContain(
+			'server/api/events/[id]/screens/slug/[slug].get.ts',
+		);
 	});
 
 	it('names every exemption in one of the two lists, so the census above is total', () => {
@@ -473,8 +328,9 @@ describe('the public surface, counted against the routes on disk', () => {
 		// not describe.
 		for (const file of publicRouteFiles) {
 			const path = requestPathFor(fileURLToPath(new URL(`../../../../${file}`, import.meta.url)));
-			const named = SESSION_EXEMPT_API_PATHS.includes(path)
-				|| SESSION_EXEMPT_API_PREFIXES.some(prefix => path.startsWith(prefix));
+			const named =
+				SESSION_EXEMPT_API_PATHS.includes(path) ||
+				SESSION_EXEMPT_API_PREFIXES.some((prefix) => path.startsWith(prefix));
 			expect(named, `${file} is public for no listed reason`).toBe(true);
 		}
 	});
@@ -501,7 +357,10 @@ describe('the admin surface, which answers to its own credential', () => {
 	// here, no single case below carries that cost into its own timeout.
 	beforeAll(() => {
 		for (const file of adminRouteFiles)
-			reached.set(file, scanRouteRefusals(fileURLToPath(new URL(`../../../../${file}`, import.meta.url))).files);
+			reached.set(
+				file,
+				scanRouteRefusals(fileURLToPath(new URL(`../../../../${file}`, import.meta.url))).files,
+			);
 	});
 
 	it.each(adminRouteFiles)('%s reaches the Graphics Administrator guard', (file) => {

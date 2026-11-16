@@ -99,10 +99,9 @@ export const useEventStore = defineStore('event', () => {
 	 * editor preview's. A Screen Output or Program monitor joins none, because it
 	 * follows only its own Screen's channel.
 	 */
-	const roomEventId = computed(() => event.value?.id
-		?? (outputEventIsPreview.value
-			? outputEvent.value?.id ?? null
-			: null));
+	const roomEventId = computed(
+		() => event.value?.id ?? (outputEventIsPreview.value ? (outputEvent.value?.id ?? null) : null),
+	);
 
 	/**
 	 * The Event fields a surface renders with, whichever kind of surface it is:
@@ -112,7 +111,7 @@ export const useEventStore = defineStore('event', () => {
 	const displayEvent = computed<ScreenOutputEvent | null>(() => event.value ?? outputEvent.value);
 
 	function upsertTalentById(talentData: Talent) {
-		const index = event.value?.talents.findIndex(t => t.id === talentData.id) ?? -1;
+		const index = event.value?.talents.findIndex((t) => t.id === talentData.id) ?? -1;
 		if (index !== -1 && event.value) {
 			event.value.talents[index] = {
 				...talentData,
@@ -130,9 +129,8 @@ export const useEventStore = defineStore('event', () => {
 	}
 
 	function removeTalentById(talentId: number) {
-		if (!event.value)
-			return;
-		const index = event.value.talents.findIndex(t => t.id === talentId);
+		if (!event.value) return;
+		const index = event.value.talents.findIndex((t) => t.id === talentId);
 		if (index !== -1) {
 			event.value.talents.splice(index, 1);
 		}
@@ -143,7 +141,10 @@ export const useEventStore = defineStore('event', () => {
 	}
 
 	/** Hold the Event context a rendering read through its Screen; `preview` says it is an editor preview's. */
-	function setOutputEvent(data: ScreenOutputEvent, { preview = false }: { preview?: boolean } = {}) {
+	function setOutputEvent(
+		data: ScreenOutputEvent,
+		{ preview = false }: { preview?: boolean } = {},
+	) {
 		outputEventIsPreview.value = preview;
 		outputEvent.value = toScreenOutputEvent(data);
 	}
@@ -163,7 +164,7 @@ export const useEventStore = defineStore('event', () => {
 			});
 		}
 
-		const index = eventsList.value.findIndex(e => e.id === data.event.id);
+		const index = eventsList.value.findIndex((e) => e.id === data.event.id);
 		if (index !== -1) {
 			Object.assign(eventsList.value[index]!, data.event);
 		}
@@ -176,21 +177,17 @@ export const useEventStore = defineStore('event', () => {
 	 */
 	function applyRemoteThemeUpdated(data: MessageData<'theme:updated'>) {
 		const { theme } = data;
-		if (event.value?.id === data.eventId && event.value.themeId === theme.id)
-			holdEventTheme(theme);
+		if (event.value?.id === data.eventId && event.value.themeId === theme.id) holdEventTheme(theme);
 		const held = outputEvent.value;
-		if (!held || held.id !== data.eventId || theme.id !== held.themeId)
-			return;
-		if (held.theme?.id === theme.id && held.theme.revision >= theme.revision)
-			return;
+		if (!held || held.id !== data.eventId || theme.id !== held.themeId) return;
+		if (held.theme?.id === theme.id && held.theme.revision >= theme.revision) return;
 		outputEvent.value = { ...held, theme };
 	}
 
 	/** Hold the operator Event's Theme as read or announced, unless the same Theme is held at a newer revision. */
 	function holdEventTheme(theme: ScreenOutputTheme) {
 		const held = eventTheme.value;
-		if (held?.id === theme.id && held.revision >= theme.revision)
-			return;
+		if (held?.id === theme.id && held.revision >= theme.revision) return;
 		eventTheme.value = theme;
 	}
 
@@ -217,19 +214,14 @@ export const useEventStore = defineStore('event', () => {
 		const token = beginLoad();
 		try {
 			const eventData = await eventRepo.getById(id);
-			if (!eventData)
-				throw new Error('Event not found');
-			if (generation !== eventLoadGeneration)
-				return null;
+			if (!eventData) throw new Error('Event not found');
+			if (generation !== eventLoadGeneration) return null;
 			setEvent(eventData);
 			return eventData;
-		}
-		catch (caughtError) {
-			if (generation === eventLoadGeneration)
-				error.value = loadErrorMessage(caughtError);
+		} catch (caughtError) {
+			if (generation === eventLoadGeneration) error.value = loadErrorMessage(caughtError);
 			throw caughtError;
-		}
-		finally {
+		} finally {
 			endLoad(token);
 		}
 	}
@@ -239,17 +231,13 @@ export const useEventStore = defineStore('event', () => {
 		const token = beginLoad();
 		try {
 			const eventsData = await eventRepo.list({ game });
-			if (generation !== listLoadGeneration)
-				return null;
+			if (generation !== listLoadGeneration) return null;
 			eventsList.value = eventsData;
 			return eventsData;
-		}
-		catch (caughtError) {
-			if (generation === listLoadGeneration)
-				error.value = loadErrorMessage(caughtError);
+		} catch (caughtError) {
+			if (generation === listLoadGeneration) error.value = loadErrorMessage(caughtError);
 			throw caughtError;
-		}
-		finally {
+		} finally {
 			endLoad(token);
 		}
 	}
@@ -262,11 +250,10 @@ export const useEventStore = defineStore('event', () => {
 
 				// The Events list outlives every Event Lifetime, and a list load since may
 				// already hold the new Event.
-				if (!eventsList.value.some(e => e.id === createdEvent.id))
+				if (!eventsList.value.some((e) => e.id === createdEvent.id))
 					eventsList.value.push(createdEvent);
 
-				if (flight.current)
-					setEvent(createdEvent);
+				if (flight.current) setEvent(createdEvent);
 
 				return createdEvent;
 			},
@@ -289,7 +276,7 @@ export const useEventStore = defineStore('event', () => {
 		// What this save replaces, field by field, for a refused save to put back.
 		const held = toRaw(event.value);
 		const changed = Object.keys(updates) as Array<keyof UpdateEventInput & keyof Event>;
-		const replaced = changed.map(key => [key, held[key]] as const);
+		const replaced = changed.map((key) => [key, held[key]] as const);
 
 		// Type-safe optimistic update for event
 		const optimisticEvent: Event = {
@@ -304,7 +291,7 @@ export const useEventStore = defineStore('event', () => {
 
 				// The Events list outlives every Event Lifetime, so it learns the answer
 				// whichever Event is loaded now.
-				const listItemIndex = eventsList.value.findIndex(e => e.id === eventId);
+				const listItemIndex = eventsList.value.findIndex((e) => e.id === eventId);
 				if (listItemIndex !== -1) {
 					eventsList.value[listItemIndex] = {
 						...eventsList.value[listItemIndex],
@@ -312,10 +299,8 @@ export const useEventStore = defineStore('event', () => {
 					};
 				}
 
-				if (flight.stale)
-					return updatedEvent;
-				if (!event.value)
-					return null;
+				if (flight.stale) return updatedEvent;
+				if (!event.value) return null;
 
 				event.value = {
 					...event.value,
@@ -332,8 +317,7 @@ export const useEventStore = defineStore('event', () => {
 				// Only this save's fields, and only where its value still stands: another
 				// save's field or a remote update that landed meanwhile is not its to undo.
 				onError: () => {
-					if (!event.value)
-						return;
+					if (!event.value) return;
 					const current = toRaw(event.value);
 					const restored = replaced.filter(([key]) => current[key] === updates[key]);
 					if (restored.length) {
@@ -360,11 +344,10 @@ export const useEventStore = defineStore('event', () => {
 			async () => {
 				const createdTalent = await talentRepo.create(eventId, input);
 
-				if (flight.stale || !event.value)
-					return createdTalent;
+				if (flight.stale || !event.value) return createdTalent;
 
 				// Avoid duplicates if real-time already appended
-				const exists = event.value.talents.some(t => t.id === createdTalent.id);
+				const exists = event.value.talents.some((t) => t.id === createdTalent.id);
 				if (!exists) {
 					event.value.talents.push(createdTalent);
 				}
@@ -381,7 +364,7 @@ export const useEventStore = defineStore('event', () => {
 			return null;
 		}
 
-		const index = event.value.talents.findIndex(t => t.id === talentId);
+		const index = event.value.talents.findIndex((t) => t.id === talentId);
 		if (index === -1) {
 			error.value = 'Talent not found';
 			return null;
@@ -402,10 +385,9 @@ export const useEventStore = defineStore('event', () => {
 			async () => {
 				const updatedTalentData = await talentRepo.update(eventId, talentId, updates);
 
-				if (flight.stale || !event.value)
-					return updatedTalentData;
+				if (flight.stale || !event.value) return updatedTalentData;
 
-				const idx = event.value.talents.findIndex(t => t.id === talentId);
+				const idx = event.value.talents.findIndex((t) => t.id === talentId);
 				if (idx !== -1) {
 					event.value.talents[idx] = updatedTalentData;
 				}
@@ -416,9 +398,8 @@ export const useEventStore = defineStore('event', () => {
 				errorRef: error,
 				flight,
 				onError: () => {
-					if (!event.value)
-						return;
-					const idx = event.value.talents.findIndex(t => t.id === talentId);
+					if (!event.value) return;
+					const idx = event.value.talents.findIndex((t) => t.id === talentId);
 					if (idx !== -1) {
 						event.value.talents[idx] = original;
 					}
@@ -433,7 +414,7 @@ export const useEventStore = defineStore('event', () => {
 			return null;
 		}
 
-		const index = event.value.talents.findIndex(t => t.id === talentId);
+		const index = event.value.talents.findIndex((t) => t.id === talentId);
 		if (index === -1) {
 			error.value = 'Talent not found';
 			return null;
@@ -458,14 +439,12 @@ export const useEventStore = defineStore('event', () => {
 				errorRef: error,
 				flight,
 				onError: () => {
-					if (!event.value)
-						return;
-					const idx = event.value.talents.findIndex(t => t.id === talentId);
+					if (!event.value) return;
+					const idx = event.value.talents.findIndex((t) => t.id === talentId);
 					if (idx === -1) {
 						// If not found, insert at original position or at end
-						const insertIdx = index < event.value.talents.length
-							? index
-							: event.value.talents.length;
+						const insertIdx =
+							index < event.value.talents.length ? index : event.value.talents.length;
 						event.value.talents.splice(insertIdx, 0, removed);
 					}
 				},
@@ -503,7 +482,7 @@ export const useEventStore = defineStore('event', () => {
 					$reset();
 				}
 
-				eventsList.value = eventsList.value.filter(e => e.id !== id);
+				eventsList.value = eventsList.value.filter((e) => e.id !== id);
 
 				return result;
 			},

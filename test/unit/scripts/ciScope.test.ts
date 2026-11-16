@@ -12,11 +12,7 @@ const EVERYTHING = { code: true, bundle: true, docs: false };
 
 describe('what a change can affect', () => {
 	it.each([
-		[
-			'docs only',
-			['README.md', 'DECISIONS.md'],
-			{ code: false, bundle: false, docs: true },
-		],
+		['docs only', ['README.md', 'DECISIONS.md'], { code: false, bundle: false, docs: true }],
 		[
 			'editor settings and dependabot',
 			['.vscode/settings.json', '.github/dependabot.yml'],
@@ -30,7 +26,11 @@ describe('what a change can affect', () => {
 		// Each is held by wiring tests, which run only if CI does.
 		[
 			'another workflow',
-			['.github/workflows/deploy.yml', '.github/workflows/pr-title.yml', '.github/workflows/release-please.yml'],
+			[
+				'.github/workflows/deploy.yml',
+				'.github/workflows/pr-title.yml',
+				'.github/workflows/release-please.yml',
+			],
 			{ code: true, bundle: false, docs: false },
 		],
 		// The code gates lint every document and run the documentation test themselves.
@@ -39,26 +39,10 @@ describe('what a change can affect', () => {
 			['test/unit/scripts/ciScope.test.ts', 'README.md'],
 			{ code: true, bundle: false, docs: false },
 		],
-		[
-			'server code',
-			['server/api/time.get.ts'],
-			EVERYTHING,
-		],
-		[
-			'a script',
-			['scripts/ci-scope.mjs'],
-			EVERYTHING,
-		],
-		[
-			'CI itself',
-			['.github/workflows/ci.yml'],
-			EVERYTHING,
-		],
-		[
-			'the shared setup action',
-			['.github/actions/setup/action.yml'],
-			EVERYTHING,
-		],
+		['server code', ['server/api/time.get.ts'], EVERYTHING],
+		['a script', ['scripts/ci-scope.mjs'], EVERYTHING],
+		['CI itself', ['.github/workflows/ci.yml'], EVERYTHING],
+		['the shared setup action', ['.github/actions/setup/action.yml'], EVERYTHING],
 		[
 			'the version bump of a Release PR',
 			['CHANGELOG.md', 'package.json', '.release-please-manifest.json'],
@@ -74,13 +58,15 @@ describe('what a change can affect', () => {
 });
 
 describe('which revisions the change is measured between', () => {
-	it('a PR: its test merge commit against that commit\'s first parent, the base', () => {
-		expect(diffRange('pull_request', {
-			pull_request: { draft: false },
-		})).toEqual({ base: 'HEAD^1', head: 'HEAD' });
+	it("a PR: its test merge commit against that commit's first parent, the base", () => {
+		expect(
+			diffRange('pull_request', {
+				pull_request: { draft: false },
+			}),
+		).toEqual({ base: 'HEAD^1', head: 'HEAD' });
 	});
 
-	it('a merge group: the queue\'s base against the combined tree it would land, never HEAD^1', () => {
+	it("a merge group: the queue's base against the combined tree it would land, never HEAD^1", () => {
 		// A group of several squashed PRs has one commit per PR above its base, so
 		// HEAD^1 would measure only the last of them.
 		const event = {
@@ -137,7 +123,7 @@ describe('which revisions the change is measured between', () => {
  * like CI's (`fetch-depth: 2` of the event's revision), copied for each case
  * because the command fetches into it. Nothing remote.
  */
-describe('the scope job\'s command line', () => {
+describe("the scope job's command line", () => {
 	/** The two squashed PRs each merge group queues above main, by the file each changes. */
 	const QUEUED = {
 		codeThenDocs: ['server/api/time.get.ts', 'docs/second.md'],
@@ -162,9 +148,7 @@ describe('the scope job\'s command line', () => {
 			'data <<END',
 			message,
 			'END',
-			...(from
-				? [`from refs/heads/${from}`]
-				: []),
+			...(from ? [`from refs/heads/${from}`] : []),
 			`M 100644 inline ${file}`,
 			'data <<END',
 			message,
@@ -199,7 +183,13 @@ describe('the scope job\'s command line', () => {
 				]),
 			].join('\n'),
 		});
-		const [base, codeThenDocs, docsOnly] = git(origin, 'rev-parse', 'main', 'queue/codeThenDocs', 'queue/docsOnly').split('\n') as [string, string, string];
+		const [base, codeThenDocs, docsOnly] = git(
+			origin,
+			'rev-parse',
+			'main',
+			'queue/codeThenDocs',
+			'queue/docsOnly',
+		).split('\n') as [string, string, string];
 		groups = {
 			codeThenDocs: {
 				base,
@@ -229,14 +219,17 @@ describe('the scope job\'s command line', () => {
 	/** No GitHub to read unless a case supplies one: CI's own test jobs carry GITHUB_REPOSITORY. */
 	const offline = { GH_TOKEN: '', GITHUB_REPOSITORY: '', GITHUB_REPOSITORY_ID: '' };
 
-	function scope(cwd: string, eventName: string, event: unknown, env: Record<string, string> = offline) {
+	function scope(
+		cwd: string,
+		eventName: string,
+		event: unknown,
+		env: Record<string, string> = offline,
+	) {
 		const eventPath = join(dirname(cwd), 'event.json');
 		const output = join(dirname(cwd), 'output');
 		writeFileSync(eventPath, JSON.stringify(event));
 		writeFileSync(output, '');
-		const result = spawnSync(process.execPath, [
-			join(repositoryRoot, 'scripts/ci-scope.mjs'),
-		], {
+		const result = spawnSync(process.execPath, [join(repositoryRoot, 'scripts/ci-scope.mjs')], {
 			cwd,
 			encoding: 'utf8',
 			env: {
@@ -256,20 +249,27 @@ describe('the scope job\'s command line', () => {
 		};
 	}
 
-	it('a merge group that cannot read GitHub for a PR run\'s record is scoped as usual, never skipped', () => {
+	it("a merge group that cannot read GitHub for a PR run's record is scoped as usual, never skipped", () => {
 		const { checkout, base, head } = mergeGroup('codeThenDocs');
 		const bin = join(dirname(checkout), 'bin');
 		mkdirSync(bin);
-		writeFileSync(join(bin, 'gh'), '#!/bin/sh\necho "HTTP 502: Bad Gateway" >&2\nexit 1\n', { mode: 0o755 });
-
-		const { output, log } = scope(checkout, 'merge_group', {
-			merge_group: { base_sha: base, head_sha: head },
-		}, {
-			GH_TOKEN: 'test-token',
-			GITHUB_REPOSITORY: 'KeeprDigital/stream-keepr',
-			GITHUB_REPOSITORY_ID: '1',
-			PATH: `${bin}:${process.env.PATH}`,
+		writeFileSync(join(bin, 'gh'), '#!/bin/sh\necho "HTTP 502: Bad Gateway" >&2\nexit 1\n', {
+			mode: 0o755,
 		});
+
+		const { output, log } = scope(
+			checkout,
+			'merge_group',
+			{
+				merge_group: { base_sha: base, head_sha: head },
+			},
+			{
+				GH_TOKEN: 'test-token',
+				GITHUB_REPOSITORY: 'KeeprDigital/stream-keepr',
+				GITHUB_REPOSITORY_ID: '1',
+				PATH: `${bin}:${process.env.PATH}`,
+			},
+		);
 
 		expect(output).toBe('code=true\nbundle=true\ndocs=false\n');
 		expect(log).toMatch(/Could not list the records.*HTTP 502/);
@@ -279,27 +279,33 @@ describe('the scope job\'s command line', () => {
 	it('a merge group whose last PR is docs-only still runs the gates its first PR needs', () => {
 		const { checkout, base, head } = mergeGroup('codeThenDocs');
 
-		expect(scope(checkout, 'merge_group', {
-			merge_group: { base_sha: base, head_sha: head },
-		}).output).toBe('code=true\nbundle=true\ndocs=false\n');
+		expect(
+			scope(checkout, 'merge_group', {
+				merge_group: { base_sha: base, head_sha: head },
+			}).output,
+		).toBe('code=true\nbundle=true\ndocs=false\n');
 	});
 
 	it('a merge group of docs-only PRs skips the code gates and checks the docs', () => {
 		const { checkout, base, head } = mergeGroup('docsOnly');
 
-		expect(scope(checkout, 'merge_group', {
-			merge_group: { base_sha: base, head_sha: head },
-		}).output).toBe('code=false\nbundle=false\ndocs=true\n');
+		expect(
+			scope(checkout, 'merge_group', {
+				merge_group: { base_sha: base, head_sha: head },
+			}).output,
+		).toBe('code=false\nbundle=false\ndocs=true\n');
 	});
 
 	it('a base it cannot fetch runs everything', () => {
 		const { checkout, head } = mergeGroup('docsOnly');
 
-		expect(scope(checkout, 'merge_group', {
-			merge_group: {
-				base_sha: 'f'.repeat(40),
-				head_sha: head,
-			},
-		}).output).toBe('code=true\nbundle=true\ndocs=false\n');
+		expect(
+			scope(checkout, 'merge_group', {
+				merge_group: {
+					base_sha: 'f'.repeat(40),
+					head_sha: head,
+				},
+			}).output,
+		).toBe('code=true\nbundle=true\ndocs=false\n');
 	});
 });

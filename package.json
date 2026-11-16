@@ -1,15 +1,8 @@
 {
 	"name": "stream-keepr",
-	"type": "module",
 	"version": "1.5.0",
 	"private": true,
-	"packageManager": "pnpm@12.15.0",
-	"devEngines": {
-		"runtime": {
-			"name": "node",
-			"version": "26.12.1"
-		}
-	},
+	"type": "module",
 	"scripts": {
 		"verify": "node scripts/verify.mjs",
 		"verify:quick": "node scripts/verify.mjs --quick",
@@ -38,8 +31,9 @@
 		"deploy:validator": "node scripts/deploy-promotion.mjs deploy-validator",
 		"validator:dry-run": "wrangler deploy --dry-run --containers-rollout=none --config workers/silent-video-validator/wrangler.jsonc",
 		"postinstall": "nuxt prepare",
-		"lint": "node scripts/slots.mjs lint -- oxlint",
-		"lint:fix": "pnpm lint --fix",
+		"lint": "oxfmt --check && node scripts/slots.mjs lint -- oxlint",
+		"lint:fix": "node scripts/slots.mjs lint -- oxlint --fix && oxfmt",
+		"format": "oxfmt",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "wrangler d1 migrations apply DB --local --config wrangler.dev.jsonc < /dev/null",
 		"db:migrate:local:built": "wrangler d1 migrations apply DB --local --config .output/server/wrangler.json --persist-to .wrangler/state/built-worker",
@@ -118,5 +112,12 @@
 		"vue-tsc": "catalog:",
 		"wrangler": "catalog:",
 		"yaml": "catalog:"
-	}
+	},
+	"devEngines": {
+		"runtime": {
+			"name": "node",
+			"version": "26.12.1"
+		}
+	},
+	"packageManager": "pnpm@12.15.0"
 }

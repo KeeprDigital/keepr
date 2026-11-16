@@ -1,4 +1,7 @@
-import type { GraphicAssetReference, GraphicAssetReferenceStatus } from '~~/shared/types/graphicsAsset';
+import type {
+	GraphicAssetReference,
+	GraphicAssetReferenceStatus,
+} from '~~/shared/types/graphicsAsset';
 import type { FeatureMatchOverlayModeConfig } from '~~/shared/types/screenConfig';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
@@ -25,8 +28,11 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // Graphics Asset Library port, whose one question is its contract. An Event
 // Reference from another Event is `screenModeEventReferences.sqlite.test.ts`'s.
 
-vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; statusMessage?: string }) =>
-	Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode?: number; message?: string; statusMessage?: string }) =>
+		Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -57,8 +63,10 @@ vi.doMock('~~/server/services/card', () => ({
 }));
 
 const { screenWriteModule } = await import('~~/server/modules/screen-write');
-const { broadcastGraphicsLiveSessionModule } = await import('~~/server/modules/broadcast-graphics-live-session');
-const { BROADCAST_GRAPHICS_LIVE_SESSION_AGGREGATE_KIND } = await import('~~/server/services/broadcastGraphicsState');
+const { broadcastGraphicsLiveSessionModule } =
+	await import('~~/server/modules/broadcast-graphics-live-session');
+const { BROADCAST_GRAPHICS_LIVE_SESSION_AGGREGATE_KIND } =
+	await import('~~/server/services/broadcastGraphicsState');
 
 /** The capability a create persists; preparing one is what would need the signing key. */
 const prepared = {
@@ -82,7 +90,8 @@ function provideUnusedGraphicsAssets(): never {
 	throw new Error('A write that changes no Graphic Asset Reference must not build the library');
 }
 
-const [event] = await db.insert(schema.events)
+const [event] = await db
+	.insert(schema.events)
 	.values({ name: 'Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 	.returning({ id: schema.events.id });
 const eventId = event!.id;
@@ -90,7 +99,8 @@ const eventId = event!.id;
 let slugs = 0;
 async function stageScreen(values: Partial<typeof schema.screens.$inferInsert> = {}) {
 	slugs += 1;
-	const [screen] = await db.insert(schema.screens)
+	const [screen] = await db
+		.insert(schema.screens)
 		.values({
 			eventId,
 			name: `Screen ${slugs}`,
@@ -119,20 +129,31 @@ function announced() {
 const PLATE = testGraphicAssetReference('asset-plate', 'plate-revision-1');
 const PLATE_REPICKED = testGraphicAssetReference('asset-plate', 'plate-revision-2');
 const FONT = testGraphicAssetReference('asset-font', 'font-revision-1');
-const SELECTABLE_IMAGE: GraphicAssetReferenceStatus = { outcome: 'available', lifecycleState: 'active', kind: 'image' };
-const SELECTABLE_FONT: GraphicAssetReferenceStatus = { outcome: 'available', lifecycleState: 'active', kind: 'font' };
+const SELECTABLE_IMAGE: GraphicAssetReferenceStatus = {
+	outcome: 'available',
+	lifecycleState: 'active',
+	kind: 'image',
+};
+const SELECTABLE_FONT: GraphicAssetReferenceStatus = {
+	outcome: 'available',
+	lifecycleState: 'active',
+	kind: 'font',
+};
 
 /** A Feature Match Layout pinning `plate` behind its frame and, when given, `font` on its first Text Graphic Item. */
-function layoutPinning(plate: GraphicAssetReference, font?: GraphicAssetReference): FeatureMatchOverlayModeConfig['layout'] {
+function layoutPinning(
+	plate: GraphicAssetReference,
+	font?: GraphicAssetReference,
+): FeatureMatchOverlayModeConfig['layout'] {
 	const { layout } = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 	layout.frame.backgroundImage = { kind: 'asset', ...plate };
 	if (font) {
 		const [topBar] = layout.composition.items;
-		const nameRecord = topBar?.type === 'group'
-			? topBar.children[0]
-			: undefined;
+		const nameRecord = topBar?.type === 'group' ? topBar.children[0] : undefined;
 		if (nameRecord?.type !== 'text')
-			throw new Error('Fixture expects the default layout to lead with a group led by a Text Graphic Item');
+			throw new Error(
+				'Fixture expects the default layout to lead with a group led by a Text Graphic Item',
+			);
 		nameRecord.typography.font = { kind: 'asset', reference: font };
 	}
 	return layout;
@@ -152,7 +173,11 @@ function libraryAnswering(answers: GraphicAssetReferenceStatus[]) {
 	};
 }
 
-function writeLayout(screenId: number, layout: FeatureMatchOverlayModeConfig['layout'], graphicsAssets: () => unknown) {
+function writeLayout(
+	screenId: number,
+	layout: FeatureMatchOverlayModeConfig['layout'],
+	graphicsAssets: () => unknown,
+) {
 	return screenWriteModule().updateModeConfig({
 		authoringSessionId: undefined,
 		eventId,
@@ -173,21 +198,22 @@ async function stageScreenPinningPlate() {
 
 /** The revisions the Screen's Graphic Asset Reference index publishes for it. */
 async function indexedRevisions(screenId: number) {
-	const rows = await harness.database.prepare(`
+	const rows = await harness.database
+		.prepare(`
 		SELECT revision_id AS revisionId FROM graphic_asset_references
 		WHERE owner_kind = 'screen' AND owner_id = ?
 		ORDER BY revision_id
-	`).bind(String(screenId)).all<{ revisionId: string }>();
-	return rows.results.map(row => row.revisionId);
+	`)
+		.bind(String(screenId))
+		.all<{ revisionId: string }>();
+	return rows.results.map((row) => row.revisionId);
 }
 
 /** A Broadcast Graphics Screen with one Broadcast Graphic taken on air: a playout epoch holding a Command Receipt. */
 async function stageScreenOnAir() {
 	const seeded = await seedBroadcastGraphicsScreen(db, {
 		stack: {
-			graphics: [
-				{ id: 'slate', name: 'Slate', items: [] },
-			],
+			graphics: [{ id: 'slate', name: 'Slate', items: [] }],
 		},
 	});
 	const sessions = broadcastGraphicsLiveSessionModule();
@@ -218,16 +244,22 @@ async function activeEpoch(screenId: number) {
 
 /** Each kind of message sent, to the Event's channel or a Screen's own. */
 function announcedTypes() {
-	return [
-		...new Set(ably.published.map(message => message.type)),
-	];
+	return [...new Set(ably.published.map((message) => message.type))];
 }
 
 async function commandReceipts(sessionId: number) {
-	return await db.select().from(schema.liveStateCommandReceipts).where(and(
-		eq(schema.liveStateCommandReceipts.aggregateKind, BROADCAST_GRAPHICS_LIVE_SESSION_AGGREGATE_KIND),
-		eq(schema.liveStateCommandReceipts.aggregateId, sessionId),
-	));
+	return await db
+		.select()
+		.from(schema.liveStateCommandReceipts)
+		.where(
+			and(
+				eq(
+					schema.liveStateCommandReceipts.aggregateKind,
+					BROADCAST_GRAPHICS_LIVE_SESSION_AGGREGATE_KIND,
+				),
+				eq(schema.liveStateCommandReceipts.aggregateId, sessionId),
+			),
+		);
 }
 
 beforeAll(async () => {
@@ -282,7 +314,7 @@ beforeEach(() => {
 afterAll(async () => await harness.close());
 
 describe('creating a Screen', () => {
-	it('stores it with the prepared capability, answers it and announces it under the writer\'s origin', async () => {
+	it("stores it with the prepared capability, answers it and announces it under the writer's origin", async () => {
 		const answered = await screenWriteModule().createScreen({
 			eventId,
 			input: { name: 'Main', slug: 'main', currentMode: 'standings' } as never,
@@ -291,25 +323,30 @@ describe('creating a Screen', () => {
 		});
 
 		expect(answered).toMatchObject({ name: 'Main', slug: 'main', currentMode: 'standings' });
-		expect(await stored(answered.id)).toMatchObject({ eventId, slug: 'main', ...prepared.persisted });
+		expect(await stored(answered.id)).toMatchObject({
+			eventId,
+			slug: 'main',
+			...prepared.persisted,
+		});
 		expect(announced()).toEqual([
-			[
-				'screen:created',
-				{ screenId: answered.id, originConnectionId: 'origin-1' },
-			],
+			['screen:created', { screenId: answered.id, originConnectionId: 'origin-1' }],
 		]);
 	});
 
 	it('refuses a slug the Event already uses, before preparing a capability', async () => {
 		const taken = await stageScreen();
 
-		await expect(screenWriteModule().createScreen({
-			eventId,
-			input: { name: 'Second', slug: taken.slug, currentMode: 'standings' } as never,
-			screenOutputAssetCapabilities: provideCapabilities as never,
-		})).rejects.toMatchObject({ statusCode: 400, message: 'A screen with this slug already exists' });
+		await expect(
+			screenWriteModule().createScreen({
+				eventId,
+				input: { name: 'Second', slug: taken.slug, currentMode: 'standings' } as never,
+				screenOutputAssetCapabilities: provideCapabilities as never,
+			}),
+		).rejects.toMatchObject({ statusCode: 400, message: 'A screen with this slug already exists' });
 
-		expect(await db.select().from(schema.screens).where(eq(schema.screens.slug, taken.slug))).toHaveLength(1);
+		expect(
+			await db.select().from(schema.screens).where(eq(schema.screens.slug, taken.slug)),
+		).toHaveLength(1);
 		// A slug refusal must not surface as a missing signing key instead.
 		expect(capabilitiesPrepared).toBe(0);
 		expect(announced()).toEqual([]);
@@ -319,7 +356,8 @@ describe('creating a Screen', () => {
 // A Commander Event has no Rounds or standings, so it is not offered Standings (ADR-0087).
 describe('a write putting a Screen into a Screen Mode its Event is not offered', () => {
 	async function stageCommanderEvent() {
-		const [commander] = await db.insert(schema.events)
+		const [commander] = await db
+			.insert(schema.events)
 			.values({
 				name: 'Commander',
 				game: 'mtg',
@@ -337,13 +375,17 @@ describe('a write putting a Screen into a Screen Mode its Event is not offered',
 	it('refuses a create, storing nothing', async () => {
 		const commanderId = await stageCommanderEvent();
 
-		await expect(screenWriteModule().createScreen({
-			eventId: commanderId,
-			input: { name: 'Standings', slug: 'standings', currentMode: 'standings' } as never,
-			screenOutputAssetCapabilities: provideCapabilities as never,
-		})).rejects.toMatchObject(refusal);
+		await expect(
+			screenWriteModule().createScreen({
+				eventId: commanderId,
+				input: { name: 'Standings', slug: 'standings', currentMode: 'standings' } as never,
+				screenOutputAssetCapabilities: provideCapabilities as never,
+			}),
+		).rejects.toMatchObject(refusal);
 
-		expect(await db.select().from(schema.screens).where(eq(schema.screens.eventId, commanderId))).toEqual([]);
+		expect(
+			await db.select().from(schema.screens).where(eq(schema.screens.eventId, commanderId)),
+		).toEqual([]);
 		expect(capabilitiesPrepared).toBe(0);
 	});
 
@@ -351,14 +393,19 @@ describe('a write putting a Screen into a Screen Mode its Event is not offered',
 		const commanderId = await stageCommanderEvent();
 		const screen = await stageScreen({ eventId: commanderId, currentMode: 'background' });
 
-		await expect(screenWriteModule().updateScreen({
-			authoringSessionId: undefined,
-			eventId: commanderId,
-			screenId: screen.id,
-			input: { currentMode: 'standings', stateVersion: screen.stateVersion } as never,
-		})).rejects.toMatchObject(refusal);
+		await expect(
+			screenWriteModule().updateScreen({
+				authoringSessionId: undefined,
+				eventId: commanderId,
+				screenId: screen.id,
+				input: { currentMode: 'standings', stateVersion: screen.stateVersion } as never,
+			}),
+		).rejects.toMatchObject(refusal);
 
-		expect(await stored(screen.id)).toMatchObject({ currentMode: 'background', stateVersion: screen.stateVersion });
+		expect(await stored(screen.id)).toMatchObject({
+			currentMode: 'background',
+			stateVersion: screen.stateVersion,
+		});
 	});
 
 	// A Screen stored in such a mode before the rule keeps saving: only a change of mode is judged.
@@ -370,7 +417,11 @@ describe('a write putting a Screen into a Screen Mode its Event is not offered',
 			authoringSessionId: undefined,
 			eventId: commanderId,
 			screenId: screen.id,
-			input: { name: 'Renamed', currentMode: 'standings', stateVersion: screen.stateVersion } as never,
+			input: {
+				name: 'Renamed',
+				currentMode: 'standings',
+				stateVersion: screen.stateVersion,
+			} as never,
 		});
 
 		expect(await stored(screen.id)).toMatchObject({ name: 'Renamed', currentMode: 'standings' });
@@ -378,11 +429,10 @@ describe('a write putting a Screen into a Screen Mode its Event is not offered',
 });
 
 // A Two-Player Event holds no third Seat or Commander term, whichever write would bring one (ADR-0087).
-describe('a write giving a Two-Player Event\'s Screen a four-Seat Feature Match Layout', () => {
-	const fourSeat = BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES
-		.find(template => template.id === 'commander-table')!
-		.config
-		.layout;
+describe("a write giving a Two-Player Event's Screen a four-Seat Feature Match Layout", () => {
+	const fourSeat = BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find(
+		(template) => template.id === 'commander-table',
+	)!.config.layout;
 	const withFourSeat = {
 		'feature-match-overlay': { layout: fourSeat },
 	};
@@ -391,7 +441,8 @@ describe('a write giving a Two-Player Event\'s Screen a four-Seat Feature Match 
 		data: { code: 'FOUR_SEAT_LAYOUT_COMMANDER_ONLY' },
 	};
 	async function stageCommanderEvent() {
-		const [commander] = await db.insert(schema.events)
+		const [commander] = await db
+			.insert(schema.events)
 			.values({
 				name: 'Commander',
 				game: 'mtg',
@@ -403,46 +454,63 @@ describe('a write giving a Two-Player Event\'s Screen a four-Seat Feature Match 
 	}
 
 	it('refuses a create, storing nothing', async () => {
-		await expect(screenWriteModule().createScreen({
-			eventId,
-			input: {
-				name: 'Table',
-				slug: 'four-seat-create',
-				currentMode: 'feature-match-overlay',
-				modeConfigs: withFourSeat,
-			} as never,
-			screenOutputAssetCapabilities: provideCapabilities as never,
-		})).rejects.toMatchObject(refusal);
+		await expect(
+			screenWriteModule().createScreen({
+				eventId,
+				input: {
+					name: 'Table',
+					slug: 'four-seat-create',
+					currentMode: 'feature-match-overlay',
+					modeConfigs: withFourSeat,
+				} as never,
+				screenOutputAssetCapabilities: provideCapabilities as never,
+			}),
+		).rejects.toMatchObject(refusal);
 
-		expect(await db.select().from(schema.screens).where(eq(schema.screens.slug, 'four-seat-create'))).toEqual([]);
+		expect(
+			await db.select().from(schema.screens).where(eq(schema.screens.slug, 'four-seat-create')),
+		).toEqual([]);
 		expect(capabilitiesPrepared).toBe(0);
 	});
 
 	it('refuses an update, leaving the Screen as it was', async () => {
 		const screen = await stageScreen({ currentMode: 'feature-match-overlay' });
 
-		await expect(screenWriteModule().updateScreen({
-			authoringSessionId: undefined,
-			eventId,
-			screenId: screen.id,
-			input: { modeConfigs: withFourSeat, stateVersion: screen.stateVersion } as never,
-		})).rejects.toMatchObject(refusal);
+		await expect(
+			screenWriteModule().updateScreen({
+				authoringSessionId: undefined,
+				eventId,
+				screenId: screen.id,
+				input: { modeConfigs: withFourSeat, stateVersion: screen.stateVersion } as never,
+			}),
+		).rejects.toMatchObject(refusal);
 
-		expect(await stored(screen.id)).toMatchObject({ modeConfigs: screen.modeConfigs, stateVersion: screen.stateVersion });
+		expect(await stored(screen.id)).toMatchObject({
+			modeConfigs: screen.modeConfigs,
+			stateVersion: screen.stateVersion,
+		});
 	});
 
 	it('refuses a mode configuration write, leaving the Screen as it was', async () => {
 		const screen = await stageScreen({ currentMode: 'feature-match-overlay' });
 
-		await expect(writeLayout(screen.id, fourSeat, provideUnusedGraphicsAssets)).rejects.toMatchObject(refusal);
+		await expect(
+			writeLayout(screen.id, fourSeat, provideUnusedGraphicsAssets),
+		).rejects.toMatchObject(refusal);
 
-		expect(await stored(screen.id)).toMatchObject({ modeConfigs: screen.modeConfigs, stateVersion: screen.stateVersion });
+		expect(await stored(screen.id)).toMatchObject({
+			modeConfigs: screen.modeConfigs,
+			stateVersion: screen.stateVersion,
+		});
 		expect(announced()).toEqual([]);
 	});
 
-	it('stores one written to a Commander Event\'s Screen', async () => {
+	it("stores one written to a Commander Event's Screen", async () => {
 		const commanderId = await stageCommanderEvent();
-		const screen = await stageScreen({ eventId: commanderId, currentMode: 'feature-match-overlay' });
+		const screen = await stageScreen({
+			eventId: commanderId,
+			currentMode: 'feature-match-overlay',
+		});
 
 		await screenWriteModule().updateModeConfig({
 			authoringSessionId: undefined,
@@ -453,18 +521,27 @@ describe('a write giving a Two-Player Event\'s Screen a four-Seat Feature Match 
 			graphicsAssets: provideUnusedGraphicsAssets,
 		});
 
-		expect((await stored(screen.id))?.modeConfigs?.['feature-match-overlay']?.layout).toEqual(fourSeat);
+		expect((await stored(screen.id))?.modeConfigs?.['feature-match-overlay']?.layout).toEqual(
+			fourSeat,
+		);
 	});
 
 	// A Screen stored with one before the rule keeps saving: only a layout the write changes is judged.
 	it('stores an update that carries a four-Seat layout the Screen already holds back unchanged', async () => {
-		const screen = await stageScreen({ currentMode: 'feature-match-overlay', modeConfigs: withFourSeat });
+		const screen = await stageScreen({
+			currentMode: 'feature-match-overlay',
+			modeConfigs: withFourSeat,
+		});
 
 		await screenWriteModule().updateScreen({
 			authoringSessionId: undefined,
 			eventId,
 			screenId: screen.id,
-			input: { name: 'Renamed', modeConfigs: withFourSeat, stateVersion: screen.stateVersion } as never,
+			input: {
+				name: 'Renamed',
+				modeConfigs: withFourSeat,
+				stateVersion: screen.stateVersion,
+			} as never,
 		});
 
 		expect(await stored(screen.id)).toMatchObject({ name: 'Renamed', modeConfigs: withFourSeat });
@@ -472,7 +549,7 @@ describe('a write giving a Two-Player Event\'s Screen a four-Seat Feature Match 
 });
 
 describe('updating a Screen', () => {
-	it('stores the change on the version it read, and announces the Screen under the writer\'s origin', async () => {
+	it("stores the change on the version it read, and announces the Screen under the writer's origin", async () => {
 		const screen = await stageScreen();
 
 		const answered = await screenWriteModule().updateScreen({
@@ -483,13 +560,17 @@ describe('updating a Screen', () => {
 			originConnectionId: 'origin-1',
 		});
 
-		expect(answered).toMatchObject({ id: screen.id, name: 'Renamed', stateVersion: screen.stateVersion + 1 });
-		expect(await stored(screen.id)).toMatchObject({ name: 'Renamed', stateVersion: screen.stateVersion + 1 });
+		expect(answered).toMatchObject({
+			id: screen.id,
+			name: 'Renamed',
+			stateVersion: screen.stateVersion + 1,
+		});
+		expect(await stored(screen.id)).toMatchObject({
+			name: 'Renamed',
+			stateVersion: screen.stateVersion + 1,
+		});
 		expect(announced()).toEqual([
-			[
-				'screen:updated',
-				{ screenId: screen.id, originConnectionId: 'origin-1' },
-			],
+			['screen:updated', { screenId: screen.id, originConnectionId: 'origin-1' }],
 		]);
 	});
 
@@ -497,19 +578,17 @@ describe('updating a Screen', () => {
 	// holds PATCH fragments: most lack a field the mode's complete configuration requires.
 	it('renames a Screen whose stored mode configurations are PATCH fragments, storing them as they were', async () => {
 		const fragments = {
-			'background': {},
-			'card': {},
-			'deck': { showDeckName: false },
-			'standings': { viewMode: 'all' },
+			background: {},
+			card: {},
+			deck: { showDeckName: false },
+			standings: { viewMode: 'all' },
 			'top-cut': { showHeader: false },
 			'feature-match': { showClock: false },
 			'feature-match-overlay': {},
 			'broadcast-graphics': {
-				channels: [
-					{ id: 'lower-thirds', name: 'Lower Thirds' },
-				],
+				channels: [{ id: 'lower-thirds', name: 'Lower Thirds' }],
 			},
-			'metagame': { topN: 16 },
+			metagame: { topN: 16 },
 			'top-cards': { limit: 12 },
 			'player-history': { rowsPerPage: 5 },
 		};
@@ -529,25 +608,33 @@ describe('updating a Screen', () => {
 		});
 
 		expect(answered.modeConfigs).toEqual(fragments);
-		expect(await stored(screen.id)).toMatchObject({ name: 'Renamed', stateVersion: screen.stateVersion + 1 });
+		expect(await stored(screen.id)).toMatchObject({
+			name: 'Renamed',
+			stateVersion: screen.stateVersion + 1,
+		});
 		expect((await stored(screen.id))?.modeConfigs).toEqual(fragments);
 	});
 
 	it('refuses a slug another Screen of the Event uses, storing and announcing nothing', async () => {
 		const [taken, screen] = [await stageScreen(), await stageScreen()];
 
-		await expect(screenWriteModule().updateScreen({
-			authoringSessionId: undefined,
-			eventId,
-			screenId: screen.id,
-			input: { slug: taken.slug, stateVersion: screen.stateVersion } as never,
-		})).rejects.toMatchObject({ statusCode: 400, message: 'A screen with this slug already exists' });
+		await expect(
+			screenWriteModule().updateScreen({
+				authoringSessionId: undefined,
+				eventId,
+				screenId: screen.id,
+				input: { slug: taken.slug, stateVersion: screen.stateVersion } as never,
+			}),
+		).rejects.toMatchObject({ statusCode: 400, message: 'A screen with this slug already exists' });
 
-		expect(await stored(screen.id)).toMatchObject({ slug: screen.slug, stateVersion: screen.stateVersion });
+		expect(await stored(screen.id)).toMatchObject({
+			slug: screen.slug,
+			stateVersion: screen.stateVersion,
+		});
 		expect(announced()).toEqual([]);
 	});
 
-	it('merges a mode\'s configuration into what is stored, and announces the Screen', async () => {
+	it("merges a mode's configuration into what is stored, and announces the Screen", async () => {
 		const screen = await stageScreen({
 			modeConfigs: {
 				standings: { viewMode: 'range' },
@@ -570,59 +657,62 @@ describe('updating a Screen', () => {
 			standings: { viewMode: 'range', showHeader: false },
 		});
 		expect(announced()).toEqual([
-			[
-				'screen:updated',
-				{ screenId: screen.id, originConnectionId: 'origin-1' },
-			],
+			['screen:updated', { screenId: screen.id, originConnectionId: 'origin-1' }],
 		]);
 	});
 
 	it.each([
 		[
 			'an update',
-			() => screenWriteModule().updateScreen({
-				authoringSessionId: undefined,
-				eventId,
-				screenId: 999_999,
-				input: { name: 'Nobody', stateVersion: 0 } as never,
-			}),
+			() =>
+				screenWriteModule().updateScreen({
+					authoringSessionId: undefined,
+					eventId,
+					screenId: 999_999,
+					input: { name: 'Nobody', stateVersion: 0 } as never,
+				}),
 		],
 		[
 			'a mode configuration write',
-			() => screenWriteModule().updateModeConfig({
-				authoringSessionId: undefined,
-				eventId,
-				screenId: 999_999,
-				mode: 'standings',
-				config: { showHeader: false },
-				graphicsAssets: provideUnusedGraphicsAssets as never,
-			}),
+			() =>
+				screenWriteModule().updateModeConfig({
+					authoringSessionId: undefined,
+					eventId,
+					screenId: 999_999,
+					mode: 'standings',
+					config: { showHeader: false },
+					graphicsAssets: provideUnusedGraphicsAssets as never,
+				}),
 		],
-		[
-			'a delete',
-			() => screenWriteModule().deleteScreen({ eventId, screenId: 999_999 }),
-		],
-	])('answers 404 to %s of a Screen that does not exist, announcing nothing', async (_write, write) => {
-		await expect(write()).rejects.toMatchObject({ statusCode: 404, message: 'Screen not found' });
+		['a delete', () => screenWriteModule().deleteScreen({ eventId, screenId: 999_999 })],
+	])(
+		'answers 404 to %s of a Screen that does not exist, announcing nothing',
+		async (_write, write) => {
+			await expect(write()).rejects.toMatchObject({ statusCode: 404, message: 'Screen not found' });
 
-		expect(cleanedCards).toEqual([]);
-		expect(announced()).toEqual([]);
-	});
+			expect(cleanedCards).toEqual([]);
+			expect(announced()).toEqual([]);
+		},
+	);
 
 	it('answers 404 to an update whose Screen is deleted between its read and its write, announcing nothing', async () => {
 		const screen = await stageScreen();
 		const commit = db.batch.bind(db);
-		vi.spyOn(db, 'batch').mockImplementationOnce((async (statements: Parameters<typeof db.batch>[0]) => {
+		vi.spyOn(db, 'batch').mockImplementationOnce((async (
+			statements: Parameters<typeof db.batch>[0],
+		) => {
 			await db.delete(schema.screens).where(eq(schema.screens.id, screen.id));
 			return await commit(statements);
 		}) as never);
 
-		await expect(screenWriteModule().updateScreen({
-			authoringSessionId: undefined,
-			eventId,
-			screenId: screen.id,
-			input: { name: 'Renamed', stateVersion: screen.stateVersion } as never,
-		})).rejects.toMatchObject({ statusCode: 404, message: 'Screen not found' });
+		await expect(
+			screenWriteModule().updateScreen({
+				authoringSessionId: undefined,
+				eventId,
+				screenId: screen.id,
+				input: { name: 'Renamed', stateVersion: screen.stateVersion } as never,
+			}),
+		).rejects.toMatchObject({ statusCode: 404, message: 'Screen not found' });
 
 		expect(announced()).toEqual([]);
 	});
@@ -632,38 +722,44 @@ describe('updating a Screen', () => {
 // so a generic write may carry references back but never add, move or drop one.
 describe('a generic Screen write carrying Graphic Asset References', () => {
 	it('refuses a create that carries one, storing nothing', async () => {
-		await expect(screenWriteModule().createScreen({
-			eventId,
-			input: {
-				name: 'Overlay',
-				slug: 'overlay',
-				currentMode: 'feature-match-overlay',
-				modeConfigs: {
-					'feature-match-overlay': {
-						...DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG,
-						layout: layoutPinning(PLATE),
+		await expect(
+			screenWriteModule().createScreen({
+				eventId,
+				input: {
+					name: 'Overlay',
+					slug: 'overlay',
+					currentMode: 'feature-match-overlay',
+					modeConfigs: {
+						'feature-match-overlay': {
+							...DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG,
+							layout: layoutPinning(PLATE),
+						},
 					},
-				},
-			} as never,
-			screenOutputAssetCapabilities: provideCapabilities as never,
-		})).rejects.toMatchObject({
+				} as never,
+				screenOutputAssetCapabilities: provideCapabilities as never,
+			}),
+		).rejects.toMatchObject({
 			statusCode: 400,
 			message: expect.stringContaining('Screen Mode configuration endpoint'),
 		});
 
-		expect(await db.select().from(schema.screens).where(eq(schema.screens.slug, 'overlay'))).toEqual([]);
+		expect(
+			await db.select().from(schema.screens).where(eq(schema.screens.slug, 'overlay')),
+		).toEqual([]);
 		expect(announced()).toEqual([]);
 	});
 
 	it('refuses an update that drops the ones the Screen has indexed, leaving both as they were', async () => {
 		const screen = await stageScreenPinningPlate();
 
-		await expect(screenWriteModule().updateScreen({
-			authoringSessionId: undefined,
-			eventId,
-			screenId: screen.id,
-			input: { stateVersion: screen.stateVersion, modeConfigs: null } as never,
-		})).rejects.toMatchObject({
+		await expect(
+			screenWriteModule().updateScreen({
+				authoringSessionId: undefined,
+				eventId,
+				screenId: screen.id,
+				input: { stateVersion: screen.stateVersion, modeConfigs: null } as never,
+			}),
+		).rejects.toMatchObject({
 			statusCode: 400,
 			message: expect.stringContaining('Screen Mode configuration endpoint'),
 		});
@@ -687,7 +783,10 @@ describe('a generic Screen write carrying Graphic Asset References', () => {
 			} as never,
 		});
 
-		expect(await stored(screen.id)).toMatchObject({ name: 'Renamed overlay', modeConfigs: screen.modeConfigs });
+		expect(await stored(screen.id)).toMatchObject({
+			name: 'Renamed overlay',
+			modeConfigs: screen.modeConfigs,
+		});
 		expect(await indexedRevisions(screen.id)).toEqual([PLATE.revisionId]);
 	});
 });
@@ -701,47 +800,38 @@ describe('a mode configuration write that selects Graphic Asset Revisions', () =
 
 		await writeLayout(screen.id, layout, library.provide);
 
-		expect(library.asked).toEqual([
-			[PLATE, FONT],
-		]);
-		expect((await stored(screen.id))?.modeConfigs?.['feature-match-overlay']?.layout).toEqual(layout);
+		expect(library.asked).toEqual([[PLATE, FONT]]);
+		expect((await stored(screen.id))?.modeConfigs?.['feature-match-overlay']?.layout).toEqual(
+			layout,
+		);
 		expect(await indexedRevisions(screen.id)).toEqual([FONT.revisionId, PLATE.revisionId]);
 	});
 
 	it.each<[string, GraphicAssetReferenceStatus[], string]>([
-		[
-			'the second is missing',
-			[
-				SELECTABLE_IMAGE,
-				{ outcome: 'missing' },
-			],
-			'typography.font',
-		],
+		['the second is missing', [SELECTABLE_IMAGE, { outcome: 'missing' }], 'typography.font'],
 		[
 			'neither can be selected, naming the first',
-			[
-				{ outcome: 'unavailable', retryable: true },
-				{ outcome: 'missing' },
-			],
+			[{ outcome: 'unavailable', retryable: true }, { outcome: 'missing' }],
 			'layout.frame.backgroundImage',
 		],
-		[
-			'the library answers for fewer than it was asked',
-			[SELECTABLE_IMAGE],
-			'typography.font',
-		],
-	])('refuses the write when %s, storing and indexing nothing', async (_case, answers, refusedSlot) => {
-		const screen = await stageScreen({ currentMode: 'feature-match-overlay' });
+		['the library answers for fewer than it was asked', [SELECTABLE_IMAGE], 'typography.font'],
+	])(
+		'refuses the write when %s, storing and indexing nothing',
+		async (_case, answers, refusedSlot) => {
+			const screen = await stageScreen({ currentMode: 'feature-match-overlay' });
 
-		await expect(writeLayout(screen.id, layoutPinning(PLATE, FONT), libraryAnswering(answers).provide)).rejects.toMatchObject({
-			statusCode: 409,
-			message: expect.stringContaining(refusedSlot),
-		});
+			await expect(
+				writeLayout(screen.id, layoutPinning(PLATE, FONT), libraryAnswering(answers).provide),
+			).rejects.toMatchObject({
+				statusCode: 409,
+				message: expect.stringContaining(refusedSlot),
+			});
 
-		expect(await stored(screen.id)).toEqual(screen);
-		expect(await indexedRevisions(screen.id)).toEqual([]);
-		expect(announced()).toEqual([]);
-	});
+			expect(await stored(screen.id)).toEqual(screen);
+			expect(await indexedRevisions(screen.id)).toEqual([]);
+			expect(announced()).toEqual([]);
+		},
+	);
 
 	// A pinned revision outlives its asset's retirement, so only a reference the write moves is asked about.
 	it('builds no library for a write that leaves its references as they were, and asks only about one it moves', async () => {
@@ -754,9 +844,7 @@ describe('a mode configuration write that selects Graphic Asset Revisions', () =
 		const library = libraryAnswering([SELECTABLE_IMAGE]);
 		await writeLayout(screen.id, layoutPinning(PLATE_REPICKED), library.provide);
 
-		expect(library.asked).toEqual([
-			[PLATE_REPICKED],
-		]);
+		expect(library.asked).toEqual([[PLATE_REPICKED]]);
 		expect(await indexedRevisions(screen.id)).toEqual([PLATE_REPICKED.revisionId]);
 	});
 });
@@ -764,14 +852,8 @@ describe('a mode configuration write that selects Graphic Asset Revisions', () =
 // Leaving the mode ends the epoch in the same commit: `screenEpochEndAtomicity.sqlite.test.ts`.
 describe('a write to a Screen whose Broadcast Graphics are on air', () => {
 	it.each([
-		[
-			'a rename',
-			{ name: 'Renamed' },
-		],
-		[
-			'a write that restates the mode',
-			{ currentMode: 'broadcast-graphics' },
-		],
+		['a rename', { name: 'Renamed' }],
+		['a write that restates the mode', { currentMode: 'broadcast-graphics' }],
 	])('leaves the show running through %s', async (_write, change) => {
 		const show = await stageScreenOnAir();
 
@@ -795,7 +877,7 @@ describe('a write to a Screen whose Broadcast Graphics are on air', () => {
 	});
 
 	// The cascade removes the sessions that identify their receipts, so the epoch ends first.
-	it('discards the epoch\'s Command Receipts when the Screen is deleted', async () => {
+	it("discards the epoch's Command Receipts when the Screen is deleted", async () => {
 		const show = await stageScreenOnAir();
 		expect(await commandReceipts(show.sessionId)).toHaveLength(1);
 
@@ -812,18 +894,17 @@ describe('deleting a Screen', () => {
 	it('removes the row, cleans out its Card only once the row is gone, then announces the delete', async () => {
 		const screen = await stageScreen();
 
-		const answered = await screenWriteModule().deleteScreen({ eventId, screenId: screen.id, originConnectionId: 'origin-1' });
+		const answered = await screenWriteModule().deleteScreen({
+			eventId,
+			screenId: screen.id,
+			originConnectionId: 'origin-1',
+		});
 
 		expect(answered).toEqual({ success: true });
 		expect(await stored(screen.id)).toBeUndefined();
-		expect(cleanedCards).toEqual([
-			{ screenId: screen.id, afterRowDeleted: true },
-		]);
+		expect(cleanedCards).toEqual([{ screenId: screen.id, afterRowDeleted: true }]);
 		expect(announced()).toEqual([
-			[
-				'screen:deleted',
-				{ screenId: screen.id, originConnectionId: 'origin-1' },
-			],
+			['screen:deleted', { screenId: screen.id, originConnectionId: 'origin-1' }],
 		]);
 	});
 });

@@ -38,10 +38,13 @@ const kind = useEventKind();
 // The Event header and the Screen navigation, on every page this layout frames.
 useConsumedEventData(['event', 'screens']);
 
-watch(eventId, (id) => {
-	if (id && !screenStore.isLoaded)
-		void screenStore.loadScreensByEventId(id);
-}, { immediate: true });
+watch(
+	eventId,
+	(id) => {
+		if (id && !screenStore.isLoaded) void screenStore.loadScreensByEventId(id);
+	},
+	{ immediate: true },
+);
 
 const open = ref(false);
 
@@ -51,24 +54,22 @@ const title = computed(() => {
 
 const colorModeItem = computed<NavigationMenuItem[]>(() => [
 	{
-		label: colorMode.value === 'dark'
-			? 'Dark mode'
-			: 'Light mode',
-		icon: colorMode.value === 'dark'
-			? 'i-lucide-moon'
-			: 'i-lucide-sun',
+		label: colorMode.value === 'dark' ? 'Dark mode' : 'Light mode',
+		icon: colorMode.value === 'dark' ? 'i-lucide-moon' : 'i-lucide-sun',
 		onSelect: () => {
-			colorMode.preference = colorMode.value === 'dark'
-				? 'light'
-				: 'dark';
+			colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark';
 		},
 	},
 ]);
 
 const session = useAuthSession();
 const currentUser = session.user;
-const isLocalDeveloperUser = computed(() => currentUser.value !== null && isLocalDeveloperUserId(currentUser.value.id));
-const accountLabel = computed(() => isLocalDeveloperUser.value ? currentUser.value?.name : currentUser.value?.email);
+const isLocalDeveloperUser = computed(
+	() => currentUser.value !== null && isLocalDeveloperUserId(currentUser.value.id),
+);
+const accountLabel = computed(() =>
+	isLocalDeveloperUser.value ? currentUser.value?.name : currentUser.value?.email,
+);
 const toast = useToast();
 
 /**
@@ -80,17 +81,19 @@ const toast = useToast();
  * conspicuous name and no sign-out action: the bypass would immediately mint
  * the same identity again, so sign-out would claim to do something it cannot.
  */
-const accountItems = computed<NavigationMenuItem[]>(() => isLocalDeveloperUser.value
-	? []
-	: [
-			{
-				label: 'Sign out',
-				icon: 'i-lucide-log-out',
-				onSelect: () => {
-					void signOut();
+const accountItems = computed<NavigationMenuItem[]>(() =>
+	isLocalDeveloperUser.value
+		? []
+		: [
+				{
+					label: 'Sign out',
+					icon: 'i-lucide-log-out',
+					onSelect: () => {
+						void signOut();
+					},
 				},
-			},
-		]);
+			],
+);
 
 /**
  * Navigating only after the server agreed the session is over. A sign-out that
@@ -131,13 +134,14 @@ interface EventNavItem extends Omit<NavigationMenuItem, 'children'> {
 
 /** The entries, and children, offered to the current Event: those declaring its kind. */
 function offeredToEvent(items: EventNavItem[]): NavigationMenuItem[] {
-	return itemsOfferedToEvent(items, kind.value)
-		.map(({ children, ...item }) => children
+	return itemsOfferedToEvent(items, kind.value).map(({ children, ...item }) =>
+		children
 			? {
 					...item,
 					children: offeredToEvent(children),
 				}
-			: item);
+			: item,
+	);
 }
 
 function graphicsOperationsCockpitItem(): NavigationMenuItem {
@@ -181,8 +185,7 @@ function graphicsAssetLibraryItem(): NavigationMenuItem {
 }
 
 const navGroups = computed<NavGroup[]>(() => {
-	if (!eventId.value)
-		return [];
+	if (!eventId.value) return [];
 	const id = eventId.value;
 
 	return [
@@ -262,7 +265,7 @@ const navGroups = computed<NavGroup[]>(() => {
 					offeredTo: EVERY_EVENT,
 					...(screenStore.screens.length > 0 && {
 						defaultOpen: true,
-						children: screenStore.screens.map(screen => ({
+						children: screenStore.screens.map((screen) => ({
 							label: screen.name,
 							to: `/event/${id}/screens/${screen.id}`,
 							offeredTo: EVERY_EVENT,
@@ -286,10 +289,22 @@ const navGroups = computed<NavGroup[]>(() => {
 							exact: true,
 							offeredTo: EVERY_EVENT,
 						},
-						{ label: 'Event Structure', to: `/event/${id}/rounds`, offeredTo: EVENT_PAGE_OFFERED_TO.eventStructure },
-						{ label: 'Feature Matches', to: `/event/${id}/config/features`, offeredTo: EVERY_EVENT },
+						{
+							label: 'Event Structure',
+							to: `/event/${id}/rounds`,
+							offeredTo: EVENT_PAGE_OFFERED_TO.eventStructure,
+						},
+						{
+							label: 'Feature Matches',
+							to: `/event/${id}/config/features`,
+							offeredTo: EVERY_EVENT,
+						},
 						{ label: 'Broadcast', to: `/event/${id}/config/broadcast`, offeredTo: EVERY_EVENT },
-						{ label: 'Integrations', to: `/event/${id}/config/integrations`, offeredTo: EVENT_PAGE_OFFERED_TO.integrations },
+						{
+							label: 'Integrations',
+							to: `/event/${id}/config/integrations`,
+							offeredTo: EVENT_PAGE_OFFERED_TO.integrations,
+						},
 					],
 				},
 			]),
@@ -348,29 +363,27 @@ const homeLinks = computed<NavigationMenuItem[]>(() => [
 					:label="collapsed ? undefined : eventStore.event?.name"
 					:square="collapsed"
 					:block="!collapsed"
-					@click="() => { void navigateTo('/') }"
+					@click="
+						() => {
+							void navigateTo('/');
+						}
+					"
 				/>
 			</template>
 			<template #default="{ collapsed }">
 				<template v-if="eventId && navGroups.length > 0">
 					<div v-for="(group, idx) in navGroups" :key="group.label" :class="{ 'mt-4': idx > 0 }">
-						<div v-if="!collapsed" class="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted">
+						<div
+							v-if="!collapsed"
+							class="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted"
+						>
 							{{ group.label }}
 						</div>
 						<USeparator v-else-if="idx > 0" class="mb-2" />
-						<UNavigationMenu
-							:collapsed="collapsed"
-							:items="group.items"
-							orientation="vertical"
-						/>
+						<UNavigationMenu :collapsed="collapsed" :items="group.items" orientation="vertical" />
 					</div>
 				</template>
-				<UNavigationMenu
-					v-else
-					:collapsed="collapsed"
-					:items="homeLinks"
-					orientation="vertical"
-				/>
+				<UNavigationMenu v-else :collapsed="collapsed" :items="homeLinks" orientation="vertical" />
 			</template>
 			<template #footer="{ collapsed }">
 				<div class="flex w-full flex-col gap-1">
@@ -381,11 +394,7 @@ const homeLinks = computed<NavigationMenuItem[]>(() => [
 					>
 						{{ accountLabel }}
 					</div>
-					<UNavigationMenu
-						:collapsed="collapsed"
-						:items="accountItems"
-						orientation="vertical"
-					/>
+					<UNavigationMenu :collapsed="collapsed" :items="accountItems" orientation="vertical" />
 					<div class="flex w-full items-center" :class="collapsed ? 'flex-col gap-1' : 'gap-1'">
 						<UNavigationMenu
 							:collapsed="collapsed"

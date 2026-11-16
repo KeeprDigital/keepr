@@ -5,11 +5,21 @@ import type { CreateEventInput, MeleeConfigInput, UpdateEventInput } from '~~/sh
 import type { Variant } from '~~/shared/types/enums';
 import { and, asc, eq, isNull, lte, or, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
-import { eventCardNameOverrides, events, eventTalents, matches, players, screens } from '~~/server/db/schema';
+import {
+	eventCardNameOverrides,
+	events,
+	eventTalents,
+	matches,
+	players,
+	screens,
+} from '~~/server/db/schema';
 import { buildClearImportedMatchDataQueries } from '~~/server/services/featureMatch';
 import { buildRemoveImportedStructureQueries } from '~~/server/services/importedStructure';
 import { protectMeleeClientSecret } from '~~/server/services/meleeCredentials';
-import { buildClearDeckSourcePlayersQuery, buildReleaseManualBracketPlayersQuery } from '~~/server/services/screen';
+import {
+	buildClearDeckSourcePlayersQuery,
+	buildReleaseManualBracketPlayersQuery,
+} from '~~/server/services/screen';
 import { BroadcastDeckListsInUseError } from '~~/server/utils/errors';
 import { eventKind, getMatchFormatDefaults } from '~~/shared/config/games';
 import { fromFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
@@ -19,19 +29,27 @@ type EventWithTalents = DbEvent & { talents: DbEventTalent[] };
 /** A create as the API schema hands it over: its Variant settled, and none on a Card Game without one (ADR-0087). */
 type CreateEventData = Omit<CreateEventInput, 'variant'> & { variant?: Variant | null };
 
-type SyncMetadataUpdate = Partial<Pick<DbEvent,	| 'initialSetupCompletedAt'
-	| 'lastEventSyncedAt'
-	| 'lastPlayersSyncedAt'
-	| 'lastDecklistsSyncedAt'
-	| 'lastSyncError'>>;
+type SyncMetadataUpdate = Partial<
+	Pick<
+		DbEvent,
+		| 'initialSetupCompletedAt'
+		| 'lastEventSyncedAt'
+		| 'lastPlayersSyncedAt'
+		| 'lastDecklistsSyncedAt'
+		| 'lastSyncError'
+	>
+>;
 
 /** What one Live Results tick writes: its poll state, and on a stop, the switch-off. */
-export type MeleeLiveResultsCheck = Pick<DbEvent, 'meleeLiveResultsNextCheckAt'
+export type MeleeLiveResultsCheck = Pick<
+	DbEvent,
+	| 'meleeLiveResultsNextCheckAt'
 	| 'meleeLiveResultsBackoffStep'
 	| 'meleeLiveResultsLastCheckedAt'
 	| 'meleeLiveResultsLastChangeAt'
-	| 'meleeLiveResultsError'>
-	& Partial<Pick<DbEvent, 'meleeLiveResultsEnabled' | 'meleeLiveResultsStopReason'>>;
+	| 'meleeLiveResultsError'
+> &
+	Partial<Pick<DbEvent, 'meleeLiveResultsEnabled' | 'meleeLiveResultsStopReason'>>;
 
 interface FindAllParams {
 	game?: 'mtg' | 'op';
@@ -53,18 +71,15 @@ export interface ActiveMeleeSyncLease {
 	expiresAt: Date;
 }
 
-export type MeleeSyncLeaseAcquisition
-	= | { acquired: true; lease: ActiveMeleeSyncLease }
-		| { acquired: false; activeLease: Omit<ActiveMeleeSyncLease, 'token'> | null };
+export type MeleeSyncLeaseAcquisition =
+	| { acquired: true; lease: ActiveMeleeSyncLease }
+	| { acquired: false; activeLease: Omit<ActiveMeleeSyncLease, 'token'> | null };
 
 export function eventService() {
 	const buildResetMeleeImportedDataQueries = async (eventId: number) => {
 		const featureReset = await buildClearImportedMatchDataQueries(eventId);
 		const structureRemoval = buildRemoveImportedStructureQueries(eventId, { kind: 'all' });
-		const importedPlayers = and(
-			eq(players.eventId, eventId),
-			eq(players.externalSource, 'melee'),
-		);
+		const importedPlayers = and(eq(players.eventId, eventId), eq(players.externalSource, 'melee'));
 		// Ahead of the Player delete below, which it names its Players through.
 		const clearDeckSourcesQuery = buildClearDeckSourcePlayersQuery(
 			eventId,
@@ -72,21 +87,14 @@ export function eventService() {
 		);
 
 		const queries = [
-			db
-				.delete(eventCardNameOverrides)
-				.where(eq(eventCardNameOverrides.eventId, eventId)),
+			db.delete(eventCardNameOverrides).where(eq(eventCardNameOverrides.eventId, eventId)),
 			db
 				.delete(matches)
-				.where(and(
-					eq(matches.eventId, eventId),
-					eq(matches.externalSource, 'melee'),
-				)),
+				.where(and(eq(matches.eventId, eventId), eq(matches.externalSource, 'melee'))),
 			// Every imported Phase and Round goes, except one still holding a manual
 			// Round or Match: that one is kept as manual structure (ADR-0040).
 			...structureRemoval.queries,
-			db
-				.delete(players)
-				.where(importedPlayers),
+			db.delete(players).where(importedPlayers),
 			...featureReset.queries,
 		];
 		return {
@@ -104,9 +112,7 @@ export function eventService() {
 			conditions.push(eq(events.game, params.game));
 		}
 
-		return conditions.length > 0
-			? and(...conditions)
-			: undefined;
+		return conditions.length > 0 ? and(...conditions) : undefined;
 	};
 
 	const findById = async (id: number): Promise<EventWithTalents | undefined> => {
@@ -121,10 +127,7 @@ export function eventService() {
 	const findAll = async (params: FindAllParams = {}) => {
 		const whereClause = buildWhereClause(params);
 
-		return await db
-			.select()
-			.from(events)
-			.where(whereClause);
+		return await db.select().from(events).where(whereClause);
 	};
 
 	const create = async (data: CreateEventData): Promise<EventWithTalents> => {
@@ -149,7 +152,10 @@ export function eventService() {
 		};
 	};
 
-	const update = async (id: number, data: UpdateEventInput): Promise<EventWithTalents | undefined> => {
+	const update = async (
+		id: number,
+		data: UpdateEventInput,
+	): Promise<EventWithTalents | undefined> => {
 		const currentEvent = await db.query.events.findFirst({
 			where: eq(events.id, id),
 		});
@@ -158,28 +164,31 @@ export function eventService() {
 			return undefined;
 		}
 
-		const shouldResetDecklistSync = data.pointsSystem !== undefined
-			&& data.pointsSystem !== (currentEvent as DbEvent).pointsSystem
-			&& data.pointsSystem !== null;
+		const shouldResetDecklistSync =
+			data.pointsSystem !== undefined &&
+			data.pointsSystem !== (currentEvent as DbEvent).pointsSystem &&
+			data.pointsSystem !== null;
 
 		const updateQuery = db
 			.update(events)
 			.set({
 				...data,
-				...(shouldResetDecklistSync
-					? { lastDecklistsSyncedAt: null }
-					: {}),
+				...(shouldResetDecklistSync ? { lastDecklistsSyncedAt: null } : {}),
 			})
-			.where(and(
-				eq(events.id, id),
-				...(data.broadcastDeckListsEnabled === false
-					? [sql`NOT EXISTS (
+			.where(
+				and(
+					eq(events.id, id),
+					...(data.broadcastDeckListsEnabled === false
+						? [
+								sql`NOT EXISTS (
 						SELECT 1 FROM ${screens}
 						WHERE ${screens.eventId} = ${id}
 							AND json_extract(${screens.modeConfigs}, '$.deck.deckSource.type') = 'broadcast'
-					)`]
-					: []),
-			))
+					)`,
+							]
+						: []),
+				),
+			)
 			.returning();
 
 		let updatedEvent: DbEvent | undefined;
@@ -189,17 +198,18 @@ export function eventService() {
 				db
 					.select({ id: screens.id, name: screens.name })
 					.from(screens)
-					.where(and(
-						eq(screens.eventId, id),
-						sql`json_extract(${screens.modeConfigs}, '$.deck.deckSource.type') = 'broadcast'`,
-					))
+					.where(
+						and(
+							eq(screens.eventId, id),
+							sql`json_extract(${screens.modeConfigs}, '$.deck.deckSource.type') = 'broadcast'`,
+						),
+					)
 					.orderBy(sql`${screens.name} COLLATE NOCASE`, asc(screens.id)),
 			]);
 			[updatedEvent] = updatedRows;
 			if (!updatedEvent && affectedScreens.length > 0)
 				throw new BroadcastDeckListsInUseError(affectedScreens);
-		}
-		else {
+		} else {
 			[updatedEvent] = await updateQuery;
 		}
 
@@ -222,7 +232,10 @@ export function eventService() {
 	 * deleted Player (ADR-0032), or a reference to a deleted Phase or Round
 	 * (ADR-0060); `undefined` when the Event does not exist.
 	 */
-	const updateMeleeConfig = async (id: number, data: MeleeConfigInput): Promise<{ clearedScreens: DbScreen[]; keptStructure: KeptImportedStructure } | undefined> => {
+	const updateMeleeConfig = async (
+		id: number,
+		data: MeleeConfigInput,
+	): Promise<{ clearedScreens: DbScreen[]; keptStructure: KeptImportedStructure } | undefined> => {
 		// Check if event exists and get current meleeEventId
 		const currentEvent = await db.query.events.findFirst({
 			where: eq(events.id, id),
@@ -233,7 +246,8 @@ export function eventService() {
 			return undefined;
 		}
 
-		const shouldResetImportedData = !data.meleeEnabled || currentEvent.meleeEventId !== data.meleeEventId;
+		const shouldResetImportedData =
+			!data.meleeEnabled || currentEvent.meleeEventId !== data.meleeEventId;
 
 		const resetSyncFields = shouldResetImportedData
 			? {
@@ -244,11 +258,12 @@ export function eventService() {
 					lastSyncError: null,
 				}
 			: {};
-		const protectedClientSecret = data.meleeClientSecret === undefined
-			? undefined
-			: data.meleeClientSecret === null
-				? null
-				: await protectMeleeClientSecret(data.meleeClientSecret);
+		const protectedClientSecret =
+			data.meleeClientSecret === undefined
+				? undefined
+				: data.meleeClientSecret === null
+					? null
+					: await protectMeleeClientSecret(data.meleeClientSecret);
 
 		// Build explicit field set — never spread `data` to avoid mass assignment.
 		// Only update meleeClientSecret when the caller explicitly provides a new value,
@@ -265,10 +280,7 @@ export function eventService() {
 			...(protectedClientSecret !== undefined && { meleeClientSecret: protectedClientSecret }),
 		};
 
-		const updateEventQuery = db
-			.update(events)
-			.set(setFields)
-			.where(eq(events.id, id));
+		const updateEventQuery = db.update(events).set(setFields).where(eq(events.id, id));
 
 		if (shouldResetImportedData) {
 			const reset = await buildResetMeleeImportedDataQueries(id);
@@ -281,15 +293,19 @@ export function eventService() {
 			const results = await db.batch(batch);
 			// Announces the cleared Slots' new Sessions, now that they exist.
 			await reset.settle();
-			const { keptPhases, keptRounds, clearedScreens } = reset.structureRemoval.readOutcome(batch, results);
+			const { keptPhases, keptRounds, clearedScreens } = reset.structureRemoval.readOutcome(
+				batch,
+				results,
+			);
 			return {
 				// A Screen both releases rewrote answers once, at the later version.
 				clearedScreens: [
-					...new Map([
-						...results[0],
-						...clearedScreens,
-						...results.at(-1) as DbScreen[],
-					].map(screen => [screen.id, screen])).values(),
+					...new Map(
+						[...results[0], ...clearedScreens, ...(results.at(-1) as DbScreen[])].map((screen) => [
+							screen.id,
+							screen,
+						]),
+					).values(),
 				],
 				keptStructure: { keptPhases, keptRounds },
 			};
@@ -307,11 +323,8 @@ export function eventService() {
 		data: SyncMetadataUpdate,
 		leaseToken?: string,
 	): Promise<boolean> => {
-		const conditions = [
-			eq(events.id, id),
-		];
-		if (leaseToken !== undefined)
-			conditions.push(eq(events.meleeSyncLeaseToken, leaseToken));
+		const conditions = [eq(events.id, id)];
+		if (leaseToken !== undefined) conditions.push(eq(events.meleeSyncLeaseToken, leaseToken));
 
 		const [updatedEvent] = await db
 			.update(events)
@@ -371,15 +384,20 @@ export function eventService() {
 		const rows = await db
 			.select({ id: events.id })
 			.from(events)
-			.where(and(
-				eq(events.meleeEnabled, true),
-				eq(events.meleeLiveResultsEnabled, true),
-				or(isNull(events.meleeLiveResultsNextCheckAt), lte(events.meleeLiveResultsNextCheckAt, now)),
-			))
+			.where(
+				and(
+					eq(events.meleeEnabled, true),
+					eq(events.meleeLiveResultsEnabled, true),
+					or(
+						isNull(events.meleeLiveResultsNextCheckAt),
+						lte(events.meleeLiveResultsNextCheckAt, now),
+					),
+				),
+			)
 			// SQLite sorts NULL first ascending: an Event due "now" goes ahead.
 			.orderBy(asc(events.meleeLiveResultsNextCheckAt), asc(events.id))
 			.limit(limit);
-		return rows.map(row => row.id);
+		return rows.map((row) => row.id);
 	};
 
 	/**
@@ -395,12 +413,14 @@ export function eventService() {
 		const [updatedEvent] = await db
 			.update(events)
 			.set(data)
-			.where(and(
-				eq(events.id, id),
-				eq(events.meleeSyncLeaseToken, leaseToken),
-				eq(events.meleeEnabled, true),
-				eq(events.meleeLiveResultsEnabled, true),
-			))
+			.where(
+				and(
+					eq(events.id, id),
+					eq(events.meleeSyncLeaseToken, leaseToken),
+					eq(events.meleeEnabled, true),
+					eq(events.meleeLiveResultsEnabled, true),
+				),
+			)
 			.returning({ id: events.id });
 
 		return !!updatedEvent;
@@ -414,7 +434,9 @@ export function eventService() {
 	 * conditional release uses the opaque token, so an expired command can never
 	 * clear a newer command's lease.
 	 */
-	const tryAcquireMeleeSyncLease = async (input: MeleeSyncLeaseInput): Promise<MeleeSyncLeaseAcquisition> => {
+	const tryAcquireMeleeSyncLease = async (
+		input: MeleeSyncLeaseInput,
+	): Promise<MeleeSyncLeaseAcquisition> => {
 		const attemptAcquire = async () => {
 			return await db
 				.update(events)
@@ -423,19 +445,17 @@ export function eventService() {
 					meleeSyncLeaseCommand: input.command,
 					meleeSyncLeaseExpiresAt: input.expiresAt,
 				})
-				.where(and(
-					eq(events.id, input.eventId),
-					or(
-						isNull(events.meleeSyncLeaseToken),
-						isNull(events.meleeSyncLeaseExpiresAt),
-						lte(events.meleeSyncLeaseExpiresAt, input.now),
-						...(input.preempts
-							? [
-									eq(events.meleeSyncLeaseCommand, input.preempts),
-								]
-							: []),
+				.where(
+					and(
+						eq(events.id, input.eventId),
+						or(
+							isNull(events.meleeSyncLeaseToken),
+							isNull(events.meleeSyncLeaseExpiresAt),
+							lte(events.meleeSyncLeaseExpiresAt, input.now),
+							...(input.preempts ? [eq(events.meleeSyncLeaseCommand, input.preempts)] : []),
+						),
 					),
-				))
+				)
 				.returning({ id: events.id });
 		};
 
@@ -458,11 +478,12 @@ export function eventService() {
 
 		// If a command released between the failed CAS and the read, retry once
 		// instead of returning a spurious conflict.
-		const currentLeaseIsAvailable = current
-			&& (!current.meleeSyncLeaseToken
-				|| !current.meleeSyncLeaseExpiresAt
-				|| current.meleeSyncLeaseExpiresAt.getTime() <= input.now.getTime()
-				|| (input.preempts != null && current.meleeSyncLeaseCommand === input.preempts));
+		const currentLeaseIsAvailable =
+			current &&
+			(!current.meleeSyncLeaseToken ||
+				!current.meleeSyncLeaseExpiresAt ||
+				current.meleeSyncLeaseExpiresAt.getTime() <= input.now.getTime() ||
+				(input.preempts != null && current.meleeSyncLeaseCommand === input.preempts));
 		if (currentLeaseIsAvailable) {
 			[acquiredEvent] = await attemptAcquire();
 			if (acquiredEvent) {
@@ -484,12 +505,15 @@ export function eventService() {
 
 		return {
 			acquired: false,
-			activeLease: current?.meleeSyncLeaseToken && current.meleeSyncLeaseCommand && current.meleeSyncLeaseExpiresAt
-				? {
-						command: current.meleeSyncLeaseCommand,
-						expiresAt: current.meleeSyncLeaseExpiresAt,
-					}
-				: null,
+			activeLease:
+				current?.meleeSyncLeaseToken &&
+				current.meleeSyncLeaseCommand &&
+				current.meleeSyncLeaseExpiresAt
+					? {
+							command: current.meleeSyncLeaseCommand,
+							expiresAt: current.meleeSyncLeaseExpiresAt,
+						}
+					: null,
 		};
 	};
 
@@ -501,33 +525,28 @@ export function eventService() {
 				meleeSyncLeaseCommand: null,
 				meleeSyncLeaseExpiresAt: null,
 			})
-			.where(and(
-				eq(events.id, eventId),
-				eq(events.meleeSyncLeaseToken, token),
-			))
+			.where(and(eq(events.id, eventId), eq(events.meleeSyncLeaseToken, token)))
 			.returning({ id: events.id });
 
 		return !!releasedEvent;
 	};
 
-	const renewMeleeSyncLease = async (eventId: number, token: string, expiresAt: Date): Promise<boolean> => {
+	const renewMeleeSyncLease = async (
+		eventId: number,
+		token: string,
+		expiresAt: Date,
+	): Promise<boolean> => {
 		const [renewedEvent] = await db
 			.update(events)
 			.set({ meleeSyncLeaseExpiresAt: expiresAt })
-			.where(and(
-				eq(events.id, eventId),
-				eq(events.meleeSyncLeaseToken, token),
-			))
+			.where(and(eq(events.id, eventId), eq(events.meleeSyncLeaseToken, token)))
 			.returning({ id: events.id });
 
 		return !!renewedEvent;
 	};
 
 	const remove = async (id: number): Promise<boolean> => {
-		const result = await db
-			.delete(events)
-			.where(eq(events.id, id))
-			.returning();
+		const result = await db.delete(events).where(eq(events.id, id)).returning();
 
 		return result.length > 0;
 	};

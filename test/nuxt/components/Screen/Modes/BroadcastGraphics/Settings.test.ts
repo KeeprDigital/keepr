@@ -42,7 +42,7 @@ const mockDiscard = vi.fn((keys: readonly string[]) => {
 	const stored = mockStoredConfig.value as Record<string, unknown>;
 	mockConfig.value = {
 		...mockConfig.value,
-		...Object.fromEntries(keys.map(key => [key, stored[key]])),
+		...Object.fromEntries(keys.map((key) => [key, stored[key]])),
 	} as BroadcastGraphicsModeConfig;
 });
 
@@ -87,7 +87,7 @@ mockNuxtImport('useGraphicsAuthoringLease', () => (options: { enabled?: () => bo
 		// Who holds it, where the server resolved their session to a person (#398).
 		// Named here rather than left `null`, so this file proves the settings
 		// surface passes it on rather than only that it compiles.
-		holderName: computed(() => mockLeaseWritable.value ? null : 'Marcus Angel'),
+		holderName: computed(() => (mockLeaseWritable.value ? null : 'Marcus Angel')),
 		canTakeOver: computed(() => !mockLeaseWritable.value),
 		refresh: vi.fn(),
 		takeOver: mockTakeOver,
@@ -121,13 +121,7 @@ const EditWorkspaceStub = defineComponent({
 		saveError: { type: String, default: null },
 		flushEdits: { type: Function, default: undefined },
 	},
-	emits: [
-		'update:graphics',
-		'update:channels',
-		'update:selectedTarget',
-		'takeOver',
-		'retrySave',
-	],
+	emits: ['update:graphics', 'update:channels', 'update:selectedTarget', 'takeOver', 'retrySave'],
 	template: `<div
 		data-testid="edit-workspace"
 		:data-selected-graphic="selectedGraphicId ?? ''"
@@ -250,13 +244,17 @@ describe('broadcastGraphicsSettings', () => {
 		const wrapper = await mountComponent();
 		await flushPromises();
 
-		expect(wrapper.get('[data-testid="edit-workspace"]').attributes('data-selected-graphic')).toBe('slate');
+		expect(wrapper.get('[data-testid="edit-workspace"]').attributes('data-selected-graphic')).toBe(
+			'slate',
+		);
 
 		await wrapper.get('[data-testid="workspace-live"]').trigger('click');
 		await nextTick();
 
 		expect(mockRoute.query).toEqual({ graphic: 'slate' });
-		expect(wrapper.get('[data-testid="live-workspace"]').attributes('data-selected-graphic')).toBe('slate');
+		expect(wrapper.get('[data-testid="live-workspace"]').attributes('data-selected-graphic')).toBe(
+			'slate',
+		);
 	});
 
 	it('records a selection made in the Live workspace in the URL', async () => {
@@ -275,9 +273,12 @@ describe('broadcastGraphicsSettings', () => {
 		const wrapper = await mountComponent();
 		await flushPromises();
 
-		expect(wrapper.get('[data-testid="edit-workspace"]').attributes('data-selected-graphic')).toBe('');
-		expect(wrapper.get('[data-testid="edit-workspace"]').attributes('data-selected-target'))
-			.toBe(JSON.stringify({ type: 'canvas' }));
+		expect(wrapper.get('[data-testid="edit-workspace"]').attributes('data-selected-graphic')).toBe(
+			'',
+		);
+		expect(wrapper.get('[data-testid="edit-workspace"]').attributes('data-selected-target')).toBe(
+			JSON.stringify({ type: 'canvas' }),
+		);
 	});
 
 	it('writes an authored stack change as Screen-owned mode configuration', async () => {
@@ -286,9 +287,7 @@ describe('broadcastGraphicsSettings', () => {
 		const wrapper = await mountComponent();
 		await flushPromises();
 
-		const next = [
-			{ id: 'bug', name: 'Bug', items: [] },
-		];
+		const next = [{ id: 'bug', name: 'Bug', items: [] }];
 		wrapper.getComponent(EditWorkspaceStub).vm.$emit('update:graphics', next);
 		await nextTick();
 
@@ -296,16 +295,23 @@ describe('broadcastGraphicsSettings', () => {
 	});
 
 	// ADR-0051: the canvas is the Event's, set in Event Presentation Settings, not here.
-	it.each(['live', 'edit'])('composes the %s workspace and the Program monitor in the Event Canvas', async (workspace) => {
-		mockRoute.query = { workspace };
+	it.each(['live', 'edit'])(
+		'composes the %s workspace and the Program monitor in the Event Canvas',
+		async (workspace) => {
+			mockRoute.query = { workspace };
 
-		const wrapper = await mountComponent();
-		await flushPromises();
+			const wrapper = await mountComponent();
+			await flushPromises();
 
-		expect(wrapper.get(`[data-testid="${workspace}-workspace"]`).attributes('data-canvas')).toBe('1280x720');
-		expect(wrapper.get('[data-testid="program-monitor-card"]').attributes('data-canvas')).toBe('1280x720');
-		expect(wrapper.findAllComponents({ name: 'UInputNumber' })).toHaveLength(0);
-	});
+			expect(wrapper.get(`[data-testid="${workspace}-workspace"]`).attributes('data-canvas')).toBe(
+				'1280x720',
+			);
+			expect(wrapper.get('[data-testid="program-monitor-card"]').attributes('data-canvas')).toBe(
+				'1280x720',
+			);
+			expect(wrapper.findAllComponents({ name: 'UInputNumber' })).toHaveLength(0);
+		},
+	);
 
 	it('refuses an authoring write from a session observing the Edit workspace read-only', async () => {
 		mockRoute.query = { workspace: 'edit' };
@@ -318,9 +324,9 @@ describe('broadcastGraphicsSettings', () => {
 		expect(workspace.attributes('data-writable')).toBe('false');
 		expect(workspace.attributes('data-can-take-over')).toBe('true');
 
-		wrapper.getComponent(EditWorkspaceStub).vm.$emit('update:graphics', [
-			{ id: 'bug', name: 'Bug', items: [] },
-		]);
+		wrapper
+			.getComponent(EditWorkspaceStub)
+			.vm.$emit('update:graphics', [{ id: 'bug', name: 'Bug', items: [] }]);
 		await nextTick();
 
 		expect(mockUpdateConfig).not.toHaveBeenCalled();
@@ -348,25 +354,27 @@ describe('broadcastGraphicsSettings', () => {
 		await flushPromises();
 		const workspace = wrapper.getComponent(EditWorkspaceStub);
 		workspace.vm.$emit('update:channels', {
-			channels: [
-				{ id: 'lane', name: 'Lane' },
-			],
-			graphics: [
-				{ id: 'bug', name: 'Bug', items: [] },
-			],
+			channels: [{ id: 'lane', name: 'Lane' }],
+			graphics: [{ id: 'bug', name: 'Bug', items: [] }],
 		});
 		await nextTick();
-		expect((workspace.props('graphics') as Array<{ id: string }>).map(graphic => graphic.id)).toEqual(['bug']);
+		expect(
+			(workspace.props('graphics') as Array<{ id: string }>).map((graphic) => graphic.id),
+		).toEqual(['bug']);
 
 		mockLeaseLost.value = lost;
 		mockLeaseWritable.value = false;
 		await nextTick();
 
-		expect((workspace.props('graphics') as Array<{ id: string }>).map(graphic => graphic.id)).toEqual(shown);
-		expect((workspace.props('channels') as Array<{ id: string }>).map(channel => channel.id)).toEqual(channels);
+		expect(
+			(workspace.props('graphics') as Array<{ id: string }>).map((graphic) => graphic.id),
+		).toEqual(shown);
+		expect(
+			(workspace.props('channels') as Array<{ id: string }>).map((channel) => channel.id),
+		).toEqual(channels);
 	});
 
-	it('takes the Graphics Authoring Lease over on the observer\'s explicit request', async () => {
+	it("takes the Graphics Authoring Lease over on the observer's explicit request", async () => {
 		mockRoute.query = { workspace: 'edit' };
 		mockLeaseWritable.value = false;
 
@@ -380,7 +388,7 @@ describe('broadcastGraphicsSettings', () => {
 	});
 
 	// A retry travels from the workspace back to the mode-config write it asked for (#381).
-	it('re-sends the failed save on the workspace\'s retry', async () => {
+	it("re-sends the failed save on the workspace's retry", async () => {
 		mockRoute.query = { workspace: 'edit' };
 		mockSaveState.value = 'failed';
 

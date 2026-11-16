@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { Event, UpdateEventInput } from '~/types';
 import { eventKind, isOfferedToEvent, TWO_PLAYER_MAGIC_ONLY } from '~~/shared/config/games';
-import { fromFeatureMatchDefaults, toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
+import {
+	fromFeatureMatchDefaults,
+	toFeatureMatchDefaults,
+} from '~~/shared/types/featureMatchDefaults';
 import { COUNT_UP_LIMIT_MINUTES_MAX, COUNT_UP_LIMIT_MINUTES_MIN } from '~~/shared/utils/clock';
 import { getPointsSystemLabel } from '~~/shared/utils/highlander';
 
@@ -44,9 +47,8 @@ const { formData, isDirty, reset, save, saving } = useEventConfigForm({
 const countUpLimitInput = computed({
 	get: () => formData.value.countUpLimit ?? undefined,
 	set: (value: number | null | undefined) => {
-		formData.value.countUpLimit = typeof value === 'number' && Number.isFinite(value)
-			? value
-			: null;
+		formData.value.countUpLimit =
+			typeof value === 'number' && Number.isFinite(value) ? value : null;
 	},
 });
 
@@ -70,10 +72,11 @@ const pointsSystemOptions = [
 	},
 ];
 
-const showPointsSystemNotice = computed(() =>
-	scoresDeckLists.value
-	&& props.event.pointsSystem === '7ph'
-	&& !props.event.lastDecklistsSyncedAt,
+const showPointsSystemNotice = computed(
+	() =>
+		scoresDeckLists.value &&
+		props.event.pointsSystem === '7ph' &&
+		!props.event.lastDecklistsSyncedAt,
 );
 
 function validate(): boolean {
@@ -85,10 +88,19 @@ function validate(): boolean {
 		errors.value.clockDuration = 'Duration must be 0 or greater';
 	}
 	const limit = formData.value.countUpLimit;
-	if (formData.value.countUpAfterCountdown && limit != null && (limit < COUNT_UP_LIMIT_MINUTES_MIN || limit > COUNT_UP_LIMIT_MINUTES_MAX)) {
+	if (
+		formData.value.countUpAfterCountdown &&
+		limit != null &&
+		(limit < COUNT_UP_LIMIT_MINUTES_MIN || limit > COUNT_UP_LIMIT_MINUTES_MAX)
+	) {
 		errors.value.countUpLimit = `Limit must be ${COUNT_UP_LIMIT_MINUTES_MIN} to ${COUNT_UP_LIMIT_MINUTES_MAX} minutes, or empty for no limit`;
 	}
-	if (formData.value.clockType !== 'untimed' && formData.value.extraTurnsEnabled && formData.value.extraTurns !== undefined && formData.value.extraTurns < 1) {
+	if (
+		formData.value.clockType !== 'untimed' &&
+		formData.value.extraTurnsEnabled &&
+		formData.value.extraTurns !== undefined &&
+		formData.value.extraTurns < 1
+	) {
 		errors.value.extraTurns = 'Must have at least 1 extra turn';
 	}
 	return Object.keys(errors.value).length === 0;
@@ -98,9 +110,7 @@ function toUpdate(changes: Partial<typeof initialData.value>): UpdateEventInput 
 	const { pointsSystem, ...matchDefaults } = changes;
 	return {
 		...fromFeatureMatchDefaults(matchDefaults),
-		...('pointsSystem' in changes
-			? { pointsSystem }
-			: {}),
+		...('pointsSystem' in changes ? { pointsSystem } : {}),
 	} as UpdateEventInput;
 }
 </script>
@@ -119,10 +129,11 @@ function toUpdate(changes: Partial<typeof initialData.value>): UpdateEventInput 
 					<USelect v-model="formData.pointsSystem" class="w-64" :items="pointsSystemOptions" />
 				</UFormField>
 
-				<div v-if="showPointsSystemNotice" class="flex flex-col gap-3 rounded-lg border border-default bg-elevated/40 p-4">
-					<p class="text-sm text-muted">
-						Refresh decklists to populate 7 Point Highlander data.
-					</p>
+				<div
+					v-if="showPointsSystemNotice"
+					class="flex flex-col gap-3 rounded-lg border border-default bg-elevated/40 p-4"
+				>
+					<p class="text-sm text-muted">Refresh decklists to populate 7 Point Highlander data.</p>
 					<UButton
 						:to="`/event/${event.id}/sync`"
 						color="primary"
@@ -150,11 +161,7 @@ function toUpdate(changes: Partial<typeof initialData.value>): UpdateEventInput 
 					class="flex max-sm:flex-col justify-between items-start gap-4"
 					:error="errors.startingLife"
 				>
-					<UInputNumber
-						v-model="formData.startingLife"
-						:min="0"
-						class="w-64"
-					/>
+					<UInputNumber v-model="formData.startingLife" :min="0" class="w-64" />
 				</UFormField>
 
 				<UFormField
@@ -174,11 +181,7 @@ function toUpdate(changes: Partial<typeof initialData.value>): UpdateEventInput 
 						class="flex max-sm:flex-col justify-between items-start gap-4"
 						:error="errors.clockDuration"
 					>
-						<UInputNumber
-							v-model="formData.clockDuration"
-							:min="0"
-							class="w-64"
-						/>
+						<UInputNumber v-model="formData.clockDuration" :min="0" class="w-64" />
 					</UFormField>
 
 					<UFormField
@@ -227,11 +230,7 @@ function toUpdate(changes: Partial<typeof initialData.value>): UpdateEventInput 
 						class="flex max-sm:flex-col justify-between items-start gap-4"
 						:error="errors.extraTurns"
 					>
-						<UInputNumber
-							v-model="formData.extraTurns"
-							:min="1"
-							class="w-64"
-						/>
+						<UInputNumber v-model="formData.extraTurns" :min="1" class="w-64" />
 					</UFormField>
 				</template>
 			</div>

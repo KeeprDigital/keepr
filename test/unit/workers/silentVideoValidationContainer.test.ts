@@ -21,7 +21,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
  * digest mismatch, a transfer that fails, or tooling the server cannot find.
  */
 
-const SERVER = fileURLToPath(new URL('../../../workers/silent-video-validator/container/server.mjs', import.meta.url));
+const SERVER = fileURLToPath(
+	new URL('../../../workers/silent-video-validator/container/server.mjs', import.meta.url),
+);
 
 const SOURCE = Buffer.from('not really a video');
 
@@ -80,11 +82,10 @@ const sockets = new Set<Socket>();
 
 async function freePort(): Promise<number> {
 	const probe = createServer();
-	await new Promise<void>(resolve => probe.listen(0, '127.0.0.1', resolve));
+	await new Promise<void>((resolve) => probe.listen(0, '127.0.0.1', resolve));
 	const address = probe.address();
-	await new Promise(resolve => probe.close(resolve));
-	if (!address || typeof address === 'string')
-		throw new Error('no port');
+	await new Promise((resolve) => probe.close(resolve));
+	if (!address || typeof address === 'string') throw new Error('no port');
 	return address.port;
 }
 
@@ -105,10 +106,9 @@ async function startServer(env: Record<string, string> = {}) {
 		let output = '';
 		child.stdout!.setEncoding('utf8').on('data', (chunk: string) => {
 			output += chunk;
-			if (output.includes('listening'))
-				resolve();
+			if (output.includes('listening')) resolve();
 		});
-		child.once('exit', code => reject(new Error(`server exited with ${code}`)));
+		child.once('exit', (code) => reject(new Error(`server exited with ${code}`)));
 	});
 }
 
@@ -125,25 +125,25 @@ async function openConnection(): Promise<Socket> {
 
 function validationHead(request: ValidationRequest, contentLength: number) {
 	const header = Buffer.from(JSON.stringify(request), 'utf8').toString('base64');
-	return 'POST /validate HTTP/1.1\r\n'
-		+ `host: 127.0.0.1:${port}\r\n`
-		+ 'connection: close\r\n'
-		+ `content-type: ${request.sourceContentType}\r\n`
-		+ `content-length: ${contentLength}\r\n`
-		+ `x-validation-request: ${header}\r\n`
-		+ '\r\n';
+	return (
+		'POST /validate HTTP/1.1\r\n' +
+		`host: 127.0.0.1:${port}\r\n` +
+		'connection: close\r\n' +
+		`content-type: ${request.sourceContentType}\r\n` +
+		`content-length: ${contentLength}\r\n` +
+		`x-validation-request: ${header}\r\n` +
+		'\r\n'
+	);
 }
 
 function decodeBody(head: string, body: Buffer): string {
-	if (!/^transfer-encoding:\s*chunked/im.test(head))
-		return body.toString('utf8');
+	if (!/^transfer-encoding:\s*chunked/im.test(head)) return body.toString('utf8');
 	const parts: Buffer[] = [];
 	let offset = 0;
 	while (offset < body.length) {
 		const lineEnd = body.indexOf('\r\n', offset);
 		const size = Number.parseInt(body.subarray(offset, lineEnd).toString('ascii'), 16);
-		if (!size)
-			break;
+		if (!size) break;
 		parts.push(body.subarray(lineEnd + 2, lineEnd + 2 + size));
 		offset = lineEnd + 2 + size + 2;
 	}
@@ -176,7 +176,7 @@ function responseOn(socket: Socket): Promise<Response> {
 function withinOrPending<T>(promise: Promise<T>, withinMs: number): Promise<T | 'pending'> {
 	return Promise.race([
 		promise,
-		new Promise<'pending'>(resolve => setTimeout(resolve, withinMs, 'pending')),
+		new Promise<'pending'>((resolve) => setTimeout(resolve, withinMs, 'pending')),
 	]);
 }
 
@@ -184,10 +184,7 @@ function withinOrPending<T>(promise: Promise<T>, withinMs: number): Promise<T | 
 async function validate(request: ValidationRequest, body: Buffer = SOURCE): Promise<Response> {
 	const socket = await openConnection();
 	const response = responseOn(socket);
-	socket.write(Buffer.concat([
-		Buffer.from(validationHead(request, body.byteLength)),
-		body,
-	]));
+	socket.write(Buffer.concat([Buffer.from(validationHead(request, body.byteLength)), body]));
 	return response;
 }
 
@@ -199,8 +196,10 @@ async function heldValidation(request: ValidationRequest = MISMATCHED) {
 	// An admitted validation's first act is creating its workspace.
 	const deadline = Date.now() + 10_000;
 	while ((await readdir(workspaceRoot)).length === 0 && Date.now() < deadline)
-		await new Promise(resolve => setTimeout(resolve, 20));
-	await expect(withinOrPending(validate(MISMATCHED), 5_000)).resolves.toMatchObject({ status: 409 });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	await expect(withinOrPending(validate(MISMATCHED), 5_000)).resolves.toMatchObject({
+		status: 409,
+	});
 	return {
 		response,
 		finish: () => socket.write(SOURCE),
@@ -217,7 +216,7 @@ async function expectAdmitsAnother() {
 	const deadline = Date.now() + 15_000;
 	let answered = await withinOrPending(validate(MISMATCHED), 5_000);
 	while (answered !== 'pending' && answered.status === 409 && Date.now() < deadline) {
-		await new Promise(resolve => setTimeout(resolve, 50));
+		await new Promise((resolve) => setTimeout(resolve, 50));
 		answered = await withinOrPending(validate(MISMATCHED), 5_000);
 	}
 	expect(answered).toEqual({
@@ -237,11 +236,10 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	for (const socket of sockets)
-		socket.destroy();
+	for (const socket of sockets) socket.destroy();
 	sockets.clear();
 	if (server && server.exitCode === null) {
-		const exited = new Promise(resolve => server!.once('exit', resolve));
+		const exited = new Promise((resolve) => server!.once('exit', resolve));
 		server.kill('SIGKILL');
 		await exited;
 	}
@@ -255,10 +253,7 @@ describe('silent-video validation Container admission', () => {
 		await startServer();
 		const first = await openConnection();
 		const second = await openConnection();
-		const responses = [
-			responseOn(first),
-			responseOn(second),
-		];
+		const responses = [responseOn(first), responseOn(second)];
 		// Both heads reach the server together, so the second arrives while the
 		// first is still setting up its workspace.
 		first.write(validationHead(MISMATCHED, SOURCE.byteLength));
@@ -267,7 +262,7 @@ describe('silent-video validation Container admission', () => {
 		const early = await withinOrPending(Promise.race(responses), 10_000);
 		first.write(SOURCE);
 		second.write(SOURCE);
-		const statuses = (await Promise.all(responses)).map(response => response.status);
+		const statuses = (await Promise.all(responses)).map((response) => response.status);
 		expect(statuses.toSorted()).toEqual([200, 409]);
 		expect(early).toMatchObject({
 			status: 409,
@@ -280,7 +275,9 @@ describe('silent-video validation Container admission', () => {
 		const held = await heldValidation();
 		const malformed = await openConnection();
 		const malformedResponse = responseOn(malformed);
-		malformed.write(`POST /validate HTTP/1.1\r\nhost: x\r\nconnection: close\r\nx-validation-request: ${Buffer.from('{').toString('base64')}\r\ncontent-length: 0\r\n\r\n`);
+		malformed.write(
+			`POST /validate HTTP/1.1\r\nhost: x\r\nconnection: close\r\nx-validation-request: ${Buffer.from('{').toString('base64')}\r\ncontent-length: 0\r\n\r\n`,
+		);
 		await expect(malformedResponse).resolves.toMatchObject({ status: 409 });
 		const media = await fetch(`http://127.0.0.1:${port}/media/${'0'.repeat(32)}/page`);
 		expect(media.status).toBe(404);
@@ -302,7 +299,9 @@ describe('silent-video validation Container admission', () => {
 		await startServer();
 		const malformed = await openConnection();
 		const response = responseOn(malformed);
-		malformed.write(`POST /validate HTTP/1.1\r\nhost: x\r\nconnection: close\r\nx-validation-request: ${Buffer.from('{').toString('base64')}\r\ncontent-length: 0\r\n\r\n`);
+		malformed.write(
+			`POST /validate HTTP/1.1\r\nhost: x\r\nconnection: close\r\nx-validation-request: ${Buffer.from('{').toString('base64')}\r\ncontent-length: 0\r\n\r\n`,
+		);
 		await expect(response).resolves.toMatchObject({ status: 400 });
 		await expectAdmitsAnother();
 	});
@@ -311,9 +310,9 @@ describe('silent-video validation Container admission', () => {
 		await startServer();
 		// The server stops reading at the declared length and drops the
 		// connection, which the Workflow's fetch sees as a retryable failure.
-		await expect(validate(MISMATCHED, Buffer.concat([SOURCE, SOURCE])))
-			.rejects
-			.toThrow('connection closed without a response');
+		await expect(validate(MISMATCHED, Buffer.concat([SOURCE, SOURCE]))).rejects.toThrow(
+			'connection closed without a response',
+		);
 		await expectAdmitsAnother();
 	});
 

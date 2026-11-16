@@ -58,8 +58,7 @@ function onImportFileChosen(event: Event) {
 	const file = input.files?.[0];
 	// Cleared straight away so choosing the same file twice still fires a change.
 	input.value = '';
-	if (file)
-		emit('file', file);
+	if (file) emit('file', file);
 }
 </script>
 
@@ -77,7 +76,7 @@ function onImportFileChosen(event: Event) {
 			class="hidden"
 			:data-testid="`${testId}-input`"
 			@change="onImportFileChosen"
-		>
+		/>
 		<UButton
 			size="xs"
 			variant="soft"
@@ -103,12 +102,18 @@ function onImportFileChosen(event: Event) {
 		:data-testid="`${testId}-report`"
 	>
 		<p class="text-xs font-medium">
-			{{ rejected
-				? `This ${artifact.noun} cannot be installed`
-				: `Review before installing this ${artifact.noun}` }}
+			{{
+				rejected
+					? `This ${artifact.noun} cannot be installed`
+					: `Review before installing this ${artifact.noun}`
+			}}
 		</p>
 		<ul class="mt-1 space-y-1">
-			<li v-for="(issue, index) in issues" :key="`${issue.code}-${index}`" class="text-xs text-muted">
+			<li
+				v-for="(issue, index) in issues"
+				:key="`${issue.code}-${index}`"
+				class="text-xs text-muted"
+			>
 				{{ issue.message }}<span v-if="issue.remediation"> — {{ issue.remediation }}</span>
 			</li>
 		</ul>

@@ -40,7 +40,9 @@ const media = {
 };
 
 function numberField(wrapper: ReturnType<typeof mount>, testId: string) {
-	return wrapper.findAllComponents(UInputNumberStub).find(input => input.attributes('data-testid') === testId)!;
+	return wrapper
+		.findAllComponents(UInputNumberStub)
+		.find((input) => input.attributes('data-testid') === testId)!;
 }
 
 describe('media background fields', () => {
@@ -50,12 +52,7 @@ describe('media background fields', () => {
 			props: { media, eventId: 7 },
 		});
 
-		for (const testId of [
-			'media-fit',
-			'media-opacity',
-			'media-playback-rate',
-			'media-loop',
-		])
+		for (const testId of ['media-fit', 'media-opacity', 'media-playback-rate', 'media-loop'])
 			expect(wrapper.find(`[data-testid="${testId}"]`).exists(), testId).toBe(true);
 		expect(wrapper.find('[data-testid="media-focal-horizontal"]').exists()).toBe(false);
 	});

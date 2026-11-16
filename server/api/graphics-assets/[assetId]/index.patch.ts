@@ -4,10 +4,12 @@ import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-l
 import { requireUserId } from '~~/server/utils/auth';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 
-const metadataSchema = z.object({
-	name: z.string().trim().min(1).max(200),
-	eventIds: z.array(z.number().int().positive()).max(100),
-}).strict();
+const metadataSchema = z
+	.object({
+		name: z.string().trim().min(1).max(200),
+		eventIds: z.array(z.number().int().positive()).max(100),
+	})
+	.strict();
 
 /**
  * The Library Workspace's rename and Event re-association.
@@ -36,8 +38,7 @@ export default defineEventHandler(async (event) => {
 			assetId: graphicAssetId(getRouterParam(event, 'assetId') ?? ''),
 			...input,
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

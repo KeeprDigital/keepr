@@ -18,16 +18,15 @@ const event = computed(() => eventStore.event);
 const loading = computed(() => eventStore.loading);
 const error = computed(() => eventStore.error);
 const routeEventId = computed(() => Number.parseInt(route.params.eventId as string));
-const eventId = computed(() => event.value?.id ?? (Number.isNaN(routeEventId.value)
-	? 0
-	: routeEventId.value));
+const eventId = computed(
+	() => event.value?.id ?? (Number.isNaN(routeEventId.value) ? 0 : routeEventId.value),
+);
 
 // Inter-tab dirty state check
 const unsavedModal = overlay.create(LazyUIUnsavedChangesModal);
 
 onBeforeRouteUpdate(async () => {
-	if (!isDirty.value)
-		return true;
+	if (!isDirty.value) return true;
 
 	const confirmed = await unsavedModal.open({}).result;
 	return confirmed === true;
@@ -50,35 +49,30 @@ const dropdownItems: DropdownMenuItem[][] = [
 ];
 
 async function handleDelete() {
-	if (!event.value)
-		return;
+	if (!event.value) return;
 
-	await runRequest(
-		() => eventStore.deleteEvent(event.value!.id),
-		{
-			success: {
-				title: 'Success',
-				description: 'Event deleted successfully',
-				color: 'success',
-			},
-			error: {
-				title: 'Error',
-				description: 'Failed to delete event',
-				color: 'error',
-			},
-			onSuccess: () => {
-				void navigateTo('/');
-			},
-			onFailure: ({ error }) => {
-				console.error('Failed to delete event:', error);
-			},
+	await runRequest(() => eventStore.deleteEvent(event.value!.id), {
+		success: {
+			title: 'Success',
+			description: 'Event deleted successfully',
+			color: 'success',
 		},
-	);
+		error: {
+			title: 'Error',
+			description: 'Failed to delete event',
+			color: 'error',
+		},
+		onSuccess: () => {
+			void navigateTo('/');
+		},
+		onFailure: ({ error }) => {
+			console.error('Failed to delete event:', error);
+		},
+	});
 }
 
 async function confirmDeleteEvent() {
-	if (!event.value)
-		return;
+	if (!event.value) return;
 
 	const instance = deleteModal.open({
 		title: 'Delete Event',
@@ -99,10 +93,7 @@ async function handleLoadEvent() {
 <template>
 	<NuxtLayout name="default">
 		<template #actions>
-			<UDropdownMenu
-				:items="dropdownItems"
-				:content="{ align: 'end' }"
-			>
+			<UDropdownMenu :items="dropdownItems" :content="{ align: 'end' }">
 				<UButton
 					icon="i-lucide-ellipsis-vertical"
 					color="neutral"
@@ -130,18 +121,11 @@ async function handleLoadEvent() {
 				:description="String(error)"
 			>
 				<template #actions>
-					<UButton variant="outline" @click="handleLoadEvent">
-						Try Again
-					</UButton>
+					<UButton variant="outline" @click="handleLoadEvent"> Try Again </UButton>
 				</template>
 			</UIEmptyState>
 
-			<UIEmptyState
-				v-else
-				variant="inline"
-				icon="i-lucide-search-x"
-				title="Event not found"
-			/>
+			<UIEmptyState v-else variant="inline" icon="i-lucide-search-x" title="Event not found" />
 		</UContainer>
 	</NuxtLayout>
 </template>

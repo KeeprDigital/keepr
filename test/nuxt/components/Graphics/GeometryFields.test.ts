@@ -33,7 +33,10 @@ const global = {
 		UFieldGroup: defineComponent({ template: '<div><slot /></div>' }),
 		UButton: UButtonStub,
 		UInputNumber: UInputNumberStub,
-		UINinePointPicker: defineComponent({ name: 'UINinePointPicker', template: '<div data-testid="anchor-picker" />' }),
+		UINinePointPicker: defineComponent({
+			name: 'UINinePointPicker',
+			template: '<div data-testid="anchor-picker" />',
+		}),
 	},
 };
 
@@ -46,7 +49,9 @@ const rect: GraphicRect = {
 };
 const canvas = { width: 1920, height: 1080 };
 
-function mountFields(props: { anchor?: GraphicAnchorPoint; stacked?: boolean; rect?: GraphicRect } = {}) {
+function mountFields(
+	props: { anchor?: GraphicAnchorPoint; stacked?: boolean; rect?: GraphicRect } = {},
+) {
 	return mount(GeometryFields, {
 		global,
 		props: {
@@ -61,7 +66,9 @@ function mountFields(props: { anchor?: GraphicAnchorPoint; stacked?: boolean; re
 type Wrapper = ReturnType<typeof mountFields>;
 
 function field(wrapper: Wrapper, ariaLabel: string) {
-	return wrapper.findAllComponents({ name: 'UInputNumber' }).find(input => input.attributes('aria-label') === ariaLabel);
+	return wrapper
+		.findAllComponents({ name: 'UInputNumber' })
+		.find((input) => input.attributes('aria-label') === ariaLabel);
 }
 
 function shown(wrapper: Wrapper, ariaLabel: string) {
@@ -75,7 +82,10 @@ async function enter(wrapper: Wrapper, ariaLabel: string, value: number) {
 }
 
 async function chooseUnit(wrapper: Wrapper, label: 'px' | '%' | '±16') {
-	await wrapper.findAll('button').find(button => button.text() === label)!.trigger('click');
+	await wrapper
+		.findAll('button')
+		.find((button) => button.text() === label)!
+		.trigger('click');
 	await flushPromises();
 }
 
@@ -104,13 +114,15 @@ describe('geometry fields', () => {
 	it('stops a size dragged below one pixel there, and turns back from it at once', async () => {
 		const wrapper = mountFields();
 		await flushPromises();
-		const width = wrapper.findAll('[data-number-scrub]').find(label => label.text() === 'Width')!;
+		const width = wrapper.findAll('[data-number-scrub]').find((label) => label.text() === 'Width')!;
 
 		await width.trigger('pointerdown', { button: 0, pointerId: 1, clientX: 0 });
 		await width.trigger('pointermove', { pointerId: 1, clientX: -2_000 });
 		await width.trigger('pointermove', { pointerId: 1, clientX: -1_998 });
 
-		expect(wrapper.emitted('update')?.map(([patch]) => (patch as Partial<GraphicRect>).width)).toEqual([1, 2]);
+		expect(
+			wrapper.emitted('update')?.map(([patch]) => (patch as Partial<GraphicRect>).width),
+		).toEqual([1, 2]);
 	});
 
 	it('shows a percentage of the container to two decimal places', async () => {
@@ -163,7 +175,7 @@ describe('geometry fields', () => {
 		});
 	});
 
-	it('aligns the item\'s edge with the container\'s, not its anchor point', async () => {
+	it("aligns the item's edge with the container's, not its anchor point", async () => {
 		const wrapper = mountFields({ anchor: 'bottom-right' });
 
 		expect(await align(wrapper, 'Hard left')).toEqual({ x: 0 });
@@ -218,7 +230,7 @@ describe('geometry fields', () => {
 			});
 		});
 
-		it('keeps the ratio captured on linking, not the item\'s current one', async () => {
+		it("keeps the ratio captured on linking, not the item's current one", async () => {
 			const wrapper = mountFields();
 			await link(wrapper);
 			await wrapper.setProps({
@@ -232,7 +244,12 @@ describe('geometry fields', () => {
 			const wrapper = mountFields({ anchor: 'top-left' });
 			await link(wrapper);
 
-			expect(await enter(wrapper, 'Item width', 2)).toEqual({ x: 100, y: 200, width: 2, height: 1 });
+			expect(await enter(wrapper, 'Item width', 2)).toEqual({
+				x: 100,
+				y: 200,
+				width: 2,
+				height: 1,
+			});
 		});
 
 		it('leaves the other size alone once unlinked', async () => {
@@ -251,7 +268,9 @@ describe('geometry fields', () => {
 		it('is unlinked by default', async () => {
 			const wrapper = mountFields({ anchor: 'top-left' });
 
-			expect(wrapper.get('button[aria-label="Link width and height"]').attributes('aria-pressed')).toBe('false');
+			expect(
+				wrapper.get('button[aria-label="Link width and height"]').attributes('aria-pressed'),
+			).toBe('false');
 			expect(await enter(wrapper, 'Item height', 50)).toEqual({
 				x: 100,
 				y: 200,
@@ -307,8 +326,7 @@ describe('geometry fields', () => {
 
 				await chooseUnit(wrapper, '%');
 				expect(shown(wrapper, 'Item x')).toBe(15.63);
-			}
-			finally {
+			} finally {
 				denied.mockRestore();
 			}
 		});

@@ -44,9 +44,7 @@ function stack(overrides: Partial<BroadcastGraphicConfig> = {}): BroadcastGraphi
 		{
 			id: 'lower-third',
 			name: 'Lower Third',
-			items: [
-				textItem(),
-			],
+			items: [textItem()],
 			...overrides,
 		},
 	];
@@ -83,7 +81,7 @@ describe('graphicInputAuthoring', () => {
 
 		graphics = addGraphicInput(graphics, 'lower-third', 'text');
 
-		expect(graphics[0]!.inputs!.map(input => [input.label, input.key])).toEqual([
+		expect(graphics[0]!.inputs!.map((input) => [input.label, input.key])).toEqual([
 			['leftName', 'input-1'],
 			['Input 2', 'input-2'],
 		]);
@@ -122,11 +120,14 @@ describe('graphicInputAuthoring', () => {
 		const graphics = addGraphicInput(stack(), 'lower-third', 'text');
 
 		expect(patchGraphicInput(graphics, 'lower-third', 'input-1', { label: '' })).toEqual(graphics);
-		expect(patchGraphicInput(graphics, 'lower-third', 'input-1', { label: '   ' })).toEqual(graphics);
+		expect(patchGraphicInput(graphics, 'lower-third', 'input-1', { label: '   ' })).toEqual(
+			graphics,
+		);
 		// The other properties of the same patch are not lost to the refusal: a caller
 		// that sends a blank label sends nothing else worth keeping either.
-		expect(patchGraphicInput(graphics, 'lower-third', 'input-1', { label: 'Presenter' })[0]!.inputs![0])
-			.toMatchObject({ label: 'Presenter' });
+		expect(
+			patchGraphicInput(graphics, 'lower-third', 'input-1', { label: 'Presenter' })[0]!.inputs![0],
+		).toMatchObject({ label: 'Presenter' });
 	});
 
 	it('replaces a choice Graphic Input’s options and ignores other kinds', () => {
@@ -137,9 +138,7 @@ describe('graphicInputAuthoring', () => {
 
 		expect(graphics[0]!.inputs![0]).toMatchObject({
 			type: 'choice',
-			options: [
-				{ value: 'l', label: 'Left' },
-			],
+			options: [{ value: 'l', label: 'Left' }],
 		});
 	});
 
@@ -175,7 +174,11 @@ describe('graphicInputAuthoring', () => {
 		// Re-declaring the kind it already has is not a reason to lose the default.
 		const unchanged = setGraphicInputMediaKind(graphics, 'lower-third', 'input-1', 'image');
 
-		expect(switched[0]!.inputs![0]).toMatchObject({ type: 'media', mediaKind: 'silent-video', default: null });
+		expect(switched[0]!.inputs![0]).toMatchObject({
+			type: 'media',
+			mediaKind: 'silent-video',
+			default: null,
+		});
 		expect(unchanged[0]!.inputs![0]).toMatchObject({
 			mediaKind: 'image',
 			default: { assetId: 'asset-1' },
@@ -195,9 +198,7 @@ describe('graphicInputAuthoring', () => {
 					maxLength: 20,
 				},
 			],
-			bindings: [
-				{ inputKey: 'title', sourceKey: 'player', fieldId: 'player.name' },
-			],
+			bindings: [{ inputKey: 'title', sourceKey: 'player', fieldId: 'player.name' }],
 			items: [
 				textItem({
 					placeholderStyles: {
@@ -225,13 +226,14 @@ describe('graphicInputAuthoring', () => {
 		const graphic = stack()[0]!;
 
 		const styled = patchGraphicPlaceholderStyle(graphic, 'name-line', 'title', { fontWeight: 300 });
-		const restyled = patchGraphicPlaceholderStyle(styled, 'name-line', 'title', { color: '#ff0000' });
+		const restyled = patchGraphicPlaceholderStyle(styled, 'name-line', 'title', {
+			color: '#ff0000',
+		});
 		const cleared = patchGraphicPlaceholderStyle(restyled, 'name-line', 'title', null);
 
-		expect((restyled.items[0] as TextGraphicItemConfig).placeholderStyles)
-			.toEqual({
-				title: { fontWeight: 300, color: '#ff0000' },
-			});
+		expect((restyled.items[0] as TextGraphicItemConfig).placeholderStyles).toEqual({
+			title: { fontWeight: 300, color: '#ff0000' },
+		});
 		expect((cleared.items[0] as TextGraphicItemConfig).placeholderStyles).toBeUndefined();
 	});
 });

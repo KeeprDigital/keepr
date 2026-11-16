@@ -22,7 +22,10 @@ import { realpathSync } from 'node:fs';
 import { dirname } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { acceptanceProfilePrefix, checkoutProfileMarker } from './graphics-acceptance/chromium-profile.mjs';
+import {
+	acceptanceProfilePrefix,
+	checkoutProfileMarker,
+} from './graphics-acceptance/chromium-profile.mjs';
 
 // `ps` cannot quote the executable out of the command line, so a checkout path
 // with spaces is matched by prefix: below a checkout root, the path to the
@@ -38,20 +41,24 @@ function processTable(psOutput) {
 		.split('\n')
 		.map((line) => {
 			const match = line.trim().match(/^(\d+)\s+(\d+)\s+(\S.*)$/);
-			return match && {
-				pid: Number(match[1]),
-				parentPid: Number(match[2]),
-				command: match[3],
-			};
+			return (
+				match && {
+					pid: Number(match[1]),
+					parentPid: Number(match[2]),
+					command: match[3],
+				}
+			);
 		})
 		.filter(Boolean);
 }
 
 export function selectOrphanedWorkerd(psOutput, checkoutRoots) {
 	return processTable(psOutput)
-		.filter(entry => entry.parentPid === 1
-			&& checkoutRoots.some(root => runsWorkerdFrom(entry.command, root)))
-		.map(entry => entry.pid);
+		.filter(
+			(entry) =>
+				entry.parentPid === 1 && checkoutRoots.some((root) => runsWorkerdFrom(entry.command, root)),
+		)
+		.map((entry) => entry.pid);
 }
 
 const TERMINATION_GRACE_MS = 2000;
@@ -66,13 +73,21 @@ const TERMINATION_GRACE_MS = 2000;
  */
 export function selectLeakedAcceptanceChrome(psOutput, checkoutRoots) {
 	const prefixes = [
-		...new Set(checkoutRoots.map(root => acceptanceProfilePrefix(checkoutProfileMarker(root)))),
+		...new Set(checkoutRoots.map((root) => acceptanceProfilePrefix(checkoutProfileMarker(root)))),
 	];
-	const marked = command => prefixes.some(prefix => new RegExp(`--user-data-dir=\\S*/${prefix}`).test(command));
+	const marked = (command) =>
+		prefixes.some((prefix) => new RegExp(`--user-data-dir=\\S*/${prefix}`).test(command));
 	const table = processTable(psOutput);
-	const selected = new Set(table
-		.filter(entry => entry.parentPid === 1 && /\s--headless(?:=\S*)?(?:\s|$)/.test(entry.command) && marked(entry.command))
-		.map(entry => entry.pid));
+	const selected = new Set(
+		table
+			.filter(
+				(entry) =>
+					entry.parentPid === 1 &&
+					/\s--headless(?:=\S*)?(?:\s|$)/.test(entry.command) &&
+					marked(entry.command),
+			)
+			.map((entry) => entry.pid),
+	);
 	let grew = selected.size > 0;
 	while (grew) {
 		grew = false;
@@ -83,7 +98,7 @@ export function selectLeakedAcceptanceChrome(psOutput, checkoutRoots) {
 			}
 		}
 	}
-	return table.map(entry => entry.pid).filter(pid => selected.has(pid));
+	return table.map((entry) => entry.pid).filter((pid) => selected.has(pid));
 }
 
 /** SIGTERM each pid, then SIGKILL whichever survive the grace; returns those signalled. */
@@ -95,13 +110,12 @@ async function terminateAll(pids, { kill, sleep }) {
 		try {
 			kill(pid, signal);
 			return true;
-		}
-		catch {
+		} catch {
 			return false;
 		}
 	};
 	// An orphan that exited between `ps` and the signal was never reaped.
-	const signalled = pids.filter(pid => signalIgnoringGone(pid, 'SIGTERM'));
+	const signalled = pids.filter((pid) => signalIgnoringGone(pid, 'SIGTERM'));
 	if (signalled.length === 0) {
 		return [];
 	}
@@ -130,40 +144,35 @@ export async function reapLeakedAcceptanceChrome({ psOutput, checkoutRoots, kill
  * because the executable path workerd runs under has its symlinks resolved.
  */
 export function discoverCheckoutRoots(cwd) {
-	const git = (...args) => execFileSync('git', args, {
-		cwd,
-		encoding: 'utf8',
-		stdio: ['ignore', 'pipe', 'ignore'],
-	});
+	const git = (...args) =>
+		execFileSync('git', args, {
+			cwd,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+		});
 	const realPathOrSame = (path) => {
 		try {
 			return realpathSync(path);
-		}
-		catch {
+		} catch {
 			return path;
 		}
 	};
 	const roots = [cwd];
 	try {
-		roots.push(...git('worktree', 'list', '--porcelain', '-z')
-			.split('\0')
-			.filter(field => field.startsWith('worktree '))
-			.map(field => field.slice('worktree '.length)));
-	}
-	catch {
+		roots.push(
+			...git('worktree', 'list', '--porcelain', '-z')
+				.split('\0')
+				.filter((field) => field.startsWith('worktree '))
+				.map((field) => field.slice('worktree '.length)),
+		);
+	} catch {
 		// Git before 2.36 has no `-z` here; the main checkout still covers the
 		// worktrees nested under it.
 		try {
 			roots.push(dirname(git('rev-parse', '--path-format=absolute', '--git-common-dir').trim()));
-		}
-		catch {}
+		} catch {}
 	}
-	return [
-		...new Set(roots.flatMap(root => [
-			root,
-			realPathOrSame(root),
-		])),
-	];
+	return [...new Set(roots.flatMap((root) => [root, realPathOrSame(root)]))];
 }
 
 export async function main() {
@@ -173,7 +182,7 @@ export async function main() {
 		psOutput,
 		checkoutRoots: discoverCheckoutRoots(scriptCheckout),
 		kill: process.kill,
-		sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+		sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 	};
 	const reaped = await reapOrphanedWorkerd(reaping);
 	if (reaped.length > 0) {

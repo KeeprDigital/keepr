@@ -52,7 +52,7 @@ export function graphicChannelMembers(
 	stack: GraphicChannelStack,
 	channelId: string,
 ): readonly BroadcastGraphicConfig[] {
-	return stack.graphics.filter(graphic => graphic.channelId === channelId);
+	return stack.graphics.filter((graphic) => graphic.channelId === channelId);
 }
 
 /**
@@ -66,22 +66,17 @@ export function graphicChannelGroups(
 	stack: GraphicChannelStack,
 ): { channel: GraphicChannelConfig | null; graphics: readonly BroadcastGraphicConfig[] }[] {
 	const groups = (stack.channels ?? [])
-		.map(channel => ({
+		.map((channel) => ({
 			channel,
 			graphics: graphicChannelMembers(stack, channel.id),
 		}))
-		.filter(group => group.graphics.length > 0);
+		.filter((group) => group.graphics.length > 0);
 
 	// A channel the Screen does not declare is no channel, so its members fall through
 	// here — which is the same tolerant resolution every other reader applies.
-	const declared = new Set(groups.map(group => group.channel.id));
+	const declared = new Set(groups.map((group) => group.channel.id));
 	const unchanneled = stack.graphics.filter(
-		graphic => graphic.channelId === undefined || !declared.has(graphic.channelId),
+		(graphic) => graphic.channelId === undefined || !declared.has(graphic.channelId),
 	);
-	return unchanneled.length > 0
-		? [
-				...groups,
-				{ channel: null, graphics: unchanneled },
-			]
-		: groups;
+	return unchanneled.length > 0 ? [...groups, { channel: null, graphics: unchanneled }] : groups;
 }

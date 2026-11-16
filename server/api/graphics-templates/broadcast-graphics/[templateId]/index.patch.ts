@@ -32,7 +32,10 @@ import { readJsonPayloadLimited } from '~~/server/utils/payloadLimits';
  */
 export default defineEventHandler(async (event) => {
 	await requireUserId(event);
-	const { templateId } = await getValidatedRouterParams(event, broadcastGraphicTemplateParamsSchema.parse);
+	const { templateId } = await getValidatedRouterParams(
+		event,
+		broadcastGraphicTemplateParamsSchema.parse,
+	);
 	await requireGraphicsTemplateWritable(event, templateId);
 
 	const body = updateBroadcastGraphicTemplateSchema.parse(
@@ -46,11 +49,13 @@ export default defineEventHandler(async (event) => {
 	const stored = body.document
 		? undefined
 		: await broadcastGraphicTemplateService().findById(templateId);
-	const document = body.document ?? (stored?.revision === body.revision
-		? stored.document
-		: undefined);
+	const document =
+		body.document ?? (stored?.revision === body.revision ? stored.document : undefined);
 	if (document)
-		await assertBroadcastGraphicTemplateReferencesSelectable(graphicsAssetLibraryForEvent(event), document);
+		await assertBroadcastGraphicTemplateReferencesSelectable(
+			graphicsAssetLibraryForEvent(event),
+			document,
+		);
 
 	try {
 		const template = await broadcastGraphicTemplateService().update(templateId, body);
@@ -64,8 +69,7 @@ export default defineEventHandler(async (event) => {
 		}
 
 		return mapBroadcastGraphicTemplateToResponse(template);
-	}
-	catch (error) {
+	} catch (error) {
 		if (error instanceof BroadcastGraphicTemplateReferenceConflict)
 			throw graphicsTemplateReferenceConflict('Broadcast Graphic Template');
 		// A stale revision is the author's problem to resolve, not an internal fault:

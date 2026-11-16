@@ -19,10 +19,7 @@ import {
  * have to answer the same question.
  */
 function repeatable<Value extends string>(values: readonly [Value, ...Value[]]) {
-	return z.union([
-		z.enum(values),
-		z.array(z.enum(values)),
-	]).optional();
+	return z.union([z.enum(values), z.array(z.enum(values))]).optional();
 }
 
 /**
@@ -32,26 +29,28 @@ function repeatable<Value extends string>(values: readonly [Value, ...Value[]]) 
  * inspector asks. A cursor is the same — a position in the ledger is a recorded
  * instant and the entry that shared it, and half of one is not a position.
  */
-const evidenceQuerySchema = z.object({
-	limit: z.coerce.number().int().min(1).max(500).optional(),
-	category: repeatable(GRAPHICS_ASSET_EVIDENCE_CATEGORY_VALUES),
-	group: repeatable(GRAPHICS_EVIDENCE_CATEGORY_GROUP_VALUES),
-	subjectKind: z.enum(GRAPHICS_ASSET_EVIDENCE_SUBJECT_KIND_VALUES).optional(),
-	subjectId: z.string().min(1).max(200).optional(),
-	actor: z.string().min(1).max(200).optional(),
-	correlationId: z.string().min(1).max(200).optional(),
-	recordedFrom: z.string().datetime().optional(),
-	recordedUntil: z.string().datetime().optional(),
-	cursorRecordedAt: z.string().datetime().optional(),
-	cursorId: z.string().min(1).max(200).optional(),
-	direction: z.enum(['older', 'newer']).optional(),
-}).strict().refine(
-	query => (query.subjectKind === undefined) === (query.subjectId === undefined),
-	{ message: 'A subject filter needs both a subject kind and a subject identity' },
-).refine(
-	query => (query.cursorRecordedAt === undefined) === (query.cursorId === undefined),
-	{ message: 'A ledger position needs both a recorded instant and an entry identity' },
-);
+const evidenceQuerySchema = z
+	.object({
+		limit: z.coerce.number().int().min(1).max(500).optional(),
+		category: repeatable(GRAPHICS_ASSET_EVIDENCE_CATEGORY_VALUES),
+		group: repeatable(GRAPHICS_EVIDENCE_CATEGORY_GROUP_VALUES),
+		subjectKind: z.enum(GRAPHICS_ASSET_EVIDENCE_SUBJECT_KIND_VALUES).optional(),
+		subjectId: z.string().min(1).max(200).optional(),
+		actor: z.string().min(1).max(200).optional(),
+		correlationId: z.string().min(1).max(200).optional(),
+		recordedFrom: z.string().datetime().optional(),
+		recordedUntil: z.string().datetime().optional(),
+		cursorRecordedAt: z.string().datetime().optional(),
+		cursorId: z.string().min(1).max(200).optional(),
+		direction: z.enum(['older', 'newer']).optional(),
+	})
+	.strict()
+	.refine((query) => (query.subjectKind === undefined) === (query.subjectId === undefined), {
+		message: 'A subject filter needs both a subject kind and a subject identity',
+	})
+	.refine((query) => (query.cursorRecordedAt === undefined) === (query.cursorId === undefined), {
+		message: 'A ledger position needs both a recorded instant and an entry identity',
+	});
 
 /**
  * The chronological Evidence ledger, newest first.
@@ -69,41 +68,35 @@ export default defineEventHandler(async (event): Promise<GraphicsAssetEvidenceRe
 		// category is one question asked in two vocabularies rather than two
 		// filters that would then have to agree with each other.
 		const categories = [
-			...(query.category === undefined
-				? []
-				: [query.category].flat()),
-			...graphicsEvidenceCategoriesForGroups(
-				query.group === undefined
-					? []
-					: [query.group].flat(),
-			),
+			...(query.category === undefined ? [] : [query.category].flat()),
+			...graphicsEvidenceCategoriesForGroups(query.group === undefined ? [] : [query.group].flat()),
 		];
 		const page = await graphicsAssetLibraryForEvent(event).listGraphicsAssetEvidence({
 			limit: query.limit,
-			categories: categories.length === 0
-				? undefined
-				: [
-						...new Set(categories),
-					],
-			subject: query.subjectKind === undefined || query.subjectId === undefined
-				? undefined
-				: { kind: query.subjectKind, id: query.subjectId },
+			categories: categories.length === 0 ? undefined : [...new Set(categories)],
+			subject:
+				query.subjectKind === undefined || query.subjectId === undefined
+					? undefined
+					: { kind: query.subjectKind, id: query.subjectId },
 			actor: query.actor,
 			correlationId: query.correlationId,
 			recordedFrom: query.recordedFrom,
 			recordedUntil: query.recordedUntil,
-			cursor: query.cursorRecordedAt === undefined || query.cursorId === undefined
-				? undefined
-				: { recordedAt: query.cursorRecordedAt, id: query.cursorId },
+			cursor:
+				query.cursorRecordedAt === undefined || query.cursorId === undefined
+					? undefined
+					: { recordedAt: query.cursorRecordedAt, id: query.cursorId },
 			direction: query.direction,
 		});
 
 		// The ledger records who acted, never what they were called at the time, so
 		// the names are resolved at the moment the page is read (#398, ADR-0010) —
 		// a rename is a rename everywhere, including in evidence written years ago.
-		return await withActorNames(page, page.entries.map(entry => entry.actor));
-	}
-	catch (error) {
+		return await withActorNames(
+			page,
+			page.entries.map((entry) => entry.actor),
+		);
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

@@ -65,10 +65,10 @@ export function executeWrangler(argumentList, { cwd, env }) {
 			stdio: ['ignore', 'pipe', 'pipe'],
 		});
 		let stdout = '';
-		child.stdout.setEncoding('utf8').on('data', chunk => stdout += chunk);
+		child.stdout.setEncoding('utf8').on('data', (chunk) => (stdout += chunk));
 		child.stderr.resume();
 		child.once('error', reject);
-		child.once('close', code => resolve({ code, stdout }));
+		child.once('close', (code) => resolve({ code, stdout }));
 	});
 }
 
@@ -78,20 +78,14 @@ export function executeWrangler(argumentList, { cwd, env }) {
  */
 export function parseInstanceDescription(text) {
 	const status = text.match(/^Status:[^\S\n]+(\S[^\n]*)$/m)?.[1]?.trim() ?? '';
-	if (!status.includes('Complete'))
-		return { status };
-	const raw = [
-		...text.matchAll(/^\s+Output:\s+("(?:\\.|[^"\\])*")$/gm),
-	].at(-1)?.[1];
+	if (!status.includes('Complete')) return { status };
+	const raw = [...text.matchAll(/^\s+Output:\s+("(?:\\.|[^"\\])*")$/gm)].at(-1)?.[1];
 	try {
 		return {
 			status,
-			output: raw
-				? JSON.parse(JSON.parse(raw))
-				: undefined,
+			output: raw ? JSON.parse(JSON.parse(raw)) : undefined,
 		};
-	}
-	catch {
+	} catch {
 		return { status, output: undefined };
 	}
 }
@@ -103,47 +97,42 @@ export function parseInstanceDescription(text) {
  *   baseEnv?: Record<string, string | undefined>,
  * }} options
  */
-export function createWranglerCommands({ repoRoot, execute = executeWrangler, baseEnv = process.env }) {
+export function createWranglerCommands({
+	repoRoot,
+	execute = executeWrangler,
+	baseEnv = process.env,
+}) {
 	/**
 	 * `target.local` is a local run's persistence directory. Anything else is a
 	 * deployed target, and runs on its own account and nowhere else.
 	 */
 	async function wrangler(step, target, argumentList) {
 		const env = { ...baseEnv };
-		if (!target.local)
-			env[ACCOUNT_ID_ENV] = target.accountId;
+		if (!target.local) env[ACCOUNT_ID_ENV] = target.accountId;
 		const { code, stdout } = await execute(
 			[...argumentList, '--config', target.validatorConfigPath],
 			{ cwd: repoRoot, env },
 		);
-		if (code !== 0)
-			throw new RemoteCommandFailure(step, code);
+		if (code !== 0) throw new RemoteCommandFailure(step, code);
 		return stripAnsi(stdout);
 	}
 
-	const storage = target => target.local
-		? ['--local', '--persist-to', target.local]
-		: ['--remote'];
+	const storage = (target) =>
+		target.local ? ['--local', '--persist-to', target.local] : ['--remote'];
 	const objectPath = (target, key) => `${target.stagingBucket}/${key}`;
 
 	async function withWorkspace(use) {
 		const workspace = await mkdtemp(join(tmpdir(), 'silent-video-acceptance-'));
 		try {
 			return await use(join(workspace, 'object.bin'));
-		}
-		finally {
+		} finally {
 			await rm(workspace, { recursive: true, force: true });
 		}
 	}
 
 	return {
 		async probeBucket({ target }) {
-			await wrangler('bucket-info', target, [
-				'r2',
-				'bucket',
-				'info',
-				target.stagingBucket,
-			]);
+			await wrangler('bucket-info', target, ['r2', 'bucket', 'info', target.stagingBucket]);
 		},
 		async probeWorkflow({ target }) {
 			await wrangler('workflow-describe', target, ['workflows', 'describe', target.workflow]);
@@ -199,13 +188,15 @@ export function createWranglerCommands({ repoRoot, execute = executeWrangler, ba
 			]);
 		},
 		async describeInstance({ target, id }) {
-			return parseInstanceDescription(await wrangler('describe', target, [
-				'workflows',
-				'instances',
-				'describe',
-				target.workflow,
-				id,
-			]));
+			return parseInstanceDescription(
+				await wrangler('describe', target, [
+					'workflows',
+					'instances',
+					'describe',
+					target.workflow,
+					id,
+				]),
+			);
 		},
 	};
 }

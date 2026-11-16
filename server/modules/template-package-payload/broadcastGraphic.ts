@@ -41,29 +41,32 @@ function issue(
  */
 const MAXIMUM_REPORTED_SCHEMA_ISSUES = 10;
 
-function readBroadcastGraphicDocument(document: unknown):
+function readBroadcastGraphicDocument(
+	document: unknown,
+):
 	| { outcome: 'read'; document: BroadcastGraphicConfig }
 	| { outcome: 'rejected'; issues: TemplatePackagePayloadIssue[] } {
 	const parsed = broadcastGraphicConfigSchema.safeParse(document);
-	if (parsed.success)
-		return { outcome: 'read', document: parsed.data as BroadcastGraphicConfig };
+	if (parsed.success) return { outcome: 'read', document: parsed.data as BroadcastGraphicConfig };
 
 	const problems = parsed.error.issues;
-	const reported = problems.slice(0, MAXIMUM_REPORTED_SCHEMA_ISSUES).map(problem =>
-		issue(
-			'invalid-template-document',
-			problem.path.length > 0
-				? problem.path.join('.')
-				: undefined,
-			problem.message,
-		),
-	);
+	const reported = problems
+		.slice(0, MAXIMUM_REPORTED_SCHEMA_ISSUES)
+		.map((problem) =>
+			issue(
+				'invalid-template-document',
+				problem.path.length > 0 ? problem.path.join('.') : undefined,
+				problem.message,
+			),
+		);
 	if (problems.length > reported.length) {
-		reported.push(issue(
-			'invalid-template-document',
-			undefined,
-			`The Template document has ${problems.length} validation problems; the first ${reported.length} are reported`,
-		));
+		reported.push(
+			issue(
+				'invalid-template-document',
+				undefined,
+				`The Template document has ${problems.length} validation problems; the first ${reported.length} are reported`,
+			),
+		);
 	}
 	return { outcome: 'rejected', issues: reported };
 }
@@ -73,8 +76,7 @@ export const broadcastGraphicTemplatePackagePayload: TemplatePackagePayload = {
 
 	readInstallableDocument(document) {
 		const read = readBroadcastGraphicDocument(document);
-		if (read.outcome === 'rejected')
-			return read;
+		if (read.outcome === 'rejected') return read;
 		// Derived by the same walk the exporting workflow declares capabilities
 		// with, so the manifest is held to exactly what an exporter here would have
 		// written. Assets are deliberately not re-derived: the envelope already
@@ -102,7 +104,5 @@ export function readInstalledBroadcastGraphicDocument(
 	document: unknown,
 ): BroadcastGraphicConfig | undefined {
 	const read = readBroadcastGraphicDocument(document);
-	return read.outcome === 'read'
-		? read.document
-		: undefined;
+	return read.outcome === 'read' ? read.document : undefined;
 }

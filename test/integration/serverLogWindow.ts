@@ -7,8 +7,7 @@ const DEFAULT_MAXIMUM_LINES = 40;
 function byteLengthOf(path: string): number {
 	try {
 		return statSync(path).size;
-	}
-	catch {
+	} catch {
 		return 0;
 	}
 }
@@ -38,8 +37,7 @@ export function createServerLogWindow(path: string, options: { maximumLines?: nu
 
 		since(): string[] {
 			const length = byteLengthOf(path) - offset;
-			if (length <= 0)
-				return [];
+			if (length <= 0) return [];
 			let text: string;
 			try {
 				const descriptor = openSync(path, 'r');
@@ -47,22 +45,15 @@ export function createServerLogWindow(path: string, options: { maximumLines?: nu
 					const buffer = Buffer.alloc(length);
 					readSync(descriptor, buffer, 0, length, offset);
 					text = buffer.toString('utf8');
-				}
-				finally {
+				} finally {
 					closeSync(descriptor);
 				}
-			}
-			catch {
+			} catch {
 				return [];
 			}
 			const lines = text.split('\n').filter(Boolean);
 			const elided = lines.length - maximumLines;
-			return elided > 0
-				? [
-						`… ${elided} earlier lines`,
-						...lines.slice(elided),
-					]
-				: lines;
+			return elided > 0 ? [`… ${elided} earlier lines`, ...lines.slice(elided)] : lines;
 		},
 	};
 }

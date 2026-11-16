@@ -16,8 +16,7 @@ export function createTcgPlusRealtimeHandlers({ accept }: Options) {
 
 	return {
 		'tcgplus:imported': accept('tcgplus:imported', async (data) => {
-			if (!eventStore.event)
-				return;
+			if (!eventStore.event) return;
 			useMetagameStore().applyRemoteInvalidated();
 			clearPlayerDeckCache();
 			await usePlayerStore().loadPlayersByEventId(data.eventId);

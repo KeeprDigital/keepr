@@ -32,17 +32,15 @@ const matchRowClasses = computed(() => ({
 }));
 
 async function saveNote(note: string) {
-	if (!props.featureMatchAssignment || !props.saveAssignmentNote)
-		return;
+	if (!props.featureMatchAssignment || !props.saveAssignmentNote) return;
 	return await props.saveAssignmentNote(props.featureMatchAssignment.id, note);
 }
 
 // ── Player Resolution ──
 
 function findPlayer(playerId: number | null): Player | null {
-	if (!playerId)
-		return null;
-	return props.players.find(p => p.id === playerId) ?? null;
+	if (!playerId) return null;
+	return props.players.find((p) => p.id === playerId) ?? null;
 }
 
 const player1 = computed(() => findPlayer(props.match.player1Id));
@@ -59,17 +57,13 @@ function getDeckForCurrentPhase(
 	playerId: number | null,
 	playerData: PlayerSlotData | null | undefined,
 ): { name: string | null; colors: string | null } {
-	const defaultName = playerData?.gameData?.type === 'mtg'
-		? playerData.gameData.deckName ?? null
-		: null;
-	const defaultColors = playerData?.gameData?.type === 'mtg'
-		? playerData.gameData.deckColors ?? null
-		: null;
-	if (!playerId)
-		return { name: defaultName, colors: defaultColors };
+	const defaultName =
+		playerData?.gameData?.type === 'mtg' ? (playerData.gameData.deckName ?? null) : null;
+	const defaultColors =
+		playerData?.gameData?.type === 'mtg' ? (playerData.gameData.deckColors ?? null) : null;
+	if (!playerId) return { name: defaultName, colors: defaultColors };
 	const player = findPlayer(playerId);
-	if (!player)
-		return { name: defaultName, colors: defaultColors };
+	if (!player) return { name: defaultName, colors: defaultColors };
 	const deck = getActiveDeckForPlayer(player);
 	return deck
 		? { name: deck.name, colors: deck.colors }
@@ -95,28 +89,33 @@ function getPlayerRecordData(
 	}
 
 	const player = findPlayer(playerId);
-	if (!player)
-		return null;
+	if (!player) return null;
 
-	if (player.wins == null && player.losses == null && player.draws == null)
-		return null;
+	if (player.wins == null && player.losses == null && player.draws == null) return null;
 
 	return player;
 }
 
-function formatRecord(recordData: Pick<PlayerSlotData, 'wins' | 'losses' | 'draws'> | null): string | null {
-	if (!recordData)
-		return null;
+function formatRecord(
+	recordData: Pick<PlayerSlotData, 'wins' | 'losses' | 'draws'> | null,
+): string | null {
+	if (!recordData) return null;
 	return `${recordData.wins ?? 0}-${recordData.losses ?? 0}-${recordData.draws ?? 0}`;
 }
 
-const player1Record = computed(() => getPlayerRecordData(props.match.player1Id, props.match.player1Data));
-const player2Record = computed(() => getPlayerRecordData(props.match.player2Id, props.match.player2Data));
+const player1Record = computed(() =>
+	getPlayerRecordData(props.match.player1Id, props.match.player1Data),
+);
+const player2Record = computed(() =>
+	getPlayerRecordData(props.match.player2Id, props.match.player2Data),
+);
 
 // ── Bye Detection ──
 
 const isBye = computed(() => !props.match.player2Data && !props.match.player2Id);
-const isDraw = computed(() => props.match.hasResult && player1GameWins.value === player2GameWins.value);
+const isDraw = computed(
+	() => props.match.hasResult && player1GameWins.value === player2GameWins.value,
+);
 const winnerSide = computed<'player1' | 'player2' | null>(() => {
 	if (!props.match.hasResult || isDraw.value) {
 		return null;
@@ -132,13 +131,9 @@ const winnerSide = computed<'player1' | 'player2' | null>(() => {
 
 /** Each side's result, exposed on its name as `data-outcome`. */
 function getPlayerOutcome(side: 'player1' | 'player2'): 'win' | 'loss' | 'draw' | undefined {
-	if (!props.match.hasResult)
-		return undefined;
-	if (isDraw.value)
-		return 'draw';
-	return winnerSide.value === side
-		? 'win'
-		: 'loss';
+	if (!props.match.hasResult) return undefined;
+	if (isDraw.value) return 'draw';
+	return winnerSide.value === side ? 'win' : 'loss';
 }
 
 function getPlayerResultClasses(side: 'player1' | 'player2') {
@@ -149,9 +144,7 @@ function getPlayerResultClasses(side: 'player1' | 'player2') {
 		return 'font-medium text-muted';
 	}
 
-	return winnerSide.value === side
-		? 'font-semibold text-primary'
-		: 'font-medium text-muted';
+	return winnerSide.value === side ? 'font-semibold text-primary' : 'font-medium text-muted';
 }
 
 function getScoreColor(side: 'player1' | 'player2') {
@@ -159,9 +152,7 @@ function getScoreColor(side: 'player1' | 'player2') {
 		return 'info';
 	}
 
-	return winnerSide.value === side
-		? 'success'
-		: 'neutral';
+	return winnerSide.value === side ? 'success' : 'neutral';
 }
 </script>
 
@@ -169,24 +160,19 @@ function getScoreColor(side: 'player1' | 'player2') {
 	<div class="match-row" :class="matchRowClasses">
 		<!-- Bye: span all columns, centered -->
 		<template v-if="isBye">
-			<UBadge
-				class="match-bye-badge"
-				color="neutral"
-				variant="outline"
-				size="md"
-			>
-				Bye
-			</UBadge>
+			<UBadge class="match-bye-badge" color="neutral" variant="outline" size="md"> Bye </UBadge>
 			<div class="match-bye-player-wrap">
 				<div class="match-player-stack match-bye-player items-center">
-					<PlayerMatchHistoryButton class="font-medium truncate" :player="player1" :name="match.player1Data?.name || 'TBD'" />
-					<span v-if="formatRecord(player1Record)" class="text-xs font-mono text-muted">{{ formatRecord(player1Record) }}</span>
+					<PlayerMatchHistoryButton
+						class="font-medium truncate"
+						:player="player1"
+						:name="match.player1Data?.name || 'TBD'"
+					/>
+					<span v-if="formatRecord(player1Record)" class="text-xs font-mono text-muted">{{
+						formatRecord(player1Record)
+					}}</span>
 					<div v-if="player1Deck.name" class="flex items-center gap-1.5">
-						<MtgManaColorDisplay
-							v-if="player1Deck.colors"
-							:colors="player1Deck.colors"
-							size="xs"
-						/>
+						<MtgManaColorDisplay v-if="player1Deck.colors" :colors="player1Deck.colors" size="xs" />
 						<button
 							v-if="player1HasDeckList"
 							type="button"
@@ -212,12 +198,7 @@ function getScoreColor(side: 'player1' | 'player2') {
 				<UBadge color="neutral" variant="subtle" size="md">
 					{{ match.tableNumber }}
 				</UBadge>
-				<UBadge
-					v-if="featureMatchLabel"
-					color="primary"
-					variant="solid"
-					size="md"
-				>
+				<UBadge v-if="featureMatchLabel" color="primary" variant="solid" size="md">
 					<UIcon name="i-lucide-star" class="size-3" />
 					{{ featureMatchLabel }}
 				</UBadge>
@@ -241,13 +222,11 @@ function getScoreColor(side: 'player1' | 'player2') {
 							{{ player1GameWins }}
 						</UBadge>
 					</div>
-					<span v-if="formatRecord(player1Record)" class="text-xs font-mono text-muted">{{ formatRecord(player1Record) }}</span>
+					<span v-if="formatRecord(player1Record)" class="text-xs font-mono text-muted">{{
+						formatRecord(player1Record)
+					}}</span>
 					<div v-if="player1Deck.name" class="flex items-center gap-1.5 justify-end min-w-0">
-						<MtgManaColorDisplay
-							v-if="player1Deck.colors"
-							:colors="player1Deck.colors"
-							size="xs"
-						/>
+						<MtgManaColorDisplay v-if="player1Deck.colors" :colors="player1Deck.colors" size="xs" />
 						<button
 							v-if="player1HasDeckList"
 							type="button"
@@ -290,7 +269,9 @@ function getScoreColor(side: 'player1' | 'player2') {
 							:name="match.player2Data?.name || 'TBD'"
 						/>
 					</div>
-					<span v-if="formatRecord(player2Record)" class="text-xs font-mono text-muted">{{ formatRecord(player2Record) }}</span>
+					<span v-if="formatRecord(player2Record)" class="text-xs font-mono text-muted">{{
+						formatRecord(player2Record)
+					}}</span>
 					<div v-if="player2Deck.name" class="flex items-center gap-1.5 justify-start min-w-0">
 						<button
 							v-if="player2HasDeckList"
@@ -305,11 +286,7 @@ function getScoreColor(side: 'player1' | 'player2') {
 						<span v-else class="text-sm text-muted truncate">
 							{{ player2Deck.name }}
 						</span>
-						<MtgManaColorDisplay
-							v-if="player2Deck.colors"
-							:colors="player2Deck.colors"
-							size="xs"
-						/>
+						<MtgManaColorDisplay v-if="player2Deck.colors" :colors="player2Deck.colors" size="xs" />
 					</div>
 				</div>
 				<div

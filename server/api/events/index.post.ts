@@ -10,8 +10,7 @@ export default defineEventHandler(async (event) => {
 
 	try {
 		await featureMatchService().syncFeatureMatches(newEvent.id, newEvent.numFeatureMatches);
-	}
-	catch (error) {
+	} catch (error) {
 		// Event creation is an aggregate operation: callers must never observe an
 		// Event whose configured Feature Match Slots failed to initialise. D1
 		// cannot compose these service-level reads into one batch, so compensate

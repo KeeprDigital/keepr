@@ -1,4 +1,7 @@
-import type { AnimationEffectSelection, FeatureMatchOverlayFrameAnimationConfig } from '../animationEffects';
+import type {
+	AnimationEffectSelection,
+	FeatureMatchOverlayFrameAnimationConfig,
+} from '../animationEffects';
 import type { ScreenModeConfigOf } from '../screenModeConfigs/contract';
 import type { BackgroundLayersCapableMode } from '../screenModes';
 import type { ScreenMode } from './enums';
@@ -6,7 +9,11 @@ import type { MediaFit } from './graphicItem';
 import type { BroadcastGraphicConfig, GraphicLinearGradientFill } from './graphics';
 import type { GraphicAssetId, GraphicAssetRevisionId } from './graphicsAsset';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '../builtInFeatureMatchLayoutTemplates';
-import { DEFAULT_BROADCAST_GRAPHICS_BACKGROUND, DEFAULT_FRAME_ANIMATION, DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG } from '../screenGraphicsDefaults';
+import {
+	DEFAULT_BROADCAST_GRAPHICS_BACKGROUND,
+	DEFAULT_FRAME_ANIMATION,
+	DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG,
+} from '../screenGraphicsDefaults';
 import { archetypeSpotlightModeConfigContract } from '../screenModeConfigs/archetypeSpotlight';
 import { backgroundModeConfigContract } from '../screenModeConfigs/background';
 import { broadcastGraphicsModeConfigContract } from '../screenModeConfigs/broadcastGraphics';
@@ -33,7 +40,11 @@ import { SEAT_VALUES } from './enums';
  * one back. They are re-exported here because this is where every other mode
  * default lives.
  */
-export { DEFAULT_BROADCAST_GRAPHICS_BACKGROUND, DEFAULT_FRAME_ANIMATION, DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG };
+export {
+	DEFAULT_BROADCAST_GRAPHICS_BACKGROUND,
+	DEFAULT_FRAME_ANIMATION,
+	DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG,
+};
 export { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG };
 
 // ─── Mode-specific configs ─────────────────────────────────────────────
@@ -52,7 +63,7 @@ export const FEATURE_MATCH_OVERLAY_ANCHOR_VALUES = [
 	'bottom',
 	'bottom-right',
 ] as const;
-export type FeatureMatchOverlayAnchorValue = typeof FEATURE_MATCH_OVERLAY_ANCHOR_VALUES[number];
+export type FeatureMatchOverlayAnchorValue = (typeof FEATURE_MATCH_OVERLAY_ANCHOR_VALUES)[number];
 
 /**
  * What a Source Item declares instead of a camera.
@@ -73,7 +84,7 @@ export type FeatureMatchOverlayAnchorValue = typeof FEATURE_MATCH_OVERLAY_ANCHOR
  */
 export const FEATURE_MATCH_SOURCE_ROLE_VALUES = ['main', ...SEAT_VALUES] as const;
 
-export type FeatureMatchSourceRole = typeof FEATURE_MATCH_SOURCE_ROLE_VALUES[number];
+export type FeatureMatchSourceRole = (typeof FEATURE_MATCH_SOURCE_ROLE_VALUES)[number];
 
 export interface FeatureMatchOverlayRect {
 	x: number;
@@ -130,9 +141,9 @@ export interface ScreenMediaBackgroundConfig {
  * dependency: the application serves nothing and checks nothing, and an empty
  * URL means unset. Never `MediaSource`, which would shadow the browser global.
  */
-export type ScreenMediaSource
-	= | { kind: 'asset'; assetId: GraphicAssetId; revisionId: GraphicAssetRevisionId }
-		| { kind: 'url'; url: string };
+export type ScreenMediaSource =
+	| { kind: 'asset'; assetId: GraphicAssetId; revisionId: GraphicAssetRevisionId }
+	| { kind: 'url'; url: string };
 
 /** A video ready to play: its Screen Media Source already resolved to a URL. */
 export interface ScreenVideoPlayback {
@@ -150,7 +161,7 @@ export const BACKGROUND_LAYER_TYPE_VALUES = [
 	'video',
 	'animation',
 ] as const;
-export type BackgroundLayerType = typeof BACKGROUND_LAYER_TYPE_VALUES[number];
+export type BackgroundLayerType = (typeof BACKGROUND_LAYER_TYPE_VALUES)[number];
 
 /**
  * What every Background Layer owns regardless of its type: its identity, its
@@ -207,12 +218,12 @@ export interface AnimationBackgroundLayer extends BackgroundLayerBase {
  * also carries an optional `backgroundLayers` stack of its own, painted behind
  * that mode's content.
  */
-export type BackgroundLayer
-	= | ColorBackgroundLayer
-		| GradientBackgroundLayer
-		| ImageBackgroundLayer
-		| VideoBackgroundLayer
-		| AnimationBackgroundLayer;
+export type BackgroundLayer =
+	| ColorBackgroundLayer
+	| GradientBackgroundLayer
+	| ImageBackgroundLayer
+	| VideoBackgroundLayer
+	| AnimationBackgroundLayer;
 
 /**
  * What a mode's configuration gains by declaring a Background Layer stack. Not
@@ -236,7 +247,10 @@ export interface BackgroundLayersModeConfig {
  * import.
  */
 export { ANIMATION_EFFECT_VALUES as FEATURE_MATCH_OVERLAY_FRAME_ANIMATION_EFFECT_VALUES } from '../animationEffects';
-export type { FeatureMatchOverlayFrameAnimationConfig, AnimationEffectName as FeatureMatchOverlayFrameAnimationEffect } from '../animationEffects';
+export type {
+	FeatureMatchOverlayFrameAnimationConfig,
+	AnimationEffectName as FeatureMatchOverlayFrameAnimationEffect,
+} from '../animationEffects';
 
 /**
  * A Broadcast Graphics Screen's background, for the same reason and on the same
@@ -258,14 +272,39 @@ export type { ArchetypeSpotlightModeConfig } from '../screenModeConfigs/archetyp
 export type { BackgroundModeConfig } from '../screenModeConfigs/background';
 export type { BroadcastGraphicsModeConfig } from '../screenModeConfigs/broadcastGraphics';
 export type { CardModeConfig } from '../screenModeConfigs/card';
-export type { DeckModeConfig, DeckSource, ResolvedDeckBoardLayout, ResolvedDeckBoards, ResolvedMainboardLayout, ResolvedSideboardLayout } from '../screenModeConfigs/deck';
-export { deckBoardsShowingArt, DEFAULT_COMPANION_TAG_POSITION, DEFAULT_DECK_BOARD_LAYOUT, DEFAULT_DECK_TEXT_SIZES, DEFAULT_HIGHLANDER_POINTS_POSITION, DEFAULT_QUANTITY_POSITION, resolveDeckBoards } from '../screenModeConfigs/deck';
+export type {
+	DeckModeConfig,
+	DeckSource,
+	ResolvedDeckBoardLayout,
+	ResolvedDeckBoards,
+	ResolvedMainboardLayout,
+	ResolvedSideboardLayout,
+} from '../screenModeConfigs/deck';
+export {
+	deckBoardsShowingArt,
+	DEFAULT_COMPANION_TAG_POSITION,
+	DEFAULT_DECK_BOARD_LAYOUT,
+	DEFAULT_DECK_TEXT_SIZES,
+	DEFAULT_HIGHLANDER_POINTS_POSITION,
+	DEFAULT_QUANTITY_POSITION,
+	resolveDeckBoards,
+} from '../screenModeConfigs/deck';
 export type { FeatureMatchModeConfig } from '../screenModeConfigs/featureMatch';
-export type { BuiltInFeatureMatchLayoutTemplateId, FeatureMatchOverlayModeConfig } from '../screenModeConfigs/featureMatchOverlay';
+export type {
+	BuiltInFeatureMatchLayoutTemplateId,
+	FeatureMatchOverlayModeConfig,
+} from '../screenModeConfigs/featureMatchOverlay';
 export type { HeadToHeadModeConfig } from '../screenModeConfigs/headToHead';
-export type { MetagameArchetypeColumnConfig, MetagameCardColumnConfig, MetagameModeConfig } from '../screenModeConfigs/metagame';
+export type {
+	MetagameArchetypeColumnConfig,
+	MetagameCardColumnConfig,
+	MetagameModeConfig,
+} from '../screenModeConfigs/metagame';
 export type { PairingsModeConfig } from '../screenModeConfigs/pairings';
-export type { PlayerHistoryColumnConfig, PlayerHistoryModeConfig } from '../screenModeConfigs/playerHistory';
+export type {
+	PlayerHistoryColumnConfig,
+	PlayerHistoryModeConfig,
+} from '../screenModeConfigs/playerHistory';
 export type { RoundClockModeConfig } from '../screenModeConfigs/roundClock';
 export type { StandingsColumnConfig, StandingsModeConfig } from '../screenModeConfigs/standings';
 export type { TalentModeConfig } from '../screenModeConfigs/talent';
@@ -354,22 +393,22 @@ export interface FeatureMatchLayoutConfig {
  * because the definitions import this module.
  */
 const MODE_CONFIG_CONTRACTS = {
-	'background': backgroundModeConfigContract,
-	'card': cardModeConfigContract,
-	'deck': deckModeConfigContract,
-	'standings': standingsModeConfigContract,
+	background: backgroundModeConfigContract,
+	card: cardModeConfigContract,
+	deck: deckModeConfigContract,
+	standings: standingsModeConfigContract,
 	'top-cut': topCutModeConfigContract,
 	'feature-match': featureMatchModeConfigContract,
 	'feature-match-overlay': featureMatchOverlayModeConfigContract,
 	'broadcast-graphics': broadcastGraphicsModeConfigContract,
-	'metagame': metagameModeConfigContract,
+	metagame: metagameModeConfigContract,
 	'top-cards': topCardsModeConfigContract,
 	'player-history': playerHistoryModeConfigContract,
-	'pairings': pairingsModeConfigContract,
+	pairings: pairingsModeConfigContract,
 	'archetype-spotlight': archetypeSpotlightModeConfigContract,
 	'head-to-head': headToHeadModeConfigContract,
 	'round-clock': roundClockModeConfigContract,
-	'talent': talentModeConfigContract,
+	talent: talentModeConfigContract,
 } as const;
 
 /** Any one mode's config. */
@@ -380,8 +419,8 @@ export type ScreenModeConfig = ScreenModeConfigOf<(typeof MODE_CONFIG_CONTRACTS)
  * Background Layer stack for every mode whose definition declares one.
  */
 export type ModeConfigTypeMap = {
-	[M in ScreenMode]: ScreenModeConfigOf<(typeof MODE_CONFIG_CONTRACTS)[M]>
-		& (M extends BackgroundLayersCapableMode ? BackgroundLayersModeConfig : unknown);
+	[M in ScreenMode]: ScreenModeConfigOf<(typeof MODE_CONFIG_CONTRACTS)[M]> &
+		(M extends BackgroundLayersCapableMode ? BackgroundLayersModeConfig : unknown);
 };
 
 /**
@@ -400,11 +439,14 @@ export type ModeConfigsMap = { [M in ScreenMode]?: Partial<ModeConfigTypeMap[M]>
  * authored stack takes no `null`, as its PATCH form refuses one (ADR-0037).
  */
 export type ScreenModeConfigPatch<M extends ScreenMode> = {
-	[K in keyof ModeConfigTypeMap[M]]?: ModeConfigTypeMap[M][K] | (K extends AuthoredStackOf<M> ? never : null);
+	[K in keyof ModeConfigTypeMap[M]]?:
+		| ModeConfigTypeMap[M][K]
+		| (K extends AuthoredStackOf<M> ? never : null);
 };
 
 /** The authored stacks a mode's config contract declares. */
-type AuthoredStackOf<M extends ScreenMode> = (typeof MODE_CONFIG_CONTRACTS)[M]['authoredStacks'][number];
+type AuthoredStackOf<M extends ScreenMode> =
+	(typeof MODE_CONFIG_CONTRACTS)[M]['authoredStacks'][number];
 
 /**
  * An edit as it must cross the wire. A field an edit names with `undefined` is
@@ -417,20 +459,27 @@ type AuthoredStackOf<M extends ScreenMode> = (typeof MODE_CONFIG_CONTRACTS)[M]['
  * `keep` lists fields that `null` may not delete, an authored stack's (ADR-0037):
  * an `undefined` one is left out instead, so a clear never empties one.
  */
-function namedUndefinedAsDeletion(edit: Record<string, unknown>, keep: readonly string[] = []): Record<string, unknown> {
+function namedUndefinedAsDeletion(
+	edit: Record<string, unknown>,
+	keep: readonly string[] = [],
+): Record<string, unknown> {
 	const patch: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(edit)) {
-		if (value !== undefined)
-			patch[key] = value;
-		else if (!keep.includes(key))
-			patch[key] = null;
+		if (value !== undefined) patch[key] = value;
+		else if (!keep.includes(key)) patch[key] = null;
 	}
 	return patch;
 }
 
 /** A mode-configuration edit as its PATCH carries it: every cleared field deleted, as `null`. */
-export function toModeConfigPatch<M extends ScreenMode>(mode: M, edit: ScreenModeConfigPatch<M>): ScreenModeConfigPatch<M> {
-	return namedUndefinedAsDeletion(edit, MODE_CONFIG_CONTRACTS[mode].authoredStacks) as ScreenModeConfigPatch<M>;
+export function toModeConfigPatch<M extends ScreenMode>(
+	mode: M,
+	edit: ScreenModeConfigPatch<M>,
+): ScreenModeConfigPatch<M> {
+	return namedUndefinedAsDeletion(
+		edit,
+		MODE_CONFIG_CONTRACTS[mode].authoredStacks,
+	) as ScreenModeConfigPatch<M>;
 }
 
 /**
@@ -455,38 +504,22 @@ type ModeResetPreservedKeysMap = {
 };
 
 const MODE_RESET_PRESERVED_KEYS = {
-	'background': [],
-	'card': ['featureMatchId'],
-	'deck': ['deckSource'],
+	background: [],
+	card: ['featureMatchId'],
+	deck: ['deckSource'],
 	'top-cut': ['bracketSource', 'phaseId', 'manualBracket'],
 	'feature-match': ['featureMatchId'],
 	'feature-match-overlay': ['featureMatchId'],
 	'broadcast-graphics': [],
-	'standings': [
-		'viewMode',
-		'rangeStart',
-		'rangeEnd',
-		'playerListId',
-		'revealCount',
-		'roundId',
-	],
-	'metagame': [
-		'viewMode',
-		...METAGAME_SCOPE_FIELDS,
-		'archetypeId',
-	],
+	standings: ['viewMode', 'rangeStart', 'rangeEnd', 'playerListId', 'revealCount', 'roundId'],
+	metagame: ['viewMode', ...METAGAME_SCOPE_FIELDS, 'archetypeId'],
 	'top-cards': [...METAGAME_SCOPE_FIELDS, 'archetypeId'],
 	'player-history': ['playerId'],
-	'pairings': ['roundId'],
+	pairings: ['roundId'],
 	'archetype-spotlight': ['archetypeId', ...METAGAME_SCOPE_FIELDS],
-	'head-to-head': [
-		'playerSource',
-		'featureMatchId',
-		'player1Id',
-		'player2Id',
-	],
+	'head-to-head': ['playerSource', 'featureMatchId', 'player1Id', 'player2Id'],
 	'round-clock': ['roundId'],
-	'talent': ['selection', 'talentId', 'talentIds'],
+	talent: ['selection', 'talentId', 'talentIds'],
 } as const satisfies ModeResetPreservedKeysMap;
 
 // Helper to get default config for a mode
@@ -512,8 +545,13 @@ export function resolveScreenModeConfig<T extends ScreenMode>(
 }
 
 /** One mode's stored fragment as its contract reads it: its former fields upgraded or dropped, and within its bounds (`readStored`, #498, #752, #1071). */
-function readStoredModeConfig<T extends ScreenMode>(mode: T, stored: Partial<ModeConfigTypeMap[T]>): Partial<ModeConfigTypeMap[T]> {
-	return MODE_CONFIG_CONTRACTS[mode].readStored(stored as Record<string, unknown>) as Partial<ModeConfigTypeMap[T]>;
+function readStoredModeConfig<T extends ScreenMode>(
+	mode: T,
+	stored: Partial<ModeConfigTypeMap[T]>,
+): Partial<ModeConfigTypeMap[T]> {
+	return MODE_CONFIG_CONTRACTS[mode].readStored(stored as Record<string, unknown>) as Partial<
+		ModeConfigTypeMap[T]
+	>;
 }
 
 /**
@@ -526,13 +564,13 @@ function readStoredModeConfig<T extends ScreenMode>(mode: T, stored: Partial<Mod
  * one in range; writes outside the bounds are still refused. A map already in
  * bounds is returned as it is.
  */
-export function clampStoredModeConfigs<T extends ModeConfigsMap | null | undefined>(modeConfigs: T): T {
-	if (!modeConfigs)
-		return modeConfigs;
+export function clampStoredModeConfigs<T extends ModeConfigsMap | null | undefined>(
+	modeConfigs: T,
+): T {
+	if (!modeConfigs) return modeConfigs;
 	let clamped: Record<string, unknown> | undefined;
 	for (const [mode, stored] of Object.entries(modeConfigs)) {
-		if (!stored || !Object.hasOwn(MODE_CONFIG_CONTRACTS, mode))
-			continue;
+		if (!stored || !Object.hasOwn(MODE_CONFIG_CONTRACTS, mode)) continue;
 		const next = readStoredModeConfig(mode as ScreenMode, stored);
 		if (next !== stored) {
 			clamped ??= { ...modeConfigs };
@@ -549,7 +587,9 @@ export function clampStoredModeConfigs<T extends ModeConfigsMap | null | undefin
  * as its `featureMatchId` Event Reference, and authored content such as a Broadcast Graphics Screen's
  * stack of Broadcast Graphics.
  */
-export function getDisplayDefaultsForMode<T extends ScreenMode>(mode: T): Partial<ModeConfigTypeMap[T]> {
+export function getDisplayDefaultsForMode<T extends ScreenMode>(
+	mode: T,
+): Partial<ModeConfigTypeMap[T]> {
 	const full = getDefaultConfigForMode(mode);
 	const preservedKeys: readonly string[] = [
 		...MODE_RESET_PRESERVED_KEYS[mode],
@@ -567,9 +607,7 @@ export function getDisplayDefaultsForMode<T extends ScreenMode>(mode: T): Partia
 
 /** Strip keys whose value is `null` — used after merge so `null` acts as "delete". */
 export function stripNullConfigKeys<T extends Record<string, unknown>>(config: T): T {
-	return Object.fromEntries(
-		Object.entries(config).filter(([, value]) => value !== null),
-	) as T;
+	return Object.fromEntries(Object.entries(config).filter(([, value]) => value !== null)) as T;
 }
 
 export function mergeScreenModeConfig<M extends ScreenMode>(
@@ -584,9 +622,11 @@ export function mergeScreenModeConfig<M extends ScreenMode>(
 	// A write of a mode's config also drops what its contract no longer holds (#752).
 	return {
 		...currentConfigs,
-		[mode]: contract.upgradeStored(stripNullConfigKeys({
-			...currentModeConfig,
-			...partialConfig,
-		})),
+		[mode]: contract.upgradeStored(
+			stripNullConfigKeys({
+				...currentModeConfig,
+				...partialConfig,
+			}),
+		),
 	};
 }

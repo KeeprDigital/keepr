@@ -25,12 +25,15 @@ import {
 describe('social profile transition projection', () => {
 	it('uses only the graphic update pair when staged Event Data is explicitly accepted', () => {
 		const acceptedAt = 1_010_000;
-		const live: BroadcastGraphicsLiveState = onAirWith({
-			profile: profileState({
-				talent: ava,
-				acceptedProfiles: [twitch],
-			}),
-		}, { startedAt: 1_000_000 });
+		const live: BroadcastGraphicsLiveState = onAirWith(
+			{
+				profile: profileState({
+					talent: ava,
+					acceptedProfiles: [twitch],
+				}),
+			},
+			{ startedAt: 1_000_000 },
+		);
 		const staged = { ...profileDeclaration, updatePolicy: 'staged' as const };
 		const updated = updateGraphic(live, {
 			acceptedAt,
@@ -44,17 +47,21 @@ describe('social profile transition projection', () => {
 		};
 
 		expect(updated.socialProfileProjections!.lower!.profile!.transitionAnchor).toBeUndefined();
-		expect(broadcastGraphicRenderedSocialProfileValues(updated, graphic, {
-			now: acceptedAt + 100,
-			durations: { enter: 0, exit: 0, update: 400 },
-		})).toEqual({
+		expect(
+			broadcastGraphicRenderedSocialProfileValues(updated, graphic, {
+				now: acceptedAt + 100,
+				durations: { enter: 0, exit: 0, update: 400 },
+			}),
+		).toEqual({
 			current: { profile: youtube },
 			outgoing: { profile: twitch },
 		});
-		expect(broadcastGraphicRenderedSocialProfileValues(updated, graphic, {
-			now: acceptedAt + 400,
-			durations: { enter: 0, exit: 0, update: 400 },
-		})).toEqual({
+		expect(
+			broadcastGraphicRenderedSocialProfileValues(updated, graphic, {
+				now: acceptedAt + 400,
+				durations: { enter: 0, exit: 0, update: 400 },
+			}),
+		).toEqual({
 			current: { profile: youtube },
 		});
 	});
@@ -63,52 +70,62 @@ describe('social profile transition projection', () => {
 		const staged = { ...profileDeclaration, updatePolicy: 'staged' as const };
 		const acceptedAt = 9_000;
 		const durations = { enter: 0, exit: 0, update: 10_000 };
-		const updated = updateGraphic(onAirWith({
-			profile: profileState({
-				talent: ava,
-				acceptedProfiles: [twitch, youtube],
-				currentNetwork: 'twitch',
-				rotationAnchor: { network: 'twitch', anchoredAt: 0 },
+		const updated = updateGraphic(
+			onAirWith({
+				profile: profileState({
+					talent: ava,
+					acceptedProfiles: [twitch, youtube],
+					currentNetwork: 'twitch',
+					rotationAnchor: { network: 'twitch', anchoredAt: 0 },
+				}),
 			}),
-		}), {
-			acceptedAt,
-			durations,
-			socialProfileProjections: [staged],
-			resolveSocialProfileProjections: resolvingProfile([twitch, youtube, x]),
-		});
+			{
+				acceptedAt,
+				durations,
+				socialProfileProjections: [staged],
+				resolveSocialProfileProjections: resolvingProfile([twitch, youtube, x]),
+			},
+		);
 
 		expect(updated.socialProfileProjections!.lower!.profile).toMatchObject({
 			currentNetwork: 'youtube',
 			rotationAnchor: { network: 'youtube', anchoredAt: acceptedAt + durations.update },
 		});
-		expect(broadcastGraphicRenderedSocialProfileValues(
-			updated,
-			{
-				id: 'lower',
-				socialProfileProjections: [staged],
-			},
-			{ now: acceptedAt + 9_000, durations },
-		).current).toEqual({ profile: youtube });
+		expect(
+			broadcastGraphicRenderedSocialProfileValues(
+				updated,
+				{
+					id: 'lower',
+					socialProfileProjections: [staged],
+				},
+				{ now: acceptedAt + 9_000, durations },
+			).current,
+		).toEqual({ profile: youtube });
 	});
 
 	it('anchors a staged target after a deferred entrance and its graphic update', () => {
 		const staged = { ...profileDeclaration, updatePolicy: 'staged' as const };
-		const updated = updateGraphic(onAirWith({
-			profile: profileState({
-				talent: ava,
-				acceptedProfiles: [twitch],
-				rotationAnchor: { network: 'twitch', anchoredAt: 0 },
+		const updated = updateGraphic(
+			onAirWith({
+				profile: profileState({
+					talent: ava,
+					acceptedProfiles: [twitch],
+					rotationAnchor: { network: 'twitch', anchoredAt: 0 },
+				}),
 			}),
-		}), {
-			acceptedAt: 100,
-			durations: { enter: 1_000, exit: 0, update: 400 },
-			socialProfileProjections: [staged],
-			resolveSocialProfileProjections: resolvingProfile([youtube, x]),
-		});
+			{
+				acceptedAt: 100,
+				durations: { enter: 1_000, exit: 0, update: 400 },
+				socialProfileProjections: [staged],
+				resolveSocialProfileProjections: resolvingProfile([youtube, x]),
+			},
+		);
 
 		expect(updated.playout.lower!.updateStartedAt).toBe(1_000);
-		expect(updated.socialProfileProjections!.lower!.profile!.rotationAnchor)
-			.toEqual({ network: 'youtube', anchoredAt: 1_400 });
+		expect(updated.socialProfileProjections!.lower!.profile!.rotationAnchor).toEqual({
+			network: 'youtube',
+			anchoredAt: 1_400,
+		});
 	});
 
 	it('captures the exact layered Social Profile frame an explicit update interrupts', () => {
@@ -134,20 +151,23 @@ describe('social profile transition projection', () => {
 			onAir: true,
 			now: acceptedAt,
 		}).layers;
-		const updated = updateGraphic({
-			...createInitialBroadcastGraphicsLiveState(),
-			playout: {
-				lower: { onAir: true, effectiveStartedAt: 0, cut: false },
+		const updated = updateGraphic(
+			{
+				...createInitialBroadcastGraphicsLiveState(),
+				playout: {
+					lower: { onAir: true, effectiveStartedAt: 0, cut: false },
+				},
+				socialProfileProjections: {
+					lower: { profile: interrupted },
+				},
 			},
-			socialProfileProjections: {
-				lower: { profile: interrupted },
+			{
+				acceptedAt,
+				durations: { enter: 0, exit: 0, update: 400 },
+				socialProfileProjections: [staged],
+				resolveSocialProfileProjections: resolvingProfile([x]),
 			},
-		}, {
-			acceptedAt,
-			durations: { enter: 0, exit: 0, update: 400 },
-			socialProfileProjections: [staged],
-			resolveSocialProfileProjections: resolvingProfile([x]),
-		});
+		);
 		const rendered = broadcastGraphicRenderedSocialProfilePresentations(
 			updated,
 			{
@@ -180,36 +200,51 @@ describe('social profile transition projection', () => {
 			socialProfileProjections: [staged],
 			resolveSocialProfileProjections: resolvingProfile([profile]),
 		});
-		let live: BroadcastGraphicsLiveState = onAirWith({
-			profile: profileState({
-				talent: ava,
-				acceptedProfiles: [twitch],
-			}),
-		}, { startedAt: 1_000_000 });
-		live = applyBroadcastGraphicsCommand(live, {
-			type: 'Update Graphic',
-			payload: { graphicId: 'lower', basedOnAcceptedRevision: 0 },
-		}, context(1_010_000, youtube));
-		live = applyBroadcastGraphicsCommand(live, {
-			type: 'Update Graphic',
-			payload: { graphicId: 'lower', basedOnAcceptedRevision: 1 },
-		}, context(1_010_100, x));
+		let live: BroadcastGraphicsLiveState = onAirWith(
+			{
+				profile: profileState({
+					talent: ava,
+					acceptedProfiles: [twitch],
+				}),
+			},
+			{ startedAt: 1_000_000 },
+		);
+		live = applyBroadcastGraphicsCommand(
+			live,
+			{
+				type: 'Update Graphic',
+				payload: { graphicId: 'lower', basedOnAcceptedRevision: 0 },
+			},
+			context(1_010_000, youtube),
+		);
+		live = applyBroadcastGraphicsCommand(
+			live,
+			{
+				type: 'Update Graphic',
+				payload: { graphicId: 'lower', basedOnAcceptedRevision: 1 },
+			},
+			context(1_010_100, x),
+		);
 		const graphic = {
 			id: 'lower',
 			socialProfileProjections: [staged],
 		};
 
-		expect(broadcastGraphicRenderedSocialProfileValues(live, graphic, {
-			now: 1_010_200,
-			durations: { enter: 0, exit: 0, update: 400 },
-		})).toEqual({
+		expect(
+			broadcastGraphicRenderedSocialProfileValues(live, graphic, {
+				now: 1_010_200,
+				durations: { enter: 0, exit: 0, update: 400 },
+			}),
+		).toEqual({
 			current: { profile: youtube },
 			outgoing: { profile: twitch },
 		});
-		expect(broadcastGraphicRenderedSocialProfileValues(live, graphic, {
-			now: 1_010_500,
-			durations: { enter: 0, exit: 0, update: 400 },
-		})).toEqual({
+		expect(
+			broadcastGraphicRenderedSocialProfileValues(live, graphic, {
+				now: 1_010_500,
+				durations: { enter: 0, exit: 0, update: 400 },
+			}),
+		).toEqual({
 			current: { profile: x },
 			outgoing: { profile: youtube },
 		});
@@ -242,98 +277,112 @@ describe('social profile transition projection', () => {
 				current: { profile: x },
 			},
 		],
-	] as const)('carries %s beneath Out and discards only the pending rendering', (
-		_case,
-		outAt,
-		duringAt,
-		during,
-		settledAt,
-		settled,
-	) => {
-		const staged = { ...profileDeclaration, updatePolicy: 'staged' as const };
-		const durations = { enter: 0, exit: 1_000, update: 400 };
-		const context = (acceptedAt: number, profile: SocialProfileProjectionValue) => ({
-			inputs: [],
-			acceptedAt,
-			durations,
-			socialProfileProjections: [staged],
-			resolveSocialProfileProjections: resolvingProfile([profile]),
-		});
-		let live: BroadcastGraphicsLiveState = onAirWith({
-			profile: profileState({
-				talent: ava,
-				acceptedProfiles: [twitch],
-				rotationAnchor: { network: 'twitch', anchoredAt: -10_000 },
-			}),
-		}, { startedAt: -10_000 });
-		live = applyBroadcastGraphicsCommand(live, {
-			type: 'Update Graphic',
-			payload: { graphicId: 'lower', basedOnAcceptedRevision: 0 },
-		}, context(0, youtube));
-		live = applyBroadcastGraphicsCommand(live, {
-			type: 'Update Graphic',
-			payload: { graphicId: 'lower', basedOnAcceptedRevision: 1 },
-		}, context(100, x));
-		live = applyBroadcastGraphicsCommand(live, {
-			type: 'Out',
-			payload: { graphicId: 'lower' },
-		}, {
-			inputs: [],
-			acceptedAt: outAt,
-			durations,
-			socialProfileProjections: [staged],
-		});
-		const graphic = {
-			id: 'lower',
-			socialProfileProjections: [staged],
-		};
-
-		expect(broadcastGraphicRenderedSocialProfileValues(live, graphic, { now: duringAt, durations }))
-			.toEqual(during);
-		expect(broadcastGraphicRenderedSocialProfileValues(live, graphic, { now: settledAt, durations }))
-			.toEqual(settled);
-	});
-
-	it('applies a live projection independently when its selected Talent changes', () => {
-		const live = applyBroadcastGraphicsCommand({
-			...createInitialBroadcastGraphicsLiveState(),
-			playout: {
-				lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
-			},
-			sources: {
-				lower: { talent: 7 },
-			},
-			socialProfileProjections: {
-				lower: {
+	] as const)(
+		'carries %s beneath Out and discards only the pending rendering',
+		(_case, outAt, duringAt, during, settledAt, settled) => {
+			const staged = { ...profileDeclaration, updatePolicy: 'staged' as const };
+			const durations = { enter: 0, exit: 1_000, update: 400 };
+			const context = (acceptedAt: number, profile: SocialProfileProjectionValue) => ({
+				inputs: [],
+				acceptedAt,
+				durations,
+				socialProfileProjections: [staged],
+				resolveSocialProfileProjections: resolvingProfile([profile]),
+			});
+			let live: BroadcastGraphicsLiveState = onAirWith(
+				{
 					profile: profileState({
 						talent: ava,
-						acceptedProfiles: [twitch, x],
-						currentNetwork: 'x',
-						manualNetwork: 'x',
+						acceptedProfiles: [twitch],
+						rotationAnchor: { network: 'twitch', anchoredAt: -10_000 },
 					}),
 				},
+				{ startedAt: -10_000 },
+			);
+			live = applyBroadcastGraphicsCommand(
+				live,
+				{
+					type: 'Update Graphic',
+					payload: { graphicId: 'lower', basedOnAcceptedRevision: 0 },
+				},
+				context(0, youtube),
+			);
+			live = applyBroadcastGraphicsCommand(
+				live,
+				{
+					type: 'Update Graphic',
+					payload: { graphicId: 'lower', basedOnAcceptedRevision: 1 },
+				},
+				context(100, x),
+			);
+			live = applyBroadcastGraphicsCommand(
+				live,
+				{
+					type: 'Out',
+					payload: { graphicId: 'lower' },
+				},
+				{
+					inputs: [],
+					acceptedAt: outAt,
+					durations,
+					socialProfileProjections: [staged],
+				},
+			);
+			const graphic = {
+				id: 'lower',
+				socialProfileProjections: [staged],
+			};
+
+			expect(
+				broadcastGraphicRenderedSocialProfileValues(live, graphic, { now: duringAt, durations }),
+			).toEqual(during);
+			expect(
+				broadcastGraphicRenderedSocialProfileValues(live, graphic, { now: settledAt, durations }),
+			).toEqual(settled);
+		},
+	);
+
+	it('applies a live projection independently when its selected Talent changes', () => {
+		const live = applyBroadcastGraphicsCommand(
+			{
+				...createInitialBroadcastGraphicsLiveState(),
+				playout: {
+					lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
+				},
+				sources: {
+					lower: { talent: 7 },
+				},
+				socialProfileProjections: {
+					lower: {
+						profile: profileState({
+							talent: ava,
+							acceptedProfiles: [twitch, x],
+							currentNetwork: 'x',
+							manualNetwork: 'x',
+						}),
+					},
+				},
 			},
-		}, {
-			type: 'Select Source',
-			payload: { graphicId: 'lower', sourceKey: 'talent', selectionId: 8 },
-		}, {
-			inputs: [],
-			acceptedAt: 1_010_000,
-			sources: [
-				{ key: 'talent', label: 'Talent', kind: 'talent' },
-			],
-			socialProfileProjections: [
-				{ ...profileDeclaration, updatePolicy: 'live' },
-			],
-			resolveSocialProfileProjections: selections => ({
-				profile: selections.talent === 8
-					? {
-							talent: { id: 8, name: 'Bo Lin' },
-							acceptedProfiles: [youtube],
-						}
-					: { acceptedProfiles: [] },
-			}),
-		});
+			{
+				type: 'Select Source',
+				payload: { graphicId: 'lower', sourceKey: 'talent', selectionId: 8 },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_010_000,
+				sources: [{ key: 'talent', label: 'Talent', kind: 'talent' }],
+				socialProfileProjections: [{ ...profileDeclaration, updatePolicy: 'live' }],
+				resolveSocialProfileProjections: (selections) => ({
+					profile:
+						selections.talent === 8
+							? {
+									talent: { id: 8, name: 'Bo Lin' },
+									acceptedProfiles: [youtube],
+								}
+							: { acceptedProfiles: [] },
+				}),
+			},
+		);
 		const projection = live.socialProfileProjections!.lower!.profile!;
 
 		expect(projection).toMatchObject({
@@ -347,136 +396,155 @@ describe('social profile transition projection', () => {
 	});
 
 	it('applies live and staged policies independently for projections on the same graphic', () => {
-		const stagedDeclaration = { ...profileDeclaration, key: 'staged', updatePolicy: 'staged' as const };
+		const stagedDeclaration = {
+			...profileDeclaration,
+			key: 'staged',
+			updatePolicy: 'staged' as const,
+		};
 		const liveDeclaration = { ...profileDeclaration, key: 'live', updatePolicy: 'live' as const };
 		const initialProjection = profileState({
 			talent: ava,
 			acceptedProfiles: [twitch],
 		});
-		const changed = applyBroadcastGraphicsCommand({
-			...createInitialBroadcastGraphicsLiveState(),
-			playout: {
-				lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
-			},
-			socialProfileProjections: {
-				lower: {
-					live: initialProjection,
-					staged: initialProjection,
+		const changed = applyBroadcastGraphicsCommand(
+			{
+				...createInitialBroadcastGraphicsLiveState(),
+				playout: {
+					lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
+				},
+				socialProfileProjections: {
+					lower: {
+						live: initialProjection,
+						staged: initialProjection,
+					},
 				},
 			},
-		}, {
-			type: 'Resolve Bindings',
-			payload: { graphicId: 'lower' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_010_000,
-			socialProfileProjections: [liveDeclaration, stagedDeclaration],
-			resolveSocialProfileProjections: () => ({
-				live: {
-					talent: ava,
-					acceptedProfiles: [youtube],
-				},
-				staged: {
-					talent: ava,
-					acceptedProfiles: [youtube],
-				},
-			}),
-		});
+			{
+				type: 'Resolve Bindings',
+				payload: { graphicId: 'lower' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_010_000,
+				socialProfileProjections: [liveDeclaration, stagedDeclaration],
+				resolveSocialProfileProjections: () => ({
+					live: {
+						talent: ava,
+						acceptedProfiles: [youtube],
+					},
+					staged: {
+						talent: ava,
+						acceptedProfiles: [youtube],
+					},
+				}),
+			},
+		);
 
 		expect(changed.socialProfileProjections!.lower!.live!.acceptedProfiles).toEqual([youtube]);
 		expect(changed.socialProfileProjections!.lower!.staged!.acceptedProfiles).toEqual([twitch]);
 	});
 
 	it('lets an immediate live re-resolution supersede a running graphic update', () => {
-		const changed = applyBroadcastGraphicsCommand({
-			...createInitialBroadcastGraphicsLiveState(),
-			playout: {
-				lower: {
-					onAir: true,
-					effectiveStartedAt: 1_000_000,
-					cut: false,
-					updateStartedAt: 1_009_900,
+		const changed = applyBroadcastGraphicsCommand(
+			{
+				...createInitialBroadcastGraphicsLiveState(),
+				playout: {
+					lower: {
+						onAir: true,
+						effectiveStartedAt: 1_000_000,
+						cut: false,
+						updateStartedAt: 1_009_900,
+					},
+				},
+				inputs: {
+					lower: {
+						working: {},
+						accepted: {},
+						acceptedRevision: 1,
+						updateFrom: {},
+					},
+				},
+				socialProfileProjections: {
+					lower: {
+						profile: profileState({
+							talent: ava,
+							acceptedProfiles: [twitch],
+							updateFrom: [
+								{
+									values: twitch,
+									opacity: 1,
+									offsetX: 0,
+									offsetY: 0,
+								},
+							],
+						}),
+					},
 				},
 			},
-			inputs: {
-				lower: {
-					working: {},
-					accepted: {},
-					acceptedRevision: 1,
-					updateFrom: {},
-				},
+			{
+				type: 'Resolve Bindings',
+				payload: { graphicId: 'lower' },
 			},
-			socialProfileProjections: {
-				lower: {
-					profile: profileState({
+			{
+				inputs: [],
+				acceptedAt: 1_010_000,
+				durations: { enter: 0, exit: 0, update: 400 },
+				socialProfileProjections: [{ ...profileDeclaration, updatePolicy: 'live' }],
+				resolveSocialProfileProjections: () => ({
+					profile: {
 						talent: ava,
-						acceptedProfiles: [twitch],
-						updateFrom: [
-							{
-								values: twitch,
-								opacity: 1,
-								offsetX: 0,
-								offsetY: 0,
-							},
+						acceptedProfiles: [
+							{ ...twitch, handle: 'corrected', profileUrl: 'https://www.twitch.tv/corrected' },
 						],
-					}),
-				},
+					},
+				}),
 			},
-		}, {
-			type: 'Resolve Bindings',
-			payload: { graphicId: 'lower' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_010_000,
-			durations: { enter: 0, exit: 0, update: 400 },
-			socialProfileProjections: [
-				{ ...profileDeclaration, updatePolicy: 'live' },
-			],
-			resolveSocialProfileProjections: () => ({
-				profile: {
-					talent: ava,
-					acceptedProfiles: [
-						{ ...twitch, handle: 'corrected', profileUrl: 'https://www.twitch.tv/corrected' },
-					],
-				},
-			}),
-		});
+		);
 
 		expect(changed.playout.lower!.updateStartedAt).toBeUndefined();
 		expect(changed.socialProfileProjections!.lower!.profile!.updateFrom).toBeUndefined();
-		expect(changed.socialProfileProjections!.lower!.profile!.transitionAnchor)
-			.toMatchObject({ startedAt: 1_010_000 });
+		expect(changed.socialProfileProjections!.lower!.profile!.transitionAnchor).toMatchObject({
+			startedAt: 1_010_000,
+		});
 	});
 
 	it('moves a removed current network forward in catalog order and transitions through unavailable', () => {
 		const liveDeclaration = { ...profileDeclaration, updatePolicy: 'live' as const };
-		const initial = onAirWith({
-			profile: profileState({
-				talent: ava,
-				acceptedProfiles: [twitch, youtube, x],
-				currentNetwork: 'youtube',
-				manualNetwork: 'youtube',
-				rotationAnchor: { network: 'youtube', anchoredAt: 1_009_000 },
-			}),
-		}, { startedAt: 1_000_000 });
+		const initial = onAirWith(
+			{
+				profile: profileState({
+					talent: ava,
+					acceptedProfiles: [twitch, youtube, x],
+					currentNetwork: 'youtube',
+					manualNetwork: 'youtube',
+					rotationAnchor: { network: 'youtube', anchoredAt: 1_009_000 },
+				}),
+			},
+			{ startedAt: 1_000_000 },
+		);
 		const resolveAt = (
 			live: BroadcastGraphicsLiveState,
 			acceptedProfiles: SocialProfileProjectionValue[],
 			acceptedAt: number,
-		) => applyBroadcastGraphicsCommand(live, {
-			type: 'Resolve Bindings',
-			payload: { graphicId: 'lower' },
-		}, {
-			inputs: [],
-			acceptedAt,
-			socialProfileProjections: [liveDeclaration],
-			resolveSocialProfileProjections: () => ({
-				profile: {
-					talent: ava,
-					acceptedProfiles,
+		) =>
+			applyBroadcastGraphicsCommand(
+				live,
+				{
+					type: 'Resolve Bindings',
+					payload: { graphicId: 'lower' },
 				},
-			}),
-		});
+				{
+					inputs: [],
+					acceptedAt,
+					socialProfileProjections: [liveDeclaration],
+					resolveSocialProfileProjections: () => ({
+						profile: {
+							talent: ava,
+							acceptedProfiles,
+						},
+					}),
+				},
+			);
 
 		const removed = resolveAt(initial, [twitch, x], 1_010_000);
 		expect(removed.socialProfileProjections!.lower!.profile).toMatchObject({
@@ -488,10 +556,9 @@ describe('social profile transition projection', () => {
 
 		const unavailable = resolveAt(removed, [], 1_010_500);
 		expect(unavailable.socialProfileProjections!.lower!.profile!.currentNetwork).toBeUndefined();
-		expect(unavailable.socialProfileProjections!.lower!.profile!.transitionAnchor!.from)
-			.toEqual([
-				expect.objectContaining({ values: x }),
-			]);
+		expect(unavailable.socialProfileProjections!.lower!.profile!.transitionAnchor!.from).toEqual([
+			expect.objectContaining({ values: x }),
+		]);
 
 		const available = resolveAt(unavailable, [twitch], 1_011_000);
 		expect(available.socialProfileProjections!.lower!.profile).toMatchObject({
@@ -502,20 +569,21 @@ describe('social profile transition projection', () => {
 	});
 
 	it('does not let a restated staged Take accept Event Data, but an off-air Take resolves the latest Talent', () => {
-		const initial: BroadcastGraphicsLiveState = onAirWith({
-			profile: profileState({
-				talent: ava,
-				acceptedProfiles: [twitch, x],
-				currentNetwork: 'x',
-				manualNetwork: 'x',
-			}),
-		}, { startedAt: 1_000_000 });
+		const initial: BroadcastGraphicsLiveState = onAirWith(
+			{
+				profile: profileState({
+					talent: ava,
+					acceptedProfiles: [twitch, x],
+					currentNetwork: 'x',
+					manualNetwork: 'x',
+				}),
+			},
+			{ startedAt: 1_000_000 },
+		);
 		const context = {
 			inputs: [],
 			acceptedAt: 1_010_000,
-			socialProfileProjections: [
-				{ ...profileDeclaration, updatePolicy: 'staged' as const },
-			],
+			socialProfileProjections: [{ ...profileDeclaration, updatePolicy: 'staged' as const }],
 			resolveSocialProfileProjections: () => ({
 				profile: {
 					talent: { id: 8, name: 'Bo Lin' },
@@ -523,10 +591,14 @@ describe('social profile transition projection', () => {
 				},
 			}),
 		};
-		const restated = applyBroadcastGraphicsCommand(initial, {
-			type: 'Take',
-			payload: { graphicId: 'lower' },
-		}, context);
+		const restated = applyBroadcastGraphicsCommand(
+			initial,
+			{
+				type: 'Take',
+				payload: { graphicId: 'lower' },
+			},
+			context,
+		);
 		expect(restated.socialProfileProjections!.lower!.profile!.talent?.id).toBe(7);
 
 		const off = {
@@ -535,10 +607,14 @@ describe('social profile transition projection', () => {
 				lower: { onAir: false, effectiveStartedAt: 1_009_000, cut: false },
 			},
 		};
-		const retaken = applyBroadcastGraphicsCommand(off, {
-			type: 'Take',
-			payload: { graphicId: 'lower' },
-		}, context);
+		const retaken = applyBroadcastGraphicsCommand(
+			off,
+			{
+				type: 'Take',
+				payload: { graphicId: 'lower' },
+			},
+			context,
+		);
 		expect(retaken.socialProfileProjections!.lower!.profile).toMatchObject({
 			talent: { id: 8, name: 'Bo Lin' },
 			acceptedProfiles: [youtube],
@@ -549,10 +625,12 @@ describe('social profile transition projection', () => {
 	});
 
 	it('crossfades the correlated outgoing and incoming presentations at one synchronized midpoint', () => {
-		expect(projectSocialProfilePresentation(profileState(), profileDeclaration, {
-			onAir: true,
-			now: 1_008_125,
-		})).toEqual({
+		expect(
+			projectSocialProfilePresentation(profileState(), profileDeclaration, {
+				onAir: true,
+				now: 1_008_125,
+			}),
+		).toEqual({
 			phase: { kind: 'transition', elapsedMs: 125, durationMs: 250 },
 			layers: [
 				{
@@ -572,10 +650,16 @@ describe('social profile transition projection', () => {
 	});
 
 	it('slides left without either presentation escaping the Presentation Group coordinate space', () => {
-		expect(projectSocialProfilePresentation(profileState(), { ...profileDeclaration, transition: 'slide-left' }, {
-			onAir: true,
-			now: 1_008_125,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(
+				profileState(),
+				{ ...profileDeclaration, transition: 'slide-left' },
+				{
+					onAir: true,
+					now: 1_008_125,
+				},
+			).layers,
+		).toEqual([
 			{
 				values: twitch,
 				opacity: 1,
@@ -595,25 +679,34 @@ describe('social profile transition projection', () => {
 		['slide-right', 50, 0, -50, 0],
 		['slide-up', 0, -50, 0, 50],
 		['slide-down', 0, 50, 0, -50],
-	] as const)('projects %s in its authored direction', (transition, outgoingX, outgoingY, incomingX, incomingY) => {
-		expect(projectSocialProfilePresentation(profileState(), { ...profileDeclaration, transition }, {
-			onAir: true,
-			now: 1_008_125,
-		}).layers).toEqual([
-			{
-				values: twitch,
-				opacity: 1,
-				offsetX: outgoingX,
-				offsetY: outgoingY,
-			},
-			{
-				values: youtube,
-				opacity: 1,
-				offsetX: incomingX,
-				offsetY: incomingY,
-			},
-		]);
-	});
+	] as const)(
+		'projects %s in its authored direction',
+		(transition, outgoingX, outgoingY, incomingX, incomingY) => {
+			expect(
+				projectSocialProfilePresentation(
+					profileState(),
+					{ ...profileDeclaration, transition },
+					{
+						onAir: true,
+						now: 1_008_125,
+					},
+				).layers,
+			).toEqual([
+				{
+					values: twitch,
+					opacity: 1,
+					offsetX: outgoingX,
+					offsetY: outgoingY,
+				},
+				{
+					values: youtube,
+					opacity: 1,
+					offsetX: incomingX,
+					offsetY: incomingY,
+				},
+			]);
+		},
+	);
 
 	it('replaces an in-progress transition from the exact currently rendered visual state', () => {
 		const initial = profileState({
@@ -623,28 +716,34 @@ describe('social profile transition projection', () => {
 			onAir: true,
 			now: 1_008_125,
 		});
-		const selected = applyBroadcastGraphicsCommand({
-			...createInitialBroadcastGraphicsLiveState(),
-			playout: {
-				lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
+		const selected = applyBroadcastGraphicsCommand(
+			{
+				...createInitialBroadcastGraphicsLiveState(),
+				playout: {
+					lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
+				},
+				socialProfileProjections: {
+					lower: { profile: initial },
+				},
 			},
-			socialProfileProjections: {
-				lower: { profile: initial },
+			{
+				type: 'Select Social Profile',
+				payload: { graphicId: 'lower', projectionKey: 'profile', network: 'x' },
 			},
-		}, {
-			type: 'Select Social Profile',
-			payload: { graphicId: 'lower', projectionKey: 'profile', network: 'x' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_125,
-			socialProfileProjections: [profileDeclaration],
-		});
+			{
+				inputs: [],
+				acceptedAt: 1_008_125,
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
 		const next = selected.socialProfileProjections!.lower!.profile!;
 
-		expect(projectSocialProfilePresentation(next, profileDeclaration, {
-			onAir: true,
-			now: 1_008_125,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(next, profileDeclaration, {
+				onAir: true,
+				now: 1_008_125,
+			}).layers,
+		).toEqual([
 			...before.layers,
 			{
 				values: x,
@@ -653,10 +752,12 @@ describe('social profile transition projection', () => {
 				offsetY: 0,
 			},
 		]);
-		expect(projectSocialProfilePresentation(next, profileDeclaration, {
-			onAir: true,
-			now: 1_008_250,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(next, profileDeclaration, {
+				onAir: true,
+				now: 1_008_250,
+			}).layers,
+		).toEqual([
 			{
 				values: twitch,
 				opacity: 0.25,
@@ -676,10 +777,12 @@ describe('social profile transition projection', () => {
 				offsetY: 0,
 			},
 		]);
-		expect(projectSocialProfilePresentation(next, profileDeclaration, {
-			onAir: true,
-			now: 1_008_375,
-		})).toEqual({
+		expect(
+			projectSocialProfilePresentation(next, profileDeclaration, {
+				onAir: true,
+				now: 1_008_375,
+			}),
+		).toEqual({
 			phase: { kind: 'dwell', elapsedMs: 0, durationMs: 8_000 },
 			layers: [
 				{
@@ -697,28 +800,34 @@ describe('social profile transition projection', () => {
 		const initial = profileState({
 			acceptedProfiles: [twitch, youtube, x],
 		});
-		const selected = applyBroadcastGraphicsCommand({
-			...createInitialBroadcastGraphicsLiveState(),
-			playout: {
-				lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
+		const selected = applyBroadcastGraphicsCommand(
+			{
+				...createInitialBroadcastGraphicsLiveState(),
+				playout: {
+					lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
+				},
+				socialProfileProjections: {
+					lower: { profile: initial },
+				},
 			},
-			socialProfileProjections: {
-				lower: { profile: initial },
+			{
+				type: 'Select Social Profile',
+				payload: { graphicId: 'lower', projectionKey: 'profile', network: 'x' },
 			},
-		}, {
-			type: 'Select Social Profile',
-			payload: { graphicId: 'lower', projectionKey: 'profile', network: 'x' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_125,
-			socialProfileProjections: [sliding],
-		});
+			{
+				inputs: [],
+				acceptedAt: 1_008_125,
+				socialProfileProjections: [sliding],
+			},
+		);
 		const next = selected.socialProfileProjections!.lower!.profile!;
 
-		expect(projectSocialProfilePresentation(next, sliding, {
-			onAir: true,
-			now: 1_008_125,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(next, sliding, {
+				onAir: true,
+				now: 1_008_125,
+			}).layers,
+		).toEqual([
 			{
 				values: twitch,
 				opacity: 1,
@@ -738,10 +847,12 @@ describe('social profile transition projection', () => {
 				offsetY: 0,
 			},
 		]);
-		expect(projectSocialProfilePresentation(next, sliding, {
-			onAir: true,
-			now: 1_008_250,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(next, sliding, {
+				onAir: true,
+				now: 1_008_250,
+			}).layers,
+		).toEqual([
 			{
 				values: twitch,
 				opacity: 1,
@@ -798,69 +909,95 @@ describe('social profile transition projection', () => {
 				},
 			],
 		],
-	] as const)('keeps distinct old and new tuples on the same network during %s', (transition, expected) => {
-		const updated = { ...twitch, handle: 'updated', profileUrl: 'https://www.twitch.tv/updated' };
-		const changing = profileState({
-			acceptedProfiles: [updated],
-			currentNetwork: 'twitch',
-			rotationAnchor: { network: 'twitch', anchoredAt: 1_000_250 },
-			transitionAnchor: {
-				startedAt: 1_000_000,
-				from: [
-					{
-						values: twitch,
-						opacity: 1,
-						offsetX: 0,
-						offsetY: 0,
-					},
-				],
-			},
-		});
+	] as const)(
+		'keeps distinct old and new tuples on the same network during %s',
+		(transition, expected) => {
+			const updated = { ...twitch, handle: 'updated', profileUrl: 'https://www.twitch.tv/updated' };
+			const changing = profileState({
+				acceptedProfiles: [updated],
+				currentNetwork: 'twitch',
+				rotationAnchor: { network: 'twitch', anchoredAt: 1_000_250 },
+				transitionAnchor: {
+					startedAt: 1_000_000,
+					from: [
+						{
+							values: twitch,
+							opacity: 1,
+							offsetX: 0,
+							offsetY: 0,
+						},
+					],
+				},
+			});
 
-		expect(projectSocialProfilePresentation(changing, { ...profileDeclaration, transition }, {
-			onAir: true,
-			now: 1_000_125,
-		}).layers).toEqual(expected);
-	});
+			expect(
+				projectSocialProfilePresentation(
+					changing,
+					{ ...profileDeclaration, transition },
+					{
+						onAir: true,
+						now: 1_000_125,
+					},
+				).layers,
+			).toEqual(expected);
+		},
+	);
 
 	it('keeps rapid select and step actions latest-wins without building a transition backlog', () => {
-		let live: BroadcastGraphicsLiveState = onAirWith({
-			profile: profileState({
-				acceptedProfiles: [twitch, youtube, x],
-			}),
-		}, { startedAt: 1_000_000 });
-		live = applyBroadcastGraphicsCommand(live, {
-			type: 'Select Social Profile',
-			payload: { graphicId: 'lower', projectionKey: 'profile', network: 'x' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_125,
-			socialProfileProjections: [profileDeclaration],
-		});
-		live = applyBroadcastGraphicsCommand(live, {
-			type: 'Next Social Profile',
-			payload: { graphicId: 'lower', projectionKey: 'profile' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_175,
-			socialProfileProjections: [profileDeclaration],
-		});
-		live = applyBroadcastGraphicsCommand(live, {
-			type: 'Previous Social Profile',
-			payload: { graphicId: 'lower', projectionKey: 'profile' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_225,
-			socialProfileProjections: [profileDeclaration],
-		});
+		let live: BroadcastGraphicsLiveState = onAirWith(
+			{
+				profile: profileState({
+					acceptedProfiles: [twitch, youtube, x],
+				}),
+			},
+			{ startedAt: 1_000_000 },
+		);
+		live = applyBroadcastGraphicsCommand(
+			live,
+			{
+				type: 'Select Social Profile',
+				payload: { graphicId: 'lower', projectionKey: 'profile', network: 'x' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_008_125,
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
+		live = applyBroadcastGraphicsCommand(
+			live,
+			{
+				type: 'Next Social Profile',
+				payload: { graphicId: 'lower', projectionKey: 'profile' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_008_175,
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
+		live = applyBroadcastGraphicsCommand(
+			live,
+			{
+				type: 'Previous Social Profile',
+				payload: { graphicId: 'lower', projectionKey: 'profile' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_008_225,
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
 		const final = live.socialProfileProjections!.lower!.profile!;
 
 		expect(final.currentNetwork).toBe('x');
 		expect(final.transitionAnchor?.from.length).toBeLessThanOrEqual(3);
-		expect(projectSocialProfilePresentation(final, profileDeclaration, {
-			onAir: true,
-			now: 1_008_475,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(final, profileDeclaration, {
+				onAir: true,
+				now: 1_008_475,
+			}).layers,
+		).toEqual([
 			{
 				values: x,
 				opacity: 1,
@@ -878,32 +1015,41 @@ describe('social profile transition projection', () => {
 			transitionAnchor: {
 				startedAt: 1_000_000,
 				from: Array.from({ length: MAX_SOCIAL_PROFILE_PRESENTATION_LAYERS }, (_, index) => ({
-					values: { ...twitch, handle: `old${index}`, profileUrl: `https://www.twitch.tv/old${index}` },
+					values: {
+						...twitch,
+						handle: `old${index}`,
+						profileUrl: `https://www.twitch.tv/old${index}`,
+					},
 					opacity: 1 / MAX_SOCIAL_PROFILE_PRESENTATION_LAYERS,
 					offsetX: 0,
 					offsetY: 0,
 				})),
 			},
 		});
-		const selected = applyBroadcastGraphicsCommand({
-			...createInitialBroadcastGraphicsLiveState(),
-			playout: {
-				lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
+		const selected = applyBroadcastGraphicsCommand(
+			{
+				...createInitialBroadcastGraphicsLiveState(),
+				playout: {
+					lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
+				},
+				socialProfileProjections: {
+					lower: { profile: crowded },
+				},
 			},
-			socialProfileProjections: {
-				lower: { profile: crowded },
+			{
+				type: 'Select Social Profile',
+				payload: { graphicId: 'lower', projectionKey: 'profile', network: 'youtube' },
 			},
-		}, {
-			type: 'Select Social Profile',
-			payload: { graphicId: 'lower', projectionKey: 'profile', network: 'youtube' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_000_125,
-			socialProfileProjections: [profileDeclaration],
-		});
+			{
+				inputs: [],
+				acceptedAt: 1_000_125,
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
 
-		expect(selected.socialProfileProjections!.lower!.profile!.transitionAnchor!.from)
-			.toHaveLength(MAX_SOCIAL_PROFILE_PRESENTATION_LAYERS);
+		expect(selected.socialProfileProjections!.lower!.profile!.transitionAnchor!.from).toHaveLength(
+			MAX_SOCIAL_PROFILE_PRESENTATION_LAYERS,
+		);
 	});
 
 	it('transitions between transparency and an available Presentation Group without fabricating content', () => {
@@ -930,10 +1076,12 @@ describe('social profile transition projection', () => {
 			},
 		});
 
-		expect(projectSocialProfilePresentation(appearing, profileDeclaration, {
-			onAir: true,
-			now: 1_000_000,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(appearing, profileDeclaration, {
+				onAir: true,
+				now: 1_000_000,
+			}).layers,
+		).toEqual([
 			{
 				values: twitch,
 				opacity: 0,
@@ -941,10 +1089,12 @@ describe('social profile transition projection', () => {
 				offsetY: 0,
 			},
 		]);
-		expect(projectSocialProfilePresentation(appearing, profileDeclaration, {
-			onAir: true,
-			now: 1_000_125,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(appearing, profileDeclaration, {
+				onAir: true,
+				now: 1_000_125,
+			}).layers,
+		).toEqual([
 			{
 				values: twitch,
 				opacity: 0.5,
@@ -952,10 +1102,12 @@ describe('social profile transition projection', () => {
 				offsetY: 0,
 			},
 		]);
-		expect(projectSocialProfilePresentation(disappearing, profileDeclaration, {
-			onAir: true,
-			now: 1_000_000,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(disappearing, profileDeclaration, {
+				onAir: true,
+				now: 1_000_000,
+			}).layers,
+		).toEqual([
 			{
 				values: twitch,
 				opacity: 1,
@@ -963,10 +1115,12 @@ describe('social profile transition projection', () => {
 				offsetY: 0,
 			},
 		]);
-		expect(projectSocialProfilePresentation(disappearing, profileDeclaration, {
-			onAir: true,
-			now: 1_000_125,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(disappearing, profileDeclaration, {
+				onAir: true,
+				now: 1_000_125,
+			}).layers,
+		).toEqual([
 			{
 				values: twitch,
 				opacity: 0.5,
@@ -974,10 +1128,12 @@ describe('social profile transition projection', () => {
 				offsetY: 0,
 			},
 		]);
-		expect(projectSocialProfilePresentation(appearing, profileDeclaration, {
-			onAir: true,
-			now: 1_000_250,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(appearing, profileDeclaration, {
+				onAir: true,
+				now: 1_000_250,
+			}).layers,
+		).toEqual([
 			{
 				values: twitch,
 				opacity: 1,
@@ -985,22 +1141,36 @@ describe('social profile transition projection', () => {
 				offsetY: 0,
 			},
 		]);
-		expect(projectSocialProfilePresentation(disappearing, profileDeclaration, {
-			onAir: true,
-			now: 1_000_250,
-		}).layers).toEqual([]);
-		expect(projectSocialProfilePresentation(profileState({
-			acceptedProfiles: [],
-			currentNetwork: undefined,
-			rotationAnchor: undefined,
-		}), profileDeclaration, { onAir: true, now: 1_000_125 }).layers).toEqual([]);
+		expect(
+			projectSocialProfilePresentation(disappearing, profileDeclaration, {
+				onAir: true,
+				now: 1_000_250,
+			}).layers,
+		).toEqual([]);
+		expect(
+			projectSocialProfilePresentation(
+				profileState({
+					acceptedProfiles: [],
+					currentNetwork: undefined,
+					rotationAnchor: undefined,
+				}),
+				profileDeclaration,
+				{ onAir: true, now: 1_000_125 },
+			).layers,
+		).toEqual([]);
 	});
 
 	it('cuts immediately and saturates non-Cut transitions at their authored duration', () => {
-		expect(projectSocialProfilePresentation(profileState(), { ...profileDeclaration, transition: 'cut' }, {
-			onAir: true,
-			now: 1_008_000,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(
+				profileState(),
+				{ ...profileDeclaration, transition: 'cut' },
+				{
+					onAir: true,
+					now: 1_008_000,
+				},
+			).layers,
+		).toEqual([
 			{
 				values: youtube,
 				opacity: 1,
@@ -1008,10 +1178,12 @@ describe('social profile transition projection', () => {
 				offsetY: 0,
 			},
 		]);
-		expect(projectSocialProfilePresentation(profileState(), profileDeclaration, {
-			onAir: true,
-			now: 1_008_250,
-		})).toEqual({
+		expect(
+			projectSocialProfilePresentation(profileState(), profileDeclaration, {
+				onAir: true,
+				now: 1_008_250,
+			}),
+		).toEqual({
 			phase: { kind: 'dwell', elapsedMs: 0, durationMs: 8_000 },
 			layers: [
 				{
@@ -1066,30 +1238,37 @@ describe('social profile transition projection', () => {
 	});
 
 	it('freezes the automatic transition an Out interrupts even when a stale manual anchor remains', () => {
-		const exiting = applyBroadcastGraphicsCommand(onAirWith({
-			profile: profileState({
-				rotationAnchor: { network: 'twitch', anchoredAt: 1_000_250 },
-				transitionAnchor: {
-					startedAt: 1_000_000,
-					from: [
-						{
-							values: x,
-							opacity: 1,
-							offsetX: 0,
-							offsetY: 0,
+		const exiting = applyBroadcastGraphicsCommand(
+			onAirWith(
+				{
+					profile: profileState({
+						rotationAnchor: { network: 'twitch', anchoredAt: 1_000_250 },
+						transitionAnchor: {
+							startedAt: 1_000_000,
+							from: [
+								{
+									values: x,
+									opacity: 1,
+									offsetX: 0,
+									offsetY: 0,
+								},
+							],
 						},
-					],
+					}),
 				},
-			}),
-		}, { startedAt: 1_000_000 }), {
-			type: 'Out',
-			payload: { graphicId: 'lower' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_400,
-			durations: { exit: 1_000 },
-			socialProfileProjections: [profileDeclaration],
-		});
+				{ startedAt: 1_000_000 },
+			),
+			{
+				type: 'Out',
+				payload: { graphicId: 'lower' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_008_400,
+				durations: { exit: 1_000 },
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
 		const frozen = exiting.socialProfileProjections!.lower!.profile!;
 
 		expect(frozen.currentNetwork).toBe('youtube');
@@ -1113,31 +1292,34 @@ describe('social profile transition projection', () => {
 			talent: ava,
 			acceptedProfiles: [twitch],
 		});
-		const updated = updateGraphic({
-			...createInitialBroadcastGraphicsLiveState(),
-			playout: {
-				lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
-			},
-			// Stored in the reverse of declaration order, as a recovered or peer-applied
-			// state is free to be: the content is identical either way.
-			socialProfileProjections: {
-				lower: { second: projection, first: projection },
-			},
-		}, {
-			acceptedAt: 1_010_000,
-			durations: { enter: 0, exit: 0, update: 400 },
-			socialProfileProjections: [first, second],
-			resolveSocialProfileProjections: () => ({
-				first: {
-					talent: ava,
-					acceptedProfiles: [twitch],
+		const updated = updateGraphic(
+			{
+				...createInitialBroadcastGraphicsLiveState(),
+				playout: {
+					lower: { onAir: true, effectiveStartedAt: 1_000_000, cut: false },
 				},
-				second: {
-					talent: ava,
-					acceptedProfiles: [twitch],
+				// Stored in the reverse of declaration order, as a recovered or peer-applied
+				// state is free to be: the content is identical either way.
+				socialProfileProjections: {
+					lower: { second: projection, first: projection },
 				},
-			}),
-		});
+			},
+			{
+				acceptedAt: 1_010_000,
+				durations: { enter: 0, exit: 0, update: 400 },
+				socialProfileProjections: [first, second],
+				resolveSocialProfileProjections: () => ({
+					first: {
+						talent: ava,
+						acceptedProfiles: [twitch],
+					},
+					second: {
+						talent: ava,
+						acceptedProfiles: [twitch],
+					},
+				}),
+			},
+		);
 
 		expect(updated.playout.lower!.updateStartedAt).toBeUndefined();
 	});
@@ -1178,40 +1360,51 @@ describe('social profile transition projection', () => {
 
 		// The reduction itself leaves the stored entry untouched rather than rewriting
 		// identical content in a new key order and announcing a change.
-		const resolved = applyBroadcastGraphicsCommand(live, {
-			type: 'Resolve Bindings',
-			payload: { graphicId: 'lower' },
-		}, context);
+		const resolved = applyBroadcastGraphicsCommand(
+			live,
+			{
+				type: 'Resolve Bindings',
+				payload: { graphicId: 'lower' },
+			},
+			context,
+		);
 		expect(resolved.socialProfileProjections!.lower).toBe(live.socialProfileProjections.lower);
 	});
 
 	it('continues the exact automatic transition frame underneath Out and a Take reversal', () => {
 		const profile = profileState();
 		const onAir = onAirWith({ profile }, { startedAt: 1_000_000 });
-		const beforeOut = projectSocialProfilePresentation(
-			profile,
-			profileDeclaration,
-			{ onAir: true, now: 1_008_125 },
-		);
-		const exiting = applyBroadcastGraphicsCommand(onAir, {
-			type: 'Out',
-			payload: { graphicId: 'lower' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_125,
-			durations: { exit: 1_000 },
-			socialProfileProjections: [profileDeclaration],
+		const beforeOut = projectSocialProfilePresentation(profile, profileDeclaration, {
+			onAir: true,
+			now: 1_008_125,
 		});
+		const exiting = applyBroadcastGraphicsCommand(
+			onAir,
+			{
+				type: 'Out',
+				payload: { graphicId: 'lower' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_008_125,
+				durations: { exit: 1_000 },
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
 		const frozen = exiting.socialProfileProjections!.lower!.profile!;
 
-		expect(projectSocialProfilePresentation(frozen, profileDeclaration, {
-			onAir: false,
-			now: 1_008_125,
-		})).toEqual(beforeOut);
-		expect(projectSocialProfilePresentation(frozen, profileDeclaration, {
-			onAir: false,
-			now: 1_008_250,
-		}).layers).toEqual([
+		expect(
+			projectSocialProfilePresentation(frozen, profileDeclaration, {
+				onAir: false,
+				now: 1_008_125,
+			}),
+		).toEqual(beforeOut);
+		expect(
+			projectSocialProfilePresentation(frozen, profileDeclaration, {
+				onAir: false,
+				now: 1_008_250,
+			}).layers,
+		).toEqual([
 			{
 				values: youtube,
 				opacity: 1,
@@ -1220,22 +1413,30 @@ describe('social profile transition projection', () => {
 			},
 		]);
 
-		const reversed = applyBroadcastGraphicsCommand(exiting, {
-			type: 'Take',
-			payload: { graphicId: 'lower' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_175,
-			durations: { enter: 1_000, exit: 1_000 },
-			socialProfileProjections: [profileDeclaration],
-		});
-		expect(projectSocialProfilePresentation(
-			reversed.socialProfileProjections!.lower!.profile!,
-			profileDeclaration,
-			{ onAir: true, now: 1_008_175 },
-		)).toEqual(projectSocialProfilePresentation(frozen, profileDeclaration, {
-			onAir: false,
-			now: 1_008_175,
-		}));
+		const reversed = applyBroadcastGraphicsCommand(
+			exiting,
+			{
+				type: 'Take',
+				payload: { graphicId: 'lower' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_008_175,
+				durations: { enter: 1_000, exit: 1_000 },
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
+		expect(
+			projectSocialProfilePresentation(
+				reversed.socialProfileProjections!.lower!.profile!,
+				profileDeclaration,
+				{ onAir: true, now: 1_008_175 },
+			),
+		).toEqual(
+			projectSocialProfilePresentation(frozen, profileDeclaration, {
+				onAir: false,
+				now: 1_008_175,
+			}),
+		);
 	});
 });

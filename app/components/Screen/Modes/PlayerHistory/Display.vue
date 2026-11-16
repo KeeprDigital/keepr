@@ -4,7 +4,8 @@ import type { PlayerMatchHistoryEntry } from '~/composables/screen/usePlayerHist
 import { formatGameScore } from '~~/shared/utils/matchFromPlayerSide';
 import { foundationTokenVar, foundationTypographyStyle, modeTokenVar } from '~/modules/screen-mode';
 
-const { config, error, ready, isEmpty, headerText, pageData, pageSize, player, formatOutcome } = usePlayerHistoryModeData(useScreenContext());
+const { config, error, ready, isEmpty, headerText, pageData, pageSize, player, formatOutcome } =
+	usePlayerHistoryModeData(useScreenContext());
 
 const columnWidths: Record<PlayerHistoryColumnKey, string> = {
 	round: 'minmax(10rem, 1fr)',
@@ -15,14 +16,20 @@ const columnWidths: Record<PlayerHistoryColumnKey, string> = {
 	gameScore: 'minmax(6rem, auto)',
 };
 
-const visibleColumns = computed(() => config.value.columns.filter(column => column.visible));
+const visibleColumns = computed(() => config.value.columns.filter((column) => column.visible));
 // A fact with its own column shows there rather than twice: the opponent's deck
 // under their name, and the game score on the outcome badge.
-const showsArchetypeColumn = computed(() => visibleColumns.value.some(column => column.key === 'opponentArchetype'));
-const showsGameScoreColumn = computed(() => visibleColumns.value.some(column => column.key === 'gameScore'));
-const showsOutcomeColumn = computed(() => visibleColumns.value.some(column => column.key === 'outcome'));
+const showsArchetypeColumn = computed(() =>
+	visibleColumns.value.some((column) => column.key === 'opponentArchetype'),
+);
+const showsGameScoreColumn = computed(() =>
+	visibleColumns.value.some((column) => column.key === 'gameScore'),
+);
+const showsOutcomeColumn = computed(() =>
+	visibleColumns.value.some((column) => column.key === 'outcome'),
+);
 const gridStyle = computed(() => ({
-	gridTemplateColumns: visibleColumns.value.map(column => columnWidths[column.key]).join(' '),
+	gridTemplateColumns: visibleColumns.value.map((column) => columnWidths[column.key]).join(' '),
 }));
 
 const primaryTextStyle = {
@@ -84,8 +91,7 @@ const displayStyle = computed(() => ({
 
 /** Its Game Score; an unreported Match reads Pending unless the Outcome column already says so. */
 function gameScoreText(row: PlayerMatchHistoryEntry) {
-	if (row.outcome === 'pending' && !showsOutcomeColumn.value)
-		return 'Pending';
+	if (row.outcome === 'pending' && !showsOutcomeColumn.value) return 'Pending';
 	return formatGameScore(row) ?? '';
 }
 
@@ -101,18 +107,22 @@ function outcomeParts(row: PlayerMatchHistoryEntry) {
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="error"
-		:ready="ready"
-		:empty="isEmpty"
-	>
-		<div class="player-history-display broadcast-table-display flex flex-col h-full w-full" :style="displayStyle">
-			<div v-if="config.showHeader" class="history-header broadcast-table-title" :style="titleDividerStyle">
+	<ScreenModeBase :error="error" :ready="ready" :empty="isEmpty">
+		<div
+			class="player-history-display broadcast-table-display flex flex-col h-full w-full"
+			:style="displayStyle"
+		>
+			<div
+				v-if="config.showHeader"
+				class="history-header broadcast-table-title"
+				:style="titleDividerStyle"
+			>
 				<h2 :style="titleStyle">
 					{{ headerText }}
 				</h2>
 				<p v-if="player" class="broadcast-table-subtitle" :style="subtitleStyle">
-					Record {{ player.wins ?? 0 }}-{{ player.losses ?? 0 }}{{ player.draws ? `-${player.draws}` : '' }}
+					Record {{ player.wins ?? 0 }}-{{ player.losses ?? 0
+					}}{{ player.draws ? `-${player.draws}` : '' }}
 					<span v-if="player.position"> · #{{ player.position }}</span>
 				</p>
 			</div>
@@ -130,23 +140,50 @@ function outcomeParts(row: PlayerMatchHistoryEntry) {
 						</div>
 						<div v-else-if="column.key === 'opponent'" class="opponent" :style="primaryTextStyle">
 							<div>vs {{ row.opponentName }}</div>
-							<div v-if="row.opponentDeckName && !showsArchetypeColumn" class="opponent-deck" :style="secondaryTextStyle">
-								<ScreenModesPlayerHistoryOpponentDeck :name="row.opponentDeckName" :colors="row.opponentDeckColors" />
+							<div
+								v-if="row.opponentDeckName && !showsArchetypeColumn"
+								class="opponent-deck"
+								:style="secondaryTextStyle"
+							>
+								<ScreenModesPlayerHistoryOpponentDeck
+									:name="row.opponentDeckName"
+									:colors="row.opponentDeckColors"
+								/>
 							</div>
 						</div>
 						<div v-else-if="column.key === 'table'" class="table" :style="secondaryTextStyle">
 							{{ row.tableNumber ? `Table ${row.tableNumber}` : '' }}
 						</div>
 						<div v-else-if="column.key === 'outcome'" class="outcome">
-							<span class="outcome-badge" :data-outcome="row.outcome" :style="outcomeStyle(row.outcome)">
+							<span
+								class="outcome-badge"
+								:data-outcome="row.outcome"
+								:style="outcomeStyle(row.outcome)"
+							>
 								<span class="outcome-label">{{ outcomeParts(row).label }}</span>
-								<span v-if="outcomeParts(row).score && !showsGameScoreColumn" class="outcome-score">{{ outcomeParts(row).score }}</span>
+								<span
+									v-if="outcomeParts(row).score && !showsGameScoreColumn"
+									class="outcome-score"
+									>{{ outcomeParts(row).score }}</span
+								>
 							</span>
 						</div>
-						<div v-else-if="column.key === 'opponentArchetype'" class="opponent-archetype" :style="secondaryTextStyle">
-							<ScreenModesPlayerHistoryOpponentDeck v-if="row.opponentDeckName" :name="row.opponentDeckName" :colors="row.opponentDeckColors" />
+						<div
+							v-else-if="column.key === 'opponentArchetype'"
+							class="opponent-archetype"
+							:style="secondaryTextStyle"
+						>
+							<ScreenModesPlayerHistoryOpponentDeck
+								v-if="row.opponentDeckName"
+								:name="row.opponentDeckName"
+								:colors="row.opponentDeckColors"
+							/>
 						</div>
-						<div v-else-if="column.key === 'gameScore'" class="game-score" :style="primaryTextStyle">
+						<div
+							v-else-if="column.key === 'gameScore'"
+							class="game-score"
+							:style="primaryTextStyle"
+						>
 							{{ gameScoreText(row) }}
 						</div>
 					</template>

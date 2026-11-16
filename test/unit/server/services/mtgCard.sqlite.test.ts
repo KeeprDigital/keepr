@@ -31,9 +31,7 @@ describe('mtgCardService.batchUpsert', () => {
 				scryfallId: 'keep-me',
 				colors: 'R',
 				deckCounterTypes: ['charge'],
-				deckTokens: [
-					token('old-token'),
-				],
+				deckTokens: [token('old-token')],
 			},
 		]);
 
@@ -43,9 +41,7 @@ describe('mtgCardService.batchUpsert', () => {
 				game: 'mtg',
 				colors: 'U',
 				deckCounterTypes: ['energy'],
-				deckTokens: [
-					token('new-token'),
-				],
+				deckTokens: [token('new-token')],
 			},
 		]);
 
@@ -53,9 +49,7 @@ describe('mtgCardService.batchUpsert', () => {
 			scryfallId: 'keep-me',
 			colors: 'U',
 			deckCounterTypes: ['energy'],
-			deckTokens: [
-				expect.objectContaining({ id: 'new-token' }),
-			],
+			deckTokens: [expect.objectContaining({ id: 'new-token' })],
 		});
 	});
 
@@ -65,19 +59,23 @@ describe('mtgCardService.batchUpsert', () => {
 			{ name: 'LIGHTNING BOLT', game: 'mtg' },
 		]);
 
-		expect([
-			...result.keys(),
-		]).toEqual(['lightning bolt']);
-		expect((await db.select().from(schema.cards)).filter(card => card.name.toLowerCase() === 'lightning bolt')).toHaveLength(1);
+		expect([...result.keys()]).toEqual(['lightning bolt']);
+		expect(
+			(await db.select().from(schema.cards)).filter(
+				(card) => card.name.toLowerCase() === 'lightning bolt',
+			),
+		).toHaveLength(1);
 	});
 
 	it('upserts a thousand cards', async () => {
-		const result = await mtgCardService().batchUpsert(Array.from({ length: 1000 }, (_, index) => ({
-			name: `Card ${index}`,
-			game: 'mtg' as const,
-			deckCounterTypes: [],
-			deckTokens: [],
-		})));
+		const result = await mtgCardService().batchUpsert(
+			Array.from({ length: 1000 }, (_, index) => ({
+				name: `Card ${index}`,
+				game: 'mtg' as const,
+				deckCounterTypes: [],
+				deckTokens: [],
+			})),
+		);
 
 		expect(result.size).toBe(1000);
 	});

@@ -14,9 +14,15 @@ import { eventDataPublicationModule } from '~~/server/modules/event-data-publica
 import { requireMeleeSyncOffered } from '~~/server/modules/melee-sync/eventData';
 import { MTG_CARD_IDENTITY } from '~~/server/services/mtgCard';
 import { playerDeckService } from '~~/server/services/playerDeck';
-import { DeckCompanionValidationError, playerDeckCompanionService } from '~~/server/services/playerDeckCompanion';
+import {
+	DeckCompanionValidationError,
+	playerDeckCompanionService,
+} from '~~/server/services/playerDeckCompanion';
 import { playerDeckUnresolvedCardService } from '~~/server/services/playerDeckUnresolvedCard';
-import { normalizeImportedCardName, normalizeImportedSetCode } from '~~/server/utils/cardNameNormalization';
+import {
+	normalizeImportedCardName,
+	normalizeImportedSetCode,
+} from '~~/server/utils/cardNameNormalization';
 import { chunkArray, SAFE_INARRAY_SIZE, selectForInsert } from '~~/server/utils/db';
 import { throwRetryableUpstreamRefusal } from '~~/server/utils/retryableUpstreamRefusal';
 import { fetchScryfallCardById } from '~~/server/utils/scryfall';
@@ -47,14 +53,18 @@ export interface ResolveUnresolvedDeckCardResult {
 }
 
 /** The Event's Deck Lists holding the matching entries; refuses any outside it. */
-async function requireMatchingDecksInEvent(eventId: number, matchingEntries: Array<{ deckId: number }>) {
-	const deckIds = [
-		...new Set(matchingEntries.map(entry => entry.deckId)),
-	];
+async function requireMatchingDecksInEvent(
+	eventId: number,
+	matchingEntries: Array<{ deckId: number }>,
+) {
+	const deckIds = [...new Set(matchingEntries.map((entry) => entry.deckId))];
 	const eventDecks = await playerDeckService().findManyByIds(eventId, deckIds);
 
 	if (eventDecks.length !== deckIds.length) {
-		throw createError({ statusCode: 409, statusMessage: 'Unresolved deck card references a deck outside this event' });
+		throw createError({
+			statusCode: 409,
+			statusMessage: 'Unresolved deck card references a deck outside this event',
+		});
 	}
 
 	return eventDecks;
@@ -69,11 +79,14 @@ interface ExistingDeckCard {
 }
 
 function groupCardEntries(entries: DbPlayerDeckUnresolvedCard[]) {
-	const groups = new Map<string, {
-		deckId: number;
-		compartment: DeckListCompartment;
-		entries: DbPlayerDeckUnresolvedCard[];
-	}>();
+	const groups = new Map<
+		string,
+		{
+			deckId: number;
+			compartment: DeckListCompartment;
+			entries: DbPlayerDeckUnresolvedCard[];
+		}
+	>();
 
 	for (const entry of entries) {
 		const compartment = entry.compartment ?? 'mainboard';
@@ -83,29 +96,34 @@ function groupCardEntries(entries: DbPlayerDeckUnresolvedCard[]) {
 		groups.set(key, group);
 	}
 
-	return [
-		...groups.values(),
-	];
+	return [...groups.values()];
 }
 
-async function listExistingDeckCards(deckIds: number[], cardName: string): Promise<ExistingDeckCard[]> {
+async function listExistingDeckCards(
+	deckIds: number[],
+	cardName: string,
+): Promise<ExistingDeckCard[]> {
 	const rows: ExistingDeckCard[] = [];
 	for (const deckIdChunk of chunkArray(deckIds, SAFE_INARRAY_SIZE)) {
-		rows.push(...await db
-			.select({
-				id: playerDeckCards.id,
-				deckId: playerDeckCards.deckId,
-				quantity: playerDeckCards.quantity,
-				compartment: playerDeckCards.compartment,
-				sortOrder: playerDeckCards.sortOrder,
-			})
-			.from(playerDeckCards)
-			.innerJoin(cards, eq(playerDeckCards.cardId, cards.id))
-			.where(and(
-				inArray(playerDeckCards.deckId, deckIdChunk),
-				eq(cards.name, cardName),
-				eq(cards.game, 'mtg'),
-			)));
+		rows.push(
+			...(await db
+				.select({
+					id: playerDeckCards.id,
+					deckId: playerDeckCards.deckId,
+					quantity: playerDeckCards.quantity,
+					compartment: playerDeckCards.compartment,
+					sortOrder: playerDeckCards.sortOrder,
+				})
+				.from(playerDeckCards)
+				.innerJoin(cards, eq(playerDeckCards.cardId, cards.id))
+				.where(
+					and(
+						inArray(playerDeckCards.deckId, deckIdChunk),
+						eq(cards.name, cardName),
+						eq(cards.game, 'mtg'),
+					),
+				)),
+		);
 	}
 	return rows;
 }
@@ -135,7 +153,10 @@ export function deckListResolutionModule() {
 			unresolvedCard.entryType,
 		);
 		if (matchingEntries.length === 0) {
-			throw createError({ statusCode: 404, statusMessage: 'No unresolved deck cards remain for this group' });
+			throw createError({
+				statusCode: 404,
+				statusMessage: 'No unresolved deck cards remain for this group',
+			});
 		}
 
 		const affectedDecks = await requireMatchingDecksInEvent(eventId, matchingEntries);
@@ -143,13 +164,12 @@ export function deckListResolutionModule() {
 		let scryfallData;
 		try {
 			scryfallData = await fetchScryfallCardById(scryfallId);
-		}
-		catch (error) {
-			const failure = error && typeof error === 'object'
-				? error as { code?: unknown; notFound?: unknown }
-				: null;
-			if (failure?.code !== 'SCRYFALL_UPSTREAM_FAILURE')
-				throw error;
+		} catch (error) {
+			const failure =
+				error && typeof error === 'object'
+					? (error as { code?: unknown; notFound?: unknown })
+					: null;
+			if (failure?.code !== 'SCRYFALL_UPSTREAM_FAILURE') throw error;
 
 			if (failure.notFound === true) {
 				throw createError({
@@ -168,13 +188,14 @@ export function deckListResolutionModule() {
 			// `throwRetryableUpstreamRefusal` for why nothing is spelled here.
 			throwRetryableUpstreamRefusal(requestEvent, error);
 		}
-		const [existingResolvedCard] = unresolvedCard.entryType === 'companion'
-			? await db
-					.select({ id: cards.id })
-					.from(cards)
-					.where(and(eq(cards.name, scryfallData.name), eq(cards.game, 'mtg')))
-					.limit(1)
-			: [];
+		const [existingResolvedCard] =
+			unresolvedCard.entryType === 'companion'
+				? await db
+						.select({ id: cards.id })
+						.from(cards)
+						.where(and(eq(cards.name, scryfallData.name), eq(cards.game, 'mtg')))
+						.limit(1)
+				: [];
 		const now = new Date();
 		const resolvedCardId = sql<number>`(
 			select ${cards.id}
@@ -246,11 +267,12 @@ export function deckListResolutionModule() {
 
 			for (const [deckId, deckEntries] of entriesByDeck) {
 				try {
-					const shouldSync = await companions.shouldSyncImportedCompanion(deckId, existingResolvedCard?.id ?? -1);
-					if (!shouldSync)
-						continue;
-				}
-				catch (error) {
+					const shouldSync = await companions.shouldSyncImportedCompanion(
+						deckId,
+						existingResolvedCard?.id ?? -1,
+					);
+					if (!shouldSync) continue;
+				} catch (error) {
 					if (error instanceof DeckCompanionValidationError) {
 						throw createError({ statusCode: 400, statusMessage: error.message });
 					}
@@ -258,123 +280,149 @@ export function deckListResolutionModule() {
 					throw error;
 				}
 
-				const entryIds = deckEntries.slice(0, SAFE_INARRAY_SIZE).map(entry => entry.id);
-				queries.push(db
-					.insert(playerDeckCompanions)
-					.select(selectForInsert(playerDeckCompanions, {
-						id: sql`null`,
-						deckId: sql`${deckId}`,
-						companionCardId: sql`${resolvedCardId}`,
-						source: sql`${'melee'}`,
-						createdAt: sql`${now.getTime()}`,
-						updatedAt: sql`${now.getTime()}`,
-					}, sql`from ${playerDeckUnresolvedCards}
+				const entryIds = deckEntries.slice(0, SAFE_INARRAY_SIZE).map((entry) => entry.id);
+				queries.push(
+					db
+						.insert(playerDeckCompanions)
+						.select(
+							selectForInsert(
+								playerDeckCompanions,
+								{
+									id: sql`null`,
+									deckId: sql`${deckId}`,
+									companionCardId: sql`${resolvedCardId}`,
+									source: sql`${'melee'}`,
+									createdAt: sql`${now.getTime()}`,
+									updatedAt: sql`${now.getTime()}`,
+								},
+								sql`from ${playerDeckUnresolvedCards}
 						where ${inArray(playerDeckUnresolvedCards.id, entryIds)}
-						limit 1`))
-					.onConflictDoUpdate({
-						target: playerDeckCompanions.deckId,
-						set: { companionCardId: resolvedCardId, source: 'melee', updatedAt: now },
-						setWhere: eq(playerDeckCompanions.source, 'melee'),
-					}));
+						limit 1`,
+							),
+						)
+						.onConflictDoUpdate({
+							target: playerDeckCompanions.deckId,
+							set: { companionCardId: resolvedCardId, source: 'melee', updatedAt: now },
+							setWhere: eq(playerDeckCompanions.source, 'melee'),
+						}),
+				);
 			}
-		}
-		else {
-			const deckIds = [
-				...new Set(matchingEntries.map(entry => entry.deckId)),
-			];
+		} else {
+			const deckIds = [...new Set(matchingEntries.map((entry) => entry.deckId))];
 			const existingRows = await listExistingDeckCards(deckIds, scryfallData.name);
 			for (const group of groupCardEntries(matchingEntries)) {
 				const existingForGroup = existingRows
-					.filter(row => row.deckId === group.deckId && row.compartment === group.compartment)
+					.filter((row) => row.deckId === group.deckId && row.compartment === group.compartment)
 					.sort((left, right) => left.sortOrder - right.sortOrder || left.id - right.id);
 				const canonical = existingForGroup[0];
-				const entryIdChunks = chunkArray(group.entries.map(entry => entry.id), RESOLUTION_MERGE_ID_CHUNK_SIZE);
+				const entryIdChunks = chunkArray(
+					group.entries.map((entry) => entry.id),
+					RESOLUTION_MERGE_ID_CHUNK_SIZE,
+				);
 				const firstChunk = entryIdChunks[0]!;
 
 				if (canonical) {
 					const existingQuantity = existingForGroup.reduce((sum, row) => sum + row.quantity, 0);
-					queries.push(db
-						.update(playerDeckCards)
-						.set({
-							quantity: sql`case
+					queries.push(
+						db
+							.update(playerDeckCards)
+							.set({
+								quantity: sql`case
 								when exists(select 1 from ${playerDeckUnresolvedCards} where ${inArray(playerDeckUnresolvedCards.id, firstChunk)})
 								then ${existingQuantity} + (select coalesce(sum(${playerDeckUnresolvedCards.quantity}), 0) from ${playerDeckUnresolvedCards} where ${inArray(playerDeckUnresolvedCards.id, firstChunk)})
 								else ${playerDeckCards.quantity}
 							end`,
-							sortOrder: sql`case
+								sortOrder: sql`case
 								when exists(select 1 from ${playerDeckUnresolvedCards} where ${inArray(playerDeckUnresolvedCards.id, firstChunk)})
 								then min(${canonical.sortOrder}, (select min(${playerDeckUnresolvedCards.sortOrder}) from ${playerDeckUnresolvedCards} where ${inArray(playerDeckUnresolvedCards.id, firstChunk)}))
 								else ${playerDeckCards.sortOrder}
 							end`,
-						})
-						.where(eq(playerDeckCards.id, canonical.id)));
+							})
+							.where(eq(playerDeckCards.id, canonical.id)),
+					);
 
-					const duplicateIds = existingForGroup.slice(1).map(row => row.id);
+					const duplicateIds = existingForGroup.slice(1).map((row) => row.id);
 					for (const duplicateIdChunk of chunkArray(duplicateIds, SAFE_INARRAY_SIZE)) {
-						queries.push(db.delete(playerDeckCards).where(inArray(playerDeckCards.id, duplicateIdChunk)));
+						queries.push(
+							db.delete(playerDeckCards).where(inArray(playerDeckCards.id, duplicateIdChunk)),
+						);
 					}
-				}
-				else {
-					queries.push(db
-						.insert(playerDeckCards)
-						.select(selectForInsert(playerDeckCards, {
-							id: sql`null`,
-							deckId: sql`${group.deckId}`,
-							cardId: sql`${resolvedCardId}`,
-							quantity: sql`sum(${playerDeckUnresolvedCards.quantity})`,
-							compartment: sql`${group.compartment}`,
-							sortOrder: sql`min(${playerDeckUnresolvedCards.sortOrder})`,
-						}, sql`from ${playerDeckUnresolvedCards}
+				} else {
+					queries.push(
+						db.insert(playerDeckCards).select(
+							selectForInsert(
+								playerDeckCards,
+								{
+									id: sql`null`,
+									deckId: sql`${group.deckId}`,
+									cardId: sql`${resolvedCardId}`,
+									quantity: sql`sum(${playerDeckUnresolvedCards.quantity})`,
+									compartment: sql`${group.compartment}`,
+									sortOrder: sql`min(${playerDeckUnresolvedCards.sortOrder})`,
+								},
+								sql`from ${playerDeckUnresolvedCards}
 							where ${inArray(playerDeckUnresolvedCards.id, firstChunk)}
-							having count(*) > 0`)));
+							having count(*) > 0`,
+							),
+						),
+					);
 				}
 
 				for (const entryIdChunk of entryIdChunks.slice(1)) {
-					queries.push(db
-						.update(playerDeckCards)
-						.set({
-							quantity: sql`case
+					queries.push(
+						db
+							.update(playerDeckCards)
+							.set({
+								quantity: sql`case
 								when exists(select 1 from ${playerDeckUnresolvedCards} where ${inArray(playerDeckUnresolvedCards.id, entryIdChunk)})
 								then ${playerDeckCards.quantity} + (select coalesce(sum(${playerDeckUnresolvedCards.quantity}), 0) from ${playerDeckUnresolvedCards} where ${inArray(playerDeckUnresolvedCards.id, entryIdChunk)})
 								else ${playerDeckCards.quantity}
 							end`,
-							sortOrder: sql`case
+								sortOrder: sql`case
 								when exists(select 1 from ${playerDeckUnresolvedCards} where ${inArray(playerDeckUnresolvedCards.id, entryIdChunk)})
 								then min(${playerDeckCards.sortOrder}, (select min(${playerDeckUnresolvedCards.sortOrder}) from ${playerDeckUnresolvedCards} where ${inArray(playerDeckUnresolvedCards.id, entryIdChunk)}))
 								else ${playerDeckCards.sortOrder}
 							end`,
-						})
-						.where(and(
-							eq(playerDeckCards.deckId, group.deckId),
-							eq(playerDeckCards.cardId, resolvedCardId),
-							eq(playerDeckCards.compartment, group.compartment),
-						)));
+							})
+							.where(
+								and(
+									eq(playerDeckCards.deckId, group.deckId),
+									eq(playerDeckCards.cardId, resolvedCardId),
+									eq(playerDeckCards.compartment, group.compartment),
+								),
+							),
+					);
 				}
 			}
 		}
 
-		for (const entryIdChunk of chunkArray(matchingEntries.map(entry => entry.id), SAFE_INARRAY_SIZE)) {
-			queries.push(db.delete(playerDeckUnresolvedCards).where(inArray(playerDeckUnresolvedCards.id, entryIdChunk)));
+		for (const entryIdChunk of chunkArray(
+			matchingEntries.map((entry) => entry.id),
+			SAFE_INARRAY_SIZE,
+		)) {
+			queries.push(
+				db
+					.delete(playerDeckUnresolvedCards)
+					.where(inArray(playerDeckUnresolvedCards.id, entryIdChunk)),
+			);
 		}
 
-		await db.batch(queries as [typeof queries[0], ...typeof queries]);
+		await db.batch(queries as [(typeof queries)[0], ...typeof queries]);
 
 		// Every Deck List holding the name changed, not only the requester's, so the
 		// whole Event is told which (#648).
 		await eventDataPublicationModule().playerDeckCardsResolved({
 			eventId,
-			deckIds: affectedDecks.map(deck => deck.id),
-			playerIds: [
-				...new Set(affectedDecks.map(deck => deck.playerId)),
-			],
+			deckIds: affectedDecks.map((deck) => deck.id),
+			playerIds: [...new Set(affectedDecks.map((deck) => deck.playerId))],
 			originConnectionId,
 		});
 
 		return {
 			success: true,
-			message: `Resolved ${matchingEntries.length} entr${matchingEntries.length === 1
-				? 'y'
-				: 'ies'} for ${unresolvedCard.originalName} as ${scryfallData.name}`,
+			message: `Resolved ${matchingEntries.length} entr${
+				matchingEntries.length === 1 ? 'y' : 'ies'
+			} for ${unresolvedCard.originalName} as ${scryfallData.name}`,
 			resolvedCardName: scryfallData.name,
 			unresolvedId: unresolvedCardId,
 			resolvedCount: matchingEntries.length,

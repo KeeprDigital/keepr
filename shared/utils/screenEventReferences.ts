@@ -13,9 +13,14 @@ export function screensNamingEventReference<T extends { modeConfigs?: unknown }>
 	id: number,
 ): T[] {
 	return screens.filter((screen) => {
-		const configs = (screen.modeConfigs ?? {}) as Record<string, Record<string, unknown> | undefined>;
-		return SCREEN_MODE_VALUES.some(mode =>
-			Object.entries(SCREEN_MODES[mode].eventReferences)
-				.some(([field, declared]) => declared === kind && configs[mode]?.[field] === id));
+		const configs = (screen.modeConfigs ?? {}) as Record<
+			string,
+			Record<string, unknown> | undefined
+		>;
+		return SCREEN_MODE_VALUES.some((mode) =>
+			Object.entries(SCREEN_MODES[mode].eventReferences).some(
+				([field, declared]) => declared === kind && configs[mode]?.[field] === id,
+			),
+		);
 	});
 }

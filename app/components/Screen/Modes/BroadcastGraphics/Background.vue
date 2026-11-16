@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import type { AnimationEffectSelection, BroadcastGraphicsBackgroundConfig } from '~~/shared/animationEffects';
-import { ANIMATION_EFFECT_CATALOGUE, parseBroadcastGraphicsBackgroundConfig } from '~~/shared/animationEffects';
+import type {
+	AnimationEffectSelection,
+	BroadcastGraphicsBackgroundConfig,
+} from '~~/shared/animationEffects';
+import {
+	ANIMATION_EFFECT_CATALOGUE,
+	parseBroadcastGraphicsBackgroundConfig,
+} from '~~/shared/animationEffects';
 import { DEFAULT_BROADCAST_GRAPHICS_BACKGROUND } from '~~/shared/types/screenConfig';
 
 /**
@@ -50,17 +56,20 @@ const background = computed<BroadcastGraphicsBackgroundConfig>(() =>
 );
 
 /** The closed section in one line: off, or the effect that shows and how opaque it is. */
-const summary = computed(() => (background.value.enabled
-	? `${ANIMATION_EFFECT_CATALOGUE[background.value.effect].label} · ${Math.round(background.value.opacity * 100)}%`
-	: 'Off'));
+const summary = computed(() =>
+	background.value.enabled
+		? `${ANIMATION_EFFECT_CATALOGUE[background.value.effect].label} · ${Math.round(background.value.opacity * 100)}%`
+		: 'Off',
+);
 
 function write(next: BroadcastGraphicsBackgroundConfig) {
-	if (!canAuthor.value)
-		return;
+	if (!canAuthor.value) return;
 	emit('update:background', next);
 }
 
-function updateEnabledOrOpacity(updates: Partial<Pick<BroadcastGraphicsBackgroundConfig, 'enabled' | 'opacity'>>) {
+function updateEnabledOrOpacity(
+	updates: Partial<Pick<BroadcastGraphicsBackgroundConfig, 'enabled' | 'opacity'>>,
+) {
 	write({
 		...background.value,
 		...updates,
@@ -80,10 +89,13 @@ function applySelection(selection: AnimationEffectSelection) {
 	} as BroadcastGraphicsBackgroundConfig);
 }
 
-const selection = computed<AnimationEffectSelection>(() => ({
-	effect: background.value.effect,
-	params: background.value.params,
-} as AnimationEffectSelection));
+const selection = computed<AnimationEffectSelection>(
+	() =>
+		({
+			effect: background.value.effect,
+			params: background.value.params,
+		}) as AnimationEffectSelection,
+);
 </script>
 
 <template>
@@ -95,9 +107,8 @@ const selection = computed<AnimationEffectSelection>(() => ({
 		data-testid="broadcast-graphics-background-settings"
 	>
 		<ScreenSettingsHint>
-			One Animation Effect behind every Broadcast Graphic on this Screen. It renders in
-			the Overlay and Fill Outputs and never in the Key Output, which stays an alpha
-			matte.
+			One Animation Effect behind every Broadcast Graphic on this Screen. It renders in the Overlay
+			and Fill Outputs and never in the Key Output, which stays an alpha matte.
 		</ScreenSettingsHint>
 
 		<fieldset :disabled="!canAuthor" class="space-y-3">
@@ -115,10 +126,7 @@ const selection = computed<AnimationEffectSelection>(() => ({
 					@update:model-value="updateEnabledOrOpacity({ opacity: Number($event) })"
 				/>
 
-				<ScreenAnimationEffectFields
-					:selection="selection"
-					@update:selection="applySelection"
-				/>
+				<ScreenAnimationEffectFields :selection="selection" @update:selection="applySelection" />
 			</template>
 		</fieldset>
 	</ScreenSettingsSection>

@@ -17,7 +17,7 @@ function mountModal() {
 
 async function choose(wrapper: VueWrapper, field: string, label: string) {
 	const select = wrapper.get(`[data-field="${field}"] select`);
-	const option = select.findAll('option').find(candidate => candidate.text() === label)!;
+	const option = select.findAll('option').find((candidate) => candidate.text() === label)!;
 	await select.setValue(option.attributes('value'));
 }
 
@@ -42,7 +42,7 @@ describe('creating an Event', () => {
 		expect(await create(wrapper, 'Regional')).toMatchObject({ game: 'mtg', variant: 'two-player' });
 	});
 
-	it('creates a Commander Event with its Variant and a Commander Event\'s Match Format', async () => {
+	it("creates a Commander Event with its Variant and a Commander Event's Match Format", async () => {
 		const wrapper = mountModal();
 		await choose(wrapper, 'variant', 'Commander');
 
@@ -62,7 +62,11 @@ describe('creating an Event', () => {
 
 		expect(wrapper.find('[data-field="variant"]').exists()).toBe(false);
 		const sent = await create(wrapper, 'Treasure Cup');
-		expect(sent).toMatchObject({ game: 'op', featureMatchDefaultBestOf: 1, featureMatchDefaultStartingLife: 0 });
+		expect(sent).toMatchObject({
+			game: 'op',
+			featureMatchDefaultBestOf: 1,
+			featureMatchDefaultStartingLife: 0,
+		});
 		expect(sent).not.toHaveProperty('variant');
 	});
 });

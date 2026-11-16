@@ -9,7 +9,10 @@ const { openPlayerMatchHistory } = vi.hoisted(() => ({
 }));
 const shownPlayerId = ref<number | null>(null);
 
-mockNuxtImport('usePlayerMatchHistoryModal', () => () => ({ openPlayerMatchHistory, shownPlayerId }));
+mockNuxtImport('usePlayerMatchHistoryModal', () => () => ({
+	openPlayerMatchHistory,
+	shownPlayerId,
+}));
 
 const alice = { id: 7, name: 'Alice' } as never;
 const bob = { id: 8, name: 'Bob' } as never;
@@ -29,15 +32,11 @@ describe('usePlayerMatchHistoryLink', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
 	it.each([
-		[
-			'the linked Player\'s history once the roster holds them',
-			'7',
-			[alice],
-		],
+		["the linked Player's history once the roster holds them", '7', [alice]],
 		['nothing for a Player the roster lacks', '9', []],
 		['nothing for a link that names no Player id', 'alice', []],
 	])('opens %s', async (_, linked, opened) => {

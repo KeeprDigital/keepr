@@ -1,5 +1,8 @@
 import type { DbBroadcastDeckList, DbBroadcastDeckListEntry } from '~~/server/db/schema';
-import type { BroadcastDeckListResponse, BroadcastDeckListSummaryResponse } from '~~/shared/types/broadcastDeckList';
+import type {
+	BroadcastDeckListResponse,
+	BroadcastDeckListSummaryResponse,
+} from '~~/shared/types/broadcastDeckList';
 import { mapTimestamps } from '~~/server/utils/mapTimestamps';
 
 export interface BroadcastDeckListAggregate extends DbBroadcastDeckList {
@@ -13,16 +16,13 @@ export interface BroadcastDeckListSummaryRow extends DbBroadcastDeckList {
 }
 
 function publicListFields(list: DbBroadcastDeckList) {
-	const {
-		normalizedName: _,
-		operationVersion: __,
-		sourceText: ___,
-		...fields
-	} = list;
+	const { normalizedName: _, operationVersion: __, sourceText: ___, ...fields } = list;
 	return mapTimestamps(fields);
 }
 
-export function mapBroadcastDeckListSummary(list: BroadcastDeckListSummaryRow): BroadcastDeckListSummaryResponse {
+export function mapBroadcastDeckListSummary(
+	list: BroadcastDeckListSummaryRow,
+): BroadcastDeckListSummaryResponse {
 	return {
 		...publicListFields(list),
 		mainboardQuantity: Number(list.mainboardQuantity),
@@ -31,12 +31,14 @@ export function mapBroadcastDeckListSummary(list: BroadcastDeckListSummaryRow): 
 	};
 }
 
-export function mapBroadcastDeckListDetail(list: BroadcastDeckListAggregate): BroadcastDeckListResponse {
+export function mapBroadcastDeckListDetail(
+	list: BroadcastDeckListAggregate,
+): BroadcastDeckListResponse {
 	const mainboardQuantity = list.entries
-		.filter(entry => entry.compartment === 'mainboard')
+		.filter((entry) => entry.compartment === 'mainboard')
 		.reduce((total, entry) => total + entry.quantity, 0);
 	const sideboardQuantity = list.entries
-		.filter(entry => entry.compartment === 'sideboard')
+		.filter((entry) => entry.compartment === 'sideboard')
 		.reduce((total, entry) => total + entry.quantity, 0);
 
 	return {
@@ -44,7 +46,7 @@ export function mapBroadcastDeckListDetail(list: BroadcastDeckListAggregate): Br
 		sourceText: list.sourceText,
 		mainboardQuantity,
 		sideboardQuantity,
-		hasCompanion: list.entries.some(entry => entry.compartment === 'companion'),
+		hasCompanion: list.entries.some((entry) => entry.compartment === 'companion'),
 		entries: list.entries.map((entry) => {
 			const { createdAt: _, updatedAt: __, ...publicEntry } = entry;
 			return publicEntry;

@@ -1,6 +1,10 @@
 import type { BroadcastGraphicConfig, GraphicChannelConfig } from '~~/shared/types/graphics';
 import type { GraphicsEditor } from '~/composables/useGraphicsEditor';
-import type { GraphicsEditorHostContract, GraphicsEditorSessionOptions, GraphicsEditorTree } from '~/modules/graphics/editor/host';
+import type {
+	GraphicsEditorHostContract,
+	GraphicsEditorSessionOptions,
+	GraphicsEditorTree,
+} from '~/modules/graphics/editor/host';
 import { BROADCAST_GRAPHICS_HOST_CONTRACT } from '~~/shared/modules/graphics';
 import { copyGraphicLayers, pasteBroadcastGraphicLayers } from '~/modules/graphics/clipboard';
 import { compositionItemLayers, graphicsEditorSession } from '~/modules/graphics/editor/host';
@@ -47,13 +51,18 @@ export function broadcastGraphicsEditorLayerKey(layer: Layer): string {
 
 /** Each Broadcast Graphic's layers, front to back, its group's children beneath each group. */
 export function broadcastGraphicLayers(graphic: BroadcastGraphicConfig): Layer[] {
-	return compositionItemLayers(graphic, (itemId): Layer => ({ type: 'item', graphicId: graphic.id, itemId }));
+	return compositionItemLayers(graphic, (itemId): Layer => ({
+		type: 'item',
+		graphicId: graphic.id,
+		itemId,
+	}));
 }
 
-function graphicOf(graphics: Stack, graphicId: string | null | undefined): BroadcastGraphicConfig | undefined {
-	return graphicId == null
-		? undefined
-		: graphics.find(graphic => graphic.id === graphicId);
+function graphicOf(
+	graphics: Stack,
+	graphicId: string | null | undefined,
+): BroadcastGraphicConfig | undefined {
+	return graphicId == null ? undefined : graphics.find((graphic) => graphic.id === graphicId);
 }
 
 /**
@@ -61,18 +70,19 @@ function graphicOf(graphics: Stack, graphicId: string | null | undefined): Broad
  * longer has it, as an undo that leaves an on-air graphic in place must.
  */
 function withGraphic(graphics: Stack, graphic: BroadcastGraphicConfig): BroadcastGraphicConfig[] {
-	return graphics.some(entry => entry.id === graphic.id)
-		? graphics.map(entry => entry.id === graphic.id
-				? graphic
-				: entry)
+	return graphics.some((entry) => entry.id === graphic.id)
+		? graphics.map((entry) => (entry.id === graphic.id ? graphic : entry))
 		: [...graphics, graphic];
 }
 
 /** Why a Social Profile Projection's Presentation Group is not removed alone. */
-export const PRESENTATION_GROUP_REMOVAL = 'To remove this group, delete the projection and Presentation Group together in the inspector.';
+export const PRESENTATION_GROUP_REMOVAL =
+	'To remove this group, delete the projection and Presentation Group together in the inspector.';
 
 /** The tree, given the Broadcast Graphic the host has selected when no layer is. */
-export function broadcastGraphicsEditorTree(selectedGraphicId: () => string | null): GraphicsEditorTree<Stack, Layer> {
+export function broadcastGraphicsEditorTree(
+	selectedGraphicId: () => string | null,
+): GraphicsEditorTree<Stack, Layer> {
 	function destination(graphics: Stack, selected: readonly Layer[]): BroadcastGraphicConfig | null {
 		return graphicOf(graphics, selected[0]?.graphicId ?? selectedGraphicId()) ?? null;
 	}
@@ -80,42 +90,55 @@ export function broadcastGraphicsEditorTree(selectedGraphicId: () => string | nu
 	return {
 		host: BROADCAST_GRAPHICS_HOST_CONTRACT,
 		key: broadcastGraphicsEditorLayerKey,
-		order: graphics => [...graphics].reverse().flatMap(broadcastGraphicLayers),
-		compositions: graphics => graphics,
+		order: (graphics) => [...graphics].reverse().flatMap(broadcastGraphicLayers),
+		compositions: (graphics) => graphics,
 		item: (graphics, layer) => {
 			const composition = graphicOf(graphics, layer.graphicId);
-			return composition
-				? { composition, itemId: layer.itemId }
-				: null;
+			return composition ? { composition, itemId: layer.itemId } : null;
 		},
 		itemLayer: (composition, itemId) => ({ type: 'item', graphicId: composition.id, itemId }),
 		destination,
 		withComposition: withGraphic,
 		// A projection reads its Presentation Group, so the two go together or not at all.
-		removal: (graphics, layer) => graphicOf(graphics, layer.graphicId)?.socialProfileProjections?.some(projection => projection.presentationGroupId === layer.itemId)
-			? PRESENTATION_GROUP_REMOVAL
-			: null,
+		removal: (graphics, layer) =>
+			graphicOf(graphics, layer.graphicId)?.socialProfileProjections?.some(
+				(projection) => projection.presentationGroupId === layer.itemId,
+			)
+				? PRESENTATION_GROUP_REMOVAL
+				: null,
 		// A layer snaps to the items of its own Broadcast Graphic: the others may never share program with it.
 		canvasLayers: (graphics, layer) => graphicOf(graphics, layer.graphicId)?.items ?? [],
 		copy: (graphics, layers) => {
 			const composition = graphicOf(graphics, layers[0]?.graphicId);
 			return composition
-				? copyGraphicLayers('broadcast-graphics', { composition }, layers
-						.filter(layer => layer.graphicId === composition.id)
-						.map(layer => ({ type: 'item', itemId: layer.itemId })))
+				? copyGraphicLayers(
+						'broadcast-graphics',
+						{ composition },
+						layers
+							.filter((layer) => layer.graphicId === composition.id)
+							.map((layer) => ({ type: 'item', itemId: layer.itemId })),
+					)
 				: null;
 		},
 		paste: (copied, graphics, into) => {
 			const composition = destination(graphics, into.selected);
-			const outcome = pasteBroadcastGraphicLayers(copied, { graphics, graphicId: composition?.id ?? '' }, {
-				groupId: into.groupId,
-				nextId: into.nextId,
-			});
+			const outcome = pasteBroadcastGraphicLayers(
+				copied,
+				{ graphics, graphicId: composition?.id ?? '' },
+				{
+					groupId: into.groupId,
+					nextId: into.nextId,
+				},
+			);
 			return outcome.ok
 				? {
 						ok: true,
 						document: outcome.graphics,
-						pasted: outcome.pasted.map(itemId => ({ type: 'item', graphicId: composition!.id, itemId })),
+						pasted: outcome.pasted.map((itemId) => ({
+							type: 'item',
+							graphicId: composition!.id,
+							itemId,
+						})),
 					}
 				: outcome;
 		},
@@ -137,20 +160,21 @@ export interface BroadcastGraphicsEditorHostOptions extends GraphicsEditorSessio
 }
 
 /** A restored stack, each graphic in the Graphic Channel it is in now, or its own while that channel still exists. */
-function keepChannels(restored: Stack, current: Stack, channels: readonly GraphicChannelConfig[]): BroadcastGraphicConfig[] {
+function keepChannels(
+	restored: Stack,
+	current: Stack,
+	channels: readonly GraphicChannelConfig[],
+): BroadcastGraphicConfig[] {
 	return restored.map((graphic) => {
 		const now = graphicOf(current, graphic.id);
 		const channelId = now
 			? now.channelId
-			: channels.some(channel => channel.id === graphic.channelId)
+			: channels.some((channel) => channel.id === graphic.channelId)
 				? graphic.channelId
 				: undefined;
-		if (channelId === graphic.channelId)
-			return graphic;
+		if (channelId === graphic.channelId) return graphic;
 		const { channelId: _, ...rest } = graphic;
-		return channelId === undefined
-			? rest
-			: { ...rest, channelId };
+		return channelId === undefined ? rest : { ...rest, channelId };
 	});
 }
 
@@ -158,27 +182,34 @@ function keepChannels(restored: Stack, current: Stack, channels: readonly Graphi
  * A restored stack with the graphics on air in the order they hold among
  * themselves now: each takes a place the restored stack gives one of them.
  */
-function keepOnAirOrder(restored: Stack, current: Stack, onAir: (graphicId: string) => boolean): Stack {
-	const held = current.filter(graphic => onAir(graphic.id) && restored.some(entry => entry.id === graphic.id));
-	const ids = new Set(held.map(graphic => graphic.id));
+function keepOnAirOrder(
+	restored: Stack,
+	current: Stack,
+	onAir: (graphicId: string) => boolean,
+): Stack {
+	const held = current.filter(
+		(graphic) => onAir(graphic.id) && restored.some((entry) => entry.id === graphic.id),
+	);
+	const ids = new Set(held.map((graphic) => graphic.id));
 	let next = 0;
-	return restored.map(graphic => ids.has(graphic.id)
-		? held[next++]!
-		: graphic);
+	return restored.map((graphic) => (ids.has(graphic.id) ? held[next++]! : graphic));
 }
 
-export function broadcastGraphicsEditorHost(options: BroadcastGraphicsEditorHostOptions): GraphicsEditorHostContract<Stack, Layer> {
+export function broadcastGraphicsEditorHost(
+	options: BroadcastGraphicsEditorHostOptions,
+): GraphicsEditorHostContract<Stack, Layer> {
 	const session = graphicsEditorSession(options);
 	return {
 		tree: broadcastGraphicsEditorTree(options.selectedGraphicId),
 		document: {
 			read: options.graphics,
-			write: graphics => options.write([...graphics]),
-			restore: (restored, current) => keepChannels(keepOnAirOrder(restored, current, options.onAir), current, options.channels()),
+			write: (graphics) => options.write([...graphics]),
+			restore: (restored, current) =>
+				keepChannels(keepOnAirOrder(restored, current, options.onAir), current, options.channels()),
 		},
 		forbidden: {
 			...session.forbidden,
-			composition: composition => options.onAir(composition.id),
+			composition: (composition) => options.onAir(composition.id),
 			stepWithheld: options.onStepWithheld,
 		},
 		canvas: session.canvas,

@@ -12,8 +12,7 @@ function _usePlayerMatchHistoryModal() {
 
 	function goBack() {
 		const previous = trail.pop();
-		if (previous)
-			show(previous);
+		if (previous) show(previous);
 	}
 
 	function show(player: Player) {
@@ -38,8 +37,7 @@ function _usePlayerMatchHistoryModal() {
 
 	/** Opens a Player's history; from inside an open modal, such as an opponent's name, it remembers the way back. */
 	function openPlayerMatchHistory(player: Player) {
-		if (current && current.id !== player.id)
-			trail.push(current);
+		if (current && current.id !== player.id) trail.push(current);
 		show(player);
 	}
 

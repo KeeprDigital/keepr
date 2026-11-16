@@ -53,9 +53,9 @@ mockNuxtImport('useMetagameModeData', () => () => ({
 	error: ref<string | null>(null),
 	isEmpty: computed(() => false),
 	emptyMessage: computed(() => 'No metagame data available'),
-	headerText: computed(() => config.value.viewMode === 'cards'
-		? 'Most Played Cards'
-		: 'Full Field Metagame'),
+	headerText: computed(() =>
+		config.value.viewMode === 'cards' ? 'Most Played Cards' : 'Full Field Metagame',
+	),
 	pageData: computed(() => pageData.value),
 	// The page size field the mode's Page Rotation declares.
 	pageSize: computed(() => config.value.pageSize),
@@ -141,7 +141,9 @@ describe('screenMetagameDisplay', () => {
 		config.value = { ...config.value, maxWidth };
 		const wrapper = await mountComponent();
 
-		expect((wrapper.get('[data-testid="metagame-content"]').element as HTMLElement).style.maxWidth).toBe(painted);
+		expect(
+			(wrapper.get('[data-testid="metagame-content"]').element as HTMLElement).style.maxWidth,
+		).toBe(painted);
 	});
 
 	it('sizes rows for the page size before the rows are measured', async () => {
@@ -154,7 +156,7 @@ describe('screenMetagameDisplay', () => {
 		expect(style).toContain('--metagame-row-font-size:');
 	});
 
-	it('renders each Archetype\'s Conversion Rate where the operator placed its column', async () => {
+	it("renders each Archetype's Conversion Rate where the operator placed its column", async () => {
 		config.value = {
 			...config.value,
 			archetypeColumns: [
@@ -166,8 +168,16 @@ describe('screenMetagameDisplay', () => {
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.findAll('.metagame-header-cell').map(cell => cell.text())).toEqual(['Archetype', 'Conversion', 'Count']);
-		expect(wrapper.findAll('.metagame-row .metagame-cell').map(cell => cell.text())).toEqual(['Mono Red', '37.5%', '12']);
+		expect(wrapper.findAll('.metagame-header-cell').map((cell) => cell.text())).toEqual([
+			'Archetype',
+			'Conversion',
+			'Count',
+		]);
+		expect(wrapper.findAll('.metagame-row .metagame-cell').map((cell) => cell.text())).toEqual([
+			'Mono Red',
+			'37.5%',
+			'12',
+		]);
 	});
 
 	it('shows an absent Conversion Rate as a dash', async () => {
@@ -178,19 +188,20 @@ describe('screenMetagameDisplay', () => {
 				{ key: 'conversionRate', visible: true },
 			],
 		};
-		pageData.value = [
-			{ ...pageData.value[0], conversionRate: null },
-		];
+		pageData.value = [{ ...pageData.value[0], conversionRate: null }];
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.findAll('.metagame-row .metagame-cell').map(cell => cell.text())).toEqual(['Mono Red', '-']);
+		expect(wrapper.findAll('.metagame-row .metagame-cell').map((cell) => cell.text())).toEqual([
+			'Mono Red',
+			'-',
+		]);
 	});
 
 	it('renders a stored column list saved before Conversion Rate existed unchanged', async () => {
 		const wrapper = await mountComponent();
 
-		expect(wrapper.findAll('.metagame-header-cell').map(cell => cell.text())).toEqual([
+		expect(wrapper.findAll('.metagame-header-cell').map((cell) => cell.text())).toEqual([
 			'Archetype',
 			'Count',
 			'Share',
@@ -211,23 +222,22 @@ describe('screenMetagameDisplay', () => {
 				{ key: 'avgPlace', visible: true },
 			],
 		};
-		pageData.value = [
-			{ ...pageData.value[0], count: 1234 },
-		];
+		pageData.value = [{ ...pageData.value[0], count: 1234 }];
 
 		const wrapper = await mountComponent();
 		vi.restoreAllMocks();
 
-		expect(wrapper.findAll('.metagame-row .metagame-cell').map(cell => cell.text())).toEqual(['1,234', '3.2']);
+		expect(wrapper.findAll('.metagame-row .metagame-cell').map((cell) => cell.text())).toEqual([
+			'1,234',
+			'3.2',
+		]);
 	});
 
 	it('renders the colors column when it is visible', async () => {
 		config.value = {
 			...config.value,
 			archetypeColumns: config.value.archetypeColumns.map((column: any) =>
-				column.key === 'colors'
-					? { ...column, visible: true }
-					: column,
+				column.key === 'colors' ? { ...column, visible: true } : column,
 			),
 		};
 
@@ -257,7 +267,10 @@ describe('screenMetagameDisplay', () => {
 
 			const wrapper = await mountComponent();
 
-			expect(wrapper.findAll('.metagame-header-cell').map(cell => cell.text())).toEqual(['Archetype', 'Share']);
+			expect(wrapper.findAll('.metagame-header-cell').map((cell) => cell.text())).toEqual([
+				'Archetype',
+				'Share',
+			]);
 		});
 
 		it('shows no mana cost or Sideboard count for a card', async () => {
@@ -279,7 +292,7 @@ describe('screenMetagameDisplay', () => {
 
 			const wrapper = await mountComponent();
 
-			expect(wrapper.findAll('.metagame-header-cell').map(cell => cell.text())).toEqual([
+			expect(wrapper.findAll('.metagame-header-cell').map((cell) => cell.text())).toEqual([
 				'Card',
 				'Type',
 				'Inclusion',
@@ -288,7 +301,7 @@ describe('screenMetagameDisplay', () => {
 				'Decks',
 				'Main',
 			]);
-			expect(wrapper.findAll('.metagame-row .metagame-cell').map(cell => cell.text())).toEqual([
+			expect(wrapper.findAll('.metagame-row .metagame-cell').map((cell) => cell.text())).toEqual([
 				'Usopp',
 				'Character',
 				'50%',
@@ -299,7 +312,7 @@ describe('screenMetagameDisplay', () => {
 			]);
 		});
 
-		it('shows an Archetype\'s Leader colours as One Piece pips', async () => {
+		it("shows an Archetype's Leader colours as One Piece pips", async () => {
 			config.value = {
 				...config.value,
 				archetypeColumns: [
@@ -307,13 +320,13 @@ describe('screenMetagameDisplay', () => {
 					{ key: 'colors', visible: true },
 				],
 			};
-			pageData.value = [
-				{ ...pageData.value[0], name: 'Monkey.D.Luffy', colors: 'Red/Green' },
-			];
+			pageData.value = [{ ...pageData.value[0], name: 'Monkey.D.Luffy', colors: 'Red/Green' }];
 
 			const wrapper = await mountComponent();
 
-			expect(wrapper.findAll('[data-op-color]').map(pip => pip.attributes('data-op-color'))).toEqual(['Red', 'Green']);
+			expect(
+				wrapper.findAll('[data-op-color]').map((pip) => pip.attributes('data-op-color')),
+			).toEqual(['Red', 'Green']);
 			expect(wrapper.find('[data-testid="mana-display"]').exists()).toBe(false);
 		});
 	});
@@ -354,26 +367,28 @@ describe('screenMetagameDisplay', () => {
 
 			expect(wrapper.find('[data-testid="metagame-header-row"]').exists()).toBe(false);
 			const bars = wrapper.findAll('[data-testid="metagame-chart-bar"]');
-			expect(bars.map(bar => [
-				bar.get('[data-testid="metagame-chart-name"]').text(),
-				bar.get('[data-testid="metagame-chart-share"]').text(),
-			])).toEqual([
+			expect(
+				bars.map((bar) => [
+					bar.get('[data-testid="metagame-chart-name"]').text(),
+					bar.get('[data-testid="metagame-chart-share"]').text(),
+				]),
+			).toEqual([
 				['Boros Energy', '50%'],
 				['Eldrazi Ramp', '33.33%'],
 				['Other', '16.67%'],
 			]);
 		});
 
-		it('fills each bar from its colour slot\'s Foundation series, and Other from the Foundation neutral fill', async () => {
+		it("fills each bar from its colour slot's Foundation series, and Other from the Foundation neutral fill", async () => {
 			const wrapper = await mountComponent();
 
 			const fills = wrapper.findAll('[data-testid="metagame-chart-fill"]');
-			expect(fills.map(fill => fill.attributes('data-color-slot'))).toEqual(['4', '1', 'other']);
+			expect(fills.map((fill) => fill.attributes('data-color-slot'))).toEqual(['4', '1', 'other']);
 			expect(fills[0]!.attributes('style')).toContain('var(--theme-series-4)');
 			expect(fills[2]!.attributes('style')).toContain('var(--theme-series-other)');
 		});
 
-		it('shows each Archetype\'s mana colours beside its name', async () => {
+		it("shows each Archetype's mana colours beside its name", async () => {
 			const wrapper = await mountComponent();
 
 			const bars = wrapper.findAll('[data-testid="metagame-chart-bar"]');

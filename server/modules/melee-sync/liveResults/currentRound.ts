@@ -8,10 +8,10 @@ import { isMeleeManagedRound } from '~~/shared/utils/roundControl';
  * What a Live Results tick does next: poll the Current Round's Match Results,
  * probe a Round for pairings, or nothing (every Round is complete).
  */
-export type LiveResultsTarget
-	= | { kind: 'results'; round: DbRound }
-		| { kind: 'probe'; round: DbRound }
-		| { kind: 'idle' };
+export type LiveResultsTarget =
+	| { kind: 'results'; round: DbRound }
+	| { kind: 'probe'; round: DbRound }
+	| { kind: 'idle' };
 
 /** A Round's Melee pairings as the Current Round reads them. */
 export interface RoundPairingStats {
@@ -35,10 +35,10 @@ export function resolveCurrentRound(
 	orderedRounds: readonly DbRound[],
 	stats: ReadonlyMap<number, RoundPairingStats>,
 ): CurrentRoundResolution {
-	const currentIndex = orderedRounds.findLastIndex(round => (stats.get(round.id)?.matchCount ?? 0) > 0);
-	const current = currentIndex >= 0
-		? orderedRounds[currentIndex]!
-		: null;
+	const currentIndex = orderedRounds.findLastIndex(
+		(round) => (stats.get(round.id)?.matchCount ?? 0) > 0,
+	);
+	const current = currentIndex >= 0 ? orderedRounds[currentIndex]! : null;
 	if (current && !stats.get(current.id)!.complete) {
 		return {
 			current,
@@ -48,9 +48,7 @@ export function resolveCurrentRound(
 	const next = orderedRounds[currentIndex + 1];
 	return {
 		current,
-		target: next
-			? { kind: 'probe', round: next }
-			: { kind: 'idle' },
+		target: next ? { kind: 'probe', round: next } : { kind: 'idle' },
 	};
 }
 
@@ -60,22 +58,25 @@ export async function loadCurrentRound(eventId: number): Promise<CurrentRoundRes
 		roundService().findByEventId(eventId),
 		matchService().findByEventId(eventId),
 	]);
-	const orderedRounds = allRounds.filter(round => isMeleeManagedRound(round));
+	const orderedRounds = allRounds.filter((round) => isMeleeManagedRound(round));
 	const meleeMatchesByRound = Map.groupBy(
-		allMatches.filter(match => match.externalSource === 'melee'),
-		match => match.roundId,
+		allMatches.filter((match) => match.externalSource === 'melee'),
+		(match) => match.roundId,
 	);
-	const stats = new Map(orderedRounds.map((round, index) => {
-		const matches = meleeMatchesByRound.get(round.id) ?? [];
-		const next = orderedRounds[index + 1];
-		const nextRoundHasPairings = next != null && (meleeMatchesByRound.get(next.id)?.length ?? 0) > 0;
-		return [
-			round.id,
-			{
-				matchCount: matches.length,
-				complete: isRoundComplete(matches, nextRoundHasPairings),
-			},
-		];
-	}));
+	const stats = new Map(
+		orderedRounds.map((round, index) => {
+			const matches = meleeMatchesByRound.get(round.id) ?? [];
+			const next = orderedRounds[index + 1];
+			const nextRoundHasPairings =
+				next != null && (meleeMatchesByRound.get(next.id)?.length ?? 0) > 0;
+			return [
+				round.id,
+				{
+					matchCount: matches.length,
+					complete: isRoundComplete(matches, nextRoundHasPairings),
+				},
+			];
+		}),
+	);
 	return resolveCurrentRound(orderedRounds, stats);
 }

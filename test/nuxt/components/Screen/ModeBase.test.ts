@@ -36,12 +36,14 @@ describe('screenModeBase', () => {
 
 	it.each([true, false])('declares ready=%s to its rendering host', async (ready) => {
 		let declared: ReturnType<typeof provideScreenModeReadiness>['declared'] | undefined;
-		mount(defineComponent({
-			setup() {
-				declared = provideScreenModeReadiness().declared;
-				return () => h(ModeBase, { error: null, ready });
-			},
-		}));
+		mount(
+			defineComponent({
+				setup() {
+					declared = provideScreenModeReadiness().declared;
+					return () => h(ModeBase, { error: null, ready });
+				},
+			}),
+		);
 
 		expect(declared?.value).toBe(ready);
 	});

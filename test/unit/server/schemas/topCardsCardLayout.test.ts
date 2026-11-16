@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { modeConfigPatchSchemaMap } from '~~/server/schemas/api/screen';
-import { getDisplayDefaultsForMode, resolveScreenModeConfig, toModeConfigPatch } from '~~/shared/types/screenConfig';
+import {
+	getDisplayDefaultsForMode,
+	resolveScreenModeConfig,
+	toModeConfigPatch,
+} from '~~/shared/types/screenConfig';
 
-describe('a Most Played Cards Screen\'s Card Layout', () => {
+describe("a Most Played Cards Screen's Card Layout", () => {
 	it('is all Auto until set, and a reset returns each value to Auto', () => {
 		expect(resolveScreenModeConfig({}, 'top-cards')).toMatchObject({
 			columns: undefined,
@@ -34,6 +38,8 @@ describe('a Most Played Cards Screen\'s Card Layout', () => {
 		{ field: 'maxCardSize', value: null, accepted: true },
 		{ field: 'cardGap', value: null, accepted: true },
 	])('a write of $field $value is accepted: $accepted', ({ field, value, accepted }) => {
-		expect(modeConfigPatchSchemaMap['top-cards'].safeParse({ [field]: value }).success).toBe(accepted);
+		expect(modeConfigPatchSchemaMap['top-cards'].safeParse({ [field]: value }).success).toBe(
+			accepted,
+		);
 	});
 });

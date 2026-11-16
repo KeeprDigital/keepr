@@ -21,10 +21,11 @@ function mountFields(framingStyle: FeatureMatchSourceFramingStyle) {
 
 type Wrapper = ReturnType<typeof mountFields>;
 
-const cornerSize = (wrapper: Wrapper, corner: string) => wrapper.get(`input[aria-label="${corner} size"]`);
+const cornerSize = (wrapper: Wrapper, corner: string) =>
+	wrapper.get(`input[aria-label="${corner} size"]`);
 
 describe('source framing style fields', () => {
-	it('offers no colour, border or glow of the Source Item\'s own', () => {
+	it("offers no colour, border or glow of the Source Item's own", () => {
 		const wrapper = mountFields({});
 
 		expect(wrapper.find('[data-color-part]').exists()).toBe(false);
@@ -46,15 +47,14 @@ describe('source framing style fields', () => {
 
 	// A Source Item stores radii, so the corner editor offers what a radius can be:
 	// a rounded corner of any size, 0 being square.
-	it('reads each corner\'s stored radius, falling back to the shared one', () => {
+	it("reads each corner's stored radius, falling back to the shared one", () => {
 		const wrapper = mountFields({ borderRadius: 8, borderRadiusTopLeft: 20 });
 
-		expect([
-			'Top left',
-			'Top right',
-			'Bottom left',
-			'Bottom right',
-		].map(corner => (cornerSize(wrapper, corner).element as HTMLInputElement).value)).toEqual(['20', '8', '8', '8']);
+		expect(
+			['Top left', 'Top right', 'Bottom left', 'Bottom right'].map(
+				(corner) => (cornerSize(wrapper, corner).element as HTMLInputElement).value,
+			),
+		).toEqual(['20', '8', '8', '8']);
 	});
 
 	it('offers no cut corner, edge slant or shape preset, which a radius cannot hold', () => {
@@ -83,8 +83,7 @@ describe('source framing style fields', () => {
 		},
 	])('writes $case as stored radii', async ({ linked, written }) => {
 		const wrapper = mountFields({ borderRadius: 8 });
-		if (linked)
-			await wrapper.get('[data-testid="shape-corners-linked"]').trigger('click');
+		if (linked) await wrapper.get('[data-testid="shape-corners-linked"]').trigger('click');
 
 		await cornerSize(wrapper, 'Top right').setValue('12');
 		await flushPromises();

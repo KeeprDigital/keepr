@@ -2,7 +2,14 @@ import type { StubRenderer, StubScene } from './threeStub';
 import type { SceneEffectDelegate } from '~/utils/animation-effects/sceneEffect';
 import { describe, expect, it, vi } from 'vitest';
 import { createSceneEffect } from '~/utils/animation-effects/sceneEffect';
-import { createHostStub, createThreeStub, StubCamera, StubGeometry, StubMaterial, StubMesh } from './threeStub';
+import {
+	createHostStub,
+	createThreeStub,
+	StubCamera,
+	StubGeometry,
+	StubMaterial,
+	StubMesh,
+} from './threeStub';
 
 interface Params {
 	shade: string;
@@ -23,11 +30,14 @@ function mountEffect(params: Params = { shade: '#123456', count: 3 }) {
 		applyParams: vi.fn(),
 		update: vi.fn(),
 	};
-	const instance = createSceneEffect<Params>({
-		three,
-		host,
-		delegate: delegate as unknown as SceneEffectDelegate<Params>,
-	}, params);
+	const instance = createSceneEffect<Params>(
+		{
+			three,
+			host,
+			delegate: delegate as unknown as SceneEffectDelegate<Params>,
+		},
+		params,
+	);
 	return {
 		instance,
 		delegate,

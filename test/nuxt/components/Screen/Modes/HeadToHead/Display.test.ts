@@ -26,9 +26,7 @@ mockNuxtImport('useHeadToHeadModeData', () => () => ({
 	player1: computed(() => player1.value),
 	player2: computed(() => player2.value),
 	earlierMatches: computed(() => earlierMatches.value),
-	formatRecord: (record: any) => record.wins == null
-		? null
-		: `${record.wins} wins`,
+	formatRecord: (record: any) => (record.wins == null ? null : `${record.wins} wins`),
 }));
 
 function side(id: number, name: string, overrides: Record<string, unknown> = {}) {
@@ -87,11 +85,13 @@ describe('screenModesHeadToHeadDisplay', () => {
 		isEmpty.value = false;
 		firstMeeting.value = false;
 		headerText.value = 'Head to Head';
-		player1.value = side(7, 'Nadia Rivers', { pronouns: 'she/her', deckName: 'Boros Energy', deckColors: 'RW' });
+		player1.value = side(7, 'Nadia Rivers', {
+			pronouns: 'she/her',
+			deckName: 'Boros Energy',
+			deckColors: 'RW',
+		});
 		player2.value = side(8, 'Oskar Lind', { points: 9 });
-		earlierMatches.value = [
-			earlierMatch(),
-		];
+		earlierMatches.value = [earlierMatch()];
 	});
 
 	it('shows the header, and hides it when the mode config disables it', async () => {
@@ -120,14 +120,18 @@ describe('screenModesHeadToHeadDisplay', () => {
 	it.each([
 		{ toggle: 'showPronouns', hides: '.pronouns' },
 		{ toggle: 'showDeckColors', hides: '.mana' },
-	])('hides each Player\'s $hides when $toggle is off', async ({ toggle, hides }) => {
-		player2.value = side(8, 'Oskar Lind', { pronouns: 'he/him', deckName: 'Dimir Murktide', deckColors: 'UB' });
+	])("hides each Player's $hides when $toggle is off", async ({ toggle, hides }) => {
+		player2.value = side(8, 'Oskar Lind', {
+			pronouns: 'he/him',
+			deckName: 'Dimir Murktide',
+			deckColors: 'UB',
+		});
 		config.value = { ...config.value, [toggle]: false };
 
 		const players = (await mountComponent()).findAll('.head-to-head-player');
 
-		expect(players.map(player => player.find(hides).exists())).toEqual([false, false]);
-		expect(players.map(player => player.find('.deck').text())).toEqual([
+		expect(players.map((player) => player.find(hides).exists())).toEqual([false, false]);
+		expect(players.map((player) => player.find('.deck').text())).toEqual([
 			expect.stringContaining('Boros Energy'),
 			expect.stringContaining('Dimir Murktide'),
 		]);
@@ -150,7 +154,9 @@ describe('screenModesHeadToHeadDisplay', () => {
 	it('names a side no Player fills as to be decided', async () => {
 		player2.value = null;
 
-		expect((await mountComponent()).findAll('.head-to-head-player')[1]!.get('.name').text()).toBe('TBD');
+		expect((await mountComponent()).findAll('.head-to-head-player')[1]!.get('.name').text()).toBe(
+			'TBD',
+		);
 	});
 
 	it('lists earlier Matches with their Round, winner and game score', async () => {
@@ -177,12 +183,20 @@ describe('screenModesHeadToHeadDisplay', () => {
 
 		const rows = (await mountComponent()).findAll('.earlier-match');
 
-		expect(rows.map(row => row.get('.round').text())).toEqual(['Round 2', 'Round 5', 'Quarterfinal']);
-		expect(rows.map(row => row.get('.winner').text())).toEqual(['Nadia Rivers', 'Oskar Lind', 'Draw']);
-		expect(rows.map(row => row.get('.score').text())).toEqual(['2-1', '0-2', '1-1-1']);
+		expect(rows.map((row) => row.get('.round').text())).toEqual([
+			'Round 2',
+			'Round 5',
+			'Quarterfinal',
+		]);
+		expect(rows.map((row) => row.get('.winner').text())).toEqual([
+			'Nadia Rivers',
+			'Oskar Lind',
+			'Draw',
+		]);
+		expect(rows.map((row) => row.get('.score').text())).toEqual(['2-1', '0-2', '1-1-1']);
 	});
 
-	it('says it is the two Players\' first earlierMatch when they have not met', async () => {
+	it("says it is the two Players' first earlierMatch when they have not met", async () => {
 		earlierMatches.value = [];
 		firstMeeting.value = true;
 

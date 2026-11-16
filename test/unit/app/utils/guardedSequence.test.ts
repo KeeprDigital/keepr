@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createGuardedSequence, createKeyedGuardedSequence, unguarded } from '~~/app/utils/guardedSequence';
+import {
+	createGuardedSequence,
+	createKeyedGuardedSequence,
+	unguarded,
+} from '~~/app/utils/guardedSequence';
 
 describe('createGuardedSequence', () => {
 	it('begins a current flight', () => {

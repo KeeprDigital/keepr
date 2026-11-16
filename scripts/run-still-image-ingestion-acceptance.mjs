@@ -82,15 +82,15 @@ export async function main(argv = process.argv) {
 						bytes,
 					});
 					staged.push(publication);
-					record(checkStillImagePublication(publication.settled, {
-						format,
-						byteLength: bytes.byteLength,
-					}));
+					record(
+						checkStillImagePublication(publication.settled, {
+							format,
+							byteLength: bytes.byteLength,
+						}),
+					);
 				}
-			}
-			finally {
-				for (const publication of staged)
-					await publication.dispose();
+			} finally {
+				for (const publication of staged) await publication.dispose();
 			}
 			return {
 				mode: deployed ? 'deployed' : 'local',
@@ -100,5 +100,4 @@ export async function main(argv = process.argv) {
 	});
 }
 
-if (import.meta.main)
-	await main();
+if (import.meta.main) await main();

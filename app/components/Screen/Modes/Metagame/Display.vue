@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import type {
-	MetagameArchetypeColumnKey,
-	MetagameCardColumnKey,
-} from '~~/shared/types/enums';
-import type {
-	ArchetypeBreakdownEntry,
-	CardBreakdownEntry,
-} from '~~/shared/types/metagame';
+import type { MetagameArchetypeColumnKey, MetagameCardColumnKey } from '~~/shared/types/enums';
+import type { ArchetypeBreakdownEntry, CardBreakdownEntry } from '~~/shared/types/metagame';
 import { getCardTypeDisplayLabel, isMetagameColumnOffered } from '~~/shared/utils/metagame';
-import { foundationTokenVar, foundationTypographyStyle, modeMotionVars } from '~/modules/screen-mode';
+import {
+	foundationTokenVar,
+	foundationTypographyStyle,
+	modeMotionVars,
+} from '~/modules/screen-mode';
 
 interface TableColumnDefinition<Key extends string> {
 	key: Key;
@@ -65,7 +63,10 @@ const pageIndicatorStyle = {
 	...secondaryTextStyle,
 };
 
-const archetypeColumnDefinitions: Record<MetagameArchetypeColumnKey, TableColumnDefinition<MetagameArchetypeColumnKey>> = {
+const archetypeColumnDefinitions: Record<
+	MetagameArchetypeColumnKey,
+	TableColumnDefinition<MetagameArchetypeColumnKey>
+> = {
 	archetype: {
 		key: 'archetype',
 		label: 'Archetype',
@@ -117,7 +118,10 @@ const archetypeColumnDefinitions: Record<MetagameArchetypeColumnKey, TableColumn
 	},
 };
 
-const cardColumnDefinitions: Record<MetagameCardColumnKey, TableColumnDefinition<MetagameCardColumnKey>> = {
+const cardColumnDefinitions: Record<
+	MetagameCardColumnKey,
+	TableColumnDefinition<MetagameCardColumnKey>
+> = {
 	card: {
 		key: 'card',
 		label: 'Card',
@@ -179,23 +183,23 @@ const cardColumnDefinitions: Record<MetagameCardColumnKey, TableColumnDefinition
 // A column the Event's Metagame does not read never shows, wherever a stored config places it (ADR-0074).
 const visibleArchetypeColumns = computed(() =>
 	config.value.archetypeColumns
-		.filter(column => column.visible && isMetagameColumnOffered(game.value, column.key))
-		.map(column => archetypeColumnDefinitions[column.key]),
+		.filter((column) => column.visible && isMetagameColumnOffered(game.value, column.key))
+		.map((column) => archetypeColumnDefinitions[column.key]),
 );
 
 const visibleCardColumns = computed(() =>
 	config.value.cardColumns
-		.filter(column => column.visible && isMetagameColumnOffered(game.value, column.key))
-		.map(column => cardColumnDefinitions[column.key]),
+		.filter((column) => column.visible && isMetagameColumnOffered(game.value, column.key))
+		.map((column) => cardColumnDefinitions[column.key]),
 );
 
 const activeColumns = computed(() =>
-	config.value.viewMode === 'cards'
-		? visibleCardColumns.value
-		: visibleArchetypeColumns.value,
+	config.value.viewMode === 'cards' ? visibleCardColumns.value : visibleArchetypeColumns.value,
 );
 
-const gridTemplateColumns = computed(() => activeColumns.value.map(column => column.width).join(' '));
+const gridTemplateColumns = computed(() =>
+	activeColumns.value.map((column) => column.width).join(' '),
+);
 
 const gridStyle = computed(() => ({
 	gridTemplateColumns: gridTemplateColumns.value,
@@ -216,9 +220,7 @@ const rowLayoutStyle = useTableRowLayout(useTemplateRef<HTMLElement>('rowsRef'),
 // Centred, and no wider than the config's max width; Auto fills the Screen.
 const contentStyle = computed(() => ({
 	width: '100%',
-	maxWidth: config.value.maxWidth === undefined
-		? undefined
-		: `${config.value.maxWidth}px`,
+	maxWidth: config.value.maxWidth === undefined ? undefined : `${config.value.maxWidth}px`,
 	marginInline: 'auto',
 }));
 
@@ -255,7 +257,13 @@ function cellStyle(column: TableColumnDefinition<string>) {
 }
 
 function isArchetypeEntry(entry: unknown): entry is ArchetypeBreakdownEntry {
-	return !!entry && typeof entry === 'object' && 'name' in entry && 'metaShare' in entry && 'count' in entry;
+	return (
+		!!entry &&
+		typeof entry === 'object' &&
+		'name' in entry &&
+		'metaShare' in entry &&
+		'count' in entry
+	);
 }
 
 function isCardEntry(entry: unknown): entry is CardBreakdownEntry {
@@ -283,7 +291,10 @@ function formatNumber(value: number | null, options: Intl.NumberFormatOptions = 
 	}).format(value);
 }
 
-function formatArchetypeCell(entry: ArchetypeBreakdownEntry, key: MetagameArchetypeColumnKey): string {
+function formatArchetypeCell(
+	entry: ArchetypeBreakdownEntry,
+	key: MetagameArchetypeColumnKey,
+): string {
 	switch (key) {
 		case 'archetype':
 			return entry.name;
@@ -327,14 +338,21 @@ function formatCardCell(entry: CardBreakdownEntry, key: MetagameCardColumnKey): 
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="error"
-		:ready="ready"
-		:empty="isEmpty"
-	>
-		<div class="metagame-display broadcast-table-display flex flex-col h-full w-full" :style="displayStyle">
-			<div data-testid="metagame-content" class="metagame-content broadcast-table-content flex flex-col h-full w-full" :style="contentStyle">
-				<div v-if="config.showHeader" class="metagame-title broadcast-table-title" :style="titleDividerStyle">
+	<ScreenModeBase :error="error" :ready="ready" :empty="isEmpty">
+		<div
+			class="metagame-display broadcast-table-display flex flex-col h-full w-full"
+			:style="displayStyle"
+		>
+			<div
+				data-testid="metagame-content"
+				class="metagame-content broadcast-table-content flex flex-col h-full w-full"
+				:style="contentStyle"
+			>
+				<div
+					v-if="config.showHeader"
+					class="metagame-title broadcast-table-title"
+					:style="titleDividerStyle"
+				>
 					<h2 :style="titleStyle">
 						{{ headerText }}
 					</h2>
@@ -347,7 +365,11 @@ function formatCardCell(entry: CardBreakdownEntry, key: MetagameCardColumnKey): 
 				/>
 
 				<div v-else class="metagame-table broadcast-table-surface" :style="surfaceStyle">
-					<div class="metagame-header-row broadcast-table-header-row metagame-grid" :style="[gridStyle, headerRowStyle]" data-testid="metagame-header-row">
+					<div
+						class="metagame-header-row broadcast-table-header-row metagame-grid"
+						:style="[gridStyle, headerRowStyle]"
+						data-testid="metagame-header-row"
+					>
 						<div
 							v-for="column in activeColumns"
 							:key="column.key"
@@ -368,7 +390,13 @@ function formatCardCell(entry: CardBreakdownEntry, key: MetagameCardColumnKey): 
 					>
 						<div
 							v-for="(entry, index) in pageData"
-							:key="config.viewMode === 'cards' && isCardEntry(entry) ? entry.id : isArchetypeEntry(entry) ? entry.id : index"
+							:key="
+								config.viewMode === 'cards' && isCardEntry(entry)
+									? entry.id
+									: isArchetypeEntry(entry)
+										? entry.id
+										: index
+							"
 							class="metagame-row broadcast-table-row metagame-grid"
 							:style="[gridStyle, rowStyle, rowMotionStyle, { '--row-index': index }]"
 							:data-testid="`metagame-row-${index}`"
@@ -405,7 +433,11 @@ function formatCardCell(entry: CardBreakdownEntry, key: MetagameCardColumnKey): 
 									:style="cellStyle(column)"
 								>
 									<template v-if="column.key === 'manaCost'">
-										<MtgManaColorDisplay v-if="entry.manaCost" :mana-cost="entry.manaCost" size="xs" />
+										<MtgManaColorDisplay
+											v-if="entry.manaCost"
+											:mana-cost="entry.manaCost"
+											size="xs"
+										/>
 										<span v-else>-</span>
 									</template>
 									<template v-else>
@@ -417,7 +449,11 @@ function formatCardCell(entry: CardBreakdownEntry, key: MetagameCardColumnKey): 
 					</TransitionGroup>
 				</div>
 
-				<div v-if="totalPages > 1" class="metagame-page-indicator broadcast-table-page-indicator" :style="pageIndicatorStyle">
+				<div
+					v-if="totalPages > 1"
+					class="metagame-page-indicator broadcast-table-page-indicator"
+					:style="pageIndicatorStyle"
+				>
 					{{ currentPage }} / {{ totalPages }}
 				</div>
 			</div>

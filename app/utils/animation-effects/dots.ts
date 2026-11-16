@@ -84,8 +84,7 @@ export function createDotsDelegate(): SceneEffectDelegate<AnimationEffectParams<
 
 	/** Build or tear down the line segments so their presence matches `showLines`. */
 	function syncLines(three: typeof THREE, scene: THREE.Scene, wanted: boolean) {
-		if (wanted === Boolean(lines))
-			return;
+		if (wanted === Boolean(lines)) return;
 		if (lines) {
 			scene.remove(lines);
 			lines.geometry.dispose();
@@ -119,10 +118,13 @@ export function createDotsDelegate(): SceneEffectDelegate<AnimationEffectParams<
 			const position = new three.BufferAttribute(positions, 3);
 			position.setUsage(three.DynamicDrawUsage);
 			geometry.setAttribute('position', position);
-			stars = new three.Points(geometry, new three.PointsMaterial({
-				color: params.dotColor,
-				size: params.size,
-			}));
+			stars = new three.Points(
+				geometry,
+				new three.PointsMaterial({
+					color: params.dotColor,
+					size: params.size,
+				}),
+			);
 			scene.add(stars);
 			placeStars(params.spacing);
 
@@ -143,8 +145,11 @@ export function createDotsDelegate(): SceneEffectDelegate<AnimationEffectParams<
 			const position = stars.geometry.getAttribute('position') as THREE.BufferAttribute;
 			for (let index = 0; index < position.count; index++) {
 				const phase = DRIFT_PHASE_Z * position.getZ(index) + DRIFT_PHASE_X * position.getX(index);
-				position.setY(index, restHeights[index]!
-				+ DRIFT_AMPLITUDE * (Math.cos(phase) - Math.cos(phase + DRIFT_RATE * elapsedSeconds)));
+				position.setY(
+					index,
+					restHeights[index]! +
+						DRIFT_AMPLITUDE * (Math.cos(phase) - Math.cos(phase + DRIFT_RATE * elapsedSeconds)),
+				);
 			}
 			position.needsUpdate = true;
 
@@ -157,7 +162,11 @@ export function createDotsDelegate(): SceneEffectDelegate<AnimationEffectParams<
 			camera.lookAt(0, 0, 0);
 
 			if (lines)
-				lines.rotation.set(LINE_ROTATION_X * elapsedSeconds, LINE_ROTATION_Y * elapsedSeconds, LINE_ROTATION_Z * elapsedSeconds);
+				lines.rotation.set(
+					LINE_ROTATION_X * elapsedSeconds,
+					LINE_ROTATION_Y * elapsedSeconds,
+					LINE_ROTATION_Z * elapsedSeconds,
+				);
 		},
 	};
 }
@@ -166,9 +175,12 @@ export default function createDotsEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'dots'>,
 ): AnimationEffectInstance<AnimationEffectParams<'dots'>> {
-	return createSceneEffect({
-		three: THREE,
-		host,
-		delegate: createDotsDelegate(),
-	}, params);
+	return createSceneEffect(
+		{
+			three: THREE,
+			host,
+			delegate: createDotsDelegate(),
+		},
+		params,
+	);
 }

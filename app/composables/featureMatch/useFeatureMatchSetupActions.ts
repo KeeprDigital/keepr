@@ -46,13 +46,18 @@ export function useFeatureMatchSetupActions(deps: FeatureMatchSetupDeps) {
 	 * Session, and a save sends each player's edits to their own Slot side.
 	 */
 	async function swapPlayers() {
-		await runRequest(async () => {
-			return !eventStore.eventId
-				|| landed(featureMatchStateStore.swapPlayers(eventStore.eventId, formData.value.id));
-		}, {
-			success: { title: 'Players swapped', color: 'success' },
-			error: { title: 'Failed to swap players', color: 'error' },
-		});
+		await runRequest(
+			async () => {
+				return (
+					!eventStore.eventId ||
+					landed(featureMatchStateStore.swapPlayers(eventStore.eventId, formData.value.id))
+				);
+			},
+			{
+				success: { title: 'Players swapped', color: 'success' },
+				error: { title: 'Failed to swap players', color: 'error' },
+			},
+		);
 	}
 
 	/**
@@ -63,8 +68,7 @@ export function useFeatureMatchSetupActions(deps: FeatureMatchSetupDeps) {
 	 */
 	async function swapSeats(first: Seat, second: Seat) {
 		const eventId = eventStore.eventId;
-		if (!eventId)
-			return;
+		if (!eventId) return;
 		await runRequest(
 			() => featureMatchRepository.swapSeats(eventId, formData.value.id, [first, second]),
 			{
@@ -84,8 +88,7 @@ export function useFeatureMatchSetupActions(deps: FeatureMatchSetupDeps) {
 		formData.value.player2Data = { ...DEFAULT_PLAYER_DATA };
 		// Seats 3 and 4 are in a Commander Slot's form alone (ADR-0087).
 		for (const key of COMMANDER_SEAT_DATA_KEYS) {
-			if (formData.value[key] !== undefined)
-				formData.value[key] = { ...DEFAULT_PLAYER_DATA };
+			if (formData.value[key] !== undefined) formData.value[key] = { ...DEFAULT_PLAYER_DATA };
 		}
 		formData.value.player1Id = null;
 		formData.value.player2Id = null;
@@ -94,34 +97,41 @@ export function useFeatureMatchSetupActions(deps: FeatureMatchSetupDeps) {
 		formData.value.roundName = null;
 		formData.value.formatName = null;
 
-		await runRequest(async () => {
-			return !eventStore.eventId
-				|| landed(featureMatchStateStore.resetMatch(eventStore.eventId, formData.value.id, { type: 'match' }));
-		}, {
-			success: { title: 'Match cleared', color: 'success' },
-			error: { title: 'Failed to clear match', color: 'error' },
-			onFailure: () => {
-				// Rollback form data on failure
-				formData.value.player1Data = snapshot.player1Data;
-				formData.value.player2Data = snapshot.player2Data;
-				for (const key of COMMANDER_SEAT_DATA_KEYS) {
-					if (snapshot[key] !== undefined)
-						formData.value[key] = snapshot[key];
-				}
-				formData.value.player1Id = snapshot.player1Id;
-				formData.value.player2Id = snapshot.player2Id;
-				formData.value.externalId = snapshot.externalId;
-				formData.value.externalSource = snapshot.externalSource;
-				formData.value.roundName = snapshot.roundName;
-				formData.value.formatName = snapshot.formatName;
+		await runRequest(
+			async () => {
+				return (
+					!eventStore.eventId ||
+					landed(
+						featureMatchStateStore.resetMatch(eventStore.eventId, formData.value.id, {
+							type: 'match',
+						}),
+					)
+				);
 			},
-		});
+			{
+				success: { title: 'Match cleared', color: 'success' },
+				error: { title: 'Failed to clear match', color: 'error' },
+				onFailure: () => {
+					// Rollback form data on failure
+					formData.value.player1Data = snapshot.player1Data;
+					formData.value.player2Data = snapshot.player2Data;
+					for (const key of COMMANDER_SEAT_DATA_KEYS) {
+						if (snapshot[key] !== undefined) formData.value[key] = snapshot[key];
+					}
+					formData.value.player1Id = snapshot.player1Id;
+					formData.value.player2Id = snapshot.player2Id;
+					formData.value.externalId = snapshot.externalId;
+					formData.value.externalSource = snapshot.externalSource;
+					formData.value.roundName = snapshot.roundName;
+					formData.value.formatName = snapshot.formatName;
+				},
+			},
+		);
 	}
 
 	async function populateFromMelee(match: Match) {
 		if (eventStore.eventId) {
-			if (!roundStore.isLoaded)
-				await roundStore.loadRoundsByEventId(eventStore.eventId);
+			if (!roundStore.isLoaded) await roundStore.loadRoundsByEventId(eventStore.eventId);
 		}
 
 		const p1Data = match.player1Data;
@@ -129,16 +139,16 @@ export function useFeatureMatchSetupActions(deps: FeatureMatchSetupDeps) {
 		const sourceRound = roundStore.getRoundById(match.roundId);
 		const defaultFormatName = getGameConfig(eventStore.event?.game ?? 'mtg').label;
 
-		const player1Deck = getDeckForCurrentPhase(match.player1Id, p1Data?.gameData?.type === 'mtg'
-			? p1Data.gameData.deckName ?? null
-			: null, p1Data?.gameData?.type === 'mtg'
-			? p1Data.gameData.deckColors ?? null
-			: null);
-		const player2Deck = getDeckForCurrentPhase(match.player2Id, p2Data?.gameData?.type === 'mtg'
-			? p2Data.gameData.deckName ?? null
-			: null, p2Data?.gameData?.type === 'mtg'
-			? p2Data.gameData.deckColors ?? null
-			: null);
+		const player1Deck = getDeckForCurrentPhase(
+			match.player1Id,
+			p1Data?.gameData?.type === 'mtg' ? (p1Data.gameData.deckName ?? null) : null,
+			p1Data?.gameData?.type === 'mtg' ? (p1Data.gameData.deckColors ?? null) : null,
+		);
+		const player2Deck = getDeckForCurrentPhase(
+			match.player2Id,
+			p2Data?.gameData?.type === 'mtg' ? (p2Data.gameData.deckName ?? null) : null,
+			p2Data?.gameData?.type === 'mtg' ? (p2Data.gameData.deckColors ?? null) : null,
+		);
 
 		formData.value = {
 			...formData.value,
@@ -181,17 +191,26 @@ export function useFeatureMatchSetupActions(deps: FeatureMatchSetupDeps) {
 
 		meleeModalOpen.value = false;
 
-		await runRequest(async () => {
-			return !eventStore.eventId
-				|| landed(featureMatchStateStore.resetMatch(eventStore.eventId, formData.value.id, { type: 'match' }));
-		}, {
-			success: {
-				title: 'Match populated',
-				description: `Populated from Table ${match.tableNumber ?? 'N/A'}`,
-				color: 'success',
+		await runRequest(
+			async () => {
+				return (
+					!eventStore.eventId ||
+					landed(
+						featureMatchStateStore.resetMatch(eventStore.eventId, formData.value.id, {
+							type: 'match',
+						}),
+					)
+				);
 			},
-			error: { title: 'Failed to reset match state', color: 'error' },
-		});
+			{
+				success: {
+					title: 'Match populated',
+					description: `Populated from Table ${match.tableNumber ?? 'N/A'}`,
+					color: 'success',
+				},
+				error: { title: 'Failed to reset match state', color: 'error' },
+			},
+		);
 	}
 
 	return {

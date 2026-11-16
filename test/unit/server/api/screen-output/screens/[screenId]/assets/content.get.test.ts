@@ -13,36 +13,49 @@ vi.mock('~~/server/modules/screen-output-assets/runtime', () => ({
 
 vi.mock('~~/server/utils/screenOutputCapabilityAuthorization', () => ({
 	bearerScreenOutputCapability: (value: string | undefined) =>
-		value === undefined
-			? undefined
-			: value.replace('Bearer ', ''),
+		value === undefined ? undefined : value.replace('Bearer ', ''),
 }));
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
-vi.stubGlobal('getValidatedRouterParams', vi.fn(async () => ({
-	screenId: 42,
-	assetId: 'asset-1',
-	revisionId: 'revision-1',
-})));
-vi.stubGlobal('getRequestHeader', vi.fn((
-	event: { headers?: Record<string, string> },
-	name: string,
-) => event.headers?.[name]));
-vi.stubGlobal('getRequestHeaders', vi.fn((event: { headers?: Record<string, string> }) => event.headers ?? {}));
-vi.stubGlobal('getCookie', vi.fn(() => undefined));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	vi.fn(async () => ({
+		screenId: 42,
+		assetId: 'asset-1',
+		revisionId: 'revision-1',
+	})),
+);
+vi.stubGlobal(
+	'getRequestHeader',
+	vi.fn((event: { headers?: Record<string, string> }, name: string) => event.headers?.[name]),
+);
+vi.stubGlobal(
+	'getRequestHeaders',
+	vi.fn((event: { headers?: Record<string, string> }) => event.headers ?? {}),
+);
+vi.stubGlobal(
+	'getCookie',
+	vi.fn(() => undefined),
+);
 vi.stubGlobal('setResponseHeader', mockSetResponseHeader);
-vi.stubGlobal('createError', (input: {
-	statusCode: number;
-	statusMessage?: string;
-	message: string;
-	cause?: unknown;
-	data?: unknown;
-}) => Object.assign(new Error(input.message), input));
+vi.stubGlobal(
+	'createError',
+	(input: {
+		statusCode: number;
+		statusMessage?: string;
+		message: string;
+		cause?: unknown;
+		data?: unknown;
+	}) => Object.assign(new Error(input.message), input),
+);
 
 async function handler() {
-	return (await import(
-		'../../../../../../../../server/api/screen-output/screens/[screenId]/assets/[assetId]/revisions/[revisionId]/content.get',
-	)).default;
+	return (
+		await import('../../../../../../../../server/api/screen-output/screens/[screenId]/assets/[assetId]/revisions/[revisionId]/content.get')
+	).default;
 }
 
 function outputRequest() {

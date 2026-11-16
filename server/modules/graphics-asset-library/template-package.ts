@@ -17,7 +17,10 @@ import {
 	FEATURE_MATCH_SOURCE_ITEM_CONFIGURATION_VERSION,
 	FEATURE_MATCH_SOURCE_ITEM_DEFINITION_ID,
 } from '~~/shared/featureMatchSourceItems';
-import { getGraphicItemDefinition, GRAPHIC_ITEM_KINDS } from '~~/shared/modules/graphics/itemDefinitions';
+import {
+	getGraphicItemDefinition,
+	GRAPHIC_ITEM_KINDS,
+} from '~~/shared/modules/graphics/itemDefinitions';
 import { GRAPHIC_FONT_IDS } from '~~/shared/modules/graphics/typography';
 import {
 	SOCIAL_PROFILE_PROJECTION_CAPABILITY_ID,
@@ -47,7 +50,8 @@ const MAXIMUM_DOCUMENT_NODES = 100_000;
 
 /** Schemes that would make a package depend on something outside itself. */
 const REMOTE_RESOURCE_PATTERN = /(?:https?|ftps?|wss?|file|filesystem):\/\//i;
-const WHOLE_VALUE_REMOTE_PATTERN = /^\s*(?:(?:https?|ftps?|wss?|file|filesystem):\/\/|\/\/[^/\s])\S*\s*$/i;
+const WHOLE_VALUE_REMOTE_PATTERN =
+	/^\s*(?:(?:https?|ftps?|wss?|file|filesystem):\/\/|\/\/[^/\s])\S*\s*$/i;
 /** A CSS resource function fetches whatever it names, wherever it is authored. */
 const CSS_RESOURCE_FUNCTION_PATTERN = /\burl\(\s*(?:['"]\s*)?(?:[a-z][\w+.-]*:|\/\/)/i;
 /** Inline payloads bypass the library, so they are undeclared dependencies. */
@@ -83,30 +87,43 @@ function isResourceProperty(key: string): boolean {
 		.split(/[^a-z0-9]+/i)
 		.filter(Boolean);
 	const last = words.at(-1)?.toLowerCase();
-	if (!last)
-		return false;
-	return RESOURCE_PROPERTY_NAMES.has(last)
-		|| (last.endsWith('s') && RESOURCE_PROPERTY_NAMES.has(last.slice(0, -1)));
+	if (!last) return false;
+	return (
+		RESOURCE_PROPERTY_NAMES.has(last) ||
+		(last.endsWith('s') && RESOURCE_PROPERTY_NAMES.has(last.slice(0, -1)))
+	);
 }
-const EXECUTABLE_CONTENT_PATTERN
-	= /javascript:|vbscript:|<\s*(?:\/\s*)?script\b|\bon(?:abort|blur|change|click|error|focus|load|mouseover|submit)\s*=/i;
+const EXECUTABLE_CONTENT_PATTERN =
+	/javascript:|vbscript:|<\s*(?:\/\s*)?script\b|\bon(?:abort|blur|change|click|error|focus|load|mouseover|submit)\s*=/i;
 const UNSAFE_PROPERTY_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
 
 const ISSUE_REMEDIATION = {
-	'missing-graphic-asset-reference': 'Point the Template field at an existing Graphic Asset Revision, or remove the field.',
-	'unavailable-graphic-asset-content': 'The exact revision exists but its bytes are temporarily unavailable. Retry the export, or ask an administrator to repair the content.',
-	'invalid-graphic-asset-content-facts': 'The catalogue records an unusable size for this content, so the package cannot be measured. Ask an administrator to reconcile the Graphic Asset before exporting.',
-	'unsupported-application-capability': 'This installation does not provide the requested application capability. Replace it with a supported one before exporting.',
-	'unexpected-graphic-asset-kind': 'The Template field requires a different media kind. Select a Graphic Asset of the expected kind.',
-	'undeclared-graphic-asset-dependency': 'Every asset a Template needs must be selected from the Graphics Asset Library. Replace the inline or undeclared value with a library selection.',
-	'remote-resource-dependency': 'A Template Package cannot depend on a remote resource. Copy it into the Graphics Asset Library with an approved HTTPS copy and select the resulting revision.',
-	'executable-template-content': 'Template Packages are data-only. Remove the executable value before exporting.',
-	'invalid-template-document': 'The Template document must be plain data. Remove the unsupported value before exporting.',
-	'duplicate-template-slot': 'Each Template slot may declare one asset requirement. Remove the duplicate declaration.',
+	'missing-graphic-asset-reference':
+		'Point the Template field at an existing Graphic Asset Revision, or remove the field.',
+	'unavailable-graphic-asset-content':
+		'The exact revision exists but its bytes are temporarily unavailable. Retry the export, or ask an administrator to repair the content.',
+	'invalid-graphic-asset-content-facts':
+		'The catalogue records an unusable size for this content, so the package cannot be measured. Ask an administrator to reconcile the Graphic Asset before exporting.',
+	'unsupported-application-capability':
+		'This installation does not provide the requested application capability. Replace it with a supported one before exporting.',
+	'unexpected-graphic-asset-kind':
+		'The Template field requires a different media kind. Select a Graphic Asset of the expected kind.',
+	'undeclared-graphic-asset-dependency':
+		'Every asset a Template needs must be selected from the Graphics Asset Library. Replace the inline or undeclared value with a library selection.',
+	'remote-resource-dependency':
+		'A Template Package cannot depend on a remote resource. Copy it into the Graphics Asset Library with an approved HTTPS copy and select the resulting revision.',
+	'executable-template-content':
+		'Template Packages are data-only. Remove the executable value before exporting.',
+	'invalid-template-document':
+		'The Template document must be plain data. Remove the unsupported value before exporting.',
+	'duplicate-template-slot':
+		'Each Template slot may declare one asset requirement. Remove the duplicate declaration.',
 	'package-entry-limit-exceeded': `A Template Package carries at most ${TEMPLATE_PACKAGE_LIMITS.maximumEntryCount} entries. Reduce the number of distinct assets the Template requires.`,
 	'packaged-revision-limit-exceeded': `A Template Package carries at most ${TEMPLATE_PACKAGE_LIMITS.maximumPackagedRevisionCount} packaged Graphic Asset Revisions. Reduce the number of distinct revisions the Template requires.`,
-	'package-expanded-limit-exceeded': 'The Template requires more asset bytes than a Template Package may expand to. Reduce or replace its largest assets.',
-	'package-archive-limit-exceeded': 'The Template requires more asset bytes than a Template Package archive may contain. Reduce or replace its largest assets.',
+	'package-expanded-limit-exceeded':
+		'The Template requires more asset bytes than a Template Package may expand to. Reduce or replace its largest assets.',
+	'package-archive-limit-exceeded':
+		'The Template requires more asset bytes than a Template Package archive may contain. Reduce or replace its largest assets.',
 } as const satisfies Record<TemplatePackageExportIssueCode, string>;
 
 const RETRYABLE_ISSUE_CODES = new Set<TemplatePackageExportIssueCode>([
@@ -132,12 +149,14 @@ export interface TemplateDocumentInspection {
 	references: { path: string; reference: GraphicAssetReference }[];
 }
 
-function graphicAssetReferenceOf(value: Record<string, unknown>): GraphicAssetReference | undefined {
-	return typeof value.assetId === 'string'
-		&& value.assetId.length > 0
-		&& typeof value.revisionId === 'string'
-		&& value.revisionId.length > 0
-		? value as unknown as GraphicAssetReference
+function graphicAssetReferenceOf(
+	value: Record<string, unknown>,
+): GraphicAssetReference | undefined {
+	return typeof value.assetId === 'string' &&
+		value.assetId.length > 0 &&
+		typeof value.revisionId === 'string' &&
+		value.revisionId.length > 0
+		? (value as unknown as GraphicAssetReference)
 		: undefined;
 }
 
@@ -177,7 +196,11 @@ export function inspectTemplateDocument(document: unknown): TemplateDocumentInsp
 		if (EXECUTABLE_CONTENT_PATTERN.test(value))
 			reject('executable-template-content', path, 'Template value contains executable content');
 		else if (INLINE_PAYLOAD_PATTERN.test(value))
-			reject('undeclared-graphic-asset-dependency', path, 'Template value inlines content that no packaged asset declares');
+			reject(
+				'undeclared-graphic-asset-dependency',
+				path,
+				'Template value inlines content that no packaged asset declares',
+			);
 		else if (wholeValueResource || CSS_RESOURCE_FUNCTION_PATTERN.test(value))
 			reject('remote-resource-dependency', path, 'Template value requires a remote resource');
 		else if (resourceProperty && REMOTE_RESOURCE_PATTERN.test(value))
@@ -188,15 +211,22 @@ export function inspectTemplateDocument(document: unknown): TemplateDocumentInsp
 		nodeCount += 1;
 		if (nodeCount > MAXIMUM_DOCUMENT_NODES) {
 			if (nodeCount === MAXIMUM_DOCUMENT_NODES + 1)
-				reject('invalid-template-document', path, 'Template document has too many values to package');
+				reject(
+					'invalid-template-document',
+					path,
+					'Template document has too many values to package',
+				);
 			return;
 		}
 		if (depth > MAXIMUM_DOCUMENT_DEPTH) {
-			reject('invalid-template-document', path, 'Template document is nested too deeply to package');
+			reject(
+				'invalid-template-document',
+				path,
+				'Template document is nested too deeply to package',
+			);
 			return;
 		}
-		if (value === null || typeof value === 'boolean')
-			return;
+		if (value === null || typeof value === 'boolean') return;
 		if (typeof value === 'number') {
 			if (!Number.isFinite(value))
 				reject('invalid-template-document', path, 'Template value is not a finite number');
@@ -213,18 +243,17 @@ export function inspectTemplateDocument(document: unknown): TemplateDocumentInsp
 		}
 		if (isPlainObject(value)) {
 			const reference = graphicAssetReferenceOf(value);
-			if (reference)
-				references.push({ path, reference });
+			if (reference) references.push({ path, reference });
 			for (const key of Object.keys(value)) {
 				if (UNSAFE_PROPERTY_NAMES.has(key)) {
-					reject('invalid-template-document', path
-						? `${path}.${key}`
-						: key, 'Template document declares an unsafe property name');
+					reject(
+						'invalid-template-document',
+						path ? `${path}.${key}` : key,
+						'Template document declares an unsafe property name',
+					);
 					continue;
 				}
-				walk(value[key], path
-					? `${path}.${key}`
-					: key, depth + 1, isResourceProperty(key));
+				walk(value[key], path ? `${path}.${key}` : key, depth + 1, isResourceProperty(key));
 			}
 			return;
 		}
@@ -232,7 +261,11 @@ export function inspectTemplateDocument(document: unknown): TemplateDocumentInsp
 			reject('executable-template-content', path, 'Template document contains a function');
 			return;
 		}
-		reject('invalid-template-document', path, `Template value of type ${typeof value} is not plain data`);
+		reject(
+			'invalid-template-document',
+			path,
+			`Template value of type ${typeof value} is not plain data`,
+		);
 	}
 
 	walk(document, '', 0);
@@ -255,10 +288,11 @@ export function inspectTemplateDocument(document: unknown): TemplateDocumentInsp
  * package kind is what refuses a `.skgraphic` that declares a Source Item, rather
  * than accepting whichever table happens to be consulted first.
  */
-const CAPABILITY_VOCABULARY: Record<TemplatePackageKind, 'graphics-foundation' | 'feature-match'> = {
-	skgraphic: 'graphics-foundation',
-	sklayout: 'feature-match',
-};
+const CAPABILITY_VOCABULARY: Record<TemplatePackageKind, 'graphics-foundation' | 'feature-match'> =
+	{
+		skgraphic: 'graphics-foundation',
+		sklayout: 'feature-match',
+	};
 
 function supportedGraphicItemDefinitionVersion(
 	packageKind: TemplatePackageKind,
@@ -304,9 +338,7 @@ function supportedCapabilityVersion(
 ): number | undefined {
 	switch (requirement.capability) {
 		case 'application-font':
-			return (GRAPHIC_FONT_IDS as readonly string[]).includes(requirement.identity)
-				? 1
-				: undefined;
+			return (GRAPHIC_FONT_IDS as readonly string[]).includes(requirement.identity) ? 1 : undefined;
 		case 'host-vocabulary':
 			return CAPABILITY_VOCABULARY[packageKind] === 'feature-match'
 				? supportedFeatureMatchLayoutVocabularyVersion(requirement.identity)
@@ -335,21 +367,27 @@ export function inspectTemplatePackageCapabilities(
 	declarations: TemplatePackageCapabilityDeclaration[];
 } {
 	const issues: TemplatePackageExportIssue[] = [];
-	const declarations = new Map<string, TemplatePackageCapabilityDeclaration & { requiredBy: string[] }>();
+	const declarations = new Map<
+		string,
+		TemplatePackageCapabilityDeclaration & { requiredBy: string[] }
+	>();
 	for (const requirement of requirements) {
 		const supportedVersion = supportedCapabilityVersion(packageKind, requirement);
 		if (
-			supportedVersion === undefined
-			|| (requirement.configurationVersion !== undefined && requirement.configurationVersion > supportedVersion)
+			supportedVersion === undefined ||
+			(requirement.configurationVersion !== undefined &&
+				requirement.configurationVersion > supportedVersion)
 		) {
-			issues.push(templatePackageExportIssue('unsupported-application-capability', {
-				slot: requirement.slot,
-				message: `This installation does not provide ${requirement.capability} "${requirement.identity}"${
-					requirement.configurationVersion === undefined
-						? ''
-						: ` at configuration version ${requirement.configurationVersion}`
-				}`,
-			}));
+			issues.push(
+				templatePackageExportIssue('unsupported-application-capability', {
+					slot: requirement.slot,
+					message: `This installation does not provide ${requirement.capability} "${requirement.identity}"${
+						requirement.configurationVersion === undefined
+							? ''
+							: ` at configuration version ${requirement.configurationVersion}`
+					}`,
+				}),
+			);
 			continue;
 		}
 		const key = `${requirement.capability}:${requirement.identity}`;
@@ -371,15 +409,15 @@ export function inspectTemplatePackageCapabilities(
 	}
 	return {
 		issues,
-		declarations: [
-			...declarations.values(),
-		]
-			.map(declaration => ({
+		declarations: [...declarations.values()]
+			.map((declaration) => ({
 				...declaration,
 				requiredBy: [...declaration.requiredBy].sort(),
 			}))
 			.sort((left, right) =>
-				`${left.capability}:${left.identity}`.localeCompare(`${right.capability}:${right.identity}`),
+				`${left.capability}:${left.identity}`.localeCompare(
+					`${right.capability}:${right.identity}`,
+				),
 			),
 	};
 }
@@ -410,33 +448,42 @@ export function groupTemplatePackageRequirements(
 	requirements: readonly TemplatePackageAssetRequirement[],
 ): {
 	issues: TemplatePackageExportIssue[];
-	grouped: { reference: GraphicAssetReference; expectedKind?: 'image' | 'silent-video' | 'font'; slots: string[] }[];
-} {
-	const issues: TemplatePackageExportIssue[] = [];
-	const slots = new Map<string, GraphicAssetReference>();
-	const grouped = new Map<string, {
+	grouped: {
 		reference: GraphicAssetReference;
 		expectedKind?: 'image' | 'silent-video' | 'font';
 		slots: string[];
-	}>();
+	}[];
+} {
+	const issues: TemplatePackageExportIssue[] = [];
+	const slots = new Map<string, GraphicAssetReference>();
+	const grouped = new Map<
+		string,
+		{
+			reference: GraphicAssetReference;
+			expectedKind?: 'image' | 'silent-video' | 'font';
+			slots: string[];
+		}
+	>();
 	for (const requirement of requirements) {
 		const claimed = slots.get(requirement.slot);
-		if (claimed && (
-			claimed.assetId !== requirement.reference.assetId
-			|| claimed.revisionId !== requirement.reference.revisionId
-		)) {
-			issues.push(templatePackageExportIssue('duplicate-template-slot', {
-				slot: requirement.slot,
-				message: 'Template slot declares more than one Graphic Asset Revision',
-			}));
+		if (
+			claimed &&
+			(claimed.assetId !== requirement.reference.assetId ||
+				claimed.revisionId !== requirement.reference.revisionId)
+		) {
+			issues.push(
+				templatePackageExportIssue('duplicate-template-slot', {
+					slot: requirement.slot,
+					message: 'Template slot declares more than one Graphic Asset Revision',
+				}),
+			);
 			continue;
 		}
 		slots.set(requirement.slot, requirement.reference);
 		const key = packagedRevisionKey(requirement.reference);
 		const existing = grouped.get(key);
 		if (existing) {
-			if (!existing.slots.includes(requirement.slot))
-				existing.slots.push(requirement.slot);
+			if (!existing.slots.includes(requirement.slot)) existing.slots.push(requirement.slot);
 			existing.expectedKind ??= requirement.expectedKind;
 			continue;
 		}
@@ -448,14 +495,14 @@ export function groupTemplatePackageRequirements(
 	}
 	return {
 		issues,
-		grouped: [
-			...grouped.values(),
-		]
-			.map(entry => ({
+		grouped: [...grouped.values()]
+			.map((entry) => ({
 				...entry,
 				slots: [...entry.slots].sort(),
 			}))
-			.sort((left, right) => packagedRevisionKey(left.reference).localeCompare(packagedRevisionKey(right.reference))),
+			.sort((left, right) =>
+				packagedRevisionKey(left.reference).localeCompare(packagedRevisionKey(right.reference)),
+			),
 	};
 }
 
@@ -469,13 +516,17 @@ export function undeclaredReferenceIssues(
 	documentReferences: readonly { path: string; reference: GraphicAssetReference }[],
 	declared: readonly TemplatePackageAssetRequirement[],
 ): TemplatePackageExportIssue[] {
-	const declaredKeys = new Set(declared.map(requirement => packagedRevisionKey(requirement.reference)));
+	const declaredKeys = new Set(
+		declared.map((requirement) => packagedRevisionKey(requirement.reference)),
+	);
 	return documentReferences
-		.filter(discovered => !declaredKeys.has(packagedRevisionKey(discovered.reference)))
-		.map(discovered => templatePackageExportIssue('undeclared-graphic-asset-dependency', {
-			slot: discovered.path,
-			message: 'Template document requires a Graphic Asset Revision the export never declared',
-		}));
+		.filter((discovered) => !declaredKeys.has(packagedRevisionKey(discovered.reference)))
+		.map((discovered) =>
+			templatePackageExportIssue('undeclared-graphic-asset-dependency', {
+				slot: discovered.path,
+				message: 'Template document requires a Graphic Asset Revision the export never declared',
+			}),
+		);
 }
 
 export function packagedAssetIdentity(index: number): string {
@@ -516,13 +567,14 @@ export function planTemplatePackage(input: {
 		// comparisons against the limits are all false, so an unbounded archive
 		// would sail through the checks and fail as an exception mid-write.
 		if (!Number.isSafeInteger(revision.byteLength) || revision.byteLength < 0) {
-			issues.push(templatePackageExportIssue('invalid-graphic-asset-content-facts', {
-				slot: revision.requiredBy[0],
-				message: `Graphic Asset "${revision.name}" records an unusable content byte length`,
-			}));
+			issues.push(
+				templatePackageExportIssue('invalid-graphic-asset-content-facts', {
+					slot: revision.requiredBy[0],
+					message: `Graphic Asset "${revision.name}" records an unusable content byte length`,
+				}),
+			);
 		}
-		if (contents.has(revision.digest))
-			continue;
+		if (contents.has(revision.digest)) continue;
 		contents.set(revision.digest, {
 			digest: revision.digest,
 			byteLength: revision.byteLength,
@@ -530,10 +582,9 @@ export function planTemplatePackage(input: {
 			entry: templatePackageContentEntry(revision.digest),
 		});
 	}
-	const contentList = [
-		...contents.values(),
-	]
-		.sort((left, right) => left.digest.localeCompare(right.digest));
+	const contentList = [...contents.values()].sort((left, right) =>
+		left.digest.localeCompare(right.digest),
+	);
 
 	const packagedAssets: TemplatePackageAsset[] = input.revisions.map((revision, index) => ({
 		packagedId: packagedAssetIdentity(index),
@@ -560,8 +611,7 @@ export function planTemplatePackage(input: {
 	}));
 
 	const templateBytes = encodeJson(input.template.document);
-	const contentByteLength = contentList
-		.reduce((total, content) => total + content.byteLength, 0);
+	const contentByteLength = contentList.reduce((total, content) => total + content.byteLength, 0);
 	const totals: TemplatePackageTotals = {
 		entryCount: 2 + contentList.length,
 		packagedAssetCount: packagedAssets.length,
@@ -580,9 +630,7 @@ export function planTemplatePackage(input: {
 			name: input.template.name,
 			// Written only when the exporting workflow has one, so a manifest never
 			// claims a revision that means nothing.
-			...(input.template.revision === undefined
-				? {}
-				: { revision: input.template.revision }),
+			...(input.template.revision === undefined ? {} : { revision: input.template.revision }),
 			entry: TEMPLATE_PACKAGE_TEMPLATE_ENTRY,
 		},
 		packagedAssets,
@@ -595,8 +643,7 @@ export function planTemplatePackage(input: {
 	let manifestBytes = encodeJson(manifest);
 	for (let attempt = 0; attempt < 8; attempt += 1) {
 		const expanded = manifestBytes.byteLength + templateBytes.byteLength + contentByteLength;
-		if (totals.expandedByteLength === expanded)
-			break;
+		if (totals.expandedByteLength === expanded) break;
 		totals.expandedByteLength = expanded;
 		manifestBytes = encodeJson(manifest);
 	}
@@ -604,44 +651,59 @@ export function planTemplatePackage(input: {
 	const archiveByteLength = input.archiveByteLength([
 		{ name: TEMPLATE_PACKAGE_MANIFEST_ENTRY, byteLength: manifestBytes.byteLength },
 		{ name: TEMPLATE_PACKAGE_TEMPLATE_ENTRY, byteLength: templateBytes.byteLength },
-		...contentList.map(content => ({ name: content.entry, byteLength: content.byteLength })),
+		...contentList.map((content) => ({ name: content.entry, byteLength: content.byteLength })),
 	]);
 
 	// A backstop for any other route to an unmeasurable envelope. An individual
 	// content size already named above is not restated here.
 	if (
-		issues.length === 0
-		&& (!Number.isSafeInteger(totals.expandedByteLength) || !Number.isSafeInteger(archiveByteLength))
+		issues.length === 0 &&
+		(!Number.isSafeInteger(totals.expandedByteLength) || !Number.isSafeInteger(archiveByteLength))
 	) {
-		issues.push(templatePackageExportIssue('invalid-graphic-asset-content-facts', {
-			message: 'The package envelope could not be measured from the recorded content sizes',
-		}));
+		issues.push(
+			templatePackageExportIssue('invalid-graphic-asset-content-facts', {
+				message: 'The package envelope could not be measured from the recorded content sizes',
+			}),
+		);
 	}
 	// Counts survive an unusable size, so they are always worth reporting.
 	if (totals.entryCount > TEMPLATE_PACKAGE_LIMITS.maximumEntryCount) {
-		issues.push(templatePackageExportIssue('package-entry-limit-exceeded', {
-			message: `Package would contain ${totals.entryCount} entries`,
-		}));
+		issues.push(
+			templatePackageExportIssue('package-entry-limit-exceeded', {
+				message: `Package would contain ${totals.entryCount} entries`,
+			}),
+		);
 	}
 	if (totals.packagedRevisionCount > TEMPLATE_PACKAGE_LIMITS.maximumPackagedRevisionCount) {
-		issues.push(templatePackageExportIssue('packaged-revision-limit-exceeded', {
-			message: `Package would contain ${totals.packagedRevisionCount} packaged Graphic Asset Revisions`,
-		}));
+		issues.push(
+			templatePackageExportIssue('packaged-revision-limit-exceeded', {
+				message: `Package would contain ${totals.packagedRevisionCount} packaged Graphic Asset Revisions`,
+			}),
+		);
 	}
 	// The byte limits are only meaningful over real sizes. Once a content size is
 	// unusable these totals say nothing true — NaN slips under every `>` and
 	// Infinity trips every one — so the unusable size is reported on its own
 	// rather than dressed up as an envelope the author could shrink.
-	const bytesMeasurable = issues.every(issue => issue.code !== 'invalid-graphic-asset-content-facts');
-	if (bytesMeasurable && totals.expandedByteLength > TEMPLATE_PACKAGE_LIMITS.maximumExpandedByteLength) {
-		issues.push(templatePackageExportIssue('package-expanded-limit-exceeded', {
-			message: `Package would expand to ${totals.expandedByteLength} bytes`,
-		}));
+	const bytesMeasurable = issues.every(
+		(issue) => issue.code !== 'invalid-graphic-asset-content-facts',
+	);
+	if (
+		bytesMeasurable &&
+		totals.expandedByteLength > TEMPLATE_PACKAGE_LIMITS.maximumExpandedByteLength
+	) {
+		issues.push(
+			templatePackageExportIssue('package-expanded-limit-exceeded', {
+				message: `Package would expand to ${totals.expandedByteLength} bytes`,
+			}),
+		);
 	}
 	if (bytesMeasurable && archiveByteLength > TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength) {
-		issues.push(templatePackageExportIssue('package-archive-limit-exceeded', {
-			message: `Package archive would be ${archiveByteLength} bytes`,
-		}));
+		issues.push(
+			templatePackageExportIssue('package-archive-limit-exceeded', {
+				message: `Package archive would be ${archiveByteLength} bytes`,
+			}),
+		);
 	}
 
 	return {

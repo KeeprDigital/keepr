@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createFeatureMatchAssignmentSchema, updateFeatureMatchAssignmentSchema } from '~~/server/schemas/api/featureMatchAssignment';
+import {
+	createFeatureMatchAssignmentSchema,
+	updateFeatureMatchAssignmentSchema,
+} from '~~/server/schemas/api/featureMatchAssignment';
 
 describe('feature match assignment schemas', () => {
 	it('accepts a valid assignment with note', () => {
@@ -23,17 +26,23 @@ describe('feature match assignment schemas', () => {
 
 	it('accepts note-only updates', () => {
 		expect(updateFeatureMatchAssignmentSchema.safeParse({ note: null }).success).toBe(true);
-		expect(updateFeatureMatchAssignmentSchema.safeParse({
-			note: 'x'.repeat(5000),
-		}).success).toBe(true);
-		expect(updateFeatureMatchAssignmentSchema.safeParse({
-			note: 'x'.repeat(5001),
-		}).success).toBe(false);
+		expect(
+			updateFeatureMatchAssignmentSchema.safeParse({
+				note: 'x'.repeat(5000),
+			}).success,
+		).toBe(true);
+		expect(
+			updateFeatureMatchAssignmentSchema.safeParse({
+				note: 'x'.repeat(5001),
+			}).success,
+		).toBe(false);
 		expect(updateFeatureMatchAssignmentSchema.safeParse({ matchId: 8 }).success).toBe(false);
 	});
 
 	it('normalizes outer whitespace and blank Notes', () => {
-		expect(updateFeatureMatchAssignmentSchema.parse({ note: '  first\nsecond  ' })).toEqual({ note: 'first\nsecond' });
+		expect(updateFeatureMatchAssignmentSchema.parse({ note: '  first\nsecond  ' })).toEqual({
+			note: 'first\nsecond',
+		});
 		expect(updateFeatureMatchAssignmentSchema.parse({ note: ' \n ' })).toEqual({ note: null });
 	});
 });

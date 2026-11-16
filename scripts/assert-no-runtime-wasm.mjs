@@ -58,8 +58,7 @@ const NOT_SCANNED = /\.map$/;
 export function findRuntimeWasmCompilation(source) {
 	const found = [];
 	for (const [index, line] of source.split('\n').entries()) {
-		if (line.includes(RUNTIME_WASM_COMPILATION))
-			found.push(index + 1);
+		if (line.includes(RUNTIME_WASM_COMPILATION)) found.push(index + 1);
 	}
 	return found;
 }
@@ -67,10 +66,8 @@ export function findRuntimeWasmCompilation(source) {
 function* scannableFiles(directory) {
 	for (const entry of readdirSync(directory, { withFileTypes: true })) {
 		const entryPath = join(directory, entry.name);
-		if (entry.isDirectory())
-			yield* scannableFiles(entryPath);
-		else if (!NOT_SCANNED.test(entry.name))
-			yield entryPath;
+		if (entry.isDirectory()) yield* scannableFiles(entryPath);
+		else if (!NOT_SCANNED.test(entry.name)) yield entryPath;
 	}
 }
 
@@ -82,13 +79,16 @@ function selfTest() {
 	// What `build/wasmModulePlugin.ts` emits, which this must always report.
 	const planted = 'export default new WebAssembly.Module(bytes);';
 	// Verbatim from a correct bundle, which this must never report.
-	const emscripten = '1 !== arguments.length || r34 instanceof WebAssembly.Module || (t27 = void 0, n57 = r34), a = (function(r35, e28, t28 = {}) {';
+	const emscripten =
+		'1 !== arguments.length || r34 instanceof WebAssembly.Module || (t27 = void 0, n57 = r34), a = (function(r35, e28, t28 = {}) {';
 
 	const failures = [];
 	if (findRuntimeWasmCompilation(planted).length !== 1)
 		failures.push('a planted `new WebAssembly.Module(` was not found — this scan cannot fail.');
 	if (findRuntimeWasmCompilation(emscripten).length !== 0)
-		failures.push('Emscripten\'s `instanceof WebAssembly.Module` was reported as runtime compilation — this scan fails honest builds.');
+		failures.push(
+			"Emscripten's `instanceof WebAssembly.Module` was reported as runtime compilation — this scan fails honest builds.",
+		);
 	return failures;
 }
 
@@ -104,18 +104,15 @@ export function runtimeWasmScan(directory) {
 			ok: false,
 			lines: [
 				'assert-no-runtime-wasm: SELF-TEST FAILED — the guard cannot be trusted, so the bundle was not scanned.',
-				...broken.map(failure => `  ${failure}`),
+				...broken.map((failure) => `  ${failure}`),
 			],
 		};
 	}
 
 	let files;
 	try {
-		files = [
-			...scannableFiles(directory),
-		];
-	}
-	catch (error) {
+		files = [...scannableFiles(directory)];
+	} catch (error) {
 		return {
 			ok: false,
 			lines: [`assert-no-runtime-wasm: cannot read ${directory} — ${error.message}`],
@@ -125,7 +122,9 @@ export function runtimeWasmScan(directory) {
 	if (files.length === 0) {
 		return {
 			ok: false,
-			lines: [`assert-no-runtime-wasm: nothing to scan under ${directory}. A scan of nothing is not a pass.`],
+			lines: [
+				`assert-no-runtime-wasm: nothing to scan under ${directory}. A scan of nothing is not a pass.`,
+			],
 		};
 	}
 
@@ -144,14 +143,16 @@ export function runtimeWasmScan(directory) {
 				'by embedder"), so this bundle would fail every JPEG and WebP ingestion once promoted.',
 				'Check whether `build/wasmModulePlugin.ts` has been registered in `nitro.rollupConfig`;',
 				'it is for the Node-hosted test runs only (#302, #319).',
-				...found.map(site => `  ${site}`),
+				...found.map((site) => `  ${site}`),
 			],
 		};
 	}
 
 	return {
 		ok: true,
-		lines: [`assert-no-runtime-wasm: self-test passed; no \`${RUNTIME_WASM_COMPILATION}\` in ${files.length} bundled file(s) under ${directory}`],
+		lines: [
+			`assert-no-runtime-wasm: self-test passed; no \`${RUNTIME_WASM_COMPILATION}\` in ${files.length} bundled file(s) under ${directory}`,
+		],
 	};
 }
 
@@ -161,22 +162,22 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
 
 	if (target === '--self-test') {
 		const broken = selfTest();
-		for (const failure of broken)
-			process.stderr.write(`assert-no-runtime-wasm: ${failure}\n`);
+		for (const failure of broken) process.stderr.write(`assert-no-runtime-wasm: ${failure}\n`);
 		if (broken.length === 0)
-			process.stdout.write('assert-no-runtime-wasm: self-test passed — the guard finds a planted regression and ignores Emscripten\'s `instanceof`.\n');
-		process.exit(broken.length === 0
-			? 0
-			: 1);
+			process.stdout.write(
+				"assert-no-runtime-wasm: self-test passed — the guard finds a planted regression and ignores Emscripten's `instanceof`.\n",
+			);
+		process.exit(broken.length === 0 ? 0 : 1);
 	}
 
 	if (!target) {
-		process.stderr.write('assert-no-runtime-wasm: name the bundle directory to scan, or pass --self-test.\n');
+		process.stderr.write(
+			'assert-no-runtime-wasm: name the bundle directory to scan, or pass --self-test.\n',
+		);
 		process.exit(1);
 	}
 
 	const scan = runtimeWasmScan(target);
-	for (const line of scan.lines)
-		(scan.ok ? process.stdout : process.stderr).write(`${line}\n`);
+	for (const line of scan.lines) (scan.ok ? process.stdout : process.stderr).write(`${line}\n`);
 	process.exit(scan.ok ? 0 : 1);
 }

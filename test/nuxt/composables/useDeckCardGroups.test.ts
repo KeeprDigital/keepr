@@ -35,18 +35,19 @@ describe('useDeckCardGroups', () => {
 
 		const groups = useDeckCardGroups(cards);
 
-		expect(groups.mainboardCards.value.map(card => card.name)).toEqual([
+		expect(groups.mainboardCards.value.map((card) => card.name)).toEqual([
 			'Delver of Secrets',
 			'Lightning Bolt',
 			'Island',
 		]);
-		expect(groups.sideboardCards.value.map(card => card.name)).toEqual(['Negate']);
+		expect(groups.sideboardCards.value.map((card) => card.name)).toEqual(['Negate']);
 		expect(groups.mainboardTotal.value).toBe(12);
 		expect(groups.sideboardTotal.value).toBe(2);
-		expect([
-			...groups.mainboardByType.value.keys(),
-		]).toEqual(['Creature', 'Instant', 'Land']);
-		expect(groups.mainboardByCmc.value.get('1')?.map(card => card.name)).toEqual(['Delver of Secrets', 'Lightning Bolt']);
+		expect([...groups.mainboardByType.value.keys()]).toEqual(['Creature', 'Instant', 'Land']);
+		expect(groups.mainboardByCmc.value.get('1')?.map((card) => card.name)).toEqual([
+			'Delver of Secrets',
+			'Lightning Bolt',
+		]);
 
 		cards.value.push({
 			name: 'Duress',
@@ -57,7 +58,11 @@ describe('useDeckCardGroups', () => {
 		});
 
 		expect(groups.sideboardTotal.value).toBe(5);
-		expect(groups.sideboardByType.value.get('Instant')?.map(card => card.name)).toEqual(['Negate']);
-		expect(groups.sideboardByType.value.get('Sorcery')?.map(card => card.name)).toEqual(['Duress']);
+		expect(groups.sideboardByType.value.get('Instant')?.map((card) => card.name)).toEqual([
+			'Negate',
+		]);
+		expect(groups.sideboardByType.value.get('Sorcery')?.map((card) => card.name)).toEqual([
+			'Duress',
+		]);
 	});
 });

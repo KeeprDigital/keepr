@@ -11,15 +11,15 @@ export const MELEE_SYNC_LEASE_RENEW_INTERVAL_MS = 60 * 1000;
 /** The lease command a Live Results tick holds; any operator command takes it over. */
 export const LIVE_RESULTS_COMMAND = 'live-results';
 
-export type MeleeSyncCommandName
-	= | 'configuration'
-		| 'initial-setup'
-		| 'event-structure'
-		| 'players'
-		| 'decklists'
-		| 'round'
-		| 'update'
-		| typeof LIVE_RESULTS_COMMAND;
+export type MeleeSyncCommandName =
+	| 'configuration'
+	| 'initial-setup'
+	| 'event-structure'
+	| 'players'
+	| 'decklists'
+	| 'round'
+	| 'update'
+	| typeof LIVE_RESULTS_COMMAND;
 
 export interface MeleeSyncMetadataUpdate {
 	initialSetupCompletedAt?: Date | null;
@@ -56,10 +56,14 @@ export async function recordMeleeSyncSuccess(
 	data: MeleeSyncMetadataUpdate,
 	leaseToken?: string,
 ): Promise<boolean> {
-	const updated = await eventService().updateSyncMetadata(eventId, {
-		...data,
-		lastSyncError: null,
-	}, leaseToken);
+	const updated = await eventService().updateSyncMetadata(
+		eventId,
+		{
+			...data,
+			lastSyncError: null,
+		},
+		leaseToken,
+	);
 
 	if (updated) {
 		await publishEventUpdate(syncContext, eventId);
@@ -76,10 +80,14 @@ export async function recordMeleeSyncFailure(
 	leaseToken?: string,
 ): Promise<boolean> {
 	const message = toPublicOperationalError(error);
-	const updated = await eventService().updateSyncMetadata(eventId, {
-		...data,
-		lastSyncError: message,
-	}, leaseToken);
+	const updated = await eventService().updateSyncMetadata(
+		eventId,
+		{
+			...data,
+			lastSyncError: message,
+		},
+		leaseToken,
+	);
 
 	if (updated) {
 		await publishEventUpdate(syncContext, eventId);
@@ -109,8 +117,7 @@ export async function acquireMeleeSyncLease(
 		expiresAt: new Date(now.getTime() + (options.durationMs ?? MELEE_SYNC_LEASE_DURATION_MS)),
 		...(command !== LIVE_RESULTS_COMMAND && { preempts: LIVE_RESULTS_COMMAND }),
 	});
-	if (!result.acquired)
-		return await throwLeaseUnavailable(eventId, result.activeLease);
+	if (!result.acquired) return await throwLeaseUnavailable(eventId, result.activeLease);
 	return {
 		token: result.lease.token,
 		command,
@@ -122,7 +129,7 @@ async function throwLeaseUnavailable(
 	eventId: number,
 	activeLease: { command: string; expiresAt: Date } | null,
 ): Promise<never> {
-	if (!activeLease && !await eventService().exists(eventId)) {
+	if (!activeLease && !(await eventService().exists(eventId))) {
 		throw createError({ statusCode: 404, message: 'Event not found' });
 	}
 	const activeCommand = activeLease?.command;
@@ -143,13 +150,14 @@ async function throwLeaseUnavailable(
 export async function releaseMeleeSyncLease(eventId: number, token: string): Promise<boolean> {
 	try {
 		return await eventService().releaseMeleeSyncLease(eventId, token);
-	}
-	catch {
+	} catch {
 		// Releasing is cleanup after the command outcome has already been decided.
 		// A transient D1 failure must not turn a committed sync into an HTTP failure
 		// (or hide the original command error). The bounded lease will expire safely,
 		// and the opaque token is deliberately excluded from this log entry.
-		console.warn(`[Melee sync] Failed to release lease for event ${eventId}; it will expire automatically`);
+		console.warn(
+			`[Melee sync] Failed to release lease for event ${eventId}; it will expire automatically`,
+		);
 		return false;
 	}
 }

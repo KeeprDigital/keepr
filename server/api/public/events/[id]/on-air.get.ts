@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
 	}
 
 	const nameOf = (talentId: number | null) =>
-		eventData.talents.find(talent => talent.id === talentId)?.name ?? null;
+		eventData.talents.find((talent) => talent.id === talentId)?.name ?? null;
 
 	setResponseHeader(event, 'access-control-allow-origin', '*');
 	setResponseHeader(event, 'cache-control', 'no-store');

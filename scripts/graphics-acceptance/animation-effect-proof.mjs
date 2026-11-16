@@ -100,9 +100,7 @@ export const ANIMATION_EFFECT_PROOF_EXPRESSION = `document.body?.dataset.measure
 	: undefined`;
 
 function fraction(part, whole) {
-	return whole > 0
-		? part / whole
-		: 0;
+	return whole > 0 ? part / whole : 0;
 }
 
 /** Fractions are evidence, so they print at the precision they were judged at. */
@@ -124,9 +122,7 @@ function measured(value) {
 export function judgeAnimationEffectScenario(measurement, floors) {
 	const where = { effect: measurement.effect, scenario: measurement.scenario };
 	if (!measurement.mounted) {
-		return [
-			{ code: 'animation-effect-mount-failed', detail: where },
-		];
+		return [{ code: 'animation-effect-mount-failed', detail: where }];
 	}
 
 	const failures = [];
@@ -184,9 +180,7 @@ export function judgeAnimationEffectScenario(measurement, floors) {
 export function judgeAnimationEffectSettle(measurement, floors) {
 	const where = { effect: measurement.effect, scenario: measurement.scenario };
 	if (!measurement.mounted) {
-		return [
-			{ code: 'animation-effect-mount-failed', detail: where },
-		];
+		return [{ code: 'animation-effect-mount-failed', detail: where }];
 	}
 
 	const failures = [];
@@ -260,10 +254,16 @@ const CONTROL_MUST_TRIP = Object.freeze([
  * a control that passed.
  */
 function checksTheControlTripped(control) {
-	return new Set(judgeAnimationEffectScenario(
-		{ ...control, effect: ANIMATION_EFFECT_PROOF_CONTROL.effect, scenario: ANIMATION_EFFECT_PROOF_CONTROL.scenario },
-		ANIMATION_EFFECT_PROOF_FLOORS,
-	).map(failure => failure.code));
+	return new Set(
+		judgeAnimationEffectScenario(
+			{
+				...control,
+				effect: ANIMATION_EFFECT_PROOF_CONTROL.effect,
+				scenario: ANIMATION_EFFECT_PROOF_CONTROL.scenario,
+			},
+			ANIMATION_EFFECT_PROOF_FLOORS,
+		).map((failure) => failure.code),
+	);
 }
 
 /**
@@ -290,9 +290,7 @@ function checksTheControlTripped(control) {
  */
 export function judgeAnimationEffectReport(report) {
 	if (report.backend === 'unavailable') {
-		return [
-			{ code: 'animation-effect-webgl-unavailable' },
-		];
+		return [{ code: 'animation-effect-webgl-unavailable' }];
 	}
 	if (report.backend !== 'swiftshader') {
 		return [
@@ -320,10 +318,7 @@ export function judgeAnimationEffectReport(report) {
 	// silently.
 	const covered = new Set(Object.keys(ANIMATION_EFFECT_PROOF_SCENARIOS));
 	const shipped = new Set(report.catalogue ?? []);
-	for (const effect of new Set([
-		...covered,
-		...shipped,
-	])) {
+	for (const effect of new Set([...covered, ...shipped])) {
 		if (!covered.has(effect) || !shipped.has(effect)) {
 			failures.push({
 				code: 'animation-effect-catalogue-uncovered',
@@ -333,7 +328,7 @@ export function judgeAnimationEffectReport(report) {
 	}
 
 	const measurements = new Map(
-		(report.scenarios ?? []).map(entry => [`${entry.effect}/${entry.scenario}`, entry]),
+		(report.scenarios ?? []).map((entry) => [`${entry.effect}/${entry.scenario}`, entry]),
 	);
 	const knownGoodFailed = [];
 	for (const scenario of animationEffectProofScenarios()) {
@@ -350,12 +345,11 @@ export function judgeAnimationEffectReport(report) {
 			scenario.floors,
 		);
 		failures.push(...found);
-		if (scenario.effect === ANIMATION_EFFECT_PROOF_KNOWN_GOOD)
-			knownGoodFailed.push(...found);
+		if (scenario.effect === ANIMATION_EFFECT_PROOF_KNOWN_GOOD) knownGoodFailed.push(...found);
 	}
 
 	const settles = new Map(
-		(report.settles ?? []).map(entry => [`${entry.effect}/${entry.scenario}`, entry]),
+		(report.settles ?? []).map((entry) => [`${entry.effect}/${entry.scenario}`, entry]),
 	);
 	for (const settle of animationEffectSettleScenarios()) {
 		const measurement = settles.get(`${settle.effect}/${settle.scenario}`);
@@ -366,10 +360,12 @@ export function judgeAnimationEffectReport(report) {
 			});
 			continue;
 		}
-		failures.push(...judgeAnimationEffectSettle(
-			{ ...measurement, effect: settle.effect, scenario: settle.scenario },
-			settle.floors,
-		));
+		failures.push(
+			...judgeAnimationEffectSettle(
+				{ ...measurement, effect: settle.effect, scenario: settle.scenario },
+				settle.floors,
+			),
+		);
 	}
 
 	// The effect that has rendered on air since the first slice of #473 failing

@@ -15,14 +15,16 @@ const RAW_TRANSFER_LIMIT_BYTES = 2 * 1024 * 1024;
 function chunkedBody(...chunkSizes: number[]): ReadableStream<Uint8Array> {
 	return new ReadableStream({
 		start(controller) {
-			for (const chunkSize of chunkSizes)
-				controller.enqueue(new Uint8Array(chunkSize));
+			for (const chunkSize of chunkSizes) controller.enqueue(new Uint8Array(chunkSize));
 			controller.close();
 		},
 	});
 }
 
-function streamingMutation(method: 'DELETE' | 'PATCH' | 'POST' | 'PUT', body: ReadableStream<Uint8Array>): RequestInit {
+function streamingMutation(
+	method: 'DELETE' | 'PATCH' | 'POST' | 'PUT',
+	body: ReadableStream<Uint8Array>,
+): RequestInit {
 	return {
 		method,
 		body,

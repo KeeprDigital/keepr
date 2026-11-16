@@ -45,9 +45,10 @@ export function createNetDelegate(): SceneEffectDelegate<AnimationEffectParams<'
 	let dotMaterial: THREE.MeshLambertMaterial | undefined;
 
 	function addPoint(three: typeof THREE, x: number, y: number, z: number) {
-		const holder = current.showPoints && dotGeometry && dotMaterial
-			? new three.Mesh(dotGeometry, dotMaterial)
-			: new three.Object3D();
+		const holder =
+			current.showPoints && dotGeometry && dotMaterial
+				? new three.Mesh(dotGeometry, dotMaterial)
+				: new three.Object3D();
 		holder.position.set(x, y, z);
 		group.add(holder);
 		points.push({
@@ -66,15 +67,12 @@ export function createNetDelegate(): SceneEffectDelegate<AnimationEffectParams<'
 	 * given what a fresh mount of the same params would show.
 	 */
 	function buildField(three: typeof THREE) {
-		for (const child of [...group.children])
-			group.remove(child);
+		for (const child of [...group.children]) group.remove(child);
 		lines?.dispose();
 		dotGeometry?.dispose();
 		dotMaterial?.dispose();
 
-		dotGeometry = current.showPoints
-			? new three.SphereGeometry(0.25, 12, 12)
-			: undefined;
+		dotGeometry = current.showPoints ? new three.SphereGeometry(0.25, 12, 12) : undefined;
 		dotMaterial = current.showPoints
 			? new three.MeshLambertMaterial({ color: current.lineColor })
 			: undefined;
@@ -88,8 +86,7 @@ export function createNetDelegate(): SceneEffectDelegate<AnimationEffectParams<'
 				const y = randomInt(-3, 3);
 				const x = (i - n / 2) * spacing + randomInt(-5, 5);
 				let z = (j - n / 2) * spacing + randomInt(-5, 5);
-				if (i % 2)
-					z += spacing * 0.5;
+				if (i % 2) z += spacing * 0.5;
 				addPoint(three, x, y - randomInt(5, 15), z);
 				addPoint(three, x + randomInt(-5, 5), y + randomInt(5, 15), z + randomInt(-5, 5));
 			}
@@ -114,9 +111,9 @@ export function createNetDelegate(): SceneEffectDelegate<AnimationEffectParams<'
 			scene.add(group);
 			buildField(three);
 
-			const ambience = new three.AmbientLight(0xFFFFFF, 0.75);
+			const ambience = new three.AmbientLight(0xffffff, 0.75);
 			scene.add(ambience);
-			const spot = new three.SpotLight(0xFFFFFF, 1);
+			const spot = new three.SpotLight(0xffffff, 1);
 			spot.position.set(0, 200, 0);
 			spot.distance = 400;
 			spot.target = group;
@@ -124,9 +121,10 @@ export function createNetDelegate(): SceneEffectDelegate<AnimationEffectParams<'
 		},
 
 		applyParams: ({ three, scene, params }) => {
-			const fieldChanged = params.points !== current.points
-				|| params.spacing !== current.spacing
-				|| params.showPoints !== current.showPoints;
+			const fieldChanged =
+				params.points !== current.points ||
+				params.spacing !== current.spacing ||
+				params.showPoints !== current.showPoints;
 			current = params;
 			scene.background = new three.Color(params.backgroundColor);
 			if (fieldChanged) {
@@ -139,8 +137,7 @@ export function createNetDelegate(): SceneEffectDelegate<AnimationEffectParams<'
 
 		update: ({ elapsedSeconds }) => {
 			for (const point of points) {
-				if (point.spinRate === 0)
-					continue;
+				if (point.spinRate === 0) continue;
 				const angle = point.angle + ORBIT_RATE * point.spinRate * elapsedSeconds;
 				point.holder.position.x = point.radius * Math.cos(angle);
 				point.holder.position.z = point.radius * Math.sin(angle);
@@ -154,9 +151,12 @@ export default function createNetEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'net'>,
 ): AnimationEffectInstance<AnimationEffectParams<'net'>> {
-	return createSceneEffect({
-		three: THREE,
-		host,
-		delegate: createNetDelegate(),
-	}, params);
+	return createSceneEffect(
+		{
+			three: THREE,
+			host,
+			delegate: createNetDelegate(),
+		},
+		params,
+	);
 }

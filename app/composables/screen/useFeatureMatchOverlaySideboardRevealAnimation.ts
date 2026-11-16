@@ -57,9 +57,7 @@ export function useFeatureMatchOverlaySideboardRevealAnimation(
 	function advanceClock() {
 		now.value = performance.now();
 		triggers.value = settleSideboardRevealTriggers(triggers.value, now.value);
-		frame = triggers.value.length > 0
-			? requestAnimationFrame(advanceClock)
-			: null;
+		frame = triggers.value.length > 0 ? requestAnimationFrame(advanceClock) : null;
 	}
 
 	for (const side of PLAYER_SIDES) {
@@ -68,8 +66,7 @@ export function useFeatureMatchOverlaySideboardRevealAnimation(
 			(revealed, previous) => {
 				// `previous === undefined` is the joining case, not an edge: the
 				// context arriving is this client first seeing the value.
-				if (!import.meta.client || revealed === undefined || previous === undefined)
-					return;
+				if (!import.meta.client || revealed === undefined || previous === undefined) return;
 
 				now.value = performance.now();
 				triggers.value = applySideboardRevealEdge(
@@ -91,12 +88,10 @@ export function useFeatureMatchOverlaySideboardRevealAnimation(
 	for (const seat of SEAT_VALUES) {
 		for (const state of SEAT_INDICATOR_STATE_VALUES) {
 			watch(
-				() => featureMatch.value
-					? isSeatInIndicatorState(featureMatch.value, seat, state)
-					: undefined,
+				() =>
+					featureMatch.value ? isSeatInIndicatorState(featureMatch.value, seat, state) : undefined,
 				(inState, previous) => {
-					if (!import.meta.client || inState === undefined || previous === undefined)
-						return;
+					if (!import.meta.client || inState === undefined || previous === undefined) return;
 
 					now.value = performance.now();
 					triggers.value = applySeatIndicatorEdge(
@@ -116,8 +111,7 @@ export function useFeatureMatchOverlaySideboardRevealAnimation(
 	}
 
 	onScopeDispose(() => {
-		if (frame !== null && import.meta.client)
-			cancelAnimationFrame(frame);
+		if (frame !== null && import.meta.client) cancelAnimationFrame(frame);
 		frame = null;
 	});
 

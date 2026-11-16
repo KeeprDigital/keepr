@@ -49,7 +49,9 @@ interface ScreenDisplaySessionOptions {
 	screenStore?: ReturnType<typeof useScreenStore>;
 	realtime?: ReturnType<typeof useRealtime>;
 	outputReads?: Pick<ReturnType<typeof useScreenOutputReadRepository>, 'event'>;
-	createRealtimeSession?: (options: Parameters<typeof useScreenRealtimeSession>[0]) => ScreenRealtimeDisplaySession;
+	createRealtimeSession?: (
+		options: Parameters<typeof useScreenRealtimeSession>[0],
+	) => ScreenRealtimeDisplaySession;
 	exportAdapter?: Partial<ScreenDisplaySessionExportAdapter>;
 }
 
@@ -66,24 +68,33 @@ const defaultExportAdapter: ScreenDisplaySessionExportAdapter = {
 export const SCREEN_OUTPUT_LOAD_RETRY_MS = SCREEN_MODE_REREAD_MS;
 
 /** Why a load stopped short, which decides what the rendering says about it. */
-type LoadFailure = 'event-missing' | 'screen-missing' | 'screen-unavailable' | 'event-context-unavailable';
+type LoadFailure =
+	| 'event-missing'
+	| 'screen-missing'
+	| 'screen-unavailable'
+	| 'event-context-unavailable';
 
-const loadFailureMessages: Record<LoadFailure, { title: string; detail: (screenSlug: string) => string }> = {
+const loadFailureMessages: Record<
+	LoadFailure,
+	{ title: string; detail: (screenSlug: string) => string }
+> = {
 	'event-missing': {
 		title: 'Event not found',
-		detail: () => 'This output\'s address names no event.',
+		detail: () => "This output's address names no event.",
 	},
 	'screen-missing': {
 		title: 'Screen not found',
-		detail: screenSlug => `The screen "${screenSlug}" could not be found for this event.`,
+		detail: (screenSlug) => `The screen "${screenSlug}" could not be found for this event.`,
 	},
 	'screen-unavailable': {
 		title: 'Screen unavailable',
-		detail: screenSlug => `The screen "${screenSlug}" could not be loaded. Retrying automatically.`,
+		detail: (screenSlug) =>
+			`The screen "${screenSlug}" could not be loaded. Retrying automatically.`,
 	},
 	'event-context-unavailable': {
 		title: 'Event details unavailable',
-		detail: screenSlug => `The screen "${screenSlug}" was found, but its event details could not be loaded. Retrying automatically.`,
+		detail: (screenSlug) =>
+			`The screen "${screenSlug}" was found, but its event details could not be loaded. Retrying automatically.`,
 	},
 };
 
@@ -95,17 +106,12 @@ class EventContextUnavailable extends Error {
 }
 
 function loadFailureOf(err: unknown): LoadFailure {
-	if (err instanceof EventContextUnavailable)
-		return 'event-context-unavailable';
-	return err instanceof ScreenLookupUnavailable
-		? 'screen-unavailable'
-		: 'screen-missing';
+	if (err instanceof EventContextUnavailable) return 'event-context-unavailable';
+	return err instanceof ScreenLookupUnavailable ? 'screen-unavailable' : 'screen-missing';
 }
 
 function firstRouteParam(value: string | string[]): string {
-	return Array.isArray(value)
-		? value[0] ?? ''
-		: value;
+	return Array.isArray(value) ? (value[0] ?? '') : value;
 }
 
 function routeEventId(route: RouteLocationNormalizedLoaded): number {
@@ -208,11 +214,9 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 
 	const isControlScreen = computed(() => {
 		const mode = screenStore.activeScreen?.currentMode;
-		return mode
-			? isControlScreenMode(mode)
-			: false;
+		return mode ? isControlScreenMode(mode) : false;
 	});
-	const layoutName = computed(() => isControlScreen.value ? 'screen-control' : 'screen');
+	const layoutName = computed(() => (isControlScreen.value ? 'screen-control' : 'screen'));
 
 	const activeScreen = toRef(screenStore, 'activeScreen');
 	const interactiveRef = ref(false);
@@ -246,16 +250,22 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 		eventCanvas,
 	};
 
-	watch(isControlScreen, (isControl) => {
-		interactiveRef.value = isControl;
-	}, { immediate: true });
+	watch(
+		isControlScreen,
+		(isControl) => {
+			interactiveRef.value = isControl;
+		},
+		{ immediate: true },
+	);
 
 	const loading = ref(true);
 	const loadFailure = ref<LoadFailure | null>(null);
-	const error = computed(() => loadFailure.value ? loadFailureMessages[loadFailure.value].title : null);
-	const errorDetail = computed(() => loadFailure.value
-		? loadFailureMessages[loadFailure.value].detail(screenSlug.value)
-		: null);
+	const error = computed(() =>
+		loadFailure.value ? loadFailureMessages[loadFailure.value].title : null,
+	);
+	const errorDetail = computed(() =>
+		loadFailure.value ? loadFailureMessages[loadFailure.value].detail(screenSlug.value) : null,
+	);
 	const exportError = ref<string | null>(null);
 	const showIdentify = ref(false);
 	const showDebug = ref(false);
@@ -267,12 +277,14 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 		uptimeSeconds.value = Math.floor((Date.now() - connectedAt) / 1000);
 	}, 1000);
 
-	const identifyClass = computed(() => outputMode.value === 'key'
-		? 'border-white'
-		: 'border-primary');
-	const debugPanelClass = computed(() => outputMode.value === 'key'
-		? 'bg-white text-white border border-white'
-		: 'bg-black/80 text-white');
+	const identifyClass = computed(() =>
+		outputMode.value === 'key' ? 'border-white' : 'border-primary',
+	);
+	const debugPanelClass = computed(() =>
+		outputMode.value === 'key'
+			? 'bg-white text-white border border-white'
+			: 'bg-black/80 text-white',
+	);
 
 	const debugInfo = computed(() => ({
 		connectionId: realtime.connectionId ?? 'N/A',
@@ -334,8 +346,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	});
 
 	async function captureDownload() {
-		if (!shouldDownload.value || !screenStore.activeScreen)
-			return;
+		if (!shouldDownload.value || !screenStore.activeScreen) return;
 
 		// `loading = false` makes the ScreenRenderer eligible to mount, but its
 		// template ref is not assigned until Vue flushes that render. Checking the
@@ -343,8 +354,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 		// `download=1`: the temporary tab rendered the page and then did nothing.
 		await nextTick();
 		const container = overlayContainer.value;
-		if (!container)
-			return;
+		if (!container) return;
 
 		const { width, height } = eventCanvas.value;
 		const output = outputMode.value;
@@ -362,12 +372,9 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 				backgroundColor: screenOutputBackground(output),
 			});
 			setTimeout(exportAdapter.closeWindow, 500);
-		}
-		catch (err) {
+		} catch (err) {
 			console.error('Failed to export screen PNG:', err);
-			exportError.value = err instanceof Error
-				? err.message
-				: 'Failed to export PNG';
+			exportError.value = err instanceof Error ? err.message : 'Failed to export PNG';
 		}
 	}
 
@@ -428,25 +435,18 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	 * for a preview. `null` for a live rendering whose Screen is not yet known.
 	 */
 	function followedChannel(evtId: number, screenId: number | null): string | null {
-		if (isPreview.value)
-			return authoringEventChannel(evtId);
-		return screenId === null
-			? null
-			: screenRealtimeChannel(evtId, screenId);
+		if (isPreview.value) return authoringEventChannel(evtId);
+		return screenId === null ? null : screenRealtimeChannel(evtId, screenId);
 	}
 
 	function listenDuringLoad(channel: string | null, flight: Flight) {
 		stopListeningDuringLoad();
-		if (!channel)
-			return;
+		if (!channel) return;
 		currentLoad = flight;
 		function askForRecovery() {
-			if (flight.stale)
-				return;
-			if (loadedOn.value)
-				queueRecovery();
-			else
-				loadAskedRecovery = flight;
+			if (flight.stale) return;
+			if (loadedOn.value) queueRecovery();
+			else loadAskedRecovery = flight;
 		}
 		loadListeners = [
 			realtime.onceAttached(channel, askForRecovery),
@@ -455,8 +455,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	}
 
 	function stopListeningDuringLoad() {
-		for (const stop of loadListeners.splice(0))
-			stop();
+		for (const stop of loadListeners.splice(0)) stop();
 		loadAskedRecovery = null;
 		currentLoad = null;
 	}
@@ -465,8 +464,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	let loadRetry: ReturnType<typeof setTimeout> | null = null;
 
 	function cancelLoadRetry() {
-		if (loadRetry)
-			clearTimeout(loadRetry);
+		if (loadRetry) clearTimeout(loadRetry);
 		loadRetry = null;
 	}
 
@@ -503,17 +501,14 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 			// #397, not only for the media it later resolves. An `embed=preview`
 			// surface has none and is admitted by its operator's session instead.
 			const loadedScreen = await screenStore.loadScreenBySlug(evtId, slug, assetCapability.value);
-			if (flight.stale)
-				return;
+			if (flight.stale) return;
 			if (!loadedScreen || screenStore.activeScreen?.id !== loadedScreen.id)
 				throw new Error('Screen not found');
 			// A live rendering's channel is named by the Screen this just answered.
-			if (!isPreview.value)
-				listenDuringLoad(followedChannel(evtId, loadedScreen.id), flight);
+			if (!isPreview.value) listenDuringLoad(followedChannel(evtId, loadedScreen.id), flight);
 
 			await finishLoad(readScope(evtId, loadedScreen.id), flight);
-		}
-		catch (err) {
+		} catch (err) {
 			failLoad(loadFailureOf(err), err, flight);
 		}
 	}
@@ -530,12 +525,10 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 		let outputEvent: ScreenOutputEvent;
 		try {
 			outputEvent = await outputReads.event(scope);
-		}
-		catch (err) {
+		} catch (err) {
 			throw new EventContextUnavailable(err);
 		}
-		if (flight.stale)
-			return;
+		if (flight.stale) return;
 		eventStore.setOutputEvent(outputEvent, { preview: isPreview.value });
 
 		// Only a Screen Output joins its Screen's presence and answers its Screen's
@@ -550,7 +543,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 		// start or stop, and a start that fails leaves the load finished.
 		if (!embed.value) {
 			screenRealtimeSession.start(scope.eventId, scope.screenId).catch((err) => {
-				console.warn('Failed to start the Screen\'s realtime session:', err);
+				console.warn("Failed to start the Screen's realtime session:", err);
 			});
 		}
 
@@ -571,8 +564,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	 * finishes (#727).
 	 */
 	function failLoad(failure: LoadFailure, err: unknown, flight: Flight) {
-		if (flight.stale)
-			return;
+		if (flight.stale) return;
 		console.error('Failed to load screen:', err);
 		stopListeningDuringLoad();
 		loading.value = false;
@@ -599,14 +591,15 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 		const flight = loads.begin();
 		beginLoadAttempt(scope.eventId, scope.screenId, flight);
 		try {
-			const screen = await screenStore.refreshActiveScreen(scope.eventId, scope.screenId, scope.assetCapability);
-			if (flight.stale)
-				return;
-			if (!screen)
-				throw new Error('The Screen re-read answered nothing');
+			const screen = await screenStore.refreshActiveScreen(
+				scope.eventId,
+				scope.screenId,
+				scope.assetCapability,
+			);
+			if (flight.stale) return;
+			if (!screen) throw new Error('The Screen re-read answered nothing');
 			await finishLoad(scope, flight);
-		}
-		catch (err) {
+		} catch (err) {
 			failLoad('event-context-unavailable', err, flight);
 		}
 	}
@@ -625,14 +618,12 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 			let outputEvent: ScreenOutputEvent;
 			try {
 				outputEvent = await outputReads.event(scope);
-			}
-			catch (err) {
+			} catch (err) {
 				if (flight.current)
 					console.warn('Failed to re-read the Event context; keeping the last one:', err);
 				return false;
 			}
-			if (flight.stale)
-				return true;
+			if (flight.stale) return true;
 			if (eventStore.outputEvent === heldBefore) {
 				eventStore.setOutputEvent(outputEvent, { preview: isPreview.value });
 				return true;
@@ -656,8 +647,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	let contextRetry: ReturnType<typeof setTimeout> | null = null;
 
 	function cancelContextRetry() {
-		if (contextRetry)
-			clearTimeout(contextRetry);
+		if (contextRetry) clearTimeout(contextRetry);
 		contextRetry = null;
 	}
 
@@ -669,8 +659,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 		}
 		const loaded = loadedOn.value;
 		if (!loaded) {
-			if (currentLoad?.current)
-				loadAskedRecovery = currentLoad;
+			if (currentLoad?.current) loadAskedRecovery = currentLoad;
 			return;
 		}
 		contextReading = true;
@@ -680,8 +669,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 				contextAsked = false;
 				answered = await rereadOutputEvent(loaded, recoveries.begin());
 			} while (contextAsked && loadedOn.value === loaded);
-		}
-		finally {
+		} finally {
 			contextReading = false;
 		}
 		if (!answered && loadedOn.value === loaded && !contextRetry) {
@@ -714,14 +702,12 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	 * the load's own listening and Reconnect Resync hear a loss once it is loaded.
 	 */
 	function queueRecovery() {
-		if (recoveryQueued)
-			return;
+		if (recoveryQueued) return;
 		recoveryQueued = true;
 		queueMicrotask(() => {
 			recoveryQueued = false;
 			const loaded = loadedOn.value;
-			if (loaded)
-				void recoverLoadedRendering(loaded);
+			if (loaded) void recoverLoadedRendering(loaded);
 		});
 	}
 
@@ -748,21 +734,17 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	 */
 	function resyncActiveScreen() {
 		const evtId = resolveEventId();
-		if (!evtId)
-			return;
+		if (!evtId) return;
 
 		const held = screenStore.activeScreen;
 		if (!held) {
-			if (screenSlug.value)
-				void loadActiveScreen(screenSlug.value);
+			if (screenSlug.value) void loadActiveScreen(screenSlug.value);
 			return;
 		}
 
 		const loaded = loadedOn.value;
-		if (loaded?.screenId === held.id)
-			queueRecovery();
-		else
-			void resumeLoad(readScope(evtId, held.id));
+		if (loaded?.screenId === held.id) queueRecovery();
+		else void resumeLoad(readScope(evtId, held.id));
 	}
 
 	/*
@@ -774,31 +756,33 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	 * that fails is retried on the slow cadence, since nothing else retries it
 	 * while the connection stays up.
 	 */
-	const selectedThemeDue = computed(() => !!loadedOn.value && !!eventStore.outputEvent && !holdsSelectedTheme(eventStore.outputEvent));
+	const selectedThemeDue = computed(
+		() =>
+			!!loadedOn.value && !!eventStore.outputEvent && !holdsSelectedTheme(eventStore.outputEvent),
+	);
 	/** The slow retry of a switch's re-read that failed, while the connection stays up. */
 	let selectedThemeRetry: ReturnType<typeof setTimeout> | null = null;
 
 	function cancelSelectedThemeRetry() {
-		if (selectedThemeRetry)
-			clearTimeout(selectedThemeRetry);
+		if (selectedThemeRetry) clearTimeout(selectedThemeRetry);
 		selectedThemeRetry = null;
 	}
 
 	async function rereadSelectedTheme() {
 		cancelSelectedThemeRetry();
 		const loaded = loadedOn.value;
-		if (!selectedThemeDue.value || !loaded)
-			return;
+		if (!selectedThemeDue.value || !loaded) return;
 		await rereadOutputEvent(loaded, recoveries.begin());
 		if (selectedThemeDue.value && loadedOn.value === loaded && !selectedThemeRetry)
-			selectedThemeRetry = setTimeout(() => void rereadSelectedTheme(), SCREEN_OUTPUT_LOAD_RETRY_MS);
+			selectedThemeRetry = setTimeout(
+				() => void rereadSelectedTheme(),
+				SCREEN_OUTPUT_LOAD_RETRY_MS,
+			);
 	}
 
 	watch(selectedThemeDue, (due) => {
-		if (due)
-			void rereadSelectedTheme();
-		else
-			cancelSelectedThemeRetry();
+		if (due) void rereadSelectedTheme();
+		else cancelSelectedThemeRetry();
 	});
 
 	// A live rendering hears everything on its Screen's own channel, from the
@@ -809,9 +793,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 		channel: () => {
 			const held = screenStore.activeScreen;
 			const evtId = resolveEventId();
-			return held && evtId && !isPreview.value
-				? followedChannel(evtId, held.id)
-				: null;
+			return held && evtId && !isPreview.value ? followedChannel(evtId, held.id) : null;
 		},
 		onEventContextChanged: () => void followEventContext(),
 	});
@@ -819,24 +801,28 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	// A loaded rendering resyncs off the channel it follows. One not loaded
 	// listens on none — the read that names it may be what failed — so the
 	// connection coming back retries it.
-	useReconnectResync(resyncActiveScreen, () => loadedOn.value
-		? followedChannel(loadedOn.value.eventId, loadedOn.value.screenId)
-		: null, realtime);
+	useReconnectResync(
+		resyncActiveScreen,
+		() =>
+			loadedOn.value ? followedChannel(loadedOn.value.eventId, loadedOn.value.screenId) : null,
+		realtime,
+	);
 	// Subscriptions that waited on a token missed what was published meanwhile,
 	// and a first attach over an unbroken connection reports no continuity loss
 	// (ADR-0023), exactly as the Realtime Event Session resyncs on it.
-	watch(() => !!realtime.tokenError, (waiting, wasWaiting) => {
-		if (wasWaiting && !waiting)
-			resyncActiveScreen();
-	});
+	watch(
+		() => !!realtime.tokenError,
+		(waiting, wasWaiting) => {
+			if (wasWaiting && !waiting) resyncActiveScreen();
+		},
+	);
 
 	onMounted(async () => {
 		await loadActiveScreen(screenSlug.value);
 	});
 
 	watch(screenSlug, async (newSlug) => {
-		if (!newSlug)
-			return;
+		if (!newSlug) return;
 
 		// Begin before stopping so anything the stop awaits past is already stale.
 		// The load forgets the old one again; forgetting it here as well keeps a

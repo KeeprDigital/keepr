@@ -17,10 +17,7 @@ class MockChannel {
 	private stateListeners = new Map<string, StateListener[]>();
 
 	on = vi.fn((event: string, listener: StateListener) => {
-		this.stateListeners.set(event, [
-			...(this.stateListeners.get(event) ?? []),
-			listener,
-		]);
+		this.stateListeners.set(event, [...(this.stateListeners.get(event) ?? []), listener]);
 	});
 
 	/**
@@ -29,8 +26,7 @@ class MockChannel {
 	 */
 	attached(resumed: boolean) {
 		if (this.state === 'attached') {
-			if (!resumed)
-				this.emitState('update', resumed);
+			if (!resumed) this.emitState('update', resumed);
 			return;
 		}
 		this.state = 'attached';
@@ -43,8 +39,7 @@ class MockChannel {
 	}
 
 	private emitState(event: string, resumed: boolean) {
-		for (const listener of this.stateListeners.get(event) ?? [])
-			listener({ resumed });
+		for (const listener of this.stateListeners.get(event) ?? []) listener({ resumed });
 	}
 
 	/** Arrays, as Ably's emitter keeps them: a listener added twice is called twice. */
@@ -60,31 +55,29 @@ class MockChannel {
 		update: vi.fn().mockResolvedValue(undefined),
 		get: vi.fn(async () => this.presenceMembers),
 		subscribe: vi.fn((event: string, handler: PresenceHandler) => {
-			if (this.state === 'failed')
-				return Promise.reject(new Error('channel failed'));
-			this.presenceHandlers.set(event, [
-				...(this.presenceHandlers.get(event) ?? []),
-				handler,
-			]);
+			if (this.state === 'failed') return Promise.reject(new Error('channel failed'));
+			this.presenceHandlers.set(event, [...(this.presenceHandlers.get(event) ?? []), handler]);
 			return this.presenceSubscribeResult;
 		}),
 		unsubscribe: vi.fn((event: string, handler: PresenceHandler) => {
-			this.presenceHandlers.set(event, (this.presenceHandlers.get(event) ?? []).filter(each => each !== handler));
+			this.presenceHandlers.set(
+				event,
+				(this.presenceHandlers.get(event) ?? []).filter((each) => each !== handler),
+			);
 		}),
 	};
 
 	subscribe = vi.fn((messageType: string, handler: MessageHandler) => {
-		if (this.state === 'failed')
-			return Promise.reject(new Error('channel failed'));
-		this.handlers.set(messageType, [
-			...(this.handlers.get(messageType) ?? []),
-			handler,
-		]);
+		if (this.state === 'failed') return Promise.reject(new Error('channel failed'));
+		this.handlers.set(messageType, [...(this.handlers.get(messageType) ?? []), handler]);
 		return this.subscribeResult;
 	});
 
 	unsubscribe = vi.fn((messageType: string, handler: MessageHandler) => {
-		this.handlers.set(messageType, (this.handlers.get(messageType) ?? []).filter(each => each !== handler));
+		this.handlers.set(
+			messageType,
+			(this.handlers.get(messageType) ?? []).filter((each) => each !== handler),
+		);
 	});
 
 	emit(messageType: string, data: unknown) {
@@ -156,8 +149,14 @@ vi.mock('ably', () => ({
 	default: { Realtime: MockRealtime },
 }));
 
-vi.stubGlobal('defineNuxtPlugin', vi.fn(handler => handler));
-vi.stubGlobal('randomUuid', vi.fn(() => 'uuid-1'));
+vi.stubGlobal(
+	'defineNuxtPlugin',
+	vi.fn((handler) => handler),
+);
+vi.stubGlobal(
+	'randomUuid',
+	vi.fn(() => 'uuid-1'),
+);
 // Vue's own, so the connection state the transport exposes is as reactive as it
 // is in the app, for the module that watches it.
 vi.stubGlobal('ref', ref);
@@ -177,8 +176,7 @@ vi.stubGlobal('window', {
 /** Deliver a window event to every listener the plugin registered for it. */
 function dispatchWindowEvent(type: string, event: object = {}) {
 	for (const [registered, listener] of vi.mocked(window.addEventListener).mock.calls) {
-		if (registered === type)
-			(listener as (event: object) => void)(event);
+		if (registered === type) (listener as (event: object) => void)(event);
 	}
 }
 
@@ -191,8 +189,7 @@ async function createTransport() {
 
 /** Flush the microtasks between a subscribe request and its coverage-gated attempt. */
 async function settle() {
-	for (let i = 0; i < 5; i++)
-		await Promise.resolve();
+	for (let i = 0; i < 5; i++) await Promise.resolve();
 }
 
 /**
@@ -220,7 +217,7 @@ describe('realtime plugin', () => {
 		window.location.hash = '';
 	});
 
-	it('does not connect at setup — the first connect belongs to the first Event\'s mint (#474)', async () => {
+	it("does not connect at setup — the first connect belongs to the first Event's mint (#474)", async () => {
 		// An eager connect with no Event in hand parks the authCallback, and Ably
 		// times a parked token request out (10s) into a disconnected/retry cycle:
 		// console spam and a fault indicator on pages with nothing to connect to.
@@ -297,8 +294,9 @@ describe('realtime plugin', () => {
 		// Typed against the plain signature rather than the route table: matching a
 		// resolved value against `$fetch`'s route-conditional return type exhausts
 		// the type comparison depth limit.
-		vi.mocked($fetch as unknown as (path: string) => Promise<unknown>)
-			.mockResolvedValueOnce({ token: 'token-request' });
+		vi.mocked($fetch as unknown as (path: string) => Promise<unknown>).mockResolvedValueOnce({
+			token: 'token-request',
+		});
 		const realtime = await createTransport();
 		realtime.setRoom('event:7');
 		const callback = vi.fn();
@@ -315,10 +313,11 @@ describe('realtime plugin', () => {
 	});
 
 	// An output has no session, so its fragment capability is its only way to a token (#397).
-	it('presents the capability in its fragment, which is a Screen Output\'s only credential', async () => {
+	it("presents the capability in its fragment, which is a Screen Output's only credential", async () => {
 		window.location.hash = '#asset-capability=a-screen-output-capability-token';
-		vi.mocked($fetch as unknown as (path: string) => Promise<unknown>)
-			.mockResolvedValueOnce({ token: 'token-request' });
+		vi.mocked($fetch as unknown as (path: string) => Promise<unknown>).mockResolvedValueOnce({
+			token: 'token-request',
+		});
 		const realtime = await createTransport();
 		const callback = vi.fn();
 
@@ -337,8 +336,9 @@ describe('realtime plugin', () => {
 		// none — and an output with no media is a better failure than one that cannot
 		// connect at all.
 		window.location.hash = '#asset-capability=too-short';
-		vi.mocked($fetch as unknown as (path: string) => Promise<unknown>)
-			.mockResolvedValueOnce({ token: 'token-request' });
+		vi.mocked($fetch as unknown as (path: string) => Promise<unknown>).mockResolvedValueOnce({
+			token: 'token-request',
+		});
 		const realtime = await createTransport();
 		const callback = vi.fn();
 
@@ -388,9 +388,11 @@ describe('realtime plugin', () => {
 		await settle();
 
 		let resolveAuthorize!: () => void;
-		realtimeInstances[0]!.auth.authorize.mockReset().mockReturnValue(new Promise<void>((resolve) => {
-			resolveAuthorize = resolve;
-		}));
+		realtimeInstances[0]!.auth.authorize.mockReset().mockReturnValue(
+			new Promise<void>((resolve) => {
+				resolveAuthorize = resolve;
+			}),
+		);
 
 		const handler = vi.fn();
 		realtime.onChannel('screen:9:1', 'screen:command:debug', handler);
@@ -415,7 +417,7 @@ describe('realtime plugin', () => {
 
 		const mints: Array<() => void> = [];
 		realtimeInstances[0]!.auth.authorize.mockImplementation(
-			() => new Promise<void>(resolve => mints.push(resolve)),
+			() => new Promise<void>((resolve) => mints.push(resolve)),
 		);
 
 		realtime.setRoom('event:1');
@@ -443,9 +445,12 @@ describe('realtime plugin', () => {
 		channels.get('event:2')!.emit('player:updated', {
 			player: { id: 2 },
 		});
-		expect(handler).toHaveBeenCalledWith({
-			player: { id: 2 },
-		}, expect.any(Object));
+		expect(handler).toHaveBeenCalledWith(
+			{
+				player: { id: 2 },
+			},
+			expect.any(Object),
+		);
 	});
 
 	it('defers direct channel subscription until its event token is minted', async () => {
@@ -454,9 +459,10 @@ describe('realtime plugin', () => {
 
 		let resolveMint!: () => void;
 		realtimeInstances[0]!.auth.authorize.mockImplementation(
-			() => new Promise<void>((resolve) => {
-				resolveMint = resolve;
-			}),
+			() =>
+				new Promise<void>((resolve) => {
+					resolveMint = resolve;
+				}),
 		);
 
 		realtime.onChannel('screen:1:2', 'screen:command:debug', handler);
@@ -484,7 +490,7 @@ describe('realtime plugin', () => {
 			vi.useRealTimers();
 		});
 
-		it('retries, and the new event\'s subscriptions attach and deliver', async () => {
+		it("retries, and the new event's subscriptions attach and deliver", async () => {
 			const realtime = await createTransport();
 			realtime.setRoom('event:7');
 			await settleRetries();
@@ -611,7 +617,7 @@ describe('realtime plugin', () => {
 	});
 
 	// A Realtime Subscription outlives a token outage: its handlers stay registered (#609).
-	describe('a token outage that outlasts the mint\'s retries', () => {
+	describe("a token outage that outlasts the mint's retries", () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
 			vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -642,9 +648,12 @@ describe('realtime plugin', () => {
 				player: { id: 9 },
 			});
 			expect(handler).toHaveBeenCalledOnce();
-			expect(handler).toHaveBeenCalledWith({
-				player: { id: 9 },
-			}, expect.any(Object));
+			expect(handler).toHaveBeenCalledWith(
+				{
+					player: { id: 9 },
+				},
+				expect.any(Object),
+			);
 		});
 
 		it('reaches the original room handlers in the reported sequence: restore, then a new Screen subscription', async () => {
@@ -777,7 +786,7 @@ describe('realtime plugin', () => {
 			expect(handler).toHaveBeenCalledOnce();
 		});
 
-		it('holds a Screen Output\'s presence entry through the outage and enters it once a mint lands', async () => {
+		it("holds a Screen Output's presence entry through the outage and enters it once a mint lands", async () => {
 			// A Screen Output enters presence on load and only then stops loading, so the
 			// entry must not wait out the outage — but control surfaces count outputs by
 			// presence, and one that never re-enters is one they report missing.
@@ -791,7 +800,9 @@ describe('realtime plugin', () => {
 
 			// Asked mid-recovery, it answers at once rather than on the next attempt.
 			const entered = vi.fn();
-			void realtime.enterPresence('screen:9:1', { screenId: 1, cardData: 'complete' }).then(entered);
+			void realtime
+				.enterPresence('screen:9:1', { screenId: 1, cardData: 'complete' })
+				.then(entered);
 			await vi.advanceTimersByTimeAsync(0);
 			expect(entered).toHaveBeenCalled();
 			await realtime.updatePresence('screen:9:1', { screenId: 1, cardData: 'degraded' });
@@ -906,11 +917,13 @@ describe('realtime plugin', () => {
 			expect(handler).toHaveBeenCalledOnce();
 		});
 
-		it('points Ably\'s own token renewals back at the covered Event once a recovery stops', async () => {
+		it("points Ably's own token renewals back at the covered Event once a recovery stops", async () => {
 			// Ably re-mints by itself on reconnect and before expiry, for whichever
 			// Event the transport last asked about. Left on the abandoned one, that
 			// renewal would trade the working token for one that cannot be minted.
-			vi.mocked($fetch as unknown as (path: string) => Promise<unknown>).mockResolvedValue({ token: 'token-request' });
+			vi.mocked($fetch as unknown as (path: string) => Promise<unknown>).mockResolvedValue({
+				token: 'token-request',
+			});
 			const realtime = await createTransport();
 			realtime.setRoom('event:7');
 			await settleRetries();
@@ -922,9 +935,12 @@ describe('realtime plugin', () => {
 			await vi.advanceTimersByTimeAsync(0);
 
 			await (realtimeInstances[0]!.options as any).authCallback({}, vi.fn());
-			expect($fetch).toHaveBeenLastCalledWith('/api/realtime/token', expect.objectContaining({
-				query: { eventId: 7 },
-			}));
+			expect($fetch).toHaveBeenLastCalledWith(
+				'/api/realtime/token',
+				expect.objectContaining({
+					query: { eventId: 7 },
+				}),
+			);
 		});
 
 		it('backs off to one attempt every 30 seconds for as long as the outage lasts', async () => {
@@ -944,7 +960,7 @@ describe('realtime plugin', () => {
 		});
 	});
 
-	describe('a channel\'s lost continuity', () => {
+	describe("a channel's lost continuity", () => {
 		async function attachedChannel() {
 			const realtime = await createTransport();
 			const lost = vi.fn();
@@ -1042,7 +1058,7 @@ describe('realtime plugin', () => {
 	 * consumer that read before it may have missed what was published in between:
 	 * a Screen Output's first load (#727).
 	 */
-	describe('a channel\'s next attach', () => {
+	describe("a channel's next attach", () => {
 		it('is signalled once, on the first attach of a channel not yet attached', async () => {
 			const realtime = await createTransport();
 			const attached = vi.fn();
@@ -1101,9 +1117,15 @@ describe('realtime plugin', () => {
 			shown = data.label;
 		});
 		const scope = effectScope();
-		scope.run(() => useReconnectResync(() => {
-			shown = server;
-		}, 'event:7', realtime));
+		scope.run(() =>
+			useReconnectResync(
+				() => {
+					shown = server;
+				},
+				'event:7',
+				realtime,
+			),
+		);
 		await settle();
 		connectionHandlers.get('connected')?.();
 		const channel = channels.get('event:7')!;
@@ -1126,7 +1148,7 @@ describe('realtime plugin', () => {
 	describe('a page unload', () => {
 		// `beforeunload` also fires for an unload the operator then cancels ("Stay"
 		// on the unsaved-changes prompt): the page lives on and must keep hearing.
-		it('keeps the room\'s handlers and the connection through an unload that may be cancelled', async () => {
+		it("keeps the room's handlers and the connection through an unload that may be cancelled", async () => {
 			const realtime = await createTransport();
 			const handler = vi.fn();
 			realtime.setRoom('event:1');
@@ -1141,7 +1163,9 @@ describe('realtime plugin', () => {
 			expect(handler).toHaveBeenCalledOnce();
 			expect(mockConnection.close).not.toHaveBeenCalled();
 			// Ably's own default closes the connection on `beforeunload` too.
-			expect((realtimeInstances[0]!.options as { closeOnUnload?: boolean }).closeOnUnload).toBe(false);
+			expect((realtimeInstances[0]!.options as { closeOnUnload?: boolean }).closeOnUnload).toBe(
+				false,
+			);
 		});
 
 		it('closes the connection and stops delivering once the page is hidden for good', async () => {
@@ -1164,13 +1188,16 @@ describe('realtime plugin', () => {
 		it.each([
 			{ persisted: true, reloads: 1 },
 			{ persisted: false, reloads: 0 },
-		])('reloads a page shown again with persisted=$persisted $reloads time(s)', async ({ persisted, reloads }) => {
-			await createTransport();
+		])(
+			'reloads a page shown again with persisted=$persisted $reloads time(s)',
+			async ({ persisted, reloads }) => {
+				await createTransport();
 
-			dispatchWindowEvent('pageshow', { persisted });
+				dispatchWindowEvent('pageshow', { persisted });
 
-			expect(window.location.reload).toHaveBeenCalledTimes(reloads);
-		});
+				expect(window.location.reload).toHaveBeenCalledTimes(reloads);
+			},
+		);
 	});
 
 	it('keeps independent room owners for the same message type', async () => {
@@ -1208,9 +1235,12 @@ describe('realtime plugin', () => {
 		});
 
 		expect(handler).toHaveBeenCalledOnce();
-		expect(handler).toHaveBeenCalledWith({
-			player: { id: 2 },
-		}, expect.any(Object));
+		expect(handler).toHaveBeenCalledWith(
+			{
+				player: { id: 2 },
+			},
+			expect.any(Object),
+		);
 	});
 
 	it('keeps room handlers registered while no room is active and resubscribes later', async () => {
@@ -1232,9 +1262,12 @@ describe('realtime plugin', () => {
 		});
 
 		expect(handler).toHaveBeenCalledOnce();
-		expect(handler).toHaveBeenCalledWith({
-			player: { id: 2 },
-		}, expect.any(Object));
+		expect(handler).toHaveBeenCalledWith(
+			{
+				player: { id: 2 },
+			},
+			expect.any(Object),
+		);
 	});
 
 	it('keeps channel subscriptions to the same channel and type independent', async () => {
@@ -1277,10 +1310,7 @@ describe('realtime plugin', () => {
 		const realtime = await createTransport();
 		const channel = channels.get('screen:1:2') ?? new MockChannel();
 		channels.set('screen:1:2', channel);
-		channel.setPresenceMembers([
-			{ clientId: 'a' },
-			{ clientId: 'b' },
-		]);
+		channel.setPresenceMembers([{ clientId: 'a' }, { clientId: 'b' }]);
 		const callback = vi.fn();
 
 		await realtime.enterPresence('screen:1:2', { screenId: 2 });
@@ -1289,10 +1319,7 @@ describe('realtime plugin', () => {
 		unsubscribe();
 
 		expect(channel.presence.enter).toHaveBeenCalledWith({ screenId: 2 });
-		expect(callback).toHaveBeenCalledWith([
-			{ clientId: 'a' },
-			{ clientId: 'b' },
-		]);
+		expect(callback).toHaveBeenCalledWith([{ clientId: 'a' }, { clientId: 'b' }]);
 		expect(channel.presence.leave).toHaveBeenCalledOnce();
 		expect(channel.presence.unsubscribe).toHaveBeenCalledTimes(4);
 	});
@@ -1310,19 +1337,11 @@ describe('realtime plugin', () => {
 
 		realtime.watchPresence('screen:1:2', callback);
 		await settle();
-		channel.setPresenceMembers([
-			{ clientId: 'a' },
-		]);
+		channel.setPresenceMembers([{ clientId: 'a' }]);
 		channel.emitPresence('present');
 		await settle();
 
-		expect(callback.mock.calls).toEqual([
-			[
-				[
-					{ clientId: 'a' },
-				],
-			],
-		]);
+		expect(callback.mock.calls).toEqual([[[{ clientId: 'a' }]]]);
 		consoleSpy.mockRestore();
 	});
 

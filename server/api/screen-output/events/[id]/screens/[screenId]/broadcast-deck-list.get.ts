@@ -1,5 +1,8 @@
 import { broadcastDeckListService } from '~~/server/services/broadcastDeckList';
-import { requireScreenOutputModeRead, screenOutputReadNotFound } from '~~/server/utils/screenOutputRead';
+import {
+	requireScreenOutputModeRead,
+	screenOutputReadNotFound,
+} from '~~/server/utils/screenOutputRead';
 
 /**
  * The complete Broadcast Deck List one Screen has selected for Deck List mode.
@@ -14,16 +17,14 @@ export default defineEventHandler(async (event) => {
 	const { eventId, config } = await requireScreenOutputModeRead(event, 'deck');
 
 	const source = config.deckSource;
-	if (source.type !== 'broadcast')
-		screenOutputReadNotFound();
+	if (source.type !== 'broadcast') screenOutputReadNotFound();
 
 	const lists = broadcastDeckListService();
 	if (!(await lists.sourceIsSelectable(source.broadcastDeckListId, eventId)))
 		screenOutputReadNotFound();
 
 	const selected = await lists.findById(source.broadcastDeckListId, eventId);
-	if (!selected)
-		screenOutputReadNotFound();
+	if (!selected) screenOutputReadNotFound();
 
 	return selected;
 });

@@ -19,15 +19,20 @@ import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
  */
 export default defineEventHandler(async (event) => {
 	const userId = await requireUserId(event);
-	const { templateId } = await getValidatedRouterParams(event, broadcastGraphicTemplateParamsSchema.parse);
+	const { templateId } = await getValidatedRouterParams(
+		event,
+		broadcastGraphicTemplateParamsSchema.parse,
+	);
 	await requireGraphicsTemplateWritable(event, templateId);
 
-	if (!await broadcastGraphicTemplateService().remove(templateId)) {
-		const installed = await graphicsAssetLibraryForEvent(event).removeInstalledGraphicsTemplate({
-			templateId,
-			kind: 'broadcast-graphic',
-			removedBy: userId,
-		}).catch(error => rethrowGraphicsAssetApiError(error, event));
+	if (!(await broadcastGraphicTemplateService().remove(templateId))) {
+		const installed = await graphicsAssetLibraryForEvent(event)
+			.removeInstalledGraphicsTemplate({
+				templateId,
+				kind: 'broadcast-graphic',
+				removedBy: userId,
+			})
+			.catch((error) => rethrowGraphicsAssetApiError(error, event));
 		if (installed.outcome === 'not-found') {
 			throw createError({
 				statusCode: 404,

@@ -14,9 +14,13 @@ const EXTREME: StoredThemeTokens = {
 	'accent-fill': {
 		type: 'linear-gradient',
 		angle: -360,
-		stops: [0, 0.3, 0.6, 1].map(position => ({ color: 'rgba(1, 2, 3, 0.5)', position, opacity: 0 })),
+		stops: [0, 0.3, 0.6, 1].map((position) => ({
+			color: 'rgba(1, 2, 3, 0.5)',
+			position,
+			opacity: 0,
+		})),
 	},
-	'panel': {
+	panel: {
 		fill: { type: 'solid', color: '#000' },
 		fillOpacity: 0,
 		outline: { color: '#fff', width: 500 },
@@ -48,9 +52,16 @@ describe('a Shape Graphic Item bound to a composite Foundation Token stored at i
 		['geometry', 'panel-shape'],
 		['animation.enter', 'motion-enter'],
 	])('stays a valid Screen write with its %s bound to %s', (slot, token) => {
-		const bound = bindGraphicThemeOwner(shape('s'), slot, token, resolveGraphicThemeTokens(EXTREME));
+		const bound = bindGraphicThemeOwner(
+			shape('s'),
+			slot,
+			token,
+			resolveGraphicThemeTokens(EXTREME),
+		);
 
 		expect(bound.themeBindings).toEqual({ [slot]: token });
-		expect(broadcastGraphicConfigSchema.safeParse(graphic('lower-third', [bound])).error?.issues).toBeUndefined();
+		expect(
+			broadcastGraphicConfigSchema.safeParse(graphic('lower-third', [bound])).error?.issues,
+		).toBeUndefined();
 	});
 });

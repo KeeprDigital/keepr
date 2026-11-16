@@ -64,24 +64,21 @@ function libraryCapacity(): GraphicsAssetLibraryCapacity {
 }
 
 /** Answers each route with its own payload, so no single body can make the page look right. */
-function serve(options: {
-	health?: GraphicsAssetLibraryHealth | Error;
-	capacity?: GraphicsAssetLibraryCapacity | Error;
-	saved?: GraphicsAssetLibraryCapacity;
-} = {}) {
+function serve(
+	options: {
+		health?: GraphicsAssetLibraryHealth | Error;
+		capacity?: GraphicsAssetLibraryCapacity | Error;
+		saved?: GraphicsAssetLibraryCapacity;
+	} = {},
+) {
 	const health = options.health ?? libraryHealth();
 	const capacity = options.capacity ?? libraryCapacity();
 	mockApiFetch.mockImplementation((url: string, init?: { method?: string }) => {
 		if (url === HEALTH_ROUTE) {
-			return health instanceof Error
-				? Promise.reject(health)
-				: Promise.resolve(health);
+			return health instanceof Error ? Promise.reject(health) : Promise.resolve(health);
 		}
-		if (init?.method === 'PUT')
-			return Promise.resolve(options.saved ?? capacity);
-		return capacity instanceof Error
-			? Promise.reject(capacity)
-			: Promise.resolve(capacity);
+		if (init?.method === 'PUT') return Promise.resolve(options.saved ?? capacity);
+		return capacity instanceof Error ? Promise.reject(capacity) : Promise.resolve(capacity);
 	});
 }
 
@@ -90,7 +87,8 @@ const passthroughStub = defineComponent({
 });
 
 async function mountPage() {
-	const { default: HealthPage } = await import('../../../../../app/pages/admin/graphics-assets/health.vue');
+	const { default: HealthPage } =
+		await import('../../../../../app/pages/admin/graphics-assets/health.vue');
 	return mount(HealthPage, {
 		global: {
 			stubs: { ...nuxtUiStubs, NuxtLayout: passthroughStub },
@@ -102,8 +100,9 @@ async function mountPage() {
 async function openHealth() {
 	const wrapper = await mountPage();
 	await wrapper.find('input').setValue('admin-token');
-	await wrapper.findAll('button')
-		.find(button => button.text() === 'Open health')!
+	await wrapper
+		.findAll('button')
+		.find((button) => button.text() === 'Open health')!
 		.trigger('click');
 	await flushPromises();
 	return wrapper;
@@ -119,18 +118,12 @@ describe('the Graphics Asset Library health page', () => {
 	it('sends the administrator token with both of its reads', async () => {
 		await openHealth();
 
-		expect(mockApiFetch).toHaveBeenCalledWith(
-			HEALTH_ROUTE,
-			{
-				headers: { 'x-graphics-admin-token': 'admin-token' },
-			},
-		);
-		expect(mockApiFetch).toHaveBeenCalledWith(
-			CAPACITY_ROUTE,
-			{
-				headers: { 'x-graphics-admin-token': 'admin-token' },
-			},
-		);
+		expect(mockApiFetch).toHaveBeenCalledWith(HEALTH_ROUTE, {
+			headers: { 'x-graphics-admin-token': 'admin-token' },
+		});
+		expect(mockApiFetch).toHaveBeenCalledWith(CAPACITY_ROUTE, {
+			headers: { 'x-graphics-admin-token': 'admin-token' },
+		});
 	});
 
 	it('reads nothing until an administrator supplies a token', async () => {
@@ -166,15 +159,15 @@ describe('the Graphics Asset Library health page', () => {
 		expect(wrapper.text()).toContain('Healthy');
 
 		mockApiFetch.mockClear();
-		await wrapper.findAll('button').find(button => button.text() === 'Refresh')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Refresh')!
+			.trigger('click');
 		await flushPromises();
 
-		expect(mockApiFetch).toHaveBeenCalledWith(
-			HEALTH_ROUTE,
-			{
-				headers: { 'x-graphics-admin-token': 'admin-token' },
-			},
-		);
+		expect(mockApiFetch).toHaveBeenCalledWith(HEALTH_ROUTE, {
+			headers: { 'x-graphics-admin-token': 'admin-token' },
+		});
 	});
 
 	it('shows capacity categories and lets an administrator change both limits', async () => {
@@ -206,24 +199,22 @@ describe('the Graphics Asset Library health page', () => {
 		const inputs = wrapper.findAll('input');
 		await inputs[0]!.setValue(120);
 		await inputs[1]!.setValue(12);
-		await wrapper.findAll('button')
-			.find(button => button.text() === 'Save capacity limits')!
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Save capacity limits')!
 			.trigger('click');
 		await flushPromises();
 
 		// The token already held for this session is what authorises the write; the page
 		// never asks for it a second time.
-		expect(mockApiFetch).toHaveBeenCalledWith(
-			CAPACITY_ROUTE,
-			{
-				method: 'PUT',
-				headers: { 'x-graphics-admin-token': 'admin-token' },
-				body: {
-					canonicalLimitBytes: 120 * GIB,
-					stagingLimitBytes: 12 * GIB,
-				},
+		expect(mockApiFetch).toHaveBeenCalledWith(CAPACITY_ROUTE, {
+			method: 'PUT',
+			headers: { 'x-graphics-admin-token': 'admin-token' },
+			body: {
+				canonicalLimitBytes: 120 * GIB,
+				stagingLimitBytes: 12 * GIB,
 			},
-		);
+		});
 	});
 
 	it('returns to the token form when the token stops being accepted', async () => {
@@ -238,7 +229,10 @@ describe('the Graphics Asset Library health page', () => {
 				request: `[GET] "${HEALTH_ROUTE}"`,
 			}),
 		});
-		await wrapper.findAll('button').find(button => button.text() === 'Refresh')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Refresh')!
+			.trigger('click');
 		await flushPromises();
 
 		// The stale reading is dropped rather than left on screen as a library state
@@ -246,6 +240,6 @@ describe('the Graphics Asset Library health page', () => {
 		expect(wrapper.text()).not.toContain('D1 catalogue');
 		expect(wrapper.text()).not.toContain('Canonical Graphics Quota');
 		expect(wrapper.text()).toContain('Graphics Administrator token');
-		expect(wrapper.findAll('button').some(button => button.text() === 'Open health')).toBe(true);
+		expect(wrapper.findAll('button').some((button) => button.text() === 'Open health')).toBe(true);
 	});
 });

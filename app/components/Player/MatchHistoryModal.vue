@@ -17,27 +17,46 @@ const emit = defineEmits<{
 	(e: 'back'): void;
 }>();
 
-const { hasPlayerHistoryScreens, playerHistoryScreens, sendToScreen, sendToFirstPlayerHistoryScreen } = useSendPlayerHistoryToScreen();
+const {
+	hasPlayerHistoryScreens,
+	playerHistoryScreens,
+	sendToScreen,
+	sendToFirstPlayerHistoryScreen,
+} = useSendPlayerHistoryToScreen();
 const { openPlayerDeckList } = usePlayerDeckListModal();
 const { openPlayerEdit } = usePlayerEditModal();
-const { headToHeadScreens, hasHeadToHeadScreens, sendToScreen: sendHeadToHeadToScreen } = useSendHeadToHeadToScreen();
+const {
+	headToHeadScreens,
+	hasHeadToHeadScreens,
+	sendToScreen: sendHeadToHeadToScreen,
+} = useSendHeadToHeadToScreen();
 const playerStore = usePlayerStore();
 const playerListStore = usePlayerListStore();
 const eventStore = useEventStore();
 
-const { player: answeredPlayer, history, loading, error } = usePlayerMatchHistory(() => props.player.id);
+const {
+	player: answeredPlayer,
+	history,
+	loading,
+	error,
+} = usePlayerMatchHistory(() => props.player.id);
 
 // The roster's copy follows an edit made from this modal, then the read's, then the Player it opened with.
-const shownPlayer = computed(() => playerStore.players.find(p => p.id === props.player.id) ?? answeredPlayer.value ?? props.player);
+const shownPlayer = computed(
+	() =>
+		playerStore.players.find((p) => p.id === props.player.id) ??
+		answeredPlayer.value ??
+		props.player,
+);
 const record = computed(() => formatPlayerRecord(shownPlayer.value, eventStore.displayEvent));
-const identity = computed(() => [
-	eventStore.event?.pronounsEnabled !== false
-		? shownPlayer.value.pronouns
-		: null,
-	eventStore.event?.lgsEnabled
-		? shownPlayer.value.lgs
-		: null,
-].filter(Boolean).join(' · '));
+const identity = computed(() =>
+	[
+		eventStore.event?.pronounsEnabled !== false ? shownPlayer.value.pronouns : null,
+		eventStore.event?.lgsEnabled ? shownPlayer.value.lgs : null,
+	]
+		.filter(Boolean)
+		.join(' · '),
+);
 const hasDeckList = computed(() => !!getMtgGameData(shownPlayer.value.gameData).deckName);
 
 onMounted(() => {
@@ -48,7 +67,8 @@ onMounted(() => {
 // Each Player List, checked when the Player is a member; choosing one adds or removes them.
 const listItems = computed<DropdownMenuItem[][]>(() => [
 	playerListStore.lists.map((list) => {
-		const isMember = playerListStore.getCachedMemberIds(list.id)?.includes(shownPlayer.value.id) ?? false;
+		const isMember =
+			playerListStore.getCachedMemberIds(list.id)?.includes(shownPlayer.value.id) ?? false;
 		return {
 			label: list.name,
 			type: 'checkbox' as const,
@@ -60,23 +80,18 @@ const listItems = computed<DropdownMenuItem[][]>(() => [
 ]);
 
 async function toggleListMembership(listId: number, add: boolean) {
-	if (!eventStore.eventId)
-		return;
-	if (add)
-		await playerListStore.addMembers(eventStore.eventId, listId, [shownPlayer.value.id]);
-	else
-		await playerListStore.batchRemoveMembers(eventStore.eventId, listId, [shownPlayer.value.id]);
+	if (!eventStore.eventId) return;
+	if (add) await playerListStore.addMembers(eventStore.eventId, listId, [shownPlayer.value.id]);
+	else await playerListStore.batchRemoveMembers(eventStore.eventId, listId, [shownPlayer.value.id]);
 }
-const sorting = ref([
-	{ id: 'roundNumber', desc: false },
-]);
+const sorting = ref([{ id: 'roundNumber', desc: false }]);
 
 const columns: TableColumn<PlayerMatchHistoryEntry>[] = [
 	{
 		id: 'roundNumber',
 		header: createSortableHeader('Round'),
 		enableSorting: true,
-		accessorFn: row => row.roundNumber,
+		accessorFn: (row) => row.roundNumber,
 	},
 	{
 		accessorKey: 'opponentName',
@@ -87,25 +102,25 @@ const columns: TableColumn<PlayerMatchHistoryEntry>[] = [
 		id: 'opponentDeckName',
 		header: createSortableHeader('Opponent Deck'),
 		enableSorting: true,
-		accessorFn: row => row.opponentDeckName ?? '',
+		accessorFn: (row) => row.opponentDeckName ?? '',
 	},
 	{
 		id: 'tableNumber',
 		header: createSortableHeader('Table'),
 		enableSorting: true,
-		accessorFn: row => row.tableNumber ?? Infinity,
+		accessorFn: (row) => row.tableNumber ?? Infinity,
 	},
 	{
 		id: 'outcome',
 		header: createSortableHeader('Outcome'),
 		enableSorting: true,
-		accessorFn: row => outcomeLabel(row.outcome),
+		accessorFn: (row) => outcomeLabel(row.outcome),
 	},
 	{
 		id: 'result',
 		header: createSortableHeader('Result'),
 		enableSorting: true,
-		accessorFn: row => formatResult(row),
+		accessorFn: (row) => formatResult(row),
 	},
 	{
 		id: 'actions',
@@ -116,10 +131,9 @@ const columns: TableColumn<PlayerMatchHistoryEntry>[] = [
 // The shown Player on the left, their opponent on the right.
 function headToHeadItems(row: PlayerMatchHistoryEntry): DropdownMenuItem[][] {
 	const opponentId = row.opponentId;
-	if (!opponentId)
-		return [];
+	if (!opponentId) return [];
 	return [
-		headToHeadScreens.value.map(screen => ({
+		headToHeadScreens.value.map((screen) => ({
 			label: `Send Head-to-Head to ${screen.name}`,
 			icon: 'i-lucide-monitor',
 			onSelect: () => void sendHeadToHeadToScreen(shownPlayer.value.id, opponentId, screen),
@@ -133,29 +147,25 @@ function formatResult(row: PlayerMatchHistoryEntry) {
 }
 
 function outcomeLabel(outcome: PlayerMatchHistoryEntry['outcome']) {
-	return ({
+	return {
 		win: 'Win',
 		loss: 'Loss',
 		draw: 'Draw',
 		bye: 'Bye',
 		pending: 'Pending',
-	})[outcome];
+	}[outcome];
 }
 
 function outcomeColor(outcome: PlayerMatchHistoryEntry['outcome']) {
-	if (outcome === 'win' || outcome === 'bye')
-		return 'success';
-	if (outcome === 'loss')
-		return 'error';
-	if (outcome === 'draw')
-		return 'warning';
+	if (outcome === 'win' || outcome === 'bye') return 'success';
+	if (outcome === 'loss') return 'error';
+	if (outcome === 'draw') return 'warning';
 	return 'neutral';
 }
 
 function resolveOpponent(row: PlayerMatchHistoryEntry): Player | null {
-	if (!row.opponentId)
-		return null;
-	return playerStore.players.find(player => player.id === row.opponentId) ?? null;
+	if (!row.opponentId) return null;
+	return playerStore.players.find((player) => player.id === row.opponentId) ?? null;
 }
 
 function canViewOpponentDeck(row: PlayerMatchHistoryEntry) {
@@ -172,11 +182,9 @@ async function viewOpponentDeck(row: PlayerMatchHistoryEntry) {
 
 async function handleSendToScreen(screenId?: number) {
 	if (screenId) {
-		const screen = playerHistoryScreens.value.find(s => s.id === screenId);
-		if (screen)
-			await sendToScreen(props.player.id, screen);
-	}
-	else {
+		const screen = playerHistoryScreens.value.find((s) => s.id === screenId);
+		if (screen) await sendToScreen(props.player.id, screen);
+	} else {
 		await sendToFirstPlayerHistoryScreen(props.player.id);
 	}
 }
@@ -233,12 +241,7 @@ async function handleSendToScreen(screenId?: number) {
 				description="No matches have been recorded for this player yet."
 			/>
 
-			<UTable
-				v-else
-				v-model:sorting="sorting"
-				:data="history"
-				:columns="columns"
-			>
+			<UTable v-else v-model:sorting="sorting" :data="history" :columns="columns">
 				<template #roundNumber-cell="{ row }">
 					<div class="font-medium">
 						{{ row.original.roundName }}
@@ -248,7 +251,11 @@ async function handleSendToScreen(screenId?: number) {
 					</div>
 				</template>
 				<template #opponentName-cell="{ row }">
-					<PlayerMatchHistoryButton class="font-medium" :player="resolveOpponent(row.original)" :name="row.original.opponentName" />
+					<PlayerMatchHistoryButton
+						class="font-medium"
+						:player="resolveOpponent(row.original)"
+						:name="row.original.opponentName"
+					/>
 				</template>
 				<template #opponentDeckName-cell="{ row }">
 					<button
@@ -268,7 +275,10 @@ async function handleSendToScreen(screenId?: number) {
 							class="shrink-0"
 						/>
 					</button>
-					<div v-else-if="row.original.opponentDeckName" class="inline-flex items-center gap-1.5 text-sm text-muted">
+					<div
+						v-else-if="row.original.opponentDeckName"
+						class="inline-flex items-center gap-1.5 text-sm text-muted"
+					>
 						<span>{{ row.original.opponentDeckName }}</span>
 						<MtgManaColorDisplay
 							v-if="row.original.opponentDeckColors"
@@ -292,7 +302,10 @@ async function handleSendToScreen(screenId?: number) {
 					<span class="font-mono">{{ formatResult(row.original) }}</span>
 				</template>
 				<template #actions-cell="{ row }">
-					<UDropdownMenu v-if="hasHeadToHeadScreens && row.original.opponentId" :items="headToHeadItems(row.original)">
+					<UDropdownMenu
+						v-if="hasHeadToHeadScreens && row.original.opponentId"
+						:items="headToHeadItems(row.original)"
+					>
 						<UButton
 							icon="i-lucide-swords"
 							color="neutral"
@@ -346,7 +359,15 @@ async function handleSendToScreen(screenId?: number) {
 					</UButton>
 					<UDropdownMenu
 						v-else
-						:items="[[...playerHistoryScreens.map(s => ({ label: s.name, icon: 'i-lucide-monitor', onSelect: () => handleSendToScreen(s.id) }))]]"
+						:items="[
+							[
+								...playerHistoryScreens.map((s) => ({
+									label: s.name,
+									icon: 'i-lucide-monitor',
+									onSelect: () => handleSendToScreen(s.id),
+								})),
+							],
+						]"
 					>
 						<UButton icon="i-lucide-send" color="primary" trailing-icon="i-lucide-chevron-down">
 							Send to Screen

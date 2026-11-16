@@ -30,11 +30,7 @@ useEnterToSubmit(handleConfirm, {
 </script>
 
 <template>
-	<UModal
-		:title="modalTitle"
-		:close="{ onClick: handleClose }"
-		:ui="{ footer: 'justify-end' }"
-	>
+	<UModal :title="modalTitle" :close="{ onClick: handleClose }" :ui="{ footer: 'justify-end' }">
 		<template #body>
 			<div class="flex items-start gap-3">
 				<UIcon name="i-lucide-alert-triangle" class="text-error size-5 mt-0.5 shrink-0" />
@@ -42,29 +38,16 @@ useEnterToSubmit(handleConfirm, {
 					<p class="text-muted">
 						{{ message }}
 					</p>
-					<p class="text-sm text-muted mt-2">
-						This action cannot be undone.
-					</p>
+					<p class="text-sm text-muted mt-2">This action cannot be undone.</p>
 				</div>
 			</div>
 		</template>
 
 		<template #footer>
-			<UButton
-				variant="ghost"
-				color="neutral"
-				:disabled="loading"
-				@click="handleClose"
-			>
+			<UButton variant="ghost" color="neutral" :disabled="loading" @click="handleClose">
 				Cancel
 			</UButton>
-			<UButton
-				color="error"
-				:loading="loading"
-				@click="handleConfirm"
-			>
-				Delete
-			</UButton>
+			<UButton color="error" :loading="loading" @click="handleConfirm"> Delete </UButton>
 		</template>
 	</UModal>
 </template>

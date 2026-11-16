@@ -1,5 +1,5 @@
-const SCREEN_OUTPUT_ASSET_DELIVERY_PATH
-	= /^\/api\/screen-output\/screens\/[^/]+\/assets\/[^/]+\/revisions\/[^/]+\/content(?:\?.*)?$/;
+const SCREEN_OUTPUT_ASSET_DELIVERY_PATH =
+	/^\/api\/screen-output\/screens\/[^/]+\/assets\/[^/]+\/revisions\/[^/]+\/content(?:\?.*)?$/;
 
 /**
  * The output page's address carries a Screen Output Link, which is a
@@ -12,7 +12,6 @@ export function safeErrorLogPath(path: string | undefined): string | undefined {
 	if (path && SCREEN_OUTPUT_ASSET_DELIVERY_PATH.test(path)) {
 		return '/api/screen-output/screens/:screenId/assets/:assetId/revisions/:revisionId/content';
 	}
-	if (path && SCREEN_OUTPUT_LINK_PAGE_PATH.test(path))
-		return '/o/:link';
+	if (path && SCREEN_OUTPUT_LINK_PAGE_PATH.test(path)) return '/o/:link';
 	return path;
 }

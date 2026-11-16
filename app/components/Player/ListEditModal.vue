@@ -18,7 +18,7 @@ const { runRequest } = useRequestFeedback();
 
 // ── List data from store (reactive) ──
 
-const list = computed(() => playerListStore.lists.find(l => l.id === props.listId));
+const list = computed(() => playerListStore.lists.find((l) => l.id === props.listId));
 const allPlayers = computed(() => playerStore.players);
 
 // ── Name editing ──
@@ -31,7 +31,12 @@ const nameIsValid = computed(() => listName.value.trim().length > 0);
 
 // ── Members pane ref ──
 
-const membersPane = ref<{ hasChanges: boolean; save: () => Promise<void>; reset: () => void; saving: boolean } | null>(null);
+const membersPane = ref<{
+	hasChanges: boolean;
+	save: () => Promise<void>;
+	reset: () => void;
+	saving: boolean;
+} | null>(null);
 
 const membersHaveChanges = computed(() => membersPane.value?.hasChanges ?? false);
 const membersSaving = computed(() => membersPane.value?.saving ?? false);
@@ -46,8 +51,7 @@ const memberIds = ref<number[]>([]);
 const loading = ref(false);
 
 onMounted(async () => {
-	if (!eventStore.eventId)
-		return;
+	if (!eventStore.eventId) return;
 
 	loading.value = true;
 	try {
@@ -55,8 +59,7 @@ onMounted(async () => {
 			await playerListStore.loadListMembers(eventStore.eventId, props.listId);
 		}
 		memberIds.value = playerListStore.getCachedMemberIds(props.listId) ?? [];
-	}
-	finally {
+	} finally {
 		loading.value = false;
 	}
 });
@@ -68,34 +71,35 @@ const formId = `edit-player-list-${props.listId}-form`;
 
 async function handleSave() {
 	const eventId = eventStore.eventId;
-	if (!eventId || !isDirty.value)
-		return;
+	if (!eventId || !isDirty.value) return;
 
-	await runRequest(async () => {
-		// Save name if changed
-		if (nameIsDirty.value && nameIsValid.value) {
-			const updated = await playerListStore.updateList(eventId, props.listId, {
-				name: listName.value.trim(),
-			});
-			if (!updated)
-				throw new Error('Failed to update the list name');
-			originalName.value = listName.value.trim();
-		}
+	await runRequest(
+		async () => {
+			// Save name if changed
+			if (nameIsDirty.value && nameIsValid.value) {
+				const updated = await playerListStore.updateList(eventId, props.listId, {
+					name: listName.value.trim(),
+				});
+				if (!updated) throw new Error('Failed to update the list name');
+				originalName.value = listName.value.trim();
+			}
 
-		// Save members if changed
-		if (membersHaveChanges.value && membersPane.value) {
-			await membersPane.value.save();
-		}
+			// Save members if changed
+			if (membersHaveChanges.value && membersPane.value) {
+				await membersPane.value.save();
+			}
 
-		return true;
-	}, {
-		loadingRef: saving,
-		success: { title: 'List updated', color: 'success' },
-		error: { title: 'Failed to update list', color: 'error' },
-		onSuccess: () => {
-			emit('close');
+			return true;
 		},
-	});
+		{
+			loadingRef: saving,
+			success: { title: 'List updated', color: 'success' },
+			error: { title: 'Failed to update list', color: 'error' },
+			onSuccess: () => {
+				emit('close');
+			},
+		},
+	);
 }
 
 // ── Reset ──
@@ -110,8 +114,7 @@ function handleReset() {
 const deleting = ref(false);
 
 async function handleDelete() {
-	if (!eventStore.eventId || !list.value)
-		return;
+	if (!eventStore.eventId || !list.value) return;
 
 	const deleteModal = overlay.create(LazyUIConfirmDeleteModal);
 	const confirmed = await deleteModal.open({
@@ -119,21 +122,17 @@ async function handleDelete() {
 		itemName: list.value.name,
 	}).result;
 
-	if (!confirmed)
-		return;
+	if (!confirmed) return;
 
-	await runRequest(
-		() => playerListStore.removeList(eventStore.eventId!, props.listId),
-		{
-			loadingRef: deleting,
-			success: { title: 'List deleted', color: 'success' },
-			error: { title: 'Failed to delete list', color: 'error' },
-			onSuccess: () => {
-				emit('deleted', props.listId);
-				emit('close');
-			},
+	await runRequest(() => playerListStore.removeList(eventStore.eventId!, props.listId), {
+		loadingRef: deleting,
+		success: { title: 'List deleted', color: 'success' },
+		error: { title: 'Failed to delete list', color: 'error' },
+		onSuccess: () => {
+			emit('deleted', props.listId);
+			emit('close');
 		},
-	);
+	});
 }
 
 // ── Footer Menu ──
@@ -166,19 +165,10 @@ function handleClose() {
 		:ui="{ content: 'sm:max-w-4xl' }"
 	>
 		<template #body>
-			<UForm
-				:id="formId"
-				:state="formState"
-				class="flex flex-col gap-4"
-				@submit="handleSave"
-			>
+			<UForm :id="formId" :state="formState" class="flex flex-col gap-4" @submit="handleSave">
 				<!-- Name field -->
 				<UFormField label="List Name">
-					<UInput
-						v-model="listName"
-						placeholder="List name"
-						class="w-full"
-					/>
+					<UInput v-model="listName" placeholder="List name" class="w-full" />
 				</UFormField>
 
 				<!-- Members pane -->
@@ -196,7 +186,9 @@ function handleClose() {
 		</template>
 
 		<template #footer>
-			<div class="flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+			<div
+				class="flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between"
+			>
 				<UButton
 					label="Reset"
 					color="error"
@@ -213,10 +205,7 @@ function handleClose() {
 						:loading="saving || membersSaving"
 						:disabled="!isDirty || !nameIsValid"
 					/>
-					<UDropdownMenu
-						:items="footerMenuItems"
-						:content="{ align: 'end' }"
-					>
+					<UDropdownMenu :items="footerMenuItems" :content="{ align: 'end' }">
 						<UButton
 							icon="i-lucide-ellipsis-vertical"
 							color="neutral"

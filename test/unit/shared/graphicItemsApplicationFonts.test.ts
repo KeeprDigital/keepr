@@ -1,4 +1,8 @@
-import type { GraphicItemConfig, GraphicPlaceholderStyle, GraphicTypography } from '~~/shared/types/graphics';
+import type {
+	GraphicItemConfig,
+	GraphicPlaceholderStyle,
+	GraphicTypography,
+} from '~~/shared/types/graphics';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_GRAPHIC_TYPOGRAPHY } from '~~/shared/modules/graphics';
 import { applicationGraphicFont } from '~~/shared/types/graphics';
@@ -34,25 +38,17 @@ describe('graphicItemsApplicationFonts', () => {
 	it.each([
 		{
 			row: 'base typography',
-			items: [
-				styled(INTER_BOLD),
-			],
-			faces: [
-				{ fontId: 'inter', weight: 700, style: 'normal' },
-			],
+			items: [styled(INTER_BOLD)],
+			faces: [{ fontId: 'inter', weight: 700, style: 'normal' }],
 		},
 		{
 			row: 'a library font',
-			items: [
-				styled(LIBRARY_BOLD),
-			],
+			items: [styled(LIBRARY_BOLD)],
 			faces: [],
 		},
 		{
 			row: 'an item without typography',
-			items: [
-				shape('bar'),
-			],
+			items: [shape('bar')],
 			faces: [],
 		},
 		{
@@ -64,16 +60,17 @@ describe('graphicItemsApplicationFonts', () => {
 					}),
 				]),
 			],
-			faces: [
-				{ fontId: 'inter', weight: 900, style: 'normal' },
-			],
+			faces: [{ fontId: 'inter', weight: 900, style: 'normal' }],
 		},
 		{
 			row: 'a placeholder font, inheriting weight and style',
 			items: [
-				styled({ ...INTER_BOLD, fontStyle: 'italic' }, {
-					font: applicationGraphicFont('oswald'),
-				}),
+				styled(
+					{ ...INTER_BOLD, fontStyle: 'italic' },
+					{
+						font: applicationGraphicFont('oswald'),
+					},
+				),
 			],
 			faces: [
 				{ fontId: 'inter', weight: 700, style: 'italic' },
@@ -82,9 +79,7 @@ describe('graphicItemsApplicationFonts', () => {
 		},
 		{
 			row: 'a placeholder weight and style, inheriting the font',
-			items: [
-				styled(INTER_BOLD, { fontWeight: 300, fontStyle: 'italic' }),
-			],
+			items: [styled(INTER_BOLD, { fontWeight: 300, fontStyle: 'italic' })],
 			faces: [
 				{ fontId: 'inter', weight: 700, style: 'normal' },
 				{ fontId: 'inter', weight: 300, style: 'italic' },
@@ -92,9 +87,7 @@ describe('graphicItemsApplicationFonts', () => {
 		},
 		{
 			row: 'a placeholder weight over a library font',
-			items: [
-				styled(LIBRARY_BOLD, { fontWeight: 300 }),
-			],
+			items: [styled(LIBRARY_BOLD, { fontWeight: 300 })],
 			faces: [],
 		},
 		{
@@ -104,9 +97,7 @@ describe('graphicItemsApplicationFonts', () => {
 					font: applicationGraphicFont('poppins'),
 				}),
 			],
-			faces: [
-				{ fontId: 'poppins', weight: 700, style: 'normal' },
-			],
+			faces: [{ fontId: 'poppins', weight: 700, style: 'normal' }],
 		},
 	])('$row', ({ items, faces }) => {
 		expect(graphicItemsApplicationFonts(items)).toEqual(faces);

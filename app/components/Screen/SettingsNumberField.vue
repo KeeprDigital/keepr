@@ -8,34 +8,38 @@
  * width. Every other attribute (`size`, `disabled`, aria-*, data-*) lands on the
  * input.
  */
-const props = withDefaults(defineProps<{
-	modelValue: number | null | undefined;
-	min?: number;
-	max?: number;
-	/** In displayed units. */
-	step?: number;
-	/** Stored units per displayed unit. */
-	displayScale?: number;
-	fill?: boolean;
-}>(), { displayScale: 1 });
+const props = withDefaults(
+	defineProps<{
+		modelValue: number | null | undefined;
+		min?: number;
+		max?: number;
+		/** In displayed units. */
+		step?: number;
+		/** Stored units per displayed unit. */
+		displayScale?: number;
+		fill?: boolean;
+	}>(),
+	{ displayScale: 1 },
+);
 
 const emit = defineEmits<{ 'update:modelValue': [value: number | null] }>();
 
-const displayed = computed(() => typeof props.modelValue === 'number' && props.displayScale !== 1
-	? props.modelValue / props.displayScale
-	: props.modelValue);
+const displayed = computed(() =>
+	typeof props.modelValue === 'number' && props.displayScale !== 1
+		? props.modelValue / props.displayScale
+		: props.modelValue,
+);
 
 /** Displayed units back to stored ones, without the float noise a scale adds (4.1 s is 4100 ms). */
 function toStored(value: number): number {
-	return props.displayScale === 1
-		? value
-		: Number((value * props.displayScale).toPrecision(12));
+	return props.displayScale === 1 ? value : Number((value * props.displayScale).toPrecision(12));
 }
 
 function update(value: number | null | undefined) {
-	emit('update:modelValue', typeof value === 'number' && !Number.isNaN(value)
-		? toStored(value)
-		: null);
+	emit(
+		'update:modelValue',
+		typeof value === 'number' && !Number.isNaN(value) ? toStored(value) : null,
+	);
 }
 </script>
 

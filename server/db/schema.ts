@@ -4,7 +4,10 @@ import type { BroadcastGraphicsLiveState } from '~~/shared/modules/broadcast-gra
 import type { StoredThemeTokens } from '~~/shared/modules/theme';
 import type { BroadcastGraphicsLiveSessionStatus } from '~~/shared/types/broadcastGraphicsLiveSession';
 import type { PlayerManuallyEditedField } from '~~/shared/types/enums';
-import type { FeatureMatchSessionStatus, FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
+import type {
+	FeatureMatchSessionStatus,
+	FeatureMatchSourceSnapshot,
+} from '~~/shared/types/featureMatchSession';
 import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 import type { PlayerGameData } from '~~/shared/types/game';
 import type { BroadcastGraphicConfig } from '~~/shared/types/graphics';
@@ -85,20 +88,25 @@ const timestamps = {
  * Tokens it sets, so a token added later reaches it through its default. The
  * Default Theme is code, never a row.
  */
-export const themes = sqliteTable('themes', {
-	id: text('id').primaryKey(),
-	name: text('name').notNull(),
-	/** The sparse token-value map, keyed by token name. */
-	tokens: text('tokens', { mode: 'json' }).$type<StoredThemeTokens>().notNull().default(sql`'{}'`),
-	/** Advanced by every token write, so a holder orders a write's announcement against a read. */
-	revision: integer('revision').notNull().default(1),
-	/** Transaction marker keeping the token map and its Graphic Asset Reference index in lockstep. */
-	graphicAssetReferenceVersion: text('graphic_asset_reference_version'),
+export const themes = sqliteTable(
+	'themes',
+	{
+		id: text('id').primaryKey(),
+		name: text('name').notNull(),
+		/** The sparse token-value map, keyed by token name. */
+		tokens: text('tokens', { mode: 'json' })
+			.$type<StoredThemeTokens>()
+			.notNull()
+			.default(sql`'{}'`),
+		/** Advanced by every token write, so a holder orders a write's announcement against a read. */
+		revision: integer('revision').notNull().default(1),
+		/** Transaction marker keeping the token map and its Graphic Asset Reference index in lockstep. */
+		graphicAssetReferenceVersion: text('graphic_asset_reference_version'),
 
-	...timestamps,
-}, table => [
-	index('themes_name_idx').on(table.name),
-]);
+		...timestamps,
+	},
+	(table) => [index('themes_name_idx').on(table.name)],
+);
 
 export const events = sqliteTable('events', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
@@ -106,15 +114,23 @@ export const events = sqliteTable('events', {
 	game: text('game', { enum: GAME_VALUES }).notNull(),
 	// A Magic: The Gathering Event's Variant, set at creation and never changed; none on any other Card Game (ADR-0087).
 	variant: text('variant', { enum: VARIANT_VALUES }),
-	featureMatchOrientation: text('feature_match_orientation', { enum: FEATURE_MATCH_ORIENTATION_VALUES }).notNull(),
+	featureMatchOrientation: text('feature_match_orientation', {
+		enum: FEATURE_MATCH_ORIENTATION_VALUES,
+	}).notNull(),
 	cardTimeout: integer('card_timeout').notNull().default(0),
 	numFeatureMatches: integer('num_feature_matches').notNull().default(1),
 
 	description: text('description'),
 	holdingText: text('holding_text'),
 
-	commentator1TalentId: integer('commentator1_talent_id').references((): AnySQLiteColumn => eventTalents.id, { onDelete: 'set null' }),
-	commentator2TalentId: integer('commentator2_talent_id').references((): AnySQLiteColumn => eventTalents.id, { onDelete: 'set null' }),
+	commentator1TalentId: integer('commentator1_talent_id').references(
+		(): AnySQLiteColumn => eventTalents.id,
+		{ onDelete: 'set null' },
+	),
+	commentator2TalentId: integer('commentator2_talent_id').references(
+		(): AnySQLiteColumn => eventTalents.id,
+		{ onDelete: 'set null' },
+	),
 
 	meleeEnabled: integer('melee_enabled', { mode: 'boolean' }).notNull().default(false),
 	pointsSystem: text('points_system', { enum: POINTS_SYSTEM_VALUES }),
@@ -132,18 +148,34 @@ export const events = sqliteTable('events', {
 	meleeSyncLeaseExpiresAt: integer('melee_sync_lease_expires_at', { mode: 'timestamp_ms' }),
 	// Live Results: the operator's setting and the poll state the Sync page shows.
 	// The schedule (next check, backoff step) is internal and stripped from responses.
-	meleeLiveResultsEnabled: integer('melee_live_results_enabled', { mode: 'boolean' }).notNull().default(false),
-	meleeLiveResultsNextCheckAt: integer('melee_live_results_next_check_at', { mode: 'timestamp_ms' }),
+	meleeLiveResultsEnabled: integer('melee_live_results_enabled', { mode: 'boolean' })
+		.notNull()
+		.default(false),
+	meleeLiveResultsNextCheckAt: integer('melee_live_results_next_check_at', {
+		mode: 'timestamp_ms',
+	}),
 	meleeLiveResultsBackoffStep: integer('melee_live_results_backoff_step').notNull().default(0),
-	meleeLiveResultsLastCheckedAt: integer('melee_live_results_last_checked_at', { mode: 'timestamp_ms' }),
-	meleeLiveResultsLastChangeAt: integer('melee_live_results_last_change_at', { mode: 'timestamp_ms' }),
+	meleeLiveResultsLastCheckedAt: integer('melee_live_results_last_checked_at', {
+		mode: 'timestamp_ms',
+	}),
+	meleeLiveResultsLastChangeAt: integer('melee_live_results_last_change_at', {
+		mode: 'timestamp_ms',
+	}),
 	meleeLiveResultsError: text('melee_live_results_error'),
-	meleeLiveResultsStopReason: text('melee_live_results_stop_reason', { enum: MELEE_LIVE_RESULTS_STOP_REASON_VALUES }),
+	meleeLiveResultsStopReason: text('melee_live_results_stop_reason', {
+		enum: MELEE_LIVE_RESULTS_STOP_REASON_VALUES,
+	}),
 
 	// Display formatting options
-	displayRecordSeparator: text('display_record_separator', { enum: RECORD_SEPARATOR_VALUES }).notNull().default('-'),
-	displayHideZeroDraws: integer('display_hide_zero_draws', { mode: 'boolean' }).notNull().default(true),
-	displayPositionFormat: text('display_position_format', { enum: POSITION_FORMAT_VALUES }).notNull().default('ordinal'),
+	displayRecordSeparator: text('display_record_separator', { enum: RECORD_SEPARATOR_VALUES })
+		.notNull()
+		.default('-'),
+	displayHideZeroDraws: integer('display_hide_zero_draws', { mode: 'boolean' })
+		.notNull()
+		.default(true),
+	displayPositionFormat: text('display_position_format', { enum: POSITION_FORMAT_VALUES })
+		.notNull()
+		.default('ordinal'),
 
 	// Event Presentation Settings. No Theme is the Default Theme; a Theme in use cannot be deleted.
 	themeId: text('theme_id').references(() => themes.id, { onDelete: 'restrict' }),
@@ -152,357 +184,505 @@ export const events = sqliteTable('events', {
 	canvasHeight: integer('canvas_height').notNull().default(DEFAULT_EVENT_CANVAS.height),
 
 	// The Conversion Target every Metagame read of the Event counts Conversion Rate against (ADR-0061).
-	conversionMetric: text('conversion_metric', { enum: METAGAME_CONVERSION_METRIC_VALUES }).notNull().default(DEFAULT_CONVERSION_TARGET.conversionMetric),
-	conversionThreshold: integer('conversion_threshold').notNull().default(DEFAULT_CONVERSION_TARGET.conversionThreshold),
+	conversionMetric: text('conversion_metric', { enum: METAGAME_CONVERSION_METRIC_VALUES })
+		.notNull()
+		.default(DEFAULT_CONVERSION_TARGET.conversionMetric),
+	conversionThreshold: integer('conversion_threshold')
+		.notNull()
+		.default(DEFAULT_CONVERSION_TARGET.conversionThreshold),
 
 	// Feature match defaults
 	featureMatchDefaultBestOf: integer('feature_match_default_best_of').notNull().default(3),
-	featureMatchDefaultStartingLife: integer('feature_match_default_starting_life').notNull().default(20),
-	featureMatchDefaultClockType: text('feature_match_default_clock_type', { enum: CLOCK_TYPE_VALUES }).notNull().default('countdown'),
-	featureMatchDefaultClockDuration: integer('feature_match_default_clock_duration').notNull().default(50), // minutes
-	featureMatchDefaultCountUpAfterCountdown: integer('feature_match_default_count_up_after_countdown', { mode: 'boolean' }).notNull().default(false),
+	featureMatchDefaultStartingLife: integer('feature_match_default_starting_life')
+		.notNull()
+		.default(20),
+	featureMatchDefaultClockType: text('feature_match_default_clock_type', {
+		enum: CLOCK_TYPE_VALUES,
+	})
+		.notNull()
+		.default('countdown'),
+	featureMatchDefaultClockDuration: integer('feature_match_default_clock_duration')
+		.notNull()
+		.default(50), // minutes
+	featureMatchDefaultCountUpAfterCountdown: integer(
+		'feature_match_default_count_up_after_countdown',
+		{ mode: 'boolean' },
+	)
+		.notNull()
+		.default(false),
 	featureMatchDefaultCountUpLimit: integer('feature_match_default_count_up_limit'), // minutes; null counts up without limit
-	featureMatchDefaultTurnTrackingEnabled: integer('feature_match_default_turn_tracking_enabled', { mode: 'boolean' }).notNull().default(false),
-	featureMatchDefaultActivePlayerTrackingEnabled: integer('feature_match_default_active_player_tracking_enabled', { mode: 'boolean' }).notNull().default(false),
-	featureMatchDefaultExtraTurnsEnabled: integer('feature_match_default_extra_turns_enabled', { mode: 'boolean' }).notNull().default(false),
+	featureMatchDefaultTurnTrackingEnabled: integer('feature_match_default_turn_tracking_enabled', {
+		mode: 'boolean',
+	})
+		.notNull()
+		.default(false),
+	featureMatchDefaultActivePlayerTrackingEnabled: integer(
+		'feature_match_default_active_player_tracking_enabled',
+		{ mode: 'boolean' },
+	)
+		.notNull()
+		.default(false),
+	featureMatchDefaultExtraTurnsEnabled: integer('feature_match_default_extra_turns_enabled', {
+		mode: 'boolean',
+	})
+		.notNull()
+		.default(false),
 	featureMatchDefaultExtraTurns: integer('feature_match_default_extra_turns').notNull().default(5),
-	featureMatchDefaultExtraTurnsLabel: text('feature_match_default_extra_turns_label').notNull().default('Extra Turns'),
-	featureMatchDefaultUntimedLabel: text('feature_match_default_untimed_label').notNull().default(''),
-	featureMatchDefaultMulliganTrackingEnabled: integer('feature_match_default_mulligan_tracking_enabled', { mode: 'boolean' }).notNull().default(false),
+	featureMatchDefaultExtraTurnsLabel: text('feature_match_default_extra_turns_label')
+		.notNull()
+		.default('Extra Turns'),
+	featureMatchDefaultUntimedLabel: text('feature_match_default_untimed_label')
+		.notNull()
+		.default(''),
+	featureMatchDefaultMulliganTrackingEnabled: integer(
+		'feature_match_default_mulligan_tracking_enabled',
+		{ mode: 'boolean' },
+	)
+		.notNull()
+		.default(false),
 
 	standingsEnabled: integer('standings_enabled', { mode: 'boolean' }).notNull().default(true),
-	broadcastDeckListsEnabled: integer('broadcast_deck_lists_enabled', { mode: 'boolean' }).notNull().default(false),
+	broadcastDeckListsEnabled: integer('broadcast_deck_lists_enabled', { mode: 'boolean' })
+		.notNull()
+		.default(false),
 	lgsEnabled: integer('lgs_enabled', { mode: 'boolean' }).notNull().default(false),
 	pronounsEnabled: integer('pronouns_enabled', { mode: 'boolean' }).notNull().default(true),
 	tableNumberEnabled: integer('table_number_enabled', { mode: 'boolean' }).notNull().default(false),
-	featureMatchNotesEnabled: integer('feature_match_notes_enabled', { mode: 'boolean' }).notNull().default(false),
+	featureMatchNotesEnabled: integer('feature_match_notes_enabled', { mode: 'boolean' })
+		.notNull()
+		.default(false),
 
 	...timestamps,
 });
 
-export const eventTalents = sqliteTable('event_talents', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	name: text('name').notNull(),
-	/** Free text naming what the Talent does on the broadcast, such as Host or Commentator (#782). */
-	role: text('role'),
-	twitchHandle: text('twitch_handle'),
-	youtubeHandle: text('youtube_handle'),
-	xHandle: text('x_handle'),
-	instagramHandle: text('instagram_handle'),
-	tiktokHandle: text('tiktok_handle'),
-	blueskyHandle: text('bluesky_handle'),
-	/**
-	 * The Talent's photo: one exact image revision, held as the Talent's
-	 * Graphic Asset Reference (`talent`/`photo`), or none (ADR-0067).
-	 * `graphic_asset_reference_version` is the one-shot token a photo write
-	 * stamps, so its index rows are written only beside the row it committed.
-	 */
-	photo: text('photo', { mode: 'json' }).$type<GraphicAssetReference>(),
-	graphicAssetReferenceVersion: text('graphic_asset_reference_version'),
-	...timestamps,
-}, table => [
-	index('talents_event_id_idx').on(table.eventId),
-]);
+export const eventTalents = sqliteTable(
+	'event_talents',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		name: text('name').notNull(),
+		/** Free text naming what the Talent does on the broadcast, such as Host or Commentator (#782). */
+		role: text('role'),
+		twitchHandle: text('twitch_handle'),
+		youtubeHandle: text('youtube_handle'),
+		xHandle: text('x_handle'),
+		instagramHandle: text('instagram_handle'),
+		tiktokHandle: text('tiktok_handle'),
+		blueskyHandle: text('bluesky_handle'),
+		/**
+		 * The Talent's photo: one exact image revision, held as the Talent's
+		 * Graphic Asset Reference (`talent`/`photo`), or none (ADR-0067).
+		 * `graphic_asset_reference_version` is the one-shot token a photo write
+		 * stamps, so its index rows are written only beside the row it committed.
+		 */
+		photo: text('photo', { mode: 'json' }).$type<GraphicAssetReference>(),
+		graphicAssetReferenceVersion: text('graphic_asset_reference_version'),
+		...timestamps,
+	},
+	(table) => [index('talents_event_id_idx').on(table.eventId)],
+);
 
-export const players = sqliteTable('players', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
+export const players = sqliteTable(
+	'players',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
 
-	// The operator's name. Empty on a One Piece Card Game Player shown by their Nickname (ADR-0074).
-	name: text('name').notNull(),
-	// A One Piece Card Game Player's Bandai TCG+ handle, owned by the TCG+ Import (ADR-0074).
-	nickname: text('nickname'),
-	pronouns: text('pronouns'),
+		// The operator's name. Empty on a One Piece Card Game Player shown by their Nickname (ADR-0074).
+		name: text('name').notNull(),
+		// A One Piece Card Game Player's Bandai TCG+ handle, owned by the TCG+ Import (ADR-0074).
+		nickname: text('nickname'),
+		pronouns: text('pronouns'),
 
-	externalId: text('external_id'),
-	externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }),
-	externalStatus: integer('external_status'),
-	isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
-	lastSeenAt: integer('last_seen_at', { mode: 'timestamp_ms' }),
+		externalId: text('external_id'),
+		externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }),
+		externalStatus: integer('external_status'),
+		isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+		lastSeenAt: integer('last_seen_at', { mode: 'timestamp_ms' }),
 
-	wins: integer('wins'),
-	losses: integer('losses'),
-	draws: integer('draws'),
-	position: integer('position'),
-	points: integer('points'),
+		wins: integer('wins'),
+		losses: integer('losses'),
+		draws: integer('draws'),
+		position: integer('position'),
+		points: integer('points'),
 
-	archetypeId: integer('archetype_id').references((): AnySQLiteColumn => archetypes.id, { onDelete: 'set null' }),
+		archetypeId: integer('archetype_id').references((): AnySQLiteColumn => archetypes.id, {
+			onDelete: 'set null',
+		}),
 
-	lgs: text('lgs'),
-	gameData: text('game_data', { mode: 'json' }).$type<PlayerGameData>(),
-	// The Melee-imported fields an operator has edited by hand, which Melee Sync no longer writes (ADR-0046).
-	manuallyEditedFields: text('manually_edited_fields', { mode: 'json' }).$type<PlayerManuallyEditedField[]>(),
+		lgs: text('lgs'),
+		gameData: text('game_data', { mode: 'json' }).$type<PlayerGameData>(),
+		// The Melee-imported fields an operator has edited by hand, which Melee Sync no longer writes (ADR-0046).
+		manuallyEditedFields: text('manually_edited_fields', { mode: 'json' }).$type<
+			PlayerManuallyEditedField[]
+		>(),
 
-	...timestamps,
-}, table => [
-	index('players_event_id_idx').on(table.eventId),
-	index('players_event_active_idx').on(table.eventId, table.isActive),
-	uniqueIndex('players_external_unique_idx').on(table.eventId, table.externalId, table.externalSource),
-]);
+		...timestamps,
+	},
+	(table) => [
+		index('players_event_id_idx').on(table.eventId),
+		index('players_event_active_idx').on(table.eventId, table.isActive),
+		uniqueIndex('players_external_unique_idx').on(
+			table.eventId,
+			table.externalId,
+			table.externalSource,
+		),
+	],
+);
 
-export const phases = sqliteTable('phases', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
+export const phases = sqliteTable(
+	'phases',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
 
-	name: text('name').notNull(),
-	sortOrder: integer('sort_order').notNull().default(0),
+		name: text('name').notNull(),
+		sortOrder: integer('sort_order').notNull().default(0),
 
-	externalId: text('external_id'),
-	externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }),
-	formatExternalId: text('format_external_id'),
+		externalId: text('external_id'),
+		externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }),
+		formatExternalId: text('format_external_id'),
 
-	...timestamps,
-}, table => [
-	index('phases_event_id_idx').on(table.eventId),
-	uniqueIndex('phases_external_unique_idx').on(table.eventId, table.externalId, table.externalSource),
-]);
+		...timestamps,
+	},
+	(table) => [
+		index('phases_event_id_idx').on(table.eventId),
+		uniqueIndex('phases_external_unique_idx').on(
+			table.eventId,
+			table.externalId,
+			table.externalSource,
+		),
+	],
+);
 
-export const rounds = sqliteTable('rounds', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	phaseId: integer('phase_id')
-		.references(() => phases.id, { onDelete: 'cascade' })
-		.notNull(),
+export const rounds = sqliteTable(
+	'rounds',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		phaseId: integer('phase_id')
+			.references(() => phases.id, { onDelete: 'cascade' })
+			.notNull(),
 
-	externalId: text('external_id'),
-	externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }),
+		externalId: text('external_id'),
+		externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }),
 
-	name: text('name').notNull(),
-	roundNumber: integer('round_number').notNull(),
-	controlMode: text('control_mode', { enum: ROUND_CONTROL_MODE_VALUES }).notNull().default('default'),
-	lastSyncedAt: integer('last_synced_at', { mode: 'timestamp_ms' }),
-	// Operator-entered timing, which Melee Sync never writes (ADR-0066).
-	startedAt: integer('started_at', { mode: 'timestamp_ms' }),
-	durationMinutes: integer('duration_minutes'),
+		name: text('name').notNull(),
+		roundNumber: integer('round_number').notNull(),
+		controlMode: text('control_mode', { enum: ROUND_CONTROL_MODE_VALUES })
+			.notNull()
+			.default('default'),
+		lastSyncedAt: integer('last_synced_at', { mode: 'timestamp_ms' }),
+		// Operator-entered timing, which Melee Sync never writes (ADR-0066).
+		startedAt: integer('started_at', { mode: 'timestamp_ms' }),
+		durationMinutes: integer('duration_minutes'),
 
-	...timestamps,
-}, table => [
-	index('rounds_event_id_idx').on(table.eventId),
-	index('rounds_phase_id_idx').on(table.phaseId),
-	uniqueIndex('rounds_external_unique_idx').on(table.eventId, table.externalId, table.externalSource),
-]);
+		...timestamps,
+	},
+	(table) => [
+		index('rounds_event_id_idx').on(table.eventId),
+		index('rounds_phase_id_idx').on(table.phaseId),
+		uniqueIndex('rounds_external_unique_idx').on(
+			table.eventId,
+			table.externalId,
+			table.externalSource,
+		),
+	],
+);
 
-export const matches = sqliteTable('matches', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	roundId: integer('round_id')
-		.references(() => rounds.id, { onDelete: 'cascade' })
-		.notNull(),
+export const matches = sqliteTable(
+	'matches',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		roundId: integer('round_id')
+			.references(() => rounds.id, { onDelete: 'cascade' })
+			.notNull(),
 
-	externalId: text('external_id'),
-	externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }),
-	tableNumber: integer('table_number'),
+		externalId: text('external_id'),
+		externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }),
+		tableNumber: integer('table_number'),
 
-	player1Id: integer('player1_id').references(() => players.id, { onDelete: 'set null' }),
-	player2Id: integer('player2_id').references(() => players.id, { onDelete: 'set null' }),
-	player1Data: text('player1_data', { mode: 'json' }).$type<PlayerSlotData>(),
-	player2Data: text('player2_data', { mode: 'json' }).$type<PlayerSlotData>(),
+		player1Id: integer('player1_id').references(() => players.id, { onDelete: 'set null' }),
+		player2Id: integer('player2_id').references(() => players.id, { onDelete: 'set null' }),
+		player1Data: text('player1_data', { mode: 'json' }).$type<PlayerSlotData>(),
+		player2Data: text('player2_data', { mode: 'json' }).$type<PlayerSlotData>(),
 
-	// Match result data, written only by Melee Sync (ADR-0047). A reported
-	// Match that is not a bye holds both game wins and game draws; an
-	// unreported Match or a bye holds none.
-	hasResult: integer('has_result', { mode: 'boolean' }).notNull().default(false),
-	player1GameWins: integer('player1_game_wins'),
-	player2GameWins: integer('player2_game_wins'),
-	gameDraws: integer('game_draws'),
-	isBye: integer('is_bye', { mode: 'boolean' }).notNull().default(false),
+		// Match result data, written only by Melee Sync (ADR-0047). A reported
+		// Match that is not a bye holds both game wins and game draws; an
+		// unreported Match or a bye holds none.
+		hasResult: integer('has_result', { mode: 'boolean' }).notNull().default(false),
+		player1GameWins: integer('player1_game_wins'),
+		player2GameWins: integer('player2_game_wins'),
+		gameDraws: integer('game_draws'),
+		isBye: integer('is_bye', { mode: 'boolean' }).notNull().default(false),
 
-	sortOrder: integer('sort_order').notNull().default(0),
+		sortOrder: integer('sort_order').notNull().default(0),
 
-	...timestamps,
-}, table => [
-	index('matches_event_id_idx').on(table.eventId),
-	index('matches_round_id_idx').on(table.roundId),
-	uniqueIndex('matches_external_unique_idx').on(table.eventId, table.externalId, table.externalSource),
-]);
+		...timestamps,
+	},
+	(table) => [
+		index('matches_event_id_idx').on(table.eventId),
+		index('matches_round_id_idx').on(table.roundId),
+		uniqueIndex('matches_external_unique_idx').on(
+			table.eventId,
+			table.externalId,
+			table.externalSource,
+		),
+	],
+);
 
-export const playerLists = sqliteTable('player_lists', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
-	name: text('name').notNull(),
-	...timestamps,
-}, table => [
-	index('player_lists_event_id_idx').on(table.eventId),
-]);
+export const playerLists = sqliteTable(
+	'player_lists',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		name: text('name').notNull(),
+		...timestamps,
+	},
+	(table) => [index('player_lists_event_id_idx').on(table.eventId)],
+);
 
-export const playerListMembers = sqliteTable('player_list_members', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	listId: integer('list_id').references(() => playerLists.id, { onDelete: 'cascade' }).notNull(),
-	playerId: integer('player_id').references(() => players.id, { onDelete: 'cascade' }).notNull(),
-	sortOrder: integer('sort_order').notNull().default(0),
-	...timestamps,
-}, table => [
-	uniqueIndex('player_list_members_unique').on(table.listId, table.playerId),
-	index('player_list_members_list_id_idx').on(table.listId),
-	index('player_list_members_player_id_idx').on(table.playerId),
-]);
+export const playerListMembers = sqliteTable(
+	'player_list_members',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		listId: integer('list_id')
+			.references(() => playerLists.id, { onDelete: 'cascade' })
+			.notNull(),
+		playerId: integer('player_id')
+			.references(() => players.id, { onDelete: 'cascade' })
+			.notNull(),
+		sortOrder: integer('sort_order').notNull().default(0),
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('player_list_members_unique').on(table.listId, table.playerId),
+		index('player_list_members_list_id_idx').on(table.listId),
+		index('player_list_members_player_id_idx').on(table.playerId),
+	],
+);
 
-export const broadcastDeckLists = sqliteTable('broadcast_deck_lists', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id').references(() => events.id, { onDelete: 'cascade' }).notNull(),
-	name: text('name').notNull(),
-	normalizedName: text('normalized_name').notNull(),
-	sourceText: text('source_text').notNull(),
-	archetypeLabel: text('archetype_label'),
-	colors: text('colors'),
-	revision: integer('revision').notNull().default(1),
-	/**
-	 * Internal transaction stamp. A source replacement first advances the list
-	 * with a revision compare-and-swap, then every entry statement is guarded by
-	 * this stamp so a failed compare-and-swap makes the whole D1 batch a no-op.
-	 */
-	operationVersion: text('operation_version'),
-	...timestamps,
-}, table => [
-	index('broadcast_deck_lists_event_id_idx').on(table.eventId),
-	uniqueIndex('broadcast_deck_lists_event_name_idx').on(table.eventId, table.normalizedName),
-]);
+export const broadcastDeckLists = sqliteTable(
+	'broadcast_deck_lists',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		name: text('name').notNull(),
+		normalizedName: text('normalized_name').notNull(),
+		sourceText: text('source_text').notNull(),
+		archetypeLabel: text('archetype_label'),
+		colors: text('colors'),
+		revision: integer('revision').notNull().default(1),
+		/**
+		 * Internal transaction stamp. A source replacement first advances the list
+		 * with a revision compare-and-swap, then every entry statement is guarded by
+		 * this stamp so a failed compare-and-swap makes the whole D1 batch a no-op.
+		 */
+		operationVersion: text('operation_version'),
+		...timestamps,
+	},
+	(table) => [
+		index('broadcast_deck_lists_event_id_idx').on(table.eventId),
+		uniqueIndex('broadcast_deck_lists_event_name_idx').on(table.eventId, table.normalizedName),
+	],
+);
 
-export const broadcastDeckListEntries = sqliteTable('broadcast_deck_list_entries', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	listId: integer('list_id').references(() => broadcastDeckLists.id, { onDelete: 'cascade' }).notNull(),
-	compartment: text('compartment', {
-		enum: ['mainboard', 'sideboard', 'companion'],
-	}).notNull(),
-	quantity: integer('quantity').notNull(),
-	sortOrder: integer('sort_order').notNull(),
-	canonicalName: text('canonical_name').notNull(),
-	scryfallId: text('scryfall_id').notNull(),
-	oracleId: text('oracle_id'),
-	setCode: text('set_code').notNull(),
-	collectorNumber: text('collector_number'),
-	cardType: text('card_type'),
-	colors: text('colors'),
-	manaCost: text('mana_cost'),
-	manaValue: real('mana_value'),
-	deckCounterTypes: text('deck_counter_types', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
-	...timestamps,
-}, table => [
-	index('broadcast_deck_list_entries_list_id_idx').on(table.listId),
-	uniqueIndex('broadcast_deck_list_entries_order_idx').on(table.listId, table.compartment, table.sortOrder),
-]);
+export const broadcastDeckListEntries = sqliteTable(
+	'broadcast_deck_list_entries',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		listId: integer('list_id')
+			.references(() => broadcastDeckLists.id, { onDelete: 'cascade' })
+			.notNull(),
+		compartment: text('compartment', {
+			enum: ['mainboard', 'sideboard', 'companion'],
+		}).notNull(),
+		quantity: integer('quantity').notNull(),
+		sortOrder: integer('sort_order').notNull(),
+		canonicalName: text('canonical_name').notNull(),
+		scryfallId: text('scryfall_id').notNull(),
+		oracleId: text('oracle_id'),
+		setCode: text('set_code').notNull(),
+		collectorNumber: text('collector_number'),
+		cardType: text('card_type'),
+		colors: text('colors'),
+		manaCost: text('mana_cost'),
+		manaValue: real('mana_value'),
+		deckCounterTypes: text('deck_counter_types', { mode: 'json' })
+			.$type<string[]>()
+			.notNull()
+			.default(sql`'[]'`),
+		...timestamps,
+	},
+	(table) => [
+		index('broadcast_deck_list_entries_list_id_idx').on(table.listId),
+		uniqueIndex('broadcast_deck_list_entries_order_idx').on(
+			table.listId,
+			table.compartment,
+			table.sortOrder,
+		),
+	],
+);
 
-export const playerRoundStandings = sqliteTable('player_round_standings', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	playerId: integer('player_id')
-		.references(() => players.id, { onDelete: 'cascade' })
-		.notNull(),
-	roundId: integer('round_id')
-		.references(() => rounds.id, { onDelete: 'cascade' })
-		.notNull(),
+export const playerRoundStandings = sqliteTable(
+	'player_round_standings',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		playerId: integer('player_id')
+			.references(() => players.id, { onDelete: 'cascade' })
+			.notNull(),
+		roundId: integer('round_id')
+			.references(() => rounds.id, { onDelete: 'cascade' })
+			.notNull(),
 
-	wins: integer('wins'),
-	losses: integer('losses'),
-	draws: integer('draws'),
-	position: integer('position'),
-	points: integer('points'),
+		wins: integer('wins'),
+		losses: integer('losses'),
+		draws: integer('draws'),
+		position: integer('position'),
+		points: integer('points'),
 
-	...timestamps,
-}, table => [
-	uniqueIndex('player_round_standings_unique_idx').on(table.playerId, table.roundId),
-	index('player_round_standings_event_id_idx').on(table.eventId),
-	index('player_round_standings_round_id_idx').on(table.roundId),
-]);
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('player_round_standings_unique_idx').on(table.playerId, table.roundId),
+		index('player_round_standings_event_id_idx').on(table.eventId),
+		index('player_round_standings_round_id_idx').on(table.roundId),
+	],
+);
 
-export const featureMatchSlots = sqliteTable('feature_match_slots', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
+export const featureMatchSlots = sqliteTable(
+	'feature_match_slots',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
 
-	matchId: integer('match_id').references(() => matches.id, { onDelete: 'set null' }),
+		matchId: integer('match_id').references(() => matches.id, { onDelete: 'set null' }),
 
-	externalId: text('external_id'),
-	externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }),
-	tableNumber: integer('table_number'),
-	roundName: text('round_name'),
-	formatName: text('format_name'),
+		externalId: text('external_id'),
+		externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }),
+		tableNumber: integer('table_number'),
+		roundName: text('round_name'),
+		formatName: text('format_name'),
 
-	player1Id: integer('player1_id').references(() => players.id, { onDelete: 'set null' }),
-	player2Id: integer('player2_id').references(() => players.id, { onDelete: 'set null' }),
-	player1Data: text('player1_data', { mode: 'json' }).$type<PlayerSlotData>(),
-	player2Data: text('player2_data', { mode: 'json' }).$type<PlayerSlotData>(),
-	// Seats 3 and 4, a Commander Event's alone. Its Seats are typed, so neither links a Player (ADR-0087).
-	player3Data: text('player3_data', { mode: 'json' }).$type<PlayerSlotData>(),
-	player4Data: text('player4_data', { mode: 'json' }).$type<PlayerSlotData>(),
+		player1Id: integer('player1_id').references(() => players.id, { onDelete: 'set null' }),
+		player2Id: integer('player2_id').references(() => players.id, { onDelete: 'set null' }),
+		player1Data: text('player1_data', { mode: 'json' }).$type<PlayerSlotData>(),
+		player2Data: text('player2_data', { mode: 'json' }).$type<PlayerSlotData>(),
+		// Seats 3 and 4, a Commander Event's alone. Its Seats are typed, so neither links a Player (ADR-0087).
+		player3Data: text('player3_data', { mode: 'json' }).$type<PlayerSlotData>(),
+		player4Data: text('player4_data', { mode: 'json' }).$type<PlayerSlotData>(),
 
-	bestOf: integer('best_of').notNull().default(3),
-	sortOrder: integer('sort_order').notNull().default(0),
-	playerDisplayMode: text('player_display_mode', { enum: PLAYER_DISPLAY_MODE_VALUES }).notNull().default('score'),
+		bestOf: integer('best_of').notNull().default(3),
+		sortOrder: integer('sort_order').notNull().default(0),
+		playerDisplayMode: text('player_display_mode', { enum: PLAYER_DISPLAY_MODE_VALUES })
+			.notNull()
+			.default('score'),
 
-	activeSessionId: integer('active_session_id').references((): AnySQLiteColumn => featureMatchSessions.id, { onDelete: 'set null' }),
+		activeSessionId: integer('active_session_id').references(
+			(): AnySQLiteColumn => featureMatchSessions.id,
+			{ onDelete: 'set null' },
+		),
 
-	...timestamps,
-}, table => [
-	index('feature_match_slots_event_id_idx').on(table.eventId),
-	uniqueIndex('feature_match_slots_external_unique_idx').on(table.eventId, table.externalId, table.externalSource),
-	// A Match occupies at most one Slot. Promotion clears the duplicates it read
-	// before promoting, but two operators promoting one Match to two Slots at
-	// once each read no duplicate, so only the database can be the arbiter. The
-	// promotion's plan fence refuses the later commit first; this is the last word.
-	// Partial because an unoccupied Slot carries no Match and any number of them
-	// may exist at once.
-	uniqueIndex('feature_match_slots_match_unique_idx').on(table.eventId, table.matchId).where(sql`${table.matchId} is not null`),
-]);
+		...timestamps,
+	},
+	(table) => [
+		index('feature_match_slots_event_id_idx').on(table.eventId),
+		uniqueIndex('feature_match_slots_external_unique_idx').on(
+			table.eventId,
+			table.externalId,
+			table.externalSource,
+		),
+		// A Match occupies at most one Slot. Promotion clears the duplicates it read
+		// before promoting, but two operators promoting one Match to two Slots at
+		// once each read no duplicate, so only the database can be the arbiter. The
+		// promotion's plan fence refuses the later commit first; this is the last word.
+		// Partial because an unoccupied Slot carries no Match and any number of them
+		// may exist at once.
+		uniqueIndex('feature_match_slots_match_unique_idx')
+			.on(table.eventId, table.matchId)
+			.where(sql`${table.matchId} is not null`),
+	],
+);
 
-export const featureMatchAssignments = sqliteTable('feature_match_assignments', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	roundId: integer('round_id')
-		.references(() => rounds.id, { onDelete: 'cascade' })
-		.notNull(),
-	slotId: integer('slot_id')
-		.references(() => featureMatchSlots.id, { onDelete: 'cascade' })
-		.notNull(),
-	matchId: integer('match_id')
-		.references(() => matches.id, { onDelete: 'cascade' })
-		.notNull(),
-	note: text('note'),
-	...timestamps,
-}, table => [
-	index('feature_match_assignments_event_id_idx').on(table.eventId),
-	index('feature_match_assignments_round_idx').on(table.roundId),
-	uniqueIndex('feature_match_assignments_slot_unique_idx').on(table.roundId, table.slotId),
-	uniqueIndex('feature_match_assignments_match_unique_idx').on(table.roundId, table.matchId),
-]);
+export const featureMatchAssignments = sqliteTable(
+	'feature_match_assignments',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		roundId: integer('round_id')
+			.references(() => rounds.id, { onDelete: 'cascade' })
+			.notNull(),
+		slotId: integer('slot_id')
+			.references(() => featureMatchSlots.id, { onDelete: 'cascade' })
+			.notNull(),
+		matchId: integer('match_id')
+			.references(() => matches.id, { onDelete: 'cascade' })
+			.notNull(),
+		note: text('note'),
+		...timestamps,
+	},
+	(table) => [
+		index('feature_match_assignments_event_id_idx').on(table.eventId),
+		index('feature_match_assignments_round_idx').on(table.roundId),
+		uniqueIndex('feature_match_assignments_slot_unique_idx').on(table.roundId, table.slotId),
+		uniqueIndex('feature_match_assignments_match_unique_idx').on(table.roundId, table.matchId),
+	],
+);
 
-export const featureMatchSessions = sqliteTable('feature_match_sessions', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	slotId: integer('slot_id')
-		.references(() => featureMatchSlots.id, { onDelete: 'cascade' })
-		.notNull(),
+export const featureMatchSessions = sqliteTable(
+	'feature_match_sessions',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		slotId: integer('slot_id')
+			.references(() => featureMatchSlots.id, { onDelete: 'cascade' })
+			.notNull(),
 
-	status: text('status', { enum: FEATURE_MATCH_SESSION_STATUS_VALUES }).$type<FeatureMatchSessionStatus>().notNull().default('active'),
-	sourceSnapshot: text('source_snapshot', { mode: 'json' }).$type<FeatureMatchSourceSnapshot>().notNull(),
-	currentState: text('current_state', { mode: 'json' }).$type<FeatureMatchState>().notNull(),
-	sequence: integer('sequence').notNull().default(0),
-	closedAt: integer('closed_at', { mode: 'timestamp_ms' }),
+		status: text('status', { enum: FEATURE_MATCH_SESSION_STATUS_VALUES })
+			.$type<FeatureMatchSessionStatus>()
+			.notNull()
+			.default('active'),
+		sourceSnapshot: text('source_snapshot', { mode: 'json' })
+			.$type<FeatureMatchSourceSnapshot>()
+			.notNull(),
+		currentState: text('current_state', { mode: 'json' }).$type<FeatureMatchState>().notNull(),
+		sequence: integer('sequence').notNull().default(0),
+		closedAt: integer('closed_at', { mode: 'timestamp_ms' }),
 
-	...timestamps,
-}, table => [
-	index('feature_match_sessions_event_id_idx').on(table.eventId),
-	index('feature_match_sessions_slot_id_idx').on(table.slotId),
-	uniqueIndex('feature_match_sessions_active_slot_idx').on(table.slotId).where(sql`${table.status} = 'active'`),
-]);
+		...timestamps,
+	},
+	(table) => [
+		index('feature_match_sessions_event_id_idx').on(table.eventId),
+		index('feature_match_sessions_slot_id_idx').on(table.slotId),
+		uniqueIndex('feature_match_sessions_active_slot_idx')
+			.on(table.slotId)
+			.where(sql`${table.status} = 'active'`),
+	],
+);
 
 /**
  * A Feature Match Deck List: the Deck List one Seat of a Slot holds, a One
@@ -510,66 +690,81 @@ export const featureMatchSessions = sqliteTable('feature_match_sessions', {
  * data references it by id, so it moves with the Seat's player; deleting the
  * Slot deletes it.
  */
-export const featureMatchDeckLists = sqliteTable('feature_match_deck_lists', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	slotId: integer('slot_id')
-		.references(() => featureMatchSlots.id, { onDelete: 'cascade' })
-		.notNull(),
-	/** The text the operator pasted, so a re-paste can start from it. */
-	sourceText: text('source_text').notNull(),
-	/** Cards in the Mainboard as it was saved: every card but the Leaders, or the Commanders. A Seat's slot data holds the count read. */
-	mainboardCount: integer('mainboard_count').notNull(),
-	...timestamps,
-}, table => [
-	index('feature_match_deck_lists_event_id_idx').on(table.eventId),
-	index('feature_match_deck_lists_slot_id_idx').on(table.slotId),
-]);
+export const featureMatchDeckLists = sqliteTable(
+	'feature_match_deck_lists',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		slotId: integer('slot_id')
+			.references(() => featureMatchSlots.id, { onDelete: 'cascade' })
+			.notNull(),
+		/** The text the operator pasted, so a re-paste can start from it. */
+		sourceText: text('source_text').notNull(),
+		/** Cards in the Mainboard as it was saved: every card but the Leaders, or the Commanders. A Seat's slot data holds the count read. */
+		mainboardCount: integer('mainboard_count').notNull(),
+		...timestamps,
+	},
+	(table) => [
+		index('feature_match_deck_lists_event_id_idx').on(table.eventId),
+		index('feature_match_deck_lists_slot_id_idx').on(table.slotId),
+	],
+);
 
 /**
  * One pasted card number. Its card is the catalogue's One Piece row with that
  * number (ADR-0074); a number the catalogue lacks is a number-only entry.
  */
-export const featureMatchDeckListEntries = sqliteTable('feature_match_deck_list_entries', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	deckListId: integer('deck_list_id')
-		.references(() => featureMatchDeckLists.id, { onDelete: 'cascade' })
-		.notNull(),
-	sortOrder: integer('sort_order').notNull(),
-	quantity: integer('quantity').notNull(),
-	cardNumber: text('card_number').notNull(),
-	...timestamps,
-}, table => [
-	uniqueIndex('feature_match_deck_list_entries_order_idx').on(table.deckListId, table.sortOrder),
-]);
+export const featureMatchDeckListEntries = sqliteTable(
+	'feature_match_deck_list_entries',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		deckListId: integer('deck_list_id')
+			.references(() => featureMatchDeckLists.id, { onDelete: 'cascade' })
+			.notNull(),
+		sortOrder: integer('sort_order').notNull(),
+		quantity: integer('quantity').notNull(),
+		cardNumber: text('card_number').notNull(),
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('feature_match_deck_list_entries_order_idx').on(table.deckListId, table.sortOrder),
+	],
+);
 
 /**
  * One card of a Commander Seat's Feature Match Deck List (ADR-0087): the exact
  * printing its pasted line named, held as Scryfall answered it, as a
  * Broadcast Deck List's entry is. The Seat names which are its Commanders.
  */
-export const featureMatchDeckListMtgEntries = sqliteTable('feature_match_deck_list_mtg_entries', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	deckListId: integer('deck_list_id')
-		.references(() => featureMatchDeckLists.id, { onDelete: 'cascade' })
-		.notNull(),
-	sortOrder: integer('sort_order').notNull(),
-	quantity: integer('quantity').notNull(),
-	canonicalName: text('canonical_name').notNull(),
-	scryfallId: text('scryfall_id').notNull(),
-	setCode: text('set_code').notNull(),
-	collectorNumber: text('collector_number'),
-	cardType: text('card_type'),
-	/** Colour identity letters. */
-	colors: text('colors'),
-	manaCost: text('mana_cost'),
-	manaValue: real('mana_value'),
-	...timestamps,
-}, table => [
-	uniqueIndex('feature_match_deck_list_mtg_entries_order_idx').on(table.deckListId, table.sortOrder),
-]);
+export const featureMatchDeckListMtgEntries = sqliteTable(
+	'feature_match_deck_list_mtg_entries',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		deckListId: integer('deck_list_id')
+			.references(() => featureMatchDeckLists.id, { onDelete: 'cascade' })
+			.notNull(),
+		sortOrder: integer('sort_order').notNull(),
+		quantity: integer('quantity').notNull(),
+		canonicalName: text('canonical_name').notNull(),
+		scryfallId: text('scryfall_id').notNull(),
+		setCode: text('set_code').notNull(),
+		collectorNumber: text('collector_number'),
+		cardType: text('card_type'),
+		/** Colour identity letters. */
+		colors: text('colors'),
+		manaCost: text('mana_cost'),
+		manaValue: real('mana_value'),
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('feature_match_deck_list_mtg_entries_order_idx').on(
+			table.deckListId,
+			table.sortOrder,
+		),
+	],
+);
 
 /**
  * The playout epoch of one Broadcast Graphics Screen.
@@ -583,29 +778,37 @@ export const featureMatchDeckListMtgEntries = sqliteTable('feature_match_deck_li
  * Only one epoch is active per Screen. An ended epoch is retained rather than
  * deleted so a stale retry from it can be recognised and rejected.
  */
-export const broadcastGraphicsLiveSessions = sqliteTable('broadcast_graphics_live_sessions', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	screenId: integer('screen_id')
-		.references((): AnySQLiteColumn => screens.id, { onDelete: 'cascade' })
-		.notNull(),
+export const broadcastGraphicsLiveSessions = sqliteTable(
+	'broadcast_graphics_live_sessions',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		screenId: integer('screen_id')
+			.references((): AnySQLiteColumn => screens.id, { onDelete: 'cascade' })
+			.notNull(),
 
-	status: text('status', { enum: BROADCAST_GRAPHICS_LIVE_SESSION_STATUS_VALUES })
-		.$type<BroadcastGraphicsLiveSessionStatus>()
-		.notNull()
-		.default('active'),
-	currentState: text('current_state', { mode: 'json' }).$type<BroadcastGraphicsLiveState>().notNull(),
-	sequence: integer('sequence').notNull().default(0),
-	endedAt: integer('ended_at', { mode: 'timestamp_ms' }),
+		status: text('status', { enum: BROADCAST_GRAPHICS_LIVE_SESSION_STATUS_VALUES })
+			.$type<BroadcastGraphicsLiveSessionStatus>()
+			.notNull()
+			.default('active'),
+		currentState: text('current_state', { mode: 'json' })
+			.$type<BroadcastGraphicsLiveState>()
+			.notNull(),
+		sequence: integer('sequence').notNull().default(0),
+		endedAt: integer('ended_at', { mode: 'timestamp_ms' }),
 
-	...timestamps,
-}, table => [
-	index('broadcast_graphics_live_sessions_event_id_idx').on(table.eventId),
-	index('broadcast_graphics_live_sessions_screen_id_idx').on(table.screenId),
-	uniqueIndex('broadcast_graphics_live_sessions_active_screen_idx').on(table.screenId).where(sql`${table.status} = 'active'`),
-]);
+		...timestamps,
+	},
+	(table) => [
+		index('broadcast_graphics_live_sessions_event_id_idx').on(table.eventId),
+		index('broadcast_graphics_live_sessions_screen_id_idx').on(table.screenId),
+		uniqueIndex('broadcast_graphics_live_sessions_active_screen_idx')
+			.on(table.screenId)
+			.where(sql`${table.status} = 'active'`),
+	],
+);
 
 /**
  * Compact command receipts for every sequenced live-state aggregate.
@@ -621,31 +824,43 @@ export const broadcastGraphicsLiveSessions = sqliteTable('broadcast_graphics_liv
  * therefore no smaller than the event rows they replace, but there is a fixed
  * number of them per aggregate instead of one per command forever.
  */
-export const liveStateCommandReceipts = sqliteTable('live_state_command_receipts', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
+export const liveStateCommandReceipts = sqliteTable(
+	'live_state_command_receipts',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
 
-	/** Which family of live-state aggregates the receipt belongs to. */
-	aggregateKind: text('aggregate_kind').notNull(),
-	/** The aggregate's own primary key within that family. */
-	aggregateId: integer('aggregate_id').notNull(),
+		/** Which family of live-state aggregates the receipt belongs to. */
+		aggregateKind: text('aggregate_kind').notNull(),
+		/** The aggregate's own primary key within that family. */
+		aggregateId: integer('aggregate_id').notNull(),
 
-	commandId: text('command_id').notNull(),
-	commandType: text('command_type').notNull(),
-	/** The accepted command's canonical content, for same-ID/different-content rejection. */
-	contentKey: text('content_key').notNull(),
-	/** Authoritative sequence the command committed at. */
-	sequence: integer('sequence').notNull(),
-	createdAt: integer('created_at', { mode: 'timestamp_ms' })
-		.notNull()
-		.default(sql`(unixepoch() * 1000)`),
-}, table => [
-	index('live_state_command_receipts_event_id_idx').on(table.eventId),
-	index('live_state_command_receipts_aggregate_idx').on(table.aggregateKind, table.aggregateId, table.sequence),
-	uniqueIndex('live_state_command_receipts_command_idx').on(table.aggregateKind, table.aggregateId, table.commandId),
-]);
+		commandId: text('command_id').notNull(),
+		commandType: text('command_type').notNull(),
+		/** The accepted command's canonical content, for same-ID/different-content rejection. */
+		contentKey: text('content_key').notNull(),
+		/** Authoritative sequence the command committed at. */
+		sequence: integer('sequence').notNull(),
+		createdAt: integer('created_at', { mode: 'timestamp_ms' })
+			.notNull()
+			.default(sql`(unixepoch() * 1000)`),
+	},
+	(table) => [
+		index('live_state_command_receipts_event_id_idx').on(table.eventId),
+		index('live_state_command_receipts_aggregate_idx').on(
+			table.aggregateKind,
+			table.aggregateId,
+			table.sequence,
+		),
+		uniqueIndex('live_state_command_receipts_command_idx').on(
+			table.aggregateKind,
+			table.aggregateId,
+			table.commandId,
+		),
+	],
+);
 
 /**
  * The single-writer claim on one graphics authoring artifact.
@@ -660,33 +875,37 @@ export const liveStateCommandReceipts = sqliteTable('live_state_command_receipts
  *
  * One row per artifact, enforced by the unique index rather than by convention.
  */
-export const graphicsAuthoringLeases = sqliteTable('graphics_authoring_leases', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	/** Which kind of graphics authoring artifact is leased. */
-	artifactKind: text('artifact_kind').notNull(),
-	/** The artifact's own stable identity within that kind. */
-	artifactId: text('artifact_id').notNull(),
-	/**
-	 * The owning Event, for artifacts that have one. Reusable-library artifacts are
-	 * installation-scoped and carry none.
-	 */
-	eventId: integer('event_id').references(() => events.id, { onDelete: 'cascade' }),
+export const graphicsAuthoringLeases = sqliteTable(
+	'graphics_authoring_leases',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		/** Which kind of graphics authoring artifact is leased. */
+		artifactKind: text('artifact_kind').notNull(),
+		/** The artifact's own stable identity within that kind. */
+		artifactId: text('artifact_id').notNull(),
+		/**
+		 * The owning Event, for artifacts that have one. Reusable-library artifacts are
+		 * installation-scoped and carry none.
+		 */
+		eventId: integer('event_id').references(() => events.id, { onDelete: 'cascade' }),
 
-	/** The Better Auth session — one browser — holding the lease (ADR-0010). */
-	holderSessionId: text('holder_session_id').notNull(),
-	acquiredAt: integer('acquired_at', { mode: 'timestamp_ms' }).notNull(),
-	/**
-	 * The deadline past which the lease counts as absent. Liveness is this column
-	 * alone; a heartbeat is stored only as the deadline it bought, so there is no
-	 * second timestamp to read or keep consistent with it.
-	 */
-	expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+		/** The Better Auth session — one browser — holding the lease (ADR-0010). */
+		holderSessionId: text('holder_session_id').notNull(),
+		acquiredAt: integer('acquired_at', { mode: 'timestamp_ms' }).notNull(),
+		/**
+		 * The deadline past which the lease counts as absent. Liveness is this column
+		 * alone; a heartbeat is stored only as the deadline it bought, so there is no
+		 * second timestamp to read or keep consistent with it.
+		 */
+		expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
 
-	...timestamps,
-}, table => [
-	uniqueIndex('graphics_authoring_leases_artifact_idx').on(table.artifactKind, table.artifactId),
-	index('graphics_authoring_leases_event_id_idx').on(table.eventId),
-]);
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('graphics_authoring_leases_artifact_idx').on(table.artifactKind, table.artifactId),
+		index('graphics_authoring_leases_event_id_idx').on(table.eventId),
+	],
+);
 
 /**
  * The installation's library of reusable Broadcast Graphic Templates.
@@ -707,19 +926,21 @@ export const graphicsAuthoringLeases = sqliteTable('graphics_authoring_leases', 
  * batch is conditional on still reading it, so a template's document and the
  * Graphic Asset References it publishes can never disagree.
  */
-export const broadcastGraphicTemplates = sqliteTable('broadcast_graphic_templates', {
-	id: text('id').primaryKey(),
-	name: text('name').notNull(),
-	description: text('description'),
-	/** Automatically managed: advanced by one on every accepted edit. */
-	revision: integer('revision').notNull().default(1),
-	/** The saved Broadcast Graphic composition, exactly as a Screen would carry it. */
-	document: text('document', { mode: 'json' }).$type<BroadcastGraphicConfig>().notNull(),
-	graphicAssetReferenceVersion: text('graphic_asset_reference_version'),
-	...timestamps,
-}, table => [
-	index('broadcast_graphic_templates_name_idx').on(table.name),
-]);
+export const broadcastGraphicTemplates = sqliteTable(
+	'broadcast_graphic_templates',
+	{
+		id: text('id').primaryKey(),
+		name: text('name').notNull(),
+		description: text('description'),
+		/** Automatically managed: advanced by one on every accepted edit. */
+		revision: integer('revision').notNull().default(1),
+		/** The saved Broadcast Graphic composition, exactly as a Screen would carry it. */
+		document: text('document', { mode: 'json' }).$type<BroadcastGraphicConfig>().notNull(),
+		graphicAssetReferenceVersion: text('graphic_asset_reference_version'),
+		...timestamps,
+	},
+	(table) => [index('broadcast_graphic_templates_name_idx').on(table.name)],
+);
 
 /**
  * The installation's library of reusable Feature Match Layout Templates.
@@ -736,52 +957,60 @@ export const broadcastGraphicTemplates = sqliteTable('broadcast_graphic_template
  * Slot assignment is Screen state that never travels with it. `revision` and
  * `graphic_asset_reference_version` carry exactly the meanings they carry there.
  */
-export const featureMatchLayoutTemplates = sqliteTable('feature_match_layout_templates', {
-	id: text('id').primaryKey(),
-	name: text('name').notNull(),
-	description: text('description'),
-	/** Automatically managed: advanced by one on every accepted edit. */
-	revision: integer('revision').notNull().default(1),
-	/** The saved Feature Match Layout, exactly as a Screen would carry it. */
-	document: text('document', { mode: 'json' }).$type<FeatureMatchLayoutConfig>().notNull(),
-	graphicAssetReferenceVersion: text('graphic_asset_reference_version'),
+export const featureMatchLayoutTemplates = sqliteTable(
+	'feature_match_layout_templates',
+	{
+		id: text('id').primaryKey(),
+		name: text('name').notNull(),
+		description: text('description'),
+		/** Automatically managed: advanced by one on every accepted edit. */
+		revision: integer('revision').notNull().default(1),
+		/** The saved Feature Match Layout, exactly as a Screen would carry it. */
+		document: text('document', { mode: 'json' }).$type<FeatureMatchLayoutConfig>().notNull(),
+		graphicAssetReferenceVersion: text('graphic_asset_reference_version'),
 
-	...timestamps,
-}, table => [
-	index('feature_match_layout_templates_name_idx').on(table.name),
-]);
+		...timestamps,
+	},
+	(table) => [index('feature_match_layout_templates_name_idx').on(table.name)],
+);
 
 export const featureMatches = featureMatchSlots;
 
-export const archetypes = sqliteTable('archetypes', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	name: text('name').notNull(),
-	/** Mana colours; the chart's series is the Pinned Chart Series below. */
-	colors: text('colors'),
-	/**
-	 * The Pinned Chart Series: one of the Theme's chart series, 1 to 8, that
-	 * every chart colouring Archetypes gives this one first; null when unpinned.
-	 * An operator's alone; Melee Sync never writes it.
-	 */
-	chartSeries: integer('chart_series'),
-	/**
-	 * The Leader card number a One Piece Card Game Archetype is derived from
-	 * (ADR-0074): set on the Archetypes the OP Deck List write creates, one per
-	 * Leader per Event; null on every other Archetype.
-	 */
-	leaderCardNumber: text('leader_card_number'),
-	/** Set once an operator renames the Archetype or pins its series; an emptied derived Archetype is kept while set. */
-	customised: integer('customised', { mode: 'boolean' }).notNull().default(false),
+export const archetypes = sqliteTable(
+	'archetypes',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		name: text('name').notNull(),
+		/** Mana colours; the chart's series is the Pinned Chart Series below. */
+		colors: text('colors'),
+		/**
+		 * The Pinned Chart Series: one of the Theme's chart series, 1 to 8, that
+		 * every chart colouring Archetypes gives this one first; null when unpinned.
+		 * An operator's alone; Melee Sync never writes it.
+		 */
+		chartSeries: integer('chart_series'),
+		/**
+		 * The Leader card number a One Piece Card Game Archetype is derived from
+		 * (ADR-0074): set on the Archetypes the OP Deck List write creates, one per
+		 * Leader per Event; null on every other Archetype.
+		 */
+		leaderCardNumber: text('leader_card_number'),
+		/** Set once an operator renames the Archetype or pins its series; an emptied derived Archetype is kept while set. */
+		customised: integer('customised', { mode: 'boolean' }).notNull().default(false),
 
-	...timestamps,
-}, table => [
-	index('archetypes_event_id_idx').on(table.eventId),
-	uniqueIndex('archetypes_event_name_idx').on(table.eventId, table.name),
-	uniqueIndex('archetypes_event_leader_idx').on(table.eventId, table.leaderCardNumber).where(sql`${table.leaderCardNumber} is not null`),
-]);
+		...timestamps,
+	},
+	(table) => [
+		index('archetypes_event_id_idx').on(table.eventId),
+		uniqueIndex('archetypes_event_name_idx').on(table.eventId, table.name),
+		uniqueIndex('archetypes_event_leader_idx')
+			.on(table.eventId, table.leaderCardNumber)
+			.where(sql`${table.leaderCardNumber} is not null`),
+	],
+);
 
 /**
  * Global card catalogue, unique per game (ADR-0074). A Magic: The Gathering
@@ -789,121 +1018,158 @@ export const archetypes = sqliteTable('archetypes', {
  * enriched at sync time. A One Piece card is keyed by card number, filled only
  * from bandai-keepr's bulk lookup and never refreshed.
  */
-export const cards = sqliteTable('cards', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	name: text('name').notNull(),
-	game: text('game', { enum: GAME_VALUES }).notNull().default('mtg'),
-	scryfallId: text('scryfall_id'),
-	oracleId: text('oracle_id'),
-	cardType: text('card_type'),
-	/** Magic: The Gathering's colour identity letters; One Piece's colours as a JSON array. */
-	colors: text('colors'),
-	cmc: real('cmc'),
-	manaCost: text('mana_cost'),
-	deckCounterTypes: text('deck_counter_types', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
-	deckTokens: text('deck_tokens', { mode: 'json' }).$type<DeckTokenRequirement[]>().notNull().default(sql`'[]'`),
-	/** One Piece only, from here down: the card number keying the row. */
-	cardNumber: text('card_number'),
-	category: text('category', { enum: OP_CARD_CATEGORIES }),
-	cost: integer('cost'),
-	power: integer('power'),
-	counter: integer('counter'),
-	/** The card's standard Printing image. */
-	imageUrl: text('image_url'),
-	...timestamps,
-}, table => [
-	uniqueIndex('cards_name_game_idx').on(table.name, table.game).where(sql`${table.game} = 'mtg'`),
-	uniqueIndex('cards_op_number_idx').on(table.cardNumber).where(sql`${table.game} = 'op'`),
-	index('cards_game_idx').on(table.game),
-]);
+export const cards = sqliteTable(
+	'cards',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		name: text('name').notNull(),
+		game: text('game', { enum: GAME_VALUES }).notNull().default('mtg'),
+		scryfallId: text('scryfall_id'),
+		oracleId: text('oracle_id'),
+		cardType: text('card_type'),
+		/** Magic: The Gathering's colour identity letters; One Piece's colours as a JSON array. */
+		colors: text('colors'),
+		cmc: real('cmc'),
+		manaCost: text('mana_cost'),
+		deckCounterTypes: text('deck_counter_types', { mode: 'json' })
+			.$type<string[]>()
+			.notNull()
+			.default(sql`'[]'`),
+		deckTokens: text('deck_tokens', { mode: 'json' })
+			.$type<DeckTokenRequirement[]>()
+			.notNull()
+			.default(sql`'[]'`),
+		/** One Piece only, from here down: the card number keying the row. */
+		cardNumber: text('card_number'),
+		category: text('category', { enum: OP_CARD_CATEGORIES }),
+		cost: integer('cost'),
+		power: integer('power'),
+		counter: integer('counter'),
+		/** The card's standard Printing image. */
+		imageUrl: text('image_url'),
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('cards_name_game_idx')
+			.on(table.name, table.game)
+			.where(sql`${table.game} = 'mtg'`),
+		uniqueIndex('cards_op_number_idx')
+			.on(table.cardNumber)
+			.where(sql`${table.game} = 'op'`),
+		index('cards_game_idx').on(table.game),
+	],
+);
 
 /** One submitted deck for a player. Melee's deck GUID is the stable identity. */
-export const playerDecks = sqliteTable('player_decks', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	playerId: integer('player_id')
-		.references(() => players.id, { onDelete: 'cascade' })
-		.notNull(),
-	externalId: text('external_id').notNull(),
-	externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }).notNull(),
-	formatExternalId: text('format_external_id').notNull(),
-	name: text('name').notNull(),
-	colors: text('colors').notNull().default(''),
-	sortOrder: integer('sort_order').notNull().default(0),
-	isPrimary: integer('is_primary', { mode: 'boolean' }).notNull().default(false),
-	/** App-owned classification. Melee sync preserves it unless the submitted deck contents change. */
-	archetypeId: integer('archetype_id').references(() => archetypes.id, { onDelete: 'set null' }),
-	/** Non-null once this specific submitted deck has been reviewed. */
-	reviewedAt: integer('reviewed_at', { mode: 'timestamp_ms' }),
-	/** A One Piece Card Game Deck List's Leader, by card number, catalogued or not (ADR-0074). */
-	leaderCardNumber: text('leader_card_number'),
-	/** A One Piece Card Game Deck List last written by hand, which a TCG+ Import keeps (ADR-0074). */
-	handEdited: integer('hand_edited', { mode: 'boolean' }).notNull().default(false),
-	...timestamps,
-}, table => [
-	index('player_decks_event_id_idx').on(table.eventId),
-	index('player_decks_player_sort_idx').on(table.playerId, table.sortOrder),
-	index('player_decks_format_idx').on(table.eventId, table.formatExternalId),
-	index('player_decks_archetype_idx').on(table.archetypeId),
-	uniqueIndex('player_decks_external_unique_idx').on(table.eventId, table.externalId, table.externalSource),
-	uniqueIndex('player_decks_primary_unique_idx').on(table.playerId).where(sql`${table.isPrimary} = 1`),
-]);
+export const playerDecks = sqliteTable(
+	'player_decks',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		playerId: integer('player_id')
+			.references(() => players.id, { onDelete: 'cascade' })
+			.notNull(),
+		externalId: text('external_id').notNull(),
+		externalSource: text('external_source', { enum: EXTERNAL_SOURCE_VALUES }).notNull(),
+		formatExternalId: text('format_external_id').notNull(),
+		name: text('name').notNull(),
+		colors: text('colors').notNull().default(''),
+		sortOrder: integer('sort_order').notNull().default(0),
+		isPrimary: integer('is_primary', { mode: 'boolean' }).notNull().default(false),
+		/** App-owned classification. Melee sync preserves it unless the submitted deck contents change. */
+		archetypeId: integer('archetype_id').references(() => archetypes.id, { onDelete: 'set null' }),
+		/** Non-null once this specific submitted deck has been reviewed. */
+		reviewedAt: integer('reviewed_at', { mode: 'timestamp_ms' }),
+		/** A One Piece Card Game Deck List's Leader, by card number, catalogued or not (ADR-0074). */
+		leaderCardNumber: text('leader_card_number'),
+		/** A One Piece Card Game Deck List last written by hand, which a TCG+ Import keeps (ADR-0074). */
+		handEdited: integer('hand_edited', { mode: 'boolean' }).notNull().default(false),
+		...timestamps,
+	},
+	(table) => [
+		index('player_decks_event_id_idx').on(table.eventId),
+		index('player_decks_player_sort_idx').on(table.playerId, table.sortOrder),
+		index('player_decks_format_idx').on(table.eventId, table.formatExternalId),
+		index('player_decks_archetype_idx').on(table.archetypeId),
+		uniqueIndex('player_decks_external_unique_idx').on(
+			table.eventId,
+			table.externalId,
+			table.externalSource,
+		),
+		uniqueIndex('player_decks_primary_unique_idx')
+			.on(table.playerId)
+			.where(sql`${table.isPrimary} = 1`),
+	],
+);
 
 /** Junction: cards contained in one submitted player deck. */
-export const playerDeckCards = sqliteTable('player_deck_cards', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	deckId: integer('deck_id')
-		.references(() => playerDecks.id, { onDelete: 'cascade' })
-		.notNull(),
-	cardId: integer('card_id')
-		.references(() => cards.id, { onDelete: 'cascade' })
-		.notNull(),
-	quantity: integer('quantity').notNull(),
-	compartment: text('compartment', { enum: DECK_LIST_COMPARTMENT_VALUES }).notNull(),
-	sortOrder: integer('sort_order').notNull(),
-}, table => [
-	index('player_deck_cards_deck_sort_idx').on(table.deckId, table.sortOrder),
-	index('player_deck_cards_card_idx').on(table.cardId),
-]);
+export const playerDeckCards = sqliteTable(
+	'player_deck_cards',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		deckId: integer('deck_id')
+			.references(() => playerDecks.id, { onDelete: 'cascade' })
+			.notNull(),
+		cardId: integer('card_id')
+			.references(() => cards.id, { onDelete: 'cascade' })
+			.notNull(),
+		quantity: integer('quantity').notNull(),
+		compartment: text('compartment', { enum: DECK_LIST_COMPARTMENT_VALUES }).notNull(),
+		sortOrder: integer('sort_order').notNull(),
+	},
+	(table) => [
+		index('player_deck_cards_deck_sort_idx').on(table.deckId, table.sortOrder),
+		index('player_deck_cards_card_idx').on(table.cardId),
+	],
+);
 
-export const playerDeckCompanions = sqliteTable('player_deck_companions', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	deckId: integer('deck_id')
-		.references(() => playerDecks.id, { onDelete: 'cascade' })
-		.notNull(),
-	companionCardId: integer('companion_card_id')
-		.references(() => cards.id, { onDelete: 'set null' }),
-	source: text('source', { enum: DECK_COMPANION_SOURCE_VALUES }).notNull(),
-	...timestamps,
-}, table => [
-	uniqueIndex('player_deck_companions_deck_idx').on(table.deckId),
-	index('player_deck_companions_card_idx').on(table.companionCardId),
-]);
+export const playerDeckCompanions = sqliteTable(
+	'player_deck_companions',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		deckId: integer('deck_id')
+			.references(() => playerDecks.id, { onDelete: 'cascade' })
+			.notNull(),
+		companionCardId: integer('companion_card_id').references(() => cards.id, {
+			onDelete: 'set null',
+		}),
+		source: text('source', { enum: DECK_COMPANION_SOURCE_VALUES }).notNull(),
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('player_deck_companions_deck_idx').on(table.deckId),
+		index('player_deck_companions_card_idx').on(table.companionCardId),
+	],
+);
 
-export const eventCardNameOverrides = sqliteTable('event_card_name_overrides', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	inputName: text('input_name').notNull(),
-	normalizedInputName: text('normalized_input_name').notNull(),
-	inputSetCode: text('input_set_code'),
-	normalizedInputSetCode: text('normalized_input_set_code').notNull().default(''),
-	resolvedCardId: integer('resolved_card_id')
-		.references(() => cards.id, { onDelete: 'cascade' })
-		.notNull(),
-	...timestamps,
-}, table => [
-	index('event_card_name_overrides_event_idx').on(table.eventId),
-	index('event_card_name_overrides_card_idx').on(table.resolvedCardId),
-	uniqueIndex('event_card_name_overrides_event_input_idx').on(
-		table.eventId,
-		table.normalizedInputName,
-		table.normalizedInputSetCode,
-	),
-]);
+export const eventCardNameOverrides = sqliteTable(
+	'event_card_name_overrides',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		inputName: text('input_name').notNull(),
+		normalizedInputName: text('normalized_input_name').notNull(),
+		inputSetCode: text('input_set_code'),
+		normalizedInputSetCode: text('normalized_input_set_code').notNull().default(''),
+		resolvedCardId: integer('resolved_card_id')
+			.references(() => cards.id, { onDelete: 'cascade' })
+			.notNull(),
+		...timestamps,
+	},
+	(table) => [
+		index('event_card_name_overrides_event_idx').on(table.eventId),
+		index('event_card_name_overrides_card_idx').on(table.resolvedCardId),
+		uniqueIndex('event_card_name_overrides_event_input_idx').on(
+			table.eventId,
+			table.normalizedInputName,
+			table.normalizedInputSetCode,
+		),
+	],
+);
 
 /**
  * A One Piece Card Game Event's resolved Unresolved Deck Cards (ADR-0074): each
@@ -912,37 +1178,52 @@ export const eventCardNameOverrides = sqliteTable('event_card_name_overrides', {
  * before its catalogue lookup, so a re-import holding the old number keeps
  * the resolution.
  */
-export const eventOpCardNumberResolutions = sqliteTable('event_op_card_number_resolutions', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
-	cardNumber: text('card_number').notNull(),
-	resolvedCardNumber: text('resolved_card_number').notNull(),
-	...timestamps,
-}, table => [
-	uniqueIndex('event_op_card_number_resolutions_event_number_idx').on(table.eventId, table.cardNumber),
-]);
+export const eventOpCardNumberResolutions = sqliteTable(
+	'event_op_card_number_resolutions',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		cardNumber: text('card_number').notNull(),
+		resolvedCardNumber: text('resolved_card_number').notNull(),
+		...timestamps,
+	},
+	(table) => [
+		uniqueIndex('event_op_card_number_resolutions_event_number_idx').on(
+			table.eventId,
+			table.cardNumber,
+		),
+	],
+);
 
-export const playerDeckUnresolvedCards = sqliteTable('player_deck_unresolved_cards', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	deckId: integer('deck_id')
-		.references(() => playerDecks.id, { onDelete: 'cascade' })
-		.notNull(),
-	entryType: text('entry_type', { enum: UNRESOLVED_DECK_ENTRY_TYPE_VALUES }).notNull(),
-	originalName: text('original_name').notNull(),
-	normalizedOriginalName: text('normalized_original_name').notNull(),
-	setCode: text('set_code'),
-	normalizedSetCode: text('normalized_set_code').notNull().default(''),
-	quantity: integer('quantity').notNull().default(1),
-	compartment: text('compartment', { enum: DECK_LIST_COMPARTMENT_VALUES }),
-	sortOrder: integer('sort_order').notNull().default(0),
-	cardType: text('card_type'),
-	...timestamps,
-}, table => [
-	index('player_deck_unresolved_cards_deck_idx').on(table.deckId),
-	index('player_deck_unresolved_cards_lookup_idx').on(table.normalizedOriginalName, table.normalizedSetCode, table.entryType),
-]);
+export const playerDeckUnresolvedCards = sqliteTable(
+	'player_deck_unresolved_cards',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		deckId: integer('deck_id')
+			.references(() => playerDecks.id, { onDelete: 'cascade' })
+			.notNull(),
+		entryType: text('entry_type', { enum: UNRESOLVED_DECK_ENTRY_TYPE_VALUES }).notNull(),
+		originalName: text('original_name').notNull(),
+		normalizedOriginalName: text('normalized_original_name').notNull(),
+		setCode: text('set_code'),
+		normalizedSetCode: text('normalized_set_code').notNull().default(''),
+		quantity: integer('quantity').notNull().default(1),
+		compartment: text('compartment', { enum: DECK_LIST_COMPARTMENT_VALUES }),
+		sortOrder: integer('sort_order').notNull().default(0),
+		cardType: text('card_type'),
+		...timestamps,
+	},
+	(table) => [
+		index('player_deck_unresolved_cards_deck_idx').on(table.deckId),
+		index('player_deck_unresolved_cards_lookup_idx').on(
+			table.normalizedOriginalName,
+			table.normalizedSetCode,
+			table.entryType,
+		),
+	],
+);
 
 /**
  * The Deck List the last TCG+ Import brought for a One Piece Card Game Player,
@@ -962,57 +1243,68 @@ export const tcgPlusImportedDeckLists = sqliteTable('tcgplus_imported_deck_lists
  * Junction: manually-curated key cards for an archetype (max 5).
  * Replaces the old archetypes.key_cards JSON array.
  */
-export const archetypeCards = sqliteTable('archetype_cards', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	archetypeId: integer('archetype_id')
-		.references(() => archetypes.id, { onDelete: 'cascade' })
-		.notNull(),
-	cardId: integer('card_id')
-		.references(() => cards.id, { onDelete: 'cascade' })
-		.notNull(),
-	sortOrder: integer('sort_order').notNull().default(0),
-}, table => [
-	uniqueIndex('archetype_cards_unique_idx').on(table.archetypeId, table.cardId),
-	index('archetype_cards_archetype_idx').on(table.archetypeId),
-	index('archetype_cards_card_idx').on(table.cardId),
-]);
+export const archetypeCards = sqliteTable(
+	'archetype_cards',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		archetypeId: integer('archetype_id')
+			.references(() => archetypes.id, { onDelete: 'cascade' })
+			.notNull(),
+		cardId: integer('card_id')
+			.references(() => cards.id, { onDelete: 'cascade' })
+			.notNull(),
+		sortOrder: integer('sort_order').notNull().default(0),
+	},
+	(table) => [
+		uniqueIndex('archetype_cards_unique_idx').on(table.archetypeId, table.cardId),
+		index('archetype_cards_archetype_idx').on(table.archetypeId),
+		index('archetype_cards_card_idx').on(table.cardId),
+	],
+);
 
-export const screens = sqliteTable('screens', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	eventId: integer('event_id')
-		.references(() => events.id, { onDelete: 'cascade' })
-		.notNull(),
+export const screens = sqliteTable(
+	'screens',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
 
-	name: text('name').notNull(),
-	slug: text('slug').notNull(),
+		name: text('name').notNull(),
+		slug: text('slug').notNull(),
 
-	currentMode: text('current_mode', { enum: SCREEN_MODE_VALUES }).notNull().default('background'),
-	modeConfigs: text('mode_configs', { mode: 'json' }).$type<ModeConfigsMap>(),
-	/**
-	 * The Screen Theme Overrides: a sparse token-value map keyed by token name.
-	 * An override of another mode's Mode Token is kept while the Screen shows
-	 * a different mode (ADR-0049).
-	 */
-	themeOverrides: text('theme_overrides', { mode: 'json' }).$type<StoredThemeTokens>().notNull().default(sql`'{}'`),
-	stateVersion: integer('state_version').notNull().default(0),
-	/** Transaction marker keeping Screen configuration and its Graphic Asset usage index in lockstep. */
-	graphicAssetReferenceVersion: text('graphic_asset_reference_version'),
-	/** Internal derivation seed for the Screen Output's revocable asset capability. */
-	assetCapabilitySeed: text('asset_capability_seed').notNull(),
-	/** Rotation counter; changing it invalidates every previously derived capability. */
-	assetCapabilityVersion: integer('asset_capability_version').notNull().default(1),
-	/** One-way lookup identity used to authorize public Screen Output asset requests. */
-	assetCapabilityDigest: text('asset_capability_digest').notNull(),
-	/** Strongly-consistent source of truth; KV is only a derived display cache. */
-	activeCard: text('active_card', { mode: 'json' }).$type<Record<string, unknown> | null>(),
-	activeCardVersion: integer('active_card_version').notNull().default(0),
+		currentMode: text('current_mode', { enum: SCREEN_MODE_VALUES }).notNull().default('background'),
+		modeConfigs: text('mode_configs', { mode: 'json' }).$type<ModeConfigsMap>(),
+		/**
+		 * The Screen Theme Overrides: a sparse token-value map keyed by token name.
+		 * An override of another mode's Mode Token is kept while the Screen shows
+		 * a different mode (ADR-0049).
+		 */
+		themeOverrides: text('theme_overrides', { mode: 'json' })
+			.$type<StoredThemeTokens>()
+			.notNull()
+			.default(sql`'{}'`),
+		stateVersion: integer('state_version').notNull().default(0),
+		/** Transaction marker keeping Screen configuration and its Graphic Asset usage index in lockstep. */
+		graphicAssetReferenceVersion: text('graphic_asset_reference_version'),
+		/** Internal derivation seed for the Screen Output's revocable asset capability. */
+		assetCapabilitySeed: text('asset_capability_seed').notNull(),
+		/** Rotation counter; changing it invalidates every previously derived capability. */
+		assetCapabilityVersion: integer('asset_capability_version').notNull().default(1),
+		/** One-way lookup identity used to authorize public Screen Output asset requests. */
+		assetCapabilityDigest: text('asset_capability_digest').notNull(),
+		/** Strongly-consistent source of truth; KV is only a derived display cache. */
+		activeCard: text('active_card', { mode: 'json' }).$type<Record<string, unknown> | null>(),
+		activeCardVersion: integer('active_card_version').notNull().default(0),
 
-	...timestamps,
-}, table => [
-	index('screens_event_id_idx').on(table.eventId),
-	uniqueIndex('screens_slug_idx').on(table.eventId, table.slug),
-	uniqueIndex('screens_asset_capability_digest_idx').on(table.assetCapabilityDigest),
-]);
+		...timestamps,
+	},
+	(table) => [
+		index('screens_event_id_idx').on(table.eventId),
+		uniqueIndex('screens_slug_idx').on(table.eventId, table.slug),
+		uniqueIndex('screens_asset_capability_digest_idx').on(table.assetCapabilityDigest),
+	],
+);
 
 /* RELATIONS */
 export const eventsRelations = relations(events, ({ many }) => ({
@@ -1206,12 +1498,15 @@ export const featureMatchDeckListsRelations = relations(featureMatchDeckLists, (
 	entries: many(featureMatchDeckListEntries),
 }));
 
-export const featureMatchDeckListEntriesRelations = relations(featureMatchDeckListEntries, ({ one }) => ({
-	deckList: one(featureMatchDeckLists, {
-		fields: [featureMatchDeckListEntries.deckListId],
-		references: [featureMatchDeckLists.id],
+export const featureMatchDeckListEntriesRelations = relations(
+	featureMatchDeckListEntries,
+	({ one }) => ({
+		deckList: one(featureMatchDeckLists, {
+			fields: [featureMatchDeckListEntries.deckListId],
+			references: [featureMatchDeckLists.id],
+		}),
 	}),
-}));
+);
 
 export const featureMatchSessionsRelations = relations(featureMatchSessions, ({ one }) => ({
 	event: one(events, {
@@ -1229,16 +1524,19 @@ export const featureMatchSessionsRelations = relations(featureMatchSessions, ({ 
 	}),
 }));
 
-export const broadcastGraphicsLiveSessionsRelations = relations(broadcastGraphicsLiveSessions, ({ one }) => ({
-	event: one(events, {
-		fields: [broadcastGraphicsLiveSessions.eventId],
-		references: [events.id],
+export const broadcastGraphicsLiveSessionsRelations = relations(
+	broadcastGraphicsLiveSessions,
+	({ one }) => ({
+		event: one(events, {
+			fields: [broadcastGraphicsLiveSessions.eventId],
+			references: [events.id],
+		}),
+		screen: one(screens, {
+			fields: [broadcastGraphicsLiveSessions.screenId],
+			references: [screens.id],
+		}),
 	}),
-	screen: one(screens, {
-		fields: [broadcastGraphicsLiveSessions.screenId],
-		references: [screens.id],
-	}),
-}));
+);
 
 export const liveStateCommandReceiptsRelations = relations(liveStateCommandReceipts, ({ one }) => ({
 	event: one(events, {
@@ -1315,19 +1613,25 @@ export const eventCardNameOverridesRelations = relations(eventCardNameOverrides,
 	}),
 }));
 
-export const eventOpCardNumberResolutionsRelations = relations(eventOpCardNumberResolutions, ({ one }) => ({
-	event: one(events, {
-		fields: [eventOpCardNumberResolutions.eventId],
-		references: [events.id],
+export const eventOpCardNumberResolutionsRelations = relations(
+	eventOpCardNumberResolutions,
+	({ one }) => ({
+		event: one(events, {
+			fields: [eventOpCardNumberResolutions.eventId],
+			references: [events.id],
+		}),
 	}),
-}));
+);
 
-export const playerDeckUnresolvedCardsRelations = relations(playerDeckUnresolvedCards, ({ one }) => ({
-	deck: one(playerDecks, {
-		fields: [playerDeckUnresolvedCards.deckId],
-		references: [playerDecks.id],
+export const playerDeckUnresolvedCardsRelations = relations(
+	playerDeckUnresolvedCards,
+	({ one }) => ({
+		deck: one(playerDecks, {
+			fields: [playerDeckUnresolvedCards.deckId],
+			references: [playerDecks.id],
+		}),
 	}),
-}));
+);
 
 export const archetypeCardsRelations = relations(archetypeCards, ({ one }) => ({
 	archetype: one(archetypes, {
@@ -1374,9 +1678,11 @@ export type DbFeatureMatchSessionInsert = typeof featureMatchSessions.$inferInse
 export type DbFeatureMatchDeckList = typeof featureMatchDeckLists.$inferSelect;
 export type DbFeatureMatchDeckListEntry = typeof featureMatchDeckListEntries.$inferSelect;
 export type DbFeatureMatchDeckListEntryInsert = typeof featureMatchDeckListEntries.$inferInsert;
-export type DbFeatureMatchDeckListMtgEntryInsert = typeof featureMatchDeckListMtgEntries.$inferInsert;
+export type DbFeatureMatchDeckListMtgEntryInsert =
+	typeof featureMatchDeckListMtgEntries.$inferInsert;
 export type DbBroadcastGraphicsLiveSession = typeof broadcastGraphicsLiveSessions.$inferSelect;
-export type DbBroadcastGraphicsLiveSessionInsert = typeof broadcastGraphicsLiveSessions.$inferInsert;
+export type DbBroadcastGraphicsLiveSessionInsert =
+	typeof broadcastGraphicsLiveSessions.$inferInsert;
 export type DbBroadcastGraphicTemplate = typeof broadcastGraphicTemplates.$inferSelect;
 export type DbBroadcastGraphicTemplateInsert = typeof broadcastGraphicTemplates.$inferInsert;
 export type DbFeatureMatchLayoutTemplate = typeof featureMatchLayoutTemplates.$inferSelect;
@@ -1399,7 +1705,10 @@ export type DbPlayerRoundStandings = typeof playerRoundStandings.$inferSelect;
 export type DbPlayerRoundStandingsInsert = typeof playerRoundStandings.$inferInsert;
 export type DbCard = typeof cards.$inferSelect;
 /** A Magic: The Gathering catalogue row: the columns only One Piece rows fill left out. */
-export type DbMtgCard = Omit<DbCard, 'cardNumber' | 'category' | 'cost' | 'power' | 'counter' | 'imageUrl'>;
+export type DbMtgCard = Omit<
+	DbCard,
+	'cardNumber' | 'category' | 'cost' | 'power' | 'counter' | 'imageUrl'
+>;
 export type DbCardInsert = typeof cards.$inferInsert;
 export type DbPlayerDeck = typeof playerDecks.$inferSelect;
 export type DbPlayerDeckInsert = typeof playerDecks.$inferInsert;

@@ -1,7 +1,5 @@
 import type { GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
-import type {
-	TemplatePackageManifest,
-} from '~~/shared/types/templatePackage';
+import type { TemplatePackageManifest } from '~~/shared/types/templatePackage';
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { crc32 } from 'node:zlib';
@@ -12,27 +10,28 @@ import { $fetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
 import { expectOperationResult } from './responseStatus';
 
-const basePixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
+const basePixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
 /** Appends a valid ancillary text chunk so this suite owns a distinct digest. */
 function pngWithTextChunk(source: Uint8Array, keyword: string): Uint8Array<ArrayBuffer> {
-	const payload = Buffer.concat([
-		Buffer.from('tEXt'),
-		Buffer.from(`${keyword}\0`),
-	]);
+	const payload = Buffer.concat([Buffer.from('tEXt'), Buffer.from(`${keyword}\0`)]);
 	const length = Buffer.alloc(4);
 	length.writeUInt32BE(payload.byteLength - 4, 0);
 	const checksum = Buffer.alloc(4);
 	checksum.writeUInt32BE(crc32(payload), 0);
-	return Uint8Array.from(Buffer.concat([
-		Buffer.from(source.slice(0, -12)),
-		length,
-		payload,
-		checksum,
-		Buffer.from(source.slice(-12)),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			Buffer.from(source.slice(0, -12)),
+			length,
+			payload,
+			checksum,
+			Buffer.from(source.slice(-12)),
+		]),
+	);
 }
 
 const packagePixelPng = pngWithTextChunk(basePixelPng, 'sk-template-package-export');
@@ -67,22 +66,25 @@ describe('template Package export through the API boundary', () => {
 			},
 		});
 		screenId = screen.id;
-		const initiated = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: { cookie: graphicsAuthorCookie },
-			body: graphicsIngestionRequest({
-				idempotencyKey: 'template-package-export-logo',
-				name: 'Packaged sponsor logo',
-				defaultEventId: eventId,
-				browserDecodeEvidence: {
-					outcome: 'decoded',
-					sourceDigest: digestOf(packagePixelPng),
-					width: 1,
-					height: 1,
-				},
-				declaredByteLength: packagePixelPng.byteLength,
-			}),
-		});
+		const initiated = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: { cookie: graphicsAuthorCookie },
+				body: graphicsIngestionRequest({
+					idempotencyKey: 'template-package-export-logo',
+					name: 'Packaged sponsor logo',
+					defaultEventId: eventId,
+					browserDecodeEvidence: {
+						outcome: 'decoded',
+						sourceDigest: digestOf(packagePixelPng),
+						width: 1,
+						height: 1,
+					},
+					declaredByteLength: packagePixelPng.byteLength,
+				}),
+			},
+		);
 		const response = await fetch(
 			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
 			{
@@ -97,8 +99,7 @@ describe('template Package export through the API boundary', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('streams a .sklayout package embedding the exact referenced revision', async () => {
@@ -110,13 +111,10 @@ describe('template Package export through the API boundary', () => {
 		config.layout.frame.backgroundImage = { kind: 'asset', ...reference };
 		// The preset's Text Graphic Items already name an application font, so one
 		// package proves both halves of the rule: declared capability, embedded asset.
-		await $fetch(
-			`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`,
-			{
-				method: 'PATCH',
-				body: { layout: config.layout },
-			},
-		);
+		await $fetch(`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`, {
+			method: 'PATCH',
+			body: { layout: config.layout },
+		});
 
 		const response = await fetch(
 			`/api/events/${eventId}/screens/${screenId}/template-packages/feature-match-layout`,
@@ -126,10 +124,12 @@ describe('template Package export through the API boundary', () => {
 		);
 
 		expect(response.status).toBe(200);
-		expect(response.headers.get('content-type'))
-			.toBe('application/vnd.streamkeepr.feature-match-layout-template+zip');
-		expect(response.headers.get('content-disposition'))
-			.toBe('attachment; filename="exportable-overlay.sklayout"');
+		expect(response.headers.get('content-type')).toBe(
+			'application/vnd.streamkeepr.feature-match-layout-template+zip',
+		);
+		expect(response.headers.get('content-disposition')).toBe(
+			'attachment; filename="exportable-overlay.sklayout"',
+		);
 		expect(response.headers.get('cache-control')).toBe('no-store');
 
 		const bytes = await collectStream(response.body!);
@@ -152,26 +152,34 @@ describe('template Package export through the API boundary', () => {
 		expect(archive.entry(packaged.content.entry).bytes).toEqual(packagePixelPng);
 
 		// The package carries exactly one Template plus only its assets.
-		expect(archive.entryNames.sort()).toEqual([
-			'content/sha256-'.concat(digestOf(packagePixelPng), '.bin'),
-			'manifest.json',
-			'template.json',
-		].sort());
-		const template = archive.json<{ frame: { backgroundImage: unknown }; sources: unknown[]; composition: { items: unknown[] } }>('template.json');
+		expect(archive.entryNames.sort()).toEqual(
+			[
+				'content/sha256-'.concat(digestOf(packagePixelPng), '.bin'),
+				'manifest.json',
+				'template.json',
+			].sort(),
+		);
+		const template = archive.json<{
+			frame: { backgroundImage: unknown };
+			sources: unknown[];
+			composition: { items: unknown[] };
+		}>('template.json');
 		expect(template.frame.backgroundImage).toEqual({ kind: 'asset', ...reference });
 		// A Template is not Screen live state: no Feature Match assignment travels.
 		expect(archive.text('template.json')).not.toContain('featureMatchId');
 		// Application-owned typography is declared, never duplicated as bytes.
-		expect(manifest.applicationCapabilities).toEqual(expect.arrayContaining([
-			expect.objectContaining({
-				capability: 'application-font',
-				// The preset's text is bound to the Default Theme's type, which it holds as its literal.
-				identity: 'saira-condensed',
-			}),
-			expect.objectContaining({ capability: 'graphic-item-definition', identity: 'source' }),
-			expect.objectContaining({ capability: 'graphic-item-definition', identity: 'group' }),
-			expect.objectContaining({ capability: 'graphic-item-definition', identity: 'text' }),
-		]));
+		expect(manifest.applicationCapabilities).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					capability: 'application-font',
+					// The preset's text is bound to the Default Theme's type, which it holds as its literal.
+					identity: 'saira-condensed',
+				}),
+				expect.objectContaining({ capability: 'graphic-item-definition', identity: 'source' }),
+				expect.objectContaining({ capability: 'graphic-item-definition', identity: 'group' }),
+				expect.objectContaining({ capability: 'graphic-item-definition', identity: 'text' }),
+			]),
+		);
 	});
 
 	it('exports the layout a Screen renders when its stored configuration is a fragment without one', async () => {
@@ -180,12 +188,19 @@ describe('template Package export through the API boundary', () => {
 		// the layout it exports.
 		const fragmentScreen = await $fetch(`/api/events/${eventId}/screens`, {
 			method: 'POST',
-			body: { name: 'Fragment Overlay', slug: 'fragment-overlay', currentMode: 'feature-match-overlay' },
+			body: {
+				name: 'Fragment Overlay',
+				slug: 'fragment-overlay',
+				currentMode: 'feature-match-overlay',
+			},
 		});
-		await $fetch(`/api/events/${eventId}/screens/${fragmentScreen.id}/config/feature-match-overlay`, {
-			method: 'PATCH',
-			body: {},
-		});
+		await $fetch(
+			`/api/events/${eventId}/screens/${fragmentScreen.id}/config/feature-match-overlay`,
+			{
+				method: 'PATCH',
+				body: {},
+			},
+		);
 
 		const response = await fetch(
 			`/api/events/${eventId}/screens/${fragmentScreen.id}/template-packages/feature-match-layout`,
@@ -195,10 +210,12 @@ describe('template Package export through the API boundary', () => {
 		);
 
 		expect(response.status).toBe(200);
-		const template = readStoredZipArchive(await collectStream(response.body!))
-			.json<{ sources: { id: string }[] }>('template.json');
-		expect(template.sources.map(source => source.id))
-			.toEqual(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG.layout.sources.map(source => source.id));
+		const template = readStoredZipArchive(await collectStream(response.body!)).json<{
+			sources: { id: string }[];
+		}>('template.json');
+		expect(template.sources.map((source) => source.id)).toEqual(
+			DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG.layout.sources.map((source) => source.id),
+		);
 	});
 
 	it('streams a .skgraphic package declaring application capabilities without duplicating them', async () => {
@@ -295,10 +312,12 @@ describe('template Package export through the API boundary', () => {
 		);
 
 		expect(response.status).toBe(200);
-		expect(response.headers.get('content-type'))
-			.toBe('application/vnd.streamkeepr.broadcast-graphic-template+zip');
-		expect(response.headers.get('content-disposition'))
-			.toBe('attachment; filename="lower-third.skgraphic"');
+		expect(response.headers.get('content-type')).toBe(
+			'application/vnd.streamkeepr.broadcast-graphic-template+zip',
+		);
+		expect(response.headers.get('content-disposition')).toBe(
+			'attachment; filename="lower-third.skgraphic"',
+		);
 
 		const archive = readStoredZipArchive(await collectStream(response.body!));
 		const manifest = archive.json<TemplatePackageManifest>('manifest.json');
@@ -308,12 +327,19 @@ describe('template Package export through the API boundary', () => {
 		// No user-supplied asset is required, so no content entry exists at all.
 		expect(manifest.packagedAssets).toEqual([]);
 		expect(archive.entryNames.sort()).toEqual(['manifest.json', 'template.json']);
-		expect(manifest.applicationCapabilities).toEqual(expect.arrayContaining([
-			expect.objectContaining({ capability: 'application-font', identity: 'inter' }),
-			expect.objectContaining({ capability: 'graphic-item-definition', identity: 'text' }),
-		]));
+		expect(manifest.applicationCapabilities).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ capability: 'application-font', identity: 'inter' }),
+				expect.objectContaining({ capability: 'graphic-item-definition', identity: 'text' }),
+			]),
+		);
 		// The package carries one Broadcast Graphic, not the Screen's whole stack.
-		const template = archive.json<{ id: string; items: unknown[]; sources: unknown[]; bindings: unknown[] }>('template.json');
+		const template = archive.json<{
+			id: string;
+			items: unknown[];
+			sources: unknown[];
+			bindings: unknown[];
+		}>('template.json');
 		expect(template.id).toBe('lower-third');
 		expect(template.items).toHaveLength(1);
 		expect(template.sources).toEqual([

@@ -31,30 +31,24 @@ const isValid = computed(() => unshownPlayerReason(props.game, formData.value) =
 
 async function handleSubmit() {
 	const name = formData.value.name?.trim() ?? '';
-	if (!isValid.value || !eventStore.eventId)
-		return;
+	if (!isValid.value || !eventStore.eventId) return;
 
 	const input = toCreatePlayerInput({
 		...formData.value,
 		name,
 		// A One Piece Player's game data is their Deck List's, written by the OP Deck List write (ADR-0074).
-		gameData: props.game === 'mtg'
-			? mtgGameData.value
-			: undefined,
+		gameData: props.game === 'mtg' ? mtgGameData.value : undefined,
 	});
 
-	await runRequest(
-		() => playerStore.createPlayer(eventStore.eventId!, input),
-		{
-			loadingRef: saving,
-			success: false,
-			error: { title: 'Failed to create player', color: 'error' },
-			onSuccess: () => {
-				emit('created');
-				emit('close');
-			},
+	await runRequest(() => playerStore.createPlayer(eventStore.eventId!, input), {
+		loadingRef: saving,
+		success: false,
+		error: { title: 'Failed to create player', color: 'error' },
+		onSuccess: () => {
+			emit('created');
+			emit('close');
 		},
-	);
+	});
 }
 
 function handleCancel() {
@@ -68,15 +62,10 @@ function handleCancel() {
 		title="Create Player"
 		:close="{ onClick: handleCancel }"
 		:ui="{ footer: 'justify-end' }"
-		@update:open="val => !val && handleCancel()"
+		@update:open="(val) => !val && handleCancel()"
 	>
 		<template #body>
-			<UForm
-				:id="formId"
-				:state="formData"
-				class="flex flex-col gap-4"
-				@submit="handleSubmit"
-			>
+			<UForm :id="formId" :state="formData" class="flex flex-col gap-4" @submit="handleSubmit">
 				<PlayerFormFields
 					v-model="formData"
 					v-model:mtg-game-data="mtgGameData"
@@ -88,12 +77,7 @@ function handleCancel() {
 		</template>
 
 		<template #footer>
-			<UButton
-				variant="ghost"
-				color="neutral"
-				label="Cancel"
-				@click="handleCancel"
-			/>
+			<UButton variant="ghost" color="neutral" label="Cancel" @click="handleCancel" />
 			<UButton
 				type="submit"
 				:form="formId"

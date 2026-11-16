@@ -56,8 +56,10 @@ export const GRAPHIC_ANIMATION_ORIGINS: readonly GraphicAnimationOriginDefinitio
 export function resolveGraphicAnimationOrigin(
 	value: GraphicAnimationOrigin | undefined,
 ): GraphicAnimationOriginDefinition {
-	return GRAPHIC_ANIMATION_ORIGINS.find(origin => origin.value === value)
-		?? GRAPHIC_ANIMATION_ORIGINS.find(origin => origin.value === 'center')!;
+	return (
+		GRAPHIC_ANIMATION_ORIGINS.find((origin) => origin.value === value) ??
+		GRAPHIC_ANIMATION_ORIGINS.find((origin) => origin.value === 'center')!
+	);
 }
 
 export interface GraphicSlideDirectionDefinition {
@@ -128,15 +130,17 @@ export const GRAPHIC_SLIDE_DIRECTIONS: readonly GraphicSlideDirectionDefinition[
 export function resolveGraphicSlideDirection(
 	value: GraphicSlideDirection | undefined,
 ): GraphicSlideDirectionDefinition {
-	return GRAPHIC_SLIDE_DIRECTIONS.find(direction => direction.value === value)
-		?? GRAPHIC_SLIDE_DIRECTIONS[0]!;
+	return (
+		GRAPHIC_SLIDE_DIRECTIONS.find((direction) => direction.value === value) ??
+		GRAPHIC_SLIDE_DIRECTIONS[0]!
+	);
 }
 
 export const GRAPHIC_ANIMATION_PHASE_LABELS: Readonly<Record<GraphicAnimationPhase, string>> = {
-	'enter': 'Enter',
+	enter: 'Enter',
 	'on-screen': 'On screen',
-	'update': 'Update',
-	'exit': 'Exit',
+	update: 'Update',
+	exit: 'Exit',
 };
 
 /* ────────────────────────────────────────────────
@@ -148,8 +152,7 @@ const BACK_OVERSHOOT = 1.70158;
 const BACK_IN_OUT_OVERSHOOT = BACK_OVERSHOOT * 1.525;
 
 function clampProgress(value: number): number {
-	if (!Number.isFinite(value))
-		return 0;
+	if (!Number.isFinite(value)) return 0;
 	return Math.max(0, Math.min(1, value));
 }
 
@@ -161,35 +164,36 @@ function clampProgress(value: number): number {
  * starts at exactly 0 and ends at exactly 1, which is what makes a recipe land
  * on its owner's Graphic Resting State rather than near it.
  */
-export function graphicAnimationEasedProgress(easing: GraphicAnimationEasing, progress: number): number {
+export function graphicAnimationEasedProgress(
+	easing: GraphicAnimationEasing,
+	progress: number,
+): number {
 	const t = clampProgress(progress);
 
 	// Snapped rather than computed at the ends. A back easing's polynomial leaves
 	// floating-point dust at zero and one, and "settled at the Graphic Resting
 	// State" has to be exact: 2e-16 of an excursion is not a rendering difference,
 	// but it is the difference between projecting nothing and projecting a frame.
-	if (t <= 0)
-		return 0;
-	if (t >= 1)
-		return 1;
+	if (t <= 0) return 0;
+	if (t >= 1) return 1;
 
 	switch (easing) {
 		case 'ease-in':
 			return t * t;
 		case 'ease-out':
-			return 1 - ((1 - t) ** 2);
+			return 1 - (1 - t) ** 2;
 		case 'ease-in-out':
-			return t < 0.5
-				? 2 * t * t
-				: 1 - (2 * ((1 - t) ** 2));
+			return t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) ** 2;
 		case 'back-in':
-			return ((BACK_OVERSHOOT + 1) * t * t * t) - (BACK_OVERSHOOT * t * t);
+			return (BACK_OVERSHOOT + 1) * t * t * t - BACK_OVERSHOOT * t * t;
 		case 'back-out':
-			return 1 + ((BACK_OVERSHOOT + 1) * ((t - 1) ** 3)) + (BACK_OVERSHOOT * ((t - 1) ** 2));
+			return 1 + (BACK_OVERSHOOT + 1) * (t - 1) ** 3 + BACK_OVERSHOOT * (t - 1) ** 2;
 		case 'back-in-out':
 			return t < 0.5
-				? (((2 * t) ** 2) * (((BACK_IN_OUT_OVERSHOOT + 1) * 2 * t) - BACK_IN_OUT_OVERSHOOT)) / 2
-				: ((((((2 * t) - 2) ** 2) * (((BACK_IN_OUT_OVERSHOOT + 1) * ((2 * t) - 2)) + BACK_IN_OUT_OVERSHOOT)) + 2) / 2);
+				? ((2 * t) ** 2 * ((BACK_IN_OUT_OVERSHOOT + 1) * 2 * t - BACK_IN_OUT_OVERSHOOT)) / 2
+				: ((2 * t - 2) ** 2 * ((BACK_IN_OUT_OVERSHOOT + 1) * (2 * t - 2) + BACK_IN_OUT_OVERSHOOT) +
+						2) /
+						2;
 		case 'linear':
 		default:
 			return t;
@@ -213,16 +217,12 @@ export function graphicAnimationStaggerOffset(
 	directItemIds: readonly string[],
 	itemId: string,
 ): number {
-	if (!stagger || !stagger.itemIds.includes(itemId))
-		return 0;
+	if (!stagger || !stagger.itemIds.includes(itemId)) return 0;
 
-	const selected = directItemIds.filter(id => stagger.itemIds.includes(id));
-	const ordered = stagger.order === 'reverse-list'
-		? [...selected].reverse()
-		: selected;
+	const selected = directItemIds.filter((id) => stagger.itemIds.includes(id));
+	const ordered = stagger.order === 'reverse-list' ? [...selected].reverse() : selected;
 	const index = ordered.indexOf(itemId);
-	if (index < 0)
-		return 0;
+	if (index < 0) return 0;
 
 	return Math.max(0, stagger.step) * index;
 }
@@ -249,7 +249,10 @@ export function graphicOnScreenCycleMs(recipe: GraphicOnScreenAnimationRecipe): 
  * finishes, and even a finite one must not prevent the Graphic Playout State from
  * being on-air, so on-screen cycling is projected but never gates a phase.
  */
-export function graphicAnimationRecipeEndMs(recipe: GraphicAnimationRecipe, staggerOffset = 0): number {
+export function graphicAnimationRecipeEndMs(
+	recipe: GraphicAnimationRecipe,
+	staggerOffset = 0,
+): number {
 	return Math.max(0, recipe.delay) + Math.max(0, staggerOffset) + Math.max(0, recipe.duration);
 }
 
@@ -284,32 +287,26 @@ export function broadcastGraphicPhaseDurationMs(
 	graphic: Pick<BroadcastGraphicConfig, 'items' | 'animation'>,
 	phase: GraphicAnimationPhase,
 ): number {
-	if (phase === 'on-screen')
-		return 0;
+	if (phase === 'on-screen') return 0;
 
 	const own = graphicAnimationRecipe(graphic.animation, phase);
-	const topLevelIds = graphic.items.map(item => item.id);
+	const topLevelIds = graphic.items.map((item) => item.id);
 	const graphicStagger = graphicAnimationStagger(graphic.animation, phase);
 
-	let latest = own
-		? graphicAnimationRecipeEndMs(own)
-		: 0;
+	let latest = own ? graphicAnimationRecipeEndMs(own) : 0;
 
 	for (const item of graphic.items) {
 		const offset = graphicAnimationStaggerOffset(graphicStagger, topLevelIds, item.id);
 		const recipe = graphicAnimationRecipe(item.animation, phase);
-		if (recipe)
-			latest = Math.max(latest, graphicAnimationRecipeEndMs(recipe, offset));
+		if (recipe) latest = Math.max(latest, graphicAnimationRecipeEndMs(recipe, offset));
 
-		if (item.type !== 'group')
-			continue;
+		if (item.type !== 'group') continue;
 
-		const childIds = item.children.map(child => child.id);
+		const childIds = item.children.map((child) => child.id);
 		const childStagger = graphicAnimationStagger(item.animation, phase);
 		for (const child of item.children) {
 			const childRecipe = graphicAnimationRecipe(child.animation, phase);
-			if (!childRecipe)
-				continue;
+			if (!childRecipe) continue;
 			// A child's offset is its group's stagger plus whatever offset the group
 			// itself received, because both are measured from one shared phase start.
 			const childOffset = offset + graphicAnimationStaggerOffset(childStagger, childIds, child.id);
@@ -344,14 +341,13 @@ export function broadcastGraphicHasPhaseAnimation(
 	graphic: Pick<BroadcastGraphicConfig, 'items' | 'animation'>,
 	phase: GraphicAnimationPhase,
 ): boolean {
-	if (graphicAnimationRecipe(graphic.animation, phase))
-		return true;
+	if (graphicAnimationRecipe(graphic.animation, phase)) return true;
 
-	return graphic.items.some(item =>
-		Boolean(graphicAnimationRecipe(item.animation, phase))
-		|| (item.type === 'group' && item.children.some(child =>
-			Boolean(graphicAnimationRecipe(child.animation, phase)),
-		)),
+	return graphic.items.some(
+		(item) =>
+			Boolean(graphicAnimationRecipe(item.animation, phase)) ||
+			(item.type === 'group' &&
+				item.children.some((child) => Boolean(graphicAnimationRecipe(child.animation, phase)))),
 	);
 }
 
@@ -367,7 +363,9 @@ export function broadcastGraphicHasPhaseAnimation(
  * reads as that phase: a fade in, a gentle on-screen pulse, a cross-fade update,
  * a fade out.
  */
-export function createDefaultGraphicAnimationRecipe(phase: 'on-screen'): GraphicOnScreenAnimationRecipe;
+export function createDefaultGraphicAnimationRecipe(
+	phase: 'on-screen',
+): GraphicOnScreenAnimationRecipe;
 export function createDefaultGraphicAnimationRecipe(
 	phase: Exclude<GraphicAnimationPhase, 'on-screen'>,
 ): GraphicAnimationRecipe;
@@ -389,12 +387,8 @@ export function createDefaultGraphicAnimationRecipe(
 	}
 
 	return {
-		duration: phase === 'exit'
-			? 300
-			: 400,
-		easing: phase === 'exit'
-			? 'ease-in'
-			: 'ease-out',
+		duration: phase === 'exit' ? 300 : 400,
+		easing: phase === 'exit' ? 'ease-in' : 'ease-out',
 		delay: 0,
 		fade: { opacity: 0 },
 	};
@@ -558,12 +552,14 @@ export const GRAPHIC_ANIMATION_PRESETS: readonly GraphicAnimationPreset[] = [
 ];
 
 export function getGraphicAnimationPreset(id: string): GraphicAnimationPreset | undefined {
-	return GRAPHIC_ANIMATION_PRESETS.find(preset => preset.id === id);
+	return GRAPHIC_ANIMATION_PRESETS.find((preset) => preset.id === id);
 }
 
 /** The presets offered for one lifecycle phase. */
-export function graphicAnimationPresetsForPhase(phase: GraphicAnimationPhase): GraphicAnimationPreset[] {
-	return GRAPHIC_ANIMATION_PRESETS.filter(preset => preset.phase === phase);
+export function graphicAnimationPresetsForPhase(
+	phase: GraphicAnimationPhase,
+): GraphicAnimationPreset[] {
+	return GRAPHIC_ANIMATION_PRESETS.filter((preset) => preset.phase === phase);
 }
 
 /** Clamp an authored duration into the settled bounds, for editor controls. */
@@ -578,9 +574,9 @@ export function clampGraphicAnimationDuration(value: number): number {
 export function graphicAnimationOwners(
 	graphic: Pick<BroadcastGraphicConfig, 'items'>,
 ): GraphicItemConfig[] {
-	return graphic.items.flatMap(item => item.type === 'group'
-		? [item, ...item.children]
-		: [item]);
+	return graphic.items.flatMap((item) =>
+		item.type === 'group' ? [item, ...item.children] : [item],
+	);
 }
 
 /* ────────────────────────────────────────────────
@@ -673,18 +669,12 @@ export function graphicClearParentDistance(
 	const step = resolveGraphicSlideDirection(direction);
 	const requirements: number[] = [];
 
-	if (step.x > 0)
-		requirements.push(Math.max(0, parent.width - rect.x));
-	if (step.x < 0)
-		requirements.push(Math.max(0, rect.x + rect.width));
-	if (step.y > 0)
-		requirements.push(Math.max(0, parent.height - rect.y));
-	if (step.y < 0)
-		requirements.push(Math.max(0, rect.y + rect.height));
+	if (step.x > 0) requirements.push(Math.max(0, parent.width - rect.x));
+	if (step.x < 0) requirements.push(Math.max(0, rect.x + rect.width));
+	if (step.y > 0) requirements.push(Math.max(0, parent.height - rect.y));
+	if (step.y < 0) requirements.push(Math.max(0, rect.y + rect.height));
 
-	return requirements.length === 0
-		? 0
-		: Math.min(...requirements);
+	return requirements.length === 0 ? 0 : Math.min(...requirements);
 }
 
 /** Which of its parent's dimensions a fixed slide distance is measured against. */
@@ -730,12 +720,9 @@ export function graphicAnimationLinearProgress(
 	// A recipe with no travel is already complete, which is the same arithmetic a
 	// missing recipe and Cut rely on. An unreadable elapsed time is treated as the
 	// beginning rather than guessed at; an unboundedly large one saturates below.
-	if (duration <= 0)
-		return 1;
-	if (Number.isNaN(elapsed) || elapsed <= start)
-		return 0;
-	if (elapsed >= start + duration)
-		return 1;
+	if (duration <= 0) return 1;
+	if (Number.isNaN(elapsed) || elapsed <= start) return 0;
+	if (elapsed >= start + duration) return 1;
 	return (elapsed - start) / duration;
 }
 
@@ -747,30 +734,30 @@ export function graphicAnimationLinearProgress(
  * Resting State. Once a finite repetition is exhausted the owner stays at rest,
  * so an on-screen recipe cannot leave a graphic parked off its resting state.
  */
-function onScreenExcursion(recipe: GraphicOnScreenAnimationRecipe, elapsed: number, staggerOffset: number): number {
+function onScreenExcursion(
+	recipe: GraphicOnScreenAnimationRecipe,
+	elapsed: number,
+	staggerOffset: number,
+): number {
 	const start = Math.max(0, recipe.delay) + Math.max(0, staggerOffset);
 	const duration = Math.max(0, recipe.duration);
 	const cycle = graphicOnScreenCycleMs(recipe);
-	if (!Number.isFinite(elapsed) || elapsed <= start || cycle <= 0 || duration <= 0)
-		return 0;
+	if (!Number.isFinite(elapsed) || elapsed <= start || cycle <= 0 || duration <= 0) return 0;
 
 	const since = elapsed - start;
 	const index = Math.floor(since / cycle);
 	if (recipe.repeat !== GRAPHIC_ANIMATION_REPEAT_INDEFINITE && index >= Math.max(0, recipe.repeat))
 		return 0;
 
-	const withinCycle = since - (index * cycle);
-	if (withinCycle >= duration)
-		return 0;
+	const withinCycle = since - index * cycle;
+	if (withinCycle >= duration) return 0;
 
 	// Out and back: the first half travels to the excursion, the second returns, and
 	// each leg carries the recipe's own easing. Easing the legs rather than the whole
 	// cycle is what keeps the turn at exactly the full excursion and both ends exactly
 	// at rest — easing a triangle as one curve would land the turn short.
 	const travel = withinCycle / duration;
-	const leg = travel <= 0.5
-		? travel * 2
-		: (1 - travel) * 2;
+	const leg = travel <= 0.5 ? travel * 2 : (1 - travel) * 2;
 	return graphicAnimationEasedProgress(recipe.easing, leg);
 }
 
@@ -785,13 +772,16 @@ function onScreenExcursion(recipe: GraphicOnScreenAnimationRecipe, elapsed: numb
  */
 export function graphicAnimationExcursion(input: GraphicAnimationProjectionInput): number {
 	const recipe = input.recipe;
-	if (!recipe)
-		return 0;
+	if (!recipe) return 0;
 
 	// On-screen cycles rather than travelling once, so it eases each leg of its own
 	// out-and-back inside `onScreenExcursion` instead of easing a single progress.
 	if (input.phase === 'on-screen')
-		return onScreenExcursion(recipe as GraphicOnScreenAnimationRecipe, input.elapsed, input.staggerOffset ?? 0);
+		return onScreenExcursion(
+			recipe as GraphicOnScreenAnimationRecipe,
+			input.elapsed,
+			input.staggerOffset ?? 0,
+		);
 
 	const eased = graphicAnimationEasedProgress(
 		recipe.easing,
@@ -804,9 +794,7 @@ export function graphicAnimationExcursion(input: GraphicAnimationProjectionInput
 	// `resolveGraphicAnimationValues` is where the two are turned into one value —
 	// there is nothing here for a caller to combine, and nothing that can be projected
 	// out of step with its counterpart.
-	return input.phase === 'exit'
-		? eased
-		: 1 - eased;
+	return input.phase === 'exit' ? eased : 1 - eased;
 }
 
 /**
@@ -832,26 +820,27 @@ function ownerValues(
 		// authored reduction. Composition with other fades is multiplicative, which
 		// nesting gives for free.
 		const from = Math.max(0, Math.min(1, recipe.fade.opacity));
-		values.opacity = 1 + ((from - 1) * excursion);
+		values.opacity = 1 + (from - 1) * excursion;
 	}
 
 	if (recipe.slide) {
 		const step = resolveGraphicSlideDirection(recipe.slide.direction);
-		const distance = recipe.slide.distanceMode === 'clear-parent'
-			? graphicClearParentDistance(input.rect, input.parent, recipe.slide.direction)
-			: Math.max(0, recipe.slide.distance);
+		const distance =
+			recipe.slide.distanceMode === 'clear-parent'
+				? graphicClearParentDistance(input.rect, input.parent, recipe.slide.direction)
+				: Math.max(0, recipe.slide.distance);
 		// `+ 0` because negating a zero offset produces -0, which reads back out as
 		// "-0px" in a transform and makes two identical projections compare unequal.
 		values.translate = {
-			x: (step.x * distance * excursion * direction) + 0,
-			y: (step.y * distance * excursion * direction) + 0,
+			x: step.x * distance * excursion * direction + 0,
+			y: step.y * distance * excursion * direction + 0,
 		};
 	}
 
 	if (recipe.scale) {
 		const origin = resolveGraphicAnimationOrigin(recipe.scale.origin);
 		const factor = Math.max(0, recipe.scale.factor);
-		values.scale = 1 + ((factor - 1) * excursion);
+		values.scale = 1 + (factor - 1) * excursion;
 		values.scaleOrigin = { x: origin.x, y: origin.y };
 	}
 
@@ -874,10 +863,11 @@ function ownerValues(
  * identical numbers, and what makes phase projection testable without rendering
  * anything.
  */
-export function resolveGraphicAnimationValues(input: GraphicAnimationProjectionInput): GraphicAnimationValues {
+export function resolveGraphicAnimationValues(
+	input: GraphicAnimationProjectionInput,
+): GraphicAnimationValues {
 	const recipe = input.recipe;
-	if (!recipe)
-		return {};
+	if (!recipe) return {};
 
 	const excursion = graphicAnimationExcursion(input);
 
@@ -899,8 +889,7 @@ export function resolveGraphicAnimationValues(input: GraphicAnimationProjectionI
 	// already past its phase duration projects the *same empty values* as one that
 	// was never animated, so it is settled at its Graphic Resting State rather than
 	// merely close to it — and no output can tell the two apart.
-	if (excursion === 0)
-		return {};
+	if (excursion === 0) return {};
 
 	return ownerValues(recipe, input, excursion, 1, false);
 }
@@ -926,10 +915,12 @@ export function isGraphicRestingProjection(values: GraphicAnimationOwnerValues):
 	// settled owner has an excursion of exactly zero and every channel lands on exactly
 	// its resting value. Tolerating a range on one channel and not the others would have
 	// been an asymmetry with no cause behind it.
-	return (values.opacity === undefined || values.opacity === 1)
-		&& (values.translate === undefined || (values.translate.x === 0 && values.translate.y === 0))
-		&& (values.scale === undefined || values.scale === 1)
-		&& (values.reveal === undefined || values.reveal.visible === 1);
+	return (
+		(values.opacity === undefined || values.opacity === 1) &&
+		(values.translate === undefined || (values.translate.x === 0 && values.translate.y === 0)) &&
+		(values.scale === undefined || values.scale === 1) &&
+		(values.reveal === undefined || values.reveal.visible === 1)
+	);
 }
 
 /* ────────────────────────────────────────────────
@@ -969,23 +960,25 @@ export function broadcastGraphicOnScreenRunMs(
 ): number {
 	const owners: (GraphicAnimation | undefined)[] = [
 		graphic.animation,
-		...graphic.items.flatMap(item => item.type === 'group'
-			? [
-					item.animation,
-					...item.children.map(child => child.animation),
-				]
-			: [item.animation]),
+		...graphic.items.flatMap((item) =>
+			item.type === 'group'
+				? [item.animation, ...item.children.map((child) => child.animation)]
+				: [item.animation],
+		),
 	];
 
 	let longest = 0;
 	for (const animation of owners) {
 		const recipe = animation?.['on-screen'];
-		if (!recipe)
-			continue;
-		const cycles = recipe.repeat === GRAPHIC_ANIMATION_REPEAT_INDEFINITE
-			? Math.max(1, boundedCycles)
-			: Math.max(1, recipe.repeat);
-		longest = Math.max(longest, Math.max(0, recipe.delay) + (cycles * graphicOnScreenCycleMs(recipe)));
+		if (!recipe) continue;
+		const cycles =
+			recipe.repeat === GRAPHIC_ANIMATION_REPEAT_INDEFINITE
+				? Math.max(1, boundedCycles)
+				: Math.max(1, recipe.repeat);
+		longest = Math.max(
+			longest,
+			Math.max(0, recipe.delay) + cycles * graphicOnScreenCycleMs(recipe),
+		);
 	}
 
 	return longest;
@@ -1044,12 +1037,9 @@ export function graphicAnimationTimelineAt(
 	segments: readonly GraphicAnimationTimelineSegment[],
 	elapsed: number,
 ): { phase: GraphicAnimationPhase; elapsed: number } | null {
-	if (segments.length === 0)
-		return null;
+	if (segments.length === 0) return null;
 
-	const position = Number.isFinite(elapsed)
-		? Math.max(0, elapsed)
-		: 0;
+	const position = Number.isFinite(elapsed) ? Math.max(0, elapsed) : 0;
 	let consumed = 0;
 
 	for (const segment of segments) {

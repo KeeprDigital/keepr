@@ -39,13 +39,18 @@ export interface ScreenOutputReadScope {
  * no caller ever chooses a path by credential.
  */
 export function useScreenOutputReadRepository() {
-	async function read<T>(scope: ScreenOutputReadScope, resource: string, query?: Record<string, unknown>): Promise<T> {
-		return await $fetch<T>(`/api/screen-output/events/${scope.eventId}/screens/${scope.screenId}/${resource}`, {
-			headers: screenOutputCapabilityHeaders(scope.assetCapability),
-			...(query
-				? { query }
-				: {}),
-		}) as T;
+	async function read<T>(
+		scope: ScreenOutputReadScope,
+		resource: string,
+		query?: Record<string, unknown>,
+	): Promise<T> {
+		return (await $fetch<T>(
+			`/api/screen-output/events/${scope.eventId}/screens/${scope.screenId}/${resource}`,
+			{
+				headers: screenOutputCapabilityHeaders(scope.assetCapability),
+				...(query ? { query } : {}),
+			},
+		)) as T;
 	}
 
 	return {
@@ -55,31 +60,44 @@ export function useScreenOutputReadRepository() {
 			read<BroadcastGraphicsLiveSessionResponse>(scope, 'broadcast-graphics/live-session'),
 		playerHistory: (scope: ScreenOutputReadScope) =>
 			read<{ player: Player; history: PlayerMatchHistoryEntry[] }>(scope, 'player-history'),
-		standings: (scope: ScreenOutputReadScope) => read<ScreenOutputStandingsResponse>(scope, 'standings'),
-		pairings: (scope: ScreenOutputReadScope) => read<ScreenOutputPairingsResponse>(scope, 'pairings'),
+		standings: (scope: ScreenOutputReadScope) =>
+			read<ScreenOutputStandingsResponse>(scope, 'standings'),
+		pairings: (scope: ScreenOutputReadScope) =>
+			read<ScreenOutputPairingsResponse>(scope, 'pairings'),
 		archetypeSpotlight: (scope: ScreenOutputReadScope) =>
 			read<ScreenOutputArchetypeSpotlightResponse>(scope, 'archetype-spotlight'),
-		headToHead: (scope: ScreenOutputReadScope) => read<ScreenOutputHeadToHeadResponse>(scope, 'head-to-head'),
+		headToHead: (scope: ScreenOutputReadScope) =>
+			read<ScreenOutputHeadToHeadResponse>(scope, 'head-to-head'),
 		talent: (scope: ScreenOutputReadScope) => read<ScreenOutputTalentResponse>(scope, 'talent'),
-		metagame: (scope: ScreenOutputReadScope) => read<ScreenOutputMetagameResponse>(scope, 'metagame'),
+		metagame: (scope: ScreenOutputReadScope) =>
+			read<ScreenOutputMetagameResponse>(scope, 'metagame'),
 		topCards: (scope: ScreenOutputReadScope) => read<CardBreakdownResponse>(scope, 'top-cards'),
 		topCut: (scope: ScreenOutputReadScope) => read<ScreenOutputTopCutResponse>(scope, 'top-cut'),
-		roundClock: (scope: ScreenOutputReadScope) => read<ScreenOutputRoundClockResponse>(scope, 'round-clock'),
+		roundClock: (scope: ScreenOutputReadScope) =>
+			read<ScreenOutputRoundClockResponse>(scope, 'round-clock'),
 		featureMatchSlot: (scope: ScreenOutputReadScope, slotId: number) =>
 			read<ScreenOutputFeatureMatchResponse>(scope, `feature-match-slots/${slotId}`),
 		featureMatchDeckList: (scope: ScreenOutputReadScope, slotId: number, deckListId: number) =>
-			read<ScreenOutputFeatureMatchDeckListResponse>(scope, `feature-match-slots/${slotId}/deck-lists/${deckListId}`),
+			read<ScreenOutputFeatureMatchDeckListResponse>(
+				scope,
+				`feature-match-slots/${slotId}/deck-lists/${deckListId}`,
+			),
 		commanderDeckList: (scope: ScreenOutputReadScope, slotId: number, deckListId: number) =>
-			read<ScreenOutputCommanderDeckListResponse>(scope, `feature-match-slots/${slotId}/commander-deck-lists/${deckListId}`),
+			read<ScreenOutputCommanderDeckListResponse>(
+				scope,
+				`feature-match-slots/${slotId}/commander-deck-lists/${deckListId}`,
+			),
 		opPlayerDeckList: (scope: ScreenOutputReadScope, playerId: number) =>
 			read<ScreenOutputOpPlayerDeckListResponse>(scope, `players/${playerId}/deck-list`),
-		playerDecks: (scope: ScreenOutputReadScope, playerId: number, selection: { deckId?: number } = {}) =>
+		playerDecks: (
+			scope: ScreenOutputReadScope,
+			playerId: number,
+			selection: { deckId?: number } = {},
+		) =>
 			read<ScreenOutputPlayerDecksResponse>(
 				scope,
 				`players/${playerId}/decks`,
-				selection.deckId != null
-					? { deckId: selection.deckId }
-					: undefined,
+				selection.deckId != null ? { deckId: selection.deckId } : undefined,
 			),
 	};
 }

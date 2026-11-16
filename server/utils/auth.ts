@@ -34,8 +34,8 @@ const BETTER_AUTH_SECRET_SETTING = 'NUXT_BETTER_AUTH_SECRET';
  * surface answering 503, not just the sign-in form. A clause naming only sign-in would
  * leave a developer to find the rest one route at a time.
  */
-const BETTER_AUTH_SECRET_UNAVAILABLE_CLAUSE
-	= 'is not configured, so signing in and every authenticated API route are unavailable';
+const BETTER_AUTH_SECRET_UNAVAILABLE_CLAUSE =
+	'is not configured, so signing in and every authenticated API route are unavailable';
 
 /**
  * This installation's Better Auth instance, as a type.
@@ -89,7 +89,10 @@ export function serverAuth() {
 		const config = useRuntimeConfig();
 
 		if (!readConfiguredSecret(config.betterAuthSecret, BETTER_AUTH_SECRET_SETTING)) {
-			throw new ServiceConfigurationError(BETTER_AUTH_SECRET_SETTING, BETTER_AUTH_SECRET_UNAVAILABLE_CLAUSE);
+			throw new ServiceConfigurationError(
+				BETTER_AUTH_SECRET_SETTING,
+				BETTER_AUTH_SECRET_UNAVAILABLE_CLAUSE,
+			);
 		}
 
 		auth = createAuth(config.betterAuthSecret);
@@ -136,10 +139,8 @@ export function serverAuth() {
 export async function optionalUserSession(event: H3Event) {
 	try {
 		return await requestUserSession(event);
-	}
-	catch (failure) {
-		if (failure instanceof ServiceConfigurationError)
-			return null;
+	} catch (failure) {
+		if (failure instanceof ServiceConfigurationError) return null;
 		throw failure;
 	}
 }
@@ -152,7 +153,8 @@ export function localAuthBypassIsActive(_event: H3Event): boolean {
 	return localAuthBypassEnabled(process.env[LOCAL_AUTH_BYPASS_NAME]);
 }
 
-const LOCAL_SESSION_TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const LOCAL_SESSION_TOKEN =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const LOCAL_DEVELOPER_CREATED_AT = new Date(0);
 const LOCAL_DEVELOPER_EXPIRES_AT = new Date('9999-12-31T23:59:59.999Z');
 
@@ -165,9 +167,7 @@ const LOCAL_DEVELOPER_EXPIRES_AT = new Date('9999-12-31T23:59:59.999Z');
  */
 function localDeveloperSession(event: H3Event): NonNullable<UserSession> {
 	const presented = getCookie(event, LOCAL_DEVELOPER_SESSION_COOKIE);
-	const token = presented && LOCAL_SESSION_TOKEN.test(presented)
-		? presented
-		: crypto.randomUUID();
+	const token = presented && LOCAL_SESSION_TOKEN.test(presented) ? presented : crypto.randomUUID();
 
 	if (token !== presented) {
 		setCookie(event, LOCAL_DEVELOPER_SESSION_COOKIE, token, {
@@ -243,8 +243,7 @@ const REQUEST_SESSION_CONTEXT_KEY = 'userSession';
  */
 export async function requestUserSession(event: H3Event): Promise<UserSession> {
 	const resolved = event.context[REQUEST_SESSION_CONTEXT_KEY] as Promise<UserSession> | undefined;
-	if (resolved)
-		return await resolved;
+	if (resolved) return await resolved;
 
 	const resolving = localAuthBypassIsActive(event)
 		? Promise.resolve(localDeveloperSession(event))
@@ -259,9 +258,11 @@ export async function requestUserSession(event: H3Event): Promise<UserSession> {
  * blank secret still raises before `requestUserSession` has a promise to keep.
  */
 async function readBetterAuthSession(event: H3Event, auth: ServerAuth): Promise<UserSession> {
-	const { headers, response } = await auth.api.getSession({ headers: event.headers, returnHeaders: true });
-	for (const cookie of headers.getSetCookie())
-		appendResponseHeader(event, 'set-cookie', cookie);
+	const { headers, response } = await auth.api.getSession({
+		headers: event.headers,
+		returnHeaders: true,
+	});
+	for (const cookie of headers.getSetCookie()) appendResponseHeader(event, 'set-cookie', cookie);
 	return response;
 }
 
@@ -320,8 +321,7 @@ export async function requireBrowserSessionId(event: H3Event): Promise<string> {
  */
 async function requireUserSession(event: H3Event): Promise<NonNullable<UserSession>> {
 	const session = await requestUserSession(event);
-	if (session)
-		return session;
+	if (session) return session;
 
 	throw createError({
 		statusCode: 401,

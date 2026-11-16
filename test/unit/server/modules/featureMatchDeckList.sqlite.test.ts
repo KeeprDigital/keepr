@@ -12,7 +12,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // Its cards come from the card catalogue; bandai-keepr is faked at its bulk lookup port.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 const runtimeConfig = { bandaiKeeprApiKey: 'test-key', bandaiKeeprApiUrl: 'https://op-api.test' };
 vi.stubGlobal('useRuntimeConfig', () => runtimeConfig);
 
@@ -60,11 +61,19 @@ let upstream = fakeOpCardBulkLookup([ZORO, NAMI, RED, BLUE]);
 mockOpWriteBoundaries(db, () => upstream);
 
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: { params: unknown }, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('readValidatedBody', async (event: { body: unknown }, parse: (value: unknown) => unknown) => parse(event.body));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: { params: unknown }, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal(
+	'readValidatedBody',
+	async (event: { body: unknown }, parse: (value: unknown) => unknown) => parse(event.body),
+);
 
 const { featureMatchDeckListModule } = await import('~~/server/modules/feature-match-deck-list');
-const previewRoute = (await import('~~/server/api/events/[id]/feature-match-slots/[slotId]/deck-lists/preview.post')).default as unknown as (event: H3Event) => Promise<unknown>;
+const previewRoute = (
+	await import('~~/server/api/events/[id]/feature-match-slots/[slotId]/deck-lists/preview.post')
+).default as unknown as (event: H3Event) => Promise<unknown>;
 const { featureMatchSlotWriteModule } = await import('~~/server/modules/feature-match-slot-write');
 const { featureMatchStateService } = await import('~~/server/services/featureMatchState');
 const { featureMatchDeckListService } = await import('~~/server/services/featureMatchDeckList');
@@ -84,11 +93,13 @@ afterAll(async () => {
 });
 
 async function stageSlot(game: 'op' | 'mtg' = 'op') {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'One Piece Regional', game, featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
-	const [slot] = await db.insert(schema.featureMatches)
+	const [slot] = await db
+		.insert(schema.featureMatches)
 		.values({
 			eventId,
 			player1Data: { name: 'Ana', pronouns: 'she/her' },
@@ -113,17 +124,19 @@ async function sessionSnapshot(slotId: number) {
 }
 
 async function catalogueNumbers() {
-	const rows = await db.select({ number: schema.cards.cardNumber })
+	const rows = await db
+		.select({ number: schema.cards.cardNumber })
 		.from(schema.cards)
 		.where(eq(schema.cards.game, 'op'));
-	return rows.map(row => row.number).toSorted();
+	return rows.map((row) => row.number).toSorted();
 }
 
 async function deckListIds(slotId: number) {
-	const rows = await db.select({ id: schema.featureMatchDeckLists.id })
+	const rows = await db
+		.select({ id: schema.featureMatchDeckLists.id })
 		.from(schema.featureMatchDeckLists)
 		.where(eq(schema.featureMatchDeckLists.slotId, slotId));
-	return rows.map(row => row.id);
+	return rows.map((row) => row.id);
 }
 
 function save(eventId: number, slotId: number, side: 'player1' | 'player2', text: string) {
@@ -134,7 +147,10 @@ describe('previewing a pasted Deck List', () => {
 	it('resolves each card number once, keeps unknown ones as numbers, and warns', async () => {
 		const { eventId } = await stageSlot();
 
-		const answer = await featureMatchDeckListModule().preview({ eventId, text: `${ZORO_DECK}\n2x OP01-025` });
+		const answer = await featureMatchDeckListModule().preview({
+			eventId,
+			text: `${ZORO_DECK}\n2x OP01-025`,
+		});
 
 		expect(answer).toMatchObject({
 			available: true,
@@ -167,51 +183,61 @@ describe('previewing a pasted Deck List', () => {
 				],
 			},
 		});
-		if (!answer.available)
-			throw new Error('unavailable');
-		expect(answer.deckList.warnings.map(warning => warning.code)).toContain('UNKNOWN_CARD');
-		expect(upstream.batches()).toEqual([
-			['OP01-001', 'OP01-025', 'OP99-999'],
-		]);
+		if (!answer.available) throw new Error('unavailable');
+		expect(answer.deckList.warnings.map((warning) => warning.code)).toContain('UNKNOWN_CARD');
+		expect(upstream.batches()).toEqual([['OP01-001', 'OP01-025', 'OP99-999']]);
 	});
 
 	// The route names a Slot only to address it: a preview stores nothing there.
-	it('is what its route answers for the request\'s Event and text, storing nothing on the Slot', async () => {
+	it("is what its route answers for the request's Event and text, storing nothing on the Slot", async () => {
 		const { eventId, slotId } = await stageSlot();
 		const before = await slotRow(slotId);
 
-		const answer = await previewRoute(stubH3Event({
-			params: {
-				id: String(eventId),
-				slotId: String(slotId),
-			},
-			body: { text: ZORO_DECK },
-		}));
+		const answer = await previewRoute(
+			stubH3Event({
+				params: {
+					id: String(eventId),
+					slotId: String(slotId),
+				},
+				body: { text: ZORO_DECK },
+			}),
+		);
 
-		expect(answer).toEqual(await featureMatchDeckListModule().preview({ eventId, text: ZORO_DECK }));
+		expect(answer).toEqual(
+			await featureMatchDeckListModule().preview({ eventId, text: ZORO_DECK }),
+		);
 		expect(answer).toMatchObject({
 			available: true,
 			deckList: { leaderNumber: 'OP01-001' },
 		});
 		expect(await slotRow(slotId)).toEqual(before);
-		expect(await db.select().from(schema.featureMatchDeckLists).where(eq(schema.featureMatchDeckLists.slotId, slotId))).toEqual([]);
+		expect(
+			await db
+				.select()
+				.from(schema.featureMatchDeckLists)
+				.where(eq(schema.featureMatchDeckLists.slotId, slotId)),
+		).toEqual([]);
 	});
 
 	it('answers unavailable when no bandai-keepr is configured', async () => {
 		const { eventId } = await stageSlot();
 		runtimeConfig.bandaiKeeprApiKey = '';
 
-		expect(await featureMatchDeckListModule().preview({ eventId, text: ZORO_DECK })).toEqual({ available: false });
+		expect(await featureMatchDeckListModule().preview({ eventId, text: ZORO_DECK })).toEqual({
+			available: false,
+		});
 	});
 
 	it('is refused on a Magic Event', async () => {
 		const { eventId } = await stageSlot('mtg');
 
-		await expect(featureMatchDeckListModule().preview({ eventId, text: ZORO_DECK })).rejects.toMatchObject({ statusCode: 404 });
+		await expect(
+			featureMatchDeckListModule().preview({ eventId, text: ZORO_DECK }),
+		).rejects.toMatchObject({ statusCode: 404 });
 	});
 });
 
-describe('a pasted Deck List\'s cards', () => {
+describe("a pasted Deck List's cards", () => {
 	it('are looked up only when the catalogue lacks them, all in one batch', async () => {
 		const { eventId, slotId } = await stageSlot();
 		await save(eventId, slotId, 'player1', ZORO_DECK);
@@ -222,30 +248,20 @@ describe('a pasted Deck List\'s cards', () => {
 			['OP01-001', 'OP01-025', 'OP99-999'],
 			['OP01-016', 'OP01-040'],
 		]);
-		expect(await catalogueNumbers()).toEqual([
-			'OP01-001',
-			'OP01-016',
-			'OP01-025',
-			'OP01-040',
-		]);
+		expect(await catalogueNumbers()).toEqual(['OP01-001', 'OP01-016', 'OP01-025', 'OP01-040']);
 	});
 
 	it('keep an unknown number out of the catalogue, ask for it again, and show it once known', async () => {
 		const { eventId, slotId } = await stageSlot();
 		const first = await save(eventId, slotId, 'player1', ZORO_DECK);
-		if (!first.available)
-			throw new Error('unavailable');
+		if (!first.available) throw new Error('unavailable');
 		expect(await catalogueNumbers()).not.toContain('OP99-999');
 		upstream.know(LATE);
 
 		const second = await save(eventId, slotId, 'player2', '4x OP99-999');
-		if (!second.available)
-			throw new Error('unavailable');
+		if (!second.available) throw new Error('unavailable');
 
-		expect(upstream.batches()).toEqual([
-			['OP01-001', 'OP01-025', 'OP99-999'],
-			['OP99-999'],
-		]);
+		expect(upstream.batches()).toEqual([['OP01-001', 'OP01-025', 'OP99-999'], ['OP99-999']]);
 		expect(second.deckList.entries).toEqual([
 			{
 				number: 'OP99-999',
@@ -253,16 +269,26 @@ describe('a pasted Deck List\'s cards', () => {
 				card: expect.objectContaining({ name: 'Late Card', category: 'event' }),
 			},
 		]);
-		const reread = await featureMatchDeckListModule().read({ eventId, slotId, deckListId: first.deckList.id });
-		expect(reread.entries.find(entry => entry.number === 'OP99-999')?.card).toMatchObject({ name: 'Late Card' });
-		expect(reread.warnings.map(warning => warning.code)).not.toContain('UNKNOWN_CARD');
+		const reread = await featureMatchDeckListModule().read({
+			eventId,
+			slotId,
+			deckListId: first.deckList.id,
+		});
+		expect(reread.entries.find((entry) => entry.number === 'OP99-999')?.card).toMatchObject({
+			name: 'Late Card',
+		});
+		expect(reread.warnings.map((warning) => warning.code)).not.toContain('UNKNOWN_CARD');
 	});
 
 	it('fail the paste whole when the lookup fails', async () => {
 		const { eventId, slotId } = await stageSlot();
-		upstream.fail(Object.assign(new Error('bandai-keepr down'), { code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' }));
+		upstream.fail(
+			Object.assign(new Error('bandai-keepr down'), { code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' }),
+		);
 
-		await expect(save(eventId, slotId, 'player1', ZORO_DECK)).rejects.toMatchObject({ code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' });
+		await expect(save(eventId, slotId, 'player1', ZORO_DECK)).rejects.toMatchObject({
+			code: 'BANDAI_KEEPR_UPSTREAM_FAILURE',
+		});
 
 		expect(await deckListIds(slotId)).toEqual([]);
 		expect((await slotRow(slotId)).player1Data).toEqual({ name: 'Ana', pronouns: 'she/her' });
@@ -271,11 +297,18 @@ describe('a pasted Deck List\'s cards', () => {
 
 	it('are taken however many numbers the paste names', async () => {
 		const { eventId, slotId } = await stageSlot();
-		const numbers = Array.from({ length: 120 }, (_, index) => `OP80-${String(index).padStart(3, '0')}`);
+		const numbers = Array.from(
+			{ length: 120 },
+			(_, index) => `OP80-${String(index).padStart(3, '0')}`,
+		);
 
-		const answer = await save(eventId, slotId, 'player1', numbers.map(number => `1x ${number}`).join('\n'));
-		if (!answer.available)
-			throw new Error('unavailable');
+		const answer = await save(
+			eventId,
+			slotId,
+			'player1',
+			numbers.map((number) => `1x ${number}`).join('\n'),
+		);
+		if (!answer.available) throw new Error('unavailable');
 
 		expect(answer.deckList.entries).toHaveLength(120);
 		expect(upstream.batches()).toEqual([numbers]);
@@ -283,14 +316,17 @@ describe('a pasted Deck List\'s cards', () => {
 });
 
 describe('a Feature Match Deck List on a Slot side', () => {
-	it('is saved despite its warnings, sets the side\'s Leader, and reaches the active Session', async () => {
+	it("is saved despite its warnings, sets the side's Leader, and reaches the active Session", async () => {
 		const { eventId, slotId, session } = await stageSlot();
 
 		const answer = await save(eventId, slotId, 'player1', ZORO_DECK);
-		if (!answer.available)
-			throw new Error('unavailable');
+		if (!answer.available) throw new Error('unavailable');
 
-		expect(answer.deckList).toMatchObject({ leaderNumber: 'OP01-001', mainboardCount: 8, sourceText: ZORO_DECK });
+		expect(answer.deckList).toMatchObject({
+			leaderNumber: 'OP01-001',
+			mainboardCount: 8,
+			sourceText: ZORO_DECK,
+		});
 		const expectedGameData = {
 			type: 'op',
 			leader: {
@@ -310,20 +346,27 @@ describe('a Feature Match Deck List on a Slot side', () => {
 				leader: { number: 'OP01-001' },
 			},
 		});
-		expect(answer.featureMatch.player1Data).toEqual({ name: 'Ana', pronouns: 'she/her', gameData: expectedGameData });
+		expect(answer.featureMatch.player1Data).toEqual({
+			name: 'Ana',
+			pronouns: 'she/her',
+			gameData: expectedGameData,
+		});
 		const active = await sessionSnapshot(slotId);
 		expect(active.id).toBe(session.id);
-		expect(active.sourceSnapshot.player1.data).toMatchObject({ name: 'Ana', gameData: expectedGameData });
-		expect(await featureMatchDeckListModule().read({ eventId, slotId, deckListId: answer.deckList.id }))
-			.toMatchObject({ entries: answer.deckList.entries });
+		expect(active.sourceSnapshot.player1.data).toMatchObject({
+			name: 'Ana',
+			gameData: expectedGameData,
+		});
+		expect(
+			await featureMatchDeckListModule().read({ eventId, slotId, deckListId: answer.deckList.id }),
+		).toMatchObject({ entries: answer.deckList.entries });
 	});
 
 	it('is replaced by a new paste, which reaches the Session and leaves no old list behind', async () => {
 		const { eventId, slotId, session } = await stageSlot();
 		const first = await save(eventId, slotId, 'player1', ZORO_DECK);
 		const second = await save(eventId, slotId, 'player1', NAMI_DECK);
-		if (!first.available || !second.available)
-			throw new Error('unavailable');
+		if (!first.available || !second.available) throw new Error('unavailable');
 
 		expect(await deckListIds(slotId)).toEqual([second.deckList.id]);
 		const active = await sessionSnapshot(slotId);
@@ -334,7 +377,7 @@ describe('a Feature Match Deck List on a Slot side', () => {
 		});
 	});
 
-	it('keeps the side\'s Leader when the paste has none', async () => {
+	it("keeps the side's Leader when the paste has none", async () => {
 		const { eventId, slotId } = await stageSlot();
 		await save(eventId, slotId, 'player1', ZORO_DECK);
 		await save(eventId, slotId, 'player1', '4x OP01-040');
@@ -348,8 +391,7 @@ describe('a Feature Match Deck List on a Slot side', () => {
 		const { eventId, slotId } = await stageSlot();
 		const kept = await save(eventId, slotId, 'player1', ZORO_DECK);
 		await save(eventId, slotId, 'player2', NAMI_DECK);
-		if (!kept.available)
-			throw new Error('unavailable');
+		if (!kept.available) throw new Error('unavailable');
 
 		await featureMatchSlotWriteModule().updateSetup({
 			eventId,
@@ -372,8 +414,7 @@ describe('a Feature Match Deck List on a Slot side', () => {
 		});
 
 		const replaced = await save(eventId, slotId, 'player1', NAMI_DECK);
-		if (!replaced.available)
-			throw new Error('unavailable');
+		if (!replaced.available) throw new Error('unavailable');
 
 		const { player1, player2 } = (await sessionSnapshot(slotId)).sourceSnapshot;
 		expect(player1.data?.name).toBe('Ben');
@@ -395,8 +436,7 @@ describe('a Feature Match Deck List on a Slot side', () => {
 			warnings: [],
 		});
 		const saved = await save(eventId, slotId, 'player1', ZORO_DECK);
-		if (!saved.available)
-			throw new Error('unavailable');
+		if (!saved.available) throw new Error('unavailable');
 
 		expect(await deckListIds(slotId)).toEqual([saved.deckList.id]);
 		expect(raced).toBeLessThan(saved.deckList.id);
@@ -409,13 +449,22 @@ describe('a Feature Match Deck List on a Slot side', () => {
 		await featureMatchSlotWriteModule().remove({ eventId, slotId });
 
 		expect(await deckListIds(slotId)).toEqual([]);
-		expect(await db.select().from(schema.featureMatchDeckListEntries).innerJoin(schema.featureMatchDeckLists, eq(schema.featureMatchDeckLists.id, schema.featureMatchDeckListEntries.deckListId)).where(eq(schema.featureMatchDeckLists.slotId, slotId))).toEqual([]);
+		expect(
+			await db
+				.select()
+				.from(schema.featureMatchDeckListEntries)
+				.innerJoin(
+					schema.featureMatchDeckLists,
+					eq(schema.featureMatchDeckLists.id, schema.featureMatchDeckListEntries.deckListId),
+				)
+				.where(eq(schema.featureMatchDeckLists.slotId, slotId)),
+		).toEqual([]);
 	});
 
 	it.each([
 		['keeps it when the save omits it', 'omitted', 'own'],
 		['drops it when the save names none', 'dropped', null],
-		['keeps it when the save names another Slot\'s', 'other', 'own'],
+		["keeps it when the save names another Slot's", 'other', 'own'],
 		['keeps it when the save names a replaced one, as a stale form would', 'missing', 'own'],
 		['takes its Mainboard count from the Deck List', 'miscounted', 'own'],
 	] as const)('a setup save of its side %s', async (_label, kind, expected) => {
@@ -423,8 +472,7 @@ describe('a Feature Match Deck List on a Slot side', () => {
 		const other = await stageSlot();
 		const own = await save(eventId, slotId, 'player1', ZORO_DECK);
 		const foreign = await save(other.eventId, other.slotId, 'player1', NAMI_DECK);
-		if (!own.available || !foreign.available)
-			throw new Error('unavailable');
+		if (!own.available || !foreign.available) throw new Error('unavailable');
 		const reference = {
 			omitted: undefined,
 			dropped: null,
@@ -444,41 +492,30 @@ describe('a Feature Match Deck List on a Slot side', () => {
 			},
 		});
 
-		const held = expected === 'own'
-			? { id: own.deckList.id, mainboardCount: 8 }
-			: null;
-		expect((await slotRow(slotId)).player1Data?.gameData).toEqual({ type: 'op', featureMatchDeckList: held });
-		expect(await deckListIds(slotId)).toEqual(held
-			? [held.id]
-			: []);
+		const held = expected === 'own' ? { id: own.deckList.id, mainboardCount: 8 } : null;
+		expect((await slotRow(slotId)).player1Data?.gameData).toEqual({
+			type: 'op',
+			featureMatchDeckList: held,
+		});
+		expect(await deckListIds(slotId)).toEqual(held ? [held.id] : []);
 		expect(await deckListIds(other.slotId)).toEqual([foreign.deckList.id]);
 	});
 
 	it.each([
-		[
-			'the other side names it',
-			{ player2Data: 'copy' },
-		],
-		[
-			'both sides name it',
-			{ player1Data: 'own', player2Data: 'copy' },
-		],
-		[
-			'both sides name it, the holder second',
-			{ player2Data: 'copy', player1Data: 'own' },
-		],
+		['the other side names it', { player2Data: 'copy' }],
+		['both sides name it', { player1Data: 'own', player2Data: 'copy' }],
+		['both sides name it, the holder second', { player2Data: 'copy', player1Data: 'own' }],
 	] as const)('stays with the side that held it when %s', async (_label, sides) => {
 		const { eventId, slotId } = await stageSlot();
 		const own = await save(eventId, slotId, 'player1', ZORO_DECK);
-		if (!own.available)
-			throw new Error('unavailable');
+		if (!own.available) throw new Error('unavailable');
 		const { player1Data } = await slotRow(slotId);
-		const input = Object.fromEntries(Object.entries(sides).map(([key, which]) => [
-			key,
-			which === 'own'
-				? player1Data
-				: { ...player1Data, name: 'Ben' },
-		]));
+		const input = Object.fromEntries(
+			Object.entries(sides).map(([key, which]) => [
+				key,
+				which === 'own' ? player1Data : { ...player1Data, name: 'Ben' },
+			]),
+		);
 
 		await featureMatchSlotWriteModule().updateSetup({ eventId, slotId, input });
 
@@ -502,8 +539,15 @@ describe('a Feature Match Deck List on a Slot side', () => {
 		const { slotId } = await stageSlot();
 		const other = await stageSlot();
 
-		await expect(save(other.eventId, slotId, 'player1', ZORO_DECK)).rejects.toMatchObject({ statusCode: 404 });
-		expect(await db.select().from(schema.featureMatchDeckLists).where(and(eq(schema.featureMatchDeckLists.slotId, slotId)))).toEqual([]);
+		await expect(save(other.eventId, slotId, 'player1', ZORO_DECK)).rejects.toMatchObject({
+			statusCode: 404,
+		});
+		expect(
+			await db
+				.select()
+				.from(schema.featureMatchDeckLists)
+				.where(and(eq(schema.featureMatchDeckLists.slotId, slotId))),
+		).toEqual([]);
 	});
 
 	// A linked side shows its Player's Deck List, which is edited as the Player's (ADR-0074).
@@ -516,7 +560,9 @@ describe('a Feature Match Deck List on a Slot side', () => {
 			input: { player1Id: player!.id },
 		});
 
-		await expect(save(eventId, slotId, 'player1', ZORO_DECK)).rejects.toMatchObject({ statusCode: 409 });
+		await expect(save(eventId, slotId, 'player1', ZORO_DECK)).rejects.toMatchObject({
+			statusCode: 409,
+		});
 		expect(await deckListIds(slotId)).toEqual([]);
 		expect(upstream.batches()).toEqual([]);
 	});

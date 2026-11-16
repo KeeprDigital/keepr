@@ -1,8 +1,20 @@
 import type { VueWrapper } from '@vue/test-utils';
-import type { FoundationTokenName, StoredThemeTokens, ThemeTokenType, ThemeTokenValueTypes } from '~~/shared/modules/theme';
-import type { BracketEntrant, BracketPosition, TopCutBracket } from '~~/shared/modules/top-cut-bracket';
+import type {
+	FoundationTokenName,
+	StoredThemeTokens,
+	ThemeTokenType,
+	ThemeTokenValueTypes,
+} from '~~/shared/modules/theme';
+import type {
+	BracketEntrant,
+	BracketPosition,
+	TopCutBracket,
+} from '~~/shared/modules/top-cut-bracket';
 import type { ScreenMode } from '~~/shared/types/enums';
-import type { BroadcastGraphicConfig, GraphicApplicationFontSelection } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicApplicationFontSelection,
+} from '~~/shared/types/graphics';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,7 +30,11 @@ import { deferred } from '~~/test/helpers/deferred';
 import { createMockScreen } from '~~/test/helpers/fixtures';
 import { testGraphicAssetReference } from '~~/test/helpers/graphicsAssetIdentities';
 import { text } from '~~/test/helpers/graphicsComposition';
-import { stubCapabilitySession, stubDocumentFonts, stubFontFaces } from '~~/test/nuxt/helpers/fontFaces';
+import {
+	stubCapabilitySession,
+	stubDocumentFonts,
+	stubFontFaces,
+} from '~~/test/nuxt/helpers/fontFaces';
 import { stubImageLoading } from '~~/test/nuxt/helpers/imageLoading';
 import Renderer from '~/components/Screen/Renderer.vue';
 
@@ -26,7 +42,18 @@ import Renderer from '~/components/Screen/Renderer.vue';
 // and its chrome from the Foundation Tokens; a plain mode's host insets and aligns it by
 // the Theme (ADR-0049, ADR-0051).
 
-type ColorProperty = 'color' | 'backgroundColor' | 'borderBottomColor' | 'borderTopColor' | 'borderLeftColor' | 'borderColor' | 'boxShadow' | 'width' | 'height' | 'gap' | 'fontSize';
+type ColorProperty =
+	| 'color'
+	| 'backgroundColor'
+	| 'borderBottomColor'
+	| 'borderTopColor'
+	| 'borderLeftColor'
+	| 'borderColor'
+	| 'boxShadow'
+	| 'width'
+	| 'height'
+	| 'gap'
+	| 'fontSize';
 
 /** Where a display paints one Mode Token: an element, and for a colour the property it sets. */
 interface Probe {
@@ -45,9 +72,9 @@ const CHART_SLOTS = Array.from({ length: METAGAME_CHART_MAX_ARCHETYPES }, (_, in
 
 /** Each themed mode's probes, one per Mode Token it declares, by the token's name within the mode. */
 const THEMED_DISPLAYS: Partial<Record<ScreenMode, Record<string, Probe>>> = {
-	'standings': {
-		'rise': { selector: '[data-position-change="up"]', property: 'color' },
-		'fall': { selector: '[data-position-change="down"]', property: 'color' },
+	standings: {
+		rise: { selector: '[data-position-change="up"]', property: 'color' },
+		fall: { selector: '[data-position-change="down"]', property: 'color' },
 		'row-motion': { selector: '.standings-row', motionProperties: '--standings-row' },
 		'reveal-motion': {
 			selector: '.standings-row',
@@ -55,7 +82,7 @@ const THEMED_DISPLAYS: Partial<Record<ScreenMode, Record<string, Probe>>> = {
 			config: { viewMode: 'reveal' },
 		},
 	},
-	'pairings': {
+	pairings: {
 		'result-reported': { selector: '[data-result="reported"]', property: 'color' },
 		'result-pending': { selector: '[data-result="pending"]', property: 'color' },
 		'result-bye': { selector: '[data-result="bye"]', property: 'color' },
@@ -69,7 +96,10 @@ const THEMED_DISPLAYS: Partial<Record<ScreenMode, Record<string, Probe>>> = {
 	'head-to-head': {},
 	// The clock's colour follows its state, which the mocked data takes from `clockState`.
 	'round-clock': {
-		'running-clock-text': { selector: '[data-clock-state="running"] .round-clock-time', property: 'color' },
+		'running-clock-text': {
+			selector: '[data-clock-state="running"] .round-clock-time',
+			property: 'color',
+		},
 		'pending-clock-text': {
 			selector: '[data-clock-state="pending"] .round-clock-time',
 			property: 'color',
@@ -81,52 +111,91 @@ const THEMED_DISPLAYS: Partial<Record<ScreenMode, Record<string, Probe>>> = {
 			config: { clockState: 'ended' },
 		},
 	},
-	'talent': {},
+	talent: {},
 	'archetype-spotlight': {
-		'stat-badge-surface': { selector: '[data-testid="top-cards-stat-badge"]', property: 'backgroundColor' },
+		'stat-badge-surface': {
+			selector: '[data-testid="top-cards-stat-badge"]',
+			property: 'backgroundColor',
+		},
 		'stat-badge-text': { selector: '[data-testid="top-cards-stat-badge"]', property: 'color' },
 	},
 	'top-cut': {
 		'position-surface': { selector: '[data-status="reported"]', property: 'backgroundColor' },
 		'pending-position-border': { selector: '[data-status="awaiting"]', property: 'borderTopColor' },
 		'winner-surface': { selector: '.bracket-entrant.is-winner', property: 'backgroundColor' },
-		'connector': { selector: '.bracket-connector', property: 'borderTopColor' },
+		connector: { selector: '.bracket-connector', property: 'borderTopColor' },
 		'champion-border': { selector: '.bracket-champion-name', property: 'borderTopColor' },
 	},
-	'metagame': {
+	metagame: {
 		'row-motion': { selector: '.metagame-row', motionProperties: '--metagame-row' },
 	},
 	'top-cards': {
-		'rank-badge-surface': { selector: '[data-testid="top-cards-rank-badge"]', property: 'backgroundColor' },
+		'rank-badge-surface': {
+			selector: '[data-testid="top-cards-rank-badge"]',
+			property: 'backgroundColor',
+		},
 		'rank-badge-text': { selector: '[data-testid="top-cards-rank-badge"]', property: 'color' },
-		'stat-badge-surface': { selector: '[data-testid="top-cards-stat-badge"]', property: 'backgroundColor' },
+		'stat-badge-surface': {
+			selector: '[data-testid="top-cards-stat-badge"]',
+			property: 'backgroundColor',
+		},
 		'stat-badge-text': { selector: '[data-testid="top-cards-stat-badge"]', property: 'color' },
-		'points-badge-surface': { selector: '[data-testid="top-cards-points-badge"]', property: 'backgroundColor' },
+		'points-badge-surface': {
+			selector: '[data-testid="top-cards-points-badge"]',
+			property: 'backgroundColor',
+		},
 		'points-badge-text': { selector: '[data-testid="top-cards-points-badge"]', property: 'color' },
 	},
-	'card': {
+	card: {
 		motion: { selector: '.card-image-wrapper' },
 	},
 	// A surface probes its outline: the Frame's border stroke, a Source Item's border.
 	'feature-match-overlay': {
 		'frame-surface': { selector: '.feature-match-overlay__frame-border', attribute: 'stroke' },
 		'frame-media': { selector: '.frame-layer', attribute: 'data-frame-media' },
-		'frame-animation-effect': { selector: '.frame-layer', attribute: 'data-frame-animation-effect' },
-		'source-surface': { selector: '[data-graphic-item-id="main-source"]', property: 'borderTopColor' },
+		'frame-animation-effect': {
+			selector: '.frame-layer',
+			attribute: 'data-frame-animation-effect',
+		},
+		'source-surface': {
+			selector: '[data-graphic-item-id="main-source"]',
+			property: 'borderTopColor',
+		},
 	},
-	'deck': {
+	deck: {
 		'quantity-badge-text': { selector: '.quantity-badge', property: 'color' },
 		'quantity-badge-surface': { selector: '.quantity-badge', property: 'backgroundColor' },
 		'points-badge-text': { selector: '[data-testid="highlander-card-badge"]', property: 'color' },
-		'points-badge-surface': { selector: '[data-testid="highlander-card-badge"]', property: 'backgroundColor' },
+		'points-badge-surface': {
+			selector: '[data-testid="highlander-card-badge"]',
+			property: 'backgroundColor',
+		},
 		'meta-pill-text': { selector: '[data-testid="deck-meta-pill"] span', property: 'color' },
-		'meta-pill-surface': { selector: '[data-testid="deck-meta-pill"]', property: 'backgroundColor' },
-		'meta-pill-accent': { selector: '[data-testid="deck-meta-pill"] .font-medium', property: 'color' },
+		'meta-pill-surface': {
+			selector: '[data-testid="deck-meta-pill"]',
+			property: 'backgroundColor',
+		},
+		'meta-pill-accent': {
+			selector: '[data-testid="deck-meta-pill"] .font-medium',
+			property: 'color',
+		},
 		'meta-pill-border': { selector: '[data-testid="deck-meta-pill"]', property: 'borderColor' },
-		'pointed-card-text': { selector: '[data-testid="highlander-pointed-card-chip"]', property: 'color' },
-		'pointed-card-surface': { selector: '[data-testid="highlander-pointed-card-chip"]', property: 'backgroundColor' },
-		'pointed-card-accent': { selector: '[data-testid="highlander-pointed-card-chip"] span', property: 'color' },
-		'pointed-card-border': { selector: '[data-testid="highlander-pointed-card-chip"]', property: 'borderColor' },
+		'pointed-card-text': {
+			selector: '[data-testid="highlander-pointed-card-chip"]',
+			property: 'color',
+		},
+		'pointed-card-surface': {
+			selector: '[data-testid="highlander-pointed-card-chip"]',
+			property: 'backgroundColor',
+		},
+		'pointed-card-accent': {
+			selector: '[data-testid="highlander-pointed-card-chip"] span',
+			property: 'color',
+		},
+		'pointed-card-border': {
+			selector: '[data-testid="highlander-pointed-card-chip"]',
+			property: 'borderColor',
+		},
 	},
 };
 
@@ -138,21 +207,29 @@ type ChromeProbe = Probe & { token: FoundationTokenName };
  * part: the display reads the Theme's Foundation Token for it directly.
  */
 const FOUNDATION_CHROME: Partial<Record<ScreenMode, Record<string, ChromeProbe>>> = {
-	'standings': {
-		'surface': { token: 'surface', selector: '.standings-table', property: 'backgroundColor' },
+	standings: {
+		surface: { token: 'surface', selector: '.standings-table', property: 'backgroundColor' },
 		'title-typography': { token: 'heading', selector: '.standings-header h2' },
 		'title-text': { token: 'text-primary', selector: '.standings-header h2', property: 'color' },
-		'title-divider': { token: 'divider', selector: '.standings-header', property: 'borderBottomColor' },
+		'title-divider': {
+			token: 'divider',
+			selector: '.standings-header',
+			property: 'borderBottomColor',
+		},
 		'row-typography': { token: 'body', selector: '.cell-position' },
 		'row-divider': { token: 'divider', selector: '.standings-row', property: 'borderBottomColor' },
 		'primary-text': { token: 'text-primary', selector: '.cell-name', property: 'color' },
 		'secondary-text': { token: 'text-secondary', selector: '.cell-record', property: 'color' },
 	},
-	'pairings': {
-		'surface': { token: 'surface', selector: '.pairings-rows', property: 'backgroundColor' },
+	pairings: {
+		surface: { token: 'surface', selector: '.pairings-rows', property: 'backgroundColor' },
 		'title-typography': { token: 'heading', selector: '.pairings-header h2' },
 		'title-text': { token: 'text-primary', selector: '.pairings-header h2', property: 'color' },
-		'title-divider': { token: 'divider', selector: '.pairings-header', property: 'borderBottomColor' },
+		'title-divider': {
+			token: 'divider',
+			selector: '.pairings-header',
+			property: 'borderBottomColor',
+		},
 		'row-typography': { token: 'body', selector: '.pairing-row .table' },
 		'row-divider': { token: 'divider', selector: '.pairing-row', property: 'borderBottomColor' },
 		'primary-text': { token: 'text-primary', selector: '.player-1', property: 'color' },
@@ -160,10 +237,14 @@ const FOUNDATION_CHROME: Partial<Record<ScreenMode, Record<string, ChromeProbe>>
 		'result-typography': { token: 'heading', selector: '[data-result="reported"]' },
 	},
 	'player-history': {
-		'surface': { token: 'surface', selector: '.history-rows', property: 'backgroundColor' },
+		surface: { token: 'surface', selector: '.history-rows', property: 'backgroundColor' },
 		'title-typography': { token: 'heading', selector: '.history-header h2' },
 		'title-text': { token: 'text-primary', selector: '.history-header h2', property: 'color' },
-		'title-divider': { token: 'divider', selector: '.history-header', property: 'borderBottomColor' },
+		'title-divider': {
+			token: 'divider',
+			selector: '.history-header',
+			property: 'borderBottomColor',
+		},
 		'row-typography': { token: 'body', selector: '.history-row .round' },
 		'row-divider': { token: 'divider', selector: '.history-row', property: 'borderBottomColor' },
 		'primary-text': { token: 'text-primary', selector: '.opponent', property: 'color' },
@@ -173,33 +254,61 @@ const FOUNDATION_CHROME: Partial<Record<ScreenMode, Record<string, ChromeProbe>>
 	'head-to-head': {
 		'title-typography': { token: 'heading', selector: '.head-to-head-header h2' },
 		'title-text': { token: 'text-primary', selector: '.head-to-head-header h2', property: 'color' },
-		'title-divider': { token: 'divider', selector: '.head-to-head-header', property: 'borderBottomColor' },
+		'title-divider': {
+			token: 'divider',
+			selector: '.head-to-head-header',
+			property: 'borderBottomColor',
+		},
 		'name-typography': { token: 'heading', selector: '.name' },
 		'label-typography': { token: 'heading', selector: '.earlier-matches-title' },
-		'surface': { token: 'surface', selector: '.head-to-head-earlier-matches', property: 'backgroundColor' },
+		surface: {
+			token: 'surface',
+			selector: '.head-to-head-earlier-matches',
+			property: 'backgroundColor',
+		},
 		'row-typography': { token: 'body', selector: '.earlier-match .round' },
 		'row-divider': { token: 'divider', selector: '.earlier-match', property: 'borderBottomColor' },
 		'primary-text': { token: 'text-primary', selector: '.name', property: 'color' },
 		'secondary-text': { token: 'text-secondary', selector: '.versus', property: 'color' },
 	},
 	'round-clock': {
-		'surface': { token: 'surface', selector: '.round-clock-display', property: 'backgroundColor' },
+		surface: { token: 'surface', selector: '.round-clock-display', property: 'backgroundColor' },
 		'round-name-typography': { token: 'heading', selector: '.round-clock-name' },
-		'round-name-text': { token: 'text-secondary', selector: '.round-clock-name', property: 'color' },
+		'round-name-text': {
+			token: 'text-secondary',
+			selector: '.round-clock-name',
+			property: 'color',
+		},
 		'clock-typography': { token: 'heading', selector: '.round-clock-time' },
 	},
-	'metagame': {
-		'surface': { token: 'surface', selector: '.metagame-table', property: 'backgroundColor' },
+	metagame: {
+		surface: { token: 'surface', selector: '.metagame-table', property: 'backgroundColor' },
 		'title-typography': { token: 'heading', selector: '.metagame-title h2' },
 		'title-text': { token: 'text-primary', selector: '.metagame-title h2', property: 'color' },
-		'title-divider': { token: 'divider', selector: '.metagame-title', property: 'borderBottomColor' },
+		'title-divider': {
+			token: 'divider',
+			selector: '.metagame-title',
+			property: 'borderBottomColor',
+		},
 		'header-typography': { token: 'heading', selector: '.metagame-header-cell' },
 		'header-text': { token: 'text-secondary', selector: '.metagame-header-row', property: 'color' },
-		'header-divider': { token: 'divider', selector: '.metagame-header-row', property: 'borderBottomColor' },
+		'header-divider': {
+			token: 'divider',
+			selector: '.metagame-header-row',
+			property: 'borderBottomColor',
+		},
 		'row-typography': { token: 'body', selector: '.metagame-cell' },
 		'row-divider': { token: 'divider', selector: '.metagame-row', property: 'borderBottomColor' },
-		'primary-text': { token: 'text-primary', selector: '.metagame-cell.is-name', property: 'color' },
-		'secondary-text': { token: 'text-secondary', selector: '.metagame-cell:not(.is-name):not(.is-primary-metric)', property: 'color' },
+		'primary-text': {
+			token: 'text-primary',
+			selector: '.metagame-cell.is-name',
+			property: 'color',
+		},
+		'secondary-text': {
+			token: 'text-secondary',
+			selector: '.metagame-cell:not(.is-name):not(.is-primary-metric)',
+			property: 'color',
+		},
 		'chart-baseline': {
 			token: 'divider',
 			selector: '.metagame-chart-track',
@@ -210,75 +319,139 @@ const FOUNDATION_CHROME: Partial<Record<ScreenMode, Record<string, ChromeProbe>>
 	'archetype-spotlight': {
 		'title-typography': { token: 'heading', selector: '.spotlight-header h2' },
 		'title-text': { token: 'text-primary', selector: '.spotlight-header h2', property: 'color' },
-		'title-divider': { token: 'divider', selector: '.spotlight-header', property: 'borderBottomColor' },
+		'title-divider': {
+			token: 'divider',
+			selector: '.spotlight-header',
+			property: 'borderBottomColor',
+		},
 		'headline-typography': { token: 'heading', selector: '.spotlight-name' },
 		'label-typography': { token: 'heading', selector: '.stat-label' },
-		'surface': { token: 'surface', selector: '.spotlight-pilots', property: 'backgroundColor' },
+		surface: { token: 'surface', selector: '.spotlight-pilots', property: 'backgroundColor' },
 		'row-typography': { token: 'body', selector: '.pilot-name' },
 		'row-divider': { token: 'divider', selector: '.pilot-row', property: 'borderBottomColor' },
 		'primary-text': { token: 'text-primary', selector: '.pilot-name', property: 'color' },
 		'secondary-text': { token: 'text-secondary', selector: '.stat-label', property: 'color' },
-		'card-placeholder-surface': { token: 'surface-raised', selector: '.mtg-card', property: 'backgroundColor' },
-		'badge-shadow': { token: 'shadow', selector: '[data-testid="top-cards-stat-badge"]', property: 'boxShadow' },
+		'card-placeholder-surface': {
+			token: 'surface-raised',
+			selector: '.mtg-card',
+			property: 'backgroundColor',
+		},
+		'badge-shadow': {
+			token: 'shadow',
+			selector: '[data-testid="top-cards-stat-badge"]',
+			property: 'boxShadow',
+		},
 	},
 	'top-cards': {
 		'title-typography': { token: 'heading', selector: '.top-cards-title h2' },
 		'title-text': { token: 'text-primary', selector: '.top-cards-title h2', property: 'color' },
 		'name-typography': { token: 'body', selector: '.top-cards-display' },
 		'name-text': { token: 'text-primary', selector: '.top-cards-display', property: 'color' },
-		'card-placeholder-surface': { token: 'surface-raised', selector: '.mtg-card', property: 'backgroundColor' },
+		'card-placeholder-surface': {
+			token: 'surface-raised',
+			selector: '.mtg-card',
+			property: 'backgroundColor',
+		},
 		'badge-typography': { token: 'heading', selector: '[data-testid="top-cards-stat-badge"]' },
-		'badge-shadow': { token: 'shadow', selector: '[data-testid="top-cards-rank-badge"]', property: 'boxShadow' },
-		'page-indicator-text': { token: 'text-secondary', selector: '[data-testid="top-cards-page-indicator"]', property: 'color' },
+		'badge-shadow': {
+			token: 'shadow',
+			selector: '[data-testid="top-cards-rank-badge"]',
+			property: 'boxShadow',
+		},
+		'page-indicator-text': {
+			token: 'text-secondary',
+			selector: '[data-testid="top-cards-page-indicator"]',
+			property: 'color',
+		},
 	},
 	'top-cut': {
 		'title-typography': { token: 'heading', selector: '.broadcast-table-title h2' },
-		'title-text': { token: 'text-primary', selector: '.broadcast-table-title h2', property: 'color' },
-		'title-divider': { token: 'divider', selector: '.broadcast-table-title', property: 'borderBottomColor' },
+		'title-text': {
+			token: 'text-primary',
+			selector: '.broadcast-table-title h2',
+			property: 'color',
+		},
+		'title-divider': {
+			token: 'divider',
+			selector: '.broadcast-table-title',
+			property: 'borderBottomColor',
+		},
 		'round-name-typography': { token: 'heading', selector: '.bracket-column-name' },
-		'round-name-text': { token: 'text-secondary', selector: '.bracket-column-name', property: 'color' },
+		'round-name-text': {
+			token: 'text-secondary',
+			selector: '.bracket-column-name',
+			property: 'color',
+		},
 		'entrant-typography': { token: 'body', selector: '.bracket-entrant-name' },
-		'primary-text': { token: 'text-primary', selector: '.is-winner .bracket-entrant-name', property: 'color' },
-		'secondary-text': { token: 'text-secondary', selector: '.is-eliminated .bracket-entrant-name', property: 'color' },
-		'position-border': { token: 'divider', selector: '[data-status="reported"]', property: 'borderTopColor' },
-		'entrant-divider': { token: 'divider', selector: '.bracket-entrant + .bracket-entrant', property: 'borderTopColor' },
+		'primary-text': {
+			token: 'text-primary',
+			selector: '.is-winner .bracket-entrant-name',
+			property: 'color',
+		},
+		'secondary-text': {
+			token: 'text-secondary',
+			selector: '.is-eliminated .bracket-entrant-name',
+			property: 'color',
+		},
+		'position-border': {
+			token: 'divider',
+			selector: '[data-status="reported"]',
+			property: 'borderTopColor',
+		},
+		'entrant-divider': {
+			token: 'divider',
+			selector: '.bracket-entrant + .bracket-entrant',
+			property: 'borderTopColor',
+		},
 		'champion-typography': { token: 'heading', selector: '.bracket-champion-name' },
 	},
-	'talent': {
+	talent: {
 		'title-typography': { token: 'heading', selector: '.talent-header h2' },
 		'title-text': { token: 'text-primary', selector: '.talent-header h2', property: 'color' },
-		'title-divider': { token: 'divider', selector: '.talent-header', property: 'borderBottomColor' },
-		'surface': { token: 'surface', selector: '.talent-card', property: 'backgroundColor' },
-		'accent': { token: 'accent', selector: '.talent-photo', property: 'borderColor' },
+		'title-divider': {
+			token: 'divider',
+			selector: '.talent-header',
+			property: 'borderBottomColor',
+		},
+		surface: { token: 'surface', selector: '.talent-card', property: 'backgroundColor' },
+		accent: { token: 'accent', selector: '.talent-photo', property: 'borderColor' },
 		'name-typography': { token: 'heading', selector: '.talent-name' },
 		'name-text': { token: 'text-primary', selector: '.talent-name', property: 'color' },
 		'detail-typography': { token: 'body', selector: '.talent-role' },
 		'role-text': { token: 'text-secondary', selector: '.talent-role', property: 'color' },
 		'profile-text': { token: 'text-primary', selector: '.talent-profile', property: 'color' },
 	},
-	'deck': {
+	deck: {
 		'title-typography': { token: 'heading', selector: '.deck-header h2' },
 		'body-typography': { token: 'body', selector: '.deck-header p' },
 		'primary-text': { token: 'text-primary', selector: '.deck-header h2', property: 'color' },
 		'secondary-text': { token: 'text-secondary', selector: '.deck-header p', property: 'color' },
-		'card-placeholder': { token: 'surface-raised', selector: '.mtg-card', property: 'backgroundColor' },
-		'badge-shadow': { token: 'shadow', selector: '[data-testid="highlander-card-badge"]', property: 'boxShadow' },
+		'card-placeholder': {
+			token: 'surface-raised',
+			selector: '.mtg-card',
+			property: 'backgroundColor',
+		},
+		'badge-shadow': {
+			token: 'shadow',
+			selector: '[data-testid="highlander-card-badge"]',
+			property: 'boxShadow',
+		},
 	},
 };
 
 // ── Sample values, distinct from every default ──
 
 const SAMPLES: { [T in ThemeTokenType]: ThemeTokenValueTypes[T] } = {
-	'color': 'rgb(12, 34, 56)',
-	'dimension': 37,
-	'typography': {
+	color: 'rgb(12, 34, 56)',
+	dimension: 37,
+	typography: {
 		font: { kind: 'application', fontId: 'system-serif' },
 		weight: 300,
 		lineHeight: 1.7,
 		tracking: 0.2,
 		case: 'lowercase',
 	},
-	'backgroundLayers': [
+	backgroundLayers: [
 		{
 			id: 'wash',
 			type: 'color',
@@ -287,13 +460,13 @@ const SAMPLES: { [T in ThemeTokenType]: ThemeTokenValueTypes[T] } = {
 			opacity: 0.5,
 		},
 	],
-	'animationEffect': { effect: 'caustics' },
-	'asset': {
+	animationEffect: { effect: 'caustics' },
+	asset: {
 		kind: 'image',
 		...testGraphicAssetReference('asset-logo', 'revision-logo'),
 	},
 	// The composites Graphic Items bind to (#829), and Card Spotlight's motion.
-	'fill': { type: 'solid', color: 'rgb(12, 34, 56)' },
+	fill: { type: 'solid', color: 'rgb(12, 34, 56)' },
 	'surface-style': {
 		fill: { type: 'solid', color: 'rgb(12, 34, 56)' },
 		fillOpacity: 0.5,
@@ -313,11 +486,14 @@ const SAMPLES: { [T in ThemeTokenType]: ThemeTokenValueTypes[T] } = {
 		delay: 40,
 		fade: { opacity: 0.25 },
 	},
-	'alignment': { horizontal: 'right', vertical: 'bottom' },
+	alignment: { horizontal: 'right', vertical: 'bottom' },
 };
 
 /** The application fonts' faces, as `main.css` declares them, under names a test can read back. */
-const FONT_FACES = { '--font-system-serif': 'SampleSerif', '--font-saira-condensed': 'SampleDisplay' } as const;
+const FONT_FACES = {
+	'--font-system-serif': 'SampleSerif',
+	'--font-saira-condensed': 'SampleDisplay',
+} as const;
 
 // ── The Screen and its data ──
 
@@ -346,13 +522,10 @@ mockNuxtImport('useStandingsModeData', () => () => {
 		columns: [],
 		...probeConfig.value,
 	}));
-	const columns = [
-		'position',
-		'name',
-		'record',
-		'points',
-		'positionChange',
-	].map(key => ({ key, visible: true }));
+	const columns = ['position', 'name', 'record', 'points', 'positionChange'].map((key) => ({
+		key,
+		visible: true,
+	}));
 	return {
 		config,
 		error: ref(null),
@@ -365,12 +538,9 @@ mockNuxtImport('useStandingsModeData', () => () => {
 			{ id: 1, name: 'Climber', position: 1 },
 			{ id: 2, name: 'Faller', position: 2 },
 		]),
-		formatCell: (player: { name: string }, key: string) => key === 'name'
-			? player.name
-			: key,
-		positionChangeOf: (player: { id: number }) => player.id === 1
-			? { kind: 'up', by: 1 }
-			: { kind: 'down', by: 1 },
+		formatCell: (player: { name: string }, key: string) => (key === 'name' ? player.name : key),
+		positionChangeOf: (player: { id: number }) =>
+			player.id === 1 ? { kind: 'up', by: 1 } : { kind: 'down', by: 1 },
 	};
 });
 
@@ -412,12 +582,7 @@ mockNuxtImport('usePairingsModeData', () => () => ({
 }));
 
 mockNuxtImport('usePlayerHistoryModeData', () => () => {
-	const columns = [
-		'round',
-		'opponent',
-		'table',
-		'outcome',
-	].map(key => ({ key, visible: true }));
+	const columns = ['round', 'opponent', 'table', 'outcome'].map((key) => ({ key, visible: true }));
 	return {
 		config: computed(() => ({ showHeader: true, rowsPerPage: 8, columns })),
 		error: ref(null),
@@ -432,15 +597,17 @@ mockNuxtImport('usePlayerHistoryModeData', () => () => {
 			position: 1,
 		})),
 		pageSize: computed(() => 8),
-		pageData: computed(() => ['win', 'loss', 'draw', 'pending'].map((outcome, index) => ({
-			id: index + 1,
-			roundName: `Round ${index + 1}`,
-			tableNumber: index + 1,
-			opponentName: `Opponent ${index + 1}`,
-			opponentDeckName: null,
-			opponentDeckColors: null,
-			outcome,
-		}))),
+		pageData: computed(() =>
+			['win', 'loss', 'draw', 'pending'].map((outcome, index) => ({
+				id: index + 1,
+				roundName: `Round ${index + 1}`,
+				tableNumber: index + 1,
+				opponentName: `Opponent ${index + 1}`,
+				opponentDeckName: null,
+				opponentDeckColors: null,
+				outcome,
+			})),
+		),
 		formatOutcome: (row: { outcome: string }) => row.outcome,
 	};
 });
@@ -524,9 +691,7 @@ mockNuxtImport('useArchetypeSpotlightModeData', () => () => ({
 		convertedCount: 1,
 		conversionRate: 100,
 	})),
-	pageData: computed(() => [
-		{ id: 1, name: 'Pilot', position: 1 },
-	]),
+	pageData: computed(() => [{ id: 1, name: 'Pilot', position: 1 }]),
 	topCards: computed(() => [
 		{
 			id: 1,
@@ -549,19 +714,15 @@ function entrant(id: number): BracketEntrant {
 	};
 }
 
-function position(status: 'reported' | 'awaiting', entrants: [number, number] | null): BracketPosition {
+function position(
+	status: 'reported' | 'awaiting',
+	entrants: [number, number] | null,
+): BracketPosition {
 	return {
 		matchId: entrants ? entrants[0] : null,
 		tableNumber: null,
-		entrants: entrants
-			? [
-					entrant(entrants[0]),
-					entrant(entrants[1]),
-				]
-			: [null, null],
-		gameWins: entrants
-			? [2, 1]
-			: [null, null],
+		entrants: entrants ? [entrant(entrants[0]), entrant(entrants[1])] : [null, null],
+		gameWins: entrants ? [2, 1] : [null, null],
 		gameDraws: entrants ? 0 : null,
 		winner: entrants ? 0 : null,
 		status,
@@ -569,7 +730,11 @@ function position(status: 'reported' | 'awaiting', entrants: [number, number] | 
 }
 
 mockNuxtImport('useRoundClockModeData', () => () => {
-	const config = computed(() => ({ showRoundName: true, clockState: 'running', ...probeConfig.value }));
+	const config = computed(() => ({
+		showRoundName: true,
+		clockState: 'running',
+		...probeConfig.value,
+	}));
 	return {
 		config,
 		error: ref(null),
@@ -581,7 +746,11 @@ mockNuxtImport('useRoundClockModeData', () => () => {
 			startedAt: null,
 			durationMinutes: 50,
 		})),
-		clock: computed(() => ({ state: config.value.clockState, display: '12:34', nextChangeInMs: null })),
+		clock: computed(() => ({
+			state: config.value.clockState,
+			display: '12:34',
+			nextChangeInMs: null,
+		})),
 	};
 });
 
@@ -603,17 +772,12 @@ mockNuxtImport('useTopCutModeData', () => () => ({
 			{
 				roundId: 1,
 				name: 'Semifinals',
-				positions: [
-					position('reported', [1, 4]),
-					position('reported', [2, 3]),
-				],
+				positions: [position('reported', [1, 4]), position('reported', [2, 3])],
 			},
 			{
 				roundId: null,
 				name: 'Final',
-				positions: [
-					position('awaiting', null),
-				],
+				positions: [position('awaiting', null)],
 			},
 		],
 		champion: entrant(1),
@@ -626,7 +790,7 @@ mockNuxtImport('useMetagameModeData', () => () => ({
 		viewMode: 'archetype',
 		showHeader: true,
 		pageSize: 8,
-		archetypeColumns: ['archetype', 'count', 'winRate'].map(key => ({ key, visible: true })),
+		archetypeColumns: ['archetype', 'count', 'winRate'].map((key) => ({ key, visible: true })),
 		cardColumns: [],
 		...probeConfig.value,
 	})),
@@ -658,7 +822,7 @@ mockNuxtImport('useMetagameModeData', () => () => ({
 		},
 	]),
 	chartBars: computed(() => [
-		...CHART_SLOTS.map(slot => ({
+		...CHART_SLOTS.map((slot) => ({
 			id: slot,
 			name: `Archetype ${slot}`,
 			colors: null,
@@ -711,9 +875,7 @@ mockNuxtImport('useTopCardsModeData', () => () => {
 		ready: computed(() => true),
 		isEmpty: computed(() => false),
 		headerText: computed(() => 'Most Played Cards'),
-		pageEntries: computed(() => [
-			{ entry, rank: 1 },
-		]),
+		pageEntries: computed(() => [{ entry, rank: 1 }]),
 		currentPage: computed(() => 1),
 		totalPages: computed(() => 2),
 		pageCapacity: computed(() => 1),
@@ -771,17 +933,9 @@ mockNuxtImport('useDeckModeData', () => () => ({
 		duplicateCards: [],
 		unknownCards: [],
 	}),
-	deckStats: ref([
-		{ type: 'Instants', count: 12 },
-	]),
-	mainboard: ref([
-		deckCard('Mana Drain', 'mainboard'),
-		deckCard('Force of Will', 'mainboard'),
-	]),
-	sideboard: ref([
-		deckCard('Pyroblast', 'sideboard'),
-		deckCard('Hydroblast', 'sideboard'),
-	]),
+	deckStats: ref([{ type: 'Instants', count: 12 }]),
+	mainboard: ref([deckCard('Mana Drain', 'mainboard'), deckCard('Force of Will', 'mainboard')]),
+	sideboard: ref([deckCard('Pyroblast', 'sideboard'), deckCard('Hydroblast', 'sideboard')]),
 	error: ref(null),
 	ready: computed(() => true),
 	hasDisplayedDeck: computed(() => true),
@@ -893,7 +1047,10 @@ afterEach(() => {
 async function mountMode(
 	mode: ScreenMode,
 	theme?: StoredThemeTokens,
-	{ config = {}, themeOverrides = {} }: { config?: Record<string, unknown>; themeOverrides?: StoredThemeTokens } = {},
+	{
+		config = {},
+		themeOverrides = {},
+	}: { config?: Record<string, unknown>; themeOverrides?: StoredThemeTokens } = {},
 ) {
 	screen.value = createMockScreen({ currentMode: mode, themeOverrides });
 	themeTokens.value = theme;
@@ -905,29 +1062,32 @@ async function mountMode(
 		},
 	});
 	// The display is an async component.
-	await vi.waitFor(() => expect(wrapper!.get('.screen-renderer__display').element.childElementCount).toBeGreaterThan(0));
+	await vi.waitFor(() =>
+		expect(wrapper!.get('.screen-renderer__display').element.childElementCount).toBeGreaterThan(0),
+	);
 	await flushPromises();
 	// A display holding an image back until it loads shows it.
-	for (const image of wrapper.findAll('img'))
-		await image.trigger('load');
+	for (const image of wrapper.findAll('img')) await image.trigger('load');
 	await flushPromises();
 	return wrapper;
 }
 
 /** Waits for a probe's element, which a display may show only once it settles. */
 async function shown(probe: Probe) {
-	await vi.waitFor(() => expect(wrapper!.find(probe.selector).exists(), `${probe.selector} is rendered`).toBe(true));
+	await vi.waitFor(() =>
+		expect(wrapper!.find(probe.selector).exists(), `${probe.selector} is rendered`).toBe(true),
+	);
 }
 
 /** What a probe's element visibly paints. */
 function painted(probe: Probe, type: ThemeTokenType) {
 	const element = wrapper!.find(probe.selector);
 	expect(element.exists(), `${probe.selector} is rendered`).toBe(true);
-	if (probe.attribute)
-		return element.attributes(probe.attribute);
+	if (probe.attribute) return element.attributes(probe.attribute);
 	const style = getComputedStyle(element.element);
 	if (type === 'animation-recipe' && probe.motionProperties) {
-		const part = (name: string) => style.getPropertyValue(`${probe.motionProperties}-${name}`).trim();
+		const part = (name: string) =>
+			style.getPropertyValue(`${probe.motionProperties}-${name}`).trim();
 		return {
 			transitionDuration: part('duration'),
 			transitionTimingFunction: part('easing'),
@@ -943,8 +1103,8 @@ function painted(probe: Probe, type: ThemeTokenType) {
 	}
 	if (type !== 'typography') {
 		return probe.property === 'boxShadow'
-			// A shadow's colour, after its offsets, blur and spread.
-			? style.boxShadow.replace(/^(?:-?[\d.]+(?:px)?\s+)+/, '')
+			? // A shadow's colour, after its offsets, blur and spread.
+				style.boxShadow.replace(/^(?:-?[\d.]+(?:px)?\s+)+/, '')
 			: style[probe.property!];
 	}
 	return {
@@ -965,33 +1125,30 @@ function inEm(letterSpacing: string, fontSize: string) {
 
 /** What a sample value looks like painted, as the test's independent reading of it. */
 function expectedPaint(type: ThemeTokenType, value: unknown) {
-	if (type === 'color')
-		return value;
-	if (type === 'dimension')
-		return `${value}px`;
+	if (type === 'color') return value;
+	if (type === 'dimension') return `${value}px`;
 	if (type === 'animation-recipe') {
 		const recipe = value as ThemeTokenValueTypes['animation-recipe'];
 		return {
 			transitionDuration: `${recipe.duration}ms`,
-			transitionTimingFunction: { 'linear': 'linear', 'ease-out': 'cubic-bezier(0.5, 1, 0.89, 1)', 'ease-in-out': 'cubic-bezier(0.45, 0, 0.55, 1)' }[recipe.easing as string],
+			transitionTimingFunction: {
+				linear: 'linear',
+				'ease-out': 'cubic-bezier(0.5, 1, 0.89, 1)',
+				'ease-in-out': 'cubic-bezier(0.45, 0, 0.55, 1)',
+			}[recipe.easing as string],
 			transitionDelay: `${recipe.delay}ms`,
 		};
 	}
 	if (type === 'surface-style') {
 		// Its outline's colour, read as the colour Foundation Token it names, if it names one.
 		const color = (value as ThemeTokenValueTypes['surface-style']).outline!.color;
-		return typeof color === 'string'
-			? color
-			: FOUNDATION_TOKENS[color.token as 'accent'].default;
+		return typeof color === 'string' ? color : FOUNDATION_TOKENS[color.token as 'accent'].default;
 	}
 	if (type === 'asset') {
 		const asset = value as ThemeTokenValueTypes['asset'];
-		return asset
-			? `${asset.assetId}/${asset.revisionId}`
-			: 'none';
+		return asset ? `${asset.assetId}/${asset.revisionId}` : 'none';
 	}
-	if (type === 'animationEffect')
-		return (value as ThemeTokenValueTypes['animationEffect']).effect;
+	if (type === 'animationEffect') return (value as ThemeTokenValueTypes['animationEffect']).effect;
 	const typography = value as ThemeTokenValueTypes['typography'];
 	const font = typography.font as GraphicApplicationFontSelection;
 	return {
@@ -1016,14 +1173,17 @@ for (const mode of SCREEN_MODE_VALUES) {
 }
 
 /** The graphics hosts: their Graphic Items bind Foundation Tokens, and the Feature Match Overlay's Frame and Source Items paint Mode Tokens. */
-const GRAPHICS_HOSTS = ['broadcast-graphics', 'feature-match-overlay'] as const satisfies readonly ScreenMode[];
+const GRAPHICS_HOSTS = [
+	'broadcast-graphics',
+	'feature-match-overlay',
+] as const satisfies readonly ScreenMode[];
 
 describe.each(GRAPHICS_HOSTS)('the %s display', (mode) => {
 	function boundColor() {
 		return getComputedStyle(wrapper!.get('[data-graphic-item-kind="text"] p').element).color;
 	}
 
-	it('paints a Theme-bound Graphic Item from its Event\'s Theme, and restyles it on air when the Theme changes', async () => {
+	it("paints a Theme-bound Graphic Item from its Event's Theme, and restyles it on air when the Theme changes", async () => {
 		await mountMode(mode, { 'text-primary': 'rgb(12, 34, 56)' });
 		expect(boundColor()).toBe('rgb(12, 34, 56)');
 
@@ -1039,10 +1199,14 @@ describe.each(GRAPHICS_HOSTS)('the %s display', (mode) => {
 	});
 
 	// A Screen cannot swap the Foundation Tokens its Graphic Items bind; one stored before is read by nothing.
-	it('paints it from the Theme, never a Screen\'s stored override of its Foundation Token', async () => {
-		await mountMode(mode, { 'text-primary': 'rgb(12, 34, 56)' }, {
-			themeOverrides: { 'text-primary': 'rgb(65, 43, 21)' },
-		});
+	it("paints it from the Theme, never a Screen's stored override of its Foundation Token", async () => {
+		await mountMode(
+			mode,
+			{ 'text-primary': 'rgb(12, 34, 56)' },
+			{
+				themeOverrides: { 'text-primary': 'rgb(65, 43, 21)' },
+			},
+		);
 
 		expect(boundColor()).toBe('rgb(12, 34, 56)');
 	});
@@ -1068,7 +1232,11 @@ describe.each(SCREEN_MODE_VALUES)('the %s display', (mode) => {
 	}
 
 	it('has a probe for every Mode Token it declares', () => {
-		expect(Object.keys(probes ?? {}).map(token => screenModeTokenName(mode, token)).sort()).toEqual(Object.keys(declared).sort());
+		expect(
+			Object.keys(probes ?? {})
+				.map((token) => screenModeTokenName(mode, token))
+				.sort(),
+		).toEqual(Object.keys(declared).sort());
 	});
 
 	const tokens = Object.entries(SCREEN_MODES[mode].modeTokens ?? {}).map(([token, definition]) => ({
@@ -1076,65 +1244,81 @@ describe.each(SCREEN_MODE_VALUES)('the %s display', (mode) => {
 		definition,
 		probe: probes?.[token] as Probe,
 	}));
-	if (!probes || !tokens.length)
-		return;
+	if (!probes || !tokens.length) return;
 
-	it.each(tokens)('paints $name from the Screen\'s override', async ({ name, definition, probe }) => {
-		const sample = SAMPLES[definition.type];
-		await mountMode(mode, undefined, {
-			config: probe.config,
-			themeOverrides: { [name]: sample },
-		});
-		await shown(probe);
+	it.each(tokens)(
+		"paints $name from the Screen's override",
+		async ({ name, definition, probe }) => {
+			const sample = SAMPLES[definition.type];
+			await mountMode(mode, undefined, {
+				config: probe.config,
+				themeOverrides: { [name]: sample },
+			});
+			await shown(probe);
 
-		expect(painted(probe, definition.type)).toEqual(expectedPaint(definition.type, sample));
-	});
+			expect(painted(probe, definition.type)).toEqual(expectedPaint(definition.type, sample));
+		},
+	);
 
-	const shippedDefaults = tokens.filter(({ name, definition }) => FIRST_TOKEN_OF_EACH_TYPE.get(definition.type) === name);
-	if (!shippedDefaults.length)
-		return;
+	const shippedDefaults = tokens.filter(
+		({ name, definition }) => FIRST_TOKEN_OF_EACH_TYPE.get(definition.type) === name,
+	);
+	if (!shippedDefaults.length) return;
 
-	it.each(shippedDefaults)('paints $name as the Default Theme ships it when its Event has no Theme', async ({ name, definition, probe }) => {
-		const shipped = resolveThemeTokens({
-			vocabulary: FOUNDATION_TOKENS,
-			modeTokens: declared,
-			theme: {},
-			overrides: {},
-		}).values[name]!;
-		await mountMode(mode, undefined, { config: probe.config });
-		await shown(probe);
+	it.each(shippedDefaults)(
+		'paints $name as the Default Theme ships it when its Event has no Theme',
+		async ({ name, definition, probe }) => {
+			const shipped = resolveThemeTokens({
+				vocabulary: FOUNDATION_TOKENS,
+				modeTokens: declared,
+				theme: {},
+				overrides: {},
+			}).values[name]!;
+			await mountMode(mode, undefined, { config: probe.config });
+			await shown(probe);
 
-		expect(painted(probe, definition.type)).toEqual(expectedPaint(definition.type, shipped));
-	});
+			expect(painted(probe, definition.type)).toEqual(expectedPaint(definition.type, shipped));
+		},
+	);
 });
 
 // A display reads the Theme's Foundation Token for each part of its shared
 // chrome. The Mode Token that styled the part is a former token, read by
 // nothing wherever it is still stored.
-describe.each(Object.entries(FOUNDATION_CHROME) as [ScreenMode, Record<string, ChromeProbe>][])('the %s display\'s shared chrome', (mode, chrome) => {
-	const STORED_FORMER = {
-		color: 'rgb(9, 9, 9)',
-		typography: {
-			...SAMPLES.typography,
-			font: { kind: 'application', fontId: 'saira-condensed' },
-			weight: 900,
-		},
-	} as const;
-	const parts = Object.entries(chrome).map(([former, probe]) => ({
-		former,
-		token: probe.token,
-		type: FOUNDATION_TOKENS[probe.token].type as keyof typeof STORED_FORMER,
-		probe,
-	}));
+describe.each(Object.entries(FOUNDATION_CHROME) as [ScreenMode, Record<string, ChromeProbe>][])(
+	"the %s display's shared chrome",
+	(mode, chrome) => {
+		const STORED_FORMER = {
+			color: 'rgb(9, 9, 9)',
+			typography: {
+				...SAMPLES.typography,
+				font: { kind: 'application', fontId: 'saira-condensed' },
+				weight: 900,
+			},
+		} as const;
+		const parts = Object.entries(chrome).map(([former, probe]) => ({
+			former,
+			token: probe.token,
+			type: FOUNDATION_TOKENS[probe.token].type as keyof typeof STORED_FORMER,
+			probe,
+		}));
 
-	it.each(parts)('paints what $former styled from the Theme\'s $token, whatever is stored under the former token', async ({ former, token, type, probe }) => {
-		const stored = { [screenModeTokenName(mode, former)]: STORED_FORMER[type] };
-		await mountMode(mode, { ...stored, [token]: SAMPLES[type] }, { config: probe.config, themeOverrides: stored });
-		await shown(probe);
+		it.each(parts)(
+			"paints what $former styled from the Theme's $token, whatever is stored under the former token",
+			async ({ former, token, type, probe }) => {
+				const stored = { [screenModeTokenName(mode, former)]: STORED_FORMER[type] };
+				await mountMode(
+					mode,
+					{ ...stored, [token]: SAMPLES[type] },
+					{ config: probe.config, themeOverrides: stored },
+				);
+				await shown(probe);
 
-		expect(painted(probe, type)).toEqual(expectedPaint(type, SAMPLES[type]));
-	});
-});
+				expect(painted(probe, type)).toEqual(expectedPaint(type, SAMPLES[type]));
+			},
+		);
+	},
+);
 
 // A light Theme sets `text-primary` dark and `text-inverse` light as a pair, so
 // whatever a display paints on the primary text colour reads in `text-inverse`.
@@ -1143,29 +1327,35 @@ describe('a light Theme', () => {
 
 	/** The text colour of each element painted on the primary text colour. */
 	function textOnPrimaryText() {
-		return new Set(wrapper!.findAll('*')
-			.map(element => getComputedStyle(element.element))
-			.filter(style => style.backgroundColor === LIGHT['text-primary'])
-			.map(style => style.color));
+		return new Set(
+			wrapper!
+				.findAll('*')
+				.map((element) => getComputedStyle(element.element))
+				.filter((style) => style.backgroundColor === LIGHT['text-primary'])
+				.map((style) => style.color),
+		);
 	}
 
 	const BADGED_MODES: readonly ScreenMode[] = ['archetype-spotlight', 'top-cards', 'deck'];
 
-	it.each(Object.keys(THEMED_DISPLAYS) as ScreenMode[])('keeps every %s badge, pill and chip on the primary text colour legible', async (mode) => {
-		await mountMode(mode, LIGHT);
+	it.each(Object.keys(THEMED_DISPLAYS) as ScreenMode[])(
+		'keeps every %s badge, pill and chip on the primary text colour legible',
+		async (mode) => {
+			await mountMode(mode, LIGHT);
 
-		expect(textOnPrimaryText()).toEqual(new Set(BADGED_MODES.includes(mode)
-			? [LIGHT['text-inverse']]
-			: []));
-	});
+			expect(textOnPrimaryText()).toEqual(
+				new Set(BADGED_MODES.includes(mode) ? [LIGHT['text-inverse']] : []),
+			);
+		},
+	);
 });
 
 // Metagame's chart reads the Theme's chart palette directly, the `series-1` …
 // `series-8` and `series-other` Foundation Tokens its Screen host sets, and its
 // bars grow and shrink on its rows' motion timing.
-describe('a Metagame Screen\'s chart', () => {
+describe("a Metagame Screen's chart", () => {
 	const SERIES = [
-		...CHART_SLOTS.map(slot => ({
+		...CHART_SLOTS.map((slot) => ({
 			token: `series-${slot}`,
 			slot: String(slot),
 		})),
@@ -1177,7 +1367,7 @@ describe('a Metagame Screen\'s chart', () => {
 		config: { viewMode: 'chart' },
 	});
 
-	it.each(SERIES)('fills slot $slot from the Theme\'s $token', async ({ token, slot }) => {
+	it.each(SERIES)("fills slot $slot from the Theme's $token", async ({ token, slot }) => {
 		const probe = fill(slot);
 		await mountMode('metagame', { [token]: 'rgb(12, 34, 56)' }, { config: probe.config });
 		await shown(probe);
@@ -1186,16 +1376,16 @@ describe('a Metagame Screen\'s chart', () => {
 	});
 
 	// The host sets every series' default one way: a numbered slot and `other` wire the chart's two reads.
-	it.each([
-		SERIES[0]!,
-		SERIES.at(-1)!,
-	])('fills slot $slot as the Default Theme ships $token when its Event has no Theme', async ({ token, slot }) => {
-		const probe = fill(slot);
-		await mountMode('metagame', undefined, { config: probe.config });
-		await shown(probe);
+	it.each([SERIES[0]!, SERIES.at(-1)!])(
+		'fills slot $slot as the Default Theme ships $token when its Event has no Theme',
+		async ({ token, slot }) => {
+			const probe = fill(slot);
+			await mountMode('metagame', undefined, { config: probe.config });
+			await shown(probe);
 
-		expect(painted(probe, 'color')).toBe(FOUNDATION_TOKENS[token as 'series-1'].default);
-	});
+			expect(painted(probe, 'color')).toBe(FOUNDATION_TOKENS[token as 'series-1'].default);
+		},
+	);
 
 	// A former token is read by nothing, wherever it is still stored.
 	it.each([
@@ -1215,7 +1405,11 @@ describe('a Metagame Screen\'s chart', () => {
 		],
 	])('ignores a former chart Mode Token stored in %s', async (_case, { theme, themeOverrides }) => {
 		const probe = fill('1');
-		await mountMode('metagame', { ...theme, 'series-1': 'rgb(12, 34, 56)' }, { config: probe.config, themeOverrides });
+		await mountMode(
+			'metagame',
+			{ ...theme, 'series-1': 'rgb(12, 34, 56)' },
+			{ config: probe.config, themeOverrides },
+		);
 		await shown(probe);
 
 		expect(painted(probe, 'color')).toBe('rgb(12, 34, 56)');
@@ -1232,18 +1426,20 @@ describe('a Metagame Screen\'s chart', () => {
 		});
 		await shown(bar);
 
-		expect(painted(bar, 'animation-recipe')).toEqual(expectedPaint('animation-recipe', SAMPLES['animation-recipe']));
+		expect(painted(bar, 'animation-recipe')).toEqual(
+			expectedPaint('animation-recipe', SAMPLES['animation-recipe']),
+		);
 	});
 });
 
 // A Mode Token defaulting to a Foundation Token, or to a composite whose colour
 // names one, follows a Theme setting only that Foundation Token.
-describe('a Foundation Token a Mode Token\'s default names', () => {
+describe("a Foundation Token a Mode Token's default names", () => {
 	const CASES: Array<{ mode: ScreenMode; token: string; part: string; probe: Probe }> = [
 		{
 			mode: 'feature-match-overlay',
 			token: 'surface',
-			part: 'a built-in preset\'s Frame',
+			part: "a built-in preset's Frame",
 			probe: { selector: '.feature-match-overlay__frame-fill', attribute: 'fill' },
 		},
 	];
@@ -1257,15 +1453,25 @@ describe('a Foundation Token a Mode Token\'s default names', () => {
 });
 
 describe('a Screen Theme Override', () => {
-	const dividers = [FOUNDATION_CHROME.standings!['title-divider']!, FOUNDATION_CHROME.standings!['row-divider']!];
+	const dividers = [
+		FOUNDATION_CHROME.standings!['title-divider']!,
+		FOUNDATION_CHROME.standings!['row-divider']!,
+	];
 
 	// A Screen takes its Foundation chrome from the Theme alone; one stored before is read by nothing.
-	it('of a Foundation Token is dormant: the display paints the Theme\'s value wherever it is read', async () => {
-		await mountMode('standings', { divider: 'rgb(1, 2, 3)' }, {
-			themeOverrides: { divider: 'rgb(4, 5, 6)' },
-		});
+	it("of a Foundation Token is dormant: the display paints the Theme's value wherever it is read", async () => {
+		await mountMode(
+			'standings',
+			{ divider: 'rgb(1, 2, 3)' },
+			{
+				themeOverrides: { divider: 'rgb(4, 5, 6)' },
+			},
+		);
 
-		expect(dividers.map(probe => painted(probe, 'color'))).toEqual(['rgb(1, 2, 3)', 'rgb(1, 2, 3)']);
+		expect(dividers.map((probe) => painted(probe, 'color'))).toEqual([
+			'rgb(1, 2, 3)',
+			'rgb(1, 2, 3)',
+		]);
 	});
 });
 
@@ -1293,95 +1499,115 @@ describe('a library font in the Theme', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('paints in the revision\'s face, loaded through the capability, and follows a Theme edit', async () => {
+	it("paints in the revision's face, loaded through the capability, and follows a Theme edit", async () => {
 		await mountMode('standings', {
 			heading: heading('revision-1'),
 		});
-		await vi.waitFor(() => expect(wrapper!.get('.screen-renderer').attributes('data-font-ready')).toBe('true'));
+		await vi.waitFor(() =>
+			expect(wrapper!.get('.screen-renderer').attributes('data-font-ready')).toBe('true'),
+		);
 
-		expect(painted(title, 'typography')).toMatchObject({ fontFamily: 'stream-keepr-graphic-asset-asset-brand-face-revision-1' });
+		expect(painted(title, 'typography')).toMatchObject({
+			fontFamily: 'stream-keepr-graphic-asset-asset-brand-face-revision-1',
+		});
 		expect(fonts.constructed).toEqual([
 			{
 				family: 'stream-keepr-graphic-asset-asset-brand-face-revision-1',
 				source: expect.stringContaining('/api/screen-output/screens/'),
 			},
 		]);
-		expect(fonts.constructed[0]!.source).toContain('/assets/asset-brand-face/revisions/revision-1/content');
+		expect(fonts.constructed[0]!.source).toContain(
+			'/assets/asset-brand-face/revisions/revision-1/content',
+		);
 
 		themeTokens.value = {
 			heading: heading('revision-2'),
 		};
-		await vi.waitFor(() => expect(fonts.constructed.map(face => face.family)).toContain('stream-keepr-graphic-asset-asset-brand-face-revision-2'));
+		await vi.waitFor(() =>
+			expect(fonts.constructed.map((face) => face.family)).toContain(
+				'stream-keepr-graphic-asset-asset-brand-face-revision-2',
+			),
+		);
 		await flushPromises();
 
-		expect(painted(title, 'typography')).toMatchObject({ fontFamily: 'stream-keepr-graphic-asset-asset-brand-face-revision-2' });
+		expect(painted(title, 'typography')).toMatchObject({
+			fontFamily: 'stream-keepr-graphic-asset-asset-brand-face-revision-2',
+		});
 	});
 
 	// The fonts a display may read are the Theme's `heading` and `body`, whichever Mode Tokens its mode declares.
-	it.each(['heading', 'body'] as const)('loads the Theme\'s %s face on a mode declaring no typography Mode Token', async (token) => {
-		await mountMode('card', {
-			[token]: {
-				...FOUNDATION_TOKENS[token].default,
-				font: {
-					kind: 'asset',
-					reference: testGraphicAssetReference('asset-brand-face', 'revision-1'),
+	it.each(['heading', 'body'] as const)(
+		"loads the Theme's %s face on a mode declaring no typography Mode Token",
+		async (token) => {
+			await mountMode('card', {
+				[token]: {
+					...FOUNDATION_TOKENS[token].default,
+					font: {
+						kind: 'asset',
+						reference: testGraphicAssetReference('asset-brand-face', 'revision-1'),
+					},
 				},
-			},
-		});
-		await vi.waitFor(() => expect(wrapper!.get('.screen-renderer').attributes('data-font-ready')).toBe('true'));
+			});
+			await vi.waitFor(() =>
+				expect(wrapper!.get('.screen-renderer').attributes('data-font-ready')).toBe('true'),
+			);
 
-		expect(fonts.constructed.map(face => face.family)).toEqual(['stream-keepr-graphic-asset-asset-brand-face-revision-1']);
-	});
+			expect(fonts.constructed.map((face) => face.family)).toEqual([
+				'stream-keepr-graphic-asset-asset-brand-face-revision-1',
+			]);
+		},
+	);
 
 	// Text never shows in a fallback face while its face loads; a face that fails shows it rather than a blank display.
 	it.each([
 		{ outcome: 'loads', settledAs: 'data-font-ready' },
 		{ outcome: 'fails', settledAs: 'data-font-error' },
-	])('hides a display on program in place, its background still on air, until the face $outcome', async ({ outcome, settledAs }) => {
-		const face = deferred();
-		fonts = stubFontFaces(() => face.promise);
-		const background = SAMPLES.backgroundLayers;
-		await mountMode('standings', { background });
-		const frame = () => wrapper!.get('.screen-renderer');
-		const visible = (element: Element) => getComputedStyle(element).visibility !== 'hidden';
-		const onAir = () => ({
-			frame: visible(frame().element),
-			background: visible(wrapper!.get('.background-layer-stack').element),
-			display: visible(wrapper!.get(title.selector).element),
-		});
-		await vi.waitFor(() => expect(frame().attributes('data-screen-mode-ready')).toBe('true'));
+	])(
+		'hides a display on program in place, its background still on air, until the face $outcome',
+		async ({ outcome, settledAs }) => {
+			const face = deferred();
+			fonts = stubFontFaces(() => face.promise);
+			const background = SAMPLES.backgroundLayers;
+			await mountMode('standings', { background });
+			const frame = () => wrapper!.get('.screen-renderer');
+			const visible = (element: Element) => getComputedStyle(element).visibility !== 'hidden';
+			const onAir = () => ({
+				frame: visible(frame().element),
+				background: visible(wrapper!.get('.background-layer-stack').element),
+				display: visible(wrapper!.get(title.selector).element),
+			});
+			await vi.waitFor(() => expect(frame().attributes('data-screen-mode-ready')).toBe('true'));
 
-		themeTokens.value = {
-			background,
-			heading: heading('revision-1'),
-		};
-		await vi.waitFor(() => expect(fonts.constructed).toHaveLength(1));
-		await flushPromises();
-		const whileLoading = onAir();
+			themeTokens.value = {
+				background,
+				heading: heading('revision-1'),
+			};
+			await vi.waitFor(() => expect(fonts.constructed).toHaveLength(1));
+			await flushPromises();
+			const whileLoading = onAir();
 
-		if (outcome === 'loads')
-			face.resolve();
-		else
-			face.reject(new Error('unavailable'));
-		await vi.waitFor(() => expect(frame().attributes(settledAs)).toBe('true'));
+			if (outcome === 'loads') face.resolve();
+			else face.reject(new Error('unavailable'));
+			await vi.waitFor(() => expect(frame().attributes(settledAs)).toBe('true'));
 
-		expect({
-			whileLoading,
-			settled: onAir(),
-		}).toEqual({
-			whileLoading: { frame: true, background: true, display: false },
-			settled: { frame: true, background: true, display: true },
-		});
-	});
+			expect({
+				whileLoading,
+				settled: onAir(),
+			}).toEqual({
+				whileLoading: { frame: true, background: true, display: false },
+				settled: { frame: true, background: true, display: true },
+			});
+		},
+	);
 });
 
 // An application font ships as CSS `@font-face`, which swaps in late on a cold cache.
 describe('an application font in the Theme', () => {
 	it('holds the rendering off program until the face its heading paints has loaded', async () => {
 		const load = deferred<unknown>();
-		const fonts = stubDocumentFonts(async font => font.includes('Poppins')
-			? load.promise
-			: [{}]);
+		const fonts = stubDocumentFonts(async (font) =>
+			font.includes('Poppins') ? load.promise : [{}],
+		);
 
 		await mountMode('background', {
 			heading: {
@@ -1391,33 +1617,47 @@ describe('an application font in the Theme', () => {
 		});
 		const frame = () => wrapper!.get('.screen-renderer');
 
-		expect(fonts.load).toHaveBeenCalledWith(`normal ${FOUNDATION_TOKENS.heading.default.weight} 1em "Poppins"`);
-		expect(frame().attributes()).toMatchObject({ 'data-font-ready': 'false', 'data-screen-mode-ready': 'false' });
+		expect(fonts.load).toHaveBeenCalledWith(
+			`normal ${FOUNDATION_TOKENS.heading.default.weight} 1em "Poppins"`,
+		);
+		expect(frame().attributes()).toMatchObject({
+			'data-font-ready': 'false',
+			'data-screen-mode-ready': 'false',
+		});
 
 		load.resolve([{}]);
-		await vi.waitFor(() => expect(frame().attributes()).toMatchObject({ 'data-font-ready': 'true', 'data-screen-mode-ready': 'true' }));
+		await vi.waitFor(() =>
+			expect(frame().attributes()).toMatchObject({
+				'data-font-ready': 'true',
+				'data-screen-mode-ready': 'true',
+			}),
+		);
 	});
 });
 
 describe('the Screen inset and alignment', () => {
-	const PLAIN_MODES = SCREEN_MODE_VALUES.filter(mode => screenModeHostTokens(mode).length > 0);
+	const PLAIN_MODES = SCREEN_MODE_VALUES.filter((mode) => screenModeHostTokens(mode).length > 0);
 	const LAYOUT = { inset: 40, alignment: SAMPLES.alignment };
 
 	/** Where the host places the mode's content in its Event Canvas. */
 	function placement() {
 		const style = getComputedStyle(wrapper!.get('.screen-renderer').element);
-		return { padding: style.padding, justifyItems: style.justifyItems, alignItems: style.alignItems };
+		return {
+			padding: style.padding,
+			justifyItems: style.justifyItems,
+			alignItems: style.alignItems,
+		};
 	}
 
 	// A host insets and aligns by its kind, never its mode (`screenModeHost.test.ts`): two plain modes wire it.
-	it.each([
-		PLAIN_MODES[0]!,
-		PLAIN_MODES.at(-1)!,
-	])('places %s inside the inset, where its Theme aligns it', async (mode) => {
-		await mountMode(mode, LAYOUT);
+	it.each([PLAIN_MODES[0]!, PLAIN_MODES.at(-1)!])(
+		'places %s inside the inset, where its Theme aligns it',
+		async (mode) => {
+			await mountMode(mode, LAYOUT);
 
-		expect(placement()).toEqual({ padding: '40px', justifyItems: 'end', alignItems: 'end' });
-	});
+			expect(placement()).toEqual({ padding: '40px', justifyItems: 'end', alignItems: 'end' });
+		},
+	);
 
 	// The two Foundation Tokens a Screen may override.
 	it('places a Screen by its own override of the inset and alignment, over the Theme', async () => {

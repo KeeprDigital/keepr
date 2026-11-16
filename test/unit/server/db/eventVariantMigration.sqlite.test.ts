@@ -19,10 +19,7 @@ describe('the Event Variant migration', () => {
 		await harness.applyRemainingMigrations();
 
 		const { rows } = await harness.client.execute('SELECT id, variant FROM events ORDER BY id');
-		expect(rows.map(row => [
-			Number(row.id),
-			row.variant,
-		])).toEqual([
+		expect(rows.map((row) => [Number(row.id), row.variant])).toEqual([
 			[1, 'two-player'],
 			[2, null],
 		]);

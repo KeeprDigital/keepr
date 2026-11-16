@@ -35,7 +35,10 @@ const VALIDATOR_SERVICE_BINDING = 'SILENT_VIDEO_PLAYBACK_VALIDATOR';
 const WORKFLOW_BINDING = 'SILENT_VIDEO_VALIDATION_WORKFLOW';
 
 const APP_CONFIG = new URL('../../wrangler.jsonc', import.meta.url);
-const VALIDATOR_CONFIG = new URL('../../workers/silent-video-validator/wrangler.jsonc', import.meta.url);
+const VALIDATOR_CONFIG = new URL(
+	'../../workers/silent-video-validator/wrangler.jsonc',
+	import.meta.url,
+);
 
 /**
  * JSON with comments and trailing commas, as Wrangler configs are written.
@@ -48,23 +51,17 @@ export function parseJsonc(text) {
 		if (char === '"') {
 			const start = index;
 			for (index += 1; index < text.length && text[index] !== '"'; index += 1) {
-				if (text[index] === '\\')
-					index += 1;
+				if (text[index] === '\\') index += 1;
 			}
 			out += text.slice(start, index + 1);
-		}
-		else if (char === '/' && text[index + 1] === '/') {
-			while (index < text.length && text[index] !== '\n')
-				index += 1;
+		} else if (char === '/' && text[index + 1] === '/') {
+			while (index < text.length && text[index] !== '\n') index += 1;
 			out += '\n';
-		}
-		else if (char === '/' && text[index + 1] === '*') {
+		} else if (char === '/' && text[index + 1] === '*') {
 			index = text.indexOf('*/', index + 2);
-			if (index < 0)
-				break;
+			if (index < 0) break;
 			index += 1;
-		}
-		else if (char !== ',' || !/^\s*[\]}]/.test(text.slice(index + 1))) {
+		} else if (char !== ',' || !/^\s*[\]}]/.test(text.slice(index + 1))) {
 			out += char;
 		}
 	}
@@ -73,8 +70,9 @@ export function parseJsonc(text) {
 
 /** The committed production installation: the app's and the validator's configs. */
 export async function loadCommittedInstallation() {
-	const [app, validator] = await Promise.all([APP_CONFIG, VALIDATOR_CONFIG].map(async url =>
-		parseJsonc(await readFile(url, 'utf8'))));
+	const [app, validator] = await Promise.all(
+		[APP_CONFIG, VALIDATOR_CONFIG].map(async (url) => parseJsonc(await readFile(url, 'utf8'))),
+	);
 	return {
 		app,
 		validator,
@@ -87,7 +85,7 @@ function inconsistent(reason) {
 }
 
 function bucketBound(config, binding) {
-	return config.r2_buckets?.find(bucket => bucket.binding === binding)?.bucket_name;
+	return config.r2_buckets?.find((bucket) => bucket.binding === binding)?.bucket_name;
 }
 
 /** The staging bucket a Wrangler config binds, the one the validator reads sources from. */
@@ -97,9 +95,10 @@ export function stagingBucketOf(config) {
 
 /** Every host the app's config serves, from its `routes`. */
 function servedHosts(app) {
-	return (app.routes ?? []).map(route => (typeof route === 'string'
-		? route
-		: route.pattern)).filter(Boolean).map(pattern => pattern.replace(/\/.*$/, '').toLowerCase());
+	return (app.routes ?? [])
+		.map((route) => (typeof route === 'string' ? route : route.pattern))
+		.filter(Boolean)
+		.map((pattern) => pattern.replace(/\/.*$/, '').toLowerCase());
 }
 
 /**
@@ -130,20 +129,19 @@ export function resolveDeployedTarget({ env, installation, requireOperator = tru
 
 	const accountId = env[ACCOUNT_ID_ENV]?.trim();
 	if (!accountId)
-		throw new AcceptanceFailure('harness-precondition-unmet', { reason: `${ACCOUNT_ID_ENV} is unset` });
-	if (!ACCOUNT_ID_PATTERN.test(accountId))
-		throw inconsistent('account-malformed');
+		throw new AcceptanceFailure('harness-precondition-unmet', {
+			reason: `${ACCOUNT_ID_ENV} is unset`,
+		});
+	if (!ACCOUNT_ID_PATTERN.test(accountId)) throw inconsistent('account-malformed');
 
 	const { app, validator, validatorConfigPath } = installation;
 	let host;
 	try {
 		host = new URL(origin).host.toLowerCase();
-	}
-	catch {
+	} catch {
 		throw inconsistent('origin-malformed');
 	}
-	if (!servedHosts(app).includes(host))
-		throw inconsistent('origin-not-installation');
+	if (!servedHosts(app).includes(host)) throw inconsistent('origin-not-installation');
 
 	for (const config of [app, validator]) {
 		if (config.account_id !== undefined && config.account_id !== accountId)
@@ -154,13 +152,13 @@ export function resolveDeployedTarget({ env, installation, requireOperator = tru
 	if (!stagingBucket || stagingBucket !== bucketBound(app, STAGING_BINDING))
 		throw inconsistent('staging-bucket-mismatch');
 
-	const service = app.services?.find(entry => entry.binding === VALIDATOR_SERVICE_BINDING)?.service;
-	if (!service || service !== validator.name)
-		throw inconsistent('validator-service-mismatch');
+	const service = app.services?.find(
+		(entry) => entry.binding === VALIDATOR_SERVICE_BINDING,
+	)?.service;
+	if (!service || service !== validator.name) throw inconsistent('validator-service-mismatch');
 
-	const workflow = validator.workflows?.find(entry => entry.binding === WORKFLOW_BINDING)?.name;
-	if (!workflow)
-		throw inconsistent('workflow-unconfigured');
+	const workflow = validator.workflows?.find((entry) => entry.binding === WORKFLOW_BINDING)?.name;
+	if (!workflow) throw inconsistent('workflow-unconfigured');
 
 	return {
 		origin,

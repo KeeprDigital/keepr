@@ -4,8 +4,7 @@ function rememberedOpenState(storageKey: string): Ref<Record<string, boolean>> {
 	try {
 		// Read on mount, so a server render and the first client render agree.
 		return useLocalStorage<Record<string, boolean>>(storageKey, {}, { initOnMounted: true });
-	}
-	catch {
+	} catch {
 		// A browser that refuses storage still collapses for this view.
 		return ref({});
 	}

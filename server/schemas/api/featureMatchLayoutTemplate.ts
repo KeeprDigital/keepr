@@ -16,8 +16,15 @@ import { featureMatchLayoutConfigSchema } from './screen';
  * another installation.
  */
 
-const templateNameSchema = z.string().trim().min(1).max(MAX_FEATURE_MATCH_LAYOUT_TEMPLATE_NAME_LENGTH);
-const templateDescriptionSchema = z.string().trim().max(MAX_FEATURE_MATCH_LAYOUT_TEMPLATE_DESCRIPTION_LENGTH);
+const templateNameSchema = z
+	.string()
+	.trim()
+	.min(1)
+	.max(MAX_FEATURE_MATCH_LAYOUT_TEMPLATE_NAME_LENGTH);
+const templateDescriptionSchema = z
+	.string()
+	.trim()
+	.max(MAX_FEATURE_MATCH_LAYOUT_TEMPLATE_DESCRIPTION_LENGTH);
 
 export const featureMatchLayoutTemplateParamsSchema = z.object({
 	templateId: z.string().min(1).max(100),
@@ -33,15 +40,19 @@ export const featureMatchLayoutTemplateParamsSchema = z.object({
  * rather than in principle: the Screen's Feature Match Slot assignment is not part
  * of the layout and is never read here.
  */
-export const saveFeatureMatchLayoutTemplateSchema = z.object({
-	source: z.object({
-		eventId: z.number().int().positive(),
-		screenId: z.number().int().positive(),
-	}).strict(),
-	/** Absent takes the Screen's own name. */
-	name: templateNameSchema.optional(),
-	description: templateDescriptionSchema.optional(),
-}).strict();
+export const saveFeatureMatchLayoutTemplateSchema = z
+	.object({
+		source: z
+			.object({
+				eventId: z.number().int().positive(),
+				screenId: z.number().int().positive(),
+			})
+			.strict(),
+		/** Absent takes the Screen's own name. */
+		name: templateNameSchema.optional(),
+		description: templateDescriptionSchema.optional(),
+	})
+	.strict();
 
 /**
  * `null` clears a description; an omitted field is left as it is.
@@ -50,15 +61,15 @@ export const saveFeatureMatchLayoutTemplateSchema = z.object({
  * omissible precondition is an inert one, and a caller with no revision to state has
  * not read the template it is revising.
  */
-export const updateFeatureMatchLayoutTemplateSchema = z.object({
-	name: templateNameSchema.optional(),
-	description: templateDescriptionSchema.nullable().optional(),
-	document: featureMatchLayoutConfigSchema.optional(),
-	revision: z.number().int().positive(),
-}).strict().refine(
-	patch => Object.keys(patch).length > 1,
-	'A template revision must change something',
-);
+export const updateFeatureMatchLayoutTemplateSchema = z
+	.object({
+		name: templateNameSchema.optional(),
+		description: templateDescriptionSchema.nullable().optional(),
+		document: featureMatchLayoutConfigSchema.optional(),
+		revision: z.number().int().positive(),
+	})
+	.strict()
+	.refine((patch) => Object.keys(patch).length > 1, 'A template revision must change something');
 
 /**
  * Placing replaces the Screen's whole Feature Match Layout.
@@ -70,10 +81,16 @@ export const updateFeatureMatchLayoutTemplateSchema = z.object({
  * required for the same reason it is on a Broadcast Graphic placement: the write is
  * a read-modify-write of the Screen, and an absent version would mean unchecked.
  */
-export const placeFeatureMatchLayoutTemplateSchema = z.object({
-	templateId: z.string().min(1).max(100),
-	stateVersion: z.number().int().nonnegative(),
-}).strict();
+export const placeFeatureMatchLayoutTemplateSchema = z
+	.object({
+		templateId: z.string().min(1).max(100),
+		stateVersion: z.number().int().nonnegative(),
+	})
+	.strict();
 
-export type SaveFeatureMatchLayoutTemplateInput = z.infer<typeof saveFeatureMatchLayoutTemplateSchema>;
-export type UpdateFeatureMatchLayoutTemplateInput = z.infer<typeof updateFeatureMatchLayoutTemplateSchema>;
+export type SaveFeatureMatchLayoutTemplateInput = z.infer<
+	typeof saveFeatureMatchLayoutTemplateSchema
+>;
+export type UpdateFeatureMatchLayoutTemplateInput = z.infer<
+	typeof updateFeatureMatchLayoutTemplateSchema
+>;

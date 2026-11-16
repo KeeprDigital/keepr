@@ -54,7 +54,7 @@ describe('useFeatureMatchStore', () => {
 
 			const reordering = store.reorderFeatureMatch(1, 'down');
 
-			expect(store.featureMatches.map(m => m.id)).toEqual([2, 1]);
+			expect(store.featureMatches.map((m) => m.id)).toEqual([2, 1]);
 			expect(mockRepo.reorder).toHaveBeenCalledWith(1, 1, 'down');
 
 			reorder.resolve({
@@ -65,12 +65,12 @@ describe('useFeatureMatchStore', () => {
 			});
 			await reordering;
 
-			expect(store.featureMatches.map(m => m.id)).toEqual([2, 1]);
+			expect(store.featureMatches.map((m) => m.id)).toEqual([2, 1]);
 		});
 
 		// The reordering client never hears its own `featureMatch:reordered`, so the
 		// answer is where it learns the orders a peer's later message sorts by.
-		it('holds the answered sort orders, so a peer\'s later Slot keeps the order', async () => {
+		it("holds the answered sort orders, so a peer's later Slot keeps the order", async () => {
 			mockRepo.reorder.mockResolvedValueOnce({
 				slots: [
 					{ matchId: 1, sortOrder: 1 },
@@ -83,23 +83,25 @@ describe('useFeatureMatchStore', () => {
 				featureMatch: createMockFeatureMatch({ id: 3, sortOrder: 2 }),
 			} as never);
 
-			expect(store.featureMatches.map(m => [m.id, m.sortOrder])).toEqual([
+			expect(store.featureMatches.map((m) => [m.id, m.sortOrder])).toEqual([
 				[2, 0],
 				[1, 1],
 				[3, 2],
 			]);
 		});
 
-		it('reports the server\'s sentence for a refused reorder and puts the Slots back', async () => {
-			mockRepo.reorder.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { message: 'The Feature Match order changed while you were reordering it' },
-			}));
+		it("reports the server's sentence for a refused reorder and puts the Slots back", async () => {
+			mockRepo.reorder.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { message: 'The Feature Match order changed while you were reordering it' },
+				}),
+			);
 
 			await store.reorderFeatureMatch(1, 'down');
 
 			expect(store.error).toBe('The Feature Match order changed while you were reordering it');
-			expect(store.featureMatches.map(m => m.id)).toEqual([1, 2]);
+			expect(store.featureMatches.map((m) => m.id)).toEqual([1, 2]);
 		});
 
 		it.each([
@@ -109,28 +111,26 @@ describe('useFeatureMatchStore', () => {
 			await store.reorderFeatureMatch(slotId, direction);
 
 			expect(mockRepo.reorder).not.toHaveBeenCalled();
-			expect(store.featureMatches.map(m => m.id)).toEqual([1, 2]);
+			expect(store.featureMatches.map((m) => m.id)).toEqual([1, 2]);
 		});
 	});
 
-	describe('a peer\'s Slot messages', () => {
+	describe("a peer's Slot messages", () => {
 		it('hold a created Slot in sort order and drop a deleted one', () => {
-			store.featureMatches = [
-				createMockFeatureMatch({ id: 2, sortOrder: 1 }),
-			];
+			store.featureMatches = [createMockFeatureMatch({ id: 2, sortOrder: 1 })];
 
 			deliver('featureMatch:created', {
 				featureMatch: createMockFeatureMatch({ id: 1, sortOrder: 0 }),
 			} as never);
 
-			expect(store.featureMatches.map(m => m.id)).toEqual([1, 2]);
+			expect(store.featureMatches.map((m) => m.id)).toEqual([1, 2]);
 
 			deliver('featureMatch:deleted', { featureMatchId: 1 } as never);
 
-			expect(store.featureMatches.map(m => m.id)).toEqual([2]);
+			expect(store.featureMatches.map((m) => m.id)).toEqual([2]);
 		});
 
-		it('apply a reorder\'s sort orders', () => {
+		it("apply a reorder's sort orders", () => {
 			store.featureMatches = [
 				createMockFeatureMatch({ id: 1, sortOrder: 0 }),
 				createMockFeatureMatch({ id: 2, sortOrder: 1 }),
@@ -143,7 +143,7 @@ describe('useFeatureMatchStore', () => {
 				],
 			} as never);
 
-			expect(store.featureMatches.map(m => m.id)).toEqual([2, 1]);
+			expect(store.featureMatches.map((m) => m.id)).toEqual([2, 1]);
 		});
 	});
 
@@ -156,9 +156,7 @@ describe('useFeatureMatchStore', () => {
 		});
 
 		it('a settings answer from an ended epoch does not replace the held Slot, and answers with it', async () => {
-			store.featureMatches = [
-				slotInEpoch(1, 501),
-			];
+			store.featureMatches = [slotInEpoch(1, 501)];
 			stateStore().offerSlotSession(store.featureMatches[0]!);
 			const update = deferred<ReturnType<typeof slotInEpoch>>();
 			mockRepo.update.mockReturnValueOnce(update.promise);
@@ -173,9 +171,7 @@ describe('useFeatureMatchStore', () => {
 		});
 
 		it('a same-epoch settings answer replaces the held Slot', async () => {
-			store.featureMatches = [
-				slotInEpoch(1, 501),
-			];
+			store.featureMatches = [slotInEpoch(1, 501)];
 			stateStore().offerSlotSession(store.featureMatches[0]!);
 			const answered = slotInEpoch(1, 501, { bestOf: 5 });
 			mockRepo.update.mockResolvedValueOnce(answered);
@@ -186,10 +182,7 @@ describe('useFeatureMatchStore', () => {
 		});
 
 		it('a load keeps a Slot held from a newer epoch and applies the rest', async () => {
-			mockRepo.list.mockResolvedValueOnce([
-				slotInEpoch(1, 501),
-				slotInEpoch(2, 601),
-			]);
+			mockRepo.list.mockResolvedValueOnce([slotInEpoch(1, 501), slotInEpoch(2, 601)]);
 			await store.loadFeatureMatchesByEventId(1);
 			const load = deferred<ReturnType<typeof slotInEpoch>[]>();
 			mockRepo.list.mockReturnValueOnce(load.promise);
@@ -198,10 +191,7 @@ describe('useFeatureMatchStore', () => {
 			const promoted = slotInEpoch(1, 502);
 			announce(promoted);
 			const sameEpoch = slotInEpoch(2, 601, { bestOf: 5 });
-			load.resolve([
-				slotInEpoch(1, 501, { bestOf: 5 }),
-				sameEpoch,
-			]);
+			load.resolve([slotInEpoch(1, 501, { bestOf: 5 }), sameEpoch]);
 			await loading;
 
 			expect(store.featureMatches).toEqual([promoted, sameEpoch]);
@@ -227,9 +217,7 @@ describe('useFeatureMatchStore', () => {
 		});
 
 		it('a settings answer does not replace a Slot holding a Session, and answers with it', async () => {
-			store.featureMatches = [
-				sessionlessSlot(1),
-			];
+			store.featureMatches = [sessionlessSlot(1)];
 			const update = deferred<ReturnType<typeof createMockFeatureMatch>>();
 			mockRepo.update.mockReturnValueOnce(update.promise);
 
@@ -243,10 +231,7 @@ describe('useFeatureMatchStore', () => {
 		});
 
 		it('a load keeps a Slot holding a Session and applies the rest', async () => {
-			mockRepo.list.mockResolvedValueOnce([
-				sessionlessSlot(1),
-				sessionlessSlot(2),
-			]);
+			mockRepo.list.mockResolvedValueOnce([sessionlessSlot(1), sessionlessSlot(2)]);
 			await store.loadFeatureMatchesByEventId(1);
 			const load = deferred<ReturnType<typeof createMockFeatureMatch>[]>();
 			mockRepo.list.mockReturnValueOnce(load.promise);
@@ -255,10 +240,7 @@ describe('useFeatureMatchStore', () => {
 			const withSession = slotInEpoch(1, 501);
 			announce(withSession);
 			const stillSessionless = sessionlessSlot(2, { bestOf: 5 });
-			load.resolve([
-				sessionlessSlot(1, { bestOf: 5 }),
-				stillSessionless,
-			]);
+			load.resolve([sessionlessSlot(1, { bestOf: 5 }), stillSessionless]);
 			await loading;
 
 			expect(store.featureMatches).toEqual([withSession, stillSessionless]);
@@ -282,9 +264,7 @@ describe('useFeatureMatchStore', () => {
 		});
 
 		it('applies while no Session is held for the Slot', () => {
-			store.featureMatches = [
-				sessionlessSlot(1),
-			];
+			store.featureMatches = [sessionlessSlot(1)];
 			const edited = sessionlessSlot(1, { bestOf: 5 });
 
 			announce(edited);
@@ -339,9 +319,7 @@ describe('useFeatureMatchStore', () => {
 		});
 
 		it('a late update changes no Slot and primes no Feature Match Session', async () => {
-			store.featureMatches = [
-				createMockFeatureMatch({ id: 1, bestOf: 3 }),
-			];
+			store.featureMatches = [createMockFeatureMatch({ id: 1, bestOf: 3 })];
 			const update = deferred<ReturnType<typeof slotInEpoch>>();
 			mockRepo.update.mockReturnValueOnce(update.promise);
 
@@ -407,9 +385,7 @@ describe('useFeatureMatchStore', () => {
 			await assignments.loadAssignments(eventId, 10);
 			promotion.resolve({
 				promotedSlot: createMockFeatureMatch({ id: 1, matchId: 7 }),
-				clearedSlots: [
-					createMockFeatureMatch({ id: 2, matchId: null }),
-				],
+				clearedSlots: [createMockFeatureMatch({ id: 2, matchId: null })],
 				assignment: {
 					...loadedAssignments[0]!,
 					eventId: 1,

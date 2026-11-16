@@ -98,21 +98,16 @@ const direction = ref<'older' | 'newer'>('older');
 
 /** A local datetime from the form as the instant the ledger stores. */
 function instantFrom(local: string) {
-	if (!local)
-		return undefined;
+	if (!local) return undefined;
 	const parsed = new Date(local);
-	return Number.isNaN(parsed.getTime())
-		? undefined
-		: parsed.toISOString();
+	return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
 function evidenceQuery() {
 	const question = applied.value;
 	return {
 		limit: PAGE_LIMIT,
-		...(question.groups.length > 0
-			? { group: question.groups }
-			: {}),
+		...(question.groups.length > 0 ? { group: question.groups } : {}),
 		...(question.subjectKind && question.subjectId.trim()
 			? {
 					subjectKind: question.subjectKind,
@@ -157,13 +152,11 @@ const {
 	hasReading,
 	load: loadLedger,
 } = useGraphicsAdminReading<GraphicsAssetEvidenceReading>({
-	read: async headers => await $fetch<GraphicsAssetEvidenceReading>(
-		'/api/admin/graphics-assets/evidence',
-		{
+	read: async (headers) =>
+		await $fetch<GraphicsAssetEvidenceReading>('/api/admin/graphics-assets/evidence', {
 			headers,
 			query: evidenceQuery(),
-		},
-	),
+		}),
 	failureMessage: 'The Evidence ledger could not be read.',
 });
 
@@ -293,32 +286,26 @@ function measurements(entry: GraphicsAssetEvidenceEntry) {
 					}`,
 				}
 			: null,
-		detail.operationId
-			? { label: 'Operation', value: detail.operationId }
-			: null,
-		detail.discrepancyKind
-			? { label: 'Disagreement', value: detail.discrepancyKind }
-			: null,
-		detail.reasonCode
-			? { label: 'Reason code', value: detail.reasonCode }
-			: null,
-		detail.rejectionCode
-			? { label: 'Refused because', value: detail.rejectionCode }
-			: null,
+		detail.operationId ? { label: 'Operation', value: detail.operationId } : null,
+		detail.discrepancyKind ? { label: 'Disagreement', value: detail.discrepancyKind } : null,
+		detail.reasonCode ? { label: 'Reason code', value: detail.reasonCode } : null,
+		detail.rejectionCode ? { label: 'Refused because', value: detail.rejectionCode } : null,
 		detail.affectedRevisionCount === undefined
 			? null
 			: { label: 'Revisions affected', value: `${detail.affectedRevisionCount}` },
-	].filter(measurement => measurement !== null);
+	].filter((measurement) => measurement !== null);
 }
 
 /** Whether the ledger on screen is an answer to a narrowed question. */
-const filtered = computed(() =>
-	applied.value.groups.length > 0
-	|| Boolean(applied.value.subjectId.trim())
-	|| Boolean(applied.value.actor.trim())
-	|| Boolean(applied.value.correlationId.trim())
-	|| Boolean(applied.value.recordedFrom)
-	|| Boolean(applied.value.recordedUntil));
+const filtered = computed(
+	() =>
+		applied.value.groups.length > 0 ||
+		Boolean(applied.value.subjectId.trim()) ||
+		Boolean(applied.value.actor.trim()) ||
+		Boolean(applied.value.correlationId.trim()) ||
+		Boolean(applied.value.recordedFrom) ||
+		Boolean(applied.value.recordedUntil),
+);
 </script>
 
 <template>
@@ -338,9 +325,7 @@ const filtered = computed(() =>
 
 		<div class="mx-auto flex w-full max-w-7xl flex-col gap-6">
 			<div>
-				<h1 class="text-2xl font-semibold text-highlighted">
-					Graphics Evidence ledger
-				</h1>
+				<h1 class="text-2xl font-semibold text-highlighted">Graphics Evidence ledger</h1>
 				<p class="mt-1 text-sm text-muted">
 					Every durable lifecycle, reconciliation, and reclamation decision, newest first.
 				</p>
@@ -348,20 +333,14 @@ const filtered = computed(() =>
 
 			<UCard v-if="!hasReading">
 				<template #header>
-					<h2 class="font-semibold text-highlighted">
-						Graphics Administrator access
-					</h2>
+					<h2 class="font-semibold text-highlighted">Graphics Administrator access</h2>
 				</template>
 				<div class="flex flex-col gap-4">
 					<UFormField
 						label="Graphics Administrator token"
 						description="The Evidence ledger is administrator-only. The token is held for this session only and never stored."
 					>
-						<UInput
-							v-model="administratorToken"
-							type="password"
-							autocomplete="current-password"
-						/>
+						<UInput v-model="administratorToken" type="password" autocomplete="current-password" />
 					</UFormField>
 					<div>
 						<UButton
@@ -397,9 +376,7 @@ const filtered = computed(() =>
 
 				<UCard>
 					<template #header>
-						<h2 class="font-semibold text-highlighted">
-							Narrow the ledger
-						</h2>
+						<h2 class="font-semibold text-highlighted">Narrow the ledger</h2>
 					</template>
 					<div class="flex flex-col gap-4">
 						<UFormField
@@ -414,9 +391,11 @@ const filtered = computed(() =>
 									:color="draft.groups.includes(group) ? 'primary' : 'neutral'"
 									:variant="draft.groups.includes(group) ? 'solid' : 'outline'"
 									:label="GROUP_LABELS[group]"
-									@click="draft.groups = draft.groups.includes(group)
-										? draft.groups.filter(selected => selected !== group)
-										: [...draft.groups, group]"
+									@click="
+										draft.groups = draft.groups.includes(group)
+											? draft.groups.filter((selected) => selected !== group)
+											: [...draft.groups, group]
+									"
 								/>
 							</div>
 						</UFormField>
@@ -425,8 +404,10 @@ const filtered = computed(() =>
 							<UFormField label="Subject kind">
 								<USelect
 									v-model="draft.subjectKind"
-									:items="[{ label: 'Any', value: '' },
-										...SUBJECT_KINDS.map(kind => ({ label: kind, value: kind }))]"
+									:items="[
+										{ label: 'Any', value: '' },
+										...SUBJECT_KINDS.map((kind) => ({ label: kind, value: kind })),
+									]"
 								/>
 							</UFormField>
 							<UFormField
@@ -481,31 +462,29 @@ const filtered = computed(() =>
 					variant="soft"
 					icon="i-lucide-square-asterisk"
 					title="This Graphic Asset was purged"
-					:description="`Purged ${formatInstant(ledger.tombstone.purgedAt)} · ${ledger.tombstone.reason} · `
-						+ `${ledger.tombstone.revisionCount} revisions removed against `
-						+ `${ledger.tombstone.referenceCount} references. The tombstone outlives this Evidence and `
-						+ `explains later provenance questions, but it satisfies no Graphic Asset Reference and the `
-						+ `identity is never reused.`"
+					:description="
+						`Purged ${formatInstant(ledger.tombstone.purgedAt)} · ${ledger.tombstone.reason} · ` +
+						`${ledger.tombstone.revisionCount} revisions removed against ` +
+						`${ledger.tombstone.referenceCount} references. The tombstone outlives this Evidence and ` +
+						`explains later provenance questions, but it satisfies no Graphic Asset Reference and the ` +
+						`identity is never reused.`
+					"
 				/>
 
 				<UCard>
 					<template #header>
 						<div class="flex flex-wrap items-center justify-between gap-2">
-							<h2 class="font-semibold text-highlighted">
-								Evidence
-							</h2>
-							<UBadge
-								variant="subtle"
-								color="neutral"
-								:label="`${ledger.entries.length} shown`"
-							/>
+							<h2 class="font-semibold text-highlighted">Evidence</h2>
+							<UBadge variant="subtle" color="neutral" :label="`${ledger.entries.length} shown`" />
 						</div>
 					</template>
 
 					<p v-if="ledger.entries.length === 0" class="text-sm text-muted">
-						{{ filtered
-							? 'No Evidence matches that question.'
-							: 'The Evidence ledger holds nothing yet.' }}
+						{{
+							filtered
+								? 'No Evidence matches that question.'
+								: 'The Evidence ledger holds nothing yet.'
+						}}
 					</p>
 
 					<ol v-else class="flex flex-col gap-3">
@@ -518,11 +497,10 @@ const filtered = computed(() =>
 								<span class="font-medium text-highlighted">{{ entry.category }}</span>
 								<span class="text-xs text-dimmed">{{ formatInstant(entry.recordedAt) }}</span>
 							</div>
-							<p class="text-sm text-muted">
-								{{ entry.outcome }} · {{ entry.reason }}
-							</p>
+							<p class="text-sm text-muted">{{ entry.outcome }} · {{ entry.reason }}</p>
 							<p class="text-xs text-dimmed">
-								{{ graphicsActorName(ledger.actorNames, entry.actor) }} · {{ entry.subject.kind }} {{ entry.subject.id }}
+								{{ graphicsActorName(ledger.actorNames, entry.actor) }} · {{ entry.subject.kind }}
+								{{ entry.subject.id }}
 							</p>
 
 							<dl
@@ -544,9 +522,8 @@ const filtered = computed(() =>
 							</dl>
 
 							<p class="mt-2 text-xs text-dimmed">
-								Retained until {{ entry.expiresAt
-									? formatInstant(entry.expiresAt)
-									: 'its subject is cleaned up' }}
+								Retained until
+								{{ entry.expiresAt ? formatInstant(entry.expiresAt) : 'its subject is cleaned up' }}
 							</p>
 
 							<div class="mt-2 flex flex-wrap gap-2">
@@ -598,8 +575,8 @@ const filtered = computed(() =>
 								@click="ledger.newer && turnTo(ledger.newer, 'newer')"
 							/>
 							<span class="text-xs text-dimmed">
-								Positioned by the entry this page ended on, so a sweep writing
-								Evidence while these pages are turned never shifts them.
+								Positioned by the entry this page ended on, so a sweep writing Evidence while these
+								pages are turned never shifts them.
 							</span>
 							<UButton
 								color="neutral"

@@ -2,14 +2,15 @@ import type { GraphicAssetReference, GraphicAssetRevisionId } from '~~/shared/ty
 import type { TemplatePackageManifest } from '~~/shared/types/templatePackage';
 import { describe, expect, it } from 'vitest';
 
-import {
-	graphicsObjectIdentity,
-} from '~~/server/modules/graphics-asset-library/object-store';
+import { graphicsObjectIdentity } from '~~/server/modules/graphics-asset-library/object-store';
 import {
 	DEFAULT_GRAPHIC_SURFACE_STYLE,
 	DEFAULT_GRAPHIC_TYPOGRAPHY,
 } from '~~/shared/modules/graphics/itemDefinitions';
-import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG, DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG } from '~~/shared/types/screenConfig';
+import {
+	DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG,
+	DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG,
+} from '~~/shared/types/screenConfig';
 import { TEMPLATE_PACKAGE_KINDS } from '~~/shared/types/templatePackage';
 import {
 	broadcastGraphicTemplatePackageRequirements,
@@ -41,14 +42,11 @@ describe('the Template Package export contract', () => {
 					name: 'Lower third',
 					document: { backdrop },
 				},
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 
 			expect(result.outcome).toBe('exported');
-			if (result.outcome !== 'exported')
-				return;
+			if (result.outcome !== 'exported') return;
 
 			const archive = readStoredZipArchive(await collectStream(result.package.open()));
 			const manifest = archive.json<TemplatePackageManifest>('manifest.json');
@@ -93,8 +91,7 @@ describe('the Template Package export contract', () => {
 		});
 
 		expect(result.outcome).toBe('exported');
-		if (result.outcome !== 'exported')
-			return;
+		if (result.outcome !== 'exported') return;
 		const archive = readStoredZipArchive(await collectStream(result.package.open()));
 		const manifest = archive.json<TemplatePackageManifest>('manifest.json');
 
@@ -104,7 +101,7 @@ describe('the Template Package export contract', () => {
 		expect(left!.origin.sourceAssetId).not.toBe(right!.origin.sourceAssetId);
 		expect(left!.content.entry).toBe(right!.content.entry);
 		expect(manifest.contents).toHaveLength(1);
-		expect(archive.entryNames.filter(name => name.startsWith('content/'))).toHaveLength(1);
+		expect(archive.entryNames.filter((name) => name.startsWith('content/'))).toHaveLength(1);
 	});
 
 	it('collapses repeated slots requiring one revision into a single packaged asset', async () => {
@@ -125,8 +122,7 @@ describe('the Template Package export contract', () => {
 		});
 
 		expect(result.outcome).toBe('exported');
-		if (result.outcome !== 'exported')
-			return;
+		if (result.outcome !== 'exported') return;
 		const manifest = result.package.manifest;
 		expect(manifest.packagedAssets).toHaveLength(1);
 		expect(manifest.packagedAssets[0]!.requiredBy).toEqual(['footer', 'header']);
@@ -159,20 +155,21 @@ describe('the Template Package export contract', () => {
 		});
 
 		expect(result.outcome).toBe('rejected');
-		if (result.outcome !== 'rejected')
-			return;
-		expect(result.report.issues).toEqual(expect.arrayContaining([
-			expect.objectContaining({
-				code: 'missing-graphic-asset-reference',
-				slot: 'ghost',
-				retryable: false,
-			}),
-			expect.objectContaining({
-				code: 'unavailable-graphic-asset-content',
-				slot: 'vanished',
-				retryable: true,
-			}),
-		]));
+		if (result.outcome !== 'rejected') return;
+		expect(result.report.issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					code: 'missing-graphic-asset-reference',
+					slot: 'ghost',
+					retryable: false,
+				}),
+				expect.objectContaining({
+					code: 'unavailable-graphic-asset-content',
+					slot: 'vanished',
+					retryable: true,
+				}),
+			]),
+		);
 		expect(result.report.issues).toHaveLength(2);
 	});
 
@@ -203,9 +200,7 @@ describe('the Template Package export contract', () => {
 					logo,
 				},
 			},
-			assets: [
-				{ slot: 'logo', reference: logo },
-			],
+			assets: [{ slot: 'logo', reference: logo }],
 			capabilities: [
 				{ slot: 'items[0].typography.font', capability: 'application-font', identity: 'inter' },
 				{ slot: 'items[1].typography.font', capability: 'application-font', identity: 'inter' },
@@ -219,8 +214,7 @@ describe('the Template Package export contract', () => {
 		});
 
 		expect(result.outcome).toBe('exported');
-		if (result.outcome !== 'exported')
-			return;
+		if (result.outcome !== 'exported') return;
 		const archive = readStoredZipArchive(await collectStream(result.package.open()));
 		const manifest = archive.json<TemplatePackageManifest>('manifest.json');
 
@@ -239,8 +233,8 @@ describe('the Template Package export contract', () => {
 			},
 		]);
 		// Only the one library asset travels as bytes; the bundled font does not.
-		expect(archive.entryNames.filter(name => name.startsWith('content/'))).toHaveLength(1);
-		expect(manifest.packagedAssets.map(asset => asset.kind)).toEqual(['image']);
+		expect(archive.entryNames.filter((name) => name.startsWith('content/'))).toHaveLength(1);
+		expect(manifest.packagedAssets.map((asset) => asset.kind)).toEqual(['image']);
 	});
 
 	it('blocks an application capability this installation does not provide', async () => {
@@ -251,7 +245,11 @@ describe('the Template Package export contract', () => {
 			template: { identity: 'template-6', name: 'Unknown capability', document: {} },
 			assets: [],
 			capabilities: [
-				{ slot: 'items[0].typography.font', capability: 'application-font', identity: 'not-a-bundled-font' },
+				{
+					slot: 'items[0].typography.font',
+					capability: 'application-font',
+					identity: 'not-a-bundled-font',
+				},
 				{
 					slot: 'items[1].type',
 					capability: 'graphic-item-definition',
@@ -262,9 +260,8 @@ describe('the Template Package export contract', () => {
 		});
 
 		expect(result.outcome).toBe('rejected');
-		if (result.outcome !== 'rejected')
-			return;
-		expect(result.report.issues.map(issue => [issue.code, issue.slot])).toEqual([
+		if (result.outcome !== 'rejected') return;
+		expect(result.report.issues.map((issue) => [issue.code, issue.slot])).toEqual([
 			['unsupported-application-capability', 'items[0].typography.font'],
 			['unsupported-application-capability', 'items[1].type'],
 		]);
@@ -313,29 +310,29 @@ describe('the Template Package export contract', () => {
 		[
 			'executable content',
 			{
-				items: [
-					{ label: '<script>fetch("/steal")</script>' },
-				],
+				items: [{ label: '<script>fetch("/steal")</script>' }],
 			},
 			'executable-template-content',
 			'items[0].label',
 		],
-	] as const)('rejects a Template document carrying %s', async (_description, document, code, slot) => {
-		const { library } = await createExportLibrary();
+	] as const)(
+		'rejects a Template document carrying %s',
+		async (_description, document, code, slot) => {
+			const { library } = await createExportLibrary();
 
-		const result = await library.exportTemplatePackage({
-			packageKind: 'sklayout',
-			template: { identity: 'template-7', name: 'Not data only', document },
-			assets: [],
-		});
+			const result = await library.exportTemplatePackage({
+				packageKind: 'sklayout',
+				template: { identity: 'template-7', name: 'Not data only', document },
+				assets: [],
+			});
 
-		expect(result.outcome).toBe('rejected');
-		if (result.outcome !== 'rejected')
-			return;
-		expect(result.report.issues).toEqual([
-			expect.objectContaining({ code, slot, retryable: false }),
-		]);
-	});
+			expect(result.outcome).toBe('rejected');
+			if (result.outcome !== 'rejected') return;
+			expect(result.report.issues).toEqual([
+				expect.objectContaining({ code, slot, retryable: false }),
+			]);
+		},
+	);
 
 	it('blocks a Graphic Asset Reference the Template document carries but the export never declared', async () => {
 		const { library } = await createExportLibrary();
@@ -356,14 +353,11 @@ describe('the Template Package export contract', () => {
 					],
 				},
 			},
-			assets: [
-				{ slot: 'frame.backgroundImage', reference: declared },
-			],
+			assets: [{ slot: 'frame.backgroundImage', reference: declared }],
 		});
 
 		expect(result.outcome).toBe('rejected');
-		if (result.outcome !== 'rejected')
-			return;
+		if (result.outcome !== 'rejected') return;
 		expect(result.report.issues).toEqual([
 			expect.objectContaining({
 				code: 'undeclared-graphic-asset-dependency',
@@ -393,11 +387,14 @@ describe('the Template Package export contract', () => {
 		});
 
 		expect(result.outcome).toBe('exported');
-		if (result.outcome !== 'exported')
-			return;
-		const manifest = readStoredZipArchive(await collectStream(result.package.open()))
-			.json<TemplatePackageManifest>('manifest.json');
-		expect([...manifest.packagedAssets].map(asset => asset.kind).sort()).toEqual(['image', 'silent-video']);
+		if (result.outcome !== 'exported') return;
+		const manifest = readStoredZipArchive(
+			await collectStream(result.package.open()),
+		).json<TemplatePackageManifest>('manifest.json');
+		expect([...manifest.packagedAssets].map((asset) => asset.kind).sort()).toEqual([
+			'image',
+			'silent-video',
+		]);
 	});
 
 	it('embeds every required image, silent video, and font revision', async () => {
@@ -421,13 +418,15 @@ describe('the Template Package export contract', () => {
 		});
 
 		expect(result.outcome).toBe('exported');
-		if (result.outcome !== 'exported')
-			return;
+		if (result.outcome !== 'exported') return;
 		const archive = readStoredZipArchive(await collectStream(result.package.open()));
 		const manifest = archive.json<TemplatePackageManifest>('manifest.json');
 
-		expect([...manifest.packagedAssets].map(asset => asset.kind).sort())
-			.toEqual(['font', 'image', 'silent-video']);
+		expect([...manifest.packagedAssets].map((asset) => asset.kind).sort()).toEqual([
+			'font',
+			'image',
+			'silent-video',
+		]);
 		for (const packaged of manifest.packagedAssets) {
 			const entry = archive.entry(packaged.content.entry);
 			expect(entry.bytes.byteLength).toBe(packaged.integrity.byteLength);
@@ -435,7 +434,7 @@ describe('the Template Package export contract', () => {
 			expect(packaged.facts.sha256).toBe(packaged.integrity.digest);
 		}
 		// Derivatives are dependent resources; a package carries only sources.
-		expect(archive.entryNames.filter(name => name.startsWith('content/'))).toHaveLength(3);
+		expect(archive.entryNames.filter((name) => name.startsWith('content/'))).toHaveLength(3);
 	});
 
 	it('blocks a slot whose revision is a different media kind', async () => {
@@ -449,14 +448,11 @@ describe('the Template Package export contract', () => {
 				name: 'Wrong kind',
 				document: { video: image },
 			},
-			assets: [
-				{ slot: 'video', reference: image, expectedKind: 'silent-video' },
-			],
+			assets: [{ slot: 'video', reference: image, expectedKind: 'silent-video' }],
 		});
 
 		expect(result.outcome).toBe('rejected');
-		if (result.outcome !== 'rejected')
-			return;
+		if (result.outcome !== 'rejected') return;
 		expect(result.report.issues).toEqual([
 			expect.objectContaining({ code: 'unexpected-graphic-asset-kind', slot: 'video' }),
 		]);
@@ -470,7 +466,7 @@ describe('the Template Package export contract', () => {
 			assets.push({ slot: `items[${index}].asset`, reference });
 		}
 		// Identical bytes, deliberately distinct domain identities.
-		expect(new Set(assets.map(asset => asset.reference.assetId)).size).toBe(101);
+		expect(new Set(assets.map((asset) => asset.reference.assetId)).size).toBe(101);
 
 		const result = await library.exportTemplatePackage({
 			packageKind: 'sklayout',
@@ -479,8 +475,7 @@ describe('the Template Package export contract', () => {
 		});
 
 		expect(result.outcome).toBe('rejected');
-		if (result.outcome !== 'rejected')
-			return;
+		if (result.outcome !== 'rejected') return;
 		expect(result.report.issues).toEqual([
 			expect.objectContaining({ code: 'packaged-revision-limit-exceeded' }),
 		]);
@@ -556,11 +551,10 @@ describe('the Template Package export contract', () => {
 		});
 
 		expect(result.outcome).toBe('exported');
-		if (result.outcome !== 'exported')
-			return;
+		if (result.outcome !== 'exported') return;
 		const declared = result.package.manifest.applicationCapabilities
-			.filter(capability => capability.capability === 'graphic-item-definition')
-			.map(capability => capability.identity)
+			.filter((capability) => capability.capability === 'graphic-item-definition')
+			.map((capability) => capability.identity)
 			.sort();
 		// The group itself plus both of its children, not the group alone.
 		expect(declared).toEqual(['group', 'shape', 'text']);
@@ -637,7 +631,7 @@ describe('the Template Package export contract', () => {
 		const requirements = broadcastGraphicTemplatePackageRequirements(
 			graphic as unknown as Parameters<typeof broadcastGraphicTemplatePackageRequirements>[0],
 		);
-		expect(requirements.assets.map(asset => asset.reference)).toEqual([backdrop, insert]);
+		expect(requirements.assets.map((asset) => asset.reference)).toEqual([backdrop, insert]);
 
 		const result = await library.exportTemplatePackage({
 			packageKind: 'skgraphic',
@@ -647,16 +641,18 @@ describe('the Template Package export contract', () => {
 		});
 
 		expect(result.outcome).toBe('exported');
-		if (result.outcome !== 'exported')
-			return;
+		if (result.outcome !== 'exported') return;
 		const archive = readStoredZipArchive(await collectStream(result.package.open()));
 		const manifest = archive.json<TemplatePackageManifest>('manifest.json');
 		expect(manifest.packagedAssets).toHaveLength(2);
-		expect(manifest.packagedAssets.map(packaged => packaged.origin.sourceRevisionId).sort())
-			.toEqual([backdrop.revisionId, insert.revisionId].sort());
+		expect(
+			manifest.packagedAssets.map((packaged) => packaged.origin.sourceRevisionId).sort(),
+		).toEqual([backdrop.revisionId, insert.revisionId].sort());
 		// The slots name the exact items an author would go and repair.
-		expect(manifest.packagedAssets.flatMap(packaged => packaged.requiredBy).sort())
-			.toEqual(['items.backdrop.asset', 'items.stack.children.nested-insert.asset']);
+		expect(manifest.packagedAssets.flatMap((packaged) => packaged.requiredBy).sort()).toEqual([
+			'items.backdrop.asset',
+			'items.stack.children.nested-insert.asset',
+		]);
 	});
 
 	it('keeps authored display copy that mentions a URL exportable', async () => {
@@ -699,9 +695,7 @@ describe('the Template Package export contract', () => {
 			[
 				'items[0].posterUrl',
 				{
-					items: [
-						{ posterUrl: 'https://cdn.example.com/poster.png' },
-					],
+					items: [{ posterUrl: 'https://cdn.example.com/poster.png' }],
 				},
 			],
 			[
@@ -730,33 +724,25 @@ describe('the Template Package export contract', () => {
 			[
 				'items[0].image_url',
 				{
-					items: [
-						{ image_url: 'https://cdn.example.com/a.png' },
-					],
+					items: [{ image_url: 'https://cdn.example.com/a.png' }],
 				},
 			],
 			[
 				'items[0].IMAGE_URL',
 				{
-					items: [
-						{ IMAGE_URL: 'https://cdn.example.com/b.png' },
-					],
+					items: [{ IMAGE_URL: 'https://cdn.example.com/b.png' }],
 				},
 			],
 			[
 				'items[0].image-url',
 				{
-					items: [
-						{ 'image-url': 'https://cdn.example.com/c.png' },
-					],
+					items: [{ 'image-url': 'https://cdn.example.com/c.png' }],
 				},
 			],
 			[
 				'items[0].srcset',
 				{
-					items: [
-						{ srcset: 'https://cdn.example.com/d.png 2x' },
-					],
+					items: [{ srcset: 'https://cdn.example.com/d.png 2x' }],
 				},
 			],
 		] as const;
@@ -768,8 +754,7 @@ describe('the Template Package export contract', () => {
 				assets: [],
 			});
 			expect(result.outcome, slot).toBe('rejected');
-			if (result.outcome !== 'rejected')
-				continue;
+			if (result.outcome !== 'rejected') continue;
 			expect(result.report.issues).toEqual([
 				expect.objectContaining({ code: 'remote-resource-dependency', slot }),
 			]);
@@ -790,17 +775,13 @@ describe('the Template Package export contract', () => {
 			[
 				'items[0].label',
 				{
-					items: [
-						{ label: 'data:image/png;base64,iVBORw0KGgo=' },
-					],
+					items: [{ label: 'data:image/png;base64,iVBORw0KGgo=' }],
 				},
 			],
 			[
 				'items[0].caption',
 				{
-					items: [
-						{ caption: 'blob:https://example.com/9f3c' },
-					],
+					items: [{ caption: 'blob:https://example.com/9f3c' }],
 				},
 			],
 		] as const;
@@ -812,8 +793,7 @@ describe('the Template Package export contract', () => {
 				assets: [],
 			});
 			expect(result.outcome, slot).toBe('rejected');
-			if (result.outcome !== 'rejected')
-				continue;
+			if (result.outcome !== 'rejected') continue;
 			expect(result.report.issues).toEqual([
 				expect.objectContaining({ code: 'undeclared-graphic-asset-dependency', slot }),
 			]);
@@ -842,9 +822,8 @@ describe('the Template Package export contract', () => {
 		});
 
 		expect(result.outcome).toBe('rejected');
-		if (result.outcome !== 'rejected')
-			return;
-		const codes = result.report.issues.map(issue => issue.code);
+		if (result.outcome !== 'rejected') return;
+		const codes = result.report.issues.map((issue) => issue.code);
 		expect(codes).toContain('missing-graphic-asset-reference');
 		expect(codes).toContain('packaged-revision-limit-exceeded');
 	});
@@ -861,13 +840,10 @@ describe('the Template Package export contract', () => {
 					name: 'Provider independence',
 					document: { logo },
 				},
-				assets: [
-					{ slot: 'logo', reference: logo },
-				],
+				assets: [{ slot: 'logo', reference: logo }],
 			});
 			expect(result.outcome).toBe('exported');
-			if (result.outcome !== 'exported')
-				continue;
+			if (result.outcome !== 'exported') continue;
 			const archive = readStoredZipArchive(await collectStream(result.package.open()));
 			const serialised = JSON.stringify(result.package.manifest) + archive.entryNames.join(' ');
 			const digest = digestOf(transparentPixelPng);

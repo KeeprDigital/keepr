@@ -1,4 +1,7 @@
-import type { FeatureMatchCommandType, FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
+import type {
+	FeatureMatchCommandType,
+	FeatureMatchSourceSnapshot,
+} from '~~/shared/types/featureMatchSession';
 import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 import { describe, expect, it } from 'vitest';
 import { applyFeatureMatchSessionEvent } from '~~/shared/modules/feature-match-session';
@@ -38,9 +41,7 @@ function createBusyState(): FeatureMatchState {
 			...state.player1,
 			lifeTotal: 14,
 			gameWins: 1,
-			counters: [
-				{ type: 'poison', value: 2 },
-			],
+			counters: [{ type: 'poison', value: 2 }],
 			cardsKept: 7,
 		},
 		player2: { ...state.player2, lifeTotal: 18, gameWins: 1 },
@@ -60,9 +61,7 @@ function createBusyState(): FeatureMatchState {
 /** Collect paths of every non-finite number nested anywhere in a value. */
 function nonFinitePaths(value: unknown, path = '$'): string[] {
 	if (typeof value === 'number') {
-		return Number.isFinite(value)
-			? []
-			: [path];
+		return Number.isFinite(value) ? [] : [path];
 	}
 	if (Array.isArray(value))
 		return value.flatMap((entry, index) => nonFinitePaths(entry, `${path}[${index}]`));
@@ -71,15 +70,7 @@ function nonFinitePaths(value: unknown, path = '$'): string[] {
 	return [];
 }
 
-const NON_FINITE_VALUES: unknown[] = [
-	Number.NaN,
-	Infinity,
-	-Infinity,
-	'abc',
-	'12:34',
-	{},
-	[1, 2],
-];
+const NON_FINITE_VALUES: unknown[] = [Number.NaN, Infinity, -Infinity, 'abc', '12:34', {}, [1, 2]];
 
 interface GuardCase {
 	type: FeatureMatchCommandType;
@@ -123,7 +114,7 @@ const GUARD_CASES: GuardCase[] = [
 		type: 'StartClock',
 		valid: { at: 5_000 },
 		numericFields: ['at'],
-		state: state => ({
+		state: (state) => ({
 			...state,
 			clock: { ...state.clock, isRunning: false, lastStartedAt: null },
 		}),
@@ -184,9 +175,7 @@ describe('feature match session reducer payload guards', () => {
 	it('never commits a non-finite number, for any action and any malformed numeric field', () => {
 		const snapshot = createSnapshot();
 		for (const guardCase of GUARD_CASES) {
-			const state = guardCase.state
-				? guardCase.state(createBusyState())
-				: createBusyState();
+			const state = guardCase.state ? guardCase.state(createBusyState()) : createBusyState();
 			for (const field of guardCase.numericFields) {
 				for (const malformed of NON_FINITE_VALUES) {
 					const payload = { ...guardCase.valid, [field]: malformed };
@@ -203,21 +192,18 @@ describe('feature match session reducer payload guards', () => {
 		const snapshot = createSnapshot();
 		const state = createBusyState();
 		for (const [type, payload] of [
-			[
-				'SetLife',
-				{ player: 'player1' },
-			],
-			[
-				'SetCardsKept',
-				{ player: 'player1' },
-			],
+			['SetLife', { player: 'player1' }],
+			['SetCardsKept', { player: 'player1' }],
 			['SetTurnNumber', {}],
 			['StartOvertime', {}],
 			['PauseClock', {}],
 		] as [FeatureMatchCommandType, Record<string, unknown>][]) {
 			const result = applyFeatureMatchSessionEvent(state, snapshot, type, payload);
 			expect(nonFinitePaths(result.currentState), type).toEqual([]);
-			expect(result.currentState, `${type} without its numeric field should be rejected unchanged`).toEqual(state);
+			expect(
+				result.currentState,
+				`${type} without its numeric field should be rejected unchanged`,
+			).toEqual(state);
 		}
 	});
 
@@ -237,7 +223,7 @@ describe('feature match session reducer payload guards', () => {
 		] as FeatureMatchCommandType[]) {
 			for (const player of ['playerX', null, undefined, {}, 3]) {
 				const result = applyFeatureMatchSessionEvent(state, snapshot, type, {
-					...GUARD_CASES.find(c => c.type === type)?.valid,
+					...GUARD_CASES.find((c) => c.type === type)?.valid,
 					player,
 				});
 				expect(result.currentState, `${type} with player=${String(player)}`).toEqual(state);
@@ -249,10 +235,14 @@ describe('feature match session reducer payload guards', () => {
 		const snapshot = createSnapshot();
 		const state = createBusyState();
 
-		const cleared = applyFeatureMatchSessionEvent(state, snapshot, 'SetActivePlayer', { player: null });
+		const cleared = applyFeatureMatchSessionEvent(state, snapshot, 'SetActivePlayer', {
+			player: null,
+		});
 		expect(cleared.currentState.activePlayer).toBeNull();
 
-		const rejected = applyFeatureMatchSessionEvent(state, snapshot, 'SetActivePlayer', { player: 'playerX' });
+		const rejected = applyFeatureMatchSessionEvent(state, snapshot, 'SetActivePlayer', {
+			player: 'playerX',
+		});
 		expect(rejected.currentState).toEqual(state);
 	});
 
@@ -261,44 +251,41 @@ describe('feature match session reducer payload guards', () => {
 		const state = createBusyState();
 		for (const counters of [
 			'not-an-array',
-			[
-				{ type: 'poison', value: Number.NaN },
-			],
-			[
-				{ type: 'poison', value: Infinity },
-			],
-			[
-				{ type: 'poison', value: '3' },
-			],
-			[
-				{ value: 3 },
-			],
+			[{ type: 'poison', value: Number.NaN }],
+			[{ type: 'poison', value: Infinity }],
+			[{ type: 'poison', value: '3' }],
+			[{ value: 3 }],
 			[null],
 		]) {
-			const result = applyFeatureMatchSessionEvent(state, snapshot, 'SetCounters', { player: 'player1', counters });
+			const result = applyFeatureMatchSessionEvent(state, snapshot, 'SetCounters', {
+				player: 'player1',
+				counters,
+			});
 			expect(result.currentState, JSON.stringify(counters)).toEqual(state);
 		}
 
 		const applied = applyFeatureMatchSessionEvent(state, snapshot, 'SetCounters', {
 			player: 'player1',
-			counters: [
-				{ type: 'energy', value: 4 },
-			],
+			counters: [{ type: 'energy', value: 4 }],
 		});
-		expect(applied.currentState.player1.counters).toEqual([
-			{ type: 'energy', value: 4 },
-		]);
+		expect(applied.currentState.player1.counters).toEqual([{ type: 'energy', value: 4 }]);
 	});
 
 	it('rejects SetSideboardRevealed payloads whose revealed flag is not a strict boolean', () => {
 		const snapshot = createSnapshot();
 		const state = createBusyState();
 		for (const revealed of ['true', 1, 0, null, undefined, {}, []]) {
-			const result = applyFeatureMatchSessionEvent(state, snapshot, 'SetSideboardRevealed', { player: 'player1', revealed });
+			const result = applyFeatureMatchSessionEvent(state, snapshot, 'SetSideboardRevealed', {
+				player: 'player1',
+				revealed,
+			});
 			expect(result.currentState, `revealed=${String(revealed)}`).toEqual(state);
 		}
 
-		const applied = applyFeatureMatchSessionEvent(state, snapshot, 'SetSideboardRevealed', { player: 'player1', revealed: true });
+		const applied = applyFeatureMatchSessionEvent(state, snapshot, 'SetSideboardRevealed', {
+			player: 'player1',
+			revealed: true,
+		});
 		expect(applied.currentState.player1.sideboardRevealed).toBe(true);
 	});
 
@@ -306,10 +293,24 @@ describe('feature match session reducer payload guards', () => {
 		const snapshot = createSnapshot();
 		const state = createBusyState();
 
-		expect(applyFeatureMatchSessionEvent(state, snapshot, 'SetLife', { player: 'player1', lifeTotal: 9 }).currentState.player1.lifeTotal).toBe(9);
-		expect(applyFeatureMatchSessionEvent(state, snapshot, 'AdjustLife', { player: 'player2', delta: -4 }).currentState.player2.lifeTotal).toBe(14);
-		expect(applyFeatureMatchSessionEvent(state, snapshot, 'SetTurnNumber', { turnNumber: 8 }).currentState.turnNumber).toBe(8);
-		expect(applyFeatureMatchSessionEvent(state, snapshot, 'SetCardsKept', { player: 'player1', cardsKept: 5 }).currentState.player1.cardsKept).toBe(5);
+		expect(
+			applyFeatureMatchSessionEvent(state, snapshot, 'SetLife', { player: 'player1', lifeTotal: 9 })
+				.currentState.player1.lifeTotal,
+		).toBe(9);
+		expect(
+			applyFeatureMatchSessionEvent(state, snapshot, 'AdjustLife', { player: 'player2', delta: -4 })
+				.currentState.player2.lifeTotal,
+		).toBe(14);
+		expect(
+			applyFeatureMatchSessionEvent(state, snapshot, 'SetTurnNumber', { turnNumber: 8 })
+				.currentState.turnNumber,
+		).toBe(8);
+		expect(
+			applyFeatureMatchSessionEvent(state, snapshot, 'SetCardsKept', {
+				player: 'player1',
+				cardsKept: 5,
+			}).currentState.player1.cardsKept,
+		).toBe(5);
 	});
 
 	it('rejects the whole Batch when any sub-command is malformed — the save lands whole or not at all', () => {
@@ -366,12 +367,7 @@ describe('feature match session reducer payload guards', () => {
 			'not-an-array',
 			42,
 			null,
-			[
-				null,
-				'junk',
-				{ type: 'SetLife' },
-				{ type: 'SetLife', payload: 'junk' },
-			],
+			[null, 'junk', { type: 'SetLife' }, { type: 'SetLife', payload: 'junk' }],
 			// A shape-garbage entry sinks the well-formed one beside it too.
 			[
 				null,
@@ -401,26 +397,11 @@ describe('feature match session reducer payload guards', () => {
 		// boundary guard this committed elapsedMs = NaN, which survived every
 		// later event because Math.max(0, NaN) is NaN.
 		const events: [FeatureMatchCommandType, Record<string, unknown>][] = [
-			[
-				'StartClock',
-				{ at: 1_000 },
-			],
-			[
-				'PauseClock',
-				{ at: 'garbage' },
-			],
-			[
-				'StartClock',
-				{ at: 2_000 },
-			],
-			[
-				'PauseClock',
-				{ at: 3_000 },
-			],
-			[
-				'AdjustClock',
-				{ at: 4_000, deltaMs: -10_000 },
-			],
+			['StartClock', { at: 1_000 }],
+			['PauseClock', { at: 'garbage' }],
+			['StartClock', { at: 2_000 }],
+			['PauseClock', { at: 3_000 }],
+			['AdjustClock', { at: 4_000, deltaMs: -10_000 }],
 		];
 		for (const [type, payload] of events) {
 			const result = applyFeatureMatchSessionEvent(state, snapshot, type, payload);
@@ -439,34 +420,24 @@ describe('an untimed feature match', () => {
 	const untimed = (): FeatureMatchState => createInitialFeatureMatchState(20, 'untimed');
 
 	it.each<[FeatureMatchCommandType, Record<string, unknown>]>([
-		[
-			'StartClock',
-			{ at: 2_000 },
-		],
-		[
-			'RestartClock',
-			{ at: 2_000 },
-		],
-		[
-			'SetClock',
-			{ at: 2_000, targetMs: 60_000 },
-		],
-		[
-			'AdjustClock',
-			{ at: 2_000, deltaMs: 60_000 },
-		],
-		[
-			'StartOvertime',
-			{ totalTurns: 5 },
-		],
+		['StartClock', { at: 2_000 }],
+		['RestartClock', { at: 2_000 }],
+		['SetClock', { at: 2_000, targetMs: 60_000 }],
+		['AdjustClock', { at: 2_000, deltaMs: 60_000 }],
+		['StartOvertime', { totalTurns: 5 }],
 	])('refuses %s, leaving the match as it was', (type, payload) => {
 		const state = untimed();
 
-		expect(applyFeatureMatchSessionEvent(state, createSnapshot(), type, payload).currentState).toEqual(state);
+		expect(
+			applyFeatureMatchSessionEvent(state, createSnapshot(), type, payload).currentState,
+		).toEqual(state);
 	});
 
 	it('still tracks the rest of the match', () => {
-		const result = applyFeatureMatchSessionEvent(untimed(), createSnapshot(), 'AdjustLife', { player: 'player1', delta: -3 });
+		const result = applyFeatureMatchSessionEvent(untimed(), createSnapshot(), 'AdjustLife', {
+			player: 'player1',
+			delta: -3,
+		});
 
 		expect(result.currentState.player1.lifeTotal).toBe(17);
 	});

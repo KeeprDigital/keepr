@@ -4,14 +4,17 @@ import type { FeatureMatchOverlayAnchorValue } from '~~/shared/types/screenConfi
 import type { NinePoint } from '~~/shared/utils/ninePoints';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { QUANTITY_POSITION_VALUES } from '~~/shared/types/enums';
-import { GRAPHIC_ANCHOR_POINT_VALUES, GRAPHIC_ANIMATION_ORIGIN_VALUES } from '~~/shared/types/graphics';
+import {
+	GRAPHIC_ANCHOR_POINT_VALUES,
+	GRAPHIC_ANIMATION_ORIGIN_VALUES,
+} from '~~/shared/types/graphics';
 import { FEATURE_MATCH_OVERLAY_ANCHOR_VALUES } from '~~/shared/types/screenConfig';
 import { NINE_POINT_VALUES, NINE_POINTS, ninePointPlacement } from '~~/shared/utils/ninePoints';
 
 describe('nine points', () => {
 	it('lays the table out in reading order across a 3×3 grid', () => {
-		expect(NINE_POINTS.map(point => point.value)).toEqual([...NINE_POINT_VALUES]);
-		expect(NINE_POINTS.map(point => [point.x, point.y])).toEqual([
+		expect(NINE_POINTS.map((point) => point.value)).toEqual([...NINE_POINT_VALUES]);
+		expect(NINE_POINTS.map((point) => [point.x, point.y])).toEqual([
 			[0, 0],
 			[0.5, 0],
 			[1, 0],
@@ -31,7 +34,11 @@ describe('nine points', () => {
 		expectTypeOf<GraphicAnchorPoint>().toEqualTypeOf<NinePoint>();
 		expectTypeOf<GraphicAnimationOrigin>().toEqualTypeOf<NinePoint>();
 		expectTypeOf<FeatureMatchOverlayAnchorValue>().toEqualTypeOf<NinePoint>();
-		for (const values of [GRAPHIC_ANCHOR_POINT_VALUES, GRAPHIC_ANIMATION_ORIGIN_VALUES, FEATURE_MATCH_OVERLAY_ANCHOR_VALUES])
+		for (const values of [
+			GRAPHIC_ANCHOR_POINT_VALUES,
+			GRAPHIC_ANIMATION_ORIGIN_VALUES,
+			FEATURE_MATCH_OVERLAY_ANCHOR_VALUES,
+		])
 			expect([...values]).toEqual([...NINE_POINT_VALUES]);
 	});
 
@@ -39,7 +46,9 @@ describe('nine points', () => {
 		// A badge on the centre would cover the card's art, so the picker disables
 		// that point rather than this vocabulary inventing its own spelling.
 		expectTypeOf<QuantityPosition>().toEqualTypeOf<Exclude<NinePoint, 'center'>>();
-		expect([...QUANTITY_POSITION_VALUES]).toEqual(NINE_POINT_VALUES.filter(point => point !== 'center'));
+		expect([...QUANTITY_POSITION_VALUES]).toEqual(
+			NINE_POINT_VALUES.filter((point) => point !== 'center'),
+		);
 	});
 });
 

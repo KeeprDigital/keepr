@@ -1,11 +1,19 @@
-import type { FeatureMatchCommandType, FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
+import type {
+	FeatureMatchCommandType,
+	FeatureMatchSourceSnapshot,
+} from '~~/shared/types/featureMatchSession';
 import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 import { describe, expect, it } from 'vitest';
-import { applyFeatureMatchSessionEvent, normalizeFeatureMatchSessionCommandPayload } from '~~/shared/modules/feature-match-session';
+import {
+	applyFeatureMatchSessionEvent,
+	normalizeFeatureMatchSessionCommandPayload,
+} from '~~/shared/modules/feature-match-session';
 import { DEFAULT_FEATURE_MATCH_DEFAULTS } from '~~/shared/types/featureMatchDefaults';
 import { createInitialFeatureMatchState } from '~~/shared/types/featureMatchState';
 
-function createSnapshot(overrides: Partial<FeatureMatchSourceSnapshot> = {}): FeatureMatchSourceSnapshot {
+function createSnapshot(
+	overrides: Partial<FeatureMatchSourceSnapshot> = {},
+): FeatureMatchSourceSnapshot {
 	return {
 		eventId: 1,
 		slotId: 1,
@@ -56,7 +64,10 @@ describe('feature match session reducer', () => {
 		const snapshot = createSnapshot();
 		const currentState = createInitialFeatureMatchState(25);
 
-		const result = reduce(createInitialFeatureMatchState(), snapshot, 'SessionStarted', { sourceSnapshot: snapshot, currentState });
+		const result = reduce(createInitialFeatureMatchState(), snapshot, 'SessionStarted', {
+			sourceSnapshot: snapshot,
+			currentState,
+		});
 
 		expect(result.sourceSnapshot).toEqual(snapshot);
 		expect(result.currentState.player1.lifeTotal).toBe(25);
@@ -66,15 +77,23 @@ describe('feature match session reducer', () => {
 	it.each([
 		[10, 600_000],
 		[null, null],
-	])('resets a match to a clock counting up to the Event\'s limit of %s minutes', (countUpLimit, countUpLimitMs) => {
-		const snapshot = createSnapshot({
-			defaults: { ...DEFAULT_FEATURE_MATCH_DEFAULTS, countUpAfterCountdown: true, countUpLimit },
-		});
+	])(
+		"resets a match to a clock counting up to the Event's limit of %s minutes",
+		(countUpLimit, countUpLimitMs) => {
+			const snapshot = createSnapshot({
+				defaults: { ...DEFAULT_FEATURE_MATCH_DEFAULTS, countUpAfterCountdown: true, countUpLimit },
+			});
 
-		const result = reduce(createInitialFeatureMatchState(), snapshot, 'ResetState', { type: 'match' });
+			const result = reduce(createInitialFeatureMatchState(), snapshot, 'ResetState', {
+				type: 'match',
+			});
 
-		expect(result.currentState.clock).toMatchObject({ countUpAfterCountdown: true, countUpLimitMs });
-	});
+			expect(result.currentState.clock).toMatchObject({
+				countUpAfterCountdown: true,
+				countUpLimitMs,
+			});
+		},
+	);
 
 	it('corrects the frozen source snapshot without mutating live state', () => {
 		const snapshot = createSnapshot();
@@ -113,19 +132,22 @@ describe('feature match session reducer', () => {
 			to: 3,
 			decided: false,
 		},
-	])('a match holding $wins win(s) moved from best of $from to $to is decided: $decided', ({ wins, from, to, decided }) => {
-		const snapshot = createSnapshot({ bestOf: from });
-		let state = createInitialFeatureMatchState();
-		for (let game = 0; game < wins; game++)
-			state = reduce(state, snapshot, 'RecordGameWin', { player: 'player1' }).currentState;
+	])(
+		'a match holding $wins win(s) moved from best of $from to $to is decided: $decided',
+		({ wins, from, to, decided }) => {
+			const snapshot = createSnapshot({ bestOf: from });
+			let state = createInitialFeatureMatchState();
+			for (let game = 0; game < wins; game++)
+				state = reduce(state, snapshot, 'RecordGameWin', { player: 'player1' }).currentState;
 
-		const result = reduce(state, snapshot, 'SnapshotCorrected', {
-			sourceSnapshot: createSnapshot({ bestOf: to }),
-		});
+			const result = reduce(state, snapshot, 'SnapshotCorrected', {
+				sourceSnapshot: createSnapshot({ bestOf: to }),
+			});
 
-		expect(result.sourceSnapshot.bestOf).toBe(to);
-		expect(result.currentState).toEqual({ ...state, isComplete: decided });
-	});
+			expect(result.sourceSnapshot.bestOf).toBe(to);
+			expect(result.currentState).toEqual({ ...state, isComplete: decided });
+		},
+	);
 
 	it('applies player life, counters, and mulligan events', () => {
 		const snapshot = createSnapshot();
@@ -135,17 +157,16 @@ describe('feature match session reducer', () => {
 		state = reduce(state, snapshot, 'SetLife', { player: 'player2', lifeTotal: 7 }).currentState;
 		state = reduce(state, snapshot, 'SetCounters', {
 			player: 'player1',
-			counters: [
-				{ type: 'poison', value: 2 },
-			],
+			counters: [{ type: 'poison', value: 2 }],
 		}).currentState;
-		state = reduce(state, snapshot, 'SetCardsKept', { player: 'player2', cardsKept: 5 }).currentState;
+		state = reduce(state, snapshot, 'SetCardsKept', {
+			player: 'player2',
+			cardsKept: 5,
+		}).currentState;
 
 		expect(state.player1.lifeTotal).toBe(17);
 		expect(state.player2.lifeTotal).toBe(7);
-		expect(state.player1.counters).toEqual([
-			{ type: 'poison', value: 2 },
-		]);
+		expect(state.player1.counters).toEqual([{ type: 'poison', value: 2 }]);
 		expect(state.player2.cardsKept).toBe(5);
 	});
 
@@ -153,19 +174,31 @@ describe('feature match session reducer', () => {
 		const snapshot = createSnapshot();
 		let state = createInitialFeatureMatchState();
 
-		state = reduce(state, snapshot, 'SetSideboardRevealed', { player: 'player1', revealed: true }).currentState;
+		state = reduce(state, snapshot, 'SetSideboardRevealed', {
+			player: 'player1',
+			revealed: true,
+		}).currentState;
 		expect(state.player1.sideboardRevealed).toBe(true);
 		expect(state.player2.sideboardRevealed).toBe(false);
 
-		state = reduce(state, snapshot, 'SetSideboardRevealed', { player: 'player1', revealed: false }).currentState;
+		state = reduce(state, snapshot, 'SetSideboardRevealed', {
+			player: 'player1',
+			revealed: false,
+		}).currentState;
 		expect(state.player1.sideboardRevealed).toBe(false);
 	});
 
 	it('keeps sideboardRevealed across game boundaries and re-hides only on match reset', () => {
 		const snapshot = createSnapshot();
 		let state = createInitialFeatureMatchState();
-		state = reduce(state, snapshot, 'SetSideboardRevealed', { player: 'player1', revealed: true }).currentState;
-		state = reduce(state, snapshot, 'SetSideboardRevealed', { player: 'player2', revealed: true }).currentState;
+		state = reduce(state, snapshot, 'SetSideboardRevealed', {
+			player: 'player1',
+			revealed: true,
+		}).currentState;
+		state = reduce(state, snapshot, 'SetSideboardRevealed', {
+			player: 'player2',
+			revealed: true,
+		}).currentState;
 
 		// A game win moves to the next game; the reveal survives, and nothing auto-reveals.
 		state = reduce(state, snapshot, 'RecordGameWin', { player: 'player1' }).currentState;
@@ -300,7 +333,9 @@ describe('feature match session reducer', () => {
 		// carries no record of the swap — so it always arrives in Slot order.
 		const rebuiltFromSlot = createSnapshot({ tableNumber: 20 });
 
-		const result = reduce(swapped.currentState, swapped.sourceSnapshot, 'SnapshotCorrected', { sourceSnapshot: rebuiltFromSlot });
+		const result = reduce(swapped.currentState, swapped.sourceSnapshot, 'SnapshotCorrected', {
+			sourceSnapshot: rebuiltFromSlot,
+		});
 
 		// The correction's own facts land, and the sides the operator chose survive
 		// it. Taking the rebuild verbatim pairs Alice's name with Bob's life total.
@@ -314,7 +349,9 @@ describe('feature match session reducer', () => {
 		const snapshot = createSnapshot();
 		const rebuiltFromSlot = createSnapshot({ tableNumber: 20 });
 
-		const result = reduce(createInitialFeatureMatchState(), snapshot, 'SnapshotCorrected', { sourceSnapshot: rebuiltFromSlot });
+		const result = reduce(createInitialFeatureMatchState(), snapshot, 'SnapshotCorrected', {
+			sourceSnapshot: rebuiltFromSlot,
+		});
 
 		expect(result.sourceSnapshot.player1.data?.name).toBe('Alice');
 		expect(result.sourceSnapshot.player2.data?.name).toBe('Bob');
@@ -326,7 +363,9 @@ describe('feature match session reducer', () => {
 		// every time it runs — so it always arrives claiming its own build time.
 		const rebuiltFromSlot = createSnapshot({ tableNumber: 20, createdAt: 5000 });
 
-		const result = reduce(createInitialFeatureMatchState(), snapshot, 'SnapshotCorrected', { sourceSnapshot: rebuiltFromSlot });
+		const result = reduce(createInitialFeatureMatchState(), snapshot, 'SnapshotCorrected', {
+			sourceSnapshot: rebuiltFromSlot,
+		});
 
 		expect(result.sourceSnapshot.createdAt).toBe(1000);
 		// The control: everything the correction is actually for still lands.
@@ -336,10 +375,17 @@ describe('feature match session reducer', () => {
 	it('keeps the creation stamp through a correction to a swapped session', () => {
 		// The two facts a rebuild cannot know are restored together, so neither can be
 		// reinstated in a way that drops the other.
-		const swapped = reduce(createInitialFeatureMatchState(), createSnapshot({ createdAt: 1000 }), 'SwapPlayers', {});
+		const swapped = reduce(
+			createInitialFeatureMatchState(),
+			createSnapshot({ createdAt: 1000 }),
+			'SwapPlayers',
+			{},
+		);
 		const rebuiltFromSlot = createSnapshot({ tableNumber: 20, createdAt: 5000 });
 
-		const result = reduce(swapped.currentState, swapped.sourceSnapshot, 'SnapshotCorrected', { sourceSnapshot: rebuiltFromSlot });
+		const result = reduce(swapped.currentState, swapped.sourceSnapshot, 'SnapshotCorrected', {
+			sourceSnapshot: rebuiltFromSlot,
+		});
 
 		expect(result.sourceSnapshot.createdAt).toBe(1000);
 		expect(result.sourceSnapshot.player1.data?.name).toBe('Bob');
@@ -376,9 +422,7 @@ describe('feature match session reducer', () => {
 					type: 'SetCounters',
 					payload: {
 						player: 'player1',
-						counters: [
-							{ type: 'poison', value: 3 },
-						],
+						counters: [{ type: 'poison', value: 3 }],
 					},
 				},
 				{
@@ -418,9 +462,7 @@ describe('feature match session reducer', () => {
 
 		expect(result.currentState.player1.lifeTotal).toBe(12);
 		expect(result.currentState.player2.lifeTotal).toBe(9);
-		expect(result.currentState.player1.counters).toEqual([
-			{ type: 'poison', value: 3 },
-		]);
+		expect(result.currentState.player1.counters).toEqual([{ type: 'poison', value: 3 }]);
 		expect(result.currentState.player2.cardsKept).toBe(6);
 		expect(result.currentState.player1.sideboardRevealed).toBe(true);
 		expect(result.currentState.player2.sideboardRevealed).toBe(true);
@@ -456,18 +498,22 @@ describe('feature match session reducer', () => {
 	});
 
 	it('stamps clock timestamps inside a Batch payload during normalization', () => {
-		const normalized = normalizeFeatureMatchSessionCommandPayload('Batch', {
-			commands: [
-				{
-					type: 'SetClock',
-					payload: { targetMs: 30_000 },
-				},
-				{
-					type: 'SetLife',
-					payload: { player: 'player1', lifeTotal: 12 },
-				},
-			],
-		}, () => 4242) as { commands: { type: string; payload: Record<string, unknown> }[] };
+		const normalized = normalizeFeatureMatchSessionCommandPayload(
+			'Batch',
+			{
+				commands: [
+					{
+						type: 'SetClock',
+						payload: { targetMs: 30_000 },
+					},
+					{
+						type: 'SetLife',
+						payload: { player: 'player1', lifeTotal: 12 },
+					},
+				],
+			},
+			() => 4242,
+		) as { commands: { type: string; payload: Record<string, unknown> }[] };
 
 		expect(normalized.commands[0]?.payload).toEqual({ targetMs: 30_000, at: 4242 });
 		expect(normalized.commands[1]?.payload).toEqual({ player: 'player1', lifeTotal: 12 });
@@ -477,35 +523,18 @@ describe('feature match session reducer', () => {
 		const snapshot = createSnapshot();
 		const started = createInitialFeatureMatchState();
 		const events: Array<[FeatureMatchCommandType | 'SessionStarted', Record<string, unknown>]> = [
-			[
-				'SessionStarted',
-				{ sourceSnapshot: snapshot, currentState: started },
-			],
-			[
-				'AdjustLife',
-				{ player: 'player1', delta: -2 },
-			],
+			['SessionStarted', { sourceSnapshot: snapshot, currentState: started }],
+			['AdjustLife', { player: 'player1', delta: -2 }],
 			[
 				'SetCounters',
 				{
 					player: 'player1',
-					counters: [
-						{ type: 'energy', value: 4 },
-					],
+					counters: [{ type: 'energy', value: 4 }],
 				},
 			],
-			[
-				'SelectFirstPlayer',
-				{ player: 'player2' },
-			],
-			[
-				'StepTurn',
-				{ delta: 2 },
-			],
-			[
-				'RecordGameWin',
-				{ player: 'player2', resetLife: false, resetCounters: false },
-			],
+			['SelectFirstPlayer', { player: 'player2' }],
+			['StepTurn', { delta: 2 }],
+			['RecordGameWin', { player: 'player2', resetLife: false, resetCounters: false }],
 		];
 
 		const replayed = events.reduce(
@@ -517,9 +546,7 @@ describe('feature match session reducer', () => {
 		);
 
 		expect(replayed.currentState.player1.lifeTotal).toBe(18);
-		expect(replayed.currentState.player1.counters).toEqual([
-			{ type: 'energy', value: 4 },
-		]);
+		expect(replayed.currentState.player1.counters).toEqual([{ type: 'energy', value: 4 }]);
 		expect(replayed.currentState.player2.gameWins).toBe(1);
 		expect(replayed.currentState.currentGame).toBe(2);
 	});

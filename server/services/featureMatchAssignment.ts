@@ -1,6 +1,9 @@
 import type { BatchItem } from 'drizzle-orm/batch';
 import type { DbFeatureMatchAssignment } from '~~/server/db/schema';
-import type { CreateFeatureMatchAssignmentInput, UpdateFeatureMatchAssignmentInput } from '~~/shared/api';
+import type {
+	CreateFeatureMatchAssignmentInput,
+	UpdateFeatureMatchAssignmentInput,
+} from '~~/shared/api';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { featureMatchAssignments } from '~~/server/db/schema';
@@ -12,31 +15,39 @@ import { selectForInsert } from '~~/server/utils/db';
  * D1 batch as the Slot and Session writes. Mirrors `upsert` exactly; keep the two
  * in sync.
  */
-export function buildUpsertAssignmentQueries(eventId: number, input: CreateFeatureMatchAssignmentInput): BatchItem<'sqlite'>[] {
+export function buildUpsertAssignmentQueries(
+	eventId: number,
+	input: CreateFeatureMatchAssignmentInput,
+): BatchItem<'sqlite'>[] {
 	return [
 		// A different Match already assigned to the destination ends here. The
 		// promotion workflow checks destructive Note loss before this query runs.
-		db.delete(featureMatchAssignments).where(and(
-			eq(featureMatchAssignments.eventId, eventId),
-			eq(featureMatchAssignments.roundId, input.roundId),
-			eq(featureMatchAssignments.slotId, input.slotId),
-			ne(featureMatchAssignments.matchId, input.matchId),
-		)),
+		db
+			.delete(featureMatchAssignments)
+			.where(
+				and(
+					eq(featureMatchAssignments.eventId, eventId),
+					eq(featureMatchAssignments.roundId, input.roundId),
+					eq(featureMatchAssignments.slotId, input.slotId),
+					ne(featureMatchAssignments.matchId, input.matchId),
+				),
+			),
 		// Moving the same Match in this Round continues its Assignment, including
 		// identity and Note. Re-promoting it to the same Slot is therefore harmless.
-		db.update(featureMatchAssignments)
+		db
+			.update(featureMatchAssignments)
 			.set({
 				slotId: input.slotId,
-				...(input.note !== undefined
-					? { note: input.note }
-					: {}),
+				...(input.note !== undefined ? { note: input.note } : {}),
 				updatedAt: new Date(),
 			})
-			.where(and(
-				eq(featureMatchAssignments.eventId, eventId),
-				eq(featureMatchAssignments.roundId, input.roundId),
-				eq(featureMatchAssignments.matchId, input.matchId),
-			)),
+			.where(
+				and(
+					eq(featureMatchAssignments.eventId, eventId),
+					eq(featureMatchAssignments.roundId, input.roundId),
+					eq(featureMatchAssignments.matchId, input.matchId),
+				),
+			),
 		// If the Match was not already assigned in this Round, start a blank new
 		// Assignment. Any conflict means the preceding update continued it instead.
 		db
@@ -83,35 +94,46 @@ export function buildAssignmentDisplacementGuardQuery(
 				and ${featureMatchAssignments.slotId} = ${input.slotId}
 				and ${featureMatchAssignments.matchId} != ${input.incomingMatchId}
 		)`;
-	return db.insert(featureMatchAssignments).select(selectForInsert(featureMatchAssignments, {
-		id: sql`0`,
-		// The null event_id is the mechanism: it trips the NOT NULL constraint
-		// isAssignmentDisplacementGuardViolation() recognises, aborting the batch.
-		eventId: sql`null`,
-		roundId: sql`0`,
-		slotId: sql`0`,
-		matchId: sql`0`,
-		note: sql`null`,
-		createdAt: sql`${now}`,
-		updatedAt: sql`${now}`,
-	}, sql`where ${unsafeDestination}`));
+	return db.insert(featureMatchAssignments).select(
+		selectForInsert(
+			featureMatchAssignments,
+			{
+				id: sql`0`,
+				// The null event_id is the mechanism: it trips the NOT NULL constraint
+				// isAssignmentDisplacementGuardViolation() recognises, aborting the batch.
+				eventId: sql`null`,
+				roundId: sql`0`,
+				slotId: sql`0`,
+				matchId: sql`0`,
+				note: sql`null`,
+				createdAt: sql`${now}`,
+				updatedAt: sql`${now}`,
+			},
+			sql`where ${unsafeDestination}`,
+		),
+	);
 }
 
 export function isAssignmentDisplacementGuardViolation(error: unknown): boolean {
-	const message = error instanceof Error
-		? error.message
-		: '';
+	const message = error instanceof Error ? error.message : '';
 	return message.includes('NOT NULL constraint failed: feature_match_assignments.event_id');
 }
 
 export function featureMatchAssignmentService() {
-	const findById = async (eventId: number, id: number): Promise<DbFeatureMatchAssignment | undefined> => {
+	const findById = async (
+		eventId: number,
+		id: number,
+	): Promise<DbFeatureMatchAssignment | undefined> => {
 		return await db.query.featureMatchAssignments.findFirst({
 			where: and(eq(featureMatchAssignments.eventId, eventId), eq(featureMatchAssignments.id, id)),
 		});
 	};
 
-	const findByRoundAndSlot = async (eventId: number, roundId: number, slotId: number): Promise<DbFeatureMatchAssignment | undefined> => {
+	const findByRoundAndSlot = async (
+		eventId: number,
+		roundId: number,
+		slotId: number,
+	): Promise<DbFeatureMatchAssignment | undefined> => {
 		return await db.query.featureMatchAssignments.findFirst({
 			where: and(
 				eq(featureMatchAssignments.eventId, eventId),
@@ -121,7 +143,11 @@ export function featureMatchAssignmentService() {
 		});
 	};
 
-	const findByRoundAndMatch = async (eventId: number, roundId: number, matchId: number): Promise<DbFeatureMatchAssignment | undefined> => {
+	const findByRoundAndMatch = async (
+		eventId: number,
+		roundId: number,
+		matchId: number,
+	): Promise<DbFeatureMatchAssignment | undefined> => {
 		return await db.query.featureMatchAssignments.findFirst({
 			where: and(
 				eq(featureMatchAssignments.eventId, eventId),
@@ -131,14 +157,19 @@ export function featureMatchAssignmentService() {
 		});
 	};
 
-	const findByRound = async (eventId: number, roundId: number): Promise<DbFeatureMatchAssignment[]> => {
+	const findByRound = async (
+		eventId: number,
+		roundId: number,
+	): Promise<DbFeatureMatchAssignment[]> => {
 		return await db
 			.select()
 			.from(featureMatchAssignments)
-			.where(and(
-				eq(featureMatchAssignments.eventId, eventId),
-				eq(featureMatchAssignments.roundId, roundId),
-			));
+			.where(
+				and(
+					eq(featureMatchAssignments.eventId, eventId),
+					eq(featureMatchAssignments.roundId, roundId),
+				),
+			);
 	};
 
 	const upsert = async (
@@ -146,28 +177,28 @@ export function featureMatchAssignmentService() {
 		input: CreateFeatureMatchAssignmentInput,
 		expectedAssignment?: Pick<DbFeatureMatchAssignment, 'id' | 'updatedAt'>,
 	): Promise<DbFeatureMatchAssignment> => {
-		await db.batch(
-			[
-				buildAssignmentDisplacementGuardQuery(eventId, {
-					roundId: input.roundId,
-					slotId: input.slotId,
-					incomingMatchId: input.matchId,
-					expectedAssignment,
-				}),
-				...buildUpsertAssignmentQueries(eventId, input),
-			] as [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]],
-		);
+		await db.batch([
+			buildAssignmentDisplacementGuardQuery(eventId, {
+				roundId: input.roundId,
+				slotId: input.slotId,
+				incomingMatchId: input.matchId,
+				expectedAssignment,
+			}),
+			...buildUpsertAssignmentQueries(eventId, input),
+		] as [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]]);
 
 		const assignment = await findByRoundAndSlot(eventId, input.roundId, input.slotId);
-		if (!assignment)
-			throw new Error('Failed to save feature match assignment');
+		if (!assignment) throw new Error('Failed to save feature match assignment');
 		return assignment;
 	};
 
-	const update = async (eventId: number, assignmentId: number, input: UpdateFeatureMatchAssignmentInput): Promise<DbFeatureMatchAssignment | undefined> => {
+	const update = async (
+		eventId: number,
+		assignmentId: number,
+		input: UpdateFeatureMatchAssignmentInput,
+	): Promise<DbFeatureMatchAssignment | undefined> => {
 		const current = await findById(eventId, assignmentId);
-		if (!current)
-			return undefined;
+		if (!current) return undefined;
 
 		const [updated] = await db
 			.update(featureMatchAssignments)
@@ -175,7 +206,12 @@ export function featureMatchAssignmentService() {
 				...input,
 				updatedAt: new Date(),
 			})
-			.where(and(eq(featureMatchAssignments.eventId, eventId), eq(featureMatchAssignments.id, assignmentId)))
+			.where(
+				and(
+					eq(featureMatchAssignments.eventId, eventId),
+					eq(featureMatchAssignments.id, assignmentId),
+				),
+			)
 			.returning();
 		return updated;
 	};
@@ -183,7 +219,12 @@ export function featureMatchAssignmentService() {
 	const remove = async (eventId: number, assignmentId: number): Promise<boolean> => {
 		const deleted = await db
 			.delete(featureMatchAssignments)
-			.where(and(eq(featureMatchAssignments.eventId, eventId), eq(featureMatchAssignments.id, assignmentId)))
+			.where(
+				and(
+					eq(featureMatchAssignments.eventId, eventId),
+					eq(featureMatchAssignments.id, assignmentId),
+				),
+			)
 			.returning({ id: featureMatchAssignments.id });
 		return deleted.length > 0;
 	};

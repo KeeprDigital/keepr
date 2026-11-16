@@ -1,5 +1,9 @@
 import type { ScreenResponse } from '~~/shared/api';
-import type { CommanderDeckListPreviewAnswer, SaveCommanderDeckListAnswer, SavedCommanderDeckList } from '~~/shared/types/featureMatchDeckList';
+import type {
+	CommanderDeckListPreviewAnswer,
+	SaveCommanderDeckListAnswer,
+	SavedCommanderDeckList,
+} from '~~/shared/types/featureMatchDeckList';
 import type { ScreenOutputCommanderDeckListResponse } from '~~/shared/types/screenOutputReads';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { $fetch, anonymousFetch } from './client';
@@ -23,7 +27,7 @@ const SAVED_CARDS = [
 ];
 
 function cards(list: Pick<SavedCommanderDeckList, 'entries'>) {
-	return list.entries.map(entry => [
+	return list.entries.map((entry) => [
 		entry.quantity,
 		entry.name,
 		entry.setCode,
@@ -31,10 +35,11 @@ function cards(list: Pick<SavedCommanderDeckList, 'entries'>) {
 	]);
 }
 
-describe('a Commander Seat\'s Feature Match Deck List', () => {
+describe("a Commander Seat's Feature Match Deck List", () => {
 	let eventId: number;
 	let slotId: number;
-	const route = (suffix = '') => `/api/events/${eventId}/feature-match-slots/${slotId}/commander-deck-lists${suffix}`;
+	const route = (suffix = '') =>
+		`/api/events/${eventId}/feature-match-slots/${slotId}/commander-deck-lists${suffix}`;
 
 	beforeAll(async () => {
 		const event = await $fetch('/api/events', {
@@ -47,15 +52,17 @@ describe('a Commander Seat\'s Feature Match Deck List', () => {
 			},
 		});
 		eventId = event.id;
-		const slot = await $fetch(`/api/events/${eventId}/feature-match-slots`, { method: 'POST', body: {} });
+		const slot = await $fetch(`/api/events/${eventId}/feature-match-slots`, {
+			method: 'POST',
+			body: {},
+		});
 		slotId = slot.id;
 	});
 
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('previews a paste, saves it with the offered Commander, reads back each printing, and shows the Seat on a Deck List Screen', async () => {
@@ -98,23 +105,33 @@ describe('a Commander Seat\'s Feature Match Deck List', () => {
 				featureMatchDeckList: { id: saved.deckList.id, mainboardCount: 3 },
 			},
 		});
-		expect(cards(await $fetch<SavedCommanderDeckList>(route(`/${saved.deckList.id}`)))).toEqual(SAVED_CARDS);
+		expect(cards(await $fetch<SavedCommanderDeckList>(route(`/${saved.deckList.id}`)))).toEqual(
+			SAVED_CARDS,
+		);
 
 		// A new Deck List Screen starts on a Seat of the Event's first Slot, and takes any of the four.
 		const created = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens`, {
 			method: 'POST',
 			body: { name: 'Deck', slug: `commander-deck-screen-${eventId}`, currentMode: 'deck' },
 		});
-		expect(created.modeConfigs?.deck?.deckSource).toMatchObject({ type: 'featureMatchSlot', side: 'player1' });
-		const screen = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens/${created.id}/config/deck`, {
-			method: 'PATCH',
-			body: {
-				deckSource: { type: 'featureMatchSlot', slotId, side: 'player4' },
-			},
+		expect(created.modeConfigs?.deck?.deckSource).toMatchObject({
+			type: 'featureMatchSlot',
+			side: 'player1',
 		});
+		const screen = await $fetch<ScreenResponse>(
+			`/api/events/${eventId}/screens/${created.id}/config/deck`,
+			{
+				method: 'PATCH',
+				body: {
+					deckSource: { type: 'featureMatchSlot', slotId, side: 'player4' },
+				},
+			},
+		);
 
 		// Its output reads the Seat's list by capability alone.
-		const { assetCapability } = await $fetch<{ assetCapability: string }>(`/api/events/${eventId}/screens/${screen.id}/asset-capability`);
+		const { assetCapability } = await $fetch<{ assetCapability: string }>(
+			`/api/events/${eventId}/screens/${screen.id}/asset-capability`,
+		);
 		const response = await anonymousFetch(
 			`/api/screen-output/events/${eventId}/screens/${screen.id}/feature-match-slots/${slotId}/commander-deck-lists/${saved.deckList.id}`,
 			{
@@ -122,7 +139,9 @@ describe('a Commander Seat\'s Feature Match Deck List', () => {
 			},
 		);
 		expect(response.status).toBe(200);
-		expect(cards(await response.json() as ScreenOutputCommanderDeckListResponse)).toEqual(SAVED_CARDS);
+		expect(cards((await response.json()) as ScreenOutputCommanderDeckListResponse)).toEqual(
+			SAVED_CARDS,
+		);
 	});
 
 	// The refusal's lines reach the client in the error's `data`, which only the running server shapes.
@@ -141,7 +160,11 @@ describe('a Commander Seat\'s Feature Match Deck List', () => {
 			data: {
 				code: 'COMMANDER_DECK_LIST_INVALID',
 				errors: [
-					{ code: 'INVALID_PRINTING_HINT', lineNumber: 2, sourceText: '1 Integration Land (IT2) 999' },
+					{
+						code: 'INVALID_PRINTING_HINT',
+						lineNumber: 2,
+						sourceText: '1 Integration Land (IT2) 999',
+					},
 				],
 			},
 		});

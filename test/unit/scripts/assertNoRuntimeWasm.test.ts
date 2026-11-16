@@ -13,16 +13,18 @@ import {
  */
 
 /** What `build/wasmModulePlugin.ts` emits, which a scan must always report. */
-const POISONED = `const bytes = Uint8Array.from(atob('AGFzbQEAAAABBAFgAAA='), c => c.charCodeAt(0));\n`
-	+ `export default new WebAssembly.Module(bytes);\n`;
+const POISONED =
+	`const bytes = Uint8Array.from(atob('AGFzbQEAAAABBAFgAAA='), c => c.charCodeAt(0));\n` +
+	`export default new WebAssembly.Module(bytes);\n`;
 
 /**
  * A correct bundle already says `WebAssembly.Module` — Emscripten's glue writes
  * `instanceof` to accept a pre-compiled module — so a scan that reported the
  * bare name would fail every honest build.
  */
-const HONEST = `var r = await WebAssembly.instantiateStreaming(fetch(u), i);\n`
-	+ `1 !== arguments.length || r34 instanceof WebAssembly.Module || (t27 = void 0, n57 = r34);\n`;
+const HONEST =
+	`var r = await WebAssembly.instantiateStreaming(fetch(u), i);\n` +
+	`1 !== arguments.length || r34 instanceof WebAssembly.Module || (t27 = void 0, n57 = r34);\n`;
 
 const directories: string[] = [];
 
@@ -39,24 +41,26 @@ function bundle(files: Record<string, string>): string {
 }
 
 afterEach(() => {
-	for (const root of directories.splice(0))
-		rmSync(root, { recursive: true, force: true });
+	for (const root of directories.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
 describe('the pattern the guard searches for', () => {
 	it('reports the 1-based line of every runtime compilation', () => {
-		expect(findRuntimeWasmCompilation(`a\nnew WebAssembly.Module(b)\nc\nnew WebAssembly.Module(d)`))
-			.toEqual([2, 4]);
+		expect(
+			findRuntimeWasmCompilation(`a\nnew WebAssembly.Module(b)\nc\nnew WebAssembly.Module(d)`),
+		).toEqual([2, 4]);
 		expect(findRuntimeWasmCompilation(HONEST)).toEqual([]);
 	});
 });
 
 describe('the files a bundle scan opens', () => {
 	it('passes an honest bundle and says how many files it read', () => {
-		const scan = runtimeWasmScan(bundle({
-			'index.js': HONEST,
-			'chunks/nitro.mjs': 'export default 1;\n',
-		}));
+		const scan = runtimeWasmScan(
+			bundle({
+				'index.js': HONEST,
+				'chunks/nitro.mjs': 'export default 1;\n',
+			}),
+		);
 
 		expect(scan.ok).toBe(true);
 		expect(scan.lines.join('\n')).toContain('no `new WebAssembly.Module(` in 2 bundled file(s)');
@@ -68,10 +72,12 @@ describe('the files a bundle scan opens', () => {
 	 * what shipped the deployed-Worker failure #302 removed.
 	 */
 	it('opens a file whose name says it is not JavaScript', () => {
-		const scan = runtimeWasmScan(bundle({
-			'index.js': HONEST,
-			'mozjpeg_dec-a1b2c3.wasm': POISONED,
-		}));
+		const scan = runtimeWasmScan(
+			bundle({
+				'index.js': HONEST,
+				'mozjpeg_dec-a1b2c3.wasm': POISONED,
+			}),
+		);
 
 		expect(scan.ok).toBe(false);
 		expect(scan.lines.join('\n')).toContain('mozjpeg_dec-a1b2c3.wasm:2');
@@ -79,13 +85,17 @@ describe('the files a bundle scan opens', () => {
 	});
 
 	it('walks into subdirectories rather than only the root it was given', () => {
-		const scan = runtimeWasmScan(bundle({
-			'index.js': HONEST,
-			'chunks/build/codecs/webp_enc-d4e5f6.wasm': POISONED,
-		}));
+		const scan = runtimeWasmScan(
+			bundle({
+				'index.js': HONEST,
+				'chunks/build/codecs/webp_enc-d4e5f6.wasm': POISONED,
+			}),
+		);
 
 		expect(scan.ok).toBe(false);
-		expect(scan.lines.join('\n')).toContain(join('chunks', 'build', 'codecs', 'webp_enc-d4e5f6.wasm:2'));
+		expect(scan.lines.join('\n')).toContain(
+			join('chunks', 'build', 'codecs', 'webp_enc-d4e5f6.wasm:2'),
+		);
 	});
 
 	/**
@@ -95,11 +105,13 @@ describe('the files a bundle scan opens', () => {
 	 * `NOT_SCANNED` past this is what this row refuses.
 	 */
 	it('skips sourcemaps, and only sourcemaps', () => {
-		const scan = runtimeWasmScan(bundle({
-			'index.js': HONEST,
-			'index.js.map': `{"sourcesContent":["export default new WebAssembly.Module(bytes);"]}`,
-			'wasmModulePlugin.mjs.map': POISONED,
-		}));
+		const scan = runtimeWasmScan(
+			bundle({
+				'index.js': HONEST,
+				'index.js.map': `{"sourcesContent":["export default new WebAssembly.Module(bytes);"]}`,
+				'wasmModulePlugin.mjs.map': POISONED,
+			}),
+		);
 
 		expect(scan.ok).toBe(true);
 		// The count is the assertion that the two maps were never opened: a scan
@@ -122,7 +134,9 @@ describe('what the guard refuses to call a pass', () => {
 	 * file list into a pass.
 	 */
 	it('refuses a directory whose every file was excluded', () => {
-		const scan = runtimeWasmScan(bundle({ 'index.js.map': '{}\n', 'chunks/nitro.mjs.map': '{}\n' }));
+		const scan = runtimeWasmScan(
+			bundle({ 'index.js.map': '{}\n', 'chunks/nitro.mjs.map': '{}\n' }),
+		);
 
 		expect(scan.ok).toBe(false);
 		expect(scan.lines.join('\n')).toContain('A scan of nothing is not a pass.');

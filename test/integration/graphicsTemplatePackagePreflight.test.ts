@@ -1,44 +1,48 @@
-import type { GraphicsAssetLibraryCapacity, GraphicsIngestionOperation } from '../../shared/types/graphicsAsset';
+import type {
+	GraphicsAssetLibraryCapacity,
+	GraphicsIngestionOperation,
+} from '../../shared/types/graphicsAsset';
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { crc32 } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '../../shared/types/screenConfig';
-import { TEMPLATE_PACKAGE_LIMITS, templatePackageContentEntry } from '../../shared/types/templatePackage';
+import {
+	TEMPLATE_PACKAGE_LIMITS,
+	templatePackageContentEntry,
+} from '../../shared/types/templatePackage';
 import { MAX_STILL_IMAGE_INGESTION_BYTES } from '../../shared/utils/graphicsAssetCompatibility';
 import { collectStream } from '../helpers/storedZipArchive';
-import {
-	readTemplatePackageParts,
-	writeTemplatePackage,
-} from '../helpers/templatePackageArchive';
+import { readTemplatePackageParts, writeTemplatePackage } from '../helpers/templatePackageArchive';
 import { $fetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
 import { libraryAssets } from './graphicsLibraryListing';
 import { expectOperationResult, expectResponseStatus } from './responseStatus';
 import { throughTransientUnavailability } from './transientUnavailability';
 
-const basePixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
+const basePixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
 
 /** Appends a valid ancillary text chunk so this suite owns a distinct digest. */
 function pngWithTextChunk(source: Uint8Array, keyword: string): Uint8Array<ArrayBuffer> {
-	const payload = Buffer.concat([
-		Buffer.from('tEXt'),
-		Buffer.from(`${keyword}\0`),
-	]);
+	const payload = Buffer.concat([Buffer.from('tEXt'), Buffer.from(`${keyword}\0`)]);
 	const length = Buffer.alloc(4);
 	length.writeUInt32BE(payload.byteLength - 4, 0);
 	const checksum = Buffer.alloc(4);
 	checksum.writeUInt32BE(crc32(payload), 0);
-	return Uint8Array.from(Buffer.concat([
-		Buffer.from(source.slice(0, -12)),
-		length,
-		payload,
-		checksum,
-		Buffer.from(source.slice(-12)),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			Buffer.from(source.slice(0, -12)),
+			length,
+			payload,
+			checksum,
+			Buffer.from(source.slice(-12)),
+		]),
+	);
 }
 
 const packagePixelPng = pngWithTextChunk(basePixelPng, 'sk-template-package-preflight');
@@ -60,13 +64,15 @@ function pngPaddedTo(byteLength: number, keyword: string): Uint8Array<ArrayBuffe
 	length.writeUInt32BE(payload.byteLength - 4, 0);
 	const checksum = Buffer.alloc(4);
 	checksum.writeUInt32BE(crc32(payload), 0);
-	return Uint8Array.from(Buffer.concat([
-		Buffer.from(basePixelPng.slice(0, -12)),
-		length,
-		payload,
-		checksum,
-		Buffer.from(basePixelPng.slice(-12)),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			Buffer.from(basePixelPng.slice(0, -12)),
+			length,
+			payload,
+			checksum,
+			Buffer.from(basePixelPng.slice(-12)),
+		]),
+	);
 }
 
 function digestOf(bytes: Uint8Array) {
@@ -76,7 +82,10 @@ function digestOf(bytes: Uint8Array) {
 let preflightSequence = 0;
 
 /** Runs one package through the raw transfer route and returns the operation. */
-async function receivePackage(archive: Uint8Array<ArrayBuffer>, options: { fileName?: string } = {}) {
+async function receivePackage(
+	archive: Uint8Array<ArrayBuffer>,
+	options: { fileName?: string } = {},
+) {
 	const initiated = await $fetch<GraphicsIngestionOperation>(
 		'/api/graphics-assets/ingestion-operations',
 		{
@@ -99,7 +108,7 @@ async function receivePackage(archive: Uint8Array<ArrayBuffer>, options: { fileN
 		},
 	);
 	await expectResponseStatus(response, 200);
-	return await response.json() as GraphicsIngestionOperation;
+	return (await response.json()) as GraphicsIngestionOperation;
 }
 
 /**
@@ -130,14 +139,21 @@ async function receivePackageInParts(archive: Uint8Array, options: { fileName?: 
 		const offset = (partNumber - 1) * transfer.partByteLength;
 		// A part is re-sent through the library's transient 503, as the production
 		// client would (#633): this suite is about preflight, not the store staying up.
-		const response = await throughTransientUnavailability(() => fetch(
-			`/api/graphics-assets/ingestion-operations/${initiated.id}/multipart/parts/${partNumber}`,
-			{
-				method: 'PUT',
-				headers: authorHeaders,
-				body: archive.slice(offset, Math.min(archive.byteLength, offset + transfer.partByteLength)),
-			},
-		), { attempts: transfer.maximumPartAttempts });
+		const response = await throughTransientUnavailability(
+			() =>
+				fetch(
+					`/api/graphics-assets/ingestion-operations/${initiated.id}/multipart/parts/${partNumber}`,
+					{
+						method: 'PUT',
+						headers: authorHeaders,
+						body: archive.slice(
+							offset,
+							Math.min(archive.byteLength, offset + transfer.partByteLength),
+						),
+					},
+				),
+			{ attempts: transfer.maximumPartAttempts },
+		);
 		await expectResponseStatus(response, 200);
 	}
 	return await $fetch<GraphicsIngestionOperation>(
@@ -250,13 +266,10 @@ describe('template Package preflight through the API boundary', () => {
 
 		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 		config.layout.frame.backgroundImage = { kind: 'asset', ...reference } as never;
-		await $fetch(
-			`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`,
-			{
-				method: 'PATCH',
-				body: { layout: config.layout },
-			},
-		);
+		await $fetch(`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`, {
+			method: 'PATCH',
+			body: { layout: config.layout },
+		});
 		const exported = await fetch(
 			`/api/events/${eventId}/screens/${screenId}/template-packages/feature-match-layout`,
 			{
@@ -270,8 +283,7 @@ describe('template Package preflight through the API boundary', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('maps a package back to its exact origins and publishes nothing', async () => {
@@ -300,7 +312,7 @@ describe('template Package preflight through the API boundary', () => {
 		// Preflight proposes; it never installs. The library is untouched — by the
 		// listing, and by the listing-independent capacity figure (#369).
 		const after = await libraryAssets();
-		expect(after.map(asset => asset.id).sort()).toEqual(before.map(asset => asset.id).sort());
+		expect(after.map((asset) => asset.id).sort()).toEqual(before.map((asset) => asset.id).sort());
 		expect(await retainedCanonicalSourceBytes()).toBe(retainedBefore);
 
 		// The immutable report survives a reconnect on the durable operation.
@@ -337,9 +349,7 @@ describe('template Package preflight through the API boundary', () => {
 			revisionId: 'a-revision-never-seen-here',
 		};
 		const entry = templatePackageContentEntry(digestOf(filling));
-		parts.contents = [
-			{ name: entry, bytes: filling },
-		];
+		parts.contents = [{ name: entry, bytes: filling }];
 		parts.manifest.packagedAssets = [
 			{
 				...packaged,
@@ -373,15 +383,16 @@ describe('template Package preflight through the API boundary', () => {
 		parts.template = {
 			...(parts.template as Record<string, unknown>),
 			frame: {
-				...((parts.template as { frame: Record<string, unknown> }).frame),
+				...(parts.template as { frame: Record<string, unknown> }).frame,
 				backgroundImage: { kind: 'asset', ...unseen },
 			},
 		};
 
 		const archive = writeTemplatePackage(parts);
 		expect(archive.byteLength).toBeGreaterThan(MAX_STILL_IMAGE_INGESTION_BYTES);
-		expect(archive.byteLength)
-			.toBeLessThanOrEqual(TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength);
+		expect(archive.byteLength).toBeLessThanOrEqual(
+			TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength,
+		);
 
 		const operation = await receivePackageInParts(archive, { fileName: 'filled-overlay.sklayout' });
 
@@ -400,36 +411,38 @@ describe('template Package preflight through the API boundary', () => {
 
 	it('permanently rejects an unsafe archive with one complete report', async () => {
 		const parts = readTemplatePackageParts(exportedPackage);
-		const operation = await receivePackage(writeTemplatePackage(parts, {
-			extraEntries: [
-				{
-					name: '../escaped.json',
-					bytes: new TextEncoder().encode('{}'),
-				},
-				{
-					name: 'link.bin',
-					bytes: new TextEncoder().encode('/etc/passwd'),
-					externalAttributes: 0xA1FF0000,
-				},
-			],
-		}));
+		const operation = await receivePackage(
+			writeTemplatePackage(parts, {
+				extraEntries: [
+					{
+						name: '../escaped.json',
+						bytes: new TextEncoder().encode('{}'),
+					},
+					{
+						name: 'link.bin',
+						bytes: new TextEncoder().encode('/etc/passwd'),
+						externalAttributes: 0xa1ff0000,
+					},
+				],
+			}),
+		);
 
 		expect(operation.stage).toBe('failed');
 		expect(operation.failure).toMatchObject({ retryable: false });
 		const report = operation.templatePackagePreflight!;
 		expect(report.outcome).toBe('rejected');
 		// Both problems are reported together, each with stable code and guidance.
-		expect(report.issues.map(issue => issue.code)).toEqual(
+		expect(report.issues.map((issue) => issue.code)).toEqual(
 			expect.arrayContaining(['package-entry-path-traversal', 'package-entry-link']),
 		);
-		expect(report.issues.every(issue => issue.remediation.length > 0)).toBe(true);
+		expect(report.issues.every((issue) => issue.remediation.length > 0)).toBe(true);
 		expect(report.limits).toEqual(TEMPLATE_PACKAGE_LIMITS);
 
 		// A permanent input failure is not retryable into existence.
-		const retried = await fetch(
-			`/api/graphics-assets/ingestion-operations/${operation.id}/retry`,
-			{ method: 'POST', headers: authorHeaders },
-		);
+		const retried = await fetch(`/api/graphics-assets/ingestion-operations/${operation.id}/retry`, {
+			method: 'POST',
+			headers: authorHeaders,
+		});
 		expect(retried.status).toBe(409);
 	});
 
@@ -448,7 +461,7 @@ describe('template Package preflight through the API boundary', () => {
 		// Which envelope refused them, in words: a reader told only that some byte
 		// length was too large goes looking at the Graphic Asset transfer limits,
 		// which describe a different envelope entirely.
-		const failure = await response.json() as { message?: string };
+		const failure = (await response.json()) as { message?: string };
 		expect(failure.message).toContain(
 			`Template Package must not exceed ${TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength} bytes`,
 		);

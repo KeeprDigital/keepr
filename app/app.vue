@@ -1,9 +1,7 @@
 <script setup lang="ts">
 const colorMode = useColorMode();
 
-const color = computed(() => colorMode.value === 'dark'
-	? '#111827'
-	: 'white');
+const color = computed(() => (colorMode.value === 'dark' ? '#111827' : 'white'));
 
 useHead({
 	title: 'Stream Keepr - Event Management',
@@ -13,9 +11,7 @@ useHead({
 		{ key: 'theme-color', name: 'theme-color', content: color },
 		{ name: 'description', content: 'Manage your tournament events and streaming overlays' },
 	],
-	link: [
-		{ rel: 'icon', href: '/favicon.ico' },
-	],
+	link: [{ rel: 'icon', href: '/favicon.ico' }],
 	htmlAttrs: {
 		lang: 'en',
 	},

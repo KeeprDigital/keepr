@@ -15,26 +15,9 @@ mockNuxtImport('usePlayerStore', () => () => ({ players: [] }));
 
 describe('mtgCardPlayerDeckHeader', () => {
 	it.each([
-		[
-			'loads the deck of a Player selected before mount',
-			12,
-			false,
-			[
-				[12],
-			],
-		],
-		[
-			'keeps the deck the store already holds',
-			12,
-			true,
-			[],
-		],
-		[
-			'loads nothing without a selection',
-			undefined,
-			false,
-			[],
-		],
+		['loads the deck of a Player selected before mount', 12, false, [[12]]],
+		['keeps the deck the store already holds', 12, true, []],
+		['loads nothing without a selection', undefined, false, []],
 	])('%s', (_, playerId, playerDeckHasData, loads) => {
 		cardStore.playerDeckHasData = playerDeckHasData;
 		cardStore.loadPlayerDeck.mockClear();

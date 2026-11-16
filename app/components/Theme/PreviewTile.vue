@@ -20,13 +20,15 @@ const { width, height } = useElementSize(stage);
 
 // One Screen host per tile, showing its mode against its Card Game's Screen
 // Mode Sample Dataset under the Theme as it stands, so each token edit repaints it.
-provideScreenContext(createScreenModeSampleContext({
-	mode: props.mode,
-	game: props.game,
-	variant: props.variant,
-	themeTokens: toRef(props, 'tokens'),
-	viewport: computed(() => ({ width: width.value, height: height.value })),
-}));
+provideScreenContext(
+	createScreenModeSampleContext({
+		mode: props.mode,
+		game: props.game,
+		variant: props.variant,
+		themeTokens: toRef(props, 'tokens'),
+		viewport: computed(() => ({ width: width.value, height: height.value })),
+	}),
+);
 </script>
 
 <template>

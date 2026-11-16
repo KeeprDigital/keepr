@@ -38,9 +38,7 @@ const emit = defineEmits<{
 					class="table-input"
 					@update:model-value="emit('update:tableNumber', $event ?? null)"
 				/>
-				<span v-else-if="tableNumber" class="table-badge">
-					Table {{ tableNumber }}
-				</span>
+				<span v-else-if="tableNumber" class="table-badge"> Table {{ tableNumber }} </span>
 			</div>
 			<span v-if="clock && bestOf > 1" class="game-info">
 				Game {{ currentGame }} of {{ bestOf }}
@@ -51,14 +49,15 @@ const emit = defineEmits<{
 		<div v-if="stateLoading" class="loading-indicator">
 			<UIcon name="i-lucide-loader-2" class="size-4 text-muted animate-spin" />
 		</div>
-		<span v-else-if="clock?.type === 'untimed'" class="text-sm text-muted" data-testid="untimed-clock">
+		<span
+			v-else-if="clock?.type === 'untimed'"
+			class="text-sm text-muted"
+			data-testid="untimed-clock"
+		>
 			Untimed
 		</span>
 		<div v-else-if="clock" class="clock-wrapper">
-			<FeatureMatchStateClock
-				:match-id="matchId"
-				:clock="clock"
-			/>
+			<FeatureMatchStateClock :match-id="matchId" :clock="clock" />
 		</div>
 
 		<!-- Right: Mode toggle -->

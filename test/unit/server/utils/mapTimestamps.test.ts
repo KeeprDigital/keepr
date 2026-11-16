@@ -23,7 +23,10 @@ describe('mapTimestamps', () => {
 // runtime conversion (#256).
 describe('mapTimestamps return type', () => {
 	it('reports a string timestamp as the Date it becomes', () => {
-		const result = mapTimestamps({ createdAt: '2024-06-15T10:30:00.000Z', updatedAt: '2024-06-16T14:00:00.000Z' });
+		const result = mapTimestamps({
+			createdAt: '2024-06-15T10:30:00.000Z',
+			updatedAt: '2024-06-16T14:00:00.000Z',
+		});
 
 		expectTypeOf(result).toEqualTypeOf<{ createdAt: Date; updatedAt: Date }>();
 	});

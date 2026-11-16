@@ -48,14 +48,15 @@ beforeEach(() => {
 	mockApiFetch.mockReset();
 	answerWrite = () => theme(2);
 	storedTokens = {};
-	mockApiFetch.mockImplementation(async (url: string, init?: { method?: string; body?: { value?: unknown } }) => {
-		if (url === '/api/themes/brand' && !init?.method)
-			return theme(1, storedTokens);
-		// The preview's Deck tile looks its sample cards up on Scryfall; none is found.
-		if (!url.startsWith('/api/themes/brand'))
-			throw Object.assign(new Error('Not Found'), { statusCode: 404 });
-		return answerWrite(init?.body);
-	});
+	mockApiFetch.mockImplementation(
+		async (url: string, init?: { method?: string; body?: { value?: unknown } }) => {
+			if (url === '/api/themes/brand' && !init?.method) return theme(1, storedTokens);
+			// The preview's Deck tile looks its sample cards up on Scryfall; none is found.
+			if (!url.startsWith('/api/themes/brand'))
+				throw Object.assign(new Error('Not Found'), { statusCode: 404 });
+			return answerWrite(init?.body);
+		},
+	);
 });
 
 afterEach(() => {
@@ -101,9 +102,7 @@ async function mountEditor({ preview = false } = {}) {
 				NuxtLayout: passthroughStub,
 				NuxtLink: passthroughStub,
 				GraphicsAssetFocusPicker: FocusPickerStub,
-				...(preview
-					? {}
-					: { ThemePreviewGallery: true }),
+				...(preview ? {} : { ThemePreviewGallery: true }),
 			},
 		},
 		// Attached, so the preview's painted style can be read back.
@@ -114,12 +113,19 @@ async function mountEditor({ preview = false } = {}) {
 }
 
 const field = (wrapper: VueWrapper, token: string) => wrapper.get(`[data-token="${token}"]`);
-const part = (wrapper: VueWrapper, token: string, name: string) => field(wrapper, token).get(`[data-token-part="${name}"]`);
+const part = (wrapper: VueWrapper, token: string, name: string) =>
+	field(wrapper, token).get(`[data-token-part="${name}"]`);
 /** A typography token's field, in the typography editor the graphics inspector shares. */
-const typography = (wrapper: VueWrapper, token: string, name: string) => field(wrapper, token).get(`[data-testid="theme-typography-${name}"]`);
+const typography = (wrapper: VueWrapper, token: string, name: string) =>
+	field(wrapper, token).get(`[data-testid="theme-typography-${name}"]`);
 
 /** A colour token commits once its picker closes. */
-async function commitColour(wrapper: VueWrapper, token: string, control: ColorPickerPart, value: string) {
+async function commitColour(
+	wrapper: VueWrapper,
+	token: string,
+	control: ColorPickerPart,
+	value: string,
+) {
 	await editColorPicker(field(wrapper, token), '[data-token-part="colour"]', control, value);
 	await flushPromises();
 }
@@ -139,11 +145,7 @@ async function pauseEdits() {
 function writes() {
 	return mockApiFetch.mock.calls
 		.filter(([url]) => String(url).startsWith(TOKEN_PATH))
-		.map(([url, init]) => [
-			init?.method,
-			String(url).slice(TOKEN_PATH.length),
-			init?.body,
-		]);
+		.map(([url, init]) => [init?.method, String(url).slice(TOKEN_PATH.length), init?.body]);
 }
 
 describe('the Theme editor', () => {
@@ -152,10 +154,12 @@ describe('the Theme editor', () => {
 		storedTokens = { 'standings.rise': '#ff0000' };
 		const wrapper = await mountEditor();
 
-		const kinds = wrapper.findAll('[data-token-kind]').map(card => [
-			card.attributes('data-token-kind'),
-			card.findAll('[data-token]').map(row => row.attributes('data-token')),
-		]);
+		const kinds = wrapper
+			.findAll('[data-token-kind]')
+			.map((card) => [
+				card.attributes('data-token-kind'),
+				card.findAll('[data-token]').map((row) => row.attributes('data-token')),
+			]);
 		expect(kinds).toEqual([
 			[
 				'colours',
@@ -173,31 +177,11 @@ describe('the Theme editor', () => {
 					'shadow',
 				],
 			],
-			[
-				'type',
-				['heading', 'body'],
-			],
-			[
-				'motion',
-				['motion-enter', 'motion-update', 'motion-exit'],
-			],
-			[
-				'surfaces',
-				['accent-fill', 'panel', 'panel-shape'],
-			],
-			[
-				'background',
-				[
-					'inset',
-					'alignment',
-					'background',
-					'animation-effect',
-				],
-			],
-			[
-				'assets',
-				['logo'],
-			],
+			['type', ['heading', 'body']],
+			['motion', ['motion-enter', 'motion-update', 'motion-exit']],
+			['surfaces', ['accent-fill', 'panel', 'panel-shape']],
+			['background', ['inset', 'alignment', 'background', 'animation-effect']],
+			['assets', ['logo']],
 			[
 				'chart',
 				[
@@ -231,35 +215,20 @@ describe('the Theme editor', () => {
 	});
 
 	it.each([
-		[
-			'a colour',
-			'accent',
-			'hue',
-			'#ff0000',
-			'#ff0000',
-		],
-		[
-			'a colour\'s alpha',
-			'accent',
-			'alpha',
-			'50',
-			'rgba(0, 119, 163, 0.5)',
-		],
-	] as const)('writes %s as one token, and shows it set once the write lands', async (_case, token, control, entered, value) => {
-		answerWrite = () => theme(2, { [token]: value });
-		const wrapper = await mountEditor();
+		['a colour', 'accent', 'hue', '#ff0000', '#ff0000'],
+		["a colour's alpha", 'accent', 'alpha', '50', 'rgba(0, 119, 163, 0.5)'],
+	] as const)(
+		'writes %s as one token, and shows it set once the write lands',
+		async (_case, token, control, entered, value) => {
+			answerWrite = () => theme(2, { [token]: value });
+			const wrapper = await mountEditor();
 
-		await commitColour(wrapper, token, control, entered);
+			await commitColour(wrapper, token, control, entered);
 
-		expect(writes()).toEqual([
-			[
-				'PUT',
-				token,
-				{ value },
-			],
-		]);
-		expect(field(wrapper, token).attributes('data-token-state')).toBe('set');
-	});
+			expect(writes()).toEqual([['PUT', token, { value }]]);
+			expect(field(wrapper, token).attributes('data-token-state')).toBe('set');
+		},
+	);
 
 	it('repaints its preview once a write lands', async () => {
 		answerWrite = () => theme(2, { surface: 'rgb(0, 255, 0)' });
@@ -268,7 +237,9 @@ describe('the Theme editor', () => {
 
 		await commitColour(wrapper, 'surface', 'hue', '#00ff00');
 
-		expect(getComputedStyle(wrapper.get('.standings-table').element).backgroundColor).toBe('rgb(0, 255, 0)');
+		expect(getComputedStyle(wrapper.get('.standings-table').element).backgroundColor).toBe(
+			'rgb(0, 255, 0)',
+		);
 	});
 
 	it('writes the whole Screen alignment when one axis changes', async () => {
@@ -289,22 +260,23 @@ describe('the Theme editor', () => {
 	});
 
 	it('resets a set token by clearing it', async () => {
-		mockApiFetch.mockImplementation(async (url: string, init?: { method?: string }) => init?.method
-			? theme(3)
-			: theme(2, { accent: '#ff0000' }));
+		mockApiFetch.mockImplementation(async (url: string, init?: { method?: string }) =>
+			init?.method ? theme(3) : theme(2, { accent: '#ff0000' }),
+		);
 		const wrapper = await mountEditor();
 		expect(field(wrapper, 'accent').attributes('data-token-state')).toBe('set');
 
-		await field(wrapper, 'accent').findAll('button').find(button => button.text() === 'Reset')!.trigger('click');
+		await field(wrapper, 'accent')
+			.findAll('button')
+			.find((button) => button.text() === 'Reset')!
+			.trigger('click');
 		await flushPromises();
 
-		expect(writes()).toEqual([
-			['DELETE', 'accent', undefined],
-		]);
+		expect(writes()).toEqual([['DELETE', 'accent', undefined]]);
 		expect(field(wrapper, 'accent').attributes('data-token-state')).toBe('inherited');
 	});
 
-	it('keeps a newer write\'s Theme when an older write answers after it', async () => {
+	it("keeps a newer write's Theme when an older write answers after it", async () => {
 		const older = deferred<ThemeResponse>();
 		const answers = [
 			() => older.promise,
@@ -322,14 +294,21 @@ describe('the Theme editor', () => {
 	});
 
 	it('writes the background once its edits pause, as the whole stack', async () => {
-		answerWrite = body => theme(2, { background: body?.value });
+		answerWrite = (body) => theme(2, { background: body?.value });
 		const wrapper = await mountEditor();
 		fakeDraftClock();
-		const addLayer = () => part(wrapper, 'background', 'background-layers').get('[data-testid="add-layer"]').trigger('click');
+		const addLayer = () =>
+			part(wrapper, 'background', 'background-layers')
+				.get('[data-testid="add-layer"]')
+				.trigger('click');
 
 		await addLayer();
 		await addLayer();
-		expect(part(wrapper, 'background', 'background-layers').findAll('[data-testid="background-layer-row"]')).toHaveLength(2);
+		expect(
+			part(wrapper, 'background', 'background-layers').findAll(
+				'[data-testid="background-layer-row"]',
+			),
+		).toHaveLength(2);
 		expect(writes()).toEqual([]);
 
 		const colorLayer = {
@@ -368,7 +347,10 @@ describe('the Theme editor', () => {
 					opacity: 1,
 				},
 			],
-			edit: (wrapper: VueWrapper) => part(wrapper, 'background', 'background-layers').get('[data-testid="add-layer"]').trigger('click'),
+			edit: (wrapper: VueWrapper) =>
+				part(wrapper, 'background', 'background-layers')
+					.get('[data-testid="add-layer"]')
+					.trigger('click'),
 			written: [
 				{
 					id: 'wash',
@@ -400,7 +382,10 @@ describe('the Theme editor', () => {
 					width: 2,
 				},
 			},
-			edit: (wrapper: VueWrapper) => field(wrapper, 'panel').get('[data-testid="theme-surface-graphic-outline-enabled"]').trigger('click'),
+			edit: (wrapper: VueWrapper) =>
+				field(wrapper, 'panel')
+					.get('[data-testid="theme-surface-graphic-outline-enabled"]')
+					.trigger('click'),
 			written: {
 				fill: { type: 'solid', color: '#aa0000' },
 				fillOpacity: 0.5,
@@ -410,7 +395,10 @@ describe('the Theme editor', () => {
 			case: 'an unset fill, whose default names the accent',
 			token: 'accent-fill',
 			stored: undefined,
-			edit: (wrapper: VueWrapper) => field(wrapper, 'accent-fill').get('[data-testid="theme-fill-kind"]').setValue('linear-gradient'),
+			edit: (wrapper: VueWrapper) =>
+				field(wrapper, 'accent-fill')
+					.get('[data-testid="theme-fill-kind"]')
+					.setValue('linear-gradient'),
 			written: {
 				type: 'linear-gradient',
 				angle: expect.any(Number),
@@ -423,9 +411,7 @@ describe('the Theme editor', () => {
 	])('writes $case back as literals on its next edit', async ({ token, stored, edit, written }) => {
 		storedTokens = {
 			accent: '#aa0000',
-			...(stored === undefined
-				? {}
-				: { [token]: stored }),
+			...(stored === undefined ? {} : { [token]: stored }),
 		};
 		const wrapper = await mountEditor();
 		fakeDraftClock();
@@ -433,23 +419,22 @@ describe('the Theme editor', () => {
 		await edit(wrapper);
 		await pauseEdits();
 
-		expect(writes()).toEqual([
-			[
-				'PUT',
-				token,
-				{ value: written },
-			],
-		]);
+		expect(writes()).toEqual([['PUT', token, { value: written }]]);
 	});
 
-	it('offers a Theme\'s media layers the whole library', async () => {
+	it("offers a Theme's media layers the whole library", async () => {
 		const wrapper = await mountEditor();
 		const editor = part(wrapper, 'background', 'background-layers');
 
 		await editor.get('[data-testid="add-layer-type"] select').setValue('image');
 		await editor.get('[data-testid="add-layer"]').trigger('click');
 
-		const source = editor.get('[data-testid="background-layer-row"]').findAll('select').find(select => select.findAll('option').some(option => option.text() === 'Asset library'))!;
+		const source = editor
+			.get('[data-testid="background-layer-row"]')
+			.findAll('select')
+			.find((select) =>
+				select.findAll('option').some((option) => option.text() === 'Asset library'),
+			)!;
 		await source.setValue('asset');
 
 		expect(editor.get('[data-testid="pick-asset"]').attributes('data-event-id')).toBe('none');
@@ -460,7 +445,11 @@ describe('the Theme editor', () => {
 			'the logo, as an exact image revision',
 			'logo',
 			async (wrapper: VueWrapper) => {
-				expect(part(wrapper, 'logo', 'asset').get('[data-testid="pick-asset"]').attributes('data-asset-kinds')).toBe('image,silent-video');
+				expect(
+					part(wrapper, 'logo', 'asset')
+						.get('[data-testid="pick-asset"]')
+						.attributes('data-asset-kinds'),
+				).toBe('image,silent-video');
 				await part(wrapper, 'logo', 'asset').get('[data-testid="pick-asset"]').trigger('click');
 			},
 			{ kind: 'image', assetId: 'asset-1', revisionId: 'revision-1' },
@@ -490,13 +479,7 @@ describe('the Theme editor', () => {
 		await pick(wrapper);
 		await pauseEdits();
 
-		expect(writes()).toEqual([
-			[
-				'PUT',
-				token,
-				{ value },
-			],
-		]);
+		expect(writes()).toEqual([['PUT', token, { value }]]);
 	});
 
 	it('writes the Animation Effect an operator picks', async () => {
@@ -521,11 +504,8 @@ describe('the Theme editor', () => {
 	// one and waits for its answer; edits made meanwhile are sent as one.
 	it('builds a second edit on the first while its write is out, and sends it once that answers', async () => {
 		const first = deferred<ThemeResponse>();
-		const answers: Answer[] = [
-			() => first.promise,
-			body => theme(3, { heading: body?.value }),
-		];
-		answerWrite = body => answers.shift()!(body);
+		const answers: Answer[] = [() => first.promise, (body) => theme(3, { heading: body?.value })];
+		answerWrite = (body) => answers.shift()!(body);
 		const wrapper = await mountEditor();
 		fakeDraftClock();
 
@@ -539,7 +519,9 @@ describe('the Theme editor', () => {
 		expect(writes().map(([, , body]) => body.value)).toEqual([
 			expect.objectContaining({ weight: 400, case: 'uppercase' }),
 		]);
-		expect((typography(wrapper, 'heading', 'weight').element as HTMLInputElement).value).toBe('400');
+		expect((typography(wrapper, 'heading', 'weight').element as HTMLInputElement).value).toBe(
+			'400',
+		);
 
 		first.resolve(theme(2, { heading: writes()[0]![2].value }));
 		await flushPromises();
@@ -573,18 +555,20 @@ describe('the Theme editor', () => {
 		fakeDraftClock();
 
 		await part(wrapper, 'animation-effect', 'animation-effect').get('select').setValue('fog');
-		await field(wrapper, 'animation-effect').findAll('button').find(button => button.text() === 'Reset')!.trigger('click');
+		await field(wrapper, 'animation-effect')
+			.findAll('button')
+			.find((button) => button.text() === 'Reset')!
+			.trigger('click');
 		await pauseEdits();
 
-		expect(writes()).toEqual([
-			['DELETE', 'animation-effect', undefined],
-		]);
+		expect(writes()).toEqual([['DELETE', 'animation-effect', undefined]]);
 	});
 
 	it('shows the stored value again once a write is refused', async () => {
 		answerWrite = () => Promise.reject(Object.assign(new Error('Refused'), { statusCode: 422 }));
 		const wrapper = await mountEditor();
-		const horizontal = () => (part(wrapper, 'alignment', 'horizontal').element as unknown as HTMLSelectElement).value;
+		const horizontal = () =>
+			(part(wrapper, 'alignment', 'horizontal').element as unknown as HTMLSelectElement).value;
 
 		await part(wrapper, 'alignment', 'horizontal').setValue('left');
 		await flushPromises();
@@ -600,8 +584,12 @@ describe('the Theme editor', () => {
 		it('offers a typography token no size or style: its consumer owns them', async () => {
 			const wrapper = await mountEditor();
 
-			expect(field(wrapper, 'heading').find('[data-testid="theme-typography-size"]').exists()).toBe(false);
-			expect(field(wrapper, 'heading').find('[data-testid="theme-typography-font-style"]').exists()).toBe(false);
+			expect(field(wrapper, 'heading').find('[data-testid="theme-typography-size"]').exists()).toBe(
+				false,
+			);
+			expect(
+				field(wrapper, 'heading').find('[data-testid="theme-typography-font-style"]').exists(),
+			).toBe(false);
 		});
 
 		it.each([
@@ -648,8 +636,9 @@ describe('the Theme editor', () => {
 				written: 480,
 			},
 			{
-				case: 'a surface\'s fill opacity',
-				control: (wrapper: VueWrapper) => field(wrapper, 'panel').get('input[aria-label="Panel fill opacity"]'),
+				case: "a surface's fill opacity",
+				control: (wrapper: VueWrapper) =>
+					field(wrapper, 'panel').get('input[aria-label="Panel fill opacity"]'),
 				entered: '0.5',
 				token: 'panel',
 				written: expect.objectContaining({ fillOpacity: 0.5 }),
@@ -661,13 +650,7 @@ describe('the Theme editor', () => {
 			await control(wrapper).setValue(entered);
 			await pauseEdits();
 
-			expect(writes()).toEqual([
-				[
-					'PUT',
-					token,
-					{ value: written },
-				],
-			]);
+			expect(writes()).toEqual([['PUT', token, { value: written }]]);
 		});
 
 		it('writes a dimension dragged by its label, once the drag pauses', async () => {
@@ -680,13 +663,7 @@ describe('the Theme editor', () => {
 			await label.trigger('pointerup', { pointerId: 1 });
 			await pauseEdits();
 
-			expect(writes()).toEqual([
-				[
-					'PUT',
-					'inset',
-					{ value: 10 },
-				],
-			]);
+			expect(writes()).toEqual([['PUT', 'inset', { value: 10 }]]);
 		});
 	});
 });

@@ -61,7 +61,7 @@ export const BROADCAST_GRAPHICS_REJECTION_CODES = [
 	'social-profile-unavailable',
 ] as const;
 
-export type BroadcastGraphicsRejectionCode = typeof BROADCAST_GRAPHICS_REJECTION_CODES[number];
+export type BroadcastGraphicsRejectionCode = (typeof BROADCAST_GRAPHICS_REJECTION_CODES)[number];
 
 export class BroadcastGraphicsCommandRejection extends Error {
 	readonly code: BroadcastGraphicsRejectionCode;

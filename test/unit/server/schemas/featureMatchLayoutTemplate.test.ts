@@ -15,8 +15,9 @@ describe('revising a Feature Match Layout Template', () => {
 		const parsed = updateFeatureMatchLayoutTemplateSchema.safeParse({ revision: 3 });
 
 		expect(parsed.success).toBe(false);
-		expect(parsed.error?.issues.map(issue => issue.message))
-			.toContain('A template revision must change something');
+		expect(parsed.error?.issues.map((issue) => issue.message)).toContain(
+			'A template revision must change something',
+		);
 	});
 
 	/**
@@ -24,11 +25,13 @@ describe('revising a Feature Match Layout Template', () => {
 	 * specific rather than the schema refusing everything.
 	 */
 	it('accepts a patch carrying the revision and one field to change', () => {
-		expect(updateFeatureMatchLayoutTemplateSchema.safeParse({ revision: 3, name: 'Renamed' }).success)
-			.toBe(true);
+		expect(
+			updateFeatureMatchLayoutTemplateSchema.safeParse({ revision: 3, name: 'Renamed' }).success,
+		).toBe(true);
 		// `null` clears a description, and is a change like any other.
-		expect(updateFeatureMatchLayoutTemplateSchema.safeParse({ revision: 3, description: null }).success)
-			.toBe(true);
+		expect(
+			updateFeatureMatchLayoutTemplateSchema.safeParse({ revision: 3, description: null }).success,
+		).toBe(true);
 	});
 
 	/**
@@ -42,7 +45,9 @@ describe('revising a Feature Match Layout Template', () => {
 	 * sends a *stale* revision rather than an absent one.
 	 */
 	it('refuses a patch that changes something without stating the revision it read', () => {
-		expect(updateFeatureMatchLayoutTemplateSchema.safeParse({ name: 'Renamed', description: null }).success)
-			.toBe(false);
+		expect(
+			updateFeatureMatchLayoutTemplateSchema.safeParse({ name: 'Renamed', description: null })
+				.success,
+		).toBe(false);
 	});
 });

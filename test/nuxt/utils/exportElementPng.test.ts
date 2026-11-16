@@ -17,7 +17,9 @@ describe('buildFeatureMatchOverlayExportFilename', () => {
 			timestamp: new Date('2026-05-20T12:34:56.000Z'),
 		});
 
-		expect(filename).toBe('main-screen-feature-match-overlay-key-1920x1080-2026-05-20T12-34-56-000Z.png');
+		expect(filename).toBe(
+			'main-screen-feature-match-overlay-key-1920x1080-2026-05-20T12-34-56-000Z.png',
+		);
 	});
 });
 
@@ -83,13 +85,16 @@ describe('inlineExportImageSources', () => {
 			<svg><image href="https://cards.example/card.png"></image></svg>
 		`;
 		const target = source.cloneNode(true) as HTMLElement;
-		vi.stubGlobal('fetch', vi.fn(async () => new Response(
-			new Uint8Array([1, 2, 3]),
-			{
-				status: 200,
-				headers: { 'content-type': 'image/png' },
-			},
-		)));
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(new Uint8Array([1, 2, 3]), {
+						status: 200,
+						headers: { 'content-type': 'image/png' },
+					}),
+			),
+		);
 
 		await inlineExportImageSources(source, target);
 
@@ -110,13 +115,16 @@ describe('inlineExportStyleUrls', () => {
 			'style',
 			`background-image:url("https://assets.example/background.png");mask-image:url("#local-mask");`,
 		);
-		vi.stubGlobal('fetch', vi.fn(async () => new Response(
-			new Uint8Array([1, 2, 3]),
-			{
-				status: 200,
-				headers: { 'content-type': 'image/png' },
-			},
-		)));
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(new Uint8Array([1, 2, 3]), {
+						status: 200,
+						headers: { 'content-type': 'image/png' },
+					}),
+			),
+		);
 
 		await inlineExportStyleUrls(element);
 
@@ -138,13 +146,16 @@ describe('inlineExportFontSources', () => {
 			},
 		]);
 		element.appendChild(text);
-		vi.stubGlobal('fetch', vi.fn(async () => new Response(
-			new Uint8Array([1, 2, 3]),
-			{
-				status: 200,
-				headers: { 'content-type': 'font/woff2' },
-			},
-		)));
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(new Uint8Array([1, 2, 3]), {
+						status: 200,
+						headers: { 'content-type': 'font/woff2' },
+					}),
+			),
+		);
 
 		await inlineExportFontSources(element);
 

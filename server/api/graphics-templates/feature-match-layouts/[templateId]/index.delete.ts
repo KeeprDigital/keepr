@@ -22,16 +22,21 @@ import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
  */
 export default defineEventHandler(async (event) => {
 	const userId = await requireUserId(event);
-	const { templateId } = await getValidatedRouterParams(event, featureMatchLayoutTemplateParamsSchema.parse);
+	const { templateId } = await getValidatedRouterParams(
+		event,
+		featureMatchLayoutTemplateParamsSchema.parse,
+	);
 	refuseBuiltInFeatureMatchLayoutTemplate(templateId, 'removed');
 	await requireGraphicsTemplateWritable(event, templateId);
 
-	if (!await featureMatchLayoutTemplateService().remove(templateId)) {
-		const installed = await graphicsAssetLibraryForEvent(event).removeInstalledGraphicsTemplate({
-			templateId,
-			kind: 'feature-match-layout',
-			removedBy: userId,
-		}).catch(error => rethrowGraphicsAssetApiError(error, event));
+	if (!(await featureMatchLayoutTemplateService().remove(templateId))) {
+		const installed = await graphicsAssetLibraryForEvent(event)
+			.removeInstalledGraphicsTemplate({
+				templateId,
+				kind: 'feature-match-layout',
+				removedBy: userId,
+			})
+			.catch((error) => rethrowGraphicsAssetApiError(error, event));
 		if (installed.outcome === 'not-found') {
 			throw createError({
 				statusCode: 404,

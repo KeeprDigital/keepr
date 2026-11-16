@@ -14,9 +14,12 @@ import { nativeScryptScan } from '../../../scripts/assert-native-scrypt.mjs';
  */
 
 /** As pnpm spells the two resolutions inside a real build's source map. */
-const NATIVE_SOURCE = '../../../../node_modules/.pnpm/@better-auth+utils@0.4.2/node_modules/@better-auth/utils/dist/password.node.mjs';
-const FALLBACK_SOURCE = '../../../../node_modules/.pnpm/@better-auth+utils@0.4.2/node_modules/@better-auth/utils/dist/password.mjs';
-const BYSTANDER_SOURCE = '../../../../node_modules/.pnpm/@better-auth+utils@0.4.2/node_modules/@better-auth/utils/dist/hash.mjs';
+const NATIVE_SOURCE =
+	'../../../../node_modules/.pnpm/@better-auth+utils@0.4.2/node_modules/@better-auth/utils/dist/password.node.mjs';
+const FALLBACK_SOURCE =
+	'../../../../node_modules/.pnpm/@better-auth+utils@0.4.2/node_modules/@better-auth/utils/dist/password.mjs';
+const BYSTANDER_SOURCE =
+	'../../../../node_modules/.pnpm/@better-auth+utils@0.4.2/node_modules/@better-auth/utils/dist/hash.mjs';
 
 function sourceMap(sources: string[]): string {
 	return JSON.stringify({ version: 3, sources, mappings: '' });
@@ -37,8 +40,7 @@ function buildOutput(files: Record<string, string>): string {
 }
 
 afterEach(() => {
-	for (const root of directories.splice(0))
-		rmSync(root, { recursive: true, force: true });
+	for (const root of directories.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
 describe('scanning a build output', () => {

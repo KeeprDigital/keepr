@@ -1,13 +1,28 @@
 import type { OpPlayerDeckListContents } from '~~/server/services/opPlayerDeckList';
 import type { PlayerSide } from '~~/shared/types/enums';
 import type { OpDeckListLine } from '~~/shared/types/opDeckList';
-import type { OpUnresolvedDeckCard, OpUnresolvedDeckCardAnswer, OpUnresolvedDeckCardDeckList } from '~~/shared/types/opUnresolvedDeckCard';
+import type {
+	OpUnresolvedDeckCard,
+	OpUnresolvedDeckCardAnswer,
+	OpUnresolvedDeckCardDeckList,
+} from '~~/shared/types/opUnresolvedDeckCard';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { db } from '~~/server/db';
-import { cards, featureMatchDeckListEntries, featureMatchDeckLists, featureMatches, playerDecks, playerDeckUnresolvedCards, players } from '~~/server/db/schema';
+import {
+	cards,
+	featureMatchDeckListEntries,
+	featureMatchDeckLists,
+	featureMatches,
+	playerDecks,
+	playerDeckUnresolvedCards,
+	players,
+} from '~~/server/db/schema';
 import { opCardCatalogueModule } from '~~/server/modules/op-card-catalogue';
 import { opDeckListWriteModule } from '~~/server/modules/op-deck-list-write';
-import { deckListReferenceOf, featureMatchDeckListService } from '~~/server/services/featureMatchDeckList';
+import {
+	deckListReferenceOf,
+	featureMatchDeckListService,
+} from '~~/server/services/featureMatchDeckList';
 import { opCatalogueRowFor } from '~~/server/services/opCardCatalogue';
 import { opCardNumberResolutionService } from '~~/server/services/opCardNumberResolution';
 import { opPlayerDeckListService } from '~~/server/services/opPlayerDeckList';
@@ -33,54 +48,62 @@ const SIDES = ['player1', 'player2'] as const satisfies readonly PlayerSide[];
 /** Every Deck List entry in the Event holding a number bandai-keepr did not know, or only `number`'s. */
 async function heldEntries(eventId: number, number?: string): Promise<HeldEntry[]> {
 	const [playerRows, slotRows, slots] = await Promise.all([
-		db.select({
-			number: playerDeckUnresolvedCards.normalizedOriginalName,
-			quantity: playerDeckUnresolvedCards.quantity,
-			playerId: playerDecks.playerId,
-			leaderCardNumber: playerDecks.leaderCardNumber,
-			name: players.name,
-			nickname: players.nickname,
-		})
+		db
+			.select({
+				number: playerDeckUnresolvedCards.normalizedOriginalName,
+				quantity: playerDeckUnresolvedCards.quantity,
+				playerId: playerDecks.playerId,
+				leaderCardNumber: playerDecks.leaderCardNumber,
+				name: players.name,
+				nickname: players.nickname,
+			})
 			.from(playerDeckUnresolvedCards)
 			.innerJoin(playerDecks, eq(playerDecks.id, playerDeckUnresolvedCards.deckId))
 			.innerJoin(players, eq(players.id, playerDecks.playerId))
-			.where(and(
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.isPrimary, true),
-				eq(playerDeckUnresolvedCards.entryType, 'card'),
-				number === undefined
-					? undefined
-					: eq(playerDeckUnresolvedCards.normalizedOriginalName, number),
-			))
+			.where(
+				and(
+					eq(playerDecks.eventId, eventId),
+					eq(playerDecks.isPrimary, true),
+					eq(playerDeckUnresolvedCards.entryType, 'card'),
+					number === undefined
+						? undefined
+						: eq(playerDeckUnresolvedCards.normalizedOriginalName, number),
+				),
+			)
 			.orderBy(asc(playerDeckUnresolvedCards.sortOrder)),
-		db.select({
-			number: featureMatchDeckListEntries.cardNumber,
-			quantity: featureMatchDeckListEntries.quantity,
-			deckListId: featureMatchDeckListEntries.deckListId,
-		})
+		db
+			.select({
+				number: featureMatchDeckListEntries.cardNumber,
+				quantity: featureMatchDeckListEntries.quantity,
+				deckListId: featureMatchDeckListEntries.deckListId,
+			})
 			.from(featureMatchDeckListEntries)
-			.innerJoin(featureMatchDeckLists, eq(featureMatchDeckLists.id, featureMatchDeckListEntries.deckListId))
+			.innerJoin(
+				featureMatchDeckLists,
+				eq(featureMatchDeckLists.id, featureMatchDeckListEntries.deckListId),
+			)
 			.leftJoin(cards, opCatalogueRowFor(featureMatchDeckListEntries.cardNumber))
-			.where(and(
-				eq(featureMatchDeckLists.eventId, eventId),
-				isNull(cards.id),
-				number === undefined
-					? undefined
-					: eq(featureMatchDeckListEntries.cardNumber, number),
-			))
+			.where(
+				and(
+					eq(featureMatchDeckLists.eventId, eventId),
+					isNull(cards.id),
+					number === undefined ? undefined : eq(featureMatchDeckListEntries.cardNumber, number),
+				),
+			)
 			.orderBy(asc(featureMatchDeckListEntries.sortOrder)),
-		db.select({
-			id: featureMatches.id,
-			player1Data: featureMatches.player1Data,
-			player2Data: featureMatches.player2Data,
-		})
+		db
+			.select({
+				id: featureMatches.id,
+				player1Data: featureMatches.player1Data,
+				player2Data: featureMatches.player2Data,
+			})
 			.from(featureMatches)
 			.where(eq(featureMatches.eventId, eventId))
 			.orderBy(asc(featureMatches.sortOrder), asc(featureMatches.id)),
 	]);
 
 	const playerEntries: HeldEntry[] = playerRows
-		.map(row => ({
+		.map((row) => ({
 			number: row.number,
 			quantity: row.quantity,
 			asLeader: row.leaderCardNumber === row.number,
@@ -90,35 +113,37 @@ async function heldEntries(eventId: number, number?: string): Promise<HeldEntry[
 				name: playerLabel(row),
 			},
 		}))
-		.toSorted((left, right) => left.holder.name.localeCompare(right.holder.name) || left.holder.playerId - right.holder.playerId);
+		.toSorted(
+			(left, right) =>
+				left.holder.name.localeCompare(right.holder.name) ||
+				left.holder.playerId - right.holder.playerId,
+		);
 
 	// Only a Deck List a side holds is in play; an older one is on its way out.
-	const sideEntries: HeldEntry[] = slots.flatMap(slot => SIDES.flatMap((side) => {
-		const data = slot[SLOT_SIDE_DATA_KEY[side]];
-		const reference = deckListReferenceOf(data);
-		if (!reference)
-			return [];
-		return slotRows
-			.filter(row => row.deckListId === reference.id)
-			.map(row => ({
-				number: row.number,
-				quantity: row.quantity,
-				// A number bandai-keepr does not know is never recognised as a pasted Leader.
-				asLeader: false,
-				holder: {
-					kind: 'slotSide' as const,
-					slotId: slot.id,
-					side,
-					name: playerDisplayName(data),
-				},
-				deckListId: reference.id,
-			}));
-	}));
+	const sideEntries: HeldEntry[] = slots.flatMap((slot) =>
+		SIDES.flatMap((side) => {
+			const data = slot[SLOT_SIDE_DATA_KEY[side]];
+			const reference = deckListReferenceOf(data);
+			if (!reference) return [];
+			return slotRows
+				.filter((row) => row.deckListId === reference.id)
+				.map((row) => ({
+					number: row.number,
+					quantity: row.quantity,
+					// A number bandai-keepr does not know is never recognised as a pasted Leader.
+					asLeader: false,
+					holder: {
+						kind: 'slotSide' as const,
+						slotId: slot.id,
+						side,
+						name: playerDisplayName(data),
+					},
+					deckListId: reference.id,
+				}));
+		}),
+	);
 
-	return [
-		...playerEntries,
-		...sideEntries,
-	];
+	return [...playerEntries, ...sideEntries];
 }
 
 export function opUnresolvedDeckCardModule() {
@@ -137,12 +162,12 @@ export function opUnresolvedDeckCardModule() {
 			card.deckLists.push(deckList);
 			byNumber.set(number, card);
 		}
-		return [
-			...byNumber.values(),
-		].toSorted((left, right) =>
-			right.deckLists.length - left.deckLists.length
-			|| right.copies - left.copies
-			|| left.number.localeCompare(right.number));
+		return [...byNumber.values()].toSorted(
+			(left, right) =>
+				right.deckLists.length - left.deckLists.length ||
+				right.copies - left.copies ||
+				left.number.localeCompare(right.number),
+		);
 	}
 
 	/**
@@ -152,58 +177,59 @@ export function opUnresolvedDeckCardModule() {
 	 * is its own. A Deck List already holding `to` takes the copies into that
 	 * entry; a Leader moves with its number.
 	 */
-	async function rewrite(eventId: number, held: readonly HeldEntry[], from: string, to: string): Promise<number> {
-		const rename = (number: string) => number === from
-			? to
-			: number;
-		const renamed = (entries: readonly OpDeckListLine[]) => entries.map(({ number, quantity }) => ({
-			number: rename(number),
-			quantity,
-		}));
+	async function rewrite(
+		eventId: number,
+		held: readonly HeldEntry[],
+		from: string,
+		to: string,
+	): Promise<number> {
+		const rename = (number: string) => (number === from ? to : number);
+		const renamed = (entries: readonly OpDeckListLine[]) =>
+			entries.map(({ number, quantity }) => ({
+				number: rename(number),
+				quantity,
+			}));
 
 		const playerIds = [
-			...new Set(held.flatMap(({ holder }) => holder.kind === 'player'
-				? [holder.playerId]
-				: [])),
+			...new Set(held.flatMap(({ holder }) => (holder.kind === 'player' ? [holder.playerId] : []))),
 		];
-		const contents = playerIds.length > 0
-			? await playerDeckLists.findContentsByEvent(eventId)
-			: new Map<number, OpPlayerDeckListContents>();
+		const contents =
+			playerIds.length > 0
+				? await playerDeckLists.findContentsByEvent(eventId)
+				: new Map<number, OpPlayerDeckListContents>();
 		const holders = playerIds.flatMap((playerId) => {
 			const deckList = contents.get(playerId);
-			return deckList
-				? [
-						{ playerId, deckList },
-					]
-				: [];
+			return deckList ? [{ playerId, deckList }] : [];
 		});
-		const views = holders.length > 0
-			? await deckListWrite.previewMany({
-					eventId,
-					inputs: holders.map(({ deckList }) => ({
-						entries: renamed(deckList.entries),
-						leaderNumber: deckList.leaderNumber === null
-							? null
-							: rename(deckList.leaderNumber),
-					})),
-				})
-			: [];
+		const views =
+			holders.length > 0
+				? await deckListWrite.previewMany({
+						eventId,
+						inputs: holders.map(({ deckList }) => ({
+							entries: renamed(deckList.entries),
+							leaderNumber: deckList.leaderNumber === null ? null : rename(deckList.leaderNumber),
+						})),
+					})
+				: [];
 		// Announced Player by Player: every reader holds a Deck List by the id its Player carries (ADR-0074).
 		const written = await deckListWrite.writeMany({
 			eventId,
-			writes: holders.map(({ playerId }, index) => ({ playerId, deckList: views[index]!, source: 'resolution' })),
+			writes: holders.map(({ playerId }, index) => ({
+				playerId,
+				deckList: views[index]!,
+				source: 'resolution',
+			})),
 			announcePlayers: true,
 		});
 
 		let rewritten = written.length;
 		for (const { holder, deckListId } of held) {
-			if (holder.kind !== 'slotSide')
-				continue;
-			const deckList = deckListId === undefined
-				? null
-				: await featureMatchDeckLists.findById(deckListId, holder.slotId, eventId);
-			if (!deckList)
-				continue;
+			if (holder.kind !== 'slotSide') continue;
+			const deckList =
+				deckListId === undefined
+					? null
+					: await featureMatchDeckLists.findById(deckListId, holder.slotId, eventId);
+			if (!deckList) continue;
 			await deckListWrite.write({
 				eventId,
 				owner: { kind: 'slotSide', slotId: holder.slotId, side: holder.side },
@@ -221,7 +247,10 @@ export function opUnresolvedDeckCardModule() {
 	async function requireHeld(eventId: number, number: string): Promise<HeldEntry[]> {
 		const held = await heldEntries(eventId, number);
 		if (held.length === 0)
-			throw createError({ statusCode: 404, message: `No Deck List in the Event holds ${number} unresolved` });
+			throw createError({
+				statusCode: 404,
+				message: `No Deck List in the Event holds ${number} unresolved`,
+			});
 		return held;
 	}
 
@@ -230,12 +259,17 @@ export function opUnresolvedDeckCardModule() {
 	 * card bandai-keepr now knows resolves every Deck List holding it; one it
 	 * still does not know rewrites nothing.
 	 */
-	async function retry({ eventId, number }: { eventId: number; number: string }): Promise<OpUnresolvedDeckCardAnswer> {
+	async function retry({
+		eventId,
+		number,
+	}: {
+		eventId: number;
+		number: string;
+	}): Promise<OpUnresolvedDeckCardAnswer> {
 		await requireOpEvent(eventId);
 		const held = await requireHeld(eventId, number);
 		const card = (await catalogue.resolve(bandaiKeeprConfig, [number])).get(number) ?? null;
-		if (!card)
-			return { number, card: null, rewritten: 0 };
+		if (!card) return { number, card: null, rewritten: 0 };
 		return {
 			number,
 			card: { number, name: card.name },
@@ -251,14 +285,26 @@ export function opUnresolvedDeckCardModule() {
 	 * rewrite failing part-way still holds for the next import. A picked card
 	 * bandai-keepr does not know is refused.
 	 */
-	async function resolve({ eventId, number, cardNumber }: { eventId: number; number: string; cardNumber: string }): Promise<OpUnresolvedDeckCardAnswer> {
+	async function resolve({
+		eventId,
+		number,
+		cardNumber,
+	}: {
+		eventId: number;
+		number: string;
+		cardNumber: string;
+	}): Promise<OpUnresolvedDeckCardAnswer> {
 		await requireOpEvent(eventId);
 		const held = await requireHeld(eventId, number);
 		const card = (await catalogue.resolve(bandaiKeeprConfig, [cardNumber])).get(cardNumber) ?? null;
 		if (!card)
 			throw createError({ statusCode: 400, message: `bandai-keepr has no card ${cardNumber}` });
 		if (cardNumber !== number)
-			await opCardNumberResolutionService().record({ eventId, cardNumber: number, resolvedCardNumber: cardNumber });
+			await opCardNumberResolutionService().record({
+				eventId,
+				cardNumber: number,
+				resolvedCardNumber: cardNumber,
+			});
 		return {
 			number,
 			card: { number: cardNumber, name: card.name },

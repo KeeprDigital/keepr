@@ -9,7 +9,8 @@ import { createMiniflareD1Harness } from '~~/test/helpers/miniflare-d1';
 // its hundredth bound parameter: the 500-member API maximum must still fit.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness: MiniflareD1Harness = await createMiniflareD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -22,16 +23,20 @@ let eventId: number;
 let playerIds: number[];
 
 beforeAll(async () => {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	eventId = event!.id;
 	playerIds = [];
 	for (let start = 0; start < 500; start += 20) {
-		const rows = await db.insert(schema.players)
-			.values(Array.from({ length: 20 }, (_, index) => ({ eventId, name: `Player ${start + index}` })))
+		const rows = await db
+			.insert(schema.players)
+			.values(
+				Array.from({ length: 20 }, (_, index) => ({ eventId, name: `Player ${start + index}` })),
+			)
 			.returning({ id: schema.players.id });
-		playerIds.push(...rows.map(row => row.id));
+		playerIds.push(...rows.map((row) => row.id));
 	}
 });
 
@@ -42,15 +47,22 @@ async function stageList() {
 }
 
 async function members(listId: number) {
-	return (await db.select().from(schema.playerListMembers).where(eq(schema.playerListMembers.listId, listId)).orderBy(asc(schema.playerListMembers.sortOrder)))
-		.map(member => member.playerId);
+	return (
+		await db
+			.select()
+			.from(schema.playerListMembers)
+			.where(eq(schema.playerListMembers.listId, listId))
+			.orderBy(asc(schema.playerListMembers.sortOrder))
+	).map((member) => member.playerId);
 }
 
 describe('playerListService membership', () => {
 	it('adds and removes the 500-Player maximum in one write each', async () => {
 		const list = await stageList();
 
-		expect(await playerListService().addMembers(list.id, eventId, playerIds)).toEqual({ added: 500 });
+		expect(await playerListService().addMembers(list.id, eventId, playerIds)).toEqual({
+			added: 500,
+		});
 		expect(await playerListService().getMemberCount(list.id, eventId)).toBe(500);
 		expect(await playerListService().batchRemoveMembers(list.id, eventId, playerIds)).toBe(500);
 		expect(await members(list.id)).toEqual([]);
@@ -70,24 +82,22 @@ describe('playerListService membership', () => {
 		const [a, b, c] = playerIds;
 		await playerListService().addMembers(list.id, eventId, [a!, b!, c!]);
 
-		expect(await playerListService().reorderMembers(list.id, eventId, [c!, a!, b!])).toEqual({ reordered: 3 });
+		expect(await playerListService().reorderMembers(list.id, eventId, [c!, a!, b!])).toEqual({
+			reordered: 3,
+		});
 		expect(await members(list.id)).toEqual([c, a, b]);
 	});
 
 	it.each([
-		[
-			'a subset',
-			(ids: number[]) => [ids[1]!, ids[0]!],
-		],
-		[
-			'a duplicated member',
-			(ids: number[]) => [ids[1]!, ids[1]!, ids[2]!],
-		],
+		['a subset', (ids: number[]) => [ids[1]!, ids[0]!]],
+		['a duplicated member', (ids: number[]) => [ids[1]!, ids[1]!, ids[2]!]],
 	])('refuses to reorder by %s, keeping the order', async (_case, order) => {
 		const list = await stageList();
 		await playerListService().addMembers(list.id, eventId, playerIds.slice(0, 3));
 
-		await expect(playerListService().reorderMembers(list.id, eventId, order(playerIds))).rejects.toMatchObject({ statusCode: 400 });
+		await expect(
+			playerListService().reorderMembers(list.id, eventId, order(playerIds)),
+		).rejects.toMatchObject({ statusCode: 400 });
 		expect(await members(list.id)).toEqual(playerIds.slice(0, 3));
 	});
 
@@ -100,9 +110,12 @@ describe('playerListService membership', () => {
 		expect(await members(list.id)).toEqual([playerIds[1]]);
 	});
 
-	it('answers 404 for every member write to another Event\'s list', async () => {
+	it("answers 404 for every member write to another Event's list", async () => {
 		const list = await stageList();
-		const [other] = await db.insert(schema.events).values({ name: 'Other', game: 'mtg', featureMatchOrientation: 'horizontal' }).returning();
+		const [other] = await db
+			.insert(schema.events)
+			.values({ name: 'Other', game: 'mtg', featureMatchOrientation: 'horizontal' })
+			.returning();
 
 		for (const write of [
 			() => playerListService().addMembers(list.id, other!.id, [playerIds[0]!]),

@@ -96,21 +96,9 @@ describe('projectRoundClock', () => {
 	it.each([
 		['part-way through a second', 1500, undefined],
 		['in its last second', 50 * MINUTE - 500, undefined],
-		[
-			'in its last second, counting up after',
-			50 * MINUTE - 500,
-			{ enabled: true, limitMs: null },
-		],
-		[
-			'the instant it ends, counting up after',
-			50 * MINUTE,
-			{ enabled: true, limitMs: null },
-		],
-		[
-			'part-way past the end',
-			50 * MINUTE + 1300,
-			{ enabled: true, limitMs: null },
-		],
+		['in its last second, counting up after', 50 * MINUTE - 500, { enabled: true, limitMs: null }],
+		['the instant it ends, counting up after', 50 * MINUTE, { enabled: true, limitMs: null }],
+		['part-way past the end', 50 * MINUTE + 1300, { enabled: true, limitMs: null }],
 		[
 			'in the last second before its limit',
 			51 * MINUTE - 700,
@@ -129,72 +117,32 @@ describe('projectRoundClock', () => {
 	// Off the running countdown, which is `clock`'s: a pending Round next changes at its start,
 	// and one never started or ended does not change on its own.
 	it.each([
-		[
-			'pending a start',
-			START + MINUTE,
-			START,
-			MINUTE,
-		],
+		['pending a start', START + MINUTE, START, MINUTE],
 		['never started', null, START, null],
-		[
-			'ended',
-			START,
-			START + 50 * MINUTE,
-			null,
-		],
+		['ended', START, START + 50 * MINUTE, null],
 	] as const)('names when it next changes: %s', (_case, startedAt, now, nextChangeInMs) => {
-		expect(projectRoundClock({ startedAt, durationMs: 50 * MINUTE }, now).nextChangeInMs).toBe(nextChangeInMs);
+		expect(projectRoundClock({ startedAt, durationMs: 50 * MINUTE }, now).nextChangeInMs).toBe(
+			nextChangeInMs,
+		);
 	});
 
 	// Counting up after the end, a Round Clock shows the time since the end, holding at its limit.
 	it.each([
-		[
-			'the instant it ends',
-			null,
-			50 * MINUTE,
-			'0:00',
-			1000,
-		],
-		[
-			'part-way past the end',
-			null,
-			50 * MINUTE + 61_500,
-			'1:01',
-			500,
-		],
-		[
-			'long past the end, no limit',
-			null,
-			140 * MINUTE,
-			'1:30:00',
-			1000,
-		],
-		[
-			'short of its limit',
-			5 * MINUTE,
-			52 * MINUTE,
-			'2:00',
-			1000,
-		],
-		[
-			'at its limit',
-			5 * MINUTE,
-			55 * MINUTE,
-			'5:00',
-			null,
-		],
-		[
-			'past its limit',
-			5 * MINUTE,
-			90 * MINUTE,
-			'5:00',
-			null,
-		],
-	] as const)('counts up after the end: %s', (_case, limitMs, sinceStart, display, nextChangeInMs) => {
-		expect(projectRoundClock(
-			{ startedAt: START, durationMs: 50 * MINUTE },
-			START + sinceStart,
-			{ enabled: true, limitMs },
-		)).toEqual({ state: 'ended', display, nextChangeInMs });
-	});
+		['the instant it ends', null, 50 * MINUTE, '0:00', 1000],
+		['part-way past the end', null, 50 * MINUTE + 61_500, '1:01', 500],
+		['long past the end, no limit', null, 140 * MINUTE, '1:30:00', 1000],
+		['short of its limit', 5 * MINUTE, 52 * MINUTE, '2:00', 1000],
+		['at its limit', 5 * MINUTE, 55 * MINUTE, '5:00', null],
+		['past its limit', 5 * MINUTE, 90 * MINUTE, '5:00', null],
+	] as const)(
+		'counts up after the end: %s',
+		(_case, limitMs, sinceStart, display, nextChangeInMs) => {
+			expect(
+				projectRoundClock({ startedAt: START, durationMs: 50 * MINUTE }, START + sinceStart, {
+					enabled: true,
+					limitMs,
+				}),
+			).toEqual({ state: 'ended', display, nextChangeInMs });
+		},
+	);
 });

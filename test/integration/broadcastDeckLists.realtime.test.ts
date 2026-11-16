@@ -29,24 +29,21 @@ async function readJson(response: Response): Promise<JsonResponse> {
 	const text = await response.text();
 	return {
 		status: response.status,
-		data: text
-			? JSON.parse(text) as unknown
-			: null,
+		data: text ? (JSON.parse(text) as unknown) : null,
 	};
 }
 
 async function signedJson(path: string, method: string, body: unknown): Promise<JsonResponse> {
-	return await readJson(await fetch(path, {
-		method,
-		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify(body),
-	}));
+	return await readJson(
+		await fetch(path, {
+			method,
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body),
+		}),
+	);
 }
 
-async function anonymousJson(
-	path: string,
-	init: RequestInit = {},
-): Promise<JsonResponse> {
+async function anonymousJson(path: string, init: RequestInit = {}): Promise<JsonResponse> {
 	return await readJson(await anonymousFetch(path, init));
 }
 
@@ -108,12 +105,14 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 				hasCompanion: true,
 				sourceText: authoredSource,
 			});
-			expect(authored.entries.map(entry => ({
-				compartment: entry.compartment,
-				name: entry.canonicalName,
-				printing: `${entry.setCode}/${entry.collectorNumber}`,
-				scryfallId: entry.scryfallId,
-			}))).toEqual([
+			expect(
+				authored.entries.map((entry) => ({
+					compartment: entry.compartment,
+					name: entry.canonicalName,
+					printing: `${entry.setCode}/${entry.collectorNumber}`,
+					scryfallId: entry.scryfallId,
+				})),
+			).toEqual([
 				{
 					compartment: 'mainboard',
 					name: 'Integration Bolt',
@@ -170,8 +169,8 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 				mainboardQuantity: 4,
 				sideboardQuantity: 2,
 			});
-			expect(preserved.entries.map(entry => entry.scryfallId)).toEqual(
-				authored.entries.map(entry => entry.scryfallId),
+			expect(preserved.entries.map((entry) => entry.scryfallId)).toEqual(
+				authored.entries.map((entry) => entry.scryfallId),
 			);
 
 			await $fetch(`/api/events/${eventId}`, {
@@ -185,7 +184,11 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 			});
 			const offMode = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens`, {
 				method: 'POST',
-				body: { name: 'Off-mode Retainer', slug: `broadcast-retainer-${eventId}`, currentMode: 'background' },
+				body: {
+					name: 'Off-mode Retainer',
+					slug: `broadcast-retainer-${eventId}`,
+					currentMode: 'background',
+				},
 			});
 
 			for (const screen of [programme, offMode]) {
@@ -243,17 +246,27 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 			});
 			expect((capabilityRead.data as { id: number }).id).not.toBe(reserve.id);
 
-			otherEventId = (await $fetch('/api/events', {
-				method: 'POST',
-				body: { name: 'Other Broadcast Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
-			})).id;
+			otherEventId = (
+				await $fetch('/api/events', {
+					method: 'POST',
+					body: {
+						name: 'Other Broadcast Event',
+						game: 'mtg',
+						featureMatchOrientation: 'horizontal',
+					},
+				})
+			).id;
 			await $fetch(`/api/events/${otherEventId}`, {
 				method: 'PATCH',
 				body: { broadcastDeckListsEnabled: true },
 			});
 			const otherScreen = await $fetch<ScreenResponse>(`/api/events/${otherEventId}/screens`, {
 				method: 'POST',
-				body: { name: 'Other Screen', slug: `other-broadcast-${otherEventId}`, currentMode: 'deck' },
+				body: {
+					name: 'Other Screen',
+					slug: `other-broadcast-${otherEventId}`,
+					currentMode: 'deck',
+				},
 			});
 			const otherCapability = await $fetch<{ assetCapability: string }>(
 				`/api/events/${otherEventId}/screens/${otherScreen.id}/asset-capability`,
@@ -331,7 +344,11 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 			);
 			const concurrentOutputRead = $fetch<BroadcastDeckListResponse>(outputPath);
 			const [updated, duringUpdate] = await Promise.all([updateRequest, concurrentOutputRead]);
-			expect(updated).toMatchObject({ revision: 3, name: 'Feature Table Updated', sourceText: newerSource });
+			expect(updated).toMatchObject({
+				revision: 3,
+				name: 'Feature Table Updated',
+				sourceText: newerSource,
+			});
 			expect([2, 3]).toContain(duringUpdate.revision);
 			expect(duringUpdate.entries.length).toBeGreaterThan(0);
 
@@ -339,7 +356,11 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 				const notice = await Promise.race([
 					updateNotice,
 					new Promise<never>((_resolve, reject) => {
-						setTimeout(() => reject(new Error('Timed out waiting for Broadcast Deck List update notification')), LOAD_TOLERANT_WAIT_MS);
+						setTimeout(
+							() =>
+								reject(new Error('Timed out waiting for Broadcast Deck List update notification')),
+							LOAD_TOLERANT_WAIT_MS,
+						);
 					}),
 				]);
 				unsubscribeUpdateNotice?.();
@@ -349,14 +370,18 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 				expect(notice.data).not.toHaveProperty('entries');
 			}
 
-			const collection = await $fetch<{ broadcastDeckLists: Array<{ id: number; revision: number; name: string }> }>(
-				`/api/events/${eventId}/broadcast-deck-lists`,
-			);
-			expect(collection.broadcastDeckLists.find(list => list.id === created.id)).toEqual(
+			const collection = await $fetch<{
+				broadcastDeckLists: Array<{ id: number; revision: number; name: string }>;
+			}>(`/api/events/${eventId}/broadcast-deck-lists`);
+			expect(collection.broadcastDeckLists.find((list) => list.id === created.id)).toEqual(
 				expect.objectContaining({ revision: 3, name: 'Feature Table Updated' }),
 			);
 			const authoritativeOutput = await $fetch<BroadcastDeckListResponse>(outputPath);
-			expect(authoritativeOutput).toMatchObject({ revision: 3, name: 'Feature Table Updated', sourceText: newerSource });
+			expect(authoritativeOutput).toMatchObject({
+				revision: 3,
+				name: 'Feature Table Updated',
+				sourceText: newerSource,
+			});
 			expect(authoritativeOutput.entries.length).toBeGreaterThan(0);
 
 			const stale = await signedJson(
@@ -383,11 +408,9 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 				'DELETE',
 				{ expectedRevision: 3 },
 			);
-			const blockedDisable = await signedJson(
-				`/api/events/${eventId}`,
-				'PATCH',
-				{ broadcastDeckListsEnabled: false },
-			);
+			const blockedDisable = await signedJson(`/api/events/${eventId}`, 'PATCH', {
+				broadcastDeckListsEnabled: false,
+			});
 			for (const refusal of [blockedDelete, blockedDisable]) {
 				expect(refusal.status).toBe(409);
 				expect(refusal.data).toMatchObject({
@@ -399,8 +422,12 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 					},
 				});
 			}
-			expect((blockedDelete.data as { message: string }).message).toContain('Off-mode Retainer, Programme');
-			expect((blockedDisable.data as { message: string }).message).toContain('Off-mode Retainer, Programme');
+			expect((blockedDelete.data as { message: string }).message).toContain(
+				'Off-mode Retainer, Programme',
+			);
+			expect((blockedDisable.data as { message: string }).message).toContain(
+				'Off-mode Retainer, Programme',
+			);
 
 			for (const screen of [programme, offMode]) {
 				const switched = await $fetch<ScreenResponse>(
@@ -421,52 +448,57 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 				});
 			}
 
-			await expect($fetch(
-				`/api/events/${eventId}/broadcast-deck-lists/${created.id}`,
-				{
+			await expect(
+				$fetch(`/api/events/${eventId}/broadcast-deck-lists/${created.id}`, {
 					method: 'DELETE',
 					body: { expectedRevision: 3 },
-				},
-			)).resolves.toEqual({ success: true });
-			await expect($fetch(`/api/events/${eventId}`, {
-				method: 'PATCH',
-				body: { broadcastDeckListsEnabled: false },
-			})).resolves.toMatchObject({ broadcastDeckListsEnabled: false });
-			expect(await $fetch<BroadcastDeckListResponse>(
-				`/api/events/${eventId}/broadcast-deck-lists/${reserve.id}`,
-			)).toMatchObject({ id: reserve.id, revision: 1 });
+				}),
+			).resolves.toEqual({ success: true });
+			await expect(
+				$fetch(`/api/events/${eventId}`, {
+					method: 'PATCH',
+					body: { broadcastDeckListsEnabled: false },
+				}),
+			).resolves.toMatchObject({ broadcastDeckListsEnabled: false });
+			expect(
+				await $fetch<BroadcastDeckListResponse>(
+					`/api/events/${eventId}/broadcast-deck-lists/${reserve.id}`,
+				),
+			).toMatchObject({ id: reserve.id, revision: 1 });
 			await $fetch(`/api/events/${eventId}`, {
 				method: 'PATCH',
 				body: { broadcastDeckListsEnabled: true },
 			});
-			expect((await $fetch<{ broadcastDeckLists: Array<{ id: number }> }>(
-				`/api/events/${eventId}/broadcast-deck-lists`,
-			)).broadcastDeckLists).toContainEqual(expect.objectContaining({ id: reserve.id }));
+			expect(
+				(
+					await $fetch<{ broadcastDeckLists: Array<{ id: number }> }>(
+						`/api/events/${eventId}/broadcast-deck-lists`,
+					)
+				).broadcastDeckLists,
+			).toContainEqual(expect.objectContaining({ id: reserve.id }));
 
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-			const cascaded = await queryIntegrationD1<{ lists: number; entries: number }>(`
+			const cascaded = await queryIntegrationD1<{ lists: number; entries: number }>(
+				`
 				SELECT
 					(SELECT count(*) FROM broadcast_deck_lists WHERE event_id = ?) AS lists,
 					(SELECT count(*) FROM broadcast_deck_list_entries WHERE list_id IN (?, ?)) AS entries
-			`, [eventId, created.id, reserve.id]);
-			expect(cascaded).toEqual([
-				{ lists: 0, entries: 0 },
-			]);
+			`,
+				[eventId, created.id, reserve.id],
+			);
+			expect(cascaded).toEqual([{ lists: 0, entries: 0 }]);
 			eventId = undefined;
-		}
-		finally {
+		} finally {
 			realtime?.close();
 			if (eventId !== undefined) {
 				try {
 					await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-				}
-				catch {}
+				} catch {}
 			}
 			if (otherEventId !== undefined) {
 				try {
 					await $fetch(`/api/events/${otherEventId}`, { method: 'DELETE' });
-				}
-				catch {}
+				} catch {}
 			}
 		}
 	}, 60_000);

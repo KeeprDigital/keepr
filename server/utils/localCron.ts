@@ -20,16 +20,13 @@ export interface LocalCron {
 export function startLocalCron({ fire, intervalMs, onError }: LocalCronOptions): LocalCron {
 	let running = false;
 	const run = async () => {
-		if (running)
-			return;
+		if (running) return;
 		running = true;
 		try {
 			await fire();
-		}
-		catch (error) {
+		} catch (error) {
 			onError(error);
-		}
-		finally {
+		} finally {
 			running = false;
 		}
 	};

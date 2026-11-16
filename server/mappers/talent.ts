@@ -20,13 +20,17 @@ export function mapTalentToResponse(talent: DbEventTalent): TalentResponse {
 		...mapTimestamps(fields),
 		role: role ?? null,
 		photo: photo ?? null,
-		socialProfiles: Object.fromEntries([
-			['twitch', twitchHandle],
-			['youtube', youtubeHandle],
-			['x', xHandle],
-			['instagram', instagramHandle],
-			['tiktok', tiktokHandle],
-			['bluesky', blueskyHandle],
-		].filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0)),
+		socialProfiles: Object.fromEntries(
+			[
+				['twitch', twitchHandle],
+				['youtube', youtubeHandle],
+				['x', xHandle],
+				['instagram', instagramHandle],
+				['tiktok', tiktokHandle],
+				['bluesky', blueskyHandle],
+			].filter(
+				(entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0,
+			),
+		),
 	};
 }

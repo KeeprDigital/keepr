@@ -1,7 +1,12 @@
 import type { ArchetypeAccumulator } from '~~/server/modules/metagame/archetypes';
 import type { ArchetypeBreakdownEntry } from '~~/shared/types/metagame';
 import { describe, expect, it } from 'vitest';
-import { buildArchetypeBreakdownEntries, compareArchetypeBreakdownEntries, groupClassifiedPlayersByArchetype, limitArchetypeBreakdownEntries } from '~~/server/modules/metagame/archetypes';
+import {
+	buildArchetypeBreakdownEntries,
+	compareArchetypeBreakdownEntries,
+	groupClassifiedPlayersByArchetype,
+	limitArchetypeBreakdownEntries,
+} from '~~/server/modules/metagame/archetypes';
 
 describe('metagame archetype rules', () => {
 	it('groups classified Players by Archetype and computes aggregate stats', () => {
@@ -73,26 +78,26 @@ describe('metagame archetype rules', () => {
 			]),
 		);
 
-		expect(entries).toEqual(expect.arrayContaining([
-			expect.objectContaining({
-				id: 1,
-				chartSeries: 3,
-				count: 2,
-				metaShare: 66.67,
-				winRate: 62.5,
-				avgPosition: 3,
-				keyCards: [
-					expect.objectContaining({ name: 'Lightning Bolt' }),
-				],
-			}),
-			expect.objectContaining({
-				id: 2,
-				count: 1,
-				metaShare: 33.33,
-				winRate: 25,
-				avgPosition: null,
-			}),
-		]));
+		expect(entries).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: 1,
+					chartSeries: 3,
+					count: 2,
+					metaShare: 66.67,
+					winRate: 62.5,
+					avgPosition: 3,
+					keyCards: [expect.objectContaining({ name: 'Lightning Bolt' })],
+				}),
+				expect.objectContaining({
+					id: 2,
+					count: 1,
+					metaShare: 33.33,
+					winRate: 25,
+					avgPosition: null,
+				}),
+			]),
+		);
 	});
 
 	it('reports null conversion rates when no conversion target is given', () => {
@@ -106,56 +111,64 @@ describe('metagame archetype rules', () => {
 			},
 		]);
 
-		const entries = buildArchetypeBreakdownEntries(groups, [
-			{
-				id: 1,
-				name: 'Burn',
-				colors: 'R',
-				chartSeries: null,
-			},
-		], 1, new Map());
+		const entries = buildArchetypeBreakdownEntries(
+			groups,
+			[
+				{
+					id: 1,
+					name: 'Burn',
+					colors: 'R',
+					chartSeries: null,
+				},
+			],
+			1,
+			new Map(),
+		);
 
 		expect(entries[0]!.conversionRate).toBeNull();
 	});
 
 	it('computes conversion rate against a Top N placement target', () => {
-		const groups = groupClassifiedPlayersByArchetype([
-			{
-				archetypeId: 1,
-				wins: 3,
-				losses: 1,
-				points: 9,
-				position: 2,
-			},
-			{
-				archetypeId: 1,
-				wins: 2,
-				losses: 2,
-				points: 6,
-				position: 8,
-			},
-			{
-				archetypeId: 1,
-				wins: 1,
-				losses: 3,
-				points: 3,
-				position: 9,
-			},
-			{
-				archetypeId: 1,
-				wins: 0,
-				losses: 4,
-				points: 0,
-				position: null,
-			},
-			{
-				archetypeId: 2,
-				wins: 0,
-				losses: 4,
-				points: 0,
-				position: 20,
-			},
-		], { metric: 'topN', threshold: 8 });
+		const groups = groupClassifiedPlayersByArchetype(
+			[
+				{
+					archetypeId: 1,
+					wins: 3,
+					losses: 1,
+					points: 9,
+					position: 2,
+				},
+				{
+					archetypeId: 1,
+					wins: 2,
+					losses: 2,
+					points: 6,
+					position: 8,
+				},
+				{
+					archetypeId: 1,
+					wins: 1,
+					losses: 3,
+					points: 3,
+					position: 9,
+				},
+				{
+					archetypeId: 1,
+					wins: 0,
+					losses: 4,
+					points: 0,
+					position: null,
+				},
+				{
+					archetypeId: 2,
+					wins: 0,
+					losses: 4,
+					points: 0,
+					position: 20,
+				},
+			],
+			{ metric: 'topN', threshold: 8 },
+		);
 
 		const entries = buildArchetypeBreakdownEntries(
 			groups,
@@ -178,36 +191,41 @@ describe('metagame archetype rules', () => {
 			{ metric: 'topN', threshold: 8 },
 		);
 
-		expect(entries).toEqual(expect.arrayContaining([
-			expect.objectContaining({ id: 1, conversionRate: 50 }),
-			expect.objectContaining({ id: 2, conversionRate: 0 }),
-		]));
+		expect(entries).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: 1, conversionRate: 50 }),
+				expect.objectContaining({ id: 2, conversionRate: 0 }),
+			]),
+		);
 	});
 
 	it('computes conversion rate against a minimum-points target, ignoring null points', () => {
-		const groups = groupClassifiedPlayersByArchetype([
-			{
-				archetypeId: 1,
-				wins: 3,
-				losses: 1,
-				points: 9,
-				position: 2,
-			},
-			{
-				archetypeId: 1,
-				wins: 2,
-				losses: 2,
-				points: 12,
-				position: 4,
-			},
-			{
-				archetypeId: 1,
-				wins: 0,
-				losses: 0,
-				points: null,
-				position: null,
-			},
-		], { metric: 'minPoints', threshold: 12 });
+		const groups = groupClassifiedPlayersByArchetype(
+			[
+				{
+					archetypeId: 1,
+					wins: 3,
+					losses: 1,
+					points: 9,
+					position: 2,
+				},
+				{
+					archetypeId: 1,
+					wins: 2,
+					losses: 2,
+					points: 12,
+					position: 4,
+				},
+				{
+					archetypeId: 1,
+					wins: 0,
+					losses: 0,
+					points: null,
+					position: null,
+				},
+			],
+			{ metric: 'minPoints', threshold: 12 },
+		);
 
 		const entries = buildArchetypeBreakdownEntries(
 			groups,
@@ -395,52 +413,44 @@ describe('metagame archetype rules', () => {
 
 		it('aggregates hidden converted counts into the Other row conversion rate', () => {
 			const convertedGroups = new Map<number, ArchetypeAccumulator>([
-				[
-					1,
-					accumulator({ count: 4, convertedCount: 4 }),
-				],
-				[
-					2,
-					accumulator({ count: 3, convertedCount: 2 }),
-				],
-				[
-					3,
-					accumulator({ count: 2, convertedCount: 1 }),
-				],
-				[
-					4,
-					accumulator({ count: 1, convertedCount: 0 }),
-				],
+				[1, accumulator({ count: 4, convertedCount: 4 })],
+				[2, accumulator({ count: 3, convertedCount: 2 })],
+				[3, accumulator({ count: 2, convertedCount: 1 })],
+				[4, accumulator({ count: 1, convertedCount: 0 })],
 			]);
-			const limited = limitArchetypeBreakdownEntries(entries, convertedGroups, 10, 2, { metric: 'topN', threshold: 8 });
+			const limited = limitArchetypeBreakdownEntries(entries, convertedGroups, 10, 2, {
+				metric: 'topN',
+				threshold: 8,
+			});
 
-			expect(limited[2]).toEqual(expect.objectContaining({
-				id: -1,
-				name: 'Other',
-				count: 3,
-				conversionRate: 33.33,
-			}));
+			expect(limited[2]).toEqual(
+				expect.objectContaining({
+					id: -1,
+					name: 'Other',
+					count: 3,
+					conversionRate: 33.33,
+				}),
+			);
 		});
 
 		it('reports null aggregate stats when hidden entries carry no data', () => {
-			const bare = [
-				entry(1, 'Burn', 1),
-				entry(5, 'Unknown', 0),
-			];
-			const limited = limitArchetypeBreakdownEntries(bare, new Map([
-				[
-					1,
-					accumulator({ count: 1 }),
-				],
-			]), 0, 1);
+			const bare = [entry(1, 'Burn', 1), entry(5, 'Unknown', 0)];
+			const limited = limitArchetypeBreakdownEntries(
+				bare,
+				new Map([[1, accumulator({ count: 1 })]]),
+				0,
+				1,
+			);
 
-			expect(limited[1]).toEqual(expect.objectContaining({
-				id: -1,
-				name: 'Other',
-				count: 0,
-				metaShare: 0,
-				avgPosition: null,
-			}));
+			expect(limited[1]).toEqual(
+				expect.objectContaining({
+					id: -1,
+					name: 'Other',
+					count: 0,
+					metaShare: 0,
+					avgPosition: null,
+				}),
+			);
 		});
 	});
 });

@@ -58,7 +58,7 @@ describe('number scrub', () => {
 			value: 10.2,
 		},
 		{
-			case: 'the field\'s own step',
+			case: "the field's own step",
 			start: 0.5,
 			dx: 6,
 			step: 0.05,

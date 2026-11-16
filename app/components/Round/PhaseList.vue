@@ -24,8 +24,7 @@ const emit = defineEmits<{
 const roundsByPhase = computed(() => {
 	const map = new Map<number, Round[]>();
 	for (const round of props.rounds) {
-		if (!map.has(round.phaseId))
-			map.set(round.phaseId, []);
+		if (!map.has(round.phaseId)) map.set(round.phaseId, []);
 		map.get(round.phaseId)!.push(round);
 	}
 	return map;
@@ -37,9 +36,7 @@ function getRoundsForPhase(phaseId: number): Round[] {
 
 function getPhaseSummary(phaseId: number): string {
 	const count = getRoundsForPhase(phaseId).length;
-	return `${count} round${count !== 1
-		? 's'
-		: ''}`;
+	return `${count} round${count !== 1 ? 's' : ''}`;
 }
 
 function getPhaseMenuItems(phase: Phase): DropdownMenuItem[][] {
@@ -72,18 +69,18 @@ function getPhaseMenuItems(phase: Phase): DropdownMenuItem[][] {
 	<UILoadingSpinner v-if="loading" />
 	<div v-else>
 		<template v-for="(phase, phaseIdx) in phases" :key="phase.id">
-			<div class="flex items-center justify-between px-4 sm:px-6 py-2.5 bg-(--ui-bg-elevated)/50" :class="{ 'border-t border-default': phaseIdx > 0 }">
+			<div
+				class="flex items-center justify-between px-4 sm:px-6 py-2.5 bg-(--ui-bg-elevated)/50"
+				:class="{ 'border-t border-default': phaseIdx > 0 }"
+			>
 				<div class="flex items-center gap-2">
-					<span class="text-xs font-semibold uppercase tracking-wide text-muted">{{ phase.name }}</span>
+					<span class="text-xs font-semibold uppercase tracking-wide text-muted">{{
+						phase.name
+					}}</span>
 					<span class="text-xs text-muted">{{ getPhaseSummary(phase.id) }}</span>
 				</div>
 				<UDropdownMenu :items="getPhaseMenuItems(phase)" :content="{ align: 'end' }">
-					<UButton
-						icon="i-lucide-ellipsis"
-						size="xs"
-						variant="ghost"
-						color="neutral"
-					/>
+					<UButton icon="i-lucide-ellipsis" size="xs" variant="ghost" color="neutral" />
 				</UDropdownMenu>
 			</div>
 
@@ -100,7 +97,10 @@ function getPhaseMenuItems(phase: Phase): DropdownMenuItem[][] {
 				@delete-round="emit('deleteRound', $event)"
 			/>
 
-			<div v-if="getRoundsForPhase(phase.id).length === 0" class="px-4 sm:px-6 py-6 text-center text-sm text-muted border-t border-default">
+			<div
+				v-if="getRoundsForPhase(phase.id).length === 0"
+				class="px-4 sm:px-6 py-6 text-center text-sm text-muted border-t border-default"
+			>
 				No rounds yet
 			</div>
 		</template>

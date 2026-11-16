@@ -60,41 +60,42 @@ export interface GraphicsIngestionOperationLifecycleDependencies {
 export function createGraphicsIngestionOperationLifecycle(
 	dependencies: GraphicsIngestionOperationLifecycleDependencies,
 ) {
-	const {
-		requireCatalogue,
-		requireStaging,
-		silentVideoPlaybackValidator,
-		now,
-		generateIdentity,
-	} = dependencies;
-	const activeIngestionLeaseMilliseconds
-		= GRAPHICS_MULTIPART_PART_TRANSFER_TIMEOUT_MILLISECONDS + 30_000;
+	const { requireCatalogue, requireStaging, silentVideoPlaybackValidator, now, generateIdentity } =
+		dependencies;
+	const activeIngestionLeaseMilliseconds =
+		GRAPHICS_MULTIPART_PART_TRANSFER_TIMEOUT_MILLISECONDS + 30_000;
 
 	function timestamp() {
 		return now().toISOString();
 	}
 
-	function validateGraphicsIngestionInput(input: GraphicAssetSourceDeclarations & {
-		idempotencyKey: string;
-		initiatedBy: string;
-		source: GraphicsIngestionSource;
-		declaredByteLength: number;
-		defaultEventId?: number;
-	}) {
+	function validateGraphicsIngestionInput(
+		input: GraphicAssetSourceDeclarations & {
+			idempotencyKey: string;
+			initiatedBy: string;
+			source: GraphicsIngestionSource;
+			declaredByteLength: number;
+			defaultEventId?: number;
+		},
+	) {
 		if (!input.idempotencyKey.trim() || !input.initiatedBy.trim())
-			throw new GraphicsAssetLibraryError('Ingestion identity and author are required', 'invalid-ingestion-input');
+			throw new GraphicsAssetLibraryError(
+				'Ingestion identity and author are required',
+				'invalid-ingestion-input',
+			);
 		// A Template Package is an envelope rather than one Graphic Asset, so it is
 		// held to the archive limit instead of any single asset kind's limit.
-		const { label, maximumByteLength } = input.source === 'template-package'
-			? {
-					label: 'Template Package',
-					maximumByteLength: TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength,
-				}
-			: GRAPHIC_ASSET_SOURCE_POLICIES[graphicAssetSourceKind(input)];
+		const { label, maximumByteLength } =
+			input.source === 'template-package'
+				? {
+						label: 'Template Package',
+						maximumByteLength: TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength,
+					}
+				: GRAPHIC_ASSET_SOURCE_POLICIES[graphicAssetSourceKind(input)];
 		if (
-			!Number.isSafeInteger(input.declaredByteLength)
-			|| input.declaredByteLength <= 0
-			|| input.declaredByteLength > maximumByteLength
+			!Number.isSafeInteger(input.declaredByteLength) ||
+			input.declaredByteLength <= 0 ||
+			input.declaredByteLength > maximumByteLength
 		) {
 			throw new GraphicsAssetLibraryError(
 				`${label} must be between 1 and ${maximumByteLength} bytes`,
@@ -102,76 +103,84 @@ export function createGraphicsIngestionOperationLifecycle(
 			);
 		}
 		if (
-			input.defaultEventId !== undefined
-			&& (!Number.isSafeInteger(input.defaultEventId) || input.defaultEventId <= 0)
+			input.defaultEventId !== undefined &&
+			(!Number.isSafeInteger(input.defaultEventId) || input.defaultEventId <= 0)
 		) {
-			throw new GraphicsAssetLibraryError('Default Event identity must be a positive integer', 'invalid-ingestion-input');
+			throw new GraphicsAssetLibraryError(
+				'Default Event identity must be a positive integer',
+				'invalid-ingestion-input',
+			);
 		}
-		if (input.browserDecodeEvidence?.outcome === 'font-loaded' || input.browserDecodeEvidence?.outcome === 'font-rejected') {
+		if (
+			input.browserDecodeEvidence?.outcome === 'font-loaded' ||
+			input.browserDecodeEvidence?.outcome === 'font-rejected'
+		) {
 			throw new GraphicsAssetLibraryError(
 				'Font browser evidence can only answer the server-selected post-validation challenge',
 				'invalid-ingestion-input',
 			);
 		}
 		if (
-			input.browserDecodeEvidence
-			&& (
-				!/^[a-f0-9]{64}$/.test(input.browserDecodeEvidence.sourceDigest)
-				|| (
-					input.browserDecodeEvidence.outcome === 'decoded'
-					&& (
-						!Number.isSafeInteger(input.browserDecodeEvidence.width)
-						|| input.browserDecodeEvidence.width <= 0
-						|| !Number.isSafeInteger(input.browserDecodeEvidence.height)
-						|| input.browserDecodeEvidence.height <= 0
-					)
-				)
-			)
+			input.browserDecodeEvidence &&
+			(!/^[a-f0-9]{64}$/.test(input.browserDecodeEvidence.sourceDigest) ||
+				(input.browserDecodeEvidence.outcome === 'decoded' &&
+					(!Number.isSafeInteger(input.browserDecodeEvidence.width) ||
+						input.browserDecodeEvidence.width <= 0 ||
+						!Number.isSafeInteger(input.browserDecodeEvidence.height) ||
+						input.browserDecodeEvidence.height <= 0)))
 		) {
-			throw new GraphicsAssetLibraryError('Browser decode evidence is malformed', 'invalid-ingestion-input');
+			throw new GraphicsAssetLibraryError(
+				'Browser decode evidence is malformed',
+				'invalid-ingestion-input',
+			);
 		}
 	}
 
-	async function initiateGraphicsOperation(input: GraphicAssetSourceDeclarations & {
-		idempotencyKey: string;
-		initiatedBy: string;
-		name: string;
-		source: GraphicsIngestionSource;
-		targetAssetId?: GraphicAssetId;
-		defaultEventId?: number;
-		duplicateContentPolicy: GraphicsDuplicateContentPolicy;
-		declaredByteLength: number;
-	}) {
+	async function initiateGraphicsOperation(
+		input: GraphicAssetSourceDeclarations & {
+			idempotencyKey: string;
+			initiatedBy: string;
+			name: string;
+			source: GraphicsIngestionSource;
+			targetAssetId?: GraphicAssetId;
+			defaultEventId?: number;
+			duplicateContentPolicy: GraphicsDuplicateContentPolicy;
+			declaredByteLength: number;
+		},
+	) {
 		validateGraphicsIngestionInput(input);
 		const createdAt = timestamp();
-		return await catalogueRequest(() => requireCatalogue().initiateGraphicsIngestion({
-			id: graphicsIngestionOperationId(generateIdentity()),
-			idempotencyKey: input.idempotencyKey,
-			source: input.source,
-			initiatedBy: input.initiatedBy,
-			name: input.name.trim(),
-			targetAssetId: input.targetAssetId,
-			sourceFileName: input.sourceFileName?.trim(),
-			declaredMime: input.declaredMime?.trim().toLocaleLowerCase(),
-			browserDecodeEvidence: input.browserDecodeEvidence,
-			defaultEventId: input.defaultEventId,
-			duplicateContentPolicy: input.duplicateContentPolicy,
-			declaredByteLength: input.declaredByteLength,
-			transferredByteLength: 0,
-			stage: 'created',
-			createdAt,
-			updatedAt: createdAt,
-		}), 'Graphics ingestion could not be initiated because the catalogue is unavailable');
+		return await catalogueRequest(
+			() =>
+				requireCatalogue().initiateGraphicsIngestion({
+					id: graphicsIngestionOperationId(generateIdentity()),
+					idempotencyKey: input.idempotencyKey,
+					source: input.source,
+					initiatedBy: input.initiatedBy,
+					name: input.name.trim(),
+					targetAssetId: input.targetAssetId,
+					sourceFileName: input.sourceFileName?.trim(),
+					declaredMime: input.declaredMime?.trim().toLocaleLowerCase(),
+					browserDecodeEvidence: input.browserDecodeEvidence,
+					defaultEventId: input.defaultEventId,
+					duplicateContentPolicy: input.duplicateContentPolicy,
+					declaredByteLength: input.declaredByteLength,
+					transferredByteLength: 0,
+					stage: 'created',
+					createdAt,
+					updatedAt: createdAt,
+				}),
+			'Graphics ingestion could not be initiated because the catalogue is unavailable',
+		);
 	}
 
 	function changedOperation(
 		operation: GraphicsIngestionOperation,
 		changes: Partial<GraphicsIngestionOperation>,
 	): GraphicsIngestionOperation {
-		const updatedAt = new Date(Math.max(
-			now().getTime(),
-			new Date(operation.updatedAt).getTime() + 1,
-		)).toISOString();
+		const updatedAt = new Date(
+			Math.max(now().getTime(), new Date(operation.updatedAt).getTime() + 1),
+		).toISOString();
 		return {
 			...operation,
 			...changes,
@@ -182,15 +191,16 @@ export function createGraphicsIngestionOperationLifecycle(
 	class SilentVideoValidationRuntimeError extends Error {}
 
 	async function reportWithTrustedSilentVideoValidation(
-		report: Extract<GraphicAssetValidationReport, {
-			outcome: 'accepted';
-			compatibilityProfile: 'silent-video-v1';
-		}>,
+		report: Extract<
+			GraphicAssetValidationReport,
+			{
+				outcome: 'accepted';
+				compatibilityProfile: 'silent-video-v1';
+			}
+		>,
 		operation: GraphicsIngestionOperation,
 	) {
-		const factsDigest = await sha256Hex(
-			new TextEncoder().encode(JSON.stringify(report.facts)),
-		);
+		const factsDigest = await sha256Hex(new TextEncoder().encode(JSON.stringify(report.facts)));
 		const idempotencyKey = [
 			'silent-video-playback-v1',
 			operation.id,
@@ -209,8 +219,7 @@ export function createGraphicsIngestionOperationLifecycle(
 		let validation;
 		try {
 			validation = await silentVideoPlaybackValidator.validate(validationInput);
-		}
-		catch {
+		} catch {
 			throw new SilentVideoValidationRuntimeError(
 				'Silent-video validation runtime failed while executing the bound operation',
 			);
@@ -218,10 +227,10 @@ export function createGraphicsIngestionOperationLifecycle(
 		if (validation.outcome === 'unavailable')
 			throw new SilentVideoValidationRuntimeError('Silent-video validation runtime is unavailable');
 		if (
-			validation.operationId !== operation.id
-			|| validation.idempotencyKey !== idempotencyKey
-			|| validation.sourceDigest !== report.facts.sha256
-			|| validation.factsDigest !== factsDigest
+			validation.operationId !== operation.id ||
+			validation.idempotencyKey !== idempotencyKey ||
+			validation.sourceDigest !== report.facts.sha256 ||
+			validation.factsDigest !== factsDigest
 		) {
 			throw new SilentVideoValidationRuntimeError(
 				'Silent-video validation result was not bound to the exact operation, source, and inspected facts',
@@ -237,21 +246,21 @@ export function createGraphicsIngestionOperationLifecycle(
 		if (validation.outcome === 'rejected')
 			throw new SilentVideoValidationRuntimeError('Rejected validation did not produce an issue');
 		if (
-			validation.mutedInlinePlayback !== true
-			|| validation.seeked !== true
-			|| validation.width !== report.facts.width
-			|| validation.height !== report.facts.height
-			|| Math.abs(validation.durationSeconds - report.facts.durationSeconds) > 0.05
-			|| Math.abs(validation.posterTimeSeconds - report.facts.posterTimeSeconds) > 0.001
+			validation.mutedInlinePlayback !== true ||
+			validation.seeked !== true ||
+			validation.width !== report.facts.width ||
+			validation.height !== report.facts.height ||
+			Math.abs(validation.durationSeconds - report.facts.durationSeconds) > 0.05 ||
+			Math.abs(validation.posterTimeSeconds - report.facts.posterTimeSeconds) > 0.001
 		) {
 			throw new SilentVideoValidationRuntimeError(
 				'Silent-video validation facts conflict with bounded inspection',
 			);
 		}
 		if (
-			validation.poster.byteLength <= 0
-			|| validation.poster.byteLength > MAX_SILENT_VIDEO_POSTER_BYTES
-			|| !/^[a-f0-9]{64}$/.test(validation.posterDigest)
+			validation.poster.byteLength <= 0 ||
+			validation.poster.byteLength > MAX_SILENT_VIDEO_POSTER_BYTES ||
+			!/^[a-f0-9]{64}$/.test(validation.posterDigest)
 		) {
 			throw new SilentVideoValidationRuntimeError(
 				'Silent-video validation returned an invalid deterministic poster envelope',
@@ -260,7 +269,7 @@ export function createGraphicsIngestionOperationLifecycle(
 		let poster;
 		try {
 			const posterBytes = await consumeBoundedByteStream(validation.poster);
-			if (await sha256Hex(posterBytes) !== validation.posterDigest) {
+			if ((await sha256Hex(posterBytes)) !== validation.posterDigest) {
 				throw new SilentVideoValidationRuntimeError(
 					'Silent-video validation poster digest does not match its exact bytes',
 				);
@@ -269,10 +278,8 @@ export function createGraphicsIngestionOperationLifecycle(
 				sourceFileName: 'poster.png',
 				declaredMime: 'image/png',
 			});
-		}
-		catch (error) {
-			if (error instanceof SilentVideoValidationRuntimeError)
-				throw error;
+		} catch (error) {
+			if (error instanceof SilentVideoValidationRuntimeError) throw error;
 			throw new SilentVideoValidationRuntimeError(
 				'Silent-video validation returned a poster that could not be verified',
 			);
@@ -281,9 +288,9 @@ export function createGraphicsIngestionOperationLifecycle(
 		const expectedWidth = Math.max(1, Math.round(report.facts.width * scale));
 		const expectedHeight = Math.max(1, Math.round(report.facts.height * scale));
 		if (
-			poster.report.facts.kind !== 'image'
-			|| poster.report.facts.width !== expectedWidth
-			|| poster.report.facts.height !== expectedHeight
+			poster.report.facts.kind !== 'image' ||
+			poster.report.facts.width !== expectedWidth ||
+			poster.report.facts.height !== expectedHeight
 		) {
 			throw new SilentVideoValidationRuntimeError(
 				'Silent-video validation poster violates the deterministic fit rule',
@@ -295,9 +302,7 @@ export function createGraphicsIngestionOperationLifecycle(
 				facts: {
 					...report.facts,
 					browserPlayable: true as const,
-					...(report.facts.hasAlpha
-						? { chromiumTransparencyPlayback: true as const }
-						: {}),
+					...(report.facts.hasAlpha ? { chromiumTransparencyPlayback: true as const } : {}),
 				},
 			},
 			derivative: poster.thumbnail,
@@ -320,8 +325,7 @@ export function createGraphicsIngestionOperationLifecycle(
 				}),
 				operation.updatedAt,
 			);
-		}
-		catch (error) {
+		} catch (error) {
 			throw new GraphicsAssetLibraryError(
 				'Graphics ingestion state could not be updated because the catalogue is unavailable',
 				'graphics-asset-library-unavailable',
@@ -345,8 +349,7 @@ export function createGraphicsIngestionOperationLifecycle(
 	async function releaseOwedStagedInput(
 		operation: GraphicsIngestionOperation,
 	): Promise<TerminalStagedInputReleaseOutcome | { outcome: 'not-terminal' }> {
-		if (!isTerminalIngestionOperation(operation))
-			return { outcome: 'not-terminal' };
+		if (!isTerminalIngestionOperation(operation)) return { outcome: 'not-terminal' };
 		try {
 			return await releaseTerminalStagedInput(
 				{
@@ -355,8 +358,7 @@ export function createGraphicsIngestionOperationLifecycle(
 				},
 				{ operationId: operation.id, initiatedBy: operation.initiatedBy },
 			);
-		}
-		catch (error) {
+		} catch (error) {
 			logGraphicsStoreFailure(
 				'graphics_staged_input_release_deferred',
 				{ operationId: operation.id },
@@ -374,27 +376,32 @@ export function createGraphicsIngestionOperationLifecycle(
 	 * nothing twice.
 	 */
 	async function releaseCancelledStagedInput(
-		catalogue: GraphicsIngestionOperationCatalogue
-			& Pick<GraphicsAssetCatalogue, 'getGraphicAssetMultipartState' | 'recordGraphicAssetMultipartCleanupComplete'>,
+		catalogue: GraphicsIngestionOperationCatalogue &
+			Pick<
+				GraphicsAssetCatalogue,
+				'getGraphicAssetMultipartState' | 'recordGraphicAssetMultipartCleanupComplete'
+			>,
 		operation: GraphicsIngestionOperation,
 	): Promise<GraphicsIngestionOperation> {
 		const multipart = await catalogueRequest(
 			() => catalogue.getGraphicAssetMultipartState(operation.id, operation.initiatedBy),
 			'Graphics multipart cancellation checkpoint is temporarily unavailable',
 		);
-		if (multipart && !multipart.cleanupPending)
-			return operation;
+		if (multipart && !multipart.cleanupPending) return operation;
 		const release = await releaseOwedStagedInput(operation);
 		if (release.outcome === 'unavailable' || release.outcome === 'not-terminal' || !multipart)
 			return operation;
 		await catalogueRequest(
-			() => catalogue.recordGraphicAssetMultipartCleanupComplete(operation.id, operation.initiatedBy),
+			() =>
+				catalogue.recordGraphicAssetMultipartCleanupComplete(operation.id, operation.initiatedBy),
 			'Graphics multipart cleanup completion could not be recorded',
 		);
-		return await catalogueRequest(
-			() => catalogue.getIngestionOperation(operation.id, operation.initiatedBy),
-			'Graphics ingestion state is temporarily unavailable',
-		) ?? operation;
+		return (
+			(await catalogueRequest(
+				() => catalogue.getIngestionOperation(operation.id, operation.initiatedBy),
+				'Graphics ingestion state is temporarily unavailable',
+			)) ?? operation
+		);
 	}
 
 	async function storeCanonicalStream(
@@ -412,12 +419,11 @@ export function createGraphicsIngestionOperationLifecycle(
 				custom: { sha256: digest },
 			},
 		});
-		if (result.outcome === 'unavailable')
-			return result;
+		if (result.outcome === 'unavailable') return result;
 		if (
-			result.object.byteLength !== bytes.byteLength
-			|| result.object.contentType !== contentType
-			|| result.object.customMetadata.sha256 !== digest
+			result.object.byteLength !== bytes.byteLength ||
+			result.object.contentType !== contentType ||
+			result.object.customMetadata.sha256 !== digest
 		) {
 			return {
 				outcome: 'unavailable' as const,
@@ -429,9 +435,9 @@ export function createGraphicsIngestionOperationLifecycle(
 		}
 		const stored = await store.read(identity);
 		if (
-			stored.outcome !== 'available'
-			|| stored.object.byteLength !== bytes.byteLength
-			|| stored.object.contentType !== contentType
+			stored.outcome !== 'available' ||
+			stored.object.byteLength !== bytes.byteLength ||
+			stored.object.contentType !== contentType
 		) {
 			return {
 				outcome: 'unavailable' as const,
@@ -488,4 +494,6 @@ export function createGraphicsIngestionOperationLifecycle(
 	};
 }
 
-export type GraphicsIngestionOperationLifecycle = ReturnType<typeof createGraphicsIngestionOperationLifecycle>;
+export type GraphicsIngestionOperationLifecycle = ReturnType<
+	typeof createGraphicsIngestionOperationLifecycle
+>;

@@ -11,17 +11,20 @@ import { getMetagameCardTypeBuckets } from '~~/shared/utils/metagame';
  * removed. A `locked` type stays included, whatever `excluded` holds, and its
  * chip cannot be toggled.
  */
-const props = withDefaults(defineProps<{
-	excluded: MetagameCardTypeBucket[];
-	locked?: MetagameCardTypeBucket[];
-	/** The Event's Card Game, whose card types the chips name. */
-	game?: Game;
-	description?: string;
-	/** Each chip's test id is this prefix and its type. */
-	testIdPrefix: string;
-}>(), {
-	locked: () => [],
-});
+const props = withDefaults(
+	defineProps<{
+		excluded: MetagameCardTypeBucket[];
+		locked?: MetagameCardTypeBucket[];
+		/** The Event's Card Game, whose card types the chips name. */
+		game?: Game;
+		description?: string;
+		/** Each chip's test id is this prefix and its type. */
+		testIdPrefix: string;
+	}>(),
+	{
+		locked: () => [],
+	},
+);
 
 const emit = defineEmits<{
 	update: [excluded: MetagameCardTypeBucket[]];
@@ -38,17 +41,17 @@ function isIncluded(bucket: MetagameCardTypeBucket): boolean {
 }
 
 function toggle(bucket: MetagameCardTypeBucket) {
-	if (isLocked(bucket))
-		return;
-	emit('update', isIncluded(bucket)
-		? [...props.excluded, bucket]
-		: props.excluded.filter(type => type !== bucket));
+	if (isLocked(bucket)) return;
+	emit(
+		'update',
+		isIncluded(bucket)
+			? [...props.excluded, bucket]
+			: props.excluded.filter((type) => type !== bucket),
+	);
 }
 
 function label(bucket: MetagameCardTypeBucket): string {
-	return bucket === 'Land'
-		? 'Nonbasic Land'
-		: bucket;
+	return bucket === 'Land' ? 'Nonbasic Land' : bucket;
 }
 </script>
 

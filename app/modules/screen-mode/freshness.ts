@@ -40,7 +40,10 @@ export interface ScreenModeHearing<T> {
  */
 type FollowUpReason = 'message' | 'first-attach';
 
-export type ScreenModeFreshnessTransport = Pick<RealtimeTransport, 'connectionState' | 'tokenError' | 'onChannel' | 'onContinuityLost' | 'onceAttached'>;
+export type ScreenModeFreshnessTransport = Pick<
+	RealtimeTransport,
+	'connectionState' | 'tokenError' | 'onChannel' | 'onContinuityLost' | 'onceAttached'
+>;
 
 export interface ScreenModeFreshnessOptions<T> {
 	/** Where the mode hears that it is behind. */
@@ -124,39 +127,35 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 			since: Date.now(),
 			load,
 		};
-		void display.refresh(async () => {
-			try {
-				const answer = await options.read();
-				// A load's answer that predates a message would only make the
-				// follow-up a second rendering of the new selection: the follow-up
-				// supersedes it, so its answer is the first shown (#567). Once,
-				// so a steady stream of messages still renders. A first attach
-				// does not: what the load answered is most likely current, so it
-				// renders, and the follow-up only confirms it.
-				if (flight.current && followUpAsked === 'message' && load)
-					refresh();
-				return answer;
-			}
-			catch (cause) {
-				// Only the latest read's failure leaves program behind.
-				if (flight.current)
-					retry = setTimeout(queueRefresh, SCREEN_MODE_REREAD_MS);
-				throw cause;
-			}
-		}, options.errorMessage).then(() => {
-			// The answer is applied: now the follow-up can start.
-			if (flight.stale)
-				return;
-			reading = null;
-			if (followUpAsked)
-				refresh();
-		});
+		void display
+			.refresh(async () => {
+				try {
+					const answer = await options.read();
+					// A load's answer that predates a message would only make the
+					// follow-up a second rendering of the new selection: the follow-up
+					// supersedes it, so its answer is the first shown (#567). Once,
+					// so a steady stream of messages still renders. A first attach
+					// does not: what the load answered is most likely current, so it
+					// renders, and the follow-up only confirms it.
+					if (flight.current && followUpAsked === 'message' && load) refresh();
+					return answer;
+				} catch (cause) {
+					// Only the latest read's failure leaves program behind.
+					if (flight.current) retry = setTimeout(queueRefresh, SCREEN_MODE_REREAD_MS);
+					throw cause;
+				}
+			}, options.errorMessage)
+			.then(() => {
+				// The answer is applied: now the follow-up can start.
+				if (flight.stale) return;
+				reading = null;
+				if (followUpAsked) refresh();
+			});
 	}
 
 	/** One read for however many reasons arrive together. */
 	function queueRefresh() {
-		if (refreshQueued)
-			return;
+		if (refreshQueued) return;
 		refreshQueued = true;
 		queueMicrotask(() => {
 			refreshQueued = false;
@@ -167,10 +166,8 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 	/** One follow-up for however many reasons arrive while a read is in flight. */
 	function follow(reason: FollowUpReason) {
 		if (reading && Date.now() - reading.since < SCREEN_MODE_REREAD_MS) {
-			if (followUpAsked !== 'message')
-				followUpAsked = reason;
-		}
-		else {
+			if (followUpAsked !== 'message') followUpAsked = reason;
+		} else {
 			queueRefresh();
 		}
 	}
@@ -185,32 +182,32 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 
 	function touches<K extends MessageType>(type: K, message: MessageData<K>): boolean {
 		const dependency = heardOn[type] as ScreenModeDependencies<T>[K];
-		if (options.source() == null || !dependency)
-			return false;
+		if (options.source() == null || !dependency) return false;
 		// What is held cannot judge a message the read in flight may predate.
-		if (dependency === true || reading)
-			return true;
+		if (dependency === true || reading) return true;
 		return dependency(message, display.data.value);
 	}
 
 	let unsubscribers: (() => void)[] = [];
 	function unsubscribe() {
-		for (const stop of unsubscribers.splice(0))
-			stop();
+		for (const stop of unsubscribers.splice(0)) stop();
 	}
 
-	watch(channel, (listenedOn) => {
-		unsubscribe();
-		heardOn = {};
-		if (!realtime || !listenedOn)
-			return;
-		heardOn = hearing.value.dependsOn;
-		unsubscribers = (Object.keys(heardOn) as MessageType[]).map(type =>
-			realtime.onChannel(listenedOn, type, (message) => {
-				if (touches(type, message))
-					follow('message');
-			}));
-	}, { immediate: true });
+	watch(
+		channel,
+		(listenedOn) => {
+			unsubscribe();
+			heardOn = {};
+			if (!realtime || !listenedOn) return;
+			heardOn = hearing.value.dependsOn;
+			unsubscribers = (Object.keys(heardOn) as MessageType[]).map((type) =>
+				realtime.onChannel(listenedOn, type, (message) => {
+					if (touches(type, message)) follow('message');
+				}),
+			);
+		},
+		{ immediate: true },
+	);
 
 	// Reconnect Resync, and its twin for subscriptions that waited on a token. A
 	// mode reads as it mounts, which on a Screen Output's first load is before its
@@ -218,14 +215,12 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 	// nothing, and that first attach reports no continuity loss (#733).
 	const { disconnected } = useReconnectResync(queueRefresh, channel, realtime, {
 		onFirstAttach: () => {
-			if (options.source() != null)
-				follow('first-attach');
+			if (options.source() != null) follow('first-attach');
 		},
 	});
 	const waitingOnToken = computed(() => !!realtime?.tokenError);
 	watch(waitingOnToken, (waiting, wasWaiting) => {
-		if (wasWaiting && !waiting)
-			queueRefresh();
+		if (wasWaiting && !waiting) queueRefresh();
 	});
 
 	// Degraded refetch.
@@ -236,12 +231,16 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 			cadence = null;
 		}
 	}
-	watch(() => disconnected.value || waitingOnToken.value, (degraded) => {
-		stopCadence();
-		if (degraded) {
-			cadence = setInterval(queueRefresh, SCREEN_MODE_REREAD_MS);
-		}
-	}, { immediate: true });
+	watch(
+		() => disconnected.value || waitingOnToken.value,
+		(degraded) => {
+			stopCadence();
+			if (degraded) {
+				cadence = setInterval(queueRefresh, SCREEN_MODE_REREAD_MS);
+			}
+		},
+		{ immediate: true },
+	);
 
 	onScopeDispose(() => {
 		unsubscribe();

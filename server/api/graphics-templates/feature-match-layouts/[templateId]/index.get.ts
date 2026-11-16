@@ -18,7 +18,10 @@ import { requireUserId } from '~~/server/utils/auth';
  */
 export default defineEventHandler(async (event) => {
 	await requireUserId(event);
-	const { templateId } = await getValidatedRouterParams(event, featureMatchLayoutTemplateParamsSchema.parse);
+	const { templateId } = await getValidatedRouterParams(
+		event,
+		featureMatchLayoutTemplateParamsSchema.parse,
+	);
 
 	const entry = await findFeatureMatchLayoutTemplateLibraryEntry(event, templateId);
 	if (!entry) {

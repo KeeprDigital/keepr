@@ -12,7 +12,7 @@ import { createMockScreen } from '~~/test/helpers/fixtures';
  * which receives Screens through `mapScreenToResponse`. It is never reset to the
  * defaults and never refused on read. A write of the same value is still refused.
  */
-describe('a stored mode config outside its contract\'s bounds', () => {
+describe("a stored mode config outside its contract's bounds", () => {
 	const stored = {
 		standings: { revealCount: 900, rowsPerPage: 0, showHeader: false },
 	};
@@ -47,7 +47,7 @@ describe('a stored mode config outside its contract\'s bounds', () => {
 const TIGHTENED_BOUNDS = [
 	{
 		mode: 'deck',
-		field: 'a board\'s columns',
+		field: "a board's columns",
 		stored: {
 			mainboard: {
 				view: 'grid',
@@ -63,17 +63,29 @@ const TIGHTENED_BOUNDS = [
 			showDeckStats: true,
 		},
 	},
-] as const satisfies readonly { mode: ScreenMode; field: string; stored: Record<string, unknown>; reads: Record<string, unknown> }[];
+] as const satisfies readonly {
+	mode: ScreenMode;
+	field: string;
+	stored: Record<string, unknown>;
+	reads: Record<string, unknown>;
+}[];
 
-describe.each(TIGHTENED_BOUNDS)('a $mode config storing $field outside its tightened bound', ({ mode, stored, reads }) => {
-	it('reads clamped into the editor\'s range, keeping the rest of its fragment', () => {
-		expect(resolveScreenModeConfig({ [mode]: stored }, mode)).toMatchObject(reads);
-		expect(mapScreenToResponse(createMockScreen({
-			modeConfigs: { [mode]: stored },
-		})).modeConfigs).toEqual({ [mode]: reads });
-	});
+describe.each(TIGHTENED_BOUNDS)(
+	'a $mode config storing $field outside its tightened bound',
+	({ mode, stored, reads }) => {
+		it("reads clamped into the editor's range, keeping the rest of its fragment", () => {
+			expect(resolveScreenModeConfig({ [mode]: stored }, mode)).toMatchObject(reads);
+			expect(
+				mapScreenToResponse(
+					createMockScreen({
+						modeConfigs: { [mode]: stored },
+					}),
+				).modeConfigs,
+			).toEqual({ [mode]: reads });
+		});
 
-	it('is refused as a new write', () => {
-		expect(modeConfigPatchSchemaMap[mode].safeParse(stored).success).toBe(false);
-	});
-});
+		it('is refused as a new write', () => {
+			expect(modeConfigPatchSchemaMap[mode].safeParse(stored).success).toBe(false);
+		});
+	},
+);

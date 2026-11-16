@@ -17,8 +17,7 @@ export function sortByManaCost(
 	// Primary: CMC — null to the end.
 	const cmcA = a.cmc ?? Infinity;
 	const cmcB = b.cmc ?? Infinity;
-	if (cmcA !== cmcB)
-		return cmcA - cmcB;
+	if (cmcA !== cmcB) return cmcA - cmcB;
 
 	// Secondary: multicolour last.
 	const colorsA = a.colors ?? '';
@@ -26,12 +25,9 @@ export function sortByManaCost(
 	const isMultiA = colorsA.length > 1;
 	const isMultiB = colorsB.length > 1;
 	if (isMultiA !== isMultiB) {
-		return isMultiA
-			? 1
-			: -1;
+		return isMultiA ? 1 : -1;
 	}
-	if (isMultiA)
-		return 0; // both multicolour — equal at this level
+	if (isMultiA) return 0; // both multicolour — equal at this level
 
 	// Tertiary: single-colour or colourless in WUBRGC order.
 	// Empty/null colours (colourless artifacts etc.) rank with 'C'.
@@ -40,9 +36,7 @@ export function sortByManaCost(
 	const idxA = MANA_COLOR_ORDER.indexOf(charA);
 	const idxB = MANA_COLOR_ORDER.indexOf(charB);
 	// Unknown colour chars (shouldn't happen in practice) sort after C.
-	return (idxA === -1
-		? MANA_COLOR_ORDER.length
-		: idxA) - (idxB === -1
-		? MANA_COLOR_ORDER.length
-		: idxB);
+	return (
+		(idxA === -1 ? MANA_COLOR_ORDER.length : idxA) - (idxB === -1 ? MANA_COLOR_ORDER.length : idxB)
+	);
 }

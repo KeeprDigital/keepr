@@ -7,10 +7,11 @@ import { parseGraphicTextTemplate } from '~~/shared/modules/graphics';
 import { featureMatchLayoutGraphicAssetReferences } from '~~/shared/utils/graphicsAssetReferences';
 
 function everyBuiltInItem(): Array<GraphicItemConfig | GraphicGroupChildConfig> {
-	return BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.flatMap(builtIn => builtIn.config.layout.composition.items.flatMap(item =>
-		item.type === 'group'
-			? [item, ...item.children]
-			: [item]));
+	return BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.flatMap((builtIn) =>
+		builtIn.config.layout.composition.items.flatMap((item) =>
+			item.type === 'group' ? [item, ...item.children] : [item],
+		),
+	);
 }
 
 describe('the built-in Feature Match Layout Templates', () => {
@@ -22,18 +23,16 @@ describe('the built-in Feature Match Layout Templates', () => {
 	// A built-in is on every installation, so it can depend on no Graphic Asset of one.
 	it('pins no Graphic Asset Revision', () => {
 		for (const builtIn of BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES)
-			expect(featureMatchLayoutGraphicAssetReferences(builtIn.config.layout), builtIn.id).toEqual([]);
+			expect(featureMatchLayoutGraphicAssetReferences(builtIn.config.layout), builtIn.id).toEqual(
+				[],
+			);
 	});
 
 	it('keeps every Graphic Item id unique within one, including group children', () => {
 		for (const builtIn of BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES) {
-			const ids = builtIn.config.layout.composition.items.flatMap(item =>
-				item.type === 'group'
-					? [
-							item.id,
-							...item.children.map(child => child.id),
-						]
-					: [item.id]);
+			const ids = builtIn.config.layout.composition.items.flatMap((item) =>
+				item.type === 'group' ? [item.id, ...item.children.map((child) => child.id)] : [item.id],
+			);
 
 			expect(new Set(ids).size, builtIn.id).toBe(ids.length);
 		}
@@ -41,19 +40,22 @@ describe('the built-in Feature Match Layout Templates', () => {
 
 	it('only names tokens the Feature Match token catalogue provides', () => {
 		const placeholders = everyBuiltInItem()
-			.filter(item => item.type === 'text')
-			.flatMap(item => parseGraphicTextTemplate(item.text)
-				.map(segment => segment.inputKey)
-				.filter((key): key is string => key !== undefined));
+			.filter((item) => item.type === 'text')
+			.flatMap((item) =>
+				parseGraphicTextTemplate(item.text)
+					.map((segment) => segment.inputKey)
+					.filter((key): key is string => key !== undefined),
+			);
 
 		expect(placeholders.length).toBeGreaterThan(0);
-		for (const key of placeholders)
-			expect(FEATURE_MATCH_TOKEN_KEYS).toContain(key);
+		for (const key of placeholders) expect(FEATURE_MATCH_TOKEN_KEYS).toContain(key);
 	});
 
 	it('never nests a Graphic Group inside another', () => {
-		for (const group of everyBuiltInItem().filter(item => item.type === 'group'))
-			expect(group.children.some(child => (child as { type: string }).type === 'group')).toBe(false);
+		for (const group of everyBuiltInItem().filter((item) => item.type === 'group'))
+			expect(group.children.some((child) => (child as { type: string }).type === 'group')).toBe(
+				false,
+			);
 	});
 
 	// Placed under any Theme, a built-in follows it: its text, panels and branding bind Foundation Tokens.
@@ -61,12 +63,13 @@ describe('the built-in Feature Match Layout Templates', () => {
 		{ kind: 'text', slot: 'typography.color', token: 'text-primary' },
 		{ kind: 'shape', slot: 'surfaceStyle', token: 'panel' },
 		{ kind: 'media', slot: 'media', token: 'logo' },
-	] as const)('binds every $kind item\'s $slot to $token', ({ kind, slot, token }) => {
-		const items = everyBuiltInItem().filter(item => item.type === kind && item.id !== 'branding-image-2');
+	] as const)("binds every $kind item's $slot to $token", ({ kind, slot, token }) => {
+		const items = everyBuiltInItem().filter(
+			(item) => item.type === kind && item.id !== 'branding-image-2',
+		);
 
 		expect(items.length).toBeGreaterThan(0);
-		for (const item of items)
-			expect(item.themeBindings?.[slot], item.id).toBe(token);
+		for (const item of items) expect(item.themeBindings?.[slot], item.id).toBe(token);
 	});
 
 	it('carries no raw CSS gradient, colour, border or glow on its Frame or Source Items', () => {
@@ -85,11 +88,17 @@ describe('the built-in Feature Match Layout Templates', () => {
 		for (const builtIn of BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES) {
 			const hosts = [
 				builtIn.config.layout.frame,
-				...builtIn.config.layout.sources.map(source => source.framingStyle ?? {}),
+				...builtIn.config.layout.sources.map((source) => source.framingStyle ?? {}),
 			];
 			for (const host of hosts)
-				expect(Object.keys(host).filter(key => looks.includes(key)), builtIn.id).toEqual([]);
-			expect(Object.keys(builtIn.config.layout.frame.animation ?? {}).sort()).toEqual(['enabled', 'opacity']);
+				expect(
+					Object.keys(host).filter((key) => looks.includes(key)),
+					builtIn.id,
+				).toEqual([]);
+			expect(Object.keys(builtIn.config.layout.frame.animation ?? {}).sort()).toEqual([
+				'enabled',
+				'opacity',
+			]);
 		}
 	});
 });

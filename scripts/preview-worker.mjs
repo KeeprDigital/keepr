@@ -31,12 +31,9 @@ export function splitPort(argv) {
 	const rest = [];
 	for (let index = 0; index < argv.length; index++) {
 		const argument = argv[index];
-		if (argument === '--port')
-			port = Number(argv[++index]);
-		else if (argument.startsWith('--port='))
-			port = Number(argument.slice('--port='.length));
-		else
-			rest.push(argument);
+		if (argument === '--port') port = Number(argv[++index]);
+		else if (argument.startsWith('--port=')) port = Number(argument.slice('--port='.length));
+		else rest.push(argument);
 	}
 	if (!Number.isInteger(port) || port < 1 || port > 65_535)
 		throw new Error(`preview: --port must be a TCP port, not ${JSON.stringify(String(port))}`);
@@ -56,11 +53,9 @@ async function onceListening(request) {
 	for (;;) {
 		try {
 			return await request();
-		}
-		catch (error) {
-			if (!isNotListening(error) || Date.now() > deadline)
-				throw error;
-			await new Promise(resolve => setTimeout(resolve, 250));
+		} catch (error) {
+			if (!isNotListening(error) || Date.now() > deadline) throw error;
+			await new Promise((resolve) => setTimeout(resolve, 250));
 		}
 	}
 }
@@ -77,18 +72,22 @@ export async function runPreviewWorker({
 	signals = undefined,
 }) {
 	const { port, rest } = splitPort(argv);
-	const child = spawnProcess(join(repositoryRoot, 'node_modules/.bin/wrangler'), [
-		'dev',
-		'--local',
-		'--config',
-		PREVIEW_WRANGLER_CONFIG,
-		'--persist-to',
-		'.wrangler/state/built-worker',
-		'--test-scheduled',
-		'--port',
-		String(port),
-		...rest,
-	], { cwd: repositoryRoot, stdio: 'inherit' });
+	const child = spawnProcess(
+		join(repositoryRoot, 'node_modules/.bin/wrangler'),
+		[
+			'dev',
+			'--local',
+			'--config',
+			PREVIEW_WRANGLER_CONFIG,
+			'--persist-to',
+			'.wrangler/state/built-worker',
+			'--test-scheduled',
+			'--port',
+			String(port),
+			...rest,
+		],
+		{ cwd: repositoryRoot, stdio: 'inherit' },
+	);
 
 	const scheduledUrl = new URL(`http://localhost:${port}/__scheduled`);
 	scheduledUrl.searchParams.set('cron', LIVE_RESULTS_CRON);
@@ -96,22 +95,20 @@ export async function runPreviewWorker({
 		intervalMs: LIVE_RESULTS_CRON_INTERVAL_MS,
 		fire: async () => {
 			const response = await onceListening(() => fetchRequest(scheduledUrl.href));
-			if (!response.ok)
-				throw new Error(`/__scheduled answered ${response.status}`);
+			if (!response.ok) throw new Error(`/__scheduled answered ${response.status}`);
 		},
-		onError: error => process.stderr.write(`preview: Live Results cron not fired: ${error?.message ?? error}\n`),
+		onError: (error) =>
+			process.stderr.write(`preview: Live Results cron not fired: ${error?.message ?? error}\n`),
 	});
 
 	// A stop signal sent to this process alone is passed on and this waits for
 	// Wrangler to exit, so workerd is never stranded.
-	const forward = signal => child.kill(signal);
-	for (const signal of STOP_SIGNALS)
-		signals?.on(signal, forward);
+	const forward = (signal) => child.kill(signal);
+	for (const signal of STOP_SIGNALS) signals?.on(signal, forward);
 	return await new Promise((resolve) => {
 		child.once('exit', (code, signal) => {
 			cron.stop();
-			for (const stopSignal of STOP_SIGNALS)
-				signals?.off(stopSignal, forward);
+			for (const stopSignal of STOP_SIGNALS) signals?.off(stopSignal, forward);
 			resolve(code ?? (signal ? 1 : 0));
 		});
 	});

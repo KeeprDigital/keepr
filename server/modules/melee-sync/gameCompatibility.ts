@@ -1,9 +1,9 @@
 import type { Game } from '~~/shared/types/enums';
 
-export type MeleeGameCompatibility
-	= | { status: 'compatible'; meleeGame: Game }
-		| { status: 'mismatch'; meleeGame: Game }
-		| { status: 'unknown'; meleeGame: null };
+export type MeleeGameCompatibility =
+	| { status: 'compatible'; meleeGame: Game }
+	| { status: 'mismatch'; meleeGame: Game }
+	| { status: 'unknown'; meleeGame: null };
 
 // Melee's tournament API serializes the game as a PascalCase enum name
 // (e.g. "MagicTheGathering"), so names are compared without separators to
@@ -23,17 +23,14 @@ function normalizeMeleeGameName(value: string): string {
 export function mapMeleeGame(value: string): Game | null {
 	const normalized = normalizeMeleeGameName(value);
 	if (
-		normalized === 'mtg'
-		|| normalized === 'mtgarena'
-		|| normalized.startsWith('magicthegathering')
+		normalized === 'mtg' ||
+		normalized === 'mtgarena' ||
+		normalized.startsWith('magicthegathering')
 	) {
 		return 'mtg';
 	}
 
-	if (
-		normalized === 'opcg'
-		|| normalized.startsWith('onepiece')
-	) {
+	if (normalized === 'opcg' || normalized.startsWith('onepiece')) {
 		return 'op';
 	}
 
@@ -45,8 +42,7 @@ export function inspectMeleeGameCompatibility(
 	meleeGameName: string,
 ): MeleeGameCompatibility {
 	const meleeGame = mapMeleeGame(meleeGameName);
-	if (!meleeGame)
-		return { status: 'unknown', meleeGame: null };
+	if (!meleeGame) return { status: 'unknown', meleeGame: null };
 
 	return meleeGame === eventGame
 		? { status: 'compatible', meleeGame }
@@ -58,4 +54,5 @@ export function inspectMeleeGameCompatibility(
  * that far: the Event's own game is MTG, since Melee Sync refuses any other
  * before a workflow runs (`requireMeleeSyncOffered`, ADR-0057).
  */
-export const UNRECOGNIZED_GAME_DECK_LISTS_MESSAGE = 'Melee.gg reported an unrecognized game, so MTG Deck Lists were not imported';
+export const UNRECOGNIZED_GAME_DECK_LISTS_MESSAGE =
+	'Melee.gg reported an unrecognized game, so MTG Deck Lists were not imported';

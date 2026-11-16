@@ -11,10 +11,11 @@ import Display from '~/components/Screen/Modes/Deck/Display.vue';
 const eventStore = reactive({ displayEvent: null as { game: string; variant?: string } | null });
 mockNuxtImport('useEventStore', () => () => eventStore);
 
-function mountDisplay(deckSource: Record<string, unknown>, options: { game?: string; variant?: string; sampleDataset?: 'mtg' | 'op' } = {}) {
-	eventStore.displayEvent = options.game
-		? { game: options.game, variant: options.variant }
-		: null;
+function mountDisplay(
+	deckSource: Record<string, unknown>,
+	options: { game?: string; variant?: string; sampleDataset?: 'mtg' | 'op' } = {},
+) {
+	eventStore.displayEvent = options.game ? { game: options.game, variant: options.variant } : null;
 	const Parent = defineComponent({
 		setup() {
 			provideScreenContext({
@@ -84,12 +85,14 @@ describe('the Deck List Screen Mode', () => {
 			layout: 'mtg',
 			followsSeat: 'true',
 		},
-	])('lays out $name in the $layout layout', ({ source, options, layout, followsSeat = 'false' }) => {
-		const wrapper = mountDisplay(source, options);
+	])(
+		'lays out $name in the $layout layout',
+		({ source, options, layout, followsSeat = 'false' }) => {
+			const wrapper = mountDisplay(source, options);
 
-		const shown = wrapper.find('[data-layout]').attributes();
-		expect(shown['data-layout']).toBe(layout);
-		if (layout === 'mtg')
-			expect(shown['data-follows-seat']).toBe(followsSeat);
-	});
+			const shown = wrapper.find('[data-layout]').attributes();
+			expect(shown['data-layout']).toBe(layout);
+			if (layout === 'mtg') expect(shown['data-follows-seat']).toBe(followsSeat);
+		},
+	);
 });

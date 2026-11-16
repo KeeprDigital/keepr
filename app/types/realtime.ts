@@ -13,7 +13,15 @@ export type RealtimeRoomHandlers = {
 
 export interface RealtimeConnectionState {
 	isConnected: boolean;
-	connectionState: 'initialized' | 'connecting' | 'connected' | 'disconnected' | 'suspended' | 'closing' | 'closed' | 'failed';
+	connectionState:
+		| 'initialized'
+		| 'connecting'
+		| 'connected'
+		| 'disconnected'
+		| 'suspended'
+		| 'closing'
+		| 'closed'
+		| 'failed';
 	error: Error | null;
 }
 
@@ -36,8 +44,9 @@ export interface RealtimePresenceMessage<Data extends RealtimePresenceData = Rea
 	data?: Partial<Data>;
 }
 
-export type RealtimePresenceCallback<Data extends RealtimePresenceData = RealtimePresenceData>
-	= (members: RealtimePresenceMessage<Data>[]) => void;
+export type RealtimePresenceCallback<Data extends RealtimePresenceData = RealtimePresenceData> = (
+	members: RealtimePresenceMessage<Data>[],
+) => void;
 
 export interface RealtimeTransport {
 	readonly connectionId?: string;

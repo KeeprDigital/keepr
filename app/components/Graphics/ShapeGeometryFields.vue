@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { ShapeGeometryPresetId } from '~~/shared/modules/graphics';
-import type { ShapeCorner, ShapeCornerKey, ShapeCornerTreatment, ShapeGeometry } from '~~/shared/types/graphics';
+import type {
+	ShapeCorner,
+	ShapeCornerKey,
+	ShapeCornerTreatment,
+	ShapeGeometry,
+} from '~~/shared/types/graphics';
 import { SHAPE_GEOMETRY_PRESETS } from '~~/shared/modules/graphics';
 import { MAX_SHAPE_GEOMETRY_PX } from '~~/shared/types/graphics';
 
@@ -23,12 +28,15 @@ import { MAX_SHAPE_GEOMETRY_PX } from '~~/shared/types/graphics';
  * does: every corner is rounded, 0 being square, so it offers no treatment, no
  * preset and no slant, and always asks for each corner's size.
  */
-const props = withDefaults(defineProps<{
-	geometry: ShapeGeometry;
-	radii?: boolean;
-	disabled?: boolean;
-	size?: 'xs' | 'sm';
-}>(), { size: 'sm' });
+const props = withDefaults(
+	defineProps<{
+		geometry: ShapeGeometry;
+		radii?: boolean;
+		disabled?: boolean;
+		size?: 'xs' | 'sm';
+	}>(),
+	{ size: 'sm' },
+);
 
 const emit = defineEmits<{
 	update: [patch: Partial<ShapeGeometry>];
@@ -76,19 +84,17 @@ function updateCorner(corner: ShapeCornerKey, fields: Partial<ShapeCorner>) {
 		emit('update', { [corner]: next });
 		return;
 	}
-	emit('update', Object.fromEntries(CORNERS.map(({ key }) => [
-		key,
-		{ ...next },
-	])) as Partial<ShapeGeometry>);
+	emit(
+		'update',
+		Object.fromEntries(CORNERS.map(({ key }) => [key, { ...next }])) as Partial<ShapeGeometry>,
+	);
 }
 </script>
 
 <template>
 	<div class="space-y-3">
 		<div v-if="!radii">
-			<p class="mb-1 text-xs font-medium text-muted">
-				Start from
-			</p>
+			<p class="mb-1 text-xs font-medium text-muted">Start from</p>
 			<div class="grid grid-cols-2 gap-1" data-testid="shape-geometry-preset">
 				<UButton
 					v-for="preset in SHAPE_GEOMETRY_PRESETS"
@@ -109,9 +115,7 @@ function updateCorner(corner: ShapeCornerKey, fields: Partial<ShapeCorner>) {
 
 		<div>
 			<div class="mb-1 flex items-center justify-between gap-2">
-				<p class="text-xs font-medium text-muted">
-					Corners
-				</p>
+				<p class="text-xs font-medium text-muted">Corners</p>
 				<UButton
 					size="xs"
 					:variant="allCorners ? 'subtle' : 'ghost'"
@@ -173,9 +177,7 @@ function updateCorner(corner: ShapeCornerKey, fields: Partial<ShapeCorner>) {
 		</div>
 
 		<div v-if="!radii">
-			<p class="mb-1 text-xs font-medium text-muted">
-				Edge slant
-			</p>
+			<p class="mb-1 text-xs font-medium text-muted">Edge slant</p>
 			<div class="grid grid-cols-2 gap-2">
 				<GraphicsNumberField
 					v-for="slant in SLANTS"

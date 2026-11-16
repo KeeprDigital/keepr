@@ -1,4 +1,8 @@
-import type { PlayerDeckCardEntry, PlayerDeckCollectionResponse, PlayerDeckResponse } from '~~/shared/types/metagame';
+import type {
+	PlayerDeckCardEntry,
+	PlayerDeckCollectionResponse,
+	PlayerDeckResponse,
+} from '~~/shared/types/metagame';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockPlayer } from '~~/test/helpers/fixtures';
@@ -50,9 +54,10 @@ function deck(overrides: Partial<PlayerDeckResponse> = {}): PlayerDeckResponse {
 	};
 }
 
-function collection(decks: PlayerDeckResponse[] = [
-	deck(),
-], selectedDeckId = decks[0]?.id ?? null): PlayerDeckCollectionResponse {
+function collection(
+	decks: PlayerDeckResponse[] = [deck()],
+	selectedDeckId = decks[0]?.id ?? null,
+): PlayerDeckCollectionResponse {
 	return { decks, selectedDeckId };
 }
 
@@ -65,9 +70,7 @@ describe('usePlayerDeckCache', () => {
 	it('fetches the deck collection and returns its selected deck', async () => {
 		const response = collection([
 			deck({
-				cards: [
-					card({ name: 'Lightning Bolt', quantity: 4 }),
-				],
+				cards: [card({ name: 'Lightning Bolt', quantity: 4 })],
 			}),
 		]);
 		mockFetch.mockResolvedValueOnce(response);
@@ -84,7 +87,10 @@ describe('usePlayerDeckCache', () => {
 
 	// A reader that retries must tell a failed read from a Player with no deck; one that does not reads no deck.
 	it('rejects a failed read through readDeck, answers fetchDeck with no deck, and reads again next time', async () => {
-		mockFetch.mockRejectedValueOnce(new Error('network down')).mockRejectedValueOnce(new Error('network down')).mockResolvedValueOnce(collection());
+		mockFetch
+			.mockRejectedValueOnce(new Error('network down'))
+			.mockRejectedValueOnce(new Error('network down'))
+			.mockResolvedValueOnce(collection());
 		const cache = usePlayerDeckCache();
 
 		await expect(cache.readDeck(1, 1, new Date('2026-01-01'))).rejects.toThrow('network down');
@@ -129,9 +135,11 @@ describe('usePlayerDeckCache', () => {
 
 	it('deduplicates concurrent collection requests', async () => {
 		let resolveFetch!: (value: PlayerDeckCollectionResponse) => void;
-		mockFetch.mockReturnValueOnce(new Promise<PlayerDeckCollectionResponse>((resolve) => {
-			resolveFetch = resolve;
-		}));
+		mockFetch.mockReturnValueOnce(
+			new Promise<PlayerDeckCollectionResponse>((resolve) => {
+				resolveFetch = resolve;
+			}),
+		);
 		const cache = usePlayerDeckCache();
 		const updatedAt = new Date('2026-01-01');
 
@@ -160,7 +168,9 @@ describe('usePlayerDeckCache', () => {
 		});
 		mockFetch.mockResolvedValueOnce(collection([primary, finals], primary.id));
 
-		const result = await usePlayerDeckCache().fetchDeck(1, 1, new Date('2026-01-01'), { phaseId: 2 });
+		const result = await usePlayerDeckCache().fetchDeck(1, 1, new Date('2026-01-01'), {
+			phaseId: 2,
+		});
 
 		expect(result?.id).toBe(20);
 		expect(mockFetch).toHaveBeenCalledWith('/api/events/1/players/1/decks', {
@@ -183,21 +193,19 @@ describe('usePlayerDeckCache', () => {
 
 	it('does not cache a read that was in flight when the cache was cleared (#648)', async () => {
 		let resolveFetch!: (value: PlayerDeckCollectionResponse) => void;
-		mockFetch.mockReturnValueOnce(new Promise<PlayerDeckCollectionResponse>((resolve) => {
-			resolveFetch = resolve;
-		}));
-		mockFetch.mockResolvedValue(collection([
-			deck({ name: 'After' }),
-		]));
+		mockFetch.mockReturnValueOnce(
+			new Promise<PlayerDeckCollectionResponse>((resolve) => {
+				resolveFetch = resolve;
+			}),
+		);
+		mockFetch.mockResolvedValue(collection([deck({ name: 'After' })]));
 		const cache = usePlayerDeckCache();
 		const updatedAt = new Date('2026-01-01');
 
 		// Served before a resolution committed, delivered after it was announced.
 		const stale = cache.fetchDeck(1, 1, updatedAt);
 		clearPlayerDeckCache();
-		resolveFetch(collection([
-			deck({ name: 'Before' }),
-		]));
+		resolveFetch(collection([deck({ name: 'Before' })]));
 		await stale;
 
 		expect(cache.getCachedDeck(1)).toBeNull();
@@ -206,20 +214,18 @@ describe('usePlayerDeckCache', () => {
 
 	it('does not cache a read of a Player whose cached Deck Lists were dropped while it was in flight (#648)', async () => {
 		let resolveFetch!: (value: PlayerDeckCollectionResponse) => void;
-		mockFetch.mockReturnValueOnce(new Promise<PlayerDeckCollectionResponse>((resolve) => {
-			resolveFetch = resolve;
-		}));
-		mockFetch.mockResolvedValue(collection([
-			deck({ name: 'After' }),
-		]));
+		mockFetch.mockReturnValueOnce(
+			new Promise<PlayerDeckCollectionResponse>((resolve) => {
+				resolveFetch = resolve;
+			}),
+		);
+		mockFetch.mockResolvedValue(collection([deck({ name: 'After' })]));
 		const cache = usePlayerDeckCache();
 		const updatedAt = new Date('2026-01-01');
 
 		const stale = cache.fetchDeck(1, 1, updatedAt);
 		cache.clearCachedDeck(1);
-		resolveFetch(collection([
-			deck({ name: 'Before' }),
-		]));
+		resolveFetch(collection([deck({ name: 'Before' })]));
 		await stale;
 
 		expect(cache.getCachedDeck(1)).toBeNull();
@@ -230,9 +236,7 @@ describe('usePlayerDeckCache', () => {
 		const importedDeck = deck({
 			name: 'Imported Name',
 			submittedName: 'Imported Name',
-			cards: [
-				card(),
-			],
+			cards: [card()],
 		});
 		mockFetch.mockResolvedValueOnce(collection([importedDeck]));
 		const cache = usePlayerDeckCache();
@@ -269,16 +273,18 @@ describe('usePlayerDeckCache', () => {
 		});
 	});
 
-	it('clears a cached deck\'s review with the server\'s answer', async () => {
+	it("clears a cached deck's review with the server's answer", async () => {
 		const reviewedAt = new Date('2026-01-01').toISOString() as never;
-		mockFetch.mockResolvedValueOnce(collection([
-			deck({
-				archetypeId: 5,
-				reviewedAt,
-				name: 'Burn',
-				colors: 'R',
-			}),
-		]));
+		mockFetch.mockResolvedValueOnce(
+			collection([
+				deck({
+					archetypeId: 5,
+					reviewedAt,
+					name: 'Burn',
+					colors: 'R',
+				}),
+			]),
+		);
 		const cache = usePlayerDeckCache();
 		const player = createMockPlayer({ id: 1 });
 		await cache.fetchDeck(player.id, 1, player.updatedAt);
@@ -293,7 +299,9 @@ describe('usePlayerDeckCache', () => {
 
 		await cache.clearDeckReview(1, 1, 10);
 
-		expect(mockFetch).toHaveBeenLastCalledWith('/api/events/1/players/1/decks/10/review', { method: 'DELETE' });
+		expect(mockFetch).toHaveBeenLastCalledWith('/api/events/1/players/1/decks/10/review', {
+			method: 'DELETE',
+		});
 		expect(cache.getDeckLists(player as never)).toMatchObject([
 			{
 				deckId: 10,
@@ -304,23 +312,25 @@ describe('usePlayerDeckCache', () => {
 		]);
 	});
 
-	it('moves a merged Archetype\'s cached decks to its survivor, still reviewed', async () => {
+	it("moves a merged Archetype's cached decks to its survivor, still reviewed", async () => {
 		const reviewedAt = new Date('2026-01-01').toISOString() as never;
-		mockFetch.mockResolvedValue(collection([
-			deck({
-				archetypeId: 5,
-				reviewedAt,
-				name: 'Burn',
-				colors: 'R',
-			}),
-			deck({
-				id: 11,
-				archetypeId: 6,
-				reviewedAt,
-				name: 'Control',
-				colors: 'U',
-			}),
-		]));
+		mockFetch.mockResolvedValue(
+			collection([
+				deck({
+					archetypeId: 5,
+					reviewedAt,
+					name: 'Burn',
+					colors: 'R',
+				}),
+				deck({
+					id: 11,
+					archetypeId: 6,
+					reviewedAt,
+					name: 'Control',
+					colors: 'U',
+				}),
+			]),
+		);
 		const cache = usePlayerDeckCache();
 		const player = createMockPlayer({ id: 1 });
 		await cache.fetchDeck(player.id, 1, player.updatedAt);

@@ -1,6 +1,10 @@
 import type { ScreenCard } from '~~/shared/types/card/mtg';
 import type { OpCardDetail, OpCardSummary, OpScreenCard } from '~~/shared/types/card/op';
-import type { CommanderSeatDeckData, MatchPlayerDeckData, OpMatchPlayerDeckData } from '~/types/card/deckList';
+import type {
+	CommanderSeatDeckData,
+	MatchPlayerDeckData,
+	OpMatchPlayerDeckData,
+} from '~/types/card/deckList';
 import type { MtgActiveCardAction, MtgCard, MtgFormat } from '~/types/card/mtg';
 import type { CardMatchup, CardPageMode } from '~/types/card/page';
 import { useCountdown, useStorage } from '@vueuse/core';
@@ -46,9 +50,14 @@ export const useCardStore = defineStore('card', () => {
 	const opDeckListPlayer2 = ref<OpMatchPlayerDeckData | null>(null);
 	/** A Commander Event's Slot Seats somebody sits in, each with its Commanders and list (ADR-0087). */
 	const commanderDeckListSeats = ref<CommanderSeatDeckData[]>([]);
-	const deckListHasData = computed(() => deckListPlayer1.value !== null || deckListPlayer2.value !== null
-		|| opDeckListPlayer1.value !== null || opDeckListPlayer2.value !== null
-		|| commanderDeckListSeats.value.length > 0);
+	const deckListHasData = computed(
+		() =>
+			deckListPlayer1.value !== null ||
+			deckListPlayer2.value !== null ||
+			opDeckListPlayer1.value !== null ||
+			opDeckListPlayer2.value !== null ||
+			commanderDeckListSeats.value.length > 0,
+	);
 	const deckListRoundId = ref<number | null>(null);
 	const deckListMatchup = ref<CardMatchup | null>(null);
 	const deckListFilter = ref('');
@@ -152,18 +161,22 @@ export const useCardStore = defineStore('card', () => {
 	/** A One Piece Event's matchups are its Feature Match Slots, read as One Piece Deck Lists. */
 	const isOpEvent = computed(() => eventStore.event?.game === 'op');
 	/** A Commander Event's are its Slots too, each Seat read as its Commanders and list (ADR-0087). */
-	const isCommanderEvent = computed(() => !!eventStore.event && eventKind(eventStore.event) === 'mtg-commander');
+	const isCommanderEvent = computed(
+		() => !!eventStore.event && eventKind(eventStore.event) === 'mtg-commander',
+	);
 	const canUseDeckListMode = computed(() => {
-		if (isOpEvent.value)
-			return opDeckSourceRuntime.canUseDeckListMode.value;
+		if (isOpEvent.value) return opDeckSourceRuntime.canUseDeckListMode.value;
 		return isCommanderEvent.value
 			? commanderDeckSourceRuntime.canUseDeckListMode.value
 			: deckSourceRuntime.canUseDeckListMode.value;
 	});
 	const canUsePlayerDeckMode = deckSourceRuntime.canUsePlayerDeckMode;
-	const cardDataDegraded = computed(() => deckSourceRuntime.cardDataDegraded.value
-		|| opDeckSourceRuntime.cardDataDegraded.value
-		|| commanderDeckSourceRuntime.cardDataDegraded.value);
+	const cardDataDegraded = computed(
+		() =>
+			deckSourceRuntime.cardDataDegraded.value ||
+			opDeckSourceRuntime.cardDataDegraded.value ||
+			commanderDeckSourceRuntime.cardDataDegraded.value,
+	);
 
 	// ──────────────── Active Screen ────────────────
 
@@ -176,11 +189,13 @@ export const useCardStore = defineStore('card', () => {
 		// An OP card is shown as printed: the same Printing is the same card on screen.
 		if (isOpScreenCard(active) || opPreviewCard.value)
 			return isOpScreenCard(active) && active.id === opPreviewCard.value?.id;
-		return active?.id === previewCard.value?.id
-			&& active?.displayData.flipped === previewCard.value?.displayData.flipped
-			&& active?.displayData.rotated === previewCard.value?.displayData.rotated
-			&& active?.displayData.turnedOver === previewCard.value?.displayData.turnedOver
-			&& active?.displayData.counterRotated === previewCard.value?.displayData.counterRotated;
+		return (
+			active?.id === previewCard.value?.id &&
+			active?.displayData.flipped === previewCard.value?.displayData.flipped &&
+			active?.displayData.rotated === previewCard.value?.displayData.rotated &&
+			active?.displayData.turnedOver === previewCard.value?.displayData.turnedOver &&
+			active?.displayData.counterRotated === previewCard.value?.displayData.counterRotated
+		);
 	});
 
 	const searchFormatQuery = cardSearchRuntime.searchFormatQuery;
@@ -202,8 +217,7 @@ export const useCardStore = defineStore('card', () => {
 	// ──────────────── Card Controls ────────────────
 
 	async function controlActiveCard(action: MtgActiveCardAction) {
-		if (!activeCard.value)
-			return;
+		if (!activeCard.value) return;
 
 		if (action === 'clear') {
 			await clearActiveCard();
@@ -226,12 +240,9 @@ export const useCardStore = defineStore('card', () => {
 	// ──────────────── Deck List Loading ────────────────
 
 	async function loadMatchDeckLists(slotId: number) {
-		if (isOpEvent.value)
-			await opDeckSourceRuntime.loadMatchDeckLists(slotId);
-		else if (isCommanderEvent.value)
-			await commanderDeckSourceRuntime.loadMatchDeckLists(slotId);
-		else
-			await deckSourceRuntime.loadMatchDeckLists(slotId);
+		if (isOpEvent.value) await opDeckSourceRuntime.loadMatchDeckLists(slotId);
+		else if (isCommanderEvent.value) await commanderDeckSourceRuntime.loadMatchDeckLists(slotId);
+		else await deckSourceRuntime.loadMatchDeckLists(slotId);
 	}
 	const loadMatchupDeckLists = deckSourceRuntime.loadMatchupDeckLists;
 	function clearMatchDeckLists() {

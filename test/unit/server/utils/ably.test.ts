@@ -53,7 +53,10 @@ vi.mock('~~/server/modules/screen-output-publication', () => ({
 	publishToScreenOutputs: async () => {},
 }));
 
-vi.stubGlobal('useRuntimeConfig', vi.fn(() => ({ ablyApiKey: 'test-key' })));
+vi.stubGlobal(
+	'useRuntimeConfig',
+	vi.fn(() => ({ ablyApiKey: 'test-key' })),
+);
 vi.stubGlobal('getHeader', vi.fn());
 
 // ──────────────── getOriginConnectionId ────────────────
@@ -189,8 +192,15 @@ describe('publishMessage', () => {
 		const { publishMessageStrict } = await import('~~/server/utils/ably');
 		const { ServiceConfigurationError } = await import('~~/server/utils/errors');
 
-		const failure = await publishMessageStrict(1, 'melee:playersSynced', { playerCount: 2 }, 'conn-123')
-			.then(() => null, error => error);
+		const failure = await publishMessageStrict(
+			1,
+			'melee:playersSynced',
+			{ playerCount: 2 },
+			'conn-123',
+		).then(
+			() => null,
+			(error) => error,
+		);
 
 		expect(failure).toBeInstanceOf(ServiceConfigurationError);
 		expect(failure.message).toBe('NUXT_ABLY_API_KEY is not configured');
@@ -291,7 +301,8 @@ describe('failed realtime publishes', () => {
 		mockPublish.mockRejectedValue(new Error(`No application found ${'x'.repeat(5000)}`));
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
-		const { MAX_PUBLISH_FAILURE_REASON_CHARS } = await import('~~/server/utils/realtimePublishFailure');
+		const { MAX_PUBLISH_FAILURE_REASON_CHARS } =
+			await import('~~/server/utils/realtimePublishFailure');
 
 		await publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123');
 
@@ -468,13 +479,17 @@ describe('publishScreenCommand', () => {
 	// A refused publish leaves as this server's failure, not the provider's status
 	// that h3 would otherwise adopt as the route's answer (#264).
 	describe('when the provider refuses the publish', () => {
-		it('propagates a named server-side failure instead of the provider\'s 404', async () => {
+		it("propagates a named server-side failure instead of the provider's 404", async () => {
 			mockPublish.mockRejectedValue(new ErrorInfoShaped('No application found', 40400, 404));
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
-			const { REALTIME_PUBLISH_FAILED_MESSAGE, RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
+			const { REALTIME_PUBLISH_FAILED_MESSAGE, RealtimePublishError } =
+				await import('~~/server/utils/realtimePublishFailure');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(() => null, error => error);
+			const failure = await publishScreenCommand(1, 10, 'identify').then(
+				() => null,
+				(error) => error,
+			);
 
 			expect(failure).toBeInstanceOf(RealtimePublishError);
 			expect(failure.statusCode).toBe(502);
@@ -482,7 +497,7 @@ describe('publishScreenCommand', () => {
 			errorSpy.mockRestore();
 		});
 
-		it('carries the provider\'s numeric code, which is what names the refusal', async () => {
+		it("carries the provider's numeric code, which is what names the refusal", async () => {
 			// The error handler logs a cause's `code`, and 40400 is the answer to
 			// "why did this fail" — 'No application found' for a key whose app does
 			// not exist. Nothing else in the request log line can say that.
@@ -490,13 +505,16 @@ describe('publishScreenCommand', () => {
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(() => null, error => error);
+			const failure = await publishScreenCommand(1, 10, 'identify').then(
+				() => null,
+				(error) => error,
+			);
 
 			expect(failure.code).toBe(40400);
 			errorSpy.mockRestore();
 		});
 
-		it('keeps the provider\'s own account of it in the log', async () => {
+		it("keeps the provider's own account of it in the log", async () => {
 			// The same field set the swallowing path emits (#253), for the same
 			// reason: the response is not allowed to carry the provider's text, so
 			// this line is the only place 'No application found' is ever said.
@@ -525,7 +543,10 @@ describe('publishScreenCommand', () => {
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(() => null, error => error);
+			const failure = await publishScreenCommand(1, 10, 'identify').then(
+				() => null,
+				(error) => error,
+			);
 
 			expect(failure.cause).toBe(refusal);
 			errorSpy.mockRestore();
@@ -543,7 +564,10 @@ describe('publishScreenCommand', () => {
 			const { RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
 			const { ServiceConfigurationError } = await import('~~/server/utils/errors');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(() => null, error => error);
+			const failure = await publishScreenCommand(1, 10, 'identify').then(
+				() => null,
+				(error) => error,
+			);
 
 			expect(failure).not.toBeInstanceOf(RealtimePublishError);
 			expect(failure).toBeInstanceOf(ServiceConfigurationError);
@@ -559,7 +583,10 @@ describe('publishScreenCommand', () => {
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 			const { mapPublicNitroError } = await import('~~/server/utils/nitroErrorMapping');
 
-			const cause = await publishScreenCommand(1, 10, 'identify').then(() => null, error => error);
+			const cause = await publishScreenCommand(1, 10, 'identify').then(
+				() => null,
+				(error) => error,
+			);
 			const error = {
 				statusCode: 500,
 				message: 'Something went wrong',

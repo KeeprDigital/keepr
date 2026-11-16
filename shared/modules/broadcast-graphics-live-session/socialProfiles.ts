@@ -5,12 +5,13 @@ import type {
 	SocialProfileProjectionValue,
 	SocialProfileProjectionValues,
 } from '../../types/graphics';
-import type { GraphicBindingDataSet, GraphicBindingTalent, GraphicSourceSelectionsState } from '../graphics';
+import type {
+	GraphicBindingDataSet,
+	GraphicBindingTalent,
+	GraphicSourceSelectionsState,
+} from '../graphics';
 import type { BroadcastGraphicsLiveState } from './playout';
-import {
-	socialProfileValues,
-	SUPPORTED_SOCIAL_NETWORKS,
-} from '../../socialProfiles';
+import { socialProfileValues, SUPPORTED_SOCIAL_NETWORKS } from '../../socialProfiles';
 import { projectInterval } from '../../utils/interval';
 import { resolveGraphicSourceSelections } from '../graphics';
 
@@ -83,18 +84,25 @@ export interface SocialProfilePresentationProjection {
 /** Hard recovery/render bound: two complete catalog-width sampled visuals. */
 export const MAX_SOCIAL_PROFILE_PRESENTATION_LAYERS = SUPPORTED_SOCIAL_NETWORKS.length * 2;
 
-export type BroadcastGraphicSocialProfileProjectionStates
-	= Record<string, SocialProfileProjectionLiveState>;
+export type BroadcastGraphicSocialProfileProjectionStates = Record<
+	string,
+	SocialProfileProjectionLiveState
+>;
 
 function socialProfileTransitionSlide(
 	transition: SocialProfileProjectionDeclaration['transition'],
 ): { x: number; y: number } | undefined {
 	switch (transition) {
-		case 'slide-left': return { x: -100, y: 0 };
-		case 'slide-right': return { x: 100, y: 0 };
-		case 'slide-up': return { x: 0, y: -100 };
-		case 'slide-down': return { x: 0, y: 100 };
-		default: return undefined;
+		case 'slide-left':
+			return { x: -100, y: 0 };
+		case 'slide-right':
+			return { x: 100, y: 0 };
+		case 'slide-up':
+			return { x: 0, y: -100 };
+		case 'slide-down':
+			return { x: 0, y: 100 };
+		default:
+			return undefined;
 	}
 }
 
@@ -102,32 +110,34 @@ function sameSocialProfileTuple(
 	left: SocialProfileProjectionValue,
 	right: SocialProfileProjectionValue,
 ): boolean {
-	return left.network === right.network
-		&& left.networkLabel === right.networkLabel
-		&& left.handle === right.handle
-		&& left.profileUrl === right.profileUrl;
+	return (
+		left.network === right.network &&
+		left.networkLabel === right.networkLabel &&
+		left.handle === right.handle &&
+		left.profileUrl === right.profileUrl
+	);
 }
 
 function structurallySame(left: unknown, right: unknown): boolean {
-	if (left === right)
-		return true;
+	if (left === right) return true;
 	if (Array.isArray(left) || Array.isArray(right)) {
-		return Array.isArray(left)
-			&& Array.isArray(right)
-			&& left.length === right.length
-			&& left.every((entry, index) => structurallySame(entry, right[index]));
+		return (
+			Array.isArray(left) &&
+			Array.isArray(right) &&
+			left.length === right.length &&
+			left.every((entry, index) => structurallySame(entry, right[index]))
+		);
 	}
 	if (typeof left !== 'object' || typeof right !== 'object' || left === null || right === null)
 		return false;
-	const keys = new Set([
-		...Object.keys(left),
-		...Object.keys(right),
-	]);
+	const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
 	for (const key of keys) {
-		if (!structurallySame(
-			(left as Record<string, unknown>)[key],
-			(right as Record<string, unknown>)[key],
-		)) {
+		if (
+			!structurallySame(
+				(left as Record<string, unknown>)[key],
+				(right as Record<string, unknown>)[key],
+			)
+		) {
 			return false;
 		}
 	}
@@ -156,15 +166,16 @@ export function sameSocialProfileProjectionAcceptance(
 	left: Pick<SocialProfileProjectionLiveState, 'talent' | 'acceptedProfiles'> | undefined,
 	right: Pick<SocialProfileProjectionLiveState, 'talent' | 'acceptedProfiles'> | undefined,
 ): boolean {
-	if (left === undefined || right === undefined)
-		return left === right;
+	if (left === undefined || right === undefined) return left === right;
 	if (left.talent?.id !== right.talent?.id || left.talent?.name !== right.talent?.name)
 		return false;
-	return left.acceptedProfiles.length === right.acceptedProfiles.length
-		&& left.acceptedProfiles.every((profile, index) => {
+	return (
+		left.acceptedProfiles.length === right.acceptedProfiles.length &&
+		left.acceptedProfiles.every((profile, index) => {
 			const candidate = right.acceptedProfiles[index];
 			return candidate !== undefined && sameSocialProfileTuple(profile, candidate);
-		});
+		})
+	);
 }
 
 /**
@@ -177,28 +188,30 @@ export function sameSocialProfileProjectionAcceptance(
  */
 export function projectSocialProfileRotation(
 	state: SocialProfileProjectionLiveState,
-	declaration: Pick<SocialProfileProjectionDeclaration, 'dwellMs' | 'transition' | 'transitionDurationMs'>,
+	declaration: Pick<
+		SocialProfileProjectionDeclaration,
+		'dwellMs' | 'transition' | 'transitionDurationMs'
+	>,
 	context: { onAir: boolean; now?: number },
 ): SocialProfileRotationProjection {
-	const fallback = state.acceptedProfiles.find(profile => profile.network === state.currentNetwork)
-		?? state.acceptedProfiles[0];
-	const transitionMs = declaration.transition === 'cut'
-		? 0
-		: Math.max(0, declaration.transitionDurationMs);
-	const interruptedElapsed = state.transitionAnchor && context.now !== undefined
-		? context.now - state.transitionAnchor.startedAt
-		: Number.POSITIVE_INFINITY;
+	const fallback =
+		state.acceptedProfiles.find((profile) => profile.network === state.currentNetwork) ??
+		state.acceptedProfiles[0];
+	const transitionMs =
+		declaration.transition === 'cut' ? 0 : Math.max(0, declaration.transitionDurationMs);
+	const interruptedElapsed =
+		state.transitionAnchor && context.now !== undefined
+			? context.now - state.transitionAnchor.startedAt
+			: Number.POSITIVE_INFINITY;
 	if (
-		Number.isFinite(context.now)
-		&& transitionMs > 0
-		&& state.transitionAnchor
-		&& interruptedElapsed >= 0
-		&& interruptedElapsed < transitionMs
+		Number.isFinite(context.now) &&
+		transitionMs > 0 &&
+		state.transitionAnchor &&
+		interruptedElapsed >= 0 &&
+		interruptedElapsed < transitionMs
 	) {
 		return {
-			...(fallback
-				? { current: fallback }
-				: {}),
+			...(fallback ? { current: fallback } : {}),
 			phase: { kind: 'transition', elapsedMs: interruptedElapsed, durationMs: transitionMs },
 		};
 	}
@@ -210,17 +223,17 @@ export function projectSocialProfileRotation(
 
 	const anchor = state.rotationAnchor;
 	const anchorIndex = anchor
-		? state.acceptedProfiles.findIndex(profile => profile.network === anchor.network)
+		? state.acceptedProfiles.findIndex((profile) => profile.network === anchor.network)
 		: -1;
 	if (
-		state.automatic === false
-		|| !context.onAir
-		|| context.now === undefined
-		|| !Number.isFinite(context.now)
-		|| !anchor
-		|| !Number.isFinite(anchor.anchoredAt)
-		|| anchorIndex < 0
-		|| state.acceptedProfiles.length <= 1
+		state.automatic === false ||
+		!context.onAir ||
+		context.now === undefined ||
+		!Number.isFinite(context.now) ||
+		!anchor ||
+		!Number.isFinite(anchor.anchoredAt) ||
+		anchorIndex < 0 ||
+		state.acceptedProfiles.length <= 1
 	) {
 		return {
 			current: fallback,
@@ -247,9 +260,15 @@ export function projectSocialProfileRotation(
 
 	// Past the anchor profile's dwell, every step is one period of an interval:
 	// its transition, then its dwell.
-	const { step: completedSteps, elapsedInStepMs: withinStep } = projectInterval(dwellMs, transitionMs + dwellMs, elapsed);
-	const outgoing = state.acceptedProfiles[(anchorIndex + completedSteps) % state.acceptedProfiles.length]!;
-	const current = state.acceptedProfiles[(anchorIndex + completedSteps + 1) % state.acceptedProfiles.length]!;
+	const { step: completedSteps, elapsedInStepMs: withinStep } = projectInterval(
+		dwellMs,
+		transitionMs + dwellMs,
+		elapsed,
+	);
+	const outgoing =
+		state.acceptedProfiles[(anchorIndex + completedSteps) % state.acceptedProfiles.length]!;
+	const current =
+		state.acceptedProfiles[(anchorIndex + completedSteps + 1) % state.acceptedProfiles.length]!;
 
 	if (transitionMs > 0 && withinStep < transitionMs) {
 		return {
@@ -279,7 +298,10 @@ export function projectSocialProfileRotation(
  */
 export function projectSocialProfilePresentation(
 	state: SocialProfileProjectionLiveState,
-	declaration: Pick<SocialProfileProjectionDeclaration, 'dwellMs' | 'transition' | 'transitionDurationMs'>,
+	declaration: Pick<
+		SocialProfileProjectionDeclaration,
+		'dwellMs' | 'transition' | 'transitionDurationMs'
+	>,
 	context: { onAir: boolean; now?: number },
 ): SocialProfilePresentationProjection {
 	const rotation = projectSocialProfileRotation(state, declaration, context);
@@ -289,36 +311,32 @@ export function projectSocialProfilePresentation(
 	// profile, so an automatic transition — which names its own outgoing profile —
 	// never renders from an anchor a completed manual command left behind.
 	if (
-		rotation.phase.kind === 'transition'
-		&& transitionAnchor
-		&& !rotation.outgoing
-		&& rotation.phase.durationMs !== null
+		rotation.phase.kind === 'transition' &&
+		transitionAnchor &&
+		!rotation.outgoing &&
+		rotation.phase.durationMs !== null
 	) {
 		const durationMs = rotation.phase.durationMs;
 		const progress = Math.max(0, Math.min(1, rotation.phase.elapsedMs / durationMs));
 		const slide = socialProfileTransitionSlide(declaration.transition);
 		const target = rotation.current;
-		const hasTarget = target !== undefined
-			&& transitionAnchor.from.some(layer => sameSocialProfileTuple(layer.values, target));
-		const from = (hasTarget || !rotation.current
-			? transitionAnchor.from
-			: [
-					...transitionAnchor.from,
-					{
-						values: rotation.current,
-						opacity: declaration.transition === 'crossfade'
-							? 0
-							: 1,
-						offsetX: slide?.x === undefined
-							? 0
-							: -slide.x,
-						offsetY: slide?.y === undefined
-							? 0
-							: -slide.y,
-					},
-				])
-			.slice(-MAX_SOCIAL_PROFILE_PRESENTATION_LAYERS);
-		const mix = (start: number, end: number) => start + ((end - start) * progress);
+		const hasTarget =
+			target !== undefined &&
+			transitionAnchor.from.some((layer) => sameSocialProfileTuple(layer.values, target));
+		const from = (
+			hasTarget || !rotation.current
+				? transitionAnchor.from
+				: [
+						...transitionAnchor.from,
+						{
+							values: rotation.current,
+							opacity: declaration.transition === 'crossfade' ? 0 : 1,
+							offsetX: slide?.x === undefined ? 0 : -slide.x,
+							offsetY: slide?.y === undefined ? 0 : -slide.y,
+						},
+					]
+		).slice(-MAX_SOCIAL_PROFILE_PRESENTATION_LAYERS);
+		const mix = (start: number, end: number) => start + (end - start) * progress;
 
 		return {
 			phase: rotation.phase,
@@ -346,9 +364,12 @@ export function projectSocialProfilePresentation(
 			}),
 		};
 	}
-	if (!rotation.current)
-		return { phase: rotation.phase, layers: [] };
-	if (rotation.phase.kind !== 'transition' || !rotation.outgoing || rotation.phase.durationMs === null) {
+	if (!rotation.current) return { phase: rotation.phase, layers: [] };
+	if (
+		rotation.phase.kind !== 'transition' ||
+		!rotation.outgoing ||
+		rotation.phase.durationMs === null
+	) {
 		return {
 			phase: rotation.phase,
 			layers: [
@@ -377,12 +398,8 @@ export function projectSocialProfilePresentation(
 				{
 					values: rotation.current,
 					opacity: 1,
-					offsetX: slide.x === 0
-						? 0
-						: -slide.x * (1 - progress),
-					offsetY: slide.y === 0
-						? 0
-						: -slide.y * (1 - progress),
+					offsetX: slide.x === 0 ? 0 : -slide.x * (1 - progress),
+					offsetY: slide.y === 0 ? 0 : -slide.y * (1 - progress),
 				},
 			],
 		};
@@ -412,15 +429,11 @@ function declaredSocialProfileProjections(
 ): Array<[SocialProfileProjectionDeclaration, SocialProfileProjectionLiveState]> {
 	const projections = state.socialProfileProjections?.[graphic.id] ?? {};
 	const declarations = new Map(
-		(graphic.socialProfileProjections ?? []).map(declaration => [declaration.key, declaration]),
+		(graphic.socialProfileProjections ?? []).map((declaration) => [declaration.key, declaration]),
 	);
 	return Object.entries(projections).flatMap(([projectionKey, projection]) => {
 		const declaration = declarations.get(projectionKey);
-		return declaration
-			? [
-					[declaration, projection],
-				]
-			: [];
+		return declaration ? [[declaration, projection]] : [];
 	});
 }
 
@@ -430,13 +443,15 @@ export function socialProfilePresentationProjections(
 	graphic: Pick<BroadcastGraphicConfig, 'id' | 'socialProfileProjections'>,
 	now?: number,
 ): Record<string, SocialProfilePresentationProjection> {
-	return Object.fromEntries(declaredSocialProfileProjections(state, graphic).map(([declaration, projection]) => [
-		declaration.key,
-		projectSocialProfilePresentation(projection, declaration, {
-			onAir: state.playout[graphic.id]?.onAir === true,
-			now,
-		}),
-	]));
+	return Object.fromEntries(
+		declaredSocialProfileProjections(state, graphic).map(([declaration, projection]) => [
+			declaration.key,
+			projectSocialProfilePresentation(projection, declaration, {
+				onAir: state.playout[graphic.id]?.onAir === true,
+				now,
+			}),
+		]),
+	);
 }
 
 /** The current correlated tuples one live Broadcast Graphic supplies to its renderer. */
@@ -445,29 +460,24 @@ export function socialProfileProjectionValues(
 	graphic: Pick<BroadcastGraphicConfig, 'id' | 'socialProfileProjections'>,
 	now?: number,
 ): SocialProfileProjectionValues {
-	return Object.fromEntries(declaredSocialProfileProjections(state, graphic).flatMap(([declaration, projection]) => {
-		const current = projectSocialProfileRotation(projection, declaration, {
-			onAir: state.playout[graphic.id]?.onAir === true,
-			now,
-		}).current;
-		return current
-			? [
-					[declaration.key, current],
-				]
-			: [];
-	}));
+	return Object.fromEntries(
+		declaredSocialProfileProjections(state, graphic).flatMap(([declaration, projection]) => {
+			const current = projectSocialProfileRotation(projection, declaration, {
+				onAir: state.playout[graphic.id]?.onAir === true,
+				now,
+			}).current;
+			return current ? [[declaration.key, current]] : [];
+		}),
+	);
 }
 
 function talentIdOf(talent: GraphicBindingTalent, data: GraphicBindingDataSet): number | undefined {
 	const ownId = (talent as GraphicBindingTalent & { id?: unknown }).id;
-	if (typeof ownId === 'number' && Number.isFinite(ownId))
-		return ownId;
+	if (typeof ownId === 'number' && Number.isFinite(ownId)) return ownId;
 
 	const entry = Object.entries(data.talents).find(([, candidate]) => candidate === talent);
 	const id = Number(entry?.[0]);
-	return Number.isFinite(id)
-		? id
-		: undefined;
+	return Number.isFinite(id) ? id : undefined;
 }
 
 /**
@@ -487,18 +497,16 @@ export function resolveSocialProfileProjectionAcceptances(
 
 	for (const projection of graphic.socialProfileProjections ?? []) {
 		const source = sources[projection.sourceKey];
-		const talent = source?.kind === 'talent' && source.entity !== undefined
-			? source.entity as GraphicBindingTalent
-			: undefined;
-		const talentId = talent
-			? talentIdOf(talent, data)
-			: undefined;
+		const talent =
+			source?.kind === 'talent' && source.entity !== undefined
+				? (source.entity as GraphicBindingTalent)
+				: undefined;
+		const talentId = talent ? talentIdOf(talent, data) : undefined;
 		// Acceptance rejects exactly what recovery rejects (`socialProfileValues`): a
 		// zero-length or over-bound handle committed here would make every later read
 		// judge the whole session incompatible, and the next Take re-commit the same tuple.
-		const acceptedProfiles = talent && talentId !== undefined
-			? socialProfileValues(talent.socialProfiles)
-			: [];
+		const acceptedProfiles =
+			talent && talentId !== undefined ? socialProfileValues(talent.socialProfiles) : [];
 
 		accepted[projection.key] = {
 			...(talent && talentId !== undefined

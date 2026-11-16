@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { backgroundModeConfigSchema, broadcastGraphicsModeConfigSchema } from '~~/server/schemas/api/screen';
+import {
+	backgroundModeConfigSchema,
+	broadcastGraphicsModeConfigSchema,
+} from '~~/server/schemas/api/screen';
 import { squareShapeGeometry } from '~~/shared/modules/graphics';
 import { parseThemeTokenWrite } from '~~/shared/themeTokens';
 
@@ -91,10 +94,10 @@ function themeLayerAccepts(count: number) {
 
 describe('graphic fill stop bounds', () => {
 	it.each([
-		['a Graphic Item\'s fill', itemAccepts],
+		["a Graphic Item's fill", itemAccepts],
 		['a Theme fill token', tokenAccepts],
-		['a Screen\'s gradient Background Layer', screenLayerAccepts],
-		['a Theme\'s gradient Background Layer', themeLayerAccepts],
+		["a Screen's gradient Background Layer", screenLayerAccepts],
+		["a Theme's gradient Background Layer", themeLayerAccepts],
 	])('holds %s to two to four stops', (_, accepts) => {
 		expect([1, 2, 3, 4, 5].map(accepts)).toEqual([false, true, true, true, false]);
 	});
@@ -106,15 +109,13 @@ describe('a gradient Background Layer', () => {
 	it.each([
 		['a stored CSS gradient string', 'linear-gradient(180deg, #000, #123)', true],
 		['an empty string', '', false],
-		[
-			'a solid Graphic Fill',
-			{ type: 'solid', color: '#0f172a' },
-			false,
-		],
+		['a solid Graphic Fill', { type: 'solid', color: '#0f172a' }, false],
 	])('given %s', (_, gradient, accepted) => {
-		expect(backgroundModeConfigSchema.safeParse({
-			layers: gradientLayers(gradient),
-		}).success).toBe(accepted);
+		expect(
+			backgroundModeConfigSchema.safeParse({
+				layers: gradientLayers(gradient),
+			}).success,
+		).toBe(accepted);
 		expect(parseThemeTokenWrite('background', gradientLayers(gradient)).ok).toBe(accepted);
 	});
 });

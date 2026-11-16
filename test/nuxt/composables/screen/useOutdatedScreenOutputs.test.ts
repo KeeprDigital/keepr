@@ -35,10 +35,7 @@ describe('useOutdatedScreenOutputs', () => {
 		},
 		{
 			reports: 'no protocol',
-			members: [
-				{ data: {} },
-				{},
-			],
+			members: [{ data: {} }, {}],
 			outdated: 2,
 		},
 		{
@@ -54,11 +51,14 @@ describe('useOutdatedScreenOutputs', () => {
 			outdated: 1,
 		},
 		{ reports: 'nothing, having no outputs', members: [], outdated: 0 },
-	])('counts $outdated outdated outputs on a Screen whose outputs report $reports', ({ members, outdated }) => {
-		mockScreenPresence.value.set(7, { count: members.length, members });
+	])(
+		'counts $outdated outdated outputs on a Screen whose outputs report $reports',
+		({ members, outdated }) => {
+			mockScreenPresence.value.set(7, { count: members.length, members });
 
-		expect(useOutdatedScreenOutputs(7).value).toBe(outdated);
-	});
+			expect(useOutdatedScreenOutputs(7).value).toBe(outdated);
+		},
+	);
 
 	it('scopes the count to the asked-for Screen', () => {
 		mockScreenPresence.value.set(7, {

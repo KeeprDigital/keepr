@@ -3,7 +3,12 @@ import type { Seat } from '~~/shared/types/enums';
 import type { CommanderNumber, CommanderSource } from '~~/shared/types/featureMatchState';
 import type { PlayerDisplayConfig } from '~/types';
 import { getCounterTypeConfigs } from '~~/shared/config/games';
-import { commanderDamageFrom, isSeatFilled, seatCommanders, seatPlayerName } from '~~/shared/modules/feature-match-session';
+import {
+	commanderDamageFrom,
+	isSeatFilled,
+	seatCommanders,
+	seatPlayerName,
+} from '~~/shared/modules/feature-match-session';
 import { SEAT_VALUES } from '~~/shared/types/enums';
 import { seatNumber } from '~~/shared/utils/featureMatchSidePlayer';
 
@@ -35,8 +40,15 @@ const emit = defineEmits<{
 const eventStore = useEventStore();
 const featureMatchStateStore = useFeatureMatchStateStore();
 
-const { player, matchState, playerName, playerPronouns, deckName, playerLgs } = usePlayerFeatureMatchData(() => props.matchId, () => props.seat);
-const playerControls = usePlayerControls(() => props.matchId, () => props.seat);
+const { player, matchState, playerName, playerPronouns, deckName, playerLgs } =
+	usePlayerFeatureMatchData(
+		() => props.matchId,
+		() => props.seat,
+	);
+const playerControls = usePlayerControls(
+	() => props.matchId,
+	() => props.seat,
+);
 
 const {
 	showName,
@@ -53,31 +65,36 @@ const {
 	seatLabel,
 } = usePlayerDisplayConfig(() => props.config);
 
-const snapshot = computed(() => followedFeatureMatchSession(props.matchId, featureMatchStateStore)?.sourceSnapshot ?? null);
+const snapshot = computed(
+	() => followedFeatureMatchSession(props.matchId, featureMatchStateStore)?.sourceSnapshot ?? null,
+);
 const filled = computed(() => !!snapshot.value && isSeatFilled(snapshot.value, props.seat));
 
-const isActive = computed(() => activePlayerTrackingEnabled.value && matchState.value?.activePlayer === props.seat);
-const wentFirst = computed(() => activePlayerTrackingEnabled.value && matchState.value?.firstPlayer === props.seat);
+const isActive = computed(
+	() => activePlayerTrackingEnabled.value && matchState.value?.activePlayer === props.seat,
+);
+const wentFirst = computed(
+	() => activePlayerTrackingEnabled.value && matchState.value?.firstPlayer === props.seat,
+);
 const eliminated = computed(() => player.value?.eliminated ?? false);
 
 // ── Life, or the hand kept while mulligans are taken ──
 
-const counterValue = computed(() => mulliganPhase.value
-	? player.value?.cardsKept ?? startingHandSize.value
-	: player.value?.lifeTotal ?? 0);
+const counterValue = computed(() =>
+	mulliganPhase.value
+		? (player.value?.cardsKept ?? startingHandSize.value)
+		: (player.value?.lifeTotal ?? 0),
+);
 
 function handleAdjust(delta: number) {
 	if (mulliganPhase.value)
 		void playerControls.setCardsKept(Math.max(0, counterValue.value + delta));
-	else
-		void playerControls.adjustLife(delta);
+	else void playerControls.adjustLife(delta);
 }
 
 function handleSet(value: number) {
-	if (mulliganPhase.value)
-		void playerControls.setCardsKept(Math.max(0, value));
-	else
-		void playerControls.setLife(value);
+	if (mulliganPhase.value) void playerControls.setCardsKept(Math.max(0, value));
+	else void playerControls.setLife(value);
 }
 
 // ── Commander Damage: a count per opposing Commander ──
@@ -90,11 +107,9 @@ interface OpposingCommander extends CommanderSource {
 
 const opposingCommanders = computed<OpposingCommander[]>(() => {
 	const seats = snapshot.value;
-	if (!seats)
-		return [];
-	return SEAT_VALUES
-		.filter(other => other !== props.seat)
-		.flatMap(other => seatCommanders(seats, other).map((held, index) => {
+	if (!seats) return [];
+	return SEAT_VALUES.filter((other) => other !== props.seat).flatMap((other) =>
+		seatCommanders(seats, other).map((held, index) => {
 			const source = { seat: other, commander: (index + 1) as CommanderNumber };
 			return {
 				...source,
@@ -102,12 +117,19 @@ const opposingCommanders = computed<OpposingCommander[]>(() => {
 				owner: seatPlayerName(seats, other),
 				damage: commanderDamageFrom(player.value ?? undefined, source),
 			};
-		}));
+		}),
+	);
 });
 
 function adjustCommanderDamage(dealt: OpposingCommander, delta: number) {
 	if (eventStore.eventId)
-		featureMatchStateStore.adjustCommanderDamage(eventStore.eventId, props.matchId, props.seat, { seat: dealt.seat, commander: dealt.commander }, delta);
+		featureMatchStateStore.adjustCommanderDamage(
+			eventStore.eventId,
+			props.matchId,
+			props.seat,
+			{ seat: dealt.seat, commander: dealt.commander },
+			delta,
+		);
 }
 
 function setEliminated(value: boolean) {
@@ -133,7 +155,9 @@ const counterTypes = getCounterTypeConfigs('mtg');
 		<header class="seat-header">
 			<span v-if="seatLabel" class="seat-badge">{{ seatLabel }}</span>
 			<span v-if="showName" class="seat-name">{{ playerName }}</span>
-			<span v-if="showPronouns && playerPronouns" class="text-sm text-muted">({{ playerPronouns }})</span>
+			<span v-if="showPronouns && playerPronouns" class="text-sm text-muted"
+				>({{ playerPronouns }})</span
+			>
 			<UIcon
 				v-if="wentFirst"
 				name="i-lucide-flag"

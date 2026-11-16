@@ -8,16 +8,16 @@ import { transportFailure } from '~~/test/helpers/transportFailure';
  * surface that reports failures has one routing test of its own.
  */
 describe('failureSentence', () => {
-	const MISSING_SETTING
-		= 'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY is not 32-byte base64, '
-			+ 'so Screen Output asset capabilities are unavailable';
+	const MISSING_SETTING =
+		'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY is not 32-byte base64, ' +
+		'so Screen Output asset capabilities are unavailable';
 
 	describe('a 5xx whose prose the server preserved', () => {
 		it.each([
 			['a setting a 503 says was never configured', 503, MISSING_SETTING],
 			['the dependency a 502 names', 502, 'Melee.gg is temporarily unavailable. Try again later.'],
 			['the store a 503 could not reach', 503, 'Graphics Asset catalogue is unavailable'],
-			['an exhausted byte store\'s 507', 507, 'Canonical byte store capacity is exhausted'],
+			["an exhausted byte store's 507", 507, 'Canonical byte store capacity is exhausted'],
 		])('quotes %s', (_, status, message) => {
 			const failure = transportFailure({
 				status,
@@ -30,10 +30,12 @@ describe('failureSentence', () => {
 
 		// `useFetch` errors are rebuilt by `createError` around `statusCode`; `status` may not survive.
 		it('reads a useFetch failure, which createError rebuilds around statusCode', () => {
-			const wrapped = createError(transportFailure({
-				status: 503,
-				body: { message: MISSING_SETTING },
-			}));
+			const wrapped = createError(
+				transportFailure({
+					status: 503,
+					body: { message: MISSING_SETTING },
+				}),
+			);
 
 			expect(wrapped.statusCode).toBe(503);
 			expect(failureSentence(wrapped)).toBe(MISSING_SETTING);
@@ -59,7 +61,7 @@ describe('failureSentence', () => {
 				},
 			],
 			[
-				'Nitro\'s own mask on an unhandled failure',
+				"Nitro's own mask on an unhandled failure",
 				{
 					status: 502,
 					body: { message: 'Server Error' },
@@ -72,10 +74,7 @@ describe('failureSentence', () => {
 					body: { message: 'D1_ERROR: no such table: rounds' },
 				},
 			],
-			[
-				'a 5xx with no body',
-				{ status: 503 },
-			],
+			['a 5xx with no body', { status: 503 }],
 			[
 				'a 5xx whose body is not a record',
 				{ status: 503, body: '<!DOCTYPE html><title>503 Service Unavailable</title>' },
@@ -88,26 +87,40 @@ describe('failureSentence', () => {
 				},
 			],
 		])('refuses %s', (_, response) => {
-			expect(failureSentence(transportFailure(response as Parameters<typeof transportFailure>[0]))).toBeUndefined();
+			expect(
+				failureSentence(transportFailure(response as Parameters<typeof transportFailure>[0])),
+			).toBeUndefined();
 		});
 
 		it('names a sanitized failure as sanitized', () => {
-			expect(isSanitizedFailure(transportFailure({
-				status: 500,
-				body: { message: 'D1_ERROR' },
-			}))).toBe(true);
+			expect(
+				isSanitizedFailure(
+					transportFailure({
+						status: 500,
+						body: { message: 'D1_ERROR' },
+					}),
+				),
+			).toBe(true);
 		});
 	});
 
 	describe('below the 5xx boundary', () => {
 		it.each([
-			['a refusal the authority wrote about this request', 403, 'This Event belongs to another installation'],
+			[
+				'a refusal the authority wrote about this request',
+				403,
+				'This Event belongs to another installation',
+			],
 			['a 499, since the boundary is 500', 499, 'The operator navigated away'],
 		])('quotes %s', (_, status, message) => {
-			expect(failureSentence(transportFailure({
-				status,
-				body: { message },
-			}))).toBe(message);
+			expect(
+				failureSentence(
+					transportFailure({
+						status,
+						body: { message },
+					}),
+				),
+			).toBe(message);
 		});
 
 		it('declines a failure that never reached the server, whatever it carries', () => {
@@ -130,25 +143,28 @@ describe('reportedMessage', () => {
 			request: `[GET] "/api/graphics-assets"`,
 		});
 
-		expect(reportedMessage(refused, 'a fallback nobody should see'))
-			.toBe('An authenticated graphics author session is required');
+		expect(reportedMessage(refused, 'a fallback nobody should see')).toBe(
+			'An authenticated graphics author session is required',
+		);
 	});
 
 	// A status line reads as machinery; static wording in its place would hide a real line (#245).
-	it('falls back to the transport line, not the caller\'s wording, when the sanitizer wrote the body', () => {
+	it("falls back to the transport line, not the caller's wording, when the sanitizer wrote the body", () => {
 		const sanitized = transportFailure({
 			status: 500,
 			body: { message: 'Internal Server Error' },
 			request: `[GET] "/api/graphics-assets"`,
 		});
 
-		expect(reportedMessage(sanitized, 'a fallback nobody should see'))
-			.toBe(`[GET] "/api/graphics-assets": 500 Internal Server Error`);
+		expect(reportedMessage(sanitized, 'a fallback nobody should see')).toBe(
+			`[GET] "/api/graphics-assets": 500 Internal Server Error`,
+		);
 	});
 
-	it('uses the caller\'s wording only for a throw carrying no line at all', () => {
-		expect(reportedMessage('a bare string nobody wrapped', 'The style update could not be applied'))
-			.toBe('The style update could not be applied');
+	it("uses the caller's wording only for a throw carrying no line at all", () => {
+		expect(
+			reportedMessage('a bare string nobody wrapped', 'The style update could not be applied'),
+		).toBe('The style update could not be applied');
 	});
 
 	it('answers nothing for an absent failure', () => {

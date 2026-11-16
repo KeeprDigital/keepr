@@ -17,12 +17,13 @@ import { createMiniflareD1Harness } from '~~/test/helpers/miniflare-d1';
 const harness: MiniflareD1Harness = await createMiniflareD1Harness();
 const db = drizzle(harness.database, { schema });
 
-vi.doMock('~~/server/db', async importOriginal => ({
-	...await importOriginal<object>(),
+vi.doMock('~~/server/db', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	db,
 }));
 
-const { ANONYMOUS_ERA_ACTOR_NAME, graphicsActorNames, sessionHolderName } = await import('~~/server/utils/actorNames');
+const { ANONYMOUS_ERA_ACTOR_NAME, graphicsActorNames, sessionHolderName } =
+	await import('~~/server/utils/actorNames');
 
 const now = new Date('2026-01-01T00:00:00Z');
 const ANONYMOUS_AUTHOR = '3f2504e0-4f89-11d3-9a0c-0305e82c3301';
@@ -70,31 +71,29 @@ afterAll(async () => await harness.dispose());
 
 describe('graphicsActorNames', () => {
 	it('names every actor it is asked about, by kind', async () => {
-		expect(await graphicsActorNames([
-			'named',
-			'blank',
-			ANONYMOUS_AUTHOR,
-			'graphics-administrator',
-			'graphics-retention-policy',
-			LOCAL_DEVELOPER_USER_ID,
-			'named',
-		]))
-			.toEqual({
-				'named': 'Marcus Angel',
-				'blank': 'blank@example.test',
-				[ANONYMOUS_AUTHOR]: ANONYMOUS_ERA_ACTOR_NAME,
-				'graphics-administrator': 'graphics-administrator',
-				'graphics-retention-policy': 'graphics-retention-policy',
-				[LOCAL_DEVELOPER_USER_ID]: LOCAL_DEVELOPER_USER_NAME,
-			});
+		expect(
+			await graphicsActorNames([
+				'named',
+				'blank',
+				ANONYMOUS_AUTHOR,
+				'graphics-administrator',
+				'graphics-retention-policy',
+				LOCAL_DEVELOPER_USER_ID,
+				'named',
+			]),
+		).toEqual({
+			named: 'Marcus Angel',
+			blank: 'blank@example.test',
+			[ANONYMOUS_AUTHOR]: ANONYMOUS_ERA_ACTOR_NAME,
+			'graphics-administrator': 'graphics-administrator',
+			'graphics-retention-policy': 'graphics-retention-policy',
+			[LOCAL_DEVELOPER_USER_ID]: LOCAL_DEVELOPER_USER_NAME,
+		});
 		expect(await graphicsActorNames([])).toEqual({});
 	});
 
 	it('names a page of more actors than D1 binds in one statement', async () => {
-		const actors = [
-			...Array.from({ length: 120 }, (_, index) => `machine-${index}`),
-			'named',
-		];
+		const actors = [...Array.from({ length: 120 }, (_, index) => `machine-${index}`), 'named'];
 
 		const names = await graphicsActorNames(actors);
 
@@ -108,7 +107,11 @@ describe('sessionHolderName', () => {
 		['the person a session belongs to', 'named-session', 'Marcus Angel'],
 		['nothing, rather than an address, for a holder with no name', 'blank-session', null],
 		['nothing for a session that has ended', 'ended-session', null],
-		['the local developer for a local-development browser', `${LOCAL_DEVELOPER_SESSION_ID_PREFIX}browser-a`, LOCAL_DEVELOPER_USER_NAME],
+		[
+			'the local developer for a local-development browser',
+			`${LOCAL_DEVELOPER_SESSION_ID_PREFIX}browser-a`,
+			LOCAL_DEVELOPER_USER_NAME,
+		],
 	])('answers %s', async (_case, sessionId, name) => {
 		expect(await sessionHolderName(sessionId)).toBe(name);
 	});

@@ -1,7 +1,12 @@
 import type { EventKind } from './config/games';
 import type { FeatureMatchLayoutEdge } from './featureMatchLayoutItems';
 import type { PlayerSide, Seat } from './types/enums';
-import type { GraphicGroupChildConfig, GraphicItemConfig, GraphicSurfaceStyle, GraphicTypography } from './types/graphics';
+import type {
+	GraphicGroupChildConfig,
+	GraphicItemConfig,
+	GraphicSurfaceStyle,
+	GraphicTypography,
+} from './types/graphics';
 import type { GraphicThemeSlot } from './types/graphicThemeBindings';
 import type {
 	BuiltInFeatureMatchLayoutTemplateId,
@@ -9,7 +14,10 @@ import type {
 	FeatureMatchSourceFramingStyle,
 	FeatureMatchSourceItemConfig,
 } from './types/screenConfig';
-import { FEATURE_MATCH_LAYOUT_COMPOSITION_ID, FEATURE_MATCH_LAYOUT_COMPOSITION_NAME } from './featureMatchLayoutComposition';
+import {
+	FEATURE_MATCH_LAYOUT_COMPOSITION_ID,
+	FEATURE_MATCH_LAYOUT_COMPOSITION_NAME,
+} from './featureMatchLayoutComposition';
 import {
 	clockItem,
 	edgeRuleItem,
@@ -26,8 +34,15 @@ import {
 	typography,
 } from './featureMatchLayoutItems';
 import { roundedShapeGeometry, squareShapeGeometry } from './modules/graphics/shapeGeometry';
-import { bindGraphicThemeOwner, DEFAULT_GRAPHIC_THEME_TOKENS, graphicThemeOwnerSupportsSlot } from './modules/graphics/themeBindings';
-import { DEFAULT_FRAME_ANIMATION, DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG } from './screenGraphicsDefaults';
+import {
+	bindGraphicThemeOwner,
+	DEFAULT_GRAPHIC_THEME_TOKENS,
+	graphicThemeOwnerSupportsSlot,
+} from './modules/graphics/themeBindings';
+import {
+	DEFAULT_FRAME_ANIMATION,
+	DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG,
+} from './screenGraphicsDefaults';
 import { seatNumber } from './utils/featureMatchSidePlayer';
 
 /**
@@ -74,28 +89,25 @@ const HEADING_WEIGHT = 700;
 const OWN_PICTURE_ITEMS: ReadonlySet<string> = new Set(['branding-image-2']);
 
 /** The Foundation Token each slot of a built-in's item follows. */
-function builtInBindings(item: GraphicItemConfig | GraphicGroupChildConfig): Partial<Record<GraphicThemeSlot, string>> {
-	const typographyWeight = 'typography' in item && item.typography
-		? item.typography.fontWeight
-		: 0;
+function builtInBindings(
+	item: GraphicItemConfig | GraphicGroupChildConfig,
+): Partial<Record<GraphicThemeSlot, string>> {
+	const typographyWeight = 'typography' in item && item.typography ? item.typography.fontWeight : 0;
 	return {
-		'typography': typographyWeight >= HEADING_WEIGHT
-			? 'heading'
-			: 'body',
+		typography: typographyWeight >= HEADING_WEIGHT ? 'heading' : 'body',
 		'typography.color': 'text-primary',
 		// A Seat Indicator's colour is its meaning, a turn or an Eliminated Seat, so it keeps its own.
-		...(item.type === 'seat-indicator'
-			? {}
-			: { surfaceStyle: 'panel' }),
-		...(OWN_PICTURE_ITEMS.has(item.id)
-			? {}
-			: { media: 'logo' }),
+		...(item.type === 'seat-indicator' ? {} : { surfaceStyle: 'panel' }),
+		...(OWN_PICTURE_ITEMS.has(item.id) ? {} : { media: 'logo' }),
 	};
 }
 
 function bindBuiltInItem<T extends GraphicItemConfig | GraphicGroupChildConfig>(item: T): T {
 	let bound = item;
-	for (const [slot, token] of Object.entries(builtInBindings(item)) as [GraphicThemeSlot, string][]) {
+	for (const [slot, token] of Object.entries(builtInBindings(item)) as [
+		GraphicThemeSlot,
+		string,
+	][]) {
 		if (graphicThemeOwnerSupportsSlot(bound, slot))
 			bound = bindGraphicThemeOwner(bound, slot, token, DEFAULT_GRAPHIC_THEME_TOKENS);
 	}
@@ -109,14 +121,16 @@ function themeBound(items: GraphicItemConfig[]): GraphicItemConfig[] {
 		return bound.type === 'group'
 			? {
 					...bound,
-					children: bound.children.map(child => bindBuiltInItem(child)),
+					children: bound.children.map((child) => bindBuiltInItem(child)),
 				}
 			: bound;
 	});
 }
 
 /** A built-in's config with its composition bound to the Theme. */
-function themeBoundConfig(config: Omit<FeatureMatchOverlayModeConfig, 'featureMatchId'>): Omit<FeatureMatchOverlayModeConfig, 'featureMatchId'> {
+function themeBoundConfig(
+	config: Omit<FeatureMatchOverlayModeConfig, 'featureMatchId'>,
+): Omit<FeatureMatchOverlayModeConfig, 'featureMatchId'> {
 	const { composition } = config.layout;
 	return {
 		...config,
@@ -154,7 +168,11 @@ function playerBarTypography(overrides: Partial<GraphicTypography> = {}): Graphi
  * composed behind the Item that reads the life total. This is the same
  * composition the dropped per-side borders use, applied to corners.
  */
-function playerLifePill(side: PlayerSide, prefix: string, rect: { x: number; y: number; width: number; height: number }) {
+function playerLifePill(
+	side: PlayerSide,
+	prefix: string,
+	rect: { x: number; y: number; width: number; height: number },
+) {
 	return [
 		shapeItem({
 			id: `${prefix}-life-bed`,
@@ -262,7 +280,11 @@ function leftStackedPlayerCamsConfig(): Omit<FeatureMatchOverlayModeConfig, 'fea
 								y: 0,
 								width: 140,
 								height: 74,
-								typography: playerBarTypography({ fontSize: 28, fontWeight: 500, textAlign: 'right' }),
+								typography: playerBarTypography({
+									fontSize: 28,
+									fontWeight: 500,
+									textAlign: 'right',
+								}),
 							}),
 						],
 					}),
@@ -303,7 +325,11 @@ function leftStackedPlayerCamsConfig(): Omit<FeatureMatchOverlayModeConfig, 'fea
 								width: 180,
 								height: 74,
 								text: '{stage}\n{format}',
-								typography: playerBarTypography({ fontSize: 28, fontWeight: 700, textAlign: 'right' }),
+								typography: playerBarTypography({
+									fontSize: 28,
+									fontWeight: 700,
+									textAlign: 'right',
+								}),
 							}),
 						],
 					}),
@@ -397,8 +423,8 @@ export const DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG: FeatureMatchOverlayModeConfig
 function fullTableConfig(): Omit<FeatureMatchOverlayModeConfig, 'featureMatchId'> {
 	const base = leftStackedPlayerCamsConfig();
 	const sources: FeatureMatchSourceItemConfig[] = base.layout.sources
-		.filter(source => source.id === 'main-source')
-		.map(source => ({
+		.filter((source) => source.id === 'main-source')
+		.map((source) => ({
 			...source,
 			label: 'Main Match Source',
 			x: 24,
@@ -410,8 +436,7 @@ function fullTableConfig(): Omit<FeatureMatchOverlayModeConfig, 'featureMatchId'
 	// width and the branding block moves down beside them. Everything else,
 	// including the Game Wins indicators, keeps its place.
 	const items = base.layout.composition.items.map((item): GraphicItemConfig => {
-		if (item.id === 'top-bar' || item.id === 'bottom-bar')
-			return { ...item, x: 24, width: 1872 };
+		if (item.id === 'top-bar' || item.id === 'bottom-bar') return { ...item, x: 24, width: 1872 };
 		if (item.id === 'branding') {
 			return {
 				...item,
@@ -450,7 +475,9 @@ function neonRuleStyle(glow = neonGlow(8, 0.8)): GraphicSurfaceStyle {
 }
 
 /** Square framing; it paints the Theme's `source-surface`, glow included. */
-function neonSourceFraming(overrides: Partial<FeatureMatchSourceFramingStyle> = {}): FeatureMatchSourceFramingStyle {
+function neonSourceFraming(
+	overrides: Partial<FeatureMatchSourceFramingStyle> = {},
+): FeatureMatchSourceFramingStyle {
 	return {
 		borderRadius: 0,
 		...overrides,
@@ -472,20 +499,18 @@ function neonSourceFraming(overrides: Partial<FeatureMatchSourceFramingStyle> = 
  * rules, and the bed carries a glow only when every side was bordered — which is
  * exactly the case a uniform outline states directly and `litEdges` is empty.
  */
-function neonPanel(
-	panel: {
-		id: string;
-		label: string;
-		x: number;
-		y: number;
-		width: number;
-		height: number;
-		surfaceStyle: GraphicSurfaceStyle;
-		litEdges: FeatureMatchLayoutEdge[];
-		litGlow?: ReturnType<typeof neonGlow>;
-		children?: Parameters<typeof groupItem>[0]['children'];
-	},
-) {
+function neonPanel(panel: {
+	id: string;
+	label: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	surfaceStyle: GraphicSurfaceStyle;
+	litEdges: FeatureMatchLayoutEdge[];
+	litGlow?: ReturnType<typeof neonGlow>;
+	children?: Parameters<typeof groupItem>[0]['children'];
+}) {
 	const bounds = {
 		x: 0,
 		y: 0,
@@ -502,14 +527,16 @@ function neonPanel(
 		surfaceStyle: panel.surfaceStyle,
 		children: [
 			...(panel.children ?? []),
-			...panel.litEdges.map(edge => edgeRuleItem({
-				id: `${panel.id}-${edge}-rule`,
-				label: `${panel.label} ${edge} rule`,
-				edge,
-				bounds,
-				thickness: NEON_LINE_WIDTH,
-				surfaceStyle: neonRuleStyle(panel.litGlow),
-			})),
+			...panel.litEdges.map((edge) =>
+				edgeRuleItem({
+					id: `${panel.id}-${edge}-rule`,
+					label: `${panel.label} ${edge} rule`,
+					edge,
+					bounds,
+					thickness: NEON_LINE_WIDTH,
+					surfaceStyle: neonRuleStyle(panel.litGlow),
+				}),
+			),
 		],
 	});
 }
@@ -525,20 +552,22 @@ function neonBrandingTypography(): GraphicTypography {
 }
 
 function neonPlayerBarChildren() {
-	const nameTypography = (textAlign: 'left' | 'right') => typography({
-		fontSize: 34,
-		fontWeight: 900,
-		lineHeight: 1,
-		textAlign,
-		textTransform: 'uppercase',
-	});
-	const detailTypography = (textAlign: 'left' | 'right') => typography({
-		fontSize: 22,
-		fontWeight: 500,
-		lineHeight: 1,
-		textAlign,
-		textTransform: 'uppercase',
-	});
+	const nameTypography = (textAlign: 'left' | 'right') =>
+		typography({
+			fontSize: 34,
+			fontWeight: 900,
+			lineHeight: 1,
+			textAlign,
+			textTransform: 'uppercase',
+		});
+	const detailTypography = (textAlign: 'left' | 'right') =>
+		typography({
+			fontSize: 22,
+			fontWeight: 500,
+			lineHeight: 1,
+			textAlign,
+			textTransform: 'uppercase',
+		});
 	const lifeTypography = typography({ fontSize: 32, fontWeight: 900, textAlign: 'center' });
 
 	return [
@@ -723,10 +752,9 @@ function neonFeatureMatchConfig(): Omit<FeatureMatchOverlayModeConfig, 'featureM
 						y: 508,
 						width: 296,
 						height: 104,
-						surfaceStyle: surfaceStyle(gradientFill(180, [
-							fillStop('#0a0010', 0, 0.76),
-							fillStop('#4e0043', 1, 0.58),
-						])),
+						surfaceStyle: surfaceStyle(
+							gradientFill(180, [fillStop('#0a0010', 0, 0.76), fillStop('#4e0043', 1, 0.58)]),
+						),
 						litEdges: ['top', 'right', 'bottom'],
 						litGlow: neonGlow(7, 0.78),
 					}),
@@ -737,10 +765,9 @@ function neonFeatureMatchConfig(): Omit<FeatureMatchOverlayModeConfig, 'featureM
 						y: 612,
 						width: 296,
 						height: 252,
-						surfaceStyle: surfaceStyle(gradientFill(180, [
-							fillStop('#510049', 0, 0.72),
-							fillStop('#090012', 1, 0.82),
-						])),
+						surfaceStyle: surfaceStyle(
+							gradientFill(180, [fillStop('#510049', 0, 0.72), fillStop('#090012', 1, 0.82)]),
+						),
 						litEdges: ['right', 'bottom'],
 						litGlow: neonGlow(7, 0.78),
 						children: [
@@ -774,10 +801,9 @@ function neonFeatureMatchConfig(): Omit<FeatureMatchOverlayModeConfig, 'featureM
 						y: 864,
 						width: 296,
 						height: 208,
-						surfaceStyle: surfaceStyle(gradientFill(180, [
-							fillStop('#090012', 0, 0.82),
-							fillStop('#510049', 1, 0.62),
-						])),
+						surfaceStyle: surfaceStyle(
+							gradientFill(180, [fillStop('#090012', 0, 0.82), fillStop('#510049', 1, 0.62)]),
+						),
 						litEdges: ['right', 'bottom'],
 						litGlow: neonGlow(7, 0.78),
 					}),
@@ -788,10 +814,9 @@ function neonFeatureMatchConfig(): Omit<FeatureMatchOverlayModeConfig, 'featureM
 						y: 508,
 						width: 296,
 						height: 356,
-						surfaceStyle: surfaceStyle(gradientFill(180, [
-							fillStop('#090012', 0, 0.82),
-							fillStop('#51006e', 1, 0.72),
-						])),
+						surfaceStyle: surfaceStyle(
+							gradientFill(180, [fillStop('#090012', 0, 0.82), fillStop('#51006e', 1, 0.72)]),
+						),
 						litEdges: ['top', 'left', 'bottom'],
 						litGlow: neonGlow(7, 0.78),
 						children: [
@@ -825,10 +850,9 @@ function neonFeatureMatchConfig(): Omit<FeatureMatchOverlayModeConfig, 'featureM
 						y: 864,
 						width: 296,
 						height: 208,
-						surfaceStyle: surfaceStyle(gradientFill(180, [
-							fillStop('#51006e', 0, 0.62),
-							fillStop('#090012', 1, 0.86),
-						])),
+						surfaceStyle: surfaceStyle(
+							gradientFill(180, [fillStop('#51006e', 0, 0.62), fillStop('#090012', 1, 0.86)]),
+						),
 						litEdges: ['left', 'bottom'],
 						litGlow: neonGlow(7, 0.78),
 					}),
@@ -842,12 +866,14 @@ function neonFeatureMatchConfig(): Omit<FeatureMatchOverlayModeConfig, 'featureM
 						// The legacy gradient carried five CSS colour stops. A Graphic Fill
 						// takes two to four, which is the settled bound of the shared
 						// vocabulary, so the recreation keeps the four that carry the look.
-						surfaceStyle: surfaceStyle(gradientFill(90, [
-							fillStop('#b80054', 0, 0.96),
-							fillStop('#07000e', 0.5, 0.92),
-							fillStop('#480074', 0.7, 0.86),
-							fillStop('#7f22f6', 1, 0.96),
-						])),
+						surfaceStyle: surfaceStyle(
+							gradientFill(90, [
+								fillStop('#b80054', 0, 0.96),
+								fillStop('#07000e', 0.5, 0.92),
+								fillStop('#480074', 0.7, 0.86),
+								fillStop('#7f22f6', 1, 0.96),
+							]),
+						),
 						litEdges: ['top', 'bottom'],
 						litGlow: neonGlow(8, 0.85),
 						children: neonPlayerBarChildren(),
@@ -926,7 +952,10 @@ const SEAT_INDICATOR_FADE = {
  * the Commander Damage it has taken, a bar while it has the turn and a dim
  * once it is Eliminated. An empty Seat shows none of it.
  */
-function commanderSeat(seat: Seat, cell: { x: number; y: number }): { source: FeatureMatchSourceItemConfig; items: GraphicItemConfig[] } {
+function commanderSeat(
+	seat: Seat,
+	cell: { x: number; y: number },
+): { source: FeatureMatchSourceItemConfig; items: GraphicItemConfig[] } {
 	const number = seatNumber(seat);
 	const { x, y } = cell;
 	const width = 924;
@@ -1048,11 +1077,11 @@ function commanderTableConfig(): Omit<FeatureMatchOverlayModeConfig, 'featureMat
 				mediaBackground: { ...DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG },
 				animation: { ...DEFAULT_FRAME_ANIMATION },
 			},
-			sources: seats.map(seat => seat.source),
+			sources: seats.map((seat) => seat.source),
 			composition: {
 				id: FEATURE_MATCH_LAYOUT_COMPOSITION_ID,
 				name: FEATURE_MATCH_LAYOUT_COMPOSITION_NAME,
-				items: seats.flatMap(seat => seat.items),
+				items: seats.flatMap((seat) => seat.items),
 			},
 		},
 	};
@@ -1062,7 +1091,8 @@ export const BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES: BuiltInFeatureMatchLayoutT
 	{
 		id: 'full-table',
 		label: 'Full Table',
-		description: 'A full-width main match source with separated details and branding Graphic Items.',
+		description:
+			'A full-width main match source with separated details and branding Graphic Items.',
 		aspectRatio: 16 / 9,
 		config: themeBoundConfig(fullTableConfig()),
 	},
@@ -1076,14 +1106,16 @@ export const BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES: BuiltInFeatureMatchLayoutT
 	{
 		id: 'neon-feature-match',
 		label: 'Neon Feature Match',
-		description: 'A broadcast frame with player cameras, a full-width scoreboard, edge-ruled name bars, branding panels either side, and looping video background support.',
+		description:
+			'A broadcast frame with player cameras, a full-width scoreboard, edge-ruled name bars, branding panels either side, and looping video background support.',
 		aspectRatio: 16 / 9,
 		config: themeBoundConfig(neonFeatureMatchConfig()),
 	},
 	{
 		id: 'commander-table',
 		label: 'Commander Table',
-		description: 'Four Seats, two by two: each with its source, a plate of its Commanders, name, deck and life, its Commander Damage, and marks for its turn and for an Eliminated Seat.',
+		description:
+			'Four Seats, two by two: each with its source, a plate of its Commanders, name, deck and life, its Commander Damage, and marks for its turn and for an Eliminated Seat.',
 		aspectRatio: 16 / 9,
 		config: themeBoundConfig(commanderTableConfig()),
 	},
@@ -1094,8 +1126,11 @@ export const BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES: BuiltInFeatureMatchLayoutT
  * Commander Event, which is offered four-Seat layouts alone (ADR-0087), and the
  * default layout on every other Event.
  */
-export function defaultFeatureMatchLayoutFor(kind: EventKind | undefined): FeatureMatchOverlayModeConfig['layout'] {
+export function defaultFeatureMatchLayoutFor(
+	kind: EventKind | undefined,
+): FeatureMatchOverlayModeConfig['layout'] {
 	return kind === 'mtg-commander'
-		? BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find(template => template.id === 'commander-table')!.config.layout
+		? BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find((template) => template.id === 'commander-table')!
+				.config.layout
 		: DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG.layout;
 }

@@ -1,30 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { featureMatchOverlayBorderRadiusCss, featureMatchOverlaySourceCutoutRect, roundedRectPath } from '~/utils/featureMatchOverlayGeometry';
+import {
+	featureMatchOverlayBorderRadiusCss,
+	featureMatchOverlaySourceCutoutRect,
+	roundedRectPath,
+} from '~/utils/featureMatchOverlayGeometry';
 
 describe('broadcast layout geometry utilities', () => {
 	it('uses configured border radii as CSS outer radii', () => {
 		expect(featureMatchOverlayBorderRadiusCss({ borderRadius: 12 })).toBe('12px 12px 12px 12px');
-		expect(featureMatchOverlayBorderRadiusCss({
-			borderRadius: 12,
-			borderRadiusTopRight: 4,
-			borderRadiusBottomLeft: 2,
-		})).toBe('12px 4px 12px 2px');
+		expect(
+			featureMatchOverlayBorderRadiusCss({
+				borderRadius: 12,
+				borderRadiusTopRight: 4,
+				borderRadiusBottomLeft: 2,
+			}),
+		).toBe('12px 4px 12px 2px');
 	});
 
 	it('insets cutout geometry to the inner edge of a visible source border', () => {
-		const cutout = featureMatchOverlaySourceCutoutRect({
-			id: 'main-source',
-			label: 'Main',
-			visible: true,
-			frameCutout: true,
-			x: 100,
-			y: 50,
-			width: 320,
-			height: 180,
-			framingStyle: {
-				borderRadius: 18,
+		const cutout = featureMatchOverlaySourceCutoutRect(
+			{
+				id: 'main-source',
+				label: 'Main',
+				visible: true,
+				frameCutout: true,
+				x: 100,
+				y: 50,
+				width: 320,
+				height: 180,
+				framingStyle: {
+					borderRadius: 18,
+				},
 			},
-		}, 6);
+			6,
+		);
 
 		expect(cutout).toEqual({
 			x: 106,
@@ -41,21 +50,24 @@ describe('broadcast layout geometry utilities', () => {
 	});
 
 	it('does not reserve cutout space for hidden source border sides', () => {
-		const cutout = featureMatchOverlaySourceCutoutRect({
-			id: 'side-source',
-			label: 'Side',
-			visible: true,
-			frameCutout: true,
-			x: 100,
-			y: 50,
-			width: 320,
-			height: 180,
-			framingStyle: {
-				borderRadius: 18,
-				borderLeftVisible: false,
-				borderBottomVisible: false,
+		const cutout = featureMatchOverlaySourceCutoutRect(
+			{
+				id: 'side-source',
+				label: 'Side',
+				visible: true,
+				frameCutout: true,
+				x: 100,
+				y: 50,
+				width: 320,
+				height: 180,
+				framingStyle: {
+					borderRadius: 18,
+					borderLeftVisible: false,
+					borderBottomVisible: false,
+				},
 			},
-		}, 6);
+			6,
+		);
 
 		expect(cutout).toEqual({
 			x: 100,
@@ -72,19 +84,22 @@ describe('broadcast layout geometry utilities', () => {
 	});
 
 	it('cuts the full source rect when the source surface has no outline', () => {
-		const cutout = featureMatchOverlaySourceCutoutRect({
-			id: 'player1-source',
-			label: 'Player',
-			visible: true,
-			frameCutout: true,
-			x: 10,
-			y: 20,
-			width: 100,
-			height: 80,
-			framingStyle: {
-				borderRadius: 14,
+		const cutout = featureMatchOverlaySourceCutoutRect(
+			{
+				id: 'player1-source',
+				label: 'Player',
+				visible: true,
+				frameCutout: true,
+				x: 10,
+				y: 20,
+				width: 100,
+				height: 80,
+				framingStyle: {
+					borderRadius: 14,
+				},
 			},
-		}, 0);
+			0,
+		);
 
 		expect(cutout.x).toBe(10);
 		expect(cutout.y).toBe(20);
@@ -94,17 +109,21 @@ describe('broadcast layout geometry utilities', () => {
 	});
 
 	it('renders rounded cutouts as paths so mask and CSS radii share the same geometry', () => {
-		expect(roundedRectPath({
-			x: 10,
-			y: 20,
-			width: 100,
-			height: 50,
-			radii: {
-				topLeft: 8,
-				topRight: 6,
-				bottomRight: 4,
-				bottomLeft: 2,
-			},
-		})).toBe('M 18 20 H 104 A 6 6 0 0 1 110 26 V 66 A 4 4 0 0 1 106 70 H 12 A 2 2 0 0 1 10 68 V 28 A 8 8 0 0 1 18 20 Z');
+		expect(
+			roundedRectPath({
+				x: 10,
+				y: 20,
+				width: 100,
+				height: 50,
+				radii: {
+					topLeft: 8,
+					topRight: 6,
+					bottomRight: 4,
+					bottomLeft: 2,
+				},
+			}),
+		).toBe(
+			'M 18 20 H 104 A 6 6 0 0 1 110 26 V 66 A 4 4 0 0 1 106 70 H 12 A 2 2 0 0 1 10 68 V 28 A 8 8 0 0 1 18 20 Z',
+		);
 	});
 });

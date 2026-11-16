@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { deliveredByChannel, main, probeOrigin, RealtimeFanoutProbeRefusal } from '../../../scripts/measure-realtime-fanout.mjs';
+import {
+	deliveredByChannel,
+	main,
+	probeOrigin,
+	RealtimeFanoutProbeRefusal,
+} from '../../../scripts/measure-realtime-fanout.mjs';
 
 // A Screen is told on its own channel what the Event channel announced, so a
 // total alone cannot say which channel a change in the count came from.
@@ -38,17 +43,19 @@ describe('the fan-out probe counts each channel apart', () => {
 });
 
 describe('the fan-out probe refuses to default its origin', () => {
-	it.each([
-		{},
-		{ PROBE_ORIGIN: '' },
-		{ PROBE_ORIGIN: '   ' },
-	])('refuses %j with its own named error', (env) => {
-		expect(() => probeOrigin(env)).toThrow(RealtimeFanoutProbeRefusal);
-	});
+	it.each([{}, { PROBE_ORIGIN: '' }, { PROBE_ORIGIN: '   ' }])(
+		'refuses %j with its own named error',
+		(env) => {
+			expect(() => probeOrigin(env)).toThrow(RealtimeFanoutProbeRefusal);
+		},
+	);
 
-	it.each(['http://127.0.0.1:8799', 'http://127.0.0.1:8799/', '  http://127.0.0.1:8799  '])('accepts the named origin %j', (origin) => {
-		expect(probeOrigin({ PROBE_ORIGIN: origin })).toBe('http://127.0.0.1:8799');
-	});
+	it.each(['http://127.0.0.1:8799', 'http://127.0.0.1:8799/', '  http://127.0.0.1:8799  '])(
+		'accepts the named origin %j',
+		(origin) => {
+			expect(probeOrigin({ PROBE_ORIGIN: origin })).toBe('http://127.0.0.1:8799');
+		},
+	);
 
 	// The probe writes an Event and a live session to whatever answers, and the old
 	// default, :8787, is the port every worktree shares (#289). So its first
@@ -58,7 +65,9 @@ describe('the fan-out probe refuses to default its origin', () => {
 			throw new Error('the probe went on to provision');
 		});
 
-		await expect(main({ env: {}, openOperatorSession })).rejects.toBeInstanceOf(RealtimeFanoutProbeRefusal);
+		await expect(main({ env: {}, openOperatorSession })).rejects.toBeInstanceOf(
+			RealtimeFanoutProbeRefusal,
+		);
 		expect(openOperatorSession).not.toHaveBeenCalled();
 	});
 });

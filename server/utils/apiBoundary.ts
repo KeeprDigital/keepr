@@ -111,9 +111,7 @@ export const SESSION_EXEMPT_API_PREFIXES: readonly string[] = [
  * getting a private route with no session.
  */
 function canonicalPath(pathname: string): string {
-	return pathname.length > 1 && pathname.endsWith('/')
-		? pathname.slice(0, -1)
-		: pathname;
+	return pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
 }
 
 /**
@@ -151,13 +149,11 @@ function isApiPath(path: string): boolean {
 export function apiPathRequiresSession(pathname: string): boolean {
 	const path = canonicalPath(pathname);
 
-	if (!isApiPath(path))
-		return false;
+	if (!isApiPath(path)) return false;
 
-	if (SESSION_EXEMPT_API_PATHS.includes(path))
-		return false;
+	if (SESSION_EXEMPT_API_PATHS.includes(path)) return false;
 
-	return !SESSION_EXEMPT_API_PREFIXES.some(prefix => path.startsWith(prefix));
+	return !SESSION_EXEMPT_API_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
 /**
@@ -212,27 +208,21 @@ export interface CrossSiteMutationCheck {
  * a browser old enough to send no `Sec-Fetch-Site`.
  */
 export function requestIsCrossSiteMutation(request: CrossSiteMutationCheck): boolean {
-	if (SAFE_METHODS.has(request.method.toUpperCase()))
-		return false;
+	if (SAFE_METHODS.has(request.method.toUpperCase())) return false;
 
 	const fetchSite = request.secFetchSite?.trim().toLowerCase();
-	if (fetchSite)
-		return !OWN_FETCH_SITES.has(fetchSite);
+	if (fetchSite) return !OWN_FETCH_SITES.has(fetchSite);
 
 	const origin = request.origin?.trim();
-	if (!origin)
-		return false;
+	if (!origin) return false;
 
 	return originHost(origin) !== request.requestHost.toLowerCase();
 }
 
 /** The host an `Origin` header names, or `null` where it names none. */
 function originHost(origin: string): string | null {
-	if (!URL.canParse(origin))
-		return null;
+	if (!URL.canParse(origin)) return null;
 
 	const { protocol, host } = new URL(origin);
-	return protocol === 'http:' || protocol === 'https:'
-		? host
-		: null;
+	return protocol === 'http:' || protocol === 'https:' ? host : null;
 }

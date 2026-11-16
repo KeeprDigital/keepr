@@ -42,8 +42,7 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 
 	function shouldFailTransiently(operation: InMemoryOperation) {
 		const failuresRemaining = transientFailures.get(operation) ?? 0;
-		if (failuresRemaining === 0)
-			return false;
+		if (failuresRemaining === 0) return false;
 		transientFailures.set(operation, failuresRemaining - 1);
 		return true;
 	}
@@ -55,8 +54,7 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 				: { outcome: 'healthy' as const };
 		},
 		async createImmutable(input: CreateImmutableGraphicsObjectInput) {
-			if (shouldFailTransiently('create'))
-				return unavailableObjectStoreOutcome();
+			if (shouldFailTransiently('create')) return unavailableObjectStoreOutcome();
 			const existing = objects.get(input.identity);
 			if (existing) {
 				return {
@@ -88,11 +86,9 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 			return { outcome: 'created' as const, object: metadata };
 		},
 		async readMetadata(identity: GraphicsObjectIdentity) {
-			if (shouldFailTransiently('metadata'))
-				return unavailableObjectStoreOutcome();
+			if (shouldFailTransiently('metadata')) return unavailableObjectStoreOutcome();
 			const object = objects.get(identity);
-			if (!object)
-				return { outcome: 'missing' as const };
+			if (!object) return { outcome: 'missing' as const };
 			if (unavailableObjects.has(identity)) {
 				return {
 					outcome: 'unavailable' as const,
@@ -101,13 +97,14 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 			}
 			return { outcome: 'available' as const, object: object.metadata };
 		},
-		async read(identity: GraphicsObjectIdentity, requestedRange?: { offset: number; length: number }) {
+		async read(
+			identity: GraphicsObjectIdentity,
+			requestedRange?: { offset: number; length: number },
+		) {
 			validateRequestedRange(requestedRange);
-			if (shouldFailTransiently('read'))
-				return unavailableObjectStoreOutcome();
+			if (shouldFailTransiently('read')) return unavailableObjectStoreOutcome();
 			const stored = objects.get(identity);
-			if (!stored)
-				return { outcome: 'missing' as const };
+			if (!stored) return { outcome: 'missing' as const };
 			if (unavailableObjects.has(identity)) {
 				return {
 					outcome: 'unavailable' as const,
@@ -133,8 +130,7 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 			};
 		},
 		async list(input: { prefix?: string; cursor?: string; limit?: number } = {}) {
-			if (shouldFailTransiently('list'))
-				return unavailableObjectStoreOutcome();
+			if (shouldFailTransiently('list')) return unavailableObjectStoreOutcome();
 			// Lexicographic order makes the cursor the last key returned, which is
 			// how the production store paginates and is what lets a test advance a
 			// scan one bounded page at a time.
@@ -144,9 +140,7 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 			// without `include` reports no content type and empty custom metadata
 			// for every object. If that request is ever dropped, this double will
 			// keep passing while production reads every object as a conflict.
-			const matching = [
-				...objects.entries(),
-			]
+			const matching = [...objects.entries()]
 				.filter(([identity]) => identity.startsWith(input.prefix ?? ''))
 				.filter(([identity]) => input.cursor === undefined || identity > input.cursor)
 				.toSorted(([left], [right]) => left.localeCompare(right));
@@ -156,15 +150,12 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 				outcome: 'listed' as const,
 				listing: {
 					objects: page.map(([, stored]) => stored.metadata),
-					cursor: matching.length > page.length
-						? page.at(-1)?.[0]
-						: undefined,
+					cursor: matching.length > page.length ? page.at(-1)?.[0] : undefined,
 				},
 			};
 		},
 		async beginMultipart(input: Pick<CreateImmutableGraphicsObjectInput, 'identity' | 'metadata'>) {
-			if (shouldFailTransiently('multipart-start'))
-				return unavailableObjectStoreOutcome();
+			if (shouldFailTransiently('multipart-start')) return unavailableObjectStoreOutcome();
 			const upload: GraphicsMultipartUpload = {
 				identity: input.identity,
 				uploadId: crypto.randomUUID() as GraphicsMultipartUploadIdentity,
@@ -176,9 +167,11 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 			});
 			return { outcome: 'started' as const, upload };
 		},
-		async resumeMultipart(identity: GraphicsObjectIdentity, uploadId: GraphicsMultipartUploadIdentity) {
-			if (shouldFailTransiently('multipart-resume'))
-				return unavailableObjectStoreOutcome();
+		async resumeMultipart(
+			identity: GraphicsObjectIdentity,
+			uploadId: GraphicsMultipartUploadIdentity,
+		) {
+			if (shouldFailTransiently('multipart-resume')) return unavailableObjectStoreOutcome();
 			const stored = multipartUploads.get(uploadId);
 			return stored?.upload.identity === identity
 				? { outcome: 'resumed' as const, upload: stored.upload }
@@ -189,8 +182,7 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 			partNumber: number;
 			bytes: BoundedByteStream;
 		}) {
-			if (shouldFailTransiently('multipart-upload-part'))
-				return unavailableObjectStoreOutcome();
+			if (shouldFailTransiently('multipart-upload-part')) return unavailableObjectStoreOutcome();
 			const stored = multipartUploads.get(input.upload.uploadId);
 			if (!stored || stored.upload.identity !== input.upload.identity)
 				return unavailableObjectStoreOutcome();
@@ -209,13 +201,14 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 			upload: GraphicsMultipartUpload;
 			parts: readonly GraphicsMultipartPart[];
 		}) {
-			if (shouldFailTransiently('multipart-complete'))
-				return unavailableObjectStoreOutcome();
+			if (shouldFailTransiently('multipart-complete')) return unavailableObjectStoreOutcome();
 			const storedUpload = multipartUploads.get(input.upload.uploadId);
 			if (!storedUpload || storedUpload.upload.identity !== input.upload.identity)
 				return unavailableObjectStoreOutcome();
 
-			const requestedParts = input.parts.toSorted((left, right) => left.partNumber - right.partNumber);
+			const requestedParts = input.parts.toSorted(
+				(left, right) => left.partNumber - right.partNumber,
+			);
 			const storedParts = requestedParts.map((part) => {
 				validateMultipartPartNumber(part.partNumber);
 				const storedPart = storedUpload.parts.get(part.partNumber);
@@ -242,8 +235,7 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 			return { outcome: 'created' as const, object: metadata };
 		},
 		async abortMultipart(upload: GraphicsMultipartUpload) {
-			if (shouldFailTransiently('multipart-abort'))
-				return unavailableObjectStoreOutcome();
+			if (shouldFailTransiently('multipart-abort')) return unavailableObjectStoreOutcome();
 			const stored = multipartUploads.get(upload.uploadId);
 			// No record under this identity means the upload is already reclaimed —
 			// completed, aborted, or swept. Answering `unavailable` here made a
@@ -254,8 +246,7 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 			return { outcome: 'aborted' as const };
 		},
 		async delete(identity: GraphicsObjectIdentity) {
-			if (shouldFailTransiently('delete'))
-				return unavailableObjectStoreOutcome();
+			if (shouldFailTransiently('delete')) return unavailableObjectStoreOutcome();
 			unavailableObjects.delete(identity);
 			return objects.delete(identity)
 				? { outcome: 'deleted' as const }
@@ -289,10 +280,8 @@ function canonicalCapabilities(
 		delete: implementation.delete,
 		markUnavailable: implementation.markUnavailable,
 		restore: implementation.restore,
-		injectTransientFailure: (
-			operation: GraphicsCanonicalObjectStoreOperation,
-			count?: number,
-		) => implementation.injectTransientFailure(operation, count),
+		injectTransientFailure: (operation: GraphicsCanonicalObjectStoreOperation, count?: number) =>
+			implementation.injectTransientFailure(operation, count),
 	};
 }
 

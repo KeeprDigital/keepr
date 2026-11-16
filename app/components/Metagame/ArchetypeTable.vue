@@ -35,23 +35,30 @@ const SORTABLE_FIELDS = new Set<MetagameSortBy>([
 	'conversionRate',
 ]);
 
-const sorting = ref([
-	{ id: props.sortBy, desc: true },
-]);
+const sorting = ref([{ id: props.sortBy, desc: true }]);
 
-watch(() => props.sortBy, (sortBy) => {
-	if (sorting.value[0]?.id !== sortBy) {
-		sorting.value = [
-			{ id: sortBy, desc: true },
-		];
-	}
-});
+watch(
+	() => props.sortBy,
+	(sortBy) => {
+		if (sorting.value[0]?.id !== sortBy) {
+			sorting.value = [{ id: sortBy, desc: true }];
+		}
+	},
+);
 
-watch(sorting, (value) => {
-	const nextSortBy = value[0]?.id;
-	if (nextSortBy && SORTABLE_FIELDS.has(nextSortBy as MetagameSortBy) && nextSortBy !== props.sortBy)
-		emit('update:sortBy', nextSortBy as MetagameSortBy);
-}, { deep: true });
+watch(
+	sorting,
+	(value) => {
+		const nextSortBy = value[0]?.id;
+		if (
+			nextSortBy &&
+			SORTABLE_FIELDS.has(nextSortBy as MetagameSortBy) &&
+			nextSortBy !== props.sortBy
+		)
+			emit('update:sortBy', nextSortBy as MetagameSortBy);
+	},
+	{ deep: true },
+);
 
 const allColumns: TableColumn<ArchetypeBreakdownEntry>[] = [
 	{
@@ -89,34 +96,29 @@ const allColumns: TableColumn<ArchetypeBreakdownEntry>[] = [
 
 /** Whether the Event's Metagame reads what a column shows. */
 function offersColumn(column: TableColumn<ArchetypeBreakdownEntry>): boolean {
-	const key = 'accessorKey' in column
-		? column.accessorKey
-		: column.id;
-	if (key === 'winRate' || key === 'conversionRate')
-		return isMetagameSortOffered(props.game, key);
-	if (key === 'avgPosition')
-		return isMetagameColumnOffered(props.game, 'avgPlace');
+	const key = 'accessorKey' in column ? column.accessorKey : column.id;
+	if (key === 'winRate' || key === 'conversionRate') return isMetagameSortOffered(props.game, key);
+	if (key === 'avgPosition') return isMetagameColumnOffered(props.game, 'avgPlace');
 	return true;
 }
 
 const columns = computed(() => allColumns.filter(offersColumn));
 
 function findArchetype(archetypeId: number): Archetype | undefined {
-	return props.archetypes?.find(a => a.id === archetypeId);
+	return props.archetypes?.find((a) => a.id === archetypeId);
 }
 
 const maxShare = computed(() => maxMetaShare(props.entries));
 
 async function openKeyCardsEdit(archetypeId: number) {
 	const archetype = findArchetype(archetypeId);
-	if (!archetype)
-		return;
+	if (!archetype) return;
 
 	const modal = overlay.create(LazyArchetypeKeyCardsEditModal);
 	await modal.open({
 		archetypeName: archetype.name,
 		archetypeId: archetype.id,
-		currentKeyCards: archetype.keyCards?.map(c => c.name) ?? [],
+		currentKeyCards: archetype.keyCards?.map((c) => c.name) ?? [],
 	});
 }
 </script>
@@ -136,7 +138,10 @@ async function openKeyCardsEdit(archetypeId: number) {
 			:ui="{
 				tr: 'cursor-pointer transition-colors',
 			}"
-			@select="(_e, row) => emit('select', row.original.name === selectedArchetype ? null : row.original.name)"
+			@select="
+				(_e, row) =>
+					emit('select', row.original.name === selectedArchetype ? null : row.original.name)
+			"
 		>
 			<template #name-cell="{ row }">
 				<div class="flex flex-col gap-1.5 py-1">

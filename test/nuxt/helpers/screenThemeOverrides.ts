@@ -33,16 +33,22 @@ export interface ScreenThemeNetwork {
 }
 
 function appliedWrite(mode: ScreenMode) {
-	return ({ tokens, stateVersion }: OverrideWrite) => createWireMockScreen({
-		id: 1,
-		currentMode: mode,
-		themeOverrides: Object.fromEntries(Object.entries(tokens).filter(([, value]) => value !== null)),
-		stateVersion: stateVersion + 1,
-	}) as unknown as Screen;
+	return ({ tokens, stateVersion }: OverrideWrite) =>
+		createWireMockScreen({
+			id: 1,
+			currentMode: mode,
+			themeOverrides: Object.fromEntries(
+				Object.entries(tokens).filter(([, value]) => value !== null),
+			),
+			stateVersion: stateVersion + 1,
+		}) as unknown as Screen;
 }
 
 /** Route `fetch` (the test's `$fetch` mock) to the Theme read and the override write. */
-export function fakeScreenThemeNetwork(fetch: Mock, mode: ScreenMode = 'standings'): ScreenThemeNetwork {
+export function fakeScreenThemeNetwork(
+	fetch: Mock,
+	mode: ScreenMode = 'standings',
+): ScreenThemeNetwork {
 	const network: ScreenThemeNetwork = {
 		themeTokens: {},
 		answerWrite: appliedWrite(mode),
@@ -59,15 +65,17 @@ export function fakeScreenThemeNetwork(fetch: Mock, mode: ScreenMode = 'standing
 				updatedAt: new Date(0),
 			} satisfies ThemeResponse;
 		}
-		if (url === OVERRIDES_PATH && init?.method === 'PATCH')
-			return network.answerWrite(init.body);
+		if (url === OVERRIDES_PATH && init?.method === 'PATCH') return network.answerWrite(init.body);
 		throw new Error(`Unexpected request ${url}`);
 	});
 	return network;
 }
 
 /** Seed Event 1, using the "Brand" Theme, and its Screen 1 in `mode`; answers that Screen as the store holds it. */
-export function seedThemedScreen(mode: ScreenMode, themeOverrides: StoredThemeTokens = {}): () => Screen {
+export function seedThemedScreen(
+	mode: ScreenMode,
+	themeOverrides: StoredThemeTokens = {},
+): () => Screen {
 	const eventStore = useEventStore();
 	eventStore.event = { id: 1, themeId: 'brand' } as never;
 	eventStore.eventTheme = null;
@@ -84,7 +92,10 @@ export function seedThemedScreen(mode: ScreenMode, themeOverrides: StoredThemeTo
  * A stand-in for the Screen's settings page: it holds the one Screen Theme
  * Override instance for `screen`, of Event 1, and renders `cards` under it.
  */
-export function screenSettingsPage(screen: () => Screen | null, cards: () => VNodeChild): Component {
+export function screenSettingsPage(
+	screen: () => Screen | null,
+	cards: () => VNodeChild,
+): Component {
 	return defineComponent({
 		setup() {
 			provideScreenThemeOverrides(screen, 1);

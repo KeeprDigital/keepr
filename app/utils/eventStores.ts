@@ -36,8 +36,7 @@ export function registerPendingEditFlush(flush: PendingEditFlush) {
 export function resetAllEventStores() {
 	// Before anything is torn down: every layer below this one reads state these
 	// resets are about to clear.
-	for (const flush of [...pendingEditFlushes])
-		flush();
+	for (const flush of [...pendingEditFlushes]) flush();
 	resetRegisteredEventDataLifecycles();
 	// Nothing held survives the reset, so nothing is behind any more.
 	eventDataResync.reset();

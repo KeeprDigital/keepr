@@ -20,8 +20,12 @@ interface Snapshot {
 	prevId: string;
 }
 
-const journal = JSON.parse(readFileSync(resolve(migrationsDirectory, 'meta/_journal.json'), 'utf8')) as { entries: JournalEntry[] };
-const migrationFiles = readdirSync(migrationsDirectory).filter(name => name.endsWith('.sql')).toSorted();
+const journal = JSON.parse(
+	readFileSync(resolve(migrationsDirectory, 'meta/_journal.json'), 'utf8'),
+) as { entries: JournalEntry[] };
+const migrationFiles = readdirSync(migrationsDirectory)
+	.filter((name) => name.endsWith('.sql'))
+	.toSorted();
 
 /** The `NNNN` a migration's tag starts with. */
 function migrationNumber(entry: JournalEntry) {
@@ -34,10 +38,10 @@ function snapshotPath(entry: JournalEntry) {
 
 describe('the migration journal', () => {
 	it('lists every migration file, in filename order', () => {
-		expect(journal.entries.map(entry => `${entry.tag}.sql`)).toEqual(migrationFiles);
+		expect(journal.entries.map((entry) => `${entry.tag}.sql`)).toEqual(migrationFiles);
 	});
 
-	it.each(journal.entries.map(entry => [entry.tag, entry] as const))(
+	it.each(journal.entries.map((entry) => [entry.tag, entry] as const))(
 		'numbers %s by its journal position, with a snapshot of its own',
 		(_tag, entry) => {
 			expect(entry.tag).toMatch(new RegExp(`^${String(entry.idx).padStart(4, '0')}_`));
@@ -46,8 +50,12 @@ describe('the migration journal', () => {
 	);
 
 	it('chains each snapshot to the one before it', () => {
-		const snapshots = journal.entries.map(entry => JSON.parse(readFileSync(snapshotPath(entry), 'utf8')) as Snapshot);
+		const snapshots = journal.entries.map(
+			(entry) => JSON.parse(readFileSync(snapshotPath(entry), 'utf8')) as Snapshot,
+		);
 
-		expect(snapshots.slice(1).map(snapshot => snapshot.prevId)).toEqual(snapshots.slice(0, -1).map(snapshot => snapshot.id));
+		expect(snapshots.slice(1).map((snapshot) => snapshot.prevId)).toEqual(
+			snapshots.slice(0, -1).map((snapshot) => snapshot.id),
+		);
 	});
 });

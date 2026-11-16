@@ -27,9 +27,7 @@ function graphic(id: string, channelId?: string): BroadcastGraphicConfig {
 		id,
 		name: id,
 		items: [],
-		...(channelId
-			? { channelId }
-			: {}),
+		...(channelId ? { channelId } : {}),
 	};
 }
 
@@ -43,7 +41,7 @@ function channel(
 ): BroadcastGraphicChannelContext {
 	return {
 		handoff,
-		members: graphicIds.map(graphicId => ({ graphicId, durations: TIMING })),
+		members: graphicIds.map((graphicId) => ({ graphicId, durations: TIMING })),
 	};
 }
 
@@ -65,9 +63,7 @@ function take(
 			inputs: [],
 			durations: TIMING,
 			acceptedAt: options.at ?? T0,
-			...(options.channel
-				? { channel: options.channel }
-				: {}),
+			...(options.channel ? { channel: options.channel } : {}),
 		},
 	);
 }
@@ -87,9 +83,7 @@ function out(
 			inputs: [],
 			durations: TIMING,
 			acceptedAt: options.at ?? T0,
-			...(options.channel
-				? { channel: options.channel }
-				: {}),
+			...(options.channel ? { channel: options.channel } : {}),
 		},
 	);
 }
@@ -99,9 +93,7 @@ function at(now: number, context?: BroadcastGraphicChannelContext) {
 	return {
 		now,
 		durations: TIMING,
-		...(context
-			? { channel: context }
-			: {}),
+		...(context ? { channel: context } : {}),
 	};
 }
 
@@ -125,7 +117,7 @@ function onAir(
 }
 
 describe('a Graphic Channel holds at most one Broadcast Graphic on air', () => {
-	it('replaces the channel\'s on-air Broadcast Graphic when another member is taken', () => {
+	it("replaces the channel's on-air Broadcast Graphic when another member is taken", () => {
 		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: LOWER_THIRDS });
 		state = take(state, 'bravo', { at: T0 + 5000, channel: LOWER_THIRDS });
 
@@ -152,11 +144,7 @@ describe('a Graphic Channel holds at most one Broadcast Graphic on air', () => {
 
 	it('never lets Graphic Channel membership or take timing change Screen stack order', () => {
 		// Authored back to front: a channel member sits between two graphics in no channel.
-		const stack = [
-			graphic('slate'),
-			graphic('bravo', 'thirds'),
-			graphic('bug'),
-		];
+		const stack = [graphic('slate'), graphic('bravo', 'thirds'), graphic('bug')];
 		let state = take(createInitialBroadcastGraphicsLiveState(), 'bug');
 		state = take(state, 'bravo', { channel: QUEUED_THIRDS });
 		state = take(state, 'slate', { at: T0 + 10 });
@@ -181,14 +169,12 @@ describe('the Overlap Graphic Channel Handoff Policy', () => {
 		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: LOWER_THIRDS });
 		state = take(state, 'bravo', { at: T0 + 5000, channel: LOWER_THIRDS });
 
-		expect(broadcastGraphicPhaseProjections(state, 'alpha', at(T0 + 5000, LOWER_THIRDS)))
-			.toEqual([
-				{ phase: 'exit', elapsed: 0 },
-			]);
-		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5000, LOWER_THIRDS)))
-			.toEqual([
-				{ phase: 'enter', elapsed: 0 },
-			]);
+		expect(broadcastGraphicPhaseProjections(state, 'alpha', at(T0 + 5000, LOWER_THIRDS))).toEqual([
+			{ phase: 'exit', elapsed: 0 },
+		]);
+		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5000, LOWER_THIRDS))).toEqual([
+			{ phase: 'enter', elapsed: 0 },
+		]);
 	});
 
 	it('skips the waiting Graphic Playout State entirely', () => {
@@ -196,11 +182,14 @@ describe('the Overlap Graphic Channel Handoff Policy', () => {
 		state = take(state, 'bravo', { at: T0 + 5000, channel: LOWER_THIRDS });
 
 		expect(stateOf(state, 'bravo', T0 + 5000, LOWER_THIRDS)).toBe('entering');
-		expect(onAir(state, [
-			graphic('alpha', 'thirds'),
-			graphic('bravo', 'thirds'),
-		], T0 + 5100, LOWER_THIRDS))
-			.toEqual(['alpha', 'bravo']);
+		expect(
+			onAir(
+				state,
+				[graphic('alpha', 'thirds'), graphic('bravo', 'thirds')],
+				T0 + 5100,
+				LOWER_THIRDS,
+			),
+		).toEqual(['alpha', 'bravo']);
 	});
 
 	it('reverses the current incoming graphic into exit and cuts off the older outgoing one', () => {
@@ -211,17 +200,18 @@ describe('the Overlap Graphic Channel Handoff Policy', () => {
 
 		// The current incoming graphic reverses from where it had reached, so it clears in
 		// the 300ms it had taken to get there.
-		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5400, LOWER_THIRDS)))
-			.toEqual([
-				{ phase: 'enter', elapsed: 200 },
-			]);
+		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5400, LOWER_THIRDS))).toEqual([
+			{ phase: 'enter', elapsed: 200 },
+		]);
 		expect(stateOf(state, 'bravo', T0 + 5400, LOWER_THIRDS)).toBe('exiting');
 		expect(stateOf(state, 'bravo', T0 + 5600, LOWER_THIRDS)).toBe('off');
 
 		// The older outgoing graphic is cut off at once rather than being left to finish an
 		// exit nothing is handing over to any more.
 		expect(stateOf(state, 'alpha', T0 + 5300, LOWER_THIRDS)).toBe('off');
-		expect(broadcastGraphicPhaseProjections(state, 'alpha', at(T0 + 5300, LOWER_THIRDS))).toEqual([]);
+		expect(broadcastGraphicPhaseProjections(state, 'alpha', at(T0 + 5300, LOWER_THIRDS))).toEqual(
+			[],
+		);
 
 		expect(stateOf(state, 'charlie', T0 + 5300, LOWER_THIRDS)).toBe('entering');
 	});
@@ -249,38 +239,47 @@ describe('the Out then in Graphic Channel Handoff Policy', () => {
 	];
 
 	it('holds the incoming graphic waiting, absent from every output, until the outgoing exit completes', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 
 		expect(stateOf(state, 'bravo', T0 + 5000, QUEUED_THIRDS)).toBe('waiting');
 		expect(stateOf(state, 'bravo', T0 + 5499, QUEUED_THIRDS)).toBe('waiting');
-		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5200, QUEUED_THIRDS))).toEqual([]);
+		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5200, QUEUED_THIRDS))).toEqual(
+			[],
+		);
 		expect(onAir(state, stack, T0 + 5200, QUEUED_THIRDS)).toEqual(['alpha']);
 	});
 
-	it('begins the incoming enter at the outgoing exit\'s authoritative scheduled completion', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+	it("begins the incoming enter at the outgoing exit's authoritative scheduled completion", () => {
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 
 		// alpha's exit lasts 500ms, so bravo's entrance starts at exactly T0 + 5500.
 		expect(stateOf(state, 'alpha', T0 + 5500, QUEUED_THIRDS)).toBe('off');
 		expect(stateOf(state, 'bravo', T0 + 5500, QUEUED_THIRDS)).toBe('entering');
-		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5500, QUEUED_THIRDS)))
-			.toEqual([
-				{ phase: 'enter', elapsed: 0 },
-			]);
+		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5500, QUEUED_THIRDS))).toEqual([
+			{ phase: 'enter', elapsed: 0 },
+		]);
 		expect(onAir(state, stack, T0 + 5600, QUEUED_THIRDS)).toEqual(['bravo']);
 		expect(stateOf(state, 'bravo', T0 + 6500, QUEUED_THIRDS)).toBe('on-air');
 	});
 
 	it('replaces a waiting graphic before it enters while the current outgoing graphic finishes normally', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 		state = take(state, 'charlie', { at: T0 + 5200, channel: QUEUED_THIRDS });
 
 		// The replaced graphic never reached program, so it leaves without an exit phase.
 		expect(stateOf(state, 'bravo', T0 + 5200, QUEUED_THIRDS)).toBe('off');
-		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5300, QUEUED_THIRDS))).toEqual([]);
+		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5300, QUEUED_THIRDS))).toEqual(
+			[],
+		);
 
 		// The outgoing graphic keeps the schedule it already had, and the latest selection
 		// inherits the wait rather than being queued behind the one it replaced.
@@ -291,22 +290,26 @@ describe('the Out then in Graphic Channel Handoff Policy', () => {
 	});
 
 	it('reverses an entrance still in flight rather than waiting for it', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { at: T0, channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			at: T0,
+			channel: QUEUED_THIRDS,
+		});
 		// 400ms into alpha's entrance: the graphic being replaced is entering, not settled.
 		state = take(state, 'bravo', { at: T0 + 400, channel: QUEUED_THIRDS });
 
 		// alpha unwinds its entrance in the 400ms it took to get there, and bravo waits for
 		// that reversal's completion rather than for a full exit.
-		expect(broadcastGraphicPhaseProjections(state, 'alpha', at(T0 + 600, QUEUED_THIRDS)))
-			.toEqual([
-				{ phase: 'enter', elapsed: 200 },
-			]);
+		expect(broadcastGraphicPhaseProjections(state, 'alpha', at(T0 + 600, QUEUED_THIRDS))).toEqual([
+			{ phase: 'enter', elapsed: 200 },
+		]);
 		expect(stateOf(state, 'bravo', T0 + 700, QUEUED_THIRDS)).toBe('waiting');
 		expect(stateOf(state, 'bravo', T0 + 800, QUEUED_THIRDS)).toBe('entering');
 	});
 
-	it('waits for a graphic an operator had already Out\'d before the Take arrived', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+	it("waits for a graphic an operator had already Out'd before the Take arrived", () => {
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = out(state, 'alpha', { at: T0 + 5000, channel: QUEUED_THIRDS });
 		state = take(state, 'bravo', { at: T0 + 5200, channel: QUEUED_THIRDS });
 
@@ -315,14 +318,18 @@ describe('the Out then in Graphic Channel Handoff Policy', () => {
 	});
 
 	it('does not wait when the channel is already clear', () => {
-		const state = take(createInitialBroadcastGraphicsLiveState(), 'bravo', { channel: QUEUED_THIRDS });
+		const state = take(createInitialBroadcastGraphicsLiveState(), 'bravo', {
+			channel: QUEUED_THIRDS,
+		});
 
 		expect(stateOf(state, 'bravo', T0, QUEUED_THIRDS)).toBe('entering');
 		expect(stateOf(state, 'bravo', T0 + 1000, QUEUED_THIRDS)).toBe('on-air');
 	});
 
 	it('brings the waiting graphic forward when Cut Out ends the exit it was waiting for', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 		// The outgoing graphic's exit was scheduled to complete at T0 + 5500; cutting it
 		// makes its authoritative completion now, and the incoming enter begins there.
@@ -330,15 +337,16 @@ describe('the Out then in Graphic Channel Handoff Policy', () => {
 
 		expect(stateOf(state, 'alpha', T0 + 5200, QUEUED_THIRDS)).toBe('off');
 		expect(stateOf(state, 'bravo', T0 + 5200, QUEUED_THIRDS)).toBe('entering');
-		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5200, QUEUED_THIRDS)))
-			.toEqual([
-				{ phase: 'enter', elapsed: 0 },
-			]);
+		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5200, QUEUED_THIRDS))).toEqual([
+			{ phase: 'enter', elapsed: 0 },
+		]);
 		expect(stateOf(state, 'bravo', T0 + 6200, QUEUED_THIRDS)).toBe('on-air');
 	});
 
 	it('leaves a waiting graphic where it is when a plain Out restates an exit already running', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		const handed = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 
 		state = out(handed, 'alpha', { at: T0 + 5200, channel: QUEUED_THIRDS });
@@ -348,10 +356,7 @@ describe('the Out then in Graphic Channel Handoff Policy', () => {
 });
 
 describe('editing a Graphic Channel Handoff Policy under a running handoff', () => {
-	const stack = [
-		graphic('alpha', 'thirds'),
-		graphic('bravo', 'thirds'),
-	];
+	const stack = [graphic('alpha', 'thirds'), graphic('bravo', 'thirds')];
 
 	it('leaves an incoming graphic that has already begun entering on program', () => {
 		// The handoff started under Overlap, so bravo's entrance began at once and is
@@ -364,15 +369,16 @@ describe('editing a Graphic Channel Handoff Policy under a running handoff', () 
 		// pulling it off program would be the one case where an authoring edit removes a
 		// Broadcast Graphic that is already on air.
 		expect(stateOf(state, 'bravo', T0 + 5200, QUEUED_THIRDS)).toBe('entering');
-		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5200, QUEUED_THIRDS)))
-			.toEqual([
-				{ phase: 'enter', elapsed: 200 },
-			]);
+		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5200, QUEUED_THIRDS))).toEqual([
+			{ phase: 'enter', elapsed: 200 },
+		]);
 		expect(onAir(state, stack, T0 + 5200, QUEUED_THIRDS)).toEqual(['alpha', 'bravo']);
 	});
 
 	it('still holds a graphic whose enter the handoff genuinely deferred', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 
 		// The same reading with the policy left alone: bravo's own enter has not begun,
@@ -402,12 +408,16 @@ describe('cancelling and cutting a Graphic Channel handoff', () => {
 	];
 
 	it('cancels a waiting Take on Out, without running an exit the graphic never earned', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 		state = out(state, 'bravo', { at: T0 + 5200, channel: QUEUED_THIRDS });
 
 		expect(stateOf(state, 'bravo', T0 + 5200, QUEUED_THIRDS)).toBe('off');
-		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5300, QUEUED_THIRDS))).toEqual([]);
+		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5300, QUEUED_THIRDS))).toEqual(
+			[],
+		);
 		// The cancelled graphic stays off past the instant it would otherwise have entered.
 		expect(stateOf(state, 'bravo', T0 + 5600, QUEUED_THIRDS)).toBe('off');
 		// The outgoing graphic still finishes its own exit; cancelling did not touch it.
@@ -416,12 +426,16 @@ describe('cancelling and cutting a Graphic Channel handoff', () => {
 	});
 
 	it('performs the handoff immediately on Cut Take, bypassing the Handoff Policy', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, cut: true, channel: QUEUED_THIRDS });
 
 		expect(stateOf(state, 'alpha', T0 + 5000, QUEUED_THIRDS)).toBe('off');
 		expect(stateOf(state, 'bravo', T0 + 5000, QUEUED_THIRDS)).toBe('on-air');
-		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5000, QUEUED_THIRDS))).toEqual([]);
+		expect(broadcastGraphicPhaseProjections(state, 'bravo', at(T0 + 5000, QUEUED_THIRDS))).toEqual(
+			[],
+		);
 		expect(onAir(state, stack, T0 + 5000, QUEUED_THIRDS)).toEqual(['bravo']);
 	});
 
@@ -433,7 +447,9 @@ describe('cancelling and cutting a Graphic Channel handoff', () => {
 	});
 
 	it('cuts off a member the channel is still holding waiting', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 		state = take(state, 'charlie', { at: T0 + 5200, cut: true, channel: QUEUED_THIRDS });
 
@@ -525,14 +541,16 @@ describe('the channel handoff Out carries interrupted phases exactly as a direct
 		);
 
 		expect(viaTake.playout.alpha).toEqual(viaOut.playout.alpha);
-		expect(broadcastGraphicInputsState(viaTake, 'alpha'))
-			.toEqual(broadcastGraphicInputsState(viaOut, 'alpha'));
+		expect(broadcastGraphicInputsState(viaTake, 'alpha')).toEqual(
+			broadcastGraphicInputsState(viaOut, 'alpha'),
+		);
 		// The crossing keeps travelling underneath the exit rather than snapping.
-		expect(broadcastGraphicPhaseProjections(viaTake, 'alpha', at(T0 + 5300, LOWER_THIRDS)))
-			.toEqual([
+		expect(broadcastGraphicPhaseProjections(viaTake, 'alpha', at(T0 + 5300, LOWER_THIRDS))).toEqual(
+			[
 				{ phase: 'update', elapsed: 300 },
 				{ phase: 'exit', elapsed: 100 },
-			]);
+			],
+		);
 	});
 
 	it('carries the cycling origin out of the record the handoff overwrites', () => {
@@ -587,7 +605,7 @@ describe('the channel handoff Out carries interrupted phases exactly as a direct
 		expect(viaTake.playout.alpha).toEqual(viaOut.playout.alpha);
 	});
 
-	it('derives each member\'s on-screen cycling flag from authored Screen configuration', () => {
+	it("derives each member's on-screen cycling flag from authored Screen configuration", () => {
 		const cyclingAlpha = {
 			...graphic('alpha', 'thirds'),
 			animation: {
@@ -601,55 +619,63 @@ describe('the channel handoff Out carries interrupted phases exactly as a direct
 			},
 		};
 		const contexts = broadcastGraphicChannelContexts({
-			graphics: [
-				cyclingAlpha,
-				graphic('bravo', 'thirds'),
-			],
-			channels: [
-				{ id: 'thirds', name: 'Lower thirds' },
-			],
+			graphics: [cyclingAlpha, graphic('bravo', 'thirds')],
+			channels: [{ id: 'thirds', name: 'Lower thirds' }],
 		});
 
-		expect(contexts.alpha?.members.map(member => [member.graphicId, member.onScreen]))
-			.toEqual([
-				['alpha', true],
-				['bravo', false],
-			]);
+		expect(contexts.alpha?.members.map((member) => [member.graphicId, member.onScreen])).toEqual([
+			['alpha', true],
+			['bravo', false],
+		]);
 	});
 });
 
 describe('what a Graphic Channel does not persist', () => {
 	it('stores no channel state of its own: a handoff writes only playout intents', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 
 		expect(Object.keys(state).sort()).toEqual(['inputs', 'playout', 'sources']);
 		// Waiting is derived, so nothing in the record names it — the incoming graphic
 		// stores exactly the three fields every uninterrupted intent stores.
-		expect(Object.keys(state.playout.bravo!).sort()).toEqual(['cut', 'effectiveStartedAt', 'onAir']);
+		expect(Object.keys(state.playout.bravo!).sort()).toEqual([
+			'cut',
+			'effectiveStartedAt',
+			'onAir',
+		]);
 	});
 
 	it('recovers a waiting Broadcast Graphic settled on air, without replaying its entrance', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 
 		const recovered = recoveredBroadcastGraphicsLiveState(JSON.parse(JSON.stringify(state)));
 		const hoursLater = T0 + 4 * 60 * 60 * 1000;
 
 		expect(stateOf(recovered, 'bravo', hoursLater, QUEUED_THIRDS)).toBe('on-air');
-		expect(broadcastGraphicPhaseProjections(recovered, 'bravo', at(hoursLater, QUEUED_THIRDS))).toEqual([]);
+		expect(
+			broadcastGraphicPhaseProjections(recovered, 'bravo', at(hoursLater, QUEUED_THIRDS)),
+		).toEqual([]);
 		expect(stateOf(recovered, 'alpha', hoursLater, QUEUED_THIRDS)).toBe('off');
 	});
 
 	it('reports the settled states without timing, because waiting is a fact about an instant', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 
 		expect(broadcastGraphicPlayoutState(state, 'bravo')).toBe('on-air');
 	});
 
 	it('cannot report waiting to a reader that cannot see the channel, and shows the graphic instead', () => {
-		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		let state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		state = take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 
 		// The deferred start alone is never read as waiting: a reader with no channel in
@@ -684,26 +710,22 @@ describe('the Graphic Channel context read from authored Screen configuration', 
 			},
 		];
 		const contexts = broadcastGraphicChannelContexts({
-			graphics: [
-				alpha,
-				graphic('bug'),
-				graphic('bravo', 'thirds'),
-			],
+			graphics: [alpha, graphic('bug'), graphic('bravo', 'thirds')],
 			channels,
 		});
 
 		expect(contexts.alpha).toBe(contexts.bravo);
 		expect(contexts.alpha?.handoff).toBe('out-then-in');
-		expect(contexts.alpha?.members.map(member => member.graphicId)).toEqual(['alpha', 'bravo']);
-		expect(contexts.alpha?.members[0]?.socialProfileProjections).toEqual(alpha.socialProfileProjections);
+		expect(contexts.alpha?.members.map((member) => member.graphicId)).toEqual(['alpha', 'bravo']);
+		expect(contexts.alpha?.members[0]?.socialProfileProjections).toEqual(
+			alpha.socialProfileProjections,
+		);
 		expect(contexts.bug).toBeUndefined();
 	});
 
 	it('treats membership of a Graphic Channel the Screen does not declare as no membership', () => {
 		const stack = {
-			graphics: [
-				graphic('alpha', 'deleted-channel'),
-			],
+			graphics: [graphic('alpha', 'deleted-channel')],
 			channels,
 		};
 
@@ -711,9 +733,7 @@ describe('the Graphic Channel context read from authored Screen configuration', 
 		expect(graphicChannelGroups(stack)).toEqual([
 			{
 				channel: null,
-				graphics: [
-					graphic('alpha', 'deleted-channel'),
-				],
+				graphics: [graphic('alpha', 'deleted-channel')],
 			},
 		]);
 	});
@@ -729,66 +749,62 @@ describe('the Graphic Channel context read from authored Screen configuration', 
 			channels,
 		});
 
-		expect(groups.map(group => [
-			group.channel?.id ?? null,
-			group.graphics.map(g => g.id),
-		])).toEqual([
-			[
-				'thirds',
-				['alpha', 'bravo'],
-			],
-			[
-				'slates',
-				['slate'],
-			],
-			[
-				null,
-				['bug'],
-			],
+		expect(
+			groups.map((group) => [group.channel?.id ?? null, group.graphics.map((g) => g.id)]),
+		).toEqual([
+			['thirds', ['alpha', 'bravo']],
+			['slates', ['slate']],
+			[null, ['bug']],
 		]);
 	});
 });
 
 describe('what an operator may do to a waiting Broadcast Graphic', () => {
 	function waitingChannel(): BroadcastGraphicsLiveState {
-		const state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', { channel: QUEUED_THIRDS });
+		const state = take(createInitialBroadcastGraphicsLiveState(), 'alpha', {
+			channel: QUEUED_THIRDS,
+		});
 		return take(state, 'bravo', { at: T0 + 5000, channel: QUEUED_THIRDS });
 	}
 
 	it('refuses Update Graphic, which is available only while a graphic is entering, on air, or updating', () => {
 		const state = waitingChannel();
 
-		expect(() => applyBroadcastGraphicsCommand(
-			state,
-			{
-				type: 'Update Graphic',
-				payload: { graphicId: 'bravo', basedOnAcceptedRevision: 1 },
-			},
-			{
-				inputs: [],
-				durations: TIMING,
-				acceptedAt: T0 + 5200,
-				channel: QUEUED_THIRDS,
-			},
-		)).toThrow(/only while a Broadcast Graphic is entering, on air, or updating/);
+		expect(() =>
+			applyBroadcastGraphicsCommand(
+				state,
+				{
+					type: 'Update Graphic',
+					payload: { graphicId: 'bravo', basedOnAcceptedRevision: 1 },
+				},
+				{
+					inputs: [],
+					durations: TIMING,
+					acceptedAt: T0 + 5200,
+					channel: QUEUED_THIRDS,
+				},
+			),
+		).toThrow(/only while a Broadcast Graphic is entering, on air, or updating/);
 	});
 
 	it('accepts Update Graphic again once its Graphic Channel has cleared and it has entered', () => {
 		const state = waitingChannel();
 
-		expect(() => applyBroadcastGraphicsCommand(
-			state,
-			{
-				type: 'Update Graphic',
-				payload: { graphicId: 'bravo', basedOnAcceptedRevision: 1 },
-			},
-			{
-				inputs: [],
-				durations: TIMING,
-				acceptedAt: T0 + 5600,
-				channel: QUEUED_THIRDS,
-			},
-		)).not.toThrow();
+		expect(() =>
+			applyBroadcastGraphicsCommand(
+				state,
+				{
+					type: 'Update Graphic',
+					payload: { graphicId: 'bravo', basedOnAcceptedRevision: 1 },
+				},
+				{
+					inputs: [],
+					durations: TIMING,
+					acceptedAt: T0 + 5600,
+					channel: QUEUED_THIRDS,
+				},
+			),
+		).not.toThrow();
 	});
 
 	/** A live On-air Update Policy input bound to nothing, and the context that carries it. */

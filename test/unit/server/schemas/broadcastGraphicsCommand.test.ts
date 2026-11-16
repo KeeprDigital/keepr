@@ -15,28 +15,36 @@ function setInput(value: unknown) {
 
 describe('broadcastGraphicsCommandSchema', () => {
 	it('discriminates the four actions by type, each with its own payload', () => {
-		expect(broadcastGraphicsCommandSchema.safeParse({
-			commandId: 'take:1',
-			type: 'Take',
-			payload: { graphicId: 'a', cut: true },
-		}).success).toBe(true);
+		expect(
+			broadcastGraphicsCommandSchema.safeParse({
+				commandId: 'take:1',
+				type: 'Take',
+				payload: { graphicId: 'a', cut: true },
+			}).success,
+		).toBe(true);
 
 		// Update Graphic carries the acceptance it supersedes; the others must not.
-		expect(broadcastGraphicsCommandSchema.safeParse({
-			commandId: 'update:1',
-			type: 'Update Graphic',
-			payload: { graphicId: 'a', basedOnAcceptedRevision: 3 },
-		}).success).toBe(true);
-		expect(broadcastGraphicsCommandSchema.safeParse({
-			commandId: 'update:2',
-			type: 'Update Graphic',
-			payload: { graphicId: 'a' },
-		}).success).toBe(false);
-		expect(broadcastGraphicsCommandSchema.safeParse({
-			commandId: 'take:2',
-			type: 'Take',
-			payload: { graphicId: 'a', basedOnAcceptedRevision: 3 },
-		}).success).toBe(false);
+		expect(
+			broadcastGraphicsCommandSchema.safeParse({
+				commandId: 'update:1',
+				type: 'Update Graphic',
+				payload: { graphicId: 'a', basedOnAcceptedRevision: 3 },
+			}).success,
+		).toBe(true);
+		expect(
+			broadcastGraphicsCommandSchema.safeParse({
+				commandId: 'update:2',
+				type: 'Update Graphic',
+				payload: { graphicId: 'a' },
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsCommandSchema.safeParse({
+				commandId: 'take:2',
+				type: 'Take',
+				payload: { graphicId: 'a', basedOnAcceptedRevision: 3 },
+			}).success,
+		).toBe(false);
 	});
 
 	it('accepts a Graphic Input value in each shape a declared type takes', () => {
@@ -65,11 +73,13 @@ describe('broadcastGraphicsCommandSchema', () => {
 	});
 
 	it('rejects an input key a Graphic Text Template could not name', () => {
-		expect(broadcastGraphicsCommandSchema.safeParse({
-			commandId: 'set:2',
-			type: 'Set Input',
-			payload: { graphicId: 'a', inputKey: '2 names', value: 'x' },
-		}).success).toBe(false);
+		expect(
+			broadcastGraphicsCommandSchema.safeParse({
+				commandId: 'set:2',
+				type: 'Set Input',
+				payload: { graphicId: 'a', inputKey: '2 names', value: 'x' },
+			}).success,
+		).toBe(false);
 	});
 
 	it('accepts only bounded authored Social Profile Projection commands', () => {
@@ -97,20 +107,26 @@ describe('broadcastGraphicsCommandSchema', () => {
 		])
 			expect(broadcastGraphicsCommandSchema.safeParse(command).success).toBe(true);
 
-		expect(broadcastGraphicsCommandSchema.safeParse({
-			commandId: 'profile:5',
-			type: 'Select Social Profile',
-			payload: { graphicId: 'lower', projectionKey: 'profile', network: 'facebook' },
-		}).success).toBe(false);
-		expect(broadcastGraphicsCommandSchema.safeParse({
-			commandId: 'profile:6',
-			type: 'Next Social Profile',
-			payload: { graphicId: 'lower', projectionKey: 'profile', network: 'x' },
-		}).success).toBe(false);
-		expect(broadcastGraphicsCommandSchema.safeParse({
-			commandId: 'profile:7',
-			type: 'Set Social Profile Automatic',
-			payload: { graphicId: 'lower', projectionKey: 'profile', automatic: 'yes' },
-		}).success).toBe(false);
+		expect(
+			broadcastGraphicsCommandSchema.safeParse({
+				commandId: 'profile:5',
+				type: 'Select Social Profile',
+				payload: { graphicId: 'lower', projectionKey: 'profile', network: 'facebook' },
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsCommandSchema.safeParse({
+				commandId: 'profile:6',
+				type: 'Next Social Profile',
+				payload: { graphicId: 'lower', projectionKey: 'profile', network: 'x' },
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsCommandSchema.safeParse({
+				commandId: 'profile:7',
+				type: 'Set Social Profile Automatic',
+				payload: { graphicId: 'lower', projectionKey: 'profile', automatic: 'yes' },
+			}).success,
+		).toBe(false);
 	});
 });

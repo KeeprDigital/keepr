@@ -44,13 +44,9 @@ const PUBLISHED_CODES = new Set(ACCEPTANCE_FAILURE_CODES);
  * a browser verdict — it stays for a harness that constructs a code itself.
  */
 export function verdictFailureCode(verdict) {
-	if (verdict.outcome === 'unavailable')
-		return 'browser-driver-unavailable';
-	if (verdict.outcome === 'timed-out')
-		return 'browser-acceptance-timed-out';
-	return PUBLISHED_CODES.has(verdict.code)
-		? verdict.code
-		: 'browser-acceptance-failed';
+	if (verdict.outcome === 'unavailable') return 'browser-driver-unavailable';
+	if (verdict.outcome === 'timed-out') return 'browser-acceptance-timed-out';
+	return PUBLISHED_CODES.has(verdict.code) ? verdict.code : 'browser-acceptance-failed';
 }
 
 export function chromiumCandidates() {
@@ -78,10 +74,12 @@ export async function serveAcceptanceRoutes(routes) {
 			response.writeHead(404).end();
 			return;
 		}
-		route().then(({ body, type }) => {
-			response.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' });
-			response.end(body);
-		}).catch(() => response.writeHead(500).end());
+		route()
+			.then(({ body, type }) => {
+				response.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' });
+				response.end(body);
+			})
+			.catch(() => response.writeHead(500).end());
 	});
 	await new Promise((resolve, reject) => {
 		server.once('error', reject);
@@ -92,10 +90,10 @@ export async function serveAcceptanceRoutes(routes) {
 		throw new Error('Browser acceptance server did not expose a TCP port.');
 	return {
 		origin: `http://127.0.0.1:${address.port}`,
-		close: () => new Promise((resolve, reject) =>
-			server.close(error => error
-				? reject(error)
-				: resolve())),
+		close: () =>
+			new Promise((resolve, reject) =>
+				server.close((error) => (error ? reject(error) : resolve())),
+			),
 	};
 }
 
@@ -111,8 +109,7 @@ async function connect(webSocketUrl) {
 	socket.addEventListener('message', (message) => {
 		const payload = JSON.parse(message.data);
 		if (!payload.id) {
-			for (const listener of listeners.get(payload.method) ?? [])
-				listener(payload.params);
+			for (const listener of listeners.get(payload.method) ?? []) listener(payload.params);
 			return;
 		}
 		const handler = pending.get(payload.id);
@@ -121,18 +118,15 @@ async function connect(webSocketUrl) {
 	});
 	return {
 		close: () => socket.close(),
-		on: (method, listener) => listeners.set(method, [
-			...listeners.get(method) ?? [],
-			listener,
-		]),
-		command: (method, params = {}) => new Promise((resolve, reject) => {
-			const id = ++nextId;
-			pending.set(id, payload =>
-				payload.error
-					? reject(new Error(payload.error.message))
-					: resolve(payload.result));
-			socket.send(JSON.stringify({ id, method, params }));
-		}),
+		on: (method, listener) => listeners.set(method, [...(listeners.get(method) ?? []), listener]),
+		command: (method, params = {}) =>
+			new Promise((resolve, reject) => {
+				const id = ++nextId;
+				pending.set(id, (payload) =>
+					payload.error ? reject(new Error(payload.error.message)) : resolve(payload.result),
+				);
+				socket.send(JSON.stringify({ id, method, params }));
+			}),
 	};
 }
 
@@ -158,11 +152,14 @@ export function collectPageDiagnostics(page) {
 		list.splice(0, Math.max(0, list.length - KEPT_PAGE_MESSAGES));
 	};
 	page.on('Runtime.consoleAPICalled', ({ type, args = [] }) => {
-		const text = args.map(arg => arg.value ?? arg.description ?? arg.type).join(' ');
+		const text = args.map((arg) => arg.value ?? arg.description ?? arg.type).join(' ');
 		keep(kept.console, `${type}: ${text}`);
 	});
 	page.on('Runtime.exceptionThrown', ({ exceptionDetails = {} }) => {
-		keep(kept.uncaught, exceptionDetails.exception?.description ?? exceptionDetails.text ?? 'unknown');
+		keep(
+			kept.uncaught,
+			exceptionDetails.exception?.description ?? exceptionDetails.text ?? 'unknown',
+		);
 	});
 	return {
 		read: () => ({
@@ -197,8 +194,7 @@ function running(child) {
 
 /** Resolves true once `child` has exited, or false after `ms`. */
 function exitedWithin(child, ms) {
-	if (!running(child))
-		return Promise.resolve(true);
+	if (!running(child)) return Promise.resolve(true);
 	return new Promise((resolve) => {
 		const timer = setTimeout(() => {
 			child.off('exit', onExit);
@@ -215,8 +211,7 @@ function exitedWithin(child, ms) {
 function signal(child, name) {
 	try {
 		child.kill(name);
-	}
-	catch {
+	} catch {
 		// Already gone.
 	}
 }
@@ -229,15 +224,12 @@ const STILL_RUNNING = 'still running after SIGKILL';
  * SIGKILL was stuck, not merely slow.
  */
 async function terminate(browser) {
-	if (browser.child.pid === undefined)
-		return 'never started';
-	if (!running(browser.child))
-		return 'already exited';
+	if (browser.child.pid === undefined) return 'never started';
+	if (!running(browser.child)) return 'already exited';
 	signal(browser.child, 'SIGTERM');
-	if (await exitedWithin(browser.child, browser.terminateGraceMs))
-		return 'stopped by SIGTERM';
+	if (await exitedWithin(browser.child, browser.terminateGraceMs)) return 'stopped by SIGTERM';
 	signal(browser.child, 'SIGKILL');
-	return await exitedWithin(browser.child, browser.killGraceMs)
+	return (await exitedWithin(browser.child, browser.killGraceMs))
 		? 'stopped by SIGKILL'
 		: STILL_RUNNING;
 }
@@ -250,8 +242,7 @@ async function removeProfile(profile) {
 		force: true,
 		maxRetries: 5,
 		retryDelay: 100,
-	})
-		.catch(() => undefined);
+	}).catch(() => undefined);
 }
 
 /**
@@ -291,12 +282,12 @@ const listenedBeforeHooks = new Set();
  * grace: everything is killed and the runner goes at once.
  */
 function stopOnSignal(name) {
-	const othersListen = listenedBeforeHooks.has(name)
-		|| process.listeners(name).some(listener => listener !== stopOnSignal);
+	const othersListen =
+		listenedBeforeHooks.has(name) ||
+		process.listeners(name).some((listener) => listener !== stopOnSignal);
 	const end = () => {
 		uninstallShutdownHooks();
-		if (!othersListen)
-			process.kill(process.pid, name);
+		if (!othersListen) process.kill(process.pid, name);
 	};
 	if (stoppingOnSignal) {
 		killOnExit();
@@ -304,9 +295,11 @@ function stopOnSignal(name) {
 		return;
 	}
 	stoppingOnSignal = true;
-	void Promise.all([...liveBrowsers].map(async (browser) => {
-		await releaseProfile(browser, await terminate(browser));
-	})).finally(() => {
+	void Promise.all(
+		[...liveBrowsers].map(async (browser) => {
+			await releaseProfile(browser, await terminate(browser));
+		}),
+	).finally(() => {
 		stoppingOnSignal = false;
 		end();
 	});
@@ -317,8 +310,7 @@ function stopOnSignal(name) {
  * can still kill synchronously on its way out, though not wait or tidy up.
  */
 function killOnExit() {
-	for (const browser of liveBrowsers)
-		signal(browser.child, 'SIGKILL');
+	for (const browser of liveBrowsers) signal(browser.child, 'SIGKILL');
 }
 
 const SHUTDOWN_HOOKS = { SIGINT: stopOnSignal, SIGTERM: stopOnSignal, exit: killOnExit };
@@ -326,26 +318,22 @@ const SHUTDOWN_HOOKS = { SIGINT: stopOnSignal, SIGTERM: stopOnSignal, exit: kill
 function installShutdownHooks() {
 	listenedBeforeHooks.clear();
 	for (const [event, hook] of Object.entries(SHUTDOWN_HOOKS)) {
-		if (event !== 'exit' && process.listenerCount(event) > 0)
-			listenedBeforeHooks.add(event);
+		if (event !== 'exit' && process.listenerCount(event) > 0) listenedBeforeHooks.add(event);
 		process.on(event, hook);
 	}
 }
 
 function uninstallShutdownHooks() {
-	for (const [event, hook] of Object.entries(SHUTDOWN_HOOKS))
-		process.off(event, hook);
+	for (const [event, hook] of Object.entries(SHUTDOWN_HOOKS)) process.off(event, hook);
 }
 
 /** Track a browser until it exits, with the hooks in place only while any is live. */
 function track(browser) {
-	if (liveBrowsers.size === 0)
-		installShutdownHooks();
+	if (liveBrowsers.size === 0) installShutdownHooks();
 	liveBrowsers.add(browser);
 	browser.child.once('exit', () => {
 		liveBrowsers.delete(browser);
-		if (liveBrowsers.size === 0)
-			uninstallShutdownHooks();
+		if (liveBrowsers.size === 0) uninstallShutdownHooks();
 	});
 }
 
@@ -378,7 +366,10 @@ function startupReport(failure, { candidate, pid, stopped, activePort, errorOutp
 		`  status: ${failure.status}; ${stopped}`,
 		`  ${activePort}`,
 		printed
-			? `  stderr (at most the last ${STDERR_KEPT_CHARS} characters):\n${printed.split('\n').map(line => `    ${line}`).join('\n')}`
+			? `  stderr (at most the last ${STDERR_KEPT_CHARS} characters):\n${printed
+					.split('\n')
+					.map((line) => `    ${line}`)
+					.join('\n')}`
 			: '  stderr: (nothing)',
 	].join('\n');
 }
@@ -403,39 +394,45 @@ function startupReport(failure, { candidate, pid, stopped, activePort, errorOutp
  *   spawnProcess?: Function,
  * }} [options] `spawnProcess` is `spawn` except under test.
  */
-export async function launchChromium(candidate, extraArgs, {
-	terminateGraceMs = TERMINATE_GRACE_MS,
-	killGraceMs = KILL_GRACE_MS,
-	startupTimeoutMs = 30_000,
-	spawnProcess = spawn,
-} = {}) {
-	if (candidate.includes('/') && !existsSync(candidate))
-		return undefined;
+export async function launchChromium(
+	candidate,
+	extraArgs,
+	{
+		terminateGraceMs = TERMINATE_GRACE_MS,
+		killGraceMs = KILL_GRACE_MS,
+		startupTimeoutMs = 30_000,
+		spawnProcess = spawn,
+	} = {},
+) {
+	if (candidate.includes('/') && !existsSync(candidate)) return undefined;
 	const profile = await mkdtemp(join(tmpdir(), CHECKOUT_PROFILE_PREFIX));
-	const child = spawnProcess(candidate, [
-		'--headless=new',
-		'--disable-gpu',
-		'--no-sandbox',
-		'--autoplay-policy=no-user-gesture-required',
-		'--disable-background-media-suspend',
-		'--remote-debugging-port=0',
-		'--remote-allow-origins=*',
-		`--user-data-dir=${profile}`,
-		...extraArgs,
-	], {
-		stdio: ['ignore', 'ignore', 'pipe'],
-	});
+	const child = spawnProcess(
+		candidate,
+		[
+			'--headless=new',
+			'--disable-gpu',
+			'--no-sandbox',
+			'--autoplay-policy=no-user-gesture-required',
+			'--disable-background-media-suspend',
+			'--remote-debugging-port=0',
+			'--remote-allow-origins=*',
+			`--user-data-dir=${profile}`,
+			...extraArgs,
+		],
+		{
+			stdio: ['ignore', 'ignore', 'pipe'],
+		},
+	);
 	const browser = {
 		child,
 		profile,
 		terminateGraceMs,
 		killGraceMs,
 	};
-	if (child.pid !== undefined)
-		track(browser);
+	if (child.pid !== undefined) track(browser);
 
 	const startedAt = Date.now();
-	const stderrEnded = new Promise(resolve => child.stderr.once('end', resolve));
+	const stderrEnded = new Promise((resolve) => child.stderr.once('end', resolve));
 	let errorOutput = '';
 	let endpoint;
 	try {
@@ -444,10 +441,13 @@ export async function launchChromium(candidate, extraArgs, {
 			// also serving `nuxt dev` has overrun 15s, and Chrome 156 30s, which is
 			// why a suite like that warms one first (`warmChromium`, #790).
 			const timeout = setTimeout(
-				() => reject(new StartupFailure(
-					'Chrome DevTools endpoint timed out.',
-					`still running after ${startupTimeoutMs} ms`,
-				)),
+				() =>
+					reject(
+						new StartupFailure(
+							'Chrome DevTools endpoint timed out.',
+							`still running after ${startupTimeoutMs} ms`,
+						),
+					),
 				startupTimeoutMs,
 			);
 			// A chunk can end partway through the URL, so only a line stderr has
@@ -457,7 +457,9 @@ export async function launchChromium(candidate, extraArgs, {
 				errorOutput = (errorOutput + chunk).slice(-STDERR_KEPT_CHARS);
 				const lines = (unfinishedLine + chunk).split('\n');
 				unfinishedLine = lines.pop().slice(-STDERR_LINE_KEPT_CHARS);
-				const endpointLine = lines.map(line => line.match(/DevTools listening on (ws:\/\/\S+)/)).find(Boolean);
+				const endpointLine = lines
+					.map((line) => line.match(/DevTools listening on (ws:\/\/\S+)/))
+					.find(Boolean);
 				if (endpointLine) {
 					clearTimeout(timeout);
 					resolve(endpointLine[1]);
@@ -465,26 +467,23 @@ export async function launchChromium(candidate, extraArgs, {
 			});
 			child.once('error', (error) => {
 				clearTimeout(timeout);
-				if (error.code === 'ENOENT')
-					resolve(undefined);
-				else
-					reject(error);
+				if (error.code === 'ENOENT') resolve(undefined);
+				else reject(error);
 			});
 			// Any exit before the endpoint is a failed start, a clean one included:
 			// nothing is left to announce it.
 			child.once('exit', (code, signalName) => {
 				clearTimeout(timeout);
-				const status = signalName
-					? `killed by ${signalName}`
-					: `exited with code ${code}`;
-				reject(new StartupFailure(
-					`Chromium ${status} before announcing its DevTools endpoint.`,
-					`${status} after ${Date.now() - startedAt} ms`,
-				));
+				const status = signalName ? `killed by ${signalName}` : `exited with code ${code}`;
+				reject(
+					new StartupFailure(
+						`Chromium ${status} before announcing its DevTools endpoint.`,
+						`${status} after ${Date.now() - startedAt} ms`,
+					),
+				);
 			});
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		// A browser too slow to announce itself is still a browser: left running,
 		// it outlives the run that gave up on it.
 		const stopped = await terminate(browser);
@@ -495,19 +494,21 @@ export async function launchChromium(candidate, extraArgs, {
 		// `exit` can come before the last of stderr has been read.
 		await Promise.race([
 			stderrEnded,
-			new Promise(resolve => setTimeout(resolve, STDERR_DRAIN_MS)),
+			new Promise((resolve) => setTimeout(resolve, STDERR_DRAIN_MS)),
 		]);
 		const activePort = await readFile(join(profile, 'DevToolsActivePort'), 'utf8').then(
-			text => `DevToolsActivePort: ${text.trim().split('\n').join(' ')}`,
+			(text) => `DevToolsActivePort: ${text.trim().split('\n').join(' ')}`,
 			() => 'no DevToolsActivePort',
 		);
-		throw new Error(startupReport(error, {
-			candidate,
-			pid: child.pid,
-			stopped: await releaseProfile(browser, stopped),
-			activePort,
-			errorOutput,
-		}));
+		throw new Error(
+			startupReport(error, {
+				candidate,
+				pid: child.pid,
+				stopped: await releaseProfile(browser, stopped),
+				activePort,
+				errorOutput,
+			}),
+		);
 	}
 	if (!endpoint) {
 		await releaseProfile(browser, await terminate(browser));
@@ -524,17 +525,18 @@ export async function launchChromium(candidate, extraArgs, {
 			// first, bounded, because a browser that accepts the connection and
 			// never answers is the busy one this exists for; then escalate.
 			const closing = connect(endpoint)
-				.then(session => session.command('Browser.close'))
-				.then(() => exitedWithin(child, CLOSE_GRACE_MS), () => false);
+				.then((session) => session.command('Browser.close'))
+				.then(
+					() => exitedWithin(child, CLOSE_GRACE_MS),
+					() => false,
+				);
 			const closed = await Promise.race([
 				closing,
-				new Promise(resolve => setTimeout(resolve, CLOSE_GRACE_MS, false)),
+				new Promise((resolve) => setTimeout(resolve, CLOSE_GRACE_MS, false)),
 			]);
 			// Reports rather than throws, so a harness's verdict is never
 			// replaced by how its browser went away.
-			await releaseProfile(browser, closed
-				? 'closed'
-				: await terminate(browser));
+			await releaseProfile(browser, closed ? 'closed' : await terminate(browser));
 		},
 	};
 }
@@ -566,9 +568,11 @@ export async function warmChromium({
 	terminateGraceMs,
 } = {}) {
 	for (const candidate of chromiumCandidates()) {
-		const browser = await launchChromium(candidate, extraArgs, { startupTimeoutMs, terminateGraceMs });
-		if (!browser)
-			continue;
+		const browser = await launchChromium(candidate, extraArgs, {
+			startupTimeoutMs,
+			terminateGraceMs,
+		});
+		if (!browser) continue;
 		await browser.dispose();
 		return candidate;
 	}
@@ -606,8 +610,7 @@ export async function warmChromium({
  */
 export function browserCookie(url, pair) {
 	const separator = pair.indexOf('=');
-	if (separator < 1)
-		throw new Error('A browser cookie is a name=value pair.');
+	if (separator < 1) throw new Error('A browser cookie is a name=value pair.');
 	const name = pair.slice(0, separator);
 	return {
 		name,
@@ -633,9 +636,7 @@ export function browserCookie(url, pair) {
  * @param {readonly string[]} [cookies]
  */
 export function initialTarget(url, cookies) {
-	return cookies !== undefined && cookies.length > 0
-		? 'about:blank'
-		: url;
+	return cookies !== undefined && cookies.length > 0 ? 'about:blank' : url;
 }
 
 /**
@@ -685,12 +686,7 @@ export async function openAuthoredPage(page, { url, cookies = [] }) {
  * }>} The page's verdict, the stable code it named, and its own description of
  * what it observed.
  */
-export async function observeChromiumVerdict({
-	url,
-	timeoutMs = 30_000,
-	extraArgs = [],
-	cookies,
-}) {
+export async function observeChromiumVerdict({ url, timeoutMs = 30_000, extraArgs = [], cookies }) {
 	return await withChromiumPage({ url, extraArgs, cookies }, async (page) => {
 		const deadline = Date.now() + timeoutMs;
 		while (Date.now() < deadline) {
@@ -710,7 +706,7 @@ export async function observeChromiumVerdict({
 					dataset,
 				};
 			}
-			await new Promise(resolve => setTimeout(resolve, 100));
+			await new Promise((resolve) => setTimeout(resolve, 100));
 		}
 		return { outcome: 'timed-out' };
 	});
@@ -743,8 +739,8 @@ export async function observeChromiumValue({
 			if (evaluated.exceptionDetails) {
 				return {
 					outcome: 'failed',
-					detail: evaluated.exceptionDetails.exception?.description
-						?? evaluated.exceptionDetails.text,
+					detail:
+						evaluated.exceptionDetails.exception?.description ?? evaluated.exceptionDetails.text,
 					diagnostics: diagnostics.read(),
 				};
 			}
@@ -755,7 +751,7 @@ export async function observeChromiumValue({
 					diagnostics: diagnostics.read(),
 				};
 			}
-			await new Promise(resolve => setTimeout(resolve, 100));
+			await new Promise((resolve) => setTimeout(resolve, 100));
 		}
 		return {
 			outcome: 'timed-out',
@@ -775,25 +771,22 @@ export async function observeChromiumValue({
 export async function withChromiumPage({ url, extraArgs = [], cookies }, observe) {
 	for (const candidate of chromiumCandidates()) {
 		const browser = await launchChromium(candidate, extraArgs);
-		if (!browser)
-			continue;
+		if (!browser) continue;
 		try {
 			const opened = initialTarget(url, cookies);
 			const target = await fetch(
 				`http://${new URL(browser.endpoint).host}/json/new?${encodeURIComponent(opened)}`,
 				{ method: 'PUT' },
-			).then(response => response.json());
+			).then((response) => response.json());
 			const page = await connect(target.webSocketDebuggerUrl);
 			try {
 				const diagnostics = collectPageDiagnostics(page);
 				await openAuthoredPage(page, { url, cookies });
 				return await observe(page, diagnostics);
-			}
-			finally {
+			} finally {
 				page.close();
 			}
-		}
-		finally {
+		} finally {
 			await browser.dispose();
 		}
 	}

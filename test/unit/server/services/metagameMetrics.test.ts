@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { computeBoardScopedCardMetrics, computeMetagameWinRate } from '~~/server/services/metagameMetrics';
+import {
+	computeBoardScopedCardMetrics,
+	computeMetagameWinRate,
+} from '~~/server/services/metagameMetrics';
 
 describe('metagame metrics service helpers', () => {
 	it('computes rounded win rates and returns null with no matches', () => {

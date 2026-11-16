@@ -35,9 +35,7 @@ mockNuxtImport('useBroadcastGraphicTemplateRepository', () => () => ({
 }));
 
 const mockGetScreenById = vi.fn();
-const mockScreens = ref<Array<{ id: number; stateVersion: number }>>([
-	{ id: 3, stateVersion: 12 },
-]);
+const mockScreens = ref<Array<{ id: number; stateVersion: number }>>([{ id: 3, stateVersion: 12 }]);
 
 mockNuxtImport('useScreenStore', () => () => ({
 	getScreenById: mockGetScreenById,
@@ -67,7 +65,8 @@ const UButtonStub = defineComponent({
 		disabled: { type: Boolean, default: false },
 	},
 	emits: ['click'],
-	template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+	template:
+		'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 });
 const UInputStub = defineComponent({
 	name: 'UInput',
@@ -75,7 +74,8 @@ const UInputStub = defineComponent({
 		modelValue: { type: String, default: '' },
 	},
 	emits: ['update:modelValue', 'change', 'blur'],
-	template: '<input :value="modelValue" @change="$emit(\'change\', $event)" @blur="$emit(\'blur\', $event)" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+	template:
+		'<input :value="modelValue" @change="$emit(\'change\', $event)" @blur="$emit(\'blur\', $event)" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 });
 const UFormFieldStub = defineComponent({
 	props: {
@@ -90,7 +90,9 @@ const lowerThird: BroadcastGraphicConfig = {
 	items: [],
 };
 
-function summary(overrides: Partial<BroadcastGraphicTemplateSummary> = {}): BroadcastGraphicTemplateSummary {
+function summary(
+	overrides: Partial<BroadcastGraphicTemplateSummary> = {},
+): BroadcastGraphicTemplateSummary {
 	return {
 		id: 'template-1',
 		name: 'Lower third',
@@ -120,9 +122,7 @@ function receivedPackage(
 // Choosing a `.skgraphic` the way an author does.
 async function chooseImportFile(wrapper: { get: (selector: string) => any }) {
 	const input = wrapper.get('[data-testid="template-library-import-input"]');
-	const file = new File([
-		new Uint8Array([1, 2, 3]),
-	], 'lower-third.skgraphic');
+	const file = new File([new Uint8Array([1, 2, 3])], 'lower-third.skgraphic');
 	Object.defineProperty(input.element, 'files', {
 		value: [file],
 		configurable: true,
@@ -131,7 +131,10 @@ async function chooseImportFile(wrapper: { get: (selector: string) => any }) {
 	await flushPromises();
 }
 
-async function mountLibrary(props: Record<string, unknown> = {}, stubs: Record<string, unknown> = {}) {
+async function mountLibrary(
+	props: Record<string, unknown> = {},
+	stubs: Record<string, unknown> = {},
+) {
 	const wrapper = mount(TemplateLibrary, {
 		props: {
 			eventId: 7,
@@ -161,9 +164,7 @@ async function mountLibrary(props: Record<string, unknown> = {}, stubs: Record<s
 describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockList.mockResolvedValue([
-			summary(),
-		]);
+		mockList.mockResolvedValue([summary()]);
 		mockSave.mockResolvedValue({
 			...summary(),
 			document: lowerThird,
@@ -178,9 +179,7 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 			graphic: { ...lowerThird, id: 'placed-copy' },
 		});
 		mockRemove.mockResolvedValue(undefined);
-		mockScreens.value = [
-			{ id: 3, stateVersion: 12 },
-		];
+		mockScreens.value = [{ id: 3, stateVersion: 12 }];
 	});
 
 	it('browses the installation library', async () => {
@@ -189,8 +188,9 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 		expect(mockList).toHaveBeenCalled();
 		const entry = wrapper.get('[data-template-id="template-1"]');
 		// An author may rename in place, so the name is an editable field rather than text.
-		expect(entry.get<HTMLInputElement>('[data-testid="template-name"]').element.value)
-			.toBe('Lower third');
+		expect(entry.get<HTMLInputElement>('[data-testid="template-name"]').element.value).toBe(
+			'Lower third',
+		);
 		expect(entry.text()).toContain('4 items');
 	});
 
@@ -200,7 +200,11 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 		await wrapper.get('[data-testid="template-library-save"]').trigger('click');
 		await flushPromises();
 
-		expect(mockSave).toHaveBeenCalledWith({ eventId: 7, screenId: 3, graphicId: 'placed-lower-third' });
+		expect(mockSave).toHaveBeenCalledWith({
+			eventId: 7,
+			screenId: 3,
+			graphicId: 'placed-lower-third',
+		});
 		// The library is re-read, so the author sees the entry they just created.
 		expect(mockList).toHaveBeenCalledTimes(2);
 	});
@@ -208,7 +212,9 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 	it('offers no save while no Broadcast Graphic is selected', async () => {
 		const wrapper = await mountLibrary({ selectedGraphic: null });
 
-		expect(wrapper.get('[data-testid="template-library-save"]').attributes('disabled')).toBeDefined();
+		expect(
+			wrapper.get('[data-testid="template-library-save"]').attributes('disabled'),
+		).toBeDefined();
 	});
 
 	it('places a template and reports the copy it created', async () => {
@@ -228,9 +234,7 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 		// The Screen was written server-side, so the authoritative Screen is reloaded
 		// rather than guessed at.
 		expect(mockGetScreenById).toHaveBeenCalledWith(7, 3);
-		expect(wrapper.emitted('placed')).toEqual([
-			['placed-copy'],
-		]);
+		expect(wrapper.emitted('placed')).toEqual([['placed-copy']]);
 	});
 
 	it('renames a template in the library', async () => {
@@ -288,9 +292,7 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 			revision: 1,
 		});
 
-		mockList.mockResolvedValue([
-			summary({ description: 'Main show, both casters' }),
-		]);
+		mockList.mockResolvedValue([summary({ description: 'Main show, both casters' })]);
 		const described = await mountLibrary();
 		const clearing = described.get('[data-testid="template-description"]');
 		await clearing.setValue('   ');
@@ -301,19 +303,25 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 	});
 
 	it('re-reads the library when a revision is refused as stale', async () => {
-		mockUpdate.mockRejectedValue(transportFailure({
-			status: 409,
-			body: { message: 'Broadcast Graphic Template has been revised by another session (now revision 4)' },
-			request: `[PATCH] "/api/graphics-templates/broadcast-graphics/template-1"`,
-		}));
+		mockUpdate.mockRejectedValue(
+			transportFailure({
+				status: 409,
+				body: {
+					message:
+						'Broadcast Graphic Template has been revised by another session (now revision 4)',
+				},
+				request: `[PATCH] "/api/graphics-templates/broadcast-graphics/template-1"`,
+			}),
+		);
 		const wrapper = await mountLibrary();
 
 		const input = wrapper.get('[data-testid="template-name"]');
 		await input.setValue('Renamed against a stale revision');
 		await flushPromises();
 
-		expect(wrapper.get('[data-testid="template-library-error"]').text())
-			.toContain('revised by another session');
+		expect(wrapper.get('[data-testid="template-library-error"]').text()).toContain(
+			'revised by another session',
+		);
 		// Re-read, so the author is looking at the revision that actually exists before
 		// they try again.
 		// One edit, one write, and one re-read: the library is re-listed so the author is
@@ -334,17 +342,20 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 	});
 
 	it('reports a refused placement instead of leaving the author guessing', async () => {
-		mockPlace.mockRejectedValue(transportFailure({
-			status: 409,
-			body: { message: 'Another session holds the Graphics Authoring Lease' },
-		}));
+		mockPlace.mockRejectedValue(
+			transportFailure({
+				status: 409,
+				body: { message: 'Another session holds the Graphics Authoring Lease' },
+			}),
+		);
 		const wrapper = await mountLibrary();
 
 		await wrapper.get('[data-testid="template-place"]').trigger('click');
 		await flushPromises();
 
-		expect(wrapper.get('[data-testid="template-library-error"]').text())
-			.toContain('Another session holds the Graphics Authoring Lease');
+		expect(wrapper.get('[data-testid="template-library-error"]').text()).toContain(
+			'Another session holds the Graphics Authoring Lease',
+		);
 		expect(wrapper.emitted('placed')).toBeUndefined();
 	});
 
@@ -371,24 +382,27 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 			expect(write).toHaveBeenCalledOnce();
 		});
 
-		it.each(WRITES)('%s nothing when one of them was refused, and says so', async (_case, button, write) => {
-			const wrapper = await mountLibrary({
-				flushEdits: () => Promise.resolve(false),
-			});
+		it.each(WRITES)(
+			'%s nothing when one of them was refused, and says so',
+			async (_case, button, write) => {
+				const wrapper = await mountLibrary({
+					flushEdits: () => Promise.resolve(false),
+				});
 
-			await wrapper.get(`[data-testid="${button}"]`).trigger('click');
-			await flushPromises();
+				await wrapper.get(`[data-testid="${button}"]`).trigger('click');
+				await flushPromises();
 
-			expect(write).not.toHaveBeenCalled();
-			expect(wrapper.get('[data-testid="template-library-error"]').text()).toContain('could not be saved');
-		});
+				expect(write).not.toHaveBeenCalled();
+				expect(wrapper.get('[data-testid="template-library-error"]').text()).toContain(
+					'could not be saved',
+				);
+			},
+		);
 
 		it('places at the version the landed edits left the Screen at', async () => {
 			const wrapper = await mountLibrary({
 				flushEdits: async () => {
-					mockScreens.value = [
-						{ id: 3, stateVersion: 13 },
-					];
+					mockScreens.value = [{ id: 3, stateVersion: 13 }];
 					return true;
 				},
 			});
@@ -408,30 +422,28 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 
 		await wrapper.get('[data-testid="template-place"]').trigger('click');
 		await flushPromises();
-		expect(wrapper.emitted('update:placing')).toEqual([
-			[true],
-		]);
+		expect(wrapper.emitted('update:placing')).toEqual([[true]]);
 
 		reloading.reject(new Error('Failed to fetch'));
 		await flushPromises();
-		expect(wrapper.emitted('update:placing')).toEqual([
-			[true],
-			[false],
-		]);
+		expect(wrapper.emitted('update:placing')).toEqual([[true], [false]]);
 	});
 
 	it('shows an empty library as empty rather than as an error', async () => {
 		mockList.mockResolvedValue([]);
 		const wrapper = await mountLibrary();
 
-		expect(wrapper.get('[data-testid="empty-state"]').text()).toContain('No Broadcast Graphic Templates');
+		expect(wrapper.get('[data-testid="empty-state"]').text()).toContain(
+			'No Broadcast Graphic Templates',
+		);
 	});
 
 	it('offers each design as a Template Package an author can take away', async () => {
 		const wrapper = await mountLibrary();
 
-		expect(wrapper.get('[data-testid="template-export"]').attributes('to'))
-			.toBe('/api/graphics-templates/broadcast-graphics/template-1/template-package');
+		expect(wrapper.get('[data-testid="template-export"]').attributes('to')).toBe(
+			'/api/graphics-templates/broadcast-graphics/template-1/template-package',
+		);
 	});
 
 	it('installs a clean Template Package without asking anything', async () => {
@@ -482,7 +494,9 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 		await entry.get('[data-testid="template-delete"]').trigger('click');
 		await flushPromises();
 		// Importing its package again brings it back, so the prompt says so.
-		expect(wrapper.get('[data-testid="template-delete-confirm"]').text()).toContain('Template Package again');
+		expect(wrapper.get('[data-testid="template-delete-confirm"]').text()).toContain(
+			'Template Package again',
+		);
 		await wrapper.get('[data-testid="template-delete-confirmed"]').trigger('click');
 		await flushPromises();
 
@@ -494,17 +508,12 @@ describe('graphicsBroadcastGraphicTemplateLibrary', () => {
 		{ holds: 'an empty library', templates: [], summary: 'None' },
 		{
 			holds: 'one template',
-			templates: [
-				summary(),
-			],
+			templates: [summary()],
 			summary: '1 template',
 		},
 		{
 			holds: 'several templates',
-			templates: [
-				summary(),
-				summary({ id: 'template-2', name: 'Slate' }),
-			],
+			templates: [summary(), summary({ id: 'template-2', name: 'Slate' })],
 			summary: '2 templates',
 		},
 	])('starts closed, summarising $holds', async ({ templates, summary: expected }) => {

@@ -44,11 +44,9 @@ export function editorSelectionFrame<D, L extends GraphicsEditorLayer>(
 	selection: GraphicsEditorSelection<NoInfer<L>>,
 	canvas: { width: number; height: number },
 ): EditorSelectionFrame | null {
-	if (isCanvasSelection(selection))
-		return null;
+	if (isCanvasSelection(selection)) return null;
 	const stored = layerConfig(tree, document, selection);
-	if (!stored)
-		return null;
+	if (!stored) return null;
 	// Everything on one canvas shares it, so each layer snaps to the others.
 	const snapLines = canvasSnapLines(canvas, tree.canvasLayers(document, selection), stored.id);
 
@@ -72,8 +70,7 @@ export function editorSelectionFrame<D, L extends GraphicsEditorLayer>(
 			...turn,
 		};
 	}
-	if (location.group.arrangement !== 'canvas' || isTurned(location.group.rotation))
-		return null;
+	if (location.group.arrangement !== 'canvas' || isTurned(location.group.rotation)) return null;
 	const padding = Math.max(0, location.group.padding);
 	return {
 		rect: pickRect(location.item),
@@ -98,25 +95,16 @@ export function editorLayerCanvasBox<D, L extends GraphicsEditorLayer>(
 	const location = layerItemLocation(tree, document, layer);
 	if (!location) {
 		const stored = layerConfig(tree, document, layer);
-		return stored
-			? pickRect(stored)
-			: null;
+		return stored ? pickRect(stored) : null;
 	}
 	const { group, item } = location;
-	if (group && (group.arrangement !== 'canvas' || isTurned(group.rotation)))
-		return null;
-	const padding = group
-		? Math.max(0, group.padding)
-		: 0;
+	if (group && (group.arrangement !== 'canvas' || isTurned(group.rotation))) return null;
+	const padding = group ? Math.max(0, group.padding) : 0;
 	const covered = rotatedBounds(item, item.rotation, item.anchor);
 	return {
 		...covered,
-		x: covered.x + (group
-			? group.x + padding
-			: 0),
-		y: covered.y + (group
-			? group.y + padding
-			: 0),
+		x: covered.x + (group ? group.x + padding : 0),
+		y: covered.y + (group ? group.y + padding : 0),
 	};
 }
 
@@ -145,16 +133,14 @@ export function editorLayersFrame<D, L extends GraphicsEditorLayer>(
 			? editorSelectionFrame(tree, document, layers[0], canvas)
 			: null;
 	}
-	const moving = layers.filter(layer => !isLocked(layer));
-	if (moving.length === 0)
-		return null;
+	const moving = layers.filter((layer) => !isLocked(layer));
+	if (moving.length === 0) return null;
 	const members: GraphicRect[] = [];
 	const ids: string[] = [];
 	for (const layer of moving) {
 		const box = editorLayerCanvasBox(tree, document, layer);
 		const stored = layerConfig(tree, document, layer);
-		if (!box || !stored)
-			return null;
+		if (!box || !stored) return null;
 		members.push(box);
 		ids.push(stored.id);
 	}

@@ -60,19 +60,15 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:source': [source: GraphicFontSource];
 	/** The author picked an application font. */
-	'application': [fontId: GraphicApplicationFontId];
+	application: [fontId: GraphicApplicationFontId];
 	/** The picker pinned one exact font Graphic Asset Revision. */
-	'select': [asset: GraphicAsset, reference: GraphicAssetReference];
+	select: [asset: GraphicAsset, reference: GraphicAssetReference];
 	/** The picker let go of the revision it had pinned. */
-	'clear': [];
+	clear: [];
 }>();
 
 const SOURCE_OPTIONS = computed<{ label: string; value: GraphicFontSource }[]>(() => [
-	...(props.optional
-		? [
-				{ label: 'Same as base', value: 'base' as const },
-			]
-		: []),
+	...(props.optional ? [{ label: 'Same as base', value: 'base' as const }] : []),
 	{ label: 'Application font', value: 'application' },
 	{ label: 'Library font', value: 'asset' },
 ]);
@@ -80,21 +76,17 @@ const SOURCE_OPTIONS = computed<{ label: string; value: GraphicFontSource }[]>((
 type GraphicFontOption = GraphicFontOptionGroup['options'][number];
 
 /** One Nuxt UI group per category, headed by a non-selectable label, as `USelect` takes grouped items. */
-const APPLICATION_FONT_ITEMS: SelectItem[][] = GRAPHIC_FONT_OPTION_GROUPS.map(group => [
+const APPLICATION_FONT_ITEMS: SelectItem[][] = GRAPHIC_FONT_OPTION_GROUPS.map((group) => [
 	{ type: 'label' as const, label: group.label },
 	...group.options,
 ]);
 
 const applicationFontId = computed(() =>
-	props.font?.kind === 'application'
-		? props.font.fontId
-		: undefined,
+	props.font?.kind === 'application' ? props.font.fontId : undefined,
 );
 
 const assetReference = computed(() =>
-	props.font?.kind === 'asset'
-		? props.font.reference
-		: undefined,
+	props.font?.kind === 'asset' ? props.font.reference : undefined,
 );
 </script>
 
@@ -131,7 +123,8 @@ const assetReference = computed(() =>
 				<span
 					:data-font-id="(item as GraphicFontOption).value"
 					:style="{ fontFamily: (item as GraphicFontOption).cssFamily }"
-				>{{ (item as GraphicFontOption).label }}</span>
+					>{{ (item as GraphicFontOption).label }}</span
+				>
 			</template>
 		</USelect>
 	</UFormField>
@@ -144,7 +137,9 @@ const assetReference = computed(() =>
 			:disabled="disabled"
 			asset-kind="font"
 			@update:model-value="$event ? undefined : emit('clear')"
-			@select="(asset: GraphicAsset, reference: GraphicAssetReference) => emit('select', asset, reference)"
+			@select="
+				(asset: GraphicAsset, reference: GraphicAssetReference) => emit('select', asset, reference)
+			"
 		/>
 	</UFormField>
 </template>

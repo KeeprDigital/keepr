@@ -2,7 +2,18 @@
 import type { ScreenOutputHeadToHeadEarlierMatch } from '~~/shared/types/screenOutputReads';
 import { foundationTokenVar, foundationTypographyStyle } from '~/modules/screen-mode';
 
-const { config, error, ready, isEmpty, firstMeeting, headerText, player1, player2, earlierMatches, formatRecord } = useHeadToHeadModeData(useScreenContext());
+const {
+	config,
+	error,
+	ready,
+	isEmpty,
+	firstMeeting,
+	headerText,
+	player1,
+	player2,
+	earlierMatches,
+	formatRecord,
+} = useHeadToHeadModeData(useScreenContext());
 
 const primaryTextStyle = {
 	color: foundationTokenVar('text-primary'),
@@ -61,13 +72,16 @@ function outcomeLabel({ outcome }: ScreenOutputHeadToHeadEarlierMatch): string {
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="error"
-		:ready="ready"
-		:empty="isEmpty"
-	>
-		<div class="head-to-head-display broadcast-table-display flex flex-col h-full w-full" :style="displayStyle">
-			<div v-if="config.showHeader" class="head-to-head-header broadcast-table-title" :style="titleDividerStyle">
+	<ScreenModeBase :error="error" :ready="ready" :empty="isEmpty">
+		<div
+			class="head-to-head-display broadcast-table-display flex flex-col h-full w-full"
+			:style="displayStyle"
+		>
+			<div
+				v-if="config.showHeader"
+				class="head-to-head-header broadcast-table-title"
+				:style="titleDividerStyle"
+			>
 				<h2 :style="titleStyle">
 					{{ headerText }}
 				</h2>
@@ -75,14 +89,16 @@ function outcomeLabel({ outcome }: ScreenOutputHeadToHeadEarlierMatch): string {
 
 			<div class="head-to-head-players">
 				<template v-for="(side, index) in players" :key="index">
-					<div v-if="index === 1" class="versus" :style="labelStyle">
-						vs
-					</div>
+					<div v-if="index === 1" class="versus" :style="labelStyle">vs</div>
 					<div class="head-to-head-player" :class="`player-${index + 1}`">
 						<div class="name" :style="nameStyle">
 							{{ side?.name ?? 'TBD' }}
 						</div>
-						<div v-if="config.showPronouns && side?.pronouns" class="pronouns" :style="secondaryTextStyle">
+						<div
+							v-if="config.showPronouns && side?.pronouns"
+							class="pronouns"
+							:style="secondaryTextStyle"
+						>
 							{{ side.pronouns }}
 						</div>
 						<div v-if="side" class="stats" :style="secondaryTextStyle">
@@ -103,9 +119,7 @@ function outcomeLabel({ outcome }: ScreenOutputHeadToHeadEarlierMatch): string {
 			</div>
 
 			<div class="head-to-head-earlier-matches broadcast-table-surface" :style="surfaceStyle">
-				<p v-if="firstMeeting" class="first-meeting" :style="labelStyle">
-					First meeting
-				</p>
+				<p v-if="firstMeeting" class="first-meeting" :style="labelStyle">First meeting</p>
 				<template v-else-if="earlierMatches.length > 0">
 					<p class="earlier-matches-title broadcast-table-header-row" :style="listTitleStyle">
 						Earlier Matches

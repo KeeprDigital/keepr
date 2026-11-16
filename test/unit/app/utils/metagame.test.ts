@@ -15,22 +15,12 @@ describe('formatPercent', () => {
 
 describe('maxMetaShare', () => {
 	it('returns the largest metaShare', () => {
-		expect(maxMetaShare([
-			{ metaShare: 10 },
-			{ metaShare: 33.3 },
-			{ metaShare: 15 },
-		])).toBe(33.3);
+		expect(maxMetaShare([{ metaShare: 10 }, { metaShare: 33.3 }, { metaShare: 15 }])).toBe(33.3);
 	});
 
 	it.each([
 		['no entries', []],
-		[
-			'all-zero shares',
-			[
-				{ metaShare: 0 },
-				{ metaShare: 0 },
-			],
-		],
+		['all-zero shares', [{ metaShare: 0 }, { metaShare: 0 }]],
 	])('returns 1 for %s, so it is always safe to divide by', (_, entries) => {
 		expect(maxMetaShare(entries)).toBe(1);
 	});

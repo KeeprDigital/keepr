@@ -2,7 +2,15 @@ import type { DbFeatureMatch, DbPlayer, DbPlayerDeck } from '~~/server/db/schema
 import type { PlayerSlotData } from '~~/shared/api';
 import { and, asc, desc, eq, or, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
-import { archetypes, featureMatches, matches, phases, playerDecks, players, rounds } from '~~/server/db/schema';
+import {
+	archetypes,
+	featureMatches,
+	matches,
+	phases,
+	playerDecks,
+	players,
+	rounds,
+} from '~~/server/db/schema';
 import { observedSlotPairing } from '~~/server/services/featureMatch';
 import { linkedOpSideGameData } from '~~/server/services/featureMatchSlotLeader';
 import { featureMatchStateService } from '~~/server/services/featureMatchState';
@@ -35,23 +43,28 @@ function playerToMatchData(player: DbPlayer): PlayerSlotData {
 }
 
 function jsonValuesEqual(left: unknown, right: unknown): boolean {
-	if (Object.is(left, right))
-		return true;
+	if (Object.is(left, right)) return true;
 	if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object')
 		return false;
 	if (Array.isArray(left) || Array.isArray(right)) {
-		return Array.isArray(left)
-			&& Array.isArray(right)
-			&& left.length === right.length
-			&& left.every((value, index) => jsonValuesEqual(value, right[index]));
+		return (
+			Array.isArray(left) &&
+			Array.isArray(right) &&
+			left.length === right.length &&
+			left.every((value, index) => jsonValuesEqual(value, right[index]))
+		);
 	}
 	const leftRecord = left as Record<string, unknown>;
 	const rightRecord = right as Record<string, unknown>;
 	const leftKeys = Object.keys(leftRecord);
 	const rightKeys = Object.keys(rightRecord);
-	return leftKeys.length === rightKeys.length
-		&& leftKeys.every(key => Object.hasOwn(rightRecord, key)
-			&& jsonValuesEqual(leftRecord[key], rightRecord[key]));
+	return (
+		leftKeys.length === rightKeys.length &&
+		leftKeys.every(
+			(key) =>
+				Object.hasOwn(rightRecord, key) && jsonValuesEqual(leftRecord[key], rightRecord[key]),
+		)
+	);
 }
 
 /**
@@ -68,14 +81,15 @@ export function playerFeatureMatchSyncService() {
 	 * holds the pairing and active Session it is given with, and answers the ids
 	 * it wrote.
 	 */
-	async function refreshMatchesFromPlayers(eventId: number, playerIds: number[]): Promise<{
+	async function refreshMatchesFromPlayers(
+		eventId: number,
+		playerIds: number[],
+	): Promise<{
 		updatedSlots: DbFeatureMatch[];
 		playersById: Map<number, DbPlayer>;
 		commit: (observedSlots: DbFeatureMatch[]) => Promise<number[]>;
 	}> {
-		const uniqueIds = [
-			...new Set(playerIds),
-		];
+		const uniqueIds = [...new Set(playerIds)];
 		if (uniqueIds.length === 0) {
 			return {
 				updatedSlots: [],
@@ -114,19 +128,18 @@ export function playerFeatureMatchSyncService() {
 				.leftJoin(matches, eq(featureMatches.matchId, matches.id))
 				.leftJoin(rounds, eq(matches.roundId, rounds.id))
 				.leftJoin(phases, eq(rounds.phaseId, phases.id))
-				.where(and(
-					eq(featureMatches.eventId, eventId),
-					or(
-						sql`${featureMatches.player1Id} in (select cast(value as integer) from json_each(${payload}))`,
-						sql`${featureMatches.player2Id} in (select cast(value as integer) from json_each(${payload}))`,
+				.where(
+					and(
+						eq(featureMatches.eventId, eventId),
+						or(
+							sql`${featureMatches.player1Id} in (select cast(value as integer) from json_each(${payload}))`,
+							sql`${featureMatches.player2Id} in (select cast(value as integer) from json_each(${payload}))`,
+						),
 					),
-				));
-			for (const row of rows)
-				affectedById.set(row.id, row);
+				);
+			for (const row of rows) affectedById.set(row.id, row);
 		}
-		const affectedMatches = [
-			...affectedById.values(),
-		];
+		const affectedMatches = [...affectedById.values()];
 		if (affectedMatches.length === 0) {
 			return {
 				updatedSlots: [],
@@ -137,33 +150,50 @@ export function playerFeatureMatchSyncService() {
 
 		const targetIds = new Set(uniqueIds);
 		const referencedPlayerIds = [
-			...new Set(affectedMatches.flatMap(match =>
-				[match.player1Id, match.player2Id].filter((id): id is number => id != null),
-			)),
+			...new Set(
+				affectedMatches.flatMap((match) =>
+					[match.player1Id, match.player2Id].filter((id): id is number => id != null),
+				),
+			),
 		];
 		const loadedPlayers: DbPlayer[] = [];
 		for (const payload of chunkJsonRows(referencedPlayerIds)) {
-			loadedPlayers.push(...await db
-				.select()
-				.from(players)
-				.where(and(
-					eq(players.eventId, eventId),
-					sql`${players.id} in (select cast(value as integer) from json_each(${payload}))`,
-				)));
+			loadedPlayers.push(
+				...(await db
+					.select()
+					.from(players)
+					.where(
+						and(
+							eq(players.eventId, eventId),
+							sql`${players.id} in (select cast(value as integer) from json_each(${payload}))`,
+						),
+					)),
+			);
 		}
-		const playersById = new Map(loadedPlayers.map(player => [player.id, player]));
+		const playersById = new Map(loadedPlayers.map((player) => [player.id, player]));
 
-		const affectedTargetIds = referencedPlayerIds.filter(id => targetIds.has(id) && playersById.has(id));
+		const affectedTargetIds = referencedPlayerIds.filter(
+			(id) => targetIds.has(id) && playersById.has(id),
+		);
 		const deckRows: DbPlayerDeck[] = [];
 		for (const payload of chunkJsonRows(affectedTargetIds)) {
-			deckRows.push(...await db
-				.select()
-				.from(playerDecks)
-				.where(and(
-					eq(playerDecks.eventId, eventId),
-					sql`${playerDecks.playerId} in (select cast(value as integer) from json_each(${payload}))`,
-				))
-				.orderBy(asc(playerDecks.playerId), desc(playerDecks.isPrimary), asc(playerDecks.sortOrder), asc(playerDecks.id)));
+			deckRows.push(
+				...(await db
+					.select()
+					.from(playerDecks)
+					.where(
+						and(
+							eq(playerDecks.eventId, eventId),
+							sql`${playerDecks.playerId} in (select cast(value as integer) from json_each(${payload}))`,
+						),
+					)
+					.orderBy(
+						asc(playerDecks.playerId),
+						desc(playerDecks.isPrimary),
+						asc(playerDecks.sortOrder),
+						asc(playerDecks.id),
+					)),
+			);
 		}
 		const decksByPlayerId = new Map<number, DbPlayerDeck[]>();
 		for (const deck of deckRows) {
@@ -173,30 +203,34 @@ export function playerFeatureMatchSyncService() {
 		}
 
 		const reviewedArchetypeIds = [
-			...new Set(deckRows.flatMap(deck =>
-				deck.reviewedAt != null && deck.archetypeId != null
-					? [deck.archetypeId]
-					: [],
-			)),
+			...new Set(
+				deckRows.flatMap((deck) =>
+					deck.reviewedAt != null && deck.archetypeId != null ? [deck.archetypeId] : [],
+				),
+			),
 		];
 		const archetypesById = new Map<number, { id: number; name: string; colors: string | null }>();
 		for (const payload of chunkJsonRows(reviewedArchetypeIds)) {
 			const rows = await db
 				.select({ id: archetypes.id, name: archetypes.name, colors: archetypes.colors })
 				.from(archetypes)
-				.where(and(
-					eq(archetypes.eventId, eventId),
-					sql`${archetypes.id} in (select cast(value as integer) from json_each(${payload}))`,
-				));
-			for (const archetype of rows)
-				archetypesById.set(archetype.id, archetype);
+				.where(
+					and(
+						eq(archetypes.eventId, eventId),
+						sql`${archetypes.id} in (select cast(value as integer) from json_each(${payload}))`,
+					),
+				);
+			for (const archetype of rows) archetypesById.set(archetype.id, archetype);
 		}
 
-		const changed = new Map<number, {
-			slot: DbFeatureMatch;
-			player1Data?: PlayerSlotData;
-			player2Data?: PlayerSlotData;
-		}>();
+		const changed = new Map<
+			number,
+			{
+				slot: DbFeatureMatch;
+				player1Data?: PlayerSlotData;
+				player2Data?: PlayerSlotData;
+			}
+		>();
 		for (const match of affectedMatches) {
 			const next: {
 				slot: DbFeatureMatch;
@@ -204,23 +238,17 @@ export function playerFeatureMatchSyncService() {
 				player2Data?: PlayerSlotData;
 			} = { slot: match as DbFeatureMatch };
 			for (const side of [1, 2] as const) {
-				const playerId = side === 1
-					? match.player1Id
-					: match.player2Id;
-				if (playerId == null || !targetIds.has(playerId))
-					continue;
+				const playerId = side === 1 ? match.player1Id : match.player2Id;
+				if (playerId == null || !targetIds.has(playerId)) continue;
 				const player = playersById.get(playerId);
-				if (!player)
-					continue;
-				const existingData = side === 1
-					? match.player1Data
-					: match.player2Data;
+				if (!player) continue;
+				const existingData = side === 1 ? match.player1Data : match.player2Data;
 				const playerDeckRows = decksByPlayerId.get(playerId) ?? [];
 				const hasDeckIdentity = existingData != null && Object.hasOwn(existingData, 'deckId');
 				const selectedDeck = hasDeckIdentity
 					? existingData.deckId == null
 						? null
-						: playerDeckRows.find(deck => deck.id === existingData.deckId) ?? null
+						: (playerDeckRows.find((deck) => deck.id === existingData.deckId) ?? null)
 					: selectMatchDeck(playerDeckRows, { formatExternalId: match.formatExternalId }).deck;
 				// The preserved-identity branch assigns its overrides onto a fresh factory
 				// result rather than writing them beside a spread of one. `{ ...factory(), key: … }`
@@ -252,17 +280,17 @@ export function playerFeatureMatchSyncService() {
 				const isOpSide = player.gameData?.type === 'op' || existingData?.gameData?.type === 'op';
 				const updatedData = isOpSide
 					? Object.assign(playerToMatchData(player), {
-						gameData: linkedOpSideGameData(player.gameData),
-					} satisfies Partial<PlayerSlotData>)
+							gameData: linkedOpSideGameData(player.gameData),
+						} satisfies Partial<PlayerSlotData>)
 					: hasDeckIdentity && existingData.deckId != null && !selectedDeck
 						? Object.assign(playerToMatchData(player), {
-						// The exact historical deck is no longer in the current submitted-deck
-						// snapshot. Preserve its embedded identity instead of rebinding this
-						// match to another format/primary deck.
-							deckId: existingData.deckId,
-							archetypeId: existingData.archetypeId,
-							gameData: existingData.gameData,
-						} satisfies Partial<PlayerSlotData>)
+								// The exact historical deck is no longer in the current submitted-deck
+								// snapshot. Preserve its embedded identity instead of rebinding this
+								// match to another format/primary deck.
+								deckId: existingData.deckId,
+								archetypeId: existingData.archetypeId,
+								gameData: existingData.gameData,
+							} satisfies Partial<PlayerSlotData>)
 						: applyMatchDeckSnapshot(
 								playerToMatchData(player),
 								selectedDeck,
@@ -270,16 +298,13 @@ export function playerFeatureMatchSyncService() {
 									? null
 									: archetypesById.get(selectedDeck.archetypeId),
 								{
-									expectsMtgDeck: playerDeckRows.length > 0
-										|| existingData?.gameData?.type === 'mtg',
+									expectsMtgDeck:
+										playerDeckRows.length > 0 || existingData?.gameData?.type === 'mtg',
 								},
 							);
-				if (jsonValuesEqual(existingData, updatedData))
-					continue;
-				if (side === 1)
-					next.player1Data = updatedData;
-				else
-					next.player2Data = updatedData;
+				if (jsonValuesEqual(existingData, updatedData)) continue;
+				if (side === 1) next.player1Data = updatedData;
+				else next.player2Data = updatedData;
 			}
 			if (next.player1Data !== undefined || next.player2Data !== undefined)
 				changed.set(match.id, next);
@@ -293,16 +318,10 @@ export function playerFeatureMatchSyncService() {
 		}
 
 		const now = new Date();
-		const updatedSlots = [
-			...changed.values(),
-		].map(({ slot, player1Data, player2Data }) => ({
+		const updatedSlots = [...changed.values()].map(({ slot, player1Data, player2Data }) => ({
 			...slot,
-			...(player1Data === undefined
-				? {}
-				: { player1Data }),
-			...(player2Data === undefined
-				? {}
-				: { player2Data }),
+			...(player1Data === undefined ? {} : { player1Data }),
+			...(player2Data === undefined ? {} : { player2Data }),
 			updatedAt: now,
 		}));
 		return {
@@ -313,32 +332,30 @@ export function playerFeatureMatchSyncService() {
 				// promoted since holds another Match, and must not take this one's data.
 				const updateQueries = observedSlots.flatMap((observed) => {
 					const update = changed.get(observed.id);
-					if (!update)
-						return [];
+					if (!update) return [];
 					return [
 						db
 							.update(featureMatches)
 							.set({
-								...(update.player1Data === undefined
-									? {}
-									: { player1Data: update.player1Data }),
-								...(update.player2Data === undefined
-									? {}
-									: { player2Data: update.player2Data }),
+								...(update.player1Data === undefined ? {} : { player1Data: update.player1Data }),
+								...(update.player2Data === undefined ? {} : { player2Data: update.player2Data }),
 								updatedAt: now,
 							})
-							.where(and(
-								eq(featureMatches.id, observed.id),
-								eq(featureMatches.eventId, eventId),
-								observedSlotPairing(observed),
-							))
+							.where(
+								and(
+									eq(featureMatches.id, observed.id),
+									eq(featureMatches.eventId, eventId),
+									observedSlotPairing(observed),
+								),
+							)
 							.returning({ id: featureMatches.id }),
 					];
 				});
-				if (updateQueries.length === 0)
-					return [];
-				const written = await db.batch(updateQueries as [typeof updateQueries[0], ...typeof updateQueries]);
-				return written.flatMap(rows => rows.map(row => row.id));
+				if (updateQueries.length === 0) return [];
+				const written = await db.batch(
+					updateQueries as [(typeof updateQueries)[0], ...typeof updateQueries],
+				);
+				return written.flatMap((rows) => rows.map((row) => row.id));
 			},
 		};
 	}
@@ -351,14 +368,14 @@ export function playerFeatureMatchSyncService() {
 	 * what it holds now was not what this pass computed for.
 	 */
 	async function syncMatchesFromPlayers(eventId: number, playerIds: number[]): Promise<number[]> {
-		if (playerIds.length === 0)
-			return [];
+		if (playerIds.length === 0) return [];
 
-		const { updatedSlots, playersById, commit } = await refreshMatchesFromPlayers(eventId, playerIds);
+		const { updatedSlots, playersById, commit } = await refreshMatchesFromPlayers(
+			eventId,
+			playerIds,
+		);
 		const state = featureMatchStateService();
-		const defaults = updatedSlots.length > 0
-			? await state.loadEventDefaults(eventId)
-			: undefined;
+		const defaults = updatedSlots.length > 0 ? await state.loadEventDefaults(eventId) : undefined;
 		// Correct active-session snapshots before advancing the durable slot rows.
 		// If any session CAS fails, all slots remain at their previous snapshot and
 		// the next retry will detect the same delta instead of permanently skipping
@@ -367,31 +384,37 @@ export function playerFeatureMatchSyncService() {
 		for (const slot of updatedSlots) {
 			const sourceSnapshot = await state.buildSourceSnapshot(slot, defaults, playersById);
 			// A Slot read without a Session owns the one just opened for it.
-			const observedWith = (sessionId: number): DbFeatureMatch =>
-				({ ...slot, activeSessionId: slot.activeSessionId ?? sessionId });
-			const corrected = await state.applyCommandToActiveSession(slot.id, eventId, async (session) => {
-				// The Session shown is the Slot's own only while the Slot still holds
-				// what was read. Checked after the Session is loaded, so a promotion
-				// landing later closes this Session and fails the command's own CAS.
-				const [held] = await db
-					.select({ id: featureMatches.id })
-					.from(featureMatches)
-					.where(and(
-						eq(featureMatches.id, slot.id),
-						eq(featureMatches.eventId, eventId),
-						observedSlotPairing(observedWith(session.id)),
-					));
-				if (!held)
-					return null;
-				return {
-					commandId: randomCommandId('ReviewedDeckSnapshot'),
-					type: 'SnapshotCorrected',
-					payload: { sourceSnapshot },
-					baseSequence: session.sequence,
-				};
+			const observedWith = (sessionId: number): DbFeatureMatch => ({
+				...slot,
+				activeSessionId: slot.activeSessionId ?? sessionId,
 			});
-			if (corrected)
-				observedSlots.push(observedWith(corrected.sessionId));
+			const corrected = await state.applyCommandToActiveSession(
+				slot.id,
+				eventId,
+				async (session) => {
+					// The Session shown is the Slot's own only while the Slot still holds
+					// what was read. Checked after the Session is loaded, so a promotion
+					// landing later closes this Session and fails the command's own CAS.
+					const [held] = await db
+						.select({ id: featureMatches.id })
+						.from(featureMatches)
+						.where(
+							and(
+								eq(featureMatches.id, slot.id),
+								eq(featureMatches.eventId, eventId),
+								observedSlotPairing(observedWith(session.id)),
+							),
+						);
+					if (!held) return null;
+					return {
+						commandId: randomCommandId('ReviewedDeckSnapshot'),
+						type: 'SnapshotCorrected',
+						payload: { sourceSnapshot },
+						baseSequence: session.sequence,
+					};
+				},
+			);
+			if (corrected) observedSlots.push(observedWith(corrected.sessionId));
 		}
 
 		return await commit(observedSlots);
@@ -414,18 +437,21 @@ export function playerFeatureMatchSyncService() {
 	 * cannot write its Slot snapshots at all is not a caller that should answer
 	 * with success.
 	 */
-	async function syncMatchesFromPlayersAfterCommit(eventId: number, playerIds: number[]): Promise<number[]> {
+	async function syncMatchesFromPlayersAfterCommit(
+		eventId: number,
+		playerIds: number[],
+	): Promise<number[]> {
 		try {
 			return await syncMatchesFromPlayers(eventId, playerIds);
-		}
-		catch (error) {
-			if (!isStateConflictFailure(error))
-				throw error;
-			console.error(JSON.stringify({
-				message: 'feature_match_reverse_sync_conflict',
-				eventId,
-				playerCount: new Set(playerIds).size,
-			}));
+		} catch (error) {
+			if (!isStateConflictFailure(error)) throw error;
+			console.error(
+				JSON.stringify({
+					message: 'feature_match_reverse_sync_conflict',
+					eventId,
+					playerCount: new Set(playerIds).size,
+				}),
+			);
 			return [];
 		}
 	}
@@ -435,11 +461,13 @@ export function playerFeatureMatchSyncService() {
 		const rows = await db
 			.select({ id: featureMatches.id })
 			.from(featureMatches)
-			.where(and(
-				eq(featureMatches.eventId, eventId),
-				or(eq(featureMatches.player1Id, playerId), eq(featureMatches.player2Id, playerId)),
-			));
-		return rows.map(row => row.id);
+			.where(
+				and(
+					eq(featureMatches.eventId, eventId),
+					or(eq(featureMatches.player1Id, playerId), eq(featureMatches.player2Id, playerId)),
+				),
+			);
+		return rows.map((row) => row.id);
 	}
 
 	/**
@@ -449,9 +477,11 @@ export function playerFeatureMatchSyncService() {
 	 * Slot, so its snapshot stops seating the Player. Answers the Slots still
 	 * held; one whose pairing or Session moved meanwhile is left as it is now.
 	 */
-	async function releaseDeletedPlayerSides(eventId: number, slotIds: readonly number[]): Promise<number[]> {
-		if (slotIds.length === 0)
-			return [];
+	async function releaseDeletedPlayerSides(
+		eventId: number,
+		slotIds: readonly number[],
+	): Promise<number[]> {
+		if (slotIds.length === 0) return [];
 		const slots = await db
 			.select()
 			.from(featureMatches)
@@ -463,7 +493,11 @@ export function playerFeatureMatchSyncService() {
 			const released: Partial<Pick<DbFeatureMatch, 'player1Data' | 'player2Data'>> = {};
 			for (const side of [1, 2] as const) {
 				const data = slot[`player${side}Data`];
-				if (slot[`player${side}Id`] != null || data?.gameData?.type !== 'op' || !Object.hasOwn(data.gameData, 'deckList'))
+				if (
+					slot[`player${side}Id`] != null ||
+					data?.gameData?.type !== 'op' ||
+					!Object.hasOwn(data.gameData, 'deckList')
+				)
 					continue;
 				const { deckList: _deckList, ...gameData } = data.gameData;
 				released[`player${side}Data`] = { ...data, gameData };
@@ -473,30 +507,42 @@ export function playerFeatureMatchSyncService() {
 					const [written] = await db
 						.update(featureMatches)
 						.set(released)
-						.where(and(eq(featureMatches.id, slot.id), eq(featureMatches.eventId, eventId), observedSlotPairing(slot)))
+						.where(
+							and(
+								eq(featureMatches.id, slot.id),
+								eq(featureMatches.eventId, eventId),
+								observedSlotPairing(slot),
+							),
+						)
 						.returning({ id: featureMatches.id });
-					if (!written)
-						continue;
+					if (!written) continue;
 				}
-				const sourceSnapshot = await state.buildSourceSnapshot({
-					...slot,
-					...released,
-				}, defaults);
-				await state.applyCommandToActiveSession(slot.id, eventId, session => ({
+				const sourceSnapshot = await state.buildSourceSnapshot(
+					{
+						...slot,
+						...released,
+					},
+					defaults,
+				);
+				await state.applyCommandToActiveSession(slot.id, eventId, (session) => ({
 					commandId: randomCommandId('SnapshotCorrected'),
 					type: 'SnapshotCorrected',
 					payload: { sourceSnapshot },
 					baseSequence: session.sequence,
 				}));
-			}
-			catch (error) {
+			} catch (error) {
 				// The delete committed: a lost Session race is logged, not answered.
-				if (!isStateConflictFailure(error))
-					throw error;
-				console.error(JSON.stringify({ message: 'feature_match_player_delete_conflict', eventId, slotId: slot.id }));
+				if (!isStateConflictFailure(error)) throw error;
+				console.error(
+					JSON.stringify({
+						message: 'feature_match_player_delete_conflict',
+						eventId,
+						slotId: slot.id,
+					}),
+				);
 			}
 		}
-		return slots.map(slot => slot.id);
+		return slots.map((slot) => slot.id);
 	}
 
 	return {

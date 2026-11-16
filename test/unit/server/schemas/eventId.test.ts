@@ -3,7 +3,10 @@ import { archetypeParamsSchema } from '~~/server/schemas/api/archetype';
 import { broadcastDeckListParamsSchema } from '~~/server/schemas/api/broadcastDeckList';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
 import { eventIdParamSchema } from '~~/server/schemas/api/eventId';
-import { featureMatchSessionParamsSchema, featureMatchSlotParamsSchema } from '~~/server/schemas/api/featureMatch';
+import {
+	featureMatchSessionParamsSchema,
+	featureMatchSlotParamsSchema,
+} from '~~/server/schemas/api/featureMatch';
 import { featureMatchDeckListParamsSchema } from '~~/server/schemas/api/featureMatchDeckList';
 import { matchParamsSchema } from '~~/server/schemas/api/match';
 import {
@@ -14,7 +17,10 @@ import {
 import { opCardParamsSchema } from '~~/server/schemas/api/opCard';
 import { phaseParamsSchema } from '~~/server/schemas/api/phase';
 import { playerParamsSchema } from '~~/server/schemas/api/player';
-import { playerListMemberParamsSchema, playerListParamsSchema } from '~~/server/schemas/api/playerList';
+import {
+	playerListMemberParamsSchema,
+	playerListParamsSchema,
+} from '~~/server/schemas/api/playerList';
 import { roundParamsSchema } from '~~/server/schemas/api/round';
 import { modeConfigParamsSchema, screenParamsSchema } from '~~/server/schemas/api/screen';
 import { talentParamsSchema } from '~~/server/schemas/api/talent';

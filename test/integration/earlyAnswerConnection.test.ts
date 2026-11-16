@@ -34,16 +34,18 @@ function rawConnection() {
 	const socket: Socket = connect(Number(port), hostname);
 	let received = Buffer.alloc(0);
 	let ended = false;
-	socket.on('data', (chunk: Buffer) => received = Buffer.concat([received, chunk]));
+	socket.on('data', (chunk: Buffer) => (received = Buffer.concat([received, chunk])));
 	socket.on('error', () => {});
-	socket.once('close', () => ended = true);
+	socket.once('close', () => (ended = true));
 
 	/**
 	 * The next whole response, or `closed` if the connection ended first, or
 	 * `silent` if neither happened within `milliseconds`. The route's answers
 	 * carry a Content-Length; anything else fails loudly rather than misparse.
 	 */
-	async function nextResponse(milliseconds: number): Promise<{ status: number; headers: string } | 'closed' | 'silent'> {
+	async function nextResponse(
+		milliseconds: number,
+	): Promise<{ status: number; headers: string } | 'closed' | 'silent'> {
 		const deadline = Date.now() + milliseconds;
 		while (Date.now() < deadline) {
 			const headerEnd = received.indexOf('\r\n\r\n');
@@ -61,17 +63,18 @@ function rawConnection() {
 					};
 				}
 			}
-			if (ended)
-				return 'closed';
-			await new Promise(resolve => setTimeout(resolve, 20));
+			if (ended) return 'closed';
+			await new Promise((resolve) => setTimeout(resolve, 20));
 		}
 		return 'silent';
 	}
 
 	function send(method: string, path: string, body: Uint8Array = new Uint8Array(0)) {
-		socket.write(`${method} ${path} HTTP/1.1\r\nHost: ${hostname}:${port}\r\nCookie: ${cookie}\r\nContent-Length: ${body.byteLength}\r\n\r\n`, 'latin1');
-		if (body.byteLength)
-			socket.write(body);
+		socket.write(
+			`${method} ${path} HTTP/1.1\r\nHost: ${hostname}:${port}\r\nCookie: ${cookie}\r\nContent-Length: ${body.byteLength}\r\n\r\n`,
+			'latin1',
+		);
+		if (body.byteLength) socket.write(body);
 	}
 
 	return {
@@ -81,7 +84,7 @@ function rawConnection() {
 	};
 }
 
-describe('an early answer\'s connection', () => {
+describe("an early answer's connection", () => {
 	// The body-limit refusal answers 413 on the declared length, without reading
 	// the body. `requestBodyLimits.test.ts` once retried every request for it
 	// (#396), because its next request on a reused connection died with EPIPE or
@@ -89,13 +92,16 @@ describe('an early answer\'s connection', () => {
 	it('answers a request sent on the same connection after a 413 on the declared length', async () => {
 		const connection = rawConnection();
 		try {
-			connection.send('POST', '/api/_test/bounded-raw-mutation', new Uint8Array(2 * 1024 * 1024 + 1));
+			connection.send(
+				'POST',
+				'/api/_test/bounded-raw-mutation',
+				new Uint8Array(2 * 1024 * 1024 + 1),
+			);
 			expect(await connection.nextResponse(10_000)).toMatchObject({ status: 413 });
 
 			connection.send('GET', '/api/time');
 			expect(await connection.nextResponse(3_000)).toMatchObject({ status: 200 });
-		}
-		finally {
+		} finally {
 			connection.close();
 		}
 	}, 30_000);

@@ -1,4 +1,8 @@
-import type { GraphicAnimation, GraphicItemConfig, SeatIndicatorGraphicItemConfig } from '~~/shared/types/graphics';
+import type {
+	GraphicAnimation,
+	GraphicItemConfig,
+	SeatIndicatorGraphicItemConfig,
+} from '~~/shared/types/graphics';
 import { describe, expect, it } from 'vitest';
 import { createFeatureMatchLayoutComposition } from '~~/shared/featureMatchLayoutComposition';
 import { getGraphicItemDefinition } from '~~/shared/modules/graphics';
@@ -18,14 +22,17 @@ const ENTER_AND_EXIT: GraphicAnimation = {
 	},
 };
 
-function indicator(id: string, overrides: Partial<SeatIndicatorGraphicItemConfig> = {}): SeatIndicatorGraphicItemConfig {
+function indicator(
+	id: string,
+	overrides: Partial<SeatIndicatorGraphicItemConfig> = {},
+): SeatIndicatorGraphicItemConfig {
 	return {
-		...getGraphicItemDefinition('seat-indicator').createDefault({
+		...(getGraphicItemDefinition('seat-indicator').createDefault({
 			id,
 			label: id,
 			canvasWidth: 1920,
 			canvasHeight: 1080,
-		}) as SeatIndicatorGraphicItemConfig,
+		}) as SeatIndicatorGraphicItemConfig),
 		playerSide: 'player3',
 		state: 'active',
 		animation: ENTER_AND_EXIT,
@@ -44,28 +51,36 @@ describe('a Seat Indicator edge', () => {
 	it.each([
 		{ inState: true, phase: 'enter' },
 		{ inState: false, phase: 'exit' },
-	] as const)('plays $phase on the Seat\'s indicators of that state when in-state turns $inState', ({ inState, phase }) => {
-		const triggers = applySeatIndicatorEdge([], composition([
-			indicator('turn'),
-		]), 'player3', 'active', inState, 1000);
+	] as const)(
+		"plays $phase on the Seat's indicators of that state when in-state turns $inState",
+		({ inState, phase }) => {
+			const triggers = applySeatIndicatorEdge(
+				[],
+				composition([indicator('turn')]),
+				'player3',
+				'active',
+				inState,
+				1000,
+			);
 
-		expect(triggers).toEqual([
-			{
-				itemId: 'turn',
-				phase,
-				startedAt: 1000,
-				endsAt: 1400,
-			},
-		]);
-	});
+			expect(triggers).toEqual([
+				{
+					itemId: 'turn',
+					phase,
+					startedAt: 1000,
+					endsAt: 1400,
+				},
+			]);
+		},
+	);
 
 	it.each([
 		{
-			name: 'another Seat\'s',
+			name: "another Seat's",
 			item: indicator('other', { playerSide: 'player1' }),
 		},
 		{
-			name: 'the other state\'s',
+			name: "the other state's",
 			item: indicator('out', { state: 'eliminated' }),
 		},
 		{
@@ -77,7 +92,9 @@ describe('a Seat Indicator edge', () => {
 			item: indicator('cut', { animation: undefined }),
 		},
 	])('starts nothing on $name indicator', ({ item }) => {
-		expect(applySeatIndicatorEdge([], composition([item]), 'player3', 'active', true, 1000)).toEqual([]);
+		expect(
+			applySeatIndicatorEdge([], composition([item]), 'player3', 'active', true, 1000),
+		).toEqual([]);
 	});
 
 	it('reaches an indicator inside a visible Graphic Group', () => {
@@ -88,21 +105,33 @@ describe('a Seat Indicator edge', () => {
 				canvasWidth: 1920,
 				canvasHeight: 1080,
 			}),
-			children: [
-				indicator('turn'),
-			],
+			children: [indicator('turn')],
 		} as GraphicItemConfig;
 
-		expect(applySeatIndicatorEdge([], composition([group]), 'player3', 'active', true, 0).map(trigger => trigger.itemId)).toEqual(['turn']);
+		expect(
+			applySeatIndicatorEdge([], composition([group]), 'player3', 'active', true, 0).map(
+				(trigger) => trigger.itemId,
+			),
+		).toEqual(['turn']);
 	});
 
 	it('supersedes what the indicator was playing', () => {
-		const entering = applySeatIndicatorEdge([], composition([
-			indicator('turn'),
-		]), 'player3', 'active', true, 0);
-		const leaving = applySeatIndicatorEdge(entering, composition([
-			indicator('turn'),
-		]), 'player3', 'active', false, 100);
+		const entering = applySeatIndicatorEdge(
+			[],
+			composition([indicator('turn')]),
+			'player3',
+			'active',
+			true,
+			0,
+		);
+		const leaving = applySeatIndicatorEdge(
+			entering,
+			composition([indicator('turn')]),
+			'player3',
+			'active',
+			false,
+			100,
+		);
 
 		expect(leaving).toEqual([
 			{

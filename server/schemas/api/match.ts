@@ -5,21 +5,23 @@ import { eventIdParamSchema } from '~~/server/schemas/api/eventId';
 import { playerGameDataSchema } from './player';
 
 // Embedded player data for match slots (same shape as feature match player data)
-const matchPlayerDataSchema = z.object({
-	name: z.string().min(1).max(200),
-	nickname: z.string().max(100).nullable().optional(),
-	pronouns: z.string().max(50).nullable().optional(),
-	wins: z.number().int().nonnegative().nullable().optional(),
-	losses: z.number().int().nonnegative().nullable().optional(),
-	draws: z.number().int().nonnegative().nullable().optional(),
-	position: z.number().int().positive().nullable().optional(),
-	points: z.number().int().nonnegative().nullable().optional(),
-	deckId: z.number().int().positive().nullable().optional(),
-	archetypeId: z.number().int().positive().nullable().optional(),
-	deckList: z.string().max(100000).nullable().optional(),
-	lgs: z.string().max(200).nullable().optional(),
-	gameData: playerGameDataSchema.nullable().optional(),
-}).strict();
+const matchPlayerDataSchema = z
+	.object({
+		name: z.string().min(1).max(200),
+		nickname: z.string().max(100).nullable().optional(),
+		pronouns: z.string().max(50).nullable().optional(),
+		wins: z.number().int().nonnegative().nullable().optional(),
+		losses: z.number().int().nonnegative().nullable().optional(),
+		draws: z.number().int().nonnegative().nullable().optional(),
+		position: z.number().int().positive().nullable().optional(),
+		points: z.number().int().nonnegative().nullable().optional(),
+		deckId: z.number().int().positive().nullable().optional(),
+		archetypeId: z.number().int().positive().nullable().optional(),
+		deckList: z.string().max(100000).nullable().optional(),
+		lgs: z.string().max(200).nullable().optional(),
+		gameData: playerGameDataSchema.nullable().optional(),
+	})
+	.strict();
 
 // CREATE
 export const createMatchSchema = createInsertSchema(matches)
@@ -85,13 +87,21 @@ export const matchQuerySchema = z.object({
 });
 
 // PROMOTE (for promotion endpoint)
-export const promoteMatchSchema = z.object({
-	matchId: z.number().int().positive(),
-	confirmedNoteDiscards: z.array(z.object({
-		assignmentId: z.number().int().positive(),
-		updatedAt: z.coerce.date(),
-	}).strict()).optional(),
-}).strict();
+export const promoteMatchSchema = z
+	.object({
+		matchId: z.number().int().positive(),
+		confirmedNoteDiscards: z
+			.array(
+				z
+					.object({
+						assignmentId: z.number().int().positive(),
+						updatedAt: z.coerce.date(),
+					})
+					.strict(),
+			)
+			.optional(),
+	})
+	.strict();
 
 /* TYPES */
 export type CreateMatchInput = z.infer<typeof createMatchSchema>;

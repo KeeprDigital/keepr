@@ -8,18 +8,21 @@ import { useConsumedEventData } from '~/modules/event-data/resync';
  * name and colours under its label. It loads the Event's Slots, re-reads them
  * on Reconnect Resync (#610), and emits the Slot's id, or `null` for none.
  */
-const props = withDefaults(defineProps<{
-	modelValue?: number | null;
-	eventId: number;
-	label?: string;
-	description?: string;
-	nullLabel?: string;
-	detailed?: boolean;
-	stacked?: boolean;
-}>(), {
-	label: 'Feature Match Slot',
-	nullLabel: 'Select a slot…',
-});
+const props = withDefaults(
+	defineProps<{
+		modelValue?: number | null;
+		eventId: number;
+		label?: string;
+		description?: string;
+		nullLabel?: string;
+		detailed?: boolean;
+		stacked?: boolean;
+	}>(),
+	{
+		label: 'Feature Match Slot',
+		nullLabel: 'Select a slot…',
+	},
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [slotId: number | null];
@@ -31,8 +34,7 @@ const items = useFeatureMatchMenuItems();
 useConsumedEventData(['featureMatchSlots']);
 
 onMounted(async () => {
-	if (props.eventId)
-		await featureMatchStore.loadFeatureMatchesByEventId(props.eventId);
+	if (props.eventId) await featureMatchStore.loadFeatureMatchesByEventId(props.eventId);
 });
 </script>
 

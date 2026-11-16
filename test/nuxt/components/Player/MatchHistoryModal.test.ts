@@ -7,12 +7,14 @@ import { createMockEvent, createMockPlayer, createMockPlayerList } from '~~/test
 import { nuxtUiStubs, UTableStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
 import MatchHistoryModal from '~/components/Player/MatchHistoryModal.vue';
 
-const { openPlayerMatchHistory, openPlayerEdit, openPlayerDeckList, sendHeadToHead } = vi.hoisted(() => ({
-	sendHeadToHead: vi.fn(),
-	openPlayerMatchHistory: vi.fn(),
-	openPlayerEdit: vi.fn(),
-	openPlayerDeckList: vi.fn(),
-}));
+const { openPlayerMatchHistory, openPlayerEdit, openPlayerDeckList, sendHeadToHead } = vi.hoisted(
+	() => ({
+		sendHeadToHead: vi.fn(),
+		openPlayerMatchHistory: vi.fn(),
+		openPlayerEdit: vi.fn(),
+		openPlayerDeckList: vi.fn(),
+	}),
+);
 
 const alice = createMockPlayer({
 	id: 7,
@@ -32,9 +34,7 @@ const eventStore = reactive({
 });
 const playerListStore = reactive({
 	isLoaded: true,
-	lists: [
-		createMockPlayerList({ id: 3, name: 'Top 8' }),
-	],
+	lists: [createMockPlayerList({ id: 3, name: 'Top 8' })],
 	members: { 3: [] as number[] } as Record<number, number[]>,
 	getCachedMemberIds(listId: number) {
 		return this.members[listId];
@@ -44,9 +44,13 @@ const playerListStore = reactive({
 	batchRemoveMembers: vi.fn(),
 });
 
-mockNuxtImport('usePlayerStore', () => () => reactive({
-	players: [alice, bob],
-}));
+mockNuxtImport(
+	'usePlayerStore',
+	() => () =>
+		reactive({
+			players: [alice, bob],
+		}),
+);
 mockNuxtImport('useEventStore', () => () => eventStore);
 mockNuxtImport('usePlayerListStore', () => () => playerListStore);
 mockNuxtImport('usePlayerDeckListModal', () => () => ({ openPlayerDeckList }));
@@ -67,9 +71,7 @@ mockNuxtImport('usePlayerMatchHistory', () => (playerId: () => number | null) =>
 		error: read.error,
 	};
 });
-const headToHeadScreens = ref([
-	{ id: 5, name: 'H2H' },
-]);
+const headToHeadScreens = ref([{ id: 5, name: 'H2H' }]);
 mockNuxtImport('useSendHeadToHeadToScreen', () => () => ({
 	headToHeadScreens,
 	hasHeadToHeadScreens: computed(() => headToHeadScreens.value.length > 0),
@@ -81,7 +83,8 @@ mockNuxtImport('useSendPlayerHistoryToScreen', () => () => ({
 }));
 
 const UModalStub = defineComponent({
-	template: '<div><slot name="title" /><slot name="description" /><slot name="body" /><slot name="footer" /></div>',
+	template:
+		'<div><slot name="title" /><slot name="description" /><slot name="body" /><slot name="footer" /></div>',
 });
 
 function entry(opponentId: number | null, opponentName: string) {
@@ -95,9 +98,10 @@ function entry(opponentId: number | null, opponentName: string) {
 	} as PlayerMatchHistoryEntry;
 }
 
-function mountModal({ history = [
-	entry(8, 'Bob'),
-], ...props }: { history?: PlayerMatchHistoryEntry[] } & Record<string, unknown> = {}) {
+function mountModal({
+	history = [entry(8, 'Bob')],
+	...props
+}: { history?: PlayerMatchHistoryEntry[] } & Record<string, unknown> = {}) {
 	read.history.value = history;
 	return mount(MatchHistoryModal, {
 		props: {
@@ -116,7 +120,7 @@ function mountModal({ history = [
 }
 
 function button(wrapper: ReturnType<typeof mountModal>, text: string) {
-	return wrapper.findAll('button').find(b => b.text() === text);
+	return wrapper.findAll('button').find((b) => b.text() === text);
 }
 
 describe('player match history modal', () => {
@@ -125,20 +129,13 @@ describe('player match history modal', () => {
 		eventStore.event = createMockEvent();
 		eventStore.displayEvent = createMockEvent();
 		playerListStore.members[3] = [];
-		headToHeadScreens.value = [
-			{ id: 5, name: 'H2H' },
-		];
+		headToHeadScreens.value = [{ id: 5, name: 'H2H' }];
 		read.loading.value = false;
 		read.error.value = null;
 	});
 
 	it.each([
-		[
-			'the history it read for the Player',
-			false,
-			null,
-			'Bob',
-		],
+		['the history it read for the Player', false, null, 'Bob'],
 		['that it is reading', true, null, null],
 		[
 			'a failed read with nothing to show',
@@ -151,30 +148,17 @@ describe('player match history modal', () => {
 		read.error.value = error;
 
 		const wrapper = mountModal({
-			history: error
-				? []
-				: [
-						entry(8, 'Bob'),
-					],
+			history: error ? [] : [entry(8, 'Bob')],
 		});
 
 		expect(read.playerId).toBe(7);
 		expect(wrapper.find('[data-column="opponentName"]').exists()).toBe(!loading && !error);
-		if (text)
-			expect(wrapper.text()).toContain(text);
+		if (text) expect(wrapper.text()).toContain(text);
 	});
 
 	it.each([
-		[
-			'a roster opponent',
-			entry(8, 'Bob'),
-			true,
-		],
-		[
-			'an opponent off the roster',
-			entry(null, 'Walk-in'),
-			false,
-		],
+		['a roster opponent', entry(8, 'Bob'), true],
+		['an opponent off the roster', entry(null, 'Walk-in'), false],
 	])('names %s, opening their history only when they are a Player', async (_, row, clickable) => {
 		const wrapper = mountModal({
 			history: [row],
@@ -190,7 +174,7 @@ describe('player match history modal', () => {
 	});
 
 	it.each([
-		['the Event\'s defaults', {}, '3-1'],
+		["the Event's defaults", {}, '3-1'],
 		[
 			'a separator and shown zero draws',
 			{ displayRecordSeparator: '/', displayHideZeroDraws: false },
@@ -203,28 +187,14 @@ describe('player match history modal', () => {
 	});
 
 	it.each([
-		[
-			'pronouns and LGS',
-			{ pronounsEnabled: true, lgsEnabled: true },
-			'she/her · Card Kingdom',
-		],
-		[
-			'pronouns alone while LGS is off',
-			{ pronounsEnabled: true, lgsEnabled: false },
-			'she/her',
-		],
-		[
-			'neither while both are off',
-			{ pronounsEnabled: false, lgsEnabled: false },
-			null,
-		],
-	] as const)('names the Player\'s %s', (_, settings, identity) => {
+		['pronouns and LGS', { pronounsEnabled: true, lgsEnabled: true }, 'she/her · Card Kingdom'],
+		['pronouns alone while LGS is off', { pronounsEnabled: true, lgsEnabled: false }, 'she/her'],
+		['neither while both are off', { pronounsEnabled: false, lgsEnabled: false }, null],
+	] as const)("names the Player's %s", (_, settings, identity) => {
 		eventStore.event = createMockEvent(settings);
 
 		const shown = mountModal().find('[data-testid="player-identity"]');
-		expect(shown.exists()
-			? shown.text()
-			: null).toBe(identity);
+		expect(shown.exists() ? shown.text() : null).toBe(identity);
 	});
 
 	it('leads back to the Player it showed before, and offers no way back without one', async () => {
@@ -237,14 +207,8 @@ describe('player match history modal', () => {
 	});
 
 	it.each([
-		[
-			'Edit Player',
-			() => openPlayerEdit,
-		],
-		[
-			'Deck List',
-			() => openPlayerDeckList,
-		],
+		['Edit Player', () => openPlayerEdit],
+		['Deck List', () => openPlayerDeckList],
 	])('opens %s for the Player shown', async (label, opener) => {
 		await button(mountModal(), label)!.trigger('click');
 
@@ -253,11 +217,7 @@ describe('player match history modal', () => {
 
 	it.each([
 		['adds the Player to a list they are not in', [], 'addMembers'],
-		[
-			'removes the Player from a list they are in',
-			[7],
-			'batchRemoveMembers',
-		],
+		['removes the Player from a list they are in', [7], 'batchRemoveMembers'],
 	] as const)('%s', async (_, members, write) => {
 		playerListStore.members[3] = [...members];
 		const wrapper = mountModal();
@@ -274,25 +234,11 @@ describe('player match history modal', () => {
 		[
 			'a roster opponent, with the Player shown on the left',
 			entry(8, 'Bob'),
-			[
-				{ id: 5, name: 'H2H' },
-			],
+			[{ id: 5, name: 'H2H' }],
 			true,
 		],
-		[
-			'no opponent off the roster',
-			entry(null, 'Walk-in'),
-			[
-				{ id: 5, name: 'H2H' },
-			],
-			false,
-		],
-		[
-			'nothing while no Screen is in Head-to-Head mode',
-			entry(8, 'Bob'),
-			[],
-			false,
-		],
+		['no opponent off the roster', entry(null, 'Walk-in'), [{ id: 5, name: 'H2H' }], false],
+		['nothing while no Screen is in Head-to-Head mode', entry(8, 'Bob'), [], false],
 	])('sends a Head-to-Head with %s', async (_, row, screens, offered) => {
 		headToHeadScreens.value = screens;
 		const wrapper = mountModal({

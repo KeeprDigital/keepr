@@ -5,7 +5,11 @@ import { defineScreenModeConfigContract, serverValidatedField } from './contract
 import { editorField } from './fields';
 
 /** The built-in Feature Match Layout Templates, by the id each has always had. */
-export type BuiltInFeatureMatchLayoutTemplateId = 'full-table' | 'left-stacked-player-cams' | 'neon-feature-match' | 'commander-table';
+export type BuiltInFeatureMatchLayoutTemplateId =
+	| 'full-table'
+	| 'left-stacked-player-cams'
+	| 'neon-feature-match'
+	| 'commander-table';
 
 /**
  * The Feature Match Overlay's fields: one Feature Match Layout and the Feature
@@ -35,7 +39,9 @@ const featureMatchOverlayModeConfigShape = {
  * defaults below come from the built-in Feature Match Layout Templates, which are
  * typed by it: naming the contract here would make its type depend on itself.
  */
-export type FeatureMatchOverlayModeConfig = z.input<z.ZodObject<typeof featureMatchOverlayModeConfigShape, z.core.$strict>>;
+export type FeatureMatchOverlayModeConfig = z.input<
+	z.ZodObject<typeof featureMatchOverlayModeConfigShape, z.core.$strict>
+>;
 
 /**
  * The Feature Match Overlay Screen Mode's config contract. Its defaults are the

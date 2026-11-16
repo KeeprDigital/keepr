@@ -33,19 +33,19 @@ export function useEventPageLoading(
 	entries: StoreLoadEntry[],
 	afterLoad?: (eventId: number) => Promise<void>,
 ) {
-	useConsumedEventData(entries.map(entry => entry.consumes));
+	useConsumedEventData(entries.map((entry) => entry.consumes));
 	const eventStore = useEventStore();
 	const eventId = computed<number>(() => eventStore.eventId ?? 0);
 	const loading = ref(false);
 	const initialError = ref<string | null>(null);
 	let loadGeneration = 0;
 
-	const initialLoading = computed(() => loading.value || (!initialError.value && entries.some(e => !e.isLoaded())));
+	const initialLoading = computed(
+		() => loading.value || (!initialError.value && entries.some((e) => !e.isLoaded())),
+	);
 
 	function errorMessage(error: unknown): string {
-		return error instanceof Error && error.message.trim()
-			? error.message
-			: UNABLE_TO_LOAD;
+		return error instanceof Error && error.message.trim() ? error.message : UNABLE_TO_LOAD;
 	}
 
 	/**
@@ -56,14 +56,11 @@ export function useEventPageLoading(
 	async function loadEntry(entry: StoreLoadEntry, id: number) {
 		try {
 			await entry.load(id);
-		}
-		catch {
+		} catch {
 			throw new Error(UNABLE_TO_LOAD);
 		}
-		if (!entry.isLoaded())
-			await until(entry.isLoading).toBe(false);
-		if (!entry.isLoaded())
-			throw new Error(UNABLE_TO_LOAD);
+		if (!entry.isLoaded()) await until(entry.isLoading).toBe(false);
+		if (!entry.isLoaded()) throw new Error(UNABLE_TO_LOAD);
 	}
 
 	async function loadPage(id: number) {
@@ -72,42 +69,38 @@ export function useEventPageLoading(
 		initialError.value = null;
 
 		try {
-			await Promise.all(entries
-				.filter(e => !e.isLoaded())
-				.map(e => loadEntry(e, id)));
+			await Promise.all(entries.filter((e) => !e.isLoaded()).map((e) => loadEntry(e, id)));
 
-			if (generation === loadGeneration && afterLoad)
-				await afterLoad(id);
-		}
-		catch (error) {
-			if (generation === loadGeneration)
-				initialError.value = errorMessage(error);
-		}
-		finally {
-			if (generation === loadGeneration)
-				loading.value = false;
+			if (generation === loadGeneration && afterLoad) await afterLoad(id);
+		} catch (error) {
+			if (generation === loadGeneration) initialError.value = errorMessage(error);
+		} finally {
+			if (generation === loadGeneration) loading.value = false;
 		}
 	}
 
 	async function retry() {
-		if (eventId.value)
-			await loadPage(eventId.value);
+		if (eventId.value) await loadPage(eventId.value);
 	}
 
-	watch(eventId, async (id, _previousId, onCleanup) => {
-		if (!id) {
-			loadGeneration++;
-			loading.value = false;
-			initialError.value = null;
-			return;
-		}
+	watch(
+		eventId,
+		async (id, _previousId, onCleanup) => {
+			if (!id) {
+				loadGeneration++;
+				loading.value = false;
+				initialError.value = null;
+				return;
+			}
 
-		onCleanup(() => {
-			loadGeneration++;
-		});
+			onCleanup(() => {
+				loadGeneration++;
+			});
 
-		await loadPage(id);
-	}, { immediate: true });
+			await loadPage(id);
+		},
+		{ immediate: true },
+	);
 
 	return {
 		eventId,

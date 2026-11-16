@@ -75,7 +75,9 @@ describe('screenAnimationEffectSurface', () => {
 		await flushPromises();
 
 		expect(factory).toHaveBeenCalledOnce();
-		expect(instance.setParams).toHaveBeenCalledWith(expect.objectContaining({ speed: 2, softness: 0.55 }));
+		expect(instance.setParams).toHaveBeenCalledWith(
+			expect.objectContaining({ speed: 2, softness: 0.55 }),
+		);
 
 		wrapper.unmount();
 	});
@@ -86,9 +88,9 @@ describe('screenAnimationEffectSurface', () => {
 		const oldFactory = vi.fn(() => effectInstance());
 		const newInstance = effectInstance();
 		const newFactory = vi.fn(() => newInstance);
-		animationMocks.loadAnimationEffect.mockImplementation((effect: string) => effect === 'fog'
-			? oldLoad.promise
-			: newLoad.promise);
+		animationMocks.loadAnimationEffect.mockImplementation((effect: string) =>
+			effect === 'fog' ? oldLoad.promise : newLoad.promise,
+		);
 
 		const wrapper = await mountSurface({ effect: 'fog', width: 100, height: 100 });
 		await flushPromises();
@@ -132,7 +134,7 @@ describe('screenAnimationEffectSurface', () => {
 
 			// The observer's mandatory initial delivery lands while the effect
 			// module import is still in flight — before any instance exists.
-			resizeDeliveries.forEach(deliver => deliver());
+			resizeDeliveries.forEach((deliver) => deliver());
 
 			load.resolve(factory);
 			await flushPromises();
@@ -141,8 +143,7 @@ describe('screenAnimationEffectSurface', () => {
 
 			wrapper.unmount();
 			expect(instance.dispose).toHaveBeenCalledOnce();
-		}
-		finally {
+		} finally {
 			vi.unstubAllGlobals();
 		}
 	});
@@ -150,10 +151,9 @@ describe('screenAnimationEffectSurface', () => {
 	it('disposes the old renderer when the effect changes, and mounts the new one', async () => {
 		const fogInstance = effectInstance();
 		const causticsInstance = effectInstance();
-		animationMocks.loadAnimationEffect.mockImplementation(async (effect: string) =>
-			() => effect === 'fog'
-				? fogInstance
-				: causticsInstance);
+		animationMocks.loadAnimationEffect.mockImplementation(
+			async (effect: string) => () => (effect === 'fog' ? fogInstance : causticsInstance),
+		);
 
 		const wrapper = await mountSurface({ effect: 'fog', width: 100, height: 100 });
 		await flushPromises();

@@ -16,13 +16,14 @@ export interface MiniflareR2Harness {
 export async function createMiniflareR2Harness(): Promise<MiniflareR2Harness> {
 	const directory = mkdtempSync(join(tmpdir(), 'stream-keepr-miniflare-r2-'));
 	const configPath = join(directory, 'wrangler.json');
-	writeFileSync(configPath, JSON.stringify({
-		name: 'stream-keepr-r2-contract',
-		compatibility_date: '2026-01-01',
-		r2_buckets: [
-			{ binding: 'BUCKET', bucket_name: 'contract' },
-		],
-	}));
+	writeFileSync(
+		configPath,
+		JSON.stringify({
+			name: 'stream-keepr-r2-contract',
+			compatibility_date: '2026-01-01',
+			r2_buckets: [{ binding: 'BUCKET', bucket_name: 'contract' }],
+		}),
+	);
 	const proxy = await getPlatformProxy<{ BUCKET: R2Bucket }>({ configPath, persist: false });
 	return {
 		bucket: proxy.env.BUCKET,

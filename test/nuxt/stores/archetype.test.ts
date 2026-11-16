@@ -13,7 +13,7 @@ const mockRepo = vi.hoisted(() => ({
 	remove: vi.fn(),
 }));
 
-vi.mock('~/modules/event-data/client', async importOriginal => ({
+vi.mock('~/modules/event-data/client', async (importOriginal) => ({
 	...(await importOriginal<typeof import('~~/app/modules/event-data/client')>()),
 	useEventDataResource: () => mockRepo,
 }));
@@ -56,7 +56,9 @@ describe('useArchetypeStore', () => {
 	it('raises a failed load to a caller that asked', async () => {
 		mockRepo.list.mockRejectedValue(new Error('Network unavailable'));
 
-		await expect(store.loadByEventId(1, { failure: 'raise' })).rejects.toThrow('Network unavailable');
+		await expect(store.loadByEventId(1, { failure: 'raise' })).rejects.toThrow(
+			'Network unavailable',
+		);
 	});
 
 	describe('writes follow up on what an Archetype touches', () => {
@@ -70,7 +72,7 @@ describe('useArchetypeStore', () => {
 			expect(mockMetagameStore.applyRemoteInvalidated).toHaveBeenCalledOnce();
 		});
 
-		it('an update retags Player Decks, reloads the Event\'s Feature Matches and invalidates the Metagame', async () => {
+		it("an update retags Player Decks, reloads the Event's Feature Matches and invalidates the Metagame", async () => {
 			const archetype = createMockUiArchetype({ id: 1, name: 'Azorius Control' });
 			store.archetypes = [archetype];
 			mockRepo.update.mockResolvedValue({ ...archetype, name: 'Azorius Control v2' });
@@ -78,15 +80,15 @@ describe('useArchetypeStore', () => {
 			await store.updateArchetype(1, 1, { name: 'Azorius Control v2' });
 
 			expect(store.archetypes[0]!.name).toBe('Azorius Control v2');
-			expect(mockPlayerDeckStore.applyArchetypeUpdated).toHaveBeenCalledWith(expect.objectContaining({ id: 1, name: 'Azorius Control v2' }));
+			expect(mockPlayerDeckStore.applyArchetypeUpdated).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 1, name: 'Azorius Control v2' }),
+			);
 			expect(mockFeatureMatchStore.loadFeatureMatchesByEventId).toHaveBeenCalledWith(1);
 			expect(mockMetagameStore.applyRemoteInvalidated).toHaveBeenCalledOnce();
 		});
 
-		it('a delete untags Player Decks, reloads the Event\'s Feature Matches and invalidates the Metagame', async () => {
-			store.archetypes = [
-				createMockUiArchetype({ id: 1 }),
-			];
+		it("a delete untags Player Decks, reloads the Event's Feature Matches and invalidates the Metagame", async () => {
+			store.archetypes = [createMockUiArchetype({ id: 1 })];
 			mockRepo.remove.mockResolvedValue({ success: true });
 
 			await store.removeArchetype(1, 1);
@@ -102,16 +104,19 @@ describe('useArchetypeStore', () => {
 		const merged = createMockUiArchetype({ id: 1, name: 'Burn' });
 		const survivor = createMockUiArchetype({ id: 2, name: 'Boros Burn' });
 
-		it('drops it, moves Player Decks to the survivor, reloads the Event\'s Feature Matches and invalidates the Metagame', async () => {
+		it("drops it, moves Player Decks to the survivor, reloads the Event's Feature Matches and invalidates the Metagame", async () => {
 			store.archetypes = [merged, survivor];
 			mockFetch.mockResolvedValue({ archetypeId: 2, mergedArchetypeId: 1 });
 
 			await expect(store.mergeArchetype(9, 1, 2)).resolves.toBe(true);
 
-			expect(mockFetch).toHaveBeenCalledWith('/api/events/9/archetypes/1/merge', expect.objectContaining({
-				method: 'POST',
-				body: { intoArchetypeId: 2 },
-			}));
+			expect(mockFetch).toHaveBeenCalledWith(
+				'/api/events/9/archetypes/1/merge',
+				expect.objectContaining({
+					method: 'POST',
+					body: { intoArchetypeId: 2 },
+				}),
+			);
 			expect(store.archetypes).toEqual([survivor]);
 			expect(mockPlayerDeckStore.applyArchetypeMerged).toHaveBeenCalledWith(1, survivor);
 			expect(mockFeatureMatchStore.loadFeatureMatchesByEventId).toHaveBeenCalledWith(9);
@@ -120,10 +125,12 @@ describe('useArchetypeStore', () => {
 
 		it('keeps both when the merge is refused, and says why', async () => {
 			store.archetypes = [merged, survivor];
-			mockFetch.mockRejectedValue(transportFailure({
-				status: 404,
-				body: { message: 'Archetype not found' },
-			}));
+			mockFetch.mockRejectedValue(
+				transportFailure({
+					status: 404,
+					body: { message: 'Archetype not found' },
+				}),
+			);
 
 			await expect(store.mergeArchetype(9, 1, 2)).resolves.toBe(false);
 
@@ -132,7 +139,7 @@ describe('useArchetypeStore', () => {
 			expect(mockPlayerDeckStore.applyArchetypeMerged).not.toHaveBeenCalled();
 		});
 
-		it('follows a peer\'s merge the same way, untagging no Player Deck', () => {
+		it("follows a peer's merge the same way, untagging no Player Deck", () => {
 			store.archetypes = [merged, survivor];
 
 			deliver('archetype:deleted', { archetypeId: 1, mergedIntoArchetypeId: 2 });
@@ -146,17 +153,17 @@ describe('useArchetypeStore', () => {
 	describe('removing the Empty Archetypes', () => {
 		it('drops the Archetypes the server removed and invalidates the Metagame', async () => {
 			const held = createMockUiArchetype({ id: 1, name: 'Burn' });
-			store.archetypes = [
-				held,
-				createMockUiArchetype({ id: 2, name: 'Empty' }),
-			];
+			store.archetypes = [held, createMockUiArchetype({ id: 2, name: 'Empty' })];
 			mockFetch.mockResolvedValue({
 				archetypeIds: [2],
 			});
 
 			await expect(store.removeEmptyArchetypes(9)).resolves.toEqual([2]);
 
-			expect(mockFetch).toHaveBeenCalledWith('/api/events/9/archetypes/empty', expect.objectContaining({ method: 'DELETE' }));
+			expect(mockFetch).toHaveBeenCalledWith(
+				'/api/events/9/archetypes/empty',
+				expect.objectContaining({ method: 'DELETE' }),
+			);
 			expect(store.archetypes).toEqual([held]);
 			expect(mockMetagameStore.applyRemoteInvalidated).toHaveBeenCalledOnce();
 		});
@@ -164,24 +171,9 @@ describe('useArchetypeStore', () => {
 
 	describe('findNameHolder', () => {
 		it.each([
-			[
-				'another Archetype of the name in another case',
-				'azorius control',
-				2,
-				1,
-			],
-			[
-				'none for the Archetype\'s own name',
-				'Azorius Control',
-				1,
-				undefined,
-			],
-			[
-				'none for a free name',
-				'Boros Energy',
-				2,
-				undefined,
-			],
+			['another Archetype of the name in another case', 'azorius control', 2, 1],
+			["none for the Archetype's own name", 'Azorius Control', 1, undefined],
+			['none for a free name', 'Boros Energy', 2, undefined],
 		])('finds %s', (_case, name, renamedId, holderId) => {
 			store.archetypes = [
 				createMockUiArchetype({ id: 1, name: 'Azorius Control' }),
@@ -194,9 +186,7 @@ describe('useArchetypeStore', () => {
 
 	describe('setKeyCards', () => {
 		it('writes card names and holds the key cards the server resolved', async () => {
-			store.archetypes = [
-				createMockUiArchetype({ id: 1 }),
-			];
+			store.archetypes = [createMockUiArchetype({ id: 1 })];
 			const keyCards = [
 				{
 					id: 10,
@@ -213,28 +203,31 @@ describe('useArchetypeStore', () => {
 
 			await store.setKeyCards(1, 1, ['Counterspell']);
 
-			expect(mockFetch).toHaveBeenCalledWith('/api/events/1/archetypes/1/cards', expect.objectContaining({
-				method: 'PATCH',
-				body: {
-					cardNames: ['Counterspell'],
-				},
-			}));
+			expect(mockFetch).toHaveBeenCalledWith(
+				'/api/events/1/archetypes/1/cards',
+				expect.objectContaining({
+					method: 'PATCH',
+					body: {
+						cardNames: ['Counterspell'],
+					},
+				}),
+			);
 			expect(store.archetypes[0]!.keyCards).toEqual(keyCards);
 			expect(mockMetagameStore.applyRemoteInvalidated).toHaveBeenCalledOnce();
 		});
 
 		it('reports a refused write and re-raises it, because the key-card modal titles itself with the raised message', async () => {
-			store.archetypes = [
-				createMockUiArchetype({ id: 1 }),
-			];
-			mockFetch.mockRejectedValue(transportFailure({
-				status: 422,
-				body: { message: 'No card named “Counterspel” exists in the catalogue' },
-			}));
+			store.archetypes = [createMockUiArchetype({ id: 1 })];
+			mockFetch.mockRejectedValue(
+				transportFailure({
+					status: 422,
+					body: { message: 'No card named “Counterspel” exists in the catalogue' },
+				}),
+			);
 
-			await expect(store.setKeyCards(1, 1, ['Counterspel']))
-				.rejects
-				.toThrow('No card named “Counterspel” exists in the catalogue');
+			await expect(store.setKeyCards(1, 1, ['Counterspel'])).rejects.toThrow(
+				'No card named “Counterspel” exists in the catalogue',
+			);
 			expect(store.error).toBe('No card named “Counterspel” exists in the catalogue');
 		});
 	});
@@ -249,9 +242,7 @@ describe('useArchetypeStore', () => {
 		async function switchAway() {
 			let shown!: ReturnType<typeof createMockUiArchetype>[];
 			for (const eventId of switches) {
-				shown = [
-					createMockUiArchetype({ id: 1, eventId, name: `Loaded for ${eventId}` } as any),
-				];
+				shown = [createMockUiArchetype({ id: 1, eventId, name: `Loaded for ${eventId}` } as any)];
 				store.$reset();
 				mockRepo.list.mockResolvedValueOnce(structuredClone(shown));
 				await store.loadByEventId(eventId);
@@ -340,16 +331,8 @@ describe('useArchetypeStore', () => {
 
 	describe('findByNameAndColors', () => {
 		it.each([
-			[
-				'the same colour order',
-				'WU',
-				['W', 'U'],
-			],
-			[
-				'any colour order',
-				'WU',
-				['U', 'W'],
-			],
+			['the same colour order', 'WU', ['W', 'U']],
+			['any colour order', 'WU', ['U', 'W']],
 			['a colourless Archetype and no colours', null, []],
 		])('finds the Archetype for %s', (_, colors, query) => {
 			const archetype = createMockUiArchetype({ id: 1, name: 'Control', colors });
@@ -360,14 +343,8 @@ describe('useArchetypeStore', () => {
 
 		// Review matches a typed name as the Archetype write does: neither case nor surrounding spaces make another.
 		it.each([
-			[
-				'findByName',
-				(name: string) => store.findByName(name),
-			],
-			[
-				'findByNameAndColors',
-				(name: string) => store.findByNameAndColors(name, ['W', 'U']),
-			],
+			['findByName', (name: string) => store.findByName(name)],
+			['findByNameAndColors', (name: string) => store.findByNameAndColors(name, ['W', 'U'])],
 		])('%s finds a name typed in another case, with spaces around it', (_method, find) => {
 			const archetype = createMockUiArchetype({ id: 1, name: 'Azorius Control', colors: 'WU' });
 			store.archetypes = [archetype];
@@ -377,15 +354,13 @@ describe('useArchetypeStore', () => {
 		});
 
 		it('finds nothing when the colours differ', () => {
-			store.archetypes = [
-				createMockUiArchetype({ id: 1, name: 'Control', colors: 'WU' }),
-			];
+			store.archetypes = [createMockUiArchetype({ id: 1, name: 'Control', colors: 'WU' })];
 
 			expect(store.findByNameAndColors('Control', ['U', 'B'])).toBeUndefined();
 		});
 	});
 
-	describe('a peer\'s Archetype messages', () => {
+	describe("a peer's Archetype messages", () => {
 		it('apply to the collection, keep Player Decks in step and invalidate the Metagame', () => {
 			deliver('archetype:created', {
 				archetype: createMockUiArchetype({ id: 10, name: 'Izzet Phoenix' }),
@@ -394,8 +369,10 @@ describe('useArchetypeStore', () => {
 				archetype: createMockUiArchetype({ id: 10, name: 'Izzet Prowess' }),
 			} as never);
 
-			expect(store.archetypes.map(a => a.name)).toEqual(['Izzet Prowess']);
-			expect(mockPlayerDeckStore.applyArchetypeUpdated).toHaveBeenCalledWith(expect.objectContaining({ id: 10, name: 'Izzet Prowess' }));
+			expect(store.archetypes.map((a) => a.name)).toEqual(['Izzet Prowess']);
+			expect(mockPlayerDeckStore.applyArchetypeUpdated).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 10, name: 'Izzet Prowess' }),
+			);
 
 			deliver('archetype:deleted', { archetypeId: 10 });
 
@@ -405,9 +382,7 @@ describe('useArchetypeStore', () => {
 		});
 
 		it('hold a key-card update without its join bookkeeping', () => {
-			store.archetypes = [
-				createMockUiArchetype({ id: 10 }),
-			];
+			store.archetypes = [createMockUiArchetype({ id: 10 })];
 
 			deliver('archetype:keyCardsUpdated', {
 				archetypeId: 10,

@@ -48,25 +48,23 @@ async function main() {
 				account: [],
 				verification: [],
 			}),
-			...(secret === undefined
-				? {}
-				: { secret }),
+			...(secret === undefined ? {} : { secret }),
 			logger: {
 				log: (level, message) => {
-					if (level === 'warn' || level === 'error')
-						warnings.push(message);
+					if (level === 'warn' || level === 'error') warnings.push(message);
 				},
 			},
 		});
 		await auth.$context;
 		process.stdout.write(JSON.stringify({ outcome: 'constructed', warnings }));
-	}
-	catch (failure) {
-		process.stdout.write(JSON.stringify({
-			outcome: 'refused',
-			message: String(failure?.message ?? failure),
-			warnings,
-		}));
+	} catch (failure) {
+		process.stdout.write(
+			JSON.stringify({
+				outcome: 'refused',
+				message: String(failure?.message ?? failure),
+				warnings,
+			}),
+		);
 	}
 	// Explicit, so a stray rejection of the shared context promise inside the
 	// library cannot turn an already-reported result into a non-zero exit.

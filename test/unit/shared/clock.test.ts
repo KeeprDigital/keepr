@@ -215,18 +215,12 @@ describe('normalizeTimeInput', () => {
 		expect(normalizeTimeInput(input)).toBe(expected);
 	});
 
-	it.each([
-		'',
-		'   ',
-		'1234567',
-		'5:60',
-		'5:99',
-		'1:23:99',
-		'1:60:00',
-		'1:99:00',
-	])('refuses %j', (input) => {
-		expect(normalizeTimeInput(input)).toBeNull();
-	});
+	it.each(['', '   ', '1234567', '5:60', '5:99', '1:23:99', '1:60:00', '1:99:00'])(
+		'refuses %j',
+		(input) => {
+			expect(normalizeTimeInput(input)).toBeNull();
+		},
+	);
 });
 
 describe('normalizeTimeInput and parseTimeInput agree', () => {
@@ -281,7 +275,10 @@ describe('normalizeTimeInput and parseTimeInput agree', () => {
 		for (const input of inputs) {
 			const normalized = normalizeTimeInput(input);
 			if (normalized !== null) {
-				expect(parseTimeInput(normalized), `normalizeTimeInput(${JSON.stringify(input)}) -> ${JSON.stringify(normalized)} must be parseable`).not.toBeNull();
+				expect(
+					parseTimeInput(normalized),
+					`normalizeTimeInput(${JSON.stringify(input)}) -> ${JSON.stringify(normalized)} must be parseable`,
+				).not.toBeNull();
 			}
 		}
 	});
@@ -421,7 +418,10 @@ describe('applyClockAdjustment', () => {
 describe('applyClockAdjustment on a countdown counting up past its end', () => {
 	const now = 1_000_000;
 	const MINUTE = 60_000;
-	function overtimeClock(overtimeMs: number, overrides: Partial<FeatureMatchClock> = {}): FeatureMatchClock {
+	function overtimeClock(
+		overtimeMs: number,
+		overrides: Partial<FeatureMatchClock> = {},
+	): FeatureMatchClock {
 		return {
 			type: 'countdown',
 			durationMs: 10 * MINUTE,
@@ -489,7 +489,11 @@ describe('applyClockAdjustment on a countdown counting up past its end', () => {
 			inOvertime: true,
 		},
 	])('$name', ({ overtimeMs, limitMs, deltaMs, shows, inOvertime }) => {
-		const result = applyClockAdjustment(overtimeClock(overtimeMs, { countUpLimitMs: limitMs }), now, { deltaDisplayMs: deltaMs });
+		const result = applyClockAdjustment(
+			overtimeClock(overtimeMs, { countUpLimitMs: limitMs }),
+			now,
+			{ deltaDisplayMs: deltaMs },
+		);
 
 		expect(projectFeatureMatchClock(result, now, '').display).toBe(shows);
 		expect(expired(result)).toBe(inOvertime);
@@ -541,8 +545,7 @@ describe('applyClockAdjustment on a countdown counting up past its end', () => {
 		const result = applyClockAdjustment(clock, now, adjustment);
 
 		expect(projectFeatureMatchClock(result, now, '').display).toBe(shows);
-		if (countsDown)
-			expect(expired(result)).toBe(false);
+		if (countsDown) expect(expired(result)).toBe(false);
 	});
 });
 
@@ -562,46 +565,16 @@ describe('projectFeatureMatchClock: when what it shows next changes', () => {
 
 	// Waking at the named moment shows a new time, and a millisecond sooner the old one.
 	it.each([
-		[
-			'a count-up part-way through a second',
-			running({ type: 'countup' }, 12_900),
-		],
-		[
-			'a count-up on a whole second',
-			running({ type: 'countup' }, 13_000),
-		],
-		[
-			'a countdown the instant it starts',
-			running({}, 0),
-		],
-		[
-			'a countdown part-way through a second',
-			running({}, 12_900),
-		],
-		[
-			'a countdown on a whole second',
-			running({}, 13_000),
-		],
-		[
-			'a countdown a millisecond past a whole second',
-			running({}, 13_001),
-		],
-		[
-			'a countdown of an odd length',
-			running({ durationMs: 60_400 }, 12_900),
-		],
-		[
-			'a countdown with exactly a second left',
-			running({}, 59_000),
-		],
-		[
-			'a countdown in its last second',
-			running({}, 59_500),
-		],
-		[
-			'a countdown with a millisecond left',
-			running({}, 59_999),
-		],
+		['a count-up part-way through a second', running({ type: 'countup' }, 12_900)],
+		['a count-up on a whole second', running({ type: 'countup' }, 13_000)],
+		['a countdown the instant it starts', running({}, 0)],
+		['a countdown part-way through a second', running({}, 12_900)],
+		['a countdown on a whole second', running({}, 13_000)],
+		['a countdown a millisecond past a whole second', running({}, 13_001)],
+		['a countdown of an odd length', running({ durationMs: 60_400 }, 12_900)],
+		['a countdown with exactly a second left', running({}, 59_000)],
+		['a countdown in its last second', running({}, 59_500)],
+		['a countdown with a millisecond left', running({}, 59_999)],
 		[
 			'a countdown in its last second that counts up after',
 			running({ countUpAfterCountdown: true }, 59_500),
@@ -610,10 +583,7 @@ describe('projectFeatureMatchClock: when what it shows next changes', () => {
 			'a countdown the instant it runs out and counts up',
 			running({ countUpAfterCountdown: true }, 60_000),
 		],
-		[
-			'a countdown in overtime',
-			running({ countUpAfterCountdown: true }, 61_300),
-		],
+		['a countdown in overtime', running({ countUpAfterCountdown: true }, 61_300)],
 		[
 			'overtime in the last second before its limit',
 			running({ countUpAfterCountdown: true, countUpLimitMs: 5_000 }, 64_300),
@@ -628,26 +598,10 @@ describe('projectFeatureMatchClock: when what it shows next changes', () => {
 	// A countdown changes as each whole second of time remaining is reached, its
 	// last at the end itself; elapsed time and overtime change on the whole second.
 	it.each([
-		[
-			'a countdown the instant it starts',
-			running({}, 0),
-			1000,
-		],
-		[
-			'a countdown part-way through a second',
-			running({}, 12_900),
-			100,
-		],
-		[
-			'a countdown on a whole second',
-			running({}, 13_000),
-			1000,
-		],
-		[
-			'a countdown in its last second',
-			running({}, 59_500),
-			500,
-		],
+		['a countdown the instant it starts', running({}, 0), 1000],
+		['a countdown part-way through a second', running({}, 12_900), 100],
+		['a countdown on a whole second', running({}, 13_000), 1000],
+		['a countdown in its last second', running({}, 59_500), 500],
 		[
 			'a countdown in its last second that counts up after',
 			running({ countUpAfterCountdown: true }, 59_500),
@@ -658,16 +612,8 @@ describe('projectFeatureMatchClock: when what it shows next changes', () => {
 			running({ countUpAfterCountdown: true }, 60_000),
 			1000,
 		],
-		[
-			'a countdown in overtime',
-			running({ countUpAfterCountdown: true }, 61_300),
-			700,
-		],
-		[
-			'a count-up part-way through a second',
-			running({ type: 'countup' }, 12_900),
-			100,
-		],
+		['a countdown in overtime', running({ countUpAfterCountdown: true }, 61_300), 700],
+		['a count-up part-way through a second', running({ type: 'countup' }, 12_900), 100],
 	])('names when the display of %s changes', (_case, clock, expected) => {
 		expect(projectFeatureMatchClock(clock, NOW, '').nextChangeInMs).toBe(expected);
 	});
@@ -686,10 +632,7 @@ describe('projectFeatureMatchClock: when what it shows next changes', () => {
 
 	it.each([
 		['no clock', null],
-		[
-			'an untimed clock',
-			running({ type: 'untimed' }, 5_000),
-		],
+		['an untimed clock', running({ type: 'untimed' }, 5_000)],
 		[
 			'a stopped clock',
 			{
@@ -697,14 +640,8 @@ describe('projectFeatureMatchClock: when what it shows next changes', () => {
 				startedAt: null,
 			},
 		],
-		[
-			'a countdown the instant it runs out, not counting up',
-			running({}, 60_000),
-		],
-		[
-			'a countdown that ran out and does not count up',
-			running({}, 61_000),
-		],
+		['a countdown the instant it runs out, not counting up', running({}, 60_000)],
+		['a countdown that ran out and does not count up', running({}, 61_000)],
 		[
 			'overtime the instant it reaches its limit',
 			running({ countUpAfterCountdown: true, countUpLimitMs: 5_000 }, 65_000),
@@ -841,59 +778,64 @@ describe('clockTransitions', () => {
 	const stopped = base;
 	const running: FeatureMatchClock = { ...base, startedAt: NOW - 5_000 };
 
-	it.each<{ name: string; clock: FeatureMatchClock; transition: (clock: FeatureMatchClock) => FeatureMatchClock; changes: Partial<FeatureMatchClock> }>([
+	it.each<{
+		name: string;
+		clock: FeatureMatchClock;
+		transition: (clock: FeatureMatchClock) => FeatureMatchClock;
+		changes: Partial<FeatureMatchClock>;
+	}>([
 		{
 			name: 'start runs a stopped clock from the instant',
 			clock: stopped,
-			transition: clock => clockTransitions.start(clock, NOW),
+			transition: (clock) => clockTransitions.start(clock, NOW),
 			changes: { startedAt: NOW },
 		},
 		{
 			name: 'pause banks the time a running clock has run',
 			clock: running,
-			transition: clock => clockTransitions.pause(clock, NOW),
+			transition: (clock) => clockTransitions.pause(clock, NOW),
 			changes: { startedAt: null, elapsedMs: 65_000 },
 		},
 		{
 			name: 'reset stops a running clock with no time run, keeping its duration',
 			clock: running,
-			transition: clock => clockTransitions.reset(clock),
+			transition: (clock) => clockTransitions.reset(clock),
 			changes: { startedAt: null, elapsedMs: 0 },
 		},
 		{
 			name: 'reset to a duration takes it',
 			clock: stopped,
-			transition: clock => clockTransitions.reset(clock, 1_800_000),
+			transition: (clock) => clockTransitions.reset(clock, 1_800_000),
 			changes: { elapsedMs: 0, durationMs: 1_800_000 },
 		},
 		{
 			name: 'restart runs a stopped clock from no time run',
 			clock: stopped,
-			transition: clock => clockTransitions.restart(clock, NOW),
+			transition: (clock) => clockTransitions.restart(clock, NOW),
 			changes: { startedAt: NOW, elapsedMs: 0 },
 		},
 		{
 			name: 'restart starts a running clock over from the instant',
 			clock: running,
-			transition: clock => clockTransitions.restart(clock, NOW),
+			transition: (clock) => clockTransitions.restart(clock, NOW),
 			changes: { startedAt: NOW, elapsedMs: 0 },
 		},
 		{
-			name: 'adjust moves a running countdown\'s end, banking the time run',
+			name: "adjust moves a running countdown's end, banking the time run",
 			clock: running,
-			transition: clock => clockTransitions.adjust(clock, NOW, 30_000),
+			transition: (clock) => clockTransitions.adjust(clock, NOW, 30_000),
 			changes: { startedAt: NOW, elapsedMs: 65_000, durationMs: 3_030_000 },
 		},
 		{
 			name: 'set gives a countdown that much time remaining',
 			clock: stopped,
-			transition: clock => clockTransitions.set(clock, NOW, 200_000),
+			transition: (clock) => clockTransitions.set(clock, NOW, 200_000),
 			changes: { durationMs: 260_000 },
 		},
 		{
 			name: 'set gives a count-up clock that much time run',
 			clock: { ...stopped, type: 'countup' },
-			transition: clock => clockTransitions.set(clock, NOW, 200_000),
+			transition: (clock) => clockTransitions.set(clock, NOW, 200_000),
 			changes: { elapsedMs: 200_000 },
 		},
 	])('$name', ({ clock, transition, changes }) => {
@@ -904,16 +846,20 @@ describe('clockTransitions', () => {
 	});
 
 	// A double press is harmless: the clock is handed back as it was.
-	it.each<{ name: string; clock: FeatureMatchClock; transition: (clock: FeatureMatchClock) => FeatureMatchClock }>([
+	it.each<{
+		name: string;
+		clock: FeatureMatchClock;
+		transition: (clock: FeatureMatchClock) => FeatureMatchClock;
+	}>([
 		{
 			name: 'starting a running clock',
 			clock: running,
-			transition: clock => clockTransitions.start(clock, NOW),
+			transition: (clock) => clockTransitions.start(clock, NOW),
 		},
 		{
 			name: 'pausing a stopped clock',
 			clock: stopped,
-			transition: clock => clockTransitions.pause(clock, NOW),
+			transition: (clock) => clockTransitions.pause(clock, NOW),
 		},
 	])('$name changes nothing', ({ clock, transition }) => {
 		expect(transition(clock)).toBe(clock);

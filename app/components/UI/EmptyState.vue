@@ -1,17 +1,27 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
-	icon: string;
-	title: string;
-	description?: string;
-	variant?: 'page' | 'card' | 'inline';
-}>(), {
-	variant: 'card',
-});
+withDefaults(
+	defineProps<{
+		icon: string;
+		title: string;
+		description?: string;
+		variant?: 'page' | 'card' | 'inline';
+	}>(),
+	{
+		variant: 'card',
+	},
+);
 </script>
 
 <template>
 	<!-- Page/card variant: wrapped in UCard for page-level empty states -->
-	<div v-if="variant === 'page' || variant === 'card'" :class="variant === 'page' ? 'flex min-h-[calc(100dvh-12rem)] items-center justify-center' : 'text-center py-12'">
+	<div
+		v-if="variant === 'page' || variant === 'card'"
+		:class="
+			variant === 'page'
+				? 'flex min-h-[calc(100dvh-12rem)] items-center justify-center'
+				: 'text-center py-12'
+		"
+	>
 		<UCard variant="subtle" class="w-full max-w-xl mx-auto">
 			<div class="flex flex-col items-center gap-3 py-6 text-center">
 				<UIcon :name="icon" class="h-12 w-12 text-muted" />

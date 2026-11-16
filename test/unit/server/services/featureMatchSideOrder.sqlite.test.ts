@@ -14,7 +14,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -26,8 +27,8 @@ vi.doMock('~~/server/utils/ably', () => ({
 	publishScreenCommand: async () => {},
 	getOriginConnectionId: () => undefined,
 }));
-vi.doMock('~~/server/modules/broadcast-graphics-live-session', async importOriginal => ({
-	...await importOriginal<object>(),
+vi.doMock('~~/server/modules/broadcast-graphics-live-session', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	refreshBroadcastGraphicsBindings: async () => {},
 }));
 
@@ -43,12 +44,17 @@ afterAll(async () => {
 
 /** Ana and Ben seated by promoting a Melee Match. */
 async function stageMtg() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Magic Open', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
-	const [phase] = await db.insert(schema.phases).values({ eventId, name: 'Swiss', sortOrder: 0 }).returning();
-	const [round] = await db.insert(schema.rounds)
+	const [phase] = await db
+		.insert(schema.phases)
+		.values({ eventId, name: 'Swiss', sortOrder: 0 })
+		.returning();
+	const [round] = await db
+		.insert(schema.rounds)
 		.values({
 			eventId,
 			phaseId: phase!.id,
@@ -56,13 +62,15 @@ async function stageMtg() {
 			roundNumber: 1,
 		})
 		.returning();
-	const [ana, ben] = await db.insert(schema.players)
+	const [ana, ben] = await db
+		.insert(schema.players)
 		.values([
 			{ eventId, name: 'Ana' },
 			{ eventId, name: 'Ben' },
 		])
 		.returning();
-	const [match] = await db.insert(schema.matches)
+	const [match] = await db
+		.insert(schema.matches)
 		.values({
 			eventId,
 			roundId: round!.id,
@@ -73,18 +81,24 @@ async function stageMtg() {
 		})
 		.returning();
 	const slot = await featureMatchService().create(eventId, {});
-	await featureMatchPromotionModule().promoteMatchToSlot({ eventId, slotId: slot.id, matchId: match!.id });
+	await featureMatchPromotionModule().promoteMatchToSlot({
+		eventId,
+		slotId: slot.id,
+		matchId: match!.id,
+	});
 	return { eventId, slotId: slot.id };
 }
 
 /** Ana and Ben typed into the Slot, as a One Piece Event seats them (ADR-0057). */
 async function stageOp() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'One Piece Regional', game: 'op', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
 	await db.insert(schema.cards).values([ZORO, LAW].map(opLeaderCatalogueRow)).onConflictDoNothing();
-	const [slot] = await db.insert(schema.featureMatches)
+	const [slot] = await db
+		.insert(schema.featureMatches)
 		.values({
 			eventId,
 			player1Data: {
@@ -103,12 +117,17 @@ async function stageOp() {
 
 /** Ana and Ben picked from the Event's Players, each side showing that Player's Deck List (ADR-0074). */
 async function stageOpLinked() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'One Piece Regional', game: 'op', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
-	await db.insert(schema.cards).values([ZORO, LAW, NAMI].map(opLeaderCatalogueRow)).onConflictDoNothing();
-	const [ana, ben] = await db.insert(schema.players)
+	await db
+		.insert(schema.cards)
+		.values([ZORO, LAW, NAMI].map(opLeaderCatalogueRow))
+		.onConflictDoNothing();
+	const [ana, ben] = await db
+		.insert(schema.players)
 		.values([
 			{ eventId, name: 'Ana' },
 			{ eventId, name: 'Ben' },
@@ -136,9 +155,7 @@ async function writePlayerDeckList(eventId: number, playerId: number, leaderNumb
 		eventId,
 		owner: { kind: 'player', playerId },
 		input: {
-			entries: [
-				{ number: leaderNumber, quantity: 1 },
-			],
+			entries: [{ number: leaderNumber, quantity: 1 }],
 			leaderNumber,
 		},
 		source: 'import',
@@ -147,21 +164,28 @@ async function writePlayerDeckList(eventId: number, playerId: number, leaderNumb
 
 type Staged = Awaited<ReturnType<typeof stageMtg>>;
 
-async function command({ eventId, slotId }: Staged, type: FeatureMatchSessionCommand['type'], payload: object = {}) {
-	await featureMatchStateService().applyCommandToActiveSession(slotId, eventId, session => ({
-		commandId: `${type}-${crypto.randomUUID()}`,
-		type,
-		payload,
-		baseSequence: session.sequence,
-	}) as FeatureMatchSessionCommand);
+async function command(
+	{ eventId, slotId }: Staged,
+	type: FeatureMatchSessionCommand['type'],
+	payload: object = {},
+) {
+	await featureMatchStateService().applyCommandToActiveSession(
+		slotId,
+		eventId,
+		(session) =>
+			({
+				commandId: `${type}-${crypto.randomUUID()}`,
+				type,
+				payload,
+				baseSequence: session.sequence,
+			}) as FeatureMatchSessionCommand,
+	);
 }
 
 /** A setup save as the form sends it: sides in Slot order, Ana's pronouns edited. */
 async function saveSetupEditingAna(staged: Staged) {
 	const slot = (await featureMatchService().findById(staged.slotId, staged.eventId))!;
-	const anaSide = slot.player1Data?.name === 'Ana'
-		? 'player1Data'
-		: 'player2Data';
+	const anaSide = slot.player1Data?.name === 'Ana' ? 'player1Data' : 'player2Data';
 	await featureMatchSlotWriteModule().updateSetup({
 		eventId: staged.eventId,
 		slotId: staged.slotId,
@@ -202,24 +226,23 @@ async function overlayTokens({ eventId, slotId }: Staged) {
 async function seats(staged: Staged) {
 	const { slot, tokens } = await overlayTokens(staged);
 	const { sourceSnapshot, currentState } = slot.activeSession!;
-	const named = (name?: string | null, pronouns?: string | null) => pronouns
-		? `${name} (${pronouns})`
-		: name;
-	const live = (side: 'player1' | 'player2') => [
-		`life ${currentState[side].lifeTotal}`,
-		`wins ${currentState[side].gameWins}`,
-		...currentState.activePlayer === side
-			? ['active']
-			: [],
-		...currentState.firstPlayer === side
-			? ['first']
-			: [],
-	].join(' ');
+	const named = (name?: string | null, pronouns?: string | null) =>
+		pronouns ? `${name} (${pronouns})` : name;
+	const live = (side: 'player1' | 'player2') =>
+		[
+			`life ${currentState[side].lifeTotal}`,
+			`wins ${currentState[side].gameWins}`,
+			...(currentState.activePlayer === side ? ['active'] : []),
+			...(currentState.firstPlayer === side ? ['first'] : []),
+		].join(' ');
 	return {
-		overlay: (['player1', 'player2'] as const).map(side =>
-			`${named(tokens[`${side}Name`], tokens[`${side}Pronouns`])}: ${live(side)}`),
-		controls: (['player1', 'player2'] as const).map(side =>
-			`${named(sourceSnapshot[side].data?.name, sourceSnapshot[side].data?.pronouns)}: ${live(side)}`),
+		overlay: (['player1', 'player2'] as const).map(
+			(side) => `${named(tokens[`${side}Name`], tokens[`${side}Pronouns`])}: ${live(side)}`,
+		),
+		controls: (['player1', 'player2'] as const).map(
+			(side) =>
+				`${named(sourceSnapshot[side].data?.name, sourceSnapshot[side].data?.pronouns)}: ${live(side)}`,
+		),
 	};
 }
 
@@ -261,12 +284,9 @@ describe.each([
 		await command(staged, 'SetActivePlayer', { player: 'player1' });
 
 		for (const step of steps) {
-			if (step === 'swap')
-				await command(staged, 'SwapPlayers');
-			else if (step === 'saveEditingAna')
-				await saveSetupEditingAna(staged);
-			else
-				await saveSetupWithNoSide(staged);
+			if (step === 'swap') await command(staged, 'SwapPlayers');
+			else if (step === 'saveEditingAna') await saveSetupEditingAna(staged);
+			else await saveSetupWithNoSide(staged);
 		}
 
 		expect(await seats(staged)).toEqual({ overlay: order, controls: order });
@@ -278,13 +298,13 @@ async function decks(staged: Staged) {
 	const { slot, tokens } = await overlayTokens(staged);
 	const { sourceSnapshot } = slot.activeSession!;
 	return {
-		overlay: (['player1', 'player2'] as const).map(side =>
-			`${tokens[`${side}Name`]}: ${tokens[`${side}Deck`]} ${tokens[`${side}DeckColors`]} ${tokens[`${side}LeaderImage`]}`),
+		overlay: (['player1', 'player2'] as const).map(
+			(side) =>
+				`${tokens[`${side}Name`]}: ${tokens[`${side}Deck`]} ${tokens[`${side}DeckColors`]} ${tokens[`${side}LeaderImage`]}`,
+		),
 		controls: (['player1', 'player2'] as const).map((side) => {
 			const data = sourceSnapshot[side].data;
-			return `${data?.name}: ${data?.gameData?.type === 'op'
-				? data.gameData.leader?.name
-				: ''}`;
+			return `${data?.name}: ${data?.gameData?.type === 'op' ? data.gameData.leader?.name : ''}`;
 		}),
 	};
 }
@@ -312,7 +332,7 @@ describe('a One Piece side linked to a Player', () => {
 			],
 		},
 		{
-			path: 'a re-import of Ana\'s Deck List',
+			path: "a re-import of Ana's Deck List",
 			steps: ['reimportAna'],
 			order: [
 				['Ana', NAMI],
@@ -320,7 +340,7 @@ describe('a One Piece side linked to a Player', () => {
 			],
 		},
 		{
-			path: 'a swap then a re-import of Ana\'s Deck List',
+			path: "a swap then a re-import of Ana's Deck List",
 			steps: ['swap', 'reimportAna'],
 			order: [
 				['Ben', LAW],
@@ -328,27 +348,27 @@ describe('a One Piece side linked to a Player', () => {
 			],
 		},
 		{
-			path: 'a swap, a setup save, then a re-import of Ana\'s Deck List',
+			path: "a swap, a setup save, then a re-import of Ana's Deck List",
 			steps: ['swap', 'saveEditingAna', 'reimportAna'],
 			order: [
 				['Ben', LAW],
 				['Ana', NAMI],
 			],
 		},
-	] as const)('shows each Player\'s Leader on the side they sit on after $path', async ({ steps, order }) => {
-		const staged = await stageOpLinked();
+	] as const)(
+		"shows each Player's Leader on the side they sit on after $path",
+		async ({ steps, order }) => {
+			const staged = await stageOpLinked();
 
-		for (const step of steps) {
-			if (step === 'swap')
-				await command(staged, 'SwapPlayers');
-			else if (step === 'saveEditingAna')
-				await saveSetupEditingAna(staged);
-			else
-				await writePlayerDeckList(staged.eventId, staged.anaId, NAMI.number);
-		}
+			for (const step of steps) {
+				if (step === 'swap') await command(staged, 'SwapPlayers');
+				else if (step === 'saveEditingAna') await saveSetupEditingAna(staged);
+				else await writePlayerDeckList(staged.eventId, staged.anaId, NAMI.number);
+			}
 
-		const shown = await decks(staged);
-		expect(shown.overlay).toEqual(order.map(([name, leader]) => deckOf(name, leader)));
-		expect(shown.controls).toEqual(order.map(([name, leader]) => `${name}: ${leader.name}`));
-	});
+			const shown = await decks(staged);
+			expect(shown.overlay).toEqual(order.map(([name, leader]) => deckOf(name, leader)));
+			expect(shown.controls).toEqual(order.map(([name, leader]) => `${name}: ${leader.name}`));
+		},
+	);
 });

@@ -19,7 +19,7 @@ const emit = defineEmits<{
 	<div data-token-part="animation-effect" :aria-label="`${label} effect`" role="group">
 		<ScreenAnimationEffectFields
 			:selection="modelValue"
-			@update:selection="value => emit('commit', value)"
+			@update:selection="(value) => emit('commit', value)"
 		/>
 	</div>
 </template>

@@ -31,15 +31,13 @@ export function authoringEventChannel(eventId: number): string {
 }
 
 /** The channel a rendering set up against `context` hears on, or `null` while it hears none. */
-export function renderingChannel(context: Pick<ScreenContext, 'eventId' | 'screen' | 'followsScreenChannel' | 'sampleDataset'>): string | null {
+export function renderingChannel(
+	context: Pick<ScreenContext, 'eventId' | 'screen' | 'followsScreenChannel' | 'sampleDataset'>,
+): string | null {
 	const eventId = context.eventId.value;
 	// A Theme preview's sample belongs to no Event.
-	if (context.sampleDataset || !eventId)
-		return null;
-	if (!context.followsScreenChannel?.value)
-		return authoringEventChannel(eventId);
+	if (context.sampleDataset || !eventId) return null;
+	if (!context.followsScreenChannel?.value) return authoringEventChannel(eventId);
 	const screen = context.screen.value;
-	return screen
-		? screenRealtimeChannel(eventId, screen.id)
-		: null;
+	return screen ? screenRealtimeChannel(eventId, screen.id) : null;
 }

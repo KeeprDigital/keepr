@@ -8,7 +8,10 @@ const MEDIA_FIT_LABELS: Record<MediaFit, string> = {
 };
 
 /** The one Media Fit list every media host offers. */
-export const MEDIA_FIT_OPTIONS = MEDIA_FIT_VALUES.map(value => ({ label: MEDIA_FIT_LABELS[value], value }));
+export const MEDIA_FIT_OPTIONS = MEDIA_FIT_VALUES.map((value) => ({
+	label: MEDIA_FIT_LABELS[value],
+	value,
+}));
 
 /** What the media fields control shows. A host passes only the fields it offers. */
 export interface MediaFieldsValue {
@@ -47,9 +50,7 @@ export function resolveMediaFieldsPatch(patch: MediaFieldsPatch): ResolvedMediaF
 	const { opacity, playbackRate, ...rest } = patch;
 	return {
 		...rest,
-		...(opacity === undefined
-			? {}
-			: { opacity: opacity ?? MEDIA_FIELD_DEFAULTS.opacity }),
+		...(opacity === undefined ? {} : { opacity: opacity ?? MEDIA_FIELD_DEFAULTS.opacity }),
 		...(playbackRate === undefined
 			? {}
 			: { playbackRate: playbackRate ?? MEDIA_FIELD_DEFAULTS.playbackRate }),

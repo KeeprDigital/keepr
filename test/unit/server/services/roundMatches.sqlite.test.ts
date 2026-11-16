@@ -24,46 +24,58 @@ let bob: number;
 let carol: number;
 
 beforeAll(async () => {
-	const [event, otherEvent] = await db.insert(schema.events).values([
-		{ name: 'Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
-		{ name: 'Other Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
-	]).returning({ id: schema.events.id });
+	const [event, otherEvent] = await db
+		.insert(schema.events)
+		.values([
+			{ name: 'Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			{ name: 'Other Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+		])
+		.returning({ id: schema.events.id });
 	eventId = event!.id;
 
-	const [phase, foreignPhase] = await db.insert(schema.phases).values([
-		{ eventId, name: 'Swiss' },
-		{ eventId: otherEvent!.id, name: 'Swiss' },
-	]).returning({ id: schema.phases.id });
-	const [round, otherRound, foreignRound] = await db.insert(schema.rounds).values([
-		{
-			eventId,
-			phaseId: phase!.id,
-			name: 'Round 3',
-			roundNumber: 3,
-		},
-		{
-			eventId,
-			phaseId: phase!.id,
-			name: 'Round 4',
-			roundNumber: 4,
-		},
-		{
-			eventId: otherEvent!.id,
-			phaseId: foreignPhase!.id,
-			name: 'Round 3',
-			roundNumber: 3,
-		},
-	]).returning({ id: schema.rounds.id });
+	const [phase, foreignPhase] = await db
+		.insert(schema.phases)
+		.values([
+			{ eventId, name: 'Swiss' },
+			{ eventId: otherEvent!.id, name: 'Swiss' },
+		])
+		.returning({ id: schema.phases.id });
+	const [round, otherRound, foreignRound] = await db
+		.insert(schema.rounds)
+		.values([
+			{
+				eventId,
+				phaseId: phase!.id,
+				name: 'Round 3',
+				roundNumber: 3,
+			},
+			{
+				eventId,
+				phaseId: phase!.id,
+				name: 'Round 4',
+				roundNumber: 4,
+			},
+			{
+				eventId: otherEvent!.id,
+				phaseId: foreignPhase!.id,
+				name: 'Round 3',
+				roundNumber: 3,
+			},
+		])
+		.returning({ id: schema.rounds.id });
 	roundId = round!.id;
 	otherRoundId = otherRound!.id;
 	foreignRoundId = foreignRound!.id;
 
-	const ids = await db.insert(schema.players).values([
-		{ eventId, name: 'Alice' },
-		{ eventId, name: 'Bob' },
-		{ eventId, name: 'Carol' },
-	]).returning({ id: schema.players.id });
-	[alice, bob, carol] = ids.map(row => row.id) as [number, number, number];
+	const ids = await db
+		.insert(schema.players)
+		.values([
+			{ eventId, name: 'Alice' },
+			{ eventId, name: 'Bob' },
+			{ eventId, name: 'Carol' },
+		])
+		.returning({ id: schema.players.id });
+	[alice, bob, carol] = ids.map((row) => row.id) as [number, number, number];
 
 	await db.insert(schema.matches).values([
 		// Inserted out of table order, and with the bye first, so the order is the read's.
@@ -117,14 +129,14 @@ beforeAll(async () => {
 afterAll(async () => await harness.close());
 
 describe('findRoundMatches', () => {
-	it('lists the Round\'s Matches in table order, byes after every table', async () => {
+	it("lists the Round's Matches in table order, byes after every table", async () => {
 		const result = await findRoundMatches(eventId, roundId);
 
 		expect(result?.round).toMatchObject({ id: roundId, name: 'Round 3' });
-		expect(result?.matches.map(match => match.tableNumber)).toEqual([2, 12, null]);
+		expect(result?.matches.map((match) => match.tableNumber)).toEqual([2, 12, null]);
 	});
 
-	it('names each side by its Player, or by the Match\'s own record of a side no Player holds', async () => {
+	it("names each side by its Player, or by the Match's own record of a side no Player holds", async () => {
 		const [table2, table12, bye] = (await findRoundMatches(eventId, roundId))!.matches;
 
 		expect(table2).toMatchObject({
@@ -142,7 +154,7 @@ describe('findRoundMatches', () => {
 		});
 	});
 
-	it('carries each Match\'s result, or none while it is pending', async () => {
+	it("carries each Match's result, or none while it is pending", async () => {
 		const [table2, table12] = (await findRoundMatches(eventId, roundId))!.matches;
 
 		expect(table2).toMatchObject({
@@ -151,7 +163,11 @@ describe('findRoundMatches', () => {
 			player2GameWins: 1,
 			gameDraws: 1,
 		});
-		expect(table12).toMatchObject({ hasResult: false, player1GameWins: null, player2GameWins: null });
+		expect(table12).toMatchObject({
+			hasResult: false,
+			player1GameWins: null,
+			player2GameWins: null,
+		});
 	});
 
 	it('answers nothing for a Round of another Event', async () => {
@@ -159,12 +175,15 @@ describe('findRoundMatches', () => {
 	});
 
 	it('answers a Round without Matches with none', async () => {
-		const [empty] = await db.insert(schema.rounds).values({
-			eventId,
-			phaseId: (await db.query.rounds.findFirst())!.phaseId,
-			name: 'Round 5',
-			roundNumber: 5,
-		}).returning({ id: schema.rounds.id });
+		const [empty] = await db
+			.insert(schema.rounds)
+			.values({
+				eventId,
+				phaseId: (await db.query.rounds.findFirst())!.phaseId,
+				name: 'Round 5',
+				roundNumber: 5,
+			})
+			.returning({ id: schema.rounds.id });
 		expect((await findRoundMatches(eventId, empty!.id))?.matches).toEqual([]);
 	});
 });

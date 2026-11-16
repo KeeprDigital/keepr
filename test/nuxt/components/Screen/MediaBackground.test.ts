@@ -17,7 +17,7 @@ function video(url: string): ScreenVideoPlayback {
 
 /** Each video's source, and whether it is still loading behind the one playing. */
 function videos(wrapper: ReturnType<typeof mount>) {
-	return wrapper.findAll('video').map(element => ({
+	return wrapper.findAll('video').map((element) => ({
 		src: element.attributes('src'),
 		loading: element.attributes('data-video-loading') === 'true',
 	}));
@@ -44,9 +44,7 @@ describe('screenMediaBackground', () => {
 
 		await wrapper.findAll('video')[1]!.trigger(event);
 
-		expect(videos(wrapper)).toEqual([
-			{ src: '/video/b.mp4', loading: false },
-		]);
+		expect(videos(wrapper)).toEqual([{ src: '/video/b.mp4', loading: false }]);
 	});
 
 	it('drops a loading source when the playing one is chosen again', async () => {
@@ -63,8 +61,6 @@ describe('screenMediaBackground', () => {
 			video: video('/video/a.mp4'),
 		});
 
-		expect(videos(wrapper)).toEqual([
-			{ src: '/video/a.mp4', loading: false },
-		]);
+		expect(videos(wrapper)).toEqual([{ src: '/video/a.mp4', loading: false }]);
 	});
 });

@@ -1,7 +1,12 @@
 import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
-import { createTestGraphicsLibrary, DAY, ingestImage, publishedRevision } from '~~/test/helpers/graphicsLibrary';
+import {
+	createTestGraphicsLibrary,
+	DAY,
+	ingestImage,
+	publishedRevision,
+} from '~~/test/helpers/graphicsLibrary';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 let harness: SqliteD1Harness;
@@ -21,7 +26,9 @@ async function trashedAsset() {
 		catalogue: createD1GraphicsAssetCatalogue(harness.database),
 		identityPrefix: 'lifecycle',
 	});
-	const { assetId } = publishedRevision(await ingestImage(context, { idempotencyKey: 'lifecycle-recovery-window' }));
+	const { assetId } = publishedRevision(
+		await ingestImage(context, { idempotencyKey: 'lifecycle-recovery-window' }),
+	);
 	await context.library.trashGraphicAsset({ assetId });
 	const trashedAt = context.now().getTime();
 	return {
@@ -51,9 +58,11 @@ describe('the Graphics Asset Library recovery window', () => {
 		await expect(library.restoreGraphicAsset({ assetId })).rejects.toMatchObject({
 			code: 'graphic-asset-lifecycle-action-not-allowed',
 		});
-		await expect(library.listGraphicAssets({
-			lifecycleStates: ['trashed'],
-		})).resolves.toEqual([
+		await expect(
+			library.listGraphicAssets({
+				lifecycleStates: ['trashed'],
+			}),
+		).resolves.toEqual([
 			expect.objectContaining({
 				id: assetId,
 				lifecycle: expect.objectContaining({ state: 'trashed' }),

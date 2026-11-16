@@ -25,27 +25,26 @@ export function archetypeService() {
 	};
 
 	const findManyByIds = async (eventId: number, ids: number[]): Promise<DbArchetype[]> => {
-		const uniqueIds = [
-			...new Set(ids),
-		];
-		if (uniqueIds.length === 0)
-			return [];
+		const uniqueIds = [...new Set(ids)];
+		if (uniqueIds.length === 0) return [];
 
 		const rows: DbArchetype[] = [];
 		for (const idChunk of chunkArray(uniqueIds, SAFE_INARRAY_SIZE)) {
-			rows.push(...await db
-				.select()
-				.from(archetypes)
-				.where(and(
-					eq(archetypes.eventId, eventId),
-					inArray(archetypes.id, idChunk),
-				)));
+			rows.push(
+				...(await db
+					.select()
+					.from(archetypes)
+					.where(and(eq(archetypes.eventId, eventId), inArray(archetypes.id, idChunk)))),
+			);
 		}
 		return rows;
 	};
 
 	const create = async (eventId: number, data: CreateArchetypeInput): Promise<DbArchetype> => {
-		const [newArchetype] = await db.insert(archetypes).values({ ...data, eventId }).returning();
+		const [newArchetype] = await db
+			.insert(archetypes)
+			.values({ ...data, eventId })
+			.returning();
 		if (!newArchetype) {
 			throw new Error('Failed to create archetype');
 		}
@@ -89,11 +88,23 @@ export function archetypeService() {
 	const buildRemoveEmptyQuery = (eventId: number) => {
 		return db
 			.delete(archetypes)
-			.where(and(
-				eq(archetypes.eventId, eventId),
-				notExists(db.select({ id: playerDecks.id }).from(playerDecks).where(eq(playerDecks.archetypeId, archetypes.id))),
-				notExists(db.select({ id: players.id }).from(players).where(eq(players.archetypeId, archetypes.id))),
-			))
+			.where(
+				and(
+					eq(archetypes.eventId, eventId),
+					notExists(
+						db
+							.select({ id: playerDecks.id })
+							.from(playerDecks)
+							.where(eq(playerDecks.archetypeId, archetypes.id)),
+					),
+					notExists(
+						db
+							.select({ id: players.id })
+							.from(players)
+							.where(eq(players.archetypeId, archetypes.id)),
+					),
+				),
+			)
 			.returning();
 	};
 

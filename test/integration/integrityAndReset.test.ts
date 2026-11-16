@@ -18,8 +18,7 @@ describe('event integrity and melee reset', () => {
 		for (const eventId of eventIds) {
 			try {
 				await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-			}
-			catch {}
+			} catch {}
 		}
 	});
 
@@ -105,7 +104,9 @@ describe('event integrity and melee reset', () => {
 		expect(phases.phases).toHaveLength(0);
 		expect(rounds.rounds).toHaveLength(0);
 		expect(matches.matches).toHaveLength(0);
-		const clearedFeatureMatch = featureMatches.featureMatchSlots.find((item: { id: number }) => item.id === featureMatch.id);
+		const clearedFeatureMatch = featureMatches.featureMatchSlots.find(
+			(item: { id: number }) => item.id === featureMatch.id,
+		);
 		expect(clearedFeatureMatch).toBeDefined();
 		expect(clearedFeatureMatch).toMatchObject({
 			id: featureMatch.id,

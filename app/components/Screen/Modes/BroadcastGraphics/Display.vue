@@ -4,7 +4,10 @@ import type { ScreenOutput } from '~~/shared/types/screenConfig';
 import { animationEffectRenderPlan } from '~~/shared/animationEffects';
 import { DEFAULT_EVENT_CANVAS } from '~~/shared/eventCanvas';
 import { paintGraphicsThemeBindings } from '~~/shared/modules/graphics';
-import { broadcastGraphicsGraphicAssetReferences, graphicItemsApplicationFonts } from '~~/shared/utils/graphicsAssetReferences';
+import {
+	broadcastGraphicsGraphicAssetReferences,
+	graphicItemsApplicationFonts,
+} from '~~/shared/utils/graphicsAssetReferences';
 import GraphicsCompositorCanvas from '~/components/Graphics/Compositor/Canvas.vue';
 import { useBroadcastGraphicsModeData } from '~/composables/screen/useBroadcastGraphicsModeData';
 import { resolveBroadcastGraphicsRenderModel } from '~/modules/broadcast-graphics/renderModel';
@@ -43,10 +46,9 @@ const resolvedOutput = computed<ScreenOutput>(() => outputMode?.value ?? 'overla
  * Whether this is an authoring preview is decided upstream, where the preview
  * state lives.
  */
-const backgroundPlan = computed<AnimationEffectRenderPlan & { opacity: number } | null>(() => {
+const backgroundPlan = computed<(AnimationEffectRenderPlan & { opacity: number }) | null>(() => {
 	const config = background.value;
-	if (!config || !config.enabled || resolvedOutput.value === 'key')
-		return null;
+	if (!config || !config.enabled || resolvedOutput.value === 'key') return null;
 	return {
 		...animationEffectRenderPlan(config),
 		opacity: config.opacity,
@@ -72,14 +74,16 @@ const themeTokens = useScreenGraphicThemeTokens();
 
 // Read with its bindings painted, so a font or logo a bound item takes from the
 // Theme resolves too (#831): the capability admits what the Theme supplies.
-const paintedGraphics = computed(() => paintGraphicsThemeBindings(graphics.value, themeTokens.value));
+const paintedGraphics = computed(() =>
+	paintGraphicsThemeBindings(graphics.value, themeTokens.value),
+);
 const indexedGraphicAssetReferences = computed(() =>
 	broadcastGraphicsGraphicAssetReferences({
 		graphics: paintedGraphics.value,
 	}),
 );
 const graphicAssetReferences = computed(() =>
-	indexedGraphicAssetReferences.value.map(item => item.reference),
+	indexedGraphicAssetReferences.value.map((item) => item.reference),
 );
 
 // A live output resolves content only through its Screen Output Asset Capability;
@@ -97,10 +101,16 @@ const libraryFonts = useGraphicAssetFontFaces(
 	contentUrl,
 	contentUrlsSettled,
 );
-const { fontSources, fontsReady: libraryFontsReady, fontsFailed: libraryFontsFailed } = libraryFonts;
+const {
+	fontSources,
+	fontsReady: libraryFontsReady,
+	fontsFailed: libraryFontsFailed,
+} = libraryFonts;
 const { fontsReady, fontsFailed } = useCombinedFontFaces(
 	libraryFonts,
-	useApplicationFontFaces(() => graphicItemsApplicationFonts(paintedGraphics.value.flatMap(graphic => graphic.items))),
+	useApplicationFontFaces(() =>
+		graphicItemsApplicationFonts(paintedGraphics.value.flatMap((graphic) => graphic.items)),
+	),
 );
 
 // A Take cannot wait on one output, whose animation phases follow the shared
@@ -108,42 +118,47 @@ const { fontsReady, fontsFailed } = useCombinedFontFaces(
 // while the stack names it.
 const takeImages = createImageRetainer();
 watch(
-	() => contentUrlsSettled.value
-		? indexedGraphicAssetReferences.value
-				.filter(item => item.kind === 'image')
-				.map(item => contentUrl(item.reference))
-		: [],
-	urls => takeImages.retain(urls),
+	() =>
+		contentUrlsSettled.value
+			? indexedGraphicAssetReferences.value
+					.filter((item) => item.kind === 'image')
+					.map((item) => contentUrl(item.reference))
+			: [],
+	(urls) => takeImages.retain(urls),
 	{ immediate: true },
 );
 onBeforeUnmount(() => takeImages.release());
 
 // Rendering Readiness: the Live Session read, its media URLs resolved, and its
 // fonts loaded or failed; the media itself is the host's to wait on.
-useScreenModeReady(() => ready.value && contentUrlsSettled.value && (fontsReady.value || fontsFailed.value));
+useScreenModeReady(
+	() => ready.value && contentUrlsSettled.value && (fontsReady.value || fontsFailed.value),
+);
 
-const renderModel = computed(() => resolveBroadcastGraphicsRenderModel({
-	output: resolvedOutput.value,
-	canvasWidth: canvasWidth.value,
-	canvasHeight: canvasHeight.value,
-	graphics: graphics.value,
-	onAirGraphicIds: onAirGraphicIds.value,
-	animation: animationProjection.value,
-	inputValues: inputValues.value,
-	outgoingInputValues: outgoingInputValues.value,
-	socialProfileValues: socialProfileValues.value,
-	outgoingSocialProfileValues: outgoingSocialProfileValues.value,
-	socialProfilePresentations: socialProfilePresentations.value,
-	outgoingSocialProfilePresentations: outgoingSocialProfilePresentations.value,
-	// An author sees unset Graphic Inputs as their authored defaults; a live output
-	// shows nothing for them rather than putting placeholder text on program.
-	substituteAuthoredDefaults: isAuthoringPreview.value,
-	itemGuides: previewGuides?.value ?? false,
-	safeAreaGuides: previewSafeAreas?.value ?? false,
-	selectedTarget: selectedTarget.value,
-	graphicAssetContentUrl: contentUrl,
-	themeTokens: themeTokens.value,
-}));
+const renderModel = computed(() =>
+	resolveBroadcastGraphicsRenderModel({
+		output: resolvedOutput.value,
+		canvasWidth: canvasWidth.value,
+		canvasHeight: canvasHeight.value,
+		graphics: graphics.value,
+		onAirGraphicIds: onAirGraphicIds.value,
+		animation: animationProjection.value,
+		inputValues: inputValues.value,
+		outgoingInputValues: outgoingInputValues.value,
+		socialProfileValues: socialProfileValues.value,
+		outgoingSocialProfileValues: outgoingSocialProfileValues.value,
+		socialProfilePresentations: socialProfilePresentations.value,
+		outgoingSocialProfilePresentations: outgoingSocialProfilePresentations.value,
+		// An author sees unset Graphic Inputs as their authored defaults; a live output
+		// shows nothing for them rather than putting placeholder text on program.
+		substituteAuthoredDefaults: isAuthoringPreview.value,
+		itemGuides: previewGuides?.value ?? false,
+		safeAreaGuides: previewSafeAreas?.value ?? false,
+		selectedTarget: selectedTarget.value,
+		graphicAssetContentUrl: contentUrl,
+		themeTokens: themeTokens.value,
+	}),
+);
 </script>
 
 <template>

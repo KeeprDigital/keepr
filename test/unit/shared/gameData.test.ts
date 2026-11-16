@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getMtgGameData, getOpGameData, getPlayerIdentityValue, resolvePlayerDeckIdentity } from '~~/shared/utils/gameData';
+import {
+	getMtgGameData,
+	getOpGameData,
+	getPlayerIdentityValue,
+	resolvePlayerDeckIdentity,
+} from '~~/shared/utils/gameData';
 import { LUFFY as luffy } from '~~/test/helpers/opCards';
 
 describe('getMtgGameData', () => {
@@ -52,7 +57,9 @@ describe('getPlayerIdentityValue', () => {
 	});
 
 	it('returns deckName for mtg game data with discriminator', () => {
-		expect(getPlayerIdentityValue('mtg', { type: 'mtg', deckName: 'Burn', deckColors: 'R' })).toBe('Burn');
+		expect(getPlayerIdentityValue('mtg', { type: 'mtg', deckName: 'Burn', deckColors: 'R' })).toBe(
+			'Burn',
+		);
 	});
 
 	it('returns leader for op game data with discriminator', () => {
@@ -61,14 +68,19 @@ describe('getPlayerIdentityValue', () => {
 });
 
 describe('resolvePlayerDeckIdentity', () => {
-	it('names the Player\'s Archetype with its colours', () => {
-		expect(resolvePlayerDeckIdentity({ name: 'Grixis Control', colors: 'UBR' }, { type: 'mtg', deckName: 'Imported', deckColors: 'G' }))
-			.toEqual({ name: 'Grixis Control', colors: 'UBR' });
+	it("names the Player's Archetype with its colours", () => {
+		expect(
+			resolvePlayerDeckIdentity(
+				{ name: 'Grixis Control', colors: 'UBR' },
+				{ type: 'mtg', deckName: 'Imported', deckColors: 'G' },
+			),
+		).toEqual({ name: 'Grixis Control', colors: 'UBR' });
 	});
 
-	it('falls back to the Player\'s deck name without an Archetype', () => {
-		expect(resolvePlayerDeckIdentity(null, { type: 'mtg', deckName: 'Mono-Red Aggro', deckColors: 'R' }))
-			.toEqual({ name: 'Mono-Red Aggro', colors: 'R' });
+	it("falls back to the Player's deck name without an Archetype", () => {
+		expect(
+			resolvePlayerDeckIdentity(null, { type: 'mtg', deckName: 'Mono-Red Aggro', deckColors: 'R' }),
+		).toEqual({ name: 'Mono-Red Aggro', colors: 'R' });
 	});
 
 	it('is blank when the Player has neither', () => {

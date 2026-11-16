@@ -19,9 +19,7 @@ const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
  */
 export async function bundleAcceptancePage(entry, failureCode) {
 	const built = await build({
-		entryPoints: [
-			fileURLToPath(entry),
-		],
+		entryPoints: [fileURLToPath(entry)],
 		bundle: true,
 		write: false,
 		format: 'iife',
@@ -35,7 +33,6 @@ export async function bundleAcceptancePage(entry, failureCode) {
 		throw new AcceptanceFailure(failureCode);
 	});
 	const [output] = built.outputFiles ?? [];
-	if (!output)
-		throw new AcceptanceFailure(failureCode);
+	if (!output) throw new AcceptanceFailure(failureCode);
 	return output.text;
 }

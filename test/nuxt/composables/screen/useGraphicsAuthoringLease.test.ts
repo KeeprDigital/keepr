@@ -18,9 +18,13 @@ const HEARTBEAT_MS = GRAPHICS_AUTHORING_LEASE_DEFAULT_HEARTBEAT_MS;
 /** The deadline the server gives a holder heartbeating at the default cadence. */
 const LEASE_TTL_MS = 3 * HEARTBEAT_MS;
 
-type LeaseAnswer = { lease: GraphicsAuthoringLeaseReading } | Promise<{ lease: GraphicsAuthoringLeaseReading }>;
+type LeaseAnswer =
+	| { lease: GraphicsAuthoringLeaseReading }
+	| Promise<{ lease: GraphicsAuthoringLeaseReading }>;
 
-function reading(overrides: Partial<GraphicsAuthoringLeaseReading>): { lease: GraphicsAuthoringLeaseReading } {
+function reading(overrides: Partial<GraphicsAuthoringLeaseReading>): {
+	lease: GraphicsAuthoringLeaseReading;
+} {
 	return {
 		lease: {
 			artifact: { kind: 'screen-edit-workspace', id: '7' },
@@ -51,20 +55,20 @@ const unreachable = () => Promise.reject(new Error('Failed to fetch'));
 /** How the lease endpoint answers each ask from here on; a release always succeeds. */
 function leaseAnswers(answer: () => LeaseAnswer) {
 	mockFetch.mockImplementation(async (_path: string, options?: { method?: string }) =>
-		options?.method === 'DELETE'
-			? undefined
-			: await answer());
+		options?.method === 'DELETE' ? undefined : await answer(),
+	);
 }
 
 /** The next asks are answered in turn with these; later ones as set by `leaseAnswers`. */
 function nextLeaseAnswers(...answers: Array<() => LeaseAnswer>) {
-	for (const answer of answers)
-		mockFetch.mockImplementationOnce(async () => await answer());
+	for (const answer of answers) mockFetch.mockImplementationOnce(async () => await answer());
 }
 
 const requests = () => requestsMadeTo(mockFetch);
-const releasesOf = (endpoint: string) => requests().filter(request => request === `DELETE ${endpoint}`).length;
-const asksOf = (endpoint: string) => requests().filter(request => request === `POST ${endpoint}`).length;
+const releasesOf = (endpoint: string) =>
+	requests().filter((request) => request === `DELETE ${endpoint}`).length;
+const asksOf = (endpoint: string) =>
+	requests().filter((request) => request === `POST ${endpoint}`).length;
 
 /** Lets answered requests land without moving the clock. */
 const settle = () => vi.advanceTimersByTimeAsync(0);
@@ -72,7 +76,9 @@ const settle = () => vi.advanceTimersByTimeAsync(0);
 const scopes: EffectScope[] = [];
 
 /** One editor opening an artifact: the real composable in a scope the test can close. */
-function openEditor(options: Parameters<typeof useGraphicsAuthoringLease>[0] = { endpoint: SCREEN_A }) {
+function openEditor(
+	options: Parameters<typeof useGraphicsAuthoringLease>[0] = { endpoint: SCREEN_A },
+) {
 	const scope = effectScope();
 	scopes.push(scope);
 	const lease = scope.run(() => useGraphicsAuthoringLease(options))!;
@@ -99,8 +105,7 @@ describe('useGraphicsAuthoringLease', () => {
 	});
 
 	afterEach(() => {
-		for (const scope of scopes.splice(0))
-			scope.stop();
+		for (const scope of scopes.splice(0)) scope.stop();
 		vi.useRealTimers();
 	});
 
@@ -185,7 +190,7 @@ describe('useGraphicsAuthoringLease', () => {
 	});
 
 	describe('asking again', () => {
-		it('takes over from the holder on the author\'s instruction', async () => {
+		it("takes over from the holder on the author's instruction", async () => {
 			leaseAnswers(() => observing('Avery'));
 			const { lease } = openEditor();
 			await settle();
@@ -197,7 +202,11 @@ describe('useGraphicsAuthoringLease', () => {
 				method: 'POST',
 				body: { takeover: true },
 			});
-			expect(seen(lease)).toMatchObject({ writable: true, heldByAnotherSession: false, canTakeOver: false });
+			expect(seen(lease)).toMatchObject({
+				writable: true,
+				heldByAnotherSession: false,
+				canTakeOver: false,
+			});
 		});
 
 		// One loop is the holder's heartbeat and the observer's chance of promotion.
@@ -218,7 +227,11 @@ describe('useGraphicsAuthoringLease', () => {
 			await vi.advanceTimersByTimeAsync(HEARTBEAT_MS);
 
 			expect(asksOf(SCREEN_A)).toBe(3);
-			expect(seen(lease)).toMatchObject({ writable: true, heldByAnotherSession: false, holderName: null });
+			expect(seen(lease)).toMatchObject({
+				writable: true,
+				heldByAnotherSession: false,
+				holderName: null,
+			});
 		});
 
 		it('demotes a holder whose heartbeat finds another Session took over', async () => {
@@ -228,7 +241,11 @@ describe('useGraphicsAuthoringLease', () => {
 			leaseAnswers(() => observing('Avery'));
 			await vi.advanceTimersByTimeAsync(HEARTBEAT_MS);
 
-			expect(seen(lease)).toMatchObject({ writable: false, heldByAnotherSession: true, holderName: 'Avery' });
+			expect(seen(lease)).toMatchObject({
+				writable: false,
+				heldByAnotherSession: true,
+				holderName: 'Avery',
+			});
 		});
 
 		it('re-asks as soon as a hidden tab is shown again', async () => {
@@ -310,7 +327,11 @@ describe('useGraphicsAuthoringLease', () => {
 			leaseAnswers(unreachable);
 			await vi.advanceTimersByTimeAsync(HEARTBEAT_MS);
 
-			expect(seen(lease)).toMatchObject({ status: 'error', writable: false, heldByAnotherSession: false });
+			expect(seen(lease)).toMatchObject({
+				status: 'error',
+				writable: false,
+				heldByAnotherSession: false,
+			});
 		});
 	});
 
@@ -421,12 +442,7 @@ describe('useGraphicsAuthoringLease', () => {
 
 			window.dispatchEvent(new Event('pagehide'));
 
-			expect(pagehide.mock.calls).toEqual([
-				[
-					SCREEN_A,
-					{ method: 'DELETE', keepalive: true },
-				],
-			]);
+			expect(pagehide.mock.calls).toEqual([[SCREEN_A, { method: 'DELETE', keepalive: true }]]);
 		});
 	});
 
@@ -434,11 +450,15 @@ describe('useGraphicsAuthoringLease', () => {
 		it.each([
 			{
 				late: 'a grant',
-				settleLate: (answer: ReturnType<typeof deferred<{ lease: GraphicsAuthoringLeaseReading }>>) => answer.resolve(held()),
+				settleLate: (
+					answer: ReturnType<typeof deferred<{ lease: GraphicsAuthoringLeaseReading }>>,
+				) => answer.resolve(held()),
 			},
 			{
 				late: 'a failure',
-				settleLate: (answer: ReturnType<typeof deferred<{ lease: GraphicsAuthoringLeaseReading }>>) => answer.reject(new Error('Failed to fetch')),
+				settleLate: (
+					answer: ReturnType<typeof deferred<{ lease: GraphicsAuthoringLeaseReading }>>,
+				) => answer.reject(new Error('Failed to fetch')),
 			},
 		])('ignores $late for an artifact the editor has since left', async ({ settleLate }) => {
 			const late = deferred<{ lease: GraphicsAuthoringLeaseReading }>();
@@ -470,7 +490,11 @@ describe('useGraphicsAuthoringLease', () => {
 			},
 			{
 				leaving: 'the editor opened another artifact',
-				leave: (_editor: ReturnType<typeof openEditor>, _open: Ref<boolean>, endpoint: Ref<string>) => {
+				leave: (
+					_editor: ReturnType<typeof openEditor>,
+					_open: Ref<boolean>,
+					endpoint: Ref<string>,
+				) => {
 					endpoint.value = SCREEN_B;
 				},
 			},
@@ -503,7 +527,7 @@ describe('useGraphicsAuthoringLease', () => {
 			expect(releasesOf(SCREEN_A)).toBe(0);
 		});
 
-		it('keeps a takeover\'s answer over an older ask answered after it', async () => {
+		it("keeps a takeover's answer over an older ask answered after it", async () => {
 			leaseAnswers(() => observing('Avery'));
 			const { lease } = openEditor();
 			await settle();

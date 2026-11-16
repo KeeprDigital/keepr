@@ -12,7 +12,7 @@ import { THEME_TOKEN_WRITE_REFUSALS } from './types/theme';
 /** Why a Screen Theme Override write was refused. */
 export const SCREEN_THEME_OVERRIDE_REFUSALS = {
 	...THEME_TOKEN_WRITE_REFUSALS,
-	'unconsumable-token': 'This Screen\'s mode cannot consume this Theme Token',
+	'unconsumable-token': "This Screen's mode cannot consume this Theme Token",
 } as const;
 
 export type ScreenThemeOverrideRefusal = keyof typeof SCREEN_THEME_OVERRIDE_REFUSALS;
@@ -46,14 +46,13 @@ export function placeScreenThemeTokens(mode: ScreenMode): ScreenThemeTokenPlacem
  * `inset` and `alignment`).
  */
 function screenThemeOverrideAdmits(mode: ScreenMode, name: string): boolean {
-	return Object.hasOwn(screenModeTokens(mode), name)
-		|| screenModeHostTokens(mode).includes(name);
+	return Object.hasOwn(screenModeTokens(mode), name) || screenModeHostTokens(mode).includes(name);
 }
 
-export type ScreenThemeOverrideWrite
-	= | { ok: true; dropped?: false; value: ThemeTokenValue | null }
-		| { ok: true; dropped: true }
-		| { ok: false; refusal: ScreenThemeOverrideRefusal };
+export type ScreenThemeOverrideWrite =
+	| { ok: true; dropped?: false; value: ThemeTokenValue | null }
+	| { ok: true; dropped: true }
+	| { ok: false; refusal: ScreenThemeOverrideRefusal };
 
 /**
  * What a Screen in `mode` may store as its override of `name`, or why not. A
@@ -64,18 +63,19 @@ export type ScreenThemeOverrideWrite
  * them. Another mode's Mode Token is refused, while one stored for it stays
  * dormant.
  */
-export function parseScreenThemeOverrideWrite(mode: ScreenMode, name: string, value: unknown): ScreenThemeOverrideWrite {
-	if (isFormerThemeToken(name))
-		return { ok: true, dropped: true };
+export function parseScreenThemeOverrideWrite(
+	mode: ScreenMode,
+	name: string,
+	value: unknown,
+): ScreenThemeOverrideWrite {
+	if (isFormerThemeToken(name)) return { ok: true, dropped: true };
 	const token = themeTokenDefinition(name);
-	if (!token)
-		return { ok: false, refusal: 'unknown-token' };
+	if (!token) return { ok: false, refusal: 'unknown-token' };
 	if (!screenThemeOverrideAdmits(mode, name)) {
 		return token.tier === 'foundation'
 			? { ok: true, dropped: true }
 			: { ok: false, refusal: 'unconsumable-token' };
 	}
-	if (value === null)
-		return { ok: true, value: null };
+	if (value === null) return { ok: true, value: null };
 	return parseThemeTokenValue(name, value);
 }

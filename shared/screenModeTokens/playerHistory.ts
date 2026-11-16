@@ -3,7 +3,9 @@ import type { ScreenSettingsGroupOf } from '../screenModeConfigs/contract';
 import type { playerHistoryModeConfigContract } from '../screenModeConfigs/playerHistory';
 
 /** The groups its Mode Tokens may name: the Screen Settings Groups its config contract declares (ADR-0072). */
-export type PlayerHistorySettingsGroup = ScreenSettingsGroupOf<typeof playerHistoryModeConfigContract>;
+export type PlayerHistorySettingsGroup = ScreenSettingsGroupOf<
+	typeof playerHistoryModeConfigContract
+>;
 
 /** How the Player History Screen Mode looks: its Mode Tokens, by name within the mode. */
 export const playerHistoryModeTokens = {
@@ -31,7 +33,9 @@ export const playerHistoryModeTokens = {
 		settingsGroup: 'outcome-badge',
 		default: { token: 'text-secondary' },
 	},
-} as const satisfies Readonly<Record<string, DeclaredModeTokenDefinition<PlayerHistorySettingsGroup>>>;
+} as const satisfies Readonly<
+	Record<string, DeclaredModeTokenDefinition<PlayerHistorySettingsGroup>>
+>;
 
 /**
  * The Mode Tokens Player History once declared: its type and shared chrome, which only

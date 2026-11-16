@@ -87,10 +87,12 @@ export function rewriteTemplateDocumentReferences(
 	const references: TemplateDocumentReference[] = [];
 	const unmapped: string[] = [];
 	const rewritten = walkTemplateDocumentReferences(document, (value, ownerSlot) => {
-		const local = localReferences.get(packagedOriginKey({
-			sourceAssetId: value.assetId,
-			sourceRevisionId: value.revisionId,
-		}));
+		const local = localReferences.get(
+			packagedOriginKey({
+				sourceAssetId: value.assetId,
+				sourceRevisionId: value.revisionId,
+			}),
+		);
 		if (!local) {
 			unmapped.push(ownerSlot);
 			return value;
@@ -148,27 +150,16 @@ function walkTemplateDocumentReferences(
 	) => Record<string, unknown>,
 ): unknown {
 	function walk(value: unknown, path: string): unknown {
-		if (Array.isArray(value))
-			return value.map((item, index) => walk(item, `${path}[${index}]`));
-		if (!isPlainObject(value))
-			return value;
+		if (Array.isArray(value)) return value.map((item, index) => walk(item, `${path}[${index}]`));
+		if (!isPlainObject(value)) return value;
 		const rebuilt: Record<string, unknown> = {};
 		for (const key of Object.keys(value)) {
-			rebuilt[key] = walk(value[key], path
-				? `${path}.${key}`
-				: key);
+			rebuilt[key] = walk(value[key], path ? `${path}.${key}` : key);
 		}
 		const { assetId, revisionId } = value;
-		if (typeof assetId !== 'string' || typeof revisionId !== 'string')
-			return rebuilt;
-		if (assetId.length === 0 || revisionId.length === 0)
-			return rebuilt;
-		return visit(
-			{ ...rebuilt, assetId, revisionId },
-			path === ''
-				? DOCUMENT_ROOT_SLOT
-				: path,
-		);
+		if (typeof assetId !== 'string' || typeof revisionId !== 'string') return rebuilt;
+		if (assetId.length === 0 || revisionId.length === 0) return rebuilt;
+		return visit({ ...rebuilt, assetId, revisionId }, path === '' ? DOCUMENT_ROOT_SLOT : path);
 	}
 	return walk(document, '');
 }
@@ -186,11 +177,11 @@ export function templatePackageLocalReferences(
 ): Map<string, GraphicAssetReference> {
 	const resolved = new Map<string, GraphicAssetReference>();
 	for (const mapping of mappings) {
-		const reference = mapping.proposal === 'reuse-graphic-asset-revision'
-			? mapping.reference
-			: created.get(mapping.packagedId);
-		if (reference)
-			resolved.set(packagedOriginKey(mapping.origin), reference);
+		const reference =
+			mapping.proposal === 'reuse-graphic-asset-revision'
+				? mapping.reference
+				: created.get(mapping.packagedId);
+		if (reference) resolved.set(packagedOriginKey(mapping.origin), reference);
 	}
 	return resolved;
 }

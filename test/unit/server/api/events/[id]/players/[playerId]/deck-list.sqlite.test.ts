@@ -27,32 +27,51 @@ const upstream = fakeOpCardBulkLookup([
 ]);
 mockOpWriteBoundaries(db, () => upstream);
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: { params: unknown }, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('readValidatedBody', async (event: { body: unknown }, parse: (value: unknown) => unknown) => parse(event.body));
-vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) => Object.assign(new Error(input.message), input));
-vi.stubGlobal('useRuntimeConfig', () => ({ bandaiKeeprApiKey: 'test-key', bandaiKeeprApiUrl: 'https://op-api.test' }));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: { params: unknown }, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal(
+	'readValidatedBody',
+	async (event: { body: unknown }, parse: (value: unknown) => unknown) => parse(event.body),
+);
+vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
+	Object.assign(new Error(input.message), input),
+);
+vi.stubGlobal('useRuntimeConfig', () => ({
+	bandaiKeeprApiKey: 'test-key',
+	bandaiKeeprApiUrl: 'https://op-api.test',
+}));
 
 type Handler = (event: H3Event) => Promise<unknown>;
-const put = (await import('~~/server/api/events/[id]/players/[playerId]/deck-list.put')).default as unknown as Handler;
-const get = (await import('~~/server/api/events/[id]/players/[playerId]/deck-list.get')).default as unknown as Handler;
+const put = (await import('~~/server/api/events/[id]/players/[playerId]/deck-list.put'))
+	.default as unknown as Handler;
+const get = (await import('~~/server/api/events/[id]/players/[playerId]/deck-list.get'))
+	.default as unknown as Handler;
 
 afterAll(async () => await harness.close());
 
-describe('a Player\'s Deck List, through its route', () => {
+describe("a Player's Deck List, through its route", () => {
 	it('is saved as a hand edit with the Leader picked, and read back', async () => {
-		const [event] = await db.insert(schema.events)
+		const [event] = await db
+			.insert(schema.events)
 			.values({ name: 'One Piece Regional', game: 'op', featureMatchOrientation: 'horizontal' })
 			.returning();
-		const [player] = await db.insert(schema.players).values({ eventId: event!.id, name: '', nickname: 'ana' }).returning();
+		const [player] = await db
+			.insert(schema.players)
+			.values({ eventId: event!.id, name: '', nickname: 'ana' })
+			.returning();
 		const params = {
 			id: String(event!.id),
 			playerId: String(player!.id),
 		};
 
-		const saved = await put(stubH3Event({
-			params,
-			body: { text: '4x OP01-040', leaderNumber: 'op01-016' },
-		}));
+		const saved = await put(
+			stubH3Event({
+				params,
+				body: { text: '4x OP01-040', leaderNumber: 'op01-016' },
+			}),
+		);
 
 		expect(saved).toMatchObject({
 			deckList: { leaderNumber: 'OP01-016', mainboardCount: 4, handEdited: true },
@@ -61,6 +80,8 @@ describe('a Player\'s Deck List, through its route', () => {
 				archetypeId: expect.any(Number),
 			},
 		});
-		expect(await get(stubH3Event({ params }))).toEqual({ deckList: (saved as { deckList: unknown }).deckList });
+		expect(await get(stubH3Event({ params }))).toEqual({
+			deckList: (saved as { deckList: unknown }).deckList,
+		});
 	});
 });

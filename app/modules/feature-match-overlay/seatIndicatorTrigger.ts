@@ -1,5 +1,9 @@
 import type { Seat } from '~~/shared/types/enums';
-import type { BroadcastGraphicConfig, SeatIndicatorGraphicItemConfig, SeatIndicatorState } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	SeatIndicatorGraphicItemConfig,
+	SeatIndicatorState,
+} from '~~/shared/types/graphics';
 import type { SideboardRevealTrigger } from './sideboardRevealTrigger';
 import { applyItemPhaseEdge } from './sideboardRevealTrigger';
 
@@ -13,14 +17,20 @@ import { applyItemPhaseEdge } from './sideboardRevealTrigger';
  * The Seat Indicators one Seat's state reaches: authored-visible, at the top
  * level or inside a visible Graphic Group, and set to that Seat and state.
  */
-function seatIndicators(composition: BroadcastGraphicConfig, seat: Seat, state: SeatIndicatorState): SeatIndicatorGraphicItemConfig[] {
+function seatIndicators(
+	composition: BroadcastGraphicConfig,
+	seat: Seat,
+	state: SeatIndicatorState,
+): SeatIndicatorGraphicItemConfig[] {
 	return composition.items
-		.filter(item => item.visible)
-		.flatMap(item => item.type === 'group'
-			? item.children.filter(child => child.visible)
-			: [item])
-		.filter((item): item is SeatIndicatorGraphicItemConfig =>
-			item.type === 'seat-indicator' && item.playerSide === seat && item.state === state);
+		.filter((item) => item.visible)
+		.flatMap((item) =>
+			item.type === 'group' ? item.children.filter((child) => child.visible) : [item],
+		)
+		.filter(
+			(item): item is SeatIndicatorGraphicItemConfig =>
+				item.type === 'seat-indicator' && item.playerSide === seat && item.state === state,
+		);
 }
 
 /** Fold one Seat's state flip into the running triggers: entering the state plays its indicators' `enter`, leaving it their `exit`. */

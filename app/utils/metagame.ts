@@ -1,7 +1,6 @@
 /** Format a numeric percentage (e.g. 12.5 → "12.5%"), or '-' for null. */
 export function formatPercent(value: number | null): string {
-	if (value == null)
-		return '-';
+	if (value == null) return '-';
 	return `${value}%`;
 }
 

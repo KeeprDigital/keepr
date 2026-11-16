@@ -18,51 +18,74 @@ export function createMeleeRealtimeHandlers({ accept }: Options) {
 	 */
 	function operatorOnly<T>(handler: (data: T) => Promise<void>) {
 		return async (data: T) => {
-			if (!eventStore.event)
-				return;
+			if (!eventStore.event) return;
 			await handler(data);
 		};
 	}
 
 	return {
-		'melee:structureSynced': accept('melee:structureSynced', operatorOnly(async (data) => {
-			await refreshMeleeStructureData(data.eventId);
-		})),
-		'melee:dataReset': accept('melee:dataReset', operatorOnly(async (data) => {
-			await refreshAfterMeleeReset(data.eventId);
-		})),
-		'melee:playersSynced': accept('melee:playersSynced', operatorOnly(async (data) => {
-			useMetagameStore().applyRemoteInvalidated();
-			await Promise.all([
-				usePlayerStore().loadPlayersByEventId(data.eventId),
-				useFeatureMatchStore().loadFeatureMatchesByEventId(data.eventId),
-			]);
-		})),
-		'melee:featureMatchesSynced': accept('melee:featureMatchesSynced', operatorOnly(async (data) => {
-			if (data.slotIds.length > 0)
-				await useFeatureMatchStore().loadFeatureMatchesByEventId(data.eventId);
-		})),
-		'melee:decklistsSynced': accept('melee:decklistsSynced', operatorOnly(async (data) => {
-			useMetagameStore().applyRemoteInvalidated();
-			clearPlayerDeckCache();
-			await Promise.all([
-				usePlayerStore().loadPlayersByEventId(data.eventId),
-				usePlayerDeckStore().loadByEventId(data.eventId),
-				useFeatureMatchStore().loadFeatureMatchesByEventId(data.eventId),
-			]);
-		})),
-		'melee:matchResultsSynced': accept('melee:matchResultsSynced', operatorOnly(async (data) => {
-			await useMatchStore().applyRemoteMatchesRefreshed(data);
-		})),
-		'melee:pairingsSynced': accept('melee:pairingsSynced', operatorOnly(async (data) => {
-			await Promise.all([
-				useRoundStore().loadRoundsByEventId(data.eventId),
-				useMatchStore().applyRemoteMatchesRefreshed(data),
-				useFeatureMatchStore().loadFeatureMatchesByEventId(data.eventId),
-			]);
-		})),
-		'melee:roundStandingsSynced': accept('melee:roundStandingsSynced', operatorOnly(async (data) => {
-			await useRoundStore().loadRoundsByEventId(data.eventId);
-		})),
+		'melee:structureSynced': accept(
+			'melee:structureSynced',
+			operatorOnly(async (data) => {
+				await refreshMeleeStructureData(data.eventId);
+			}),
+		),
+		'melee:dataReset': accept(
+			'melee:dataReset',
+			operatorOnly(async (data) => {
+				await refreshAfterMeleeReset(data.eventId);
+			}),
+		),
+		'melee:playersSynced': accept(
+			'melee:playersSynced',
+			operatorOnly(async (data) => {
+				useMetagameStore().applyRemoteInvalidated();
+				await Promise.all([
+					usePlayerStore().loadPlayersByEventId(data.eventId),
+					useFeatureMatchStore().loadFeatureMatchesByEventId(data.eventId),
+				]);
+			}),
+		),
+		'melee:featureMatchesSynced': accept(
+			'melee:featureMatchesSynced',
+			operatorOnly(async (data) => {
+				if (data.slotIds.length > 0)
+					await useFeatureMatchStore().loadFeatureMatchesByEventId(data.eventId);
+			}),
+		),
+		'melee:decklistsSynced': accept(
+			'melee:decklistsSynced',
+			operatorOnly(async (data) => {
+				useMetagameStore().applyRemoteInvalidated();
+				clearPlayerDeckCache();
+				await Promise.all([
+					usePlayerStore().loadPlayersByEventId(data.eventId),
+					usePlayerDeckStore().loadByEventId(data.eventId),
+					useFeatureMatchStore().loadFeatureMatchesByEventId(data.eventId),
+				]);
+			}),
+		),
+		'melee:matchResultsSynced': accept(
+			'melee:matchResultsSynced',
+			operatorOnly(async (data) => {
+				await useMatchStore().applyRemoteMatchesRefreshed(data);
+			}),
+		),
+		'melee:pairingsSynced': accept(
+			'melee:pairingsSynced',
+			operatorOnly(async (data) => {
+				await Promise.all([
+					useRoundStore().loadRoundsByEventId(data.eventId),
+					useMatchStore().applyRemoteMatchesRefreshed(data),
+					useFeatureMatchStore().loadFeatureMatchesByEventId(data.eventId),
+				]);
+			}),
+		),
+		'melee:roundStandingsSynced': accept(
+			'melee:roundStandingsSynced',
+			operatorOnly(async (data) => {
+				await useRoundStore().loadRoundsByEventId(data.eventId);
+			}),
+		),
 	};
 }

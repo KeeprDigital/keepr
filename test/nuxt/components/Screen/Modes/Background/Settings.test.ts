@@ -36,7 +36,8 @@ const USelectStub = defineComponent({
 		items: { type: Array, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<select data-testid="u-select" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items || []" :key="String(item.value ?? item)" :value="item.value ?? item" :disabled="item.disabled">{{ item.label ?? item }}</option></select>',
+	template:
+		'<select data-testid="u-select" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items || []" :key="String(item.value ?? item)" :value="item.value ?? item" :disabled="item.disabled">{{ item.label ?? item }}</option></select>',
 });
 
 const UButtonStub = defineComponent({
@@ -44,7 +45,8 @@ const UButtonStub = defineComponent({
 		label: { type: String, required: false },
 		disabled: { type: Boolean, required: false },
 	},
-	template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot>{{ label }}</slot></button>',
+	template:
+		'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot>{{ label }}</slot></button>',
 });
 
 const UInputStub = defineComponent({
@@ -52,7 +54,8 @@ const UInputStub = defineComponent({
 		modelValue: { type: String, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<input data-testid="u-input" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+	template:
+		'<input data-testid="u-input" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 });
 
 const UInputNumberStub = defineComponent({
@@ -60,7 +63,8 @@ const UInputNumberStub = defineComponent({
 		modelValue: { type: Number, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<input data-testid="u-input-number" type="number" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+	template:
+		'<input data-testid="u-input-number" type="number" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
 });
 
 const ScreenSettingsToggleStub = defineComponent({
@@ -69,7 +73,8 @@ const ScreenSettingsToggleStub = defineComponent({
 		modelValue: { type: Boolean, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<button type="button" data-testid="settings-toggle" @click="$emit(\'update:modelValue\', !modelValue)">{{ label }}</button>',
+	template:
+		'<button type="button" data-testid="settings-toggle" @click="$emit(\'update:modelValue\', !modelValue)">{{ label }}</button>',
 });
 
 const AnimationEffectFieldsStub = defineComponent({
@@ -77,10 +82,14 @@ const AnimationEffectFieldsStub = defineComponent({
 		selection: { type: Object, required: true },
 	},
 	emits: ['update:selection'],
-	template: '<div data-testid="animation-effect-fields" @click="$emit(\'update:selection\', { effect: \'caustics\' })" />',
+	template:
+		'<div data-testid="animation-effect-fields" @click="$emit(\'update:selection\', { effect: \'caustics\' })" />',
 });
 
-function colorLayer(id: string, overrides: Partial<Extract<BackgroundLayer, { type: 'color' }>> = {}): BackgroundLayer {
+function colorLayer(
+	id: string,
+	overrides: Partial<Extract<BackgroundLayer, { type: 'color' }>> = {},
+): BackgroundLayer {
 	return {
 		id,
 		type: 'color',
@@ -100,7 +109,10 @@ const STARTING_GRADIENT: GraphicLinearGradientFill = {
 	],
 };
 
-function gradientLayer(id: string, gradient: Extract<BackgroundLayer, { type: 'gradient' }>['gradient']): BackgroundLayer {
+function gradientLayer(
+	id: string,
+	gradient: Extract<BackgroundLayer, { type: 'gradient' }>['gradient'],
+): BackgroundLayer {
 	return {
 		id,
 		type: 'gradient',
@@ -122,27 +134,35 @@ function animationLayer(id: string): BackgroundLayer {
 
 async function mountComponent() {
 	const screen = createMockScreen({ currentMode: 'background' }) as never;
-	return mount(screenSettingsPage(() => screen, () => h(Settings, { screen, eventId: 7 })), {
-		global: {
-			stubs: {
-				ScreenSettingsSection: ScreenSettingsSectionStub,
-				ScreenSettingsToggle: ScreenSettingsToggleStub,
-				ScreenAnimationEffectFields: AnimationEffectFieldsStub,
-				GraphicsAssetFocusPicker: defineComponent({ template: '<div data-testid="asset-picker" />' }),
-				UIColorPicker: defineComponent({
-					props: {
-						modelValue: { type: String, required: false },
-					},
-					template: '<div data-testid="color-picker" />',
-				}),
-				UFormField: UFormFieldStub,
-				USelect: USelectStub,
-				UButton: UButtonStub,
-				UInput: UInputStub,
-				UInputNumber: UInputNumberStub,
+	return mount(
+		screenSettingsPage(
+			() => screen,
+			() => h(Settings, { screen, eventId: 7 }),
+		),
+		{
+			global: {
+				stubs: {
+					ScreenSettingsSection: ScreenSettingsSectionStub,
+					ScreenSettingsToggle: ScreenSettingsToggleStub,
+					ScreenAnimationEffectFields: AnimationEffectFieldsStub,
+					GraphicsAssetFocusPicker: defineComponent({
+						template: '<div data-testid="asset-picker" />',
+					}),
+					UIColorPicker: defineComponent({
+						props: {
+							modelValue: { type: String, required: false },
+						},
+						template: '<div data-testid="color-picker" />',
+					}),
+					UFormField: UFormFieldStub,
+					USelect: USelectStub,
+					UButton: UButtonStub,
+					UInput: UInputStub,
+					UInputNumber: UInputNumberStub,
+				},
 			},
 		},
-	});
+	);
 }
 
 function lastLayersWrite(): BackgroundLayer[] {
@@ -159,10 +179,7 @@ describe('screenModesBackgroundSettings', () => {
 
 	it('lists each layer in stack order', async () => {
 		config.value = {
-			layers: [
-				colorLayer('base'),
-				animationLayer('anim'),
-			],
+			layers: [colorLayer('base'), animationLayer('anim')],
 		};
 		const wrapper = await mountComponent();
 
@@ -207,9 +224,7 @@ describe('screenModesBackgroundSettings', () => {
 
 	it('edits a gradient layer through the shared fill control, as a gradient only', async () => {
 		config.value = {
-			layers: [
-				gradientLayer('grad', STARTING_GRADIENT),
-			],
+			layers: [gradientLayer('grad', STARTING_GRADIENT)],
 		};
 		const wrapper = await mountComponent();
 		const row = wrapper.get('[data-layer-id="grad"]');
@@ -230,87 +245,76 @@ describe('screenModesBackgroundSettings', () => {
 	// A CSS gradient string stored before the layer held a Graphic Fill: shown, never typed.
 	it('shows a stored CSS gradient as stored, and replaces it with a Graphic Fill gradient', async () => {
 		config.value = {
-			layers: [
-				gradientLayer('grad', 'radial-gradient(#000, #123)'),
-			],
+			layers: [gradientLayer('grad', 'radial-gradient(#000, #123)')],
 		};
 		const wrapper = await mountComponent();
 		const row = wrapper.get('[data-layer-id="grad"]');
 
-		expect(row.get('[data-testid="stored-css-gradient"]').text()).toBe('radial-gradient(#000, #123)');
+		expect(row.get('[data-testid="stored-css-gradient"]').text()).toBe(
+			'radial-gradient(#000, #123)',
+		);
 		expect(row.find('[data-testid="background-gradient-stop"]').exists()).toBe(false);
 		expect(row.find('input[data-testid="u-input"]').exists()).toBe(false);
 		expect(updateConfig).not.toHaveBeenCalled();
 
 		await row.get('[data-testid="replace-stored-gradient"]').trigger('click');
 
-		expect(lastLayersWrite()).toEqual([
-			gradientLayer('grad', STARTING_GRADIENT),
-		]);
+		expect(lastLayersWrite()).toEqual([gradientLayer('grad', STARTING_GRADIENT)]);
 	});
 
 	it('refuses a second animation layer at the editor, matching the schema rule', async () => {
 		config.value = {
-			layers: [
-				animationLayer('anim'),
-			],
+			layers: [animationLayer('anim')],
 		};
 		const wrapper = await mountComponent();
 
-		const animationOption = wrapper.find('[data-testid="add-layer-type"] option[value="animation"]');
+		const animationOption = wrapper.find(
+			'[data-testid="add-layer-type"] option[value="animation"]',
+		);
 		expect(animationOption.attributes('disabled')).toBeDefined();
 	});
 
 	it('removes a layer', async () => {
 		config.value = {
-			layers: [
-				colorLayer('base'),
-				animationLayer('anim'),
-			],
+			layers: [colorLayer('base'), animationLayer('anim')],
 		};
 		const wrapper = await mountComponent();
 
 		await wrapper.find('[data-layer-id="base"] [data-testid="remove-layer"]').trigger('click');
 
-		expect(lastLayersWrite().map(layer => layer.id)).toEqual(['anim']);
+		expect(lastLayersWrite().map((layer) => layer.id)).toEqual(['anim']);
 	});
 
 	it('reorders a layer within the stack', async () => {
 		config.value = {
-			layers: [
-				colorLayer('base'),
-				animationLayer('anim'),
-			],
+			layers: [colorLayer('base'), animationLayer('anim')],
 		};
 		const wrapper = await mountComponent();
 
 		await wrapper.find('[data-layer-id="anim"] [data-testid="move-layer-back"]').trigger('click');
 
-		expect(lastLayersWrite().map(layer => layer.id)).toEqual(['anim', 'base']);
+		expect(lastLayersWrite().map((layer) => layer.id)).toEqual(['anim', 'base']);
 	});
 
 	it('writes an enabled toggle and an opacity change onto that layer alone', async () => {
 		config.value = {
-			layers: [
-				colorLayer('base'),
-				animationLayer('anim'),
-			],
+			layers: [colorLayer('base'), animationLayer('anim')],
 		};
 		const wrapper = await mountComponent();
 
 		await wrapper.find('[data-layer-id="base"] [data-testid="settings-toggle"]').trigger('click');
-		expect(lastLayersWrite().find(layer => layer.id === 'base')).toMatchObject({ enabled: false });
-		expect(lastLayersWrite().find(layer => layer.id === 'anim')).toMatchObject({ enabled: true });
+		expect(lastLayersWrite().find((layer) => layer.id === 'base')).toMatchObject({
+			enabled: false,
+		});
+		expect(lastLayersWrite().find((layer) => layer.id === 'anim')).toMatchObject({ enabled: true });
 
 		await wrapper.find('[data-layer-id="base"] input[data-testid="layer-opacity"]').setValue('0.4');
-		expect(lastLayersWrite().find(layer => layer.id === 'base')).toMatchObject({ opacity: 0.4 });
+		expect(lastLayersWrite().find((layer) => layer.id === 'base')).toMatchObject({ opacity: 0.4 });
 	});
 
 	it('returns a cleared layer opacity to opaque rather than to clear', async () => {
 		config.value = {
-			layers: [
-				colorLayer('base', { opacity: 0.4 }),
-			],
+			layers: [colorLayer('base', { opacity: 0.4 })],
 		};
 		const wrapper = await mountComponent();
 
@@ -344,24 +348,32 @@ describe('screenModesBackgroundSettings', () => {
 		const wrapper = await mountComponent();
 
 		const fit = wrapper.get('[data-layer-id="clip"] [data-testid="media-fit"]');
-		expect(fit.findAll('option').map(option => option.text())).toEqual(['Cover', 'Contain', 'Fill']);
+		expect(fit.findAll('option').map((option) => option.text())).toEqual([
+			'Cover',
+			'Contain',
+			'Fill',
+		]);
 		await fit.setValue('contain');
 		expect(lastLayersWrite()[0]).toMatchObject({ fit: 'contain' });
 
 		// The layer owns its opacity, so its media offers none of its own.
-		expect(wrapper.find('[data-layer-id="clip"] [data-testid="media-opacity"]').exists()).toBe(false);
-		expect(wrapper.find('[data-layer-id="plate"] [data-testid="media-playback-rate"]').exists()).toBe(false);
+		expect(wrapper.find('[data-layer-id="clip"] [data-testid="media-opacity"]').exists()).toBe(
+			false,
+		);
+		expect(
+			wrapper.find('[data-layer-id="plate"] [data-testid="media-playback-rate"]').exists(),
+		).toBe(false);
 
-		const rate = wrapper.findAllComponents(UInputNumberStub).find(input => input.attributes('data-testid') === 'media-playback-rate')!;
+		const rate = wrapper
+			.findAllComponents(UInputNumberStub)
+			.find((input) => input.attributes('data-testid') === 'media-playback-rate')!;
 		rate.vm.$emit('update:modelValue', null);
 		expect(lastLayersWrite()[0]).toMatchObject({ playbackRate: 1 });
 	});
 
 	it('edits an animation layer through the shared Animation Effect fields', async () => {
 		config.value = {
-			layers: [
-				animationLayer('anim'),
-			],
+			layers: [animationLayer('anim')],
 		};
 		const wrapper = await mountComponent();
 

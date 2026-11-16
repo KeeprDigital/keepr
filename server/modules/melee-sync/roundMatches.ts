@@ -49,8 +49,14 @@ export interface SyncMatchesResult {
 }
 
 /** What storing the previous Round's Round Standings changed in that Round. */
-export interface PreviousRoundStandingsResult
-	extends Pick<SyncMatchesResult, 'resultChangedMatchIds' | 'pairingsChanged' | 'standingsChanged' | 'unlinkedSlotIds' | 'droppedAssignmentIds'> {
+export interface PreviousRoundStandingsResult extends Pick<
+	SyncMatchesResult,
+	| 'resultChangedMatchIds'
+	| 'pairingsChanged'
+	| 'standingsChanged'
+	| 'unlinkedSlotIds'
+	| 'droppedAssignmentIds'
+> {
 	roundId: number;
 }
 
@@ -85,25 +91,22 @@ export class MeleeRoundNotReadyError extends Error {
 
 /** The Melee-managed Rounds either side of `roundId`, in the Event's Round order. */
 async function adjacentMeleeRounds(eventId: number, roundId: number) {
-	const meleeRounds = (await roundService().findByEventId(eventId)).filter(round => isMeleeManagedRound(round));
-	const index = meleeRounds.findIndex(round => round.id === roundId);
+	const meleeRounds = (await roundService().findByEventId(eventId)).filter((round) =>
+		isMeleeManagedRound(round),
+	);
+	const index = meleeRounds.findIndex((round) => round.id === roundId);
 	return {
-		previous: index > 0
-			? meleeRounds[index - 1]!
-			: null,
-		next: index >= 0
-			? meleeRounds[index + 1] ?? null
-			: null,
+		previous: index > 0 ? meleeRounds[index - 1]! : null,
+		next: index >= 0 ? (meleeRounds[index + 1] ?? null) : null,
 	};
 }
 
 /** Whether the next Melee-managed Round holds pairings: at least one Match stored from Melee. */
 async function nextRoundHasPairings(eventId: number, roundId: number): Promise<boolean> {
 	const { next } = await adjacentMeleeRounds(eventId, roundId);
-	if (!next)
-		return false;
+	if (!next) return false;
 	const stored = await matchService().findByRoundId(eventId, next.id);
-	return stored.some(match => match.externalSource === 'melee');
+	return stored.some((match) => match.externalSource === 'melee');
 }
 
 /**
@@ -122,7 +125,10 @@ export async function syncMatchesFromMelee(
 	phase: DbPhase | null,
 	options: RoundSnapshotWriteOptions = {},
 ): Promise<SyncMatchesResult> {
-	return await syncRoundSnapshot(eventId, eventData, round, phase, { ...options, knownComplete: false });
+	return await syncRoundSnapshot(eventId, eventData, round, phase, {
+		...options,
+		knownComplete: false,
+	});
 }
 
 /**
@@ -137,7 +143,10 @@ export async function syncRoundStandingsFromMelee(
 	options: RoundSnapshotWriteOptions = {},
 ): Promise<SyncMatchesResult> {
 	const phase = await phaseService().findById(round.phaseId, eventId);
-	return await syncRoundSnapshot(eventId, eventData, round, phase ?? null, { ...options, knownComplete: true });
+	return await syncRoundSnapshot(eventId, eventData, round, phase ?? null, {
+		...options,
+		knownComplete: true,
+	});
 }
 
 /**
@@ -153,14 +162,12 @@ export async function syncPreviousRoundStandingsFromMelee(
 	options: RoundSnapshotWriteOptions = {},
 ): Promise<PreviousRoundStandingsResult | null> {
 	const { previous } = await adjacentMeleeRounds(eventId, round.id);
-	if (!previous)
-		return null;
+	if (!previous) return null;
 	const stored = await playerRoundStandingsService().findByRoundId(eventId, previous.id);
-	if (stored.length > 0)
-		return null;
+	if (stored.length > 0) return null;
 	return {
 		roundId: previous.id,
-		...await syncRoundStandingsFromMelee(eventId, eventData, previous, options),
+		...(await syncRoundStandingsFromMelee(eventId, eventData, previous, options)),
 	};
 }
 
@@ -175,35 +182,34 @@ async function recordsGoingIntoRound(
 	players: DbPlayer[],
 ): Promise<Map<number, MatchSideRecord>> {
 	const { previous } = await adjacentMeleeRounds(eventId, roundId);
-	if (!previous)
-		return new Map();
+	if (!previous) return new Map();
 	const stored = await playerRoundStandingsService().findByRoundId(eventId, previous.id);
-	const teamIdByPlayerId = new Map(players.flatMap(player =>
-		player.externalSource === 'melee' && player.externalId != null
-			? [
-					[
-						player.id,
-						Number(player.externalId),
-					] as const,
-				]
-			: []));
-	return new Map(stored.flatMap((standing) => {
-		const teamId = teamIdByPlayerId.get(standing.playerId);
-		return teamId == null
-			? []
-			: [
-					[
-						teamId,
-						{
-							wins: standing.wins,
-							losses: standing.losses,
-							draws: standing.draws,
-							position: standing.position,
-							points: standing.points,
-						},
-					] as const,
-				];
-	}));
+	const teamIdByPlayerId = new Map(
+		players.flatMap((player) =>
+			player.externalSource === 'melee' && player.externalId != null
+				? [[player.id, Number(player.externalId)] as const]
+				: [],
+		),
+	);
+	return new Map(
+		stored.flatMap((standing) => {
+			const teamId = teamIdByPlayerId.get(standing.playerId);
+			return teamId == null
+				? []
+				: [
+						[
+							teamId,
+							{
+								wins: standing.wins,
+								losses: standing.losses,
+								draws: standing.draws,
+								position: standing.position,
+								points: standing.points,
+							},
+						] as const,
+					];
+		}),
+	);
 }
 
 async function syncRoundSnapshot(
@@ -227,13 +233,12 @@ async function syncRoundSnapshot(
 	const notReadyOn404 = async <T>(fetchItems: Promise<T[]>): Promise<T[]> => {
 		try {
 			return await fetchItems;
-		}
-		catch (error) {
+		} catch (error) {
 			if (
-				round.lastSyncedAt == null
-				&& error instanceof MeleeTransportError
-				&& error.category === 'http'
-				&& error.upstreamStatus === 404
+				round.lastSyncedAt == null &&
+				error instanceof MeleeTransportError &&
+				error.category === 'http' &&
+				error.upstreamStatus === 404
 			) {
 				throw new MeleeRoundNotReadyError(round);
 			}
@@ -258,20 +263,17 @@ async function syncRoundSnapshot(
 	// the Round's snapshot it would delete every Match, and with them their
 	// Feature Match Assignments and the Slots' bindings.
 	if (meleeMatches.length === 0) {
-		throw new InvalidMeleeRoundSnapshotError(`Melee.gg listed no matches for ${round.name}; its stored matches are kept`);
+		throw new InvalidMeleeRoundSnapshotError(
+			`Melee.gg listed no matches for ${round.name}; its stored matches are kept`,
+		);
 	}
 	const complete = isRoundComplete(meleeMatches.map(meleeMatchResultState), nextPaired);
-	const standings = complete
-		? await melee.fetchStandingsByRound(meleeRoundId)
-		: null;
+	const standings = complete ? await melee.fetchStandingsByRound(meleeRoundId) : null;
 
 	const playerMap = new Map(
 		allPlayers
-			?.filter(p => p.externalId !== null && p.externalSource !== null)
-			.map(p => [
-				externalIdentityKey(p.externalSource!, p.externalId!),
-				p,
-			]) ?? [],
+			?.filter((p) => p.externalId !== null && p.externalSource !== null)
+			.map((p) => [externalIdentityKey(p.externalSource!, p.externalId!), p]) ?? [],
 	);
 	const standingTeamIds = new Set<number>();
 	for (const standing of standings ?? []) {
@@ -290,18 +292,20 @@ async function syncRoundSnapshot(
 		}
 	}
 	const recordsByTeamId = standings
-		? new Map(standings.map(standing => [
-				standing.TeamId,
-				{
-					wins: standing.MatchWins,
-					losses: standing.MatchLosses,
-					draws: standing.MatchDraws,
-					position: standing.Rank,
-					points: standing.Points,
-				},
-			]))
+		? new Map(
+				standings.map((standing) => [
+					standing.TeamId,
+					{
+						wins: standing.MatchWins,
+						losses: standing.MatchLosses,
+						draws: standing.MatchDraws,
+						position: standing.Rank,
+						points: standing.Points,
+					},
+				]),
+			)
 		: await recordsGoingIntoRound(eventId, round.id, allPlayers);
-	const meleeDecks = allDecks.filter(deck => deck.externalSource === 'melee');
+	const meleeDecks = allDecks.filter((deck) => deck.externalSource === 'melee');
 	const playerDecksByPlayerId = new Map<number, typeof meleeDecks>();
 	for (const deck of meleeDecks) {
 		const playerDecks = playerDecksByPlayerId.get(deck.playerId) ?? [];
@@ -309,16 +313,17 @@ async function syncRoundSnapshot(
 		playerDecksByPlayerId.set(deck.playerId, playerDecks);
 	}
 	const reviewedArchetypeIds = [
-		...new Set(meleeDecks.flatMap(deck =>
-			deck.reviewedAt != null && deck.archetypeId != null
-				? [deck.archetypeId]
-				: [],
-		)),
+		...new Set(
+			meleeDecks.flatMap((deck) =>
+				deck.reviewedAt != null && deck.archetypeId != null ? [deck.archetypeId] : [],
+			),
+		),
 	];
-	const reviewedArchetypes = reviewedArchetypeIds.length > 0
-		? await archetypeService().findManyByIds(eventId, reviewedArchetypeIds)
-		: [];
-	const archetypesById = new Map(reviewedArchetypes.map(archetype => [archetype.id, archetype]));
+	const reviewedArchetypes =
+		reviewedArchetypeIds.length > 0
+			? await archetypeService().findManyByIds(eventId, reviewedArchetypeIds)
+			: [];
+	const archetypesById = new Map(reviewedArchetypes.map((archetype) => [archetype.id, archetype]));
 	// Per-match and per-competitor formats are resolved by the mapper before this
 	// phase-level fallback. Never let one Match's format leak into another Match.
 	const roundFormatExternalId = phase?.formatExternalId ?? null;
@@ -333,18 +338,19 @@ async function syncRoundSnapshot(
 		warnings,
 	});
 
-	const standingRows = standings?.map((standing) => {
-		const player = playerMap.get(externalIdentityKey('melee', standing.TeamId))!;
+	const standingRows =
+		standings?.map((standing) => {
+			const player = playerMap.get(externalIdentityKey('melee', standing.TeamId))!;
 
-		return {
-			playerId: player.id,
-			wins: standing.MatchWins,
-			losses: standing.MatchLosses,
-			draws: standing.MatchDraws,
-			position: standing.Rank,
-			points: standing.Points,
-		};
-	}) ?? null;
+			return {
+				playerId: player.id,
+				wins: standing.MatchWins,
+				losses: standing.MatchLosses,
+				draws: standing.MatchDraws,
+				position: standing.Rank,
+				points: standing.Points,
+			};
+		}) ?? null;
 	await options.beforeWrite?.();
 	const {
 		created: matchesCreated,
@@ -362,9 +368,7 @@ async function syncRoundSnapshot(
 		standings: standingRows,
 	});
 
-	const roundName = phase
-		? `${phase.name} - ${round.name}`
-		: round.name;
+	const roundName = phase ? `${phase.name} - ${round.name}` : round.name;
 
 	return {
 		success: true,

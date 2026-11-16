@@ -44,9 +44,19 @@ export function useStoreHelpers() {
 	async function optimisticUpdate<T extends { id: number }, TUpdates extends object = Partial<T>>(
 		config: OptimisticUpdateConfig<T, TUpdates>,
 	): Promise<T | null> {
-		const { items, id, updates, apiCall, errorRef, entityLabel, onSuccess, flight = unguarded, admit } = config;
+		const {
+			items,
+			id,
+			updates,
+			apiCall,
+			errorRef,
+			entityLabel,
+			onSuccess,
+			flight = unguarded,
+			admit,
+		} = config;
 
-		const index = items.value.findIndex(item => item.id === id);
+		const index = items.value.findIndex((item) => item.id === id);
 		if (index === -1) {
 			errorRef.value = `${entityLabel} not found`;
 			return null;
@@ -61,16 +71,12 @@ export function useStoreHelpers() {
 		return executeAction(
 			async () => {
 				const updated = await apiCall();
-				if (flight.stale)
-					return updated;
-				const idx = items.value.findIndex(item => item.id === id);
+				if (flight.stale) return updated;
+				const idx = items.value.findIndex((item) => item.id === id);
 				if (admit && !admit(updated)) {
-					return idx === -1
-						? updated
-						: items.value[idx]!;
+					return idx === -1 ? updated : items.value[idx]!;
 				}
-				if (idx !== -1)
-					items.value[idx] = updated;
+				if (idx !== -1) items.value[idx] = updated;
 				onSuccess?.();
 				return updated;
 			},
@@ -78,9 +84,8 @@ export function useStoreHelpers() {
 				errorRef,
 				flight,
 				onError: () => {
-					const idx = items.value.findIndex(item => item.id === id);
-					if (idx !== -1)
-						items.value[idx] = original;
+					const idx = items.value.findIndex((item) => item.id === id);
+					if (idx !== -1) items.value[idx] = original;
 				},
 			},
 		);
@@ -95,7 +100,7 @@ export function useStoreHelpers() {
 	): Promise<boolean | null> {
 		const { items, id, apiCall, errorRef, entityLabel, onSuccess, flight = unguarded } = config;
 
-		const index = items.value.findIndex(item => item.id === id);
+		const index = items.value.findIndex((item) => item.id === id);
 		if (index === -1) {
 			errorRef.value = `${entityLabel} not found`;
 			return null;
@@ -107,8 +112,7 @@ export function useStoreHelpers() {
 		return executeAction(
 			async () => {
 				await apiCall();
-				if (flight.current)
-					onSuccess?.();
+				if (flight.current) onSuccess?.();
 				return true;
 			},
 			{

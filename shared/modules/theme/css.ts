@@ -23,9 +23,7 @@ type TypographyProperty = keyof typeof TYPOGRAPHY_PROPERTIES;
 /** A token's custom property, or one of a typography token's. */
 function themeTokenCssProperty(name: string, part?: string): string {
 	const base = `--theme-${name.replaceAll('.', '-')}`;
-	return part
-		? `${base}-${part}`
-		: base;
+	return part ? `${base}-${part}` : base;
 }
 
 function typographyCss(value: ThemeTypography): Record<TypographyProperty, string> {
@@ -61,7 +59,7 @@ type MotionProperty = keyof typeof MOTION_PROPERTIES;
 
 /** Each easing as the CSS timing function closest to its curve (`graphicAnimationEasedProgress`). */
 const EASING_CSS: Record<GraphicAnimationEasing, string> = {
-	'linear': 'linear',
+	linear: 'linear',
 	'ease-in': 'cubic-bezier(0.11, 0, 0.5, 0)',
 	'ease-out': 'cubic-bezier(0.5, 1, 0.89, 1)',
 	'ease-in-out': 'cubic-bezier(0.45, 0, 0.55, 1)',
@@ -94,18 +92,12 @@ function motionCss(value: GraphicAnimationRecipe): Record<MotionProperty, string
 	const origin = resolveGraphicAnimationOrigin(value.scale?.origin);
 	const cuts = !value.fade && !value.slide && !value.scale && !value.reveal;
 	return {
-		duration: cuts
-			? '0ms'
-			: `${value.duration}ms`,
+		duration: cuts ? '0ms' : `${value.duration}ms`,
 		easing: EASING_CSS[value.easing],
-		delay: cuts
-			? '0ms'
-			: `${value.delay}ms`,
+		delay: cuts ? '0ms' : `${value.delay}ms`,
 		opacity: String(value.fade?.opacity ?? 1),
 		transform: [
-			value.slide
-				? slideOffset(value.slide)
-				: 'translate(0px, 0px)',
+			value.slide ? slideOffset(value.slide) : 'translate(0px, 0px)',
 			`scale(${value.scale?.factor ?? 1})`,
 		].join(' '),
 		transformOrigin: `${origin.x * 100}% ${origin.y * 100}%`,
@@ -123,22 +115,24 @@ function isMotion(value: unknown): value is GraphicAnimationRecipe {
  * such as an asset, a Background Layer stack or another composite only
  * Graphic Items consume, sets none: its consumer reads the resolved value itself.
  */
-export function themeTokenCssProperties(values: Readonly<Record<string, unknown>>): Record<string, string> {
+export function themeTokenCssProperties(
+	values: Readonly<Record<string, unknown>>,
+): Record<string, string> {
 	const properties: Record<string, string> = {};
 	for (const [name, value] of Object.entries(values)) {
 		if (typeof value === 'string') {
 			properties[themeTokenCssProperty(name)] = value;
-		}
-		else if (typeof value === 'number') {
+		} else if (typeof value === 'number') {
 			properties[themeTokenCssProperty(name)] = `${value}px`;
-		}
-		else if (isTypography(value)) {
+		} else if (isTypography(value)) {
 			for (const [property, css] of Object.entries(typographyCss(value)))
-				properties[themeTokenCssProperty(name, TYPOGRAPHY_PROPERTIES[property as TypographyProperty])] = css;
-		}
-		else if (isMotion(value)) {
+				properties[
+					themeTokenCssProperty(name, TYPOGRAPHY_PROPERTIES[property as TypographyProperty])
+				] = css;
+		} else if (isMotion(value)) {
 			for (const [property, css] of Object.entries(motionCss(value)))
-				properties[themeTokenCssProperty(name, MOTION_PROPERTIES[property as MotionProperty])] = css;
+				properties[themeTokenCssProperty(name, MOTION_PROPERTIES[property as MotionProperty])] =
+					css;
 		}
 	}
 	return properties;

@@ -1,4 +1,7 @@
-import type { GraphicsActorNames, GraphicsAssetEvidenceCategory } from '~~/shared/types/graphicsAsset';
+import type {
+	GraphicsActorNames,
+	GraphicsAssetEvidenceCategory,
+} from '~~/shared/types/graphicsAsset';
 import type { GraphicsOperationalQueueId } from '~~/shared/utils/graphicsOperationalQueues';
 import { GRAPHICS_RETENTION_GUARANTEES } from './graphicsAssetRetention';
 
@@ -58,8 +61,8 @@ export const GRAPHICS_EVIDENCE_TERMINAL_CATEGORIES = [
  * reader of the ledger does not have to know that the number is defined among
  * the retention guarantees.
  */
-export const GRAPHICS_EVIDENCE_RETENTION_MILLISECONDS
-	= GRAPHICS_RETENTION_GUARANTEES.evidenceMilliseconds;
+export const GRAPHICS_EVIDENCE_RETENTION_MILLISECONDS =
+	GRAPHICS_RETENTION_GUARANTEES.evidenceMilliseconds;
 
 /**
  * The named groups the ledger offers instead of twenty-five separate category
@@ -143,8 +146,11 @@ const GRAPHICS_EVIDENCE_QUEUE_BY_CATEGORY = {
 export function graphicsEvidenceQueueFor(
 	category: GraphicsAssetEvidenceCategory,
 ): GraphicsOperationalQueueId | undefined {
-	return (GRAPHICS_EVIDENCE_QUEUE_BY_CATEGORY as
-		Partial<Record<GraphicsAssetEvidenceCategory, GraphicsOperationalQueueId>>)[category];
+	return (
+		GRAPHICS_EVIDENCE_QUEUE_BY_CATEGORY as Partial<
+			Record<GraphicsAssetEvidenceCategory, GraphicsOperationalQueueId>
+		>
+	)[category];
 }
 
 export const GRAPHICS_EVIDENCE_CATEGORY_GROUP_VALUES = Object.keys(
@@ -159,9 +165,7 @@ export const GRAPHICS_EVIDENCE_CATEGORY_GROUP_VALUES = Object.keys(
 export function graphicsEvidenceCategoriesForGroups(
 	groups: readonly GraphicsEvidenceCategoryGroup[],
 ): GraphicsAssetEvidenceCategory[] {
-	return [
-		...new Set(groups.flatMap(group => GRAPHICS_EVIDENCE_CATEGORY_GROUPS[group])),
-	];
+	return [...new Set(groups.flatMap((group) => GRAPHICS_EVIDENCE_CATEGORY_GROUPS[group]))];
 }
 
 /**

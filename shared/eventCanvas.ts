@@ -14,7 +14,9 @@ export const DEFAULT_EVENT_CANVAS: Readonly<EventCanvas> = { width: 1920, height
 export const EVENT_CANVAS_SIDE_BOUNDS = { min: 100, max: 7680 } as const;
 
 /** The Event Canvas an Event sets, or the default for one not yet read. */
-export function eventCanvasOf(event: { canvasWidth?: number; canvasHeight?: number } | null | undefined): EventCanvas {
+export function eventCanvasOf(
+	event: { canvasWidth?: number; canvasHeight?: number } | null | undefined,
+): EventCanvas {
 	return {
 		width: event?.canvasWidth ?? DEFAULT_EVENT_CANVAS.width,
 		height: event?.canvasHeight ?? DEFAULT_EVENT_CANVAS.height,

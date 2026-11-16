@@ -30,9 +30,7 @@ export function mtgCardService() {
 		for (const input of inputs) {
 			dedupedMap.set(input.name.toLowerCase(), input);
 		}
-		const deduped = [
-			...dedupedMap.values(),
-		];
+		const deduped = [...dedupedMap.values()];
 		const writeAt = new Date();
 		const writeAtMs = writeAt.getTime();
 		const updateFields = [
@@ -47,17 +45,13 @@ export function mtgCardService() {
 		] as const;
 		const grouped = new Map<string, UpsertCardInput[]>();
 		for (const input of deduped) {
-			const mask = updateFields.map(field => input[field] != null
-				? '1'
-				: '0').join('');
+			const mask = updateFields.map((field) => (input[field] != null ? '1' : '0')).join('');
 			const rows = grouped.get(mask) ?? [];
 			rows.push(input);
 			grouped.set(mask, rows);
 		}
 
-		const queries = [
-			...grouped.values(),
-		].flatMap((group) => {
+		const queries = [...grouped.values()].flatMap((group) => {
 			const example = group[0]!;
 			const set = {
 				...(example.scryfallId != null
@@ -102,37 +96,46 @@ export function mtgCardService() {
 					: {}),
 				updatedAt: writeAt,
 			};
-			return chunkJsonRows(group.map(input => ({ ...input, game: input.game ?? 'mtg' }))).map(payload => db
-				.insert(cards)
-				.select(selectForInsert(cards, {
-					id: sql`null`,
-					name: sql`json_extract(value, '$.name')`,
-					game: sql`coalesce(json_extract(value, '$.game'), 'mtg')`,
-					scryfallId: sql`json_extract(value, '$.scryfallId')`,
-					oracleId: sql`json_extract(value, '$.oracleId')`,
-					cardType: sql`json_extract(value, '$.cardType')`,
-					colors: sql`json_extract(value, '$.colors')`,
-					cmc: sql`json_extract(value, '$.cmc')`,
-					manaCost: sql`json_extract(value, '$.manaCost')`,
-					deckCounterTypes: sql`coalesce(json_extract(value, '$.deckCounterTypes'), '[]')`,
-					deckTokens: sql`coalesce(json_extract(value, '$.deckTokens'), '[]')`,
-					cardNumber: sql`null`,
-					category: sql`null`,
-					cost: sql`null`,
-					power: sql`null`,
-					counter: sql`null`,
-					imageUrl: sql`null`,
-					createdAt: sql`${writeAtMs}`,
-					updatedAt: sql`${writeAtMs}`,
-				}, sql`from json_each(${payload}) where true`))
-				.onConflictDoUpdate({
-					...MTG_CARD_IDENTITY,
-					set,
-				})
-				.returning());
+			return chunkJsonRows(group.map((input) => ({ ...input, game: input.game ?? 'mtg' }))).map(
+				(payload) =>
+					db
+						.insert(cards)
+						.select(
+							selectForInsert(
+								cards,
+								{
+									id: sql`null`,
+									name: sql`json_extract(value, '$.name')`,
+									game: sql`coalesce(json_extract(value, '$.game'), 'mtg')`,
+									scryfallId: sql`json_extract(value, '$.scryfallId')`,
+									oracleId: sql`json_extract(value, '$.oracleId')`,
+									cardType: sql`json_extract(value, '$.cardType')`,
+									colors: sql`json_extract(value, '$.colors')`,
+									cmc: sql`json_extract(value, '$.cmc')`,
+									manaCost: sql`json_extract(value, '$.manaCost')`,
+									deckCounterTypes: sql`coalesce(json_extract(value, '$.deckCounterTypes'), '[]')`,
+									deckTokens: sql`coalesce(json_extract(value, '$.deckTokens'), '[]')`,
+									cardNumber: sql`null`,
+									category: sql`null`,
+									cost: sql`null`,
+									power: sql`null`,
+									counter: sql`null`,
+									imageUrl: sql`null`,
+									createdAt: sql`${writeAtMs}`,
+									updatedAt: sql`${writeAtMs}`,
+								},
+								sql`from json_each(${payload}) where true`,
+							),
+						)
+						.onConflictDoUpdate({
+							...MTG_CARD_IDENTITY,
+							set,
+						})
+						.returning(),
+			);
 		});
 
-		const batchResults = await db.batch(queries as [typeof queries[0], ...typeof queries]);
+		const batchResults = await db.batch(queries as [(typeof queries)[0], ...typeof queries]);
 		const allCards = batchResults.flat();
 
 		const nameToCard = new Map<string, DbCard>();

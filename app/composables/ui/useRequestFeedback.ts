@@ -3,7 +3,10 @@ import { isPlainRecord } from '~~/shared/utils/plainObject';
 type MaybePromise<T> = T | Promise<T>;
 type ToastOptions = Parameters<ReturnType<typeof useToast>['add']>[0];
 type SuccessfulResult<T> = Exclude<T, null | undefined | false>;
-type ToastResolver<TPayload> = ToastOptions | false | ((payload: TPayload) => ToastOptions | false | null | undefined);
+type ToastResolver<TPayload> =
+	| ToastOptions
+	| false
+	| ((payload: TPayload) => ToastOptions | false | null | undefined);
 
 interface RequestFailure<T> {
 	message: string;
@@ -24,9 +27,7 @@ interface RunRequestOptions<T> {
 }
 
 function readString(value: unknown): string | null {
-	return typeof value === 'string' && value.trim().length > 0
-		? value
-		: null;
+	return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
 function readRecordString(record: Record<string, unknown>, key: string): string | null {
@@ -35,17 +36,16 @@ function readRecordString(record: Record<string, unknown>, key: string): string 
 
 function resolveResultErrorMessage(result: unknown): string {
 	if (isPlainRecord(result)) {
-		return readRecordString(result, 'error')
-			?? readRecordString(result, 'message')
-			?? 'Request failed';
+		return (
+			readRecordString(result, 'error') ?? readRecordString(result, 'message') ?? 'Request failed'
+		);
 	}
 
 	return 'Request failed';
 }
 
 function isDefaultSuccess(result: unknown): boolean {
-	if (result === null || result === undefined || result === false)
-		return false;
+	if (result === null || result === undefined || result === false) return false;
 
 	return !(isPlainRecord(result) && result.success === false);
 }
@@ -54,14 +54,11 @@ function resolveToast<TPayload>(
 	option: ToastResolver<TPayload> | undefined,
 	payload: TPayload,
 ): ToastOptions | null {
-	if (option === false)
-		return null;
+	if (option === false) return null;
 
 	if (typeof option === 'function') {
 		const resolved = option(payload);
-		return resolved === false
-			? null
-			: resolved ?? null;
+		return resolved === false ? null : (resolved ?? null);
 	}
 
 	return option ?? null;
@@ -111,78 +108,57 @@ export function useRequestFeedback() {
 	 * was not between #271 and #286.
 	 */
 	function getErrorMessage(error: unknown, fallback = 'Unknown error'): string {
-		if (typeof error === 'string' && error.trim().length > 0)
-			return error;
+		if (typeof error === 'string' && error.trim().length > 0) return error;
 
-		if (!isPlainRecord(error))
-			return fallback;
+		if (!isPlainRecord(error)) return fallback;
 
 		const sentence = readString(failureSentence(error));
-		if (sentence)
-			return sentence;
+		if (sentence) return sentence;
 
-		if (isSanitizedFailure(error))
-			return readRecordString(error, 'message') ?? fallback;
+		if (isSanitizedFailure(error)) return readRecordString(error, 'message') ?? fallback;
 
 		const data = error.data;
 		if (isPlainRecord(data)) {
-			const dataMessage = readRecordString(data, 'statusMessage')
-				?? readRecordString(data, 'error');
-			if (dataMessage)
-				return dataMessage;
+			const dataMessage =
+				readRecordString(data, 'statusMessage') ?? readRecordString(data, 'error');
+			if (dataMessage) return dataMessage;
 		}
 
-		return readRecordString(error, 'statusMessage')
-			?? readRecordString(error, 'message')
-			?? fallback;
+		return (
+			readRecordString(error, 'statusMessage') ?? readRecordString(error, 'message') ?? fallback
+		);
 	}
 
 	async function runRequest<T>(
 		action: () => Promise<T>,
 		options: RunRequestOptions<T> = {},
 	): Promise<SuccessfulResult<T> | null> {
-		const {
-			loadingRef,
-			errorRef,
-			success,
-			error,
-			onSuccess,
-			onFailure,
-			isSuccess,
-			latestKey,
-		} = options;
-		const flight = latestKey === undefined
-			? unguarded
-			: requests.begin(latestKey);
+		const { loadingRef, errorRef, success, error, onSuccess, onFailure, isSuccess, latestKey } =
+			options;
+		const flight = latestKey === undefined ? unguarded : requests.begin(latestKey);
 
-		if (loadingRef)
-			loadingRef.value = true;
-		if (errorRef)
-			errorRef.value = null;
+		if (loadingRef) loadingRef.value = true;
+		if (errorRef) errorRef.value = null;
 
 		try {
 			const result = await action();
-			if (flight.stale)
-				return null;
-			const succeeded = isSuccess
-				? isSuccess(result)
-				: isDefaultSuccess(result);
+			if (flight.stale) return null;
+			const succeeded = isSuccess ? isSuccess(result) : isDefaultSuccess(result);
 
 			if (!succeeded) {
 				const failure = {
 					message: resolveResultErrorMessage(result),
 					result,
 				};
-				if (errorRef)
-					errorRef.value = failure.message;
+				if (errorRef) errorRef.value = failure.message;
 				await onFailure?.(failure);
 
-				const toastOptions = resolveToast(error, failure)
-					?? (error === undefined
+				const toastOptions =
+					resolveToast(error, failure) ??
+					(error === undefined
 						? { title: 'Error', description: failure.message, color: 'error' as const }
 						: null);
-				if (toastOptions)
-					toast.add(toastOptions);
+				if (toastOptions) toast.add(toastOptions);
 
 				return null;
 			}
@@ -190,34 +166,28 @@ export function useRequestFeedback() {
 			const successfulResult = result as SuccessfulResult<T>;
 			await onSuccess?.(successfulResult);
 			const toastOptions = resolveToast(success, successfulResult);
-			if (toastOptions)
-				toast.add(toastOptions);
+			if (toastOptions) toast.add(toastOptions);
 
 			return successfulResult;
-		}
-		catch (caughtError) {
-			if (flight.stale)
-				return null;
+		} catch (caughtError) {
+			if (flight.stale) return null;
 			const failure = {
 				message: getErrorMessage(caughtError),
 				error: caughtError,
 			};
-			if (errorRef)
-				errorRef.value = failure.message;
+			if (errorRef) errorRef.value = failure.message;
 			await onFailure?.(failure);
 
-			const toastOptions = resolveToast(error, failure)
-				?? (error === undefined
+			const toastOptions =
+				resolveToast(error, failure) ??
+				(error === undefined
 					? { title: 'Error', description: failure.message, color: 'error' as const }
 					: null);
-			if (toastOptions)
-				toast.add(toastOptions);
+			if (toastOptions) toast.add(toastOptions);
 
 			return null;
-		}
-		finally {
-			if (loadingRef && flight.current)
-				loadingRef.value = false;
+		} finally {
+			if (loadingRef && flight.current) loadingRef.value = false;
 		}
 	}
 

@@ -1,6 +1,9 @@
 import type { GraphicsAssetDeliveryCatalogue } from '~~/server/modules/graphics-asset-library';
 import type { GraphicsAssetDelivery } from '~~/server/modules/graphics-asset-library/delivery';
-import type { GraphicsCanonicalObjectStore, GraphicsObjectStoreHealth } from '~~/server/modules/graphics-asset-library/object-store';
+import type {
+	GraphicsCanonicalObjectStore,
+	GraphicsObjectStoreHealth,
+} from '~~/server/modules/graphics-asset-library/object-store';
 import type { GraphicsObservedDisagreementCatalogue } from '~~/server/modules/graphics-asset-library/reconciliation';
 import { createGraphicsAssetDelivery } from '~~/server/modules/graphics-asset-library/delivery';
 import { createGraphicsDisagreementReporter } from '~~/server/modules/graphics-asset-library/reconciliation';
@@ -23,17 +26,19 @@ export function createScreenOutputGraphicsDelivery(dependencies: {
 	const { catalogue, canonical, defer } = dependencies;
 	// A store that can only report its health refuses every read, so it never
 	// observes a contradiction.
-	const report = 'readMetadata' in canonical
-		? createGraphicsDisagreementReporter({ catalogue, canonical })
-		: undefined;
+	const report =
+		'readMetadata' in canonical
+			? createGraphicsDisagreementReporter({ catalogue, canonical })
+			: undefined;
 	return createGraphicsAssetDelivery({
 		catalogue,
 		canonical,
-		reportDisagreement: report && defer
-			? async (observed) => {
-				// Delivery swallows a failed report it awaits; this one it never sees.
-				defer(report(observed).catch(() => undefined));
-			}
-			: report,
+		reportDisagreement:
+			report && defer
+				? async (observed) => {
+						// Delivery swallows a failed report it awaits; this one it never sees.
+						defer(report(observed).catch(() => undefined));
+					}
+				: report,
 	});
 }

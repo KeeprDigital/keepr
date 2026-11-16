@@ -25,13 +25,11 @@ export function useFeatureMatchNoteEditor(options: FeatureMatchNoteEditorOptions
 	});
 
 	watch(options.note, () => {
-		if (!active.value)
-			resetDraft();
+		if (!active.value) resetDraft();
 	});
 
 	watch(active, (isActive) => {
-		if (isActive)
-			resetDraft();
+		if (isActive) resetDraft();
 	});
 
 	function openEditor() {
@@ -44,8 +42,7 @@ export function useFeatureMatchNoteEditor(options: FeatureMatchNoteEditorOptions
 	}
 
 	async function commit(note: string) {
-		if (saving.value)
-			return;
+		if (saving.value) return;
 		const normalized = note.trim();
 		if (normalized === options.note().trim()) {
 			cancelEditing();
@@ -57,13 +54,9 @@ export function useFeatureMatchNoteEditor(options: FeatureMatchNoteEditorOptions
 			await options.save(normalized);
 			active.value = false;
 			confirmingClear.value = false;
-		}
-		catch (cause) {
-			error.value = cause instanceof Error
-				? cause.message
-				: 'The Note could not be saved.';
-		}
-		finally {
+		} catch (cause) {
+			error.value = cause instanceof Error ? cause.message : 'The Note could not be saved.';
+		} finally {
 			saving.value = false;
 		}
 	}

@@ -29,12 +29,14 @@ export const bandaiKeeprCardPageSchema = z.object({
 
 export const bandaiKeeprCardDetailSchema = z.object({
 	...cardFields,
-	printings: z.array(z.object({
-		id: z.string().min(1),
-		setId: z.string().min(1),
-		kind: z.enum(OP_PRINTING_KINDS),
-		rarity: z.string(),
-	})),
+	printings: z.array(
+		z.object({
+			id: z.string().min(1),
+			setId: z.string().min(1),
+			kind: z.enum(OP_PRINTING_KINDS),
+			rarity: z.string(),
+		}),
+	),
 });
 
 /**
@@ -42,13 +44,17 @@ export const bandaiKeeprCardDetailSchema = z.object({
  * an `error`. Asked by number only, `not_found` is the one error expected.
  */
 export const bandaiKeeprCollectionSchema = z.object({
-	results: z.array(z.object({
-		index: z.number().int().nonnegative(),
-		card: bandaiKeeprCardSchema.optional(),
-		error: z.object({
-			code: z.string(),
-		}).optional(),
-	})),
+	results: z.array(
+		z.object({
+			index: z.number().int().nonnegative(),
+			card: bandaiKeeprCardSchema.optional(),
+			error: z
+				.object({
+					code: z.string(),
+				})
+				.optional(),
+		}),
+	),
 });
 
 export type BandaiKeeprCard = z.infer<typeof bandaiKeeprCardSchema>;

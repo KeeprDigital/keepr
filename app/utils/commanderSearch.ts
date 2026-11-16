@@ -26,11 +26,9 @@ async function search(query: Record<string, string>): Promise<Commander[]> {
 			timeout: SCRYFALL_CLIENT_TIMEOUT_MS,
 		});
 		return answer.data.map(commanderOfScryfallCard);
-	}
-	catch (error) {
+	} catch (error) {
 		// Scryfall answers a search that matches no card with 404.
-		if ((error as { statusCode?: number })?.statusCode === 404)
-			return [];
+		if ((error as { statusCode?: number })?.statusCode === 404) return [];
 		throw error;
 	}
 }

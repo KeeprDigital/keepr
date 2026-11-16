@@ -23,7 +23,9 @@ import { graphicsObjectIdentity } from './object-store';
  */
 export interface GraphicsIngestionOperationCatalogue {
 	getCapacity: () => Promise<GraphicsAssetLibraryCapacity>;
-	initiateGraphicsIngestion: (operation: GraphicsIngestionOperation) => Promise<GraphicsIngestionOperation>;
+	initiateGraphicsIngestion: (
+		operation: GraphicsIngestionOperation,
+	) => Promise<GraphicsIngestionOperation>;
 	getIngestionOperation: (
 		operationId: GraphicsIngestionOperationId,
 		initiatedBy: string,
@@ -60,9 +62,11 @@ export const INSTALLED_GRAPHICS_TEMPLATE_FIRST_REVISION = 1;
 export function isTerminalIngestionOperation(
 	operation: Pick<GraphicsIngestionOperation, 'stage' | 'failure'>,
 ): boolean {
-	return operation.stage === 'completed'
-		|| operation.stage === 'cancelled'
-		|| (operation.stage === 'failed' && operation.failure?.retryable === false);
+	return (
+		operation.stage === 'completed' ||
+		operation.stage === 'cancelled' ||
+		(operation.stage === 'failed' && operation.failure?.retryable === false)
+	);
 }
 
 /**
@@ -73,7 +77,9 @@ export function stagedIngestionObjectIdentities(operationId: GraphicsIngestionOp
 	return [
 		graphicsObjectIdentity(`ingestion/${operationId}/source`),
 		graphicsObjectIdentity(`ingestion/${operationId}/video-poster`),
-		graphicsObjectIdentity(`ingestion/${templatePackageVideoWorkingCopyOperationId(operationId)}/source`),
+		graphicsObjectIdentity(
+			`ingestion/${templatePackageVideoWorkingCopyOperationId(operationId)}/source`,
+		),
 	];
 }
 
@@ -106,7 +112,7 @@ export function templatePackageInstallationResult(
 		templateKind: input.template.kind,
 		templateName: input.template.name,
 		assets: [
-			...input.created.map(asset => ({
+			...input.created.map((asset) => ({
 				packagedId: asset.packagedId,
 				outcome: 'created' as const,
 				basis: asset.basis,
@@ -116,7 +122,7 @@ export function templatePackageInstallationResult(
 				kind: asset.kind,
 				compatibilityProfile: asset.compatibilityProfile,
 			})),
-			...input.reused.map(asset => ({
+			...input.reused.map((asset) => ({
 				packagedId: asset.packagedId,
 				outcome: 'reused' as const,
 				// Reuse happens for one reason only, which is why it is the mapping

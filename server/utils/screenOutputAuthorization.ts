@@ -29,13 +29,10 @@ export async function screenOutputReader(
 	const capability = bearerScreenOutputCapability(getRequestHeader(event, 'authorization'));
 	if (capability) {
 		const presentedDigest = await screenOutputAssetCapabilityDigest(capability);
-		if (await secretTokensMatch(presentedDigest, screen.assetCapabilityDigest))
-			return 'capability';
+		if (await secretTokensMatch(presentedDigest, screen.assetCapabilityDigest)) return 'capability';
 	}
 
-	return (await optionalUserSession(event))
-		? 'session'
-		: null;
+	return (await optionalUserSession(event)) ? 'session' : null;
 }
 
 /** Whether this request may read data published exclusively by one Screen. */

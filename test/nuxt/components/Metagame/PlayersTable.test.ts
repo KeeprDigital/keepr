@@ -84,7 +84,10 @@ function makeEntry(overrides: Partial<ArchetypePlayerEntry> = {}): ArchetypePlay
 	};
 }
 
-async function mountComponent(players: ArchetypePlayerEntry[], props: { reviewable?: boolean } = {}) {
+async function mountComponent(
+	players: ArchetypePlayerEntry[],
+	props: { reviewable?: boolean } = {},
+) {
 	return mount(PlayersTable, {
 		props: { players, ...props },
 		global: {
@@ -104,60 +107,40 @@ describe('metagame players table', () => {
 		const player = makePlayer();
 		mockPlayerStore.players = [player];
 
-		const wrapper = await mountComponent([
-			makeEntry(),
-		]);
+		const wrapper = await mountComponent([makeEntry()]);
 		await wrapper.get('[aria-label="View deck list"]').trigger('click');
 
-		expect(wrapper.emitted('viewDeckList')).toEqual([
-			[
-				player,
-			],
-		]);
+		expect(wrapper.emitted('viewDeckList')).toEqual([[player]]);
 	});
 
 	// On an Archetype's page a Player's deck is reassigned in Archetype Review, opened from their row.
 	it.each([
-		['offers to reassign a Player\'s deck where its table says so', true, 1],
+		["offers to reassign a Player's deck where its table says so", true, 1],
 		['offers none elsewhere', false, 0],
 	])('%s', async (_case, reviewable, offered) => {
-		mockPlayerStore.players = [
-			makePlayer(),
-		];
-		const wrapper = await mountComponent([
-			makeEntry(),
-		], { reviewable });
+		mockPlayerStore.players = [makePlayer()];
+		const wrapper = await mountComponent([makeEntry()], { reviewable });
 		const action = wrapper.findAll('[aria-label="Reassign deck"]');
 
 		expect(action).toHaveLength(offered);
 		await action[0]?.trigger('click');
-		expect(wrapper.emitted('reviewDeck') ?? []).toEqual(reviewable
-			? [
-					[
-						makeEntry(),
-					],
-				]
-			: []);
+		expect(wrapper.emitted('reviewDeck') ?? []).toEqual(reviewable ? [[makeEntry()]] : []);
 	});
 
 	it('renders player text without a deck-list action until the full player is loaded', async () => {
 		mockPlayerStore.players = [];
 
-		const wrapper = await mountComponent([
-			makeEntry(),
-		]);
+		const wrapper = await mountComponent([makeEntry()]);
 
 		expect(wrapper.find('button').exists()).toBe(false);
 		expect(wrapper.text()).toContain('Alice');
 	});
 
-	it('opens the resolved Player\'s match history from their name', async () => {
+	it("opens the resolved Player's match history from their name", async () => {
 		const player = makePlayer();
 		mockPlayerStore.players = [player];
 
-		const wrapper = await mountComponent([
-			makeEntry(),
-		]);
+		const wrapper = await mountComponent([makeEntry()]);
 		await wrapper.get('button[title="View Match History"]').trigger('click');
 
 		expect(openPlayerMatchHistory).toHaveBeenCalledWith(player);

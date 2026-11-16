@@ -2,7 +2,10 @@ import type { Ref } from 'vue';
 import type { GraphicAnimationTimelineSegment } from '~~/shared/modules/graphics';
 import type { GraphicAnimationPhase } from '~~/shared/types/graphics';
 import type { GraphicsPreviewAnimationPlan } from '~/modules/graphics/previewMessages';
-import { graphicAnimationTimelineAt, graphicAnimationTimelineDurationMs } from '~~/shared/modules/graphics';
+import {
+	graphicAnimationTimelineAt,
+	graphicAnimationTimelineDurationMs,
+} from '~~/shared/modules/graphics';
 
 /**
  * The Graphic Animation Preview clock a preview frame runs over the plan its
@@ -27,8 +30,7 @@ export function useGraphicAnimationPreviewClock(
 	let startedAt = 0;
 
 	function stop() {
-		if (frame !== null && import.meta.client)
-			cancelAnimationFrame(frame);
+		if (frame !== null && import.meta.client) cancelAnimationFrame(frame);
 		frame = null;
 	}
 
@@ -46,8 +48,7 @@ export function useGraphicAnimationPreviewClock(
 		if (total > 0 && next >= total && current.loop) {
 			startedAt = performance.now();
 			elapsed.value = 0;
-		}
-		else {
+		} else {
 			// Held rather than reset once a run completes: the last phase settled is
 			// what the author just watched arrive.
 			elapsed.value = next;
@@ -57,14 +58,12 @@ export function useGraphicAnimationPreviewClock(
 	}
 
 	watch(
-		() => (plan.value
-			? `${plan.value.graphicId}:${plan.value.itemId ?? ''}:${plan.value.run}`
-			: null),
+		() =>
+			plan.value ? `${plan.value.graphicId}:${plan.value.itemId ?? ''}:${plan.value.run}` : null,
 		(token) => {
 			stop();
 			elapsed.value = 0;
-			if (token === null || !import.meta.client)
-				return;
+			if (token === null || !import.meta.client) return;
 			startedAt = performance.now();
 			frame = requestAnimationFrame(advance);
 		},
@@ -75,8 +74,7 @@ export function useGraphicAnimationPreviewClock(
 	return {
 		/** Where the run is: a phase and the time into it, or null with nothing playing. */
 		position: computed<{ phase: GraphicAnimationPhase; elapsed: number } | null>(() =>
-			plan.value
-				? graphicAnimationTimelineAt(timeline.value, elapsed.value)
-				: null),
+			plan.value ? graphicAnimationTimelineAt(timeline.value, elapsed.value) : null,
+		),
 	};
 }

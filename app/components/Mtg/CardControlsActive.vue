@@ -9,10 +9,7 @@ const { activeCard } = storeToRefs(cardStore);
 <template>
 	<transition mode="out-in" name="cross-fade">
 		<div v-if="activeCard" :key="activeCard.id">
-			<OpCardImage
-				v-if="isOpScreenCard(activeCard)"
-				:card="activeCard"
-			/>
+			<OpCardImage v-if="isOpScreenCard(activeCard)" :card="activeCard" />
 			<MtgCardImage
 				v-else
 				:card="activeCard"

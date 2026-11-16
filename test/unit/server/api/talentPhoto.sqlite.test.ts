@@ -40,29 +40,43 @@ vi.doMock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	graphicsAssetLibraryForEvent: () => ({ inspectGraphicAssetRevisions }),
 }));
 
-interface StubEvent { params: Record<string, string>; body?: unknown }
+interface StubEvent {
+	params: Record<string, string>;
+	body?: unknown;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.body));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) =>
+	parse(event.body),
+);
 vi.stubGlobal('setResponseStatus', () => {});
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; data?: unknown }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 type Handler = (event: H3Event) => Promise<any>;
 const handler = (module: { default: unknown }) => module.default as Handler;
 const createTalent = handler(await import('~~/server/api/events/[id]/talents/index.post'));
-const updateTalent = handler(await import('~~/server/api/events/[id]/talents/[talentId]/index.patch'));
-const deleteTalent = handler(await import('~~/server/api/events/[id]/talents/[talentId]/index.delete'));
+const updateTalent = handler(
+	await import('~~/server/api/events/[id]/talents/[talentId]/index.patch'),
+);
+const deleteTalent = handler(
+	await import('~~/server/api/events/[id]/talents/[talentId]/index.delete'),
+);
 const deleteEvent = handler(await import('~~/server/api/events/[id]/index.delete'));
 
 function call(handler: Handler, params: Record<string, string | number>, body?: unknown) {
-	return handler(stubH3Event({
-		params: Object.fromEntries(Object.entries(params).map(([key, value]) => [
-			key,
-			String(value),
-		])),
-		body,
-	}));
+	return handler(
+		stubH3Event({
+			params: Object.fromEntries(
+				Object.entries(params).map(([key, value]) => [key, String(value)]),
+			),
+			body,
+		}),
+	);
 }
 
 async function refusal(promise: Promise<unknown>) {
@@ -70,7 +84,10 @@ async function refusal(promise: Promise<unknown>) {
 		() => {
 			throw new Error('The write was not refused');
 		},
-		(error: { statusCode?: number; message?: string }) => ({ statusCode: error.statusCode, message: error.message }),
+		(error: { statusCode?: number; message?: string }) => ({
+			statusCode: error.statusCode,
+			message: error.message,
+		}),
 	);
 }
 
@@ -80,10 +97,15 @@ const context = createTestGraphicsLibrary({
 	identityPrefix: 'talent-photo',
 });
 
-interface Revision { assetId: GraphicAssetId; revisionId: GraphicAssetRevisionId }
+interface Revision {
+	assetId: GraphicAssetId;
+	revisionId: GraphicAssetRevisionId;
+}
 let images = 0;
 async function ingest(): Promise<Revision> {
-	return publishedRevision(await ingestImage(context, { idempotencyKey: `image-${++images}`, initiatedBy: 'author' }));
+	return publishedRevision(
+		await ingestImage(context, { idempotencyKey: `image-${++images}`, initiatedBy: 'author' }),
+	);
 }
 
 let face: Revision;
@@ -104,7 +126,8 @@ beforeEach(async () => {
 	await db.delete(graphicAssetReferences);
 	portrait = await ingest();
 	other = await ingest();
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Finals', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	eventId = event!.id;
@@ -112,22 +135,31 @@ beforeEach(async () => {
 
 afterAll(async () => await harness.close());
 
-const retire = (revision: Revision) => context.library.retireGraphicAsset({ assetId: revision.assetId, actor: 'author' });
-const trash = (revision: Revision) => context.library.trashGraphicAsset({ assetId: revision.assetId, actor: 'author' });
+const retire = (revision: Revision) =>
+	context.library.retireGraphicAsset({ assetId: revision.assetId, actor: 'author' });
+const trash = (revision: Revision) =>
+	context.library.trashGraphicAsset({ assetId: revision.assetId, actor: 'author' });
 
 async function talentReferences() {
-	return (await db.select().from(graphicAssetReferences).where(eq(graphicAssetReferences.ownerKind, 'talent')))
-		.map(row => ({
-			assetId: row.assetId,
-			revisionId: row.revisionId,
-			ownerId: row.ownerId,
-			ownerSlot: row.ownerSlot,
-			eventId: row.eventId,
-		}));
+	return (
+		await db
+			.select()
+			.from(graphicAssetReferences)
+			.where(eq(graphicAssetReferences.ownerKind, 'talent'))
+	).map((row) => ({
+		assetId: row.assetId,
+		revisionId: row.revisionId,
+		ownerId: row.ownerId,
+		ownerSlot: row.ownerSlot,
+		eventId: row.eventId,
+	}));
 }
 
 async function storedPhoto(talentId: number) {
-	const [talent] = await db.select().from(schema.eventTalents).where(eq(schema.eventTalents.id, talentId));
+	const [talent] = await db
+		.select()
+		.from(schema.eventTalents)
+		.where(eq(schema.eventTalents.id, talentId));
 	return talent?.photo;
 }
 
@@ -228,17 +260,29 @@ describe('a Talent photo', () => {
 	});
 
 	it('writes the role beside the photo, on create and on update', async () => {
-		const talent = await call(createTalent, { id: eventId }, { name: 'Alice', role: ' Host ', photo: portrait });
+		const talent = await call(
+			createTalent,
+			{ id: eventId },
+			{ name: 'Alice', role: ' Host ', photo: portrait },
+		);
 		expect(talent.role).toBe('Host');
 
-		const updated = await call(updateTalent, { id: eventId, talentId: talent.id }, { role: 'Commentator', photo: other });
+		const updated = await call(
+			updateTalent,
+			{ id: eventId, talentId: talent.id },
+			{ role: 'Commentator', photo: other },
+		);
 		expect(updated).toMatchObject({ role: 'Commentator', photo: other });
 	});
 
 	it('keeps the photo and its reference through an edit that does not name it', async () => {
 		const talent = await call(createTalent, { id: eventId }, { name: 'Alice', photo: portrait });
 
-		const renamed = await call(updateTalent, { id: eventId, talentId: talent.id }, { name: 'Alicia' });
+		const renamed = await call(
+			updateTalent,
+			{ id: eventId, talentId: talent.id },
+			{ name: 'Alicia' },
+		);
 
 		expect(renamed.photo).toEqual(portrait);
 		expect(await talentReferences()).toEqual([
@@ -263,20 +307,18 @@ describe('a Talent photo', () => {
 			'a revision that does not exist',
 			async () => ({ assetId: other.assetId, revisionId: 'revision-invented' }),
 		],
-		[
-			'a silent video',
-			async () => clip,
-		],
-		[
-			'a font',
-			async () => face,
-		],
+		['a silent video', async () => clip],
+		['a font', async () => face],
 	])('refuses a Talent naming %s, storing nothing', async (_case, photo) => {
 		const value = await photo();
 		const talent = await call(createTalent, { id: eventId }, { name: 'Alice', photo: portrait });
 
-		const refusedCreate = await refusal(call(createTalent, { id: eventId }, { name: 'Bob', photo: value }));
-		const refusedUpdate = await refusal(call(updateTalent, { id: eventId, talentId: talent.id }, { name: 'Alicia', photo: value }));
+		const refusedCreate = await refusal(
+			call(createTalent, { id: eventId }, { name: 'Bob', photo: value }),
+		);
+		const refusedUpdate = await refusal(
+			call(updateTalent, { id: eventId, talentId: talent.id }, { name: 'Alicia', photo: value }),
+		);
 
 		for (const refused of [refusedCreate, refusedUpdate]) {
 			expect(refused).toMatchObject({
@@ -284,11 +326,11 @@ describe('a Talent photo', () => {
 				message: expect.stringContaining('photo'),
 			});
 		}
-		expect((await db.select().from(schema.eventTalents).where(eq(schema.eventTalents.eventId, eventId)))
-			.map(row => ({ name: row.name, photo: row.photo })))
-			.toEqual([
-				{ name: 'Alice', photo: portrait },
-			]);
+		expect(
+			(
+				await db.select().from(schema.eventTalents).where(eq(schema.eventTalents.eventId, eventId))
+			).map((row) => ({ name: row.name, photo: row.photo })),
+		).toEqual([{ name: 'Alice', photo: portrait }]);
 		expect(await talentReferences()).toEqual([
 			{
 				...portrait,
@@ -304,8 +346,12 @@ describe('a Talent photo', () => {
 		await retire(other);
 		answeredBeforeRetirement.add(other.assetId);
 
-		const refusedCreate = await refusal(call(createTalent, { id: eventId }, { name: 'Bob', photo: other }));
-		const refusedUpdate = await refusal(call(updateTalent, { id: eventId, talentId: talent.id }, { photo: other }));
+		const refusedCreate = await refusal(
+			call(createTalent, { id: eventId }, { name: 'Bob', photo: other }),
+		);
+		const refusedUpdate = await refusal(
+			call(updateTalent, { id: eventId, talentId: talent.id }, { photo: other }),
+		);
 
 		for (const refused of [refusedCreate, refusedUpdate]) {
 			expect(refused).toMatchObject({
@@ -313,11 +359,11 @@ describe('a Talent photo', () => {
 				message: expect.stringContaining('stopped being selectable'),
 			});
 		}
-		expect((await db.select().from(schema.eventTalents).where(eq(schema.eventTalents.eventId, eventId)))
-			.map(row => ({ name: row.name, photo: row.photo })))
-			.toEqual([
-				{ name: 'Alice', photo: null },
-			]);
+		expect(
+			(
+				await db.select().from(schema.eventTalents).where(eq(schema.eventTalents.eventId, eventId))
+			).map((row) => ({ name: row.name, photo: row.photo })),
+		).toEqual([{ name: 'Alice', photo: null }]);
 		expect(await talentReferences()).toEqual([]);
 	});
 });

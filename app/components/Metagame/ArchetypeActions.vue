@@ -10,18 +10,22 @@ const props = defineProps<{
 }>();
 
 const archetypeStore = useArchetypeStore();
-const { mergeInto, remove } = useArchetypeManagement(() => props.eventId, () => props.archetypeId);
+const { mergeInto, remove } = useArchetypeManagement(
+	() => props.eventId,
+	() => props.archetypeId,
+);
 
-const others = computed(() => archetypeStore.archetypes
-	.filter(archetype => archetype.id !== props.archetypeId)
-	.map(archetype => ({ label: archetype.name, value: archetype.id })));
+const others = computed(() =>
+	archetypeStore.archetypes
+		.filter((archetype) => archetype.id !== props.archetypeId)
+		.map((archetype) => ({ label: archetype.name, value: archetype.id })),
+);
 
 /** Never holds a pick: a merge leaves the page, and a declined one offers the list again. */
 const picked = ref<number>();
 
 async function merge(intoArchetypeId: unknown) {
-	if (typeof intoArchetypeId === 'number')
-		await mergeInto(intoArchetypeId);
+	if (typeof intoArchetypeId === 'number') await mergeInto(intoArchetypeId);
 	picked.value = undefined;
 }
 </script>

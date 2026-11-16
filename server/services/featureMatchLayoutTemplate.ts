@@ -63,7 +63,9 @@ export class FeatureMatchLayoutTemplateRevisionConflict extends Error {
  */
 export class FeatureMatchLayoutTemplateReferenceConflict extends Error {
 	constructor() {
-		super('A Graphic Asset Revision this Feature Match Layout Template references can no longer be referenced');
+		super(
+			'A Graphic Asset Revision this Feature Match Layout Template references can no longer be referenced',
+		);
 		this.name = 'FeatureMatchLayoutTemplateReferenceConflict';
 	}
 }
@@ -102,11 +104,13 @@ export function featureMatchLayoutTemplateService() {
 	 * No reference may be retired: a template has no retained-reference path (#614).
 	 */
 	const boundReferenceFacts = (document: FeatureMatchLayoutConfig): string =>
-		boundGraphicAssetReferenceFacts(templateAssetReferences(document).map(item => ({
-			...item,
-			id: crypto.randomUUID(),
-			allowRetired: false,
-		})));
+		boundGraphicAssetReferenceFacts(
+			templateAssetReferences(document).map((item) => ({
+				...item,
+				id: crypto.randomUUID(),
+				allowRetired: false,
+			})),
+		);
 
 	/**
 	 * The reference-index statements one template write publishes, read from the same
@@ -120,15 +124,18 @@ export function featureMatchLayoutTemplateService() {
 		referenceVersion: string,
 		now: number,
 	): D1PreparedStatement[] => [
-		client.prepare(`
+		client
+			.prepare(`
 			DELETE FROM graphic_asset_references
 			WHERE owner_kind = '${OWNER_KIND}' AND owner_id = ?
 				AND EXISTS (
 					SELECT 1 FROM feature_match_layout_templates
 					WHERE id = ? AND graphic_asset_reference_version = ?
 				)
-		`).bind(id, id, referenceVersion),
-		client.prepare(`
+		`)
+			.bind(id, id, referenceVersion),
+		client
+			.prepare(`
 			INSERT INTO graphic_asset_references (
 				id, asset_id, revision_id, owner_kind, owner_id, owner_slot,
 				event_id, created_at, updated_at
@@ -147,17 +154,21 @@ export function featureMatchLayoutTemplateService() {
 					SELECT 1 FROM feature_match_layout_templates
 					WHERE id = ? AND graphic_asset_reference_version = ?
 				)
-		`).bind(id, now, now, referenceFacts, id, referenceVersion),
+		`)
+			.bind(id, now, now, referenceFacts, id, referenceVersion),
 	];
 
-	const create = async (input: SaveFeatureMatchLayoutTemplate): Promise<DbFeatureMatchLayoutTemplate> => {
+	const create = async (
+		input: SaveFeatureMatchLayoutTemplate,
+	): Promise<DbFeatureMatchLayoutTemplate> => {
 		const referenceVersion = crypto.randomUUID();
 		const now = Date.now();
 		const referenceFacts = boundReferenceFacts(input.document);
 		const client = db.$client;
 
 		const [inserted] = await client.batch([
-			client.prepare(`
+			client
+				.prepare(`
 				INSERT INTO feature_match_layout_templates (
 					id, name, description, revision, document,
 					graphic_asset_reference_version, created_at, updated_at
@@ -165,25 +176,24 @@ export function featureMatchLayoutTemplateService() {
 				SELECT ?, ?, ?, 1, ?, ?, ?, ?
 				WHERE 1 = 1
 					${REQUIRED_GRAPHIC_ASSET_REFERENCES_RESOLVE}
-			`).bind(
-				input.id,
-				input.name,
-				input.description,
-				JSON.stringify(input.document),
-				referenceVersion,
-				now,
-				now,
-				referenceFacts,
-			),
+			`)
+				.bind(
+					input.id,
+					input.name,
+					input.description,
+					JSON.stringify(input.document),
+					referenceVersion,
+					now,
+					now,
+					referenceFacts,
+				),
 			...referenceStatements(client, input.id, referenceFacts, referenceVersion, now),
 		]);
 
-		if (inserted?.meta.changes !== 1)
-			throw new FeatureMatchLayoutTemplateReferenceConflict();
+		if (inserted?.meta.changes !== 1) throw new FeatureMatchLayoutTemplateReferenceConflict();
 
 		const created = await findById(input.id);
-		if (!created)
-			throw new Error('Feature Match Layout Template was not stored');
+		if (!created) throw new Error('Feature Match Layout Template was not stored');
 		return created;
 	};
 
@@ -200,8 +210,7 @@ export function featureMatchLayoutTemplateService() {
 		patch: FeatureMatchLayoutTemplatePatch,
 	): Promise<DbFeatureMatchLayoutTemplate | undefined> => {
 		const existing = await findById(id);
-		if (!existing)
-			return undefined;
+		if (!existing) return undefined;
 
 		const document = patch.document ?? existing.document;
 		const referenceVersion = crypto.randomUUID();
@@ -210,24 +219,24 @@ export function featureMatchLayoutTemplateService() {
 		const client = db.$client;
 
 		const [updated] = await client.batch([
-			client.prepare(`
+			client
+				.prepare(`
 				UPDATE feature_match_layout_templates
 				SET name = ?, description = ?, document = ?, revision = revision + 1,
 					graphic_asset_reference_version = ?, updated_at = ?
 				WHERE id = ? AND revision = ?
 					${REQUIRED_GRAPHIC_ASSET_REFERENCES_RESOLVE}
-			`).bind(
-				patch.name ?? existing.name,
-				patch.description === undefined
-					? existing.description
-					: patch.description,
-				JSON.stringify(document),
-				referenceVersion,
-				now,
-				id,
-				patch.revision,
-				referenceFacts,
-			),
+			`)
+				.bind(
+					patch.name ?? existing.name,
+					patch.description === undefined ? existing.description : patch.description,
+					JSON.stringify(document),
+					referenceVersion,
+					now,
+					id,
+					patch.revision,
+					referenceFacts,
+				),
 			...referenceStatements(client, id, referenceFacts, referenceVersion, now),
 		]);
 
@@ -236,8 +245,7 @@ export function featureMatchLayoutTemplateService() {
 		// never made. A revision that still stands means a reference refused it.
 		if (updated?.meta.changes !== 1) {
 			const current = await findById(id);
-			if (!current)
-				return undefined;
+			if (!current) return undefined;
 			if (current.revision === patch.revision)
 				throw new FeatureMatchLayoutTemplateReferenceConflict();
 			throw new FeatureMatchLayoutTemplateRevisionConflict(current.revision);
@@ -256,10 +264,12 @@ export function featureMatchLayoutTemplateService() {
 	const remove = async (id: string): Promise<boolean> => {
 		const client = db.$client;
 		const results = await client.batch([
-			client.prepare(`
+			client
+				.prepare(`
 				DELETE FROM graphic_asset_references
 				WHERE owner_kind = '${OWNER_KIND}' AND owner_id = ?
-			`).bind(id),
+			`)
+				.bind(id),
 			client.prepare(`DELETE FROM feature_match_layout_templates WHERE id = ?`).bind(id),
 		]);
 		return results[1]?.meta.changes === 1;

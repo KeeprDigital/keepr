@@ -17,20 +17,25 @@ import {
 } from '../../shared/utils/localDeveloperAuth.ts';
 import { DeployVerifyFailure, verifyDeployment } from '../deploy-verify.mjs';
 
-const PIXEL_PNG = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
-const PIXEL_JPEG = Uint8Array.from(Buffer.from(
-	'/9j/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAABf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJtAEx7/2Q==',
-	'base64',
-));
+const PIXEL_PNG = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
+const PIXEL_JPEG = Uint8Array.from(
+	Buffer.from(
+		'/9j/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAABf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJtAEx7/2Q==',
+		'base64',
+	),
+);
 
 /** An Event with Live Results on and no Rounds, so its tick idles and asks Melee nothing. */
 const LIVE_RESULTS_EVENT_ID = 900_001;
 const LIVE_RESULTS_TICK_TIMEOUT_MS = 10_000;
-const LIVE_RESULTS_EVENT_SQL = 'INSERT INTO events (id, name, game, feature_match_orientation, melee_enabled, melee_live_results_enabled) '
-	+ `VALUES (${LIVE_RESULTS_EVENT_ID}, 'Built Worker smoke Live Results', 'mtg', 'horizontal', 1, 1)`;
+const LIVE_RESULTS_EVENT_SQL =
+	'INSERT INTO events (id, name, game, feature_match_orientation, melee_enabled, melee_live_results_enabled) ' +
+	`VALUES (${LIVE_RESULTS_EVENT_ID}, 'Built Worker smoke Live Results', 'mtg', 'horizontal', 1, 1)`;
 
 export class WorkerSmokeFailure extends Error {
 	constructor(probe, failureClass, detail = {}) {
@@ -44,15 +49,26 @@ export class WorkerSmokeFailure extends Error {
 
 export function redactSmokeText(value, secrets = []) {
 	let redacted = String(value);
-	for (const secret of [...secrets].filter(secret => typeof secret === 'string' && secret.length > 0))
+	for (const secret of [...secrets].filter(
+		(secret) => typeof secret === 'string' && secret.length > 0,
+	))
 		redacted = redacted.replaceAll(secret, '[redacted]');
 	return redacted
 		.replace(/https?:\/\/[^\s"'`]+/giu, '[redacted-url]')
 		.replace(/((?:__Secure-)?better-auth\.session_token=)[^;\s]+/giu, '$1[redacted]')
 		.replace(/\b[a-f0-9]{64}\b/giu, '[redacted-digest]')
-		.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/giu, '[redacted-id]')
-		.replace(/("(?:eventId|assetId|revisionId|operationId|screenId|userId|id)"\s*:\s*)(?:"[^"]+"|\d+)/giu, '$1"[redacted-id]"')
-		.replace(/\/(events|screens|graphics-assets|ingestion-operations|revisions)\/[^/\s?]+/giu, '/$1/[redacted-id]');
+		.replace(
+			/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/giu,
+			'[redacted-id]',
+		)
+		.replace(
+			/("(?:eventId|assetId|revisionId|operationId|screenId|userId|id)"\s*:\s*)(?:"[^"]+"|\d+)/giu,
+			'$1"[redacted-id]"',
+		)
+		.replace(
+			/\/(events|screens|graphics-assets|ingestion-operations|revisions)\/[^/\s?]+/giu,
+			'/$1/[redacted-id]',
+		);
 }
 
 export function formatWorkerSmokeFailure(error) {
@@ -60,14 +76,11 @@ export function formatWorkerSmokeFailure(error) {
 	const lines = [
 		`worker:smoke: ${error?.probe ?? 'runner'} failed (${error?.failureClass ?? 'unexpected-error'})`,
 	];
-	if (detail.expected !== undefined)
-		lines.push(`  expected: ${detail.expected}`);
-	if (detail.actual !== undefined)
-		lines.push(`  actual: ${detail.actual}`);
+	if (detail.expected !== undefined) lines.push(`  expected: ${detail.expected}`);
+	if (detail.actual !== undefined) lines.push(`  actual: ${detail.actual}`);
 	if (error?.workerLogTail) {
 		lines.push('  Worker log tail:');
-		for (const line of error.workerLogTail.split('\n'))
-			lines.push(`    ${line}`);
+		for (const line of error.workerLogTail.split('\n')) lines.push(`    ${line}`);
 	}
 	return `${lines.join('\n')}\n`;
 }
@@ -108,25 +121,24 @@ export async function runWorkerSmoke({
 	const sensitiveValues = [...generated.secrets];
 	const workerLog = new BoundedLogTail();
 	const timeout = new AbortController();
-	const hardTimeout = setTimeout(() => timeout.abort(
-		new WorkerSmokeFailure('runner', 'hard-timeout', {
-			expected: `completion within ${hardTimeoutMs}ms`,
-			actual: 'hard timeout reached',
-		}),
-	), hardTimeoutMs);
-	const smokeSignal = signal
-		? AbortSignal.any([signal, timeout.signal])
-		: timeout.signal;
+	const hardTimeout = setTimeout(
+		() =>
+			timeout.abort(
+				new WorkerSmokeFailure('runner', 'hard-timeout', {
+					expected: `completion within ${hardTimeoutMs}ms`,
+					actual: 'hard timeout reached',
+				}),
+			),
+		hardTimeoutMs,
+	);
+	const smokeSignal = signal ? AbortSignal.any([signal, timeout.signal]) : timeout.signal;
 	const startedAt = Date.now();
 	let persistencePath;
 	let activeChild;
 	let activeChildExit;
 	let stagedConfiguration;
 	try {
-		stagedConfiguration = await relocateConfigurations([
-			stagedEnvPath,
-			stagedDevVarsPath,
-		]);
+		stagedConfiguration = await relocateConfigurations([stagedEnvPath, stagedDevVarsPath]);
 		await writeFile(stagedEnvPath, generated.body, { mode: 0o600 });
 		await rm(stagedDevVarsPath, { force: true });
 		persistencePath = await mkdtemp(join(temporaryRoot, 'stream-keepr-worker-smoke-'));
@@ -136,26 +148,24 @@ export async function runWorkerSmoke({
 			stdio: ['ignore', 'pipe', 'pipe'],
 		};
 		const runSetup = async (arguments_) => {
-			const setup = spawnProcess(wranglerPath, [
-				'd1',
-				...arguments_,
-				'--local',
-				'--config',
-				configPath,
-				'--persist-to',
-				persistencePath,
-			], { ...childProcessOptions, detached: true });
+			const setup = spawnProcess(
+				wranglerPath,
+				['d1', ...arguments_, '--local', '--config', configPath, '--persist-to', persistencePath],
+				{ ...childProcessOptions, detached: true },
+			);
 			activeChild = setup;
 			captureChildOutput(setup, workerLog);
 			activeChildExit = childExit(setup, 'setup');
 			const setupExit = await abortable(activeChildExit, smokeSignal);
 			if (setupExit.status !== 0) {
-				throw new WorkerSmokeFailure('setup', arguments_[0] === 'migrations'
-					? 'migration-exit'
-					: 'seed-exit', {
-					expected: 'exit 0',
-					actual: exitDescription(setupExit),
-				});
+				throw new WorkerSmokeFailure(
+					'setup',
+					arguments_[0] === 'migrations' ? 'migration-exit' : 'seed-exit',
+					{
+						expected: 'exit 0',
+						actual: exitDescription(setupExit),
+					},
+				);
 			}
 			activeChild = undefined;
 			activeChildExit = undefined;
@@ -163,12 +173,7 @@ export async function runWorkerSmoke({
 		await runSetup(['migrations', 'apply', 'DB']);
 		// Melee Sync can be switched on only after Melee.gg accepts the
 		// credentials, so the Live Results Event is written straight to D1.
-		await runSetup([
-			'execute',
-			'DB',
-			'--command',
-			LIVE_RESULTS_EVENT_SQL,
-		]);
+		await runSetup(['execute', 'DB', '--command', LIVE_RESULTS_EVENT_SQL]);
 
 		const startWorker = async () => {
 			const port = await availableLoopbackPort();
@@ -186,7 +191,10 @@ export async function runWorkerSmoke({
 				// Exposes `/__scheduled`, the Worker's scheduled handler.
 				'--test-scheduled',
 			];
-			activeChild = spawnProcess(wranglerPath, arguments_, { ...childProcessOptions, detached: true });
+			activeChild = spawnProcess(wranglerPath, arguments_, {
+				...childProcessOptions,
+				detached: true,
+			});
 			captureChildOutput(activeChild, workerLog);
 			activeChildExit = childExit(activeChild, 'startup');
 			const origin = `http://127.0.0.1:${port}`;
@@ -221,9 +229,13 @@ export async function runWorkerSmoke({
 		// Session only where that name is present. It was three runs while
 		// activation took a second attestation, and the middle one — the bypass
 		// name alone, expecting 401 — is a state that no longer exists.
-		await writeFile(stagedEnvPath, `${generated.body}${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE}\n`, {
-			mode: 0o600,
-		});
+		await writeFile(
+			stagedEnvPath,
+			`${generated.body}${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE}\n`,
+			{
+				mode: 0o600,
+			},
+		);
 		const bypassedOrigin = await startWorker();
 		await runLocalPreviewAuthProbes({
 			origin: bypassedOrigin,
@@ -231,27 +243,23 @@ export async function runWorkerSmoke({
 			signal: smokeSignal,
 		});
 		return { elapsedMs: Date.now() - startedAt };
-	}
-	catch (error) {
-		const failure = error instanceof WorkerSmokeFailure
-			? error
-			: new WorkerSmokeFailure('runner', 'unexpected-error', {
-					expected: 'completed smoke run',
-					actual: error?.name ?? 'unknown failure',
-				});
+	} catch (error) {
+		const failure =
+			error instanceof WorkerSmokeFailure
+				? error
+				: new WorkerSmokeFailure('runner', 'unexpected-error', {
+						expected: 'completed smoke run',
+						actual: error?.name ?? 'unknown failure',
+					});
 		failure.workerLogTail = redactSmokeText(workerLog.text(), sensitiveValues);
 		throw failure;
-	}
-	finally {
+	} finally {
 		clearTimeout(hardTimeout);
 		try {
 			await terminateChild(activeChild, activeChildExit);
-		}
-		finally {
-			if (stagedConfiguration)
-				await Promise.all(stagedConfiguration.map(restoreConfiguration));
-			if (persistencePath)
-				await rm(persistencePath, { recursive: true, force: true });
+		} finally {
+			if (stagedConfiguration) await Promise.all(stagedConfiguration.map(restoreConfiguration));
+			if (persistencePath) await rm(persistencePath, { recursive: true, force: true });
 		}
 	}
 }
@@ -267,10 +275,12 @@ async function runLocalPreviewAuthProbes({ origin, fetchRequest, signal }) {
 	});
 	const first = await responseJson(firstResponse, 'local-auth-bypassed-session');
 	const firstCookie = sessionCookie(firstResponse);
-	if (first?.user?.id !== LOCAL_DEVELOPER_USER_ID
-		|| typeof first?.session?.id !== 'string'
-		|| !first.session.id.startsWith(LOCAL_DEVELOPER_SESSION_ID_PREFIX)
-		|| !firstCookie.includes(`${LOCAL_DEVELOPER_SESSION_COOKIE}=`)) {
+	if (
+		first?.user?.id !== LOCAL_DEVELOPER_USER_ID ||
+		typeof first?.session?.id !== 'string' ||
+		!first.session.id.startsWith(LOCAL_DEVELOPER_SESSION_ID_PREFIX) ||
+		!firstCookie.includes(`${LOCAL_DEVELOPER_SESSION_COOKIE}=`)
+	) {
 		throwShapeFailure('local-auth-bypassed-session', 'Local Developer User and Session cookie');
 	}
 
@@ -295,11 +305,16 @@ async function runLocalPreviewAuthProbes({ origin, fetchRequest, signal }) {
 		signal,
 	});
 	const other = await responseJson(otherResponse, 'local-auth-bypassed-other-browser');
-	if (repeated?.user?.id !== first.user.id
-		|| other?.user?.id !== first.user.id
-		|| repeated?.session?.id !== first.session.id
-		|| other?.session?.id === first.session.id) {
-		throwShapeFailure('local-auth-bypassed-session-semantics', 'stable User and one stable Session per browser');
+	if (
+		repeated?.user?.id !== first.user.id ||
+		other?.user?.id !== first.user.id ||
+		repeated?.session?.id !== first.session.id ||
+		other?.session?.id === first.session.id
+	) {
+		throwShapeFailure(
+			'local-auth-bypassed-session-semantics',
+			'stable User and one stable Session per browser',
+		);
 	}
 
 	await expectStatus({
@@ -335,7 +350,9 @@ function generatedConfiguration() {
 		secrets: Object.entries(entries)
 			.filter(([name]) => name !== 'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION')
 			.map(([, entry]) => entry),
-		body: `${Object.entries(entries).map(([name, entry]) => `${name}=${entry}`).join('\n')}\n`,
+		body: `${Object.entries(entries)
+			.map(([name, entry]) => `${name}=${entry}`)
+			.join('\n')}\n`,
 	};
 }
 
@@ -352,8 +369,8 @@ function hermeticChildEnvironment() {
 	];
 	return Object.fromEntries([
 		...allowedNames
-			.filter(name => process.env[name] !== undefined)
-			.map(name => [name, process.env[name]]),
+			.filter((name) => process.env[name] !== undefined)
+			.map((name) => [name, process.env[name]]),
 		['NODE_ENV', 'production'],
 	]);
 }
@@ -361,11 +378,9 @@ function hermeticChildEnvironment() {
 async function relocateConfigurations(paths) {
 	const relocated = [];
 	try {
-		for (const path of paths)
-			relocated.push(await relocateConfiguration(path));
+		for (const path of paths) relocated.push(await relocateConfiguration(path));
 		return relocated;
-	}
-	catch (error) {
+	} catch (error) {
 		await Promise.all(relocated.map(restoreConfiguration));
 		throw error;
 	}
@@ -376,34 +391,33 @@ async function relocateConfiguration(path) {
 	try {
 		await rename(path, backupPath);
 		return { path, backupPath };
-	}
-	catch (error) {
-		if (error?.code === 'ENOENT')
-			return { path, backupPath: null };
+	} catch (error) {
+		if (error?.code === 'ENOENT') return { path, backupPath: null };
 		throw error;
 	}
 }
 
 async function restoreConfiguration({ path, backupPath }) {
 	await rm(path, { force: true });
-	if (backupPath)
-		await rename(backupPath, path);
+	if (backupPath) await rename(backupPath, path);
 }
 
 function childExit(child, probe) {
 	return new Promise((resolve, reject) => {
-		child.once('error', error => reject(new WorkerSmokeFailure(probe, 'spawn-error', {
-			expected: 'child process started',
-			actual: error?.code ?? 'spawn failed',
-		})));
+		child.once('error', (error) =>
+			reject(
+				new WorkerSmokeFailure(probe, 'spawn-error', {
+					expected: 'child process started',
+					actual: error?.code ?? 'spawn failed',
+				}),
+			),
+		);
 		child.once('exit', (status, signal) => resolve({ status, signal }));
 	});
 }
 
 function exitDescription({ status, signal }) {
-	return status === null
-		? `signal ${signal ?? 'unknown'}`
-		: `exit ${status}`;
+	return status === null ? `signal ${signal ?? 'unknown'}` : `exit ${status}`;
 }
 
 async function availableLoopbackPort() {
@@ -413,9 +427,9 @@ async function availableLoopbackPort() {
 		server.listen(0, '127.0.0.1', resolve);
 	});
 	const address = server.address();
-	await new Promise((resolve, reject) => server.close(error => error
-		? reject(error)
-		: resolve()));
+	await new Promise((resolve, reject) =>
+		server.close((error) => (error ? reject(error) : resolve())),
+	);
 	if (!address || typeof address === 'string')
 		throw new WorkerSmokeFailure('setup', 'loopback-port-unavailable');
 	return address.port;
@@ -426,9 +440,13 @@ async function waitUntilReady({ origin, fetchRequest, exit, readinessTimeoutMs, 
 	while (Date.now() < deadline) {
 		const outcome = await Promise.race([
 			fetchRequest(`${origin}/api/time`, { signal })
-				.then(async response => ({ kind: 'response', response, body: await response.json().catch(() => null) }))
+				.then(async (response) => ({
+					kind: 'response',
+					response,
+					body: await response.json().catch(() => null),
+				}))
 				.catch(() => ({ kind: 'unreachable' })),
-			exit.then(result => ({ kind: 'exit', result })),
+			exit.then((result) => ({ kind: 'exit', result })),
 		]);
 		if (outcome.kind === 'exit') {
 			throw new WorkerSmokeFailure('startup', 'process-exit', {
@@ -436,12 +454,14 @@ async function waitUntilReady({ origin, fetchRequest, exit, readinessTimeoutMs, 
 				actual: exitDescription(outcome.result),
 			});
 		}
-		if (outcome.kind === 'response'
-			&& outcome.response.status === 200
-			&& typeof outcome.body?.serverTime === 'number') {
+		if (
+			outcome.kind === 'response' &&
+			outcome.response.status === 200 &&
+			typeof outcome.body?.serverTime === 'number'
+		) {
 			return;
 		}
-		await abortable(new Promise(resolve => setTimeout(resolve, 50)), signal);
+		await abortable(new Promise((resolve) => setTimeout(resolve, 50)), signal);
 	}
 	throw new WorkerSmokeFailure('readiness', 'timeout', {
 		expected: 'GET /api/time status 200',
@@ -450,10 +470,8 @@ async function waitUntilReady({ origin, fetchRequest, exit, readinessTimeoutMs, 
 }
 
 async function abortable(promise, signal) {
-	if (!signal)
-		return await promise;
-	if (signal.aborted)
-		throw signal.reason;
+	if (!signal) return await promise;
+	if (signal.aborted) throw signal.reason;
 	return await new Promise((resolve, reject) => {
 		const aborted = () => reject(signal.reason);
 		signal.addEventListener('abort', aborted, { once: true });
@@ -462,29 +480,35 @@ async function abortable(promise, signal) {
 }
 
 async function terminateChild(child, exit) {
-	if (!child)
-		return;
+	if (!child) return;
 	const alreadyExited = exit
 		? await Promise.race([
-				exit.then(() => true, () => true),
+				exit.then(
+					() => true,
+					() => true,
+				),
 				Promise.resolve(false),
 			])
 		: false;
-	if (alreadyExited)
-		return;
+	if (alreadyExited) return;
 	signalChild(child, 'SIGTERM');
 	const stopped = exit
 		? await Promise.race([
-				exit.then(() => true, () => true),
-				new Promise(resolve => setTimeout(resolve, 2_000, false)),
+				exit.then(
+					() => true,
+					() => true,
+				),
+				new Promise((resolve) => setTimeout(resolve, 2_000, false)),
 			])
 		: false;
-	if (!stopped)
-		signalChild(child, 'SIGKILL');
+	if (!stopped) signalChild(child, 'SIGKILL');
 	if (!stopped && exit) {
 		const killed = await Promise.race([
-			exit.then(() => true, () => true),
-			new Promise(resolve => setTimeout(resolve, 2_000, false)),
+			exit.then(
+				() => true,
+				() => true,
+			),
+			new Promise((resolve) => setTimeout(resolve, 2_000, false)),
 		]);
 		if (!killed) {
 			throw new WorkerSmokeFailure('cleanup', 'child-exit-timeout', {
@@ -500,8 +524,7 @@ function signalChild(child, signal) {
 		try {
 			process.kill(-child.pid, signal);
 			return;
-		}
-		catch {
+		} catch {
 			// A child that left between the check and signal needs no fallback;
 			// child.kill is harmless there and also covers non-POSIX platforms.
 		}
@@ -515,8 +538,7 @@ class BoundedLogTail {
 	append(chunk) {
 		this.#lines.push(...String(chunk).split(/\r?\n/u).filter(Boolean));
 		this.#lines = this.#lines.slice(-40);
-		while (this.text().length > 6_000)
-			this.#lines.shift();
+		while (this.text().length > 6_000) this.#lines.shift();
 	}
 
 	text() {
@@ -525,8 +547,8 @@ class BoundedLogTail {
 }
 
 function captureChildOutput(child, tail) {
-	child.stdout?.on('data', chunk => tail.append(chunk));
-	child.stderr?.on('data', chunk => tail.append(chunk));
+	child.stdout?.on('data', (chunk) => tail.append(chunk));
+	child.stderr?.on('data', (chunk) => tail.append(chunk));
 }
 
 async function runProductProbes({ origin, fetchRequest, generated, sensitiveValues, signal }) {
@@ -549,11 +571,14 @@ async function runProductProbes({ origin, fetchRequest, generated, sensitiveValu
 		path: '/api/bootstrap/ensure-admin',
 		fetchRequest,
 		signal,
-		init: jsonRequest({
-			email: operatorEmail,
-			password: operatorPassword,
-			name: 'Built Worker smoke operator',
-		}, { 'x-admin-bootstrap-token': generated.entries.NUXT_ADMIN_BOOTSTRAP_TOKEN }),
+		init: jsonRequest(
+			{
+				email: operatorEmail,
+				password: operatorPassword,
+				name: 'Built Worker smoke operator',
+			},
+			{ 'x-admin-bootstrap-token': generated.entries.NUXT_ADMIN_BOOTSTRAP_TOKEN },
+		),
 	});
 
 	const signInBody = { email: operatorEmail, password: operatorPassword };
@@ -607,11 +632,14 @@ async function runProductProbes({ origin, fetchRequest, generated, sensitiveValu
 		path: '/api/events',
 		fetchRequest,
 		signal,
-		init: jsonRequest({
-			name: 'Built Worker smoke Event',
-			game: 'mtg',
-			featureMatchOrientation: 'horizontal',
-		}, { cookie }),
+		init: jsonRequest(
+			{
+				name: 'Built Worker smoke Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
+			{ cookie },
+		),
 	});
 	if (!Number.isInteger(event?.id))
 		throwShapeFailure('event-persistence', 'numeric Event identity');
@@ -626,12 +654,15 @@ async function runProductProbes({ origin, fetchRequest, generated, sensitiveValu
 		fetchRequest,
 		signal,
 		init: {
-			...jsonRequest({
-				meleeEnabled: false,
-				meleeEventId: 'worker-smoke-event',
-				meleeClientId: 'worker-smoke-client',
-				meleeClientSecret,
-			}, { cookie }),
+			...jsonRequest(
+				{
+					meleeEnabled: false,
+					meleeEventId: 'worker-smoke-event',
+					meleeClientId: 'worker-smoke-client',
+					meleeClientSecret,
+				},
+				{ cookie },
+			),
 			method: 'PUT',
 		},
 	});
@@ -707,11 +738,12 @@ async function expectSignInRateLimit({ origin, fetchRequest, signInBody, signal 
 		...signInBody,
 		password: randomBytes(24).toString('base64url'),
 	};
-	const limitedAttempt = () => jsonRequest(wrongPassword, {
-		'origin': origin,
-		'cf-connecting-ip': limitedClient,
-		'x-forwarded-for': documentationAddress('192.0.2'),
-	});
+	const limitedAttempt = () =>
+		jsonRequest(wrongPassword, {
+			origin: origin,
+			'cf-connecting-ip': limitedClient,
+			'x-forwarded-for': documentationAddress('192.0.2'),
+		});
 
 	for (let attempt = 0; attempt < SIGN_IN_ADMITTED_PER_WINDOW; attempt++) {
 		await expectStatus({
@@ -743,13 +775,13 @@ async function expectSignInRateLimit({ origin, fetchRequest, signInBody, signal 
 		path: '/api/auth/sign-in/email',
 		fetchRequest,
 		signal,
-		init: jsonRequest(signInBody, { 'origin': origin, 'cf-connecting-ip': independentClient }),
+		init: jsonRequest(signInBody, { origin: origin, 'cf-connecting-ip': independentClient }),
 	});
 }
 
 /** A random host in one of RFC 5737's documentation networks, given as its first three octets. */
 function documentationAddress(network) {
-	return `${network}.${1 + randomBytes(1)[0] % 254}`;
+	return `${network}.${1 + (randomBytes(1)[0] % 254)}`;
 }
 
 /**
@@ -764,10 +796,8 @@ async function expectDeployVerifyPasses({ origin, fetchRequest, signal }) {
 			attempts: 1,
 			signal,
 		});
-	}
-	catch (error) {
-		if (!(error instanceof DeployVerifyFailure))
-			throw error;
+	} catch (error) {
+		if (!(error instanceof DeployVerifyFailure)) throw error;
 		throw new WorkerSmokeFailure('deploy-verify', 'probe-rejected', {
 			expected: 'GET /api/time accepted by scripts/deploy-verify.mjs',
 			actual: redactSmokeText(error.message),
@@ -814,10 +844,10 @@ async function expectLiveResultsTickOnlyOnCron({ origin, cookie, fetchRequest, s
 	// `/__scheduled` answers once the handler returns; the tick runs on in its
 	// `waitUntil`, so the check is awaited rather than read once.
 	const deadline = Date.now() + LIVE_RESULTS_TICK_TIMEOUT_MS;
-	while (await lastCheckedAt('live-results-after-cron') === null) {
+	while ((await lastCheckedAt('live-results-after-cron')) === null) {
 		if (Date.now() > deadline)
 			throwShapeFailure('live-results-after-cron', 'a Live Results tick on the minute cron');
-		await abortable(new Promise(resolve => setTimeout(resolve, 100)), signal);
+		await abortable(new Promise((resolve) => setTimeout(resolve, 100)), signal);
 	}
 }
 
@@ -833,10 +863,8 @@ async function expectStatus({ probe, expected, origin, path, fetchRequest, signa
 	let response;
 	try {
 		response = await fetchRequest(`${origin}${path}`, { redirect: 'manual', ...init, signal });
-	}
-	catch {
-		if (signal?.aborted)
-			throw signal.reason;
+	} catch {
+		if (signal?.aborted) throw signal.reason;
 		throw new WorkerSmokeFailure(probe, 'request-failed', {
 			expected: `status ${expected}`,
 			actual: 'request failed',
@@ -859,8 +887,7 @@ async function expectJson(options) {
 async function responseJson(response, probe) {
 	try {
 		return await response.json();
-	}
-	catch {
+	} catch {
 		throw new WorkerSmokeFailure(probe, 'invalid-json', {
 			expected: 'JSON response',
 			actual: 'unparseable body',
@@ -871,9 +898,7 @@ async function responseJson(response, probe) {
 function setCookieHeaders(response) {
 	return typeof response.headers.getSetCookie === 'function'
 		? response.headers.getSetCookie()
-		: [
-				response.headers.get('set-cookie'),
-			].filter(Boolean);
+		: [response.headers.get('set-cookie')].filter(Boolean);
 }
 
 const SESSION_TOKEN_COOKIE = /^(?:__Secure-)?better-auth\.session_token$/u;
@@ -891,7 +916,7 @@ const SESSION_TOKEN_COOKIE = /^(?:__Secure-)?better-auth\.session_token$/u;
  */
 function assertSessionCookieAttributes(response) {
 	const session = setCookieHeaders(response)
-		.map(header => header.split(';').map(part => part.trim()))
+		.map((header) => header.split(';').map((part) => part.trim()))
 		.find(([pair]) => SESSION_TOKEN_COOKIE.test(pair.split('=', 1)[0]));
 	if (!session) {
 		throw new WorkerSmokeFailure('auth-sign-in', 'session-cookie-missing', {
@@ -900,7 +925,7 @@ function assertSessionCookieAttributes(response) {
 		});
 	}
 	const [pair, ...attributes] = session;
-	const attributeNames = attributes.map(attribute => attribute.toLowerCase());
+	const attributeNames = attributes.map((attribute) => attribute.toLowerCase());
 	const problems = [
 		!pair.startsWith('__Secure-') && 'name not __Secure- prefixed',
 		!attributeNames.includes('secure') && 'Secure missing',
@@ -918,8 +943,8 @@ function assertSessionCookieAttributes(response) {
 
 function sessionCookie(response) {
 	return setCookieHeaders(response)
-		.map(value => value.split(';', 1)[0])
-		.filter(value => value.includes('='))
+		.map((value) => value.split(';', 1)[0])
+		.filter((value) => value.includes('='))
 		.join('; ');
 }
 
@@ -931,8 +956,7 @@ function throwShapeFailure(probe, expected) {
 }
 
 function assertMeleeRedaction(value, secret, probe) {
-	if (value?.meleeConfigured !== true)
-		throwShapeFailure(probe, 'persisted Melee configuration');
+	if (value?.meleeConfigured !== true) throwShapeFailure(probe, 'persisted Melee configuration');
 	if (Object.hasOwn(value, 'meleeClientSecret') || JSON.stringify(value).includes(secret)) {
 		throw new WorkerSmokeFailure(probe, 'secret-exposed', {
 			expected: 'redacted client secret',
@@ -941,7 +965,17 @@ function assertMeleeRedaction(value, secret, probe) {
 	}
 }
 
-async function publishStillImage({ format, bytes, mime, fileName, eventId, origin, cookie, fetchRequest, signal }) {
+async function publishStillImage({
+	format,
+	bytes,
+	mime,
+	fileName,
+	eventId,
+	origin,
+	cookie,
+	fetchRequest,
+	signal,
+}) {
 	const digest = createHash('sha256').update(bytes).digest('hex');
 	// Digests identify retained content and are deliberately withheld from failure output.
 	const operation = await expectJson({
@@ -951,22 +985,25 @@ async function publishStillImage({ format, bytes, mime, fileName, eventId, origi
 		path: '/api/graphics-assets/ingestion-operations',
 		fetchRequest,
 		signal,
-		init: jsonRequest({
-			source: 'local-upload',
-			idempotencyKey: `worker-smoke-${format}-${randomUUID()}`,
-			name: `Built Worker smoke ${format}`,
-			sourceFileName: fileName,
-			declaredMime: mime,
-			browserDecodeEvidence: {
-				outcome: 'decoded',
-				sourceDigest: digest,
-				width: 1,
-				height: 1,
+		init: jsonRequest(
+			{
+				source: 'local-upload',
+				idempotencyKey: `worker-smoke-${format}-${randomUUID()}`,
+				name: `Built Worker smoke ${format}`,
+				sourceFileName: fileName,
+				declaredMime: mime,
+				browserDecodeEvidence: {
+					outcome: 'decoded',
+					sourceDigest: digest,
+					width: 1,
+					height: 1,
+				},
+				declaredByteLength: bytes.byteLength,
+				defaultEventId: eventId,
+				duplicateContentPolicy: 'create-separate',
 			},
-			declaredByteLength: bytes.byteLength,
-			defaultEventId: eventId,
-			duplicateContentPolicy: 'create-separate',
-		}, { cookie }),
+			{ cookie },
+		),
 	});
 	if (typeof operation?.id !== 'string')
 		throwShapeFailure(`${format}-ingestion-initiation`, 'Graphics Ingestion Operation identity');
@@ -983,18 +1020,31 @@ async function publishStillImage({ format, bytes, mime, fileName, eventId, origi
 			body: bytes,
 		},
 	});
-	if (completed?.stage !== 'completed'
-		|| completed?.report?.outcome !== 'accepted'
-		|| completed?.report?.facts?.canonicalMime !== mime
-		|| completed?.result?.outcome !== 'published'
-		|| typeof completed?.result?.assetId !== 'string'
-		|| typeof completed?.result?.revisionId !== 'string') {
-		throwShapeFailure(`${format}-ingestion-publication`, `published ${format} Graphic Asset Revision`);
+	if (
+		completed?.stage !== 'completed' ||
+		completed?.report?.outcome !== 'accepted' ||
+		completed?.report?.facts?.canonicalMime !== mime ||
+		completed?.result?.outcome !== 'published' ||
+		typeof completed?.result?.assetId !== 'string' ||
+		typeof completed?.result?.revisionId !== 'string'
+	) {
+		throwShapeFailure(
+			`${format}-ingestion-publication`,
+			`published ${format} Graphic Asset Revision`,
+		);
 	}
 	return { assetId: completed.result.assetId, revisionId: completed.result.revisionId };
 }
 
-async function verifyJpegDelivery({ assetId, revisionId, bytes, origin, cookie, fetchRequest, signal }) {
+async function verifyJpegDelivery({
+	assetId,
+	revisionId,
+	bytes,
+	origin,
+	cookie,
+	fetchRequest,
+	signal,
+}) {
 	const path = `/api/graphics-assets/${assetId}/revisions/${revisionId}/content`;
 	const complete = await expectStatus({
 		probe: 'jpeg-full-delivery',
@@ -1022,13 +1072,17 @@ async function verifyJpegDelivery({ assetId, revisionId, bytes, origin, cookie, 
 		},
 	});
 	const rangeBytes = new Uint8Array(await range.arrayBuffer());
-	if (range.headers.get('content-range') !== `bytes 1-3/${bytes.byteLength}`
-		|| !sameBytes(rangeBytes, bytes.slice(1, 4))) {
+	if (
+		range.headers.get('content-range') !== `bytes 1-3/${bytes.byteLength}` ||
+		!sameBytes(rangeBytes, bytes.slice(1, 4))
+	) {
 		throwShapeFailure('jpeg-range-delivery', 'exact bytes 1-3 with matching Content-Range');
 	}
 }
 
 function sameBytes(actual, expected) {
-	return actual.byteLength === expected.byteLength
-		&& actual.every((byte, index) => byte === expected[index]);
+	return (
+		actual.byteLength === expected.byteLength &&
+		actual.every((byte, index) => byte === expected[index])
+	);
 }

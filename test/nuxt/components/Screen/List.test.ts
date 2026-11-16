@@ -101,9 +101,14 @@ type Wrapper = Awaited<ReturnType<typeof mountList>>;
 const cards = (wrapper: Wrapper) => wrapper.findAllComponents(ScreenListItem);
 
 async function choose(card: ReturnType<typeof cards>[number], label: string) {
-	const items = card.findAllComponents({ name: 'UDropdownMenu' })
-		.flatMap(menu => (menu.props('items') as Array<Array<{ label: string; onSelect: (event: Event) => void }>>).flat());
-	items.find(item => item.label === label)!.onSelect(new Event('select'));
+	const items = card
+		.findAllComponents({ name: 'UDropdownMenu' })
+		.flatMap((menu) =>
+			(
+				menu.props('items') as Array<Array<{ label: string; onSelect: (event: Event) => void }>>
+			).flat(),
+		);
+	items.find((item) => item.label === label)!.onSelect(new Event('select'));
 	await flushPromises();
 }
 
@@ -111,72 +116,59 @@ describe('screen list', () => {
 	it('renders one card per Screen, in order, each showing its own Screen', async () => {
 		const wrapper = await mountList();
 
-		expect(cards(wrapper).map(card => card.get('h4').text())).toEqual(['Stage Left', 'Stage Right', 'Feature Table']);
-		expect(cards(wrapper).map(card => card.text())).toEqual([
+		expect(cards(wrapper).map((card) => card.get('h4').text())).toEqual([
+			'Stage Left',
+			'Stage Right',
+			'Feature Table',
+		]);
+		expect(cards(wrapper).map((card) => card.text())).toEqual([
 			expect.stringContaining('background'),
 			expect.stringContaining('standings'),
 			expect.stringContaining('card'),
 		]);
 	});
 
-	it('addresses every card under the list\'s Event', async () => {
+	it("addresses every card under the list's Event", async () => {
 		const wrapper = await mountList({ eventId: 2 });
 
-		expect(cards(wrapper).map(card => card.get('p').text())).toEqual(
-			screens.map(screen => `${window.location.origin}/event/2/screen/${screen.slug}`),
+		expect(cards(wrapper).map((card) => card.get('p').text())).toEqual(
+			screens.map((screen) => `${window.location.origin}/event/2/screen/${screen.slug}`),
 		);
 	});
 
 	it('gives each card its own connected count, and zero to a Screen with no entry', async () => {
 		const wrapper = await mountList();
 
-		expect(cards(wrapper).map(card => card.props('connectedCount'))).toEqual([3, 0, 9]);
+		expect(cards(wrapper).map((card) => card.props('connectedCount'))).toEqual([3, 0, 9]);
 	});
 
 	// The last Screen, so a reversed list cannot pass.
 	it('marks only the Screen being updated as busy', async () => {
 		const wrapper = await mountList({ updatingScreenId: 11 });
 
-		expect(cards(wrapper).map(card => card.find('[aria-busy="true"]').exists())).toEqual([false, false, true]);
+		expect(cards(wrapper).map((card) => card.find('[aria-busy="true"]').exists())).toEqual([
+			false,
+			false,
+			true,
+		]);
 	});
 
 	// From cards other than the first, so a relay closed over the wrong Screen shows.
 	it.each([
-		[
-			'an edit',
-			1,
-			'Edit Screen',
-			'editScreen',
-			[screens[1]],
-		],
-		[
-			'a delete',
-			2,
-			'Delete Screen',
-			'deleteScreen',
-			[screens[2]],
-		],
-		[
-			'a mode change',
-			2,
-			'Standings',
-			'setMode',
-			[screens[2], 'standings'],
-		],
-		[
-			'a command',
-			1,
-			'Identify',
-			'sendCommand',
-			[screens[1], 'identify'],
-		],
-	] as const)('reports %s against the Screen whose card asked for it', async (_, index, label, event, payload) => {
-		const wrapper = await mountList();
+		['an edit', 1, 'Edit Screen', 'editScreen', [screens[1]]],
+		['a delete', 2, 'Delete Screen', 'deleteScreen', [screens[2]]],
+		['a mode change', 2, 'Standings', 'setMode', [screens[2], 'standings']],
+		['a command', 1, 'Identify', 'sendCommand', [screens[1], 'identify']],
+	] as const)(
+		'reports %s against the Screen whose card asked for it',
+		async (_, index, label, event, payload) => {
+			const wrapper = await mountList();
 
-		await choose(cards(wrapper)[index]!, label);
+			await choose(cards(wrapper)[index]!, label);
 
-		expect(wrapper.emitted(event)).toEqual([payload]);
-	});
+			expect(wrapper.emitted(event)).toEqual([payload]);
+		},
+	);
 
 	it('keeps two cards’ commands apart', async () => {
 		const wrapper = await mountList();

@@ -33,13 +33,10 @@ async function getSideboardState(deckId: number, companionCardId: number) {
 			quantity: playerDeckCards.quantity,
 		})
 		.from(playerDeckCards)
-		.where(and(
-			eq(playerDeckCards.deckId, deckId),
-			eq(playerDeckCards.compartment, 'sideboard'),
-		));
+		.where(and(eq(playerDeckCards.deckId, deckId), eq(playerDeckCards.compartment, 'sideboard')));
 
 	const totalCards = rows.reduce((sum, row) => sum + row.quantity, 0);
-	const usesExistingSideboardSlot = rows.some(row => row.cardId === companionCardId);
+	const usesExistingSideboardSlot = rows.some((row) => row.cardId === companionCardId);
 
 	return {
 		totalCards,
@@ -51,7 +48,9 @@ async function getSideboardState(deckId: number, companionCardId: number) {
 async function validateManualCompanion(deckId: number, companionCardId: number) {
 	const sideboardState = await getSideboardState(deckId, companionCardId);
 	if (!sideboardState.usesExistingSideboardSlot && !sideboardState.hasSpareSlot) {
-		throw new DeckCompanionValidationError('Companion must already be in the sideboard or there must be an open sideboard slot.');
+		throw new DeckCompanionValidationError(
+			'Companion must already be in the sideboard or there must be an open sideboard slot.',
+		);
 	}
 
 	return sideboardState;
@@ -66,12 +65,14 @@ export function validateImportedCompanionSnapshot(
 	cardRows: ImportedDeckCardState[],
 	companionCardId: number,
 ): void {
-	const sideboardRows = cardRows.filter(row => row.compartment === 'sideboard');
+	const sideboardRows = cardRows.filter((row) => row.compartment === 'sideboard');
 	const totalCards = sideboardRows.reduce((sum, row) => sum + row.quantity, 0);
-	const usesExistingSideboardSlot = sideboardRows.some(row => row.cardId === companionCardId);
+	const usesExistingSideboardSlot = sideboardRows.some((row) => row.cardId === companionCardId);
 
 	if (!usesExistingSideboardSlot && totalCards >= MAX_MTG_SIDEBOARD_SIZE) {
-		throw new DeckCompanionValidationError('Imported companion requires an open sideboard slot or an existing sideboard copy.');
+		throw new DeckCompanionValidationError(
+			'Imported companion requires an open sideboard slot or an existing sideboard copy.',
+		);
 	}
 }
 
@@ -79,7 +80,10 @@ export function validateImportedCompanionSnapshot(
  * Manual companion choices are app-owned and take precedence over imported
  * Melee data. Returns false when an atomic imported write should be skipped.
  */
-async function shouldSyncImportedCompanion(deckId: number, companionCardId: number): Promise<boolean> {
+async function shouldSyncImportedCompanion(
+	deckId: number,
+	companionCardId: number,
+): Promise<boolean> {
 	const existing = await getCompanionRow(deckId);
 	if (existing?.source === 'manual') {
 		return false;
@@ -87,7 +91,9 @@ async function shouldSyncImportedCompanion(deckId: number, companionCardId: numb
 
 	const sideboardState = await getSideboardState(deckId, companionCardId);
 	if (!sideboardState.usesExistingSideboardSlot && !sideboardState.hasSpareSlot) {
-		throw new DeckCompanionValidationError('Imported companion requires an open sideboard slot or an existing sideboard copy.');
+		throw new DeckCompanionValidationError(
+			'Imported companion requires an open sideboard slot or an existing sideboard copy.',
+		);
 	}
 
 	return true;
@@ -110,13 +116,15 @@ async function writeCompanionRow(deckId: number, data: UpsertDeckCompanionRow) {
 }
 
 async function mapDeckCompanion(
-	row: {
-		source: 'manual' | 'melee';
-		companionCardId: number | null;
-		name: string | null;
-		scryfallId: string | null;
-		oracleId: string | null;
-	} | undefined,
+	row:
+		| {
+				source: 'manual' | 'melee';
+				companionCardId: number | null;
+				name: string | null;
+				scryfallId: string | null;
+				oracleId: string | null;
+		  }
+		| undefined,
 	deckId: number,
 ): Promise<DeckCompanion | null> {
 	if (!row?.companionCardId || !row.name) {
@@ -153,7 +161,10 @@ export function playerDeckCompanionService() {
 		return mapDeckCompanion(row, deckId);
 	};
 
-	const setManualCompanion = async (deckId: number, companionCard: DbCard): Promise<DeckCompanion> => {
+	const setManualCompanion = async (
+		deckId: number,
+		companionCard: DbCard,
+	): Promise<DeckCompanion> => {
 		await validateManualCompanion(deckId, companionCard.id);
 		await writeCompanionRow(deckId, {
 			deckId,

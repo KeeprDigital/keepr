@@ -1,6 +1,9 @@
 import type { FeatureMatchAssignment } from '~/types';
 import { describe, expect, it } from 'vitest';
-import { applySavedFeatureMatchAssignment, applyUpdatedFeatureMatchAssignment } from '~/modules/feature-match-assignment/collection';
+import {
+	applySavedFeatureMatchAssignment,
+	applyUpdatedFeatureMatchAssignment,
+} from '~/modules/feature-match-assignment/collection';
 
 function assignment(overrides: Partial<FeatureMatchAssignment> = {}): FeatureMatchAssignment {
 	return {
@@ -34,7 +37,10 @@ describe('feature Match Assignment collection', () => {
 		});
 		const saved = assignment({ id: 3, slotId: 300, matchId: 1000 });
 
-		expect(applySavedFeatureMatchAssignment([oldSlot, otherRound], saved)).toEqual([otherRound, saved]);
+		expect(applySavedFeatureMatchAssignment([oldSlot, otherRound], saved)).toEqual([
+			otherRound,
+			saved,
+		]);
 	});
 
 	it('updates by assignment id while preserving uniqueness rules', () => {
@@ -47,6 +53,8 @@ describe('feature Match Assignment collection', () => {
 			note: 'keep',
 		});
 
-		expect(applyUpdatedFeatureMatchAssignment([current, staleSameMatch], 1, updated)).toEqual([updated]);
+		expect(applyUpdatedFeatureMatchAssignment([current, staleSameMatch], 1, updated)).toEqual([
+			updated,
+		]);
 	});
 });

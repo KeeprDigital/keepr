@@ -15,10 +15,9 @@ export default defineEventHandler(async (event): Promise<OpCardSearchAnswer> => 
 	await requireOpEvent(id);
 
 	const config = bandaiKeeprConfig();
-	if (!config)
-		return { available: false };
+	if (!config) return { available: false };
 	return {
 		available: true,
-		...await searchOpCards(config, query),
+		...(await searchOpCards(config, query)),
 	};
 });

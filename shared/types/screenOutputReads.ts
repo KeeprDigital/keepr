@@ -1,9 +1,23 @@
-import type { FeatureMatchResponse, MatchResponse, PhaseResponse, PlayerResponse, RoundResponse } from '~~/shared/api';
+import type {
+	FeatureMatchResponse,
+	MatchResponse,
+	PhaseResponse,
+	PlayerResponse,
+	RoundResponse,
+} from '~~/shared/api';
 import type { TopCutBracket } from '~~/shared/modules/top-cut-bracket';
-import type { SavedCommanderDeckList, SavedFeatureMatchDeckList } from '~~/shared/types/featureMatchDeckList';
+import type {
+	SavedCommanderDeckList,
+	SavedFeatureMatchDeckList,
+} from '~~/shared/types/featureMatchDeckList';
 import type { SocialProfileProjectionValue } from '~~/shared/types/graphics';
 import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
-import type { ArchetypeBreakdownResponse, CardBreakdownEntry, CardBreakdownResponse, PlayerDeckCollectionResponse } from '~~/shared/types/metagame';
+import type {
+	ArchetypeBreakdownResponse,
+	CardBreakdownEntry,
+	CardBreakdownResponse,
+	PlayerDeckCollectionResponse,
+} from '~~/shared/types/metagame';
 import type { SavedOpPlayerDeckList } from '~~/shared/types/opDeckList';
 
 /**
@@ -13,9 +27,9 @@ import type { SavedOpPlayerDeckList } from '~~/shared/types/opDeckList';
  */
 
 /** A Metagame Screen's breakdown, in the view its configuration selects. */
-export type ScreenOutputMetagameResponse
-	= | { viewMode: 'archetype'; breakdown: ArchetypeBreakdownResponse }
-		| { viewMode: 'cards'; breakdown: CardBreakdownResponse };
+export type ScreenOutputMetagameResponse =
+	| { viewMode: 'archetype'; breakdown: ArchetypeBreakdownResponse }
+	| { viewMode: 'cards'; breakdown: CardBreakdownResponse };
 
 /** One pilot of the spotlit Archetype: a Player in the scope, with their standing. */
 export interface ScreenOutputArchetypePilot {
@@ -183,10 +197,16 @@ export interface ScreenOutputFeatureMatchResponse {
 }
 
 /** A Feature Match Deck List of the Slot a Deck List Screen shows a side of: its cards, not its paste or warnings. */
-export type ScreenOutputFeatureMatchDeckListResponse = Pick<SavedFeatureMatchDeckList, 'id' | 'slotId' | 'entries' | 'leaderNumber' | 'mainboardCount'>;
+export type ScreenOutputFeatureMatchDeckListResponse = Pick<
+	SavedFeatureMatchDeckList,
+	'id' | 'slotId' | 'entries' | 'leaderNumber' | 'mainboardCount'
+>;
 
 /** A Commander Seat's Feature Match Deck List of the Slot a Deck List Screen shows a Seat of: its cards, not its paste (ADR-0087). */
-export type ScreenOutputCommanderDeckListResponse = Pick<SavedCommanderDeckList, 'id' | 'slotId' | 'entries'>;
+export type ScreenOutputCommanderDeckListResponse = Pick<
+	SavedCommanderDeckList,
+	'id' | 'slotId' | 'entries'
+>;
 
 /** A Player the Screen renders, with their decks as the operator's decks read answers them. */
 export interface ScreenOutputPlayerDecksResponse {
@@ -201,7 +221,10 @@ export interface ScreenOutputPlayerDecksResponse {
  */
 export interface ScreenOutputOpPlayerDeckListResponse {
 	player: PlayerResponse;
-	deckList: Pick<SavedOpPlayerDeckList, 'id' | 'playerId' | 'entries' | 'leaderNumber' | 'mainboardCount'> | null;
+	deckList: Pick<
+		SavedOpPlayerDeckList,
+		'id' | 'playerId' | 'entries' | 'leaderNumber' | 'mainboardCount'
+	> | null;
 }
 
 /** One Talent as a Talent Screen shows them (#782). */

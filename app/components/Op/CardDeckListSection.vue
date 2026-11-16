@@ -6,24 +6,27 @@ import type { OpDeckListEntry } from '~~/shared/types/opDeckList';
  * `MtgCardDeckListSection` is for Magic. Choosing a card previews it on Card
  * Spotlight; an Unresolved Deck Card shows its number and cannot be chosen.
  */
-const props = withDefaults(defineProps<{
-	title: string;
-	entries: OpDeckListEntry[];
-	filter: string;
-	defaultOpen?: boolean;
-}>(), {
-	defaultOpen: true,
-});
+const props = withDefaults(
+	defineProps<{
+		title: string;
+		entries: OpDeckListEntry[];
+		filter: string;
+		defaultOpen?: boolean;
+	}>(),
+	{
+		defaultOpen: true,
+	},
+);
 
 const cardStore = useCardStore();
 
 const filteredEntries = computed(() => {
 	const search = props.filter.trim().toLowerCase();
-	if (!search)
-		return props.entries;
-	return props.entries.filter(entry =>
-		entry.number.toLowerCase().includes(search)
-		|| entry.card?.name.toLowerCase().includes(search),
+	if (!search) return props.entries;
+	return props.entries.filter(
+		(entry) =>
+			entry.number.toLowerCase().includes(search) ||
+			entry.card?.name.toLowerCase().includes(search),
 	);
 });
 
@@ -34,27 +37,22 @@ function countOf(entries: OpDeckListEntry[]) {
 const countLabel = computed(() => {
 	const total = countOf(props.entries);
 	const filtered = countOf(filteredEntries.value);
-	return props.filter.trim() && filtered !== total
-		? `${filtered}/${total}`
-		: String(total);
+	return props.filter.trim() && filtered !== total ? `${filtered}/${total}` : String(total);
 });
 
-const resolvedEntries = computed(() => filteredEntries.value.flatMap(entry => entry.card
-	? [
-			{ ...entry, card: entry.card },
-		]
-	: []));
+const resolvedEntries = computed(() =>
+	filteredEntries.value.flatMap((entry) => (entry.card ? [{ ...entry, card: entry.card }] : [])),
+);
 
-const unresolvedEntries = computed(() => filteredEntries.value.filter(entry => entry.card == null));
+const unresolvedEntries = computed(() =>
+	filteredEntries.value.filter((entry) => entry.card == null),
+);
 </script>
 
 <template>
 	<UCollapsible :default-open="defaultOpen" class="border-b border-default last:border-b-0">
 		<template #default="{ open }">
-			<button
-				type="button"
-				class="flex w-full items-center justify-between gap-3 py-3 text-left"
-			>
+			<button type="button" class="flex w-full items-center justify-between gap-3 py-3 text-left">
 				<div class="flex min-w-0 items-center gap-2">
 					<h3 class="text-base font-semibold">
 						{{ title }}
@@ -86,9 +84,7 @@ const unresolvedEntries = computed(() => filteredEntries.value.filter(entry => e
 								selectable
 								@selected="cardStore.selectOpCard({ number: entry.number })"
 							/>
-							<div class="card-quantity">
-								{{ entry.quantity }}x
-							</div>
+							<div class="card-quantity">{{ entry.quantity }}x</div>
 						</div>
 					</div>
 				</div>
@@ -97,7 +93,11 @@ const unresolvedEntries = computed(() => filteredEntries.value.filter(entry => e
 					No cards match this filter.
 				</p>
 
-				<div v-if="unresolvedEntries.length" class="unresolved-grid" :class="{ 'mt-4': resolvedEntries.length }">
+				<div
+					v-if="unresolvedEntries.length"
+					class="unresolved-grid"
+					:class="{ 'mt-4': resolvedEntries.length }"
+				>
 					<div
 						v-for="entry in unresolvedEntries"
 						:key="entry.number"

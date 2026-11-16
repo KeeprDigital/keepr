@@ -55,24 +55,18 @@ describe('graphics Authoring Leases', () => {
 		options: { method?: string; body?: unknown; cookie?: string } = {},
 	): Promise<{ status: number; data: any }> {
 		const headers: Record<string, string> = {};
-		if (options.cookie)
-			headers.cookie = options.cookie;
-		if (options.body !== undefined)
-			headers['content-type'] = 'application/json';
+		if (options.cookie) headers.cookie = options.cookie;
+		if (options.body !== undefined) headers['content-type'] = 'application/json';
 
 		const response = await fetch(path, {
 			method: options.method ?? 'GET',
 			headers,
-			body: options.body === undefined
-				? undefined
-				: JSON.stringify(options.body),
+			body: options.body === undefined ? undefined : JSON.stringify(options.body),
 		});
 		const text = await response.text();
 		return {
 			status: response.status,
-			data: text
-				? JSON.parse(text)
-				: null,
+			data: text ? JSON.parse(text) : null,
 		};
 	}
 
@@ -80,7 +74,10 @@ describe('graphics Authoring Leases', () => {
 		cookie: string,
 		body: { takeover?: boolean; heartbeatIntervalMs?: number } = {},
 	): Promise<{ status: number; data: LeaseResponse }> {
-		return await request(leasePath(), { method: 'POST', body, cookie }) as { status: number; data: LeaseResponse };
+		return (await request(leasePath(), { method: 'POST', body, cookie })) as {
+			status: number;
+			data: LeaseResponse;
+		};
 	}
 
 	async function patchStack(cookie: string, graphics: BroadcastGraphicConfig[]) {
@@ -155,8 +152,7 @@ describe('graphics Authoring Leases', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('grants one session the exclusive lease on a Screen graphics Edit workspace', async () => {
@@ -214,20 +210,16 @@ describe('graphics Authoring Leases', () => {
 		expect(JSON.stringify(asked.data.lease)).not.toContain(browserA.split('=')[1]!.slice(0, 12));
 	});
 
-	it('accepts the holder\'s authoring write and refuses an observer\'s', async () => {
+	it("accepts the holder's authoring write and refuses an observer's", async () => {
 		await askForLease(browserA);
 
-		const accepted = await patchStack(browserA, [
-			graphic('holder-stack'),
-		]);
+		const accepted = await patchStack(browserA, [graphic('holder-stack')]);
 		expect(accepted.status).toBe(200);
 
-		const refused = await patchStack(browserB, [
-			graphic('observer-stack'),
-		]);
+		const refused = await patchStack(browserB, [graphic('observer-stack')]);
 		expect(refused.status).toBe(409);
 
-		expect((await authoredStack()).map(entry => entry.id)).toEqual(['holder-stack']);
+		expect((await authoredStack()).map((entry) => entry.id)).toEqual(['holder-stack']);
 	});
 
 	it('never restricts a live command session while the Edit workspace is leased', async () => {
@@ -264,26 +256,22 @@ describe('graphics Authoring Leases', () => {
 		});
 	}
 
-	it('refuses an observer\'s stack edit through the generic Screen write', async () => {
+	it("refuses an observer's stack edit through the generic Screen write", async () => {
 		await askForLease(browserA);
-		await patchStack(browserA, [
-			graphic('holder-stack'),
-		]);
+		await patchStack(browserA, [graphic('holder-stack')]);
 		const before = await currentScreen();
 
 		const refused = await patchScreen(browserB, {
 			modeConfigs: {
 				...before.modeConfigs,
 				'broadcast-graphics': {
-					graphics: [
-						graphic('observer-stack'),
-					],
+					graphics: [graphic('observer-stack')],
 				},
 			},
 		});
 
 		expect(refused.status).toBe(409);
-		expect((await authoredStack()).map(entry => entry.id)).toEqual(['holder-stack']);
+		expect((await authoredStack()).map((entry) => entry.id)).toEqual(['holder-stack']);
 		expect((await currentScreen()).stateVersion).toBe(before.stateVersion);
 	});
 
@@ -301,12 +289,8 @@ describe('graphics Authoring Leases', () => {
 		expect(displaced.data.outcome).toBe('observe');
 		expect(displaced.data.lease.writable).toBe(false);
 
-		expect((await patchStack(browserA, [
-			graphic('stale-author'),
-		])).status).toBe(409);
-		expect((await patchStack(browserB, [
-			graphic('new-author'),
-		])).status).toBe(200);
+		expect((await patchStack(browserA, [graphic('stale-author')])).status).toBe(409);
+		expect((await patchStack(browserB, [graphic('new-author')])).status).toBe(200);
 	});
 
 	it('ignores a release from a session that does not hold the lease', async () => {

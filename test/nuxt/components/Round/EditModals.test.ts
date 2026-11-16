@@ -44,7 +44,7 @@ function mountModal(component: Component, props: Record<string, unknown>) {
 }
 
 function saveButton(wrapper: ReturnType<typeof mountModal>) {
-	return wrapper.findAll('button').find(button => button.text() === 'Save')!;
+	return wrapper.findAll('button').find((button) => button.text() === 'Save')!;
 }
 
 describe('round edit modals', () => {
@@ -66,7 +66,10 @@ describe('round edit modals', () => {
 		await saveButton(wrapper).trigger('click');
 		await flushPromises();
 
-		expect(mockRoundStore.updateRound).toHaveBeenCalledWith(1, 10, { name: 'Round 2', roundNumber: 2 });
+		expect(mockRoundStore.updateRound).toHaveBeenCalledWith(1, 10, {
+			name: 'Round 2',
+			roundNumber: 2,
+		});
 		expect(wrapper.emitted('close')).toEqual([[]]);
 	});
 
@@ -98,7 +101,10 @@ describe('round edit modals', () => {
 		[
 			'a cleared start',
 			async (wrapper: ReturnType<typeof mountModal>) => {
-				await wrapper.findAll('button').find(button => button.text() === 'Clear')!.trigger('click');
+				await wrapper
+					.findAll('button')
+					.find((button) => button.text() === 'Clear')!
+					.trigger('click');
 			},
 			{ startedAt: null },
 		],
@@ -116,23 +122,17 @@ describe('round edit modals', () => {
 		await saveButton(wrapper).trigger('click');
 		await flushPromises();
 
-		expect(mockRoundStore.updateRound).toHaveBeenCalledWith(1, 10, { name: 'Round 1', roundNumber: 1, ...sent });
+		expect(mockRoundStore.updateRound).toHaveBeenCalledWith(1, 10, {
+			name: 'Round 1',
+			roundNumber: 1,
+			...sent,
+		});
 	});
 
 	// An unreadable start is refused rather than saved as a cleared one.
 	it.each([
-		[
-			'a duration past its bound',
-			'input[type="number"]',
-			1,
-			'601',
-		],
-		[
-			'a start that names no instant',
-			'input[type="datetime-local"]',
-			0,
-			'soon',
-		],
+		['a duration past its bound', 'input[type="number"]', 1, '601'],
+		['a start that names no instant', 'input[type="datetime-local"]', 0, 'soon'],
 	] as const)('refuses %s', async (_, selector, index, value) => {
 		const wrapper = mountModal(RoundEditModal, { roundId: 10 });
 

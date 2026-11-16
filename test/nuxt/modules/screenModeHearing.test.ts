@@ -21,7 +21,15 @@ const scopes: EffectScope[] = [];
 
 function harness<M extends ScreenMode>(
 	mode: M,
-	{ live, config = {}, follows }: { live: boolean; config?: Partial<ModeConfigTypeMap[M]>; follows?: Parameters<typeof useScreenModeHearing>[3] },
+	{
+		live,
+		config = {},
+		follows,
+	}: {
+		live: boolean;
+		config?: Partial<ModeConfigTypeMap[M]>;
+		follows?: Parameters<typeof useScreenModeHearing>[3];
+	},
 ) {
 	const realtime = createFakeEventChannel();
 	const context = screenContextOf({
@@ -36,24 +44,26 @@ function harness<M extends ScreenMode>(
 	const read = vi.fn(async (): Promise<string> => `read ${read.mock.calls.length}`);
 	const scope = effectScope();
 	scopes.push(scope);
-	const freshness = scope.run(() => useScreenModeFreshness<string>({
-		hearing: useScreenModeHearing(context, mode, () => resolved, follows),
-		source: () => 'selected',
-		read,
-		initialData: 'none',
-		errorMessage: 'Failed to read',
-		realtime: realtime.transport as unknown as ScreenModeFreshnessTransport,
-	}))!;
+	const freshness = scope.run(() =>
+		useScreenModeFreshness<string>({
+			hearing: useScreenModeHearing(context, mode, () => resolved, follows),
+			source: () => 'selected',
+			read,
+			initialData: 'none',
+			errorMessage: 'Failed to read',
+			realtime: realtime.transport as unknown as ScreenModeFreshnessTransport,
+		}),
+	)!;
 	return { ...realtime, read, freshness };
 }
 
-describe('a Screen Mode\'s read hearing by the shared rule', () => {
+describe("a Screen Mode's read hearing by the shared rule", () => {
 	beforeEach(() => {
 		vi.spyOn(console, 'error').mockImplementation(() => {});
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
 	describe('on a live rendering', () => {
@@ -90,24 +100,27 @@ describe('a Screen Mode\'s read hearing by the shared rule', () => {
 				causes: ['a kind this build does not know'],
 				reads: 2,
 			},
-		] as const)('a $mode Screen told of $causes has read $reads times', async ({ mode, causes, reads }) => {
-			const { read, deliverToScreen } = harness(mode, { live: true });
-			await flushPromises();
+		] as const)(
+			'a $mode Screen told of $causes has read $reads times',
+			async ({ mode, causes, reads }) => {
+				const { read, deliverToScreen } = harness(mode, { live: true });
+				await flushPromises();
 
-			deliverToScreen(SCREEN_ID, 'output:modeDataChanged', { screenId: SCREEN_ID, causes });
-			await flushPromises();
+				deliverToScreen(SCREEN_ID, 'output:modeDataChanged', { screenId: SCREEN_ID, causes });
+				await flushPromises();
 
-			expect(read).toHaveBeenCalledTimes(reads);
-		});
+				expect(read).toHaveBeenCalledTimes(reads);
+			},
+		);
 
-		it('listens on its Screen\'s channel and on no Event channel', async () => {
+		it("listens on its Screen's channel and on no Event channel", async () => {
 			const { listenedChannels } = harness('standings', { live: true });
 			await flushPromises();
 
 			expect(listenedChannels()).toEqual([`screen:1:${SCREEN_ID}`]);
 		});
 
-		it('hears nothing of its Event\'s messages', async () => {
+		it("hears nothing of its Event's messages", async () => {
 			const { read, deliver } = harness('standings', { live: true });
 			await flushPromises();
 
@@ -148,7 +161,7 @@ describe('a Screen Mode\'s read hearing by the shared rule', () => {
 			expect(freshness.data.value).toBe('read 3');
 		});
 
-		it('re-reads once its Screen\'s channel is attached again having lost continuity', async () => {
+		it("re-reads once its Screen's channel is attached again having lost continuity", async () => {
 			const { read, reattachScreen, reattach } = harness('standings', { live: true });
 			await flushPromises();
 
@@ -161,7 +174,7 @@ describe('a Screen Mode\'s read hearing by the shared rule', () => {
 			expect(read).toHaveBeenCalledTimes(2);
 		});
 
-		it('re-reads once its Screen\'s channel first attaches', async () => {
+		it("re-reads once its Screen's channel first attaches", async () => {
 			const { read, attachScreen } = harness('standings', { live: true });
 			await flushPromises();
 
@@ -171,7 +184,7 @@ describe('a Screen Mode\'s read hearing by the shared rule', () => {
 			expect(read).toHaveBeenCalledTimes(2);
 		});
 
-		it('hears no cause when its read answers none of the mode\'s kinds', async () => {
+		it("hears no cause when its read answers none of the mode's kinds", async () => {
 			const { read, deliverToScreen } = harness('deck', {
 				live: true,
 				follows: { follows: [] },
@@ -251,24 +264,27 @@ describe('a Screen Mode\'s read hearing by the shared rule', () => {
 				},
 				reads: 1,
 			},
-		] as const)('a $mode preview hearing $type has read $reads times', async ({ mode, config, type, payload, reads }) => {
-			const { read, deliver } = harness(mode, { live: false, config: config as never });
-			await flushPromises();
+		] as const)(
+			'a $mode preview hearing $type has read $reads times',
+			async ({ mode, config, type, payload, reads }) => {
+				const { read, deliver } = harness(mode, { live: false, config: config as never });
+				await flushPromises();
 
-			deliver(type, payload);
-			await flushPromises();
+				deliver(type, payload);
+				await flushPromises();
 
-			expect(read).toHaveBeenCalledTimes(reads);
-		});
+				expect(read).toHaveBeenCalledTimes(reads);
+			},
+		);
 
-		it('listens on its Event\'s channel and on no Screen channel', async () => {
+		it("listens on its Event's channel and on no Screen channel", async () => {
 			const { listenedChannels } = harness('standings', { live: false });
 			await flushPromises();
 
 			expect(listenedChannels()).toEqual(['event:1']);
 		});
 
-		it('hears nothing of a Screen channel\'s notices', async () => {
+		it("hears nothing of a Screen channel's notices", async () => {
 			const { read, deliverToScreen } = harness('standings', { live: false });
 			await flushPromises();
 

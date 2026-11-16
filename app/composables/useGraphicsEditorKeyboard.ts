@@ -43,7 +43,7 @@ export function useGraphicsEditorKeyboard<D, L extends GraphicsEditorLayer>(
 			return;
 		}
 		toast.add({
-			title: 'Can\'t group these layers',
+			title: "Can't group these layers",
 			description: LAYER_GROUP_REFUSAL_REASONS[refusal],
 			color: 'warning',
 		});
@@ -52,20 +52,17 @@ export function useGraphicsEditorKeyboard<D, L extends GraphicsEditorLayer>(
 	async function pasteLayers() {
 		const copied = await clipboard.layersToPaste();
 		const refusal = copied && editor.paste(copied);
-		if (refusal)
-			clipboard.refuse(refusal);
+		if (refusal) clipboard.refuse(refusal);
 	}
 
 	async function pasteStyle() {
 		const copied = await clipboard.styleToPaste();
 		const refusal = copied && editor.pasteStyle(copied);
-		if (refusal)
-			clipboard.refuse(refusal);
+		if (refusal) clipboard.refuse(refusal);
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.defaultPrevented || isTypingTarget(event.target) || options.suspended?.())
-			return;
+		if (event.defaultPrevented || isTypingTarget(event.target) || options.suspended?.()) return;
 
 		const mod = event.metaKey || event.ctrlKey;
 		const key = event.key.toLowerCase();
@@ -77,71 +74,49 @@ export function useGraphicsEditorKeyboard<D, L extends GraphicsEditorLayer>(
 			const copied = event.altKey
 				? clipboard.copyStyle(editor.copyStyle())
 				: clipboard.copyLayers(editor.copy());
-			if (copied)
-				event.preventDefault();
+			if (copied) event.preventDefault();
 			return;
 		}
 
-		if (!editor.writable.value && event.key !== 'Escape')
-			return;
+		if (!editor.writable.value && event.key !== 'Escape') return;
 
 		if (mod && key === 'z' && !event.shiftKey) {
 			editor.undo();
-		}
-		else if (mod && ((key === 'z' && event.shiftKey) || key === 'y')) {
+		} else if (mod && ((key === 'z' && event.shiftKey) || key === 'y')) {
 			editor.redo();
-		}
-		else if (mod && key === 'd') {
+		} else if (mod && key === 'd') {
 			editor.duplicate();
-		}
-		else if (mod && !event.shiftKey && event.code === 'KeyV') {
-			void (event.altKey
-				? pasteStyle()
-				: pasteLayers());
-		}
-		else if (mod && (event.code === 'BracketRight' || event.code === 'BracketLeft')) {
+		} else if (mod && !event.shiftKey && event.code === 'KeyV') {
+			void (event.altKey ? pasteStyle() : pasteLayers());
+		} else if (mod && (event.code === 'BracketRight' || event.code === 'BracketLeft')) {
 			const forward = event.code === 'BracketRight';
 			if (event.shiftKey) {
 				editor.moveToEdge(current, forward ? 'front' : 'back');
+			} else {
+				editor.move(current, forward ? 1 : -1);
 			}
-			else {
-				editor.move(current, forward
-					? 1
-					: -1);
-			}
-		}
-		else if (mod && event.shiftKey && key === 'h') {
+		} else if (mod && event.shiftKey && key === 'h') {
 			editor.toggleVisible();
-		}
-		else if (mod && event.shiftKey && key === 'g') {
+		} else if (mod && event.shiftKey && key === 'g') {
 			editor.ungroup();
-		}
-		else if (mod && key === 'g' && layers.value.length > 0) {
+		} else if (mod && key === 'g' && layers.value.length > 0) {
 			groupSelection();
-		}
-		else if (mod && event.shiftKey && key === 'l') {
+		} else if (mod && event.shiftKey && key === 'l') {
 			editor.toggleLock();
-		}
-		else if (!mod && (event.key === 'Delete' || event.key === 'Backspace')) {
+		} else if (!mod && (event.key === 'Delete' || event.key === 'Backspace')) {
 			editor.remove();
-		}
-		else if (!mod && event.key in NUDGE && layers.value.length > 0) {
+		} else if (!mod && event.key in NUDGE && layers.value.length > 0) {
 			const step = event.shiftKey ? 10 : 1;
 			const direction = NUDGE[event.key]!;
 			editor.nudge({ x: direction.x * step, y: direction.y * step });
-		}
-		else if (event.key === 'Escape' && layers.value.length > 0) {
+		} else if (event.key === 'Escape' && layers.value.length > 0) {
 			editor.collapseSelection();
-		}
-		else {
+		} else {
 			handled = false;
 		}
 
-		if (handled)
-			event.preventDefault();
+		if (handled) event.preventDefault();
 	}
 
-	useEventListener(import.meta.client
-		? window
-		: undefined, 'keydown', handleKeydown);
+	useEventListener(import.meta.client ? window : undefined, 'keydown', handleKeydown);
 }

@@ -31,8 +31,7 @@ export default defineEventHandler(async (event) => {
 	let authorization: { outcome: 'authorized' } | { outcome: 'missing' };
 	try {
 		authorization = await authorizer.authorizeCapability({ screenId, capabilityDigest });
-	}
-	catch (failure) {
+	} catch (failure) {
 		setResponseHeader(event, 'retry-after', 5);
 		// The cause is what carries this sentence past the 5xx sanitizer, and the
 		// authorizer's own failure rides along inside it: an output that cannot open a

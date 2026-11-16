@@ -11,7 +11,11 @@ describe('talents API', () => {
 	beforeAll(async () => {
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Talents Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Talents Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 	});
@@ -19,8 +23,7 @@ describe('talents API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('creates a talent and returns 201', async () => {
@@ -77,7 +80,7 @@ describe('talents API', () => {
 
 		const event = await $fetch(`/api/events/${eventId}`);
 		expect(event.commentator1TalentId).toBe(talentId);
-		expect(event.talents.find(item => item.id === talentId)).toMatchObject({
+		expect(event.talents.find((item) => item.id === talentId)).toMatchObject({
 			id: talentId,
 			name: 'John Caster Updated',
 			socialProfiles: { twitch: 'JohnStillLive' },

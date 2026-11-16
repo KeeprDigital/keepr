@@ -17,10 +17,9 @@ import { GraphicsAssetLibraryError } from '~~/server/modules/graphics-asset-libr
  * state the subject is in, and reporting it as a domain outcome would tell an
  * administrator that the library considered their request and declined it.
  */
-const LIBRARY_ERROR_OUTCOMES: Partial<Record<
-	GraphicsAssetLibraryError['code'],
-	GraphicsQueueActionOutcome
->> = {
+const LIBRARY_ERROR_OUTCOMES: Partial<
+	Record<GraphicsAssetLibraryError['code'], GraphicsQueueActionOutcome>
+> = {
 	// The subject moved on before the action arrived: purged, restored, or past
 	// the stage the action applies to.
 	'ingestion-operation-not-found': 'already-in-state',

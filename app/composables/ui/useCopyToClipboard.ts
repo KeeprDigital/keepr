@@ -48,8 +48,7 @@ async function writeToClipboard(text: string): Promise<boolean> {
 			await navigator.clipboard.writeText(text);
 			return true;
 		}
-	}
-	catch {
+	} catch {
 		// A refused Clipboard API write is the common case for a page without focus or
 		// transient activation, and the legacy write frequently succeeds where it does.
 		// Falling through is not swallowing the failure: the legacy write is observed.
@@ -64,16 +63,14 @@ async function writeToClipboard(text: string): Promise<boolean> {
 		document.body.appendChild(textarea);
 		textarea.select();
 		return document.execCommand('copy');
-	}
-	catch (error) {
+	} catch (error) {
 		// `execCommand` is long deprecated, so a browser that has removed it throws here
 		// rather than answering false. Logged because an exception on this path is a fact
 		// about the browser rather than about the copy, and reported as a failed write
 		// because from the operator's side that is exactly what it is.
 		console.error('Failed to copy to clipboard:', error);
 		return false;
-	}
-	finally {
+	} finally {
 		textarea.remove();
 	}
 }
@@ -90,7 +87,10 @@ export function useCopyToClipboard() {
 	 * copy the text by hand. One error pair covering both meant a caller that named one
 	 * necessarily mis-named the other (#257).
 	 */
-	async function copyToClipboard(value: MaybeRefOrGetter<string>, feedback: CopyToClipboardFeedback = {}) {
+	async function copyToClipboard(
+		value: MaybeRefOrGetter<string>,
+		feedback: CopyToClipboardFeedback = {},
+	) {
 		const text = toValue(value);
 
 		if (!text) {
@@ -102,10 +102,11 @@ export function useCopyToClipboard() {
 			return false;
 		}
 
-		if (!await writeToClipboard(text)) {
+		if (!(await writeToClipboard(text))) {
 			toast.add({
 				title: 'Copy failed',
-				description: 'This browser would not let the page write to the clipboard, so nothing was copied. Select the text and copy it by hand.',
+				description:
+					'This browser would not let the page write to the clipboard, so nothing was copied. Select the text and copy it by hand.',
 				color: 'error',
 			});
 			return false;

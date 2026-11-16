@@ -39,7 +39,7 @@ describe('deckArtSizes', () => {
 			art: 'small',
 		},
 		{
-			name: 'a constructed deck\'s thirty cards',
+			name: "a constructed deck's thirty cards",
 			overrides: {
 				counts: { commanders: 0, mainboard: 30, sideboard: 0 },
 			},
@@ -69,7 +69,7 @@ describe('deckArtSizes', () => {
 			art: 'small',
 		},
 		{
-			name: 'a listed board, warmed at its grid\'s size',
+			name: "a listed board, warmed at its grid's size",
 			overrides: {
 				config: {
 					mainboard: { view: 'list' },
@@ -79,7 +79,7 @@ describe('deckArtSizes', () => {
 			art: 'small',
 		},
 		{
-			name: 'a Seat\'s Commanders, beside its hundred cards',
+			name: "a Seat's Commanders, beside its hundred cards",
 			overrides: {
 				counts: { commanders: 2, mainboard: 100, sideboard: 0 },
 			},
@@ -109,10 +109,12 @@ describe('deckArtSizes', () => {
 			art: 'normal',
 		},
 	] as const)('$name: $art', ({ overrides, board, art }) => {
-		const sizes = deckArtSizes(input({
-			...overrides,
-			config: overrides.config as Partial<DeckModeConfig> | undefined ?? {},
-		}));
+		const sizes = deckArtSizes(
+			input({
+				...overrides,
+				config: (overrides.config as Partial<DeckModeConfig> | undefined) ?? {},
+			}),
+		);
 
 		expect(sizes[board]).toBe(art);
 	});
@@ -120,10 +122,12 @@ describe('deckArtSizes', () => {
 	// Small art is chosen only where the Deck's layout never solves a card wider than it.
 	it('covers the card a hundred-card Seat solves to on the whole canvas', () => {
 		const canvas = { width: 1920, height: 1080 };
-		const sizes = deckArtSizes(input({
-			counts: { commanders: 2, mainboard: 100, sideboard: 0 },
-			canvas,
-		}));
+		const sizes = deckArtSizes(
+			input({
+				counts: { commanders: 2, mainboard: 100, sideboard: 0 },
+				canvas,
+			}),
+		);
 		const layout = solveDeckLayout({
 			width: canvas.width,
 			height: canvas.height,

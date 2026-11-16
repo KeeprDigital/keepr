@@ -1,4 +1,7 @@
-import type { GraphicsAssetLibraryCapacity, GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
+import type {
+	GraphicsAssetLibraryCapacity,
+	GraphicsIngestionOperation,
+} from '~~/shared/types/graphicsAsset';
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -19,16 +22,21 @@ describe('the Graphics Asset Library Capacity API', () => {
 	beforeAll(async () => {
 		authorCookie = await operatorSessionCookie();
 	});
-	const transparentPixelPng = Uint8Array.from(Buffer.from(
-		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-		'base64',
-	));
-	const textChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xC5, 0x85);
-	const pngWithTextChunks = (count: number) => Uint8Array.from(Buffer.concat([
-		transparentPixelPng.slice(0, -12),
-		...Array.from<Uint8Array>({ length: count }).fill(textChunk),
-		transparentPixelPng.slice(-12),
-	]));
+	const transparentPixelPng = Uint8Array.from(
+		Buffer.from(
+			'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+			'base64',
+		),
+	);
+	const textChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xc5, 0x85);
+	const pngWithTextChunks = (count: number) =>
+		Uint8Array.from(
+			Buffer.concat([
+				transparentPixelPng.slice(0, -12),
+				...Array.from<Uint8Array>({ length: count }).fill(textChunk),
+				transparentPixelPng.slice(-12),
+			]),
+		);
 	const browserDecodeEvidence = (bytes: Uint8Array) => ({
 		outcome: 'decoded' as const,
 		sourceDigest: createHash('sha256').update(bytes).digest('hex'),
@@ -84,8 +92,7 @@ describe('the Graphics Asset Library Capacity API', () => {
 					headers: administratorHeaders,
 				}),
 			).resolves.toEqual(updated);
-		}
-		finally {
+		} finally {
 			await $fetch('/api/admin/graphics-assets/capacity', {
 				method: 'PUT',
 				headers: administratorHeaders,
@@ -122,15 +129,14 @@ describe('the Graphics Asset Library Capacity API', () => {
 				{ method: 'PUT', headers: authorHeaders, body: noGrowthBytes },
 			);
 			await expectResponseStatus(response, 200);
-			return await response.json() as GraphicsIngestionOperation;
+			return (await response.json()) as GraphicsIngestionOperation;
 		};
 
 		try {
 			await upload(`capacity-foundation-${crypto.randomUUID()}`);
-			const occupied = await $fetch<GraphicsAssetLibraryCapacity>(
-				'/api/graphics-assets/capacity',
-				{ headers: authorHeaders },
-			);
+			const occupied = await $fetch<GraphicsAssetLibraryCapacity>('/api/graphics-assets/capacity', {
+				headers: authorHeaders,
+			});
 			await $fetch('/api/admin/graphics-assets/capacity', {
 				method: 'PUT',
 				headers: administratorHeaders,
@@ -150,8 +156,7 @@ describe('the Graphics Asset Library Capacity API', () => {
 				},
 				result: { outcome: 'published' },
 			});
-		}
-		finally {
+		} finally {
 			await $fetch('/api/admin/graphics-assets/capacity', {
 				method: 'PUT',
 				headers: administratorHeaders,
@@ -169,26 +174,26 @@ describe('the Graphics Asset Library Capacity API', () => {
 		});
 		const authorHeaders = { cookie: await operatorSessionCookie() };
 		const initiate = async (idempotencyKey: string, bytes: Uint8Array) =>
-			await $fetch<GraphicsIngestionOperation>(
-				'/api/graphics-assets/ingestion-operations',
-				{
-					method: 'POST',
-					headers: authorHeaders,
-					body: graphicsIngestionRequest({
-						idempotencyKey,
-						name: idempotencyKey,
-						browserDecodeEvidence: browserDecodeEvidence(bytes),
-						declaredByteLength: bytes.byteLength,
-					}),
-				},
-			);
-		const upload = async (operation: GraphicsIngestionOperation, bytes: Uint8Array<ArrayBuffer>) => {
+			await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
+				method: 'POST',
+				headers: authorHeaders,
+				body: graphicsIngestionRequest({
+					idempotencyKey,
+					name: idempotencyKey,
+					browserDecodeEvidence: browserDecodeEvidence(bytes),
+					declaredByteLength: bytes.byteLength,
+				}),
+			});
+		const upload = async (
+			operation: GraphicsIngestionOperation,
+			bytes: Uint8Array<ArrayBuffer>,
+		) => {
 			const response = await fetch(
 				`/api/graphics-assets/ingestion-operations/${operation.id}/content`,
 				{ method: 'PUT', headers: authorHeaders, body: bytes },
 			);
 			await expectResponseStatus(response, 200);
-			return await response.json() as GraphicsIngestionOperation;
+			return (await response.json()) as GraphicsIngestionOperation;
 		};
 
 		try {
@@ -198,14 +203,13 @@ describe('the Graphics Asset Library Capacity API', () => {
 				foundationBytes,
 			);
 			await upload(foundation, foundationBytes);
-			const before = await $fetch<GraphicsAssetLibraryCapacity>(
-				'/api/graphics-assets/capacity',
-				{ headers: authorHeaders },
-			);
+			const before = await $fetch<GraphicsAssetLibraryCapacity>('/api/graphics-assets/capacity', {
+				headers: authorHeaders,
+			});
 			const firstBytes = pngWithTextChunks(21);
 			const secondBytes = pngWithTextChunks(22);
-			const hardLimit = before.canonical.usedBytes
-				+ Math.max(firstBytes.byteLength, secondBytes.byteLength);
+			const hardLimit =
+				before.canonical.usedBytes + Math.max(firstBytes.byteLength, secondBytes.byteLength);
 			const [first, second] = await Promise.all([
 				initiate(`capacity-concurrency-first-${crypto.randomUUID()}`, firstBytes),
 				initiate(`capacity-concurrency-second-${crypto.randomUUID()}`, secondBytes),
@@ -219,23 +223,18 @@ describe('the Graphics Asset Library Capacity API', () => {
 				},
 			});
 
-			const outcomes = await Promise.all([
-				upload(first, firstBytes),
-				upload(second, secondBytes),
-			]);
+			const outcomes = await Promise.all([upload(first, firstBytes), upload(second, secondBytes)]);
 
-			expect(outcomes.filter(outcome => outcome.stage === 'completed')).toHaveLength(1);
-			expect(outcomes.filter(
-				outcome => outcome.failure?.code === 'canonical-capacity-exhausted',
-			)).toHaveLength(1);
-			const after = await $fetch<GraphicsAssetLibraryCapacity>(
-				'/api/graphics-assets/capacity',
-				{ headers: authorHeaders },
-			);
+			expect(outcomes.filter((outcome) => outcome.stage === 'completed')).toHaveLength(1);
+			expect(
+				outcomes.filter((outcome) => outcome.failure?.code === 'canonical-capacity-exhausted'),
+			).toHaveLength(1);
+			const after = await $fetch<GraphicsAssetLibraryCapacity>('/api/graphics-assets/capacity', {
+				headers: authorHeaders,
+			});
 			expect(after.canonical.usedBytes).toBeLessThanOrEqual(hardLimit);
 			expect(after.canonical.reservedBytes).toBe(0);
-		}
-		finally {
+		} finally {
 			await $fetch('/api/admin/graphics-assets/capacity', {
 				method: 'PUT',
 				headers: administratorHeaders,

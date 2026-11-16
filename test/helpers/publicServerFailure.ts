@@ -39,8 +39,10 @@ export async function publicServerFailure(thrown: unknown): Promise<MappableNitr
  * that resolves has to fail loudly rather than leave `undefined` to be asserted against.
  */
 export async function refusalFrom(operation: Promise<unknown>): Promise<MappableNitroError> {
-	const thrown = await operation.then(() => null, (error: unknown) => error);
-	if (thrown === null)
-		throw new Error('expected the handler to reject, and it resolved');
+	const thrown = await operation.then(
+		() => null,
+		(error: unknown) => error,
+	);
+	if (thrown === null) throw new Error('expected the handler to reject, and it resolved');
 	return await publicServerFailure(thrown);
 }

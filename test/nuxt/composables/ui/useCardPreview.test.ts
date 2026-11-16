@@ -25,7 +25,8 @@ describe('useCardPreview', () => {
 	});
 
 	it('toggles pin on', () => {
-		const { activePreviewCard, isPreviewPinned, handlePreviewUpdate, togglePreviewPin } = useCardPreview();
+		const { activePreviewCard, isPreviewPinned, handlePreviewUpdate, togglePreviewPin } =
+			useCardPreview();
 		handlePreviewUpdate('card-1', true);
 		togglePreviewPin('card-1');
 		expect(isPreviewPinned.value).toBe(true);
@@ -33,7 +34,8 @@ describe('useCardPreview', () => {
 	});
 
 	it('toggles pin off on same card', () => {
-		const { activePreviewCard, isPreviewPinned, handlePreviewUpdate, togglePreviewPin } = useCardPreview();
+		const { activePreviewCard, isPreviewPinned, handlePreviewUpdate, togglePreviewPin } =
+			useCardPreview();
 		handlePreviewUpdate('card-1', true);
 		togglePreviewPin('card-1');
 		togglePreviewPin('card-1');
@@ -42,7 +44,8 @@ describe('useCardPreview', () => {
 	});
 
 	it('switches pin to different card', () => {
-		const { activePreviewCard, isPreviewPinned, handlePreviewUpdate, togglePreviewPin } = useCardPreview();
+		const { activePreviewCard, isPreviewPinned, handlePreviewUpdate, togglePreviewPin } =
+			useCardPreview();
 		handlePreviewUpdate('card-1', true);
 		togglePreviewPin('card-1');
 		togglePreviewPin('card-2');
@@ -51,7 +54,8 @@ describe('useCardPreview', () => {
 	});
 
 	it('clearPreviewPin clears pin state', () => {
-		const { activePreviewCard, isPreviewPinned, togglePreviewPin, clearPreviewPin } = useCardPreview();
+		const { activePreviewCard, isPreviewPinned, togglePreviewPin, clearPreviewPin } =
+			useCardPreview();
 		togglePreviewPin('card-1');
 		expect(isPreviewPinned.value).toBe(true);
 

@@ -23,33 +23,28 @@ export default defineEventHandler(async (event) => {
 	const { id, slotId } = await getValidatedRouterParams(event, featureMatchSlotParamsSchema.parse);
 
 	const eventData = await eventService().findById(id);
-	const slot = eventData
-		? await featureMatchService().findById(slotId, id)
-		: undefined;
+	const slot = eventData ? await featureMatchService().findById(slotId, id) : undefined;
 	if (!eventData || !slot) {
 		throw createError({ statusCode: 404, statusMessage: 'Feature Match Slot not found' });
 	}
 
-	const sourceMatch = slot.matchId
-		? await matchService().findById(slot.matchId, id)
-		: undefined;
-	const round = sourceMatch
-		? await roundService().findById(sourceMatch.roundId, id)
-		: undefined;
-	const phase = round
-		? await phaseService().findById(round.phaseId, id)
-		: undefined;
+	const sourceMatch = slot.matchId ? await matchService().findById(slot.matchId, id) : undefined;
+	const round = sourceMatch ? await roundService().findById(sourceMatch.roundId, id) : undefined;
+	const phase = round ? await phaseService().findById(round.phaseId, id) : undefined;
 
 	setResponseHeader(event, 'access-control-allow-origin', '*');
 	setResponseHeader(event, 'cache-control', 'no-store');
 
 	return [
-		featureMatchPublicRow({
-			event: eventData,
-			featureMatch: mapFeatureMatchToResponse(slot),
-			sourceMatch,
-			round,
-			phase,
-		}, Date.now()),
+		featureMatchPublicRow(
+			{
+				event: eventData,
+				featureMatch: mapFeatureMatchToResponse(slot),
+				sourceMatch,
+				round,
+				phase,
+			},
+			Date.now(),
+		),
 	];
 });

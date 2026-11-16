@@ -31,28 +31,19 @@ function mountPanel(props: Record<string, unknown> = {}) {
 	});
 }
 
-const button = (wrapper: ReturnType<typeof mountPanel>, label: string) => wrapper.findAll('button').find(candidate => candidate.text() === label);
+const button = (wrapper: ReturnType<typeof mountPanel>, label: string) =>
+	wrapper.findAll('button').find((candidate) => candidate.text() === label);
 
 describe('archetype review assignment panel', () => {
 	it.each([
-		[
-			'the accept action',
-			'Rename for all 3 decks',
-			{},
-			'accept',
-		],
+		['the accept action', 'Rename for all 3 decks', {}, 'accept'],
 		[
 			'a new Archetype for this deck, where the rename can be one instead',
 			'New archetype for this deck',
 			{ canSplit: true },
 			'createForDeck',
 		],
-		[
-			'clearing the assignment of a reviewed deck',
-			'Clear assignment',
-			{},
-			'clearAssignment',
-		],
+		['clearing the assignment of a reviewed deck', 'Clear assignment', {}, 'clearAssignment'],
 	])('offers %s', async (_case, label, props, event) => {
 		const wrapper = mountPanel(props);
 
@@ -67,11 +58,7 @@ describe('archetype review assignment panel', () => {
 			'New archetype for this deck',
 			{ canSplit: false },
 		],
-		[
-			'no clearing for a deck not yet reviewed',
-			'Clear assignment',
-			{ isEditMode: false },
-		],
+		['no clearing for a deck not yet reviewed', 'Clear assignment', { isEditMode: false }],
 	])('offers %s', (_case, label, props) => {
 		expect(button(mountPanel(props), label)).toBeUndefined();
 	});

@@ -11,19 +11,22 @@ import { ninePointPlacement } from '~~/shared/utils/ninePoints';
  * `alignment` in whatever the cards leave over, so its host can measure that
  * space.
  */
-const props = withDefaults(defineProps<{
-	columns: number;
-	/** The rows of one page. */
-	rows?: number;
-	/** The solved card width. */
-	cardWidth: string;
-	gap: string;
-	/** Where the cards sit in the space they leave over. */
-	alignment?: NinePoint;
-}>(), {
-	rows: 1,
-	alignment: 'center',
-});
+const props = withDefaults(
+	defineProps<{
+		columns: number;
+		/** The rows of one page. */
+		rows?: number;
+		/** The solved card width. */
+		cardWidth: string;
+		gap: string;
+		/** Where the cards sit in the space they leave over. */
+		alignment?: NinePoint;
+	}>(),
+	{
+		rows: 1,
+		alignment: 'center',
+	},
+);
 
 const placement = computed(() => ninePointPlacement(props.alignment));
 
@@ -39,12 +42,7 @@ const gridStyle = computed(() => ({
 </script>
 
 <template>
-	<div
-		class="card-grid-space"
-		:style="spaceStyle"
-		:data-columns="columns"
-		:data-rows="rows"
-	>
+	<div class="card-grid-space" :style="spaceStyle" :data-columns="columns" :data-rows="rows">
 		<div class="grid" :style="gridStyle">
 			<slot />
 		</div>

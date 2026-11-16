@@ -76,22 +76,32 @@ export function commandReceiptStatements(input: {
 	const { aggregateKind, aggregateId, eventId, receipt, guard } = input;
 
 	return [
-		db.insert(liveStateCommandReceipts).select(selectForInsert(liveStateCommandReceipts, {
-			id: sql`null`,
-			eventId: sql`${eventId}`,
-			aggregateKind: sql`${aggregateKind}`,
-			aggregateId: sql`${aggregateId}`,
-			commandId: sql`${receipt.commandId}`,
-			commandType: sql`${receipt.commandType}`,
-			contentKey: sql`${receipt.contentKey}`,
-			sequence: sql`${receipt.sequence}`,
-			createdAt: sql`${Date.now()}`,
-		}, guard)),
-		db.delete(liveStateCommandReceipts).where(and(
-			eq(liveStateCommandReceipts.aggregateKind, aggregateKind),
-			eq(liveStateCommandReceipts.aggregateId, aggregateId),
-			lte(liveStateCommandReceipts.sequence, receipt.sequence - RETAINED_COMMAND_RECEIPTS),
-		)),
+		db.insert(liveStateCommandReceipts).select(
+			selectForInsert(
+				liveStateCommandReceipts,
+				{
+					id: sql`null`,
+					eventId: sql`${eventId}`,
+					aggregateKind: sql`${aggregateKind}`,
+					aggregateId: sql`${aggregateId}`,
+					commandId: sql`${receipt.commandId}`,
+					commandType: sql`${receipt.commandType}`,
+					contentKey: sql`${receipt.contentKey}`,
+					sequence: sql`${receipt.sequence}`,
+					createdAt: sql`${Date.now()}`,
+				},
+				guard,
+			),
+		),
+		db
+			.delete(liveStateCommandReceipts)
+			.where(
+				and(
+					eq(liveStateCommandReceipts.aggregateKind, aggregateKind),
+					eq(liveStateCommandReceipts.aggregateId, aggregateId),
+					lte(liveStateCommandReceipts.sequence, receipt.sequence - RETAINED_COMMAND_RECEIPTS),
+				),
+			),
 	];
 }
 
@@ -110,10 +120,14 @@ export function forgetAggregateReceipts(input: {
 }): BatchItem<'sqlite'> {
 	const { aggregateKind, aggregateIds } = input;
 
-	return db.delete(liveStateCommandReceipts).where(and(
-		eq(liveStateCommandReceipts.aggregateKind, aggregateKind),
-		Array.isArray(aggregateIds)
-			? inArray(liveStateCommandReceipts.aggregateId, aggregateIds)
-			: sql`${liveStateCommandReceipts.aggregateId} in (${aggregateIds})`,
-	));
+	return db
+		.delete(liveStateCommandReceipts)
+		.where(
+			and(
+				eq(liveStateCommandReceipts.aggregateKind, aggregateKind),
+				Array.isArray(aggregateIds)
+					? inArray(liveStateCommandReceipts.aggregateId, aggregateIds)
+					: sql`${liveStateCommandReceipts.aggregateId} in (${aggregateIds})`,
+			),
+		);
 }

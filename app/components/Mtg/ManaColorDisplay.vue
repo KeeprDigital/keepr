@@ -76,8 +76,8 @@ const manaClasses = computed((): string[] => {
 		return props.colors
 			.toUpperCase()
 			.split('')
-			.filter(char => char in colorClassMap)
-			.map(char => colorClassMap[char]!);
+			.filter((char) => char in colorClassMap)
+			.map((char) => colorClassMap[char]!);
 	}
 	return [];
 });
@@ -90,7 +90,11 @@ function isNumericManaClass(manaClass: string) {
 </script>
 
 <template>
-	<span v-if="manaClasses.length > 0" class="mana-colors inline-flex items-center gap-0.5" :class="sizeClass">
+	<span
+		v-if="manaClasses.length > 0"
+		class="mana-colors inline-flex items-center gap-0.5"
+		:class="sizeClass"
+	>
 		<i
 			v-for="(manaClass, index) in manaClasses"
 			:key="index"

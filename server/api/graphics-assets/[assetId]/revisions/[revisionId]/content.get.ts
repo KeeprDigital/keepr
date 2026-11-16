@@ -1,8 +1,5 @@
 import type { H3Event } from 'h3';
-import {
-	graphicAssetId,
-	graphicAssetRevisionId,
-} from '~~/server/modules/graphics-asset-library';
+import { graphicAssetId, graphicAssetRevisionId } from '~~/server/modules/graphics-asset-library';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
 import { requireUserId } from '~~/server/utils/auth';
 import {
@@ -52,8 +49,8 @@ export default defineEventHandler(async (event) => {
 	const baseHeaders = {
 		'accept-ranges': 'bytes',
 		'cache-control': 'private, max-age=0, must-revalidate',
-		'etag': etag,
-		'vary': 'cookie',
+		etag: etag,
+		vary: 'cookie',
 	} as const;
 	try {
 		const library = graphicsAssetLibraryForEvent(event);
@@ -62,10 +59,8 @@ export default defineEventHandler(async (event) => {
 		// The same lookup states the length a range is judged against, so a
 		// ranged read opens only the bytes it serves.
 		const inspection = await library.inspectGraphicAssetRevisionContent({ assetId, revisionId });
-		if (inspection.outcome === 'missing')
-			throw revisionNotFound();
-		if (inspection.outcome === 'unavailable')
-			throw contentTemporarilyUnavailable(event);
+		if (inspection.outcome === 'missing') throw revisionNotFound();
+		if (inspection.outcome === 'unavailable') throw contentTemporarilyUnavailable(event);
 		if (ifNoneMatchMatches(getRequestHeader(event, 'if-none-match'), etag))
 			return new Response(null, { status: 304, headers: baseHeaders });
 		const range = rangePermitted(getRequestHeader(event, 'if-range'), etag)
@@ -80,19 +75,15 @@ export default defineEventHandler(async (event) => {
 				},
 			});
 		}
-		const rangeLength = range
-			? range.end - range.start + 1
-			: undefined;
+		const rangeLength = range ? range.end - range.start + 1 : undefined;
 		const content = await library.resolveGraphicAssetRevision({
 			assetId,
 			revisionId,
 			range: range && { offset: range.start, length: rangeLength! },
 		});
 		// The revision can leave between the lookup and the byte read.
-		if (content.outcome === 'missing')
-			throw revisionNotFound();
-		if (content.outcome === 'unavailable')
-			throw contentTemporarilyUnavailable(event);
+		if (content.outcome === 'missing') throw revisionNotFound();
+		if (content.outcome === 'unavailable') throw contentTemporarilyUnavailable(event);
 		if (range) {
 			return new Response(content.body, {
 				status: 206,
@@ -111,8 +102,7 @@ export default defineEventHandler(async (event) => {
 				'content-length': String(content.byteLength),
 			},
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

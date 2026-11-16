@@ -99,10 +99,13 @@ const ASSET_REFUSAL_TITLES = {
 	unavailable: 'Unavailable Graphic Asset Content',
 } as const;
 
-const ASSET_REFUSAL_ALERTS: Record<'missing' | 'unavailable', {
-	title: string;
-	color: 'error' | 'warning';
-}> = {
+const ASSET_REFUSAL_ALERTS: Record<
+	'missing' | 'unavailable',
+	{
+		title: string;
+		color: 'error' | 'warning';
+	}
+> = {
 	// Repair or replace it; retrying is the one thing that provably cannot work.
 	missing: { title: ASSET_REFUSAL_TITLES.missing, color: 'error' },
 	// The bytes come back, so this one is worth trying again.
@@ -146,14 +149,17 @@ const ASSET_REFUSAL_ALERTS: Record<'missing' | 'unavailable', {
  * choice; this one exists so there is always some report.
  */
 const playoutFailure = computed(() => {
-	if (!sessionStore.error)
-		return null;
+	if (!sessionStore.error) return null;
 
 	const outcome = sessionStore.refusal
 		? graphicAssetRefusalOutcome(sessionStore.refusal.code)
 		: undefined;
 	if (outcome)
-		return { ...ASSET_REFUSAL_ALERTS[outcome], icon: 'i-lucide-image-off', description: sessionStore.error };
+		return {
+			...ASSET_REFUSAL_ALERTS[outcome],
+			icon: 'i-lucide-image-off',
+			description: sessionStore.error,
+		};
 	if (sessionStore.refusal) {
 		return {
 			title: 'Playout action refused',
@@ -171,45 +177,49 @@ const playoutFailure = computed(() => {
 });
 
 const PLAYOUT_STATE_LABELS: Record<GraphicPlayoutState, string> = {
-	'off': 'Off',
-	'waiting': 'Waiting',
-	'entering': 'Entering',
+	off: 'Off',
+	waiting: 'Waiting',
+	entering: 'Entering',
 	'on-air': 'On air',
-	'updating': 'Updating',
-	'exiting': 'Exiting',
+	updating: 'Updating',
+	exiting: 'Exiting',
 };
 
 const PLAYOUT_STATE_COLORS: Record<GraphicPlayoutState, 'neutral' | 'warning' | 'error'> = {
-	'off': 'neutral',
-	'waiting': 'warning',
-	'entering': 'error',
+	off: 'neutral',
+	waiting: 'warning',
+	entering: 'error',
 	'on-air': 'error',
-	'updating': 'error',
-	'exiting': 'error',
+	updating: 'error',
+	exiting: 'error',
 };
 
 const HANDOFF_POLICY_LABELS: Record<GraphicChannelHandoffPolicy, string> = {
-	'overlap': 'Overlap',
+	overlap: 'Overlap',
 	'out-then-in': 'Out then in',
 };
 
-const channelContexts = computed(() => sessionStore.channelContexts(props.graphics, props.channels));
+const channelContexts = computed(() =>
+	sessionStore.channelContexts(props.graphics, props.channels),
+);
 
 /** Every placed Broadcast Graphic's row, looked up by id. Order belongs to `groups`. */
-const entries = computed(() => props.graphics.map(graphic => ({
-	graphic,
-	playoutState: sessionStore.playoutState(
-		props.screen.id,
-		graphic.id,
+const entries = computed(() =>
+	props.graphics.map((graphic) => ({
 		graphic,
-		now.value,
-		channelContexts.value[graphic.id],
-	),
-	// Scoped per graphic: an action on one must never freeze another's controls.
-	pending: sessionStore.isPending(props.screen.id, graphic.id),
-	assetBlockedReason: takeBlockedReason(graphic.id),
-	assetRetryable: assetContentRetryable(graphic.id),
-})));
+		playoutState: sessionStore.playoutState(
+			props.screen.id,
+			graphic.id,
+			graphic,
+			now.value,
+			channelContexts.value[graphic.id],
+		),
+		// Scoped per graphic: an action on one must never freeze another's controls.
+		pending: sessionStore.isPending(props.screen.id, graphic.id),
+		assetBlockedReason: takeBlockedReason(graphic.id),
+		assetRetryable: assetContentRetryable(graphic.id),
+	})),
+);
 
 /**
  * The rundown, organised by Graphic Channel.
@@ -222,31 +232,34 @@ const entries = computed(() => props.graphics.map(graphic => ({
  * each other.
  */
 const groups = computed(() => {
-	const byId = new Map(entries.value.map(entry => [entry.graphic.id, entry]));
-	return graphicChannelGroups({ graphics: props.graphics, channels: props.channels }).map(group => ({
-		key: group.channel?.id ?? '',
-		channel: group.channel,
-		policy: HANDOFF_POLICY_LABELS[graphicChannelHandoffPolicy(group.channel ?? undefined)],
-		entries: [...group.graphics].reverse().map(graphic => byId.get(graphic.id)!),
-	}));
+	const byId = new Map(entries.value.map((entry) => [entry.graphic.id, entry]));
+	return graphicChannelGroups({ graphics: props.graphics, channels: props.channels }).map(
+		(group) => ({
+			key: group.channel?.id ?? '',
+			channel: group.channel,
+			policy: HANDOFF_POLICY_LABELS[graphicChannelHandoffPolicy(group.channel ?? undefined)],
+			entries: [...group.graphics].reverse().map((graphic) => byId.get(graphic.id)!),
+		}),
+	);
 });
 
 /**
  * Headings only once a Graphic Channel actually organises something. A Screen with
  * no channels is one lane, and labelling every graphic "No channel" would be noise.
  */
-const organised = computed(() => groups.value.some(group => group.channel !== null));
+const organised = computed(() => groups.value.some((group) => group.channel !== null));
 
-const onAirCount = computed(() =>
-	sessionStore.onAirGraphicIds(props.screen.id, props.graphics, now.value, props.channels).length,
+const onAirCount = computed(
+	() =>
+		sessionStore.onAirGraphicIds(props.screen.id, props.graphics, now.value, props.channels).length,
 );
 
 /**
  * The Broadcast Graphic whose Live Control is shown. An operator working a stack
  * controls one graphic at a time, and the stack list is where they choose it.
  */
-const selectedEntry = computed(() =>
-	entries.value.find(entry => entry.graphic.id === props.selectedGraphicId) ?? null,
+const selectedEntry = computed(
+	() => entries.value.find((entry) => entry.graphic.id === props.selectedGraphicId) ?? null,
 );
 
 function take(graphicId: string, cut: boolean) {
@@ -290,22 +303,22 @@ async function resetLiveState() {
 	const modal = overlay.create(LazyUIConfirmActionModal);
 	const confirmed = await modal.open({
 		title: 'Reset live state',
-		message: 'Take every Broadcast Graphic off air and start a new Broadcast Graphics Live Session?',
-		description: 'Prepared Graphic Input values are discarded, and commands from the current session stop being accepted.',
+		message:
+			'Take every Broadcast Graphic off air and start a new Broadcast Graphics Live Session?',
+		description:
+			'Prepared Graphic Input values are discarded, and commands from the current session stop being accepted.',
 		confirmLabel: 'Reset live state',
 		confirmColor: 'error',
 		icon: 'i-lucide-rotate-ccw',
 		iconColor: 'text-error',
 	}).result;
 
-	if (!confirmed)
-		return;
+	if (!confirmed) return;
 
 	resettingLiveState.value = true;
 	try {
 		await sessionStore.resetLiveState(props.eventId, props.screen.id);
-	}
-	finally {
+	} finally {
 		resettingLiveState.value = false;
 	}
 }
@@ -424,7 +437,11 @@ async function resetLiveState() {
 						v-for="entry in group.entries"
 						:key="entry.graphic.id"
 						class="rounded-lg border p-3 transition"
-						:class="selectedGraphicId === entry.graphic.id ? 'border-primary bg-primary/10' : 'border-default/70 bg-muted/20'"
+						:class="
+							selectedGraphicId === entry.graphic.id
+								? 'border-primary bg-primary/10'
+								: 'border-default/70 bg-muted/20'
+						"
 						:data-playout-entry="entry.graphic.id"
 						:data-playout-state="entry.playoutState"
 					>
@@ -437,7 +454,9 @@ async function resetLiveState() {
 							<UIcon name="i-lucide-layers" class="mt-0.5 size-4 shrink-0 text-muted" />
 							<span class="min-w-0 flex-1">
 								<span class="block truncate text-sm font-medium">{{ entry.graphic.name }}</span>
-								<span class="mt-0.5 block truncate text-xs text-muted">{{ entry.graphic.items.length }} items</span>
+								<span class="mt-0.5 block truncate text-xs text-muted"
+									>{{ entry.graphic.items.length }} items</span
+								>
 							</span>
 							<!--
 								An operator has to be able to tell a graphic that is on program from
@@ -469,7 +488,11 @@ async function resetLiveState() {
 							:color="entry.assetRetryable ? 'warning' : 'error'"
 							variant="soft"
 							icon="i-lucide-image-off"
-							:title="entry.assetRetryable ? ASSET_REFUSAL_TITLES.unavailable : ASSET_REFUSAL_TITLES.missing"
+							:title="
+								entry.assetRetryable
+									? ASSET_REFUSAL_TITLES.unavailable
+									: ASSET_REFUSAL_TITLES.missing
+							"
 							:description="entry.assetBlockedReason"
 						/>
 						<UButton
@@ -491,7 +514,9 @@ async function resetLiveState() {
 									color="primary"
 									variant="subtle"
 									class="flex-1 justify-center"
-									:disabled="disconnected || entry.pending || entry.assetBlockedReason !== undefined"
+									:disabled="
+										disconnected || entry.pending || entry.assetBlockedReason !== undefined
+									"
 									data-testid="playout-take"
 									@click="take(entry.graphic.id, false)"
 								>
@@ -501,7 +526,9 @@ async function resetLiveState() {
 									color="primary"
 									variant="outline"
 									aria-label="Cut Take"
-									:disabled="disconnected || entry.pending || entry.assetBlockedReason !== undefined"
+									:disabled="
+										disconnected || entry.pending || entry.assetBlockedReason !== undefined
+									"
 									title="Take without its enter animation"
 									data-testid="playout-cut-take"
 									@click="take(entry.graphic.id, true)"

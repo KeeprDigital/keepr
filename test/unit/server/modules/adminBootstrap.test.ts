@@ -10,12 +10,11 @@ const { mockRuntimeConfig, mockRequestHeader } = vi.hoisted(() => ({
 
 vi.stubGlobal('useRuntimeConfig', mockRuntimeConfig);
 vi.stubGlobal('getRequestHeader', mockRequestHeader);
-vi.stubGlobal('createError', (input: {
-	statusCode: number;
-	statusMessage?: string;
-	message: string;
-	cause?: unknown;
-}) => Object.assign(new Error(input.message), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; statusMessage?: string; message: string; cause?: unknown }) =>
+		Object.assign(new Error(input.message), input),
+);
 
 async function adminBootstrap() {
 	return import('~~/server/modules/admin-bootstrap');
@@ -52,7 +51,9 @@ describe('the first-admin bootstrap guard', () => {
 		mockRequestHeader.mockReturnValue(undefined);
 		const { requireAdminBootstrapToken } = await adminBootstrap();
 
-		await expect(requireAdminBootstrapToken(stubH3Event())).rejects.toMatchObject({ statusCode: 403 });
+		await expect(requireAdminBootstrapToken(stubH3Event())).rejects.toMatchObject({
+			statusCode: 403,
+		});
 	});
 
 	// The disarmed refusal is read far more often than success, so it names the setting (#233, #321).
@@ -67,7 +68,8 @@ describe('the first-admin bootstrap guard', () => {
 		expect(failure).toMatchObject({
 			statusCode: 503,
 			statusMessage: 'Service Unavailable',
-			message: 'NUXT_ADMIN_BOOTSTRAP_TOKEN is not configured, so first-admin bootstrap is unavailable',
+			message:
+				'NUXT_ADMIN_BOOTSTRAP_TOKEN is not configured, so first-admin bootstrap is unavailable',
 		});
 		expect(failure.cause).toBeInstanceOf(ServiceConfigurationError);
 	});
@@ -86,7 +88,8 @@ describe('the first-admin bootstrap guard', () => {
 		expect(failure).toMatchObject({
 			statusCode: 503,
 			statusMessage: 'Service Unavailable',
-			message: 'NUXT_ADMIN_BOOTSTRAP_TOKEN does not read as text (a value of only digits, true/false or JSON is read as another type), so it cannot be checked: set one that contains a letter',
+			message:
+				'NUXT_ADMIN_BOOTSTRAP_TOKEN does not read as text (a value of only digits, true/false or JSON is read as another type), so it cannot be checked: set one that contains a letter',
 		});
 		expect(failure.cause).toBeInstanceOf(ServiceConfigurationError);
 	});
@@ -172,7 +175,11 @@ describe('ensuring the first admin account', () => {
 		const { ensureAdminAccount } = await adminBootstrap();
 		const { port, created } = stubPort();
 
-		await ensureAdminAccount(port, { email: 'first@keepr.digital', password: VALID_PASSWORD, name: '  ' });
+		await ensureAdminAccount(port, {
+			email: 'first@keepr.digital',
+			password: VALID_PASSWORD,
+			name: '  ',
+		});
 
 		expect(created[0]?.name).toBe('first@keepr.digital');
 	});
@@ -231,9 +238,7 @@ describe('ensuring the first admin account', () => {
 
 		expect(outcome.grantedAdminRole).toBe(true);
 		// Appended, not replaced: whatever else this account was, it stays.
-		expect(roleWrites).toEqual([
-			['user', 'admin'],
-		]);
+		expect(roleWrites).toEqual([['user', 'admin']]);
 	});
 
 	it('grants the admin role to an account carrying no role at all', async () => {
@@ -242,9 +247,7 @@ describe('ensuring the first admin account', () => {
 
 		await ensureAdminAccount(port, { email: 'first@keepr.digital', password: VALID_PASSWORD });
 
-		expect(roleWrites).toEqual([
-			['admin'],
-		]);
+		expect(roleWrites).toEqual([['admin']]);
 	});
 
 	it('leaves the roles alone when admin is already among several', async () => {
@@ -288,7 +291,11 @@ describe('ensuring the first admin account', () => {
 		const second = await ensureAdminAccount(port, request);
 
 		expect(first.outcome).toBe('created');
-		expect(second).toMatchObject({ outcome: 'updated', userId: first.userId, grantedAdminRole: false });
+		expect(second).toMatchObject({
+			outcome: 'updated',
+			userId: first.userId,
+			grantedAdminRole: false,
+		});
 		expect(created).toHaveLength(1);
 	});
 
@@ -317,9 +324,9 @@ describe('ensuring the first admin account', () => {
 		const { ensureAdminAccount } = await adminBootstrap();
 		const { port, created, passwords } = stubPort();
 
-		await expect(ensureAdminAccount(port, { email: 'first@keepr.digital', password: 'short' }))
-			.rejects
-			.toMatchObject({ statusCode: 400, message: 'Password must be at least 8 characters' });
+		await expect(
+			ensureAdminAccount(port, { email: 'first@keepr.digital', password: 'short' }),
+		).rejects.toMatchObject({ statusCode: 400, message: 'Password must be at least 8 characters' });
 		expect(created).toEqual([]);
 		expect(passwords).toEqual([]);
 	});
@@ -328,30 +335,33 @@ describe('ensuring the first admin account', () => {
 		const { ensureAdminAccount } = await adminBootstrap();
 		const { port, created } = stubPort();
 
-		await expect(ensureAdminAccount(port, {
-			email: 'first@keepr.digital',
-			password: 'x'.repeat(129),
-		}))
-			.rejects
-			.toMatchObject({ statusCode: 400, message: 'Password must be at most 128 characters' });
+		await expect(
+			ensureAdminAccount(port, {
+				email: 'first@keepr.digital',
+				password: 'x'.repeat(129),
+			}),
+		).rejects.toMatchObject({
+			statusCode: 400,
+			message: 'Password must be at most 128 characters',
+		});
 		expect(created).toEqual([]);
 	});
 
-	it('quotes the port\'s bounds rather than bounds of its own', async () => {
+	it("quotes the port's bounds rather than bounds of its own", async () => {
 		const { ensureAdminAccount } = await adminBootstrap();
 		const { port } = stubPort(undefined, { minPasswordLength: 12 });
 
-		await expect(ensureAdminAccount(port, { email: 'first@keepr.digital', password: 'nine-char' }))
-			.rejects
-			.toMatchObject({ message: 'Password must be at least 12 characters' });
+		await expect(
+			ensureAdminAccount(port, { email: 'first@keepr.digital', password: 'nine-char' }),
+		).rejects.toMatchObject({ message: 'Password must be at least 12 characters' });
 	});
 
 	it('never puts the password in a refusal', async () => {
 		const { ensureAdminAccount } = await adminBootstrap();
 		const { port } = stubPort();
 
-		await expect(ensureAdminAccount(port, { email: 'first@keepr.digital', password: 'secret1' }))
-			.rejects
-			.toSatisfy((error: Error) => !error.message.includes('secret1'));
+		await expect(
+			ensureAdminAccount(port, { email: 'first@keepr.digital', password: 'secret1' }),
+		).rejects.toSatisfy((error: Error) => !error.message.includes('secret1'));
 	});
 });

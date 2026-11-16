@@ -1,5 +1,10 @@
 import type { OpCatalogueCard } from '~~/shared/types/card/op';
-import type { OpDeckListEntry, OpDeckListLine, OpDeckListView, OpDeckListWarning } from '~~/shared/types/opDeckList';
+import type {
+	OpDeckListEntry,
+	OpDeckListLine,
+	OpDeckListView,
+	OpDeckListWarning,
+} from '~~/shared/types/opDeckList';
 import { parseOpCardNumber } from '~~/shared/utils/card/op';
 
 /**
@@ -26,21 +31,15 @@ export function parseOpDeckListText(text: string): OpDeckListLine[] {
 	const byNumber = new Map<string, OpDeckListLine>();
 	for (const line of text.split(/\r?\n/)) {
 		const match = CARD_LINE.exec(line.trim());
-		if (!match)
-			continue;
+		if (!match) continue;
 		const quantity = Number(match[1]);
 		const number = parseOpCardNumber(match[2]!);
-		if (!number || quantity < 1)
-			continue;
+		if (!number || quantity < 1) continue;
 		const held = byNumber.get(number);
-		if (held)
-			held.quantity += quantity;
-		else
-			byNumber.set(number, { number, quantity });
+		if (held) held.quantity += quantity;
+		else byNumber.set(number, { number, quantity });
 	}
-	return [
-		...byNumber.values(),
-	];
+	return [...byNumber.values()];
 }
 
 function isLeader(entry: OpDeckListEntry): boolean {
@@ -48,14 +47,14 @@ function isLeader(entry: OpDeckListEntry): boolean {
 }
 
 function cardsWord(count: number): string {
-	return count === 1
-		? 'card'
-		: 'cards';
+	return count === 1 ? 'card' : 'cards';
 }
 
 /** A Deck List's Leader card, or `null` with no Leader or an unresolved one. */
-export function opDeckListLeaderCard(view: Pick<OpDeckListView, 'entries' | 'leaderNumber'>): OpCatalogueCard | null {
-	return view.entries.find(entry => entry.number === view.leaderNumber)?.card ?? null;
+export function opDeckListLeaderCard(
+	view: Pick<OpDeckListView, 'entries' | 'leaderNumber'>,
+): OpCatalogueCard | null {
+	return view.entries.find((entry) => entry.number === view.leaderNumber)?.card ?? null;
 }
 
 /**
@@ -63,19 +62,19 @@ export function opDeckListLeaderCard(view: Pick<OpDeckListView, 'entries' | 'lea
  * Its Leader is the `marked` entry when one is marked, catalogued or not, and
  * otherwise its first leader card.
  */
-export function opDeckListView(entries: OpDeckListEntry[], marked: string | null = null): OpDeckListView {
-	const markedEntry = marked === null
-		? undefined
-		: entries.find(entry => entry.number === marked);
+export function opDeckListView(
+	entries: OpDeckListEntry[],
+	marked: string | null = null,
+): OpDeckListView {
+	const markedEntry =
+		marked === null ? undefined : entries.find((entry) => entry.number === marked);
 	const isLeaderEntry = (entry: OpDeckListEntry) => entry === markedEntry || isLeader(entry);
 	const leaders = [
-		...(markedEntry
-			? [markedEntry]
-			: []),
-		...entries.filter(entry => entry !== markedEntry && isLeader(entry)),
+		...(markedEntry ? [markedEntry] : []),
+		...entries.filter((entry) => entry !== markedEntry && isLeader(entry)),
 	];
 	const leader = leaders[0] ?? null;
-	const mainboard = entries.filter(entry => !isLeaderEntry(entry));
+	const mainboard = entries.filter((entry) => !isLeaderEntry(entry));
 	const mainboardCount = mainboard.reduce((sum, entry) => sum + entry.quantity, 0);
 
 	const warnings: OpDeckListWarning[] = [];
@@ -98,9 +97,8 @@ export function opDeckListView(entries: OpDeckListEntry[], marked: string | null
 	}
 	if (leaders.length === 0) {
 		warnings.push({ code: 'NO_LEADER', message: 'No Leader: no pasted card is a Leader.' });
-	}
-	else if (leaders.length > 1) {
-		const numbers = leaders.map(entry => entry.number);
+	} else if (leaders.length > 1) {
+		const numbers = leaders.map((entry) => entry.number);
 		warnings.push({
 			code: 'MULTIPLE_LEADERS',
 			message: `${leaders.length} Leaders (${numbers.join(', ')}); ${leader!.number} is used.`,
@@ -110,8 +108,10 @@ export function opDeckListView(entries: OpDeckListEntry[], marked: string | null
 	const leaderColors = leader?.card?.colors ?? [];
 	if (leader?.card) {
 		const offColor = mainboard
-			.filter(entry => entry.card && !entry.card.colors.some(color => leaderColors.includes(color)))
-			.map(entry => entry.number);
+			.filter(
+				(entry) => entry.card && !entry.card.colors.some((color) => leaderColors.includes(color)),
+			)
+			.map((entry) => entry.number);
 		if (offColor.length > 0) {
 			warnings.push({
 				code: 'OFF_COLOR',
@@ -120,13 +120,13 @@ export function opDeckListView(entries: OpDeckListEntry[], marked: string | null
 			});
 		}
 	}
-	const unknown = entries.filter(entry => !entry.card).map(entry => entry.number);
+	const unknown = entries.filter((entry) => !entry.card).map((entry) => entry.number);
 	if (unknown.length > 0) {
 		warnings.push({
 			code: 'UNKNOWN_CARD',
-			message: `Card data has no card ${unknown.join(', ')}; kept as ${unknown.length === 1
-				? 'a number'
-				: 'numbers'} only.`,
+			message: `Card data has no card ${unknown.join(', ')}; kept as ${
+				unknown.length === 1 ? 'a number' : 'numbers'
+			} only.`,
 			numbers: unknown,
 		});
 	}
@@ -146,12 +146,12 @@ function entryLine(entry: OpDeckListEntry): string {
 }
 
 /** A Deck List in the paste format, its Leader first, so an edit starts from what is saved. */
-export function opDeckListText(entries: readonly OpDeckListEntry[], leaderNumber: string | null): string {
-	const leader = entries.find(entry => entry.number === leaderNumber);
-	return [
-		...(leader
-			? [leader]
-			: []),
-		...entries.filter(entry => entry !== leader),
-	].map(entryLine).join('\n');
+export function opDeckListText(
+	entries: readonly OpDeckListEntry[],
+	leaderNumber: string | null,
+): string {
+	const leader = entries.find((entry) => entry.number === leaderNumber);
+	return [...(leader ? [leader] : []), ...entries.filter((entry) => entry !== leader)]
+		.map(entryLine)
+		.join('\n');
 }

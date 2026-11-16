@@ -133,14 +133,15 @@ const SEVERITY_RANK: Record<GraphicsStorageHealthAlertSeverity, number> = {
 
 function emptySeverityCounts(): Record<GraphicsStorageHealthAlertSeverity, number> {
 	return Object.fromEntries(
-		GRAPHICS_STORAGE_HEALTH_ALERT_SEVERITIES.map(severity => [severity, 0]),
+		GRAPHICS_STORAGE_HEALTH_ALERT_SEVERITIES.map((severity) => [severity, 0]),
 	) as Record<GraphicsStorageHealthAlertSeverity, number>;
 }
 
 function emptyOutcomeCounts(): Record<GraphicsRecentOutcomeGroup, number> {
-	return Object.fromEntries(
-		GRAPHICS_RECENT_OUTCOME_GROUPS.map(group => [group, 0]),
-	) as Record<GraphicsRecentOutcomeGroup, number>;
+	return Object.fromEntries(GRAPHICS_RECENT_OUTCOME_GROUPS.map((group) => [group, 0])) as Record<
+		GraphicsRecentOutcomeGroup,
+		number
+	>;
 }
 
 /**
@@ -159,17 +160,15 @@ function summariseAlerts(
 ): GraphicsStorageHealthAlertSummary {
 	const countsBySeverity = emptySeverityCounts();
 	const open = raised
-		.filter(alert => alert.openCount > 0)
+		.filter((alert) => alert.openCount > 0)
 		.map((alert): GraphicsStorageHealthAlert => ({
 			code: alert.code,
 			severity: graphicsStorageHealthAlertSeverity(alert.code),
 			openCount: alert.openCount,
 			persistent: graphicsStorageHealthAlertPersists(alert.code),
 		}))
-		.sort((first, second) =>
-			SEVERITY_RANK[first.severity] - SEVERITY_RANK[second.severity]);
-	for (const alert of open)
-		countsBySeverity[alert.severity] += alert.openCount;
+		.sort((first, second) => SEVERITY_RANK[first.severity] - SEVERITY_RANK[second.severity]);
+	for (const alert of open) countsBySeverity[alert.severity] += alert.openCount;
 	return { countsBySeverity, open };
 }
 
@@ -208,9 +207,7 @@ function worstStatus(
 ): GraphicsLibraryConditionStatus {
 	return conditions.reduce<GraphicsLibraryConditionStatus>(
 		(worst, condition) =>
-			CONDITION_RANK[condition.status] > CONDITION_RANK[worst]
-				? condition.status
-				: worst,
+			CONDITION_RANK[condition.status] > CONDITION_RANK[worst] ? condition.status : worst,
 		'healthy',
 	);
 }
@@ -234,14 +231,14 @@ export async function readGraphicsOperationsCockpit(
 	const { now, probeHealth } = dependencies;
 	const health = await probeHealth();
 	const checkedAt = now().toISOString();
-	const stagingByteStore: GraphicsLibraryComponentCondition
-		= health.byteStores.staging.status === 'healthy'
+	const stagingByteStore: GraphicsLibraryComponentCondition =
+		health.byteStores.staging.status === 'healthy'
 			? { status: 'healthy' }
 			: unavailableCondition('staging');
 
 	if (health.catalogue.status !== 'healthy') {
-		const canonicalByteStore: GraphicsLibraryComponentCondition
-			= health.byteStores.canonical.status === 'healthy'
+		const canonicalByteStore: GraphicsLibraryComponentCondition =
+			health.byteStores.canonical.status === 'healthy'
 				? { status: 'healthy' }
 				: unavailableCondition('canonical');
 		const condition: GraphicsLibraryConditionSummary = {
@@ -258,15 +255,11 @@ export async function readGraphicsOperationsCockpit(
 				{ code: LIVENESS_ALERT_CODES.catalogue, openCount: 1 },
 				{
 					code: LIVENESS_ALERT_CODES.canonical,
-					openCount: canonicalByteStore.status === 'unavailable'
-						? 1
-						: 0,
+					openCount: canonicalByteStore.status === 'unavailable' ? 1 : 0,
 				},
 				{
 					code: LIVENESS_ALERT_CODES.staging,
-					openCount: stagingByteStore.status === 'unavailable'
-						? 1
-						: 0,
+					openCount: stagingByteStore.status === 'unavailable' ? 1 : 0,
 				},
 			]),
 		};
@@ -320,15 +313,11 @@ export async function readGraphicsOperationsCockpit(
 		alerts: summariseAlerts([
 			{
 				code: LIVENESS_ALERT_CODES.canonical,
-				openCount: condition.canonicalByteStore.status === 'unavailable'
-					? 1
-					: 0,
+				openCount: condition.canonicalByteStore.status === 'unavailable' ? 1 : 0,
 			},
 			{
 				code: LIVENESS_ALERT_CODES.staging,
-				openCount: stagingByteStore.status === 'unavailable'
-					? 1
-					: 0,
+				openCount: stagingByteStore.status === 'unavailable' ? 1 : 0,
 			},
 			...Object.entries(openCounts).map(([kind, openCount]) => ({
 				code: graphicsDiscrepancyAlertCode(kind as GraphicsDiscrepancyKind),
@@ -363,7 +352,7 @@ export async function readGraphicsOperationsCockpit(
 
 function emptyAttentionCounts(): Record<GraphicsIngestionAttentionState, number> {
 	return Object.fromEntries(
-		GRAPHICS_INGESTION_ATTENTION_STATES.map(state => [state, 0]),
+		GRAPHICS_INGESTION_ATTENTION_STATES.map((state) => [state, 0]),
 	) as Record<GraphicsIngestionAttentionState, number>;
 }
 
@@ -395,22 +384,23 @@ function describeCondition(input: {
 	unavailableContentCount: number;
 	openCounts: Record<GraphicsDiscrepancyKind, number>;
 }): GraphicsLibraryConditionSummary {
-	const catalogue: GraphicsLibraryComponentCondition = input.unavailableContentCount > 0
-		? {
-				status: 'degraded',
-				reason: {
-					code: 'catalogue-records-unavailable-content',
-					retryable: true,
-					openCount: input.unavailableContentCount,
-				},
-			}
-		: { status: 'healthy' };
+	const catalogue: GraphicsLibraryComponentCondition =
+		input.unavailableContentCount > 0
+			? {
+					status: 'degraded',
+					reason: {
+						code: 'catalogue-records-unavailable-content',
+						retryable: true,
+						openCount: input.unavailableContentCount,
+					},
+				}
+			: { status: 'healthy' };
 
 	const disagreementCount = Object.entries(input.openCounts)
 		.filter(([kind]) => graphicsDiscrepancyDegradesCondition(kind as GraphicsDiscrepancyKind))
 		.reduce((total, [, count]) => total + count, 0);
-	const canonicalByteStore: GraphicsLibraryComponentCondition
-		= input.health.byteStores.canonical.status !== 'healthy'
+	const canonicalByteStore: GraphicsLibraryComponentCondition =
+		input.health.byteStores.canonical.status !== 'healthy'
 			? unavailableCondition('canonical')
 			: disagreementCount > 0
 				? {
@@ -439,8 +429,8 @@ function describeCondition(input: {
 function quotaAlerts(
 	capacity: GraphicsAssetLibraryCapacity,
 ): { code: GraphicsStorageHealthAlertCode; openCount: number }[] {
-	const canonical: GraphicsStorageHealthAlertCode | undefined
-		= capacity.canonical.pressure === 'full'
+	const canonical: GraphicsStorageHealthAlertCode | undefined =
+		capacity.canonical.pressure === 'full'
 			? 'canonical-quota-full'
 			: capacity.canonical.pressure === 'critical'
 				? 'canonical-quota-critical'
@@ -448,15 +438,9 @@ function quotaAlerts(
 					? 'canonical-quota-warning'
 					: undefined;
 	return [
-		...(canonical
-			? [
-					{ code: canonical, openCount: 1 },
-				]
-			: []),
+		...(canonical ? [{ code: canonical, openCount: 1 }] : []),
 		...(capacity.staging.availableBytes <= 0
-			? [
-					{ code: 'staging-allowance-exhausted' as const, openCount: 1 },
-				]
+			? [{ code: 'staging-allowance-exhausted' as const, openCount: 1 }]
 			: []),
 	];
 }
@@ -471,9 +455,7 @@ function describeCapacity(capacity: GraphicsAssetLibraryCapacity): GraphicsCockp
 	return {
 		canonical: {
 			...capacity.canonical,
-			usedFraction: limit > 0
-				? capacity.canonical.usedBytes / limit
-				: 0,
+			usedFraction: limit > 0 ? capacity.canonical.usedBytes / limit : 0,
 			boundaries: {
 				warningFraction: GRAPHICS_CANONICAL_QUOTA_BOUNDARY_FRACTIONS.warning,
 				criticalFraction: GRAPHICS_CANONICAL_QUOTA_BOUNDARY_FRACTIONS.critical,
@@ -485,9 +467,10 @@ function describeCapacity(capacity: GraphicsAssetLibraryCapacity): GraphicsCockp
 		},
 		staging: {
 			...capacity.staging,
-			usedFraction: capacity.staging.limitBytes > 0
-				? capacity.staging.usedBytes / capacity.staging.limitBytes
-				: 0,
+			usedFraction:
+				capacity.staging.limitBytes > 0
+					? capacity.staging.usedBytes / capacity.staging.limitBytes
+					: 0,
 		},
 	};
 }
@@ -499,8 +482,7 @@ function describeBacklog(input: {
 }): GraphicsReconciliationBacklog {
 	const countsBySeverity = emptySeverityCounts();
 	for (const [kind, count] of Object.entries(input.openCounts)) {
-		countsBySeverity[graphicsDiscrepancySeverity(kind as GraphicsDiscrepancyKind)]
-			+= count;
+		countsBySeverity[graphicsDiscrepancySeverity(kind as GraphicsDiscrepancyKind)] += count;
 	}
 	return {
 		authority: {
@@ -508,9 +490,9 @@ function describeBacklog(input: {
 			presentBytes: 'byte-store',
 			contentAvailabilityFlag: 'advisory-reconciliation-state',
 		},
-		...(input.state.lastSweepCorrelationId
-			&& input.state.lastSweepStartedAt
-			&& input.state.lastSweepCompletedAt
+		...(input.state.lastSweepCorrelationId &&
+		input.state.lastSweepStartedAt &&
+		input.state.lastSweepCompletedAt
 			? {
 					lastSweep: {
 						correlationId: input.state.lastSweepCorrelationId,
@@ -530,9 +512,7 @@ function describeBacklog(input: {
  * reversible state with no deadline, and saying so explicitly is the point:
  * an administrator must not read its absent deadline as an oversight.
  */
-function describeLifecycle(
-	retention: GraphicsRetentionDeadlineSummary,
-): GraphicsLifecycleSummary {
+function describeLifecycle(retention: GraphicsRetentionDeadlineSummary): GraphicsLifecycleSummary {
 	return {
 		retired: { count: retention.retiredCount, reversibleWithoutDeadline: true },
 		trashed: {
@@ -563,8 +543,7 @@ function describeRecentOutcomes(
 	const outcomes: GraphicsRecentOutcome[] = [];
 	for (const entry of entries) {
 		const group = graphicsRecentOutcomeGroup(entry.category);
-		if (!group)
-			continue;
+		if (!group) continue;
 		countsByGroup[group] += 1;
 		outcomes.push({
 			id: entry.id,

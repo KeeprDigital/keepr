@@ -32,16 +32,16 @@ export function useScreenGraphicAssetContentUrls(
 	 * Graphic Item moved. Re-resolving goes unsettled and asks for the session again,
 	 * so this has to fire only when the answer would really differ.
 	 */
-	const resolutionKey = computed(() => [
-		screen.value?.id ?? '',
-		assetCapability?.value ?? '',
-		isPreview?.value === true
-			? 'preview'
-			: 'live',
-		// Sorted and de-duplicated: which revisions are resolvable is a set, so
-		// reordering a stack, or two items pinning one revision, is not a change.
-		...Array.from(new Set(toValue(references).map(referenceKey))).sort(),
-	].join(''));
+	const resolutionKey = computed(() =>
+		[
+			screen.value?.id ?? '',
+			assetCapability?.value ?? '',
+			isPreview?.value === true ? 'preview' : 'live',
+			// Sorted and de-duplicated: which revisions are resolvable is a set, so
+			// reordering a stack, or two items pinning one revision, is not a change.
+			...Array.from(new Set(toValue(references).map(referenceKey))).sort(),
+		].join(''),
+	);
 
 	/**
 	 * URLs already resolved stay put while the same Screen and capability re-resolve,
@@ -57,9 +57,7 @@ export function useScreenGraphicAssetContentUrls(
 		const flight = loads.begin();
 		clearTimeout(retry);
 		contentUrlsSettled.value = false;
-		const session = preview || !screenId || !capability
-			? ''
-			: `${screenId}\0${capability}`;
+		const session = preview || !screenId || !capability ? '' : `${screenId}\0${capability}`;
 		if (session !== heldSession || session === '') {
 			heldSession = '';
 			contentUrls.value = new Map();
@@ -68,25 +66,20 @@ export function useScreenGraphicAssetContentUrls(
 			contentUrlsSettled.value = true;
 			return;
 		}
-		if (!import.meta.client)
-			return;
+		if (!import.meta.client) return;
 		if (!capability || currentReferences.length === 0) {
 			contentUrlsSettled.value = true;
 			return;
 		}
 
 		const uniqueReferences = new Map(
-			currentReferences.map(reference => [
-				referenceKey(reference),
-				reference,
-			] as const),
+			currentReferences.map((reference) => [referenceKey(reference), reference] as const),
 		);
 		const response = await fetch(screenOutputAssetCapabilitySessionPath(screenId), {
 			method: 'POST',
 			headers: { authorization: `Bearer ${capability}` },
 		}).catch(() => undefined);
-		if (flight.stale)
-			return;
+		if (flight.stale) return;
 		if (!response?.ok) {
 			// The session route answers 503 when its catalogue is briefly unreachable;
 			// giving up there would leave the output without media until a reload.
@@ -95,10 +88,12 @@ export function useScreenGraphicAssetContentUrls(
 			return;
 		}
 		heldSession = session;
-		contentUrls.value = new Map(Array.from(uniqueReferences, ([key, reference]) => [
-			key,
-			screenOutputGraphicAssetRevisionContentPath(screenId, reference),
-		]));
+		contentUrls.value = new Map(
+			Array.from(uniqueReferences, ([key, reference]) => [
+				key,
+				screenOutputGraphicAssetRevisionContentPath(screenId, reference),
+			]),
+		);
 		contentUrlsSettled.value = true;
 	}
 
@@ -110,8 +105,7 @@ export function useScreenGraphicAssetContentUrls(
 	});
 
 	function contentUrl(reference: GraphicAssetReference): string {
-		if (isPreview?.value === true)
-			return graphicAssetRevisionContentPath(reference);
+		if (isPreview?.value === true) return graphicAssetRevisionContentPath(reference);
 		return contentUrls.value.get(referenceKey(reference)) ?? '';
 	}
 

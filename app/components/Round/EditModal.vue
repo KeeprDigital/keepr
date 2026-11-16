@@ -31,30 +31,41 @@ const formState = reactive({
 	enteredDuration,
 });
 /** A cleared number input may hold `undefined` or `NaN`; either is no duration. */
-const duration = computed(() => Number.isFinite(enteredDuration.value)
-	? enteredDuration.value
-	: null);
+const duration = computed(() =>
+	Number.isFinite(enteredDuration.value) ? enteredDuration.value : null,
+);
 const startChanged = computed(() => startedAt.value !== savedStart);
 const durationChanged = computed(() => duration.value !== savedDuration);
-const isDirty = computed(() =>
-	name.value.trim() !== (round.value?.name ?? '')
-	|| roundNumber.value !== (round.value?.roundNumber ?? 1)
-	|| startChanged.value
-	|| durationChanged.value,
+const isDirty = computed(
+	() =>
+		name.value.trim() !== (round.value?.name ?? '') ||
+		roundNumber.value !== (round.value?.roundNumber ?? 1) ||
+		startChanged.value ||
+		durationChanged.value,
 );
-const durationValid = computed(() => duration.value == null
-	|| (Number.isInteger(duration.value)
-		&& duration.value >= ROUND_DURATION_MINUTES_MIN
-		&& duration.value <= ROUND_DURATION_MINUTES_MAX));
+const durationValid = computed(
+	() =>
+		duration.value == null ||
+		(Number.isInteger(duration.value) &&
+			duration.value >= ROUND_DURATION_MINUTES_MIN &&
+			duration.value <= ROUND_DURATION_MINUTES_MAX),
+);
 // An entered start must name an instant; only an emptied one clears it.
-const startValid = computed(() => !startedAt.value || fromDateTimeLocalValue(startedAt.value) != null);
-const isValid = computed(() => name.value.trim().length > 0 && roundNumber.value > 0 && durationValid.value && startValid.value);
+const startValid = computed(
+	() => !startedAt.value || fromDateTimeLocalValue(startedAt.value) != null,
+);
+const isValid = computed(
+	() =>
+		name.value.trim().length > 0 &&
+		roundNumber.value > 0 &&
+		durationValid.value &&
+		startValid.value,
+);
 const saving = ref(false);
 const formId = `edit-round-${props.roundId}-form`;
 
 async function handleSave() {
-	if (!eventStore.eventId || !isDirty.value || !isValid.value)
-		return;
+	if (!eventStore.eventId || !isDirty.value || !isValid.value) return;
 
 	// Timing is sent only when edited, so a save never undoes a "Start now" made since this opened.
 	const input: UpdateRoundInput = {
@@ -65,21 +76,16 @@ async function handleSave() {
 					startedAt: fromDateTimeLocalValue(startedAt.value),
 				}
 			: {}),
-		...(durationChanged.value
-			? { durationMinutes: duration.value }
-			: {}),
+		...(durationChanged.value ? { durationMinutes: duration.value } : {}),
 	};
-	await runRequest(
-		() => roundStore.updateRound(eventStore.eventId!, props.roundId, input),
-		{
-			loadingRef: saving,
-			success: { title: 'Round Updated', color: 'success' },
-			error: { title: 'Failed to update round', color: 'error' },
-			onSuccess: () => {
-				emit('close');
-			},
+	await runRequest(() => roundStore.updateRound(eventStore.eventId!, props.roundId, input), {
+		loadingRef: saving,
+		success: { title: 'Round Updated', color: 'success' },
+		error: { title: 'Failed to update round', color: 'error' },
+		onSuccess: () => {
+			emit('close');
 		},
-	);
+	});
 }
 
 function handleClose() {
@@ -88,33 +94,16 @@ function handleClose() {
 </script>
 
 <template>
-	<UModal
-		open
-		title="Edit Round"
-		:close="{ onClick: handleClose }"
-	>
+	<UModal open title="Edit Round" :close="{ onClick: handleClose }">
 		<template #body>
-			<UForm
-				:id="formId"
-				:state="formState"
-				@submit="handleSave"
-			>
+			<UForm :id="formId" :state="formState" @submit="handleSave">
 				<div class="flex flex-col gap-4">
 					<UFormField label="Round Name">
-						<UInput
-							v-model="name"
-							placeholder="Round name"
-							autofocus
-							class="w-full"
-						/>
+						<UInput v-model="name" placeholder="Round name" autofocus class="w-full" />
 					</UFormField>
 
 					<UFormField label="Round Number">
-						<UInputNumber
-							v-model="roundNumber"
-							:min="1"
-							class="w-full"
-						/>
+						<UInputNumber v-model="roundNumber" :min="1" class="w-full" />
 					</UFormField>
 
 					<UFormField
@@ -137,12 +126,7 @@ function handleClose() {
 						description="Leave empty until the Round starts, or use Start now on the Event Structure page."
 					>
 						<div class="flex gap-2">
-							<UInput
-								v-model="startedAt"
-								type="datetime-local"
-								step="1"
-								class="w-full"
-							/>
+							<UInput v-model="startedAt" type="datetime-local" step="1" class="w-full" />
 							<UButton
 								v-if="startedAt"
 								label="Clear"
@@ -157,12 +141,7 @@ function handleClose() {
 		</template>
 
 		<template #footer>
-			<UButton
-				label="Cancel"
-				color="neutral"
-				variant="ghost"
-				@click="handleClose"
-			/>
+			<UButton label="Cancel" color="neutral" variant="ghost" @click="handleClose" />
 			<UButton
 				type="submit"
 				:form="formId"

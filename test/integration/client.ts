@@ -58,10 +58,9 @@ const UNAUTHENTICATED_API_PREFIXES = ['/api/auth/', '/api/bootstrap/'] as const;
  * gets.
  */
 export function requestCarriesSession(path: string): boolean {
-	if (!path.startsWith('/api/'))
-		return false;
+	if (!path.startsWith('/api/')) return false;
 
-	return !UNAUTHENTICATED_API_PREFIXES.some(prefix => path.startsWith(prefix));
+	return !UNAUTHENTICATED_API_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
 let sessionCookie: Promise<string> | undefined;
@@ -106,9 +105,9 @@ export async function signInAsOperator(
 	});
 	if (!ensured.ok) {
 		throw new Error(
-			`The integration suite could not create its operator: ${ensured.status} from the first-admin bootstrap. `
-			+ 'Every route behind the API boundary answers 401 without one, so the run would fail wholesale with '
-			+ 'nothing naming the cause.',
+			`The integration suite could not create its operator: ${ensured.status} from the first-admin bootstrap. ` +
+				'Every route behind the API boundary answers 401 without one, so the run would fail wholesale with ' +
+				'nothing naming the cause.',
 		);
 	}
 
@@ -137,12 +136,13 @@ export async function signInAsOperator(
 	// server this suite spawns sets it unprefixed and a built server prefixes it
 	// `__Secure-` (`useSecureCookies`, `server/utils/authOptions.ts`), and the
 	// suite should not depend on which kind of server it is talking to.
-	const cookie = signIn.headers.getSetCookie()
-		.map(value => value.split(';', 1)[0] ?? '')
-		.filter(pair => pair.includes('='))
+	const cookie = signIn.headers
+		.getSetCookie()
+		.map((value) => value.split(';', 1)[0] ?? '')
+		.filter((pair) => pair.includes('='))
 		.join('; ');
 	if (!cookie)
-		throw new Error('The integration suite\'s operator signed in and was issued no session cookie.');
+		throw new Error("The integration suite's operator signed in and was issued no session cookie.");
 
 	return cookie;
 }
@@ -184,7 +184,10 @@ const SESSION_COOKIE = /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=/;
  * exactly as the caller wrote it — which is also what makes `./identities.ts`
  * work at all.
  */
-async function signed(path: string, headers: HeadersInit | undefined): Promise<Record<string, string>> {
+async function signed(
+	path: string,
+	headers: HeadersInit | undefined,
+): Promise<Record<string, string>> {
 	const merged = new Headers(headers ?? {});
 	const own = merged.get('cookie');
 	if (requestCarriesSession(path) && !SESSION_COOKIE.test(own ?? ''))
@@ -234,7 +237,10 @@ const untyped$Fetch = unauthenticated$Fetch as unknown as (
 ) => Promise<unknown>;
 
 /** `@nuxt/test-utils`' `$fetch`, signed in. */
-export const $fetch: typeof unauthenticated$Fetch = (async (path: string, options?: Record<string, unknown>) => {
+export const $fetch: typeof unauthenticated$Fetch = (async (
+	path: string,
+	options?: Record<string, unknown>,
+) => {
 	const headers = await signed(path, options?.headers as HeadersInit | undefined);
 	return await requestLedger.record<unknown>(
 		requestLabel(path, options?.method),
@@ -256,7 +262,10 @@ export const anonymousFetch: typeof unauthenticatedFetch = async (path, options)
 		async () => await unauthenticatedFetch(path, options),
 	);
 };
-export const anonymous$Fetch: typeof unauthenticated$Fetch = (async (path: string, options?: Record<string, unknown>) => {
+export const anonymous$Fetch: typeof unauthenticated$Fetch = (async (
+	path: string,
+	options?: Record<string, unknown>,
+) => {
 	return await requestLedger.record<unknown>(
 		requestLabel(path, options?.method),
 		async () => await untyped$Fetch(path, options),

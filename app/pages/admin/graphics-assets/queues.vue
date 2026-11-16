@@ -75,17 +75,16 @@ const {
 	isAuthorizationFailure,
 	load: loadQueues,
 } = useGraphicsAdminReading<GraphicsOperationalQueuesOverview>({
-	read: async headers => await $fetch<GraphicsOperationalQueuesOverview>(
-		'/api/admin/graphics-assets/queues',
-		{ headers },
-	),
+	read: async (headers) =>
+		await $fetch<GraphicsOperationalQueuesOverview>('/api/admin/graphics-assets/queues', {
+			headers,
+		}),
 	failureMessage: 'The operational queues could not be read.',
 	onAuthorizationLost: () => {
 		inspection.value = null;
 	},
 	onReading: async () => {
-		if (selection.value)
-			await loadInspection();
+		if (selection.value) await loadInspection();
 	},
 	// An action re-reads on its own once it settles; polling over the top of one
 	// in flight could put the state from before it back on screen.
@@ -112,12 +111,12 @@ async function loadInspection() {
 				query: { queue: selected.queue, subjectId: selected.subjectId },
 			},
 		);
-	}
-	catch (caught) {
+	} catch (caught) {
 		inspection.value = null;
-		inspectionError.value = statusOf(caught) === 404
-			? 'This item is no longer in that queue.'
-			: describeFailure(caught, 'The item could not be inspected.');
+		inspectionError.value =
+			statusOf(caught) === 404
+				? 'This item is no longer in that queue.'
+				: describeFailure(caught, 'The item could not be inspected.');
 	}
 }
 
@@ -155,24 +154,20 @@ const QUEUE_SUMMARIES: Record<GraphicsOperationalQueueId, string> = {
 		'The catalogue expects content whose bytes do not currently resolve. Exact-byte repair only.',
 	'missing-derivative':
 		'A deterministic preview is missing and can be regenerated from its source revision.',
-	'retryable-ingestion':
-		'Resumable from retained verified input, with no bytes retransmitted.',
+	'retryable-ingestion': 'Resumable from retained verified input, with no bytes retransmitted.',
 	'expired-ingestion-input':
 		'Staged input passed its retention guarantee. A new operation is required.',
 	'unreleased-staged-input':
 		'Staged objects a failed release stranded. The sweep retries every pass; the retry here runs the same release now.',
-	'trashed-asset':
-		'Restorable to its prior state until its recovery window ends.',
-	'superseded-revision':
-		'Unreferenced and awaiting pruning. A new reference cancels it.',
-	'quarantined-object':
-		'Bytes the catalogue never expected, held for recheck and never adopted.',
+	'trashed-asset': 'Restorable to its prior state until its recovery window ends.',
+	'superseded-revision': 'Unreferenced and awaiting pruning. A new reference cancels it.',
+	'quarantined-object': 'Bytes the catalogue never expected, held for recheck and never adopted.',
 	'retired-asset':
 		'Hidden from discovery while every existing reference still resolves. Reversible, no deadline.',
 };
 
 const ACTION_LABELS: Record<GraphicsQueueAction, string> = {
-	'recheck': 'Recheck',
+	recheck: 'Recheck',
 	'verify-stored-bytes': 'Verify stored bytes',
 	'repair-with-exact-bytes': 'Repair with exact bytes',
 	'regenerate-derivative': 'Regenerate derivative',
@@ -183,7 +178,7 @@ const ACTION_LABELS: Record<GraphicsQueueAction, string> = {
 };
 
 const OUTCOME_LABELS: Record<GraphicsQueueActionOutcome, string> = {
-	'completed': 'Completed',
+	completed: 'Completed',
 	'already-in-state': 'Already in state',
 	'reference-blocked': 'Reference blocked',
 	'retryable-unavailable': 'Retryable — unavailable',
@@ -191,32 +186,25 @@ const OUTCOME_LABELS: Record<GraphicsQueueActionOutcome, string> = {
 };
 
 const OUTCOME_SUMMARIES: Record<GraphicsQueueActionOutcome, string> = {
-	'completed': 'The action changed durable state and the subject left this queue.',
+	completed: 'The action changed durable state and the subject left this queue.',
 	'already-in-state': 'The subject was already in the state this action asks for.',
 	'reference-blocked': 'A fresh reference proof found pinned usage, so nothing was reclaimed.',
-	'retryable-unavailable': 'Nothing has been put right yet. The same action is worth running again once the bytes or the component behind it answer.',
-	'integrity-conflict': 'The library refused rather than write over a disagreement. It fails closed.',
+	'retryable-unavailable':
+		'Nothing has been put right yet. The same action is worth running again once the bytes or the component behind it answer.',
+	'integrity-conflict':
+		'The library refused rather than write over a disagreement. It fails closed.',
 };
 
 function severityColor(severity: GraphicsStorageHealthAlertSeverity) {
-	return severity === 'critical'
-		? 'error'
-		: severity === 'warning'
-			? 'warning'
-			: 'info';
+	return severity === 'critical' ? 'error' : severity === 'warning' ? 'warning' : 'info';
 }
 
 function outcomeColor(outcome: GraphicsQueueActionOutcome) {
-	return outcome === 'completed'
-		? 'success'
-		: outcome === 'already-in-state'
-			? 'neutral'
-			: 'error';
+	return outcome === 'completed' ? 'success' : outcome === 'already-in-state' ? 'neutral' : 'error';
 }
 
 function isSelected(item: GraphicsOperationalQueueItem) {
-	return selection.value?.queue === item.queue
-		&& selection.value.subjectId === item.subject.id;
+	return selection.value?.queue === item.queue && selection.value.subjectId === item.subject.id;
 }
 
 /**
@@ -230,40 +218,39 @@ function byteEvidence(observed: {
 	canonicalMime?: string;
 	byteStoreUnavailable?: boolean;
 }) {
-	if (observed.byteStoreUnavailable)
-		return 'The byte store could not answer. This is retryable.';
-	if (!observed.present)
-		return 'No bytes present at the expected identity.';
-	return `${formatByteCount(observed.byteLength ?? 0)}`
-		+ `${observed.canonicalMime
-			? ` · ${observed.canonicalMime}`
-			: ''}`;
+	if (observed.byteStoreUnavailable) return 'The byte store could not answer. This is retryable.';
+	if (!observed.present) return 'No bytes present at the expected identity.';
+	return (
+		`${formatByteCount(observed.byteLength ?? 0)}` +
+		`${observed.canonicalMime ? ` · ${observed.canonicalMime}` : ''}`
+	);
 }
 
 const discrepancyDetail = computed(() =>
 	inspection.value?.detail.kind === 'graphics-discrepancy'
 		? inspection.value.detail.discrepancy
-		: null);
+		: null,
+);
 
 const assetDetail = computed(() =>
-	inspection.value?.detail.kind === 'graphic-asset'
-		? inspection.value.detail
-		: null);
+	inspection.value?.detail.kind === 'graphic-asset' ? inspection.value.detail : null,
+);
 
 const revisionDetail = computed(() =>
-	inspection.value?.detail.kind === 'graphic-asset-revision'
-		? inspection.value.detail
-		: null);
+	inspection.value?.detail.kind === 'graphic-asset-revision' ? inspection.value.detail : null,
+);
 
 const operationDetail = computed(() =>
 	inspection.value?.detail.kind === 'graphics-ingestion-operation'
 		? inspection.value.detail.operation
-		: null);
+		: null,
+);
 
 const strandDetail = computed(() =>
 	inspection.value?.detail.kind === 'unreleased-staged-input'
 		? inspection.value.detail.strand
-		: null);
+		: null,
+);
 
 const purgeConfirmed = computed(() => purgeConfirmation.value === 'purge-now');
 
@@ -279,29 +266,27 @@ function report(outcome: GraphicsQueueActionOutcome, detail?: string) {
  * classified is mapped, and a status it answered with is mapped, so the same
  * action run twice reads as `already-in-state` rather than as an error.
  */
-async function run(action: GraphicsQueueAction, perform: () => Promise<GraphicsQueueActionOutcome>) {
+async function run(
+	action: GraphicsQueueAction,
+	perform: () => Promise<GraphicsQueueActionOutcome>,
+) {
 	actionPending.value = action;
 	actionOutcome.value = null;
 	actionDetail.value = null;
 	try {
 		report(await perform());
-	}
-	catch (caught) {
+	} catch (caught) {
 		// A token that stopped being accepted is not a domain outcome. Reporting
 		// one would tell an administrator the library considered their action and
 		// answered, when in fact it never looked at it. The re-read below is the
 		// one that puts the token form back, so nothing extra is needed here.
-		if (isAuthorizationFailure(caught))
-			return;
+		if (isAuthorizationFailure(caught)) return;
 		const status = statusOf(caught);
 		report(
-			status === undefined
-				? 'retryable-unavailable'
-				: graphicsQueueOutcomeFromStatus(status),
+			status === undefined ? 'retryable-unavailable' : graphicsQueueOutcomeFromStatus(status),
 			describeFailure(caught, 'The action could not be completed.'),
 		);
-	}
-	finally {
+	} finally {
 		actionPending.value = null;
 		// Both the queues and the item are re-read from the server rather than
 		// patched here, so what is on screen is always what the library holds.
@@ -311,82 +296,93 @@ async function run(action: GraphicsQueueAction, perform: () => Promise<GraphicsQ
 
 async function runDiscrepancyAction(action: GraphicsQueueAction) {
 	const subjectId = inspection.value?.subject.id;
-	if (!subjectId)
-		return;
-	await run(action, async () => graphicsDiscrepancyQueueOutcome(
-		await $fetch<GraphicsDiscrepancyActionOutcome>(
-			`/api/admin/graphics-assets/discrepancies/${subjectId}/actions`,
-			{
-				method: 'POST',
-				headers: administratorHeaders(),
-				body: { action },
-			},
+	if (!subjectId) return;
+	await run(action, async () =>
+		graphicsDiscrepancyQueueOutcome(
+			await $fetch<GraphicsDiscrepancyActionOutcome>(
+				`/api/admin/graphics-assets/discrepancies/${subjectId}/actions`,
+				{
+					method: 'POST',
+					headers: administratorHeaders(),
+					body: { action },
+				},
+			),
 		),
-	));
+	);
 }
 
 async function repairWithExactBytes(fileEvent: Event) {
 	const file = (fileEvent.target as HTMLInputElement).files?.[0];
 	const subjectId = inspection.value?.subject.id;
-	if (!file || !subjectId)
-		return;
-	await run('repair-with-exact-bytes', async () => graphicsDiscrepancyQueueOutcome(
-		await $fetch<GraphicsDiscrepancyActionOutcome>(
-			`/api/admin/graphics-assets/discrepancies/${subjectId}/repair`,
-			{
-				method: 'PUT',
-				headers: administratorHeaders(),
-				body: file,
-			},
+	if (!file || !subjectId) return;
+	await run('repair-with-exact-bytes', async () =>
+		graphicsDiscrepancyQueueOutcome(
+			await $fetch<GraphicsDiscrepancyActionOutcome>(
+				`/api/admin/graphics-assets/discrepancies/${subjectId}/repair`,
+				{
+					method: 'PUT',
+					headers: administratorHeaders(),
+					body: file,
+				},
+			),
 		),
-	));
+	);
 	repairRequested.value = false;
 }
 
 async function restoreGraphicAsset() {
 	const subjectId = inspection.value?.subject.id;
-	if (!subjectId)
-		return;
-	await run('restore-graphic-asset', async () => (await $fetch<{
-		outcome: GraphicsQueueActionOutcome;
-	}>(
-		`/api/admin/graphics-assets/${subjectId}/lifecycle-actions`,
-		{
-			method: 'POST',
-			headers: administratorHeaders(),
-			body: { action: 'restore' },
-		},
-	)).outcome);
+	if (!subjectId) return;
+	await run(
+		'restore-graphic-asset',
+		async () =>
+			(
+				await $fetch<{
+					outcome: GraphicsQueueActionOutcome;
+				}>(`/api/admin/graphics-assets/${subjectId}/lifecycle-actions`, {
+					method: 'POST',
+					headers: administratorHeaders(),
+					body: { action: 'restore' },
+				})
+			).outcome,
+	);
 }
 
 async function retryIngestion() {
 	const operation = operationDetail.value;
-	if (!operation)
-		return;
-	await run('retry-ingestion', async () => (await $fetch<{
-		outcome: GraphicsQueueActionOutcome;
-	}>(
-		`/api/admin/graphics-assets/ingestion-operations/${operation.operationId}/retry`,
-		{
-			method: 'POST',
-			headers: administratorHeaders(),
-		},
-	)).outcome);
+	if (!operation) return;
+	await run(
+		'retry-ingestion',
+		async () =>
+			(
+				await $fetch<{
+					outcome: GraphicsQueueActionOutcome;
+				}>(`/api/admin/graphics-assets/ingestion-operations/${operation.operationId}/retry`, {
+					method: 'POST',
+					headers: administratorHeaders(),
+				})
+			).outcome,
+	);
 }
 
 async function retryRelease() {
 	const strand = strandDetail.value;
-	if (!strand)
-		return;
-	await run('retry-release', async () => (await $fetch<{
-		outcome: GraphicsQueueActionOutcome;
-	}>(
-		`/api/admin/graphics-assets/ingestion-operations/${strand.operationId}/release-staged-input`,
-		{
-			method: 'POST',
-			headers: administratorHeaders(),
-		},
-	)).outcome);
+	if (!strand) return;
+	await run(
+		'retry-release',
+		async () =>
+			(
+				await $fetch<{
+					outcome: GraphicsQueueActionOutcome;
+				}>(
+					`/api/admin/graphics-assets/ingestion-operations/${strand.operationId}/release-staged-input`,
+					{
+						method: 'POST',
+						headers: administratorHeaders(),
+					},
+				)
+			).outcome,
+	);
 }
 
 /**
@@ -396,33 +392,32 @@ async function retryRelease() {
  */
 async function confirmEarlyPurge() {
 	const subjectId = inspection.value?.subject.id;
-	if (!subjectId || !purgeConfirmed.value)
-		return;
-	await run('purge-now', async () => graphicsPurgeQueueOutcome(
-		await $fetch<GraphicAssetPurgeOutcome>(
-			`/api/admin/graphics-assets/${subjectId}/purge`,
-			{
+	if (!subjectId || !purgeConfirmed.value) return;
+	await run('purge-now', async () =>
+		graphicsPurgeQueueOutcome(
+			await $fetch<GraphicAssetPurgeOutcome>(`/api/admin/graphics-assets/${subjectId}/purge`, {
 				method: 'POST',
 				headers: administratorHeaders(),
 				body: { confirmation: 'purge-now' },
-			},
+			}),
 		),
-	));
+	);
 	purgeRequested.value = false;
 	purgeConfirmation.value = '';
 }
 
 function actionHandler(action: GraphicsQueueAction) {
 	if (action === 'purge-now')
-		return () => { purgeRequested.value = true; };
+		return () => {
+			purgeRequested.value = true;
+		};
 	if (action === 'repair-with-exact-bytes')
-		return () => { repairRequested.value = true; };
-	if (action === 'restore-graphic-asset')
-		return restoreGraphicAsset;
-	if (action === 'retry-ingestion')
-		return retryIngestion;
-	if (action === 'retry-release')
-		return retryRelease;
+		return () => {
+			repairRequested.value = true;
+		};
+	if (action === 'restore-graphic-asset') return restoreGraphicAsset;
+	if (action === 'retry-ingestion') return retryIngestion;
+	if (action === 'retry-release') return retryRelease;
 	return () => runDiscrepancyAction(action);
 }
 </script>
@@ -454,20 +449,14 @@ function actionHandler(action: GraphicsQueueAction) {
 
 			<UCard v-if="!hasReading">
 				<template #header>
-					<h2 class="font-semibold text-highlighted">
-						Graphics Administrator access
-					</h2>
+					<h2 class="font-semibold text-highlighted">Graphics Administrator access</h2>
 				</template>
 				<div class="flex flex-col gap-4">
 					<UFormField
 						label="Graphics Administrator token"
 						description="The queues are administrator-only. The token is held for this session only and never stored."
 					>
-						<UInput
-							v-model="administratorToken"
-							type="password"
-							autocomplete="current-password"
-						/>
+						<UInput v-model="administratorToken" type="password" autocomplete="current-password" />
 					</UFormField>
 					<div>
 						<UButton
@@ -516,11 +505,7 @@ function actionHandler(action: GraphicsQueueAction) {
 											variant="soft"
 											:label="queue.severity"
 										/>
-										<UBadge
-											variant="subtle"
-											color="neutral"
-											:label="`${queue.totalCount}`"
-										/>
+										<UBadge variant="subtle" color="neutral" :label="`${queue.totalCount}`" />
 									</div>
 								</div>
 							</template>
@@ -550,9 +535,7 @@ function actionHandler(action: GraphicsQueueAction) {
 										{{ item.title }}
 									</UButton>
 									<p class="mt-1 pl-3 text-xs text-dimmed">
-										<span v-if="item.deadline">
-											Deadline {{ formatInstant(item.deadline) }}
-										</span>
+										<span v-if="item.deadline"> Deadline {{ formatInstant(item.deadline) }} </span>
 										<span v-else>No deadline</span>
 										<span v-if="item.referenceCount !== undefined">
 											· {{ item.referenceCount }} pinned references
@@ -560,10 +543,7 @@ function actionHandler(action: GraphicsQueueAction) {
 									</p>
 								</li>
 							</ul>
-							<p
-								v-if="queue.totalCount > queue.items.length"
-								class="mt-3 text-xs text-dimmed"
-							>
+							<p v-if="queue.totalCount > queue.items.length" class="mt-3 text-xs text-dimmed">
 								Showing {{ queue.items.length }} of {{ queue.totalCount }}, nearest deadline first.
 							</p>
 						</UCard>
@@ -608,25 +588,17 @@ function actionHandler(action: GraphicsQueueAction) {
 										</dd>
 									</div>
 									<div>
-										<dt class="text-xs text-dimmed">
-											Deadline
-										</dt>
+										<dt class="text-xs text-dimmed">Deadline</dt>
 										<dd class="text-muted">
 											<template v-if="inspection.deadline">
 												{{ formatInstant(inspection.deadline) }}
 											</template>
-											<template v-else>
-												Reversible, no deadline
-											</template>
+											<template v-else> Reversible, no deadline </template>
 										</dd>
 									</div>
 									<div>
-										<dt class="text-xs text-dimmed">
-											Affected pinned usage
-										</dt>
-										<dd class="text-muted">
-											{{ inspection.referenceCount }} pinned references
-										</dd>
+										<dt class="text-xs text-dimmed">Affected pinned usage</dt>
+										<dd class="text-muted">{{ inspection.referenceCount }} pinned references</dd>
 									</div>
 								</dl>
 							</UCard>
@@ -634,15 +606,11 @@ function actionHandler(action: GraphicsQueueAction) {
 							<!-- What each side is authoritative for, never merged. -->
 							<UCard v-if="discrepancyDetail">
 								<template #header>
-									<h3 class="font-semibold text-highlighted">
-										Evidence
-									</h3>
+									<h3 class="font-semibold text-highlighted">Evidence</h3>
 								</template>
 								<dl class="grid gap-3 text-sm sm:grid-cols-2">
 									<div>
-										<dt class="text-xs text-dimmed">
-											The catalogue expects
-										</dt>
+										<dt class="text-xs text-dimmed">The catalogue expects</dt>
 										<dd class="text-muted">
 											{{ formatByteCount(discrepancyDetail.expected.byteLength) }}
 											<span v-if="discrepancyDetail.expected.canonicalMime">
@@ -651,25 +619,19 @@ function actionHandler(action: GraphicsQueueAction) {
 										</dd>
 									</div>
 									<div>
-										<dt class="text-xs text-dimmed">
-											The byte store reported
-										</dt>
+										<dt class="text-xs text-dimmed">The byte store reported</dt>
 										<dd class="text-muted">
 											{{ byteEvidence(discrepancyDetail.observed) }}
 										</dd>
 									</div>
 									<div>
-										<dt class="text-xs text-dimmed">
-											Stable reason
-										</dt>
+										<dt class="text-xs text-dimmed">Stable reason</dt>
 										<dd class="text-muted">
 											{{ discrepancyDetail.reasonCode }}
 										</dd>
 									</div>
 									<div>
-										<dt class="text-xs text-dimmed">
-											Last checked
-										</dt>
+										<dt class="text-xs text-dimmed">Last checked</dt>
 										<dd class="text-muted">
 											{{ formatInstant(discrepancyDetail.lastCheckedAt) }}
 										</dd>
@@ -681,8 +643,8 @@ function actionHandler(action: GraphicsQueueAction) {
 								<p v-if="discrepancyDetail.quarantine" class="mt-3 text-sm text-muted">
 									Quarantined {{ formatInstant(discrepancyDetail.quarantine.quarantinedAt) }};
 									rechecked and deleted only if still unaccounted for after
-									{{ formatInstant(discrepancyDetail.quarantine.deleteAfter) }}. It is never
-									adopted as a Graphic Asset.
+									{{ formatInstant(discrepancyDetail.quarantine.deleteAfter) }}. It is never adopted
+									as a Graphic Asset.
 								</p>
 								<ul
 									v-if="discrepancyDetail.affectedUsage.length > 0"
@@ -695,9 +657,8 @@ function actionHandler(action: GraphicsQueueAction) {
 									>
 										<span class="text-highlighted">{{ usage.assetName }}</span>
 										<span class="text-muted">
-											· revision {{ usage.revisionNumber }}
-											· {{ usage.referenceCount }} pinned references
-											· {{ usage.lifecycleState }}
+											· revision {{ usage.revisionNumber }} · {{ usage.referenceCount }} pinned
+											references · {{ usage.lifecycleState }}
 										</span>
 									</li>
 								</ul>
@@ -705,29 +666,21 @@ function actionHandler(action: GraphicsQueueAction) {
 
 							<UCard v-if="assetDetail">
 								<template #header>
-									<h3 class="font-semibold text-highlighted">
-										Lifecycle
-									</h3>
+									<h3 class="font-semibold text-highlighted">Lifecycle</h3>
 								</template>
 								<p class="text-sm text-muted">
 									<template v-if="assetDetail.lifecycle.state === 'trashed'">
 										In Trash since
-										{{ formatInstant(assetDetail.lifecycle.trashedAt) }}.
-										Restores to
+										{{ formatInstant(assetDetail.lifecycle.trashedAt) }}. Restores to
 										{{ assetDetail.lifecycle.priorState === 'retired' ? 'Retired' : 'active' }}.
 									</template>
 									<template v-else-if="assetDetail.lifecycle.state === 'retired'">
-										Retired: hidden from discovery, taking no new references, while every
-										existing reference still resolves.
+										Retired: hidden from discovery, taking no new references, while every existing
+										reference still resolves.
 									</template>
-									<template v-else>
-										Active and discoverable.
-									</template>
+									<template v-else> Active and discoverable. </template>
 								</p>
-								<ul
-									v-if="assetDetail.usage.length > 0"
-									class="mt-3 flex flex-col gap-2 text-sm"
-								>
+								<ul v-if="assetDetail.usage.length > 0" class="mt-3 flex flex-col gap-2 text-sm">
 									<li
 										v-for="usage in assetDetail.usage"
 										:key="usage.id"
@@ -748,9 +701,7 @@ function actionHandler(action: GraphicsQueueAction) {
 
 							<UCard v-if="revisionDetail">
 								<template #header>
-									<h3 class="font-semibold text-highlighted">
-										Retention
-									</h3>
+									<h3 class="font-semibold text-highlighted">Retention</h3>
 								</template>
 								<p class="text-sm text-muted">
 									Revision {{ revisionDetail.revisionNumber }} of
@@ -762,23 +713,17 @@ function actionHandler(action: GraphicsQueueAction) {
 
 							<UCard v-if="operationDetail">
 								<template #header>
-									<h3 class="font-semibold text-highlighted">
-										Graphics Ingestion Operation
-									</h3>
+									<h3 class="font-semibold text-highlighted">Graphics Ingestion Operation</h3>
 								</template>
 								<dl class="grid gap-3 text-sm sm:grid-cols-2">
 									<div>
-										<dt class="text-xs text-dimmed">
-											Stage
-										</dt>
+										<dt class="text-xs text-dimmed">Stage</dt>
 										<dd class="text-muted">
 											{{ operationDetail.stage }} · {{ operationDetail.source }}
 										</dd>
 									</div>
 									<div>
-										<dt class="text-xs text-dimmed">
-											Transferred
-										</dt>
+										<dt class="text-xs text-dimmed">Transferred</dt>
 										<dd class="text-muted">
 											{{ formatByteCount(operationDetail.transferredByteLength) }} of
 											{{ formatByteCount(operationDetail.declaredByteLength) }}
@@ -786,17 +731,13 @@ function actionHandler(action: GraphicsQueueAction) {
 										</dd>
 									</div>
 									<div>
-										<dt class="text-xs text-dimmed">
-											Started by
-										</dt>
+										<dt class="text-xs text-dimmed">Started by</dt>
 										<dd class="text-muted">
 											{{ graphicsActorName(inspection.actorNames, operationDetail.initiatedBy) }}
 										</dd>
 									</div>
 									<div v-if="operationDetail.failureCode">
-										<dt class="text-xs text-dimmed">
-											Failure
-										</dt>
+										<dt class="text-xs text-dimmed">Failure</dt>
 										<dd class="text-muted">
 											{{ operationDetail.failureCode }}
 										</dd>
@@ -806,48 +747,36 @@ function actionHandler(action: GraphicsQueueAction) {
 
 							<UCard v-if="strandDetail">
 								<template #header>
-									<h3 class="font-semibold text-highlighted">
-										Unreleased staged input
-									</h3>
+									<h3 class="font-semibold text-highlighted">Unreleased staged input</h3>
 								</template>
 								<dl class="grid gap-3 text-sm sm:grid-cols-2">
 									<div>
-										<dt class="text-xs text-dimmed">
-											Stage
-										</dt>
-										<dd class="text-muted">
-											{{ strandDetail.stage }} (terminal)
-										</dd>
+										<dt class="text-xs text-dimmed">Stage</dt>
+										<dd class="text-muted">{{ strandDetail.stage }} (terminal)</dd>
 									</div>
 									<div>
-										<dt class="text-xs text-dimmed">
-											Stranded bytes
-										</dt>
+										<dt class="text-xs text-dimmed">Stranded bytes</dt>
 										<dd class="text-muted">
 											{{ formatByteCount(strandDetail.stagingBytes) }}
 										</dd>
 									</div>
 									<div>
-										<dt class="text-xs text-dimmed">
-											Last moved
-										</dt>
+										<dt class="text-xs text-dimmed">Last moved</dt>
 										<dd class="text-muted">
 											{{ strandDetail.updatedAt }}
 										</dd>
 									</div>
 								</dl>
 								<p class="mt-3 text-sm text-muted">
-									These bytes still count against the Graphics Staging Allowance and stay
-									on the books until the release is proven. The retention sweep retries the
-									release every pass; Retry release runs the same release now.
+									These bytes still count against the Graphics Staging Allowance and stay on the
+									books until the release is proven. The retention sweep retries the release every
+									pass; Retry release runs the same release now.
 								</p>
 							</UCard>
 
 							<UCard>
 								<template #header>
-									<h3 class="font-semibold text-highlighted">
-										Valid actions
-									</h3>
+									<h3 class="font-semibold text-highlighted">Valid actions</h3>
 								</template>
 								<p v-if="inspection.actions.length === 0" class="text-sm text-muted">
 									Nothing an administrator can do here is valid in this state.
@@ -866,11 +795,10 @@ function actionHandler(action: GraphicsQueueAction) {
 
 								<div v-if="repairRequested" class="mt-4 flex flex-col gap-2">
 									<p class="text-sm text-muted">
-										Repair accepts only bytes matching the exact digest, size, and media type
-										the catalogue already expects. It creates no revision and changes no
-										reference.
+										Repair accepts only bytes matching the exact digest, size, and media type the
+										catalogue already expects. It creates no revision and changes no reference.
 									</p>
-									<input type="file" @change="repairWithExactBytes">
+									<input type="file" @change="repairWithExactBytes" />
 								</div>
 
 								<div v-if="purgeRequested" class="mt-4 flex flex-col gap-3">
@@ -918,9 +846,7 @@ function actionHandler(action: GraphicsQueueAction) {
 
 							<UCard>
 								<template #header>
-									<h3 class="font-semibold text-highlighted">
-										Evidence Ledger
-									</h3>
+									<h3 class="font-semibold text-highlighted">Evidence Ledger</h3>
 								</template>
 								<p v-if="inspection.evidence.length === 0" class="text-sm text-muted">
 									The Evidence ledger holds nothing for this subject yet.
@@ -934,7 +860,8 @@ function actionHandler(action: GraphicsQueueAction) {
 										<span class="text-highlighted">{{ entry.category }}</span>
 										<span class="text-muted"> · {{ entry.outcome }} · {{ entry.reason }}</span>
 										<span class="block text-xs text-dimmed">
-											{{ graphicsActorName(inspection.actorNames, entry.actor) }} · {{ formatInstant(entry.recordedAt) }}
+											{{ graphicsActorName(inspection.actorNames, entry.actor) }} ·
+											{{ formatInstant(entry.recordedAt) }}
 										</span>
 									</li>
 								</ul>
@@ -943,9 +870,7 @@ function actionHandler(action: GraphicsQueueAction) {
 					</section>
 				</div>
 
-				<p class="text-xs text-dimmed">
-					Last read {{ formatInstant(queues.checkedAt) }}
-				</p>
+				<p class="text-xs text-dimmed">Last read {{ formatInstant(queues.checkedAt) }}</p>
 			</template>
 		</div>
 	</NuxtLayout>

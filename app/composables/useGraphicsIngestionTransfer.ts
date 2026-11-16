@@ -41,8 +41,7 @@ const ingestion = '/api/graphics-assets/ingestion-operations';
  */
 function retryCanChangeTheAnswer(caught: unknown): boolean {
 	const status = failureStatus(caught);
-	if (status === undefined)
-		return true;
+	if (status === undefined) return true;
 	return status === 408 || status === 429 || status >= 500;
 }
 
@@ -60,34 +59,33 @@ const MAXIMUM_RETRY_INTERVAL_MS = 30_000;
  */
 function retryInterval(caught: unknown, attempt: number): number {
 	const retryAfterSeconds = failureRetryAfterSeconds(caught);
-	const interval = retryAfterSeconds === undefined
-		? FIRST_RETRY_INTERVAL_MS * 2 ** (attempt - 1)
-		: retryAfterSeconds * 1_000;
+	const interval =
+		retryAfterSeconds === undefined
+			? FIRST_RETRY_INTERVAL_MS * 2 ** (attempt - 1)
+			: retryAfterSeconds * 1_000;
 	return Math.min(interval, MAXIMUM_RETRY_INTERVAL_MS);
 }
 
 function wait(milliseconds: number): Promise<void> {
-	return new Promise(resolve => setTimeout(resolve, milliseconds));
+	return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
-export function useGraphicsIngestionTransfer(options: {
-	/**
-	 * Observes every operation snapshot the transfer learns along the way: the
-	 * started multipart transfer and each verified part's checkpoint. Snapshots
-	 * may arrive out of order under concurrent parts, so a caller presenting
-	 * progress judges freshness itself (`transferredByteLength` only grows).
-	 */
-	onOperation?: (operation: GraphicsIngestionOperation) => void;
-} = {}) {
+export function useGraphicsIngestionTransfer(
+	options: {
+		/**
+		 * Observes every operation snapshot the transfer learns along the way: the
+		 * started multipart transfer and each verified part's checkpoint. Snapshots
+		 * may arrive out of order under concurrent parts, so a caller presenting
+		 * progress judges freshness itself (`transferredByteLength` only grows).
+		 */
+		onOperation?: (operation: GraphicsIngestionOperation) => void;
+	} = {},
+) {
 	const apiHeaders = useApiHeaders();
 	const observe = (operation: GraphicsIngestionOperation) => options.onOperation?.(operation);
 
 	function refuseWithoutSession(caught: unknown): never {
-		if (!graphicsAuthorSignedOut(caught))
-			throw caught;
-		throw Object.assign(
-			new Error(GRAPHICS_AUTHOR_SIGNED_OUT_MESSAGE),
-			{ statusCode: 401 },
-		);
+		if (!graphicsAuthorSignedOut(caught)) throw caught;
+		throw Object.assign(new Error(GRAPHICS_AUTHOR_SIGNED_OUT_MESSAGE), { statusCode: 401 });
 	}
 
 	/**
@@ -108,25 +106,20 @@ export function useGraphicsIngestionTransfer(options: {
 		let pollPending = false;
 		let settled = false;
 		const interval = setInterval(async () => {
-			if (pollPending)
-				return;
+			if (pollPending) return;
 			pollPending = true;
 			try {
 				const polled = await $fetch<GraphicsIngestionOperation>(`${ingestion}/${operationId}`);
-				if (!settled)
-					observe(polled);
-			}
-			catch {
+				if (!settled) observe(polled);
+			} catch {
 				// The in-flight request remains authoritative; its response handles errors.
-			}
-			finally {
+			} finally {
 				pollPending = false;
 			}
 		}, 250);
 		try {
 			return await request;
-		}
-		finally {
+		} finally {
 			settled = true;
 			clearInterval(interval);
 		}
@@ -137,15 +130,15 @@ export function useGraphicsIngestionTransfer(options: {
 		source: Blob,
 		signal?: AbortSignal,
 	): Promise<GraphicsIngestionOperation> => {
-		return await observeOperationRequest(operation.id, $fetch<GraphicsIngestionOperation>(
-			`${ingestion}/${operation.id}/content`,
-			{
+		return await observeOperationRequest(
+			operation.id,
+			$fetch<GraphicsIngestionOperation>(`${ingestion}/${operation.id}/content`, {
 				method: 'PUT',
 				headers: apiHeaders.getHeaders(),
 				body: source,
 				signal,
-			},
-		));
+			}),
+		);
 	};
 
 	const transferInParts = async (
@@ -162,39 +155,35 @@ export function useGraphicsIngestionTransfer(options: {
 			},
 		);
 		observe(started);
-		if (!started.transfer)
-			throw new Error('Server did not return multipart transfer facts.');
+		if (!started.transfer) throw new Error('Server did not return multipart transfer facts.');
 		const transfer: NonNullable<GraphicsIngestionOperation['transfer']> = started.transfer;
 
-		const held = new Set(transfer.completedParts.map(part => part.partNumber));
-		const outstanding = Array.from(
-			{ length: transfer.partCount },
-			(_, index) => index + 1,
-		).filter(partNumber => !held.has(partNumber));
+		const held = new Set(transfer.completedParts.map((part) => part.partNumber));
+		const outstanding = Array.from({ length: transfer.partCount }, (_, index) => index + 1).filter(
+			(partNumber) => !held.has(partNumber),
+		);
 		let nextOutstanding = 0;
 
 		async function sendOutstandingParts() {
 			while (nextOutstanding < outstanding.length) {
 				const partNumber = outstanding[nextOutstanding++]!;
 				const offset = (partNumber - 1) * transfer.partByteLength;
-				const part = source.slice(
-					offset,
-					Math.min(source.size, offset + transfer.partByteLength),
-				);
+				const part = source.slice(offset, Math.min(source.size, offset + transfer.partByteLength));
 				for (let attempt = 1; attempt <= transfer.maximumPartAttempts; attempt++) {
 					try {
-						observe(await $fetch<GraphicsIngestionOperation>(
-							`${ingestion}/${operation.id}/multipart/parts/${partNumber}`,
-							{
-								method: 'PUT',
-								headers: apiHeaders.getHeaders(),
-								body: part,
-								signal,
-							},
-						));
+						observe(
+							await $fetch<GraphicsIngestionOperation>(
+								`${ingestion}/${operation.id}/multipart/parts/${partNumber}`,
+								{
+									method: 'PUT',
+									headers: apiHeaders.getHeaders(),
+									body: part,
+									signal,
+								},
+							),
+						);
 						break;
-					}
-					catch (caught) {
+					} catch (caught) {
 						// The library holds a part only once it has verified it, so a
 						// re-sent part is the same part rather than a second one. A
 						// refusal a retry cannot change — an ended session or any other
@@ -202,10 +191,10 @@ export function useGraphicsIngestionTransfer(options: {
 						// be refused identically. So does an abort, which is the caller
 						// saying the bytes are no longer wanted.
 						if (
-							signal?.aborted
-							|| graphicsAuthorSignedOut(caught)
-							|| !retryCanChangeTheAnswer(caught)
-							|| attempt === transfer.maximumPartAttempts
+							signal?.aborted ||
+							graphicsAuthorSignedOut(caught) ||
+							!retryCanChangeTheAnswer(caught) ||
+							attempt === transfer.maximumPartAttempts
 						) {
 							throw caught;
 						}
@@ -222,14 +211,14 @@ export function useGraphicsIngestionTransfer(options: {
 		);
 		await Promise.all(Array.from({ length: senderCount }, () => sendOutstandingParts()));
 
-		return await observeOperationRequest(operation.id, $fetch<GraphicsIngestionOperation>(
-			`${ingestion}/${operation.id}/multipart/complete`,
-			{
+		return await observeOperationRequest(
+			operation.id,
+			$fetch<GraphicsIngestionOperation>(`${ingestion}/${operation.id}/multipart/complete`, {
 				method: 'POST',
 				headers: apiHeaders.getHeaders(),
 				signal,
-			},
-		));
+			}),
+		);
 	};
 
 	/**
@@ -246,8 +235,7 @@ export function useGraphicsIngestionTransfer(options: {
 			return source.size > GRAPHICS_MULTIPART_PART_BYTES
 				? await transferInParts(operation, source, signal)
 				: await transferInOneRequest(operation, source, signal);
-		}
-		catch (caught) {
+		} catch (caught) {
 			refuseWithoutSession(caught);
 		}
 	};

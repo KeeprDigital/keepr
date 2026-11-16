@@ -42,14 +42,17 @@ const sourceKindOptions = [
  */
 const draftKind = ref<'asset' | 'url'>();
 const kind = computed(() => draftKind.value ?? props.modelValue?.kind ?? 'asset');
-const url = computed(() => props.modelValue?.kind === 'url'
-	? props.modelValue.url
-	: '');
+const url = computed(() => (props.modelValue?.kind === 'url' ? props.modelValue.url : ''));
 /**
  * The server's own rule, shown as the author types: a refused URL would otherwise
  * surface only as a failed save of the whole stack or layout (#582).
  */
 const urlRefusal = computed(() => remoteMediaUrlRefusal(url.value));
+const urlPlaceholder = computed(() =>
+	props.assetKind === 'silent-video'
+		? 'https://example.com/background.webm'
+		: 'https://example.com/background.png',
+);
 const reference = computed(() => screenMediaSourceReference(props.modelValue) ?? undefined);
 
 function selectKind(next: 'asset' | 'url') {
@@ -59,7 +62,11 @@ function selectKind(next: 'asset' | 'url') {
 }
 
 function selectAsset(selected: GraphicAssetReference) {
-	emit('update:modelValue', { kind: 'asset', assetId: selected.assetId, revisionId: selected.revisionId });
+	emit('update:modelValue', {
+		kind: 'asset',
+		assetId: selected.assetId,
+		revisionId: selected.revisionId,
+	});
 }
 
 /**
@@ -68,8 +75,7 @@ function selectAsset(selected: GraphicAssetReference) {
  * would race it.
  */
 function clearAsset(next: GraphicAssetReference | undefined) {
-	if (next === undefined)
-		emit('update:modelValue', null);
+	if (next === undefined) emit('update:modelValue', null);
 }
 </script>
 
@@ -85,15 +91,10 @@ function clearAsset(next: GraphicAssetReference | undefined) {
 		/>
 	</ScreenSettingsField>
 
-	<ScreenSettingsField
-		v-if="kind === 'url'"
-		label="Remote Media URL"
-		:error="urlRefusal"
-		stacked
-	>
+	<ScreenSettingsField v-if="kind === 'url'" label="Remote Media URL" :error="urlRefusal" stacked>
 		<UInput
 			:model-value="url"
-			:placeholder="assetKind === 'silent-video' ? 'https://example.com/background.webm' : 'https://example.com/background.png'"
+			:placeholder="urlPlaceholder"
 			size="sm"
 			class="w-full"
 			@update:model-value="emit('update:modelValue', { kind: 'url', url: String($event) })"

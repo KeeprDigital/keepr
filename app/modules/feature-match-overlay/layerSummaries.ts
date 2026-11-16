@@ -1,4 +1,7 @@
-import type { FeatureMatchSourceFramingStyle, FeatureMatchSourceItemConfig } from '~~/shared/types/screenConfig';
+import type {
+	FeatureMatchSourceFramingStyle,
+	FeatureMatchSourceItemConfig,
+} from '~~/shared/types/screenConfig';
 import { featureMatchSourceItemSummary } from '~~/shared/featureMatchSourceItems';
 
 /**
@@ -20,9 +23,6 @@ export function appearanceSummary(style?: FeatureMatchSourceFramingStyle) {
 	const parts = [];
 	if (style?.glowPosition && style.glowPosition !== 'both')
 		parts.push(`glow ${style.glowPosition}`);
-	if (style?.borderRadius)
-		parts.push(`radius ${style.borderRadius}`);
-	return parts.length
-		? parts.join(' • ')
-		: 'Defaults';
+	if (style?.borderRadius) parts.push(`radius ${style.borderRadius}`);
+	return parts.length ? parts.join(' • ') : 'Defaults';
 }

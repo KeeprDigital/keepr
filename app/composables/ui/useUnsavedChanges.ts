@@ -27,9 +27,7 @@ export function useUnsavedChanges(): UseUnsavedChangesReturn {
 	const dirtyStates = ref<Set<Ref<boolean> | ComputedRef<boolean>>>(new Set());
 	const shouldBypass = ref(false);
 
-	const isDirty = computed(() =>
-		[...dirtyStates.value].some(s => unref(s)),
-	);
+	const isDirty = computed(() => [...dirtyStates.value].some((s) => unref(s)));
 
 	const registerDirtyState = (dirty: Ref<boolean> | ComputedRef<boolean>) => {
 		dirtyStates.value.add(dirty);
@@ -73,8 +71,7 @@ const openModalGuards = new Set<() => Promise<boolean>>();
  */
 export async function confirmDiscardInOpenModals(): Promise<boolean> {
 	for (const confirmDiscard of [...openModalGuards]) {
-		if (!(await confirmDiscard()))
-			return false;
+		if (!(await confirmDiscard())) return false;
 	}
 	return true;
 }
@@ -101,8 +98,7 @@ export function useModalUnsavedChanges(dirty: Ref<boolean> | ComputedRef<boolean
 
 	/** True once the operator may lose the edit: nothing unsaved, or they chose to discard it. */
 	async function confirmDiscard(): Promise<boolean> {
-		if (!unref(dirty))
-			return true;
+		if (!unref(dirty)) return true;
 		return (await confirmModal.open({}).result) === true;
 	}
 

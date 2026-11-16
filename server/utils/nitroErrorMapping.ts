@@ -1,4 +1,7 @@
-import { GraphicsAssetLibraryError, graphicsCapacityErrorDescriptor } from '~~/server/modules/graphics-asset-library/errors';
+import {
+	GraphicsAssetLibraryError,
+	graphicsCapacityErrorDescriptor,
+} from '~~/server/modules/graphics-asset-library/errors';
 import { meleeKeyringConfigurationFaultSentence } from '~~/server/services/meleeCredentials';
 import { STATE_CONFLICT_CODE } from '~~/shared/utils/stateConflict';
 import {
@@ -33,8 +36,7 @@ export function mapPublicNitroError(error: MappableNitroError): void {
 		// 409 is a refusal, surfaced instead of re-run (#381).
 		error.data = { code: STATE_CONFLICT_CODE };
 		mappedOperationalError = true;
-	}
-	else if (cause instanceof ServiceConfigurationError) {
+	} else if (cause instanceof ServiceConfigurationError) {
 		// The one 5xx whose message must survive sanitizing, because it names a
 		// setting rather than describing the server's insides. #233: screen
 		// creation on a fresh checkout answered a bare 'Internal Server Error'
@@ -44,8 +46,7 @@ export function mapPublicNitroError(error: MappableNitroError): void {
 		error.message = cause.message;
 		hasMappedPublicServerMessage = true;
 		mappedOperationalError = true;
-	}
-	else if (cause instanceof RealtimePublishError) {
+	} else if (cause instanceof RealtimePublishError) {
 		// The realtime service refused a publish this request could not go on
 		// without. A Bad Gateway rather than an Internal Server Error because this
 		// server's own work succeeded, and a public message for the same reason the
@@ -57,55 +58,63 @@ export function mapPublicNitroError(error: MappableNitroError): void {
 		error.message = cause.message;
 		hasMappedPublicServerMessage = true;
 		mappedOperationalError = true;
-	}
-	else if (graphicsCapacityError) {
+	} else if (graphicsCapacityError) {
 		error.statusCode = graphicsCapacityError.statusCode;
 		error.statusMessage = graphicsCapacityError.statusMessage;
 		error.message = (cause as Error).message;
 		hasMappedPublicServerMessage = true;
 		mappedOperationalError = true;
-	}
-	else if (cause instanceof Error && cause.message?.includes('UNIQUE constraint failed')) {
+	} else if (cause instanceof Error && cause.message?.includes('UNIQUE constraint failed')) {
 		error.statusCode = 409;
 		error.statusMessage = 'Conflict';
 		error.message = 'Resource already exists';
 		mappedOperationalError = true;
-	}
-	else if (cause && typeof cause === 'object' && 'name' in cause && (cause as { name: string }).name === 'ZodError') {
+	} else if (
+		cause &&
+		typeof cause === 'object' &&
+		'name' in cause &&
+		(cause as { name: string }).name === 'ZodError'
+	) {
 		error.statusCode = 400;
 		error.statusMessage = 'Validation Error';
 		mappedOperationalError = true;
-	}
-	else if (cause && typeof cause === 'object' && 'code' in cause && (cause as { code: unknown }).code === 'IMPORTED_CARD_LOOKUP_UNAVAILABLE') {
+	} else if (
+		cause &&
+		typeof cause === 'object' &&
+		'code' in cause &&
+		(cause as { code: unknown }).code === 'IMPORTED_CARD_LOOKUP_UNAVAILABLE'
+	) {
 		error.statusCode = 503;
 		error.statusMessage = 'Service Unavailable';
-		error.message = 'Card data provider is temporarily unavailable. Existing deck data was preserved; retry the sync.';
+		error.message =
+			'Card data provider is temporarily unavailable. Existing deck data was preserved; retry the sync.';
 		hasMappedPublicServerMessage = true;
 		mappedOperationalError = true;
-	}
-	else if (cause && typeof cause === 'object' && 'code' in cause && (cause as { code: unknown }).code === 'BROADCAST_DECK_LIST_CARD_PROVIDER_UNAVAILABLE') {
+	} else if (
+		cause &&
+		typeof cause === 'object' &&
+		'code' in cause &&
+		(cause as { code: unknown }).code === 'BROADCAST_DECK_LIST_CARD_PROVIDER_UNAVAILABLE'
+	) {
 		error.statusCode = 503;
 		error.statusMessage = 'Service Unavailable';
 		error.message = 'Card data provider is temporarily unavailable. Try again later.';
 		error.data = { code: 'BROADCAST_DECK_LIST_CARD_PROVIDER_UNAVAILABLE', retryable: true };
 		hasMappedPublicServerMessage = true;
 		mappedOperationalError = true;
-	}
-	else if (cause && typeof cause === 'object' && 'code' in cause && (cause as { code: unknown }).code === 'MELEE_UPSTREAM_FAILURE') {
-		const category = 'category' in cause
-			? (cause as { category: unknown }).category
-			: null;
-		error.statusCode = category === 'timeout'
-			? 504
-			: 502;
-		error.statusMessage = category === 'timeout'
-			? 'Gateway Timeout'
-			: 'Bad Gateway';
+	} else if (
+		cause &&
+		typeof cause === 'object' &&
+		'code' in cause &&
+		(cause as { code: unknown }).code === 'MELEE_UPSTREAM_FAILURE'
+	) {
+		const category = 'category' in cause ? (cause as { category: unknown }).category : null;
+		error.statusCode = category === 'timeout' ? 504 : 502;
+		error.statusMessage = category === 'timeout' ? 'Gateway Timeout' : 'Bad Gateway';
 		error.message = 'Melee.gg is temporarily unavailable. Try again later.';
 		hasMappedPublicServerMessage = true;
 		mappedOperationalError = true;
-	}
-	else if (meleeKeyringFaultSentence !== null) {
+	} else if (meleeKeyringFaultSentence !== null) {
 		// #347, the #233 judgement one subsystem over: a keyring-configuration
 		// fault is an unfinished deployment, and the sentence names the setting an
 		// operator must fix. Only the configuration half of the crypto codes maps —
@@ -118,27 +127,23 @@ export function mapPublicNitroError(error: MappableNitroError): void {
 		error.message = meleeKeyringFaultSentence;
 		hasMappedPublicServerMessage = true;
 		mappedOperationalError = true;
-	}
-	else if (
-		cause
-		&& typeof cause === 'object'
-		&& 'code' in cause
-		&& (
-			((cause as { code: unknown }).code === 'SCRYFALL_UPSTREAM_FAILURE'
-				&& (!('notFound' in cause) || (cause as { notFound: unknown }).notFound !== true))
+	} else if (
+		cause &&
+		typeof cause === 'object' &&
+		'code' in cause &&
+		(((cause as { code: unknown }).code === 'SCRYFALL_UPSTREAM_FAILURE' &&
+			(!('notFound' in cause) || (cause as { notFound: unknown }).notFound !== true)) ||
 			// bandai-keepr's own failure: its "not found" never raises (ADR-0057).
-			|| (cause as { code: unknown }).code === 'BANDAI_KEEPR_UPSTREAM_FAILURE'
-		)
+			(cause as { code: unknown }).code === 'BANDAI_KEEPR_UPSTREAM_FAILURE')
 	) {
 		error.statusCode = 502;
 		error.statusMessage = 'Bad Gateway';
 		error.message = 'Card data provider is temporarily unavailable. Try again later.';
 		hasMappedPublicServerMessage = true;
 		mappedOperationalError = true;
-	}
-	else if (
-		cause instanceof GraphicsAssetLibraryError
-		&& cause.code === 'graphics-asset-library-unavailable'
+	} else if (
+		cause instanceof GraphicsAssetLibraryError &&
+		cause.code === 'graphics-asset-library-unavailable'
 	) {
 		// The library says which of its stores it could not reach — the catalogue,
 		// the staging byte store, the canonical one — and that is carried rather
@@ -166,8 +171,7 @@ export function mapPublicNitroError(error: MappableNitroError): void {
 		error.message = cause.message;
 		hasMappedPublicServerMessage = true;
 		mappedOperationalError = true;
-	}
-	else if (cause instanceof TemporarilyUnavailableError) {
+	} else if (cause instanceof TemporarilyUnavailableError) {
 		// The shared classification, and the one branch here that is not about a
 		// particular subsystem: seven sites each wrote an operator a sentence about
 		// something momentarily out of reach — Graphic Asset content whole and
@@ -186,8 +190,7 @@ export function mapPublicNitroError(error: MappableNitroError): void {
 	// These are classified, expected operational failures. Marking them handled
 	// prevents Nitro's fallback logger from emitting a second raw stack/cause
 	// after the safe structured record produced by the error plugin.
-	if (mappedOperationalError)
-		error.unhandled = false;
+	if (mappedOperationalError) error.unhandled = false;
 
 	// Sanitize every server error, including explicit createError(500) values.
 	// A missing cause must not become an escape hatch for internal details.

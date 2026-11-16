@@ -26,7 +26,7 @@ export const NINE_POINT_VALUES = [
 	'bottom-right',
 ] as const;
 
-export type NinePoint = typeof NINE_POINT_VALUES[number];
+export type NinePoint = (typeof NINE_POINT_VALUES)[number];
 
 export interface NinePointDefinition {
 	value: NinePoint;
@@ -108,16 +108,12 @@ export const NINE_POINTS: readonly NinePointDefinition[] = [
 type Placement = 'start' | 'center' | 'end';
 
 function placementOf(fraction: number): Placement {
-	return fraction === 0
-		? 'start'
-		: fraction === 1
-			? 'end'
-			: 'center';
+	return fraction === 0 ? 'start' : fraction === 1 ? 'end' : 'center';
 }
 
 /** A nine point as the CSS alignment keywords that place a box there: across (`x`) and down (`y`). */
 export function ninePointPlacement(point: NinePoint): { x: Placement; y: Placement } {
-	const definition = NINE_POINTS.find(entry => entry.value === point) ?? NINE_POINTS[4]!;
+	const definition = NINE_POINTS.find((entry) => entry.value === point) ?? NINE_POINTS[4]!;
 	return {
 		x: placementOf(definition.x),
 		y: placementOf(definition.y),

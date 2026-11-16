@@ -20,7 +20,7 @@ const mockTalentRepo = vi.hoisted(() => ({
 	remove: vi.fn(),
 }));
 
-vi.mock('~/modules/event-data/client', async importOriginal => ({
+vi.mock('~/modules/event-data/client', async (importOriginal) => ({
 	...(await importOriginal<typeof import('~~/app/modules/event-data/client')>()),
 	useEventDataResource: () => mockTalentRepo,
 }));
@@ -105,14 +105,18 @@ describe('useEventStore', () => {
 		const created = createEventResponse({ id: 5, name: 'New Event' });
 		mockEventRepo.create.mockResolvedValue(created);
 
-		await store.createEvent({ name: 'New Event', game: 'mtg', featureMatchOrientation: 'horizontal' });
+		await store.createEvent({
+			name: 'New Event',
+			game: 'mtg',
+			featureMatchOrientation: 'horizontal',
+		});
 
 		expect(store.event).toEqual(created);
 		expect(store.eventsList).toContainEqual(created);
 	});
 
 	describe('updateEvent', () => {
-		it('holds the server\'s Event, in the current Event and its entry in the Events list', async () => {
+		it("holds the server's Event, in the current Event and its entry in the Events list", async () => {
 			const original = createEventResponse({ id: 1, name: 'Original' });
 			const other = createEventResponse({ id: 2, name: 'Other' });
 			store.event = original;
@@ -122,17 +126,19 @@ describe('useEventStore', () => {
 			await store.updateEvent({ name: 'Updated' });
 
 			expect(store.event!.name).toBe('Server Updated');
-			expect(store.eventsList.map(event => event.name)).toEqual(['Server Updated', 'Other']);
+			expect(store.eventsList.map((event) => event.name)).toEqual(['Server Updated', 'Other']);
 		});
 
-		it('reports the server\'s sentence for a refused update and rolls the Event back', async () => {
+		it("reports the server's sentence for a refused update and rolls the Event back", async () => {
 			const original = createEventResponse({ id: 1, name: 'Original' });
 			store.event = original;
 			store.eventsList = [original];
-			mockEventRepo.update.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { message: 'Rounds have started, so the Event format can no longer change' },
-			}));
+			mockEventRepo.update.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { message: 'Rounds have started, so the Event format can no longer change' },
+				}),
+			);
 
 			await store.updateEvent({ name: 'Updated' });
 
@@ -144,7 +150,7 @@ describe('useEventStore', () => {
 		// out, on another field or from another client, is not its to undo.
 		it.each([
 			{
-				kept: 'another save\'s field, still pending',
+				kept: "another save's field, still pending",
 				meanwhile: () => {
 					mockEventRepo.update.mockReturnValueOnce(deferred<never>().promise);
 					void store.updateEvent({ numFeatureMatches: 3 });
@@ -153,9 +159,10 @@ describe('useEventStore', () => {
 			},
 			{
 				kept: 'a Talent created elsewhere',
-				meanwhile: () => deliver('talent:created', {
-					talent: createMockTalent({ id: 20, eventId: 1, name: 'Ana' }),
-				} as never),
+				meanwhile: () =>
+					deliver('talent:created', {
+						talent: createMockTalent({ id: 20, eventId: 1, name: 'Ana' }),
+					} as never),
 				held: {
 					name: 'Original',
 					numFeatureMatches: 1,
@@ -164,36 +171,42 @@ describe('useEventStore', () => {
 			},
 			{
 				kept: 'the same field as updated elsewhere',
-				meanwhile: () => deliver('event:updated', {
-					event: { id: 1, name: 'Renamed elsewhere' },
-				} as never),
+				meanwhile: () =>
+					deliver('event:updated', {
+						event: { id: 1, name: 'Renamed elsewhere' },
+					} as never),
 				held: { name: 'Renamed elsewhere', numFeatureMatches: 1, talents: [] },
 			},
-		])('a refused update rolls back its own fields and keeps $kept', async ({ meanwhile, held }) => {
-			store.event = createEventResponse({
-				id: 1,
-				name: 'Original',
-				numFeatureMatches: 1,
-				talents: [],
-			});
-			const save = deferred<never>();
-			mockEventRepo.update.mockReturnValueOnce(save.promise);
+		])(
+			'a refused update rolls back its own fields and keeps $kept',
+			async ({ meanwhile, held }) => {
+				store.event = createEventResponse({
+					id: 1,
+					name: 'Original',
+					numFeatureMatches: 1,
+					talents: [],
+				});
+				const save = deferred<never>();
+				mockEventRepo.update.mockReturnValueOnce(save.promise);
 
-			const saving = store.updateEvent({ name: 'Updated' });
-			expect(store.event!.name).toBe('Updated');
-			meanwhile();
-			save.reject(transportFailure({
-				status: 409,
-				body: { message: 'Refused' },
-			}));
-			await saving;
+				const saving = store.updateEvent({ name: 'Updated' });
+				expect(store.event!.name).toBe('Updated');
+				meanwhile();
+				save.reject(
+					transportFailure({
+						status: 409,
+						body: { message: 'Refused' },
+					}),
+				);
+				await saving;
 
-			expect({
-				name: store.event!.name,
-				numFeatureMatches: store.event!.numFeatureMatches,
-				talents: store.event!.talents.map(talent => talent.name),
-			}).toEqual(held);
-		});
+				expect({
+					name: store.event!.name,
+					numFeatureMatches: store.event!.numFeatureMatches,
+					talents: store.event!.talents.map((talent) => talent.name),
+				}).toEqual(held);
+			},
+		);
 
 		it('reloads the Feature Match Slots when their number changes', async () => {
 			const original = createEventResponse({ id: 1, numFeatureMatches: 1 });
@@ -219,7 +232,7 @@ describe('useEventStore', () => {
 	});
 
 	describe('talent writes', () => {
-		it('add once, update and remove the current Event\'s Talent', async () => {
+		it("add once, update and remove the current Event's Talent", async () => {
 			store.event = createEventResponse({ id: 1, talents: [] });
 			const talent = createMockTalent({ id: 10, eventId: 1, name: 'Ana' });
 			mockTalentRepo.create.mockResolvedValue(talent);
@@ -241,18 +254,9 @@ describe('useEventStore', () => {
 		});
 
 		it.each([
-			[
-				'add',
-				(s: ReturnType<typeof useEventStore>) => s.addTalent({ name: 'Test' }),
-			],
-			[
-				'update',
-				(s: ReturnType<typeof useEventStore>) => s.updateTalent(1, { name: 'Test' }),
-			],
-			[
-				'remove',
-				(s: ReturnType<typeof useEventStore>) => s.removeTalent(1),
-			],
+			['add', (s: ReturnType<typeof useEventStore>) => s.addTalent({ name: 'Test' })],
+			['update', (s: ReturnType<typeof useEventStore>) => s.updateTalent(1, { name: 'Test' })],
+			['remove', (s: ReturnType<typeof useEventStore>) => s.removeTalent(1)],
 		])('a Talent %s with no Event loaded reports so and does nothing', async (_, write) => {
 			await expect(write(store)).resolves.toBeNull();
 			expect(store.error).toBe('No event loaded');
@@ -266,7 +270,7 @@ describe('useEventStore', () => {
 		});
 	});
 
-	describe('a peer\'s Event and Talent messages', () => {
+	describe("a peer's Event and Talent messages", () => {
 		it('update the Event', () => {
 			store.event = createEventResponse({ id: 1, name: 'Old' });
 			store.eventsList = [store.event!];
@@ -290,11 +294,11 @@ describe('useEventStore', () => {
 				talent: { ...talent, name: 'Ana renamed' },
 			} as never);
 
-			expect(store.event!.talents.map(t => t.name)).toEqual(['Ana renamed', 'Ben']);
+			expect(store.event!.talents.map((t) => t.name)).toEqual(['Ana renamed', 'Ben']);
 
 			deliver('talent:deleted', { eventId: 1, talentId: 20 } as never);
 
-			expect(store.event!.talents.map(t => t.name)).toEqual(['Ben']);
+			expect(store.event!.talents.map((t) => t.name)).toEqual(['Ben']);
 		});
 	});
 
@@ -331,10 +335,8 @@ describe('useEventStore', () => {
 			},
 		])('is $room for $client', ({ event, context, preview, room }) => {
 			const store = useEventStore();
-			if (event)
-				store.setEvent(createMockEvent({ id: event }) as never);
-			if (context)
-				store.setOutputEvent(createMockEvent({ id: context }) as never, { preview });
+			if (event) store.setEvent(createMockEvent({ id: event }) as never);
+			if (context) store.setOutputEvent(createMockEvent({ id: context }) as never, { preview });
 
 			expect(store.roomEventId).toBe(room);
 		});
@@ -409,7 +411,7 @@ describe('useEventStore', () => {
 			expect(store.outputEvent?.theme?.tokens).toEqual({ accent });
 		});
 
-		it('takes the Theme its Event switched to while the switch\'s re-read is out', () => {
+		it("takes the Theme its Event switched to while the switch's re-read is out", () => {
 			store.setOutputEvent({
 				...createMockEvent({ id: 1, themeId: 'brand' }),
 				theme: held,
@@ -460,7 +462,11 @@ describe('useEventStore', () => {
 
 		it('a late successful save of Event A leaves Event A, loaded again since, alone', async () => {
 			const eventA = createEventResponse({ id: 1, name: 'Event A', numFeatureMatches: 1 });
-			const reloadedA = createEventResponse({ id: 1, name: 'Event A renamed elsewhere', numFeatureMatches: 4 });
+			const reloadedA = createEventResponse({
+				id: 1,
+				name: 'Event A renamed elsewhere',
+				numFeatureMatches: 4,
+			});
 			store.event = eventA;
 			const save = deferred<ReturnType<typeof createEventResponse>>();
 			mockEventRepo.update.mockReturnValueOnce(save.promise);
@@ -475,7 +481,7 @@ describe('useEventStore', () => {
 			expect(mockFeatureMatchStore.loadFeatureMatchesByEventId).not.toHaveBeenCalled();
 		});
 
-		it('a late successful save still brings Event A\'s entry in the Events list up to date', async () => {
+		it("a late successful save still brings Event A's entry in the Events list up to date", async () => {
 			const eventA = createEventResponse({ id: 1, name: 'Event A' });
 			const eventB = createEventResponse({ id: 2, name: 'Event B' });
 			store.event = eventA;
@@ -488,7 +494,7 @@ describe('useEventStore', () => {
 			save.resolve({ ...eventA, name: 'Event A renamed' });
 			await saving;
 
-			expect(store.eventsList.map(event => event.name)).toEqual(['Event A renamed', 'Event B']);
+			expect(store.eventsList.map((event) => event.name)).toEqual(['Event A renamed', 'Event B']);
 		});
 
 		it('a late failed save of Event A neither rolls back nor reports into Event A, loaded again since', async () => {
@@ -503,10 +509,12 @@ describe('useEventStore', () => {
 				shown = createEventResponse({ id, name: `Event ${id} as loaded` });
 				await switchTo(shown);
 			}
-			save.reject(transportFailure({
-				status: 409,
-				body: { message: 'Rounds have started' },
-			}));
+			save.reject(
+				transportFailure({
+					status: 409,
+					body: { message: 'Rounds have started' },
+				}),
+			);
 			await saving;
 
 			expect(store.event).toEqual(shown);
@@ -519,7 +527,11 @@ describe('useEventStore', () => {
 			const create = deferred<typeof created>();
 			mockEventRepo.create.mockReturnValueOnce(create.promise);
 
-			const creating = store.createEvent({ name: 'New Event', game: 'mtg', featureMatchOrientation: 'horizontal' });
+			const creating = store.createEvent({
+				name: 'New Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			});
 			await switchTo(eventB);
 			create.resolve(created);
 
@@ -533,7 +545,11 @@ describe('useEventStore', () => {
 			const create = deferred<typeof created>();
 			mockEventRepo.create.mockReturnValueOnce(create.promise);
 
-			const creating = store.createEvent({ name: 'New Event', game: 'mtg', featureMatchOrientation: 'horizontal' });
+			const creating = store.createEvent({
+				name: 'New Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			});
 			await switchTo(createEventResponse({ id: 2, name: 'Event B' }));
 			mockEventRepo.list.mockResolvedValueOnce([
 				createEventResponse({ id: 2, name: 'Event B' }),
@@ -543,7 +559,7 @@ describe('useEventStore', () => {
 			create.resolve(created);
 			await creating;
 
-			expect(store.eventsList.map(event => event.id)).toEqual([2, 5]);
+			expect(store.eventsList.map((event) => event.id)).toEqual([2, 5]);
 		});
 
 		it('a delete answered after leaving and coming back to the deleted Event still clears it, because it is gone', async () => {
@@ -573,9 +589,7 @@ describe('useEventStore', () => {
 				for (const id of switches) {
 					shown = createEventResponse({
 						id,
-						talents: [
-							createMockTalent({ id: 20 + id, eventId: id, name: 'Other' }),
-						],
+						talents: [createMockTalent({ id: 20 + id, eventId: id, name: 'Other' })],
 					});
 					await switchTo(shown);
 				}

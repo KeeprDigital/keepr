@@ -17,9 +17,13 @@ const mockScreenStore = reactive({
 	sendScreenCommand: vi.fn(),
 });
 
-mockNuxtImport('useEventStore', () => () => reactive({
-	event: { id: 1 },
-}));
+mockNuxtImport(
+	'useEventStore',
+	() => () =>
+		reactive({
+			event: { id: 1 },
+		}),
+);
 mockNuxtImport('useScreenStore', () => () => mockScreenStore);
 mockNuxtImport('useOverlay', () => () => ({
 	create: vi.fn(() => ({
@@ -52,9 +56,7 @@ async function mountPage() {
 
 describe('screens page', () => {
 	it('follows presence for Screens added to and removed from the collection in place', async () => {
-		mockScreenStore.screens = [
-			{ id: 1, name: 'Main Overlay' },
-		];
+		mockScreenStore.screens = [{ id: 1, name: 'Main Overlay' }];
 
 		await mountPage();
 		expect(mockScreenStore.subscribeToScreenPresence).toHaveBeenCalledWith(1);

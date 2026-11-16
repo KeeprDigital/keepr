@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { PlayerSide } from '~~/shared/types/enums';
 import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
-import type { FeatureMatchPlayerStatePatch, FeatureMatchStateUpdate } from '~/modules/feature-match-session/client';
+import type {
+	FeatureMatchPlayerStatePatch,
+	FeatureMatchStateUpdate,
+} from '~/modules/feature-match-session/client';
 import { pairSeatOf } from '~~/shared/modules/feature-match-session';
 import { formatClockTime, formatCountdownTime, parseTimeInput } from '~~/shared/utils/clock';
 
@@ -20,7 +23,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
-	'save': [update: FeatureMatchStateUpdate];
+	save: [update: FeatureMatchStateUpdate];
 }>();
 
 const NONE = 'none';
@@ -53,9 +56,8 @@ const { projection: clockProjection } = useClockDisplay(() => props.state.clock,
 function takeSnapshot() {
 	for (const player of ['player1', 'player2'] as const) {
 		snapshot.life[player] = String(props.state[player].lifeTotal);
-		snapshot.cardsKept[player] = props.state[player].cardsKept != null
-			? String(props.state[player].cardsKept)
-			: '';
+		snapshot.cardsKept[player] =
+			props.state[player].cardsKept != null ? String(props.state[player].cardsKept) : '';
 		lifeInput[player] = snapshot.life[player];
 		cardsKeptInput[player] = snapshot.cardsKept[player];
 	}
@@ -64,45 +66,41 @@ function takeSnapshot() {
 	snapshot.activePlayer = pairSeatOf(props.state.activePlayer) ?? NONE;
 	const { remainingMs, elapsedMs } = clockProjection.value;
 	// As the clock itself reads: time remaining rounds up, elapsed time down.
-	snapshot.clock = remainingMs === null
-		? formatClockTime(elapsedMs)
-		: formatCountdownTime(remainingMs);
+	snapshot.clock =
+		remainingMs === null ? formatClockTime(elapsedMs) : formatCountdownTime(remainingMs);
 	turnNumberInput.value = snapshot.turnNumber;
 	firstPlayerChoice.value = snapshot.firstPlayer;
 	activePlayerChoice.value = snapshot.activePlayer;
 	clockInput.value = snapshot.clock;
 }
 
-watch(() => props.open, (isOpen) => {
-	if (isOpen)
-		takeSnapshot();
-}, { immediate: true });
+watch(
+	() => props.open,
+	(isOpen) => {
+		if (isOpen) takeSnapshot();
+	},
+	{ immediate: true },
+);
 
 function playerLabel(player: PlayerSide): string {
-	const name = player === 'player1'
-		? props.player1Name
-		: props.player2Name;
-	return name || (player === 'player1'
-		? 'Player 1'
-		: 'Player 2');
+	const name = player === 'player1' ? props.player1Name : props.player2Name;
+	return name || (player === 'player1' ? 'Player 1' : 'Player 2');
 }
 
-const playerItems = computed(() => (['player1', 'player2'] as const).map(player => ({
-	label: playerLabel(player),
-	value: player,
-})));
+const playerItems = computed(() =>
+	(['player1', 'player2'] as const).map((player) => ({
+		label: playerLabel(player),
+		value: player,
+	})),
+);
 // A first player can be chosen but never unset, so "Not selected" is offered
 // only while it is the current truth.
-const firstPlayerItems = computed(() => snapshot.firstPlayer === NONE
-	? [
-			{ label: 'Not selected', value: NONE },
-			...playerItems.value,
-		]
-	: playerItems.value);
-const activePlayerItems = computed(() => [
-	{ label: 'None', value: NONE },
-	...playerItems.value,
-]);
+const firstPlayerItems = computed(() =>
+	snapshot.firstPlayer === NONE
+		? [{ label: 'Not selected', value: NONE }, ...playerItems.value]
+		: playerItems.value,
+);
+const activePlayerItems = computed(() => [{ label: 'None', value: NONE }, ...playerItems.value]);
 
 const clockParsedMs = computed(() => parseTimeInput(clockInput.value));
 const clockValid = computed(() => clockInput.value.trim() === '' || clockParsedMs.value !== null);
@@ -112,25 +110,30 @@ const clockValid = computed(() => clockInput.value.trim() === '' || clockParsedM
 // operator believes they made. Empty means "leave it alone" and stays valid.
 function integerFieldValid(input: string, min?: number): boolean {
 	const trimmed = input.trim();
-	if (trimmed === '')
-		return true;
+	if (trimmed === '') return true;
 	const value = Number(trimmed);
 	return Number.isInteger(value) && (min === undefined || value >= min);
 }
 
-const numbersValid = computed(() =>
-	integerFieldValid(lifeInput.player1)
-	&& integerFieldValid(lifeInput.player2)
-	&& (!props.showCardsKept || (integerFieldValid(cardsKeptInput.player1, 0) && integerFieldValid(cardsKeptInput.player2, 0)))
-	&& (!props.showTurnNumber || integerFieldValid(turnNumberInput.value, 0)),
+const numbersValid = computed(
+	() =>
+		integerFieldValid(lifeInput.player1) &&
+		integerFieldValid(lifeInput.player2) &&
+		(!props.showCardsKept ||
+			(integerFieldValid(cardsKeptInput.player1, 0) &&
+				integerFieldValid(cardsKeptInput.player2, 0))) &&
+		(!props.showTurnNumber || integerFieldValid(turnNumberInput.value, 0)),
 );
 
 const formValid = computed(() => clockValid.value && numbersValid.value);
 
-function parsedChange(input: string, original: string, options?: { min?: number }): number | undefined {
+function parsedChange(
+	input: string,
+	original: string,
+	options?: { min?: number },
+): number | undefined {
 	const trimmed = input.trim();
-	if (trimmed === '' || trimmed === original)
-		return undefined;
+	if (trimmed === '' || trimmed === original) return undefined;
 	const value = Number(trimmed);
 	if (!Number.isInteger(value) || (options?.min !== undefined && value < options.min))
 		return undefined;
@@ -143,30 +146,26 @@ function buildUpdate(): FeatureMatchStateUpdate {
 	for (const player of ['player1', 'player2'] as const) {
 		const patch: FeatureMatchPlayerStatePatch = {};
 		const lifeTotal = parsedChange(lifeInput[player], snapshot.life[player]);
-		if (lifeTotal !== undefined)
-			patch.lifeTotal = lifeTotal;
+		if (lifeTotal !== undefined) patch.lifeTotal = lifeTotal;
 		if (props.showCardsKept) {
-			const cardsKept = parsedChange(cardsKeptInput[player], snapshot.cardsKept[player], { min: 0 });
-			if (cardsKept !== undefined)
-				patch.cardsKept = cardsKept;
+			const cardsKept = parsedChange(cardsKeptInput[player], snapshot.cardsKept[player], {
+				min: 0,
+			});
+			if (cardsKept !== undefined) patch.cardsKept = cardsKept;
 		}
-		if (Object.keys(patch).length > 0)
-			update[player] = patch;
+		if (Object.keys(patch).length > 0) update[player] = patch;
 	}
 
 	if (props.showTurnNumber) {
 		const turnNumber = parsedChange(turnNumberInput.value, snapshot.turnNumber, { min: 0 });
-		if (turnNumber !== undefined)
-			update.turnNumber = turnNumber;
+		if (turnNumber !== undefined) update.turnNumber = turnNumber;
 	}
 
 	if (props.showPlayerTracking) {
 		if (firstPlayerChoice.value !== snapshot.firstPlayer && firstPlayerChoice.value !== NONE)
 			update.firstPlayer = firstPlayerChoice.value;
 		if (activePlayerChoice.value !== snapshot.activePlayer) {
-			update.activePlayer = activePlayerChoice.value === NONE
-				? null
-				: activePlayerChoice.value;
+			update.activePlayer = activePlayerChoice.value === NONE ? null : activePlayerChoice.value;
 		}
 	}
 
@@ -207,7 +206,11 @@ function handleCancel() {
 		<template #body>
 			<div class="flex flex-col gap-4">
 				<div class="grid grid-cols-2 gap-4">
-					<div v-for="player in (['player1', 'player2'] as const)" :key="player" class="flex flex-col gap-3">
+					<div
+						v-for="player in ['player1', 'player2'] as const"
+						:key="player"
+						class="flex flex-col gap-3"
+					>
 						<div class="text-sm font-semibold truncate">
 							{{ playerLabel(player) }}
 						</div>

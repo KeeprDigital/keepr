@@ -1,6 +1,10 @@
 import type { GraphicItemPlacement, GraphicItemPlacementRefusal } from '~~/shared/modules/graphics';
 import type { GraphicsEditorLayer, GraphicsEditorTree } from './host';
-import { findGraphicItem, graphicItemPlacementRefusal, placeGraphicItem } from '~~/shared/modules/graphics';
+import {
+	findGraphicItem,
+	graphicItemPlacementRefusal,
+	placeGraphicItem,
+} from '~~/shared/modules/graphics';
 import { isSameLayer } from './host';
 
 /**
@@ -15,10 +19,10 @@ import { isSameLayer } from './host';
  */
 
 /** Where a dragged row lands, relative to a row of its own section. */
-export type LayerPlace<L extends GraphicsEditorLayer>
-	= | { kind: 'in-front-of' | 'behind'; of: L }
-		/** At the front of a Graphic Group's children. */
-		| { kind: 'into'; groupId: string };
+export type LayerPlace<L extends GraphicsEditorLayer> =
+	| { kind: 'in-front-of' | 'behind'; of: L }
+	/** At the front of a Graphic Group's children. */
+	| { kind: 'into'; groupId: string };
 
 /**
  * Where the drop indicator is drawn: a row's top or bottom edge, the row itself
@@ -37,12 +41,19 @@ export interface LayerDrop<L extends GraphicsEditorLayer> {
 }
 
 /** Whether two layers reorder among each other: Graphic Items of one composition, or host-owned siblings. */
-function sameSection<D, L extends GraphicsEditorLayer>(tree: GraphicsEditorTree<D, L>, document: D, a: L, b: L): boolean {
+function sameSection<D, L extends GraphicsEditorLayer>(
+	tree: GraphicsEditorTree<D, L>,
+	document: D,
+	a: L,
+	b: L,
+): boolean {
 	const itemA = tree.item(document, a);
 	const itemB = tree.item(document, b);
 	if (itemA || itemB)
 		return itemA !== null && itemB !== null && itemA.composition.id === itemB.composition.id;
-	return tree.owned?.siblings(document, a).some(sibling => isSameLayer(tree, sibling, b)) ?? false;
+	return (
+		tree.owned?.siblings(document, a).some((sibling) => isSameLayer(tree, sibling, b)) ?? false
+	);
 }
 
 /**
@@ -60,19 +71,15 @@ export function layerDropAt<D, L extends GraphicsEditorLayer>(
 	over: L,
 	fraction: number,
 ): LayerDrop<L> | null {
-	if (!sameSection(tree, document, dragged, over) || isSameLayer(tree, dragged, over))
-		return null;
+	if (!sameSection(tree, document, dragged, over) || isSameLayer(tree, dragged, over)) return null;
 
 	const row = tree.key(over);
 	const beside = (): LayerPlace<L> => ({
-		kind: fraction < 0.5
-			? 'in-front-of'
-			: 'behind',
+		kind: fraction < 0.5 ? 'in-front-of' : 'behind',
 		of: over,
 	});
-	const edgeOf = (place: LayerPlace<L>): LayerDropEdge => place.kind === 'in-front-of'
-		? 'top'
-		: 'bottom';
+	const edgeOf = (place: LayerPlace<L>): LayerDropEdge =>
+		place.kind === 'in-front-of' ? 'top' : 'bottom';
 
 	const draggedItem = tree.item(document, dragged);
 	const overItem = tree.item(document, over);
@@ -89,8 +96,7 @@ export function layerDropAt<D, L extends GraphicsEditorLayer>(
 	const composition = draggedItem.composition;
 	const target = findGraphicItem(composition, overItem.itemId);
 	const moving = findGraphicItem(composition, draggedItem.itemId);
-	if (!target || !moving)
-		return null;
+	if (!target || !moving) return null;
 	const draggingGroup = moving.item.type === 'group';
 
 	let edge: LayerDropEdge;
@@ -103,47 +109,38 @@ export function layerDropAt<D, L extends GraphicsEditorLayer>(
 				kind: 'behind',
 				of: tree.itemLayer(composition, target.group.id),
 			};
-		}
-		else if (draggingGroup) {
+		} else if (draggingGroup) {
 			return null;
-		}
-		else {
+		} else {
 			place = beside();
 			edge = edgeOf(place);
 		}
-	}
-	else if (target.item.type === 'group') {
+	} else if (target.item.type === 'group') {
 		const empty = target.item.children.length === 0;
 		if (draggingGroup) {
-			place = empty
-				? beside()
-				: { kind: 'in-front-of', of: over };
+			place = empty ? beside() : { kind: 'in-front-of', of: over };
 			edge = edgeOf(place);
-		}
-		else if (fraction < 1 / 3) {
+		} else if (fraction < 1 / 3) {
 			place = { kind: 'in-front-of', of: over };
 			edge = 'top';
-		}
-		else if (empty && fraction >= 2 / 3) {
+		} else if (empty && fraction >= 2 / 3) {
 			place = { kind: 'behind', of: over };
 			edge = 'bottom';
-		}
-		else {
+		} else {
 			place = { kind: 'into', groupId: overItem.itemId };
 			edge = 'inside';
 		}
-	}
-	else {
+	} else {
 		place = beside();
 		edge = edgeOf(place);
 	}
 
-	if (place.kind !== 'into' && isSameLayer(tree, place.of, dragged))
-		return null;
+	if (place.kind !== 'into' && isSameLayer(tree, place.of, dragged)) return null;
 
-	const destinationGroup = place.kind === 'into'
-		? place.groupId
-		: findGraphicItem(composition, tree.item(document, place.of)!.itemId)?.group?.id ?? null;
+	const destinationGroup =
+		place.kind === 'into'
+			? place.groupId
+			: (findGraphicItem(composition, tree.item(document, place.of)!.itemId)?.group?.id ?? null);
 	return {
 		row,
 		edge,
@@ -153,12 +150,15 @@ export function layerDropAt<D, L extends GraphicsEditorLayer>(
 }
 
 /** The index in front of or behind `of` among its siblings, once the dragged layer has left them. */
-function besideIndex(siblings: readonly string[], dragged: string, of: string, kind: 'in-front-of' | 'behind'): number {
-	const remaining = siblings.filter(id => id !== dragged);
+function besideIndex(
+	siblings: readonly string[],
+	dragged: string,
+	of: string,
+	kind: 'in-front-of' | 'behind',
+): number {
+	const remaining = siblings.filter((id) => id !== dragged);
 	const index = remaining.indexOf(of);
-	return kind === 'in-front-of'
-		? index + 1
-		: index;
+	return kind === 'in-front-of' ? index + 1 : index;
 }
 
 /** Drop one layer at a place. Answers the same document when it changes nothing or is refused. */
@@ -172,35 +172,33 @@ export function dropLayer<D, L extends GraphicsEditorLayer>(
 	if (!draggedItem) {
 		if (place.kind === 'into' || !tree.owned || !sameSection(tree, document, dragged, place.of))
 			return document;
-		const siblings = tree.owned.siblings(document, dragged).map(sibling => tree.key(sibling));
+		const siblings = tree.owned.siblings(document, dragged).map((sibling) => tree.key(sibling));
 		const index = besideIndex(siblings, tree.key(dragged), tree.key(place.of), place.kind);
-		return index < 0
-			? document
-			: tree.owned.reorder(document, dragged, index);
+		return index < 0 ? document : tree.owned.reorder(document, dragged, index);
 	}
 
 	const composition = draggedItem.composition;
 	let placement: GraphicItemPlacement;
 	if (place.kind === 'into') {
 		placement = { groupId: place.groupId, index: Number.MAX_SAFE_INTEGER };
-	}
-	else {
+	} else {
 		const of = tree.item(document, place.of);
-		const target = of && of.composition.id === composition.id
-			? findGraphicItem(composition, of.itemId)
-			: null;
-		if (!of || !target)
-			return document;
+		const target =
+			of && of.composition.id === composition.id ? findGraphicItem(composition, of.itemId) : null;
+		if (!of || !target) return document;
 		const siblings = target.group?.children ?? composition.items;
 		placement = {
 			groupId: target.group?.id ?? null,
-			index: besideIndex(siblings.map(sibling => sibling.id), draggedItem.itemId, of.itemId, place.kind),
+			index: besideIndex(
+				siblings.map((sibling) => sibling.id),
+				draggedItem.itemId,
+				of.itemId,
+				place.kind,
+			),
 		};
 	}
 	const next = placeGraphicItem(composition, draggedItem.itemId, placement);
-	return next === composition
-		? document
-		: tree.withComposition(document, next);
+	return next === composition ? document : tree.withComposition(document, next);
 }
 
 /** One "Move to group" entry: a group to move into, or out of the layer's own. */
@@ -222,8 +220,7 @@ export function layerGroupMoves<D, L extends GraphicsEditorLayer>(
 ): LayerGroupMove<L>[] {
 	const item = tree.item(document, layer);
 	const location = item && findGraphicItem(item.composition, item.itemId);
-	if (!item || !location || location.item.type === 'group')
-		return [];
+	if (!item || !location || location.item.type === 'group') return [];
 	const { composition } = item;
 
 	const moves: LayerGroupMove<L>[] = [];
@@ -238,8 +235,7 @@ export function layerGroupMoves<D, L extends GraphicsEditorLayer>(
 		});
 	}
 	for (const candidate of [...composition.items].reverse()) {
-		if (candidate.type !== 'group' || candidate.id === location.group?.id)
-			continue;
+		if (candidate.type !== 'group' || candidate.id === location.group?.id) continue;
 		moves.push({
 			label: candidate.label,
 			place: { kind: 'into', groupId: candidate.id },

@@ -15,7 +15,6 @@ import process from 'node:process';
 export const BLOCKED_CLOUDFLARE_API_TOKEN = 'blocked-by-test-guard';
 
 for (const name of Object.keys(process.env)) {
-	if (name.startsWith('CLOUDFLARE_') || name.startsWith('WRANGLER_'))
-		delete process.env[name];
+	if (name.startsWith('CLOUDFLARE_') || name.startsWith('WRANGLER_')) delete process.env[name];
 }
 process.env.CLOUDFLARE_API_TOKEN = BLOCKED_CLOUDFLARE_API_TOKEN;

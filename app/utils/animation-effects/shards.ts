@@ -93,17 +93,20 @@ export default function createShardsEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'shards'>,
 ): AnimationEffectInstance<AnimationEffectParams<'shards'>> {
-	return createShaderPlaneEffect({
-		three: THREE,
-		host,
-		fragmentShader: SHARDS_FRAGMENT_SHADER,
-		uniforms: current => ({
-			shardColor: current.shardColor,
-			edgeColor: current.edgeColor,
-			backgroundColor: current.backgroundColor,
-			scale: current.scale,
-			intensity: current.intensity,
-		}),
-		timeScale: current => current.speed,
-	}, params);
+	return createShaderPlaneEffect(
+		{
+			three: THREE,
+			host,
+			fragmentShader: SHARDS_FRAGMENT_SHADER,
+			uniforms: (current) => ({
+				shardColor: current.shardColor,
+				edgeColor: current.edgeColor,
+				backgroundColor: current.backgroundColor,
+				scale: current.scale,
+				intensity: current.intensity,
+			}),
+			timeScale: (current) => current.speed,
+		},
+		params,
+	);
 }

@@ -35,25 +35,35 @@ let slotIds: number[];
 let foreignSlotId: number;
 
 async function stageEventWithSlots(count: number) {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
-	const slots = await db.insert(schema.featureMatches)
-		.values(Array.from({ length: count }, (_, index) => ({ eventId: event!.id, tableNumber: index + 1, sortOrder: index })))
+	const slots = await db
+		.insert(schema.featureMatches)
+		.values(
+			Array.from({ length: count }, (_, index) => ({
+				eventId: event!.id,
+				tableNumber: index + 1,
+				sortOrder: index,
+			})),
+		)
 		.returning({ id: schema.featureMatches.id });
 	return {
 		eventId: event!.id,
-		slotIds: slots.map(slot => slot.id),
+		slotIds: slots.map((slot) => slot.id),
 	};
 }
 
 /** What the Event's channel was sent, as `[type, Slot id, origin]`. */
 function announced() {
-	return ably.on(eventRealtimeChannel(eventId)).map(({ type, payload }) => [
-		type,
-		(payload.featureMatch as { id: number }).id,
-		payload.originConnectionId,
-	]);
+	return ably
+		.on(eventRealtimeChannel(eventId))
+		.map(({ type, payload }) => [
+			type,
+			(payload.featureMatch as { id: number }).id,
+			payload.originConnectionId,
+		]);
 }
 
 /** The round trips to the database one batch makes. */
@@ -74,7 +84,7 @@ beforeEach(() => {
 afterAll(async () => await harness.close());
 
 describe('a batch of Feature Match Slot updates', () => {
-	it('announces each Slot the Event still holds, in the order asked, under the writer\'s origin', async () => {
+	it("announces each Slot the Event still holds, in the order asked, under the writer's origin", async () => {
 		const [first, , third] = slotIds as [number, number, number];
 
 		const answered = await eventDataPublicationModule().featureMatchSlotsUpdated({
@@ -83,7 +93,7 @@ describe('a batch of Feature Match Slot updates', () => {
 			originConnectionId: ORIGIN,
 		});
 
-		expect(answered.map(slot => slot.id)).toEqual([third, first]);
+		expect(answered.map((slot) => slot.id)).toEqual([third, first]);
 		expect(announced()).toEqual([
 			['featureMatch:updated', third, ORIGIN],
 			['featureMatch:updated', first, ORIGIN],
@@ -91,7 +101,7 @@ describe('a batch of Feature Match Slot updates', () => {
 	});
 
 	// A read per Slot would cost fifty round trips at the supported maximum.
-	it('reads the Event\'s Slots once, however many it announces', async () => {
+	it("reads the Event's Slots once, however many it announces", async () => {
 		const forOne = await roundTripsFor(slotIds.slice(0, 1));
 
 		expect(await roundTripsFor(slotIds)).toBe(forOne);
@@ -101,7 +111,9 @@ describe('a batch of Feature Match Slot updates', () => {
 	it('reads and announces nothing when no Slot was affected', async () => {
 		const before = harness.roundTrips();
 
-		await expect(eventDataPublicationModule().featureMatchSlotsUpdated({ eventId, slotIds: [] })).resolves.toEqual([]);
+		await expect(
+			eventDataPublicationModule().featureMatchSlotsUpdated({ eventId, slotIds: [] }),
+		).resolves.toEqual([]);
 
 		expect(harness.roundTrips()).toBe(before);
 		expect(ably.published).toEqual([]);

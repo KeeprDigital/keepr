@@ -1,4 +1,8 @@
-import type { BracketEntrant, BracketMatchInput, TopCutBracket } from '~~/shared/modules/top-cut-bracket';
+import type {
+	BracketEntrant,
+	BracketMatchInput,
+	TopCutBracket,
+} from '~~/shared/modules/top-cut-bracket';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -35,7 +39,13 @@ function player(id: number): BracketEntrant {
 	return { playerId: id, name: `Seed ${id}` };
 }
 
-function match(matchId: number, table: number, a: BracketEntrant | null, b: BracketEntrant | null, result?: [number, number]): BracketMatchInput {
+function match(
+	matchId: number,
+	table: number,
+	a: BracketEntrant | null,
+	b: BracketEntrant | null,
+	result?: [number, number],
+): BracketMatchInput {
 	return {
 		matchId,
 		tableNumber: table,
@@ -55,7 +65,9 @@ function unplayed(size: number): TopCutBracket {
 		{
 			roundId: 1,
 			name: 'First Round',
-			matches: Array.from({ length: size / 2 }, (_, index) => match(index + 1, index + 1, player(index + 1), player(size - index))),
+			matches: Array.from({ length: size / 2 }, (_, index) =>
+				match(index + 1, index + 1, player(index + 1), player(size - index)),
+			),
 		},
 	]);
 }
@@ -67,10 +79,16 @@ async function mountComponent() {
 }
 
 function columnTexts(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
-	return wrapper.findAll('.bracket-column').map(column => ({
+	return wrapper.findAll('.bracket-column').map((column) => ({
 		name: column.find('.bracket-column-name').text(),
-		positions: column.findAll('.bracket-position').map(position =>
-			position.findAll('.bracket-entrant').map(entrant => entrant.findAll('span').map(part => part.text()).join(' '))),
+		positions: column.findAll('.bracket-position').map((position) =>
+			position.findAll('.bracket-entrant').map((entrant) =>
+				entrant
+					.findAll('span')
+					.map((part) => part.text())
+					.join(' '),
+			),
+		),
 	}));
 }
 
@@ -88,7 +106,7 @@ describe('screenModesTopCutDisplay', () => {
 		headerText.value = 'Top 8';
 	});
 
-	it('renders one column per Round, each Match\'s Players and result, and the winners advancing into pending positions', async () => {
+	it("renders one column per Round, each Match's Players and result, and the winners advancing into pending positions", async () => {
 		bracket.value = deriveTopCutBracket([
 			{
 				roundId: 1,
@@ -123,23 +141,25 @@ describe('screenModesTopCutDisplay', () => {
 			},
 			{
 				name: 'Final',
-				positions: [
-					['TBD', 'TBD'],
-				],
+				positions: [['TBD', 'TBD']],
 			},
 		]);
 
 		const firstMatch = wrapper.findAll('.bracket-column')[0]!.findAll('.bracket-position')[0]!;
-		expect(firstMatch.findAll('.bracket-entrant').map(entrant => entrant.classes())).toEqual([
+		expect(firstMatch.findAll('.bracket-entrant').map((entrant) => entrant.classes())).toEqual([
 			expect.arrayContaining(['is-winner']),
 			expect.arrayContaining(['is-eliminated']),
 		]);
-		expect(wrapper.findAll('.bracket-column')[1]!.findAll('.bracket-position').map(position => position.attributes('data-status')))
-			.toEqual(['awaiting', 'awaiting']);
+		expect(
+			wrapper
+				.findAll('.bracket-column')[1]!
+				.findAll('.bracket-position')
+				.map((position) => position.attributes('data-status')),
+		).toEqual(['awaiting', 'awaiting']);
 		expect(wrapper.find('.bracket-champion').exists()).toBe(false);
 	});
 
-	it('shows a bye\'s empty seat as a bye', async () => {
+	it("shows a bye's empty seat as a bye", async () => {
 		bracket.value = deriveTopCutBracket([
 			{
 				roundId: 1,
@@ -159,7 +179,7 @@ describe('screenModesTopCutDisplay', () => {
 		expect(columnTexts(wrapper)[1]!.positions[0]).toEqual(['Seed 1', 'TBD']);
 	});
 
-	it('crowns the Final\'s winner', async () => {
+	it("crowns the Final's winner", async () => {
 		bracket.value = deriveTopCutBracket([
 			{
 				roundId: 1,
@@ -172,9 +192,7 @@ describe('screenModesTopCutDisplay', () => {
 			{
 				roundId: 2,
 				name: 'Finals',
-				matches: [
-					match(3, 1, player(1), player(2), [1, 2]),
-				],
+				matches: [match(3, 1, player(1), player(2), [1, 2])],
 			},
 		]);
 		const wrapper = await mountComponent();
@@ -182,13 +200,18 @@ describe('screenModesTopCutDisplay', () => {
 		expect(wrapper.find('.bracket-champion').text()).toContain('Seed 2');
 	});
 
-	it.each([4, 8, 16])('renders every position of a Top %i, sized to its first column', async (size) => {
-		bracket.value = unplayed(size);
-		const wrapper = await mountComponent();
+	it.each([4, 8, 16])(
+		'renders every position of a Top %i, sized to its first column',
+		async (size) => {
+			bracket.value = unplayed(size);
+			const wrapper = await mountComponent();
 
-		expect(wrapper.findAll('.bracket-position')).toHaveLength(size - 1);
-		expect(wrapper.find('.topcut-display').attributes('style')).toContain(`--bracket-rows: ${size / 2}`);
-	});
+			expect(wrapper.findAll('.bracket-position')).toHaveLength(size - 1);
+			expect(wrapper.find('.topcut-display').attributes('style')).toContain(
+				`--bracket-rows: ${size / 2}`,
+			);
+		},
+	);
 
 	describe('seeds and Archetypes', () => {
 		/** A Semifinal whose Players carry a seed and an Archetype, or neither. */
@@ -198,24 +221,34 @@ describe('screenModesTopCutDisplay', () => {
 					roundId: 1,
 					name: 'Semifinals',
 					matches: [
-						match(1, 1, {
-							...player(1),
-							seed: 1,
-							deck: { name: 'Izzet Prowess', colors: 'UR' },
-						}, {
-							...player(4),
-							seed: null,
-							deck: null,
-						}),
-						match(2, 2, {
-							...player(2),
-							seed: 2,
-							deck: null,
-						}, {
-							...player(3),
-							seed: 3,
-							deck: { name: 'Mono-Green Landfall', colors: 'G' },
-						}),
+						match(
+							1,
+							1,
+							{
+								...player(1),
+								seed: 1,
+								deck: { name: 'Izzet Prowess', colors: 'UR' },
+							},
+							{
+								...player(4),
+								seed: null,
+								deck: null,
+							},
+						),
+						match(
+							2,
+							2,
+							{
+								...player(2),
+								seed: 2,
+								deck: null,
+							},
+							{
+								...player(3),
+								seed: 3,
+								deck: { name: 'Mono-Green Landfall', colors: 'G' },
+							},
+						),
 					],
 				},
 			]);
@@ -225,15 +258,17 @@ describe('screenModesTopCutDisplay', () => {
 			return wrapper.findAll('.bracket-column')[0]!.findAll('.bracket-entrant');
 		}
 
-		it('shows each Player\'s seed before their name, blank for one with none', async () => {
+		it("shows each Player's seed before their name, blank for one with none", async () => {
 			bracket.value = detailed();
 			config.value = { ...config.value, showSeeds: true };
 			const wrapper = await mountComponent();
 
-			expect(firstColumnEntrants(wrapper).map(entrant => [
-				entrant.find('.bracket-entrant-seed').text(),
-				entrant.find('.bracket-entrant-name').text(),
-			])).toEqual([
+			expect(
+				firstColumnEntrants(wrapper).map((entrant) => [
+					entrant.find('.bracket-entrant-seed').text(),
+					entrant.find('.bracket-entrant-name').text(),
+				]),
+			).toEqual([
 				['1', 'Seed 1'],
 				['', 'Seed 4'],
 				['2', 'Seed 2'],
@@ -242,17 +277,16 @@ describe('screenModesTopCutDisplay', () => {
 			expect(wrapper.find('.bracket-entrant-archetype').exists()).toBe(false);
 		});
 
-		it('shows each Player\'s Archetype under their name, blank for one with none', async () => {
+		it("shows each Player's Archetype under their name, blank for one with none", async () => {
 			bracket.value = detailed();
 			config.value = { ...config.value, showArchetypes: true };
 			const wrapper = await mountComponent();
 
-			expect(firstColumnEntrants(wrapper).map(entrant => entrant.find('.bracket-entrant-archetype').text())).toEqual([
-				'Izzet Prowess',
-				'',
-				'',
-				'Mono-Green Landfall',
-			]);
+			expect(
+				firstColumnEntrants(wrapper).map((entrant) =>
+					entrant.find('.bracket-entrant-archetype').text(),
+				),
+			).toEqual(['Izzet Prowess', '', '', 'Mono-Green Landfall']);
 			expect(wrapper.find('.bracket-entrant-seed').exists()).toBe(false);
 		});
 
@@ -276,69 +310,60 @@ describe('screenModesTopCutDisplay', () => {
 		});
 
 		it.each([
-			[
-				'neither',
-				false,
-				false,
-				{ seed: null, archetype: null },
-			],
-			[
-				'the Seed',
-				true,
-				false,
-				{ seed: '2', archetype: null },
-			],
-			[
-				'the Archetype',
-				false,
-				true,
-				{ seed: null, archetype: 'Izzet Prowess' },
-			],
-			[
-				'both',
-				true,
-				true,
-				{ seed: '2', archetype: 'Izzet Prowess' },
-			],
-		])('shows %s of the champion under the bracket\'s toggles', async (_, showSeeds, showArchetypes, expected) => {
-			bracket.value = deriveTopCutBracket([
-				{
-					roundId: 1,
-					name: 'Final',
-					matches: [
-						match(1, 1, {
-							...player(1),
-							seed: 1,
-							deck: null,
-						}, {
-							...player(2),
-							seed: 2,
-							deck: { name: 'Izzet Prowess', colors: 'UR' },
-						}, [0, 2]),
-					],
-				},
-			]);
-			config.value = { ...config.value, showSeeds, showArchetypes };
-			const wrapper = await mountComponent();
+			['neither', false, false, { seed: null, archetype: null }],
+			['the Seed', true, false, { seed: '2', archetype: null }],
+			['the Archetype', false, true, { seed: null, archetype: 'Izzet Prowess' }],
+			['both', true, true, { seed: '2', archetype: 'Izzet Prowess' }],
+		])(
+			"shows %s of the champion under the bracket's toggles",
+			async (_, showSeeds, showArchetypes, expected) => {
+				bracket.value = deriveTopCutBracket([
+					{
+						roundId: 1,
+						name: 'Final',
+						matches: [
+							match(
+								1,
+								1,
+								{
+									...player(1),
+									seed: 1,
+									deck: null,
+								},
+								{
+									...player(2),
+									seed: 2,
+									deck: { name: 'Izzet Prowess', colors: 'UR' },
+								},
+								[0, 2],
+							),
+						],
+					},
+				]);
+				config.value = { ...config.value, showSeeds, showArchetypes };
+				const wrapper = await mountComponent();
 
-			const champion = wrapper.find('.bracket-champion');
-			expect(champion.find('.bracket-champion-player').text()).toBe('Seed 2');
-			expect({
-				seed: champion.find('.bracket-champion-seed').exists()
-					? champion.find('.bracket-champion-seed').text()
-					: null,
-				archetype: champion.find('.bracket-champion-archetype').exists()
-					? champion.find('.bracket-champion-archetype').text()
-					: null,
-			}).toEqual(expected);
-		});
+				const champion = wrapper.find('.bracket-champion');
+				expect(champion.find('.bracket-champion-player').text()).toBe('Seed 2');
+				expect({
+					seed: champion.find('.bracket-champion-seed').exists()
+						? champion.find('.bracket-champion-seed').text()
+						: null,
+					archetype: champion.find('.bracket-champion-archetype').exists()
+						? champion.find('.bracket-champion-archetype').text()
+						: null,
+				}).toEqual(expected);
+			},
+		);
 
 		it('sizes type for one line per entrant while Archetypes are off', async () => {
 			bracket.value = unplayed(16);
 			config.value = { ...config.value, showSeeds: true };
 			const wrapper = await mountComponent();
 
-			expect(wrapper.find('.topcut-display').attributes('style')).toContain('--bracket-position-height: 4.6');
+			expect(wrapper.find('.topcut-display').attributes('style')).toContain(
+				'--bracket-position-height: 4.6',
+			);
 		});
 	});
 

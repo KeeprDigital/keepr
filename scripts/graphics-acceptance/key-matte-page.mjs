@@ -16,7 +16,10 @@
 
 import { squareShapeGeometry } from '~~/shared/modules/graphics';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
-import { frameBorderLine, resolveFeatureMatchOverlayRenderModel } from '~/modules/feature-match-overlay/renderModel';
+import {
+	frameBorderLine,
+	resolveFeatureMatchOverlayRenderModel,
+} from '~/modules/feature-match-overlay/renderModel';
 import { resolveGraphicsCompositionRenderModel } from '~/modules/graphics/renderModel';
 import { KEY_MATTE_PROOF_SCENE, KEY_MATTE_PROOF_SCENES } from './key-matte-scenarios.mjs';
 
@@ -27,13 +30,10 @@ const { width: SCENE_WIDTH, height: SCENE_HEIGHT } = KEY_MATTE_PROOF_SCENE;
 const GLOW = { color: '#ff51c7', size: 16, opacity: 0.5 };
 
 function element(tag, style = {}, attributes = {}) {
-	const node = tag === 'div'
-		? document.createElement('div')
-		: document.createElementNS(SVG, tag);
+	const node = tag === 'div' ? document.createElement('div') : document.createElementNS(SVG, tag);
 	Object.assign(node.style, style);
 	for (const [name, value] of Object.entries(attributes)) {
-		if (value !== undefined)
-			node.setAttribute(name, String(value));
+		if (value !== undefined) node.setAttribute(name, String(value));
 	}
 	return node;
 }
@@ -102,17 +102,27 @@ function drawGraphicItem(stage, output) {
 			const box = element('div', { position: 'absolute', ...item.style });
 			const { surface } = item;
 			if (surface) {
-				const svg = element('svg', {
-					position: 'absolute',
-					inset: '0',
-					width: '100%',
-					height: '100%',
-					overflow: 'visible',
-				}, {
-					viewBox: `0 0 ${surface.width} ${surface.height}`,
-					preserveAspectRatio: 'none',
-				});
-				svg.append(element('path', {}, { 'd': surface.path, 'fill': surface.fill.color, 'fill-opacity': surface.fill.opacity }));
+				const svg = element(
+					'svg',
+					{
+						position: 'absolute',
+						inset: '0',
+						width: '100%',
+						height: '100%',
+						overflow: 'visible',
+					},
+					{
+						viewBox: `0 0 ${surface.width} ${surface.height}`,
+						preserveAspectRatio: 'none',
+					},
+				);
+				svg.append(
+					element(
+						'path',
+						{},
+						{ d: surface.path, fill: surface.fill.color, 'fill-opacity': surface.fill.opacity },
+					),
+				);
 				box.append(svg);
 			}
 			layer.append(box);
@@ -154,60 +164,86 @@ function drawSourceItem(stage, output, { unkeyed = false } = {}) {
 
 /** The Frame's border with a half-opaque glow, its own fill at zero opacity so only the border paints. */
 function drawFrame(stage, output) {
-	const model = featureMatchOverlayModel(output, {
-		frame: { opacity: 0 },
-		sources: [],
-	}, {
-		frameSurface: {
-			...GLOWING_OUTLINE,
-			outline: { color: '#0077a3', width: 8 },
+	const model = featureMatchOverlayModel(
+		output,
+		{
+			frame: { opacity: 0 },
+			sources: [],
 		},
-	});
+		{
+			frameSurface: {
+				...GLOWING_OUTLINE,
+				outline: { color: '#0077a3', width: 8 },
+			},
+		},
+	);
 	stage.style.background = model.canvasStyle.background;
 	const { frame } = model;
-	const svg = element('svg', { position: 'absolute', inset: '0' }, {
-		width: '100%',
-		height: '100%',
-		viewBox: `0 0 ${SCENE_WIDTH} ${SCENE_HEIGHT}`,
-		preserveAspectRatio: 'none',
-	});
+	const svg = element(
+		'svg',
+		{ position: 'absolute', inset: '0' },
+		{
+			width: '100%',
+			height: '100%',
+			viewBox: `0 0 ${SCENE_WIDTH} ${SCENE_HEIGHT}`,
+			preserveAspectRatio: 'none',
+		},
+	);
 	const defs = element('defs');
 	const glow = frame.border?.glow;
 	if (glow) {
-		const filter = element('filter', {}, {
-			id: glow.filterId,
-			x: '-20%',
-			y: '-20%',
-			width: '140%',
-			height: '140%',
-		});
-		filter.append(element('feDropShadow', {}, {
-			'dx': 0,
-			'dy': 0,
-			'stdDeviation': glow.stdDeviation,
-			'flood-color': glow.floodColor,
-			'flood-opacity': glow.floodOpacity,
-		}));
+		const filter = element(
+			'filter',
+			{},
+			{
+				id: glow.filterId,
+				x: '-20%',
+				y: '-20%',
+				width: '140%',
+				height: '140%',
+			},
+		);
+		filter.append(
+			element(
+				'feDropShadow',
+				{},
+				{
+					dx: 0,
+					dy: 0,
+					stdDeviation: glow.stdDeviation,
+					'flood-color': glow.floodColor,
+					'flood-opacity': glow.floodOpacity,
+				},
+			),
+		);
 		defs.append(filter);
 	}
 	svg.append(defs);
-	svg.append(element('rect', {}, {
-		'x': 0,
-		'y': 0,
-		'width': SCENE_WIDTH,
-		'height': SCENE_HEIGHT,
-		'fill': frame.fill.color,
-		'fill-opacity': frame.fill.opacity,
-		'opacity': frame.opacity,
-	}));
+	svg.append(
+		element(
+			'rect',
+			{},
+			{
+				x: 0,
+				y: 0,
+				width: SCENE_WIDTH,
+				height: SCENE_HEIGHT,
+				fill: frame.fill.color,
+				'fill-opacity': frame.fill.opacity,
+				opacity: frame.opacity,
+			},
+		),
+	);
 	if (frame.border) {
-		const group = element('g', {}, {
-			'stroke': frame.border.stroke,
-			'stroke-width': frame.border.strokeWidth,
-			'filter': glow
-				? `url(#${glow.filterId})`
-				: undefined,
-		});
+		const group = element(
+			'g',
+			{},
+			{
+				stroke: frame.border.stroke,
+				'stroke-width': frame.border.strokeWidth,
+				filter: glow ? `url(#${glow.filterId})` : undefined,
+			},
+		);
 		for (const side of frame.border.sides)
 			group.append(element('line', {}, frameBorderLine(side, SCENE_WIDTH, SCENE_HEIGHT)));
 		svg.append(group);
@@ -223,7 +259,7 @@ const DRAW = {
 };
 
 function nextFrame() {
-	return new Promise(resolve => requestAnimationFrame(() => resolve()));
+	return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 /** Draw every scene in one output, and settle once Chromium has painted it. */
@@ -251,11 +287,17 @@ async function render(output) {
 
 async function pixels(png) {
 	const blob = await (await fetch(`data:image/png;base64,${png}`)).blob();
-	const bitmap = await createImageBitmap(blob, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+	const bitmap = await createImageBitmap(blob, {
+		premultiplyAlpha: 'none',
+		colorSpaceConversion: 'none',
+	});
 	const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
 	const context = canvas.getContext('2d', { willReadFrequently: true });
 	context.drawImage(bitmap, 0, 0);
-	return { width: bitmap.width, data: context.getImageData(0, 0, bitmap.width, bitmap.height).data };
+	return {
+		width: bitmap.width,
+		data: context.getImageData(0, 0, bitmap.width, bitmap.height).data,
+	};
 }
 
 /**
@@ -272,13 +314,12 @@ async function measure(overlayPng, keyPng) {
 		let maxChroma = 0;
 		for (let y = 0; y < SCENE_HEIGHT; y++) {
 			for (let x = index * SCENE_WIDTH; x < (index + 1) * SCENE_WIDTH; x++) {
-				const at = ((y * overlay.width) + x) * 4;
+				const at = (y * overlay.width + x) * 4;
 				const alpha = overlay.data[at + 3];
 				const [r, g, b] = [key.data[at], key.data[at + 1], key.data[at + 2]];
 				maxMatteError = Math.max(maxMatteError, Math.abs(r - alpha));
 				maxChroma = Math.max(maxChroma, Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
-				if (r > 0 && r < 255)
-					greyPixels++;
+				if (r > 0 && r < 255) greyPixels++;
 			}
 		}
 		return {

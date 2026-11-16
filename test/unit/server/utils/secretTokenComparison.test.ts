@@ -19,7 +19,9 @@ describe('comparing a presented secret against the configured one', () => {
 	});
 
 	it('refuses a different secret of the same length', async () => {
-		await expect(secretTokensMatch('a-configured-tokeN', 'a-configured-token')).resolves.toBe(false);
+		await expect(secretTokensMatch('a-configured-tokeN', 'a-configured-token')).resolves.toBe(
+			false,
+		);
 	});
 
 	it('refuses a secret differing only in its last byte', async () => {
@@ -33,7 +35,9 @@ describe('comparing a presented secret against the configured one', () => {
 	});
 
 	it('refuses a secret the configured one is a prefix of', async () => {
-		await expect(secretTokensMatch('a-configured-token-and-more', 'a-configured-token')).resolves.toBe(false);
+		await expect(
+			secretTokensMatch('a-configured-token-and-more', 'a-configured-token'),
+		).resolves.toBe(false);
 	});
 
 	it('refuses an empty candidate', async () => {

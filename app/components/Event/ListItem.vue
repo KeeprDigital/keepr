@@ -7,14 +7,8 @@ const props = defineProps<{
 </script>
 
 <template>
-	<NuxtLink
-		:to="`/event/${props.event.id}`"
-		class="block"
-	>
-		<UCard
-			:key="props.event.id"
-			class="hover:shadow-lg transition-shadow duration-200"
-		>
+	<NuxtLink :to="`/event/${props.event.id}`" class="block">
+		<UCard :key="props.event.id" class="hover:shadow-lg transition-shadow duration-200">
 			<template #header>
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">

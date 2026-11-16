@@ -3,9 +3,11 @@ import { screenOutputAssetCapabilityManagerForEvent } from '~~/server/modules/sc
 import { TemporarilyUnavailableError } from '~~/server/utils/errors';
 import { screenOutputReadNotFound } from '~~/server/utils/screenOutputRead';
 
-const bodySchema = z.object({
-	link: z.string(),
-}).strict();
+const bodySchema = z
+	.object({
+		link: z.string(),
+	})
+	.strict();
 
 /**
  * Exchange a Screen Output Link for its Screen's Screen Output Asset Capability.
@@ -21,15 +23,13 @@ const bodySchema = z.object({
  */
 export default defineEventHandler(async (event) => {
 	const body = bodySchema.safeParse(await readBody<unknown>(event).catch(() => undefined));
-	if (!body.success)
-		screenOutputReadNotFound();
+	if (!body.success) screenOutputReadNotFound();
 
 	const manager = screenOutputAssetCapabilityManagerForEvent(event);
 	let exchanged: Awaited<ReturnType<typeof manager.exchange>>;
 	try {
 		exchanged = await manager.exchange({ link: body.data.link });
-	}
-	catch (failure) {
+	} catch (failure) {
 		setResponseHeader(event, 'retry-after', 5);
 		// The cause carries this sentence past the 5xx sanitizer; the store's own
 		// failure rides inside it, for the log and not for the caller.
@@ -44,8 +44,7 @@ export default defineEventHandler(async (event) => {
 			cause,
 		});
 	}
-	if (exchanged.outcome === 'missing')
-		screenOutputReadNotFound();
+	if (exchanged.outcome === 'missing') screenOutputReadNotFound();
 
 	setResponseHeader(event, 'cache-control', 'private, no-store');
 	return {

@@ -48,8 +48,11 @@ describe('wire-shaped fixtures', () => {
 		const round = createMockRound({ id: 7, name: 'Round 7', externalSource: 'melee' });
 		const wire = createWireMockRound({ id: 7, name: 'Round 7', externalSource: 'melee' });
 
-		expect({ ...wire, createdAt: null, updatedAt: null })
-			.toEqual({ ...round, createdAt: null, updatedAt: null });
+		expect({ ...wire, createdAt: null, updatedAt: null }).toEqual({
+			...round,
+			createdAt: null,
+			updatedAt: null,
+		});
 	});
 
 	it('round-trips a fixture built anywhere else', () => {

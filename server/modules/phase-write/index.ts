@@ -25,7 +25,11 @@ export function phaseWriteModule() {
 	const publication = eventDataPublicationModule();
 	const phases = phaseService();
 
-	async function create({ eventId, input, originConnectionId }: CreatePhaseParams): Promise<PhaseResponse> {
+	async function create({
+		eventId,
+		input,
+		originConnectionId,
+	}: CreatePhaseParams): Promise<PhaseResponse> {
 		const newPhase = await phases.create(eventId, input);
 
 		return await publication.phaseCreated({
@@ -35,7 +39,12 @@ export function phaseWriteModule() {
 		});
 	}
 
-	async function update({ eventId, phaseId, input, originConnectionId }: UpdatePhaseParams): Promise<PhaseResponse> {
+	async function update({
+		eventId,
+		phaseId,
+		input,
+		originConnectionId,
+	}: UpdatePhaseParams): Promise<PhaseResponse> {
 		const updatedPhase = await phases.update(phaseId, eventId, input);
 		if (!updatedPhase) {
 			throw createError({ statusCode: 404, message: 'Phase not found' });
@@ -48,7 +57,11 @@ export function phaseWriteModule() {
 		});
 	}
 
-	async function remove({ eventId, phaseId, originConnectionId }: RemovePhaseParams): Promise<void> {
+	async function remove({
+		eventId,
+		phaseId,
+		originConnectionId,
+	}: RemovePhaseParams): Promise<void> {
 		const { deleted, clearedScreens } = await phases.remove(phaseId, eventId);
 
 		// Even for a Phase already gone: the release committed either way (ADR-0060).

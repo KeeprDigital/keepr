@@ -9,7 +9,10 @@ import type {
 	PasswordResetLink,
 	RevokedUserSessions,
 } from '~~/shared/types/userAdministration';
-import { assertPasswordWithinBounds, normalizeAccountEmail } from '~~/server/utils/betterAuthCredentials';
+import {
+	assertPasswordWithinBounds,
+	normalizeAccountEmail,
+} from '~~/server/utils/betterAuthCredentials';
 import { passwordResetLinkPath } from '~~/shared/utils/passwordResetLink';
 
 /**
@@ -89,7 +92,10 @@ export interface UserAdministrationPort {
 	issuePasswordResetToken: (userId: string, expiresAt: Date) => Promise<string>;
 	/** Voids every reset token the account has outstanding. */
 	revokePasswordResetTokens: (userId: string) => Promise<void>;
-	setBan: (userId: string, ban: { banned: boolean; banReason: string | null }) => Promise<AdministeredUser>;
+	setBan: (
+		userId: string,
+		ban: { banned: boolean; banReason: string | null },
+	) => Promise<AdministeredUser>;
 	countSessions: (userId: string) => Promise<number>;
 	revokeSessions: (userId: string) => Promise<void>;
 }
@@ -139,7 +145,9 @@ export interface CreateUserAccountRequest {
 }
 
 /** Every account this installation holds, capped. */
-export async function listUserAccounts(port: UserAdministrationPort): Promise<AdministeredUserList> {
+export async function listUserAccounts(
+	port: UserAdministrationPort,
+): Promise<AdministeredUserList> {
 	const { users, total } = await port.listUsers(USER_LIST_CAP);
 
 	return {

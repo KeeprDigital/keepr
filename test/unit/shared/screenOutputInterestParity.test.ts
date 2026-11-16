@@ -80,7 +80,10 @@ const MESSAGES = {
 	// A Match the rendering holds, since moved to another Round and re-seated.
 	'moving a Match it holds away': eventMessageSamples({ ...OTHER, matchId: SHOWN.matchId }),
 	// The Match a Slot follows, which only the Slot names, moved and re-seated the same way.
-	'moving the Match its Slot follows away': eventMessageSamples({ ...OTHER, matchId: HELD.matchId }),
+	'moving the Match its Slot follows away': eventMessageSamples({
+		...OTHER,
+		matchId: HELD.matchId,
+	}),
 } as const;
 
 type Dependencies = ScreenModeDependencies<any>;
@@ -98,7 +101,10 @@ interface ParityCase {
 	exactly?: MessageType[];
 }
 
-function screenIn<M extends ScreenMode>(mode: M, config: Partial<ModeConfigTypeMap[M]> = {}): HearingScreen<M> {
+function screenIn<M extends ScreenMode>(
+	mode: M,
+	config: Partial<ModeConfigTypeMap[M]> = {},
+): HearingScreen<M> {
 	return {
 		id: SHOWN.screenId,
 		mode,
@@ -144,7 +150,7 @@ const OVERLAY: Dependencies = {
 	'round:updated': ({ round }, held) => round.id === held.round?.id,
 	'phase:updated': ({ phase }, held) => phase.id === held.phase?.id,
 	'player:updated': ({ player }) => seatedIds.includes(player.id),
-	'playerDeck:cardsResolved': ({ playerIds }) => playerIds.some(id => seatedIds.includes(id)),
+	'playerDeck:cardsResolved': ({ playerIds }) => playerIds.some((id) => seatedIds.includes(id)),
 };
 
 /**
@@ -184,18 +190,17 @@ const EVERY_RENDERING: Dependencies = {
 function standingsCase(name: string, config: Partial<ModeConfigTypeMap['standings']>): ParityCase {
 	const screen = screenIn('standings', config);
 	// As `useStandingsModeData` derives them from its config.
-	const watchlistId = () => screen.config.viewMode === 'watchlist'
-		? screen.config.playerListId ?? null
-		: null;
+	const watchlistId = () =>
+		screen.config.viewMode === 'watchlist' ? (screen.config.playerListId ?? null) : null;
 	return {
 		declaration: 'standingsDependencies',
 		name,
 		screen,
-		dependsOn: standingsDependencies(watchlistId, () => isColumnVisible(screen.config.columns, 'positionChange')),
+		dependsOn: standingsDependencies(watchlistId, () =>
+			isColumnVisible(screen.config.columns, 'positionChange'),
+		),
 		held: {
-			round: screen.config.roundId
-				? { id: screen.config.roundId }
-				: null,
+			round: screen.config.roundId ? { id: screen.config.roundId } : null,
 		},
 	};
 }
@@ -219,9 +224,7 @@ function metagameCases(mode: 'metagame' | 'top-cards' | 'archetype-spotlight'): 
 const headToHeadHeld = {
 	player1: { id: SHOWN.playerId },
 	player2: { id: SHOWN.opponentId },
-	earlierMatches: [
-		{ matchId: HELD.matchId, roundId: HELD.roundId },
-	],
+	earlierMatches: [{ matchId: HELD.matchId, roundId: HELD.roundId }],
 };
 const phaseBracketHeld = {
 	phase: { id: SHOWN.phaseId },
@@ -232,10 +235,7 @@ const phaseBracketHeld = {
 				positions: [
 					{
 						matchId: HELD.matchId,
-						entrants: [
-							{ playerId: HELD.playerId },
-							null,
-						],
+						entrants: [{ playerId: HELD.playerId }, null],
 					},
 				],
 			},
@@ -244,9 +244,7 @@ const phaseBracketHeld = {
 };
 const manualBracket = {
 	size: 4,
-	entrants: [
-		{ playerId: SHOWN.playerId },
-	],
+	entrants: [{ playerId: SHOWN.playerId }],
 	results: [],
 } satisfies ModeConfigTypeMap['top-cut']['manualBracket'];
 const manualBracketHeld = {
@@ -258,10 +256,7 @@ const manualBracketHeld = {
 				positions: [
 					{
 						matchId: null,
-						entrants: [
-							{ playerId: SHOWN.playerId },
-							null,
-						],
+						entrants: [{ playerId: SHOWN.playerId }, null],
 					},
 				],
 			},
@@ -269,7 +264,10 @@ const manualBracketHeld = {
 	},
 };
 const playerDeckSource = { type: 'player', playerId: SHOWN.playerId } as const;
-const broadcastDeckSource = { type: 'broadcast', broadcastDeckListId: SHOWN.broadcastDeckListId } as const;
+const broadcastDeckSource = {
+	type: 'broadcast',
+	broadcastDeckListId: SHOWN.broadcastDeckListId,
+} as const;
 const slotDeckSource = { type: 'featureMatchSlot', slotId: SHOWN.slotId, side: 'player1' } as const;
 const talentScreen = screenIn('talent', { talentId: SHOWN.talentId });
 
@@ -280,9 +278,7 @@ const CASES: ParityCase[] = [
 		viewMode: 'watchlist',
 		playerListId: SHOWN.playerListId,
 		roundId: SHOWN.roundId,
-		columns: [
-			{ key: 'positionChange', visible: true },
-		],
+		columns: [{ key: 'positionChange', visible: true }],
 	}),
 	{
 		declaration: 'pairingsDependencies',
@@ -352,7 +348,11 @@ const CASES: ParityCase[] = [
 	{
 		declaration: 'headToHeadDependencies',
 		name: 'Head-to-Head of two Players',
-		screen: screenIn('head-to-head', { playerSource: 'players', player1Id: SHOWN.playerId, player2Id: SHOWN.opponentId }),
+		screen: screenIn('head-to-head', {
+			playerSource: 'players',
+			player1Id: SHOWN.playerId,
+			player2Id: SHOWN.opponentId,
+		}),
 		dependsOn: headToHeadDependencies(() => null),
 		held: headToHeadHeld,
 	},
@@ -360,7 +360,10 @@ const CASES: ParityCase[] = [
 		declaration: 'topCutDependencies',
 		name: `Top Cut Bracket of a Phase, Archetypes ${showArchetypes ? 'shown' : 'hidden'}`,
 		screen: screenIn('top-cut', { phaseId: SHOWN.phaseId, showArchetypes }),
-		dependsOn: topCutDependencies(() => SHOWN.phaseId, () => showArchetypes),
+		dependsOn: topCutDependencies(
+			() => SHOWN.phaseId,
+			() => showArchetypes,
+		),
 		held: phaseBracketHeld,
 	})),
 	...[false, true].map((showArchetypes): ParityCase => ({
@@ -382,7 +385,9 @@ const CASES: ParityCase[] = [
 		declaration: 'talentDependencies',
 		name: 'Talent',
 		screen: talentScreen,
-		dependsOn: talentDependencies(talentId => talentScreenTalentIds(talentScreen.config).includes(talentId)),
+		dependsOn: talentDependencies((talentId) =>
+			talentScreenTalentIds(talentScreen.config).includes(talentId),
+		),
 		held: { talents: [] },
 	},
 	{
@@ -440,7 +445,7 @@ const CASES: ParityCase[] = [
 	},
 	{
 		declaration: 'inline',
-		name: 'Feature Match Overlay, told nothing of its Slot\'s Match',
+		name: "Feature Match Overlay, told nothing of its Slot's Match",
 		screen: screenIn('feature-match-overlay', { featureMatchId: SHOWN.slotId }),
 		context: seated,
 		dependsOn: OVERLAY,
@@ -492,10 +497,12 @@ const CASES: ParityCase[] = [
 ];
 
 /** Every message a case's rendering depended on, in each naming, and whether it re-read on it given what it held. */
-const DEPENDENCIES = CASES.flatMap(parityCase =>
-	(Object.keys(parityCase.dependsOn) as MessageType[]).flatMap(type =>
+const DEPENDENCIES = CASES.flatMap((parityCase) =>
+	(Object.keys(parityCase.dependsOn) as MessageType[]).flatMap((type) =>
 		Object.entries(MESSAGES).map(([naming, samples]) => {
-			const dependency = parityCase.dependsOn[type] as true | ((message: unknown, held: unknown) => boolean);
+			const dependency = parityCase.dependsOn[type] as
+				| true
+				| ((message: unknown, held: unknown) => boolean);
 			return {
 				parityCase,
 				name: parityCase.name,
@@ -504,16 +511,22 @@ const DEPENDENCIES = CASES.flatMap(parityCase =>
 				payload: samples[type],
 				rereads: dependency === true || dependency(samples[type], parityCase.held),
 			};
-		})));
+		}),
+	),
+);
 const REREADS = DEPENDENCIES.filter(({ rereads }) => rereads);
 /** The messages a rendering ignores of a type its Screen's rule narrows as far as it does. */
-const IGNORED_EXACTLY = DEPENDENCIES.filter(({ parityCase, type, rereads }) => !rereads && parityCase.exactly?.includes(type));
+const IGNORED_EXACTLY = DEPENDENCIES.filter(
+	({ parityCase, type, rereads }) => !rereads && parityCase.exactly?.includes(type),
+);
 
-type Dependency = typeof DEPENDENCIES[number];
+type Dependency = (typeof DEPENDENCIES)[number];
 
 /** Whether the row's Screen hears its message by the shared rule. */
 function hears({ parityCase, type, payload }: Dependency) {
-	return outputChangeOf(type, payload).some(change => screenHears(parityCase.screen, change, parityCase.context));
+	return outputChangeOf(type, payload).some((change) =>
+		screenHears(parityCase.screen, change, parityCase.context),
+	);
 }
 
 /** A row as a failure names it. */
@@ -522,18 +535,23 @@ function named({ name, type, naming }: Dependency) {
 }
 
 describe('a Screen hears every message its rendering re-read on', () => {
-	it.each([
-		...new Set(CASES.map(parityCase => parityCase.declaration)),
-	])('%s: in every case, for every message type and naming', (declaration) => {
-		const rereads = REREADS.filter(({ parityCase }) => parityCase.declaration === declaration);
+	it.each([...new Set(CASES.map((parityCase) => parityCase.declaration))])(
+		'%s: in every case, for every message type and naming',
+		(declaration) => {
+			const rereads = REREADS.filter(({ parityCase }) => parityCase.declaration === declaration);
 
-		expect(rereads.filter(row => !hears(row)).map(named)).toEqual([]);
+			expect(rereads.filter((row) => !hears(row)).map(named)).toEqual([]);
 
-		// No dependency goes unproven because no case made its rendering re-read.
-		const declared = new Set(CASES.filter(parityCase => parityCase.declaration === declaration).flatMap(parityCase => Object.keys(parityCase.dependsOn)));
-		const reread = new Set<string>(rereads.map(({ type }) => type));
-		expect([...declared].filter(type => !reread.has(type))).toEqual([]);
-	});
+			// No dependency goes unproven because no case made its rendering re-read.
+			const declared = new Set(
+				CASES.filter((parityCase) => parityCase.declaration === declaration).flatMap((parityCase) =>
+					Object.keys(parityCase.dependsOn),
+				),
+			);
+			const reread = new Set<string>(rereads.map(({ type }) => type));
+			expect([...declared].filter((type) => !reread.has(type))).toEqual([]);
+		},
+	);
 
 	// Where the rule is told what the rendering holds, it stays as silent as the rendering.
 	it('hears nothing a rendering ignored, of the message types it narrows as far as the rendering did', () => {

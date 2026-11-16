@@ -19,7 +19,7 @@ export function useScreenRealtimeSession(options: ScreenRealtimeSessionOptions) 
 	const session = createGuardedSequence();
 
 	function unsubscribeFromCommands() {
-		commandUnsubscribers.splice(0).forEach(unsubscribe => unsubscribe());
+		commandUnsubscribers.splice(0).forEach((unsubscribe) => unsubscribe());
 	}
 
 	function subscribeToCommands(eventId: number, screenId: number) {
@@ -30,20 +30,16 @@ export function useScreenRealtimeSession(options: ScreenRealtimeSessionOptions) 
 		try {
 			commandUnsubscribers.push(
 				realtime.onChannel(channel, screenCommandMessageTypes.refresh, (data) => {
-					if (data.screenId === screenId)
-						options.onRefresh();
+					if (data.screenId === screenId) options.onRefresh();
 				}),
 				realtime.onChannel(channel, screenCommandMessageTypes.identify, (data) => {
-					if (data.screenId === screenId)
-						options.onIdentify();
+					if (data.screenId === screenId) options.onIdentify();
 				}),
 				realtime.onChannel(channel, screenCommandMessageTypes.debug, (data) => {
-					if (data.screenId === screenId)
-						options.onDebug();
+					if (data.screenId === screenId) options.onDebug();
 				}),
 			);
-		}
-		catch (err) {
+		} catch (err) {
 			console.warn('Failed to subscribe to screen commands:', err);
 		}
 	}
@@ -51,8 +47,7 @@ export function useScreenRealtimeSession(options: ScreenRealtimeSessionOptions) 
 	async function leaveChannel(channel: string) {
 		try {
 			await realtime.leavePresence(channel);
-		}
-		catch (err) {
+		} catch (err) {
 			console.warn('Failed to leave screen presence:', err);
 		}
 	}
@@ -69,16 +64,14 @@ export function useScreenRealtimeSession(options: ScreenRealtimeSessionOptions) 
 
 			activePresenceChannel.value = channel;
 			enteredScreen = { eventId, screenId };
-		}
-		catch (err) {
+		} catch (err) {
 			console.warn('Failed to enter screen presence:', err);
 		}
 	}
 
 	async function leavePresence() {
 		const channel = activePresenceChannel.value;
-		if (!channel)
-			return;
+		if (!channel) return;
 
 		activePresenceChannel.value = null;
 		enteredScreen = null;
@@ -95,13 +88,14 @@ export function useScreenRealtimeSession(options: ScreenRealtimeSessionOptions) 
 	async function updatePresenceData() {
 		const channel = activePresenceChannel.value;
 		const entered = enteredScreen;
-		if (!channel || !entered)
-			return;
+		if (!channel || !entered) return;
 
 		try {
-			await realtime.updatePresence(channel, options.getPresenceData(entered.eventId, entered.screenId));
-		}
-		catch (err) {
+			await realtime.updatePresence(
+				channel,
+				options.getPresenceData(entered.eventId, entered.screenId),
+			);
+		} catch (err) {
 			console.warn('Failed to update screen presence:', err);
 		}
 	}

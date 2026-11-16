@@ -14,18 +14,19 @@ export interface PlayerSearchFacts extends PlayerNameFacts {
 
 /** Which of a Player's two names to show first: their name, or their Nickname. */
 export const PLAYER_NAME_SHOWN_VALUES = ['name', 'nickname'] as const;
-export type PlayerNameShown = typeof PLAYER_NAME_SHOWN_VALUES[number];
+export type PlayerNameShown = (typeof PLAYER_NAME_SHOWN_VALUES)[number];
 
 /**
  * A Player's name or Nickname, whichever `shown` asks for, the other standing
  * in when it is blank (ADR-0077), so a Player missing one still shows.
  */
-export function playerShownName(player: PlayerNameFacts | null | undefined, shown: PlayerNameShown): string {
+export function playerShownName(
+	player: PlayerNameFacts | null | undefined,
+	shown: PlayerNameShown,
+): string {
 	const name = player?.name?.trim() ?? '';
 	const nickname = player?.nickname?.trim() ?? '';
-	return shown === 'nickname'
-		? nickname || name
-		: name || nickname;
+	return shown === 'nickname' ? nickname || name : name || nickname;
 }
 
 /**
@@ -55,29 +56,21 @@ export function unshownPlayerReason(game: Game, player: PlayerNameFacts): string
 	if (game !== 'op' && player.nickname?.trim())
 		return 'Only a One Piece Card Game Player has a Nickname';
 	if (!playerDisplayName(player)) {
-		return game === 'op'
-			? 'A Player needs a name or a Nickname'
-			: 'A Player needs a name';
+		return game === 'op' ? 'A Player needs a name or a Nickname' : 'A Player needs a name';
 	}
 	return null;
 }
 
 /** A TCG+ Player's Bandai member number, which their Provenance is keyed by. */
 export function playerMemberNumber(player: PlayerSearchFacts): string | null {
-	return player.externalSource === 'tcgplus'
-		? player.externalId ?? null
-		: null;
+	return player.externalSource === 'tcgplus' ? (player.externalId ?? null) : null;
 }
 
 /** Whether a picker's search finds this Player: by name, Nickname or Bandai member number. */
 export function playerMatchesSearch(player: PlayerSearchFacts, query: string): boolean {
 	const needle = query.trim().toLowerCase();
-	if (!needle)
-		return true;
-	return [
-		player.name,
-		player.nickname,
-		playerMemberNumber(player),
-	]
-		.some(value => value?.toLowerCase().includes(needle));
+	if (!needle) return true;
+	return [player.name, player.nickname, playerMemberNumber(player)].some((value) =>
+		value?.toLowerCase().includes(needle),
+	);
 }

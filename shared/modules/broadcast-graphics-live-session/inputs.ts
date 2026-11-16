@@ -3,14 +3,8 @@ import type {
 	GraphicInputDeclaration,
 	GraphicInputValue,
 } from '../../types/graphics';
-import type {
-	GraphicInputAvailability,
-	GraphicSourceSelectionsState,
-} from '../graphics';
-import {
-	findGraphicInputDeclaration,
-	graphicInputAvailability,
-} from '../graphics';
+import type { GraphicInputAvailability, GraphicSourceSelectionsState } from '../graphics';
+import { findGraphicInputDeclaration, graphicInputAvailability } from '../graphics';
 
 /**
  * The Graphic Input half of a Broadcast Graphics Live Session's state.
@@ -114,9 +108,10 @@ export interface BroadcastGraphicInputsState {
  * nothing has to clear them. Requiring them here would force every construction site
  * to invent an outgoing rendering for a graphic that is not transitioning.
  */
-export type NormalizedBroadcastGraphicInputsState
-	= Required<Pick<BroadcastGraphicInputsState, 'working' | 'overrides' | 'accepted' | 'acceptedRevision'>>
-		& Pick<BroadcastGraphicInputsState, 'updateFrom' | 'pendingUpdateFrom'>;
+export type NormalizedBroadcastGraphicInputsState = Required<
+	Pick<BroadcastGraphicInputsState, 'working' | 'overrides' | 'accepted' | 'acceptedRevision'>
+> &
+	Pick<BroadcastGraphicInputsState, 'updateFrom' | 'pendingUpdateFrom'>;
 
 export function createInitialBroadcastGraphicInputsState(): NormalizedBroadcastGraphicInputsState {
 	return {
@@ -136,7 +131,7 @@ export interface GraphicInputValueTrace {
 /** Which of a Graphic Input's values acceptance would actually use. */
 export const GRAPHIC_INPUT_VALUE_SOURCE_VALUES = ['override', 'bound', 'manual', 'none'] as const;
 
-export type GraphicInputValueSource = typeof GRAPHIC_INPUT_VALUE_SOURCE_VALUES[number];
+export type GraphicInputValueSource = (typeof GRAPHIC_INPUT_VALUE_SOURCE_VALUES)[number];
 
 /**
  * What Live Control shows about one Graphic Input's value.
@@ -194,7 +189,7 @@ export const GRAPHIC_INPUT_STATUS_VALUES = [
 	'stale',
 ] as const;
 
-export type GraphicInputStatus = typeof GRAPHIC_INPUT_STATUS_VALUES[number];
+export type GraphicInputStatus = (typeof GRAPHIC_INPUT_STATUS_VALUES)[number];
 
 /** What Live Control generates one field from. */
 export interface GraphicInputTrace {
@@ -226,20 +221,15 @@ export function broadcastGraphicInputsState(
 	graphicId: string,
 ): NormalizedBroadcastGraphicInputsState {
 	const stored = state.inputs?.[graphicId];
-	if (!stored)
-		return createInitialBroadcastGraphicInputsState();
+	if (!stored) return createInitialBroadcastGraphicInputsState();
 
 	return {
 		working: stored.working ?? {},
 		overrides: stored.overrides ?? {},
 		accepted: stored.accepted ?? {},
 		acceptedRevision: stored.acceptedRevision ?? 0,
-		...(stored.updateFrom
-			? { updateFrom: stored.updateFrom }
-			: {}),
-		...(stored.pendingUpdateFrom
-			? { pendingUpdateFrom: stored.pendingUpdateFrom }
-			: {}),
+		...(stored.updateFrom ? { updateFrom: stored.updateFrom } : {}),
+		...(stored.pendingUpdateFrom ? { pendingUpdateFrom: stored.pendingUpdateFrom } : {}),
 	};
 }
 
@@ -255,12 +245,12 @@ function resolveValues(
 	stored: GraphicInputValues,
 	declarations: readonly GraphicInputDeclaration[],
 ): GraphicInputValues {
-	return Object.fromEntries(declarations.map(declaration => [
-		declaration.key,
-		Object.hasOwn(stored, declaration.key)
-			? stored[declaration.key]!
-			: declaration.default,
-	]));
+	return Object.fromEntries(
+		declarations.map((declaration) => [
+			declaration.key,
+			Object.hasOwn(stored, declaration.key) ? stored[declaration.key]! : declaration.default,
+		]),
+	);
 }
 
 /**
@@ -282,14 +272,13 @@ export function resolveGraphicInputValues(
  * Compared over the union of both key sets, so a key that acceptance dropped
  * counts as a change rather than being passed over.
  */
-export function sameGraphicInputValues(left: GraphicInputValues, right: GraphicInputValues): boolean {
-	const keys = new Set([
-		...Object.keys(left),
-		...Object.keys(right),
-	]);
+export function sameGraphicInputValues(
+	left: GraphicInputValues,
+	right: GraphicInputValues,
+): boolean {
+	const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
 	for (const key of keys) {
-		if (!sameGraphicInputValue(left[key] ?? null, right[key] ?? null))
-			return false;
+		if (!sameGraphicInputValue(left[key] ?? null, right[key] ?? null)) return false;
 	}
 	return true;
 }
@@ -330,16 +319,13 @@ export function acceptedGraphicInputValues(
 	const accepted = broadcastGraphicInputsState(state, graphicId).accepted;
 	return Object.fromEntries(
 		declarations
-			.filter(declaration => Object.hasOwn(accepted, declaration.key))
-			.map(declaration => [declaration.key, accepted[declaration.key]!]),
+			.filter((declaration) => Object.hasOwn(accepted, declaration.key))
+			.map((declaration) => [declaration.key, accepted[declaration.key]!]),
 	);
 }
 
-function hasBindingFor(
-	bindings: readonly GraphicInputBinding[] | undefined,
-	key: string,
-): boolean {
-	return bindings?.some(binding => binding.inputKey === key) ?? false;
+function hasBindingFor(bindings: readonly GraphicInputBinding[] | undefined, key: string): boolean {
+	return bindings?.some((binding) => binding.inputKey === key) ?? false;
 }
 
 /**
@@ -433,8 +419,10 @@ export function unavailableRequiredGraphicInputs(
 	bound: Readonly<Record<string, GraphicInputValue>> = {},
 ): GraphicInputDeclaration[] {
 	const accepted = acceptGraphicInputValues(inputs, declarations, bindings, bound, false);
-	return declarations.filter(declaration =>
-		declaration.required && !graphicInputAvailability(declaration, accepted[declaration.key]).available,
+	return declarations.filter(
+		(declaration) =>
+			declaration.required &&
+			!graphicInputAvailability(declaration, accepted[declaration.key]).available,
 	);
 }
 
@@ -475,12 +463,23 @@ export function graphicInputTraces(
 	const accepted = resolveValues(stored.accepted, declarations);
 	// `blocksTake` is the off-air question, so the acceptance it is measured against is
 	// the one a Take would perform — never the on-air hold.
-	const acceptance = acceptGraphicInputValues(stored, declarations, graphic.bindings, boundValues, false);
+	const acceptance = acceptGraphicInputValues(
+		stored,
+		declarations,
+		graphic.bindings,
+		boundValues,
+		false,
+	);
 
 	return declarations.map((declaration) => {
 		const key = declaration.key;
-		const binding = graphic.bindings?.find(entry => entry.inputKey === key);
-		const effective = effectiveGraphicInputValue(declaration, stored, graphic.bindings, boundValues);
+		const binding = graphic.bindings?.find((entry) => entry.inputKey === key);
+		const effective = effectiveGraphicInputValue(
+			declaration,
+			stored,
+			graphic.bindings,
+			boundValues,
+		);
 		const effectiveTrace = {
 			value: effective.value,
 			source: effective.source,
@@ -496,11 +495,12 @@ export function graphicInputTraces(
 		// it has outlived its source. An operator's own unusable edit is not stale, it
 		// is simply unavailable — which is why this needs a binding, and why an
 		// unusable override does not qualify.
-		const stale = (options.onAir ?? false)
-			&& binding !== undefined
-			&& effective.source !== 'override'
-			&& !effectiveTrace.availability.available
-			&& acceptedTrace.availability.available;
+		const stale =
+			(options.onAir ?? false) &&
+			binding !== undefined &&
+			effective.source !== 'override' &&
+			!effectiveTrace.availability.available &&
+			acceptedTrace.availability.available;
 
 		return {
 			declaration,
@@ -535,24 +535,23 @@ export function graphicInputTraces(
 				: stale
 					? 'stale'
 					: !effectiveTrace.availability.available
-							? 'unavailable'
-							: effective.source === 'override' && binding
-								? 'overridden'
-								: pending
-									? 'pending'
-									: binding
-										? 'bound'
-										: 'manual',
-			blocksTake: declaration.required
-				&& !graphicInputAvailability(declaration, acceptance[key]).available,
+						? 'unavailable'
+						: effective.source === 'override' && binding
+							? 'overridden'
+							: pending
+								? 'pending'
+								: binding
+									? 'bound'
+									: 'manual',
+			blocksTake:
+				declaration.required && !graphicInputAvailability(declaration, acceptance[key]).available,
 		};
 	});
 }
 
 /** Whether two Graphic Input values are the same value, including media references. */
 export function sameGraphicInputValue(left: GraphicInputValue, right: GraphicInputValue): boolean {
-	if (left === right)
-		return true;
+	if (left === right) return true;
 	if (typeof left === 'object' && left !== null && typeof right === 'object' && right !== null)
 		return left.assetId === right.assetId && left.revisionId === right.revisionId;
 	return false;

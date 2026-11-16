@@ -6,12 +6,18 @@ import { getOriginConnectionId } from '~~/server/utils/ably';
 import { optionalBrowserSessionId } from '~~/server/utils/auth';
 import { readJsonPayloadLimited } from '~~/server/utils/payloadLimits';
 
-const versionedPatchSchema = z.object({
-	stateVersion: z.number().int().nonnegative().optional(),
-}).passthrough();
+const versionedPatchSchema = z
+	.object({
+		stateVersion: z.number().int().nonnegative().optional(),
+	})
+	.passthrough();
 
 export default defineEventHandler(async (event) => {
-	const { id: eventId, screenId, mode } = await getValidatedRouterParams(event, modeConfigParamsSchema.parse);
+	const {
+		id: eventId,
+		screenId,
+		mode,
+	} = await getValidatedRouterParams(event, modeConfigParamsSchema.parse);
 
 	// Validate body against the mode-specific PATCH schema.
 	// Optional fields accept null as a sentinel meaning "delete this key".

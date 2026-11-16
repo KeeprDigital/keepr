@@ -8,7 +8,11 @@ import type {
 import { useEventDataFetch, useEventDataResource } from '~/modules/event-data/client';
 
 export function usePlayerListRepository() {
-	const base = useEventDataResource<PlayerListSummary, CreatePlayerListInput, UpdatePlayerListInput>({
+	const base = useEventDataResource<
+		PlayerListSummary,
+		CreatePlayerListInput,
+		UpdatePlayerListInput
+	>({
 		resourcePath: 'player-lists',
 		eventScoped: true,
 		includeHeaders: true,
@@ -52,7 +56,10 @@ export function usePlayerListRepository() {
 	};
 
 	const batchRemoveMembers = async (eventId: number, listId: number, playerIds: number[]) => {
-		return await eventData.command<{ removed: number; memberCount: number }, { playerIds: number[] }>(
+		return await eventData.command<
+			{ removed: number; memberCount: number },
+			{ playerIds: number[] }
+		>(
 			{
 				eventId,
 				resourcePath: 'player-lists',
@@ -67,7 +74,10 @@ export function usePlayerListRepository() {
 	};
 
 	const reorderMembers = async (eventId: number, listId: number, playerIds: number[]) => {
-		return await eventData.command<{ reordered: number; memberCount: number }, { playerIds: number[] }>(
+		return await eventData.command<
+			{ reordered: number; memberCount: number },
+			{ playerIds: number[] }
+		>(
 			{
 				eventId,
 				resourcePath: 'player-lists',

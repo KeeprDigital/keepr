@@ -70,17 +70,12 @@ function plan(revisions: readonly ResolvedPackagedRevision[]) {
 
 describe('the stored-ZIP archive Template Packages are written as', () => {
 	it('agrees with node:zlib on CRC-32', () => {
-		for (const sample of [
-			'',
-			'123456789',
-			'the quick brown fox',
-			'multi-byte: \u00FF\u00FE',
-		]) {
+		for (const sample of ['', '123456789', 'the quick brown fox', 'multi-byte: \u00FF\u00FE']) {
 			const bytes = new Uint8Array(Buffer.from(sample, 'utf8'));
 			expect(crc32(bytes)).toBe(nodeCrc32(Buffer.from(bytes)));
 		}
 		// The published CRC-32 check value for "123456789".
-		expect(crc32(new Uint8Array(Buffer.from('123456789')))).toBe(0xCBF43926);
+		expect(crc32(new Uint8Array(Buffer.from('123456789')))).toBe(0xcbf43926);
 	});
 
 	it('predicts its own exact length before streaming', async () => {
@@ -98,7 +93,7 @@ describe('the stored-ZIP archive Template Packages are written as', () => {
 				bytes: new Uint8Array(512).fill(7),
 			},
 		];
-		const sources = entries.map(entry => ({
+		const sources = entries.map((entry) => ({
 			name: entry.name,
 			byteLength: entry.bytes.byteLength,
 			open: async () => readableBytes(entry.bytes),
@@ -110,16 +105,16 @@ describe('the stored-ZIP archive Template Packages are written as', () => {
 		// 30-byte local header + name + data + 16-byte data descriptor per entry,
 		// then a 46-byte central header + name per entry, then a 22-byte end record.
 		const expected = entries.reduce(
-			(total, entry) => total + 30 + entry.name.length + entry.bytes.byteLength + 16 + 46 + entry.name.length,
+			(total, entry) =>
+				total + 30 + entry.name.length + entry.bytes.byteLength + 16 + 46 + entry.name.length,
 			22,
 		);
 		expect(predicted).toBe(expected);
 		expect(archive.byteLength).toBe(predicted);
 
 		const parsed = readStoredZipArchive(archive);
-		expect(parsed.entryNames).toEqual(entries.map(entry => entry.name));
-		for (const entry of entries)
-			expect(parsed.entry(entry.name).bytes).toEqual(entry.bytes);
+		expect(parsed.entryNames).toEqual(entries.map((entry) => entry.name));
+		for (const entry of entries) expect(parsed.entry(entry.name).bytes).toEqual(entry.bytes);
 	});
 
 	it('refuses an unsafe or colliding entry name', () => {
@@ -136,16 +131,11 @@ describe('the stored-ZIP archive Template Packages are written as', () => {
 			'control\u0000.json',
 			'',
 		]) {
-			expect(() => createStoredZipArchive([
-				source(name),
-			]))
-				.toThrow(StoredZipArchiveError);
+			expect(() => createStoredZipArchive([source(name)])).toThrow(StoredZipArchiveError);
 		}
-		expect(() => createStoredZipArchive([
-			source('Manifest.json'),
-			source('manifest.json'),
-		]))
-			.toThrow(StoredZipArchiveError);
+		expect(() =>
+			createStoredZipArchive([source('Manifest.json'), source('manifest.json')]),
+		).toThrow(StoredZipArchiveError);
 	});
 
 	it('cancels the entry source a client abandons and opens no later entry', async () => {
@@ -155,14 +145,15 @@ describe('the stored-ZIP archive Template Packages are written as', () => {
 			{
 				name: 'content/sha256-aa.bin',
 				byteLength: 1024 * 1024,
-				open: async () => new ReadableStream<Uint8Array>({
-					pull(controller) {
-						controller.enqueue(new Uint8Array(1024));
-					},
-					cancel() {
-						cancelled = true;
-					},
-				}),
+				open: async () =>
+					new ReadableStream<Uint8Array>({
+						pull(controller) {
+							controller.enqueue(new Uint8Array(1024));
+						},
+						cancel() {
+							cancelled = true;
+						},
+					}),
 			},
 			{
 				name: 'content/sha256-bb.bin',
@@ -210,9 +201,7 @@ describe('template Package envelope limits', () => {
 	});
 
 	it('reports the manifest expanded size it is itself part of', () => {
-		const result = plan([
-			packagedRevision(0, 4096),
-		]);
+		const result = plan([packagedRevision(0, 4096)]);
 
 		expect(result.manifest.totals.expandedByteLength).toBe(result.totals.expandedByteLength);
 		expect(result.totals.expandedByteLength).toBe(
@@ -222,14 +211,11 @@ describe('template Package envelope limits', () => {
 
 	it('blocks a package that would carry more than 128 archive entries', () => {
 		// 127 unique digests plus the manifest and template entries.
-		const revisions = Array.from(
-			{ length: 127 },
-			(_value, index) => packagedRevision(index, 16),
-		);
+		const revisions = Array.from({ length: 127 }, (_value, index) => packagedRevision(index, 16));
 		const result = plan(revisions);
 
 		expect(result.totals.entryCount).toBe(129);
-		expect(result.issues.map(issue => issue.code)).toEqual(
+		expect(result.issues.map((issue) => issue.code)).toEqual(
 			expect.arrayContaining(['package-entry-limit-exceeded']),
 		);
 	});
@@ -244,13 +230,13 @@ describe('template Package envelope limits', () => {
 		);
 		const result = plan(revisions);
 
-		expect(result.issues.map(issue => issue.code)).toEqual(
+		expect(result.issues.map((issue) => issue.code)).toEqual(
 			expect.arrayContaining(['package-archive-limit-exceeded', 'package-expanded-limit-exceeded']),
 		);
 		// Past 0xFFFFFFFF, the point a non-Zip64 central directory can no longer
 		// describe — measured and reported rather than thrown.
 		expect(result.totals.archiveByteLength).toBeGreaterThan(100 * 250 * 1024 * 1024);
-		expect(result.totals.archiveByteLength).toBeGreaterThan(0xFFFFFFFF);
+		expect(result.totals.archiveByteLength).toBeGreaterThan(0xffffffff);
 	});
 
 	it.each([
@@ -259,9 +245,7 @@ describe('template Package envelope limits', () => {
 		['negative', -1],
 		['fractional', 12.5],
 	])('reports rather than silently accepting a %s content size', (_description, byteLength) => {
-		const result = plan([
-			packagedRevision(0, byteLength),
-		]);
+		const result = plan([packagedRevision(0, byteLength)]);
 
 		// NaN fails every `>` comparison, so an unmeasurable envelope would
 		// otherwise pass the limits and throw when the archive is opened.
@@ -276,23 +260,19 @@ describe('template Package envelope limits', () => {
 	});
 
 	it('blocks a package that would expand beyond one gibibyte', () => {
-		const result = plan([
-			packagedRevision(0, TEMPLATE_PACKAGE_LIMITS.maximumExpandedByteLength),
-		]);
+		const result = plan([packagedRevision(0, TEMPLATE_PACKAGE_LIMITS.maximumExpandedByteLength)]);
 
-		expect(result.issues.map(issue => issue.code)).toEqual(
+		expect(result.issues.map((issue) => issue.code)).toEqual(
 			expect.arrayContaining(['package-expanded-limit-exceeded', 'package-archive-limit-exceeded']),
 		);
-		expect(result.totals.archiveByteLength)
-			.toBeGreaterThan(TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength);
+		expect(result.totals.archiveByteLength).toBeGreaterThan(
+			TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength,
+		);
 	});
 
 	it('counts shared bytes once while keeping every packaged identity', () => {
 		const shared = 'a'.repeat(64);
-		const result = plan([
-			packagedRevision(0, 2048, shared),
-			packagedRevision(1, 2048, shared),
-		]);
+		const result = plan([packagedRevision(0, 2048, shared), packagedRevision(1, 2048, shared)]);
 
 		expect(result.totals.packagedRevisionCount).toBe(2);
 		expect(result.totals.uniqueContentCount).toBe(1);

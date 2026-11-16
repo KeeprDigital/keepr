@@ -1,4 +1,7 @@
-import type { GraphicAssetValidationReport, GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
+import type {
+	GraphicAssetValidationReport,
+	GraphicsIngestionOperation,
+} from '~~/shared/types/graphicsAsset';
 import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
@@ -11,8 +14,18 @@ import {
 	unavailableObjectStoreOutcome,
 } from '~~/server/modules/graphics-asset-library/object-store';
 import { MAX_SILENT_VIDEO_POSTER_BYTES } from '~~/shared/utils/graphicsAssetCompatibility';
-import { digestOf, sixteenPixelPng as sixteenPixelPosterPng, pixelPng as transparentPixelPng, vp9Webm } from '~~/test/helpers/graphicsFixtures';
-import { jpegDeclaring, jpegPixel, webpDeclaring, webpPixel } from '~~/test/helpers/graphicsImageFixtures';
+import {
+	digestOf,
+	sixteenPixelPng as sixteenPixelPosterPng,
+	pixelPng as transparentPixelPng,
+	vp9Webm,
+} from '~~/test/helpers/graphicsFixtures';
+import {
+	jpegDeclaring,
+	jpegPixel,
+	webpDeclaring,
+	webpPixel,
+} from '~~/test/helpers/graphicsImageFixtures';
 import {
 	addEvent,
 	canonicalIdentity,
@@ -45,11 +58,11 @@ function acceptedReport(report: GraphicAssetValidationReport | undefined) {
 
 function jpegSegment(marker: number, payload: Uint8Array) {
 	const length = payload.byteLength + 2;
-	return Uint8Array.of(0xFF, marker, length >>> 8, length & 0xFF, ...payload);
+	return Uint8Array.of(0xff, marker, length >>> 8, length & 0xff, ...payload);
 }
 
 function jpegWithColourProfile() {
-	const profile = jpegSegment(0xE2, new TextEncoder().encode('ICC_PROFILE\0'));
+	const profile = jpegSegment(0xe2, new TextEncoder().encode('ICC_PROFILE\0'));
 	return Uint8Array.of(...jpegPixel.subarray(0, 2), ...profile, ...jpegPixel.subarray(2));
 }
 
@@ -110,11 +123,12 @@ function createIngestion(
 	const ingestion: typeof context.ingestion = {
 		...context.ingestion,
 		async initiateGraphicsIngestion(input) {
-			const fixture = input.declaredMime === 'image/jpeg'
-				? jpegPixel
-				: input.declaredMime === 'image/webp'
-					? webpPixel
-					: transparentPixelPng;
+			const fixture =
+				input.declaredMime === 'image/jpeg'
+					? jpegPixel
+					: input.declaredMime === 'image/webp'
+						? webpPixel
+						: transparentPixelPng;
 			return await context.ingestion.initiateGraphicsIngestion({
 				...input,
 				browserDecodeEvidence: input.declaredMime?.startsWith('video/')
@@ -135,9 +149,12 @@ function createIngestion(
 
 /** The active Graphic Assets publication stored, read from the catalogue's rows. */
 async function storedAssets(search = '') {
-	return await storedGraphicAssets({
-		catalogue: createD1GraphicsAssetCatalogue(harness.database),
-	}, search);
+	return await storedGraphicAssets(
+		{
+			catalogue: createD1GraphicsAssetCatalogue(harness.database),
+		},
+		search,
+	);
 }
 
 type Ingestion = ReturnType<typeof createIngestion>['ingestion'];
@@ -183,10 +200,7 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			} as const,
 			code: 'browser-image-decode-mismatch',
 		},
-	])('fails publication for $label', async ({
-		browserDecodeEvidence,
-		code,
-	}) => {
+	])('fails publication for $label', async ({ browserDecodeEvidence, code }) => {
 		const { ingestion } = createIngestion();
 		const operation = await ingestion.initiateGraphicsIngestion({
 			idempotencyKey: `browser-gate-${code}`,
@@ -198,15 +212,19 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			declaredByteLength: jpegPixel.byteLength,
 		});
 
-		const failed = await uploadBytes(ingestion, operation, 'image/jpeg', jpegPixel, 25 * 1024 * 1024);
+		const failed = await uploadBytes(
+			ingestion,
+			operation,
+			'image/jpeg',
+			jpegPixel,
+			25 * 1024 * 1024,
+		);
 
 		expect(failed).toMatchObject({
 			stage: 'failed',
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code },
-				],
+				issues: [{ code }],
 			},
 			failure: { code: 'validation-failed', retryable: false },
 		});
@@ -226,44 +244,44 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			fileName: 'scoreboard.webp',
 			bytes: webpPixel,
 		},
-	] as const)('publishes and stores exact $format source bytes', async ({
-		format,
-		mime,
-		fileName,
-		bytes,
-	}) => {
-		const { ingestion, catalogue, canonical } = createIngestion();
-		const operation = await ingestion.initiateGraphicsIngestion({
-			idempotencyKey: `upload-${format}`,
-			initiatedBy: 'graphics-author-1',
-			name: `${format} scoreboard`,
-			sourceFileName: fileName,
-			declaredMime: mime,
-			declaredByteLength: bytes.byteLength,
-		});
+	] as const)(
+		'publishes and stores exact $format source bytes',
+		async ({ format, mime, fileName, bytes }) => {
+			const { ingestion, catalogue, canonical } = createIngestion();
+			const operation = await ingestion.initiateGraphicsIngestion({
+				idempotencyKey: `upload-${format}`,
+				initiatedBy: 'graphics-author-1',
+				name: `${format} scoreboard`,
+				sourceFileName: fileName,
+				declaredMime: mime,
+				declaredByteLength: bytes.byteLength,
+			});
 
-		const completed = await uploadBytes(ingestion, operation, mime, bytes, 25 * 1024 * 1024);
+			const completed = await uploadBytes(ingestion, operation, mime, bytes, 25 * 1024 * 1024);
 
-		expect(completed).toMatchObject({
-			stage: 'completed',
-			report: {
-				outcome: 'accepted',
-				compatibilityProfile: 'still-image-v1',
-				facts: {
-					format,
-					canonicalMime: mime,
-					frameCount: 1,
-					orientation: 'normal',
+			expect(completed).toMatchObject({
+				stage: 'completed',
+				report: {
+					outcome: 'accepted',
+					compatibilityProfile: 'still-image-v1',
+					facts: {
+						format,
+						canonicalMime: mime,
+						frameCount: 1,
+						orientation: 'normal',
+					},
 				},
-			},
-			result: { outcome: 'published' },
-		});
-		await expect(storedRevisionContent({ catalogue, canonical }, publishedRevision(completed))).resolves.toEqual({
-			contentType: mime,
-			byteLength: bytes.byteLength,
-			bytes,
-		});
-	});
+				result: { outcome: 'published' },
+			});
+			await expect(
+				storedRevisionContent({ catalogue, canonical }, publishedRevision(completed)),
+			).resolves.toEqual({
+				contentType: mime,
+				byteLength: bytes.byteLength,
+				bytes,
+			});
+		},
+	);
 
 	it('rejects conflicting initiation and transfer MIME declarations with a stable report', async () => {
 		const { ingestion } = createIngestion();
@@ -276,7 +294,13 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			declaredByteLength: transparentPixelPng.byteLength,
 		});
 
-		const failed = await uploadBytes(ingestion, operation, 'image/png', transparentPixelPng, 25 * 1024 * 1024);
+		const failed = await uploadBytes(
+			ingestion,
+			operation,
+			'image/png',
+			transparentPixelPng,
+			25 * 1024 * 1024,
+		);
 
 		expect(failed).toMatchObject({
 			stage: 'failed',
@@ -284,9 +308,7 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			report: {
 				outcome: 'rejected',
 				compatibilityProfile: 'still-image-v1',
-				issues: [
-					{ code: 'conflicting-image-mime' },
-				],
+				issues: [{ code: 'conflicting-image-mime' }],
 			},
 			failure: { code: 'validation-failed', retryable: false },
 		});
@@ -304,16 +326,20 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			declaredByteLength: transparentPixelPng.byteLength,
 		});
 
-		const failed = await uploadBytes(ingestion, operation, 'image/gif', transparentPixelPng, 25 * 1024 * 1024);
+		const failed = await uploadBytes(
+			ingestion,
+			operation,
+			'image/gif',
+			transparentPixelPng,
+			25 * 1024 * 1024,
+		);
 
 		expect(failed).toMatchObject({
 			stage: 'failed',
 			report: {
 				outcome: 'rejected',
 				compatibilityProfile: 'still-image-v1',
-				issues: [
-					{ code: 'conflicting-image-mime' },
-				],
+				issues: [{ code: 'conflicting-image-mime' }],
 			},
 			failure: { code: 'validation-failed', retryable: false },
 		});
@@ -349,36 +375,32 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			mime: 'image/webp',
 			code: 'image-pixels-exceeded',
 		},
-	] as const)('reports a stable public validation result for $label', async ({
-		bytes,
-		fileName,
-		mime,
-		code,
-	}) => {
-		const { ingestion } = createIngestion();
-		const operation = await ingestion.initiateGraphicsIngestion({
-			idempotencyKey: `reject-${code}`,
-			initiatedBy: 'graphics-author-1',
-			name: fileName,
-			sourceFileName: fileName,
-			declaredMime: mime,
-			declaredByteLength: bytes.byteLength,
-		});
+	] as const)(
+		'reports a stable public validation result for $label',
+		async ({ bytes, fileName, mime, code }) => {
+			const { ingestion } = createIngestion();
+			const operation = await ingestion.initiateGraphicsIngestion({
+				idempotencyKey: `reject-${code}`,
+				initiatedBy: 'graphics-author-1',
+				name: fileName,
+				sourceFileName: fileName,
+				declaredMime: mime,
+				declaredByteLength: bytes.byteLength,
+			});
 
-		const failed = await uploadBytes(ingestion, operation, mime, bytes, 25 * 1024 * 1024);
+			const failed = await uploadBytes(ingestion, operation, mime, bytes, 25 * 1024 * 1024);
 
-		expect(failed).toMatchObject({
-			stage: 'failed',
-			report: {
-				outcome: 'rejected',
-				compatibilityProfile: 'still-image-v1',
-				issues: [
-					{ code },
-				],
-			},
-			failure: { code: 'validation-failed', retryable: false },
-		});
-	});
+			expect(failed).toMatchObject({
+				stage: 'failed',
+				report: {
+					outcome: 'rejected',
+					compatibilityProfile: 'still-image-v1',
+					issues: [{ code }],
+				},
+				failure: { code: 'validation-failed', retryable: false },
+			});
+		},
+	);
 
 	it('durably publishes one validated PNG and stores it with its exact operation result', async () => {
 		const { ingestion, catalogue, canonical } = createIngestion();
@@ -439,10 +461,12 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			},
 		});
 
-		await expect(ingestion.getIngestionOperation({
-			operationId: operation.id,
-			initiatedBy: 'graphics-author-1',
-		})).resolves.toEqual(completed);
+		await expect(
+			ingestion.getIngestionOperation({
+				operationId: operation.id,
+				initiatedBy: 'graphics-author-1',
+			}),
+		).resolves.toEqual(completed);
 
 		await expect(storedAssets('scoreboard')).resolves.toEqual([
 			expect.objectContaining({
@@ -458,8 +482,7 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 		]);
 
 		const thumbnail = await catalogue.findThumbnailContent(completed.result!.assetId);
-		if (!thumbnail)
-			throw new Error('Expected the published thumbnail to be recorded');
+		if (!thumbnail) throw new Error('Expected the published thumbnail to be recorded');
 		const preview = await canonical.read(canonicalIdentity(thumbnail.digest));
 		if (preview.outcome !== 'available')
 			throw new Error('Expected the published thumbnail to be stored');
@@ -479,11 +502,7 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			async read(...input: Parameters<typeof stagingDelegate.read>) {
 				const result = await stagingDelegate.read(...input);
 				stagingReadCount++;
-				if (
-					result.outcome !== 'available'
-					|| input[1] !== undefined
-					|| stagingReadCount !== 4
-				) {
+				if (result.outcome !== 'available' || input[1] !== undefined || stagingReadCount !== 4) {
 					return result;
 				}
 				let offset = 0;
@@ -508,8 +527,9 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			...canonicalDelegate,
 			async createImmutable(input: Parameters<typeof canonicalDelegate.createImmutable>[0]) {
 				if (
-					input.bytes.byteLength === transparentPixelPng.byteLength
-					&& input.metadata?.custom?.sha256 === '431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460'
+					input.bytes.byteLength === transparentPixelPng.byteLength &&
+					input.metadata?.custom?.sha256 ===
+						'431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460'
 				) {
 					canonicalWriteStartedBeforeSourceFinished = !canonicalSourceFullyRead;
 				}
@@ -666,7 +686,8 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 	it.each([
 		{
 			interruption: 'staging answers unavailable',
-			interrupt: async (): Promise<ReturnType<typeof unavailableObjectStoreOutcome>> => unavailableObjectStoreOutcome(),
+			interrupt: async (): Promise<ReturnType<typeof unavailableObjectStoreOutcome>> =>
+				unavailableObjectStoreOutcome(),
 			left: {
 				stage: 'failed',
 				failure: { code: 'staging-unavailable', retryable: true },
@@ -693,8 +714,7 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 		const staging = {
 			...delegate,
 			async createImmutable(input: Parameters<typeof delegate.createImmutable>[0]) {
-				if (!interruptTransfer)
-					return await delegate.createImmutable(input);
+				if (!interruptTransfer) return await delegate.createImmutable(input);
 				interruptTransfer = false;
 				return await interrupt();
 			},
@@ -706,14 +726,17 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			name: 'Interrupted transfer',
 			declaredByteLength: transparentPixelPng.byteLength,
 		});
-		const upload = () => uploadBytes(ingestion, operation, undefined, transparentPixelPng, 16 * 1024 * 1024);
+		const upload = () =>
+			uploadBytes(ingestion, operation, undefined, transparentPixelPng, 16 * 1024 * 1024);
 
 		void upload().catch(() => {});
 		await vi.waitFor(async () => {
-			await expect(ingestion.getIngestionOperation({
-				operationId: operation.id,
-				initiatedBy: operation.initiatedBy,
-			})).resolves.toMatchObject({ ...left, transferredByteLength: 0 });
+			await expect(
+				ingestion.getIngestionOperation({
+					operationId: operation.id,
+					initiatedBy: operation.initiatedBy,
+				}),
+			).resolves.toMatchObject({ ...left, transferredByteLength: 0 });
 		});
 
 		await expect(upload()).resolves.toMatchObject({
@@ -750,9 +773,9 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 		});
 
 		// Staged bytes are held, so the way on is a retry and never a second transfer.
-		await expect(uploadBytes(ingestion, operation, undefined, transparentPixelPng, 16 * 1024 * 1024))
-			.rejects
-			.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
+		await expect(
+			uploadBytes(ingestion, operation, undefined, transparentPixelPng, 16 * 1024 * 1024),
+		).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
 
 		const completed = await ingestion.retryGraphicsIngestion({
 			operationId: operation.id,
@@ -767,7 +790,7 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 
 	it('reuses an existing Graphic Asset for ordinary duplicate content', async () => {
 		const { ingestion } = createIngestion();
-		await Promise.all([7, 9].map(eventId => addEvent(harness, eventId)));
+		await Promise.all([7, 9].map((eventId) => addEvent(harness, eventId)));
 
 		async function ingest(idempotencyKey: string, name: string, defaultEventId: number) {
 			const operation = await ingestion.initiateGraphicsIngestion({
@@ -809,7 +832,10 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 	it('publishes a separate Graphic Asset when duplicate content reuse is explicitly disabled', async () => {
 		const { ingestion } = createIngestion();
 
-		async function ingest(idempotencyKey: string, duplicateContentPolicy: 'reuse' | 'create-separate') {
+		async function ingest(
+			idempotencyKey: string,
+			duplicateContentPolicy: 'reuse' | 'create-separate',
+		) {
 			const operation = await ingestion.initiateGraphicsIngestion({
 				idempotencyKey,
 				initiatedBy: 'graphics-author-1',
@@ -862,9 +888,7 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 				assetId: original.result!.assetId,
 				idempotencyKey,
 				initiatedBy: 'graphics-author-1',
-				sourceFileName: `replacement.${declaredMime === 'image/png'
-					? 'png'
-					: 'jpg'}`,
+				sourceFileName: `replacement.${declaredMime === 'image/png' ? 'png' : 'jpg'}`,
 				declaredMime,
 				browserDecodeEvidence: {
 					outcome: 'decoded',
@@ -915,12 +939,12 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 				revisionNumber: 3,
 			}),
 		]);
-		await expect(storedRevisionContent({ catalogue, canonical }, publishedRevision(original)))
-			.resolves
-			.toMatchObject({ contentType: 'image/png' });
-		await expect(storedRevisionContent({ catalogue, canonical }, publishedRevision(changed)))
-			.resolves
-			.toMatchObject({ contentType: 'image/jpeg' });
+		await expect(
+			storedRevisionContent({ catalogue, canonical }, publishedRevision(original)),
+		).resolves.toMatchObject({ contentType: 'image/png' });
+		await expect(
+			storedRevisionContent({ catalogue, canonical }, publishedRevision(changed)),
+		).resolves.toMatchObject({ contentType: 'image/jpeg' });
 	});
 
 	it('publishes concurrent identical replacement content as one Graphic Asset Revision', async () => {
@@ -936,8 +960,7 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 				input: Parameters<typeof delegate.publishGraphicAssetReplacement>[0],
 			) {
 				publishingArrivals += 1;
-				if (publishingArrivals === 2)
-					releasePublishing();
+				if (publishingArrivals === 2) releasePublishing();
 				await bothPublishing;
 				return await delegate.publishGraphicAssetReplacement(input);
 			},
@@ -964,31 +987,35 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 
 		const replacements = await Promise.all(
 			['concurrent-replacement-a', 'concurrent-replacement-b'].map(
-				async idempotencyKey => await ingestion.initiateGraphicAssetReplacement({
-					assetId: original.result!.assetId,
-					idempotencyKey,
-					initiatedBy: 'graphics-author-1',
-					sourceFileName: `${idempotencyKey}.jpg`,
-					declaredMime: 'image/jpeg',
-					browserDecodeEvidence: {
-						outcome: 'decoded',
-						sourceDigest: digestOf(jpegPixel),
-						width: 1,
-						height: 1,
-					},
-					declaredByteLength: jpegPixel.byteLength,
-				}),
+				async (idempotencyKey) =>
+					await ingestion.initiateGraphicAssetReplacement({
+						assetId: original.result!.assetId,
+						idempotencyKey,
+						initiatedBy: 'graphics-author-1',
+						sourceFileName: `${idempotencyKey}.jpg`,
+						declaredMime: 'image/jpeg',
+						browserDecodeEvidence: {
+							outcome: 'decoded',
+							sourceDigest: digestOf(jpegPixel),
+							width: 1,
+							height: 1,
+						},
+						declaredByteLength: jpegPixel.byteLength,
+					}),
 			),
 		);
-		const completed = await Promise.all(replacements.map(
-			async operation => await uploadBytes(ingestion, operation, 'image/jpeg', jpegPixel, 16 * 1024 * 1024),
-		));
+		const completed = await Promise.all(
+			replacements.map(
+				async (operation) =>
+					await uploadBytes(ingestion, operation, 'image/jpeg', jpegPixel, 16 * 1024 * 1024),
+			),
+		);
 
-		expect(completed.map(operation => operation.result?.outcome).sort()).toEqual([
+		expect(completed.map((operation) => operation.result?.outcome).sort()).toEqual([
 			'replacement-noop',
 			'revision-created',
 		]);
-		expect(new Set(completed.map(operation => operation.result?.revisionId)).size).toBe(1);
+		expect(new Set(completed.map((operation) => operation.result?.revisionId)).size).toBe(1);
 		await expect(storedAssets()).resolves.toEqual([
 			expect.objectContaining({
 				id: original.result?.assetId,
@@ -1050,9 +1077,7 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 				assetId: original.result!.assetId,
 				idempotencyKey,
 				initiatedBy: 'graphics-author-1',
-				sourceFileName: `${idempotencyKey}.${declaredMime === 'image/png'
-					? 'png'
-					: 'jpg'}`,
+				sourceFileName: `${idempotencyKey}.${declaredMime === 'image/png' ? 'png' : 'jpg'}`,
 				declaredMime,
 				browserDecodeEvidence: {
 					outcome: 'decoded',
@@ -1069,7 +1094,13 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			transparentPixelPng,
 			'image/png',
 		);
-		const staleCompletion = uploadBytes(ingestion, staleNoop, 'image/png', transparentPixelPng, 16 * 1024 * 1024);
+		const staleCompletion = uploadBytes(
+			ingestion,
+			staleNoop,
+			'image/png',
+			transparentPixelPng,
+			16 * 1024 * 1024,
+		);
 		await noopStarted;
 
 		const changed = await replacementOperation(
@@ -1077,7 +1108,13 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			jpegPixel,
 			'image/jpeg',
 		);
-		const changedCompletion = await uploadBytes(ingestion, changed, 'image/jpeg', jpegPixel, 16 * 1024 * 1024);
+		const changedCompletion = await uploadBytes(
+			ingestion,
+			changed,
+			'image/jpeg',
+			jpegPixel,
+			16 * 1024 * 1024,
+		);
 		expect(changedCompletion.result?.outcome).toBe('revision-created');
 
 		pauseNoop = false;
@@ -1116,8 +1153,7 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			...delegate,
 			async read(...input: Parameters<typeof delegate.read>) {
 				const stored = await delegate.read(...input);
-				if (stored.outcome !== 'available')
-					return stored;
+				if (stored.outcome !== 'available') return stored;
 				return {
 					...stored,
 					body: new ReadableStream<Uint8Array>({
@@ -1167,8 +1203,7 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			...delegate,
 			async findReusableGraphicAsset(sourceDigest: string) {
 				reusableLookups++;
-				if (reusableLookups === 2)
-					releaseLookups();
+				if (reusableLookups === 2) releaseLookups();
 				await bothLooking;
 				return await delegate.findReusableGraphicAsset(sourceDigest);
 			},
@@ -1192,17 +1227,23 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 				declaredByteLength: transparentPixelPng.byteLength,
 			}),
 		]);
-		const completed = await Promise.all(operations.map(operation => ingestion.uploadGraphicAsset({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			bytes: createBoundedByteStream(transparentPixelPng, {
-				byteLength: transparentPixelPng.byteLength,
-				maximumByteLength: 16 * 1024 * 1024,
-			}),
-		})));
+		const completed = await Promise.all(
+			operations.map((operation) =>
+				ingestion.uploadGraphicAsset({
+					operationId: operation.id,
+					initiatedBy: operation.initiatedBy,
+					bytes: createBoundedByteStream(transparentPixelPng, {
+						byteLength: transparentPixelPng.byteLength,
+						maximumByteLength: 16 * 1024 * 1024,
+					}),
+				}),
+			),
+		);
 
-		expect(completed.map(operation => operation.result?.outcome).sort())
-			.toEqual(['published', 'reused']);
+		expect(completed.map((operation) => operation.result?.outcome).sort()).toEqual([
+			'published',
+			'reused',
+		]);
 		expect(completed[0]!.result?.assetId).toBe(completed[1]!.result?.assetId);
 		await expect(storedAssets()).resolves.toHaveLength(1);
 	});
@@ -1291,17 +1332,24 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 			name: 'Leased attempt',
 			declaredByteLength: transparentPixelPng.byteLength,
 		});
-		const working = uploadBytes(ingestion, operation, undefined, transparentPixelPng, 16 * 1024 * 1024);
+		const working = uploadBytes(
+			ingestion,
+			operation,
+			undefined,
+			transparentPixelPng,
+			16 * 1024 * 1024,
+		);
 		await started;
 		const held = await ingestion.getIngestionOperation({
 			operationId: operation.id,
 			initiatedBy: operation.initiatedBy,
 		});
 		const lastWrite = new Date(held.updatedAt).getTime();
-		const retry = () => ingestion.retryGraphicsIngestion({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-		});
+		const retry = () =>
+			ingestion.retryGraphicsIngestion({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+			});
 
 		advanceTo(new Date(lastWrite + lifecycle.activeIngestionLeaseMilliseconds - 1).toISOString());
 		await expect(retry()).rejects.toMatchObject({ code: 'ingestion-operation-lease-held' });
@@ -1339,11 +1387,16 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 		});
 
 		expect(claimed?.stage).toBe('hashing');
-		await expect(catalogue.updateIngestionOperation({
-			...transferring,
-			stage: 'validating',
-			updatedAt: '2026-07-27T04:01:01.000Z',
-		}, transferring.updatedAt)).rejects.toThrow('lost its durable transition');
+		await expect(
+			catalogue.updateIngestionOperation(
+				{
+					...transferring,
+					stage: 'validating',
+					updatedAt: '2026-07-27T04:01:01.000Z',
+				},
+				transferring.updatedAt,
+			),
+		).rejects.toThrow('lost its durable transition');
 	});
 });
 
@@ -1368,13 +1421,7 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 				maximumByteLength: MAX_SILENT_VIDEO_POSTER_BYTES,
 			}),
 		}));
-		const { ingestion } = createIngestion(
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{ validate },
-		);
+		const { ingestion } = createIngestion(undefined, undefined, undefined, undefined, { validate });
 		const initiated = await ingestion.initiateGraphicsIngestion({
 			idempotencyKey: 'trusted-video-runtime',
 			initiatedBy: 'graphics-author-1',
@@ -1384,7 +1431,13 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 			declaredByteLength: vp9Webm.byteLength,
 		});
 
-		const completed = await uploadBytes(ingestion, initiated, 'video/webm', vp9Webm, 250 * 1024 * 1024);
+		const completed = await uploadBytes(
+			ingestion,
+			initiated,
+			'video/webm',
+			vp9Webm,
+			250 * 1024 * 1024,
+		);
 
 		expect(completed).toMatchObject({
 			stage: 'completed',
@@ -1394,17 +1447,19 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 			},
 		});
 		expect(validate).toHaveBeenCalledOnce();
-		expect(validate).toHaveBeenCalledWith(expect.objectContaining({
-			operationId: initiated.id,
-			sourceDigest: digestOf(vp9Webm),
-			inspectedFacts: expect.objectContaining({
-				sha256: digestOf(vp9Webm),
-				format: 'webm',
-				codec: 'vp9',
+		expect(validate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				operationId: initiated.id,
+				sourceDigest: digestOf(vp9Webm),
+				inspectedFacts: expect.objectContaining({
+					sha256: digestOf(vp9Webm),
+					format: 'webm',
+					codec: 'vp9',
+				}),
+				factsDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+				idempotencyKey: expect.stringContaining(initiated.id),
 			}),
-			factsDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
-			idempotencyKey: expect.stringContaining(initiated.id),
-		}));
+		);
 	});
 
 	it('fails retryably closed when the trusted playback runtime is unavailable', async () => {
@@ -1418,7 +1473,13 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 			declaredByteLength: vp9Webm.byteLength,
 		});
 
-		const failed = await uploadBytes(ingestion, initiated, 'video/webm', vp9Webm, 250 * 1024 * 1024);
+		const failed = await uploadBytes(
+			ingestion,
+			initiated,
+			'video/webm',
+			vp9Webm,
+			250 * 1024 * 1024,
+		);
 
 		expect(failed).toMatchObject({
 			stage: 'failed',
@@ -1450,16 +1511,11 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 				maximumByteLength: MAX_SILENT_VIDEO_POSTER_BYTES,
 			}),
 		});
-		const validate = vi.fn()
+		const validate = vi
+			.fn()
 			.mockResolvedValueOnce({ outcome: 'unavailable', retryable: true })
-			.mockImplementation(async input => accepted(input));
-		const { ingestion } = createIngestion(
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{ validate },
-		);
+			.mockImplementation(async (input) => accepted(input));
+		const { ingestion } = createIngestion(undefined, undefined, undefined, undefined, { validate });
 		const initiated = await ingestion.initiateGraphicsIngestion({
 			idempotencyKey: 'trusted-video-retry',
 			initiatedBy: 'graphics-author-1',
@@ -1513,13 +1569,7 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 				maximumByteLength: MAX_SILENT_VIDEO_POSTER_BYTES,
 			}),
 		}));
-		const { ingestion } = createIngestion(
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{ validate },
-		);
+		const { ingestion } = createIngestion(undefined, undefined, undefined, undefined, { validate });
 		const initiated = await ingestion.initiateGraphicsIngestion({
 			idempotencyKey: 'misbound-trusted-video',
 			initiatedBy: 'graphics-author-1',
@@ -1528,7 +1578,13 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 			declaredMime: 'video/webm',
 			declaredByteLength: vp9Webm.byteLength,
 		});
-		const failed = await uploadBytes(ingestion, initiated, 'video/webm', vp9Webm, 250 * 1024 * 1024);
+		const failed = await uploadBytes(
+			ingestion,
+			initiated,
+			'video/webm',
+			vp9Webm,
+			250 * 1024 * 1024,
+		);
 		expect(failed).toMatchObject({
 			stage: 'failed',
 			failure: { code: 'validation-runtime-unavailable', retryable: true },
@@ -1536,17 +1592,11 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 	});
 
 	it('maps a trusted adapter execution fault to retryable runtime unavailability', async () => {
-		const { ingestion } = createIngestion(
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				async validate() {
-					throw new Error('validation service disconnected');
-				},
+		const { ingestion } = createIngestion(undefined, undefined, undefined, undefined, {
+			async validate() {
+				throw new Error('validation service disconnected');
 			},
-		);
+		});
 		const initiated = await ingestion.initiateGraphicsIngestion({
 			idempotencyKey: 'faulting-trusted-video',
 			initiatedBy: 'graphics-author-1',
@@ -1555,7 +1605,13 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 			declaredMime: 'video/webm',
 			declaredByteLength: vp9Webm.byteLength,
 		});
-		const failed = await uploadBytes(ingestion, initiated, 'video/webm', vp9Webm, 250 * 1024 * 1024);
+		const failed = await uploadBytes(
+			ingestion,
+			initiated,
+			'video/webm',
+			vp9Webm,
+			250 * 1024 * 1024,
+		);
 
 		expect(failed).toMatchObject({
 			stage: 'failed',
@@ -1565,35 +1621,29 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 
 	it('fails retryably closed when the trusted runtime returns an invalid poster', async () => {
 		const invalidPoster = Uint8Array.of(1, 2, 3);
-		const { ingestion } = createIngestion(
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				async validate(input) {
-					return {
-						outcome: 'accepted',
-						operationId: input.operationId,
-						idempotencyKey: input.idempotencyKey,
-						sourceDigest: input.sourceDigest,
-						factsDigest: input.factsDigest,
-						width: input.inspectedFacts.width,
-						height: input.inspectedFacts.height,
-						durationSeconds: input.inspectedFacts.durationSeconds,
-						posterTimeSeconds: input.inspectedFacts.posterTimeSeconds,
-						mutedInlinePlayback: true,
-						seeked: true,
-						transparencyRendered: false,
-						posterDigest: digestOf(invalidPoster),
-						poster: createBoundedByteStream(invalidPoster, {
-							byteLength: invalidPoster.byteLength,
-							maximumByteLength: MAX_SILENT_VIDEO_POSTER_BYTES,
-						}),
-					};
-				},
+		const { ingestion } = createIngestion(undefined, undefined, undefined, undefined, {
+			async validate(input) {
+				return {
+					outcome: 'accepted',
+					operationId: input.operationId,
+					idempotencyKey: input.idempotencyKey,
+					sourceDigest: input.sourceDigest,
+					factsDigest: input.factsDigest,
+					width: input.inspectedFacts.width,
+					height: input.inspectedFacts.height,
+					durationSeconds: input.inspectedFacts.durationSeconds,
+					posterTimeSeconds: input.inspectedFacts.posterTimeSeconds,
+					mutedInlinePlayback: true,
+					seeked: true,
+					transparencyRendered: false,
+					posterDigest: digestOf(invalidPoster),
+					poster: createBoundedByteStream(invalidPoster, {
+						byteLength: invalidPoster.byteLength,
+						maximumByteLength: MAX_SILENT_VIDEO_POSTER_BYTES,
+					}),
+				};
 			},
-		);
+		});
 		const initiated = await ingestion.initiateGraphicsIngestion({
 			idempotencyKey: 'invalid-trusted-poster',
 			initiatedBy: 'graphics-author-1',
@@ -1602,7 +1652,13 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 			declaredMime: 'video/webm',
 			declaredByteLength: vp9Webm.byteLength,
 		});
-		const failed = await uploadBytes(ingestion, initiated, 'video/webm', vp9Webm, 250 * 1024 * 1024);
+		const failed = await uploadBytes(
+			ingestion,
+			initiated,
+			'video/webm',
+			vp9Webm,
+			250 * 1024 * 1024,
+		);
 
 		expect(failed).toMatchObject({
 			stage: 'failed',
@@ -1619,13 +1675,7 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 			factsDigest: input.factsDigest,
 			stage: 'seek',
 		}));
-		const { ingestion } = createIngestion(
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{ validate },
-		);
+		const { ingestion } = createIngestion(undefined, undefined, undefined, undefined, { validate });
 		const initiated = await ingestion.initiateGraphicsIngestion({
 			idempotencyKey: 'trusted-video-rejected',
 			initiatedBy: 'graphics-author-1',
@@ -1634,14 +1684,18 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 			declaredMime: 'video/webm',
 			declaredByteLength: vp9Webm.byteLength,
 		});
-		const failed = await uploadBytes(ingestion, initiated, 'video/webm', vp9Webm, 250 * 1024 * 1024);
+		const failed = await uploadBytes(
+			ingestion,
+			initiated,
+			'video/webm',
+			vp9Webm,
+			250 * 1024 * 1024,
+		);
 		expect(failed).toMatchObject({
 			stage: 'failed',
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'browser-video-playback-failed' },
-				],
+				issues: [{ code: 'browser-video-playback-failed' }],
 			},
 			failure: { code: 'validation-failed', retryable: false },
 		});
@@ -1650,28 +1704,36 @@ describe('silent-video ingestion at the Graphic Asset ingestion seam', () => {
 	it('reserves the poster envelope in the Graphics Staging Allowance', async () => {
 		const { ingestion, catalogue, now } = createIngestion();
 		const { canonical, staging } = await catalogue.getCapacity();
-		await setCapacityLimits({ catalogue, now }, {
-			canonicalLimitBytes: canonical.limitBytes,
-			stagingLimitBytes: vp9Webm.byteLength + MAX_SILENT_VIDEO_POSTER_BYTES - 1,
-		});
-		await expect(ingestion.initiateGraphicsIngestion({
-			idempotencyKey: 'vp9-poster-capacity-blocked',
-			initiatedBy: 'graphics-author-1',
-			name: 'VP9 poster capacity',
-			sourceFileName: 'ident.webm',
-			declaredMime: 'video/webm',
-			declaredByteLength: vp9Webm.byteLength,
-		})).rejects.toMatchObject({
+		await setCapacityLimits(
+			{ catalogue, now },
+			{
+				canonicalLimitBytes: canonical.limitBytes,
+				stagingLimitBytes: vp9Webm.byteLength + MAX_SILENT_VIDEO_POSTER_BYTES - 1,
+			},
+		);
+		await expect(
+			ingestion.initiateGraphicsIngestion({
+				idempotencyKey: 'vp9-poster-capacity-blocked',
+				initiatedBy: 'graphics-author-1',
+				name: 'VP9 poster capacity',
+				sourceFileName: 'ident.webm',
+				declaredMime: 'video/webm',
+				declaredByteLength: vp9Webm.byteLength,
+			}),
+		).rejects.toMatchObject({
 			code: 'staging-capacity-exhausted',
 			capacity: {
 				requestedBytes: vp9Webm.byteLength + MAX_SILENT_VIDEO_POSTER_BYTES,
 			},
 		});
 
-		await setCapacityLimits({ catalogue, now }, {
-			canonicalLimitBytes: canonical.limitBytes,
-			stagingLimitBytes: staging.limitBytes,
-		});
+		await setCapacityLimits(
+			{ catalogue, now },
+			{
+				canonicalLimitBytes: canonical.limitBytes,
+				stagingLimitBytes: staging.limitBytes,
+			},
+		);
 		const initiated = await ingestion.initiateGraphicsIngestion({
 			idempotencyKey: 'vp9-poster-capacity-accounted',
 			initiatedBy: 'graphics-author-1',

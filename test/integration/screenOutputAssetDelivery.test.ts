@@ -1,5 +1,9 @@
 import type { ScreenResponse } from '~~/shared/api';
-import type { GraphicAssetId, GraphicAssetRevisionId, GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
+import type {
+	GraphicAssetId,
+	GraphicAssetRevisionId,
+	GraphicsIngestionOperation,
+} from '~~/shared/types/graphicsAsset';
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -11,11 +15,13 @@ import { graphicsIngestionRequest } from './graphicsIngestionRequest';
 import { executeIntegrationD1 } from './integrationD1';
 import { expectOperationResult } from './responseStatus';
 
-const basePixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
-const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xC5, 0x85);
+const basePixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
+const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xc5, 0x85);
 
 /**
  * This suite's own content, padded with a chunk count no other suite uses.
@@ -26,11 +32,13 @@ const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0
  * first published and the other reused, so that assertion was decided by file
  * order rather than by the library.
  */
-const pixelPng = Uint8Array.from(Buffer.concat([
-	basePixelPng.slice(0, -12),
-	...Array.from({ length: 80 }).fill(emptyTextChunk) as Uint8Array[],
-	basePixelPng.slice(-12),
-]));
+const pixelPng = Uint8Array.from(
+	Buffer.concat([
+		basePixelPng.slice(0, -12),
+		...(Array.from({ length: 80 }).fill(emptyTextChunk) as Uint8Array[]),
+		basePixelPng.slice(-12),
+	]),
+);
 
 describe('unattended Screen Output Graphic Asset Revision delivery', () => {
 	let eventId: number;
@@ -62,17 +70,14 @@ describe('unattended Screen Output Graphic Asset Revision delivery', () => {
 			},
 		});
 		eventId = event.id;
-		const screen = await $fetch<ScreenResponse>(
-			`/api/events/${eventId}/screens`,
-			{
-				method: 'POST',
-				body: {
-					name: 'Unattended Overlay',
-					slug: 'unattended-overlay',
-					currentMode: 'feature-match-overlay',
-				},
+		const screen = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens`, {
+			method: 'POST',
+			body: {
+				name: 'Unattended Overlay',
+				slug: 'unattended-overlay',
+				currentMode: 'feature-match-overlay',
 			},
-		);
+		});
 		screenId = screen.id;
 		const capabilityResponse = await $fetch<{ assetCapability: string }>(
 			`/api/events/${eventId}/screens/${screenId}/asset-capability`,
@@ -114,9 +119,8 @@ describe('unattended Screen Output Graphic Asset Revision delivery', () => {
 		revisionId = operation.result.revisionId;
 
 		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
-		const group = config.layout.composition.items.find(item => item.type === 'group');
-		if (group?.type !== 'group')
-			throw new Error('Expected a Graphic Group fixture');
+		const group = config.layout.composition.items.find((item) => item.type === 'group');
+		if (group?.type !== 'group') throw new Error('Expected a Graphic Group fixture');
 		group.children.push({
 			...getGraphicItemDefinition('media').createDefault({
 				id: 'range-delivered-group-media',
@@ -126,20 +130,16 @@ describe('unattended Screen Output Graphic Asset Revision delivery', () => {
 			}),
 			asset: { assetId, revisionId },
 		} as never);
-		await $fetch(
-			`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`,
-			{
-				method: 'PATCH',
-				body: { layout: config.layout },
-			},
-		);
+		await $fetch(`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`, {
+			method: 'PATCH',
+			body: { layout: config.layout },
+		});
 	});
 
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('returns no library bytes without the Screen capability', async () => {
@@ -198,7 +198,7 @@ describe('unattended Screen Output Graphic Asset Revision delivery', () => {
 		);
 
 		expect(response.status).toBe(200);
-		const screen = await response.json() as ScreenResponse & { assetCapabilityDigest?: string };
+		const screen = (await response.json()) as ScreenResponse & { assetCapabilityDigest?: string };
 		expect(screen.id).toBe(screenId);
 		expect(screen.slug).toBe('unattended-overlay');
 		// The stored half of the credential never travels, which is what makes the
@@ -207,21 +207,16 @@ describe('unattended Screen Output Graphic Asset Revision delivery', () => {
 	});
 
 	it('range-delivers the exact revision when native media sends its path-scoped capability cookie', async () => {
-		const session = await fetch(
-			`/api/screen-output/screens/${screenId}/asset-capability-session`,
-			{
-				method: 'POST',
-				headers: authorizedHeaders(),
-			},
-		);
+		const session = await fetch(`/api/screen-output/screens/${screenId}/asset-capability-session`, {
+			method: 'POST',
+			headers: authorizedHeaders(),
+		});
 		expect(session.status).toBe(200);
 		expect(session.headers.get('cache-control')).toBe('private, no-store');
 		// The session carries no forecast: no revision is refused by engine (ADR-0020).
 		await expect(session.json()).resolves.toEqual({});
 		const setCookie = session.headers.get('set-cookie');
-		expect(setCookie).toContain(
-			`${screenOutputAssetCapabilityCookieName(screenId)}=${capability}`,
-		);
+		expect(setCookie).toContain(`${screenOutputAssetCapabilityCookieName(screenId)}=${capability}`);
 		expect(setCookie).toContain(`Path=/api/screen-output/screens/${screenId}/`);
 		expect(setCookie).toContain('HttpOnly');
 		expect(setCookie).toContain('SameSite=Strict');
@@ -240,13 +235,10 @@ describe('unattended Screen Output Graphic Asset Revision delivery', () => {
 
 	it('denies a removed revision immediately even when its immutable bytes were cached', async () => {
 		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
-		await $fetch(
-			`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`,
-			{
-				method: 'PATCH',
-				body: { layout: config.layout },
-			},
-		);
+		await $fetch(`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`, {
+			method: 'PATCH',
+			body: { layout: config.layout },
+		});
 
 		const response = await fetch(contentPath(), {
 			headers: authorizedHeaders(),
@@ -257,21 +249,15 @@ describe('unattended Screen Output Graphic Asset Revision delivery', () => {
 	it('rotation revokes the previous capability and authorizes the replacement', async () => {
 		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 		config.layout.frame.backgroundImage = { kind: 'asset', assetId, revisionId };
-		await $fetch(
-			`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`,
-			{
-				method: 'PATCH',
-				body: { layout: config.layout },
-			},
-		);
+		await $fetch(`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`, {
+			method: 'PATCH',
+			body: { layout: config.layout },
+		});
 		const previous = capability;
-		const rotation = await fetch(
-			`/api/events/${eventId}/screens/${screenId}/asset-capability`,
-			{
-				method: 'POST',
-				headers: { cookie: graphicsAuthorCookie },
-			},
-		);
+		const rotation = await fetch(`/api/events/${eventId}/screens/${screenId}/asset-capability`, {
+			method: 'POST',
+			headers: { cookie: graphicsAuthorCookie },
+		});
 		expect(rotation.status).toBe(200);
 		capability = ((await rotation.json()) as { assetCapability: string }).assetCapability;
 		expect(capability).not.toBe(previous);
@@ -338,19 +324,14 @@ describe('unattended Screen Output Graphic Asset Revision delivery', () => {
 		);
 		expect(publication.status).toBe(200);
 
-		const SAFARI = 'Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 Version/18.5 Safari/605.1.15';
-		const IOS_CHROMIUM = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 CriOS/138.0 Mobile/15E148 Safari/604.1';
+		const SAFARI =
+			'Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 Version/18.5 Safari/605.1.15';
+		const IOS_CHROMIUM =
+			'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 CriOS/138.0 Mobile/15E148 Safari/604.1';
 		const CHROMIUM = 'Mozilla/5.0 Chrome/138.0.0.0 Safari/537.36';
 
-		for (const userAgent of [
-			SAFARI,
-			IOS_CHROMIUM,
-			CHROMIUM,
-			undefined,
-		]) {
-			const engine: Record<string, string> = userAgent
-				? { 'user-agent': userAgent }
-				: {};
+		for (const userAgent of [SAFARI, IOS_CHROMIUM, CHROMIUM, undefined]) {
+			const engine: Record<string, string> = userAgent ? { 'user-agent': userAgent } : {};
 			const session = await fetch(
 				`/api/screen-output/screens/${screenId}/asset-capability-session`,
 				{

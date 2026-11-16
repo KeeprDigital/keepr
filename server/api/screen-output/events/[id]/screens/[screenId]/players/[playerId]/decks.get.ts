@@ -4,7 +4,11 @@ import { mapPlayerToResponse } from '~~/server/mappers/player';
 import { eventService } from '~~/server/services/event';
 import { playerService } from '~~/server/services/player';
 import { playerDeckCardService } from '~~/server/services/playerDeckCard';
-import { requireScreenOutputRead, screenOutputPublishedPlayerIds, screenOutputReadNotFound } from '~~/server/utils/screenOutputRead';
+import {
+	requireScreenOutputRead,
+	screenOutputPublishedPlayerIds,
+	screenOutputReadNotFound,
+} from '~~/server/utils/screenOutputRead';
 
 const paramsSchema = z.object({
 	playerId: z.coerce.number().int().positive(),
@@ -25,18 +29,25 @@ export default defineEventHandler(async (event): Promise<ScreenOutputPlayerDecks
 	const { playerId } = await getValidatedRouterParams(event, paramsSchema.parse);
 	const selection = await getValidatedQuery(event, querySchema.parse);
 	const { eventId, screen, reader } = await requireScreenOutputRead(event);
-	if (reader === 'capability' && !(await screenOutputPublishedPlayerIds(screen, eventId)).includes(playerId))
+	if (
+		reader === 'capability' &&
+		!(await screenOutputPublishedPlayerIds(screen, eventId)).includes(playerId)
+	)
 		screenOutputReadNotFound();
 
 	const [player, eventRow] = await Promise.all([
 		playerService().findById(playerId, eventId),
 		eventService().findById(eventId),
 	]);
-	if (!player || !eventRow)
-		screenOutputReadNotFound();
+	if (!player || !eventRow) screenOutputReadNotFound();
 
 	return {
 		player: mapPlayerToResponse(player),
-		decks: await playerDeckCardService().getPlayerDecks(eventId, playerId, eventRow.pointsSystem ?? null, selection),
+		decks: await playerDeckCardService().getPlayerDecks(
+			eventId,
+			playerId,
+			eventRow.pointsSystem ?? null,
+			selection,
+		),
 	};
 });

@@ -21,11 +21,13 @@ export interface PagedModeData {
  * Each paginated mode's data composable, as its Screen Output reads it, so a
  * settings page counts the pages its Screen renders (#780).
  */
-export const PAGED_MODE_DATA: { readonly [M in PageRotationMode]: (context: ScreenContext) => PagedModeData } = {
-	'standings': useStandingsModeData,
-	'metagame': useMetagameModeData,
+export const PAGED_MODE_DATA: {
+	readonly [M in PageRotationMode]: (context: ScreenContext) => PagedModeData;
+} = {
+	standings: useStandingsModeData,
+	metagame: useMetagameModeData,
 	'top-cards': useTopCardsModeData,
 	'archetype-spotlight': useArchetypeSpotlightModeData,
-	'pairings': usePairingsModeData,
+	pairings: usePairingsModeData,
 	'player-history': usePlayerHistoryModeData,
 };

@@ -32,7 +32,9 @@ const isOpEvent = computed(() => eventStore.event?.game === 'op');
  * Match Deck List mode picks a Slot and shows each Seat's Commanders and list,
  * and it has no Player Deck List mode. Its Card Spotlight is Magic's (ADR-0087).
  */
-const isCommanderEvent = computed(() => !!eventStore.event && eventKind(eventStore.event) === 'mtg-commander');
+const isCommanderEvent = computed(
+	() => !!eventStore.event && eventKind(eventStore.event) === 'mtg-commander',
+);
 /** The Event's only matchup is a Feature Match Slot. */
 const picksSlot = computed(() => isOpEvent.value || isCommanderEvent.value);
 
@@ -45,14 +47,12 @@ function slotHoldsDecks(slotId: number): boolean {
 
 const historyModal = useOverlay().create(LazyMtgCardHistory);
 const opHistoryModal = useOverlay().create(LazyOpCardHistory);
-const hasHistory = computed(() => isOpEvent.value
-	? cardStore.opSelectionHistory.length > 0
-	: cardStore.selectionHistory.length > 0);
+const hasHistory = computed(() =>
+	isOpEvent.value ? cardStore.opSelectionHistory.length > 0 : cardStore.selectionHistory.length > 0,
+);
 
 function openHistory() {
-	void (isOpEvent.value
-		? opHistoryModal
-		: historyModal).open({});
+	void (isOpEvent.value ? opHistoryModal : historyModal).open({});
 }
 
 const {
@@ -86,74 +86,71 @@ const deckListRoundId = optionalId(storedDeckListRoundId);
 const deckListMatchId = computed<number | undefined>({
 	get: () => matchupIdOf(deckListMatchup.value, 'match') ?? undefined,
 	set: (id) => {
-		deckListMatchup.value = id
-			? { kind: 'match', id }
-			: null;
+		deckListMatchup.value = id ? { kind: 'match', id } : null;
 	},
 });
 const playerDeckPlayerId = optionalId(storedPlayerDeckPlayerId);
 
 // Filter Screens to only those in Card Spotlight mode
-const cardScreens = computed(() =>
-	screenStore.screens.filter(s => s.currentMode === 'card'),
-);
+const cardScreens = computed(() => screenStore.screens.filter((s) => s.currentMode === 'card'));
 
 // Get the selected screen object
-const selectedScreen = computed(() =>
-	cardScreens.value.find(s => s.id === selectedScreenId.value) ?? null,
+const selectedScreen = computed(
+	() => cardScreens.value.find((s) => s.id === selectedScreenId.value) ?? null,
 );
 
 function syncSelectedScreen() {
-	const hasSelectedScreen = cardScreens.value.some(s => s.id === selectedScreenId.value);
-	if (hasSelectedScreen)
-		return;
+	const hasSelectedScreen = cardScreens.value.some((s) => s.id === selectedScreenId.value);
+	if (hasSelectedScreen) return;
 	selectedScreenId.value = cardScreens.value[0]?.id;
 }
 
 // The Feature Match Slot the selected screen's card config is tied to (if any)
 const selectedScreenSlotId = computed<number | null>(() => {
-	if (!selectedScreen.value)
-		return null;
-	const modeConfigs = (selectedScreen.value.modeConfigs ?? {});
+	if (!selectedScreen.value) return null;
+	const modeConfigs = selectedScreen.value.modeConfigs ?? {};
 	const cardConfig = modeConfigs.card;
 	return cardConfig?.featureMatchId ?? null;
 });
 
-const { initialLoading, initialError, retry } = useEventPageLoading([
-	{
-		consumes: 'featureMatchSlots',
-		isLoaded: () => featureMatchStore.isLoaded,
-		isLoading: () => featureMatchStore.loading,
-		load: id => featureMatchStore.loadFeatureMatchesByEventId(id, { failure: 'raise' }),
+const { initialLoading, initialError, retry } = useEventPageLoading(
+	[
+		{
+			consumes: 'featureMatchSlots',
+			isLoaded: () => featureMatchStore.isLoaded,
+			isLoading: () => featureMatchStore.loading,
+			load: (id) => featureMatchStore.loadFeatureMatchesByEventId(id, { failure: 'raise' }),
+		},
+		{
+			consumes: 'phases',
+			isLoaded: () => phaseStore.isLoaded,
+			isLoading: () => phaseStore.loading,
+			load: (id) => phaseStore.loadPhasesByEventId(id, { failure: 'raise' }),
+		},
+		{
+			consumes: 'players',
+			isLoaded: () => playerStore.isLoaded,
+			isLoading: () => playerStore.loading,
+			load: (id) => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
+		},
+		{
+			consumes: 'rounds',
+			isLoaded: () => roundStore.isLoaded,
+			isLoading: () => roundStore.loading,
+			load: (id) => roundStore.loadRoundsByEventId(id, { failure: 'raise' }),
+		},
+		{
+			consumes: 'screens',
+			isLoaded: () => screenStore.isLoaded,
+			isLoading: () => screenStore.loading,
+			load: (id) => screenStore.loadScreensByEventId(id, { failure: 'raise' }),
+		},
+	],
+	async () => {
+		syncSelectedScreen();
+		await syncCardScope();
 	},
-	{
-		consumes: 'phases',
-		isLoaded: () => phaseStore.isLoaded,
-		isLoading: () => phaseStore.loading,
-		load: id => phaseStore.loadPhasesByEventId(id, { failure: 'raise' }),
-	},
-	{
-		consumes: 'players',
-		isLoaded: () => playerStore.isLoaded,
-		isLoading: () => playerStore.loading,
-		load: id => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
-	},
-	{
-		consumes: 'rounds',
-		isLoaded: () => roundStore.isLoaded,
-		isLoading: () => roundStore.loading,
-		load: id => roundStore.loadRoundsByEventId(id, { failure: 'raise' }),
-	},
-	{
-		consumes: 'screens',
-		isLoaded: () => screenStore.isLoaded,
-		isLoading: () => screenStore.loading,
-		load: id => screenStore.loadScreensByEventId(id, { failure: 'raise' }),
-	},
-], async () => {
-	syncSelectedScreen();
-	await syncCardScope();
-});
+);
 
 // The selected Screen's Card, which `syncCardScope` selects and loads, and the
 // deck-list Round's Matches loaded below.
@@ -185,17 +182,19 @@ watch(selectedScreenId, async (screenId, previousScreenId) => {
 				activeMode.value = 'match-decklist';
 				deckListMatchup.value = { kind: 'slot', id: slotId };
 			}
-		}
-		else if (slotId) {
-			const slot = featureMatchStore.featureMatches.find(m => m.id === slotId);
+		} else if (slotId) {
+			const slot = featureMatchStore.featureMatches.find((m) => m.id === slotId);
 			if (slot) {
 				// Check if this Slot has decklist data
 				const p1Name = slot.player1Data?.name;
 				const p2Name = slot.player2Data?.name;
-				const hasDecklists = [p1Name, p2Name].some(name =>
-					name && playerStore.players.some(
-						p => p.name.toLowerCase() === name.toLowerCase() && getMtgGameData(p.gameData).deckName,
-					),
+				const hasDecklists = [p1Name, p2Name].some(
+					(name) =>
+						name &&
+						playerStore.players.some(
+							(p) =>
+								p.name.toLowerCase() === name.toLowerCase() && getMtgGameData(p.gameData).deckName,
+						),
 				);
 				if (hasDecklists) {
 					activeMode.value = 'match-decklist';
@@ -207,128 +206,134 @@ watch(selectedScreenId, async (screenId, previousScreenId) => {
 	}
 });
 
-const roundOptions = computed(() => roundStore.rounds.map((round) => {
-	const phase = phaseStore.getPhaseById(round.phaseId);
-	return {
-		label: formatRoundOptionLabel(round, phase),
-		value: round.id,
-	};
-}));
+const roundOptions = computed(() =>
+	roundStore.rounds.map((round) => {
+		const phase = phaseStore.getPhaseById(round.phaseId);
+		return {
+			label: formatRoundOptionLabel(round, phase),
+			value: round.id,
+		};
+	}),
+);
 
 const matchOptions = computed(() => {
 	const assignments = deckListRoundId.value
 		? assignmentStore.assignmentsForRound(deckListRoundId.value)
 		: [];
 	const matches = matchStore.matches;
-	const assignedMatchIds = new Set(assignments.map(assignment => assignment.matchId));
+	const assignedMatchIds = new Set(assignments.map((assignment) => assignment.matchId));
 	return matches
-		.filter(match => !match.isBye && (assignedMatchIds.size === 0 || assignedMatchIds.has(match.id)))
+		.filter(
+			(match) => !match.isBye && (assignedMatchIds.size === 0 || assignedMatchIds.has(match.id)),
+		)
 		.map((match) => {
-			const assignment = assignments.find(item => item.matchId === match.id);
+			const assignment = assignments.find((item) => item.matchId === match.id);
 			const featureMatches = featureMatchStore.featureMatches;
 			const slotIndex = assignment
-				? featureMatches.findIndex(slot => slot.id === assignment.slotId)
+				? featureMatches.findIndex((slot) => slot.id === assignment.slotId)
 				: -1;
-			const slotLabel = slotIndex >= 0
-				? `Feature ${slotIndex + 1}: `
-				: '';
+			const slotLabel = slotIndex >= 0 ? `Feature ${slotIndex + 1}: ` : '';
 			const player1 = match.player1Id
-				? playerStore.players.find(player => player.id === match.player1Id)
+				? playerStore.players.find((player) => player.id === match.player1Id)
 				: null;
 			const player2 = match.player2Id
-				? playerStore.players.find(player => player.id === match.player2Id)
+				? playerStore.players.find((player) => player.id === match.player2Id)
 				: null;
 			const player1Fallback = getMtgGameData(match.player1Data?.gameData);
 			const player2Fallback = getMtgGameData(match.player2Data?.gameData);
-			const p1 = player1
-				? getMtgGameData(player1.gameData)
-				: player1Fallback;
-			const p2 = player2
-				? getMtgGameData(player2.gameData)
-				: player2Fallback;
+			const p1 = player1 ? getMtgGameData(player1.gameData) : player1Fallback;
+			const p2 = player2 ? getMtgGameData(player2.gameData) : player2Fallback;
 			return {
 				label: `${slotLabel}${match.player1Data?.name ?? 'TBD'} vs ${match.player2Data?.name ?? 'TBD'}`,
 				value: match.id,
 				decks: [p1, p2]
-					.filter(deck => deck.deckName)
-					.map(deck => ({ deckName: deck.deckName ?? null, colors: deck.deckColors ?? null, leader: null })),
+					.filter((deck) => deck.deckName)
+					.map((deck) => ({
+						deckName: deck.deckName ?? null,
+						colors: deck.deckColors ?? null,
+						leader: null,
+					})),
 			};
 		});
 });
 
 const selectedDeckListMatch = computed(() =>
 	deckListMatchId.value
-		? matchStore.matches.find(match => match.id === deckListMatchId.value) ?? null
+		? (matchStore.matches.find((match) => match.id === deckListMatchId.value) ?? null)
 		: null,
 );
 const selectedDeckListAssignment = computed(() => {
-	if (!deckListRoundId.value || !deckListMatchId.value)
-		return null;
-	return assignmentStore.assignmentsForRound(deckListRoundId.value)
-		.find(assignment => assignment.matchId === deckListMatchId.value) ?? null;
+	if (!deckListRoundId.value || !deckListMatchId.value) return null;
+	return (
+		assignmentStore
+			.assignmentsForRound(deckListRoundId.value)
+			.find((assignment) => assignment.matchId === deckListMatchId.value) ?? null
+	);
 });
 
 async function saveSelectedAssignmentNote(note: string) {
-	if (!eventStore.eventId || !selectedDeckListAssignment.value)
-		return;
-	await assignmentStore.updateAssignment(eventStore.eventId, selectedDeckListAssignment.value.id, { note: note.trim() || null });
+	if (!eventStore.eventId || !selectedDeckListAssignment.value) return;
+	await assignmentStore.updateAssignment(eventStore.eventId, selectedDeckListAssignment.value.id, {
+		note: note.trim() || null,
+	});
 }
 
 /** The Slot the Deck Lists of an Event that picks one open on: the first holding any, else the first. */
 function firstSlotId(): number | undefined {
 	const slots = featureMatchStore.featureMatches;
-	return (slots.find(slot => slotHoldsDecks(slot.id)) ?? slots[0])?.id;
+	return (slots.find((slot) => slotHoldsDecks(slot.id)) ?? slots[0])?.id;
 }
 
 // Auto-select the first matchup when entering match-decklist mode.
 watch(activeMode, (mode) => {
-	if (mode !== 'match-decklist' || deckListMatchup.value)
-		return;
+	if (mode !== 'match-decklist' || deckListMatchup.value) return;
 	if (picksSlot.value) {
 		const slotId = firstSlotId();
-		if (slotId !== undefined)
-			deckListMatchup.value = { kind: 'slot', id: slotId };
-	}
-	else if (matchOptions.value.length) {
+		if (slotId !== undefined) deckListMatchup.value = { kind: 'slot', id: slotId };
+	} else if (matchOptions.value.length) {
 		deckListMatchId.value = matchOptions.value[0]!.value;
 	}
 });
 
 // An Event that picks a Slot has no Player Deck List mode, so a link naming it opens on search.
-watch([picksSlot, activeMode], ([slotOnly, mode]) => {
-	if (slotOnly && mode === 'player-decklist')
-		activeMode.value = 'search';
-}, { immediate: true });
+watch(
+	[picksSlot, activeMode],
+	([slotOnly, mode]) => {
+		if (slotOnly && mode === 'player-decklist') activeMode.value = 'search';
+	},
+	{ immediate: true },
+);
 
-watch(roundOptions, (options) => {
-	if (!deckListRoundId.value && options[0])
-		deckListRoundId.value = options[0].value;
-}, { immediate: true });
+watch(
+	roundOptions,
+	(options) => {
+		if (!deckListRoundId.value && options[0]) deckListRoundId.value = options[0].value;
+	},
+	{ immediate: true },
+);
 
-watch([
-	() => eventStore.eventId,
-	deckListRoundId,
-], async ([eventId, roundId], previous, onCleanup) => {
-	if (!eventId || !roundId)
-		return;
-	const releaseRound = assignmentStore.consumeRound(eventId, roundId);
-	onCleanup(releaseRound);
-	await Promise.all([
-		matchStore.loadMatchesByRoundId(eventId, roundId),
-		assignmentStore.loadAssignments(eventId, roundId),
-	]);
-	// A Slot shown on arrival stays; picking another Round shows that Round's Matches.
-	const roundPicked = previous?.[1] != null && previous[1] !== roundId;
-	if (deckListMatchup.value?.kind === 'slot' && !roundPicked)
-		return;
-	if (!matchOptions.value.some(option => option.value === deckListMatchId.value)) {
-		deckListMatchId.value = matchOptions.value[0]?.value;
-	}
-}, { immediate: true });
+watch(
+	[() => eventStore.eventId, deckListRoundId],
+	async ([eventId, roundId], previous, onCleanup) => {
+		if (!eventId || !roundId) return;
+		const releaseRound = assignmentStore.consumeRound(eventId, roundId);
+		onCleanup(releaseRound);
+		await Promise.all([
+			matchStore.loadMatchesByRoundId(eventId, roundId),
+			assignmentStore.loadAssignments(eventId, roundId),
+		]);
+		// A Slot shown on arrival stays; picking another Round shows that Round's Matches.
+		const roundPicked = previous?.[1] != null && previous[1] !== roundId;
+		if (deckListMatchup.value?.kind === 'slot' && !roundPicked) return;
+		if (!matchOptions.value.some((option) => option.value === deckListMatchId.value)) {
+			deckListMatchId.value = matchOptions.value[0]?.value;
+		}
+	},
+	{ immediate: true },
+);
 
 const timeoutProgress = computed(() => {
-	if (!cardStore.activeCard?.timeoutData || !cardStore.timeout.remaining)
-		return 0;
+	if (!cardStore.activeCard?.timeoutData || !cardStore.timeout.remaining) return 0;
 	const totalSeconds = cardStore.activeCard.timeoutData.timeoutDuration / 1000;
 	return Math.max(0, (cardStore.timeout.remaining / totalSeconds) * 100);
 });
@@ -342,7 +347,11 @@ const timeoutProgress = computed(() => {
 					class="relative overflow-hidden"
 					color="primary"
 					variant="soft"
-					@click="() => { cardStore.showCardControls = true }"
+					@click="
+						() => {
+							cardStore.showCardControls = true;
+						}
+					"
 				>
 					<!-- Progress fill -->
 					<div
@@ -381,14 +390,16 @@ const timeoutProgress = computed(() => {
 						:color="selectedScreenId === screen.id ? 'primary' : 'neutral'"
 						:variant="selectedScreenId === screen.id ? 'subtle' : 'outline'"
 						size="xs"
-						@click="() => { selectedScreenId = screen.id }"
+						@click="
+							() => {
+								selectedScreenId = screen.id;
+							}
+						"
 					>
 						{{ screen.name }}
 					</UButton>
 				</template>
-				<span v-else class="text-sm text-muted">
-					No Card Spotlight Screens configured
-				</span>
+				<span v-else class="text-sm text-muted"> No Card Spotlight Screens configured </span>
 			</div>
 		</template>
 
@@ -403,9 +414,11 @@ const timeoutProgress = computed(() => {
 					<!-- Mode Toggle -->
 					<MtgCardModeToggle
 						v-model="activeMode"
-						:match-decklist-disabled="picksSlot
-							? !cardStore.canUseDeckListMode
-							: !cardStore.canUseDeckListMode && matchOptions.length === 0"
+						:match-decklist-disabled="
+							picksSlot
+								? !cardStore.canUseDeckListMode
+								: !cardStore.canUseDeckListMode && matchOptions.length === 0
+						"
 						:player-decklist-disabled="!cardStore.canUsePlayerDeckMode"
 						:offers-player-decklist="!picksSlot"
 					/>
@@ -425,14 +438,20 @@ const timeoutProgress = computed(() => {
 								:match-options="picksSlot ? undefined : matchOptions"
 								:selected-match="selectedDeckListMatch"
 								:selected-assignment="selectedDeckListAssignment"
-								:save-assignment-note="eventStore.event?.featureMatchNotesEnabled ? saveSelectedAssignmentNote : undefined"
-								:assignment-note-remote-changed="selectedDeckListAssignment ? assignmentStore.isRemoteChanged(selectedDeckListAssignment.id) : false"
+								:save-assignment-note="
+									eventStore.event?.featureMatchNotesEnabled
+										? saveSelectedAssignmentNote
+										: undefined
+								"
+								:assignment-note-remote-changed="
+									selectedDeckListAssignment
+										? assignmentStore.isRemoteChanged(selectedDeckListAssignment.id)
+										: false
+								"
 							/>
 						</div>
 						<div v-if="!picksSlot" v-show="activeMode === 'player-decklist'">
-							<MtgCardPlayerDeckHeader
-								v-model:player-id="playerDeckPlayerId"
-							/>
+							<MtgCardPlayerDeckHeader v-model:player-id="playerDeckPlayerId" />
 						</div>
 					</div>
 
@@ -453,14 +472,21 @@ const timeoutProgress = computed(() => {
 						:color="cardStore.activeCard ? 'primary' : 'neutral'"
 						icon="i-lucide-panel-right"
 						aria-label="Card controls"
-						@click="() => { cardStore.showCardControls = true }"
+						@click="
+							() => {
+								cardStore.showCardControls = true;
+							}
+						"
 					/>
 				</div>
 			</div>
 
 			<template v-if="isOpEvent">
 				<!-- One Piece: the Event's Unresolved Deck Cards, then search results -->
-				<div v-show="activeMode === 'search'" class="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+				<div
+					v-show="activeMode === 'search'"
+					class="flex flex-1 flex-col gap-4 overflow-y-auto p-4"
+				>
 					<OpUnresolvedDeckCards />
 					<OpCardList />
 				</div>
@@ -474,10 +500,7 @@ const timeoutProgress = computed(() => {
 			<template v-else>
 				<!-- Search Results -->
 				<div v-show="activeMode === 'search'" class="flex-1 overflow-y-auto p-4">
-					<MtgCardList
-						:cards="cardStore.searchResults"
-						@selected="cardStore.selectPreviewCard"
-					/>
+					<MtgCardList :cards="cardStore.searchResults" @selected="cardStore.selectPreviewCard" />
 				</div>
 
 				<!-- Feature Match Deck List Content: a Commander Slot's Seats, or a matchup's two decks -->
@@ -487,7 +510,11 @@ const timeoutProgress = computed(() => {
 				</div>
 
 				<!-- Player Deck List Content -->
-				<div v-if="!isCommanderEvent" v-show="activeMode === 'player-decklist'" class="flex-1 overflow-y-auto p-4">
+				<div
+					v-if="!isCommanderEvent"
+					v-show="activeMode === 'player-decklist'"
+					class="flex-1 overflow-y-auto p-4"
+				>
 					<MtgCardPlayerDeck />
 				</div>
 			</template>
@@ -497,7 +524,9 @@ const timeoutProgress = computed(() => {
 	<USlideover
 		v-model:open="cardStore.showCardControls"
 		side="right"
-		:ui="{ content: `max-w-[clamp(180px,calc((100dvh-24rem)*61/170+2rem),360px)] sm:max-w-[clamp(180px,calc((100dvh-24rem)*61/170+2rem),360px)]` }"
+		:ui="{
+			content: `max-w-[clamp(180px,calc((100dvh-24rem)*61/170+2rem),360px)] sm:max-w-[clamp(180px,calc((100dvh-24rem)*61/170+2rem),360px)]`,
+		}"
 	>
 		<template #content>
 			<OpCardControls v-if="isOpEvent" />

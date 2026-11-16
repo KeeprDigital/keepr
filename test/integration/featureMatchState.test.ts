@@ -9,7 +9,11 @@ describe('feature match session command API', () => {
 	beforeAll(async () => {
 		const event = await $fetch<{ id: number }>('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration FeatureMatchSession Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration FeatureMatchSession Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 	});
@@ -17,8 +21,7 @@ describe('feature match session command API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('creates slots with an active session and initial projection', async () => {
@@ -114,7 +117,7 @@ describe('feature match session command API', () => {
 			}),
 		]);
 
-		expect(responses.map(response => response.status).toSorted()).toEqual([200, 409]);
+		expect(responses.map((response) => response.status).toSorted()).toEqual([200, 409]);
 		const slot = await $fetch<{ activeSession: { sequence: number } }>(
 			`/api/events/${eventId}/feature-match-slots/${harness.slot.id}`,
 		);
@@ -132,7 +135,7 @@ describe('feature match session command API', () => {
 
 		// Neither operator is refused: an open closes any active Session first, so
 		// the loser has nothing to retry — it adopts the winner instead.
-		expect(responses.map(response => response.status)).toEqual([200, 200]);
+		expect(responses.map((response) => response.status)).toEqual([200, 200]);
 
 		const slot = await $fetch<{ activeSession: { id: number; status: string } }>(
 			`/api/events/${eventId}/feature-match-slots/${harness.slot.id}`,
@@ -140,7 +143,10 @@ describe('feature match session command API', () => {
 		// Both callers were handed the Session the Slot actually owns. Answering
 		// either of them with the row it inserted strands one on a Session that was
 		// closed milliseconds later, and its SessionStarted announces a corpse.
-		expect(responses.map(response => response._data.id)).toEqual([slot.activeSession.id, slot.activeSession.id]);
+		expect(responses.map((response) => response._data.id)).toEqual([
+			slot.activeSession.id,
+			slot.activeSession.id,
+		]);
 		expect(slot.activeSession.status).toBe('active');
 	});
 
@@ -154,13 +160,16 @@ describe('feature match session command API', () => {
 			baseSequence: harness.session().sequence,
 		});
 
-		const updatedSlot = await $fetch<{ activeSession: { sequence: number; sourceSnapshot: { bestOf: number }; currentState: { player1: { lifeTotal: number } } } }>(
-			`/api/events/${eventId}/feature-match-slots/${harness.slot.id}/setup`,
-			{
-				method: 'PATCH',
-				body: { bestOf: 5 },
-			},
-		);
+		const updatedSlot = await $fetch<{
+			activeSession: {
+				sequence: number;
+				sourceSnapshot: { bestOf: number };
+				currentState: { player1: { lifeTotal: number } };
+			};
+		}>(`/api/events/${eventId}/feature-match-slots/${harness.slot.id}/setup`, {
+			method: 'PATCH',
+			body: { bestOf: 5 },
+		});
 
 		expect(updatedSlot.activeSession.sequence).toBe(harness.session().sequence + 1);
 		expect(updatedSlot.activeSession.sourceSnapshot.bestOf).toBe(5);
@@ -171,16 +180,22 @@ describe('feature match session command API', () => {
 		const first = await createCommandHarness(eventId);
 		const second = await createCommandHarness(eventId);
 
-		const down = await $fetch<{ slots: { matchId: number; sortOrder: number }[] }>(`/api/events/${eventId}/feature-match-slots/reorder`, {
-			method: 'PATCH',
-			body: { slotId: first.slot.id, direction: 'down' },
-		});
+		const down = await $fetch<{ slots: { matchId: number; sortOrder: number }[] }>(
+			`/api/events/${eventId}/feature-match-slots/reorder`,
+			{
+				method: 'PATCH',
+				body: { slotId: first.slot.id, direction: 'down' },
+			},
+		);
 		expect(down.slots).toHaveLength(2);
 
-		const up = await $fetch<{ slots: { matchId: number; sortOrder: number }[] }>(`/api/events/${eventId}/feature-match-slots/reorder`, {
-			method: 'PATCH',
-			body: { slotId: second.slot.id, direction: 'up' },
-		});
+		const up = await $fetch<{ slots: { matchId: number; sortOrder: number }[] }>(
+			`/api/events/${eventId}/feature-match-slots/reorder`,
+			{
+				method: 'PATCH',
+				body: { slotId: second.slot.id, direction: 'up' },
+			},
+		);
 		expect(up.slots).toHaveLength(2);
 	});
 });

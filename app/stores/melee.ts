@@ -28,10 +28,8 @@ interface LocalProjectionRefresh {
 const raisingFailure = { failure: 'raise' } as const;
 
 function operationErrorMessage(error: unknown): string {
-	if (typeof error === 'string' && error.trim())
-		return error;
-	if (error instanceof Error && error.message.trim())
-		return error.message;
+	if (typeof error === 'string' && error.trim()) return error;
+	if (error instanceof Error && error.message.trim()) return error.message;
 	return 'Unknown refresh error';
 }
 
@@ -74,70 +72,57 @@ export const useMeleeStore = defineStore('melee', () => {
 
 	function runCommandOnce<T>(key: string, action: () => Promise<T>): Promise<T> {
 		const active = activeCommandPromises.get(key);
-		if (active)
-			return active as Promise<T>;
+		if (active) return active as Promise<T>;
 
 		const promise = action();
 		activeCommandPromises.set(key, promise);
 		void promise.then(
 			() => {
-				if (activeCommandPromises.get(key) === promise)
-					activeCommandPromises.delete(key);
+				if (activeCommandPromises.get(key) === promise) activeCommandPromises.delete(key);
 			},
 			() => {
-				if (activeCommandPromises.get(key) === promise)
-					activeCommandPromises.delete(key);
+				if (activeCommandPromises.get(key) === promise) activeCommandPromises.delete(key);
 			},
 		);
 		return promise;
 	}
 
 	async function refreshLocalProjection(tasks: LocalProjectionRefresh[]): Promise<string[]> {
-		const results = await Promise.allSettled(tasks.map(task => Promise.resolve().then(task.run)));
+		const results = await Promise.allSettled(tasks.map((task) => Promise.resolve().then(task.run)));
 		return results.flatMap((result, index) => {
-			if (result.status === 'fulfilled')
-				return [];
-			return [`Local ${tasks[index]!.label} refresh failed: ${operationErrorMessage(result.reason)}`];
+			if (result.status === 'fulfilled') return [];
+			return [
+				`Local ${tasks[index]!.label} refresh failed: ${operationErrorMessage(result.reason)}`,
+			];
 		});
 	}
 
 	function committedOperationStatus(refreshErrors: string[]): MeleeOperationStatus {
-		return refreshErrors.length > 0
-			? 'warning'
-			: 'success';
+		return refreshErrors.length > 0 ? 'warning' : 'success';
 	}
 
 	function committedOperationTitle(title: string, refreshErrors: string[]): string {
-		return refreshErrors.length > 0
-			? `${title} — Reload Needed`
-			: title;
+		return refreshErrors.length > 0 ? `${title} — Reload Needed` : title;
 	}
 
 	function committedOperationDescription(description: string, refreshErrors: string[]): string {
-		if (refreshErrors.length === 0)
-			return description;
+		if (refreshErrors.length === 0) return description;
 		return `${description}. The source changes were committed, but this browser could not reload all affected data. Reload the page before retrying the sync.`;
 	}
 
 	function committedOperationDetails(details: string[], refreshErrors: string[]): string[] {
 		return refreshErrors.length > 0
-			? [
-					...details,
-					'Source changes committed successfully.',
-					...refreshErrors,
-				]
+			? [...details, 'Source changes committed successfully.', ...refreshErrors]
 			: details;
 	}
 
 	function clearSetupStepReset() {
-		if (setupStepResetTimer)
-			clearTimeout(setupStepResetTimer);
+		if (setupStepResetTimer) clearTimeout(setupStepResetTimer);
 		setupStepResetTimer = null;
 	}
 
 	function clearSyncStepReset() {
-		if (syncStepResetTimer)
-			clearTimeout(syncStepResetTimer);
+		if (syncStepResetTimer) clearTimeout(syncStepResetTimer);
 		syncStepResetTimer = null;
 	}
 
@@ -154,8 +139,7 @@ export const useMeleeStore = defineStore('melee', () => {
 	function completeSetupStep() {
 		setSetupStep('complete');
 		setupStepResetTimer = setTimeout(() => {
-			if (setupStep.value === 'complete')
-				setupStep.value = null;
+			if (setupStep.value === 'complete') setupStep.value = null;
 			setupStepResetTimer = null;
 		}, 1500);
 	}
@@ -163,34 +147,30 @@ export const useMeleeStore = defineStore('melee', () => {
 	function completeSyncStep() {
 		setSyncStep('complete');
 		syncStepResetTimer = setTimeout(() => {
-			if (syncStep.value === 'complete')
-				syncStep.value = null;
+			if (syncStep.value === 'complete') syncStep.value = null;
 			syncStepResetTimer = null;
 		}, 1500);
 	}
 
 	const hasCredentials = computed(() => {
-		if (!eventStore.event)
-			return false;
-		return !!(
-			eventStore.event.meleeEnabled
-			&& eventStore.event.meleeConfigured
-		);
+		if (!eventStore.event) return false;
+		return !!(eventStore.event.meleeEnabled && eventStore.event.meleeConfigured);
 	});
 
 	/** All rounds from the DB (phases + rounds are the single source of truth). */
-	const availableRounds = computed(() => roundStore.rounds.filter(round => isMeleeManagedRound(round)));
+	const availableRounds = computed(() =>
+		roundStore.rounds.filter((round) => isMeleeManagedRound(round)),
+	);
 
 	/** The next round to sync (first round without lastSyncedAt). */
 	const nextUnsyncedRound = computed(() => {
-		return availableRounds.value.find(r => r.lastSyncedAt === null) ?? null;
+		return availableRounds.value.find((r) => r.lastSyncedAt === null) ?? null;
 	});
 
 	/** Label for the sync button: "Sync Round 4" or "Sync Quarterfinals" */
 	const nextRoundLabel = computed<string | null>(() => {
 		const round = nextUnsyncedRound.value;
-		if (!round)
-			return null;
+		if (!round) return null;
 		const phase = phaseStore.getPhaseById(round.phaseId);
 		const name = formatRoundOptionLabel(round, phase);
 		return `Sync ${name}`;
@@ -198,13 +178,15 @@ export const useMeleeStore = defineStore('melee', () => {
 
 	/** True when all available rounds have been synced. */
 	const allRoundsSynced = computed(() => {
-		return availableRounds.value.length > 0
-			&& availableRounds.value.every(r => r.lastSyncedAt !== null);
+		return (
+			availableRounds.value.length > 0 &&
+			availableRounds.value.every((r) => r.lastSyncedAt !== null)
+		);
 	});
 
 	/** Number of rounds synced (have lastSyncedAt). */
 	const syncedRoundCount = computed(() => {
-		return availableRounds.value.filter(r => r.lastSyncedAt !== null).length;
+		return availableRounds.value.filter((r) => r.lastSyncedAt !== null).length;
 	});
 
 	/** Total rounds available. */
@@ -218,8 +200,7 @@ export const useMeleeStore = defineStore('melee', () => {
 	}
 
 	async function refreshEventState(): Promise<string[]> {
-		if (!eventStore.eventId)
-			return [];
+		if (!eventStore.eventId) return [];
 		const eventId = eventStore.eventId;
 		return refreshLocalProjection([
 			{
@@ -255,25 +236,35 @@ export const useMeleeStore = defineStore('melee', () => {
 		apiCall: (eventId: number) => Promise<TResponse>;
 		refreshTasks: (eventId: number, response: TResponse) => LocalProjectionRefresh[];
 		isSuccess: (response: TResponse) => boolean;
-		successContent: (response: TResponse) => { title: string; description: string; details: string[] };
+		successContent: (response: TResponse) => {
+			title: string;
+			description: string;
+			details: string[];
+		};
 		failureDescription: (response: TResponse | null) => string;
 		failureDetails?: (projectionRefreshErrors: string[]) => string[];
 	}
 
-	type MeleeOperationOutcome<TResponse>
-		= | { status: 'guard-failed'; error: string }
-			| { status: 'success'; response: TResponse; projectionRefreshErrors: string[] }
-			| { status: 'failure'; response: TResponse | null; error: string; projectionRefreshErrors: string[] };
+	type MeleeOperationOutcome<TResponse> =
+		| { status: 'guard-failed'; error: string }
+		| { status: 'success'; response: TResponse; projectionRefreshErrors: string[] }
+		| {
+				status: 'failure';
+				response: TResponse | null;
+				error: string;
+				projectionRefreshErrors: string[];
+		  };
 
 	/**
 	 * Shared skeleton for all Melee operations: missing-event guard, action
 	 * execution with step indicators, local projection refresh, event-state
 	 * refresh on thrown failures, and success/error `setLastOperation`.
 	 */
-	async function runMeleeOperation<TResponse>(config: MeleeOperationConfig<TResponse>): Promise<MeleeOperationOutcome<TResponse>> {
+	async function runMeleeOperation<TResponse>(
+		config: MeleeOperationConfig<TResponse>,
+	): Promise<MeleeOperationOutcome<TResponse>> {
 		if (!eventStore.eventId) {
-			if (config.guardSetsError)
-				error.value = 'No event loaded';
+			if (config.guardSetsError) error.value = 'No event loaded';
 			setLastOperation({
 				kind: config.kind,
 				status: 'error',
@@ -302,10 +293,11 @@ export const useMeleeStore = defineStore('melee', () => {
 			async () => {
 				config.steps?.start();
 				const response = await config.apiCall(eventId);
-				if (flight.stale)
-					return response;
+				if (flight.stale) return response;
 				config.steps?.loading();
-				projectionRefreshErrors = await refreshLocalProjection(config.refreshTasks(eventId, response));
+				projectionRefreshErrors = await refreshLocalProjection(
+					config.refreshTasks(eventId, response),
+				);
 				config.steps?.finish(response);
 				return response;
 			},
@@ -314,7 +306,9 @@ export const useMeleeStore = defineStore('melee', () => {
 				errorRef: error,
 				flight,
 				onError: config.steps
-					? () => { config.steps!.fail(); }
+					? () => {
+							config.steps!.fail();
+						}
 					: undefined,
 			},
 		);
@@ -330,8 +324,7 @@ export const useMeleeStore = defineStore('melee', () => {
 					};
 		}
 
-		if (!response)
-			await refreshEventState();
+		if (!response) await refreshEventState();
 
 		if (response && config.isSuccess(response)) {
 			const content = config.successContent(response);
@@ -365,7 +358,9 @@ export const useMeleeStore = defineStore('melee', () => {
 		};
 	}
 
-	async function updateFromMeleeOnce(options: { includeDeckLists?: boolean; advanceRound?: boolean } = {}): Promise<{ success: boolean; error?: string }> {
+	async function updateFromMeleeOnce(
+		options: { includeDeckLists?: boolean; advanceRound?: boolean } = {},
+	): Promise<{ success: boolean; error?: string }> {
 		const outcome = await runMeleeOperation({
 			kind: 'update',
 			failureTitle: 'Melee Update Failed',
@@ -376,8 +371,8 @@ export const useMeleeStore = defineStore('melee', () => {
 				finish: () => completeSyncStep(),
 				fail: () => setSyncStep(null),
 			},
-			apiCall: eventId => eventRepo.updateFromMelee(eventId, options),
-			refreshTasks: eventId => [
+			apiCall: (eventId) => eventRepo.updateFromMelee(eventId, options),
+			refreshTasks: (eventId) => [
 				{
 					label: 'metagame cache',
 					run: () => metagameStore.applyRemoteInvalidated(),
@@ -403,7 +398,7 @@ export const useMeleeStore = defineStore('melee', () => {
 					run: () => refreshMeleeStructureData(eventId, raisingFailure),
 				},
 			],
-			isSuccess: result => result.success,
+			isSuccess: (result) => result.success,
 			successContent: (result) => {
 				const totalMatches = result.rounds.reduce((total, round) => total + round.matchCount, 0);
 				return {
@@ -412,38 +407,34 @@ export const useMeleeStore = defineStore('melee', () => {
 						? `${result.advancedRound.name} imported from Melee.gg`
 						: 'Event data refreshed from Melee.gg',
 					details: [
-						`${result.players.created + result.players.updated} player change${result.players.created + result.players.updated !== 1
-							? 's'
-							: ''}`,
+						`${result.players.created + result.players.updated} player change${
+							result.players.created + result.players.updated !== 1 ? 's' : ''
+						}`,
 						...(result.deckLists
-							? [`${result.deckLists.deckLists} deck list${result.deckLists.deckLists !== 1
-									? 's'
-									: ''}`]
+							? [
+									`${result.deckLists.deckLists} deck list${
+										result.deckLists.deckLists !== 1 ? 's' : ''
+									}`,
+								]
 							: []),
-						...(result.refreshedRound
-							? [`Refreshed ${result.refreshedRound.name}`]
-							: []),
-						...(result.advancedRound
-							? [`Imported ${result.advancedRound.name}`]
-							: []),
-						...(totalMatches > 0
-							? [`${totalMatches} match${totalMatches !== 1
-									? 'es'
-									: ''}`]
-							: []),
+						...(result.refreshedRound ? [`Refreshed ${result.refreshedRound.name}`] : []),
+						...(result.advancedRound ? [`Imported ${result.advancedRound.name}`] : []),
+						...(totalMatches > 0 ? [`${totalMatches} match${totalMatches !== 1 ? 'es' : ''}`] : []),
 						...(result.warnings ?? []),
 					],
 				};
 			},
-			failureDescription: result => result?.message ?? error.value ?? 'Failed to update from Melee.gg',
+			failureDescription: (result) =>
+				result?.message ?? error.value ?? 'Failed to update from Melee.gg',
 		});
 
-		if (outcome.status === 'success')
-			return { success: true };
+		if (outcome.status === 'success') return { success: true };
 		return { success: false, error: outcome.error };
 	}
 
-	function updateFromMelee(options: { includeDeckLists?: boolean; advanceRound?: boolean } = {}): Promise<{ success: boolean; error?: string }> {
+	function updateFromMelee(
+		options: { includeDeckLists?: boolean; advanceRound?: boolean } = {},
+	): Promise<{ success: boolean; error?: string }> {
 		return runCommandOnce('update', () => updateFromMeleeOnce(options));
 	}
 
@@ -453,8 +444,8 @@ export const useMeleeStore = defineStore('melee', () => {
 			failureTitle: 'Event Sync Failed',
 			loadingRef: syncing,
 			guardSetsError: true,
-			apiCall: eventId => eventRepo.syncMelee(eventId),
-			refreshTasks: eventId => [
+			apiCall: (eventId) => eventRepo.syncMelee(eventId),
+			refreshTasks: (eventId) => [
 				{
 					label: 'event status',
 					run: () => eventStore.loadEvent(eventId),
@@ -464,25 +455,20 @@ export const useMeleeStore = defineStore('melee', () => {
 					run: () => refreshMeleeStructureData(eventId, raisingFailure),
 				},
 			],
-			isSuccess: response => response.success,
-			successContent: response => ({
+			isSuccess: (response) => response.success,
+			successContent: (response) => ({
 				title: 'Event Synced',
 				description: `Synced event structure for ${response.event.name}`,
 				details: [
-					`${response.phases} phase${response.phases !== 1
-						? 's'
-						: ''}`,
-					`${response.rounds} round${response.rounds !== 1
-						? 's'
-						: ''}`,
+					`${response.phases} phase${response.phases !== 1 ? 's' : ''}`,
+					`${response.rounds} round${response.rounds !== 1 ? 's' : ''}`,
 					...(response.warnings ?? []),
 				],
 			}),
 			failureDescription: () => error.value ?? 'Failed to sync event structure',
 		});
 
-		if (outcome.status === 'guard-failed')
-			return null;
+		if (outcome.status === 'guard-failed') return null;
 		return outcome.response;
 	}
 
@@ -496,8 +482,8 @@ export const useMeleeStore = defineStore('melee', () => {
 			failureTitle: 'Player Sync Failed',
 			loadingRef: syncingPlayers,
 			guardSetsError: true,
-			apiCall: eventId => eventRepo.syncPlayers(eventId),
-			refreshTasks: eventId => [
+			apiCall: (eventId) => eventRepo.syncPlayers(eventId),
+			refreshTasks: (eventId) => [
 				{
 					label: 'metagame cache',
 					run: () => metagameStore.applyRemoteInvalidated(),
@@ -515,21 +501,17 @@ export const useMeleeStore = defineStore('melee', () => {
 					run: () => featureMatchStore.loadFeatureMatchesByEventId(eventId, raisingFailure),
 				},
 			],
-			isSuccess: response => response.success,
+			isSuccess: (response) => response.success,
 			successContent: (response) => {
 				const deactivated = response.results.deactivated ?? 0;
 				const total = response.results.created + response.results.updated + deactivated;
 				return {
 					title: 'Players Synced',
-					description: `${total} player change${total !== 1
-						? 's'
-						: ''} applied`,
+					description: `${total} player change${total !== 1 ? 's' : ''} applied`,
 					details: [
 						`${response.results.created} created`,
 						`${response.results.updated} updated`,
-						...(deactivated > 0
-							? [`${deactivated} deactivated`]
-							: []),
+						...(deactivated > 0 ? [`${deactivated} deactivated`] : []),
 						...(response.warnings ?? []),
 					],
 				};
@@ -537,8 +519,7 @@ export const useMeleeStore = defineStore('melee', () => {
 			failureDescription: () => error.value ?? 'Failed to sync players',
 		});
 
-		if (outcome.status === 'guard-failed')
-			return null;
+		if (outcome.status === 'guard-failed') return null;
 		return outcome.response;
 	}
 
@@ -552,8 +533,8 @@ export const useMeleeStore = defineStore('melee', () => {
 			failureTitle: 'Deck List Sync Failed',
 			loadingRef: syncingDecklists,
 			guardSetsError: true,
-			apiCall: eventId => eventRepo.syncDecklists(eventId),
-			refreshTasks: eventId => [
+			apiCall: (eventId) => eventRepo.syncDecklists(eventId),
+			refreshTasks: (eventId) => [
 				{
 					label: 'metagame cache',
 					run: () => metagameStore.applyRemoteInvalidated(),
@@ -579,36 +560,34 @@ export const useMeleeStore = defineStore('melee', () => {
 					run: () => featureMatchStore.loadFeatureMatchesByEventId(eventId, raisingFailure),
 				},
 			],
-			isSuccess: response => response.success,
+			isSuccess: (response) => response.success,
 			successContent: (response) => {
 				const details = [
-					`${response.results.deckLists} deck list${response.results.deckLists !== 1
-						? 's'
-						: ''}`,
-					`${response.results.players} player${response.results.players !== 1
-						? 's'
-						: ''}`,
+					`${response.results.deckLists} deck list${response.results.deckLists !== 1 ? 's' : ''}`,
+					`${response.results.players} player${response.results.players !== 1 ? 's' : ''}`,
 					`${response.results.uniqueCards} unique cards`,
 				];
 				if (response.results.unresolvedCards > 0) {
-					details.push(`${response.results.unresolvedCards} unresolved deck entr${response.results.unresolvedCards === 1
-						? 'y'
-						: 'ies'}`);
+					details.push(
+						`${response.results.unresolvedCards} unresolved deck entr${
+							response.results.unresolvedCards === 1 ? 'y' : 'ies'
+						}`,
+					);
 				}
 				details.push(...(response.warnings ?? []));
 				return {
 					title: 'Deck Lists Synced',
-					description: `${response.results.deckLists} deck list${response.results.deckLists !== 1
-						? 's'
-						: ''} synced`,
+					description: `${response.results.deckLists} deck list${
+						response.results.deckLists !== 1 ? 's' : ''
+					} synced`,
 					details,
 				};
 			},
-			failureDescription: response => response?.warnings.join(' · ') || error.value || 'Failed to sync deck lists',
+			failureDescription: (response) =>
+				response?.warnings.join(' · ') || error.value || 'Failed to sync deck lists',
 		});
 
-		if (outcome.status === 'guard-failed')
-			return null;
+		if (outcome.status === 'guard-failed') return null;
 		return outcome.response;
 	}
 
@@ -618,15 +597,31 @@ export const useMeleeStore = defineStore('melee', () => {
 
 	/** Shared implementation for an explicitly selected round sync. */
 	async function syncRoundInternal(
-		apiCall: () => Promise<{ round: { id: number; name: string }; matchCount: number; created: number; updated: number; warnings: string[] }>,
-	): Promise<{ success: true; round: { id: number; name: string }; matchCount: number; created: number; updated: number; warnings: string[]; projectionRefreshErrors: string[] } | { success: false; error: string }> {
+		apiCall: () => Promise<{
+			round: { id: number; name: string };
+			matchCount: number;
+			created: number;
+			updated: number;
+			warnings: string[];
+		}>,
+	): Promise<
+		| {
+				success: true;
+				round: { id: number; name: string };
+				matchCount: number;
+				created: number;
+				updated: number;
+				warnings: string[];
+				projectionRefreshErrors: string[];
+		  }
+		| { success: false; error: string }
+	> {
 		const outcome = await runMeleeOperation({
 			kind: 'specific-round',
 			failureTitle: 'Round Sync Failed',
 			loadingRef: syncingRound,
-			precondition: () => syncingRound.value
-				? { error: 'Round sync already in progress', report: false }
-				: null,
+			precondition: () =>
+				syncingRound.value ? { error: 'Round sync already in progress', report: false } : null,
 			steps: {
 				start: () => setSyncStep('standings'),
 				loading: () => setSyncStep('loading'),
@@ -663,7 +658,7 @@ export const useMeleeStore = defineStore('melee', () => {
 				},
 			],
 			isSuccess: () => true,
-			successContent: response => ({
+			successContent: (response) => ({
 				title: 'Round Synced',
 				description: `${response.round.name} synced successfully`,
 				details: [
@@ -676,8 +671,7 @@ export const useMeleeStore = defineStore('melee', () => {
 			failureDescription: () => error.value ?? 'Unknown error',
 		});
 
-		if (outcome.status !== 'success')
-			return { success: false, error: outcome.error };
+		if (outcome.status !== 'success') return { success: false, error: outcome.error };
 		return {
 			success: true,
 			round: outcome.response.round,
@@ -693,7 +687,9 @@ export const useMeleeStore = defineStore('melee', () => {
 	 * Sync matches for a specific round by its DB round ID.
 	 */
 	function syncSpecificRound(roundId: number): Promise<{ success: boolean; error?: string }> {
-		return runCommandOnce(`specific-round:${roundId}`, () => syncRoundInternal(() => eventRepo.syncSpecificRound(eventStore.eventId!, roundId)));
+		return runCommandOnce(`specific-round:${roundId}`, () =>
+			syncRoundInternal(() => eventRepo.syncSpecificRound(eventStore.eventId!, roundId)),
+		);
 	}
 
 	/**
@@ -706,22 +702,19 @@ export const useMeleeStore = defineStore('melee', () => {
 			kind: 'setup',
 			failureTitle: 'Initial Setup Failed',
 			loadingRef: runningSetup,
-			precondition: () => runningSetup.value
-				? { error: 'Setup already in progress', report: true }
-				: null,
+			precondition: () =>
+				runningSetup.value ? { error: 'Setup already in progress', report: true } : null,
 			steps: {
 				start: () => setSetupStep('syncing'),
 				loading: () => setSetupStep('loading'),
 				finish: (response) => {
-					if (response.success)
-						completeSetupStep();
-					else
-						setSetupStep(null);
+					if (response.success) completeSetupStep();
+					else setSetupStep(null);
 				},
 				fail: () => setSetupStep(null),
 			},
 			apiCall: (eventId: number) => eventRepo.runInitialSetup(eventId),
-			refreshTasks: eventId => [
+			refreshTasks: (eventId) => [
 				{
 					label: 'metagame cache',
 					run: () => metagameStore.applyRemoteInvalidated(),
@@ -755,20 +748,20 @@ export const useMeleeStore = defineStore('melee', () => {
 					run: () => featureMatchStore.loadFeatureMatchesByEventId(eventId, raisingFailure),
 				},
 			],
-			isSuccess: response => response.success,
-			successContent: response => ({
+			isSuccess: (response) => response.success,
+			successContent: (response) => ({
 				title: 'Initial Setup Complete',
 				description: 'Event structure, players, and deck lists were synced successfully',
 				details: response.warnings ?? [],
 			}),
-			failureDescription: response => response
-				? response.warnings.at(-1) ?? response.message ?? 'Failed to run initial setup'
-				: error.value ?? 'Unknown error',
-			failureDetails: projectionRefreshErrors => projectionRefreshErrors,
+			failureDescription: (response) =>
+				response
+					? (response.warnings.at(-1) ?? response.message ?? 'Failed to run initial setup')
+					: (error.value ?? 'Unknown error'),
+			failureDetails: (projectionRefreshErrors) => projectionRefreshErrors,
 		});
 
-		if (outcome.status === 'success')
-			return { success: true };
+		if (outcome.status === 'success') return { success: true };
 		return { success: false, error: outcome.error };
 	}
 
@@ -783,8 +776,7 @@ export const useMeleeStore = defineStore('melee', () => {
 	 */
 	async function setLiveResults(enabled: boolean): Promise<{ success: boolean; error?: string }> {
 		const event = eventStore.event;
-		if (!event)
-			return { success: false, error: 'No event loaded' };
+		if (!event) return { success: false, error: 'No event loaded' };
 
 		const original = {
 			meleeLiveResultsEnabled: event.meleeLiveResultsEnabled,
@@ -799,22 +791,19 @@ export const useMeleeStore = defineStore('melee', () => {
 			...(enabled && { meleeLiveResultsError: null, meleeLiveResultsStopReason: null }),
 		});
 
-		const updated = await executeReporting(
-			() => eventRepo.setMeleeLiveResults(event.id, enabled),
-			{
-				loadingRef: settingLiveResults,
-				errorRef: failure,
-				flight,
-				onError: () => {
-					if (eventStore.event?.id === event.id) {
-						eventStore.setEvent({
-							...eventStore.event,
-							...original,
-						});
-					}
-				},
+		const updated = await executeReporting(() => eventRepo.setMeleeLiveResults(event.id, enabled), {
+			loadingRef: settingLiveResults,
+			errorRef: failure,
+			flight,
+			onError: () => {
+				if (eventStore.event?.id === event.id) {
+					eventStore.setEvent({
+						...eventStore.event,
+						...original,
+					});
+				}
 			},
-		);
+		});
 
 		if (!updated)
 			return { success: false, error: failure.value ?? 'Failed to change Live Results' };
@@ -830,12 +819,12 @@ export const useMeleeStore = defineStore('melee', () => {
 	/** Reads the Live Results status. A failed read keeps the last one: it is re-read on a timer. */
 	async function loadLiveResultsStatus(): Promise<MeleeLiveResultsStatusResponse | null> {
 		const eventId = eventStore.eventId;
-		if (!eventId)
-			return null;
+		if (!eventId) return null;
 		const flight = lifetime;
-		const status = await executeReporting(() => eventRepo.getMeleeLiveResultsStatus(eventId), { flight });
-		if (status && flight.current)
-			liveResultsStatus.value = status;
+		const status = await executeReporting(() => eventRepo.getMeleeLiveResultsStatus(eventId), {
+			flight,
+		});
+		if (status && flight.current) liveResultsStatus.value = status;
 		return status;
 	}
 

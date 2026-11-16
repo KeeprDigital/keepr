@@ -43,22 +43,28 @@ export async function seedBroadcastGraphicsScreen(
 	db: DrizzleD1Database<typeof schema>,
 	{ stack, eventName = 'Broadcast Graphics' }: SeedBroadcastGraphicsScreenOptions,
 ): Promise<SeededBroadcastGraphicsScreen> {
-	const [event] = await db.insert(schema.events).values({
-		name: eventName,
-		game: 'mtg',
-		featureMatchOrientation: 'horizontal',
-	} as never).returning();
+	const [event] = await db
+		.insert(schema.events)
+		.values({
+			name: eventName,
+			game: 'mtg',
+			featureMatchOrientation: 'horizontal',
+		} as never)
+		.returning();
 	const eventId = event!.id;
 
-	const [screen] = await db.insert(schema.screens).values({
-		eventId,
-		name: 'Program',
-		slug: `program-${eventId}`,
-		currentMode: 'broadcast-graphics',
-		modeConfigs: { 'broadcast-graphics': stack },
-		assetCapabilitySeed: `seed-${eventId}`,
-		assetCapabilityDigest: `digest-${eventId}`,
-	} as never).returning();
+	const [screen] = await db
+		.insert(schema.screens)
+		.values({
+			eventId,
+			name: 'Program',
+			slug: `program-${eventId}`,
+			currentMode: 'broadcast-graphics',
+			modeConfigs: { 'broadcast-graphics': stack },
+			assetCapabilitySeed: `seed-${eventId}`,
+			assetCapabilityDigest: `digest-${eventId}`,
+		} as never)
+		.returning();
 
 	return {
 		eventId,

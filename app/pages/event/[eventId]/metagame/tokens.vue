@@ -12,7 +12,9 @@ const { runRequest } = useRequestFeedback();
 const tokenData = ref<TokenRequirementsResponse | null>(null);
 const tokenLoading = ref(false);
 
-const hasDeckData = computed(() => playerStore.players.some(p => getMtgGameData(p.gameData).deckName));
+const hasDeckData = computed(() =>
+	playerStore.players.some((p) => getMtgGameData(p.gameData).deckName),
+);
 
 function sourceCardLink(card: TokenSourceCardEntry) {
 	return `/event/${eventStore.eventId}/metagame/card/${card.id}`;
@@ -20,10 +22,7 @@ function sourceCardLink(card: TokenSourceCardEntry) {
 
 async function fetchTokens() {
 	await runRequest(
-		() => metagameClient.loadTokenRequirements(
-			eventStore.eventId!,
-			metagameStore.scopeQuery,
-		),
+		() => metagameClient.loadTokenRequirements(eventStore.eventId!, metagameStore.scopeQuery),
 		{
 			latestKey: 'tokens',
 			loadingRef: tokenLoading,
@@ -41,14 +40,17 @@ async function fetchTokens() {
 
 const { summaryLoading, fetchPageData } = useMetagamePage(fetchTokens);
 
-const { initialLoading, initialError, retry } = useEventPageLoading([
-	{
-		consumes: 'players',
-		isLoaded: () => playerStore.isLoaded,
-		isLoading: () => playerStore.loading,
-		load: id => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
-	},
-], fetchPageData);
+const { initialLoading, initialError, retry } = useEventPageLoading(
+	[
+		{
+			consumes: 'players',
+			isLoaded: () => playerStore.isLoaded,
+			isLoading: () => playerStore.loading,
+			load: (id) => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
+		},
+	],
+	fetchPageData,
+);
 </script>
 
 <template>
@@ -57,10 +59,7 @@ const { initialLoading, initialError, retry } = useEventPageLoading([
 	<UILoadingSpinner v-else-if="initialLoading" />
 
 	<div v-else class="flex flex-col gap-6">
-		<MetagameSummaryPanel
-			:summary="metagameStore.summaryData"
-			:loading="summaryLoading"
-		/>
+		<MetagameSummaryPanel :summary="metagameStore.summaryData" :loading="summaryLoading" />
 
 		<UIEmptyState
 			v-if="!hasDeckData"

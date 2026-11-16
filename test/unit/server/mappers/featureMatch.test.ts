@@ -1,7 +1,10 @@
 import type { DbFeatureMatchSession } from '~~/server/db/schema';
 import type { FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
 import { describe, expect, it } from 'vitest';
-import { mapFeatureMatchSessionToStarted, mapFeatureMatchToResponse } from '~~/server/mappers/featureMatch';
+import {
+	mapFeatureMatchSessionToStarted,
+	mapFeatureMatchToResponse,
+} from '~~/server/mappers/featureMatch';
 import { createMockFeatureMatch, createMockFeatureMatchState } from '~~/test/helpers/fixtures';
 
 function session(overrides?: Partial<DbFeatureMatchSession>): DbFeatureMatchSession {
@@ -25,13 +28,15 @@ function session(overrides?: Partial<DbFeatureMatchSession>): DbFeatureMatchSess
 describe('feature match mapper', () => {
 	it('maps a Slot with no active Session to a null activeSession', () => {
 		expect(mapFeatureMatchToResponse(createMockFeatureMatch()).activeSession).toBeNull();
-		expect(mapFeatureMatchToResponse({
-			...createMockFeatureMatch(),
-			activeSession: null,
-		}).activeSession).toBeNull();
+		expect(
+			mapFeatureMatchToResponse({
+				...createMockFeatureMatch(),
+				activeSession: null,
+			}).activeSession,
+		).toBeNull();
 	});
 
-	it('maps a Slot\'s active Session, timestamps included', () => {
+	it("maps a Slot's active Session, timestamps included", () => {
 		const active = session();
 		const response = mapFeatureMatchToResponse({
 			...createMockFeatureMatch({ id: 7 }),

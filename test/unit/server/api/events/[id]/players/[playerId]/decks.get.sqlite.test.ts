@@ -12,14 +12,27 @@ const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-interface StubEvent { params: Record<string, string>; query: Record<string, string> }
+interface StubEvent {
+	params: Record<string, string>;
+	query: Record<string, string>;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('getValidatedQuery', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.query));
-vi.stubGlobal('createError', (input: { statusCode?: number; statusMessage?: string }) => Object.assign(new Error(input.statusMessage), input));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal('getValidatedQuery', async (event: StubEvent, parse: (value: unknown) => unknown) =>
+	parse(event.query),
+);
+vi.stubGlobal('createError', (input: { statusCode?: number; statusMessage?: string }) =>
+	Object.assign(new Error(input.statusMessage), input),
+);
 
-type Handler = (event: H3Event) => Promise<{ decks: { id: number }[]; selectedDeckId: number | null }>;
-const readDecks = (await import('~~/server/api/events/[id]/players/[playerId]/decks.get')).default as unknown as Handler;
+type Handler = (
+	event: H3Event,
+) => Promise<{ decks: { id: number }[]; selectedDeckId: number | null }>;
+const readDecks = (await import('~~/server/api/events/[id]/players/[playerId]/decks.get'))
+	.default as unknown as Handler;
 
 /** A Player whose primary deck is the Swiss format's and whose other deck is the Finals'. */
 const staged = {
@@ -33,25 +46,30 @@ const staged = {
 };
 
 beforeAll(async () => {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
-	const [, finalsPhase] = await db.insert(schema.phases).values([
-		{
-			eventId,
-			name: 'Swiss',
-			formatExternalId: 'modern',
-			sortOrder: 0,
-		},
-		{
-			eventId,
-			name: 'Finals',
-			formatExternalId: 'standard',
-			sortOrder: 1,
-		},
-	]).returning({ id: schema.phases.id });
-	const [finalsRound] = await db.insert(schema.rounds)
+	const [, finalsPhase] = await db
+		.insert(schema.phases)
+		.values([
+			{
+				eventId,
+				name: 'Swiss',
+				formatExternalId: 'modern',
+				sortOrder: 0,
+			},
+			{
+				eventId,
+				name: 'Finals',
+				formatExternalId: 'standard',
+				sortOrder: 1,
+			},
+		])
+		.returning({ id: schema.phases.id });
+	const [finalsRound] = await db
+		.insert(schema.rounds)
 		.values({
 			eventId,
 			phaseId: finalsPhase!.id,
@@ -59,32 +77,36 @@ beforeAll(async () => {
 			roundNumber: 1,
 		})
 		.returning({ id: schema.rounds.id });
-	const [player, deckless] = await db.insert(schema.players)
+	const [player, deckless] = await db
+		.insert(schema.players)
 		.values([
 			{ eventId, name: 'Mia' },
 			{ eventId, name: 'Deckless' },
 		])
 		.returning({ id: schema.players.id });
-	const [primary, finals] = await db.insert(schema.playerDecks).values([
-		{
-			eventId,
-			playerId: player!.id,
-			externalId: 'swiss',
-			externalSource: 'melee',
-			formatExternalId: 'modern',
-			name: 'Burn',
-			isPrimary: true,
-		},
-		{
-			eventId,
-			playerId: player!.id,
-			externalId: 'finals',
-			externalSource: 'melee',
-			formatExternalId: 'standard',
-			name: 'Control',
-			isPrimary: false,
-		},
-	]).returning({ id: schema.playerDecks.id });
+	const [primary, finals] = await db
+		.insert(schema.playerDecks)
+		.values([
+			{
+				eventId,
+				playerId: player!.id,
+				externalId: 'swiss',
+				externalSource: 'melee',
+				formatExternalId: 'modern',
+				name: 'Burn',
+				isPrimary: true,
+			},
+			{
+				eventId,
+				playerId: player!.id,
+				externalId: 'finals',
+				externalSource: 'melee',
+				formatExternalId: 'standard',
+				name: 'Control',
+				isPrimary: false,
+			},
+		])
+		.returning({ id: schema.playerDecks.id });
 	Object.assign(staged, {
 		eventId,
 		playerId: player!.id,
@@ -99,22 +121,20 @@ beforeAll(async () => {
 afterAll(async () => await harness.close());
 
 function read(query: Record<string, string>, playerId = staged.playerId) {
-	return readDecks(stubH3Event({
-		params: {
-			id: String(staged.eventId),
-			playerId: String(playerId),
-		},
-		query,
-	}));
+	return readDecks(
+		stubH3Event({
+			params: {
+				id: String(staged.eventId),
+				playerId: String(playerId),
+			},
+			query,
+		}),
+	);
 }
 
 describe('the Player decks read', () => {
 	it.each<[string, () => Record<string, string>, () => number]>([
-		[
-			'the primary deck when the query selects nothing',
-			() => ({}),
-			() => staged.primary,
-		],
+		['the primary deck when the query selects nothing', () => ({}), () => staged.primary],
 		[
 			'the deck a deckId names',
 			() => ({
@@ -140,14 +160,21 @@ describe('the Player decks read', () => {
 		const answer = await read(query());
 
 		expect(answer.selectedDeckId).toBe(selected());
-		expect(answer.decks.map(deck => deck.id).toSorted()).toEqual([staged.primary, staged.finals].toSorted());
+		expect(answer.decks.map((deck) => deck.id).toSorted()).toEqual(
+			[staged.primary, staged.finals].toSorted(),
+		);
 	});
 
 	// A selection chooses among the Player's decks; it never makes one up.
 	it('answers no deck, and selects none, for a Player without decks whatever Phase is selected', async () => {
-		expect(await read({
-			phaseId: String(staged.finalsPhase),
-		}, staged.decklessId)).toEqual({ decks: [], selectedDeckId: null });
+		expect(
+			await read(
+				{
+					phaseId: String(staged.finalsPhase),
+				},
+				staged.decklessId,
+			),
+		).toEqual({ decks: [], selectedDeckId: null });
 	});
 
 	it.each([
@@ -159,6 +186,9 @@ describe('the Player decks read', () => {
 	});
 
 	it('answers 404 for a Player the Event does not hold', async () => {
-		await expect(read({}, 999_999)).rejects.toMatchObject({ statusCode: 404, statusMessage: 'Player not found' });
+		await expect(read({}, 999_999)).rejects.toMatchObject({
+			statusCode: 404,
+			statusMessage: 'Player not found',
+		});
 	});
 });

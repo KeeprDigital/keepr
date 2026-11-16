@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { formatGameScore, readMatchFromPlayer1Side, readMatchFromPlayerSide } from '../../../shared/utils/matchFromPlayerSide';
+import {
+	formatGameScore,
+	readMatchFromPlayer1Side,
+	readMatchFromPlayerSide,
+} from '../../../shared/utils/matchFromPlayerSide';
 
 function match(overrides: Partial<Parameters<typeof readMatchFromPlayerSide>[0]> = {}) {
 	return {
@@ -14,7 +18,7 @@ function match(overrides: Partial<Parameters<typeof readMatchFromPlayerSide>[0]>
 }
 
 describe('readMatchFromPlayerSide', () => {
-	it('reads a won Match from player 1\'s side', () => {
+	it("reads a won Match from player 1's side", () => {
 		expect(readMatchFromPlayerSide(match(), 1)).toEqual({
 			outcome: 'win',
 			playerGameWins: 2,
@@ -24,7 +28,7 @@ describe('readMatchFromPlayerSide', () => {
 		});
 	});
 
-	it('reads the same Match as a loss from player 2\'s side', () => {
+	it("reads the same Match as a loss from player 2's side", () => {
 		expect(readMatchFromPlayerSide(match(), 2)).toMatchObject({
 			outcome: 'loss',
 			playerGameWins: 1,
@@ -33,24 +37,37 @@ describe('readMatchFromPlayerSide', () => {
 	});
 
 	it('reads equal game wins as a draw', () => {
-		expect(readMatchFromPlayerSide(match({ player1GameWins: 1, player2GameWins: 1, gameDraws: 1 }), 2).outcome).toBe('draw');
+		expect(
+			readMatchFromPlayerSide(match({ player1GameWins: 1, player2GameWins: 1, gameDraws: 1 }), 2)
+				.outcome,
+		).toBe('draw');
 	});
 
 	it('reads a bye as a bye, whatever its game wins', () => {
-		expect(readMatchFromPlayerSide(match({ isBye: true, player1GameWins: 2, player2GameWins: 0 }), 1).outcome).toBe('bye');
+		expect(
+			readMatchFromPlayerSide(match({ isBye: true, player1GameWins: 2, player2GameWins: 0 }), 1)
+				.outcome,
+		).toBe('bye');
 	});
 
 	it('reads an unreported Match as pending', () => {
-		expect(readMatchFromPlayerSide(match({ hasResult: false, player1GameWins: null, player2GameWins: null }), 1).outcome).toBe('pending');
+		expect(
+			readMatchFromPlayerSide(
+				match({ hasResult: false, player1GameWins: null, player2GameWins: null }),
+				1,
+			).outcome,
+		).toBe('pending');
 	});
 
 	it('reads a result without game wins as pending', () => {
-		expect(readMatchFromPlayerSide(match({ player1GameWins: null, player2GameWins: null }), 1).outcome).toBe('pending');
+		expect(
+			readMatchFromPlayerSide(match({ player1GameWins: null, player2GameWins: null }), 1).outcome,
+		).toBe('pending');
 	});
 });
 
 describe('readMatchFromPlayer1Side', () => {
-	it('reads a Match from player 1\'s side when no Player names it', () => {
+	it("reads a Match from player 1's side when no Player names it", () => {
 		const { player1Id: _seated, ...facts } = match({ player1GameWins: 1, player2GameWins: 2 });
 		expect(readMatchFromPlayer1Side(facts)).toEqual({
 			outcome: 'loss',
@@ -65,30 +82,10 @@ describe('readMatchFromPlayer1Side', () => {
 describe('formatGameScore', () => {
 	// A Game Score is written with en dashes, never hyphens.
 	it.each([
-		[
-			'a win',
-			match(),
-			1,
-			'2–1',
-		],
-		[
-			'a loss, from the losing side',
-			match(),
-			2,
-			'1–2',
-		],
-		[
-			'a game draw',
-			match({ player1GameWins: 1, player2GameWins: 1, gameDraws: 1 }),
-			1,
-			'1–1–1',
-		],
-		[
-			'an unplayed draw',
-			match({ player1GameWins: 0, player2GameWins: 0, gameDraws: 0 }),
-			1,
-			'0–0',
-		],
+		['a win', match(), 1, '2–1'],
+		['a loss, from the losing side', match(), 2, '1–2'],
+		['a game draw', match({ player1GameWins: 1, player2GameWins: 1, gameDraws: 1 }), 1, '1–1–1'],
+		['an unplayed draw', match({ player1GameWins: 0, player2GameWins: 0, gameDraws: 0 }), 1, '0–0'],
 	])('scores %s', (_name, played, playerId, expected) => {
 		expect(formatGameScore(readMatchFromPlayerSide(played, playerId))).toBe(expected);
 	});
@@ -98,14 +95,29 @@ describe('formatGameScore', () => {
 	});
 
 	it('has no score for a bye', () => {
-		expect(formatGameScore(readMatchFromPlayerSide(match({ isBye: true, player1GameWins: 2, player2GameWins: 0 }), 1))).toBeNull();
+		expect(
+			formatGameScore(
+				readMatchFromPlayerSide(match({ isBye: true, player1GameWins: 2, player2GameWins: 0 }), 1),
+			),
+		).toBeNull();
 	});
 
 	it('has no score for an unreported Match', () => {
-		expect(formatGameScore(readMatchFromPlayerSide(match({ hasResult: false, player1GameWins: 0, player2GameWins: 0 }), 1))).toBeNull();
+		expect(
+			formatGameScore(
+				readMatchFromPlayerSide(
+					match({ hasResult: false, player1GameWins: 0, player2GameWins: 0 }),
+					1,
+				),
+			),
+		).toBeNull();
 	});
 
 	it('has no score for a result without game wins', () => {
-		expect(formatGameScore(readMatchFromPlayerSide(match({ player1GameWins: null, player2GameWins: null }), 1))).toBeNull();
+		expect(
+			formatGameScore(
+				readMatchFromPlayerSide(match({ player1GameWins: null, player2GameWins: null }), 1),
+			),
+		).toBeNull();
 	});
 });

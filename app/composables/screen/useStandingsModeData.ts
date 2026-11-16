@@ -17,9 +17,11 @@ import { usePaginatedScreenMode } from '~/modules/screen-mode/pagination';
  * did not change, whatever order the read answers them in.
  */
 function byStandingsPosition(a: Player, b: Player): number {
-	return Number(a.position == null) - Number(b.position == null)
-		|| (a.position ?? 0) - (b.position ?? 0)
-		|| a.id - b.id;
+	return (
+		Number(a.position == null) - Number(b.position == null) ||
+		(a.position ?? 0) - (b.position ?? 0) ||
+		a.id - b.id
+	);
 }
 
 /**
@@ -45,13 +47,14 @@ export function useStandingsModeData(context: ScreenContext) {
 	 */
 	const freshness = useScreenModeFreshness<StandingsRead>({
 		hearing: useScreenModeHearing(context, 'standings', () => config.value),
-		source: () => outputReads.scopeKey.value
-			? `${outputReads.scopeKey.value}:${config.value.viewMode}:${config.value.playerListId}:${config.value.roundId}:${showsPositionChange()}`
-			: null,
+		source: () =>
+			outputReads.scopeKey.value
+				? `${outputReads.scopeKey.value}:${config.value.viewMode}:${config.value.playerListId}:${config.value.roundId}:${showsPositionChange()}`
+				: null,
 		read: async () => {
 			const readPositionChange = showsPositionChange();
 			return {
-				...await outputReads.standings(),
+				...(await outputReads.standings()),
 				readPositionChange,
 			};
 		},
@@ -85,9 +88,7 @@ export function useStandingsModeData(context: ScreenContext) {
 
 	// ── Header ──
 	const headerText = computed(() => computeHeaderText());
-	const visibleColumns = computed(() =>
-		config.value.columns.filter(c => c.visible),
-	);
+	const visibleColumns = computed(() => config.value.columns.filter((c) => c.visible));
 	const standingsRows = computed(() => {
 		const selectedRoundId = config.value.roundId;
 		const rows: Player[] = [...freshness.data.value.players];
@@ -133,18 +134,15 @@ export function useStandingsModeData(context: ScreenContext) {
 				const position = p.position ?? index + 1;
 				return position >= config.value.rangeStart && position <= config.value.rangeEnd;
 			});
-		}
-		else if (mode === 'watchlist') {
-			rows = rows.filter(p => watchlistPlayerIds.value.has(p.id));
-		}
-		else if (mode === 'reveal') {
+		} else if (mode === 'watchlist') {
+			rows = rows.filter((p) => watchlistPlayerIds.value.has(p.id));
+		} else if (mode === 'reveal') {
 			rows = rows.slice(0, config.value.revealCount);
 			const revealed = config.value.revealedCount;
 			if (config.value.revealOrder === 'bottomUp') {
 				// Show last N revealed (e.g., revealed=3 of 8: show positions 6,7,8)
 				rows = rows.slice(Math.max(0, rows.length - revealed));
-			}
-			else {
+			} else {
 				// Show first N revealed
 				rows = rows.slice(0, revealed);
 			}
@@ -154,21 +152,12 @@ export function useStandingsModeData(context: ScreenContext) {
 	});
 
 	// ── Pagination ──
-	const {
-		rowCount,
-		pageData,
-		pageSize,
-		totalPages,
-		currentPage,
-		setPage,
-		nextPage,
-		prevPage,
-	} = usePaginatedScreenMode(context, { mode: 'standings', config, rows: displayRows });
+	const { rowCount, pageData, pageSize, totalPages, currentPage, setPage, nextPage, prevPage } =
+		usePaginatedScreenMode(context, { mode: 'standings', config, rows: displayRows });
 
 	// ── Header Text Computation ──
 	function computeHeaderText(): string {
-		if (config.value.headerText)
-			return config.value.headerText;
+		if (config.value.headerText) return config.value.headerText;
 
 		if (config.value.roundId && round.value?.id === config.value.roundId) {
 			return `End of ${round.value.name}`;
@@ -194,8 +183,9 @@ export function useStandingsModeData(context: ScreenContext) {
 	 * The Position Change column shows, but the read found no previous Round
 	 * holding Round Standings, so every cell is blank (#905).
 	 */
-	const noPreviousRoundStandings = computed(() =>
-		freshness.data.value.readPositionChange && !freshness.data.value.previousRoundPositions);
+	const noPreviousRoundStandings = computed(
+		() => freshness.data.value.readPositionChange && !freshness.data.value.previousRoundPositions,
+	);
 
 	/** How far a row's Player moved since the previous Round (#755). */
 	function positionChangeOf(player: Player): PositionChange {
@@ -208,17 +198,13 @@ export function useStandingsModeData(context: ScreenContext) {
 
 		switch (key) {
 			case 'position':
-				return player.position != null
-					? String(player.position)
-					: '-';
+				return player.position != null ? String(player.position) : '-';
 			case 'name':
 				return player.name;
 			case 'record':
 				return formatPlayerRecord(player, event);
 			case 'points':
-				return player.points != null
-					? String(player.points)
-					: '-';
+				return player.points != null ? String(player.points) : '-';
 			case 'deck': {
 				return getMtgGameData(player.gameData).deckName ?? '-';
 			}
@@ -235,8 +221,7 @@ export function useStandingsModeData(context: ScreenContext) {
 		}
 
 		if (config.value.viewMode === 'watchlist') {
-			if (!config.value.playerListId)
-				return 'Select a player list in settings';
+			if (!config.value.playerListId) return 'Select a player list in settings';
 			return 'No players in this list';
 		}
 		if (config.value.viewMode === 'reveal' && config.value.revealedCount === 0) {

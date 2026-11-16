@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { Seat } from '~~/shared/types/enums';
-import type { CommanderDeckListEntry, CommanderDeckListPreview, CommanderDeckListRefusal, FeatureMatchDeckListReference } from '~~/shared/types/featureMatchDeckList';
+import type {
+	CommanderDeckListEntry,
+	CommanderDeckListPreview,
+	CommanderDeckListRefusal,
+	FeatureMatchDeckListReference,
+} from '~~/shared/types/featureMatchDeckList';
 import type { Commander } from '~~/shared/types/game';
 import { MAX_SEAT_COMMANDERS } from '~~/shared/utils/commander';
 
@@ -43,10 +48,12 @@ const previewing = ref(false);
 const saving = ref(false);
 const previewError = ref<string | null>(null);
 
-const cardCount = computed(() => preview.value?.entries.reduce((total, entry) => total + entry.quantity, 0) ?? 0);
-const canSave = computed(() => preview.value !== null
-	&& previewedText.value === text.value
-	&& confirmed.value.length > 0);
+const cardCount = computed(
+	() => preview.value?.entries.reduce((total, entry) => total + entry.quantity, 0) ?? 0,
+);
+const canSave = computed(
+	() => preview.value !== null && previewedText.value === text.value && confirmed.value.length > 0,
+);
 
 function isCommander(entry: CommanderDeckListEntry) {
 	return confirmed.value.includes(entry.scryfallId);
@@ -54,15 +61,12 @@ function isCommander(entry: CommanderDeckListEntry) {
 
 function toggleCommander(entry: CommanderDeckListEntry) {
 	confirmed.value = isCommander(entry)
-		? confirmed.value.filter(id => id !== entry.scryfallId)
+		? confirmed.value.filter((id) => id !== entry.scryfallId)
 		: [...confirmed.value, entry.scryfallId];
 }
 
 function printingLabel(entry: CommanderDeckListEntry) {
-	return [
-		entry.setCode.toUpperCase(),
-		entry.collectorNumber,
-	].filter(Boolean).join(' ');
+	return [entry.setCode.toUpperCase(), entry.collectorNumber].filter(Boolean).join(' ');
 }
 
 function forgetPreview() {
@@ -78,47 +82,41 @@ async function openPaste() {
 	forgetPreview();
 	open.value = true;
 	const eventId = eventStore.eventId;
-	if (!eventId || !props.deckList)
-		return;
+	if (!eventId || !props.deckList) return;
 	const saved = await runRequest(
 		() => repository.readCommander(eventId, props.slotId, props.deckList!.id),
 		{ error: false },
 	);
-	if (saved && !text.value)
-		text.value = saved.sourceText;
+	if (saved && !text.value) text.value = saved.sourceText;
 }
 
 async function runPreview() {
 	const eventId = eventStore.eventId;
-	if (!eventId)
-		return;
+	if (!eventId) return;
 	const submitted = text.value;
 	const answer = await runRequest(
 		() => repository.previewCommander(eventId, props.slotId, submitted),
 		{ loadingRef: previewing, errorRef: previewError, error: false },
 	);
-	if (!answer)
-		return;
+	if (!answer) return;
 	forgetPreview();
 	if (answer.ok) {
 		preview.value = answer.deckList;
 		// A re-paste keeps the Seat's Commanders where the list still holds them all; else the list's own offer.
-		const held = props.commanders.map(commander => commander.scryfallId);
-		const keepsHeld = held.length > 0 && held.every(id => answer.deckList.entries.some(entry => entry.scryfallId === id));
-		confirmed.value = keepsHeld
-			? held
-			: [...answer.deckList.offeredCommanders];
+		const held = props.commanders.map((commander) => commander.scryfallId);
+		const keepsHeld =
+			held.length > 0 &&
+			held.every((id) => answer.deckList.entries.some((entry) => entry.scryfallId === id));
+		confirmed.value = keepsHeld ? held : [...answer.deckList.offeredCommanders];
 		previewedText.value = submitted;
-	}
-	else {
+	} else {
 		refusals.value = answer.errors;
 	}
 }
 
 async function save() {
 	const eventId = eventStore.eventId;
-	if (!eventId || !canSave.value)
-		return;
+	if (!eventId || !canSave.value) return;
 	const submitted = text.value;
 	await runRequest(
 		() => repository.saveCommander(eventId, props.slotId, props.seat, submitted, confirmed.value),
@@ -147,9 +145,7 @@ async function save() {
 				>
 					{{ deckList.mainboardCount }} Mainboard cards
 				</p>
-				<p v-else class="flex-1 text-sm text-muted">
-					No Deck List
-				</p>
+				<p v-else class="flex-1 text-sm text-muted">No Deck List</p>
 				<UButton
 					v-if="deckList"
 					label="Clear"
@@ -195,7 +191,11 @@ async function save() {
 					{{ previewError }}
 				</p>
 
-				<ul v-if="refusals.length > 0" class="flex flex-col gap-1" aria-label="Lines that refuse the paste">
+				<ul
+					v-if="refusals.length > 0"
+					class="flex flex-col gap-1"
+					aria-label="Lines that refuse the paste"
+				>
 					<li
 						v-for="(refusal, index) in refusals"
 						:key="`${refusal.code}-${index}`"
@@ -206,7 +206,11 @@ async function save() {
 							color="error"
 							variant="subtle"
 							icon="i-lucide-circle-alert"
-							:title="refusal.lineNumber ? `Line ${refusal.lineNumber}: ${refusal.message}` : refusal.message"
+							:title="
+								refusal.lineNumber
+									? `Line ${refusal.lineNumber}: ${refusal.message}`
+									: refusal.message
+							"
 							:description="refusal.sourceText"
 						/>
 					</li>
@@ -215,13 +219,15 @@ async function save() {
 				<template v-if="preview">
 					<p class="text-sm text-muted">
 						{{ cardCount }} cards.
-						<span v-if="preview.sideboardDropped > 0" :data-sideboard-dropped="preview.sideboardDropped">
-							{{ preview.sideboardDropped }} Sideboard {{ preview.sideboardDropped === 1 ? 'card' : 'cards' }} left out.
+						<span
+							v-if="preview.sideboardDropped > 0"
+							:data-sideboard-dropped="preview.sideboardDropped"
+						>
+							{{ preview.sideboardDropped }} Sideboard
+							{{ preview.sideboardDropped === 1 ? 'card' : 'cards' }} left out.
 						</span>
 					</p>
-					<p class="text-sm">
-						Confirm the Commanders: one or two of these cards.
-					</p>
+					<p class="text-sm">Confirm the Commanders: one or two of these cards.</p>
 					<p v-if="confirmed.length === 0" class="text-sm text-error" data-no-commander>
 						Pick a Commander to save.
 					</p>

@@ -12,7 +12,7 @@ vi.mock('vue-echarts', () => ({
 			autoresize: { type: Boolean, required: false },
 		},
 		emits: ['click'],
-		template: '<div @click="$emit(\'click\', { componentType: \'series\', name: \'Mono Red\' })" />',
+		template: "<div @click=\"$emit('click', { componentType: 'series', name: 'Mono Red' })\" />",
 	},
 }));
 
@@ -50,22 +50,23 @@ describe('metagameArchetypeBarChart', () => {
 	});
 
 	it('keeps the chart mounted while loading and emits selection on click', async () => {
-		const wrapper = await mountComponent([
-			makeEntry(),
-			makeEntry({
-				id: 2,
-				name: 'Mono Red',
-				count: 7,
-				metaShare: 20,
-			}),
-		], true);
+		const wrapper = await mountComponent(
+			[
+				makeEntry(),
+				makeEntry({
+					id: 2,
+					name: 'Mono Red',
+					count: 7,
+					metaShare: 20,
+				}),
+			],
+			true,
+		);
 
 		expect(wrapper.find('[data-testid="archetype-bar-chart-loading-overlay"]').exists()).toBe(true);
 
 		await wrapper.getComponent({ name: 'VChart' }).trigger('click');
 
-		expect(wrapper.emitted('select')).toEqual([
-			['Mono Red'],
-		]);
+		expect(wrapper.emitted('select')).toEqual([['Mono Red']]);
 	});
 });

@@ -78,7 +78,11 @@ export type GraphicsHostComposition = 'stack' | 'single';
  * such as `Red/Green`, the One Piece card a Printing image URL shows, or the
  * Magic card a Scryfall image URL shows.
  */
-export type GraphicsHostTokenPresentation = 'mtg-mana-colors' | 'op-colors' | 'op-card-image' | 'mtg-card-image';
+export type GraphicsHostTokenPresentation =
+	| 'mtg-mana-colors'
+	| 'op-colors'
+	| 'op-card-image'
+	| 'mtg-card-image';
 
 /** One host-supplied placeholder a Graphic Text Template may name. */
 export interface GraphicsHostToken {
@@ -105,9 +109,9 @@ export interface GraphicsHostToken {
  * them from a fixed catalogue the host supplies and the author cannot change, so
  * the inspector offers the catalogue to reference rather than controls to declare.
  */
-export type GraphicsHostTextValues
-	= | { kind: 'graphic-inputs' }
-		| { kind: 'host-tokens'; catalogue: readonly GraphicsHostToken[] };
+export type GraphicsHostTextValues =
+	| { kind: 'graphic-inputs' }
+	| { kind: 'host-tokens'; catalogue: readonly GraphicsHostToken[] };
 
 export interface GraphicsHostContract {
 	hostId: GraphicsHostId;
@@ -135,24 +139,27 @@ export const BROADCAST_GRAPHICS_HOST_CONTRACT: GraphicsHostContract = {
 	textValues: { kind: 'graphic-inputs' },
 };
 
-const FEATURE_MATCH_OVERLAY_HOST_CONTRACTS = Object.fromEntries(EVENT_KIND_VALUES.map(kind => [
-	kind,
-	{
-		hostId: 'feature-match-overlay',
-		contextKinds: kind === 'mtg-commander'
-			? ['event', 'feature-match', 'commander-game']
-			: ['event', 'feature-match'],
-		composition: 'single',
-		textValues: {
-			kind: 'host-tokens',
-			catalogue: featureMatchTokenCatalogue(kind),
+const FEATURE_MATCH_OVERLAY_HOST_CONTRACTS = Object.fromEntries(
+	EVENT_KIND_VALUES.map((kind) => [
+		kind,
+		{
+			hostId: 'feature-match-overlay',
+			contextKinds:
+				kind === 'mtg-commander'
+					? ['event', 'feature-match', 'commander-game']
+					: ['event', 'feature-match'],
+			composition: 'single',
+			textValues: {
+				kind: 'host-tokens',
+				catalogue: featureMatchTokenCatalogue(kind),
+			},
+			seats: eventSeats(kind).map((seat) => ({
+				seat,
+				label: seatLabel(kind, seat),
+			})),
 		},
-		seats: eventSeats(kind).map(seat => ({
-			seat,
-			label: seatLabel(kind, seat),
-		})),
-	},
-])) as unknown as Readonly<Record<EventKind, GraphicsHostContract>>;
+	]),
+) as unknown as Readonly<Record<EventKind, GraphicsHostContract>>;
 
 /**
  * A Feature Match Overlay declares the Feature Match context as well as the Event
@@ -166,15 +173,14 @@ export function featureMatchOverlayHostContract(kind: EventKind): GraphicsHostCo
 }
 
 /** A Two-Player Magic: The Gathering Event's Feature Match Overlay contract. */
-export const FEATURE_MATCH_OVERLAY_HOST_CONTRACT: GraphicsHostContract = featureMatchOverlayHostContract('mtg-two-player');
+export const FEATURE_MATCH_OVERLAY_HOST_CONTRACT: GraphicsHostContract =
+	featureMatchOverlayHostContract('mtg-two-player');
 
 /** The placeholder keys this host offers, when the host supplies them itself. */
 export function graphicsHostTokenCatalogue(
 	contract: GraphicsHostContract,
 ): readonly GraphicsHostToken[] {
-	return contract.textValues.kind === 'host-tokens'
-		? contract.textValues.catalogue
-		: [];
+	return contract.textValues.kind === 'host-tokens' ? contract.textValues.catalogue : [];
 }
 
 /**

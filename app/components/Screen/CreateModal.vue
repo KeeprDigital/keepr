@@ -24,10 +24,10 @@ const isSubmitting = ref(false);
 const modeOptions = useEventScreenModeSelectOptions();
 
 const isEditMode = computed(() => !!props.editScreen);
-const modalTitle = computed(() => isEditMode.value ? 'Edit Screen' : 'Create Screen');
-const formId = computed(() => props.editScreen
-	? `edit-screen-${props.editScreen.id}-form`
-	: 'create-screen-form');
+const modalTitle = computed(() => (isEditMode.value ? 'Edit Screen' : 'Create Screen'));
+const formId = computed(() =>
+	props.editScreen ? `edit-screen-${props.editScreen.id}-form` : 'create-screen-form',
+);
 
 const formData = ref<CreateScreenInput>({
 	name: props.editScreen?.name ?? '',
@@ -41,15 +41,18 @@ const derivedDisplayType = computed(() => {
 	return getScreenModeDefinition(mode);
 });
 
-watch(() => formData.value.name, (name) => {
-	if (!isEditMode.value && name) {
-		formData.value.slug = name
-			.toLowerCase()
-			.replace(SLUG_NON_ALNUM_RE, '-')
-			.replace(SLUG_TRIM_DASH_RE, '')
-			.slice(0, 50);
-	}
-});
+watch(
+	() => formData.value.name,
+	(name) => {
+		if (!isEditMode.value && name) {
+			formData.value.slug = name
+				.toLowerCase()
+				.replace(SLUG_NON_ALNUM_RE, '-')
+				.replace(SLUG_TRIM_DASH_RE, '')
+				.slice(0, 50);
+		}
+	},
+);
 
 async function submit() {
 	if (!formData.value.name.trim() || !formData.value.slug.trim()) {
@@ -70,8 +73,7 @@ async function submit() {
 					props.editScreen.id,
 					formData.value,
 				);
-			}
-			else {
+			} else {
 				savedScreen = await screenStore.createScreen(props.eventId, formData.value);
 			}
 
@@ -82,7 +84,7 @@ async function submit() {
 		},
 		{
 			loadingRef: isSubmitting,
-			success: savedScreen => ({
+			success: (savedScreen) => ({
 				title: isEditMode.value ? 'Screen Updated' : 'Screen Created',
 				description: `Screen "${savedScreen.name}" has been ${isEditMode.value ? 'updated' : 'created'}`,
 				color: 'success',
@@ -93,10 +95,8 @@ async function submit() {
 				color: 'error',
 			},
 			onSuccess: (savedScreen) => {
-				if (isEditMode.value)
-					emit('updated', savedScreen);
-				else
-					emit('created', savedScreen);
+				if (isEditMode.value) emit('updated', savedScreen);
+				else emit('created', savedScreen);
 				emit('close');
 			},
 			onFailure: ({ error }) => {
@@ -114,11 +114,7 @@ async function submit() {
 		:ui="{ footer: 'justify-end' }"
 	>
 		<template #body>
-			<UForm
-				:id="formId"
-				:state="formData"
-				@submit="submit"
-			>
+			<UForm :id="formId" :state="formData" @submit="submit">
 				<div class="w-full flex flex-col gap-4">
 					<UFormField
 						required
@@ -154,11 +150,7 @@ async function submit() {
 						class="flex max-sm:flex-col justify-between items-start gap-4"
 					>
 						<div class="flex flex-col gap-2">
-							<USelect
-								v-model="formData.currentMode"
-								class="w-64"
-								:items="modeOptions"
-							/>
+							<USelect v-model="formData.currentMode" class="w-64" :items="modeOptions" />
 							<ScreenTypeBadge :display-type="derivedDisplayType.displayType" class="self-start" />
 						</div>
 					</UFormField>
@@ -167,19 +159,8 @@ async function submit() {
 		</template>
 
 		<template #footer>
-			<UButton
-				variant="ghost"
-				color="neutral"
-				@click="emit('close')"
-			>
-				Cancel
-			</UButton>
-			<UButton
-				type="submit"
-				:form="formId"
-				color="primary"
-				:loading="isSubmitting"
-			>
+			<UButton variant="ghost" color="neutral" @click="emit('close')"> Cancel </UButton>
+			<UButton type="submit" :form="formId" color="primary" :loading="isSubmitting">
 				{{ isEditMode ? 'Update Screen' : 'Create Screen' }}
 			</UButton>
 		</template>

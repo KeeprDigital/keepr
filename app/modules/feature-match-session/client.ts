@@ -62,7 +62,9 @@ export interface FeatureMatchStateUpdate {
 
 const PLAYER_SIDES: readonly PlayerSide[] = ['player1', 'player2'];
 
-function toCommandStateResult(result: FeatureMatchSessionCommandResult): FeatureMatchCommandStateResult {
+function toCommandStateResult(
+	result: FeatureMatchSessionCommandResult,
+): FeatureMatchCommandStateResult {
 	return {
 		featureMatchState: result.currentState,
 		session: result.session,
@@ -89,8 +91,7 @@ function buildStateUpdateCommands(update: FeatureMatchStateUpdate): FeatureMatch
 
 	for (const player of PLAYER_SIDES) {
 		const patch = update[player];
-		if (!patch)
-			continue;
+		if (!patch) continue;
 		if (patch.lifeTotal !== undefined) {
 			commands.push({
 				type: 'SetLife',
@@ -125,17 +126,20 @@ function buildStateUpdateCommands(update: FeatureMatchStateUpdate): FeatureMatch
 	}
 
 	const { firstPlayer, activePlayer, turnNumber } = update;
-	const selectsInitialFirstPlayer = firstPlayer !== undefined && activePlayer === firstPlayer && turnNumber === 1;
+	const selectsInitialFirstPlayer =
+		firstPlayer !== undefined && activePlayer === firstPlayer && turnNumber === 1;
 	if (firstPlayer) {
-		commands.push(selectsInitialFirstPlayer
-			? {
-					type: 'SelectFirstPlayer',
-					payload: { player: firstPlayer },
-				}
-			: {
-					type: 'SetFirstPlayer',
-					payload: { player: firstPlayer },
-				});
+		commands.push(
+			selectsInitialFirstPlayer
+				? {
+						type: 'SelectFirstPlayer',
+						payload: { player: firstPlayer },
+					}
+				: {
+						type: 'SetFirstPlayer',
+						payload: { player: firstPlayer },
+					},
+		);
 	}
 	if (activePlayer !== undefined && !selectsInitialFirstPlayer) {
 		commands.push({
@@ -220,8 +224,7 @@ export function useFeatureMatchSessionClient() {
 		slotId: number,
 	): Promise<FeatureMatchSessionResponse | null> => {
 		const slot = await repository.getSlot(eventId, slotId);
-		if (!slot)
-			return null;
+		if (!slot) return null;
 		return slot.activeSession ?? (await repository.createSession(eventId, slotId));
 	};
 
@@ -231,8 +234,7 @@ export function useFeatureMatchSessionClient() {
 		createCommand: (session: FeatureMatchSessionResponse) => FeatureMatchSessionCommand,
 	): Promise<FeatureMatchCommandStateResult> => {
 		const session = await ensureSession(eventId, slotId);
-		if (!session)
-			throw new Error('Feature match session not found');
+		if (!session) throw new Error('Feature match session not found');
 
 		const result = await repository.sendCommand(eventId, session.id, createCommand(session));
 		return toCommandStateResult(result);
@@ -256,69 +258,74 @@ export function useFeatureMatchSessionClient() {
 		update: FeatureMatchStateUpdate,
 	): Promise<FeatureMatchCommandStateResult> => {
 		const session = await ensureSession(eventId, slotId);
-		if (!session)
-			throw new Error('Feature match session not found');
+		if (!session) throw new Error('Feature match session not found');
 
 		const commands = buildStateUpdateCommands(update);
-		if (commands.length === 0)
-			return sessionStateResult(session);
+		if (commands.length === 0) return sessionStateResult(session);
 
-		const command: FeatureMatchSessionCommand = commands.length === 1
-			? {
-					...commands[0]!,
-					commandId: randomCommandId(commands[0]!.type),
-					baseSequence: session.sequence,
-				}
-			: {
-					commandId: randomCommandId('Batch'),
-					type: 'Batch',
-					payload: { commands },
-					baseSequence: session.sequence,
-				};
+		const command: FeatureMatchSessionCommand =
+			commands.length === 1
+				? {
+						...commands[0]!,
+						commandId: randomCommandId(commands[0]!.type),
+						baseSequence: session.sequence,
+					}
+				: {
+						commandId: randomCommandId('Batch'),
+						type: 'Batch',
+						payload: { commands },
+						baseSequence: session.sequence,
+					};
 
 		return toCommandStateResult(await repository.sendCommand(eventId, session.id, command));
 	};
 
-	const startClock = (eventId: number, slotId: number) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('StartClock'),
-		type: 'StartClock',
-		payload: {},
-		baseSequence: session.sequence,
-	}));
+	const startClock = (eventId: number, slotId: number) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('StartClock'),
+			type: 'StartClock',
+			payload: {},
+			baseSequence: session.sequence,
+		}));
 
-	const pauseClock = (eventId: number, slotId: number) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('PauseClock'),
-		type: 'PauseClock',
-		payload: {},
-		baseSequence: session.sequence,
-	}));
+	const pauseClock = (eventId: number, slotId: number) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('PauseClock'),
+			type: 'PauseClock',
+			payload: {},
+			baseSequence: session.sequence,
+		}));
 
-	const resetClock = (eventId: number, slotId: number) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('ResetClock'),
-		type: 'ResetClock',
-		payload: {},
-		baseSequence: session.sequence,
-	}));
+	const resetClock = (eventId: number, slotId: number) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('ResetClock'),
+			type: 'ResetClock',
+			payload: {},
+			baseSequence: session.sequence,
+		}));
 
-	const restartClock = (eventId: number, slotId: number) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('RestartClock'),
-		type: 'RestartClock',
-		payload: {},
-		baseSequence: session.sequence,
-	}));
+	const restartClock = (eventId: number, slotId: number) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('RestartClock'),
+			type: 'RestartClock',
+			payload: {},
+			baseSequence: session.sequence,
+		}));
 
-	const adjustClock = (eventId: number, slotId: number, deltaMs: number) => sendSlotCommand(eventId, slotId, () => ({
-		commandId: randomCommandId('AdjustClock'),
-		type: 'AdjustClock',
-		payload: { deltaMs },
-	}));
+	const adjustClock = (eventId: number, slotId: number, deltaMs: number) =>
+		sendSlotCommand(eventId, slotId, () => ({
+			commandId: randomCommandId('AdjustClock'),
+			type: 'AdjustClock',
+			payload: { deltaMs },
+		}));
 
-	const setClock = (eventId: number, slotId: number, targetMs: number) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('SetClock'),
-		type: 'SetClock',
-		payload: { targetMs },
-		baseSequence: session.sequence,
-	}));
+	const setClock = (eventId: number, slotId: number, targetMs: number) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('SetClock'),
+			type: 'SetClock',
+			payload: { targetMs },
+			baseSequence: session.sequence,
+		}));
 
 	const bulkClockAction = async (
 		eventId: number,
@@ -331,12 +338,15 @@ export function useFeatureMatchSessionClient() {
 
 		for (const slot of slots) {
 			const session = slot.activeSession;
-			if (!session || !isCoveredByBulkClockAction(session.currentState))
-				continue;
+			if (!session || !isCoveredByBulkClockAction(session.currentState)) continue;
 
-			const command = createBulkClockCommand(action, session, `bulk:${bulkId}:${session.id}:${action}`, deltaMs);
-			if (!command)
-				continue;
+			const command = createBulkClockCommand(
+				action,
+				session,
+				`bulk:${bulkId}:${session.id}:${action}`,
+				deltaMs,
+			);
+			if (!command) continue;
 
 			const result = await repository.sendCommand(eventId, session.id, command);
 			updates.push({
@@ -364,10 +374,9 @@ export function useFeatureMatchSessionClient() {
 				type: 'AdjustLife',
 				payload: { player, delta: update.lifeDelta! },
 			}));
-		}
-		else if (update.lifeTotal !== undefined) {
+		} else if (update.lifeTotal !== undefined) {
 			const lifeTotal = update.lifeTotal;
-			result = await sendSlotCommand(eventId, slotId, session => ({
+			result = await sendSlotCommand(eventId, slotId, (session) => ({
 				commandId: randomCommandId('SetLife'),
 				type: 'SetLife',
 				payload: { player, lifeTotal },
@@ -377,7 +386,7 @@ export function useFeatureMatchSessionClient() {
 
 		if (update.counters !== undefined) {
 			const counters = update.counters;
-			result = await sendSlotCommand(eventId, slotId, session => ({
+			result = await sendSlotCommand(eventId, slotId, (session) => ({
 				commandId: randomCommandId('SetCounters'),
 				type: 'SetCounters',
 				payload: { player, counters },
@@ -386,7 +395,7 @@ export function useFeatureMatchSessionClient() {
 		}
 		if (update.cardsKept !== undefined) {
 			const cardsKept = update.cardsKept;
-			result = await sendSlotCommand(eventId, slotId, session => ({
+			result = await sendSlotCommand(eventId, slotId, (session) => ({
 				commandId: randomCommandId('SetCardsKept'),
 				type: 'SetCardsKept',
 				payload: { player, cardsKept },
@@ -397,7 +406,7 @@ export function useFeatureMatchSessionClient() {
 		const side = pairSeatOf(player);
 		if (update.sideboardRevealed !== undefined && side) {
 			const revealed = update.sideboardRevealed;
-			result = await sendSlotCommand(eventId, slotId, session => ({
+			result = await sendSlotCommand(eventId, slotId, (session) => ({
 				commandId: randomCommandId('SetSideboardRevealed'),
 				type: 'SetSideboardRevealed',
 				payload: { player: side, revealed },
@@ -405,45 +414,59 @@ export function useFeatureMatchSessionClient() {
 			}));
 		}
 
-		if (!result)
-			throw new Error('No player state update supplied');
+		if (!result) throw new Error('No player state update supplied');
 		return result;
 	};
 
-	const recordGameWin = (eventId: number, slotId: number, player: PlayerSide, options: GameWinOptions = {}) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('RecordGameWin'),
-		type: 'RecordGameWin',
-		payload: { player, ...options },
-		baseSequence: session.sequence,
-	}));
+	const recordGameWin = (
+		eventId: number,
+		slotId: number,
+		player: PlayerSide,
+		options: GameWinOptions = {},
+	) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('RecordGameWin'),
+			type: 'RecordGameWin',
+			payload: { player, ...options },
+			baseSequence: session.sequence,
+		}));
 
-	const undoGameWin = (eventId: number, slotId: number, player: PlayerSide, options: GameWinOptions = {}) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('UndoGameWin'),
-		type: 'UndoGameWin',
-		payload: { player, ...options },
-		baseSequence: session.sequence,
-	}));
+	const undoGameWin = (
+		eventId: number,
+		slotId: number,
+		player: PlayerSide,
+		options: GameWinOptions = {},
+	) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('UndoGameWin'),
+			type: 'UndoGameWin',
+			payload: { player, ...options },
+			baseSequence: session.sequence,
+		}));
 
-	const resetMatch = (eventId: number, slotId: number, options: FeatureMatchResetOptions) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('ResetState'),
-		type: 'ResetState',
-		payload: options,
-		baseSequence: session.sequence,
-	}));
+	const resetMatch = (eventId: number, slotId: number, options: FeatureMatchResetOptions) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('ResetState'),
+			type: 'ResetState',
+			payload: options,
+			baseSequence: session.sequence,
+		}));
 
-	const swapPlayers = (eventId: number, slotId: number) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('SwapPlayers'),
-		type: 'SwapPlayers',
-		payload: {},
-		baseSequence: session.sequence,
-	}));
+	const swapPlayers = (eventId: number, slotId: number) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('SwapPlayers'),
+			type: 'SwapPlayers',
+			payload: {},
+			baseSequence: session.sequence,
+		}));
 
-	const startOvertime = (eventId: number, slotId: number, totalTurns: number) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('StartOvertime'),
-		type: 'StartOvertime',
-		payload: { totalTurns },
-		baseSequence: session.sequence,
-	}));
+	const startOvertime = (eventId: number, slotId: number, totalTurns: number) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('StartOvertime'),
+			type: 'StartOvertime',
+			payload: { totalTurns },
+			baseSequence: session.sequence,
+		}));
 
 	// ── A Commander Session's own commands (ADR-0087) ──
 
@@ -454,43 +477,48 @@ export function useFeatureMatchSessionClient() {
 		player: Seat,
 		source: CommanderSource,
 		delta: number,
-	) => sendSlotCommand(eventId, slotId, () => ({
-		commandId: randomCommandId('AdjustCommanderDamage'),
-		type: 'AdjustCommanderDamage',
-		payload: {
-			player,
-			from: source.seat,
-			commander: source.commander,
-			delta,
-		},
-	}));
+	) =>
+		sendSlotCommand(eventId, slotId, () => ({
+			commandId: randomCommandId('AdjustCommanderDamage'),
+			type: 'AdjustCommanderDamage',
+			payload: {
+				player,
+				from: source.seat,
+				commander: source.commander,
+				delta,
+			},
+		}));
 
-	const setEliminated = (eventId: number, slotId: number, player: Seat, eliminated: boolean) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('SetEliminated'),
-		type: 'SetEliminated',
-		payload: { player, eliminated },
-		baseSequence: session.sequence,
-	}));
+	const setEliminated = (eventId: number, slotId: number, player: Seat, eliminated: boolean) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('SetEliminated'),
+			type: 'SetEliminated',
+			payload: { player, eliminated },
+			baseSequence: session.sequence,
+		}));
 
 	/** Declares a winning Seat or a draw (`{ winner: null }`); `null` takes the outcome back. */
-	const setOutcome = (eventId: number, slotId: number, outcome: FeatureMatchOutcome | null) => sendSlotCommand(eventId, slotId, session => ({
-		commandId: randomCommandId('SetOutcome'),
-		type: 'SetOutcome',
-		payload: { outcome },
-		baseSequence: session.sequence,
-	}));
+	const setOutcome = (eventId: number, slotId: number, outcome: FeatureMatchOutcome | null) =>
+		sendSlotCommand(eventId, slotId, (session) => ({
+			commandId: randomCommandId('SetOutcome'),
+			type: 'SetOutcome',
+			payload: { outcome },
+			baseSequence: session.sequence,
+		}));
 
-	const stepTurn = (eventId: number, slotId: number, delta: number) => sendSlotCommand(eventId, slotId, () => ({
-		commandId: randomCommandId('StepTurn'),
-		type: 'StepTurn',
-		payload: { delta },
-	}));
+	const stepTurn = (eventId: number, slotId: number, delta: number) =>
+		sendSlotCommand(eventId, slotId, () => ({
+			commandId: randomCommandId('StepTurn'),
+			type: 'StepTurn',
+			payload: { delta },
+		}));
 
-	const stepOvertime = (eventId: number, slotId: number, delta: number) => sendSlotCommand(eventId, slotId, () => ({
-		commandId: randomCommandId('StepOvertime'),
-		type: 'StepOvertime',
-		payload: { delta },
-	}));
+	const stepOvertime = (eventId: number, slotId: number, delta: number) =>
+		sendSlotCommand(eventId, slotId, () => ({
+			commandId: randomCommandId('StepOvertime'),
+			type: 'StepOvertime',
+			payload: { delta },
+		}));
 
 	return {
 		loadState,

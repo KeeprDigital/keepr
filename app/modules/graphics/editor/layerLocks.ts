@@ -12,19 +12,30 @@ import { layerConfig, layerItemLocation, patchLayer } from './host';
  * Item, locks like any Graphic Item.
  */
 
-function lockedInOwnRight<D, L extends GraphicsEditorLayer>(tree: GraphicsEditorTree<D, L>, document: D, layer: L): boolean {
+function lockedInOwnRight<D, L extends GraphicsEditorLayer>(
+	tree: GraphicsEditorTree<D, L>,
+	document: D,
+	layer: L,
+): boolean {
 	return layerConfig(tree, document, layer)?.locked === true;
 }
 
 /** Whether a Graphic Item is locked only because its Graphic Group is. */
-export function isLockedByGroup<D, L extends GraphicsEditorLayer>(tree: GraphicsEditorTree<D, L>, document: D, layer: L): boolean {
-	if (lockedInOwnRight(tree, document, layer))
-		return false;
+export function isLockedByGroup<D, L extends GraphicsEditorLayer>(
+	tree: GraphicsEditorTree<D, L>,
+	document: D,
+	layer: L,
+): boolean {
+	if (lockedInOwnRight(tree, document, layer)) return false;
 	return layerItemLocation(tree, document, layer)?.group?.locked === true;
 }
 
 /** Whether the canvas leaves this layer alone: locked in its own right, or through its group. */
-export function isLayerLocked<D, L extends GraphicsEditorLayer>(tree: GraphicsEditorTree<D, L>, document: D, layer: L): boolean {
+export function isLayerLocked<D, L extends GraphicsEditorLayer>(
+	tree: GraphicsEditorTree<D, L>,
+	document: D,
+	layer: L,
+): boolean {
 	return lockedInOwnRight(tree, document, layer) || isLockedByGroup(tree, document, layer);
 }
 
@@ -39,12 +50,12 @@ export function toggleLayerLocks<D, L extends GraphicsEditorLayer>(
 	document: D,
 	layers: readonly L[],
 ): D {
-	const locked = layers.some(layer => !isLayerLocked(tree, document, layer));
+	const locked = layers.some((layer) => !isLayerLocked(tree, document, layer));
 	// Locking writes the unlocked ones; unlocking, those locked in their own right.
 	return layers
-		.filter(layer => locked
-			? !isLayerLocked(tree, document, layer)
-			: lockedInOwnRight(tree, document, layer))
+		.filter((layer) =>
+			locked ? !isLayerLocked(tree, document, layer) : lockedInOwnRight(tree, document, layer),
+		)
 		.reduce((next, layer) => patchLayer(tree, next, layer, { locked }), document);
 }
 
@@ -61,17 +72,20 @@ export interface LockedGraphicItem {
  * lock in one Broadcast Graphic never holds an item of another. It reads the
  * compositions alone, so a Screen Output needs no editor host to ask.
  */
-export function lockedGraphicItems(compositions: readonly GraphicComposition[]): LockedGraphicItem[] {
-	return compositions.flatMap(composition => composition.items.flatMap((item) => {
-		const groupLocked = item.locked === true;
-		const children = item.type === 'group'
-			? item.children.filter(child => groupLocked || child.locked === true)
-			: [];
-		return [
-			...(groupLocked
-				? [item]
-				: []),
-			...children,
-		].map(entry => ({ graphicId: composition.id, itemId: entry.id }));
-	}));
+export function lockedGraphicItems(
+	compositions: readonly GraphicComposition[],
+): LockedGraphicItem[] {
+	return compositions.flatMap((composition) =>
+		composition.items.flatMap((item) => {
+			const groupLocked = item.locked === true;
+			const children =
+				item.type === 'group'
+					? item.children.filter((child) => groupLocked || child.locked === true)
+					: [];
+			return [...(groupLocked ? [item] : []), ...children].map((entry) => ({
+				graphicId: composition.id,
+				itemId: entry.id,
+			}));
+		}),
+	);
 }

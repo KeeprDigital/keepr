@@ -1,7 +1,11 @@
 import type { GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { requestLedger } from '~~/test/integration/requestLedger';
-import { expectOperationResult, expectResponseStatus, expectResultOf } from '~~/test/integration/responseStatus';
+import {
+	expectOperationResult,
+	expectResponseStatus,
+	expectResultOf,
+} from '~~/test/integration/responseStatus';
 
 beforeEach(() => requestLedger.clear());
 
@@ -42,7 +46,10 @@ describe('expectResponseStatus', () => {
 	 * itself has to carry them.
 	 */
 	it('fails with the requests the test made', async () => {
-		await requestLedger.record('PUT /api/graphics-assets/ingestion-operations/op-1/content', async () => {});
+		await requestLedger.record(
+			'PUT /api/graphics-assets/ingestion-operations/op-1/content',
+			async () => {},
+		);
 
 		await expect(expectResponseStatus(new Response('{}', { status: 503 }), 200)).rejects.toThrow(
 			/requests:\n {2}PUT \/api\/graphics-assets\/ingestion-operations\/op-1\/content: \d+ms/,
@@ -70,7 +77,10 @@ describe('expectOperationResult', () => {
 	});
 
 	it('fails a refused upload with its status and body', async () => {
-		const refused = Response.json({ statusCode: 503, message: 'Graphics staging is temporarily unavailable' }, { status: 503 });
+		const refused = Response.json(
+			{ statusCode: 503, message: 'Graphics staging is temporarily unavailable' },
+			{ status: 503 },
+		);
 
 		await expect(expectOperationResult(refused)).rejects.toThrow(
 			/Graphics staging is temporarily unavailable[\s\S]*expected 503 to be 200/,
@@ -90,9 +100,14 @@ describe('expectOperationResult', () => {
 	});
 
 	it('fails an operation read some other way that reached no result, with the requests made', async () => {
-		await requestLedger.record('POST /api/graphics-assets/ingestion-operations/op-1/font-browser-evidence', async () => {});
+		await requestLedger.record(
+			'POST /api/graphics-assets/ingestion-operations/op-1/font-browser-evidence',
+			async () => {},
+		);
 
-		expect(() => expectResultOf({ id: 'op-1', stage: 'awaiting-confirmation' } as GraphicsIngestionOperation)).toThrow(
+		expect(() =>
+			expectResultOf({ id: 'op-1', stage: 'awaiting-confirmation' } as GraphicsIngestionOperation),
+		).toThrow(
 			/reached no result \(stage awaiting-confirmation\)[\s\S]*requests:\n {2}POST \/api\/graphics-assets\/ingestion-operations\/op-1\/font-browser-evidence/,
 		);
 	});

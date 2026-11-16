@@ -1,7 +1,11 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { nextTick } from 'vue';
-import { createMockEvent, createWireMockEvent, createWireMockPlayer } from '~~/test/helpers/fixtures';
+import {
+	createMockEvent,
+	createWireMockEvent,
+	createWireMockPlayer,
+} from '~~/test/helpers/fixtures';
 import { settleUntilStill } from '~~/test/helpers/settle';
 import { realtimeHandlersFor } from '~~/test/nuxt/helpers/realtimeEventSession';
 import { tryUseRealtime } from '~/composables/core/useRealtime';
@@ -71,13 +75,9 @@ function transport() {
 
 /** What the server answers for Event 1, by path under the Event. */
 const answers: Record<string, unknown> = {
-	'players': [
-		createWireMockPlayer({ id: PLAYER_ID, eventId: EVENT_ID }),
-	],
+	players: [createWireMockPlayer({ id: PLAYER_ID, eventId: EVENT_ID })],
 	[`players/${PLAYER_ID}/decks`]: {
-		decks: [
-			{ id: 10, playerId: PLAYER_ID, isPrimary: true },
-		],
+		decks: [{ id: 10, playerId: PLAYER_ID, isPrimary: true }],
 		selectedDeckId: 10,
 	},
 	'feature-match-assignments': { featureMatchAssignments: [] },
@@ -105,8 +105,7 @@ async function stage(client: Client) {
 			talents: [],
 			meleeConfigured: false,
 		});
-	}
-	else {
+	} else {
 		eventStore.setOutputEvent(createWireMockEvent({ id: EVENT_ID }));
 	}
 	onTestFinished(eventDataResync.consume(['players']));
@@ -132,13 +131,15 @@ async function settled() {
 }
 
 beforeEach(async () => {
-	mockFetch.mockReset().mockImplementation(async (path: string, options?: { query?: { roundId?: number } }) => {
-		const resource = path.replace(`/api/events/${EVENT_ID}/`, '');
-		reads.push(options?.query?.roundId
-			? `${resource}?roundId=${options.query.roundId}`
-			: resource);
-		return answers[resource] ?? [];
-	});
+	mockFetch
+		.mockReset()
+		.mockImplementation(async (path: string, options?: { query?: { roundId?: number } }) => {
+			const resource = path.replace(`/api/events/${EVENT_ID}/`, '');
+			reads.push(
+				options?.query?.roundId ? `${resource}?roundId=${options.query.roundId}` : resource,
+			);
+			return answers[resource] ?? [];
+		});
 	// A token wait or an outage the last test left ends here, before a client is staged.
 	transport().tokenError = null;
 	transport().connectionState = 'connected';
@@ -211,18 +212,16 @@ describe('falling behind', () => {
 
 		expect({
 			room: joined,
-			...await settled(),
+			...(await settled()),
 		}).toEqual({
 			room,
-			reads: resynced
-				? HELD
-				: [],
+			reads: resynced ? HELD : [],
 			deckListCached: !resynced,
 		});
 	});
 });
 
-describe('a peer\'s message', () => {
+describe("a peer's message", () => {
 	// An Import announces its Players and Deck Lists as a count (ADR-0074), so an
 	// operator reloads the Players; a Screen Output has no Session to read them with.
 	it.each([
@@ -244,7 +243,7 @@ describe('a peer\'s message', () => {
 		deliver('tcgplus:imported', { playerCount: 2, deckCount: 2 });
 
 		expect({
-			...await settled(),
+			...(await settled()),
 			metagameInvalidations: useMetagameStore().invalidationVersion - metagameVersion,
 		}).toEqual(left);
 	});
@@ -273,38 +272,43 @@ describe('a peer\'s message', () => {
 			reads: [],
 			deckName: undefined,
 		},
-	] as const)('player:deckProjectionsChanged naming $named makes $client re-read $reads', async ({ client, playerIds, reads, deckName }) => {
-		const { metagameVersion } = await stage(client);
-		onTestFinished(() => {
+	] as const)(
+		'player:deckProjectionsChanged naming $named makes $client re-read $reads',
+		async ({ client, playerIds, reads, deckName }) => {
+			const { metagameVersion } = await stage(client);
+			onTestFinished(() => {
+				answers.players = [createWireMockPlayer({ id: PLAYER_ID, eventId: EVENT_ID })];
+			});
 			answers.players = [
-				createWireMockPlayer({ id: PLAYER_ID, eventId: EVENT_ID }),
+				createWireMockPlayer({
+					id: PLAYER_ID,
+					eventId: EVENT_ID,
+					gameData: { type: 'mtg', deckName: 'Azorius Tempo', deckColors: 'WU' },
+				}),
 			];
-		});
-		answers.players = [
-			createWireMockPlayer({
-				id: PLAYER_ID,
-				eventId: EVENT_ID,
-				gameData: { type: 'mtg', deckName: 'Azorius Tempo', deckColors: 'WU' },
-			}),
-		];
 
-		deliver('player:deckProjectionsChanged', {
-			playerIds: playerIds && [...playerIds],
-		});
+			deliver('player:deckProjectionsChanged', {
+				playerIds: playerIds && [...playerIds],
+			});
 
-		expect({
-			reads: (await settled()).reads,
-			deckName: (usePlayerStore().players[0]?.gameData as { deckName?: string } | null)?.deckName,
-			metagameInvalidations: useMetagameStore().invalidationVersion - metagameVersion,
-		}).toEqual({ reads, deckName, metagameInvalidations: 1 });
-	});
+			expect({
+				reads: (await settled()).reads,
+				deckName: (usePlayerStore().players[0]?.gameData as { deckName?: string } | null)?.deckName,
+				metagameInvalidations: useMetagameStore().invalidationVersion - metagameVersion,
+			}).toEqual({ reads, deckName, metagameInvalidations: 1 });
+		},
+	);
 
 	it('skips its own player:deckProjectionsChanged, whose write it already holds', async () => {
 		const { metagameVersion } = await stage('an operator');
 
-		deliver('player:deckProjectionsChanged', {
-			playerIds: [PLAYER_ID],
-		}, { fromSelf: true });
+		deliver(
+			'player:deckProjectionsChanged',
+			{
+				playerIds: [PLAYER_ID],
+			},
+			{ fromSelf: true },
+		);
 
 		expect({
 			reads: (await settled()).reads,
@@ -333,9 +337,7 @@ describe('a peer\'s message', () => {
 				event: null,
 				players: [],
 				room: null,
-				navigations: [
-					['/'],
-				],
+				navigations: [['/']],
 			},
 		},
 		{
@@ -357,7 +359,7 @@ describe('a peer\'s message', () => {
 
 		expect({
 			event: useEventStore().eventId,
-			players: usePlayerStore().players.map(player => player.id),
+			players: usePlayerStore().players.map((player) => player.id),
 			room: transport().room,
 			navigations: mockNavigateTo.mock.calls,
 		}).toEqual(left);
@@ -372,7 +374,10 @@ describe('a peer\'s message', () => {
 		deliver('player:updated', {} as never);
 		deliver('player:deleted', { playerId: PLAYER_ID });
 
-		expect(warn).toHaveBeenCalledWith('Failed to handle realtime message "player:updated":', expect.any(Error));
+		expect(warn).toHaveBeenCalledWith(
+			'Failed to handle realtime message "player:updated":',
+			expect.any(Error),
+		);
 		expect(usePlayerStore().players).toEqual([]);
 	});
 });

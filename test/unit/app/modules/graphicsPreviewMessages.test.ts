@@ -19,47 +19,65 @@ const expectedFromPreview = { origin: 'https://keepr.test', source: previewWindo
 const expectedFromEditor = { origin: 'https://keepr.test', source: editorWindow };
 
 const state = {
-	graphics: [
-		{ id: 'lower-third', name: 'Lower Third', items: [] },
-	],
+	graphics: [{ id: 'lower-third', name: 'Lower Third', items: [] }],
 	selectedTarget: { type: 'canvas' },
 };
 
 describe('graphicsPreviewMessages', () => {
 	it('accepts working composition state from the editor that embedded the preview', () => {
-		expect(isGraphicsPreviewStateMessage({
-			origin: 'https://keepr.test',
-			source: editorWindow,
-			data: { type: GRAPHICS_PREVIEW_STATE_MESSAGE, state },
-		}, expectedFromEditor)).toBe(true);
+		expect(
+			isGraphicsPreviewStateMessage(
+				{
+					origin: 'https://keepr.test',
+					source: editorWindow,
+					data: { type: GRAPHICS_PREVIEW_STATE_MESSAGE, state },
+				},
+				expectedFromEditor,
+			),
+		).toBe(true);
 	});
 
 	it('ignores composition state from another origin or another window', () => {
-		expect(isGraphicsPreviewStateMessage({
-			origin: 'https://attacker.test',
-			source: editorWindow,
-			data: { type: GRAPHICS_PREVIEW_STATE_MESSAGE, state },
-		}, expectedFromEditor)).toBe(false);
+		expect(
+			isGraphicsPreviewStateMessage(
+				{
+					origin: 'https://attacker.test',
+					source: editorWindow,
+					data: { type: GRAPHICS_PREVIEW_STATE_MESSAGE, state },
+				},
+				expectedFromEditor,
+			),
+		).toBe(false);
 
-		expect(isGraphicsPreviewStateMessage({
-			origin: 'https://keepr.test',
-			source: previewWindow,
-			data: { type: GRAPHICS_PREVIEW_STATE_MESSAGE, state },
-		}, expectedFromEditor)).toBe(false);
+		expect(
+			isGraphicsPreviewStateMessage(
+				{
+					origin: 'https://keepr.test',
+					source: previewWindow,
+					data: { type: GRAPHICS_PREVIEW_STATE_MESSAGE, state },
+				},
+				expectedFromEditor,
+			),
+		).toBe(false);
 	});
 
 	it('ignores composition state that is not shaped like a working composition', () => {
-		expect(isGraphicsPreviewStateMessage({
-			origin: 'https://keepr.test',
-			source: editorWindow,
-			data: {
-				type: GRAPHICS_PREVIEW_STATE_MESSAGE,
-				state: {
-					graphics: 'all',
-					selectedTarget: { type: 'nowhere' },
+		expect(
+			isGraphicsPreviewStateMessage(
+				{
+					origin: 'https://keepr.test',
+					source: editorWindow,
+					data: {
+						type: GRAPHICS_PREVIEW_STATE_MESSAGE,
+						state: {
+							graphics: 'all',
+							selectedTarget: { type: 'nowhere' },
+						},
+					},
 				},
-			},
-		}, expectedFromEditor)).toBe(false);
+				expectedFromEditor,
+			),
+		).toBe(false);
 	});
 
 	it('accepts a selection only from the preview frame the editor embedded', () => {
@@ -77,25 +95,35 @@ describe('graphicsPreviewMessages', () => {
 	});
 
 	it('ignores a selection that is not a graphics selection target', () => {
-		expect(isGraphicsPreviewSelectMessage({
-			origin: 'https://keepr.test',
-			source: previewWindow,
-			data: {
-				type: GRAPHICS_PREVIEW_SELECT_MESSAGE,
-				target: { type: 'item', graphicId: 'a' },
-			},
-		}, expectedFromPreview)).toBe(false);
+		expect(
+			isGraphicsPreviewSelectMessage(
+				{
+					origin: 'https://keepr.test',
+					source: previewWindow,
+					data: {
+						type: GRAPHICS_PREVIEW_SELECT_MESSAGE,
+						target: { type: 'item', graphicId: 'a' },
+					},
+				},
+				expectedFromPreview,
+			),
+		).toBe(false);
 	});
 
 	it('ignores messages before the preview frame exists', () => {
-		expect(isGraphicsPreviewSelectMessage({
-			origin: 'https://keepr.test',
-			source: null,
-			data: {
-				type: GRAPHICS_PREVIEW_SELECT_MESSAGE,
-				target: { type: 'canvas' },
-			},
-		}, { origin: 'https://keepr.test', source: null })).toBe(false);
+		expect(
+			isGraphicsPreviewSelectMessage(
+				{
+					origin: 'https://keepr.test',
+					source: null,
+					data: {
+						type: GRAPHICS_PREVIEW_SELECT_MESSAGE,
+						target: { type: 'canvas' },
+					},
+				},
+				{ origin: 'https://keepr.test', source: null },
+			),
+		).toBe(false);
 	});
 });
 
@@ -110,21 +138,27 @@ describe('isFromExpectedSender', () => {
 	const data = { type: 'anything' };
 
 	it('accepts the expected window speaking from the expected origin', () => {
-		expect(isFromExpectedSender(
-			{ origin: 'https://keepr.test', source: editorWindow, data },
-			expectedFromEditor,
-		)).toBe(true);
+		expect(
+			isFromExpectedSender(
+				{ origin: 'https://keepr.test', source: editorWindow, data },
+				expectedFromEditor,
+			),
+		).toBe(true);
 	});
 
 	it('rejects another window, and the expected one speaking from elsewhere', () => {
-		expect(isFromExpectedSender(
-			{ origin: 'https://keepr.test', source: previewWindow, data },
-			expectedFromEditor,
-		)).toBe(false);
-		expect(isFromExpectedSender(
-			{ origin: 'https://attacker.test', source: editorWindow, data },
-			expectedFromEditor,
-		)).toBe(false);
+		expect(
+			isFromExpectedSender(
+				{ origin: 'https://keepr.test', source: previewWindow, data },
+				expectedFromEditor,
+			),
+		).toBe(false);
+		expect(
+			isFromExpectedSender(
+				{ origin: 'https://attacker.test', source: editorWindow, data },
+				expectedFromEditor,
+			),
+		).toBe(false);
 	});
 
 	/**
@@ -136,19 +170,23 @@ describe('isFromExpectedSender', () => {
 	 */
 	it('rejects a message from nobody when there is no expected sender either', () => {
 		for (const absent of [null, undefined]) {
-			expect(isFromExpectedSender(
-				{ origin: 'https://keepr.test', source: absent, data },
-				{ origin: 'https://keepr.test', source: absent },
-			)).toBe(false);
+			expect(
+				isFromExpectedSender(
+					{ origin: 'https://keepr.test', source: absent, data },
+					{ origin: 'https://keepr.test', source: absent },
+				),
+			).toBe(false);
 		}
 	});
 
 	it('rejects a payload that is not an object, whoever sent it', () => {
 		for (const payload of [null, undefined, 'select', 7]) {
-			expect(isFromExpectedSender(
-				{ origin: 'https://keepr.test', source: editorWindow, data: payload },
-				expectedFromEditor,
-			)).toBe(false);
+			expect(
+				isFromExpectedSender(
+					{ origin: 'https://keepr.test', source: editorWindow, data: payload },
+					expectedFromEditor,
+				),
+			).toBe(false);
 		}
 	});
 });
@@ -182,7 +220,9 @@ describe('readGraphicsPreviewAnimationPlan', () => {
 		// preview has to hold its Graphic Resting State rather than guess.
 		expect(readGraphicsPreviewAnimationPlan({ ...plan, speed: 0 })).toBeNull();
 		expect(readGraphicsPreviewAnimationPlan({ ...plan, speed: -1 })).toBeNull();
-		expect(readGraphicsPreviewAnimationPlan({ ...plan, speed: Number.POSITIVE_INFINITY })).toBeNull();
+		expect(
+			readGraphicsPreviewAnimationPlan({ ...plan, speed: Number.POSITIVE_INFINITY }),
+		).toBeNull();
 		expect(readGraphicsPreviewAnimationPlan({ ...plan, speed: '2' })).toBeNull();
 	});
 
@@ -193,31 +233,23 @@ describe('readGraphicsPreviewAnimationPlan', () => {
 	});
 
 	it.each([
-		[
-			'plays one Graphic Item alone',
-			{ itemId: 'bar' },
-			{ ...plan, itemId: 'bar' },
-		],
-		[
-			'drops an empty item',
-			{ itemId: '' },
-			null,
-		],
-		[
-			'drops an item that is not an id',
-			{ itemId: 4 },
-			null,
-		],
+		['plays one Graphic Item alone', { itemId: 'bar' }, { ...plan, itemId: 'bar' }],
+		['drops an empty item', { itemId: '' }, null],
+		['drops an item that is not an id', { itemId: 4 }, null],
 	])('%s', (_case, overrides, expected) => {
-		expect(readGraphicsPreviewAnimationPlan({
-			...plan,
-			...overrides,
-		})).toEqual(expected);
+		expect(
+			readGraphicsPreviewAnimationPlan({
+				...plan,
+				...overrides,
+			}),
+		).toEqual(expected);
 	});
 
 	it('carries no schedule of its own, so the preview cannot be told when to be', () => {
 		// A run is an instruction, not a timestamp: anything else on it is dropped.
-		expect(readGraphicsPreviewAnimationPlan({ ...plan, startedAt: 12345, elapsed: 900 })).toEqual(plan);
+		expect(readGraphicsPreviewAnimationPlan({ ...plan, startedAt: 12345, elapsed: 900 })).toEqual(
+			plan,
+		);
 	});
 
 	it('drops anything that is not a run at all', () => {
@@ -229,11 +261,7 @@ describe('readGraphicsPreviewAnimationPlan', () => {
 	it('still accepts a state message whose run is absent or malformed', () => {
 		// The working composition has to reach the preview either way; a bad run just
 		// means the preview holds its Graphic Resting State.
-		for (const animation of [
-			undefined,
-			null,
-			{ scope: 'phase' },
-		]) {
+		for (const animation of [undefined, null, { scope: 'phase' }]) {
 			const message = {
 				origin: 'https://keepr.test',
 				source: editorWindow,
@@ -276,26 +304,34 @@ describe('readGraphicsPreviewAnimationPlan', () => {
 		// the editor did not embed must not be able to provoke one.
 		const ready = { type: GRAPHICS_PREVIEW_READY_MESSAGE };
 
-		expect(isGraphicsPreviewReadyMessage(
-			{ origin: 'https://keepr.test', source: previewWindow, data: ready },
-			expectedFromPreview,
-		)).toBe(true);
-		expect(isGraphicsPreviewReadyMessage(
-			{ origin: 'https://keepr.test', source: editorWindow, data: ready },
-			expectedFromPreview,
-		)).toBe(false);
-		expect(isGraphicsPreviewReadyMessage(
-			{ origin: 'https://elsewhere.test', source: previewWindow, data: ready },
-			expectedFromPreview,
-		)).toBe(false);
-		expect(isGraphicsPreviewReadyMessage(
-			{
-				origin: 'https://keepr.test',
-				source: previewWindow,
-				data: { type: GRAPHICS_PREVIEW_SELECT_MESSAGE },
-			},
-			expectedFromPreview,
-		)).toBe(false);
+		expect(
+			isGraphicsPreviewReadyMessage(
+				{ origin: 'https://keepr.test', source: previewWindow, data: ready },
+				expectedFromPreview,
+			),
+		).toBe(true);
+		expect(
+			isGraphicsPreviewReadyMessage(
+				{ origin: 'https://keepr.test', source: editorWindow, data: ready },
+				expectedFromPreview,
+			),
+		).toBe(false);
+		expect(
+			isGraphicsPreviewReadyMessage(
+				{ origin: 'https://elsewhere.test', source: previewWindow, data: ready },
+				expectedFromPreview,
+			),
+		).toBe(false);
+		expect(
+			isGraphicsPreviewReadyMessage(
+				{
+					origin: 'https://keepr.test',
+					source: previewWindow,
+					data: { type: GRAPHICS_PREVIEW_SELECT_MESSAGE },
+				},
+				expectedFromPreview,
+			),
+		).toBe(false);
 	});
 });
 
@@ -307,13 +343,7 @@ describe('isGraphicsPreviewAnimationMessage', () => {
 
 	// A host owning its preview transport sends the run on its own, from its editor only.
 	it.each([
-		[
-			'a run from the embedding editor',
-			editorWindow,
-			'https://keepr.test',
-			run,
-			true,
-		],
+		['a run from the embedding editor', editorWindow, 'https://keepr.test', run, true],
 		[
 			'a stop from the embedding editor',
 			editorWindow,
@@ -328,21 +358,11 @@ describe('isGraphicsPreviewAnimationMessage', () => {
 			{ ...run, type: GRAPHICS_PREVIEW_STATE_MESSAGE },
 			false,
 		],
-		[
-			'a run from another window',
-			previewWindow,
-			'https://keepr.test',
-			run,
-			false,
-		],
-		[
-			'a run from another origin',
-			editorWindow,
-			'https://attacker.test',
-			run,
-			false,
-		],
+		['a run from another window', previewWindow, 'https://keepr.test', run, false],
+		['a run from another origin', editorWindow, 'https://attacker.test', run, false],
 	])('%s', (_case, source, origin, data, accepted) => {
-		expect(isGraphicsPreviewAnimationMessage({ origin, source, data }, expectedFromEditor)).toBe(accepted);
+		expect(isGraphicsPreviewAnimationMessage({ origin, source, data }, expectedFromEditor)).toBe(
+			accepted,
+		);
 	});
 });

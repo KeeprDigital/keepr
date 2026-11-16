@@ -40,26 +40,32 @@ export interface ResolvedThemeTokens {
 }
 
 function isReference(value: unknown): value is ThemeTokenReference {
-	return typeof value === 'object'
-		&& value !== null
-		&& Object.keys(value).length === 1
-		&& typeof (value as { token?: unknown }).token === 'string';
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		Object.keys(value).length === 1 &&
+		typeof (value as { token?: unknown }).token === 'string'
+	);
 }
 
 function isMotionFollow(value: unknown): value is ThemeMotionFollow {
-	return typeof value === 'object'
-		&& value !== null
-		&& Object.keys(value).length === 2
-		&& typeof (value as { token?: unknown }).token === 'string'
-		&& typeof (value as { movement?: unknown }).movement === 'object';
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		Object.keys(value).length === 2 &&
+		typeof (value as { token?: unknown }).token === 'string' &&
+		typeof (value as { movement?: unknown }).movement === 'object'
+	);
 }
 
 /** The first of `stored`, most preferred first, that `read` can read. */
-function firstReadable(stored: readonly unknown[], read: (value: unknown) => ThemeTokenValue | undefined): ThemeTokenValue | undefined {
+function firstReadable(
+	stored: readonly unknown[],
+	read: (value: unknown) => ThemeTokenValue | undefined,
+): ThemeTokenValue | undefined {
 	for (const value of stored) {
 		const readable = read(value);
-		if (readable !== undefined)
-			return readable;
+		if (readable !== undefined) return readable;
 	}
 	return undefined;
 }
@@ -71,15 +77,21 @@ function firstReadable(stored: readonly unknown[], read: (value: unknown) => The
  * or a surface's) is read the same way. A colour holds a literal only, so this
  * adds at most one step and cannot cycle.
  */
-function foundationResolver({ vocabulary, theme, overrides, hostTokens = [] }: Omit<ResolveThemeTokensInput, 'modeTokens'>) {
+function foundationResolver({
+	vocabulary,
+	theme,
+	overrides,
+	hostTokens = [],
+}: Omit<ResolveThemeTokensInput, 'modeTokens'>) {
 	function resolveColor(name: string): string | undefined {
-		return vocabulary[name]?.type === 'color'
-			? resolveFoundation(name) as string
-			: undefined;
+		return vocabulary[name]?.type === 'color' ? (resolveFoundation(name) as string) : undefined;
 	}
 
 	/** A literal as `definition`'s type, its colours resolved, or undefined when it is not one. */
-	function readLiteral(definition: FoundationTokenDefinition | ModeTokenDefinition, stored: unknown): ThemeTokenValue | undefined {
+	function readLiteral(
+		definition: FoundationTokenDefinition | ModeTokenDefinition,
+		stored: unknown,
+	): ThemeTokenValue | undefined {
 		const literal = readTokenLiteral(definition, stored);
 		return literal === undefined
 			? undefined
@@ -88,10 +100,10 @@ function foundationResolver({ vocabulary, theme, overrides, hostTokens = [] }: O
 
 	function resolveFoundation(name: string): ThemeTokenValue {
 		const definition = vocabulary[name]!;
-		const override = hostTokens.includes(name)
-			? overrides[name]
-			: undefined;
-		return firstReadable([override, theme[name], definition.default], stored => readLiteral(definition, stored))!;
+		const override = hostTokens.includes(name) ? overrides[name] : undefined;
+		return firstReadable([override, theme[name], definition.default], (stored) =>
+			readLiteral(definition, stored),
+		)!;
 	}
 
 	return { resolveFoundation, readLiteral };
@@ -103,12 +115,13 @@ function foundationResolver({ vocabulary, theme, overrides, hostTokens = [] }: O
  * type. Resolved by the same rules as `resolveThemeTokens`, so from the Theme
  * alone but for the host tokens named.
  */
-export function resolveFoundationTokens(input: Omit<ResolveThemeTokensInput, 'modeTokens'>): Readonly<Record<string, ThemeTokenValue>> {
+export function resolveFoundationTokens(
+	input: Omit<ResolveThemeTokensInput, 'modeTokens'>,
+): Readonly<Record<string, ThemeTokenValue>> {
 	const { resolveFoundation } = foundationResolver(input);
-	return Object.fromEntries(Object.keys(input.vocabulary).map(name => [
-		name,
-		resolveFoundation(name),
-	]));
+	return Object.fromEntries(
+		Object.keys(input.vocabulary).map((name) => [name, resolveFoundation(name)]),
+	);
 }
 
 /**
@@ -143,37 +156,44 @@ export function resolveThemeTokens(input: ResolveThemeTokensInput): ResolvedThem
 	const { resolveFoundation, readLiteral } = foundationResolver(input);
 
 	/** A Mode Token's value as one source holds it, or undefined when it holds none it can read. */
-	function readModeToken(definition: ModeTokenDefinition, stored: unknown): ThemeTokenValue | undefined {
+	function readModeToken(
+		definition: ModeTokenDefinition,
+		stored: unknown,
+	): ThemeTokenValue | undefined {
 		if (isMotionFollow(stored)) {
-			const followed = readModeToken(definition, { token: stored.token }) as GraphicAnimationRecipe | undefined;
-			return followed && readLiteral(definition, {
-				duration: followed.duration,
-				easing: followed.easing,
-				delay: followed.delay,
-				...stored.movement,
-			});
+			const followed = readModeToken(definition, { token: stored.token }) as
+				| GraphicAnimationRecipe
+				| undefined;
+			return (
+				followed &&
+				readLiteral(definition, {
+					duration: followed.duration,
+					easing: followed.easing,
+					delay: followed.delay,
+					...stored.movement,
+				})
+			);
 		}
-		if (!isReference(stored))
-			return readLiteral(definition, stored);
-		if (vocabulary[stored.token]?.type !== definition.type)
-			return undefined;
+		if (!isReference(stored)) return readLiteral(definition, stored);
+		if (vocabulary[stored.token]?.type !== definition.type) return undefined;
 		// Read within the Mode Token's own bounds too, where it declares tighter ones.
 		return readTokenLiteral(definition, resolveFoundation(stored.token));
 	}
 
 	const values: Record<string, ThemeTokenValue> = {};
 	for (const [name, definition] of Object.entries(modeTokens))
-		values[name] = firstReadable([overrides[name], definition.default], stored => readModeToken(definition, stored))!;
+		values[name] = firstReadable([overrides[name], definition.default], (stored) =>
+			readModeToken(definition, stored),
+		)!;
 
 	const namedByDefaults = new Set([
-		...Object.values(modeTokens).flatMap(({ default: fallback }) => isReference(fallback) || isMotionFollow(fallback)
-			? [fallback.token]
-			: []),
+		...Object.values(modeTokens).flatMap(({ default: fallback }) =>
+			isReference(fallback) || isMotionFollow(fallback) ? [fallback.token] : [],
+		),
 		...hostTokens,
 	]);
-	const consumedFoundation = Object.keys(vocabulary).filter(name => namedByDefaults.has(name));
-	for (const name of consumedFoundation)
-		values[name] = resolveFoundation(name);
+	const consumedFoundation = Object.keys(vocabulary).filter((name) => namedByDefaults.has(name));
+	for (const name of consumedFoundation) values[name] = resolveFoundation(name);
 
 	return { values };
 }
@@ -183,6 +203,9 @@ export function resolveThemeTokens(input: ResolveThemeTokensInput): ResolvedThem
  * it holds none of its own, read as `resolveThemeTokens` reads every
  * Foundation Token.
  */
-export function resolveFoundationToken(input: Omit<ResolveThemeTokensInput, 'modeTokens'>, name: string): ThemeTokenValue {
+export function resolveFoundationToken(
+	input: Omit<ResolveThemeTokensInput, 'modeTokens'>,
+	name: string,
+): ThemeTokenValue {
 	return foundationResolver(input).resolveFoundation(name);
 }

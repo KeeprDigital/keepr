@@ -18,7 +18,7 @@ function mountFields(gameData: OpPlayerGameData = { type: 'op', leader: null }) 
 	const updates: OpPlayerGameData[] = [];
 	const wrapper = mount(OpPlayerFields, {
 		props: {
-			'modelValue': gameData,
+			modelValue: gameData,
 			'onUpdate:modelValue': (value: OpPlayerGameData) => {
 				updates.push(value);
 				void wrapper.setProps({ modelValue: value });
@@ -35,7 +35,9 @@ async function search(wrapper: ReturnType<typeof mountFields>['wrapper'], text: 
 }
 
 function offeredNames(wrapper: ReturnType<typeof mountFields>['wrapper']) {
-	return wrapper.findAll('ul[aria-label="Leaders"] button').map(button => button.attributes('aria-label'));
+	return wrapper
+		.findAll('ul[aria-label="Leaders"] button')
+		.map((button) => button.attributes('aria-label'));
 }
 
 const zoroCard = opCardSummary();
@@ -47,14 +49,12 @@ const luffyCard = opCardSummary({
 	imageUrl: LUFFY.imageUrl,
 });
 
-describe('a Slot side\'s Leader picker', () => {
+describe("a Slot side's Leader picker", () => {
 	beforeEach(() => {
 		mockFetch.mockReset();
 		mockFetch.mockResolvedValue({
 			available: true,
-			items: [
-				opCardSummary(),
-			],
+			items: [opCardSummary()],
 			total: 1,
 		});
 	});
@@ -77,24 +77,14 @@ describe('a Slot side\'s Leader picker', () => {
 		await search(wrapper, 'zor');
 
 		expect(mockFetch.mock.calls.map(([path, options]) => [path, options.query])).toEqual([
-			[
-				'/api/events/7/op-cards',
-				{ category: 'leader', limit: 250, offset: 0 },
-			],
-			[
-				'/api/events/7/op-cards',
-				{ category: 'leader', limit: 250, offset: 1 },
-			],
+			['/api/events/7/op-cards', { category: 'leader', limit: 250, offset: 0 }],
+			['/api/events/7/op-cards', { category: 'leader', limit: 250, offset: 1 }],
 		]);
 		expect(offeredNames(wrapper)).toEqual(['Pick Leader Roronoa Zoro (OP01-001)']);
 	});
 
 	it.each([
-		[
-			'part of a name',
-			'luf',
-			['Pick Leader Monkey.D.Luffy (OP01-003)'],
-		],
+		['part of a name', 'luf', ['Pick Leader Monkey.D.Luffy (OP01-003)']],
 		[
 			'part of a card number',
 			'op01-00',
@@ -129,7 +119,7 @@ describe('a Slot side\'s Leader picker', () => {
 		await flushPromises();
 
 		expect(wrapper.text()).toContain('Leaders could not be loaded');
-		const retry = wrapper.findAll('button').find(button => button.text() === 'Retry');
+		const retry = wrapper.findAll('button').find((button) => button.text() === 'Retry');
 		await retry!.trigger('click');
 		await search(wrapper, 'zor');
 
@@ -147,7 +137,7 @@ describe('a Slot side\'s Leader picker', () => {
 		expect(wrapper.get('[data-leader] [data-op-colors]').attributes('aria-label')).toBe('Red');
 	});
 
-	it('clears the side\'s Leader', async () => {
+	it("clears the side's Leader", async () => {
 		const { wrapper, updates } = mountFields({ type: 'op', leader: ZORO });
 
 		await wrapper.get('button[aria-label="Clear Leader"]').trigger('click');

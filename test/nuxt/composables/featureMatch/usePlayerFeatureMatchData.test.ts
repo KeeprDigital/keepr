@@ -1,6 +1,10 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createMockEvent, createMockFeatureMatchState, createMockPlayer } from '~~/test/helpers/fixtures';
+import {
+	createMockEvent,
+	createMockFeatureMatchState,
+	createMockPlayer,
+} from '~~/test/helpers/fixtures';
 
 const p1Data = {
 	name: 'Alice',
@@ -42,21 +46,17 @@ const mockRoster = ref<ReturnType<typeof createMockPlayer>[]>([]);
 
 mockNuxtImport('useFeatureMatchStore', () => () => ({ featureMatches: mockMatches.value }));
 mockNuxtImport('useFeatureMatchStateStore', () => () => ({
-	featureMatchStates: new Map([
-		[
-			1,
-			createMockFeatureMatchState(),
-		],
-	]),
+	featureMatchStates: new Map([[1, createMockFeatureMatchState()]]),
 }));
-mockNuxtImport('useEventStore', () => () => ({ event: mockEvent.value, displayEvent: mockEvent.value }));
+mockNuxtImport('useEventStore', () => () => ({
+	event: mockEvent.value,
+	displayEvent: mockEvent.value,
+}));
 mockNuxtImport('usePlayerStore', () => () => ({ players: mockRoster.value }));
 
 describe('usePlayerFeatureMatchData', () => {
 	beforeEach(() => {
-		mockMatches.value = [
-			slot(),
-		];
+		mockMatches.value = [slot()];
 		mockEvent.value = createMockEvent();
 		mockRoster.value = [];
 	});
@@ -93,7 +93,7 @@ describe('usePlayerFeatureMatchData', () => {
 		expect(data.player.value).not.toBeNull();
 	});
 
-	it('reads the active Session\'s source snapshot over the Slot', () => {
+	it("reads the active Session's source snapshot over the Slot", () => {
 		mockMatches.value = [
 			slot({
 				activeSession: {
@@ -132,9 +132,7 @@ describe('usePlayerFeatureMatchData', () => {
 	});
 
 	it('reads the deck name from the roster Player the Slot seats', () => {
-		mockMatches.value = [
-			slot({ player1Id: 21 }),
-		];
+		mockMatches.value = [slot({ player1Id: 21 })];
 		mockRoster.value = [
 			createMockPlayer({
 				id: 21,
@@ -180,18 +178,10 @@ describe('usePlayerFeatureMatchData', () => {
 	});
 
 	it.each([
+		['the roster Player the Slot seats', { player1Id: 21 }, 21],
+		['no Player for a seat filled by hand, even under a roster name', { player1Id: null }, null],
 		[
-			'the roster Player the Slot seats',
-			{ player1Id: 21 },
-			21,
-		],
-		[
-			'no Player for a seat filled by hand, even under a roster name',
-			{ player1Id: null },
-			null,
-		],
-		[
-			'the Player the active Session\'s snapshot shows, not the Slot\'s current one',
+			"the Player the active Session's snapshot shows, not the Slot's current one",
 			{
 				player1Id: 21,
 				activeSession: {
@@ -206,9 +196,7 @@ describe('usePlayerFeatureMatchData', () => {
 			22,
 		],
 	])('links %s', (_, slotOverrides, linkedId) => {
-		mockMatches.value = [
-			slot(slotOverrides),
-		];
+		mockMatches.value = [slot(slotOverrides)];
 		mockRoster.value = [
 			createMockPlayer({ id: 21, name: 'Alice' }),
 			createMockPlayer({ id: 22, name: 'Alicia' }),
@@ -227,7 +215,7 @@ describe('usePlayerFeatureMatchData', () => {
 		expect(usePlayerFeatureMatchData(1, side).seatLabel.value).toBe(expected);
 	});
 
-	it('shows a score record with the Event\'s record settings', () => {
+	it("shows a score record with the Event's record settings", () => {
 		mockEvent.value = createMockEvent({ displayRecordSeparator: '/', displayHideZeroDraws: false });
 
 		expect(usePlayerFeatureMatchData(1, 'player1').playerRecord.value).toBe('3/1/0');

@@ -60,7 +60,8 @@ const UButtonStub = defineComponent({
 		disabled: { type: Boolean, required: false },
 	},
 	emits: ['click'],
-	template: '<button type="button" :data-label="label" :disabled="disabled" @click="$emit(\'click\')"><slot>{{ label }}</slot></button>',
+	template:
+		'<button type="button" :data-label="label" :disabled="disabled" @click="$emit(\'click\')"><slot>{{ label }}</slot></button>',
 });
 
 const FormFieldsStub = defineComponent({
@@ -76,7 +77,10 @@ const FormFieldsStub = defineComponent({
 enableAutoUnmount(afterEach);
 
 /** Mounts Edit Player on a Player the store holds, as the Players page opens it. */
-async function mountModal(game: 'mtg' | 'op' = 'mtg', player: Parameters<typeof createMockPlayer>[0] = {}) {
+async function mountModal(
+	game: 'mtg' | 'op' = 'mtg',
+	player: Parameters<typeof createMockPlayer>[0] = {},
+) {
 	const held = createMockPlayer({
 		id: 7,
 		eventId: 1,
@@ -132,7 +136,10 @@ function holdPlayer(changes: Parameters<typeof createMockPlayer>[0]) {
 
 /** Whether the modal asked to close, by its own `close` or through the dialog. */
 function closed(wrapper: Wrapper) {
-	return (wrapper.emitted('close')?.length ?? 0) > 0 || overlayClose.mock.calls.some(([open]) => open === false);
+	return (
+		(wrapper.emitted('close')?.length ?? 0) > 0 ||
+		overlayClose.mock.calls.some(([open]) => open === false)
+	);
 }
 
 function saveButton(wrapper: Wrapper) {
@@ -154,7 +161,11 @@ describe('player manage modal', () => {
 		const wrapper = await mountModal();
 		expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
 
-		fields(wrapper).vm.$emit('update:mtgGameData', { type: 'mtg', deckName: 'Mono Red', deckColors: 'R' });
+		fields(wrapper).vm.$emit('update:mtgGameData', {
+			type: 'mtg',
+			deckName: 'Mono Red',
+			deckColors: 'R',
+		});
 		await flushPromises();
 
 		expect(saveButton(wrapper).attributes('disabled')).toBeUndefined();
@@ -163,14 +174,22 @@ describe('player manage modal', () => {
 	it('saves a deck-only edit', async () => {
 		const wrapper = await mountModal();
 
-		fields(wrapper).vm.$emit('update:mtgGameData', { type: 'mtg', deckName: 'Mono Red', deckColors: 'R' });
+		fields(wrapper).vm.$emit('update:mtgGameData', {
+			type: 'mtg',
+			deckName: 'Mono Red',
+			deckColors: 'R',
+		});
 		await flushPromises();
 		await wrapper.get('form').trigger('submit');
 		await flushPromises();
 
-		expect(mockPlayerStore.updatePlayer).toHaveBeenCalledWith(1, 7, expect.objectContaining({
-			gameData: { type: 'mtg', deckName: 'Mono Red', deckColors: 'R' },
-		}));
+		expect(mockPlayerStore.updatePlayer).toHaveBeenCalledWith(
+			1,
+			7,
+			expect.objectContaining({
+				gameData: { type: 'mtg', deckName: 'Mono Red', deckColors: 'R' },
+			}),
+		);
 	});
 
 	it('closes without asking when nothing is unsaved', async () => {
@@ -249,30 +268,24 @@ describe('player manage modal', () => {
 
 	// A cleared name falls back to the Nickname, so only a One Piece Player with one may save it (ADR-0074).
 	it.each([
-		[
-			'op',
-			{ nickname: 'linlin_88', gameData: null },
-			false,
-		],
-		[
-			'op',
-			{ nickname: null, gameData: null },
-			true,
-		],
+		['op', { nickname: 'linlin_88', gameData: null }, false],
+		['op', { nickname: null, gameData: null }, true],
 		['mtg', {}, true],
-	] as const)('on a %s Event, holding %j, refuses a cleared name: %s', async (game, player, refused) => {
-		const wrapper = await mountModal(game, player);
-		editName(wrapper, '');
-		await flushPromises();
+	] as const)(
+		'on a %s Event, holding %j, refuses a cleared name: %s',
+		async (game, player, refused) => {
+			const wrapper = await mountModal(game, player);
+			editName(wrapper, '');
+			await flushPromises();
 
-		expect(saveButton(wrapper).attributes('disabled') !== undefined).toBe(refused);
-		if (refused)
-			return;
-		await wrapper.get('form').trigger('submit');
-		await flushPromises();
-		// The cleared name alone: the server reads the Nickname it falls back to from the Player.
-		expect(mockPlayerStore.updatePlayer).toHaveBeenCalledWith(1, 7, { name: '' });
-	});
+			expect(saveButton(wrapper).attributes('disabled') !== undefined).toBe(refused);
+			if (refused) return;
+			await wrapper.get('form').trigger('submit');
+			await flushPromises();
+			// The cleared name alone: the server reads the Nickname it falls back to from the Player.
+			expect(mockPlayerStore.updatePlayer).toHaveBeenCalledWith(1, 7, { name: '' });
+		},
+	);
 
 	// The save writes what the operator changed and nothing else, so a field a
 	// Melee Sync moved under the open modal is neither reverted nor marked as a
@@ -286,7 +299,11 @@ describe('player manage modal', () => {
 			holdPlayer({ name: 'Alicia', wins: 3 });
 			await flushPromises();
 
-			expect(fields(wrapper).props('modelValue')).toMatchObject({ name: 'Alicia', wins: 3, lgs: 'Game Haven' });
+			expect(fields(wrapper).props('modelValue')).toMatchObject({
+				name: 'Alicia',
+				wins: 3,
+				lgs: 'Game Haven',
+			});
 		});
 
 		it.each([
@@ -323,10 +340,12 @@ describe('player manage modal', () => {
 		it('keeps the edit when its own save is refused', async () => {
 			const wrapper = await mountModal('mtg', { lgs: null });
 			const save = deferred<null>();
-			mockPlayerStore.updatePlayer.mockImplementationOnce((_eventId: number, _id: number, updates: Record<string, unknown>) => {
-				holdPlayer(updates);
-				return save.promise;
-			});
+			mockPlayerStore.updatePlayer.mockImplementationOnce(
+				(_eventId: number, _id: number, updates: Record<string, unknown>) => {
+					holdPlayer(updates);
+					return save.promise;
+				},
+			);
 			edit(wrapper, { lgs: 'Game Haven' });
 			await flushPromises();
 

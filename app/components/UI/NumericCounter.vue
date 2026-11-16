@@ -1,35 +1,38 @@
 <script setup lang="ts">
 type CounterOrientation = 'horizontal' | 'vertical';
 
-const props = withDefaults(defineProps<{
-	value: number;
-	min?: number;
-	max?: number;
-	/** Scales up all targets and text for touch-screen use */
-	touch?: boolean;
-	/** Gives the counter extra emphasis for primary screen controls */
-	hero?: boolean;
-	/** Reduces sizing for inline/secondary counters */
-	compact?: boolean;
-	/** Layout direction for controls */
-	orientation?: CounterOrientation;
-	/** Disables all interactive elements */
-	disabled?: boolean;
-	/** Hides adjustment affordances while keeping the value shell visible */
-	readonly?: boolean;
-	/** Context announced by assistive technology, for example "Alice life total". */
-	accessibleLabel?: string;
-}>(), {
-	min: undefined,
-	max: undefined,
-	touch: false,
-	hero: false,
-	compact: false,
-	orientation: 'horizontal',
-	disabled: false,
-	readonly: false,
-	accessibleLabel: 'value',
-});
+const props = withDefaults(
+	defineProps<{
+		value: number;
+		min?: number;
+		max?: number;
+		/** Scales up all targets and text for touch-screen use */
+		touch?: boolean;
+		/** Gives the counter extra emphasis for primary screen controls */
+		hero?: boolean;
+		/** Reduces sizing for inline/secondary counters */
+		compact?: boolean;
+		/** Layout direction for controls */
+		orientation?: CounterOrientation;
+		/** Disables all interactive elements */
+		disabled?: boolean;
+		/** Hides adjustment affordances while keeping the value shell visible */
+		readonly?: boolean;
+		/** Context announced by assistive technology, for example "Alice life total". */
+		accessibleLabel?: string;
+	}>(),
+	{
+		min: undefined,
+		max: undefined,
+		touch: false,
+		hero: false,
+		compact: false,
+		orientation: 'horizontal',
+		disabled: false,
+		readonly: false,
+		accessibleLabel: 'value',
+	},
+);
 
 const emit = defineEmits<{
 	adjust: [delta: number];
@@ -40,18 +43,19 @@ const editValue = ref(props.value);
 const isEditing = ref(false);
 const input = useTemplateRef<{ inputRef?: HTMLInputElement | null }>('input');
 
-watch(() => props.value, (newVal) => {
-	if (!isEditing.value) {
-		editValue.value = newVal;
-	}
-});
+watch(
+	() => props.value,
+	(newVal) => {
+		if (!isEditing.value) {
+			editValue.value = newVal;
+		}
+	},
+);
 
 function clampValue(value: number) {
 	let clamped = value;
-	if (props.min !== undefined)
-		clamped = Math.max(props.min, clamped);
-	if (props.max !== undefined)
-		clamped = Math.min(props.max, clamped);
+	if (props.min !== undefined) clamped = Math.max(props.min, clamped);
+	if (props.max !== undefined) clamped = Math.min(props.max, clamped);
 	return clamped;
 }
 
@@ -92,33 +96,31 @@ function handleKeydown(event: KeyboardEvent) {
 	if (event.key === 'Enter') {
 		commitValue();
 		blurInput();
-	}
-	else if (event.key === 'Escape') {
+	} else if (event.key === 'Escape') {
 		revertValue();
 		blurInput();
 	}
 }
 
-const currentValue = computed(() => isEditing.value ? editValue.value : props.value);
+const currentValue = computed(() => (isEditing.value ? editValue.value : props.value));
 const minReached = computed(() => props.min !== undefined && currentValue.value <= props.min);
 const maxReached = computed(() => props.max !== undefined && currentValue.value >= props.max);
 const isVertical = computed(() => props.orientation === 'vertical');
-const isHeroVertical = computed(() => props.hero && props.touch && isVertical.value && !props.compact);
+const isHeroVertical = computed(
+	() => props.hero && props.touch && isVertical.value && !props.compact,
+);
 
 function handleAdjust(delta: number) {
 	const nextValue = clampValue(currentValue.value + delta);
 	const appliedDelta = nextValue - currentValue.value;
-	if (appliedDelta === 0)
-		return;
+	if (appliedDelta === 0) return;
 	emit('adjust', appliedDelta);
 }
 
 const touchWidthClass = computed(() => {
-	if (!props.touch)
-		return '';
+	if (!props.touch) return '';
 
-	if (props.compact)
-		return 'w-[6rem]';
+	if (props.compact) return 'w-[6rem]';
 
 	return isHeroVertical.value ? 'w-[11rem]' : 'w-[7.25rem]';
 });
@@ -138,15 +140,13 @@ const inputClass = computed(() => {
 });
 
 const inputSize = computed(() => {
-	if (props.compact)
-		return props.touch ? 'lg' as const : 'sm' as const;
+	if (props.compact) return props.touch ? ('lg' as const) : ('sm' as const);
 	return 'xl' as const;
 });
 
 const btnSize = computed(() => {
-	if (props.compact)
-		return props.touch ? 'xl' as const : 'sm' as const;
-	return props.touch ? 'xl' as const : 'lg' as const;
+	if (props.compact) return props.touch ? ('xl' as const) : ('sm' as const);
+	return props.touch ? ('xl' as const) : ('lg' as const);
 });
 
 const btnClass = computed(() => {
@@ -158,8 +158,7 @@ const btnClass = computed(() => {
 				: `inline-flex items-center justify-center rounded-2xl h-16 ${touchWidthClass.value}`;
 	}
 
-	if (props.compact)
-		return props.touch ? 'rounded-full p-5' : 'rounded-full';
+	if (props.compact) return props.touch ? 'rounded-full p-5' : 'rounded-full';
 
 	return props.touch ? 'rounded-full p-6' : 'rounded-full p-4';
 });
@@ -167,9 +166,7 @@ const btnClass = computed(() => {
 const containerClass = computed(() => [
 	'flex items-center justify-center',
 	isVertical.value ? 'flex-col' : 'flex-row',
-	props.touch && !props.compact
-		? 'gap-4'
-		: 'gap-3',
+	props.touch && !props.compact ? 'gap-4' : 'gap-3',
 ]);
 </script>
 

@@ -18,8 +18,7 @@ async function submit() {
 	// Enter pressed twice on a slow connection is one operator asking once.
 	// Better Auth rate-limits sign-in attempts, so a duplicate is not merely
 	// wasted — it spends the budget of the attempt that is still running.
-	if (submitting.value)
-		return;
+	if (submitting.value) return;
 
 	submitting.value = true;
 	refusal.value = null;
@@ -42,9 +41,7 @@ async function submit() {
 		<UCard class="w-full max-w-sm">
 			<UForm :state="credentials" @submit="submit">
 				<div class="flex flex-col gap-4">
-					<h1 class="text-lg font-semibold">
-						Sign in
-					</h1>
+					<h1 class="text-lg font-semibold">Sign in</h1>
 
 					<UAlert
 						v-if="refusal"
@@ -75,14 +72,7 @@ async function submit() {
 						/>
 					</UFormField>
 
-					<UButton
-						type="submit"
-						color="primary"
-						block
-						:loading="submitting"
-					>
-						Sign in
-					</UButton>
+					<UButton type="submit" color="primary" block :loading="submitting"> Sign in </UButton>
 
 					<!--
 						There is no self-signup and no self-serve reset: accounts are

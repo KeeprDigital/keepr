@@ -8,7 +8,10 @@ const card: MtgCard = {
 	set: 'M21',
 	layout: 'normal',
 	imageData: {
-		front: { small: 'https://example.com/small.jpg', normal: 'https://example.com/normal.jpg' } as any,
+		front: {
+			small: 'https://example.com/small.jpg',
+			normal: 'https://example.com/normal.jpg',
+		} as any,
 		back: null,
 	},
 	orientationData: {

@@ -24,14 +24,30 @@ async function open(wrapper: VueWrapper) {
 	await trigger(wrapper).trigger('click');
 }
 
-const emitted = (wrapper: VueWrapper) => wrapper.emitted('update:modelValue')?.map(([value]) => value);
+const emitted = (wrapper: VueWrapper) =>
+	wrapper.emitted('update:modelValue')?.map(([value]) => value);
 
 type Edit = (wrapper: VueWrapper) => Promise<unknown>;
-const pick = (hex: string): Edit => wrapper => part(wrapper, 'hue').setValue(hex);
-const slide = (percent: number): Edit => wrapper => part(wrapper, 'alpha').setValue(percent);
-const enterAlpha = (percent: number): Edit => wrapper => part(wrapper, 'alpha-percent').setValue(percent);
-const type = (text: string): Edit => wrapper => part(wrapper, 'text').setValue(text);
-const press = (name: 'transparent' | 'clear'): Edit => wrapper => part(wrapper, name).trigger('click');
+const pick =
+	(hex: string): Edit =>
+	(wrapper) =>
+		part(wrapper, 'hue').setValue(hex);
+const slide =
+	(percent: number): Edit =>
+	(wrapper) =>
+		part(wrapper, 'alpha').setValue(percent);
+const enterAlpha =
+	(percent: number): Edit =>
+	(wrapper) =>
+		part(wrapper, 'alpha-percent').setValue(percent);
+const type =
+	(text: string): Edit =>
+	(wrapper) =>
+		part(wrapper, 'text').setValue(text);
+const press =
+	(name: 'transparent' | 'clear'): Edit =>
+	(wrapper) =>
+		part(wrapper, name).trigger('click');
 
 describe('uiColorPicker', () => {
 	it.each<[string, Record<string, unknown>, Edit, Array<string | undefined>]>([
@@ -156,34 +172,18 @@ describe('uiColorPicker', () => {
 		[
 			'alpha',
 			{ modelValue: '#112233', alpha: true },
-			[
-				'hue',
-				'alpha',
-				'text',
-				'alpha-percent',
-				'transparent',
-			],
+			['hue', 'alpha', 'text', 'alpha-percent', 'transparent'],
 		],
-		[
-			'a required colour',
-			{ modelValue: '#112233' },
-			['hue', 'text'],
-		],
-		[
-			'a clearable colour',
-			{ modelValue: '#112233', clearable: true },
-			['hue', 'text', 'clear'],
-		],
-		[
-			'hex-only',
-			{ modelValue: '#112233', hexOnly: true },
-			['hue', 'text'],
-		],
+		['a required colour', { modelValue: '#112233' }, ['hue', 'text']],
+		['a clearable colour', { modelValue: '#112233', clearable: true }, ['hue', 'text', 'clear']],
+		['hex-only', { modelValue: '#112233', hexOnly: true }, ['hue', 'text']],
 	])('offers %s exactly its controls', async (_case, props, parts) => {
 		const wrapper = mountPicker(props);
 		await open(wrapper);
 
-		expect(wrapper.findAll('[data-color-part]').map(found => found.attributes('data-color-part'))).toEqual(parts);
+		expect(
+			wrapper.findAll('[data-color-part]').map((found) => found.attributes('data-color-part')),
+		).toEqual(parts);
 	});
 
 	it('marks Transparent pressed at alpha 0', async () => {
@@ -194,15 +194,23 @@ describe('uiColorPicker', () => {
 	});
 
 	it('shows an unparseable raw value as its own swatch, with alpha disabled', async () => {
-		const wrapper = mountPicker({ modelValue: 'linear-gradient(red, blue)', alpha: true, allowRawValue: true });
+		const wrapper = mountPicker({
+			modelValue: 'linear-gradient(red, blue)',
+			alpha: true,
+			allowRawValue: true,
+		});
 		expect(trigger(wrapper).attributes('data-color-state')).toBe('raw');
-		expect(trigger(wrapper).get('[data-color-swatch]').attributes('style')).toContain('linear-gradient(red, blue)');
+		expect(trigger(wrapper).get('[data-color-swatch]').attributes('style')).toContain(
+			'linear-gradient(red, blue)',
+		);
 
 		await open(wrapper);
 
 		expect(part(wrapper, 'alpha').attributes('disabled')).toBeDefined();
 		expect(part(wrapper, 'alpha-percent').attributes('disabled')).toBeDefined();
-		expect((part(wrapper, 'text').element as HTMLInputElement).value).toBe('linear-gradient(red, blue)');
+		expect((part(wrapper, 'text').element as HTMLInputElement).value).toBe(
+			'linear-gradient(red, blue)',
+		);
 	});
 
 	it('emits once, on close, with commit="close"', async () => {
@@ -260,7 +268,11 @@ describe('uiColorPicker', () => {
 		await open(wrapper);
 		await wrapper.setProps({ disabled: true });
 
-		expect(wrapper.findAll('[data-color-part]').filter(control => control.attributes('disabled') === undefined)).toEqual([]);
+		expect(
+			wrapper
+				.findAll('[data-color-part]')
+				.filter((control) => control.attributes('disabled') === undefined),
+		).toEqual([]);
 	});
 
 	it('cannot be opened while disabled', () => {

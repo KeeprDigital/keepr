@@ -26,32 +26,34 @@ const UNPREFIXED_NAME = 'better-auth.session_token';
 let auth: ThrowawayAuth;
 
 async function signIn(cookie?: string) {
-	const response = await auth.handler(new Request(`${LOCAL_ORIGIN}/api/auth/sign-in/email`, {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			'host': LOCAL_HOST,
-			'origin': LOCAL_ORIGIN,
-			...(cookie
-				? { cookie }
-				: {}),
-		},
-		body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
-	}));
+	const response = await auth.handler(
+		new Request(`${LOCAL_ORIGIN}/api/auth/sign-in/email`, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				host: LOCAL_HOST,
+				origin: LOCAL_ORIGIN,
+				...(cookie ? { cookie } : {}),
+			},
+			body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+		}),
+	);
 	expect(response.status).toBe(200);
 	return response;
 }
 
 /** The session token's Set-Cookie, split into its `name=value` pair and lower-cased attributes. */
 function sessionSetCookie(response: Response) {
-	const header = response.headers.getSetCookie().find(value => /^(?:__Secure-)?better-auth\.session_token=/.test(value));
+	const header = response.headers
+		.getSetCookie()
+		.find((value) => /^(?:__Secure-)?better-auth\.session_token=/.test(value));
 	expect(header).toBeDefined();
-	const [pair, ...attributes] = header!.split(';').map(part => part.trim());
+	const [pair, ...attributes] = header!.split(';').map((part) => part.trim());
 	const separator = pair!.indexOf('=');
 	return {
 		name: pair!.slice(0, separator),
 		value: pair!.slice(separator + 1),
-		attributes: attributes.map(attribute => attribute.toLowerCase()),
+		attributes: attributes.map((attribute) => attribute.toLowerCase()),
 	};
 }
 
@@ -73,12 +75,9 @@ describe('the session cookie outside the dev server', () => {
 		const cookie = sessionSetCookie(await signIn());
 
 		expect(cookie.name).toBe(SECURE_NAME);
-		expect(cookie.attributes).toEqual(expect.arrayContaining([
-			'secure',
-			'httponly',
-			'samesite=lax',
-			'path=/',
-		]));
+		expect(cookie.attributes).toEqual(
+			expect.arrayContaining(['secure', 'httponly', 'samesite=lax', 'path=/']),
+		);
 	});
 
 	it('is the cookie a later request is admitted by', async () => {
@@ -95,7 +94,7 @@ describe('the session cookie outside the dev server', () => {
  * refused: the person signs in once more, and nothing errors on the way.
  */
 describe('a leftover unprefixed session cookie', () => {
-	it('admits nothing, even when it carries a live Session\'s token', async () => {
+	it("admits nothing, even when it carries a live Session's token", async () => {
 		const { value } = sessionSetCookie(await signIn());
 
 		expect(await sessionFor(`${UNPREFIXED_NAME}=${value}`)).toBeNull();
@@ -107,6 +106,8 @@ describe('a leftover unprefixed session cookie', () => {
 		const again = sessionSetCookie(await signIn(`${UNPREFIXED_NAME}=${leftover}`));
 
 		expect(again.name).toBe(SECURE_NAME);
-		expect(await sessionFor(`${UNPREFIXED_NAME}=${leftover}; ${again.name}=${again.value}`)).not.toBeNull();
+		expect(
+			await sessionFor(`${UNPREFIXED_NAME}=${leftover}; ${again.name}=${again.value}`),
+		).not.toBeNull();
 	});
 });

@@ -72,7 +72,7 @@ describe('createWavesDelegate', () => {
 		expect(material.shininess).toBe(params.shininess);
 	});
 
-	it('clears to the background colour the fork\'s base cleared to, where the plane leaves the frame', () => {
+	it("clears to the background colour the fork's base cleared to, where the plane leaves the frame", () => {
 		const { scene, delegate, context, params } = mountDelegate();
 		expect((scene.background as THREE.Color).getHexString()).toBe(params.backgroundColor.slice(1));
 		delegate.applyParams({
@@ -93,8 +93,7 @@ describe('createWavesDelegate', () => {
 			const lift = position.getY(index) - restHeights[index]!;
 			expect(lift).toBeGreaterThanOrEqual(0);
 			expect(lift).toBeLessThanOrEqual(20 + 1e-9);
-			if (lift > 1)
-				moved++;
+			if (lift > 1) moved++;
 		}
 		expect(moved).toBeGreaterThan(0);
 	});

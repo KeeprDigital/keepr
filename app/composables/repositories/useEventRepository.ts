@@ -7,11 +7,7 @@ import type {
 	ResolveMeleeUnresolvedDeckCardResponse,
 	SyncDecklistsResponse,
 } from '~~/shared/api';
-import type {
-	CreateEventInput,
-	Event,
-	UpdateEventInput,
-} from '~/types';
+import type { CreateEventInput, Event, UpdateEventInput } from '~/types';
 import { useEventDataFetch, useEventDataResource } from '~/modules/event-data/client';
 
 export function useEventRepository() {
@@ -71,7 +67,13 @@ export function useEventRepository() {
 		event: { name: string };
 		phases: number;
 		rounds: number;
-		players: { created: number; updated: number; deactivated: number; matchesUpdated: number; errors: string[] };
+		players: {
+			created: number;
+			updated: number;
+			deactivated: number;
+			matchesUpdated: number;
+			errors: string[];
+		};
 		deckLists: SyncDecklistsResponse['results'];
 		warnings: string[];
 	}
@@ -85,7 +87,13 @@ export function useEventRepository() {
 	interface SyncPlayersResponse {
 		success: boolean;
 		message: string;
-		results: { created: number; updated: number; deactivated: number; matchesUpdated: number; errors: string[] };
+		results: {
+			created: number;
+			updated: number;
+			deactivated: number;
+			matchesUpdated: number;
+			errors: string[];
+		};
 		warnings?: string[];
 	}
 	const syncPlayers = async (id: number): Promise<SyncPlayersResponse> => {
@@ -119,14 +127,23 @@ export function useEventRepository() {
 		success: boolean;
 		message: string;
 		steps: string[];
-		players: { created: number; updated: number; deactivated: number; matchesUpdated: number; errors: string[] };
+		players: {
+			created: number;
+			updated: number;
+			deactivated: number;
+			matchesUpdated: number;
+			errors: string[];
+		};
 		deckLists: SyncDecklistsResponse['results'] | null;
 		rounds: Array<SyncRoundResponse & { role: 'previous' | 'next' | 'latest' }>;
 		advancedRound: SyncRoundResponse['round'] | null;
 		refreshedRound: SyncRoundResponse['round'] | null;
 		warnings: string[];
 	}
-	const updateFromMelee = async (id: number, options: { includeDeckLists?: boolean; advanceRound?: boolean } = {}): Promise<UpdateFromMeleeResponse> => {
+	const updateFromMelee = async (
+		id: number,
+		options: { includeDeckLists?: boolean; advanceRound?: boolean } = {},
+	): Promise<UpdateFromMeleeResponse> => {
 		return await eventData.command<UpdateFromMeleeResponse, typeof options>(
 			{ eventId: id, resourcePath: 'melee', suffix: 'update' },
 			{ method: 'POST', body: options },
@@ -140,7 +157,9 @@ export function useEventRepository() {
 		);
 	};
 
-	const listUnresolvedDeckCards = async (id: number): Promise<MeleeUnresolvedDeckCardResponse[]> => {
+	const listUnresolvedDeckCards = async (
+		id: number,
+	): Promise<MeleeUnresolvedDeckCardResponse[]> => {
 		return await eventData.command<MeleeUnresolvedDeckCardResponse[]>(
 			{ eventId: id, resourcePath: 'melee', suffix: 'unresolved-deck-cards' },
 			{ method: 'GET' },
@@ -152,7 +171,10 @@ export function useEventRepository() {
 		unresolvedId: number,
 		data: ResolveMeleeUnresolvedDeckCardInput,
 	): Promise<ResolveMeleeUnresolvedDeckCardResponse> => {
-		return await eventData.command<ResolveMeleeUnresolvedDeckCardResponse, ResolveMeleeUnresolvedDeckCardInput>(
+		return await eventData.command<
+			ResolveMeleeUnresolvedDeckCardResponse,
+			ResolveMeleeUnresolvedDeckCardInput
+		>(
 			{ eventId: id, resourcePath: 'melee', suffix: `unresolved-deck-cards/${unresolvedId}` },
 			{ method: 'PUT', body: data },
 		);
@@ -170,7 +192,10 @@ export function useEventRepository() {
 	 * manual Rounds or Matches also answers `warnings` naming each one.
 	 */
 	type UpdateMeleeConfigResponse = Event & { warnings?: string[] };
-	const updateMeleeConfig = async (id: number, data: MeleeConfigInput): Promise<UpdateMeleeConfigResponse> => {
+	const updateMeleeConfig = async (
+		id: number,
+		data: MeleeConfigInput,
+	): Promise<UpdateMeleeConfigResponse> => {
 		return await eventData.command<UpdateMeleeConfigResponse, MeleeConfigInput>(
 			{ eventId: id, resourcePath: 'melee-config' },
 			{ method: 'PUT', body: data },

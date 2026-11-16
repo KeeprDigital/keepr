@@ -3,7 +3,9 @@ import type { archetypeSpotlightModeConfigContract } from '../screenModeConfigs/
 import type { ScreenSettingsGroupOf } from '../screenModeConfigs/contract';
 
 /** The groups its Mode Tokens may name: the Screen Settings Groups its config contract declares (ADR-0072). */
-export type ArchetypeSpotlightSettingsGroup = ScreenSettingsGroupOf<typeof archetypeSpotlightModeConfigContract>;
+export type ArchetypeSpotlightSettingsGroup = ScreenSettingsGroupOf<
+	typeof archetypeSpotlightModeConfigContract
+>;
 
 /** How the Archetype Spotlight Screen Mode looks: its Mode Tokens, by name within the mode. */
 export const archetypeSpotlightModeTokens = {
@@ -20,7 +22,9 @@ export const archetypeSpotlightModeTokens = {
 		settingsGroup: 'top-cards',
 		default: { token: 'text-inverse' },
 	},
-} as const satisfies Readonly<Record<string, DeclaredModeTokenDefinition<ArchetypeSpotlightSettingsGroup>>>;
+} as const satisfies Readonly<
+	Record<string, DeclaredModeTokenDefinition<ArchetypeSpotlightSettingsGroup>>
+>;
 
 /**
  * The Mode Tokens Archetype Spotlight once declared: its type, shared chrome, placeholder

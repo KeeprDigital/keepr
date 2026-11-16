@@ -38,7 +38,10 @@ function luminance(color: THREE.Color): number {
 }
 
 function usesAdditiveBlending(three: typeof THREE, params: ConnectionLineParams): boolean {
-	return luminance(new three.Color(params.lineColor)) > luminance(new three.Color(params.backgroundColor));
+	return (
+		luminance(new three.Color(params.lineColor)) >
+		luminance(new three.Color(params.backgroundColor))
+	);
 }
 
 export function createConnectionLineField(
@@ -46,21 +49,28 @@ export function createConnectionLineField(
 	pointCount: number,
 	params: ConnectionLineParams,
 ): ConnectionLineField {
-	const maxSegments = pointCount * (pointCount - 1) / 2;
+	const maxSegments = (pointCount * (pointCount - 1)) / 2;
 	const linePositions = new Float32Array(maxSegments * 6);
 	const lineColors = new Float32Array(maxSegments * 6);
 	const geometry = new three.BufferGeometry();
-	geometry.setAttribute('position', new three.BufferAttribute(linePositions, 3).setUsage(three.DynamicDrawUsage));
-	geometry.setAttribute('color', new three.BufferAttribute(lineColors, 3).setUsage(three.DynamicDrawUsage));
+	geometry.setAttribute(
+		'position',
+		new three.BufferAttribute(linePositions, 3).setUsage(three.DynamicDrawUsage),
+	);
+	geometry.setAttribute(
+		'color',
+		new three.BufferAttribute(lineColors, 3).setUsage(three.DynamicDrawUsage),
+	);
 	geometry.computeBoundingSphere();
 	geometry.setDrawRange(0, 0);
-	const mesh = new three.LineSegments(geometry, new three.LineBasicMaterial({
-		vertexColors: true,
-		blending: usesAdditiveBlending(three, params)
-			? three.AdditiveBlending
-			: three.NormalBlending,
-		transparent: true,
-	}));
+	const mesh = new three.LineSegments(
+		geometry,
+		new three.LineBasicMaterial({
+			vertexColors: true,
+			blending: usesAdditiveBlending(three, params) ? three.AdditiveBlending : three.NormalBlending,
+			transparent: true,
+		}),
+	);
 
 	return {
 		mesh,
@@ -81,13 +91,10 @@ export function createConnectionLineField(
 				for (let j = i + 1; j < positions.length; j++) {
 					const b = positions[j]!;
 					const distance = a.distanceTo(b);
-					if (distance >= current.connectionDistance)
-						continue;
+					if (distance >= current.connectionDistance) continue;
 					const alpha = Math.min(Math.max((1 - distance / current.connectionDistance) * 2, 0), 1);
-					if (additive)
-						lineColor.setScalar(0).lerp(differenceColor, alpha);
-					else
-						lineColor.copy(backgroundColor).lerp(color, alpha);
+					if (additive) lineColor.setScalar(0).lerp(differenceColor, alpha);
+					else lineColor.copy(backgroundColor).lerp(color, alpha);
 
 					linePositions[vertexIndex++] = a.x;
 					linePositions[vertexIndex++] = a.y;

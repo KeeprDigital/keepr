@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.stubGlobal('createError', (input: { statusCode: number; message: string }) =>
-	Object.assign(new Error(input.message), input));
-
-const { assertPasswordWithinBounds, normalizeAccountEmail, setCredentialPassword } = await import(
-	'~~/server/utils/betterAuthCredentials',
+	Object.assign(new Error(input.message), input),
 );
+
+const { assertPasswordWithinBounds, normalizeAccountEmail, setCredentialPassword } =
+	await import('~~/server/utils/betterAuthCredentials');
 
 /**
  * The three pieces both account-administering surfaces share (#399).
@@ -37,13 +37,13 @@ describe('the password bounds both surfaces enforce', () => {
 	it('refuses one too short, naming the bound', () => {
 		// The bound is named because the only reader who can act on this is the
 		// person choosing the password.
-		expect(() => assertPasswordWithinBounds(BOUNDS, 'short'))
-			.toThrow(/at least 8 characters/);
+		expect(() => assertPasswordWithinBounds(BOUNDS, 'short')).toThrow(/at least 8 characters/);
 	});
 
 	it('refuses one too long', () => {
-		expect(() => assertPasswordWithinBounds(BOUNDS, 'x'.repeat(129)))
-			.toThrow(/at most 128 characters/);
+		expect(() => assertPasswordWithinBounds(BOUNDS, 'x'.repeat(129))).toThrow(
+			/at most 128 characters/,
+		);
 	});
 
 	it('refuses an empty password, which is the case neither library endpoint catches', () => {
@@ -75,9 +75,7 @@ describe('writing the credential', () => {
 	}
 
 	it('updates the credential an account already has', async () => {
-		const { context, updatePassword, createAccount } = fakeContext([
-			{ providerId: 'credential' },
-		]);
+		const { context, updatePassword, createAccount } = fakeContext([{ providerId: 'credential' }]);
 
 		await setCredentialPassword(context as never, 'user-1', 'a-long-enough-password');
 
@@ -103,9 +101,7 @@ describe('writing the credential', () => {
 	});
 
 	it('creates one where the account holds only some other provider', async () => {
-		const { context, createAccount } = fakeContext([
-			{ providerId: 'google' },
-		]);
+		const { context, createAccount } = fakeContext([{ providerId: 'google' }]);
 
 		await setCredentialPassword(context as never, 'user-1', 'a-long-enough-password');
 
@@ -113,9 +109,7 @@ describe('writing the credential', () => {
 	});
 
 	it('never stores the password as given', async () => {
-		const { context, updatePassword } = fakeContext([
-			{ providerId: 'credential' },
-		]);
+		const { context, updatePassword } = fakeContext([{ providerId: 'credential' }]);
 
 		await setCredentialPassword(context as never, 'user-1', 'a-long-enough-password');
 

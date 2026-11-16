@@ -32,10 +32,14 @@ function mountLineup(talentIds: number[]) {
 
 type Wrapper = ReturnType<typeof mountLineup>;
 
-const lineup = (wrapper: Wrapper) => wrapper.findAll('[data-lineup-talent]').map(row => row.text());
+const lineup = (wrapper: Wrapper) =>
+	wrapper.findAll('[data-lineup-talent]').map((row) => row.text());
 /** The add picker: the shared Talent picker (an Event Reference), its none option aside. */
 const addPicker = (wrapper: Wrapper) => wrapper.get('[data-lineup-add] select');
-const offered = (wrapper: Wrapper) => addPicker(wrapper).findAll('option:not([value="null"])').map(option => option.text());
+const offered = (wrapper: Wrapper) =>
+	addPicker(wrapper)
+		.findAll('option:not([value="null"])')
+		.map((option) => option.text());
 
 describe('a Talent lineup', () => {
 	it('adds to the end from the Talents not yet in it', async () => {
@@ -45,11 +49,7 @@ describe('a Talent lineup', () => {
 		expect(offered(wrapper)).toEqual(['Host', 'Analyst']);
 		await addPicker(wrapper).setValue(String(HOST));
 
-		expect(wrapper.emitted('update')).toEqual([
-			[
-				[CASTER, HOST],
-			],
-		]);
+		expect(wrapper.emitted('update')).toEqual([[[CASTER, HOST]]]);
 	});
 
 	it.each([
@@ -70,9 +70,7 @@ describe('a Talent lineup', () => {
 
 		await wrapper.get(`button[aria-label="${action}"]`).trigger('click');
 
-		expect(wrapper.emitted('update')).toEqual([
-			[talentIds],
-		]);
+		expect(wrapper.emitted('update')).toEqual([[talentIds]]);
 	});
 
 	it('names a Talent the Event no longer lists, so it can be removed', () => {

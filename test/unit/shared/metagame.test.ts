@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { getFrontFaceCardType, isBasicLandCardType, isLandCardType, isMetagameAnalysisCard } from '~~/shared/utils/metagame';
+import {
+	getFrontFaceCardType,
+	isBasicLandCardType,
+	isLandCardType,
+	isMetagameAnalysisCard,
+} from '~~/shared/utils/metagame';
 
 describe('getFrontFaceCardType', () => {
 	it('returns the full type for single-face cards', () => {

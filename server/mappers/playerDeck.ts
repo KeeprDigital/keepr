@@ -9,8 +9,7 @@ export function hasReviewedPlayerDeckDetails(
 	deck: Pick<DbPlayerDeck, 'archetypeId' | 'reviewedAt'>,
 	archetype?: Pick<DbArchetype, 'id'> | null,
 ): boolean {
-	return isReviewedPlayerDeck(deck)
-		&& archetype?.id === deck.archetypeId;
+	return isReviewedPlayerDeck(deck) && archetype?.id === deck.archetypeId;
 }
 
 /**
@@ -25,12 +24,8 @@ export function resolvePlayerDeckDetails(
 	const hasReviewedDetails = hasReviewedPlayerDeckDetails(deck, archetype);
 
 	return {
-		name: hasReviewedDetails && archetype
-			? archetype.name
-			: deck.name,
-		colors: hasReviewedDetails && archetype
-			? archetype.colors ?? ''
-			: deck.colors,
+		name: hasReviewedDetails && archetype ? archetype.name : deck.name,
+		colors: hasReviewedDetails && archetype ? (archetype.colors ?? '') : deck.colors,
 		submittedName: deck.name,
 		submittedColors: deck.colors,
 	};

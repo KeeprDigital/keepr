@@ -44,11 +44,7 @@ describe('useScreenStore error reporting', () => {
 	});
 
 	it.each([
-		[
-			'the list',
-			'list',
-			(s: ReturnType<typeof useScreenStore>) => s.loadScreensByEventId(1),
-		],
+		['the list', 'list', (s: ReturnType<typeof useScreenStore>) => s.loadScreensByEventId(1)],
 		[
 			'the slug read',
 			'getBySlug',
@@ -62,9 +58,10 @@ describe('useScreenStore error reporting', () => {
 		[
 			'a create',
 			'create',
-			(s: ReturnType<typeof useScreenStore>) => s.createScreen(1, { name: 'Screen', slug: 'main', currentMode: 'background' }),
+			(s: ReturnType<typeof useScreenStore>) =>
+				s.createScreen(1, { name: 'Screen', slug: 'main', currentMode: 'background' }),
 		],
-	] as const)('reports %s\'s refusal in the authority\'s words', async (_, method, request) => {
+	] as const)("reports %s's refusal in the authority's words", async (_, method, request) => {
 		mockRepo[method].mockRejectedValue(explainedRefusal(409, 'This Event has been archived'));
 
 		await request(store);
@@ -73,60 +70,68 @@ describe('useScreenStore error reporting', () => {
 	});
 
 	it('puts the Screen back when a delete is refused, and reports why', async () => {
-		store.screens = [
-			createMockScreen({ id: 5, name: 'Main' }),
-		];
-		mockRepo.remove.mockRejectedValue(explainedRefusal(409, 'This Screen is on air and cannot be deleted'));
+		store.screens = [createMockScreen({ id: 5, name: 'Main' })];
+		mockRepo.remove.mockRejectedValue(
+			explainedRefusal(409, 'This Screen is on air and cannot be deleted'),
+		);
 
 		await store.removeScreen(1, 5);
 
 		expect(store.error).toBe('This Screen is on air and cannot be deleted');
-		expect(store.screens.map(s => s.id)).toEqual([5]);
+		expect(store.screens.map((s) => s.id)).toEqual([5]);
 	});
 
 	// A debounced write answers its own caller, which shows the message beside the field, as well as the banner.
 	it.each([
 		[
 			'mode-config',
-			(s: ReturnType<typeof useScreenStore>) => s.updateModeConfig(1, 5, 'deck', { showDeckName: false }),
+			(s: ReturnType<typeof useScreenStore>) =>
+				s.updateModeConfig(1, 5, 'deck', { showDeckName: false }),
 			'updateModeConfig',
 		],
-	] as const)('carries a refused %s write\'s sentence to its caller and to the banner', async (_, write, method) => {
-		vi.useFakeTimers();
-		store.screens = [
-			createMockScreen({ id: 5, stateVersion: 1 }),
-		];
-		// Not a 409, which is the conflict retry's own signal.
-		mockRepo[method].mockRejectedValue(explainedRefusal(403, 'This Event has been archived'));
+	] as const)(
+		"carries a refused %s write's sentence to its caller and to the banner",
+		async (_, write, method) => {
+			vi.useFakeTimers();
+			store.screens = [createMockScreen({ id: 5, stateVersion: 1 })];
+			// Not a 409, which is the conflict retry's own signal.
+			mockRepo[method].mockRejectedValue(explainedRefusal(403, 'This Event has been archived'));
 
-		const settled = expect(write(store)).rejects.toThrow('This Event has been archived');
-		await vi.advanceTimersByTimeAsync(300);
-		await settled;
+			const settled = expect(write(store)).rejects.toThrow('This Event has been archived');
+			await vi.advanceTimersByTimeAsync(300);
+			await settled;
 
-		expect(store.error).toBe('This Event has been archived');
-	});
+			expect(store.error).toBe('This Event has been archived');
+		},
+	);
 
 	// The sentence substitution wraps the whole action, so the conflict retry inside it still meets the raw 409 (#381).
 	it('leaves the conflict retry able to recognise the conflict it retries', async () => {
-		store.screens = [
-			createMockScreen({ id: 5, name: 'Old', stateVersion: 1 }),
-		];
+		store.screens = [createMockScreen({ id: 5, name: 'Old', stateVersion: 1 })];
 		mockRepo.update
-			.mockRejectedValueOnce(transportFailure({
-				status: 409,
-				body: {
-					statusCode: 409,
-					message: 'Screen 5 state was modified concurrently',
-					data: { code: STATE_CONFLICT_CODE },
-				},
-			}))
+			.mockRejectedValueOnce(
+				transportFailure({
+					status: 409,
+					body: {
+						statusCode: 409,
+						message: 'Screen 5 state was modified concurrently',
+						data: { code: STATE_CONFLICT_CODE },
+					},
+				}),
+			)
 			.mockResolvedValueOnce(createMockScreen({ id: 5, name: 'Renamed', stateVersion: 3 }));
-		mockRepo.getById.mockResolvedValue(createMockScreen({ id: 5, name: 'Refreshed', stateVersion: 2 }));
+		mockRepo.getById.mockResolvedValue(
+			createMockScreen({ id: 5, name: 'Refreshed', stateVersion: 2 }),
+		);
 
 		const updated = await store.updateScreen(1, 5, { name: 'Renamed' });
 
 		expect(mockRepo.update).toHaveBeenCalledTimes(2);
-		expect(mockRepo.update).toHaveBeenLastCalledWith(1, 5, expect.objectContaining({ stateVersion: 2 }));
+		expect(mockRepo.update).toHaveBeenLastCalledWith(
+			1,
+			5,
+			expect.objectContaining({ stateVersion: 2 }),
+		);
 		expect(updated!.name).toBe('Renamed');
 		expect(store.error).toBeNull();
 	});

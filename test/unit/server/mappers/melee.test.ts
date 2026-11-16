@@ -18,7 +18,7 @@ describe('normalizeMeleePlayerName', () => {
 	});
 
 	it('handles common name separators', () => {
-		expect(normalizeMeleePlayerName('O\'BRIEN-SMITH')).toBe('O\'Brien-Smith');
+		expect(normalizeMeleePlayerName("O'BRIEN-SMITH")).toBe("O'Brien-Smith");
 	});
 
 	it('preserves intentional mixed casing', () => {
@@ -173,7 +173,7 @@ describe('parseDeckListRecords', () => {
 		];
 		const result = parseDeckListRecords(records);
 
-		expect(result.map(c => c.name)).toEqual([
+		expect(result.map((c) => c.name)).toEqual([
 			'Adanto Vanguard', // Creature (1)
 			'Llanowar Elves', // Creature (1)
 			'Lightning Bolt', // Instant (4)
@@ -234,7 +234,7 @@ describe('parseDeckListRecords', () => {
 		];
 		const result = parseDeckListRecords(records);
 
-		expect(result.map(c => c.name)).toEqual([
+		expect(result.map((c) => c.name)).toEqual([
 			'Lightning Bolt', // Non-land card first
 			'Plains', // W
 			'Island', // U
@@ -273,7 +273,7 @@ describe('parseDeckListRecords', () => {
 		];
 		const result = parseDeckListRecords(records);
 
-		expect(result.map(c => c.name)).toEqual([
+		expect(result.map((c) => c.name)).toEqual([
 			'Sol Ring', // Artifact (6)
 			'Breeding Pool', // Land (8) - not a basic land
 			'Plains', // Basic land - always last

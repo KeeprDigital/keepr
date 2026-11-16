@@ -9,24 +9,17 @@ function hasDiscriminator(data: unknown): data is { type: string } {
 	return typeof data === 'object' && data !== null && 'type' in data;
 }
 
-export function getMtgGameData(
-	gameData: PlayerGameData | null | undefined,
-): MtgPlayerGameData {
-	if (!gameData)
-		return { type: 'mtg', deckName: null, deckColors: null };
+export function getMtgGameData(gameData: PlayerGameData | null | undefined): MtgPlayerGameData {
+	if (!gameData) return { type: 'mtg', deckName: null, deckColors: null };
 	// Discriminator check, with legacy fallback (no `type` field = treat as mtg if it has deckName/deckColors)
 	if (hasDiscriminator(gameData) && gameData.type !== 'mtg')
 		return { type: 'mtg', deckName: null, deckColors: null };
 	return { ...gameData, type: 'mtg' };
 }
 
-export function getOpGameData(
-	gameData: PlayerGameData | null | undefined,
-): OpPlayerGameData {
-	if (!gameData)
-		return { type: 'op', leader: null };
-	if (hasDiscriminator(gameData) && gameData.type !== 'op')
-		return { type: 'op', leader: null };
+export function getOpGameData(gameData: PlayerGameData | null | undefined): OpPlayerGameData {
+	if (!gameData) return { type: 'op', leader: null };
+	if (hasDiscriminator(gameData) && gameData.type !== 'op') return { type: 'op', leader: null };
 	return {
 		...gameData,
 		type: 'op',
@@ -39,9 +32,7 @@ export function getOpGameData(
  * names no card, so it reads as no Leader rather than a name-only one.
  */
 export function storedOpLeader(leader: unknown): OpLeader | null {
-	return typeof leader === 'object' && leader !== null
-		? leader as OpLeader
-		: null;
+	return typeof leader === 'object' && leader !== null ? (leader as OpLeader) : null;
 }
 
 /** Get the display label for a player's game-specific identity (deck name or leader) */
@@ -49,8 +40,7 @@ export function getPlayerIdentityValue(
 	game: Game,
 	gameData: PlayerGameData | null | undefined,
 ): string | null {
-	if (!gameData)
-		return null;
+	if (!gameData) return null;
 	// Use discriminator if available, otherwise fall back to game param
 	if (hasDiscriminator(gameData)) {
 		switch (gameData.type) {

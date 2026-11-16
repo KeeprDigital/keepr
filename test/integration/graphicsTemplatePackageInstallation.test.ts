@@ -10,37 +10,35 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '../../shared/types/screenConfig';
 import { testGraphicAssetId, testGraphicAssetRevisionId } from '../helpers/graphicsAssetIdentities';
 import { collectStream } from '../helpers/storedZipArchive';
-import {
-	readTemplatePackageParts,
-	writeTemplatePackage,
-} from '../helpers/templatePackageArchive';
+import { readTemplatePackageParts, writeTemplatePackage } from '../helpers/templatePackageArchive';
 import { $fetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
 import { libraryAssets } from './graphicsLibraryListing';
 import { expectOperationResult, expectResponseStatus } from './responseStatus';
 
-const basePixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
+const basePixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
 
 /** Appends a valid ancillary text chunk so this suite owns a distinct digest. */
 function pngWithTextChunk(source: Uint8Array, keyword: string): Uint8Array<ArrayBuffer> {
-	const payload = Buffer.concat([
-		Buffer.from('tEXt'),
-		Buffer.from(`${keyword}\0`),
-	]);
+	const payload = Buffer.concat([Buffer.from('tEXt'), Buffer.from(`${keyword}\0`)]);
 	const length = Buffer.alloc(4);
 	length.writeUInt32BE(payload.byteLength - 4, 0);
 	const checksum = Buffer.alloc(4);
 	checksum.writeUInt32BE(crc32(payload), 0);
-	return Uint8Array.from(Buffer.concat([
-		Buffer.from(source.slice(0, -12)),
-		length,
-		payload,
-		checksum,
-		Buffer.from(source.slice(-12)),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			Buffer.from(source.slice(0, -12)),
+			length,
+			payload,
+			checksum,
+			Buffer.from(source.slice(-12)),
+		]),
+	);
 }
 
 const packagePixelPng = pngWithTextChunk(basePixelPng, 'sk-template-package-installation');
@@ -74,7 +72,7 @@ async function receivePackage(archive: Uint8Array<ArrayBuffer>) {
 		},
 	);
 	await expectResponseStatus(response, 200);
-	return await response.json() as GraphicsIngestionOperation;
+	return (await response.json()) as GraphicsIngestionOperation;
 }
 
 async function installPackage(operationId: string) {
@@ -149,13 +147,10 @@ describe('template Package installation through the API boundary', () => {
 
 		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 		config.layout.frame.backgroundImage = { kind: 'asset', ...reference } as never;
-		await $fetch(
-			`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`,
-			{
-				method: 'PATCH',
-				body: { layout: config.layout },
-			},
-		);
+		await $fetch(`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`, {
+			method: 'PATCH',
+			body: { layout: config.layout },
+		});
 		const exported = await fetch(
 			`/api/events/${eventId}/screens/${screenId}/template-packages/feature-match-layout`,
 			{
@@ -169,8 +164,7 @@ describe('template Package installation through the API boundary', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('publishes the Template and every mapping it needs in one visible step', async () => {
@@ -194,7 +188,7 @@ describe('template Package installation through the API boundary', () => {
 		parts.template = {
 			...(parts.template as Record<string, unknown>),
 			frame: {
-				...((parts.template as { frame: Record<string, unknown> }).frame),
+				...(parts.template as { frame: Record<string, unknown> }).frame,
 				backgroundImage: {
 					kind: 'asset',
 					assetId: 'a-source-asset-never-seen-here',
@@ -250,13 +244,11 @@ describe('template Package installation through the API boundary', () => {
 			}),
 		]);
 		expect(JSON.stringify(template.document)).toContain(installed.revisionId);
-		expect(JSON.stringify(template.document))
-			.not
-			.toContain('a-source-revision-never-seen-here');
+		expect(JSON.stringify(template.document)).not.toContain('a-source-revision-never-seen-here');
 
 		const after = await libraryAssets();
 		expect(after).toHaveLength(before.length + 1);
-		expect(after.some(asset => asset.id === installed.assetId)).toBe(true);
+		expect(after.some((asset) => asset.id === installed.assetId)).toBe(true);
 
 		// The installed revision resolves, and its reference is real usage.
 		const content = await fetch(
@@ -285,7 +277,7 @@ describe('template Package installation through the API boundary', () => {
 
 	it('reuses an exact origin without touching the asset it reuses', async () => {
 		const existing = await libraryAssets();
-		const before = existing.find(asset => asset.id === reference.assetId)!;
+		const before = existing.find((asset) => asset.id === reference.assetId)!;
 
 		const received = await receivePackage(exportedPackage);
 		expect(received.stage).toBe('awaiting-installation');
@@ -304,7 +296,7 @@ describe('template Package installation through the API boundary', () => {
 
 		// The reused asset kept its own name, revisions, and facts.
 		const after = await libraryAssets();
-		const reused = after.find(asset => asset.id === reference.assetId)!;
+		const reused = after.find((asset) => asset.id === reference.assetId)!;
 		expect(reused.name).toBe(before.name);
 		expect(reused.revisions).toEqual(before.revisions);
 		expect(after).toHaveLength(existing.length);
@@ -325,12 +317,14 @@ describe('template Package installation through the API boundary', () => {
 			`/api/graphics-assets/${reference.assetId}/usage`,
 			{ headers: authorHeaders },
 		);
-		expect(usage).toContainEqual(expect.objectContaining({
-			owner: expect.objectContaining({
-				kind: 'installed-graphics-template',
-				name: 'Installation Overlay',
+		expect(usage).toContainEqual(
+			expect.objectContaining({
+				owner: expect.objectContaining({
+					kind: 'installed-graphics-template',
+					name: 'Installation Overlay',
+				}),
 			}),
-		}));
+		);
 
 		const template = await $fetch<InstalledGraphicsTemplate>(
 			`/api/graphics-assets/installed-templates/${installation.templateId}`,
@@ -338,9 +332,7 @@ describe('template Package installation through the API boundary', () => {
 				headers: { cookie: graphicsAuthorCookie },
 			},
 		);
-		expect(template.references).toEqual([
-			expect.objectContaining({ reference }),
-		]);
+		expect(template.references).toEqual([expect.objectContaining({ reference })]);
 	});
 
 	it('leaves nothing discoverable when a package is cancelled before installation', async () => {

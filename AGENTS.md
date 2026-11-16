@@ -4,8 +4,9 @@ holds only what an agent must follow.
 ## Before pushing
 
 Push once `pnpm verify:quick` passes. It checks what your checkout changes
-since `main`: lint, typecheck, and the unit and Nuxt tests whose imports reach
-the files it changed. CI is the full gate, and runs everything. Open the PR
+since `main`: lint (which fails on unformatted code; `pnpm lint:fix` formats),
+typecheck, and the unit and Nuxt tests whose imports reach the files it
+changed. CI is the full gate, and runs everything. Open the PR
 as a draft, which CI skips, and mark it ready when the branch is done: that
 runs every gate `pnpm verify` runs, Worker build and workerd smoke included.
 Realtime integration tests are the exception: CI has no Ably key, so they run

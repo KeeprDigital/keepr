@@ -30,12 +30,9 @@ export { buildMetagameScopeQuery } from '~~/shared/utils/metagameQuery';
 
 export function useMetagameClient() {
 	const loadSummary = (eventId: number, scope: MetagameScopeInput) => {
-		return $fetch<MetagameSummaryResponse>(
-			`/api/events/${eventId}/metagame`,
-			{
-				query: buildMetagameScopeQuery(scope),
-			},
-		);
+		return $fetch<MetagameSummaryResponse>(`/api/events/${eventId}/metagame`, {
+			query: buildMetagameScopeQuery(scope),
+		});
 	};
 
 	const loadArchetypeBreakdown = (
@@ -43,12 +40,9 @@ export function useMetagameClient() {
 		scope: MetagameScopeInput,
 		options: MetagameArchetypeBreakdownOptions = {},
 	) => {
-		return $fetch<ArchetypeBreakdownResponse>(
-			`/api/events/${eventId}/metagame/archetypes`,
-			{
-				query: buildArchetypeBreakdownQuery(scope, options),
-			},
-		);
+		return $fetch<ArchetypeBreakdownResponse>(`/api/events/${eventId}/metagame/archetypes`, {
+			query: buildArchetypeBreakdownQuery(scope, options),
+		});
 	};
 
 	const loadCardBreakdown = (
@@ -56,12 +50,9 @@ export function useMetagameClient() {
 		scope: MetagameScopeInput,
 		options: MetagameCardBreakdownOptions = {},
 	) => {
-		return $fetch<CardBreakdownResponse>(
-			`/api/events/${eventId}/metagame/cards`,
-			{
-				query: buildCardBreakdownQuery(scope, options),
-			},
-		);
+		return $fetch<CardBreakdownResponse>(`/api/events/${eventId}/metagame/cards`, {
+			query: buildCardBreakdownQuery(scope, options),
+		});
 	};
 
 	const loadArchetypeDetail = (
@@ -78,26 +69,16 @@ export function useMetagameClient() {
 		);
 	};
 
-	const loadCardDetail = (
-		eventId: number,
-		cardId: number,
-		scope: MetagameScopeInput,
-	) => {
-		return $fetch<CardDetailResponse>(
-			`/api/events/${eventId}/metagame/cards/${cardId}`,
-			{
-				query: buildMetagameScopeQuery(scope),
-			},
-		);
+	const loadCardDetail = (eventId: number, cardId: number, scope: MetagameScopeInput) => {
+		return $fetch<CardDetailResponse>(`/api/events/${eventId}/metagame/cards/${cardId}`, {
+			query: buildMetagameScopeQuery(scope),
+		});
 	};
 
 	const loadTokenRequirements = (eventId: number, scope: MetagameScopeInput) => {
-		return $fetch<TokenRequirementsResponse>(
-			`/api/events/${eventId}/metagame/tokens`,
-			{
-				query: buildMetagameScopeQuery(scope),
-			},
-		);
+		return $fetch<TokenRequirementsResponse>(`/api/events/${eventId}/metagame/tokens`, {
+			query: buildMetagameScopeQuery(scope),
+		});
 	};
 
 	return {

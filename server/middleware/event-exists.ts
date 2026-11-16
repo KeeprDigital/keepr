@@ -16,8 +16,7 @@ export default defineEventHandler(async (event) => {
 	const path = getRequestURL(event).pathname;
 
 	const match = path.match(EVENT_PATH_RE);
-	if (!match)
-		return;
+	if (!match) return;
 
 	const id = Number(match[1]);
 	if (!EVENT_ID_PATTERN.test(match[1]!) || !Number.isSafeInteger(id)) {

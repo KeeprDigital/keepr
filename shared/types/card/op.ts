@@ -2,27 +2,15 @@ import type { MtgCardTimeoutData } from './mtg';
 
 /** One Piece Card Game card data, as stream-keepr's bandai-keepr proxy answers it (ADR-0057). */
 
-export const OP_CARD_CATEGORIES = [
-	'leader',
-	'character',
-	'event',
-	'stage',
-] as const;
-export type OpCardCategory = typeof OP_CARD_CATEGORIES[number];
+export const OP_CARD_CATEGORIES = ['leader', 'character', 'event', 'stage'] as const;
+export type OpCardCategory = (typeof OP_CARD_CATEGORIES)[number];
 
 /** bandai-keepr matches colours exactly, case included. */
-export const OP_CARD_COLORS = [
-	'Red',
-	'Green',
-	'Blue',
-	'Purple',
-	'Black',
-	'Yellow',
-] as const;
-export type OpCardColor = typeof OP_CARD_COLORS[number];
+export const OP_CARD_COLORS = ['Red', 'Green', 'Blue', 'Purple', 'Black', 'Yellow'] as const;
+export type OpCardColor = (typeof OP_CARD_COLORS)[number];
 
 export const OP_PRINTING_KINDS = ['standard', 'alt-art', 'reprint'] as const;
-export type OpPrintingKind = typeof OP_PRINTING_KINDS[number];
+export type OpPrintingKind = (typeof OP_PRINTING_KINDS)[number];
 
 /** A card behind a card number, imaged by the Printing its values come from (usually the standard one). */
 export interface OpCardSummary {
@@ -70,14 +58,14 @@ export interface OpCardDetail extends OpCardSummary {
 }
 
 /** A search answer; `available: false` when this installation has no bandai-keepr configured. */
-export type OpCardSearchAnswer
-	= | { available: false }
-		| { available: true; items: OpCardSummary[]; total: number };
+export type OpCardSearchAnswer =
+	| { available: false }
+	| { available: true; items: OpCardSummary[]; total: number };
 
 /** A card-number lookup answer; `card` is `null` for a number bandai-keepr does not know. */
-export type OpCardLookupAnswer
-	= | { available: false }
-		| { available: true; card: OpCardDetail | null };
+export type OpCardLookupAnswer =
+	| { available: false }
+	| { available: true; card: OpCardDetail | null };
 
 /**
  * The One Piece variant of a Screen Card: one Printing of a Card. It has no

@@ -89,11 +89,7 @@ export interface UseFormReturn<T> {
 export function useForm<T extends Record<string, any>>(
 	options: UseFormOptions<T>,
 ): UseFormReturn<T> {
-	const {
-		initialData,
-		clearOnReset,
-		onReset,
-	} = options;
+	const { initialData, clearOnReset, onReset } = options;
 
 	const cloneData = <D>(data: D): D => {
 		if (data === null || typeof data !== 'object') {
@@ -105,28 +101,28 @@ export function useForm<T extends Record<string, any>>(
 		}
 
 		if (Array.isArray(data)) {
-			return data.map(item => cloneData(item)) as D;
+			return data.map((item) => cloneData(item)) as D;
 		}
 
 		return Object.fromEntries(
-			Object.entries(data).map(([key, value]) => [
-				key,
-				cloneData(value),
-			]),
+			Object.entries(data).map(([key, value]) => [key, cloneData(value)]),
 		) as D;
 	};
 
 	const getInitialValue = (): T => {
-		return isRef(initialData)
-			? cloneData(initialData.value)
-			: cloneData(initialData);
+		return isRef(initialData) ? cloneData(initialData.value) : cloneData(initialData);
 	};
 
 	const formData = ref<T>(getInitialValue()) as Ref<T>;
 	const originalFormData = ref<T>(getInitialValue()) as Ref<T>;
 
 	const isPlainObject = (value: unknown): value is Record<string, unknown> => {
-		return typeof value === 'object' && value !== null && !Array.isArray(value) && !(value instanceof Date);
+		return (
+			typeof value === 'object' &&
+			value !== null &&
+			!Array.isArray(value) &&
+			!(value instanceof Date)
+		);
 	};
 
 	/**
@@ -134,18 +130,23 @@ export function useForm<T extends Record<string, any>>(
 	 * added, so the same values can arrive in another key order and must still
 	 * compare equal.
 	 */
-	const serialize = (value: unknown): string => JSON.stringify(value, (_key, entry: unknown) =>
-		isPlainObject(entry)
-			? Object.fromEntries(Object.keys(entry).sort().map(key => [key, entry[key]]))
-			: entry);
+	const serialize = (value: unknown): string =>
+		JSON.stringify(value, (_key, entry: unknown) =>
+			isPlainObject(entry)
+				? Object.fromEntries(
+						Object.keys(entry)
+							.sort()
+							.map((key) => [key, entry[key]]),
+					)
+				: entry,
+		);
 
 	const isDirty = computed(() => {
 		return serialize(formData.value) !== serialize(originalFormData.value);
 	});
 
 	const areValuesEqual = (val1: unknown, val2: unknown): boolean => {
-		if (val1 === val2)
-			return true;
+		if (val1 === val2) return true;
 
 		if (val1 instanceof Date && val2 instanceof Date) {
 			return val1.getTime() === val2.getTime();
@@ -176,9 +177,13 @@ export function useForm<T extends Record<string, any>>(
 	 * them; a row they left untouched follows the remote side, as do rows the
 	 * remote side added.
 	 */
-	function mergeRows(local: unknown[], previous: Record<string, unknown>[], next: Record<string, unknown>[]): unknown[] {
-		const previousById = new Map(previous.map(row => [row.id, row]));
-		const nextById = new Map(next.map(row => [row.id, row]));
+	function mergeRows(
+		local: unknown[],
+		previous: Record<string, unknown>[],
+		next: Record<string, unknown>[],
+	): unknown[] {
+		const previousById = new Map(previous.map((row) => [row.id, row]));
+		const nextById = new Map(next.map((row) => [row.id, row]));
 		const localIds = new Set<unknown>();
 		const merged: unknown[] = [];
 
@@ -192,19 +197,14 @@ export function useForm<T extends Record<string, any>>(
 			const before = previousById.get(row.id);
 			const after = nextById.get(row.id);
 			if (before && !after) {
-				if (!areValuesEqual(row, before))
-					merged.push(row);
-			}
-			else {
-				merged.push(before && after
-					? mergeValue(row, before, after)
-					: row);
+				if (!areValuesEqual(row, before)) merged.push(row);
+			} else {
+				merged.push(before && after ? mergeValue(row, before, after) : row);
 			}
 		}
 
 		for (const row of next) {
-			if (!previousById.has(row.id) && !localIds.has(row.id))
-				merged.push(cloneData(row));
+			if (!previousById.has(row.id) && !localIds.has(row.id)) merged.push(cloneData(row));
 		}
 
 		return merged;
@@ -220,23 +220,22 @@ export function useForm<T extends Record<string, any>>(
 	 * carrying an `id` per row; other arrays and values are atomic.
 	 */
 	function mergeValue(local: unknown, previous: unknown, next: unknown): unknown {
-		if (areValuesEqual(local, previous))
-			return cloneData(next);
+		if (areValuesEqual(local, previous)) return cloneData(next);
 
-		if (Array.isArray(local) && local.every(isPlainObject) && isRowList(previous) && isRowList(next))
+		if (
+			Array.isArray(local) &&
+			local.every(isPlainObject) &&
+			isRowList(previous) &&
+			isRowList(next)
+		)
 			return mergeRows(local, previous, next);
 
-		if (!isPlainObject(local) || !isPlainObject(previous) || !isPlainObject(next))
-			return local;
+		if (!isPlainObject(local) || !isPlainObject(previous) || !isPlainObject(next)) return local;
 
 		const merged: Record<string, unknown> = {};
-		for (const key of new Set([
-			...Object.keys(local),
-			...Object.keys(next),
-		])) {
+		for (const key of new Set([...Object.keys(local), ...Object.keys(next)])) {
 			const value = mergeValue(local[key], previous[key], next[key]);
-			if (value !== undefined || Object.hasOwn(next, key))
-				merged[key] = value;
+			if (value !== undefined || Object.hasOwn(next, key)) merged[key] = value;
 		}
 		return merged;
 	}
@@ -245,12 +244,16 @@ export function useForm<T extends Record<string, any>>(
 	let baselineVersion = 0;
 
 	if (isRef(initialData)) {
-		watch(initialData, (newData) => {
-			baselineVersion++;
-			const next = cloneData(newData);
-			formData.value = mergeValue(formData.value, originalFormData.value, next) as T;
-			originalFormData.value = cloneData(next);
-		}, { deep: true });
+		watch(
+			initialData,
+			(newData) => {
+				baselineVersion++;
+				const next = cloneData(newData);
+				formData.value = mergeValue(formData.value, originalFormData.value, next) as T;
+				originalFormData.value = cloneData(next);
+			},
+			{ deep: true },
+		);
 	}
 
 	const getChanges = (): DeepPartial<T> => {
@@ -259,8 +262,7 @@ export function useForm<T extends Record<string, any>>(
 		const changes: Record<string, unknown> = {};
 
 		for (const key in current) {
-			if (!Object.hasOwn(current, key))
-				continue;
+			if (!Object.hasOwn(current, key)) continue;
 
 			if (!areValuesEqual(current[key], original?.[key])) {
 				changes[key] = current[key];
@@ -276,11 +278,9 @@ export function useForm<T extends Record<string, any>>(
 		if (clearOnReset) {
 			if (Array.isArray(clearOnReset.value)) {
 				clearOnReset.value = [];
-			}
-			else if (typeof clearOnReset.value === 'object' && clearOnReset.value !== null) {
+			} else if (typeof clearOnReset.value === 'object' && clearOnReset.value !== null) {
 				clearOnReset.value = {};
-			}
-			else {
+			} else {
 				clearOnReset.value = undefined;
 			}
 		}
@@ -292,12 +292,15 @@ export function useForm<T extends Record<string, any>>(
 		const submitted = cloneData(formData.value);
 		const submittedVersion = baselineVersion;
 		const result = await save();
-		if (!result || !isRef(initialData))
-			return result;
+		if (!result || !isRef(initialData)) return result;
 		// The watcher merges the answer into the baseline on the next flush.
 		await nextTick();
 		if (baselineVersion !== submittedVersion)
-			formData.value = mergeValue(formData.value, submitted, cloneData(originalFormData.value)) as T;
+			formData.value = mergeValue(
+				formData.value,
+				submitted,
+				cloneData(originalFormData.value),
+			) as T;
 		return result;
 	};
 

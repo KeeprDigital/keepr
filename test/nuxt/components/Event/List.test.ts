@@ -17,11 +17,13 @@ function mountList(error: Error | null) {
 // reads as is `failureSentence`'s test; this proves the list routes through it.
 describe('eventList', () => {
 	it('shows the sentence the server wrote about a refused load, not the transport line (#271)', () => {
-		const wrapper = mountList(transportFailure({
-			status: 403,
-			body: { message: 'This Event belongs to another installation' },
-			request: `[GET] "/api/events"`,
-		}));
+		const wrapper = mountList(
+			transportFailure({
+				status: 403,
+				body: { message: 'This Event belongs to another installation' },
+				request: `[GET] "/api/events"`,
+			}),
+		);
 
 		expect(wrapper.text()).toContain('This Event belongs to another installation');
 		expect(wrapper.text()).not.toContain('403');

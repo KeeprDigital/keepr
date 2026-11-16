@@ -18,8 +18,14 @@ import {
 	graphicAssetRevisions,
 	graphicAssets,
 } from '~~/server/db/schema/graphicsAsset';
-import { createCommandIdSequence, seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
-import { testGraphicAssetId, testGraphicAssetRevisionId } from '~~/test/helpers/graphicsAssetIdentities';
+import {
+	createCommandIdSequence,
+	seedBroadcastGraphicsScreen,
+} from '~~/test/helpers/broadcastGraphicsScreen';
+import {
+	testGraphicAssetId,
+	testGraphicAssetRevisionId,
+} from '~~/test/helpers/graphicsAssetIdentities';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 /**
@@ -30,7 +36,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -50,7 +57,8 @@ let beforeReferenceWrite: (() => Promise<void>) | undefined;
 let interleaving = false;
 
 vi.doMock('~~/server/modules/screen-graphic-asset-references', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('~~/server/modules/screen-graphic-asset-references')>();
+	const actual =
+		await importOriginal<typeof import('~~/server/modules/screen-graphic-asset-references')>();
 	return {
 		...actual,
 		async updateBroadcastGraphicsLiveSessionGraphicAssetReferences(
@@ -62,8 +70,7 @@ vi.doMock('~~/server/modules/screen-graphic-asset-references', async (importOrig
 				interleaving = true;
 				try {
 					await hook();
-				}
-				finally {
+				} finally {
 					interleaving = false;
 				}
 			}
@@ -72,14 +79,16 @@ vi.doMock('~~/server/modules/screen-graphic-asset-references', async (importOrig
 	};
 });
 
-const { broadcastGraphicsLiveSessionModule } = await import('~~/server/modules/broadcast-graphics-live-session');
-const { createD1ScreenOutputAssetAuthorizer } = await import('~~/server/modules/screen-output-assets/authorizer');
+const { broadcastGraphicsLiveSessionModule } =
+	await import('~~/server/modules/broadcast-graphics-live-session');
+const { createD1ScreenOutputAssetAuthorizer } =
+	await import('~~/server/modules/screen-output-assets/authorizer');
 
 // ──────────────── the Graphics Asset Library these values name ────────────────
 
 const ASSET_ID = 'asset-clip';
 const REVISIONS = ['revision-one', 'revision-two', 'revision-three'] as const;
-type Revision = typeof REVISIONS[number];
+type Revision = (typeof REVISIONS)[number];
 const CONTENT_DIGEST = 'd'.repeat(64);
 
 /** A media Graphic Input value, as an operator's selection stores one. */
@@ -104,10 +113,19 @@ const graphicsAssetLibraryOutage = new Set<string>();
 
 /** The library `Set Input` asks for a pinned revision's facts, answering for the revisions seeded below. */
 const graphicsAssetLibrary = {
-	async inspectGraphicAssetRevision(input: { assetId: string; revisionId: string }): Promise<GraphicAssetReferenceStatus> {
-		if (input.revisionId === UNREACHABLE_REVISION || graphicsAssetLibraryOutage.has(input.revisionId))
+	async inspectGraphicAssetRevision(input: {
+		assetId: string;
+		revisionId: string;
+	}): Promise<GraphicAssetReferenceStatus> {
+		if (
+			input.revisionId === UNREACHABLE_REVISION ||
+			graphicsAssetLibraryOutage.has(input.revisionId)
+		)
 			return { outcome: 'unavailable', retryable: true };
-		if (input.assetId === TRANSPARENT_VIDEO.assetId && input.revisionId === TRANSPARENT_VIDEO.revisionId)
+		if (
+			input.assetId === TRANSPARENT_VIDEO.assetId &&
+			input.revisionId === TRANSPARENT_VIDEO.revisionId
+		)
 			return { outcome: 'available', lifecycleState: 'active', kind: 'silent-video' };
 		return input.assetId === ASSET_ID && (REVISIONS as readonly string[]).includes(input.revisionId)
 			? { outcome: 'available', lifecycleState: 'active', kind: 'image' }
@@ -122,7 +140,10 @@ const CLIP_B = 'clipB';
 const STING = 'sting';
 
 /** A media Graphic Input on a live On-air Update Policy, so one `Set Input` moves the accepted set. */
-function mediaInput(key: string, mediaKind: 'image' | 'silent-video' = 'image'): GraphicInputDeclaration {
+function mediaInput(
+	key: string,
+	mediaKind: 'image' | 'silent-video' = 'image',
+): GraphicInputDeclaration {
 	return {
 		key,
 		label: key,
@@ -138,11 +159,7 @@ const SLATE: BroadcastGraphicConfig = {
 	id: 'slate',
 	name: 'Slate',
 	items: [],
-	inputs: [
-		mediaInput(CLIP_A),
-		mediaInput(CLIP_B),
-		mediaInput(STING, 'silent-video'),
-	],
+	inputs: [mediaInput(CLIP_A), mediaInput(CLIP_B), mediaInput(STING, 'silent-video')],
 };
 
 const STACK: BroadcastGraphicsModeConfig = {
@@ -151,7 +168,10 @@ const STACK: BroadcastGraphicsModeConfig = {
 
 const nextCommandId = createCommandIdSequence();
 
-function command(type: BroadcastGraphicsCommand['type'], payload: Record<string, unknown>): BroadcastGraphicsCommand {
+function command(
+	type: BroadcastGraphicsCommand['type'],
+	payload: Record<string, unknown>,
+): BroadcastGraphicsCommand {
 	// The payload shape belongs to each command variant; a test that names the
 	// variant by its `type` supplies the matching payload itself.
 	return {
@@ -198,15 +218,19 @@ async function liveSession(): Promise<LiveSession> {
 	return {
 		take: () => apply(command('Take', { graphicId: SLATE.id, cut: true })),
 		out: () => apply(command('Out', { graphicId: SLATE.id, cut: true })),
-		setInput: (key, value) => apply(command('Set Input', { graphicId: SLATE.id, inputKey: key, value })),
+		setInput: (key, value) =>
+			apply(command('Set Input', { graphicId: SLATE.id, inputKey: key, value })),
 		republish: () => module.republishLiveSessionReferences({ eventId, screenId }),
 		strandReferencesOfEndedEpoch: async () => {
-			await db.update(schema.broadcastGraphicsLiveSessions)
+			await db
+				.update(schema.broadcastGraphicsLiveSessions)
 				.set({ status: 'ended' })
-				.where(and(
-					eq(schema.broadcastGraphicsLiveSessions.screenId, screenId),
-					eq(schema.broadcastGraphicsLiveSessions.status, 'active'),
-				));
+				.where(
+					and(
+						eq(schema.broadcastGraphicsLiveSessions.screenId, screenId),
+						eq(schema.broadcastGraphicsLiveSessions.status, 'active'),
+					),
+				);
 		},
 		canResolve: async (revisionId, assetId = ASSET_ID) => {
 			const outcome = await authorizer.authorize({
@@ -226,10 +250,11 @@ async function liveSession(): Promise<LiveSession> {
 
 /** Every revision, in one answer, so a scenario states the whole index it left. */
 async function resolvable(live: LiveSession): Promise<Revision[]> {
-	const answers = await Promise.all(REVISIONS.map(async revisionId =>
-		await live.canResolve(revisionId)
-			? revisionId
-			: undefined));
+	const answers = await Promise.all(
+		REVISIONS.map(async (revisionId) =>
+			(await live.canResolve(revisionId)) ? revisionId : undefined,
+		),
+	);
 	return answers.filter((revisionId): revisionId is Revision => revisionId !== undefined);
 }
 
@@ -377,8 +402,12 @@ describe('a transparent video chosen at runtime', () => {
 
 		await live.setInput(STING, TRANSPARENT_VIDEO);
 
-		expect((await live.snapshot()).currentState.inputs[SLATE.id]!.accepted[STING]).toEqual(TRANSPARENT_VIDEO);
-		expect(await live.canResolve(TRANSPARENT_VIDEO.revisionId, TRANSPARENT_VIDEO.assetId)).toBe(true);
+		expect((await live.snapshot()).currentState.inputs[SLATE.id]!.accepted[STING]).toEqual(
+			TRANSPARENT_VIDEO,
+		);
+		expect(await live.canResolve(TRANSPARENT_VIDEO.revisionId, TRANSPARENT_VIDEO.assetId)).toBe(
+			true,
+		);
 	});
 });
 
@@ -412,8 +441,7 @@ describe('re-deriving what a Broadcast Graphics Live Session publishes after an 
 		const race = async () => {
 			races += 1;
 			// Re-armed for the second pass, so both passes lose rather than one.
-			if (races < 2)
-				beforeReferenceWrite = race;
+			if (races < 2) beforeReferenceWrite = race;
 			await live.setInput(CLIP_A, clip(REVISIONS[races]!));
 		};
 

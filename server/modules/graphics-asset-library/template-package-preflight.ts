@@ -71,9 +71,9 @@ export interface ReadTemplatePackageManifestResult {
 	migrated: boolean;
 }
 
-export type ReadTemplatePackageManifestOutcome
-	= | { outcome: 'read'; result: ReadTemplatePackageManifestResult }
-		| { outcome: 'rejected'; issues: readonly TemplatePackagePreflightIssue[] };
+export type ReadTemplatePackageManifestOutcome =
+	| { outcome: 'read'; result: ReadTemplatePackageManifestResult }
+	| { outcome: 'rejected'; issues: readonly TemplatePackagePreflightIssue[] };
 
 /**
  * Brings a supported older manifest up to the current schema.
@@ -110,13 +110,21 @@ function readPackagedAsset(
 	const subject = `packagedAssets[${index}]`;
 	if (!isPlainObject(value)) {
 		return {
-			issues: [
-				invalidManifest('Packaged asset is not an object', subject),
-			],
+			issues: [invalidManifest('Packaged asset is not an object', subject)],
 		};
 	}
 	const issues: TemplatePackagePreflightIssue[] = [];
-	const { packagedId, name, kind, origin, integrity, facts, compatibilityProfile, content, requiredBy } = value;
+	const {
+		packagedId,
+		name,
+		kind,
+		origin,
+		integrity,
+		facts,
+		compatibilityProfile,
+		content,
+		requiredBy,
+	} = value;
 
 	if (!isNonEmptyString(packagedId))
 		issues.push(invalidManifest('Packaged asset has no usable identity', subject));
@@ -124,53 +132,62 @@ function readPackagedAsset(
 		issues.push(invalidManifest('Packaged asset has no usable name', subject));
 	if (typeof kind !== 'string' || !ASSET_KINDS.has(kind))
 		issues.push(invalidManifest('Packaged asset declares an unsupported media kind', subject));
-	if (!isPlainObject(origin)
-		|| !isNonEmptyString(origin.sourceAssetId)
-		|| !isNonEmptyString(origin.sourceRevisionId)
-		|| !Number.isSafeInteger(origin.sourceRevisionNumber)
-		|| (origin.sourceRevisionNumber as number) <= 0
-		|| typeof origin.digest !== 'string'
-		|| !DIGEST.test(origin.digest)) {
-		issues.push(invalidManifest('Packaged asset declares an unusable Graphic Asset Origin', subject));
+	if (
+		!isPlainObject(origin) ||
+		!isNonEmptyString(origin.sourceAssetId) ||
+		!isNonEmptyString(origin.sourceRevisionId) ||
+		!Number.isSafeInteger(origin.sourceRevisionNumber) ||
+		(origin.sourceRevisionNumber as number) <= 0 ||
+		typeof origin.digest !== 'string' ||
+		!DIGEST.test(origin.digest)
+	) {
+		issues.push(
+			invalidManifest('Packaged asset declares an unusable Graphic Asset Origin', subject),
+		);
 	}
-	if (!isPlainObject(integrity)
-		|| integrity.algorithm !== 'sha256'
-		|| typeof integrity.digest !== 'string'
-		|| !DIGEST.test(integrity.digest)
-		|| !Number.isSafeInteger(integrity.byteLength)
-		|| (integrity.byteLength as number) < 0
-		|| typeof integrity.canonicalMime !== 'string'
-		|| !CANONICAL_MIMES.has(integrity.canonicalMime)) {
+	if (
+		!isPlainObject(integrity) ||
+		integrity.algorithm !== 'sha256' ||
+		typeof integrity.digest !== 'string' ||
+		!DIGEST.test(integrity.digest) ||
+		!Number.isSafeInteger(integrity.byteLength) ||
+		(integrity.byteLength as number) < 0 ||
+		typeof integrity.canonicalMime !== 'string' ||
+		!CANONICAL_MIMES.has(integrity.canonicalMime)
+	) {
 		issues.push(invalidManifest('Packaged asset declares unusable integrity facts', subject));
 	}
 	// Provenance and integrity describe the same bytes, so a package that
 	// disagrees with itself about which digest they are cannot be mapped.
 	if (
-		isPlainObject(origin)
-		&& isPlainObject(integrity)
-		&& typeof origin.digest === 'string'
-		&& origin.digest !== integrity.digest
+		isPlainObject(origin) &&
+		isPlainObject(integrity) &&
+		typeof origin.digest === 'string' &&
+		origin.digest !== integrity.digest
 	) {
-		issues.push(invalidManifest('Packaged asset origin and integrity name different content', subject));
+		issues.push(
+			invalidManifest('Packaged asset origin and integrity name different content', subject),
+		);
 	}
 	if (!isPlainObject(facts))
 		issues.push(invalidManifest('Packaged asset carries no technical facts', subject));
 	if (!isNonEmptyString(compatibilityProfile))
 		issues.push(invalidManifest('Packaged asset names no compatibility profile', subject));
 	if (
-		!isPlainObject(content)
-		|| !isNonEmptyString(content.entry)
-		|| !isPlainObject(integrity)
-		|| typeof integrity.digest !== 'string'
-		|| content.entry !== templatePackageContentEntry(integrity.digest)
+		!isPlainObject(content) ||
+		!isNonEmptyString(content.entry) ||
+		!isPlainObject(integrity) ||
+		typeof integrity.digest !== 'string' ||
+		content.entry !== templatePackageContentEntry(integrity.digest)
 	) {
 		issues.push(invalidManifest('Packaged asset does not point at its own content entry', subject));
 	}
-	if (!Array.isArray(requiredBy) || requiredBy.some(slot => typeof slot !== 'string'))
-		issues.push(invalidManifest('Packaged asset does not record which Template slots require it', subject));
+	if (!Array.isArray(requiredBy) || requiredBy.some((slot) => typeof slot !== 'string'))
+		issues.push(
+			invalidManifest('Packaged asset does not record which Template slots require it', subject),
+		);
 
-	if (issues.length > 0)
-		return { issues };
+	if (issues.length > 0) return { issues };
 	return { asset: value as unknown as TemplatePackageAsset };
 }
 
@@ -183,9 +200,7 @@ export function readTemplatePackageManifest(value: unknown): ReadTemplatePackage
 	if (!isPlainObject(value)) {
 		return {
 			outcome: 'rejected',
-			issues: [
-				invalidManifest('The package manifest is not an object'),
-			],
+			issues: [invalidManifest('The package manifest is not an object')],
 		};
 	}
 
@@ -193,9 +208,7 @@ export function readTemplatePackageManifest(value: unknown): ReadTemplatePackage
 	if (!Number.isSafeInteger(receivedSchemaVersion) || (receivedSchemaVersion as number) <= 0) {
 		return {
 			outcome: 'rejected',
-			issues: [
-				invalidManifest('The package manifest declares no usable schema version'),
-			],
+			issues: [invalidManifest('The package manifest declares no usable schema version')],
 		};
 	}
 	const schemaVersion = receivedSchemaVersion as number;
@@ -224,10 +237,21 @@ export function readTemplatePackageManifest(value: unknown): ReadTemplatePackage
 
 	const migratedValue = migrateManifest(value, schemaVersion);
 	const issues: TemplatePackagePreflightIssue[] = [];
-	const { packageKind, templateKind, template, packagedAssets, applicationCapabilities, contents, totals } = migratedValue;
+	const {
+		packageKind,
+		templateKind,
+		template,
+		packagedAssets,
+		applicationCapabilities,
+		contents,
+		totals,
+	} = migratedValue;
 
 	// Exactly one supported artifact type, agreeing with itself about which.
-	if (typeof packageKind !== 'string' || !(TEMPLATE_PACKAGE_KINDS as readonly string[]).includes(packageKind)) {
+	if (
+		typeof packageKind !== 'string' ||
+		!(TEMPLATE_PACKAGE_KINDS as readonly string[]).includes(packageKind)
+	) {
 		return {
 			outcome: 'rejected',
 			issues: [
@@ -239,30 +263,36 @@ export function readTemplatePackageManifest(value: unknown): ReadTemplatePackage
 	}
 	const kind = packageKind as TemplatePackageKind;
 	if (templateKind !== TEMPLATE_PACKAGE_ARTIFACTS[kind].templateKind) {
-		issues.push(templatePackagePreflightIssue('unsupported-package-artifact', {
-			message: `A ${kind} package carries a ${TEMPLATE_PACKAGE_ARTIFACTS[kind].templateKind}, not "${String(templateKind)}"`,
-		}));
+		issues.push(
+			templatePackagePreflightIssue('unsupported-package-artifact', {
+				message: `A ${kind} package carries a ${TEMPLATE_PACKAGE_ARTIFACTS[kind].templateKind}, not "${String(templateKind)}"`,
+			}),
+		);
 	}
 	// Exactly one Template, at the one entry a package may carry it in.
 	if (
-		!isPlainObject(template)
-		|| !isNonEmptyString(template.identity)
-		|| !isNonEmptyString(template.name)
-		|| template.entry !== TEMPLATE_PACKAGE_TEMPLATE_ENTRY
+		!isPlainObject(template) ||
+		!isNonEmptyString(template.identity) ||
+		!isNonEmptyString(template.name) ||
+		template.entry !== TEMPLATE_PACKAGE_TEMPLATE_ENTRY
 	) {
-		issues.push(templatePackagePreflightIssue('unsupported-package-artifact', {
-			message: 'The package does not declare exactly one Template at its Template entry',
-		}));
+		issues.push(
+			templatePackagePreflightIssue('unsupported-package-artifact', {
+				message: 'The package does not declare exactly one Template at its Template entry',
+			}),
+		);
 	}
 	// A declared source revision is provenance, so an unusable one is refused rather
 	// than dropped: silently discarding it would leave a later import unable to tell
 	// a re-import of the same design from a newer revision of it, with nothing in
 	// the report to say the information was ever there.
 	else if (
-		template.revision !== undefined
-		&& (!Number.isSafeInteger(template.revision) || (template.revision as number) <= 0)
+		template.revision !== undefined &&
+		(!Number.isSafeInteger(template.revision) || (template.revision as number) <= 0)
 	) {
-		issues.push(invalidManifest('The package declares an unusable Template revision', 'template.revision'));
+		issues.push(
+			invalidManifest('The package declares an unusable Template revision', 'template.revision'),
+		);
 	}
 
 	if (typeof migratedValue.createdAt !== 'string')
@@ -274,8 +304,7 @@ export function readTemplatePackageManifest(value: unknown): ReadTemplatePackage
 		issues.push(invalidManifest('The package manifest declares no content entries'));
 	if (!Array.isArray(applicationCapabilities))
 		issues.push(invalidManifest('The package manifest declares no application capabilities'));
-	if (issues.length > 0)
-		return { outcome: 'rejected', issues };
+	if (issues.length > 0) return { outcome: 'rejected', issues };
 
 	const assets: TemplatePackageAsset[] = [];
 	const packagedIds = new Set<string>();
@@ -287,10 +316,12 @@ export function readTemplatePackageManifest(value: unknown): ReadTemplatePackage
 			continue;
 		}
 		if (packagedIds.has(read.asset.packagedId)) {
-			issues.push(invalidManifest(
-				'The package declares the same packaged identity twice',
-				`packagedAssets[${index}]`,
-			));
+			issues.push(
+				invalidManifest(
+					'The package declares the same packaged identity twice',
+					`packagedAssets[${index}]`,
+				),
+			);
 			continue;
 		}
 		// One source revision is one local revision. Two packaged identities
@@ -300,10 +331,12 @@ export function readTemplatePackageManifest(value: unknown): ReadTemplatePackage
 		// installation worth attempting, so the package is refused.
 		const originKey = packagedOriginKey(read.asset.origin);
 		if (declaredOrigins.has(originKey)) {
-			issues.push(templatePackagePreflightIssue('duplicate-packaged-origin', {
-				subject: read.asset.packagedId,
-				message: `"${read.asset.name}" claims a source identity and revision another packaged asset already claims`,
-			}));
+			issues.push(
+				templatePackagePreflightIssue('duplicate-packaged-origin', {
+					subject: read.asset.packagedId,
+					message: `"${read.asset.name}" claims a source identity and revision another packaged asset already claims`,
+				}),
+			);
 			continue;
 		}
 		declaredOrigins.add(originKey);
@@ -315,14 +348,14 @@ export function readTemplatePackageManifest(value: unknown): ReadTemplatePackage
 	for (const [index, candidate] of (contents as unknown[]).entries()) {
 		const subject = `contents[${index}]`;
 		if (
-			!isPlainObject(candidate)
-			|| typeof candidate.digest !== 'string'
-			|| !DIGEST.test(candidate.digest)
-			|| !Number.isSafeInteger(candidate.byteLength)
-			|| (candidate.byteLength as number) < 0
-			|| typeof candidate.canonicalMime !== 'string'
-			|| !CANONICAL_MIMES.has(candidate.canonicalMime)
-			|| candidate.entry !== templatePackageContentEntry(candidate.digest)
+			!isPlainObject(candidate) ||
+			typeof candidate.digest !== 'string' ||
+			!DIGEST.test(candidate.digest) ||
+			!Number.isSafeInteger(candidate.byteLength) ||
+			(candidate.byteLength as number) < 0 ||
+			typeof candidate.canonicalMime !== 'string' ||
+			!CANONICAL_MIMES.has(candidate.canonicalMime) ||
+			candidate.entry !== templatePackageContentEntry(candidate.digest)
 		) {
 			issues.push(invalidManifest('Content entry is unusable', subject));
 			continue;
@@ -336,46 +369,54 @@ export function readTemplatePackageManifest(value: unknown): ReadTemplatePackage
 
 	for (const [index, capability] of (applicationCapabilities as unknown[]).entries()) {
 		if (
-			!isPlainObject(capability)
-			|| typeof capability.capability !== 'string'
-			|| !(TEMPLATE_PACKAGE_CAPABILITY_KINDS as readonly string[]).includes(capability.capability)
-			|| !isNonEmptyString(capability.identity)
-			|| !Array.isArray(capability.requiredBy)
+			!isPlainObject(capability) ||
+			typeof capability.capability !== 'string' ||
+			!(TEMPLATE_PACKAGE_CAPABILITY_KINDS as readonly string[]).includes(capability.capability) ||
+			!isNonEmptyString(capability.identity) ||
+			!Array.isArray(capability.requiredBy)
 		) {
-			issues.push(invalidManifest('Application capability declaration is unusable', `applicationCapabilities[${index}]`));
+			issues.push(
+				invalidManifest(
+					'Application capability declaration is unusable',
+					`applicationCapabilities[${index}]`,
+				),
+			);
 		}
 	}
 
 	for (const asset of assets) {
 		if (!contentDigests.has(asset.integrity.digest)) {
-			issues.push(templatePackagePreflightIssue('missing-package-entry', {
-				subject: asset.packagedId,
-				message: `Packaged asset "${asset.name}" names content the manifest never declares`,
-			}));
+			issues.push(
+				templatePackagePreflightIssue('missing-package-entry', {
+					subject: asset.packagedId,
+					message: `Packaged asset "${asset.name}" names content the manifest never declares`,
+				}),
+			);
 		}
 	}
 
 	if (assets.length > TEMPLATE_PACKAGE_LIMITS.maximumPackagedRevisionCount) {
-		issues.push(templatePackagePreflightIssue('packaged-revision-limit-exceeded', {
-			message: `The package declares ${assets.length} packaged Graphic Asset Revisions, beyond the ${TEMPLATE_PACKAGE_LIMITS.maximumPackagedRevisionCount} limit`,
-		}));
+		issues.push(
+			templatePackagePreflightIssue('packaged-revision-limit-exceeded', {
+				message: `The package declares ${assets.length} packaged Graphic Asset Revisions, beyond the ${TEMPLATE_PACKAGE_LIMITS.maximumPackagedRevisionCount} limit`,
+			}),
+		);
 	}
 
 	// The totals are the manifest's own account of the envelope. A manifest that
 	// miscounts itself cannot be used to check the envelope's limits.
 	if (
-		!isPlainObject(totals)
-		|| totals.packagedAssetCount !== assets.length
-		|| totals.packagedRevisionCount !== assets.length
-		|| totals.uniqueContentCount !== contentDigests.size
-		|| totals.entryCount !== contentDigests.size + 2
-		|| !Number.isSafeInteger(totals.expandedByteLength)
+		!isPlainObject(totals) ||
+		totals.packagedAssetCount !== assets.length ||
+		totals.packagedRevisionCount !== assets.length ||
+		totals.uniqueContentCount !== contentDigests.size ||
+		totals.entryCount !== contentDigests.size + 2 ||
+		!Number.isSafeInteger(totals.expandedByteLength)
 	) {
 		issues.push(invalidManifest('The package manifest does not agree with its own totals'));
 	}
 
-	if (issues.length > 0)
-		return { outcome: 'rejected', issues };
+	if (issues.length > 0) return { outcome: 'rejected', issues };
 
 	return {
 		outcome: 'read',
@@ -401,33 +442,39 @@ export function inspectTemplatePackageEntries(
 	const declared = new Map<string, number>([
 		[TEMPLATE_PACKAGE_MANIFEST_ENTRY, Number.NaN],
 		[TEMPLATE_PACKAGE_TEMPLATE_ENTRY, Number.NaN],
-		...manifest.contents.map(content => [content.entry, content.byteLength] as const),
+		...manifest.contents.map((content) => [content.entry, content.byteLength] as const),
 	]);
-	const present = new Set(entries.map(entry => entry.name));
+	const present = new Set(entries.map((entry) => entry.name));
 	for (const entry of entries) {
 		const declaredByteLength = declared.get(entry.name);
 		if (declaredByteLength === undefined) {
-			issues.push(templatePackagePreflightIssue('undeclared-package-entry', {
-				subject: entry.name,
-				message: 'The archive carries an entry the manifest never declares',
-			}));
+			issues.push(
+				templatePackagePreflightIssue('undeclared-package-entry', {
+					subject: entry.name,
+					message: 'The archive carries an entry the manifest never declares',
+				}),
+			);
 			continue;
 		}
 		// The manifest states a size only for content; the manifest and Template
 		// entries are measured by the archive alone.
 		if (Number.isSafeInteger(declaredByteLength) && declaredByteLength !== entry.byteLength) {
-			issues.push(templatePackagePreflightIssue('inconsistent-package-entry-size', {
-				subject: entry.name,
-				message: `The manifest declares ${declaredByteLength} bytes but the archive carries ${entry.byteLength}`,
-			}));
+			issues.push(
+				templatePackagePreflightIssue('inconsistent-package-entry-size', {
+					subject: entry.name,
+					message: `The manifest declares ${declaredByteLength} bytes but the archive carries ${entry.byteLength}`,
+				}),
+			);
 		}
 	}
 	for (const name of declared.keys()) {
 		if (!present.has(name)) {
-			issues.push(templatePackagePreflightIssue('missing-package-entry', {
-				subject: name,
-				message: 'The manifest declares an entry the archive does not carry',
-			}));
+			issues.push(
+				templatePackagePreflightIssue('missing-package-entry', {
+					subject: name,
+					message: 'The manifest declares an entry the archive does not carry',
+				}),
+			);
 		}
 	}
 	return issues;
@@ -441,35 +488,35 @@ export function inspectTemplatePackageEntries(
 const ARCHIVE_SIGNATURES: readonly { offset: number; bytes: readonly number[] }[] = [
 	{
 		offset: 0,
-		bytes: [0x50, 0x4B, 0x03, 0x04],
+		bytes: [0x50, 0x4b, 0x03, 0x04],
 	},
 	{
 		offset: 0,
-		bytes: [0x50, 0x4B, 0x05, 0x06],
+		bytes: [0x50, 0x4b, 0x05, 0x06],
 	},
 	{
 		offset: 0,
-		bytes: [0x50, 0x4B, 0x07, 0x08],
+		bytes: [0x50, 0x4b, 0x07, 0x08],
 	},
 	{
 		offset: 0,
-		bytes: [0x1F, 0x8B],
+		bytes: [0x1f, 0x8b],
 	},
 	{
 		offset: 0,
-		bytes: [0x42, 0x5A, 0x68],
+		bytes: [0x42, 0x5a, 0x68],
 	},
 	{
 		offset: 0,
-		bytes: [0xFD, 0x37, 0x7A, 0x58, 0x5A],
+		bytes: [0xfd, 0x37, 0x7a, 0x58, 0x5a],
 	},
 	{
 		offset: 0,
-		bytes: [0x28, 0xB5, 0x2F, 0xFD],
+		bytes: [0x28, 0xb5, 0x2f, 0xfd],
 	},
 	{
 		offset: 0,
-		bytes: [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C],
+		bytes: [0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c],
 	},
 	{
 		offset: 0,
@@ -491,7 +538,7 @@ const ARCHIVE_SIGNATURES: readonly { offset: number; bytes: readonly number[] }[
 export const NESTED_ARCHIVE_PROBE_BYTES = 512;
 
 export function hasNestedArchiveSignature(leadingBytes: Uint8Array): boolean {
-	return ARCHIVE_SIGNATURES.some(signature =>
+	return ARCHIVE_SIGNATURES.some((signature) =>
 		signature.bytes.every((byte, index) => leadingBytes[signature.offset + index] === byte),
 	);
 }
@@ -568,20 +615,22 @@ export function templatePackageMappingProposal(
 		// and an author watching every attempt fail at the final transaction with
 		// nothing to act on. It stays retryable because restoring is the fix.
 		if (input.originMatch.lifecycleState !== 'active') {
-			issues.push(templatePackagePreflightIssue('graphic-asset-origin-not-referenceable', {
-				subject: asset.packagedId,
-				message: `"${input.originMatch.name}" is ${
-					input.originMatch.lifecycleState === 'retired'
-						? 'Retired'
-						: 'in Trash'
-				} here, so this package cannot reference the revision it reuses`,
-			}));
+			issues.push(
+				templatePackagePreflightIssue('graphic-asset-origin-not-referenceable', {
+					subject: asset.packagedId,
+					message: `"${input.originMatch.name}" is ${
+						input.originMatch.lifecycleState === 'retired' ? 'Retired' : 'in Trash'
+					} here, so this package cannot reference the revision it reuses`,
+				}),
+			);
 		}
 		if (input.originMatch.digest !== asset.origin.digest) {
-			issues.push(templatePackagePreflightIssue('immutable-origin-digest-conflict', {
-				subject: asset.packagedId,
-				message: `"${asset.name}" claims an origin this installation already records with different content`,
-			}));
+			issues.push(
+				templatePackagePreflightIssue('immutable-origin-digest-conflict', {
+					subject: asset.packagedId,
+					message: `"${asset.name}" claims an origin this installation already records with different content`,
+				}),
+			);
 			return {
 				issues,
 				mapping: {
@@ -594,10 +643,12 @@ export function templatePackageMappingProposal(
 			};
 		}
 		if (input.originMatch.name !== asset.name) {
-			issues.push(templatePackagePreflightIssue('graphic-asset-name-differs', {
-				subject: asset.packagedId,
-				message: `The package calls this asset "${asset.name}"; this library records it as "${input.originMatch.name}"`,
-			}));
+			issues.push(
+				templatePackagePreflightIssue('graphic-asset-name-differs', {
+					subject: asset.packagedId,
+					message: `The package calls this asset "${asset.name}"; this library records it as "${input.originMatch.name}"`,
+				}),
+			);
 		}
 		return {
 			issues,
@@ -619,16 +670,20 @@ export function templatePackageMappingProposal(
 			? 'shared-content-digest'
 			: 'new-content';
 	if (basis === 'related-origin-revision') {
-		issues.push(templatePackagePreflightIssue('graphic-asset-created-from-related-origin', {
-			subject: asset.packagedId,
-			message: `"${asset.name}" is a different revision of a source this installation has already imported`,
-		}));
+		issues.push(
+			templatePackagePreflightIssue('graphic-asset-created-from-related-origin', {
+				subject: asset.packagedId,
+				message: `"${asset.name}" is a different revision of a source this installation has already imported`,
+			}),
+		);
 	}
 	if (basis === 'shared-content-digest') {
-		issues.push(templatePackagePreflightIssue('graphic-asset-created-from-shared-content', {
-			subject: asset.packagedId,
-			message: `"${asset.name}" carries content this installation already stores as "${input.sharedContentName}"`,
-		}));
+		issues.push(
+			templatePackagePreflightIssue('graphic-asset-created-from-shared-content', {
+				subject: asset.packagedId,
+				message: `"${asset.name}" carries content this installation already stores as "${input.sharedContentName}"`,
+			}),
+		);
 	}
 	return {
 		issues,
@@ -636,9 +691,10 @@ export function templatePackageMappingProposal(
 			...base,
 			proposal: 'create-graphic-asset',
 			basis,
-			canonicalGrowthBytes: input.contentAlreadyStored || input.contentCountedByAnotherMapping
-				? 0
-				: asset.integrity.byteLength,
+			canonicalGrowthBytes:
+				input.contentAlreadyStored || input.contentCountedByAnotherMapping
+					? 0
+					: asset.integrity.byteLength,
 			localName: input.sharedContentName,
 		},
 	};
@@ -654,17 +710,19 @@ export function inspectReceivedApplicationCapabilities(
 ): TemplatePackagePreflightIssue[] {
 	const { issues } = inspectTemplatePackageCapabilities(
 		manifest.packageKind,
-		manifest.applicationCapabilities.map(declaration => ({
+		manifest.applicationCapabilities.map((declaration) => ({
 			slot: declaration.requiredBy[0] ?? declaration.identity,
 			capability: declaration.capability as TemplatePackageCapabilityKind,
 			identity: declaration.identity,
 			configurationVersion: declaration.configurationVersion,
 		})),
 	);
-	return issues.map(issue => templatePackagePreflightIssue('unsupported-application-capability', {
-		subject: issue.slot,
-		message: issue.message,
-	}));
+	return issues.map((issue) =>
+		templatePackagePreflightIssue('unsupported-application-capability', {
+			subject: issue.slot,
+			message: issue.message,
+		}),
+	);
 }
 
 export interface TemplatePackagePreflightReportInput {
@@ -711,7 +769,7 @@ export function templatePackagePreflightFingerprintMaterial(
 		// Every field the author reads is covered, not just the structural ones.
 		// A mapping whose displayed name changed is a different proposal to the
 		// person confirming it, however identical its shape.
-		mappings: input.mappings.map(mapping => ({
+		mappings: input.mappings.map((mapping) => ({
 			packagedId: mapping.packagedId,
 			name: mapping.name,
 			kind: mapping.kind,
@@ -723,7 +781,7 @@ export function templatePackagePreflightFingerprintMaterial(
 			canonicalGrowthBytes: mapping.canonicalGrowthBytes,
 			localName: mapping.localName ?? null,
 		})),
-		issues: input.issues.map(issue => ({
+		issues: input.issues.map((issue) => ({
 			code: issue.code,
 			severity: issue.severity,
 			subject: issue.subject ?? null,
@@ -736,9 +794,7 @@ export function templatePackagePreflightFingerprintMaterial(
 }
 
 function issueOrder(issue: TemplatePackagePreflightIssue) {
-	return `${issue.severity === 'error'
-		? '0'
-		: '1'} ${issue.subject ?? ''} ${issue.code}`;
+	return `${issue.severity === 'error' ? '0' : '1'} ${issue.subject ?? ''} ${issue.code}`;
 }
 
 /**
@@ -753,7 +809,7 @@ export function assembleTemplatePackagePreflightReport(
 	const issues = [...input.issues].sort((left, right) =>
 		issueOrder(left).localeCompare(issueOrder(right)),
 	);
-	const hasError = issues.some(issue => issue.severity === 'error');
+	const hasError = issues.some((issue) => issue.severity === 'error');
 	return {
 		packageKind: input.packageKind,
 		templateIdentity: input.templateIdentity,
@@ -768,11 +824,7 @@ export function assembleTemplatePackagePreflightReport(
 		quota: input.quota,
 		limits: TEMPLATE_PACKAGE_LIMITS,
 		observed: input.observed,
-		outcome: hasError
-			? 'rejected'
-			: issues.length > 0
-				? 'requires-confirmation'
-				: 'ready',
+		outcome: hasError ? 'rejected' : issues.length > 0 ? 'requires-confirmation' : 'ready',
 	};
 }
 
@@ -808,11 +860,9 @@ export interface TemplatePackagePreflightState {
  * author anything further. A clean proposal needs no confirmation; a proposal
  * carrying warnings needs one bound to this exact fingerprint.
  */
-export function templatePackagePreflightConfirmed(
-	state: TemplatePackagePreflightState,
-): boolean {
-	if (state.report.outcome === 'rejected')
-		return false;
-	return state.report.outcome === 'ready'
-		|| state.confirmedFingerprint === state.report.fingerprint;
+export function templatePackagePreflightConfirmed(state: TemplatePackagePreflightState): boolean {
+	if (state.report.outcome === 'rejected') return false;
+	return (
+		state.report.outcome === 'ready' || state.confirmedFingerprint === state.report.fingerprint
+	);
 }

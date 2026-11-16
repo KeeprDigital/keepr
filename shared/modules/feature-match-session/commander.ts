@@ -1,6 +1,10 @@
 import type { Seat } from '~~/shared/types/enums';
 import type { FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
-import type { CommanderSource, FeatureMatchState, PlayerFeatureMatchState } from '~~/shared/types/featureMatchState';
+import type {
+	CommanderSource,
+	FeatureMatchState,
+	PlayerFeatureMatchState,
+} from '~~/shared/types/featureMatchState';
 import type { Commander } from '~~/shared/types/game';
 import { SEAT_VALUES } from '~~/shared/types/enums';
 import { createInitialSeatState, DEFAULT_STARTING_LIFE } from '~~/shared/types/featureMatchState';
@@ -28,15 +32,13 @@ export function isSeatFilled(snapshot: SeatSnapshot, seat: Seat): boolean {
 
 /** The filled Seats, in Seat order. */
 export function filledSeats(snapshot: SeatSnapshot): Seat[] {
-	return SEAT_VALUES.filter(seat => isSeatFilled(snapshot, seat));
+	return SEAT_VALUES.filter((seat) => isSeatFilled(snapshot, seat));
 }
 
 /** The Commanders a Seat holds: none, one, or a pair. */
 export function seatCommanders(snapshot: SeatSnapshot, seat: Seat): readonly Commander[] {
 	const gameData = snapshot[seat]?.data?.gameData;
-	return gameData?.type === 'mtg'
-		? gameData.commanders ?? []
-		: [];
+	return gameData?.type === 'mtg' ? (gameData.commanders ?? []) : [];
 }
 
 /** The name a Seat's player goes by, or the Seat's number where they have none. */
@@ -49,16 +51,22 @@ function holdsCommander(snapshot: SeatSnapshot, { seat, commander }: CommanderSo
 }
 
 function isCommander(source: CommanderSource) {
-	return (other: CommanderSource) => other.seat === source.seat && other.commander === source.commander;
+	return (other: CommanderSource) =>
+		other.seat === source.seat && other.commander === source.commander;
 }
 
 /** The starting life a Seat joins a game at: the Event's, as the Session holds it. */
-export function commanderStartingLife(snapshot: Pick<FeatureMatchSourceSnapshot, 'defaults'>): number {
+export function commanderStartingLife(
+	snapshot: Pick<FeatureMatchSourceSnapshot, 'defaults'>,
+): number {
 	return snapshot.defaults.startingLife ?? DEFAULT_STARTING_LIFE;
 }
 
 /** The Commander Damage a Seat has taken from one opposing Commander. */
-export function commanderDamageFrom(seatState: PlayerFeatureMatchState | undefined, source: CommanderSource): number {
+export function commanderDamageFrom(
+	seatState: PlayerFeatureMatchState | undefined,
+	source: CommanderSource,
+): number {
 	return seatState?.commanderDamage?.find(isCommander(source))?.damage ?? 0;
 }
 
@@ -75,24 +83,19 @@ export function withCommanderDamage(
 ): PlayerFeatureMatchState {
 	const held = commanderDamageFrom(seatState, source);
 	const damage = Math.max(0, held + Math.trunc(delta));
-	if (damage === held)
-		return seatState;
+	if (damage === held) return seatState;
 
 	const entries = seatState.commanderDamage ?? [];
 	const isEntry = isCommander(source);
 	return {
 		...seatState,
 		lifeTotal: seatState.lifeTotal - (damage - held),
-		commanderDamage: damage === 0
-			? entries.filter(entry => !isEntry(entry))
-			: held === 0
-				? [
-						...entries,
-						{ seat: source.seat, commander: source.commander, damage },
-					]
-				: entries.map(entry => isEntry(entry)
-						? { ...entry, damage }
-						: entry),
+		commanderDamage:
+			damage === 0
+				? entries.filter((entry) => !isEntry(entry))
+				: held === 0
+					? [...entries, { seat: source.seat, commander: source.commander, damage }]
+					: entries.map((entry) => (isEntry(entry) ? { ...entry, damage } : entry)),
 	};
 }
 
@@ -109,12 +112,15 @@ export function applyCommanderDamage(
 	delta: number,
 ): FeatureMatchState | null {
 	const seatState = state[player];
-	if (player === source.seat || !seatState || !isSeatFilled(snapshot, player) || !holdsCommander(snapshot, source))
+	if (
+		player === source.seat ||
+		!seatState ||
+		!isSeatFilled(snapshot, player) ||
+		!holdsCommander(snapshot, source)
+	)
 		return null;
 	const damaged = withCommanderDamage(seatState, source, delta);
-	return damaged === seatState
-		? state
-		: { ...state, [player]: damaged };
+	return damaged === seatState ? state : { ...state, [player]: damaged };
 }
 
 // ─── The turn ───────────────────────────────────────────────────────────────
@@ -133,7 +139,11 @@ function seatAt(index: number): Seat {
  * one. Its number goes up when it reaches or passes the Seat that went first,
  * so a round is still counted once that Seat is Eliminated or empty.
  */
-function passTurnFrom(state: FeatureMatchState, snapshot: SeatSnapshot, from: Seat): FeatureMatchState {
+function passTurnFrom(
+	state: FeatureMatchState,
+	snapshot: SeatSnapshot,
+	from: Seat,
+): FeatureMatchState {
 	const start = SEAT_VALUES.indexOf(from);
 	let passedFirst = false;
 	for (let offset = 1; offset <= SEAT_VALUES.length; offset++) {
@@ -151,16 +161,18 @@ function passTurnFrom(state: FeatureMatchState, snapshot: SeatSnapshot, from: Se
 }
 
 /** The turn handed back to the Seat before, undoing `passTurnFrom`; it does not go before the first turn. */
-function returnTurnFrom(state: FeatureMatchState, snapshot: SeatSnapshot, from: Seat): FeatureMatchState {
+function returnTurnFrom(
+	state: FeatureMatchState,
+	snapshot: SeatSnapshot,
+	from: Seat,
+): FeatureMatchState {
 	const start = SEAT_VALUES.indexOf(from);
 	let passedFirst = from === state.firstPlayer;
 	for (let offset = 1; offset <= SEAT_VALUES.length; offset++) {
 		const seat = seatAt(start - offset);
 		if (takesTurn(state, snapshot, seat)) {
 			const turnNumber = state.turnNumber - (passedFirst ? 1 : 0);
-			return turnNumber < 1
-				? state
-				: { ...state, activePlayer: seat, turnNumber };
+			return turnNumber < 1 ? state : { ...state, activePlayer: seat, turnNumber };
 		}
 		passedFirst ||= seat === state.firstPlayer;
 	}
@@ -171,18 +183,21 @@ function returnTurnFrom(state: FeatureMatchState, snapshot: SeatSnapshot, from: 
  * A Commander game's turn stepped `delta` times: forward in Seat order over
  * empty and Eliminated Seats, or back the way it came.
  */
-export function applyCommanderTurnStep(state: FeatureMatchState, snapshot: SeatSnapshot, delta: number): FeatureMatchState {
-	if (!state.firstPlayer || !state.activePlayer)
-		return state;
+export function applyCommanderTurnStep(
+	state: FeatureMatchState,
+	snapshot: SeatSnapshot,
+	delta: number,
+): FeatureMatchState {
+	if (!state.firstPlayer || !state.activePlayer) return state;
 
 	const steps = Math.trunc(delta);
 	let stepped = state;
 	for (let taken = 0; taken < Math.abs(steps); taken++) {
-		const next = steps > 0
-			? passTurnFrom(stepped, snapshot, stepped.activePlayer!)
-			: returnTurnFrom(stepped, snapshot, stepped.activePlayer!);
-		if (next === stepped)
-			break;
+		const next =
+			steps > 0
+				? passTurnFrom(stepped, snapshot, stepped.activePlayer!)
+				: returnTurnFrom(stepped, snapshot, stepped.activePlayer!);
+		if (next === stepped) break;
 		stepped = next;
 	}
 	return stepped;
@@ -215,7 +230,7 @@ export function withSeatsCorrected(
 
 	for (const seat of SEAT_VALUES) {
 		const entries = next[seat]?.commanderDamage ?? [];
-		const dealt = entries.filter(entry => holdsCommander(corrected, entry));
+		const dealt = entries.filter((entry) => holdsCommander(corrected, entry));
 		if (dealt.length !== entries.length) {
 			next = {
 				...next,
@@ -228,9 +243,7 @@ export function withSeatsCorrected(
 	if (active && next.firstPlayer && !isSeatFilled(corrected, active)) {
 		// With nobody to pass it to, the game waits on a Seat to go first again.
 		const passed = passTurnFrom(next, corrected, active);
-		next = passed === next
-			? { ...next, activePlayer: null, firstPlayer: null }
-			: passed;
+		next = passed === next ? { ...next, activePlayer: null, firstPlayer: null } : passed;
 	}
 	return next;
 }
@@ -241,13 +254,14 @@ export function withSeatsCorrected(
  * other (the turn, the Seat that went first, the winner, and the Commander
  * Damage dealt by their Commanders).
  */
-export function withSeatsSwapped(state: FeatureMatchState, first: Seat, second: Seat): FeatureMatchState {
+export function withSeatsSwapped(
+	state: FeatureMatchState,
+	first: Seat,
+	second: Seat,
+): FeatureMatchState {
 	const moved = <T extends Seat | null | undefined>(seat: T): T | Seat => {
-		if (seat === first)
-			return second;
-		return seat === second
-			? first
-			: seat;
+		if (seat === first) return second;
+		return seat === second ? first : seat;
 	};
 	const next: FeatureMatchState = {
 		...state,
@@ -266,7 +280,7 @@ export function withSeatsSwapped(state: FeatureMatchState, first: Seat, second: 
 		if (seatState?.commanderDamage?.length) {
 			next[seat] = {
 				...seatState,
-				commanderDamage: seatState.commanderDamage.map(entry => ({
+				commanderDamage: seatState.commanderDamage.map((entry) => ({
 					...entry,
 					seat: moved(entry.seat),
 				})),

@@ -4,21 +4,19 @@ import { featureMatchOverlayGraphicAssetReferences } from '~~/shared/utils/graph
 import { graphicAssetReferenceStatusOrUnavailable } from '~/utils/graphicAssetReferenceStatus';
 import { createGuardedSequence } from '~/utils/guardedSequence';
 
-export type GraphicAssetPublicationEligibility
-	= | { outcome: 'eligible' }
-		| { outcome: 'checking' }
-		| { outcome: 'missing'; ownerSlots: string[] }
-		| { outcome: 'unavailable'; ownerSlots: string[] };
+export type GraphicAssetPublicationEligibility =
+	| { outcome: 'eligible' }
+	| { outcome: 'checking' }
+	| { outcome: 'missing'; ownerSlots: string[] }
+	| { outcome: 'unavailable'; ownerSlots: string[] };
 
 export function useGraphicAssetPublicationEligibility(
 	config: MaybeRefOrGetter<FeatureMatchOverlayModeConfig>,
 ) {
 	const eligibility = ref<GraphicAssetPublicationEligibility>({ outcome: 'checking' });
 	const statusFlights = createGuardedSequence();
-	const {
-		signal: referenceStatusRefreshSignal,
-		requestRefresh,
-	} = useGraphicAssetReferenceStatusRefresh();
+	const { signal: referenceStatusRefreshSignal, requestRefresh } =
+		useGraphicAssetReferenceStatusRefresh();
 
 	watch(
 		() => ({
@@ -33,26 +31,28 @@ export function useGraphicAssetPublicationEligibility(
 			}
 
 			eligibility.value = { outcome: 'checking' };
-			const statuses = await Promise.all(references.map(async item => ({
-				ownerSlot: item.ownerSlot,
-				status: await graphicAssetReferenceStatusOrUnavailable(item.reference),
-			})));
-			if (flight.stale)
-				return;
+			const statuses = await Promise.all(
+				references.map(async (item) => ({
+					ownerSlot: item.ownerSlot,
+					status: await graphicAssetReferenceStatusOrUnavailable(item.reference),
+				})),
+			);
+			if (flight.stale) return;
 
 			const missing = statuses
-				.filter(item => item.status.outcome === 'missing')
-				.map(item => item.ownerSlot);
+				.filter((item) => item.status.outcome === 'missing')
+				.map((item) => item.ownerSlot);
 			if (missing.length > 0) {
 				eligibility.value = { outcome: 'missing', ownerSlots: missing };
 				return;
 			}
 			const unavailable = statuses
-				.filter(item => item.status.outcome === 'unavailable')
-				.map(item => item.ownerSlot);
-			eligibility.value = unavailable.length > 0
-				? { outcome: 'unavailable', ownerSlots: unavailable }
-				: { outcome: 'eligible' };
+				.filter((item) => item.status.outcome === 'unavailable')
+				.map((item) => item.ownerSlot);
+			eligibility.value =
+				unavailable.length > 0
+					? { outcome: 'unavailable', ownerSlots: unavailable }
+					: { outcome: 'eligible' };
 		},
 		{ immediate: true },
 	);

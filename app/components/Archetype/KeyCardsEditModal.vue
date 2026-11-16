@@ -23,25 +23,22 @@ const newCardInput = ref('');
 
 function addCard() {
 	const name = newCardInput.value.trim();
-	if (!name || keyCards.value.includes(name))
-		return;
+	if (!name || keyCards.value.includes(name)) return;
 	keyCards.value.push(name);
 	newCardInput.value = '';
 }
 
 function removeCard(name: string) {
-	keyCards.value = keyCards.value.filter(c => c !== name);
+	keyCards.value = keyCards.value.filter((c) => c !== name);
 }
 
 const hasChanges = computed(() => {
-	if (keyCards.value.length !== props.currentKeyCards.length)
-		return true;
+	if (keyCards.value.length !== props.currentKeyCards.length) return true;
 	return keyCards.value.some((c, i) => c !== props.currentKeyCards[i]);
 });
 
 async function handleSave() {
-	if (!eventId.value || saving.value || !hasChanges.value)
-		return;
+	if (!eventId.value || saving.value || !hasChanges.value) return;
 
 	await runRequest(
 		async () => {
@@ -62,18 +59,19 @@ async function handleSave() {
 	);
 }
 
-useEnterToSubmit(() => {
-	void handleSave();
-}, {
-	disabled: () => saving.value || !hasChanges.value,
-});
+useEnterToSubmit(
+	() => {
+		void handleSave();
+	},
+	{
+		disabled: () => saving.value || !hasChanges.value,
+	},
+);
 </script>
 
 <template>
 	<UModal :close="{ onClick: () => emit('close') }">
-		<template #title>
-			Edit Key Cards
-		</template>
+		<template #title> Edit Key Cards </template>
 		<template #description>
 			{{ archetypeName }}
 		</template>
@@ -99,9 +97,7 @@ useEnterToSubmit(() => {
 						<UIcon name="i-lucide-x" class="size-3" />
 					</button>
 				</UBadge>
-				<span v-if="keyCards.length === 0" class="text-xs text-muted py-1">
-					No key cards set
-				</span>
+				<span v-if="keyCards.length === 0" class="text-xs text-muted py-1"> No key cards set </span>
 			</div>
 
 			<!-- Add new card input -->
@@ -126,9 +122,7 @@ useEnterToSubmit(() => {
 		</template>
 
 		<template #footer>
-			<UButton color="neutral" variant="ghost" @click="emit('close')">
-				Cancel
-			</UButton>
+			<UButton color="neutral" variant="ghost" @click="emit('close')"> Cancel </UButton>
 			<UButton
 				color="primary"
 				:disabled="!hasChanges || saving"

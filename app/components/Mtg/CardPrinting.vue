@@ -24,7 +24,7 @@ function selectPreviewCard(card: MtgCard) {
 		<template #body>
 			<div class="card-list">
 				<div
-					v-for="card, index in cardStore.previewCardPrintings"
+					v-for="(card, index) in cardStore.previewCardPrintings"
 					:key="index"
 					class="card-list-item"
 				>

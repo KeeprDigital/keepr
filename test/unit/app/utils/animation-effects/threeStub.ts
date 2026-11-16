@@ -35,8 +35,7 @@ export class StubScene {
 
 	traverse(visit: (object: unknown) => void) {
 		visit(this);
-		for (const child of this.children)
-			visit(child);
+		for (const child of this.children) visit(child);
 	}
 }
 
@@ -48,7 +47,13 @@ export class StubMaterial {
 	fragmentShader?: string;
 	dispose = vi.fn();
 
-	constructor(parameters: { uniforms?: Record<string, { value: unknown }>; vertexShader?: string; fragmentShader?: string } = {}) {
+	constructor(
+		parameters: {
+			uniforms?: Record<string, { value: unknown }>;
+			vertexShader?: string;
+			fragmentShader?: string;
+		} = {},
+	) {
 		this.uniforms = parameters.uniforms ?? {};
 		this.vertexShader = parameters.vertexShader;
 		this.fragmentShader = parameters.fragmentShader;
@@ -61,7 +66,10 @@ export class StubGeometry {
 }
 
 export class StubMesh {
-	constructor(public geometry: StubGeometry, public material: StubMaterial) {}
+	constructor(
+		public geometry: StubGeometry,
+		public material: StubMaterial,
+	) {}
 }
 
 export class StubCamera {}
@@ -71,7 +79,10 @@ export class StubRenderTarget {
 	setSize = vi.fn();
 	dispose = vi.fn();
 
-	constructor(public width = 1, public height = 1) {}
+	constructor(
+		public width = 1,
+		public height = 1,
+	) {}
 }
 
 export class StubRenderer {

@@ -14,20 +14,20 @@ import { errorNameOf } from '~~/server/utils/errorLogFields';
  */
 export default defineNitroPlugin((nitroApp) => {
 	nitroApp.hooks.hook('cloudflare:scheduled', async ({ controller }) => {
-		if (controller.cron !== LIVE_RESULTS_CRON)
-			return;
+		if (controller.cron !== LIVE_RESULTS_CRON) return;
 		try {
 			// Each tick's outcome is in the Event's poll state; only failures log.
 			await runDueLiveResultsTicks(new Date());
-		}
-		catch (error) {
+		} catch (error) {
 			// A failed run must never take down the Worker: the next minute's run
 			// reads the same due Events from D1.
-			console.error(JSON.stringify({
-				message: 'melee_live_results_run_failed',
-				cron: controller.cron,
-				errorName: errorNameOf(error),
-			}));
+			console.error(
+				JSON.stringify({
+					message: 'melee_live_results_run_failed',
+					cron: controller.cron,
+					errorName: errorNameOf(error),
+				}),
+			);
 		}
 	});
 	startLocalLiveResultsSchedule(nitroApp, { dev: import.meta.dev });

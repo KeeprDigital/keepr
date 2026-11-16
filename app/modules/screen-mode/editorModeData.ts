@@ -26,11 +26,13 @@ export interface EditedScreen {
  * is answered. It is not interactive: the editor writes the rotation itself
  * (`useRotationConfigWrites`).
  */
-export function useEditedScreenModeData<T>(edited: EditedScreen, setup: (context: ScreenContext) => T): T {
+export function useEditedScreenModeData<T>(
+	edited: EditedScreen,
+	setup: (context: ScreenContext) => T,
+): T {
 	const saved = shallowRef(toValue(edited.screen));
 	watch([edited.screen, edited.saving], ([screen, saving]) => {
-		if (!saving)
-			saved.value = screen;
+		if (!saving) saved.value = screen;
 	});
 
 	// The Event's canvas and Theme too, which a display laying itself out from

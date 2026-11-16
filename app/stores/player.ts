@@ -1,8 +1,4 @@
-import type {
-	CreatePlayerInput,
-	Player,
-	UpdatePlayerInput,
-} from '~/types';
+import type { CreatePlayerInput, Player, UpdatePlayerInput } from '~/types';
 import type { MessageData } from '~/types/realtime';
 import { useEventDataResource } from '~/modules/event-data/client';
 import { useEventDataLifecycle } from '~/modules/event-data/lifecycle';
@@ -29,8 +25,7 @@ export const usePlayerStore = defineStore('player', () => {
 			...playerRepo,
 			remove: async (eventId, playerId) => {
 				const result = await playerRepo.remove(eventId, playerId);
-				if (!result.success)
-					throw new Error('Failed to delete player');
+				if (!result.success) throw new Error('Failed to delete player');
 				return result;
 			},
 		},
@@ -76,11 +71,9 @@ export const usePlayerStore = defineStore('player', () => {
 	 * it renders follows their edits without loading the private roster.
 	 */
 	function holdPlayer(player: Player) {
-		const index = players.value.findIndex(held => held.id === player.id);
-		if (index === -1)
-			players.value.push(player);
-		else
-			players.value[index] = player;
+		const index = players.value.findIndex((held) => held.id === player.id);
+		if (index === -1) players.value.push(player);
+		else players.value[index] = player;
 	}
 
 	function applyRemoteUpdated(data: MessageData<'player:updated'>) {

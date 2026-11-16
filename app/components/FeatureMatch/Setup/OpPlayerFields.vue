@@ -27,32 +27,31 @@ const loadError = ref<string | null>(null);
 
 const leader = computed(() => modelValue.value.leader ?? null);
 /** Leaders answer the text typed; with none, nothing is offered. */
-const offered = computed(() => leaders.value.filter(card => opCardMatchesText(card, text.value)));
+const offered = computed(() => leaders.value.filter((card) => opCardMatchesText(card, text.value)));
 
 /** Every Leader, a page at a time; whether card data is available is known from the first page. */
 async function loadLeaders() {
 	const eventId = eventStore.eventId;
-	if (!eventId)
-		return;
+	if (!eventId) return;
 	loading.value = true;
 	loadError.value = null;
 	try {
 		const loaded: OpCardSummary[] = [];
 		while (true) {
-			const answer = await searchCards(eventId, { category: 'leader', limit: PAGE_SIZE, offset: loaded.length });
+			const answer = await searchCards(eventId, {
+				category: 'leader',
+				limit: PAGE_SIZE,
+				offset: loaded.length,
+			});
 			available.value = answer.available;
-			if (!answer.available)
-				break;
+			if (!answer.available) break;
 			loaded.push(...answer.items);
-			if (answer.items.length === 0 || loaded.length >= answer.total)
-				break;
+			if (answer.items.length === 0 || loaded.length >= answer.total) break;
 		}
 		leaders.value = loaded;
-	}
-	catch {
+	} catch {
 		loadError.value = 'Leaders could not be loaded. Try again.';
-	}
-	finally {
+	} finally {
 		loading.value = false;
 	}
 }
@@ -91,7 +90,7 @@ onMounted(loadLeaders);
 					class="h-14 rounded-sm"
 					style="aspect-ratio: 600 / 838"
 					loading="lazy"
-				>
+				/>
 				<div class="min-w-0 flex-1">
 					<p class="truncate font-medium">
 						{{ leader.name }}
@@ -126,19 +125,21 @@ onMounted(loadLeaders);
 			</p>
 			<p v-else-if="loadError" class="flex items-center gap-2 text-sm text-error">
 				{{ loadError }}
-				<UButton
-					label="Retry"
-					size="xs"
-					color="neutral"
-					variant="outline"
-					@click="loadLeaders"
-				/>
+				<UButton label="Retry" size="xs" color="neutral" variant="outline" @click="loadLeaders" />
 			</p>
-			<p v-else-if="text.trim() && !loading && offered.length === 0" class="text-sm text-muted" data-no-leaders>
+			<p
+				v-else-if="text.trim() && !loading && offered.length === 0"
+				class="text-sm text-muted"
+				data-no-leaders
+			>
 				No Leaders match “{{ text.trim() }}”.
 			</p>
 
-			<ul v-if="offered.length > 0" class="flex max-h-72 flex-col gap-1 overflow-y-auto" aria-label="Leaders">
+			<ul
+				v-if="offered.length > 0"
+				class="flex max-h-72 flex-col gap-1 overflow-y-auto"
+				aria-label="Leaders"
+			>
 				<li v-for="card in offered" :key="card.number">
 					<button
 						type="button"
@@ -152,7 +153,7 @@ onMounted(loadLeaders);
 							class="h-12 rounded-sm"
 							style="aspect-ratio: 600 / 838"
 							loading="lazy"
-						>
+						/>
 						<span class="min-w-0 flex-1 truncate">{{ card.name }}</span>
 						<span class="text-sm text-muted">{{ card.number }}</span>
 						<OpColorDisplay :colors="opLeaderOf(card).colors" size="sm" />

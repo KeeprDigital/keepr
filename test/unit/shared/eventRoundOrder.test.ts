@@ -14,7 +14,7 @@ function round(id: number, phaseId: number, hasStandings: boolean): EventRound {
 }
 
 describe('seedingRoundId', () => {
-	it('seeds a Phase from the last Round before its first that holds Round Standings, never from the Phase\'s own', () => {
+	it("seeds a Phase from the last Round before its first that holds Round Standings, never from the Phase's own", () => {
 		const rounds = [
 			round(11, SWISS, true),
 			round(12, SWISS, true),
@@ -49,17 +49,13 @@ describe('seedingRoundId', () => {
 		expect(seedingRoundId(rounds, DAY_2)).toBe(12);
 	});
 
-	it('has no seeds for the Event\'s first Phase, a Phase after Rounds without Round Standings, or a Phase holding no Round', () => {
-		const rounds = [
-			round(11, SWISS, true),
-			round(21, DAY_2, false),
-		];
+	it("has no seeds for the Event's first Phase, a Phase after Rounds without Round Standings, or a Phase holding no Round", () => {
+		const rounds = [round(11, SWISS, true), round(21, DAY_2, false)];
 
 		expect(seedingRoundId(rounds, SWISS)).toBeNull();
-		expect(seedingRoundId([
-			round(11, SWISS, false),
-			round(31, TOP_CUT, false),
-		], TOP_CUT)).toBeNull();
+		expect(
+			seedingRoundId([round(11, SWISS, false), round(31, TOP_CUT, false)], TOP_CUT),
+		).toBeNull();
 		expect(seedingRoundId(rounds, TOP_CUT)).toBeNull();
 	});
 });

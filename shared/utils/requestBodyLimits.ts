@@ -1,6 +1,6 @@
 export const MUTATION_BODY_METHODS = ['DELETE', 'PATCH', 'POST', 'PUT'] as const;
 
-export type MutationBodyMethod = typeof MUTATION_BODY_METHODS[number];
+export type MutationBodyMethod = (typeof MUTATION_BODY_METHODS)[number];
 
 /**
  * A TCG+ Import's request ceiling: a 512-player export is about 720 KiB as

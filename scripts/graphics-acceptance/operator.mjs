@@ -58,9 +58,7 @@ const BOOTSTRAP_TOKEN_HEADER = 'x-admin-bootstrap-token';
 
 /** A value the environment can actually supply, or undefined. */
 function usable(value) {
-	return typeof value === 'string' && value.trim().length > 0
-		? value
-		: undefined;
+	return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 }
 
 /**
@@ -82,13 +80,11 @@ function usable(value) {
 export function operatorCredentialPlan({ deployed = false, env = {}, supplied = {}, newPassword }) {
 	const email = usable(env[OPERATOR_EMAIL_ENV]);
 	const password = usable(env[OPERATOR_PASSWORD_ENV]);
-	if (email && password)
-		return { kind: 'sign-in', email, password };
+	if (email && password) return { kind: 'sign-in', email, password };
 
-	const bootstrapToken = usable(env[BOOTSTRAP_TOKEN_NAME])
-		?? (deployed
-			? undefined
-			: usable(supplied[BOOTSTRAP_TOKEN_NAME]));
+	const bootstrapToken =
+		usable(env[BOOTSTRAP_TOKEN_NAME]) ??
+		(deployed ? undefined : usable(supplied[BOOTSTRAP_TOKEN_NAME]));
 	if (bootstrapToken) {
 		return {
 			kind: 'bootstrap',
@@ -119,23 +115,28 @@ export function operatorCredentialPlan({ deployed = false, env = {}, supplied = 
  * @param {{ deployed?: boolean }} options
  */
 export function operatorUnavailableNotice({ deployed = false } = {}) {
-	const credentials = `Set ${OPERATOR_EMAIL_ENV} and ${OPERATOR_PASSWORD_ENV} to an existing operator's `
-		+ 'account to sign in as them';
+	const credentials =
+		`Set ${OPERATOR_EMAIL_ENV} and ${OPERATOR_PASSWORD_ENV} to an existing operator's ` +
+		'account to sign in as them';
 
 	if (deployed) {
-		return `This run has no operator to sign in as, and every route behind the API boundary answers 401 `
-			+ `without one, so nothing would have been proved. ${credentials} — a deployed installation's `
-			+ `${BOOTSTRAP_TOKEN_NAME} is deleted after the install ceremony, so there is nothing here to `
-			+ `bootstrap with. Setting ${BOOTSTRAP_TOKEN_NAME} in this shell works too, if you have armed it on `
-			+ `the installation for the length of the run.`;
+		return (
+			`This run has no operator to sign in as, and every route behind the API boundary answers 401 ` +
+			`without one, so nothing would have been proved. ${credentials} — a deployed installation's ` +
+			`${BOOTSTRAP_TOKEN_NAME} is deleted after the install ceremony, so there is nothing here to ` +
+			`bootstrap with. Setting ${BOOTSTRAP_TOKEN_NAME} in this shell works too, if you have armed it on ` +
+			`the installation for the length of the run.`
+		);
 	}
 
-	return `This run has no operator to sign in as, and every route behind the API boundary answers 401 `
-		+ `without one, so nothing would have been proved. A local run ordinarily takes ${BOOTSTRAP_TOKEN_NAME} `
-		+ `from .env and creates its own account through the first-admin bootstrap; a fresh git worktree has no `
-		+ `such file, because it is gitignored. Fix: copy .env in from the checkout you branched from, or fill `
-		+ `in .env.example. ${credentials} instead, `
-		+ `if you would rather not arm the bootstrap. See README.md → Local configuration.`;
+	return (
+		`This run has no operator to sign in as, and every route behind the API boundary answers 401 ` +
+		`without one, so nothing would have been proved. A local run ordinarily takes ${BOOTSTRAP_TOKEN_NAME} ` +
+		`from .env and creates its own account through the first-admin bootstrap; a fresh git worktree has no ` +
+		`such file, because it is gitignored. Fix: copy .env in from the checkout you branched from, or fill ` +
+		`in .env.example. ${credentials} instead, ` +
+		`if you would rather not arm the bootstrap. See README.md → Local configuration.`
+	);
 }
 
 /**
@@ -157,15 +158,8 @@ export function operatorUnavailableNotice({ deployed = false } = {}) {
 export function isLoopbackOrigin(origin) {
 	try {
 		const { hostname } = new URL(origin);
-		return [
-			'127.0.0.1',
-			'localhost',
-			'::1',
-			'[::1]',
-			'0.0.0.0',
-		].includes(hostname);
-	}
-	catch {
+		return ['127.0.0.1', 'localhost', '::1', '[::1]', '0.0.0.0'].includes(hostname);
+	} catch {
 		return false;
 	}
 }
@@ -189,9 +183,10 @@ export function newOperatorPassword() {
  * installs each one in its own jar entry.
  */
 export function sessionCookiePairs(response) {
-	return response.headers.getSetCookie()
-		.map(cookie => cookie.split(';', 1)[0])
-		.filter(pair => pair.includes('='));
+	return response.headers
+		.getSetCookie()
+		.map((cookie) => cookie.split(';', 1)[0])
+		.filter((pair) => pair.includes('='));
 }
 
 /**
@@ -233,7 +228,10 @@ async function postJson(origin, path, body, headers = {}) {
  * @param {string} origin
  * @param {{ deployed?: boolean, env?: Record<string, string | undefined>, supplied?: Record<string, string | undefined> }} options
  */
-export async function openOperatorSession(origin, { deployed = false, env = process.env, supplied = {} } = {}) {
+export async function openOperatorSession(
+	origin,
+	{ deployed = false, env = process.env, supplied = {} } = {},
+) {
 	const plan = operatorCredentialPlan({
 		deployed,
 		env,
@@ -256,7 +254,10 @@ export async function openOperatorSession(origin, { deployed = false, env = proc
 		}
 	}
 
-	const signIn = await postJson(origin, SIGN_IN_ROUTE, { email: plan.email, password: plan.password });
+	const signIn = await postJson(origin, SIGN_IN_ROUTE, {
+		email: plan.email,
+		password: plan.password,
+	});
 	if (!signIn.ok) {
 		throw new AcceptanceFailure('harness-operator-unavailable', {
 			step: 'sign-in',
@@ -294,8 +295,6 @@ export async function openOperatorSessionForOrigin(origin) {
 	const local = isLoopbackOrigin(origin);
 	return await openOperatorSession(origin, {
 		deployed: !local,
-		supplied: local
-			? suppliedNames(readLocalConfigurationFiles())
-			: {},
+		supplied: local ? suppliedNames(readLocalConfigurationFiles()) : {},
 	});
 }

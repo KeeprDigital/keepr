@@ -8,13 +8,13 @@ export type StandingsSettingsGroup = ScreenSettingsGroupOf<typeof standingsModeC
 
 /** How the Standings Screen Mode looks: its Mode Tokens, by name within the mode. */
 export const standingsModeTokens = {
-	'rise': {
+	rise: {
 		type: 'color',
 		label: 'Position Change climb',
 		settingsGroup: 'table',
 		default: { token: 'positive' },
 	},
-	'fall': {
+	fall: {
 		type: 'color',
 		label: 'Position Change drop',
 		settingsGroup: 'table',

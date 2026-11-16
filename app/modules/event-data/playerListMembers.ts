@@ -2,10 +2,26 @@ import type { PlayerListSummary } from '~/types';
 import type { Flight } from '~/utils/guardedSequence';
 
 interface PlayerListMembersRepository {
-	addMembers: (eventId: number, listId: number, playerIds: number[]) => Promise<{ added: number; memberCount: number }>;
-	removeMember: (eventId: number, listId: number, playerId: number) => Promise<{ success: boolean; memberCount: number }>;
-	batchRemoveMembers: (eventId: number, listId: number, playerIds: number[]) => Promise<{ removed: number; memberCount: number }>;
-	reorderMembers: (eventId: number, listId: number, playerIds: number[]) => Promise<{ reordered: number; memberCount: number }>;
+	addMembers: (
+		eventId: number,
+		listId: number,
+		playerIds: number[],
+	) => Promise<{ added: number; memberCount: number }>;
+	removeMember: (
+		eventId: number,
+		listId: number,
+		playerId: number,
+	) => Promise<{ success: boolean; memberCount: number }>;
+	batchRemoveMembers: (
+		eventId: number,
+		listId: number,
+		playerIds: number[],
+	) => Promise<{ removed: number; memberCount: number }>;
+	reorderMembers: (
+		eventId: number,
+		listId: number,
+		playerIds: number[],
+	) => Promise<{ reordered: number; memberCount: number }>;
 	getMemberIds: (eventId: number, listId: number) => Promise<number[]>;
 }
 
@@ -38,7 +54,7 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 	const memberReReads = createKeyedGuardedSequence<number>();
 
 	function setMemberCount(listId: number, memberCount: number) {
-		const index = state.lists.value.findIndex(l => l.id === listId);
+		const index = state.lists.value.findIndex((l) => l.id === listId);
 		if (index !== -1) {
 			state.lists.value[index] = { ...state.lists.value[index]!, memberCount };
 		}
@@ -57,39 +73,33 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 	}
 
 	async function addMembers(eventId: number, listId: number, playerIds: number[]) {
-		const index = state.lists.value.findIndex(l => l.id === listId);
-		const originalCount = index !== -1
-			? state.lists.value[index]!.memberCount
-			: 0;
+		const index = state.lists.value.findIndex((l) => l.id === listId);
+		const originalCount = index !== -1 ? state.lists.value[index]!.memberCount : 0;
 		const cachedIds = membersByListId.value.get(listId);
 
 		// When cache is available, deduplicate and skip if nothing to add.
-		const idsToAdd = cachedIds
-			? playerIds.filter(id => !cachedIds.includes(id))
-			: playerIds;
+		const idsToAdd = cachedIds ? playerIds.filter((id) => !cachedIds.includes(id)) : playerIds;
 
-		if (idsToAdd.length === 0)
-			return;
+		if (idsToAdd.length === 0) return;
 
 		// Optimistic: increment member count by actual new IDs.
 		if (index !== -1) {
-			state.lists.value[index] = { ...state.lists.value[index]!, memberCount: originalCount + idsToAdd.length };
+			state.lists.value[index] = {
+				...state.lists.value[index]!,
+				memberCount: originalCount + idsToAdd.length,
+			};
 		}
 
 		// Optimistic: update cached member IDs.
 		if (cachedIds) {
-			membersByListId.value.set(listId, [
-				...cachedIds,
-				...idsToAdd,
-			]);
+			membersByListId.value.set(listId, [...cachedIds, ...idsToAdd]);
 		}
 
 		const flight = state.currentLifetime();
 		return executeReporting(
 			async () => {
 				const result = await state.repository.addMembers(eventId, listId, idsToAdd);
-				if (flight.current)
-					setMemberCount(listId, result.memberCount);
+				if (flight.current) setMemberCount(listId, result.memberCount);
 				return result;
 			},
 			{
@@ -109,10 +119,8 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 
 	async function removeMember(eventId: number, listId: number, playerId: number) {
 		// Optimistic: decrement member count.
-		const index = state.lists.value.findIndex(l => l.id === listId);
-		const originalCount = index !== -1
-			? state.lists.value[index]!.memberCount
-			: 0;
+		const index = state.lists.value.findIndex((l) => l.id === listId);
+		const originalCount = index !== -1 ? state.lists.value[index]!.memberCount : 0;
 		if (index !== -1) {
 			state.lists.value[index] = {
 				...state.lists.value[index]!,
@@ -123,7 +131,10 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 		// Optimistic: update cached member IDs.
 		const cachedIds = membersByListId.value.get(listId);
 		if (cachedIds) {
-			membersByListId.value.set(listId, cachedIds.filter(id => id !== playerId));
+			membersByListId.value.set(
+				listId,
+				cachedIds.filter((id) => id !== playerId),
+			);
 		}
 
 		const flight = state.currentLifetime();
@@ -133,8 +144,7 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 				if (!result.success) {
 					throw new Error('Failed to remove player from list');
 				}
-				if (flight.current)
-					setMemberCount(listId, result.memberCount);
+				if (flight.current) setMemberCount(listId, result.memberCount);
 				return result;
 			},
 			{
@@ -154,10 +164,8 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 
 	async function batchRemoveMembers(eventId: number, listId: number, playerIds: number[]) {
 		// Optimistic: decrement member count.
-		const index = state.lists.value.findIndex(l => l.id === listId);
-		const originalCount = index !== -1
-			? state.lists.value[index]!.memberCount
-			: 0;
+		const index = state.lists.value.findIndex((l) => l.id === listId);
+		const originalCount = index !== -1 ? state.lists.value[index]!.memberCount : 0;
 		if (index !== -1) {
 			state.lists.value[index] = {
 				...state.lists.value[index]!,
@@ -169,15 +177,17 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 		const cachedIds = membersByListId.value.get(listId);
 		if (cachedIds) {
 			const removeSet = new Set(playerIds);
-			membersByListId.value.set(listId, cachedIds.filter(id => !removeSet.has(id)));
+			membersByListId.value.set(
+				listId,
+				cachedIds.filter((id) => !removeSet.has(id)),
+			);
 		}
 
 		const flight = state.currentLifetime();
 		return executeReporting(
 			async () => {
 				const result = await state.repository.batchRemoveMembers(eventId, listId, playerIds);
-				if (flight.current)
-					setMemberCount(listId, result.memberCount);
+				if (flight.current) setMemberCount(listId, result.memberCount);
 				return result;
 			},
 			{
@@ -206,8 +216,7 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 		return executeReporting(
 			async () => {
 				const result = await state.repository.reorderMembers(eventId, listId, playerIds);
-				if (flight.current)
-					setMemberCount(listId, result.memberCount);
+				if (flight.current) setMemberCount(listId, result.memberCount);
 				return result;
 			},
 			{
@@ -227,8 +236,7 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 		return executeReporting(
 			async () => {
 				const memberIds = await state.repository.getMemberIds(eventId, listId);
-				if (flight.current)
-					membersByListId.value.set(listId, memberIds);
+				if (flight.current) membersByListId.value.set(listId, memberIds);
 				return memberIds;
 			},
 			{ errorRef: state.error, flight },
@@ -247,10 +255,9 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 	 */
 	function applyRemoteMembersChanged(listId: number, memberCount: number) {
 		setMemberCount(listId, memberCount);
-		if (!membersByListId.value.has(listId))
-			return;
+		if (!membersByListId.value.has(listId)) return;
 
-		const eventId = state.lists.value.find(l => l.id === listId)?.eventId;
+		const eventId = state.lists.value.find((l) => l.id === listId)?.eventId;
 		if (eventId === undefined) {
 			membersByListId.value.delete(listId);
 			return;
@@ -261,12 +268,10 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 		const lands = () => lifetime.current && reRead.current;
 		void state.repository.getMemberIds(eventId, listId).then(
 			(memberIds) => {
-				if (lands())
-					membersByListId.value.set(listId, memberIds);
+				if (lands()) membersByListId.value.set(listId, memberIds);
 			},
 			() => {
-				if (lands())
-					membersByListId.value.delete(listId);
+				if (lands()) membersByListId.value.delete(listId);
 			},
 		);
 	}

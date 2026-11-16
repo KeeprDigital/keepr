@@ -2,7 +2,12 @@
 // or a Screen's overrides index as ordinary Graphic Asset References, and what
 // a Screen's resolved tokens supply to its Screen Output Asset Capability.
 
-import type { StoredThemeTokens, ThemeTokenType, ThemeTokenValue, ThemeTokenValueTypes } from './modules/theme/tokens';
+import type {
+	StoredThemeTokens,
+	ThemeTokenType,
+	ThemeTokenValue,
+	ThemeTokenValueTypes,
+} from './modules/theme/tokens';
 import type { ScreenMode } from './types/enums';
 import type { ScreenGraphicAssetReference } from './utils/graphicsAssetReferences';
 import { resolveFoundationToken } from './modules/theme/resolution';
@@ -46,23 +51,24 @@ export function themeTokenValueGraphicAssetReferences(
 			const { font } = value as ThemeTokenValueTypes['typography'];
 			return font.kind === 'asset'
 				? [
-						{ reference: font.reference, ownerSlot: `${slot}${THEME_TOKEN_SLOT_SEPARATOR}font`, kind: 'font' },
+						{
+							reference: font.reference,
+							ownerSlot: `${slot}${THEME_TOKEN_SLOT_SEPARATOR}font`,
+							kind: 'font',
+						},
 					]
 				: [];
 		}
 		case 'backgroundLayers':
 			return (value as ThemeTokenValueTypes['backgroundLayers']).flatMap((layer) => {
-				if (layer.type !== 'image' && layer.type !== 'video')
-					return [];
+				if (layer.type !== 'image' && layer.type !== 'video') return [];
 				const reference = screenMediaSourceReference(layer.source);
 				return reference
 					? [
 							{
 								reference,
 								ownerSlot: `${slot}${THEME_TOKEN_SLOT_SEPARATOR}${layer.id}${THEME_TOKEN_SLOT_SEPARATOR}source`,
-								kind: layer.type === 'video'
-									? 'silent-video' as const
-									: 'image' as const,
+								kind: layer.type === 'video' ? ('silent-video' as const) : ('image' as const),
 							},
 						]
 					: [];
@@ -84,8 +90,7 @@ export function storedThemeTokenGraphicAssetReferences(
 ): ScreenGraphicAssetReference[] {
 	return Object.entries(tokens).flatMap(([name, stored]) => {
 		const token = themeTokenDefinition(name);
-		if (!token)
-			return [];
+		if (!token) return [];
 		const literal = readTokenLiteral(token.definition, stored);
 		return literal === undefined
 			? []
@@ -113,11 +118,10 @@ export function screenThemeGraphicAssetReferences(
 			definition.type,
 			resolveFoundationToken({ vocabulary: FOUNDATION_TOKENS, theme, overrides: {} }, name),
 			name,
-		));
+		),
+	);
 	const own = Object.entries(modeTokens).flatMap(([name, definition]) =>
-		themeTokenValueGraphicAssetReferences(definition.type, values[name]!, name));
-	return [
-		...foundation,
-		...own,
-	];
+		themeTokenValueGraphicAssetReferences(definition.type, values[name]!, name),
+	);
+	return [...foundation, ...own];
 }

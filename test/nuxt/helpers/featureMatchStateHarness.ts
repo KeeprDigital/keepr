@@ -1,4 +1,7 @@
-import type { FeatureMatchSessionResponse, FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
+import type {
+	FeatureMatchSessionResponse,
+	FeatureMatchSourceSnapshot,
+} from '~~/shared/types/featureMatchSession';
 import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 import { toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
 import { twoPlayerSnapshot } from '~~/test/helpers/featureMatchSnapshots';
@@ -61,7 +64,9 @@ export function commandResult(
 }
 
 /** A stopped countdown clock at zero, with the fields a test names. */
-export function clock(overrides: Partial<FeatureMatchState['clock']> = {}): FeatureMatchState['clock'] {
+export function clock(
+	overrides: Partial<FeatureMatchState['clock']> = {},
+): FeatureMatchState['clock'] {
 	return {
 		type: 'countdown',
 		durationMs: 3_000_000,

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { ShapeCornerKey, ShapeGeometry } from '~~/shared/types/graphics';
-import type { FeatureMatchOverlayGlowPosition, FeatureMatchSourceFramingStyle } from '~~/shared/types/screenConfig';
+import type {
+	FeatureMatchOverlayGlowPosition,
+	FeatureMatchSourceFramingStyle,
+} from '~~/shared/types/screenConfig';
 import { resolveFeatureMatchOverlayCornerRadii } from '~/utils/featureMatchOverlayGeometry';
 import FeatureMatchOverlayBorderSidesControl from './BorderSidesControl.vue';
 
@@ -53,8 +56,7 @@ function editCorners(patch: Partial<ShapeGeometry>) {
 	const updates: Partial<FeatureMatchSourceFramingStyle> = {};
 	for (const corner of Object.keys(RADIUS_FIELDS) as ShapeCornerKey[]) {
 		const edited = patch[corner];
-		if (edited)
-			updates[RADIUS_FIELDS[corner]] = edited.size;
+		if (edited) updates[RADIUS_FIELDS[corner]] = edited.size;
 	}
 	update(updates);
 }
@@ -66,17 +68,9 @@ function update(updates: Partial<FeatureMatchSourceFramingStyle>) {
 
 <template>
 	<div class="space-y-3">
-		<GraphicsShapeGeometryFields
-			:geometry="corners"
-			radii
-			@update="editCorners"
-		/>
+		<GraphicsShapeGeometryFields :geometry="corners" radii @update="editCorners" />
 
-		<FeatureMatchOverlayBorderSidesControl
-			label="Border sides"
-			:sides="style"
-			@update="update"
-		/>
+		<FeatureMatchOverlayBorderSidesControl label="Border sides" :sides="style" @update="update" />
 
 		<ScreenSettingsField label="Glow position" size="sm" stacked>
 			<USelect

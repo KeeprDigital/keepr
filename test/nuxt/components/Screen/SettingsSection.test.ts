@@ -11,7 +11,8 @@ function mountCard(props: Record<string, unknown> = {}) {
 		props: { title: 'Card Badges', ...props },
 		slots: {
 			default: () => h('input', { 'data-testid': 'field' }),
-			actions: ({ open }: { open: boolean }) => h('span', { 'data-testid': 'action' }, open ? 'open' : 'closed'),
+			actions: ({ open }: { open: boolean }) =>
+				h('span', { 'data-testid': 'action' }, open ? 'open' : 'closed'),
 		},
 		global: { stubs: nuxtUiStubs },
 	});
@@ -33,12 +34,12 @@ describe('screenSettingsSection, as a page card', () => {
 	/** The toggle's ARIA state, or `null` when the card renders no toggle. */
 	function ariaState(wrapper: ReturnType<typeof mountCard>) {
 		const button = toggle(wrapper);
-		if (!button.exists())
-			return null;
+		if (!button.exists()) return null;
 		const controls = button.attributes('aria-controls');
 		return {
 			expanded: button.attributes('aria-expanded'),
-			controlsBody: controls !== undefined && wrapper.find(`#${controls} [data-testid="field"]`).exists(),
+			controlsBody:
+				controls !== undefined && wrapper.find(`#${controls} [data-testid="field"]`).exists(),
 		};
 	}
 
@@ -64,15 +65,15 @@ describe('screenSettingsSection, as a page card', () => {
 			before: null,
 			afterToggle: null,
 		},
-	])('$name: the toggle\'s ARIA state follows the body', async ({ props, before, afterToggle }) => {
+	])("$name: the toggle's ARIA state follows the body", async ({ props, before, afterToggle }) => {
 		const wrapper = mountCard(props);
 		await flushPromises();
 
 		expect(ariaState(wrapper)).toEqual(before);
 		expect(wrapper.find('[data-testid="field"]').exists()).toBe(before?.expanded !== 'false');
-		expect(wrapper.get('[data-testid="action"]').text()).toBe(before?.expanded === 'false'
-			? 'closed'
-			: 'open');
+		expect(wrapper.get('[data-testid="action"]').text()).toBe(
+			before?.expanded === 'false' ? 'closed' : 'open',
+		);
 
 		if (before) {
 			await toggle(wrapper).trigger('click');
@@ -85,7 +86,7 @@ describe('screenSettingsSection, as a page card', () => {
 		await flushPromises();
 		await toggle(wrapper).trigger('click');
 
-		expect(wrapper.findAll('h3').map(heading => heading.text())).toEqual(['Card Badges']);
+		expect(wrapper.findAll('h3').map((heading) => heading.text())).toEqual(['Card Badges']);
 		expect(wrapper.text().split('Badges on each card.')).toHaveLength(2);
 	});
 
@@ -115,21 +116,24 @@ describe('screenSettingsSection, as a page card', () => {
 			closeFirst: true,
 			expanded: 'true',
 		},
-	])('$name: remounts with aria-expanded $expanded and the summary shown only while closed', async ({ props, closeFirst, expanded }) => {
-		const cardProps = { ...props, summary: 'Rarity · Price' };
-		if (closeFirst) {
-			const first = mountCard(cardProps);
+	])(
+		'$name: remounts with aria-expanded $expanded and the summary shown only while closed',
+		async ({ props, closeFirst, expanded }) => {
+			const cardProps = { ...props, summary: 'Rarity · Price' };
+			if (closeFirst) {
+				const first = mountCard(cardProps);
+				await flushPromises();
+				await toggle(first).trigger('click');
+				first.unmount();
+			}
+
+			const wrapper = mountCard(cardProps);
 			await flushPromises();
-			await toggle(first).trigger('click');
-			first.unmount();
-		}
 
-		const wrapper = mountCard(cardProps);
-		await flushPromises();
-
-		expect(toggle(wrapper).attributes('aria-expanded')).toBe(expanded);
-		expect(wrapper.text().includes('Rarity · Price')).toBe(expanded === 'false');
-	});
+			expect(toggle(wrapper).attributes('aria-expanded')).toBe(expanded);
+			expect(wrapper.text().includes('Rarity · Price')).toBe(expanded === 'false');
+		},
+	);
 
 	it('shows a summary slot in the closed header', async () => {
 		const wrapper = mount(SettingsSection, {
@@ -190,7 +194,9 @@ describe('screenSettingsSection, as an inspector row', () => {
 
 	// A closed row hides its body rather than unmounting it.
 	function shown(wrapper: ReturnType<typeof mountRow>, id = 'typography') {
-		return !(wrapper.get(`[data-testid="inspector-section-${id}"]`).attributes('style') ?? '').includes('display: none');
+		return !(
+			wrapper.get(`[data-testid="inspector-section-${id}"]`).attributes('style') ?? ''
+		).includes('display: none');
 	}
 
 	it('starts closed, showing its summary, and opens over it', async () => {

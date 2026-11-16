@@ -42,21 +42,12 @@ interface Choice {
 
 // The controls see plain choices; the `item-label` slot gets each kind's own item back.
 const choices = computed<Choice[]>(() => props.items);
-const options = computed<Choice[]>(() => [
-	{ label: props.nullLabel, value: null },
-	...props.items,
-]);
+const options = computed<Choice[]>(() => [{ label: props.nullLabel, value: null }, ...props.items]);
 
-const width = computed(() => props.stacked
-	? 'w-full'
-	: props.wide
-		? 'w-72'
-		: 'w-64');
+const width = computed(() => (props.stacked ? 'w-full' : props.wide ? 'w-72' : 'w-64'));
 
 function pick(id: unknown) {
-	emit('update:modelValue', typeof id === 'number'
-		? id
-		: null);
+	emit('update:modelValue', typeof id === 'number' ? id : null);
 }
 </script>
 

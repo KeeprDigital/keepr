@@ -9,7 +9,10 @@ import { requireBrowserSessionId } from '~~/server/utils/auth';
  */
 export default defineEventHandler(async (event) => {
 	const sessionId = await requireBrowserSessionId(event);
-	const { templateId } = await getValidatedRouterParams(event, broadcastGraphicTemplateParamsSchema.parse);
+	const { templateId } = await getValidatedRouterParams(
+		event,
+		broadcastGraphicTemplateParamsSchema.parse,
+	);
 
 	const lease = await graphicsAuthoringLeaseModule().release(
 		graphicsTemplateLeaseRef(templateId),

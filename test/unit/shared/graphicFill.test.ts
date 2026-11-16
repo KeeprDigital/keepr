@@ -18,32 +18,44 @@ describe('applyGraphicFillEdit', () => {
 	it('switches a solid fill to a gradient that starts from its colour', () => {
 		const solid: GraphicFill = { type: 'solid', color: '#123456' };
 
-		expect(applyGraphicFillEdit(solid, { kind: 'fill-kind', fillKind: 'linear-gradient' }, { gradientEndColor: '#000000' }))
-			.toEqual({
-				type: 'linear-gradient',
-				angle: 90,
-				stops: [
-					{ color: '#123456', position: 0, opacity: 1 },
-					{ color: '#000000', position: 1, opacity: 1 },
-				],
-			});
+		expect(
+			applyGraphicFillEdit(
+				solid,
+				{ kind: 'fill-kind', fillKind: 'linear-gradient' },
+				{ gradientEndColor: '#000000' },
+			),
+		).toEqual({
+			type: 'linear-gradient',
+			angle: 90,
+			stops: [
+				{ color: '#123456', position: 0, opacity: 1 },
+				{ color: '#000000', position: 1, opacity: 1 },
+			],
+		});
 	});
 
-	it('ends a new gradient on the fill\'s own colour where the host names no end colour', () => {
+	it("ends a new gradient on the fill's own colour where the host names no end colour", () => {
 		const solid: GraphicFill = { type: 'solid', color: 'brand' };
 
 		const next = applyGraphicFillEdit(solid, { kind: 'fill-kind', fillKind: 'linear-gradient' });
 
-		expect(next.type === 'linear-gradient' && next.stops.map(stop => stop.color)).toEqual(['brand', 'brand']);
+		expect(next.type === 'linear-gradient' && next.stops.map((stop) => stop.color)).toEqual([
+			'brand',
+			'brand',
+		]);
 	});
 
-	it('switches a gradient back to solid on its first stop\'s colour, so changing kind is never a reset', () => {
-		expect(applyGraphicFillEdit(gradient, { kind: 'fill-kind', fillKind: 'solid' }))
-			.toEqual({ type: 'solid', color: 'brand' });
+	it("switches a gradient back to solid on its first stop's colour, so changing kind is never a reset", () => {
+		expect(applyGraphicFillEdit(gradient, { kind: 'fill-kind', fillKind: 'solid' })).toEqual({
+			type: 'solid',
+			color: 'brand',
+		});
 	});
 
 	it('leaves a fill already of the chosen kind as it is', () => {
-		expect(applyGraphicFillEdit(gradient, { kind: 'fill-kind', fillKind: 'linear-gradient' })).toBe(gradient);
+		expect(applyGraphicFillEdit(gradient, { kind: 'fill-kind', fillKind: 'linear-gradient' })).toBe(
+			gradient,
+		);
 	});
 
 	it('edits one stop and the angle without disturbing the others', () => {
@@ -88,6 +100,9 @@ describe('applyGraphicFillEdit', () => {
 		expect(applyGraphicFillEdit(solid, { kind: 'stop-count', delta: 1 })).toBe(solid);
 		expect(applyGraphicFillEdit(solid, { kind: 'gradient-angle', angle: 45 })).toBe(solid);
 		expect(applyGraphicFillEdit(gradient, { kind: 'solid-fill', color: 'ink' })).toBe(gradient);
-		expect(applyGraphicFillEdit(solid, { kind: 'solid-fill', color: 'ink' })).toEqual({ type: 'solid', color: 'ink' });
+		expect(applyGraphicFillEdit(solid, { kind: 'solid-fill', color: 'ink' })).toEqual({
+			type: 'solid',
+			color: 'ink',
+		});
 	});
 });

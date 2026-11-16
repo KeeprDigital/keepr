@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import type { CardPageMode } from '~/types/card/page';
 
-const props = withDefaults(defineProps<{
-	matchDecklistDisabled?: boolean;
-	playerDecklistDisabled?: boolean;
-	/** A One Piece Event offers no Player Deck List mode. */
-	offersPlayerDecklist?: boolean;
-}>(), {
-	matchDecklistDisabled: false,
-	playerDecklistDisabled: false,
-	offersPlayerDecklist: true,
-});
+const props = withDefaults(
+	defineProps<{
+		matchDecklistDisabled?: boolean;
+		playerDecklistDisabled?: boolean;
+		/** A One Piece Event offers no Player Deck List mode. */
+		offersPlayerDecklist?: boolean;
+	}>(),
+	{
+		matchDecklistDisabled: false,
+		playerDecklistDisabled: false,
+		offersPlayerDecklist: true,
+	},
+);
 const mode = defineModel<CardPageMode>({ required: true });
 </script>
 
@@ -21,7 +24,11 @@ const mode = defineModel<CardPageMode>({ required: true });
 			:color="mode === 'search' ? 'primary' : 'neutral'"
 			:variant="mode === 'search' ? 'subtle' : 'outline'"
 			aria-label="Card search mode"
-			@click="() => { mode = 'search' }"
+			@click="
+				() => {
+					mode = 'search';
+				}
+			"
 		/>
 		<UButton
 			icon="i-lucide-swords"
@@ -29,7 +36,11 @@ const mode = defineModel<CardPageMode>({ required: true });
 			:variant="mode === 'match-decklist' ? 'subtle' : 'outline'"
 			:disabled="props.matchDecklistDisabled"
 			aria-label="Feature match deck list mode"
-			@click="() => { mode = 'match-decklist' }"
+			@click="
+				() => {
+					mode = 'match-decklist';
+				}
+			"
 		/>
 		<UButton
 			v-if="props.offersPlayerDecklist"
@@ -38,7 +49,11 @@ const mode = defineModel<CardPageMode>({ required: true });
 			:variant="mode === 'player-decklist' ? 'subtle' : 'outline'"
 			:disabled="props.playerDecklistDisabled"
 			aria-label="Player deck list mode"
-			@click="() => { mode = 'player-decklist' }"
+			@click="
+				() => {
+					mode = 'player-decklist';
+				}
+			"
 		/>
 	</UFieldGroup>
 </template>

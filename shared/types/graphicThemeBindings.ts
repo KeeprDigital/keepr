@@ -37,7 +37,7 @@ export const GRAPHIC_THEME_SLOT_VALUES = [
 	'animation.exit',
 ] as const;
 
-export type GraphicThemeSlot = typeof GRAPHIC_THEME_SLOT_VALUES[number];
+export type GraphicThemeSlot = (typeof GRAPHIC_THEME_SLOT_VALUES)[number];
 
 /** The slots naming a lifecycle phase's Graphic Animation Recipe. */
 export type GraphicThemeAnimationSlot = Extract<GraphicThemeSlot, `animation.${string}`>;

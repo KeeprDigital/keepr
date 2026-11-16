@@ -128,10 +128,7 @@ import { templatePackageVideoWorkingCopyOperationId } from './operation';
 import { createGraphicsIngestionOperationLifecycle } from './operation-lifecycle';
 import { createGraphicsOperationalQueues } from './operational-queues';
 import { readGraphicsOperationsCockpit } from './operations-cockpit';
-import {
-	sha256Hex,
-	sha256HexStream,
-} from './png';
+import { sha256Hex, sha256HexStream } from './png';
 import {
 	createGraphicsDisagreementReporter,
 	createGraphicsReconciliation,
@@ -143,9 +140,7 @@ import {
 	processSilentVideoFromRandomAccess,
 	SilentVideoInspectionSourceError,
 } from './silent-video';
-import {
-	createUnavailableSilentVideoPlaybackValidator,
-} from './silent-video-playback-validator';
+import { createUnavailableSilentVideoPlaybackValidator } from './silent-video-playback-validator';
 import {
 	groupTemplatePackageRequirements,
 	inspectTemplateDocument,
@@ -177,10 +172,7 @@ import {
 	templatePackagePreflightFingerprintMaterial,
 } from './template-package-preflight';
 import { templatePackagePreflightIssue } from './template-package-preflight-issues';
-import {
-	GraphicAssetValidationError,
-	rejectedValidationReport,
-} from './validation';
+import { GraphicAssetValidationError, rejectedValidationReport } from './validation';
 import { createStoredZipArchive, storedZipArchiveByteLength } from './zip-archive';
 
 export { createGraphicsAssetDelivery } from './delivery';
@@ -301,15 +293,15 @@ interface StagedTemplatePackageMaterial {
 	contents: Map<string, ValidatedPackagedContent>;
 }
 
-export type GraphicAssetLifecycleTransition
-	= | {
-		outcome: 'updated';
-		asset: GraphicAsset;
-	}
+export type GraphicAssetLifecycleTransition =
 	| {
-		outcome: 'in-use';
-		usage: GraphicAssetUsage[];
-	}
+			outcome: 'updated';
+			asset: GraphicAsset;
+	  }
+	| {
+			outcome: 'in-use';
+			usage: GraphicAssetUsage[];
+	  }
 	| { outcome: 'not-found' | 'not-allowed' };
 
 /**
@@ -324,11 +316,11 @@ export type GraphicAssetLifecycleTransition
  */
 export interface GraphicsAssetCatalogue
 	extends
-	GraphicsAssetCatalogueHealth,
-	GraphicsAssetDeliveryCatalogue,
-	GraphicsAssetRetentionCatalogue,
-	GraphicsIngestionOperationCatalogue,
-	GraphicsAssetIngestionCatalogue {
+		GraphicsAssetCatalogueHealth,
+		GraphicsAssetDeliveryCatalogue,
+		GraphicsAssetRetentionCatalogue,
+		GraphicsIngestionOperationCatalogue,
+		GraphicsAssetIngestionCatalogue {
 	updateCapacityLimits: (
 		input: GraphicsAssetCapacityLimits & { updatedAt: string },
 	) => Promise<GraphicsAssetLibraryCapacity>;
@@ -445,10 +437,9 @@ export interface GraphicsAssetCatalogue
 		};
 		relatedRevisionExists: boolean;
 	}>;
-	findGraphicAssetByContentDigest: (digest: string) => Promise<
-		| (ReusableGraphicAsset & { name: string })
-		| undefined
-	>;
+	findGraphicAssetByContentDigest: (
+		digest: string,
+	) => Promise<(ReusableGraphicAsset & { name: string }) | undefined>;
 	/**
 	 * Whether a revision or derivative reaches content with this digest, which
 	 * is when its bytes count against the Canonical Graphics Quota. An object
@@ -633,7 +624,9 @@ export interface GraphicsAssetLibrary extends GraphicsAssetDelivery, GraphicsAss
 	 * exact revision, and streams the envelope. Callers learn nothing about
 	 * digests-as-keys, buckets, or any storage provider.
 	 */
-	exportTemplatePackage: (input: TemplatePackageExportRequest) => Promise<TemplatePackageExportOutcome>;
+	exportTemplatePackage: (
+		input: TemplatePackageExportRequest,
+	) => Promise<TemplatePackageExportOutcome>;
 	/**
 	 * Runs one scheduled retention pass. Every stage reclaims only state it has
 	 * just proven unreachable past its complete recovery guarantee, and records
@@ -711,9 +704,7 @@ export interface GraphicsAssetLibrary extends GraphicsAssetDelivery, GraphicsAss
 	 * One discrepancy's structured evidence, the pinned usage it affects, and
 	 * exactly the actions valid in its current state.
 	 */
-	inspectGraphicsDiscrepancy: (input: {
-		discrepancyId: string;
-	}) => Promise<GraphicsDiscrepancy>;
+	inspectGraphicsDiscrepancy: (input: { discrepancyId: string }) => Promise<GraphicsDiscrepancy>;
 	/** Re-observes one discrepancy against the byte store right now. */
 	recheckGraphicsDiscrepancy: (input: {
 		discrepancyId: string;
@@ -779,9 +770,9 @@ export interface TemplatePackageEnvelope {
 	open: () => ReadableStream<Uint8Array>;
 }
 
-export type TemplatePackageExportOutcome
-	= | { outcome: 'exported'; package: TemplatePackageEnvelope }
-		| { outcome: 'rejected'; report: TemplatePackageExportReport };
+export type TemplatePackageExportOutcome =
+	| { outcome: 'exported'; package: TemplatePackageEnvelope }
+	| { outcome: 'rejected'; report: TemplatePackageExportReport };
 
 interface GraphicsAssetLibraryDependencies {
 	catalogue: GraphicsAssetCatalogueHealth | GraphicsAssetCatalogue;
@@ -823,7 +814,10 @@ function requireDiscrepancyOutcome(
 	outcome: GraphicsDiscrepancyActionOutcome | undefined,
 ): GraphicsDiscrepancyActionOutcome {
 	if (!outcome)
-		throw new GraphicsAssetLibraryError('Graphics discrepancy not found', 'ingestion-operation-not-found');
+		throw new GraphicsAssetLibraryError(
+			'Graphics discrepancy not found',
+			'ingestion-operation-not-found',
+		);
 	return outcome;
 }
 
@@ -843,12 +837,13 @@ export function graphicsDiscrepancyId(value: string): string {
 	return identity;
 }
 
-async function catalogueHealth(catalogue: GraphicsAssetCatalogueHealth): Promise<GraphicsAssetLibraryComponentHealth> {
+async function catalogueHealth(
+	catalogue: GraphicsAssetCatalogueHealth,
+): Promise<GraphicsAssetLibraryComponentHealth> {
 	try {
 		await catalogue.checkHealth();
 		return { status: 'healthy' };
-	}
-	catch {
+	} catch {
 		return {
 			status: 'unavailable',
 			reason: { code: 'catalogue-unavailable', retryable: true },
@@ -867,8 +862,7 @@ async function byteStoreHealth(
 					status: 'unavailable',
 					reason: { code: 'byte-store-unavailable', retryable: true },
 				};
-	}
-	catch {
+	} catch {
 		return {
 			status: 'unavailable',
 			reason: { code: 'byte-store-unavailable', retryable: true },
@@ -881,25 +875,34 @@ export function createGraphicsAssetLibrary(
 ): GraphicsAssetLibrary {
 	const now = dependencies.now ?? (() => new Date());
 	const generateIdentity = dependencies.generateIdentity ?? (() => crypto.randomUUID());
-	const silentVideoPlaybackValidator = dependencies.silentVideoPlaybackValidator
-		?? createUnavailableSilentVideoPlaybackValidator();
+	const silentVideoPlaybackValidator =
+		dependencies.silentVideoPlaybackValidator ?? createUnavailableSilentVideoPlaybackValidator();
 	const trashRecoveryMilliseconds = 30 * 24 * 60 * 60 * 1000;
 
 	function requireCatalogue(): GraphicsAssetCatalogue {
 		if (!('initiateGraphicsIngestion' in dependencies.catalogue))
-			throw new GraphicsAssetLibraryError('Graphics Asset catalogue is unavailable', 'graphics-asset-library-unavailable');
+			throw new GraphicsAssetLibraryError(
+				'Graphics Asset catalogue is unavailable',
+				'graphics-asset-library-unavailable',
+			);
 		return dependencies.catalogue;
 	}
 
 	function requireStaging(): GraphicsStagingObjectStore {
 		if (!('createImmutable' in dependencies.staging))
-			throw new GraphicsAssetLibraryError('Graphics Asset staging byte store is unavailable', 'graphics-asset-library-unavailable');
+			throw new GraphicsAssetLibraryError(
+				'Graphics Asset staging byte store is unavailable',
+				'graphics-asset-library-unavailable',
+			);
 		return dependencies.staging;
 	}
 
 	function requireCanonical(): GraphicsCanonicalObjectStore {
 		if (!('createImmutable' in dependencies.canonical))
-			throw new GraphicsAssetLibraryError('Graphics Asset canonical byte store is unavailable', 'graphics-asset-library-unavailable');
+			throw new GraphicsAssetLibraryError(
+				'Graphics Asset canonical byte store is unavailable',
+				'graphics-asset-library-unavailable',
+			);
 		return dependencies.canonical;
 	}
 
@@ -974,28 +977,31 @@ export function createGraphicsAssetLibrary(
 		digest: string,
 	) {
 		if (sourceKind === 'silent-video') {
-			return await processSilentVideoFromRandomAccess({
-				byteLength,
-				sha256: digest,
-				read: async (offset, length) => {
-					const range = await read({ offset, length });
-					if (range.outcome !== 'available') {
-						return range.outcome === 'missing'
-							? { outcome: 'missing' as const }
-							: { outcome: 'unavailable' as const, retryable: true as const };
-					}
-					const bytes = await consumeBoundedByteStream({
-						body: range.body,
-						byteLength: length,
-						maximumByteLength: length,
-					});
-					return {
-						outcome: 'available' as const,
-						bytes,
-						completeLength: range.range.completeLength,
-					};
+			return await processSilentVideoFromRandomAccess(
+				{
+					byteLength,
+					sha256: digest,
+					read: async (offset, length) => {
+						const range = await read({ offset, length });
+						if (range.outcome !== 'available') {
+							return range.outcome === 'missing'
+								? { outcome: 'missing' as const }
+								: { outcome: 'unavailable' as const, retryable: true as const };
+						}
+						const bytes = await consumeBoundedByteStream({
+							body: range.body,
+							byteLength: length,
+							maximumByteLength: length,
+						});
+						return {
+							outcome: 'available' as const,
+							bytes,
+							completeLength: range.range.completeLength,
+						};
+					},
 				},
-			}, {});
+				{},
+			);
 		}
 		const complete = await read();
 		if (complete.outcome !== 'available')
@@ -1032,7 +1038,11 @@ export function createGraphicsAssetLibrary(
 		};
 		const source = await requireCanonical().read(canonicalContentIdentity(input.sourceDigest));
 		if (source.outcome !== 'available')
-			return { ...unavailable, code: 'source-content-unavailable', message: 'The canonical source content is not currently available.' };
+			return {
+				...unavailable,
+				code: 'source-content-unavailable',
+				message: 'The canonical source content is not currently available.',
+			};
 		// Staged objects are create-if-absent, so an abandoned copy from a
 		// previous attempt would otherwise be validated instead of this one.
 		await requireStaging().delete(reconciliationWorkingCopyIdentity(input.discrepancyId));
@@ -1046,24 +1056,25 @@ export function createGraphicsAssetLibrary(
 			metadata: { contentType: input.sourceCanonicalMime },
 		});
 		if (staged.outcome === 'unavailable')
-			return { ...unavailable, code: 'byte-store-unavailable', message: 'The staging byte store is temporarily unavailable.' };
+			return {
+				...unavailable,
+				code: 'byte-store-unavailable',
+				message: 'The staging byte store is temporarily unavailable.',
+			};
 		try {
 			const trusted = await reportWithTrustedSilentVideoValidation(
 				{
 					outcome: 'accepted',
 					compatibilityProfile: SILENT_VIDEO_COMPATIBILITY_PROFILE,
 					issues: [],
-					facts: JSON.parse(
-						comparableFacts(input.sourceFacts),
-					) as GraphicAssetSilentVideoFacts,
+					facts: JSON.parse(comparableFacts(input.sourceFacts)) as GraphicAssetSilentVideoFacts,
 				},
 				{
 					id: reconciliationWorkingCopyOperationId(input.discrepancyId),
 				} as GraphicsIngestionOperation,
 			);
 			return { outcome: 'generated', bytes: trusted.derivative };
-		}
-		catch {
+		} catch {
 			return unavailable;
 		}
 	}
@@ -1113,8 +1124,7 @@ export function createGraphicsAssetLibrary(
 					message: 'These bytes do not hash to the exact expected content digest.',
 				};
 			}
-			if (input.expectation.kind === 'derivative')
-				return { outcome: 'verified' };
+			if (input.expectation.kind === 'derivative') return { outcome: 'verified' };
 
 			let inspected;
 			try {
@@ -1124,8 +1134,7 @@ export function createGraphicsAssetLibrary(
 					input.expectation.sourceKind,
 					digest,
 				);
-			}
-			catch {
+			} catch {
 				return {
 					outcome: 'rejected',
 					code: 'validation-facts-mismatch',
@@ -1147,8 +1156,8 @@ export function createGraphicsAssetLibrary(
 				};
 			}
 			if (
-				comparableFacts(inspected.report.facts as unknown as Record<string, unknown>)
-				!== comparableFacts(input.expectation.facts)
+				comparableFacts(inspected.report.facts as unknown as Record<string, unknown>) !==
+				comparableFacts(input.expectation.facts)
 			) {
 				return {
 					outcome: 'rejected',
@@ -1159,8 +1168,7 @@ export function createGraphicsAssetLibrary(
 			return { outcome: 'verified' };
 		},
 		async regenerateDerivative(input): Promise<RegenerateGraphicsDerivativeOutcome> {
-			if (input.sourceKind === 'silent-video')
-				return await regenerateSilentVideoPoster(input);
+			if (input.sourceKind === 'silent-video') return await regenerateSilentVideoPoster(input);
 			const source = await requireCanonical().read(canonicalContentIdentity(input.sourceDigest));
 			if (source.outcome !== 'available') {
 				return {
@@ -1180,12 +1188,12 @@ export function createGraphicsAssetLibrary(
 				if (!('thumbnail' in processed))
 					throw new Error('The validated source did not produce its deterministic derivative');
 				return { outcome: 'generated', bytes: processed.thumbnail };
-			}
-			catch {
+			} catch {
 				return {
 					outcome: 'unavailable',
 					code: 'derivative-regeneration-unavailable',
-					message: 'The deterministic derivative could not be reproduced from the canonical source.',
+					message:
+						'The deterministic derivative could not be reproduced from the canonical source.',
 				};
 			}
 		},
@@ -1214,8 +1222,7 @@ export function createGraphicsAssetLibrary(
 	 */
 	function findReconciliation() {
 		const catalogue = requireCatalogue();
-		if (!('listExpectedContent' in catalogue))
-			return undefined;
+		if (!('listExpectedContent' in catalogue)) return undefined;
 		return createGraphicsReconciliation({
 			catalogue: catalogue as GraphicsAssetCatalogue & GraphicsAssetReconciliationCatalogue,
 			canonical: requireCanonical(),
@@ -1250,7 +1257,7 @@ export function createGraphicsAssetLibrary(
 
 	function requireCockpitCatalogue(): GraphicsOperationsCockpitCatalogue {
 		const catalogue = requireCatalogue();
-		if (!COCKPIT_CATALOGUE_METHODS.every(method => method in catalogue)) {
+		if (!COCKPIT_CATALOGUE_METHODS.every((method) => method in catalogue)) {
 			throw new GraphicsAssetLibraryError(
 				'The Graphics Asset Operations Cockpit is unavailable for this catalogue',
 				'graphics-asset-library-unavailable',
@@ -1285,7 +1292,7 @@ export function createGraphicsAssetLibrary(
 
 	function requireQueuesCatalogue(): GraphicsOperationalQueuesCatalogue {
 		const catalogue = requireCatalogue();
-		if (!QUEUE_CATALOGUE_METHODS.every(method => method in catalogue)) {
+		if (!QUEUE_CATALOGUE_METHODS.every((method) => method in catalogue)) {
 			throw new GraphicsAssetLibraryError(
 				'Graphics Asset Library operational queues are unavailable for this catalogue',
 				'graphics-asset-library-unavailable',
@@ -1299,7 +1306,7 @@ export function createGraphicsAssetLibrary(
 		return createGraphicsOperationalQueues({
 			catalogue: () => catalogue,
 			reconciliation: () => requireReconciliation(),
-			inspectRetention: async assetId => await requireRetention().inspect(assetId),
+			inspectRetention: async (assetId) => await requireRetention().inspect(assetId),
 			now,
 		});
 	}
@@ -1322,22 +1329,18 @@ export function createGraphicsAssetLibrary(
 	 * never change or fail the caller's result.
 	 */
 	async function observeCanonicalDisagreement(
-		input:
-			| { assetId: GraphicAssetId; revisionId: GraphicAssetRevisionId }
-			| { digest: string },
+		input: { assetId: GraphicAssetId; revisionId: GraphicAssetRevisionId } | { digest: string },
 	) {
 		try {
 			const catalogue = requireCatalogue();
-			if (!('findExpectedContent' in catalogue))
-				return;
+			if (!('findExpectedContent' in catalogue)) return;
 			await createGraphicsDisagreementReporter({
 				catalogue: catalogue as GraphicsAssetCatalogue & GraphicsObservedDisagreementCatalogue,
 				canonical: requireCanonical(),
 				now,
 				generateIdentity,
 			})(input);
-		}
-		catch {
+		} catch {
 			// The scheduled pass re-observes the same disagreement, so a failure to
 			// record it immediately only delays the alert.
 		}
@@ -1365,8 +1368,7 @@ export function createGraphicsAssetLibrary(
 				actor: GRAPHICS_RETENTION_ACTOR,
 				recordedAt: timestamp(),
 			});
-		}
-		catch {
+		} catch {
 			// The transition is already durable; Evidence for it is best-effort and
 			// the next sweep re-observes the deadline either way.
 		}
@@ -1391,8 +1393,7 @@ export function createGraphicsAssetLibrary(
 				...input,
 				recordedAt: timestamp(),
 			});
-		}
-		catch {
+		} catch {
 			// Evidence is best-effort against a transition that already committed.
 		}
 	}
@@ -1408,8 +1409,7 @@ export function createGraphicsAssetLibrary(
 	}) {
 		try {
 			await requireRetention().recordSupersession(input);
-		}
-		catch {
+		} catch {
 			// Evidence is best-effort against a publication that already committed.
 		}
 	}
@@ -1419,10 +1419,7 @@ export function createGraphicsAssetLibrary(
 	}
 
 	function timestampAfter(updatedAt: string) {
-		return new Date(Math.max(
-			now().getTime(),
-			new Date(updatedAt).getTime() + 1,
-		)).toISOString();
+		return new Date(Math.max(now().getTime(), new Date(updatedAt).getTime() + 1)).toISOString();
 	}
 
 	/**
@@ -1465,24 +1462,25 @@ export function createGraphicsAssetLibrary(
 	): TemplatePackagePreflightIssue[] {
 		const read = requireTemplatePayloads()(manifest.packageKind).readInstallableDocument(document);
 		if (read.outcome === 'rejected') {
-			return read.issues.map(issue => templatePackagePreflightIssue(issue.code, {
-				subject: issue.subject,
-				message: issue.message,
-			}));
+			return read.issues.map((issue) =>
+				templatePackagePreflightIssue(issue.code, {
+					subject: issue.subject,
+					message: issue.message,
+				}),
+			);
 		}
-		const declared = new Set(manifest.applicationCapabilities.map(
-			declaration => `${declaration.capability}:${declaration.identity}`,
-		));
+		const declared = new Set(
+			manifest.applicationCapabilities.map(
+				(declaration) => `${declaration.capability}:${declaration.identity}`,
+			),
+		);
 		const undeclared = new Map<string, TemplatePackageCapabilityRequirement>();
 		for (const requirement of read.capabilities) {
 			const key = `${requirement.capability}:${requirement.identity}`;
-			if (declared.has(key) || undeclared.has(key))
-				continue;
+			if (declared.has(key) || undeclared.has(key)) continue;
 			undeclared.set(key, requirement);
 		}
-		return [
-			...undeclared.values(),
-		].map(requirement =>
+		return [...undeclared.values()].map((requirement) =>
 			templatePackagePreflightIssue('unsupported-application-capability', {
 				subject: requirement.slot,
 				message: `The Template requires ${requirement.capability} "${requirement.identity}", which the package never declares`,
@@ -1526,10 +1524,13 @@ export function createGraphicsAssetLibrary(
 		operation: GraphicsIngestionOperation;
 		entry: TemplatePackageArchiveEntry;
 		readRange: (offset: number, length: number) => Promise<Uint8Array>;
-		report: Extract<GraphicAssetValidationReport, {
-			outcome: 'accepted';
-			compatibilityProfile: 'silent-video-v1';
-		}>;
+		report: Extract<
+			GraphicAssetValidationReport,
+			{
+				outcome: 'accepted';
+				compatibilityProfile: 'silent-video-v1';
+			}
+		>;
 	}) {
 		const staging = requireStaging();
 		const workingCopyOperationId = templatePackageVideoWorkingCopyOperationId(input.operation.id);
@@ -1548,23 +1549,22 @@ export function createGraphicsAssetLibrary(
 			metadata: { contentType: input.report.facts.canonicalMime },
 		});
 		if (staged.outcome !== 'created' && staged.outcome !== 'already-exists')
-			throw new TemplatePackageArchiveSourceError('Packaged silent-video bytes could not be staged for validation');
+			throw new TemplatePackageArchiveSourceError(
+				'Packaged silent-video bytes could not be staged for validation',
+			);
 		// A runtime that has not answered may still be reading the copy: its poll
 		// gives up long before a long video is proven, and a validation that then
 		// finds no source settles as failed and waits on an operator. So the copy
 		// outlives that answer, and the operation's release reclaims it.
 		let answered = true;
 		try {
-			return await reportWithTrustedSilentVideoValidation(
-				input.report,
-				{ id: workingCopyOperationId } as GraphicsIngestionOperation,
-			);
-		}
-		catch (failure) {
+			return await reportWithTrustedSilentVideoValidation(input.report, {
+				id: workingCopyOperationId,
+			} as GraphicsIngestionOperation);
+		} catch (failure) {
 			answered = !(failure instanceof SilentVideoValidationRuntimeError);
 			throw failure;
-		}
-		finally {
+		} finally {
 			if (answered) {
 				await staging.delete(workingCopy);
 			}
@@ -1649,13 +1649,15 @@ export function createGraphicsAssetLibrary(
 					archiveByteLength,
 				},
 			};
-			return sha256Hex(new TextEncoder().encode(
-				templatePackagePreflightFingerprintMaterial(material),
-			)).then(fingerprint => assembleTemplatePackagePreflightReport({
-				...material,
-				checkedAt,
-				fingerprint,
-			}));
+			return sha256Hex(
+				new TextEncoder().encode(templatePackagePreflightFingerprintMaterial(material)),
+			).then((fingerprint) =>
+				assembleTemplatePackagePreflightReport({
+					...material,
+					checkedAt,
+					fingerprint,
+				}),
+			);
 		}
 
 		const archive = await readTemplatePackageArchive({
@@ -1666,21 +1668,18 @@ export function createGraphicsAssetLibrary(
 			return { report: await finish(archive.issues), derivatives: [], material };
 
 		const entries = archive.entries;
-		const entryByName = new Map(entries.map(entry => [entry.name, entry]));
-		const observedExpandedByteLength = entries
-			.reduce((total, entry) => total + entry.byteLength, 0);
+		const entryByName = new Map(entries.map((entry) => [entry.name, entry]));
+		const observedExpandedByteLength = entries.reduce(
+			(total, entry) => total + entry.byteLength,
+			0,
+		);
 
-		async function readEntryDocument(
-			entry: TemplatePackageArchiveEntry,
-		): Promise<unknown> {
-			if (entry.byteLength > MAXIMUM_PACKAGE_DOCUMENT_BYTES)
-				return undefined;
+		async function readEntryDocument(entry: TemplatePackageArchiveEntry): Promise<unknown> {
+			if (entry.byteLength > MAXIMUM_PACKAGE_DOCUMENT_BYTES) return undefined;
 			try {
 				return JSON.parse(decoder.decode(await readRange(entry.dataOffset, entry.byteLength)));
-			}
-			catch (error) {
-				if (error instanceof TemplatePackageArchiveSourceError)
-					throw error;
+			} catch (error) {
+				if (error instanceof TemplatePackageArchiveSourceError) throw error;
 				return undefined;
 			}
 		}
@@ -1704,7 +1703,8 @@ export function createGraphicsAssetLibrary(
 				report: await finish([
 					templatePackagePreflightIssue('invalid-package-manifest', {
 						subject: TEMPLATE_PACKAGE_MANIFEST_ENTRY,
-						message: 'The package manifest is not readable JSON within the size a manifest may occupy',
+						message:
+							'The package manifest is not readable JSON within the size a manifest may occupy',
 					}),
 				]),
 				derivatives: [],
@@ -1741,9 +1741,11 @@ export function createGraphicsAssetLibrary(
 		// A migration happened in staging and changed nothing the sender chose, but
 		// the author still confirms the result they are about to install.
 		if (migrated) {
-			issues.push(templatePackagePreflightIssue('package-schema-migrated', {
-				message: `The package was migrated from schema version ${receivedSchemaVersion} to ${TEMPLATE_PACKAGE_SCHEMA_VERSION} in staging`,
-			}));
+			issues.push(
+				templatePackagePreflightIssue('package-schema-migrated', {
+					message: `The package was migrated from schema version ${receivedSchemaVersion} to ${TEMPLATE_PACKAGE_SCHEMA_VERSION} in staging`,
+				}),
+			);
 		}
 		issues.push(...inspectTemplatePackageEntries(entries, manifest));
 		issues.push(...inspectReceivedApplicationCapabilities(manifest));
@@ -1756,49 +1758,52 @@ export function createGraphicsAssetLibrary(
 		const receivedName = operation.sourceFileName?.toLowerCase();
 		if (receivedName !== undefined && !receivedName.endsWith(extension)) {
 			const receivedExtension = receivedName.slice(receivedName.lastIndexOf('.'));
-			issues.push(templatePackagePreflightIssue('unsupported-package-artifact', {
-				subject: operation.sourceFileName,
-				message: `A ${manifest.packageKind} package must be received as a "${extension}" file, but this one arrived as "${
-					receivedExtension.startsWith('.')
-						? receivedExtension
-						: 'a file with no extension'
-				}"`,
-			}));
+			issues.push(
+				templatePackagePreflightIssue('unsupported-package-artifact', {
+					subject: operation.sourceFileName,
+					message: `A ${manifest.packageKind} package must be received as a "${extension}" file, but this one arrived as "${
+						receivedExtension.startsWith('.') ? receivedExtension : 'a file with no extension'
+					}"`,
+				}),
+			);
 		}
 
 		// Keyed the same way installation resolves a rewritten reference, so the
 		// asset a Template's field is matched to here is the asset it is mapped to
 		// there.
-		const declaredOrigins = new Map(manifest.packagedAssets.map(asset => [
-			packagedOriginKey(asset.origin),
-			asset,
-		]));
+		const declaredOrigins = new Map(
+			manifest.packagedAssets.map((asset) => [packagedOriginKey(asset.origin), asset]),
+		);
 		const templateEntry = entryByName.get(TEMPLATE_PACKAGE_TEMPLATE_ENTRY);
 		if (!templateEntry) {
-			issues.push(templatePackagePreflightIssue('missing-package-entry', {
-				subject: TEMPLATE_PACKAGE_TEMPLATE_ENTRY,
-				message: 'The archive carries no Template document',
-			}));
-		}
-		else {
+			issues.push(
+				templatePackagePreflightIssue('missing-package-entry', {
+					subject: TEMPLATE_PACKAGE_TEMPLATE_ENTRY,
+					message: 'The archive carries no Template document',
+				}),
+			);
+		} else {
 			const document = await readEntryDocument(templateEntry);
 			if (document === undefined) {
-				issues.push(templatePackagePreflightIssue('invalid-template-document', {
-					subject: TEMPLATE_PACKAGE_TEMPLATE_ENTRY,
-					message: 'The Template document is not readable JSON within the size a Template may occupy',
-				}));
-			}
-			else {
+				issues.push(
+					templatePackagePreflightIssue('invalid-template-document', {
+						subject: TEMPLATE_PACKAGE_TEMPLATE_ENTRY,
+						message:
+							'The Template document is not readable JSON within the size a Template may occupy',
+					}),
+				);
+			} else {
 				material.templateDocument = document;
 				const inspected = inspectTemplateDocument(document);
 				for (const issue of inspected.issues) {
-					const code = RECEIVED_DOCUMENT_ISSUE_CODES[
-						issue.code as keyof typeof RECEIVED_DOCUMENT_ISSUE_CODES
-					];
-					issues.push(templatePackagePreflightIssue(code ?? 'invalid-template-document', {
-						subject: issue.slot,
-						message: issue.message,
-					}));
+					const code =
+						RECEIVED_DOCUMENT_ISSUE_CODES[issue.code as keyof typeof RECEIVED_DOCUMENT_ISSUE_CODES];
+					issues.push(
+						templatePackagePreflightIssue(code ?? 'invalid-template-document', {
+							subject: issue.slot,
+							message: issue.message,
+						}),
+					);
 				}
 				// The envelope has now proved the document is data. Only the package
 				// kind's own payload can prove it is the *artifact* the package
@@ -1819,18 +1824,21 @@ export function createGraphicsAssetLibrary(
 						required.add(key);
 						continue;
 					}
-					issues.push(templatePackagePreflightIssue('undeclared-graphic-asset-dependency', {
-						subject: discovered.path,
-						message: 'The Template requires a Graphic Asset Revision the package never embedded',
-					}));
+					issues.push(
+						templatePackagePreflightIssue('undeclared-graphic-asset-dependency', {
+							subject: discovered.path,
+							message: 'The Template requires a Graphic Asset Revision the package never embedded',
+						}),
+					);
 				}
 				for (const [key, asset] of declaredOrigins) {
-					if (required.has(key))
-						continue;
-					issues.push(templatePackagePreflightIssue('unused-packaged-graphic-asset', {
-						subject: asset.packagedId,
-						message: `The package embeds "${asset.name}", which its Template never requires`,
-					}));
+					if (required.has(key)) continue;
+					issues.push(
+						templatePackagePreflightIssue('unused-packaged-graphic-asset', {
+							subject: asset.packagedId,
+							message: `The package embeds "${asset.name}", which its Template never requires`,
+						}),
+					);
 				}
 			}
 		}
@@ -1842,19 +1850,19 @@ export function createGraphicsAssetLibrary(
 		const validated = material.contents;
 		for (const content of manifest.contents) {
 			const entry = entryByName.get(content.entry);
-			if (!entry)
-				continue;
+			if (!entry) continue;
 			// Enough to cover a complete tar header block, whose magic is not at the
 			// start of the file. Media sniffing still only looks at the first 64.
 			const leadingLength = Math.min(NESTED_ARCHIVE_PROBE_BYTES, entry.byteLength);
-			const leadingBytes = leadingLength > 0
-				? await readRange(entry.dataOffset, leadingLength)
-				: new Uint8Array();
+			const leadingBytes =
+				leadingLength > 0 ? await readRange(entry.dataOffset, leadingLength) : new Uint8Array();
 			if (hasNestedArchiveSignature(leadingBytes)) {
-				issues.push(templatePackagePreflightIssue('nested-package-archive', {
-					subject: entry.name,
-					message: 'Packaged content is itself an archive',
-				}));
+				issues.push(
+					templatePackagePreflightIssue('nested-package-archive', {
+						subject: entry.name,
+						message: 'Packaged content is itself an archive',
+					}),
+				);
 				continue;
 			}
 			// The digest is recomputed from the exact archived bytes. A package that
@@ -1865,10 +1873,12 @@ export function createGraphicsAssetLibrary(
 				maximumByteLength: entry.byteLength,
 			});
 			if (observedDigest !== content.digest) {
-				issues.push(templatePackagePreflightIssue('package-content-digest-mismatch', {
-					subject: entry.name,
-					message: 'Packaged content does not match the digest the manifest records for it',
-				}));
+				issues.push(
+					templatePackagePreflightIssue('package-content-digest-mismatch', {
+						subject: entry.name,
+						message: 'Packaged content does not match the digest the manifest records for it',
+					}),
+				);
 				continue;
 			}
 			const sourceKind = graphicAssetSourceKind(
@@ -1877,47 +1887,53 @@ export function createGraphicsAssetLibrary(
 			);
 			const policy = GRAPHIC_ASSET_SOURCE_POLICIES[sourceKind];
 			if (entry.byteLength > policy.maximumByteLength) {
-				issues.push(templatePackagePreflightIssue('incompatible-graphic-asset-content', {
-					subject: entry.name,
-					message: `${policy.label} content of ${entry.byteLength} bytes exceeds this installation's ${policy.maximumByteLength}-byte limit`,
-				}));
+				issues.push(
+					templatePackagePreflightIssue('incompatible-graphic-asset-content', {
+						subject: entry.name,
+						message: `${policy.label} content of ${entry.byteLength} bytes exceeds this installation's ${policy.maximumByteLength}-byte limit`,
+					}),
+				);
 				continue;
 			}
 			try {
 				let accepted: Extract<GraphicAssetValidationReport, { outcome: 'accepted' }>;
 				let thumbnail: Uint8Array;
 				if (sourceKind === 'silent-video') {
-					const processed = await processSilentVideoFromRandomAccess({
-						byteLength: entry.byteLength,
-						sha256: observedDigest,
-						read: async (offset, length) => {
-							try {
-								return {
-									outcome: 'available' as const,
-									bytes: await readRange(entry.dataOffset + offset, length),
-									completeLength: entry.byteLength,
-								};
-							}
-							catch {
-								return { outcome: 'unavailable' as const, retryable: true as const };
-							}
+					const processed = await processSilentVideoFromRandomAccess(
+						{
+							byteLength: entry.byteLength,
+							sha256: observedDigest,
+							read: async (offset, length) => {
+								try {
+									return {
+										outcome: 'available' as const,
+										bytes: await readRange(entry.dataOffset + offset, length),
+										completeLength: entry.byteLength,
+									};
+								} catch {
+									return { outcome: 'unavailable' as const, retryable: true as const };
+								}
+							},
 						},
-					}, { declaredMime: content.canonicalMime });
+						{ declaredMime: content.canonicalMime },
+					);
 					// A packaged video is proven by the same pinned native validation an
 					// uploaded one is; there is no interactive client here to attest for it.
 					const trusted = await validatePackagedSilentVideo({
 						operation,
 						entry,
 						readRange,
-						report: processed.report as Extract<GraphicAssetValidationReport, {
-							outcome: 'accepted';
-							compatibilityProfile: 'silent-video-v1';
-						}>,
+						report: processed.report as Extract<
+							GraphicAssetValidationReport,
+							{
+								outcome: 'accepted';
+								compatibilityProfile: 'silent-video-v1';
+							}
+						>,
 					});
 					accepted = trusted.report;
 					thumbnail = trusted.derivative;
-				}
-				else {
+				} else {
 					const bytes = await consumeBoundedByteStream({
 						body: archiveEntryStream(entry, readRange),
 						byteLength: entry.byteLength,
@@ -1927,10 +1943,12 @@ export function createGraphicsAssetLibrary(
 						declaredMime: content.canonicalMime,
 					});
 					if (!('thumbnail' in processed)) {
-						issues.push(templatePackagePreflightIssue('derivative-generation-failed', {
-							subject: entry.name,
-							message: 'Validated packaged content produced no deterministic preview',
-						}));
+						issues.push(
+							templatePackagePreflightIssue('derivative-generation-failed', {
+								subject: entry.name,
+								message: 'Validated packaged content produced no deterministic preview',
+							}),
+						);
 						continue;
 					}
 					accepted = processed.report;
@@ -1947,26 +1965,28 @@ export function createGraphicsAssetLibrary(
 				validated.set(content.digest, {
 					entry,
 					facts: accepted.facts,
-					compatibilityProfile: accepted.facts.kind === 'font'
-						? STATIC_FONT_UNATTESTED_COMPATIBILITY_PROFILE
-						: accepted.compatibilityProfile,
+					compatibilityProfile:
+						accepted.facts.kind === 'font'
+							? STATIC_FONT_UNATTESTED_COMPATIBILITY_PROFILE
+							: accepted.compatibilityProfile,
 					thumbnail,
 					thumbnailDigest: await sha256Hex(thumbnail),
 				});
-			}
-			catch (error) {
+			} catch (error) {
 				if (error instanceof SilentVideoInspectionSourceError)
-					throw new TemplatePackageArchiveSourceError('Staged Template Package bytes are temporarily unavailable');
-				if (error instanceof SilentVideoValidationRuntimeError)
-					throw error;
-				if (!(error instanceof GraphicAssetValidationError))
-					throw error;
+					throw new TemplatePackageArchiveSourceError(
+						'Staged Template Package bytes are temporarily unavailable',
+					);
+				if (error instanceof SilentVideoValidationRuntimeError) throw error;
+				if (!(error instanceof GraphicAssetValidationError)) throw error;
 				const rejection = rejectedValidationReport(error, policy.compatibilityProfile);
 				for (const rejected of rejection.issues) {
-					issues.push(templatePackagePreflightIssue('incompatible-graphic-asset-content', {
-						subject: entry.name,
-						message: `${rejected.code}: ${rejected.message}`,
-					}));
+					issues.push(
+						templatePackagePreflightIssue('incompatible-graphic-asset-content', {
+							subject: entry.name,
+							message: `${rejected.code}: ${rejected.message}`,
+						}),
+					);
 				}
 			}
 		}
@@ -1980,8 +2000,7 @@ export function createGraphicsAssetLibrary(
 		let derivativeGrowthBytes = 0;
 		for (const asset of manifest.packagedAssets) {
 			const content = validated.get(asset.integrity.digest);
-			if (!content)
-				continue;
+			if (!content) continue;
 			// Growth is judged by what the catalogue reaches, as publication's own
 			// reservation judges it, never by what the canonical store holds: bytes
 			// an interrupted installation of this package already wrote, or that
@@ -2011,14 +2030,13 @@ export function createGraphicsAssetLibrary(
 			// Only a font this package would actually install carries the gap.
 			// Reusing an exact origin keeps the local revision and whatever
 			// attestation it already earned, so there is nothing new to accept.
-			if (
-				content.facts.kind === 'font'
-				&& proposal.mapping.proposal === 'create-graphic-asset'
-			) {
-				issues.push(templatePackagePreflightIssue('graphic-asset-font-attestation-deferred', {
-					subject: asset.packagedId,
-					message: `"${asset.name}" would be installed under ${STATIC_FONT_UNATTESTED_COMPATIBILITY_PROFILE}: no browser has loaded and rendered it here`,
-				}));
+			if (content.facts.kind === 'font' && proposal.mapping.proposal === 'create-graphic-asset') {
+				issues.push(
+					templatePackagePreflightIssue('graphic-asset-font-attestation-deferred', {
+						subject: asset.packagedId,
+						message: `"${asset.name}" would be installed under ${STATIC_FONT_UNATTESTED_COMPATIBILITY_PROFILE}: no browser has loaded and rendered it here`,
+					}),
+				);
 			}
 
 			// A reused revision already has its preview; only a new Graphic Asset
@@ -2030,18 +2048,18 @@ export function createGraphicsAssetLibrary(
 				byteLength: content.thumbnail.byteLength,
 			});
 			if (
-				proposal.mapping.proposal === 'create-graphic-asset'
-				&& !countedDerivativeDigests.has(derivativeDigest)
+				proposal.mapping.proposal === 'create-graphic-asset' &&
+				!countedDerivativeDigests.has(derivativeDigest)
 			) {
 				countedDerivativeDigests.add(derivativeDigest);
-				if (!await catalogue.isGraphicAssetContentReachable(derivativeDigest))
+				if (!(await catalogue.isGraphicAssetContentReachable(derivativeDigest)))
 					derivativeGrowthBytes += content.thumbnail.byteLength;
 			}
 		}
 
-		const canonicalGrowthBytes = mappings
-			.reduce((total, mapping) => total + mapping.canonicalGrowthBytes, 0)
-			+ derivativeGrowthBytes;
+		const canonicalGrowthBytes =
+			mappings.reduce((total, mapping) => total + mapping.canonicalGrowthBytes, 0) +
+			derivativeGrowthBytes;
 		const capacity = await catalogue.getCapacity();
 		const quota: TemplatePackagePreflightQuota = {
 			canonicalGrowthBytes,
@@ -2052,15 +2070,15 @@ export function createGraphicsAssetLibrary(
 		// A package that adds nothing to canonical storage stays possible at a full
 		// quota; only real growth the installation cannot absorb is blocked.
 		if (canonicalGrowthBytes > capacity.canonical.availableBytes) {
-			issues.push(templatePackagePreflightIssue('canonical-capacity-blocked', {
-				message: `Installing this package would add ${canonicalGrowthBytes} canonical bytes with ${capacity.canonical.availableBytes} available`,
-			}));
+			issues.push(
+				templatePackagePreflightIssue('canonical-capacity-blocked', {
+					message: `Installing this package would add ${canonicalGrowthBytes} canonical bytes with ${capacity.canonical.availableBytes} available`,
+				}),
+			);
 		}
 
 		const compatibilityProfiles = [
-			...new Set([
-				...validated.values(),
-			].map(content => content.compatibilityProfile)),
+			...new Set([...validated.values()].map((content) => content.compatibilityProfile)),
 		];
 		return {
 			report: await finish(issues, {
@@ -2086,26 +2104,25 @@ export function createGraphicsAssetLibrary(
 	 */
 	async function reinstallRemovedTemplate(operation: GraphicsIngestionOperation): Promise<void> {
 		const templateId = operation.templatePackageInstallation?.templateId;
-		if (!templateId)
-			return;
+		if (!templateId) return;
 		const catalogue = requireCatalogue();
 		const removed = await catalogueRequest(
 			() => catalogue.findRemovedInstalledGraphicsTemplate(templateId),
 			'Installed graphics Template state is temporarily unavailable',
 		);
-		if (!removed)
-			return;
+		if (!removed) return;
 		const outcome = await catalogueRequest(
-			() => catalogue.reinstallInstalledGraphicsTemplate({
-				templateId,
-				references: installedTemplateDocumentReferences(removed.document).map(reference => ({
-					id: generateIdentity(),
-					ownerSlot: reference.ownerSlot,
-					assetId: reference.reference.assetId,
-					revisionId: reference.reference.revisionId,
-				})),
-				reinstalledAt: timestamp(),
-			}),
+			() =>
+				catalogue.reinstallInstalledGraphicsTemplate({
+					templateId,
+					references: installedTemplateDocumentReferences(removed.document).map((reference) => ({
+						id: generateIdentity(),
+						ownerSlot: reference.ownerSlot,
+						assetId: reference.reference.assetId,
+						revisionId: reference.reference.revisionId,
+					})),
+					reinstalledAt: timestamp(),
+				}),
 			'Installed graphics Template could not be reinstalled',
 		);
 		if (outcome === 'unavailable') {
@@ -2156,8 +2173,7 @@ export function createGraphicsAssetLibrary(
 			);
 			if (authoritative?.stage !== 'cancelled' && authoritative?.stage !== 'completed')
 				return undefined;
-			if (authoritative.stage === 'cancelled')
-				await releaseOwedStagedInput(authoritative);
+			if (authoritative.stage === 'cancelled') await releaseOwedStagedInput(authoritative);
 			return authoritative;
 		}
 
@@ -2173,12 +2189,14 @@ export function createGraphicsAssetLibrary(
 		async function readStagedRange(offset: number, length: number): Promise<Uint8Array> {
 			const range = await staging.read(stagingIdentity, { offset, length });
 			if (
-				range.outcome !== 'available'
-				|| range.range.offset !== offset
-				|| range.range.length !== length
-				|| range.range.completeLength !== operation.declaredByteLength
+				range.outcome !== 'available' ||
+				range.range.offset !== offset ||
+				range.range.length !== length ||
+				range.range.completeLength !== operation.declaredByteLength
 			) {
-				throw new TemplatePackageArchiveSourceError('Staged Template Package bytes are temporarily unavailable');
+				throw new TemplatePackageArchiveSourceError(
+					'Staged Template Package bytes are temporarily unavailable',
+				);
 			}
 			try {
 				return await consumeBoundedByteStream({
@@ -2186,8 +2204,7 @@ export function createGraphicsAssetLibrary(
 					byteLength: length,
 					maximumByteLength: length,
 				});
-			}
-			catch (error) {
+			} catch (error) {
 				throw new TemplatePackageArchiveSourceError(
 					'Staged Template Package bytes could not be read',
 					{ cause: error },
@@ -2224,14 +2241,14 @@ export function createGraphicsAssetLibrary(
 			// were already reported at preflight.
 			const reused: ReusedTemplatePackageGraphicAsset[] = [];
 			for (const mapping of report.mappings) {
-				if (mapping.proposal !== 'reuse-graphic-asset-revision' || !mapping.reference)
-					continue;
+				if (mapping.proposal !== 'reuse-graphic-asset-revision' || !mapping.reference) continue;
 				const local = await catalogue.findRevisionContent(mapping.reference);
 				if (!local || local.lifecycleState !== 'active') {
 					return await failOperation(catalogue, operation, {
 						code: 'template-package-mapping-unavailable',
 						retryable: true,
-						message: 'A Graphic Asset this Template Package reuses can no longer receive references.',
+						message:
+							'A Graphic Asset this Template Package reuses can no longer receive references.',
 					});
 				}
 				reused.push({
@@ -2256,10 +2273,12 @@ export function createGraphicsAssetLibrary(
 				// the authoritative answer — so it is read rather than guessed at, and
 				// never reported as a capacity problem the author would go off and try
 				// to solve.
-				return await catalogueRequest(
-					() => catalogue.getIngestionOperation(operation.id, operation.initiatedBy),
-					'Graphics ingestion state is temporarily unavailable',
-				) ?? operation;
+				return (
+					(await catalogueRequest(
+						() => catalogue.getIngestionOperation(operation.id, operation.initiatedBy),
+						'Graphics ingestion state is temporarily unavailable',
+					)) ?? operation
+				);
 			}
 			if (reservation.outcome === 'blocked') {
 				operation = {
@@ -2273,18 +2292,20 @@ export function createGraphicsAssetLibrary(
 				return await failOperation(catalogue, operation, {
 					code: 'canonical-capacity-exhausted',
 					retryable: true,
-					message: 'Canonical capacity is exhausted; installing this Template Package would add new bytes.',
+					message:
+						'Canonical capacity is exhausted; installing this Template Package would add new bytes.',
 				});
 			}
 			operation = reservation.operation;
 
 			const created: CreatedTemplatePackageGraphicAsset[] = [];
 			for (const mapping of report.mappings) {
-				if (mapping.proposal !== 'create-graphic-asset')
-					continue;
+				if (mapping.proposal !== 'create-graphic-asset') continue;
 				const content = material.contents.get(mapping.origin.digest);
 				if (!content)
-					throw new Error('A confirmed Template Package mapping names content this run never validated');
+					throw new Error(
+						'A confirmed Template Package mapping names content this run never validated',
+					);
 				created.push({
 					packagedId: mapping.packagedId,
 					basis: mapping.basis,
@@ -2301,11 +2322,12 @@ export function createGraphicsAssetLibrary(
 					canonicalMime: content.facts.canonicalMime,
 					compatibilityProfile: content.compatibilityProfile,
 					facts: content.facts,
-					derivativeKind: content.facts.kind === 'font'
-						? 'font-specimen'
-						: content.facts.kind === 'silent-video'
-							? 'video-poster'
-							: 'thumbnail',
+					derivativeKind:
+						content.facts.kind === 'font'
+							? 'font-specimen'
+							: content.facts.kind === 'silent-video'
+								? 'video-poster'
+								: 'thumbnail',
 					thumbnailDigest: content.thumbnailDigest,
 					thumbnailByteLength: content.thumbnail.byteLength,
 					origin: mapping.origin,
@@ -2336,18 +2358,25 @@ export function createGraphicsAssetLibrary(
 				const writes = [];
 				if (!written.has(asset.sourceDigest)) {
 					written.add(asset.sourceDigest);
-					writes.push(storeCanonicalStream(canonical, asset.sourceDigest, {
-						body: archiveEntryStream(content.entry, readStagedRange),
-						byteLength: content.entry.byteLength,
-						maximumByteLength: content.entry.byteLength,
-					}, asset.canonicalMime));
+					writes.push(
+						storeCanonicalStream(
+							canonical,
+							asset.sourceDigest,
+							{
+								body: archiveEntryStream(content.entry, readStagedRange),
+								byteLength: content.entry.byteLength,
+								maximumByteLength: content.entry.byteLength,
+							},
+							asset.canonicalMime,
+						),
+					);
 				}
 				if (!written.has(asset.thumbnailDigest)) {
 					written.add(asset.thumbnailDigest);
 					writes.push(storeCanonicalBytes(canonical, asset.thumbnailDigest, content.thumbnail));
 				}
 				const results = await Promise.all(writes);
-				if (results.some(result => result.outcome === 'unavailable')) {
+				if (results.some((result) => result.outcome === 'unavailable')) {
 					return await failOperation(catalogue, operation, {
 						code: 'canonical-store-unavailable',
 						retryable: true,
@@ -2357,16 +2386,14 @@ export function createGraphicsAssetLibrary(
 			}
 
 			const bytesTerminal = await terminalOperationAtCheckpoint();
-			if (bytesTerminal)
-				return bytesTerminal;
+			if (bytesTerminal) return bytesTerminal;
 
 			operation = await catalogue.updateIngestionOperation(
 				changedOperation(operation, { stage: 'publishing' }),
 				operation.updatedAt,
 			);
 			const publicationTerminal = await terminalOperationAtCheckpoint();
-			if (publicationTerminal)
-				return publicationTerminal;
+			if (publicationTerminal) return publicationTerminal;
 
 			// Every reference the Template carries becomes an exact local identity and
 			// revision pair, whether its mapping reused a revision or created one. A
@@ -2376,13 +2403,15 @@ export function createGraphicsAssetLibrary(
 				material.templateDocument,
 				templatePackageLocalReferences(
 					report.mappings,
-					new Map(created.map(asset => [
-						asset.packagedId,
-						{
-							assetId: asset.assetId,
-							revisionId: asset.revisionId,
-						},
-					])),
+					new Map(
+						created.map((asset) => [
+							asset.packagedId,
+							{
+								assetId: asset.assetId,
+								revisionId: asset.revisionId,
+							},
+						]),
+					),
 				),
 			);
 			if (rewrite.unmapped.length > 0) {
@@ -2405,7 +2434,7 @@ export function createGraphicsAssetLibrary(
 				},
 				created,
 				reused,
-				references: rewrite.references.map(reference => ({
+				references: rewrite.references.map((reference) => ({
 					id: generateIdentity(),
 					ownerSlot: reference.ownerSlot,
 					assetId: reference.reference.assetId,
@@ -2420,9 +2449,9 @@ export function createGraphicsAssetLibrary(
 		try {
 			const stagedMetadata = await staging.readMetadata(stagingIdentity);
 			if (
-				stagedMetadata.outcome !== 'available'
-				|| stagedMetadata.object.byteLength !== operation.declaredByteLength
-				|| stagedMetadata.object.customMetadata.operationId !== operation.id
+				stagedMetadata.outcome !== 'available' ||
+				stagedMetadata.object.byteLength !== operation.declaredByteLength ||
+				stagedMetadata.object.customMetadata.operationId !== operation.id
 			) {
 				return await stagingUnavailable('Staged Template Package bytes could not be verified.');
 			}
@@ -2437,7 +2466,9 @@ export function createGraphicsAssetLibrary(
 			);
 			const archiveRead = await staging.read(stagingIdentity);
 			if (archiveRead.outcome !== 'available')
-				return await stagingUnavailable('Staged Template Package bytes are temporarily unavailable.');
+				return await stagingUnavailable(
+					'Staged Template Package bytes are temporarily unavailable.',
+				);
 			// The digest of the exact received bytes anchors the report fingerprint,
 			// so a different package can never inherit an author's confirmation.
 			const sourceDigest = await sha256HexStream({
@@ -2446,8 +2477,7 @@ export function createGraphicsAssetLibrary(
 				maximumByteLength: TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength,
 			});
 			const hashingTerminal = await terminalOperationAtCheckpoint();
-			if (hashingTerminal)
-				return hashingTerminal;
+			if (hashingTerminal) return hashingTerminal;
 
 			operation = await catalogue.updateIngestionOperation(
 				changedOperation(operation, { stage: 'validating' }),
@@ -2461,8 +2491,7 @@ export function createGraphicsAssetLibrary(
 				catalogue,
 			});
 			const derivativeTerminal = await terminalOperationAtCheckpoint();
-			if (derivativeTerminal)
-				return derivativeTerminal;
+			if (derivativeTerminal) return derivativeTerminal;
 
 			// The proposal is durable before the stage that exposes it changes, so a
 			// paused operation can never be observed without the report it paused on.
@@ -2474,27 +2503,32 @@ export function createGraphicsAssetLibrary(
 				report: inspection.report,
 				// A confirmation survives only a proposal that reached the identical
 				// conclusion. Any other outcome discards it and asks again.
-				confirmedFingerprint: existing?.confirmedFingerprint === inspection.report.fingerprint
-					? existing.confirmedFingerprint
-					: undefined,
-				confirmedAt: existing?.confirmedFingerprint === inspection.report.fingerprint
-					? existing.confirmedAt
-					: undefined,
+				confirmedFingerprint:
+					existing?.confirmedFingerprint === inspection.report.fingerprint
+						? existing.confirmedFingerprint
+						: undefined,
+				confirmedAt:
+					existing?.confirmedFingerprint === inspection.report.fingerprint
+						? existing.confirmedAt
+						: undefined,
 				derivatives: inspection.derivatives,
 			};
 			const recorded = await catalogueRequest(
-				() => catalogue.updateTemplatePackagePreflight({
-					operationId: operation.id,
-					initiatedBy: operation.initiatedBy,
-					state,
-				}),
+				() =>
+					catalogue.updateTemplatePackagePreflight({
+						operationId: operation.id,
+						initiatedBy: operation.initiatedBy,
+						state,
+					}),
 				'Template Package preflight could not be recorded',
 			);
 			if (!recorded) {
-				return await catalogueRequest(
-					() => catalogue.getIngestionOperation(operation.id, operation.initiatedBy),
-					'Graphics ingestion state is temporarily unavailable',
-				) ?? operation;
+				return (
+					(await catalogueRequest(
+						() => catalogue.getIngestionOperation(operation.id, operation.initiatedBy),
+						'Graphics ingestion state is temporarily unavailable',
+					)) ?? operation
+				);
 			}
 
 			if (state.report.outcome === 'rejected') {
@@ -2504,25 +2538,30 @@ export function createGraphicsAssetLibrary(
 				// and retry" and "restore that asset first" are different
 				// instructions and an author can only act on the right one.
 				const retryable = state.report.issues.find(
-					issue => issue.severity === 'error' && issue.retryable,
+					(issue) => issue.severity === 'error' && issue.retryable,
 				);
-				return await failOperation(catalogue, operation, retryable
-					? retryable.code === 'graphic-asset-origin-not-referenceable'
-						? {
-								code: 'template-package-mapping-unavailable',
-								retryable: true,
-								message: 'A Graphic Asset this Template Package reuses can no longer receive references.',
-							}
+				return await failOperation(
+					catalogue,
+					operation,
+					retryable
+						? retryable.code === 'graphic-asset-origin-not-referenceable'
+							? {
+									code: 'template-package-mapping-unavailable',
+									retryable: true,
+									message:
+										'A Graphic Asset this Template Package reuses can no longer receive references.',
+								}
+							: {
+									code: 'canonical-capacity-exhausted',
+									retryable: true,
+									message: 'Installing this Template Package would exceed canonical capacity.',
+								}
 						: {
-								code: 'canonical-capacity-exhausted',
-								retryable: true,
-								message: 'Installing this Template Package would exceed canonical capacity.',
-							}
-					: {
-							code: 'validation-failed',
-							retryable: false,
-							message: 'The Template Package did not satisfy this installation\'s requirements.',
-						});
+								code: 'validation-failed',
+								retryable: false,
+								message: "The Template Package did not satisfy this installation's requirements.",
+							},
+				);
 			}
 
 			const confirmed = templatePackagePreflightConfirmed(state);
@@ -2549,16 +2588,16 @@ export function createGraphicsAssetLibrary(
 				operation.updatedAt,
 			);
 			const installationTerminal = await terminalOperationAtCheckpoint();
-			if (installationTerminal)
-				return installationTerminal;
+			if (installationTerminal) return installationTerminal;
 			return await publishConfirmedTemplatePackage({
 				report: state.report,
 				material: inspection.material,
 			});
-		}
-		catch (error) {
+		} catch (error) {
 			if (error instanceof TemplatePackageArchiveSourceError)
-				return await stagingUnavailable('Staged Template Package bytes are temporarily unavailable.');
+				return await stagingUnavailable(
+					'Staged Template Package bytes are temporarily unavailable.',
+				);
 			if (error instanceof SilentVideoValidationRuntimeError) {
 				return await failOperation(catalogue, operation, {
 					code: 'validation-runtime-unavailable',
@@ -2569,8 +2608,7 @@ export function createGraphicsAssetLibrary(
 			let authoritative: GraphicsIngestionOperation | undefined;
 			try {
 				authoritative = await catalogue.getIngestionOperation(operation.id, operation.initiatedBy);
-			}
-			catch (catalogueError) {
+			} catch (catalogueError) {
 				throw new GraphicsAssetLibraryError(
 					'Template Package preflight was interrupted while the catalogue was unavailable',
 					'graphics-asset-library-unavailable',
@@ -2583,8 +2621,7 @@ export function createGraphicsAssetLibrary(
 				await releaseOwedStagedInput(authoritative);
 				return authoritative;
 			}
-			if (authoritative && authoritative.updatedAt !== operation.updatedAt)
-				return authoritative;
+			if (authoritative && authoritative.updatedAt !== operation.updatedAt) return authoritative;
 			return await failOperation(catalogue, authoritative ?? operation, {
 				code: 'ingestion-processing-failed',
 				retryable: true,
@@ -2606,11 +2643,12 @@ export function createGraphicsAssetLibrary(
 			byteStoreHealth(dependencies.canonical),
 		]);
 		return {
-			status: catalogue.status === 'healthy'
-				&& staging.status === 'healthy'
-				&& canonical.status === 'healthy'
-				? 'healthy'
-				: 'degraded',
+			status:
+				catalogue.status === 'healthy' &&
+				staging.status === 'healthy' &&
+				canonical.status === 'healthy'
+					? 'healthy'
+					: 'degraded',
 			checkedAt,
 			catalogue,
 			byteStores: { staging, canonical },
@@ -2630,7 +2668,7 @@ export function createGraphicsAssetLibrary(
 		now,
 		generateIdentity,
 		recordSupersession,
-		continueTemplatePackage: async operation => await continueTemplatePackagePreflight(operation),
+		continueTemplatePackage: async (operation) => await continueTemplatePackagePreflight(operation),
 	});
 
 	return {
@@ -2639,11 +2677,12 @@ export function createGraphicsAssetLibrary(
 		getHealth: probeLibraryHealth,
 		async getOperationsCockpit() {
 			return await catalogueRequest(
-				async () => await readGraphicsOperationsCockpit({
-					probeHealth: probeLibraryHealth,
-					catalogue: requireCockpitCatalogue,
-					now,
-				}),
+				async () =>
+					await readGraphicsOperationsCockpit({
+						probeHealth: probeLibraryHealth,
+						catalogue: requireCockpitCatalogue,
+						now,
+					}),
 				'The Graphics Asset Operations Cockpit is temporarily unavailable',
 			);
 		},
@@ -2655,10 +2694,10 @@ export function createGraphicsAssetLibrary(
 		},
 		async updateCapacityLimits(input) {
 			if (
-				!Number.isSafeInteger(input.canonicalLimitBytes)
-				|| input.canonicalLimitBytes <= 0
-				|| !Number.isSafeInteger(input.stagingLimitBytes)
-				|| input.stagingLimitBytes <= 0
+				!Number.isSafeInteger(input.canonicalLimitBytes) ||
+				input.canonicalLimitBytes <= 0 ||
+				!Number.isSafeInteger(input.stagingLimitBytes) ||
+				input.stagingLimitBytes <= 0
 			) {
 				throw new GraphicsAssetLibraryError(
 					'Graphics capacity limits must be positive whole byte counts',
@@ -2666,10 +2705,11 @@ export function createGraphicsAssetLibrary(
 				);
 			}
 			return await catalogueRequest(
-				() => requireCatalogue().updateCapacityLimits({
-					...input,
-					updatedAt: timestamp(),
-				}),
+				() =>
+					requireCatalogue().updateCapacityLimits({
+						...input,
+						updatedAt: timestamp(),
+					}),
 				'Graphics capacity limits could not be updated',
 			);
 		},
@@ -2710,8 +2750,8 @@ export function createGraphicsAssetLibrary(
 			// the confirmation that already succeeded is answered rather than
 			// refused for having left `awaiting-confirmation` behind.
 			if (
-				state?.confirmedFingerprint === input.fingerprint
-				&& operation.stage === 'awaiting-installation'
+				state?.confirmedFingerprint === input.fingerprint &&
+				operation.stage === 'awaiting-installation'
 			) {
 				return operation;
 			}
@@ -2735,17 +2775,17 @@ export function createGraphicsAssetLibrary(
 			// standing between a concurrent retry and an installed proposal nobody
 			// agreed to.
 			const confirmed = await catalogueRequest(
-				() => catalogue.confirmTemplatePackagePreflight({
-					operationId: operation.id,
-					initiatedBy: operation.initiatedBy,
-					fingerprint: input.fingerprint,
-					confirmedAt: timestamp(),
-					updatedAt: timestampAfter(operation.updatedAt),
-				}),
+				() =>
+					catalogue.confirmTemplatePackagePreflight({
+						operationId: operation.id,
+						initiatedBy: operation.initiatedBy,
+						fingerprint: input.fingerprint,
+						confirmedAt: timestamp(),
+						updatedAt: timestampAfter(operation.updatedAt),
+					}),
 				'Template Package confirmation could not be recorded',
 			);
-			if (confirmed)
-				return await this.getIngestionOperation(input);
+			if (confirmed) return await this.getIngestionOperation(input);
 
 			// The compare-and-set lost. What replaced it decides what the author is
 			// told, so the authoritative state is re-read rather than guessed at.
@@ -2756,8 +2796,8 @@ export function createGraphicsAssetLibrary(
 			);
 			// Confirming twice is the same act twice, not a conflict.
 			if (
-				latestState?.confirmedFingerprint === input.fingerprint
-				&& latest.stage === 'awaiting-installation'
+				latestState?.confirmedFingerprint === input.fingerprint &&
+				latest.stage === 'awaiting-installation'
 			) {
 				return latest;
 			}
@@ -2792,8 +2832,7 @@ export function createGraphicsAssetLibrary(
 			}
 			// A cancellation that reached the operation before publication started
 			// wins, and stays won.
-			if (operation.stage === 'cancelled')
-				return operation;
+			if (operation.stage === 'cancelled') return operation;
 			const state = await catalogueRequest(
 				() => catalogue.getTemplatePackagePreflight(operation.id, operation.initiatedBy),
 				'Template Package preflight is temporarily unavailable',
@@ -2813,37 +2852,33 @@ export function createGraphicsAssetLibrary(
 			// refuse exactly the attempt the author was told to make after fixing it.
 			// The re-derived report decides instead, and it either matches the
 			// confirmation the author already gave or returns the operation to them.
-			if (
-				operation.stage !== 'failed'
-				&& (!state || !templatePackagePreflightConfirmed(state))
-			) {
+			if (operation.stage !== 'failed' && (!state || !templatePackagePreflightConfirmed(state))) {
 				throw new GraphicsAssetLibraryError(
 					'This Template Package has no confirmed preflight proposal to install',
 					'ingestion-operation-not-uploadable',
 				);
 			}
-			const claimedAt = new Date(Math.max(
-				now().getTime(),
-				new Date(operation.updatedAt).getTime() + 1,
-			)).toISOString();
+			const claimedAt = new Date(
+				Math.max(now().getTime(), new Date(operation.updatedAt).getTime() + 1),
+			).toISOString();
 			// The claim is what makes two concurrent installations of one operation
 			// impossible: whichever compare-and-set commits owns the publication, and
 			// the other is told the operation is already busy rather than starting a
 			// second run over the same staged bytes.
 			const claimed = await catalogueRequest(
-				() => catalogue.claimGraphicsIngestion({
-					operation,
-					claimedAt,
-					staleBefore: new Date(
-						new Date(claimedAt).getTime() - activeIngestionLeaseMilliseconds,
-					).toISOString(),
-				}),
+				() =>
+					catalogue.claimGraphicsIngestion({
+						operation,
+						claimedAt,
+						staleBefore: new Date(
+							new Date(claimedAt).getTime() - activeIngestionLeaseMilliseconds,
+						).toISOString(),
+					}),
 				'Template Package installation could not claim the durable operation',
 			);
 			if (!claimed) {
 				const latest = await this.getIngestionOperation(input);
-				if (latest.stage === 'completed' || latest.stage === 'cancelled')
-					return latest;
+				if (latest.stage === 'completed' || latest.stage === 'cancelled') return latest;
 				throw new GraphicsAssetLibraryError(
 					`Template Package installation cannot start from stage ${latest.stage}`,
 					'ingestion-operation-not-uploadable',
@@ -2865,12 +2900,12 @@ export function createGraphicsAssetLibrary(
 			return template;
 		},
 		async findInstalledGraphicsTemplate(input) {
-			if (input.templateId.length === 0)
-				return undefined;
+			if (input.templateId.length === 0) return undefined;
 			return await catalogueRequest(
-				() => requireCatalogue().findInstalledGraphicsTemplate(
-					input.templateId as InstalledGraphicsTemplateId,
-				),
+				() =>
+					requireCatalogue().findInstalledGraphicsTemplate(
+						input.templateId as InstalledGraphicsTemplateId,
+					),
 				'Installed graphics Template state is temporarily unavailable',
 			);
 		},
@@ -2881,15 +2916,15 @@ export function createGraphicsAssetLibrary(
 			);
 		},
 		async removeInstalledGraphicsTemplate(input) {
-			if (input.templateId.length === 0)
-				return { outcome: 'not-found' };
+			if (input.templateId.length === 0) return { outcome: 'not-found' };
 			const removed = await catalogueRequest(
-				() => requireCatalogue().removeInstalledGraphicsTemplate({
-					templateId: input.templateId as InstalledGraphicsTemplateId,
-					kind: input.kind,
-					removedBy: input.removedBy,
-					removedAt: timestamp(),
-				}),
+				() =>
+					requireCatalogue().removeInstalledGraphicsTemplate({
+						templateId: input.templateId as InstalledGraphicsTemplateId,
+						kind: input.kind,
+						removedBy: input.removedBy,
+						removedAt: timestamp(),
+					}),
 				'Installed graphics Template state is temporarily unavailable',
 			);
 			return {
@@ -2899,8 +2934,8 @@ export function createGraphicsAssetLibrary(
 		async listGraphicAssets(input) {
 			const lifecycleStates = input.lifecycleStates ?? ['active'];
 			if (
-				lifecycleStates.length === 0
-				|| lifecycleStates.some(state => !GRAPHIC_ASSET_LIFECYCLE_STATES.includes(state))
+				lifecycleStates.length === 0 ||
+				lifecycleStates.some((state) => !GRAPHIC_ASSET_LIFECYCLE_STATES.includes(state))
 			) {
 				throw new GraphicsAssetLibraryError(
 					'At least one valid Graphic Asset lifecycle state is required',
@@ -2908,21 +2943,18 @@ export function createGraphicsAssetLibrary(
 				);
 			}
 			return await catalogueRequest(
-				() => requireCatalogue().listGraphicAssets(
-					input.search ?? '',
-					[
-						...new Set(lifecycleStates),
-					],
-				),
+				() =>
+					requireCatalogue().listGraphicAssets(input.search ?? '', [...new Set(lifecycleStates)]),
 				'Graphic Asset discovery is temporarily unavailable',
 			);
 		},
 		async retireGraphicAsset(input) {
 			const transition = await catalogueRequest(
-				() => requireCatalogue().retireGraphicAsset({
-					assetId: input.assetId,
-					updatedAt: timestamp(),
-				}),
+				() =>
+					requireCatalogue().retireGraphicAsset({
+						assetId: input.assetId,
+						updatedAt: timestamp(),
+					}),
 				'Graphic Asset retirement could not be completed',
 			);
 			if (transition.outcome === 'not-found') {
@@ -2934,8 +2966,7 @@ export function createGraphicsAssetLibrary(
 			// A saved template referencing it holds it back (ADR-0034). Answered as
 			// Trash answers a referenced asset: the usage, so the author can see
 			// which templates to change first.
-			if (transition.outcome === 'in-use')
-				return transition;
+			if (transition.outcome === 'in-use') return transition;
 			if (transition.outcome !== 'updated') {
 				throw new GraphicsAssetLibraryError(
 					'Only an active Graphic Asset can be retired',
@@ -2954,13 +2985,14 @@ export function createGraphicsAssetLibrary(
 		async trashGraphicAsset(input) {
 			const trashedAt = now();
 			const transition = await catalogueRequest(
-				() => requireCatalogue().trashGraphicAsset({
-					assetId: input.assetId,
-					trashedAt: trashedAt.toISOString(),
-					recoverableUntil: new Date(
-						trashedAt.getTime() + trashRecoveryMilliseconds,
-					).toISOString(),
-				}),
+				() =>
+					requireCatalogue().trashGraphicAsset({
+						assetId: input.assetId,
+						trashedAt: trashedAt.toISOString(),
+						recoverableUntil: new Date(
+							trashedAt.getTime() + trashRecoveryMilliseconds,
+						).toISOString(),
+					}),
 				'Graphic Asset Trash transition could not be completed',
 			);
 			if (transition.outcome === 'not-found') {
@@ -2969,8 +3001,7 @@ export function createGraphicsAssetLibrary(
 					'ingestion-operation-not-found',
 				);
 			}
-			if (transition.outcome === 'in-use')
-				return transition;
+			if (transition.outcome === 'in-use') return transition;
 			if (transition.outcome !== 'updated') {
 				throw new GraphicsAssetLibraryError(
 					'Only an active or Retired Graphic Asset can enter Trash',
@@ -2985,14 +3016,10 @@ export function createGraphicsAssetLibrary(
 			await recordLifecycleTransition({
 				assetId: input.assetId,
 				transition: 'trashed',
-				from: trashed?.state === 'trashed'
-					? trashed.priorState
-					: 'active',
+				from: trashed?.state === 'trashed' ? trashed.priorState : 'active',
 				to: 'trashed',
 				actor: input.actor ?? GRAPHICS_RETENTION_ACTOR,
-				deadline: trashed?.state === 'trashed'
-					? trashed.recoverableUntil
-					: undefined,
+				deadline: trashed?.state === 'trashed' ? trashed.recoverableUntil : undefined,
 			});
 			return { outcome: 'trashed', asset: transition.asset };
 		},
@@ -3001,10 +3028,11 @@ export function createGraphicsAssetLibrary(
 			// read before the transition rather than after it.
 			const restoring = (await requireRetention().inspect(input.assetId))?.lifecycle;
 			const transition = await catalogueRequest(
-				() => requireCatalogue().restoreGraphicAsset({
-					assetId: input.assetId,
-					restoredAt: timestamp(),
-				}),
+				() =>
+					requireCatalogue().restoreGraphicAsset({
+						assetId: input.assetId,
+						restoredAt: timestamp(),
+					}),
 				'Graphic Asset restoration could not be completed',
 			);
 			if (transition.outcome === 'not-found') {
@@ -3037,27 +3065,27 @@ export function createGraphicsAssetLibrary(
 					'invalid-ingestion-input',
 				);
 			}
-			if (
-				input.eventIds.some(eventId => !Number.isSafeInteger(eventId) || eventId <= 0)
-			) {
+			if (input.eventIds.some((eventId) => !Number.isSafeInteger(eventId) || eventId <= 0)) {
 				throw new GraphicsAssetLibraryError(
 					'Event identities must be positive integers',
 					'invalid-ingestion-input',
 				);
 			}
 			const updated = await catalogueRequest(
-				() => requireCatalogue().updateGraphicAsset({
-					assetId: input.assetId,
-					name,
-					eventIds: [
-						...new Set(input.eventIds),
-					].sort((left, right) => left - right),
-					updatedAt: timestamp(),
-				}),
+				() =>
+					requireCatalogue().updateGraphicAsset({
+						assetId: input.assetId,
+						name,
+						eventIds: [...new Set(input.eventIds)].sort((left, right) => left - right),
+						updatedAt: timestamp(),
+					}),
 				'Graphic Asset metadata could not be updated',
 			);
 			if (!updated)
-				throw new GraphicsAssetLibraryError('Graphic Asset not found', 'ingestion-operation-not-found');
+				throw new GraphicsAssetLibraryError(
+					'Graphic Asset not found',
+					'ingestion-operation-not-found',
+				);
 			return updated;
 		},
 		async listGraphicAssetUsage(input) {
@@ -3079,7 +3107,10 @@ export function createGraphicsAssetLibrary(
 
 			const document = inspectTemplateDocument(input.template.document);
 			const requirements = groupTemplatePackageRequirements(input.assets);
-			const capabilities = inspectTemplatePackageCapabilities(input.packageKind, input.capabilities ?? []);
+			const capabilities = inspectTemplatePackageCapabilities(
+				input.packageKind,
+				input.capabilities ?? [],
+			);
 			const issues: TemplatePackageExportIssue[] = [
 				...document.issues,
 				...undeclaredReferenceIssues(document.references, input.assets),
@@ -3096,17 +3127,21 @@ export function createGraphicsAssetLibrary(
 					'Graphic Asset Revision lookup is temporarily unavailable',
 				);
 				if (!content) {
-					issues.push(templatePackageExportIssue('missing-graphic-asset-reference', {
-						slot: requirement.slots[0],
-						message: 'The Template requires a Graphic Asset Revision that does not exist',
-					}));
+					issues.push(
+						templatePackageExportIssue('missing-graphic-asset-reference', {
+							slot: requirement.slots[0],
+							message: 'The Template requires a Graphic Asset Revision that does not exist',
+						}),
+					);
 					continue;
 				}
 				if (requirement.expectedKind && requirement.expectedKind !== content.kind) {
-					issues.push(templatePackageExportIssue('unexpected-graphic-asset-kind', {
-						slot: requirement.slots[0],
-						message: `The Template slot requires a ${requirement.expectedKind} but its revision is a ${content.kind}`,
-					}));
+					issues.push(
+						templatePackageExportIssue('unexpected-graphic-asset-kind', {
+							slot: requirement.slots[0],
+							message: `The Template slot requires a ${requirement.expectedKind} but its revision is a ${content.kind}`,
+						}),
+					);
 					continue;
 				}
 				// Export asks the byte store rather than trusting the catalogue's
@@ -3115,12 +3150,13 @@ export function createGraphicsAssetLibrary(
 				// into reconciliation so the incident is not lost with the report.
 				const observation = await observeCanonicalContent(requireCanonical(), content);
 				if (observation.outcome !== 'available') {
-					if (observation.disagreement)
-						await observeCanonicalDisagreement(requirement.reference);
-					issues.push(templatePackageExportIssue('unavailable-graphic-asset-content', {
-						slot: requirement.slots[0],
-						message: 'The exact Graphic Asset Revision exists but its content is unavailable',
-					}));
+					if (observation.disagreement) await observeCanonicalDisagreement(requirement.reference);
+					issues.push(
+						templatePackageExportIssue('unavailable-graphic-asset-content', {
+							slot: requirement.slots[0],
+							message: 'The exact Graphic Asset Revision exists but its content is unavailable',
+						}),
+					);
 					continue;
 				}
 				revisions.push({
@@ -3147,9 +3183,10 @@ export function createGraphicsAssetLibrary(
 						packageKind: input.packageKind,
 						templateIdentity: identity,
 						checkedAt,
-						issues: [...reportIssues].sort((left, right) =>
-							(left.slot ?? '').localeCompare(right.slot ?? '')
-							|| left.code.localeCompare(right.code),
+						issues: [...reportIssues].sort(
+							(left, right) =>
+								(left.slot ?? '').localeCompare(right.slot ?? '') ||
+								left.code.localeCompare(right.code),
 						),
 						limits: TEMPLATE_PACKAGE_LIMITS,
 						observed,
@@ -3179,10 +3216,7 @@ export function createGraphicsAssetLibrary(
 			// Limits are measured before a byte is written, so a package that would
 			// exceed the envelope never produces a partial archive.
 			if (issues.length > 0 || plan.issues.length > 0) {
-				return rejected([
-					...issues,
-					...plan.issues,
-				], plan.totals);
+				return rejected([...issues, ...plan.issues], plan.totals);
 			}
 
 			return {
@@ -3193,40 +3227,41 @@ export function createGraphicsAssetLibrary(
 					mediaType: TEMPLATE_PACKAGE_ARTIFACTS[input.packageKind].mediaType,
 					manifest: plan.manifest,
 					archiveByteLength: plan.totals.archiveByteLength,
-					open: () => createStoredZipArchive([
-						{
-							name: TEMPLATE_PACKAGE_MANIFEST_ENTRY,
-							byteLength: plan.manifestBytes.byteLength,
-							open: async () => readableBytes(plan.manifestBytes),
-						},
-						{
-							name: TEMPLATE_PACKAGE_TEMPLATE_ENTRY,
-							byteLength: plan.templateBytes.byteLength,
-							open: async () => readableBytes(plan.templateBytes),
-						},
-						...plan.contents.map(content => ({
-							name: content.entry,
-							byteLength: content.byteLength,
-							// Bytes are fetched only when the archive reaches this entry, so
-							// no complete asset is ever held in Worker memory.
-							open: async () => {
-								const result = await readCanonicalContent(requireCanonical(), content);
-								if (result.outcome !== 'available') {
-									// Content that resolved during the report and then failed
-									// mid-stream is the sharpest integrity observation the
-									// library gets; it must not vanish with the aborted
-									// download.
-									if (result.disagreement)
-										await observeCanonicalDisagreement({ digest: content.digest });
-									throw new GraphicsAssetLibraryError(
-										'Graphic Asset content became unavailable while the Template Package was streaming',
-										'graphics-asset-library-unavailable',
-									);
-								}
-								return result.body;
+					open: () =>
+						createStoredZipArchive([
+							{
+								name: TEMPLATE_PACKAGE_MANIFEST_ENTRY,
+								byteLength: plan.manifestBytes.byteLength,
+								open: async () => readableBytes(plan.manifestBytes),
 							},
-						})),
-					]),
+							{
+								name: TEMPLATE_PACKAGE_TEMPLATE_ENTRY,
+								byteLength: plan.templateBytes.byteLength,
+								open: async () => readableBytes(plan.templateBytes),
+							},
+							...plan.contents.map((content) => ({
+								name: content.entry,
+								byteLength: content.byteLength,
+								// Bytes are fetched only when the archive reaches this entry, so
+								// no complete asset is ever held in Worker memory.
+								open: async () => {
+									const result = await readCanonicalContent(requireCanonical(), content);
+									if (result.outcome !== 'available') {
+										// Content that resolved during the report and then failed
+										// mid-stream is the sharpest integrity observation the
+										// library gets; it must not vanish with the aborted
+										// download.
+										if (result.disagreement)
+											await observeCanonicalDisagreement({ digest: content.digest });
+										throw new GraphicsAssetLibraryError(
+											'Graphic Asset content became unavailable while the Template Package was streaming',
+											'graphics-asset-library-unavailable',
+										);
+									}
+									return result.body;
+								},
+							})),
+						]),
 				},
 			};
 		},
@@ -3250,10 +3285,11 @@ export function createGraphicsAssetLibrary(
 				);
 			}
 			const outcome = await catalogueRequest(
-				() => requireRetention().purge({
-					assetId: input.assetId,
-					actor: input.actor.trim(),
-				}),
+				() =>
+					requireRetention().purge({
+						assetId: input.assetId,
+						actor: input.actor.trim(),
+					}),
 				'Graphic Asset purge could not be completed',
 			);
 			if (outcome.outcome === 'not-found') {
@@ -3306,21 +3342,19 @@ export function createGraphicsAssetLibrary(
 		},
 		async findQueuedIngestionOperation(input) {
 			return await catalogueRequest(
-				() => requireQueuesCatalogue().findIngestionAttentionItem({
-					now: now().toISOString(),
-					operationId: input.operationId,
-				}),
+				() =>
+					requireQueuesCatalogue().findIngestionAttentionItem({
+						now: now().toISOString(),
+						operationId: input.operationId,
+					}),
 				'Graphics ingestion state is temporarily unavailable',
 			);
 		},
 		async getRetentionOverview() {
-			return await catalogueRequest(
-				async () => {
-					const retention = requireRetention();
-					return await retention.overview(await requireCatalogue().getCapacity());
-				},
-				'Graphics Asset retention deadlines are temporarily unavailable',
-			);
+			return await catalogueRequest(async () => {
+				const retention = requireRetention();
+				return await retention.overview(await requireCatalogue().getCapacity());
+			}, 'Graphics Asset retention deadlines are temporarily unavailable');
 		},
 		async inspectGraphicAssetRetention(input) {
 			const view = await catalogueRequest(
@@ -3328,7 +3362,10 @@ export function createGraphicsAssetLibrary(
 				'Graphic Asset retention deadlines are temporarily unavailable',
 			);
 			if (!view)
-				throw new GraphicsAssetLibraryError('Graphic Asset not found', 'ingestion-operation-not-found');
+				throw new GraphicsAssetLibraryError(
+					'Graphic Asset not found',
+					'ingestion-operation-not-found',
+				);
 			return view;
 		},
 		async runGraphicsReconciliation() {
@@ -3349,45 +3386,60 @@ export function createGraphicsAssetLibrary(
 				'Graphics discrepancy evidence is temporarily unavailable',
 			);
 			if (!discrepancy)
-				throw new GraphicsAssetLibraryError('Graphics discrepancy not found', 'ingestion-operation-not-found');
+				throw new GraphicsAssetLibraryError(
+					'Graphics discrepancy not found',
+					'ingestion-operation-not-found',
+				);
 			return discrepancy;
 		},
 		async recheckGraphicsDiscrepancy(input) {
-			return requireDiscrepancyOutcome(await catalogueRequest(
-				() => requireReconciliation().recheck({
-					discrepancyId: input.discrepancyId,
-					actor: requiredActor(input.actor),
-				}),
-				'Graphics discrepancy could not be rechecked',
-			));
+			return requireDiscrepancyOutcome(
+				await catalogueRequest(
+					() =>
+						requireReconciliation().recheck({
+							discrepancyId: input.discrepancyId,
+							actor: requiredActor(input.actor),
+						}),
+					'Graphics discrepancy could not be rechecked',
+				),
+			);
 		},
 		async repairUnavailableGraphicAssetContent(input) {
-			return requireDiscrepancyOutcome(await catalogueRequest(
-				() => requireReconciliation().repair({
-					discrepancyId: input.discrepancyId,
-					actor: requiredActor(input.actor),
-					bytes: input.bytes,
-				}),
-				'Graphic Asset Content repair could not be completed',
-			));
+			return requireDiscrepancyOutcome(
+				await catalogueRequest(
+					() =>
+						requireReconciliation().repair({
+							discrepancyId: input.discrepancyId,
+							actor: requiredActor(input.actor),
+							bytes: input.bytes,
+						}),
+					'Graphic Asset Content repair could not be completed',
+				),
+			);
 		},
 		async verifyStoredGraphicAssetContent(input) {
-			return requireDiscrepancyOutcome(await catalogueRequest(
-				() => requireReconciliation().verifyStoredBytes({
-					discrepancyId: input.discrepancyId,
-					actor: requiredActor(input.actor),
-				}),
-				'Stored Graphic Asset Content could not be verified',
-			));
+			return requireDiscrepancyOutcome(
+				await catalogueRequest(
+					() =>
+						requireReconciliation().verifyStoredBytes({
+							discrepancyId: input.discrepancyId,
+							actor: requiredActor(input.actor),
+						}),
+					'Stored Graphic Asset Content could not be verified',
+				),
+			);
 		},
 		async regenerateGraphicsDerivative(input) {
-			return requireDiscrepancyOutcome(await catalogueRequest(
-				() => requireReconciliation().regenerateDerivative({
-					discrepancyId: input.discrepancyId,
-					actor: requiredActor(input.actor),
-				}),
-				'Graphics Derivative could not be regenerated',
-			));
+			return requireDiscrepancyOutcome(
+				await catalogueRequest(
+					() =>
+						requireReconciliation().regenerateDerivative({
+							discrepancyId: input.discrepancyId,
+							actor: requiredActor(input.actor),
+						}),
+					'Graphics Derivative could not be regenerated',
+				),
+			);
 		},
 	};
 }

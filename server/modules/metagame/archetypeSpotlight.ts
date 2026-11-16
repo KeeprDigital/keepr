@@ -1,6 +1,9 @@
 import type { Game } from '~~/shared/types/enums';
 import type { ArchetypeDetailResponse } from '~~/shared/types/metagame';
-import type { ScreenOutputArchetypePilot, ScreenOutputArchetypeSpotlightResponse } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputArchetypePilot,
+	ScreenOutputArchetypeSpotlightResponse,
+} from '~~/shared/types/screenOutputReads';
 import type { MetagameCardTypeBucket } from '~~/shared/utils/metagame';
 import { createCardTypeBucketFilter } from './cards';
 
@@ -15,10 +18,8 @@ export interface ArchetypeSpotlightOptions {
 
 function byPosition(a: ScreenOutputArchetypePilot, b: ScreenOutputArchetypePilot): number {
 	if (a.position !== b.position) {
-		if (a.position == null)
-			return 1;
-		if (b.position == null)
-			return -1;
+		if (a.position == null) return 1;
+		if (b.position == null) return -1;
 		return a.position - b.position;
 	}
 	return a.name.localeCompare(b.name);
@@ -54,7 +55,7 @@ export function projectArchetypeSpotlight(
 			}))
 			.sort(byPosition),
 		topCards: detail.cardBreakdown
-			.filter(entry => includesCardType(entry.cardType))
+			.filter((entry) => includesCardType(entry.cardType))
 			.slice(0, options.cardLimit),
 	};
 }

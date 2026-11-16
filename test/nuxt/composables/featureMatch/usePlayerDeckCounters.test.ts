@@ -29,9 +29,7 @@ mockNuxtImport('usePlayerStore', () => () => ({
 }));
 mockNuxtImport('usePlayerDeckCache', () => () => ({
 	fetchDeck: async (playerId: number) => ({
-		cards: [
-			{ deckCounterTypes: counterTypesByPlayer[playerId] },
-		],
+		cards: [{ deckCounterTypes: counterTypesByPlayer[playerId] }],
 	}),
 }));
 mockNuxtImport('useFeatureMatchStore', () => () => ({
@@ -48,9 +46,7 @@ mockNuxtImport('useFeatureMatchStore', () => () => ({
 }));
 // The followed Session, swapped: Ben sits on player1's side.
 mockNuxtImport('useFeatureMatchStateStore', () => () => ({
-	sessionIdBySlotId: new Map([
-		[1, 90],
-	]),
+	sessionIdBySlotId: new Map([[1, 90]]),
 	featureMatchSessions: new Map([
 		[
 			90,
@@ -76,10 +72,13 @@ describe('usePlayerDeckCounters', () => {
 	it.each([
 		{ side: 'player1' as const, counter: 'energy' },
 		{ side: 'player2' as const, counter: 'poison' },
-	])('offers $side the counters of the deck the followed Session seats there', async ({ side, counter }) => {
-		const { availableCounterTypes } = usePlayerDeckCounters(1, side);
-		await flushPromises();
+	])(
+		'offers $side the counters of the deck the followed Session seats there',
+		async ({ side, counter }) => {
+			const { availableCounterTypes } = usePlayerDeckCounters(1, side);
+			await flushPromises();
 
-		expect(availableCounterTypes.value?.map(config => config.key)).toEqual([counter]);
-	});
+			expect(availableCounterTypes.value?.map((config) => config.key)).toEqual([counter]);
+		},
+	);
 });

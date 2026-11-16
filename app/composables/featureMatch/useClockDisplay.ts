@@ -19,10 +19,19 @@ export function useClockDisplay(
 	 * (ADR-0088). An output yet to sync counts on its own time rather than
 	 * showing nothing.
 	 */
-	const projection = useClockProjection((serverTime) => {
-		const stored = toValue(clock);
-		return selfTimed(projectFeatureMatchClock(stored && readStoredClock(stored), serverTime, toValue(untimedLabel)));
-	}, { whileServerTimeUnknown: 'device-time' });
+	const projection = useClockProjection(
+		(serverTime) => {
+			const stored = toValue(clock);
+			return selfTimed(
+				projectFeatureMatchClock(
+					stored && readStoredClock(stored),
+					serverTime,
+					toValue(untimedLabel),
+				),
+			);
+		},
+		{ whileServerTimeUnknown: 'device-time' },
+	);
 
 	const state = computed(() => projection.value.state);
 	const isRunning = computed(() => projection.value.isRunning);

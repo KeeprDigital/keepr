@@ -26,31 +26,36 @@ const archetypeStore = useArchetypeStore();
 useConsumedEventData(['archetypes']);
 
 onMounted(async () => {
-	if (!archetypeStore.isLoaded)
-		await archetypeStore.loadByEventId(props.eventId);
+	if (!archetypeStore.isLoaded) await archetypeStore.loadByEventId(props.eventId);
 });
 
-const archetype = computed(() => archetypeStore.archetypes.find(item => item.id === props.archetypeId));
+const archetype = computed(() =>
+	archetypeStore.archetypes.find((item) => item.id === props.archetypeId),
+);
 const draft = ref('');
 
-watch(() => archetype.value?.name, (name) => {
-	draft.value = name ?? '';
-}, { immediate: true });
+watch(
+	() => archetype.value?.name,
+	(name) => {
+		draft.value = name ?? '';
+	},
+	{ immediate: true },
+);
 
 const typed = computed(() => draft.value.trim());
-const holder = computed(() => typed.value === ''
-	? undefined
-	: archetypeStore.findNameHolder(typed.value, props.archetypeId));
-const canRename = computed(() => typed.value !== '' && typed.value !== archetype.value?.name && !holder.value);
+const holder = computed(() =>
+	typed.value === '' ? undefined : archetypeStore.findNameHolder(typed.value, props.archetypeId),
+);
+const canRename = computed(
+	() => typed.value !== '' && typed.value !== archetype.value?.name && !holder.value,
+);
 
 async function rename() {
 	if (holder.value) {
-		if (props.mergeable)
-			emit('merge', holder.value.id);
+		if (props.mergeable) emit('merge', holder.value.id);
 		return;
 	}
-	if (!canRename.value)
-		return;
+	if (!canRename.value) return;
 	await archetypeStore.updateArchetype(props.eventId, props.archetypeId, { name: typed.value });
 }
 </script>
@@ -58,12 +63,7 @@ async function rename() {
 <template>
 	<div v-if="archetype" class="flex flex-wrap items-center gap-2">
 		<span class="text-sm text-muted whitespace-nowrap">Name</span>
-		<UInput
-			v-model="draft"
-			class="w-64"
-			aria-label="Archetype name"
-			@keydown.enter="rename"
-		/>
+		<UInput v-model="draft" class="w-64" aria-label="Archetype name" @keydown.enter="rename" />
 		<UButton
 			v-if="holder && mergeable"
 			:label="`Merge into ${holder.name}…`"
@@ -81,7 +81,11 @@ async function rename() {
 			@click="rename"
 		/>
 		<span v-if="holder" class="text-sm text-muted" data-name-taken>
-			{{ mergeable ? `“${holder.name}” already exists.` : `Another Archetype is named “${holder.name}”.` }}
+			{{
+				mergeable
+					? `“${holder.name}” already exists.`
+					: `Another Archetype is named “${holder.name}”.`
+			}}
 		</span>
 	</div>
 </template>

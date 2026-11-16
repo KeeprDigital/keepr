@@ -6,9 +6,7 @@ import process from 'node:process';
 
 // This integration-only warning happens when Nuxt starts an internal websocket
 // probe twice. The assertions still exercise the real D1-backed API paths.
-const ignoredIntegrationWarningPatterns = [
-	'WebSocket server error: Port 24678 is already in use',
-];
+const ignoredIntegrationWarningPatterns = ['WebSocket server error: Port 24678 is already in use'];
 
 function createNoopWatcher() {
 	const watcher = new EventEmitter();
@@ -19,13 +17,10 @@ function createNoopWatcher() {
 }
 
 function chunkText(chunk, encoding) {
-	if (typeof chunk === 'string')
-		return chunk;
+	if (typeof chunk === 'string') return chunk;
 
 	if (chunk instanceof Uint8Array) {
-		return Buffer.from(chunk).toString(typeof encoding === 'string'
-			? encoding
-			: 'utf8');
+		return Buffer.from(chunk).toString(typeof encoding === 'string' ? encoding : 'utf8');
 	}
 
 	return '';
@@ -33,11 +28,13 @@ function chunkText(chunk, encoding) {
 
 const writeStderr = process.stderr.write.bind(process.stderr);
 process.stderr.write = (chunk, encoding, callback) => {
-	if (ignoredIntegrationWarningPatterns.some(pattern => chunkText(chunk, encoding).includes(pattern))) {
-		if (typeof encoding === 'function')
-			encoding();
-		else if (typeof callback === 'function')
-			callback();
+	if (
+		ignoredIntegrationWarningPatterns.some((pattern) =>
+			chunkText(chunk, encoding).includes(pattern),
+		)
+	) {
+		if (typeof encoding === 'function') encoding();
+		else if (typeof callback === 'function') callback();
 
 		return true;
 	}

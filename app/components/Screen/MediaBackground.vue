@@ -28,45 +28,49 @@ const videoStyle = computed<CSSProperties>(() => ({
 const playingUrl = ref<string | null>(null);
 const loadingUrl = ref<string | null>(null);
 
-watch(() => isVisible.value ? props.video!.url : null, (url) => {
-	if (!url || playingUrl.value === null) {
-		playingUrl.value = url;
-		loadingUrl.value = null;
-		return;
-	}
-	loadingUrl.value = url === playingUrl.value
-		? null
-		: url;
-}, { immediate: true });
+watch(
+	() => (isVisible.value ? props.video!.url : null),
+	(url) => {
+		if (!url || playingUrl.value === null) {
+			playingUrl.value = url;
+			loadingUrl.value = null;
+			return;
+		}
+		loadingUrl.value = url === playingUrl.value ? null : url;
+	},
+	{ immediate: true },
+);
 
 function promote(url: string) {
-	if (url !== loadingUrl.value)
-		return;
+	if (url !== loadingUrl.value) return;
 	playingUrl.value = url;
 	loadingUrl.value = null;
 }
 
-const sources = computed(() => [playingUrl.value, loadingUrl.value].filter((url): url is string => url !== null));
+const sources = computed(() =>
+	[playingUrl.value, loadingUrl.value].filter((url): url is string => url !== null),
+);
 
 function setElement(url: string, el: unknown) {
-	if (el instanceof HTMLVideoElement)
-		elements.set(url, el);
-	else
-		elements.delete(url);
+	if (el instanceof HTMLVideoElement) elements.set(url, el);
+	else elements.delete(url);
 }
 
 function syncVideoPlayback() {
 	for (const current of elements.values()) {
 		current.defaultPlaybackRate = playbackRate.value;
 		current.playbackRate = playbackRate.value;
-		if (isVisible.value)
-			void current.play().catch(() => {});
+		if (isVisible.value) void current.play().catch(() => {});
 	}
 }
 
-watch(() => props.video, () => {
-	void nextTick(syncVideoPlayback);
-}, { deep: true, immediate: true });
+watch(
+	() => props.video,
+	() => {
+		void nextTick(syncVideoPlayback);
+	},
+	{ deep: true, immediate: true },
+);
 
 onMounted(syncVideoPlayback);
 </script>
@@ -80,7 +84,7 @@ onMounted(syncVideoPlayback);
 		<video
 			v-for="url in sources"
 			:key="url"
-			:ref="el => setElement(url, el)"
+			:ref="(el) => setElement(url, el)"
 			class="screen-media-background__video"
 			:src="url"
 			:style="[videoStyle, url === loadingUrl ? { opacity: 0 } : undefined]"

@@ -1,14 +1,17 @@
 <script setup lang="ts">
-const props = withDefaults(defineProps<{
-	note: string;
-	noteKey: number | string;
-	save: (note: string) => Promise<unknown>;
-	compact?: boolean;
-	remoteChanged?: boolean;
-}>(), {
-	compact: false,
-	remoteChanged: false,
-});
+const props = withDefaults(
+	defineProps<{
+		note: string;
+		noteKey: number | string;
+		save: (note: string) => Promise<unknown>;
+		compact?: boolean;
+		remoteChanged?: boolean;
+	}>(),
+	{
+		compact: false,
+		remoteChanged: false,
+	},
+);
 
 const expanded = ref(false);
 const isLong = computed(() => props.note.split('\n').length > 4 || props.note.length > 160);
@@ -28,12 +31,15 @@ const {
 } = useFeatureMatchNoteEditor({
 	note: () => props.note,
 	noteKey: () => props.noteKey,
-	save: note => props.save(note),
+	save: (note) => props.save(note),
 });
 
-watch(() => props.noteKey, () => {
-	expanded.value = false;
-});
+watch(
+	() => props.noteKey,
+	() => {
+		expanded.value = false;
+	},
+);
 </script>
 
 <template>
@@ -48,9 +54,7 @@ watch(() => props.noteKey, () => {
 		<div class="flex items-center justify-between gap-3">
 			<div class="flex items-center gap-2 min-w-0">
 				<UIcon name="i-lucide-sticky-note" class="size-4 shrink-0 text-muted" />
-				<h3 class="text-sm font-medium text-muted">
-					Production Note
-				</h3>
+				<h3 class="text-sm font-medium text-muted">Production Note</h3>
 			</div>
 			<UButton
 				v-if="!editing"
@@ -91,9 +95,7 @@ watch(() => props.noteKey, () => {
 			>
 				{{ note }}
 			</p>
-			<p v-else data-testid="note-empty" class="text-sm text-dimmed">
-				No production note
-			</p>
+			<p v-else data-testid="note-empty" class="text-sm text-dimmed">No production note</p>
 			<UButton
 				v-if="hasNote && isLong"
 				data-testid="note-expand"

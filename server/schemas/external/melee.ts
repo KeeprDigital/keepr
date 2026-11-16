@@ -16,124 +16,154 @@ import { z } from 'zod';
 
 /** Paginated response wrapper used by all list endpoints. */
 export function meleeApiResponseSchema<S extends z.ZodTypeAny>(contentSchema: S) {
-	return z.object({
-		Page: z.number().int().positive(),
-		PageSize: z.number().int().positive().max(1_000),
-		RecordsFiltered: z.number().int().nonnegative().safe(),
-		RecordsTotal: z.number().int().nonnegative().safe(),
-		Content: z.array(contentSchema).max(1_000),
-		HasMore: z.boolean(),
-	}).passthrough();
+	return z
+		.object({
+			Page: z.number().int().positive(),
+			PageSize: z.number().int().positive().max(1_000),
+			RecordsFiltered: z.number().int().nonnegative().safe(),
+			RecordsTotal: z.number().int().nonnegative().safe(),
+			Content: z.array(contentSchema).max(1_000),
+			HasMore: z.boolean(),
+		})
+		.passthrough();
 }
 
 /** Deck list card record — bounds-checks quantity to guard against data corruption. */
-export const meleeDecklistRecordSchema = z.object({
-	/** Slug / lookup key */
-	l: z.string().max(200),
-	/** Card name */
-	n: z.string().max(200),
-	/** Set code */
-	s: z.string().max(10).nullable(),
-	/**
-	 * Quantity can legitimately exceed 100 for large decks and basic lands.
-	 * The high safety ceiling still keeps aggregate deck statistics within a
-	 * safe numeric range for the bounded 500-record deck list.
-	 */
-	q: z.number().int().min(0).max(1_000_000),
-	/** Compartment code: 0 = mainboard, 99 = sideboard */
-	c: z.number().int(),
-	/** Card type line */
-	t: z.string().max(200),
-}).passthrough();
+export const meleeDecklistRecordSchema = z
+	.object({
+		/** Slug / lookup key */
+		l: z.string().max(200),
+		/** Card name */
+		n: z.string().max(200),
+		/** Set code */
+		s: z.string().max(10).nullable(),
+		/**
+		 * Quantity can legitimately exceed 100 for large decks and basic lands.
+		 * The high safety ceiling still keeps aggregate deck statistics within a
+		 * safe numeric range for the bounded 500-record deck list.
+		 */
+		q: z.number().int().min(0).max(1_000_000),
+		/** Compartment code: 0 = mainboard, 99 = sideboard */
+		c: z.number().int(),
+		/** Card type line */
+		t: z.string().max(200),
+	})
+	.passthrough();
 
 /** Deck list attribute (color, archetype tags). */
-export const meleeDecklistAttributeSchema = z.object({
-	k: z.string().max(200),
-	v: z.string().max(1_000),
-	/** Priority/sort — may be absent on some attribute types */
-	p: z.number().nullable().optional(),
-}).passthrough();
+export const meleeDecklistAttributeSchema = z
+	.object({
+		k: z.string().max(200),
+		v: z.string().max(1_000),
+		/** Priority/sort — may be absent on some attribute types */
+		p: z.number().nullable().optional(),
+	})
+	.passthrough();
 
 /** Player decklist as it appears on a player record — only consumed fields validated. */
-export const meleePlayerDecklistSchema = z.object({
-	Guid: z.string().min(1).max(100),
-	DecklistName: z.string().max(200),
-	Records: z.array(meleeDecklistRecordSchema).max(500),
-	Attributes: z.array(meleeDecklistAttributeSchema).max(100),
-	FormatId: z.string().min(1).max(100),
-}).passthrough();
+export const meleePlayerDecklistSchema = z
+	.object({
+		Guid: z.string().min(1).max(100),
+		DecklistName: z.string().max(200),
+		Records: z.array(meleeDecklistRecordSchema).max(500),
+		Attributes: z.array(meleeDecklistAttributeSchema).max(100),
+		FormatId: z.string().min(1).max(100),
+	})
+	.passthrough();
 
 /** Player as returned from GET /api/player/list/{eventId} */
-export const meleePlayerSchema = z.object({
-	TeamId: z.number().int(),
-	PlayerName: z.string().max(200),
-	/** Melee omits this field for some registrations and returns null for others. */
-	PronounsDescription: z.string().max(200).nullish(),
-	/** Raw Melee tournament-player status. Numeric meanings are not publicly stable. */
-	Status: z.number().int().nullish(),
-	/** Absent or null when a player has not yet submitted a decklist. */
-	Decklists: z.array(meleePlayerDecklistSchema).max(20).nullish().transform(decklists => decklists ?? undefined),
-}).passthrough();
+export const meleePlayerSchema = z
+	.object({
+		TeamId: z.number().int(),
+		PlayerName: z.string().max(200),
+		/** Melee omits this field for some registrations and returns null for others. */
+		PronounsDescription: z.string().max(200).nullish(),
+		/** Raw Melee tournament-player status. Numeric meanings are not publicly stable. */
+		Status: z.number().int().nullish(),
+		/** Absent or null when a player has not yet submitted a decklist. */
+		Decklists: z
+			.array(meleePlayerDecklistSchema)
+			.max(20)
+			.nullish()
+			.transform((decklists) => decklists ?? undefined),
+	})
+	.passthrough();
 
 /** Standing as returned from GET /api/standing/list/ */
-export const meleeStandingSchema = z.object({
-	TeamId: z.number().int(),
-	Rank: z.number().int(),
-	Points: z.number(),
-	MatchWins: z.number().int(),
-	MatchLosses: z.number().int(),
-	MatchDraws: z.number().int(),
-}).passthrough();
+export const meleeStandingSchema = z
+	.object({
+		TeamId: z.number().int(),
+		Rank: z.number().int(),
+		Points: z.number(),
+		MatchWins: z.number().int(),
+		MatchLosses: z.number().int(),
+		MatchDraws: z.number().int(),
+	})
+	.passthrough();
 
 /** Competitor nested inside a match record. */
-export const meleeMatchCompetitorSchema = z.object({
-	TeamId: z.number().int(),
-	SortOrder: z.number().int(),
-	GameWins: z.number().int().nullable(),
-	Decklists: z.array(
-		z.object({
-			DecklistId: z.string().min(1).max(100),
-			PlayerId: z.number().int(),
-			FormatId: z.string().min(1).max(100).optional(),
-		}).passthrough(),
-	).max(20),
-}).passthrough();
+export const meleeMatchCompetitorSchema = z
+	.object({
+		TeamId: z.number().int(),
+		SortOrder: z.number().int(),
+		GameWins: z.number().int().nullable(),
+		Decklists: z
+			.array(
+				z
+					.object({
+						DecklistId: z.string().min(1).max(100),
+						PlayerId: z.number().int(),
+						FormatId: z.string().min(1).max(100).optional(),
+					})
+					.passthrough(),
+			)
+			.max(20),
+	})
+	.passthrough();
 
 /** Match as returned from GET /api/match/list/round/{roundId} */
-export const meleeMatchSchema = z.object({
-	Guid: z.string().min(1).max(100),
-	TableNumber: z.number().int().nullable(),
-	Competitors: z.array(meleeMatchCompetitorSchema).max(16),
-	HasResult: z.boolean(),
-	ResultString: z.string().max(1_000).nullable(),
-	GameDraws: z.number().int().nullable(),
-	ByeReason: z.number().int().nullable(),
-	FormatId: z.string().min(1).max(100).optional(),
-}).passthrough();
+export const meleeMatchSchema = z
+	.object({
+		Guid: z.string().min(1).max(100),
+		TableNumber: z.number().int().nullable(),
+		Competitors: z.array(meleeMatchCompetitorSchema).max(16),
+		HasResult: z.boolean(),
+		ResultString: z.string().max(1_000).nullable(),
+		GameDraws: z.number().int().nullable(),
+		ByeReason: z.number().int().nullable(),
+		FormatId: z.string().min(1).max(100).optional(),
+	})
+	.passthrough();
 
 /** Phase round as nested inside a MeleeEventPhase. */
-export const meleeEventPhaseRoundSchema = z.object({
-	ID: z.number().int(),
-	Name: z.string().max(200),
-	SortOrder: z.number().int(),
-}).passthrough();
+export const meleeEventPhaseRoundSchema = z
+	.object({
+		ID: z.number().int(),
+		Name: z.string().max(200),
+		SortOrder: z.number().int(),
+	})
+	.passthrough();
 
 /** Phase as nested inside a MeleeEvent. */
-export const meleeEventPhaseSchema = z.object({
-	ID: z.number().int(),
-	Name: z.string().max(200),
-	FormatId: z.string().min(1).max(100),
-	SortOrder: z.number().int(),
-	Rounds: z.array(meleeEventPhaseRoundSchema).max(1_000),
-}).passthrough();
+export const meleeEventPhaseSchema = z
+	.object({
+		ID: z.number().int(),
+		Name: z.string().max(200),
+		FormatId: z.string().min(1).max(100),
+		SortOrder: z.number().int(),
+		Rounds: z.array(meleeEventPhaseRoundSchema).max(1_000),
+	})
+	.passthrough();
 
 /** Tournament event as returned from GET /api/tournament/{eventId} */
-export const meleeEventSchema = z.object({
-	ID: z.number().int(),
-	Name: z.string().max(200),
-	Game: z.string().trim().min(1).max(100),
-	Phases: z.array(meleeEventPhaseSchema).max(100),
-}).passthrough();
+export const meleeEventSchema = z
+	.object({
+		ID: z.number().int(),
+		Name: z.string().max(200),
+		Game: z.string().trim().min(1).max(100),
+		Phases: z.array(meleeEventPhaseSchema).max(100),
+	})
+	.passthrough();
 
 // ── Inferred types ────────────────────────────────────────────────────────────
 

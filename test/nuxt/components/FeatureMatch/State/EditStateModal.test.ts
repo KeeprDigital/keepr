@@ -10,9 +10,11 @@ import EditStateModal from '~/components/FeatureMatch/State/EditStateModal.vue';
 /** Server time runs this far ahead of the device's clock. */
 const SERVER_AHEAD_MS = 5000;
 
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
-	getServerTime: () => Date.now() + SERVER_AHEAD_MS,
-})));
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+		getServerTime: () => Date.now() + SERVER_AHEAD_MS,
+	})),
+);
 
 const UModalStub = defineComponent({
 	props: {
@@ -28,7 +30,8 @@ const UButtonStub = defineComponent({
 		loading: Boolean,
 	},
 	emits: ['click'],
-	template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot>{{ label }}</slot></button>',
+	template:
+		'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot>{{ label }}</slot></button>',
 });
 
 const UInputStub = defineComponent({
@@ -36,7 +39,8 @@ const UInputStub = defineComponent({
 		modelValue: [String, Number],
 	},
 	emits: ['update:modelValue'],
-	template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)">',
+	template:
+		'<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)">',
 });
 
 const USelectStub = defineComponent({
@@ -111,12 +115,26 @@ describe('feature match edit state modal', () => {
 	it('prefills every field from the state it opened on', async () => {
 		const wrapper = await mountModal();
 
-		expect((wrapper.get('[data-testid="state-life-player1"]').element as HTMLInputElement).value).toBe('20');
-		expect((wrapper.get('[data-testid="state-life-player2"]').element as HTMLInputElement).value).toBe('20');
-		expect((wrapper.get('[data-testid="state-turn-number"]').element as HTMLInputElement).value).toBe('3');
-		expect((wrapper.get('[data-testid="state-first-player"]').element as unknown as HTMLSelectElement).value).toBe('player1');
-		expect((wrapper.get('[data-testid="state-active-player"]').element as unknown as HTMLSelectElement).value).toBe('player2');
-		expect((wrapper.get('[data-testid="state-clock"]').element as HTMLInputElement).value).toBe('40:00');
+		expect(
+			(wrapper.get('[data-testid="state-life-player1"]').element as HTMLInputElement).value,
+		).toBe('20');
+		expect(
+			(wrapper.get('[data-testid="state-life-player2"]').element as HTMLInputElement).value,
+		).toBe('20');
+		expect(
+			(wrapper.get('[data-testid="state-turn-number"]').element as HTMLInputElement).value,
+		).toBe('3');
+		expect(
+			(wrapper.get('[data-testid="state-first-player"]').element as unknown as HTMLSelectElement)
+				.value,
+		).toBe('player1');
+		expect(
+			(wrapper.get('[data-testid="state-active-player"]').element as unknown as HTMLSelectElement)
+				.value,
+		).toBe('player2');
+		expect((wrapper.get('[data-testid="state-clock"]').element as HTMLInputElement).value).toBe(
+			'40:00',
+		);
 	});
 
 	// The clock field opens on what the clock reads: time remaining rounds up, elapsed time down.
@@ -124,28 +142,38 @@ describe('feature match edit state modal', () => {
 		['countdown', '40:00'],
 		['countup', '10:00'],
 	] as const)('prefills a %s part-way through a second as %s', async (type, expected) => {
-		const wrapper = await mountModal({}, {
-			clock: {
-				type,
-				durationMs: 50 * 60 * 1000,
-				elapsedMs: 10 * 60 * 1000 + 400,
-				isRunning: false,
-				lastStartedAt: null,
-				countUpAfterCountdown: false,
+		const wrapper = await mountModal(
+			{},
+			{
+				clock: {
+					type,
+					durationMs: 50 * 60 * 1000,
+					elapsedMs: 10 * 60 * 1000 + 400,
+					isRunning: false,
+					lastStartedAt: null,
+					countUpAfterCountdown: false,
+				},
 			},
-		});
+		);
 
-		expect((wrapper.get('[data-testid="state-clock"]').element as HTMLInputElement).value).toBe(expected);
+		expect((wrapper.get('[data-testid="state-clock"]').element as HTMLInputElement).value).toBe(
+			expected,
+		);
 	});
 
 	// What a running clock reads is its projection's rule; the field takes it on server time.
-	it('prefills a running clock as it reads by server time, not the device\'s', async () => {
+	it("prefills a running clock as it reads by server time, not the device's", async () => {
 		vi.useFakeTimers({ now: 1_000_000 });
-		const wrapper = await mountModal({}, {
-			clock: clock({ isRunning: true, lastStartedAt: 1_000_000 }),
-		});
+		const wrapper = await mountModal(
+			{},
+			{
+				clock: clock({ isRunning: true, lastStartedAt: 1_000_000 }),
+			},
+		);
 
-		expect((wrapper.get('[data-testid="state-clock"]').element as HTMLInputElement).value).toBe('49:55');
+		expect((wrapper.get('[data-testid="state-clock"]').element as HTMLInputElement).value).toBe(
+			'49:55',
+		);
 	});
 
 	it('emits only the fields that changed, as one save', async () => {
@@ -175,15 +203,18 @@ describe('feature match edit state modal', () => {
 	});
 
 	it('includes cards kept only when set, and never claims an untouched field', async () => {
-		const wrapper = await mountModal({}, {
-			player2: {
-				lifeTotal: 20,
-				gameWins: 0,
-				counters: [],
-				cardsKept: 6,
-				sideboardRevealed: false,
+		const wrapper = await mountModal(
+			{},
+			{
+				player2: {
+					lifeTotal: 20,
+					gameWins: 0,
+					counters: [],
+					cardsKept: 6,
+					sideboardRevealed: false,
+				},
 			},
-		});
+		);
 
 		await wrapper.get('[data-testid="state-cards-player1"]').setValue('5');
 		await wrapper.get('[data-testid="state-save"]').trigger('click');
@@ -195,16 +226,17 @@ describe('feature match edit state modal', () => {
 
 	// The clock field reads to the second, so one opened part-way through a second is still untouched.
 	it('closes without saving when nothing changed', async () => {
-		const wrapper = await mountModal({}, {
-			clock: clock({ elapsedMs: 10 * 60 * 1000 + 400 }),
-		});
+		const wrapper = await mountModal(
+			{},
+			{
+				clock: clock({ elapsedMs: 10 * 60 * 1000 + 400 }),
+			},
+		);
 
 		await wrapper.get('[data-testid="state-save"]').trigger('click');
 
 		expect(wrapper.emitted('save')).toBeUndefined();
-		expect(wrapper.emitted('update:open')).toEqual([
-			[false],
-		]);
+		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 	});
 
 	it('disables Save while the clock input cannot be parsed', async () => {
@@ -232,16 +264,19 @@ describe('feature match edit state modal', () => {
 	});
 
 	it('offers no clock field for an untimed match', async () => {
-		const wrapper = await mountModal({}, {
-			clock: {
-				type: 'untimed',
-				durationMs: 0,
-				elapsedMs: 0,
-				isRunning: false,
-				lastStartedAt: null,
-				countUpAfterCountdown: false,
+		const wrapper = await mountModal(
+			{},
+			{
+				clock: {
+					type: 'untimed',
+					durationMs: 0,
+					elapsedMs: 0,
+					isRunning: false,
+					lastStartedAt: null,
+					countUpAfterCountdown: false,
+				},
 			},
-		});
+		);
 
 		expect(wrapper.find('[data-testid="state-clock"]').exists()).toBe(false);
 	});

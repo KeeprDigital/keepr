@@ -16,9 +16,7 @@ import { crc32 } from 'node:zlib';
 import { AcceptanceFailure, deliveryRouteLabel } from './evidence.mjs';
 import { readLocalConfigurationFiles, suppliedNames } from './local-configuration.mjs';
 import { openOperatorSession } from './operator.mjs';
-import {
-	featureMatchLayoutReferencing,
-} from './repository-bridge.mjs';
+import { featureMatchLayoutReferencing } from './repository-bridge.mjs';
 import { acceptanceRoutes, screenOutputRepresentation } from './routes.mjs';
 
 const DEFAULT_LOCAL_ORIGIN = 'http://127.0.0.1:8787';
@@ -31,8 +29,7 @@ const DEFAULT_LOCAL_ORIGIN = 'http://127.0.0.1:8787';
 export function acceptanceOrigin({ deployed, env = process.env }) {
 	if (!deployed)
 		return (env.STREAM_KEEPR_LOCAL_ACCEPTANCE_URL ?? DEFAULT_LOCAL_ORIGIN).replace(/\/$/, '');
-	const baseUrl = env.STREAM_KEEPR_BROWSER_ACCEPTANCE_URL
-		?? env.STREAM_KEEPR_DEPLOY_HEALTH_URL;
+	const baseUrl = env.STREAM_KEEPR_BROWSER_ACCEPTANCE_URL ?? env.STREAM_KEEPR_DEPLOY_HEALTH_URL;
 	if (!baseUrl) {
 		throw new AcceptanceFailure('harness-precondition-unmet', {
 			reason: 'STREAM_KEEPR_BROWSER_ACCEPTANCE_URL is unset',
@@ -45,10 +42,12 @@ export function digestOf(bytes) {
 	return createHash('sha256').update(bytes).digest('hex');
 }
 
-const BASE_PIXEL_PNG = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
+const BASE_PIXEL_PNG = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
 
 /**
  * A still image whose bytes belong to this run alone. Content-addressed
@@ -56,27 +55,28 @@ const BASE_PIXEL_PNG = Uint8Array.from(Buffer.from(
  * over 95 bytes proves less than one over a few hundred.
  */
 export function distinctPixelPng(marker) {
-	const payload = Buffer.concat([
-		Buffer.from('tEXt'),
-		Buffer.from(`sk-acceptance\0${marker}`),
-	]);
+	const payload = Buffer.concat([Buffer.from('tEXt'), Buffer.from(`sk-acceptance\0${marker}`)]);
 	const length = Buffer.alloc(4);
 	length.writeUInt32BE(payload.byteLength - 4, 0);
 	const checksum = Buffer.alloc(4);
 	checksum.writeUInt32BE(crc32(payload), 0);
-	return Uint8Array.from(Buffer.concat([
-		Buffer.from(BASE_PIXEL_PNG.slice(0, -12)),
-		length,
-		payload,
-		checksum,
-		Buffer.from(BASE_PIXEL_PNG.slice(-12)),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			Buffer.from(BASE_PIXEL_PNG.slice(0, -12)),
+			length,
+			payload,
+			checksum,
+			Buffer.from(BASE_PIXEL_PNG.slice(-12)),
+		]),
+	);
 }
 
-const BASE_PIXEL_JPEG = Uint8Array.from(Buffer.from(
-	'/9j/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAABf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJtAEx7/2Q==',
-	'base64',
-));
+const BASE_PIXEL_JPEG = Uint8Array.from(
+	Buffer.from(
+		'/9j/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAABf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJtAEx7/2Q==',
+		'base64',
+	),
+);
 
 /**
  * The JPEG counterpart of `distinctPixelPng`, carried in a COM segment right
@@ -88,18 +88,19 @@ const BASE_PIXEL_JPEG = Uint8Array.from(Buffer.from(
 export function distinctPixelJpeg(marker) {
 	const payload = Buffer.from(`sk-acceptance\0${marker}`);
 	const length = payload.byteLength + 2;
-	return Uint8Array.from(Buffer.concat([
-		Buffer.from(BASE_PIXEL_JPEG.subarray(0, 2)),
-		Buffer.of(0xFF, 0xFE, length >>> 8, length & 0xFF),
-		payload,
-		Buffer.from(BASE_PIXEL_JPEG.subarray(2)),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			Buffer.from(BASE_PIXEL_JPEG.subarray(0, 2)),
+			Buffer.of(0xff, 0xfe, length >>> 8, length & 0xff),
+			payload,
+			Buffer.from(BASE_PIXEL_JPEG.subarray(2)),
+		]),
+	);
 }
 
-const BASE_PIXEL_WEBP = Uint8Array.from(Buffer.from(
-	'UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAEAdQlFKUp4CBiOh/AAA=',
-	'base64',
-));
+const BASE_PIXEL_WEBP = Uint8Array.from(
+	Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAEAdQlFKUp4CBiOh/AAA=', 'base64'),
+);
 
 /**
  * The WebP counterpart, as a trailing RIFF chunk under a fourCC nothing
@@ -113,15 +114,8 @@ export function distinctPixelWebp(marker) {
 	const chunkHeader = Buffer.alloc(8);
 	chunkHeader.write('SKAC', 0, 'ascii');
 	chunkHeader.writeUInt32LE(payload.byteLength, 4);
-	const padding = payload.byteLength % 2 === 1
-		? Buffer.alloc(1)
-		: Buffer.alloc(0);
-	const combined = Buffer.concat([
-		Buffer.from(BASE_PIXEL_WEBP),
-		chunkHeader,
-		payload,
-		padding,
-	]);
+	const padding = payload.byteLength % 2 === 1 ? Buffer.alloc(1) : Buffer.alloc(0);
+	const combined = Buffer.concat([Buffer.from(BASE_PIXEL_WEBP), chunkHeader, payload, padding]);
 	combined.writeUInt32LE(combined.byteLength - 8, 4);
 	return Uint8Array.from(combined);
 }
@@ -158,9 +152,7 @@ async function observe(response) {
 export async function openInstallation(origin, { deployed = false } = {}) {
 	const sessionCookies = await openOperatorSession(origin, {
 		deployed,
-		supplied: deployed
-			? {}
-			: suppliedNames(readLocalConfigurationFiles()),
+		supplied: deployed ? {} : suppliedNames(readLocalConfigurationFiles()),
 	});
 
 	// The operator's session is the whole identity since ADR-0010's cutover
@@ -183,22 +175,21 @@ export async function openInstallation(origin, { deployed = false } = {}) {
 		// unconditional: a request without this is a 401 from every path here but
 		// the Screen Output ones, where an extra cookie is ignored.
 		if (!init.anonymous) {
-			headers.set('cookie', [
-				headers.get('cookie'),
-				...sessionCookies,
-			].filter(Boolean).join('; '));
+			headers.set('cookie', [headers.get('cookie'), ...sessionCookies].filter(Boolean).join('; '));
 		}
 		let body = init.body;
 		if (body !== undefined && !(body instanceof Uint8Array)) {
 			headers.set('content-type', 'application/json');
 			body = JSON.stringify(body);
 		}
-		return await observe(await fetch(`${origin}${path}`, {
-			method: init.method ?? 'GET',
-			headers,
-			body,
-			redirect: 'manual',
-		}));
+		return await observe(
+			await fetch(`${origin}${path}`, {
+				method: init.method ?? 'GET',
+				headers,
+				body,
+				redirect: 'manual',
+			}),
+		);
 	}
 
 	async function json(path, init = {}) {
@@ -212,9 +203,7 @@ export async function openInstallation(origin, { deployed = false } = {}) {
 				actual: observation.status,
 			});
 		}
-		return observation.bytes.byteLength === 0
-			? undefined
-			: JSON.parse(observation.text());
+		return observation.bytes.byteLength === 0 ? undefined : JSON.parse(observation.text());
 	}
 
 	return {
@@ -234,15 +223,13 @@ export async function openInstallation(origin, { deployed = false } = {}) {
  * Trash keeps the 30-day recovery window, so nothing is destroyed.
  */
 export async function trashGraphicAssetBestEffort(session, assetId) {
-	if (!assetId)
-		return;
+	if (!assetId) return;
 	try {
 		await session.request(acceptanceRoutes.assetLifecycleActions(assetId), {
 			method: 'POST',
 			body: { action: 'trash' },
 		});
-	}
-	catch {
+	} catch {
 		// Best-effort by design.
 	}
 }
@@ -257,7 +244,10 @@ export async function trashGraphicAssetBestEffort(session, assetId) {
  * a stable failure code — not here, where a throw would misfile a codec
  * defect as an unready environment.
  */
-export async function stageStillImagePublication(session, { name, sourceFileName, declaredMime, bytes }) {
+export async function stageStillImagePublication(
+	session,
+	{ name, sourceFileName, declaredMime, bytes },
+) {
 	const initiated = await session.json(acceptanceRoutes.ingestionOperations(), {
 		method: 'POST',
 		body: {
@@ -283,15 +273,13 @@ export async function stageStillImagePublication(session, { name, sourceFileName
 		settled,
 		async dispose() {
 			const assetId = settled?.result?.assetId;
-			if (!assetId)
-				return;
+			if (!assetId) return;
 			try {
 				await session.request(acceptanceRoutes.assetLifecycleActions(assetId), {
 					method: 'POST',
 					body: { action: 'trash' },
 				});
-			}
-			catch {
+			} catch {
 				// A left-behind acceptance pixel is noise, never a failure of the gate.
 			}
 		},
@@ -313,8 +301,7 @@ export async function stageStillImagePublication(session, { name, sourceFileName
  * @param {{ sessionCookies: readonly string[] }} session
  */
 export function registerSessionSecrets(evidence, session) {
-	for (const secret of session.sessionCookies)
-		evidence.addSecret(secret);
+	for (const secret of session.sessionCookies) evidence.addSecret(secret);
 }
 
 /**
@@ -374,10 +361,10 @@ export async function provisionScreenOutputScenario(session, { label }) {
 			declaredByteLength: content.byteLength,
 		},
 	});
-	const operation = await session.json(
-		acceptanceRoutes.ingestionContent(initiated.id),
-		{ method: 'PUT', body: content },
-	);
+	const operation = await session.json(acceptanceRoutes.ingestionContent(initiated.id), {
+		method: 'PUT',
+		body: content,
+	});
 	const { assetId, revisionId } = operation.result;
 
 	// A capability only authorizes what the Screen Output actually references,
@@ -393,10 +380,9 @@ export async function provisionScreenOutputScenario(session, { label }) {
 	);
 
 	async function mintCapability(method) {
-		const minted = await session.json(
-			acceptanceRoutes.screenAssetCapability(event.id, screen.id),
-			{ method },
-		);
+		const minted = await session.json(acceptanceRoutes.screenAssetCapability(event.id, screen.id), {
+			method,
+		});
 		return minted.assetCapability;
 	}
 
@@ -415,8 +401,7 @@ export async function provisionScreenOutputScenario(session, { label }) {
 		async dispose() {
 			try {
 				await session.request(acceptanceRoutes.event(event.id), { method: 'DELETE' });
-			}
-			catch {
+			} catch {
 				// A left-behind acceptance Event is noise, never a failure of the gate.
 			}
 			// The Event's deletion released the Screen's references, so the pixel
@@ -468,25 +453,20 @@ export async function stageFontIngestion(session, { bytes, declaredMime, sourceF
 		/** Whatever the operation ended up publishing, if it published at all. */
 		async publishedAssetId() {
 			try {
-				const settled = await session.json(
-					acceptanceRoutes.ingestionOperation(initiated.id),
-				);
+				const settled = await session.json(acceptanceRoutes.ingestionOperation(initiated.id));
 				return settled?.result?.assetId;
-			}
-			catch {
+			} catch {
 				return undefined;
 			}
 		},
 		async dispose(assetId) {
-			if (!assetId)
-				return;
+			if (!assetId) return;
 			try {
 				await session.request(acceptanceRoutes.assetLifecycleActions(assetId), {
 					method: 'POST',
 					body: { action: 'trash' },
 				});
-			}
-			catch {
+			} catch {
 				// A left-behind acceptance face is noise, never a failure of the gate.
 			}
 		},

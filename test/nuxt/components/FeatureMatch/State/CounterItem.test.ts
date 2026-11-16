@@ -35,7 +35,10 @@ describe('featureMatchCounterItem', () => {
 		const wrapper = mountCounterItem();
 
 		await wrapper.get('[aria-label="Poison counter actions"]').trigger('click');
-		await wrapper.findAll('button').find(button => button.text() === action)!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === action)!
+			.trigger('click');
 
 		expect(wrapper.emitted(event)).toHaveLength(1);
 	});

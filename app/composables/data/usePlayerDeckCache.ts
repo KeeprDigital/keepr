@@ -1,7 +1,15 @@
 import type { PlayerDeckList } from '~~/shared/types/deckList';
-import type { PlayerDeckCollectionResponse, PlayerDeckResponse, PlayerDeckReviewResponse } from '~~/shared/types/metagame';
+import type {
+	PlayerDeckCollectionResponse,
+	PlayerDeckResponse,
+	PlayerDeckReviewResponse,
+} from '~~/shared/types/metagame';
 import type { Archetype, Player } from '~/types';
-import { calculateDeckCurve, calculateDeckPips, calculateDeckStats } from '~~/shared/utils/deckStats';
+import {
+	calculateDeckCurve,
+	calculateDeckPips,
+	calculateDeckStats,
+} from '~~/shared/utils/deckStats';
 import { getMtgGameData } from '~~/shared/utils/gameData';
 import { createPlayerDeckList } from '~~/shared/utils/playerDeck';
 
@@ -31,9 +39,7 @@ function dropStamp(playerId: number) {
 }
 
 function updatedAtKey(updatedAt: Date | string) {
-	return typeof updatedAt === 'string'
-		? updatedAt
-		: updatedAt.toISOString();
+	return typeof updatedAt === 'string' ? updatedAt : updatedAt.toISOString();
 }
 
 /**
@@ -46,20 +52,21 @@ export function selectPlayerDeck(
 	selection: PlayerDeckSelection = {},
 ): PlayerDeckResponse | null {
 	if (selection.deckId != null) {
-		return collection.decks.find(deck => deck.id === selection.deckId) ?? null;
+		return collection.decks.find((deck) => deck.id === selection.deckId) ?? null;
 	}
 
 	if (selection.phaseId != null) {
 		const phaseId = selection.phaseId;
-		const formatDeck = collection.decks.find(deck => deck.phaseIds.includes(phaseId));
-		if (formatDeck)
-			return formatDeck;
+		const formatDeck = collection.decks.find((deck) => deck.phaseIds.includes(phaseId));
+		if (formatDeck) return formatDeck;
 	}
 
-	return collection.decks.find(deck => deck.id === collection.selectedDeckId)
-		?? collection.decks.find(deck => deck.isPrimary)
-		?? collection.decks[0]
-		?? null;
+	return (
+		collection.decks.find((deck) => deck.id === collection.selectedDeckId) ??
+		collection.decks.find((deck) => deck.isPrimary) ??
+		collection.decks[0] ??
+		null
+	);
 }
 
 export function usePlayerDeckCache() {
@@ -79,28 +86,29 @@ export function usePlayerDeckCache() {
 
 		const queryKey = `${playerId}:${key}:${selection.deckId ?? ''}:${selection.phaseId ?? ''}:${selection.roundId ?? ''}`;
 		const existing = inFlight.get(queryKey);
-		if (existing)
-			return existing;
+		if (existing) return existing;
 
 		const drops = dropStamp(playerId);
 		const promise = $fetch<PlayerDeckCollectionResponse>(
 			`/api/events/${eventId}/players/${playerId}/decks`,
 			{ query: selection },
-		).then((collection) => {
-			if (dropStamp(playerId) !== drops)
+		)
+			.then((collection) => {
+				if (dropStamp(playerId) !== drops) return collection;
+				const primaryDeck =
+					collection.decks.find((deck) => deck.isPrimary) ?? collection.decks[0] ?? null;
+				cache.set(playerId, {
+					updatedAtKey: key,
+					collection: {
+						...collection,
+						selectedDeckId: primaryDeck?.id ?? null,
+					},
+				});
 				return collection;
-			const primaryDeck = collection.decks.find(deck => deck.isPrimary) ?? collection.decks[0] ?? null;
-			cache.set(playerId, {
-				updatedAtKey: key,
-				collection: {
-					...collection,
-					selectedDeckId: primaryDeck?.id ?? null,
-				},
+			})
+			.finally(() => {
+				inFlight.delete(queryKey);
 			});
-			return collection;
-		}).finally(() => {
-			inFlight.delete(queryKey);
-		});
 
 		inFlight.set(queryKey, promise);
 		return promise;
@@ -134,25 +142,25 @@ export function usePlayerDeckCache() {
 		return readDeck(playerId, eventId, updatedAt, selection).catch(() => null);
 	}
 
-	function getCachedDeck(playerId: number, selection: PlayerDeckSelection = {}): PlayerDeckResponse | null {
+	function getCachedDeck(
+		playerId: number,
+		selection: PlayerDeckSelection = {},
+	): PlayerDeckResponse | null {
 		const collection = cache.get(playerId)?.collection;
-		return collection
-			? selectPlayerDeck(collection, selection)
-			: null;
+		return collection ? selectPlayerDeck(collection, selection) : null;
 	}
 
 	function clearCachedDeck(playerId: number) {
 		playerDrops.set(playerId, (playerDrops.get(playerId) ?? 0) + 1);
 		cache.delete(playerId);
 		for (const key of inFlight.keys()) {
-			if (key.startsWith(`${playerId}:`))
-				inFlight.delete(key);
+			if (key.startsWith(`${playerId}:`)) inFlight.delete(key);
 		}
 	}
 
 	/** A review's answer, or a cleared review's, written onto the cached deck. */
 	function applyReviewAnswer(playerId: number, deckId: number, result: PlayerDeckReviewResponse) {
-		const cachedDeck = cache.get(playerId)?.collection.decks.find(deck => deck.id === deckId);
+		const cachedDeck = cache.get(playerId)?.collection.decks.find((deck) => deck.id === deckId);
 		if (cachedDeck) {
 			Object.assign(cachedDeck, {
 				name: result.deck.name,
@@ -183,7 +191,11 @@ export function usePlayerDeckCache() {
 	}
 
 	/** Returns a reviewed deck to unreviewed; its Archetype stays. */
-	async function clearDeckReview(eventId: number, playerId: number, deckId: number): Promise<PlayerDeckReviewResponse> {
+	async function clearDeckReview(
+		eventId: number,
+		playerId: number,
+		deckId: number,
+	): Promise<PlayerDeckReviewResponse> {
 		const result = await $fetch<PlayerDeckReviewResponse>(
 			`/api/events/${eventId}/players/${playerId}/decks/${deckId}/review`,
 			{ method: 'DELETE' },
@@ -203,9 +215,10 @@ export function usePlayerDeckCache() {
 	}
 
 	function applyReviewedDeck(reviewedDeck: PlayerDeckReviewResponse['deck']) {
-		const cachedDeck = cache.get(reviewedDeck.playerId)?.collection.decks.find(deck => deck.id === reviewedDeck.id);
-		if (!cachedDeck)
-			return;
+		const cachedDeck = cache
+			.get(reviewedDeck.playerId)
+			?.collection.decks.find((deck) => deck.id === reviewedDeck.id);
+		if (!cachedDeck) return;
 
 		Object.assign(cachedDeck, {
 			name: reviewedDeck.name,
@@ -245,12 +258,11 @@ export function usePlayerDeckCache() {
 
 	function getDeckLists(player: Player): PlayerDeckList[] {
 		const collection = cache.get(player.id)?.collection;
-		if (!collection)
-			return [];
+		if (!collection) return [];
 
 		return collection.decks.map((deck) => {
 			const pips = calculateDeckPips(deck.cards);
-			const hasRealPips = Object.values(pips).some(value => value > 0);
+			const hasRealPips = Object.values(pips).some((value) => value > 0);
 			return createPlayerDeckList(deck, {
 				stats: calculateDeckStats(deck.cards),
 				curve: calculateDeckCurve(deck.cards),
@@ -259,15 +271,16 @@ export function usePlayerDeckCache() {
 		});
 	}
 
-	function getActiveDeckForPlayer(player: Player): { name: string | null; colors: string | null } | null {
+	function getActiveDeckForPlayer(
+		player: Player,
+	): { name: string | null; colors: string | null } | null {
 		const cachedDeck = getCachedDeck(player.id);
 		if (cachedDeck) {
 			return { name: cachedDeck.name, colors: cachedDeck.colors };
 		}
 
 		const gameData = getMtgGameData(player.gameData);
-		if (!gameData.deckName)
-			return null;
+		if (!gameData.deckName) return null;
 		return { name: gameData.deckName, colors: gameData.deckColors ?? null };
 	}
 

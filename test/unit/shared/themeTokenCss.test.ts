@@ -80,7 +80,9 @@ describe('a motion token as custom properties', () => {
 			'--theme-card-motion-duration': '300ms',
 			'--theme-card-motion-easing': 'cubic-bezier(0.5, 1, 0.89, 1)',
 			'--theme-card-motion-delay': '50ms',
-			...Object.fromEntries(Object.entries(excursion).map(([part, css]) => [`--theme-card-motion-${part}`, css])),
+			...Object.fromEntries(
+				Object.entries(excursion).map(([part, css]) => [`--theme-card-motion-${part}`, css]),
+			),
 		});
 	});
 });

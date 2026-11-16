@@ -36,10 +36,11 @@ const featureMatchStateStore = useFeatureMatchStateStore();
 const broadcastDeckListStore = useBroadcastDeckListStore();
 
 const isOpEvent = computed(() => eventStore.event?.game === 'op');
-const isCommanderEvent = computed(() => !!eventStore.event && eventKind(eventStore.event) === 'mtg-commander');
-const broadcastDeckListsEnabled = computed(() =>
-	eventStore.event?.game === 'mtg'
-	&& eventStore.event.broadcastDeckListsEnabled,
+const isCommanderEvent = computed(
+	() => !!eventStore.event && eventKind(eventStore.event) === 'mtg-commander',
+);
+const broadcastDeckListsEnabled = computed(
+	() => eventStore.event?.game === 'mtg' && eventStore.event.broadcastDeckListsEnabled,
 );
 
 type SourceTab = DeckSource['type'];
@@ -65,44 +66,46 @@ const sourceTabs = computed<TabsItem[]>(() => {
  * to a Slot side.
  */
 function sourceTabOf(deckSource: DeckSource): SourceTab | null {
-	if (isCommanderEvent.value)
-		return 'featureMatchSlot';
-	if (isOpEvent.value && deckSource.type === 'player' && deckSource.playerId === null)
-		return null;
-	return deckSource.type === 'player' || sourceTabs.value.some(tab => tab.value === deckSource.type)
+	if (isCommanderEvent.value) return 'featureMatchSlot';
+	if (isOpEvent.value && deckSource.type === 'player' && deckSource.playerId === null) return null;
+	return deckSource.type === 'player' ||
+		sourceTabs.value.some((tab) => tab.value === deckSource.type)
 		? deckSource.type
 		: null;
 }
 
-const firstTab = computed<SourceTab>(() => isOpEvent.value || isCommanderEvent.value
-	? 'featureMatchSlot'
-	: 'player');
+const firstTab = computed<SourceTab>(() =>
+	isOpEvent.value || isCommanderEvent.value ? 'featureMatchSlot' : 'player',
+);
 const sourceTab = ref<SourceTab>(sourceTabOf(props.modelValue) ?? firstTab.value);
-watch(() => sourceTabOf(props.modelValue), (tab) => {
-	if (tab)
-		sourceTab.value = tab;
-});
+watch(
+	() => sourceTabOf(props.modelValue),
+	(tab) => {
+		if (tab) sourceTab.value = tab;
+	},
+);
 // A tab the Event stops offering closes; one it starts offering opens on the source it holds.
-watch(() => sourceTabs.value.map(tab => tab.value).join(), () => {
-	sourceTab.value = sourceTabOf(props.modelValue) ?? firstTab.value;
-});
+watch(
+	() => sourceTabs.value.map((tab) => tab.value).join(),
+	() => {
+		sourceTab.value = sourceTabOf(props.modelValue) ?? firstTab.value;
+	},
+);
 
-const selectedPlayerId = computed(() => props.modelValue.type === 'player'
-	? props.modelValue.playerId
-	: null);
-const selectedBroadcastDeckListId = computed(() => props.modelValue.type === 'broadcast'
-	? props.modelValue.broadcastDeckListId
-	: null);
-const slotSide = computed(() => props.modelValue.type === 'featureMatchSlot'
-	? props.modelValue
-	: null);
+const selectedPlayerId = computed(() =>
+	props.modelValue.type === 'player' ? props.modelValue.playerId : null,
+);
+const selectedBroadcastDeckListId = computed(() =>
+	props.modelValue.type === 'broadcast' ? props.modelValue.broadcastDeckListId : null,
+);
+const slotSide = computed(() =>
+	props.modelValue.type === 'featureMatchSlot' ? props.modelValue : null,
+);
 
 /** A Magic: The Gathering Player is offered only with a deck, named with it; its deck name is the proxy for holding one. */
 function offerPlayerWithDeck(player: Player) {
 	const deckName = getMtgGameData(player.gameData).deckName;
-	return deckName
-		? `${player.name} - ${deckName}`
-		: null;
+	return deckName ? `${player.name} - ${deckName}` : null;
 }
 
 function selectPlayer(playerId: number | null) {
@@ -115,26 +118,28 @@ function selectBroadcastDeckList(broadcastDeckListId: number | null) {
 		emit('update:modelValue', { type: 'broadcast', broadcastDeckListId });
 }
 
-const broadcastDeckListItems = computed(() => broadcastDeckListStore.summaries.map(list => ({ label: list.name, value: list.id })));
+const broadcastDeckListItems = computed(() =>
+	broadcastDeckListStore.summaries.map((list) => ({ label: list.name, value: list.id })),
+);
 
 /** The Seats a Slot of this Event has: a Commander Slot's four, where they sit at the table. */
-const sideOptions = computed<{ label: string; value: Seat }[]>(() => isCommanderEvent.value
-	? SEAT_VALUES.map(seat => ({ label: `Seat ${seatNumber(seat)}`, value: seat }))
-	: PLAYER_SIDE_VALUES.map(seat => ({ label: `Player ${seatNumber(seat)}`, value: seat })));
+const sideOptions = computed<{ label: string; value: Seat }[]>(() =>
+	isCommanderEvent.value
+		? SEAT_VALUES.map((seat) => ({ label: `Seat ${seatNumber(seat)}`, value: seat }))
+		: PLAYER_SIDE_VALUES.map((seat) => ({ label: `Player ${seatNumber(seat)}`, value: seat })),
+);
 
 function selectSlotSide(patch: { slotId?: number | null; side?: Seat }) {
 	emit('update:modelValue', {
 		type: 'featureMatchSlot',
-		slotId: patch.slotId !== undefined
-			? patch.slotId
-			: slotSide.value?.slotId ?? null,
+		slotId: patch.slotId !== undefined ? patch.slotId : (slotSide.value?.slotId ?? null),
 		side: patch.side ?? slotSide.value?.side ?? 'player1',
 	});
 }
 
 /** The output shows nothing for a One Piece Player holding no Deck List, so settings say so. */
 const emptyPlayerHint = computed(() => {
-	const player = playerStore.players.find(candidate => candidate.id === selectedPlayerId.value);
+	const player = playerStore.players.find((candidate) => candidate.id === selectedPlayerId.value);
 	return !player || getOpGameData(player.gameData).deckList
 		? null
 		: 'This Player has no Deck List, so the Screen shows nothing. Add one on the Players page.';
@@ -144,29 +149,34 @@ const emptyPlayerHint = computed(() => {
 const emptySideHint = computed(() => {
 	const selected = slotSide.value;
 	const slot = selected?.slotId
-		? featureMatchStore.featureMatches.find(candidate => candidate.id === selected.slotId)
+		? featureMatchStore.featureMatches.find((candidate) => candidate.id === selected.slotId)
 		: null;
-	if (!selected || !slot)
-		return null;
-	const { data } = featureMatchSidePlayer(withFollowedFeatureMatchSession(slot, featureMatchStateStore), selected.side);
+	if (!selected || !slot) return null;
+	const { data } = featureMatchSidePlayer(
+		withFollowedFeatureMatchSession(slot, featureMatchStateStore),
+		selected.side,
+	);
 	// A Commander Seat's deck is its Commanders, with or without a list (ADR-0087).
 	if (isCommanderEvent.value) {
 		return getMtgGameData(data?.gameData).commanders?.length
 			? null
-			: 'This Seat holds no Commander, so the Screen shows nothing. Pick one in the Slot\'s setup.';
+			: "This Seat holds no Commander, so the Screen shows nothing. Pick one in the Slot's setup.";
 	}
 	// A linked side shows its Player's Deck List (ADR-0074).
 	const gameData = getOpGameData(data?.gameData);
 	return gameData.featureMatchDeckList || gameData.deckList
 		? null
-		: 'The player on this side has no Deck List, so the Screen shows nothing. Paste one in the Slot\'s setup.';
+		: "The player on this side has no Deck List, so the Screen shows nothing. Paste one in the Slot's setup.";
 });
 
 // The Broadcast Deck Lists the picker lists, loaded once the Event offers them.
-watch(broadcastDeckListsEnabled, (enabled) => {
-	if (enabled && props.eventId)
-		void broadcastDeckListStore.loadCollection(props.eventId);
-}, { immediate: true });
+watch(
+	broadcastDeckListsEnabled,
+	(enabled) => {
+		if (enabled && props.eventId) void broadcastDeckListStore.loadCollection(props.eventId);
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -183,7 +193,11 @@ watch(broadcastDeckListsEnabled, (enabled) => {
 			data-testid="deck-source-player"
 			:model-value="selectedPlayerId"
 			:event-id="eventId"
-			:description="isOpEvent ? 'The Player whose Deck List to show.' : 'Select a player with a deck list to show.'"
+			:description="
+				isOpEvent
+					? 'The Player whose Deck List to show.'
+					: 'Select a player with a deck list to show.'
+			"
 			:offer="isOpEvent ? undefined : offerPlayerWithDeck"
 			@update:model-value="selectPlayer"
 		/>
@@ -217,9 +231,11 @@ watch(broadcastDeckListsEnabled, (enabled) => {
 		/>
 		<ScreenSettingsField
 			:label="isCommanderEvent ? 'Seat' : 'Side'"
-			:description="isCommanderEvent
-				? 'Shows whoever sits in this Seat now: after Swap Seats, the other player\'s deck.'
-				: 'Shows whichever player sits on this side now: after Swap Players, the other player\'s Deck List.'"
+			:description="
+				isCommanderEvent
+					? 'Shows whoever sits in this Seat now: after Swap Seats, the other player\'s deck.'
+					: 'Shows whichever player sits on this side now: after Swap Players, the other player\'s Deck List.'
+			"
 		>
 			<USelect
 				data-testid="deck-source-side"

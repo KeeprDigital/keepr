@@ -41,17 +41,24 @@ export const OUTPUT_CHANGE_KINDS = [
 	'broadcastDeckList',
 ] as const;
 
-export type OutputChangeKind = typeof OUTPUT_CHANGE_KINDS[number];
+export type OutputChangeKind = (typeof OUTPUT_CHANGE_KINDS)[number];
 
 /**
  * What every Screen Output follows whatever its mode: its own Screen, and the
  * Event context it renders in, the Event's Theme included (ADR-0022). No mode
  * declares these.
  */
-const EVERY_SCREEN_FOLLOWS = ['event', 'theme', 'screen'] as const satisfies readonly OutputChangeKind[];
+const EVERY_SCREEN_FOLLOWS = [
+	'event',
+	'theme',
+	'screen',
+] as const satisfies readonly OutputChangeKind[];
 
 /** A kind a Screen Mode Definition may declare its output follows. */
-export type DeclaredOutputChangeKind = Exclude<OutputChangeKind, typeof EVERY_SCREEN_FOLLOWS[number]>;
+export type DeclaredOutputChangeKind = Exclude<
+	OutputChangeKind,
+	(typeof EVERY_SCREEN_FOLLOWS)[number]
+>;
 
 /**
  * The ids a change may name, each by what it identifies: a `playerDeck` change
@@ -71,7 +78,7 @@ const CHANGE_ID_FIELDS = [
 	'broadcastDeckListIds',
 ] as const;
 
-type ChangeIdField = typeof CHANGE_ID_FIELDS[number];
+type ChangeIdField = (typeof CHANGE_ID_FIELDS)[number];
 
 /**
  * One change a Screen Output can show. An id field left out means the message
@@ -105,8 +112,12 @@ type SlotFollowedField = 'matchIds' | 'roundIds' | 'phaseIds';
  * How a mode's config narrows a kind it follows: only changes naming one of
  * these ids. A change naming no id of a narrowed field is still heard.
  */
-export interface OutputFollowNarrowing extends Readonly<Partial<Record<Exclude<ChangeIdField, 'playerIds' | SlotFollowedField>, readonly number[]>>>,
-	Readonly<Partial<Record<SlotFollowedField, readonly number[] | FollowedBySlot>>> {
+export interface OutputFollowNarrowing
+	extends
+		Readonly<
+			Partial<Record<Exclude<ChangeIdField, 'playerIds' | SlotFollowedField>, readonly number[]>>
+		>,
+		Readonly<Partial<Record<SlotFollowedField, readonly number[] | FollowedBySlot>>> {
 	readonly playerIds?: readonly number[] | SeatedPlayers;
 }
 
@@ -121,19 +132,23 @@ export type OutputFollow<Config> = true | ((config: Config) => boolean | OutputF
  * What a Screen Mode's output follows: each kind of change its rendering
  * shows, beyond what every Screen follows. A kind left out is ignored.
  */
-export type ScreenModeOutputFollows<Config = any> = Readonly<Partial<Record<DeclaredOutputChangeKind, OutputFollow<Config>>>>;
+export type ScreenModeOutputFollows<Config = any> = Readonly<
+	Partial<Record<DeclaredOutputChangeKind, OutputFollow<Config>>>
+>;
 
 const NOTHING_AN_OUTPUT_SHOWS: readonly OutputChange[] = [];
 
 function wholeKinds(...kinds: OutputChangeKind[]): readonly OutputChange[] {
-	return kinds.map(kind => ({ kind }));
+	return kinds.map((kind) => ({ kind }));
 }
 
 /**
  * What each Event message changed. A mapped type over the message type union,
  * so a new message type fails to compile until its output meaning is decided.
  */
-const OUTPUT_CHANGES: { [K in MessageType]: (payload: MessagePayload<K>) => readonly OutputChange[] } = {
+const OUTPUT_CHANGES: {
+	[K in MessageType]: (payload: MessagePayload<K>) => readonly OutputChange[];
+} = {
 	'event:updated': () => wholeKinds('event'),
 	'event:deleted': () => wholeKinds('event'),
 	'theme:updated': () => wholeKinds('theme'),
@@ -177,9 +192,7 @@ const OUTPUT_CHANGES: { [K in MessageType]: (payload: MessagePayload<K>) => read
 	],
 	// Naming no Player, it may have re-projected any of them (ADR-0084).
 	'player:deckProjectionsChanged': ({ playerIds }) => [
-		playerIds
-			? { kind: 'player', playerIds }
-			: { kind: 'player' },
+		playerIds ? { kind: 'player', playerIds } : { kind: 'player' },
 	],
 	'playerDeck:reviewed': ({ deck }) => [
 		{
@@ -187,9 +200,7 @@ const OUTPUT_CHANGES: { [K in MessageType]: (payload: MessagePayload<K>) => read
 			playerIds: [deck.playerId],
 		},
 	],
-	'playerDeck:cardsResolved': ({ playerIds }) => [
-		{ kind: 'playerDeck', playerIds },
-	],
+	'playerDeck:cardsResolved': ({ playerIds }) => [{ kind: 'playerDeck', playerIds }],
 
 	'phase:created': ({ phase }) => [
 		{
@@ -274,7 +285,7 @@ const OUTPUT_CHANGES: { [K in MessageType]: (payload: MessagePayload<K>) => read
 	'featureMatch:reordered': ({ featureMatches }) => [
 		{
 			kind: 'featureMatchSlot',
-			slotIds: featureMatches.map(slot => slot.featureMatchId),
+			slotIds: featureMatches.map((slot) => slot.featureMatchId),
 		},
 	],
 
@@ -357,9 +368,8 @@ const OUTPUT_CHANGES: { [K in MessageType]: (payload: MessagePayload<K>) => read
 	'archetype:deleted': ({ archetypeId, mergedIntoArchetypeId }) => [
 		{
 			kind: 'archetype',
-			archetypeIds: mergedIntoArchetypeId === undefined
-				? [archetypeId]
-				: [archetypeId, mergedIntoArchetypeId],
+			archetypeIds:
+				mergedIntoArchetypeId === undefined ? [archetypeId] : [archetypeId, mergedIntoArchetypeId],
 		},
 	],
 	'archetype:keyCardsUpdated': ({ archetypeId }) => [
@@ -372,15 +382,22 @@ const OUTPUT_CHANGES: { [K in MessageType]: (payload: MessagePayload<K>) => read
 	// Melee's wholesale syncs, and a TCG+ Import, rewrite whole kinds. They name
 	// no id here, the Phases and Rounds a structure sync lists included: every
 	// rendering of those kinds re-reads on them today, whichever it shows.
-	'melee:dataReset': () => wholeKinds('player', 'playerDeck', 'phase', 'round', 'match', 'roundStandings', 'featureMatchSlot'),
+	'melee:dataReset': () =>
+		wholeKinds(
+			'player',
+			'playerDeck',
+			'phase',
+			'round',
+			'match',
+			'roundStandings',
+			'featureMatchSlot',
+		),
 	'melee:structureSynced': () => wholeKinds('phase', 'round'),
 	'melee:playersSynced': () => wholeKinds('player'),
 	'melee:decklistsSynced': () => wholeKinds('playerDeck'),
 	'tcgplus:imported': () => wholeKinds('player', 'playerDeck'),
 
-	'melee:featureMatchesSynced': ({ slotIds }) => [
-		{ kind: 'featureMatchSlot', slotIds },
-	],
+	'melee:featureMatchesSynced': ({ slotIds }) => [{ kind: 'featureMatchSlot', slotIds }],
 	'melee:matchResultsSynced': ({ roundId, matchIds }) => [
 		{
 			kind: 'match',
@@ -402,24 +419,14 @@ const OUTPUT_CHANGES: { [K in MessageType]: (payload: MessagePayload<K>) => read
 		},
 	],
 
-	'card:updated': ({ screenId }) => [
-		{ kind: 'screenCard', screenId },
-	],
+	'card:updated': ({ screenId }) => [{ kind: 'screenCard', screenId }],
 	// The card an operator is looking at before saving it: no rendering shows it.
 	'card:preview': () => NOTHING_AN_OUTPUT_SHOWS,
-	'card:cleared': ({ screenId }) => [
-		{ kind: 'screenCard', screenId },
-	],
+	'card:cleared': ({ screenId }) => [{ kind: 'screenCard', screenId }],
 
-	'screen:created': ({ screenId }) => [
-		{ kind: 'screen', screenId },
-	],
-	'screen:updated': ({ screenId }) => [
-		{ kind: 'screen', screenId },
-	],
-	'screen:deleted': ({ screenId }) => [
-		{ kind: 'screen', screenId },
-	],
+	'screen:created': ({ screenId }) => [{ kind: 'screen', screenId }],
+	'screen:updated': ({ screenId }) => [{ kind: 'screen', screenId }],
+	'screen:deleted': ({ screenId }) => [{ kind: 'screen', screenId }],
 
 	// Commands to a Screen's outputs, on that Screen's own channel: no change to what one shows.
 	'screen:command:refresh': () => NOTHING_AN_OUTPUT_SHOWS,
@@ -438,7 +445,10 @@ export const OUTPUT_CHANGE_MESSAGE_TYPES = Object.keys(OUTPUT_CHANGES) as Messag
  * The changes one Event message represents, with the ids it names; none for a
  * message carrying nothing an output shows.
  */
-export function outputChangeOf<K extends MessageType>(type: K, payload: MessagePayload<K>): readonly OutputChange[] {
+export function outputChangeOf<K extends MessageType>(
+	type: K,
+	payload: MessagePayload<K>,
+): readonly OutputChange[] {
 	return OUTPUT_CHANGES[type](payload);
 }
 
@@ -459,7 +469,11 @@ export interface ScreenHearsContext {
 	readonly slot?: {
 		readonly id: number;
 		readonly playerIds: readonly number[];
-		readonly match?: { readonly id: number; readonly roundId: number; readonly phaseId: number } | null;
+		readonly match?: {
+			readonly id: number;
+			readonly roundId: number;
+			readonly phaseId: number;
+		} | null;
 	} | null;
 }
 
@@ -472,53 +486,46 @@ function admittedIds(
 	if ('seatedIn' in named) {
 		// Over-approximation: who a Slot seats is the Slot's data, not the
 		// config's. Told nothing, or of another Slot, every Player is heard.
-		return context.slot?.id === named.seatedIn
-			? context.slot.playerIds
-			: null;
+		return context.slot?.id === named.seatedIn ? context.slot.playerIds : null;
 	}
 	if ('followedBy' in named) {
 		// Over-approximation: told nothing, or of another Slot, every id is heard.
-		const match = context.slot?.id === named.followedBy
-			? context.slot.match
-			: undefined;
-		if (match === undefined)
-			return null;
+		const match = context.slot?.id === named.followedBy ? context.slot.match : undefined;
+		if (match === undefined) return null;
 		// A Slot following no Match shows none, so no named Match is its own.
 		// Its Round and Phase stay unknown: the change may be the delete that
 		// took its Match away, which names only the Round or Phase deleted.
 		if (field === 'matchIds') {
-			return match
-				? [match.id]
-				: [];
+			return match ? [match.id] : [];
 		}
-		if (!match)
-			return null;
-		return [
-			field === 'roundIds'
-				? match.roundId
-				: match.phaseId,
-		];
+		if (!match) return null;
+		return [field === 'roundIds' ? match.roundId : match.phaseId];
 	}
 	return named;
 }
 
-function narrowingAdmits(narrowing: OutputFollowNarrowing, change: OutputChange, context: ScreenHearsContext): boolean {
+function narrowingAdmits(
+	narrowing: OutputFollowNarrowing,
+	change: OutputChange,
+	context: ScreenHearsContext,
+): boolean {
 	return CHANGE_ID_FIELDS.every((field) => {
 		const named = narrowing[field];
 		const changed = change[field];
 		// A change naming no id of this field may touch any of them.
-		if (named === undefined || changed === undefined)
-			return true;
+		if (named === undefined || changed === undefined) return true;
 		const admitted = admittedIds(field, named, context);
-		return admitted === null || changed.some(id => admitted.includes(id));
+		return admitted === null || changed.some((id) => admitted.includes(id));
 	});
 }
 
 /** What a Screen's mode declares for one kind, as its config narrows it: every such change, none, or those naming these ids. */
-function declaredFollow(screen: HearingScreen, kind: OutputChangeKind): boolean | OutputFollowNarrowing {
+function declaredFollow(
+	screen: HearingScreen,
+	kind: OutputChangeKind,
+): boolean | OutputFollowNarrowing {
 	const follow = SCREEN_MODES[screen.mode].outputFollows[kind as DeclaredOutputChangeKind];
-	if (!follow)
-		return false;
+	if (!follow) return false;
 	return follow === true || follow(screen.config);
 }
 
@@ -529,7 +536,9 @@ function declaredFollow(screen: HearingScreen, kind: OutputChangeKind): boolean 
  */
 export function seatedSlotOf(screen: HearingScreen, kind: OutputChangeKind): number | null {
 	const narrowed = declaredFollow(screen, kind);
-	return typeof narrowed === 'object' && narrowed.playerIds !== undefined && 'seatedIn' in narrowed.playerIds
+	return typeof narrowed === 'object' &&
+		narrowed.playerIds !== undefined &&
+		'seatedIn' in narrowed.playerIds
 		? narrowed.playerIds.seatedIn
 		: null;
 }
@@ -542,16 +551,12 @@ export function seatedSlotOf(screen: HearingScreen, kind: OutputChangeKind): num
  */
 export function slotNarrowingOf(screen: HearingScreen, change: OutputChange): number | null {
 	const narrowed = declaredFollow(screen, change.kind);
-	if (typeof narrowed !== 'object')
-		return null;
+	if (typeof narrowed !== 'object') return null;
 	for (const field of CHANGE_ID_FIELDS) {
 		const named = narrowed[field];
-		if (named === undefined || change[field] === undefined || Array.isArray(named))
-			continue;
-		if ('seatedIn' in named)
-			return named.seatedIn;
-		if ('followedBy' in named)
-			return named.followedBy;
+		if (named === undefined || change[field] === undefined || Array.isArray(named)) continue;
+		if ('seatedIn' in named) return named.seatedIn;
+		if ('followedBy' in named) return named.followedBy;
 	}
 	return null;
 }
@@ -568,13 +573,9 @@ export function screenHears<M extends ScreenMode>(
 	change: OutputChange,
 	context: ScreenHearsContext = {},
 ): boolean {
-	if (change.screenId !== undefined && change.screenId !== screen.id)
-		return false;
-	if ((EVERY_SCREEN_FOLLOWS as readonly OutputChangeKind[]).includes(change.kind))
-		return true;
+	if (change.screenId !== undefined && change.screenId !== screen.id) return false;
+	if ((EVERY_SCREEN_FOLLOWS as readonly OutputChangeKind[]).includes(change.kind)) return true;
 
 	const narrowed = declaredFollow(screen, change.kind);
-	return typeof narrowed === 'boolean'
-		? narrowed
-		: narrowingAdmits(narrowed, change, context);
+	return typeof narrowed === 'boolean' ? narrowed : narrowingAdmits(narrowed, change, context);
 }

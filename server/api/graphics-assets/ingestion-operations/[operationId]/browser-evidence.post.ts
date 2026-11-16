@@ -7,17 +7,13 @@ import { graphicAssetBrowserEvidenceSchema } from '~~/server/utils/graphicsBrows
 export default defineEventHandler(async (event) => {
 	const initiatedBy = await requireUserId(event);
 	try {
-		const evidence = await readValidatedBody(
-			event,
-			graphicAssetBrowserEvidenceSchema.parse,
-		);
+		const evidence = await readValidatedBody(event, graphicAssetBrowserEvidenceSchema.parse);
 		return await graphicsAssetLibraryForEvent(event).confirmGraphicAssetBrowserEvidence({
 			operationId: graphicsIngestionOperationId(getRouterParam(event, 'operationId') ?? ''),
 			initiatedBy,
 			evidence,
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

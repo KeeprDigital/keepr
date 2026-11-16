@@ -9,7 +9,11 @@ interface EventDataLifecycleRepository<T, TCreate extends object, TUpdate extend
 	remove: (eventId: number, id: number) => Promise<unknown>;
 }
 
-export interface EventDataLifecycleOptions<T extends { id: number; eventId?: number }, TCreate extends object, TUpdate extends object> {
+export interface EventDataLifecycleOptions<
+	T extends { id: number; eventId?: number },
+	TCreate extends object,
+	TUpdate extends object,
+> {
 	entityLabel: string;
 	repository: EventDataLifecycleRepository<T, TCreate, TUpdate>;
 	eventFilter?: (item: T, currentEventId: number | null) => boolean;
@@ -47,8 +51,7 @@ export function registerEventDataLifecycleReset(reset: EventDataLifecycleReset) 
 }
 
 export function resetRegisteredEventDataLifecycles() {
-	for (const reset of eventDataLifecycleResets)
-		reset();
+	for (const reset of eventDataLifecycleResets) reset();
 }
 
 /**
@@ -92,7 +95,11 @@ export function useEventDataLifecycle<
 	const lifetimes = createGuardedSequence();
 	let lifetime = lifetimes.begin();
 
-	async function loadFrom(eventId: number, loader: (eventId: number) => Promise<T[]>, { failure }: EventDataLoadOptions = {}) {
+	async function loadFrom(
+		eventId: number,
+		loader: (eventId: number) => Promise<T[]>,
+		{ failure }: EventDataLoadOptions = {},
+	) {
 		const generation = ++loadGeneration;
 		currentEventId.value = eventId;
 		listLoading.value = true;
@@ -103,32 +110,25 @@ export function useEventDataLifecycle<
 			// `executeReporting`, so the sentence has to be raised into the failure here
 			// for that catch to find it.
 			const data = await withFailureSentence(() => loader(eventId));
-			if (generation !== loadGeneration || currentEventId.value !== eventId)
-				return null;
+			if (generation !== loadGeneration || currentEventId.value !== eventId) return null;
 
-			const loaded = options.admit
-				? keepHeldWhereLeftBehind(data, options.admit)
-				: data;
+			const loaded = options.admit ? keepHeldWhereLeftBehind(data, options.admit) : data;
 			items.value = loaded;
 			hasFetched.value = true;
 			options.onLoad?.(loaded);
 			return loaded;
-		}
-		catch (caughtError) {
+		} catch (caughtError) {
 			// A newer load or a reset superseded this one, so what the collection holds
 			// now is not its to speak for: it shows nothing and raises nothing.
-			if (generation !== loadGeneration)
-				return null;
-			error.value = caughtError instanceof Error
-				? caughtError.message
-				: `Failed to load ${options.entityLabel.toLowerCase()}`;
-			if (failure === 'raise')
-				throw caughtError;
+			if (generation !== loadGeneration) return null;
+			error.value =
+				caughtError instanceof Error
+					? caughtError.message
+					: `Failed to load ${options.entityLabel.toLowerCase()}`;
+			if (failure === 'raise') throw caughtError;
 			return null;
-		}
-		finally {
-			if (generation === loadGeneration)
-				listLoading.value = false;
+		} finally {
+			if (generation === loadGeneration) listLoading.value = false;
 		}
 	}
 
@@ -137,9 +137,7 @@ export function useEventDataLifecycle<
 	 * is still the best this client has.
 	 */
 	function keepHeldWhereLeftBehind(data: T[], admit: (item: T) => boolean) {
-		return data.map(item => admit(item)
-			? item
-			: getById(item.id) ?? item);
+		return data.map((item) => (admit(item) ? item : (getById(item.id) ?? item)));
 	}
 
 	async function loadByEventId(eventId: number, load?: EventDataLoadOptions) {
@@ -151,8 +149,7 @@ export function useEventDataLifecycle<
 		return executeReporting(
 			async () => {
 				const created = await options.repository.create(eventId, input);
-				if (flight.stale)
-					return created;
+				if (flight.stale) return created;
 				items.value.push(created);
 				options.onMutation?.();
 				return created;
@@ -188,16 +185,19 @@ export function useEventDataLifecycle<
 	}
 
 	function getById(id: number): T | undefined {
-		return items.value.find(item => item.id === id);
+		return items.value.find((item) => item.id === id);
 	}
 
 	function applyRemoteCreated(item: T) {
-		if (options.eventFilter && currentEventId.value !== null && !options.eventFilter(item, currentEventId.value))
+		if (
+			options.eventFilter &&
+			currentEventId.value !== null &&
+			!options.eventFilter(item, currentEventId.value)
+		)
 			return;
-		if (options.remoteScopeFilter && !options.remoteScopeFilter(item))
-			return;
+		if (options.remoteScopeFilter && !options.remoteScopeFilter(item)) return;
 
-		const exists = items.value.some(existing => existing.id === item.id);
+		const exists = items.value.some((existing) => existing.id === item.id);
 		if (!exists) {
 			items.value.push(item);
 			options.onMutation?.();
@@ -205,12 +205,15 @@ export function useEventDataLifecycle<
 	}
 
 	function applyRemoteUpdated(item: T) {
-		if (options.eventFilter && currentEventId.value !== null && !options.eventFilter(item, currentEventId.value))
+		if (
+			options.eventFilter &&
+			currentEventId.value !== null &&
+			!options.eventFilter(item, currentEventId.value)
+		)
 			return;
-		if (options.remoteScopeFilter && !options.remoteScopeFilter(item))
-			return;
+		if (options.remoteScopeFilter && !options.remoteScopeFilter(item)) return;
 
-		const index = items.value.findIndex(existing => existing.id === item.id);
+		const index = items.value.findIndex((existing) => existing.id === item.id);
 		if (index !== -1) {
 			items.value[index] = item;
 			options.onMutation?.();
@@ -218,7 +221,7 @@ export function useEventDataLifecycle<
 	}
 
 	function applyRemoteDeleted(id: number) {
-		const index = items.value.findIndex(item => item.id === id);
+		const index = items.value.findIndex((item) => item.id === id);
 		if (index !== -1) {
 			items.value.splice(index, 1);
 			options.onMutation?.();

@@ -4,13 +4,14 @@ import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent } from 'vue';
 
-const {
-	mockEventStore,
-	mockNavigateTo,
-	mockResetAllEventStores,
-} = vi.hoisted(() => ({
+const { mockEventStore, mockNavigateTo, mockResetAllEventStores } = vi.hoisted(() => ({
 	mockEventStore: {
-		event: null as { id: number; game?: Game; variant?: Variant | null; meleeEnabled?: boolean } | null,
+		event: null as {
+			id: number;
+			game?: Game;
+			variant?: Variant | null;
+			meleeEnabled?: boolean;
+		} | null,
 		loadEvent: vi.fn(),
 		$reset: vi.fn(),
 	},
@@ -47,12 +48,14 @@ function runMiddleware(to: ReturnType<typeof createRoute>) {
 
 /** An overlay modal holding a form, open over the page being left. */
 function openGuardedModal(dirty: boolean) {
-	return mount(defineComponent({
-		setup() {
-			useModalUnsavedChanges(ref(dirty));
-			return () => null;
-		},
-	}));
+	return mount(
+		defineComponent({
+			setup() {
+				useModalUnsavedChanges(ref(dirty));
+				return () => null;
+			},
+		}),
+	);
 }
 
 enableAutoUnmount(afterEach);
@@ -63,11 +66,14 @@ describe('event.global middleware', () => {
 		vi.clearAllMocks();
 	});
 
-	it.each(['/', '/settings'])('resets every Event store on leaving for the non-Event path %s', async (path) => {
-		await runMiddleware(createRoute(path));
+	it.each(['/', '/settings'])(
+		'resets every Event store on leaving for the non-Event path %s',
+		async (path) => {
+			await runMiddleware(createRoute(path));
 
-		expect(mockResetAllEventStores).toHaveBeenCalledOnce();
-	});
+			expect(mockResetAllEventStores).toHaveBeenCalledOnce();
+		},
+	);
 
 	describe('event route with successful load', () => {
 		it('resets all stores before loading a new event', async () => {
@@ -106,10 +112,7 @@ describe('event.global middleware', () => {
 	describe('leaving the Event with an unsaved edit in an open modal', () => {
 		const DESTINATIONS = [
 			['/', {}],
-			[
-				'/event/2/matches',
-				{ eventId: '2' },
-			],
+			['/event/2/matches', { eventId: '2' }],
 		] as const;
 
 		beforeEach(() => {
@@ -119,31 +122,37 @@ describe('event.global middleware', () => {
 			});
 		});
 
-		it.each(DESTINATIONS)('refuses %s and resets nothing when the operator keeps editing', async (path, params) => {
-			confirmOpen.mockReturnValue({
-				result: Promise.resolve(false),
-			});
-			openGuardedModal(true);
+		it.each(DESTINATIONS)(
+			'refuses %s and resets nothing when the operator keeps editing',
+			async (path, params) => {
+				confirmOpen.mockReturnValue({
+					result: Promise.resolve(false),
+				});
+				openGuardedModal(true);
 
-			const result = await runMiddleware(createRoute(path, params));
+				const result = await runMiddleware(createRoute(path, params));
 
-			expect(mockResetAllEventStores).not.toHaveBeenCalled();
-			expect(mockEventStore.loadEvent).not.toHaveBeenCalled();
-			expect(result).toBe(false);
-		});
+				expect(mockResetAllEventStores).not.toHaveBeenCalled();
+				expect(mockEventStore.loadEvent).not.toHaveBeenCalled();
+				expect(result).toBe(false);
+			},
+		);
 
-		it.each(DESTINATIONS)('goes on to %s once the operator discards the edit', async (path, params) => {
-			confirmOpen.mockReturnValue({
-				result: Promise.resolve(true),
-			});
-			openGuardedModal(true);
+		it.each(DESTINATIONS)(
+			'goes on to %s once the operator discards the edit',
+			async (path, params) => {
+				confirmOpen.mockReturnValue({
+					result: Promise.resolve(true),
+				});
+				openGuardedModal(true);
 
-			const result = await runMiddleware(createRoute(path, params));
+				const result = await runMiddleware(createRoute(path, params));
 
-			expect(confirmOpen).toHaveBeenCalledOnce();
-			expect(mockResetAllEventStores).toHaveBeenCalledOnce();
-			expect(result).toBeUndefined();
-		});
+				expect(confirmOpen).toHaveBeenCalledOnce();
+				expect(mockResetAllEventStores).toHaveBeenCalledOnce();
+				expect(result).toBeUndefined();
+			},
+		);
 
 		it('does not ask for a modal with nothing unsaved, or one already closed', async () => {
 			openGuardedModal(false);
@@ -172,7 +181,7 @@ describe('event.global middleware', () => {
 			expect(mockNavigateTo).not.toHaveBeenCalled();
 		});
 
-		it('still loads the Event for the operator\'s Screen control surface', async () => {
+		it("still loads the Event for the operator's Screen control surface", async () => {
 			mockEventStore.loadEvent.mockResolvedValue(null);
 
 			await runMiddleware(createRoute('/event/999/screens/3', { eventId: '999' }));
@@ -185,7 +194,7 @@ describe('event.global middleware', () => {
 	// An OP Event models no Rounds or Matches and never runs Melee Sync
 	// (ADR-0057): a direct visit to a page it does not use lands on its overview.
 	// Routes resolve through the real router, so each page's own declaration counts.
-	describe('pages the Event\'s Card Game does not use', () => {
+	describe("pages the Event's Card Game does not use", () => {
 		const TWO_PLAYER_MAGIC_ONLY_PAGES = [
 			'/event/1/matches',
 			'/event/1/rounds',
@@ -209,13 +218,16 @@ describe('event.global middleware', () => {
 			return runMiddleware(useRouter().resolve(path) as any);
 		}
 
-		it.each(TWO_PLAYER_MAGIC_ONLY_PAGES)('sends an OP Event from %s to its overview', async (path) => {
-			mockEventStore.event = { id: 1, game: 'op' };
+		it.each(TWO_PLAYER_MAGIC_ONLY_PAGES)(
+			'sends an OP Event from %s to its overview',
+			async (path) => {
+				mockEventStore.event = { id: 1, game: 'op' };
 
-			await visit(path);
+				await visit(path);
 
-			expect(mockNavigateTo).toHaveBeenCalledWith('/event/1');
-		});
+				expect(mockNavigateTo).toHaveBeenCalledWith('/event/1');
+			},
+		);
 
 		// A Commander Event has no Players either (ADR-0087).
 		it('sends a Commander Event from its Players page to its overview', async () => {
@@ -229,7 +241,7 @@ describe('event.global middleware', () => {
 		// One Magic page reads the Event's Card Game; each page declares its own, so each OP page is a case.
 		it.each([
 			['mtg', TWO_PLAYER_MAGIC_ONLY_PAGES[0]!] as const,
-			...PAGES_OP_KEEPS.map(path => ['op', path] as const),
+			...PAGES_OP_KEEPS.map((path) => ['op', path] as const),
 		])('lets a %s Event stay on %s', async (game, path) => {
 			mockEventStore.event = { id: 1, game };
 
@@ -239,10 +251,13 @@ describe('event.global middleware', () => {
 		});
 	});
 
-	it.each(['abc', '0', '-1'])('redirects home without loading for the Event id %j, rather than leaving the page loading', async (eventId) => {
-		await runMiddleware(createRoute(`/event/${eventId}/matches`, { eventId }));
+	it.each(['abc', '0', '-1'])(
+		'redirects home without loading for the Event id %j, rather than leaving the page loading',
+		async (eventId) => {
+			await runMiddleware(createRoute(`/event/${eventId}/matches`, { eventId }));
 
-		expect(mockNavigateTo).toHaveBeenCalledWith('/');
-		expect(mockEventStore.loadEvent).not.toHaveBeenCalled();
-	});
+			expect(mockNavigateTo).toHaveBeenCalledWith('/');
+			expect(mockEventStore.loadEvent).not.toHaveBeenCalled();
+		},
+	);
 });

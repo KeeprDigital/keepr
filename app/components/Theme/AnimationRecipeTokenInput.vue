@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { GraphicAnimationChannelKey, GraphicAnimationChannels } from '~~/shared/modules/graphics';
+import type {
+	GraphicAnimationChannelKey,
+	GraphicAnimationChannels,
+} from '~~/shared/modules/graphics';
 import type { GraphicAnimationRecipe } from '~~/shared/types/graphics';
 import { mergeGraphicAnimationRecipeChannel } from '~~/shared/modules/graphics';
 
@@ -22,7 +25,10 @@ function update(patch: Partial<Pick<GraphicAnimationRecipe, 'duration' | 'easing
 	});
 }
 
-function channel<K extends GraphicAnimationChannelKey>(key: K, patch: Partial<GraphicAnimationChannels[K]> | null) {
+function channel<K extends GraphicAnimationChannelKey>(
+	key: K,
+	patch: Partial<GraphicAnimationChannels[K]> | null,
+) {
 	emit('commit', mergeGraphicAnimationRecipeChannel(props.modelValue, key, patch));
 }
 </script>

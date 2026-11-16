@@ -20,12 +20,9 @@ interface SlotSides {
 
 /** The card number of a One Piece side's Leader, or `null` for a side with none. */
 export function slotLeaderNumberOf(data: PlayerSlotData | null | undefined): string | null {
-	if (data?.gameData?.type !== 'op')
-		return null;
+	if (data?.gameData?.type !== 'op') return null;
 	const number: unknown = storedOpLeader(data.gameData.leader)?.number;
-	return typeof number === 'string'
-		? number
-		: null;
+	return typeof number === 'string' ? number : null;
 }
 
 function withLeader(data: PlayerSlotData, leader: OpLeader | null): PlayerSlotData {
@@ -38,13 +35,15 @@ function withLeader(data: PlayerSlotData, leader: OpLeader | null): PlayerSlotDa
 	};
 }
 
-function mapLeaderSides<T extends SlotSides>(sides: T, map: (data: PlayerSlotData, number: string) => PlayerSlotData): T {
+function mapLeaderSides<T extends SlotSides>(
+	sides: T,
+	map: (data: PlayerSlotData, number: string) => PlayerSlotData,
+): T {
 	const mapped = { ...sides };
 	for (const key of SIDE_KEYS) {
 		const data = sides[key];
 		const number = slotLeaderNumberOf(data);
-		if (data && number !== null)
-			mapped[key] = map(data, number);
+		if (data && number !== null) mapped[key] = map(data, number);
 	}
 	return mapped;
 }
@@ -54,15 +53,13 @@ function mapLeaderSides<T extends SlotSides>(sides: T, map: (data: PlayerSlotDat
  * by reference (ADR-0074): its game data is the Player's, as a Slot stores it,
  * and the side holds no Feature Match Deck List of its own.
  */
-export function linkedOpSideGameData(playerGameData: PlayerGameData | null | undefined): OpPlayerGameData {
-	const deckList = playerGameData?.type === 'op'
-		? playerGameData.deckList ?? null
-		: null;
+export function linkedOpSideGameData(
+	playerGameData: PlayerGameData | null | undefined,
+): OpPlayerGameData {
+	const deckList = playerGameData?.type === 'op' ? (playerGameData.deckList ?? null) : null;
 	return {
 		type: 'op',
-		leader: deckList?.leaderNumber
-			? { number: deckList.leaderNumber } as OpLeader
-			: null,
+		leader: deckList?.leaderNumber ? ({ number: deckList.leaderNumber } as OpLeader) : null,
 		deckList,
 	};
 }
@@ -75,24 +72,26 @@ export function toStoredSlotLeaders<T extends SlotSides>(sides: T): T {
 
 /** Slots as read: each side's Leader the catalogue's card for its number, in one catalogue read. */
 export async function withCatalogueLeaders<T extends SlotSides>(slots: readonly T[]): Promise<T[]> {
-	const numbers = slots.flatMap(slot => SIDE_KEYS.map(key => slotLeaderNumberOf(slot[key])))
+	const numbers = slots
+		.flatMap((slot) => SIDE_KEYS.map((key) => slotLeaderNumberOf(slot[key])))
 		.filter((number): number is string => number !== null);
-	if (numbers.length === 0)
-		return [...slots];
-	const cards = await opCardCatalogueService().findByNumbers([
-		...new Set(numbers),
-	]);
-	return slots.map(slot => mapLeaderSides(slot, (data, number) => {
-		const card = cards.get(number);
-		return withLeader(data, card
-			? catalogueOpLeader(number, card)
-			: null);
-	}));
+	if (numbers.length === 0) return [...slots];
+	const cards = await opCardCatalogueService().findByNumbers([...new Set(numbers)]);
+	return slots.map((slot) =>
+		mapLeaderSides(slot, (data, number) => {
+			const card = cards.get(number);
+			return withLeader(data, card ? catalogueOpLeader(number, card) : null);
+		}),
+	);
 }
 
 /** The sides' Leader numbers, for a write to catalogue before it stores them. */
 export function slotLeaderNumbers(sides: SlotSides): string[] {
 	return [
-		...new Set(SIDE_KEYS.map(key => slotLeaderNumberOf(sides[key])).filter((number): number is string => number !== null)),
+		...new Set(
+			SIDE_KEYS.map((key) => slotLeaderNumberOf(sides[key])).filter(
+				(number): number is string => number !== null,
+			),
+		),
 	];
 }

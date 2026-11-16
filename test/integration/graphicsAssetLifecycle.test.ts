@@ -12,11 +12,13 @@ import { $fetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
 import { expectOperationResult } from './responseStatus';
 
-const basePixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
-const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xC5, 0x85);
+const basePixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
+const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xc5, 0x85);
 
 /**
  * This suite's own content, padded with chunk counts no other suite uses.
@@ -29,11 +31,13 @@ const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0
  * digest for the same reason.
  */
 function pngWithTextChunks(count: number) {
-	return Uint8Array.from(Buffer.concat([
-		basePixelPng.slice(0, -12),
-		...Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[],
-		basePixelPng.slice(-12),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			basePixelPng.slice(0, -12),
+			...(Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[]),
+			basePixelPng.slice(-12),
+		]),
+	);
 }
 
 const lifecyclePixelPng = pngWithTextChunks(90);
@@ -78,8 +82,7 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	async function ingest(name: string, idempotencyKey: string) {
@@ -97,10 +100,11 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 				}),
 			},
 		);
-		return await fetch(
-			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
-			{ method: 'PUT', headers: authorHeaders, body: lifecyclePixelPng },
-		).then(expectOperationResult);
+		return await fetch(`/api/graphics-assets/ingestion-operations/${initiated.id}/content`, {
+			method: 'PUT',
+			headers: authorHeaders,
+			body: lifecyclePixelPng,
+		}).then(expectOperationResult);
 	}
 
 	async function lifecycleAction(assetId: string, action: GraphicAssetLifecycleAction) {
@@ -129,14 +133,11 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 				},
 			},
 		);
-		return await fetch(
-			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
-			{
-				method: 'PUT',
-				headers: { ...authorHeaders, 'content-type': 'image/png' },
-				body: lifecycleReplacementPng,
-			},
-		).then(expectOperationResult);
+		return await fetch(`/api/graphics-assets/ingestion-operations/${initiated.id}/content`, {
+			method: 'PUT',
+			headers: { ...authorHeaders, 'content-type': 'image/png' },
+			body: lifecycleReplacementPng,
+		}).then(expectOperationResult);
 	}
 
 	it('retires and restores without changing identity, revision history, metadata, associations, or exact-reference delivery', async () => {
@@ -147,13 +148,10 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 		};
 		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 		config.layout.frame.backgroundImage = { kind: 'asset', ...reference };
-		await $fetch(
-			`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`,
-			{
-				method: 'PATCH',
-				body: { layout: config.layout },
-			},
-		);
+		await $fetch(`/api/events/${eventId}/screens/${screenId}/config/feature-match-overlay`, {
+			method: 'PATCH',
+			body: { layout: config.layout },
+		});
 		const replacement = await replace(reference.assetId, 'lifecycle-retire-replacement');
 		await $fetch(`/api/graphics-assets/${reference.assetId}`, {
 			method: 'PATCH',
@@ -186,14 +184,18 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 				],
 			},
 		});
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'Renamed retirable lifecycle logo' },
-		})).resolves.toEqual([]);
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'Renamed retirable lifecycle logo', lifecycleStates: 'retired' },
-		})).resolves.toEqual([
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'Renamed retirable lifecycle logo' },
+			}),
+		).resolves.toEqual([]);
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'Renamed retirable lifecycle logo', lifecycleStates: 'retired' },
+			}),
+		).resolves.toEqual([
 			expect.objectContaining({
 				id: reference.assetId,
 				revisionId: replacement.result!.revisionId,
@@ -213,8 +215,7 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 			{ headers: authorHeaders },
 		);
 		expect(latestDelivered.status).toBe(200);
-		expect(new Uint8Array(await latestDelivered.arrayBuffer()))
-			.toEqual(lifecycleReplacementPng);
+		expect(new Uint8Array(await latestDelivered.arrayBuffer())).toEqual(lifecycleReplacementPng);
 
 		const secondScreen = await $fetch(`/api/events/${eventId}/screens`, {
 			method: 'POST',
@@ -224,13 +225,12 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 				currentMode: 'feature-match-overlay',
 			},
 		});
-		await expect($fetch(
-			`/api/events/${eventId}/screens/${secondScreen.id}/config/feature-match-overlay`,
-			{
+		await expect(
+			$fetch(`/api/events/${eventId}/screens/${secondScreen.id}/config/feature-match-overlay`, {
 				method: 'PATCH',
 				body: { layout: config.layout },
-			},
-		)).rejects.toMatchObject({ statusCode: 409 });
+			}),
+		).rejects.toMatchObject({ statusCode: 409 });
 
 		const restored = await lifecycleAction(reference.assetId, 'restore');
 		expect(restored).toMatchObject({
@@ -254,10 +254,12 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 				],
 			},
 		});
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'Renamed retirable lifecycle logo' },
-		})).resolves.toEqual([
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'Renamed retirable lifecycle logo' },
+			}),
+		).resolves.toEqual([
 			expect.objectContaining({
 				id: reference.assetId,
 				revisionId: replacement.result!.revisionId,
@@ -291,22 +293,26 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 		if (trashed.outcome !== 'trashed')
 			throw new Error('Expected explicit Trash request to succeed');
 		expect(
-			new Date(trashed.asset.lifecycle.state === 'trashed'
-				? trashed.asset.lifecycle.recoverableUntil
-				: '').getTime()
-			- new Date(trashed.asset.lifecycle.state === 'trashed'
-				? trashed.asset.lifecycle.trashedAt
-				: '').getTime(),
+			new Date(
+				trashed.asset.lifecycle.state === 'trashed' ? trashed.asset.lifecycle.recoverableUntil : '',
+			).getTime() -
+				new Date(
+					trashed.asset.lifecycle.state === 'trashed' ? trashed.asset.lifecycle.trashedAt : '',
+				).getTime(),
 		).toBe(30 * 24 * 60 * 60 * 1000);
 
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'Recoverable lifecycle logo' },
-		})).resolves.toEqual([]);
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'Recoverable lifecycle logo', lifecycleStates: 'trashed' },
-		})).resolves.toEqual([
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'Recoverable lifecycle logo' },
+			}),
+		).resolves.toEqual([]);
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'Recoverable lifecycle logo', lifecycleStates: 'trashed' },
+			}),
+		).resolves.toEqual([
 			expect.objectContaining({
 				id: assetId,
 				name: 'Recoverable lifecycle logo',
@@ -332,10 +338,12 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 				lifecycle: { state: 'retired' },
 			},
 		});
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'Recoverable lifecycle logo' },
-		})).resolves.toEqual([]);
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'Recoverable lifecycle logo' },
+			}),
+		).resolves.toEqual([]);
 
 		const active = await lifecycleAction(assetId, 'restore');
 		expect(active).toMatchObject({
@@ -374,13 +382,18 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 		config.layout.frame.backgroundImage = { kind: 'asset', ...reference };
 		// The response is not read, and inferring its route-typed shape inside a
 		// `map` exhausts the type comparison depth limit.
-		await Promise.all([secondScreen.id, thirdScreen.id].map(async id => await $fetch<unknown>(
-			`/api/events/${eventId}/screens/${id}/config/feature-match-overlay`,
-			{
-				method: 'PATCH',
-				body: { layout: config.layout },
-			},
-		)));
+		await Promise.all(
+			[secondScreen.id, thirdScreen.id].map(
+				async (id) =>
+					await $fetch<unknown>(
+						`/api/events/${eventId}/screens/${id}/config/feature-match-overlay`,
+						{
+							method: 'PATCH',
+							body: { layout: config.layout },
+						},
+					),
+			),
+		);
 
 		// Both references, in whichever order they landed: the two Screens were
 		// written concurrently just above, so pinning the order of the summary
@@ -392,20 +405,26 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 		if (blocked.outcome !== 'in-use')
 			throw new Error(`expected an in-use refusal, got ${blocked.outcome}`);
 		expect(blocked.usage).toHaveLength(2);
-		expect(blocked.usage).toEqual(expect.arrayContaining(
-			[secondScreen.id, thirdScreen.id].map(id => expect.objectContaining({
-				reference,
-				owner: expect.objectContaining({
-					kind: 'screen',
-					id: String(id),
-					eventId,
-				}),
-			})),
-		));
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'Referenced lifecycle logo' },
-		})).resolves.toEqual([
+		expect(blocked.usage).toEqual(
+			expect.arrayContaining(
+				[secondScreen.id, thirdScreen.id].map((id) =>
+					expect.objectContaining({
+						reference,
+						owner: expect.objectContaining({
+							kind: 'screen',
+							id: String(id),
+							eventId,
+						}),
+					}),
+				),
+			),
+		);
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'Referenced lifecycle logo' },
+			}),
+		).resolves.toEqual([
 			expect.objectContaining({
 				id: reference.assetId,
 				lifecycle: { state: 'active' },
@@ -431,13 +450,10 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 		config.layout.frame.backgroundImage = { kind: 'asset', ...reference };
 
 		const [referenceResult, trashResult] = await Promise.allSettled([
-			$fetch(
-				`/api/events/${eventId}/screens/${racingScreen.id}/config/feature-match-overlay`,
-				{
-					method: 'PATCH',
-					body: { layout: config.layout },
-				},
-			),
+			$fetch(`/api/events/${eventId}/screens/${racingScreen.id}/config/feature-match-overlay`, {
+				method: 'PATCH',
+				body: { layout: config.layout },
+			}),
 			lifecycleAction(reference.assetId, 'trash'),
 		]);
 		const [asset] = await $fetch<GraphicAsset[]>('/api/graphics-assets', {
@@ -447,10 +463,9 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 				lifecycleStates: 'active,trashed',
 			},
 		});
-		const usage = await $fetch(
-			`/api/graphics-assets/${reference.assetId}/usage`,
-			{ headers: authorHeaders },
-		);
+		const usage = await $fetch(`/api/graphics-assets/${reference.assetId}/usage`, {
+			headers: authorHeaders,
+		});
 
 		if (asset!.lifecycle.state === 'trashed') {
 			expect(referenceResult.status).toBe('rejected');
@@ -459,21 +474,16 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 				value: { outcome: 'trashed' },
 			});
 			expect(usage).toEqual([]);
-		}
-		else {
+		} else {
 			expect(referenceResult.status).toBe('fulfilled');
 			expect(trashResult).toMatchObject({
 				status: 'fulfilled',
 				value: {
 					outcome: 'in-use',
-					usage: [
-						expect.objectContaining({ reference }),
-					],
+					usage: [expect.objectContaining({ reference })],
 				},
 			});
-			expect(usage).toEqual([
-				expect.objectContaining({ reference }),
-			]);
+			expect(usage).toEqual([expect.objectContaining({ reference })]);
 		}
 	});
 
@@ -485,10 +495,9 @@ describe('the recoverable Graphic Asset lifecycle', () => {
 	 * retry a request that can never succeed.
 	 */
 	it('refuses a lifecycle filter naming a shelf that does not exist', async () => {
-		const response = await fetch(
-			'/api/graphics-assets?lifecycleStates=bogus',
-			{ headers: authorHeaders },
-		);
+		const response = await fetch('/api/graphics-assets?lifecycleStates=bogus', {
+			headers: authorHeaders,
+		});
 
 		expect(response.status).toBe(400);
 	});

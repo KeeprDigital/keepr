@@ -43,12 +43,9 @@ const round = createMockRound({
 /** The server stores every write and answers every read, but the Rounds when they are offline. */
 function serve({ rounds }: { rounds: 'online' | 'offline' }) {
 	mockFetch.mockImplementation(async (path: string, options?: { method?: string }) => {
-		if (options?.method === 'POST')
-			return {};
-		if (!path.endsWith('/rounds'))
-			return [];
-		if (rounds === 'offline')
-			throw new Error('rounds offline');
+		if (options?.method === 'POST') return {};
+		if (!path.endsWith('/rounds')) return [];
+		if (rounds === 'offline') throw new Error('rounds offline');
 		return [round];
 	});
 }
@@ -116,15 +113,12 @@ afterEach(() => {
 
 describe('event structure page, when a newer Rounds load supersedes its own', () => {
 	// Its own read answers after a reload a realtime message started, so it holds nothing.
-	it('keeps loading, with no error, until the newer load lands, then shows that load\'s Rounds', async () => {
-		const reads = [
-			deferred<unknown>(),
-			deferred<unknown>(),
-		];
+	it("keeps loading, with no error, until the newer load lands, then shows that load's Rounds", async () => {
+		const reads = [deferred<unknown>(), deferred<unknown>()];
 		const [pageRead, newerRead] = reads;
-		mockFetch.mockImplementation(async (path: string) => path.endsWith('/rounds')
-			? reads.shift()!.promise
-			: []);
+		mockFetch.mockImplementation(async (path: string) =>
+			path.endsWith('/rounds') ? reads.shift()!.promise : [],
+		);
 		wrapper = await mountPage();
 		await flushPromises();
 		const newerLoad = useRoundStore().loadRoundsByEventId(1);
@@ -148,7 +142,9 @@ describe('event structure page, when a newer Rounds load supersedes its own', ()
 
 		expect(wrapper.find('[role="alert"]').exists()).toBe(false);
 		expect(wrapper.get('[data-loading]').attributes('data-loading')).toBe('false');
-		expect(wrapper.findAll('[data-sync]').map(button => button.attributes('data-sync'))).toEqual(['11']);
+		expect(wrapper.findAll('[data-sync]').map((button) => button.attributes('data-sync'))).toEqual([
+			'11',
+		]);
 	});
 });
 
@@ -193,15 +189,18 @@ describe('event structure page, when the reload after a committed write fails', 
 			title: 'Manual Override Enabled',
 			color: 'success',
 		},
-	] as const)('a Round $action with the Rounds $rounds says "$title"', async ({ action, rounds, title, color }) => {
-		wrapper = await mountPage();
-		serve({ rounds });
+	] as const)(
+		'a Round $action with the Rounds $rounds says "$title"',
+		async ({ action, rounds, title, color }) => {
+			wrapper = await mountPage();
+			serve({ rounds });
 
-		await wrapper.get(`[data-${action}="10"]`).trigger('click');
-		await flushPromises();
+			await wrapper.get(`[data-${action}="10"]`).trigger('click');
+			await flushPromises();
 
-		expect(mockToast.add.mock.calls.map(([toast]) => [toast.title, toast.color])).toEqual([
-			[title, color],
-		]);
-	});
+			expect(mockToast.add.mock.calls.map(([toast]) => [toast.title, toast.color])).toEqual([
+				[title, color],
+			]);
+		},
+	);
 });

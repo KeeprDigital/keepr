@@ -26,12 +26,12 @@ const playerMap = computed(() => {
 
 const members = ref<Player[]>(
 	props.initialMemberIds
-		.map(id => playerMap.value.get(id))
+		.map((id) => playerMap.value.get(id))
 		.filter((p): p is Player => p !== undefined),
 );
 const originalMemberIds = new Set(props.initialMemberIds);
 
-const memberIds = computed(() => members.value.map(p => p.id));
+const memberIds = computed(() => members.value.map((p) => p.id));
 const memberSet = computed(() => new Set(memberIds.value));
 
 // Search state
@@ -57,33 +57,30 @@ const sortOptions = [
 
 const availablePlayers = computed(() => {
 	const mSet = memberSet.value;
-	let available = props.allPlayers.filter(p => !mSet.has(p.id));
+	let available = props.allPlayers.filter((p) => !mSet.has(p.id));
 
 	if (availableSearch.value) {
-		available = available.filter(p => playerMatchesSearch(p, availableSearch.value));
+		available = available.filter((p) => playerMatchesSearch(p, availableSearch.value));
 	}
 
 	return available;
 });
 
 function isMemberVisible(player: Player): boolean {
-	if (!memberSearch.value)
-		return true;
+	if (!memberSearch.value) return true;
 	return playerMatchesSearch(player, memberSearch.value);
 }
 
 const visibleMemberCount = computed(() => {
-	if (!memberSearch.value)
-		return members.value.length;
-	return members.value.filter(p => isMemberVisible(p)).length;
+	if (!memberSearch.value) return members.value.length;
+	return members.value.filter((p) => isMemberVisible(p)).length;
 });
 
 // ── Sort actions ──
 
 function applySortMode(mode: SortOption) {
 	sortMode.value = mode;
-	if (mode === 'manual')
-		return;
+	if (mode === 'manual') return;
 
 	const sorted = [...members.value];
 	sorted.sort((a, b) => {
@@ -114,32 +111,26 @@ function handleDragUpdate() {
 
 function addSelected() {
 	const toAdd = [...selectedAvailable.value];
-	if (toAdd.length === 0)
-		return;
+	if (toAdd.length === 0) return;
 
 	const newPlayers = toAdd
-		.map(id => playerMap.value.get(id))
+		.map((id) => playerMap.value.get(id))
 		.filter((p): p is Player => p !== undefined);
 
-	members.value = [
-		...members.value,
-		...newPlayers,
-	];
+	members.value = [...members.value, ...newPlayers];
 	selectedAvailable.value = new Set();
 }
 
 function removeSelected() {
 	const toRemove = selectedMembers.value;
-	if (toRemove.size === 0)
-		return;
+	if (toRemove.size === 0) return;
 
-	members.value = members.value.filter(p => !toRemove.has(p.id));
+	members.value = members.value.filter((p) => !toRemove.has(p.id));
 	selectedMembers.value = new Set();
 }
 
 function addPlayer(playerId: number) {
-	if (memberSet.value.has(playerId))
-		return;
+	if (memberSet.value.has(playerId)) return;
 	const player = playerMap.value.get(playerId);
 	if (player) {
 		members.value = [...members.value, player];
@@ -147,7 +138,7 @@ function addPlayer(playerId: number) {
 }
 
 function removePlayer(playerId: number) {
-	members.value = members.value.filter(p => p.id !== playerId);
+	members.value = members.value.filter((p) => p.id !== playerId);
 	selectedMembers.value.delete(playerId);
 	selectedMembers.value = new Set(selectedMembers.value);
 }
@@ -156,22 +147,20 @@ function removePlayer(playerId: number) {
 
 function toggleAvailableSelection(playerId: number) {
 	const set = new Set(selectedAvailable.value);
-	if (set.has(playerId))
-		set.delete(playerId);
+	if (set.has(playerId)) set.delete(playerId);
 	else set.add(playerId);
 	selectedAvailable.value = set;
 }
 
 function toggleMemberSelection(playerId: number) {
 	const set = new Set(selectedMembers.value);
-	if (set.has(playerId))
-		set.delete(playerId);
+	if (set.has(playerId)) set.delete(playerId);
 	else set.add(playerId);
 	selectedMembers.value = set;
 }
 
 function selectAllAvailable() {
-	selectedAvailable.value = new Set(availablePlayers.value.map(p => p.id));
+	selectedAvailable.value = new Set(availablePlayers.value.map((p) => p.id));
 }
 
 function deselectAllAvailable() {
@@ -179,8 +168,8 @@ function deselectAllAvailable() {
 }
 
 function selectAllMembers() {
-	const visible = members.value.filter(p => isMemberVisible(p));
-	selectedMembers.value = new Set(visible.map(p => p.id));
+	const visible = members.value.filter((p) => isMemberVisible(p));
+	selectedMembers.value = new Set(visible.map((p) => p.id));
 }
 
 function deselectAllMembers() {
@@ -191,16 +180,13 @@ function deselectAllMembers() {
 
 const hasChanges = computed(() => {
 	const currentSet = memberSet.value;
-	if (currentSet.size !== originalMemberIds.size)
-		return true;
+	if (currentSet.size !== originalMemberIds.size) return true;
 	for (const id of currentSet) {
-		if (!originalMemberIds.has(id))
-			return true;
+		if (!originalMemberIds.has(id)) return true;
 	}
 	const ids = memberIds.value;
 	for (let i = 0; i < ids.length; i++) {
-		if (ids[i] !== props.initialMemberIds[i])
-			return true;
+		if (ids[i] !== props.initialMemberIds[i]) return true;
 	}
 	return false;
 });
@@ -209,7 +195,7 @@ const hasChanges = computed(() => {
 
 function reset() {
 	members.value = props.initialMemberIds
-		.map(id => playerMap.value.get(id))
+		.map((id) => playerMap.value.get(id))
 		.filter((p): p is Player => p !== undefined);
 	availableSearch.value = '';
 	memberSearch.value = '';
@@ -220,39 +206,37 @@ function reset() {
 // ── Save ──
 
 async function save() {
-	if (!eventStore.eventId || !hasChanges.value)
-		return;
+	if (!eventStore.eventId || !hasChanges.value) return;
 	saving.value = true;
 
 	try {
 		const currentSet = memberSet.value;
-		const addedIds = [...currentSet].filter(id => !originalMemberIds.has(id));
-		const removedIds = [...originalMemberIds].filter(id => !currentSet.has(id));
+		const addedIds = [...currentSet].filter((id) => !originalMemberIds.has(id));
+		const removedIds = [...originalMemberIds].filter((id) => !currentSet.has(id));
 
 		if (addedIds.length > 0) {
 			const added = await playerListStore.addMembers(eventStore.eventId, props.listId, addedIds);
-			if (!added)
-				throw new Error('Failed to add list members');
+			if (!added) throw new Error('Failed to add list members');
 		}
 
 		if (removedIds.length > 0) {
-			const removed = await playerListStore.batchRemoveMembers(eventStore.eventId, props.listId, removedIds);
-			if (!removed)
-				throw new Error('Failed to remove list members');
+			const removed = await playerListStore.batchRemoveMembers(
+				eventStore.eventId,
+				props.listId,
+				removedIds,
+			);
+			if (!removed) throw new Error('Failed to remove list members');
 		}
 
 		const ids = memberIds.value;
 		if (ids.length > 0) {
 			const reordered = await playerListStore.reorderMembers(eventStore.eventId, props.listId, ids);
-			if (!reordered)
-				throw new Error('Failed to reorder list members');
+			if (!reordered) throw new Error('Failed to reorder list members');
 		}
 
 		const loaded = await playerListStore.loadListMembers(eventStore.eventId, props.listId);
-		if (!loaded)
-			throw new Error('List saved, but its members could not be refreshed');
-	}
-	finally {
+		if (!loaded) throw new Error('List saved, but its members could not be refreshed');
+	} finally {
 		saving.value = false;
 	}
 }
@@ -279,12 +263,18 @@ defineExpose({ hasChanges, save, reset, saving });
 					/>
 				</div>
 
-				<div class="flex items-center justify-between px-3 py-1 border-b border-default bg-elevated/50 min-h-[33px]">
+				<div
+					class="flex items-center justify-between px-3 py-1 border-b border-default bg-elevated/50 min-h-[33px]"
+				>
 					<UCheckbox
-						:model-value="availablePlayers.length > 0 && selectedAvailable.size === availablePlayers.length"
-						:indeterminate="selectedAvailable.size > 0 && selectedAvailable.size < availablePlayers.length"
+						:model-value="
+							availablePlayers.length > 0 && selectedAvailable.size === availablePlayers.length
+						"
+						:indeterminate="
+							selectedAvailable.size > 0 && selectedAvailable.size < availablePlayers.length
+						"
 						size="xs"
-						@update:model-value="val => val ? selectAllAvailable() : deselectAllAvailable()"
+						@update:model-value="(val) => (val ? selectAllAvailable() : deselectAllAvailable())"
 					/>
 					<UButton
 						v-if="selectedAvailable.size > 0"
@@ -349,10 +339,12 @@ defineExpose({ hasChanges, save, reset, saving });
 							aria-label="Search list members"
 						/>
 						<UDropdownMenu
-							:items="[sortOptions.map(opt => ({
-								label: opt.label,
-								onSelect: () => applySortMode(opt.value),
-							}))]"
+							:items="[
+								sortOptions.map((opt) => ({
+									label: opt.label,
+									onSelect: () => applySortMode(opt.value),
+								})),
+							]"
 						>
 							<UButton
 								variant="ghost"
@@ -365,12 +357,14 @@ defineExpose({ hasChanges, save, reset, saving });
 					</div>
 				</div>
 
-				<div class="flex items-center justify-between px-3 py-1 border-b border-default bg-elevated/50 min-h-[33px]">
+				<div
+					class="flex items-center justify-between px-3 py-1 border-b border-default bg-elevated/50 min-h-[33px]"
+				>
 					<UCheckbox
 						:model-value="visibleMemberCount > 0 && selectedMembers.size === visibleMemberCount"
 						:indeterminate="selectedMembers.size > 0 && selectedMembers.size < visibleMemberCount"
 						size="xs"
-						@update:model-value="val => val ? selectAllMembers() : deselectAllMembers()"
+						@update:model-value="(val) => (val ? selectAllMembers() : deselectAllMembers())"
 					/>
 					<UButton
 						v-if="selectedMembers.size > 0"
@@ -409,10 +403,16 @@ defineExpose({ hasChanges, save, reset, saving });
 							:aria-label="`Select ${playerLabel(player)}`"
 							@update:model-value="toggleMemberSelection(player.id)"
 						/>
-						<button type="button" class="flex-1 truncate text-left text-sm" @click="toggleMemberSelection(player.id)">
+						<button
+							type="button"
+							class="flex-1 truncate text-left text-sm"
+							@click="toggleMemberSelection(player.id)"
+						>
 							{{ playerLabel(player) }}
 						</button>
-						<span v-if="player.position" class="text-xs text-muted font-mono">#{{ player.position }}</span>
+						<span v-if="player.position" class="text-xs text-muted font-mono"
+							>#{{ player.position }}</span
+						>
 						<UButton
 							variant="ghost"
 							color="error"

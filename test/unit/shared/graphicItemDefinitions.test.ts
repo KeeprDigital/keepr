@@ -1,5 +1,9 @@
 import type { GraphicsHostContract } from '~~/shared/modules/graphics';
-import type { BroadcastGraphicConfig, GraphicItemConfig, GraphicItemKind } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicItemConfig,
+	GraphicItemKind,
+} from '~~/shared/types/graphics';
 import { describe, expect, it } from 'vitest';
 import { featureMatchTokenCatalogue } from '~~/shared/featureMatchTokenCatalogue';
 import {
@@ -38,14 +42,13 @@ describe('graphicItemDefinitions', () => {
 	it('offers the base kinds and the host-owned Social Network Icon to Broadcast Graphics', () => {
 		const definitions = graphicItemDefinitionsForHost(BROADCAST_GRAPHICS_HOST_CONTRACT);
 
-		expect(definitions.map(definition => definition.kind))
-			.toEqual([
-				'text',
-				'shape',
-				'media',
-				'social-network-icon',
-				'group',
-			]);
+		expect(definitions.map((definition) => definition.kind)).toEqual([
+			'text',
+			'shape',
+			'media',
+			'social-network-icon',
+			'group',
+		]);
 	});
 
 	it('never offers a Graphic Group inside a Graphic Group', () => {
@@ -53,26 +56,39 @@ describe('graphicItemDefinitions', () => {
 		// group offers is the host palette without itself.
 		const definitions = graphicGroupChildDefinitionsForHost(BROADCAST_GRAPHICS_HOST_CONTRACT);
 
-		expect(definitions.map(definition => definition.kind))
-			.toEqual([
-				'text',
-				'shape',
-				'media',
-				'social-network-icon',
-			]);
+		expect(definitions.map((definition) => definition.kind)).toEqual([
+			'text',
+			'shape',
+			'media',
+			'social-network-icon',
+		]);
 	});
 
 	it('withholds a Definition whose required context the Host Contract cannot supply', () => {
-		expect(isGraphicItemDefinitionAvailable(getGraphicItemDefinition('clock'), BROADCAST_GRAPHICS_HOST_CONTRACT)).toBe(false);
-		expect(isGraphicItemDefinitionAvailable(getGraphicItemDefinition('text'), BROADCAST_GRAPHICS_HOST_CONTRACT)).toBe(true);
+		expect(
+			isGraphicItemDefinitionAvailable(
+				getGraphicItemDefinition('clock'),
+				BROADCAST_GRAPHICS_HOST_CONTRACT,
+			),
+		).toBe(false);
+		expect(
+			isGraphicItemDefinitionAvailable(
+				getGraphicItemDefinition('text'),
+				BROADCAST_GRAPHICS_HOST_CONTRACT,
+			),
+		).toBe(true);
 	});
 
 	it('reserves the Social Network Icon Definition for the Broadcast Graphics host', () => {
 		const definition = getGraphicItemDefinition('social-network-icon');
 
 		expect(definition.requiredHost).toBe('broadcast-graphics');
-		expect(isGraphicItemDefinitionAvailable(definition, BROADCAST_GRAPHICS_HOST_CONTRACT)).toBe(true);
-		expect(isGraphicItemDefinitionAvailable(definition, FEATURE_MATCH_OVERLAY_HOST_CONTRACT)).toBe(false);
+		expect(isGraphicItemDefinitionAvailable(definition, BROADCAST_GRAPHICS_HOST_CONTRACT)).toBe(
+			true,
+		);
+		expect(isGraphicItemDefinitionAvailable(definition, FEATURE_MATCH_OVERLAY_HOST_CONTRACT)).toBe(
+			false,
+		);
 	});
 
 	it('offers the Feature Match host the base kinds and the context-gated Definitions', () => {
@@ -81,26 +97,29 @@ describe('graphicItemDefinitions', () => {
 		// the declared context decides whether the palette offers them at all.
 		const definitions = graphicItemDefinitionsForHost(FEATURE_MATCH_OVERLAY_HOST_CONTRACT);
 
-		expect(definitions.map(definition => definition.kind))
-			.toEqual([
-				'text',
-				'shape',
-				'media',
-				'group',
-				'clock',
-				'player-life',
-				'game-wins',
-				'deck-list',
-				'seat-indicator',
-			]);
+		expect(definitions.map((definition) => definition.kind)).toEqual([
+			'text',
+			'shape',
+			'media',
+			'group',
+			'clock',
+			'player-life',
+			'game-wins',
+			'deck-list',
+			'seat-indicator',
+		]);
 	});
 
 	// Commander Damage is a Commander game's alone; a Seat Indicator is every Variant's (ADR-0087).
-	it('offers a Commander Event\'s Feature Match host the Commander Damage Definition too', () => {
-		const kinds = (contract: GraphicsHostContract) => graphicItemDefinitionsForHost(contract).map(definition => definition.kind);
+	it("offers a Commander Event's Feature Match host the Commander Damage Definition too", () => {
+		const kinds = (contract: GraphicsHostContract) =>
+			graphicItemDefinitionsForHost(contract).map((definition) => definition.kind);
 
-		expect(kinds(featureMatchOverlayHostContract('mtg-commander')).filter(kind => !kinds(FEATURE_MATCH_OVERLAY_HOST_CONTRACT).includes(kind)))
-			.toEqual(['commander-damage']);
+		expect(
+			kinds(featureMatchOverlayHostContract('mtg-commander')).filter(
+				(kind) => !kinds(FEATURE_MATCH_OVERLAY_HOST_CONTRACT).includes(kind),
+			),
+		).toEqual(['commander-damage']);
 		expect(kinds(BROADCAST_GRAPHICS_HOST_CONTRACT)).not.toContain('seat-indicator');
 	});
 
@@ -110,26 +129,20 @@ describe('graphicItemDefinitions', () => {
 		// the top-level palette does — it withholds only another Graphic Group.
 		const definitions = graphicGroupChildDefinitionsForHost(FEATURE_MATCH_OVERLAY_HOST_CONTRACT);
 
-		expect(definitions.map(definition => definition.kind))
-			.toEqual([
-				'text',
-				'shape',
-				'media',
-				'clock',
-				'player-life',
-				'game-wins',
-				'deck-list',
-				'seat-indicator',
-			]);
-	});
-
-	it('requires the Feature Match context for the Clock, Player Life, Game Wins, and Deck List Definitions', () => {
-		for (const kind of [
+		expect(definitions.map((definition) => definition.kind)).toEqual([
+			'text',
+			'shape',
+			'media',
 			'clock',
 			'player-life',
 			'game-wins',
 			'deck-list',
-		] as const)
+			'seat-indicator',
+		]);
+	});
+
+	it('requires the Feature Match context for the Clock, Player Life, Game Wins, and Deck List Definitions', () => {
+		for (const kind of ['clock', 'player-life', 'game-wins', 'deck-list'] as const)
 			expect(getGraphicItemDefinition(kind).requiredContext).toBe('feature-match');
 
 		// The base kinds compose from nothing a host has to supply, so they require
@@ -174,20 +187,24 @@ describe('graphicItemDefinitions', () => {
 			canvasHeight: 1080,
 		});
 
-		expect(life).toMatchObject({ type: 'player-life', playerSide: 'player1', lifeAnimation: 'glow' });
+		expect(life).toMatchObject({
+			type: 'player-life',
+			playerSide: 'player1',
+			lifeAnimation: 'glow',
+		});
 		expect(wins).toMatchObject({
 			type: 'game-wins',
 			playerSide: 'player1',
 			displayMode: 'boxes',
 			boxOrientation: 'horizontal',
 		});
-		if (wins.type !== 'game-wins')
-			throw new Error('expected a Game Wins Graphic Item');
+		if (wins.type !== 'game-wins') throw new Error('expected a Game Wins Graphic Item');
 
 		expect(graphicItemSummary(life)).toBe('Player 1 life');
 		expect(graphicItemSummary(wins)).toBe('Player 1 wins • boxes');
-		expect(graphicItemSummary({ ...wins, playerSide: 'player2', displayMode: 'number' }))
-			.toBe('Player 2 wins • number');
+		expect(graphicItemSummary({ ...wins, playerSide: 'player2', displayMode: 'number' })).toBe(
+			'Player 2 wins • number',
+		);
 	});
 
 	it('creates a sideboard-only Deck List Item for the first player, as a list with quantities', () => {
@@ -207,16 +224,16 @@ describe('graphicItemDefinitions', () => {
 			view: 'list',
 			showQuantities: true,
 		});
-		if (item.type !== 'deck-list')
-			throw new Error('expected a Deck List Graphic Item');
+		if (item.type !== 'deck-list') throw new Error('expected a Deck List Graphic Item');
 
 		// A sideboard is up to fifteen rows, so the default bounds are a tall panel
 		// rather than the one-line strip the other kinds start with.
 		expect(item.height).toBeGreaterThan(item.width / 2);
 		expect(item.typography.fontSize).toBeGreaterThan(0);
 		expect(graphicItemSummary(item)).toBe('Player 1 sideboard • list');
-		expect(graphicItemSummary({ ...item, playerSide: 'player2', view: 'grid' }))
-			.toBe('Player 2 sideboard • grid');
+		expect(graphicItemSummary({ ...item, playerSide: 'player2', view: 'grid' })).toBe(
+			'Player 2 sideboard • grid',
+		);
 	});
 
 	it('gives a Game Wins box the canonical Shape Geometry rather than a bespoke radius', () => {
@@ -229,8 +246,7 @@ describe('graphicItemDefinitions', () => {
 			canvasWidth: 1920,
 			canvasHeight: 1080,
 		});
-		if (wins.type !== 'game-wins')
-			throw new Error('expected a Game Wins Graphic Item');
+		if (wins.type !== 'game-wins') throw new Error('expected a Game Wins Graphic Item');
 
 		expect(wins.boxGeometry.leftSlant).toBe(0);
 		expect(wins.boxGeometry.topLeft).toEqual({ treatment: 'rounded', size: 4 });
@@ -297,30 +313,28 @@ describe('graphicItemDefinitions', () => {
 			canvasWidth: 1920,
 			canvasHeight: 1080,
 		});
-		if (empty.type !== 'media')
-			throw new Error('expected a Media Graphic Item');
+		if (empty.type !== 'media') throw new Error('expected a Media Graphic Item');
 
 		expect(graphicItemSummary(empty)).toBe('No Graphic Asset');
-		expect(graphicItemSummary({
-			...empty,
-			asset: { assetId: 'asset-1' as never, revisionId: 'revision-1' as never },
-		})).toBe('image • cover');
-		expect(graphicItemSummary({
-			...empty,
-			mediaKind: 'silent-video',
-			fit: 'contain',
-			asset: { assetId: 'asset-1' as never, revisionId: 'revision-1' as never },
-		})).toBe('silent video • contain');
+		expect(
+			graphicItemSummary({
+				...empty,
+				asset: { assetId: 'asset-1' as never, revisionId: 'revision-1' as never },
+			}),
+		).toBe('image • cover');
+		expect(
+			graphicItemSummary({
+				...empty,
+				mediaKind: 'silent-video',
+				fit: 'contain',
+				asset: { assetId: 'asset-1' as never, revisionId: 'revision-1' as never },
+			}),
+		).toBe('silent video • contain');
 	});
 
 	it('carries only the contract fields the compositor reads', () => {
 		// Each host field is listed only once it has a real consumer.
-		const fields = [
-			'composition',
-			'contextKinds',
-			'hostId',
-			'textValues',
-		];
+		const fields = ['composition', 'contextKinds', 'hostId', 'textValues'];
 
 		expect(Object.keys(BROADCAST_GRAPHICS_HOST_CONTRACT).sort()).toEqual(fields);
 		// Only a host supplying the Feature Match context has Seats to offer.
@@ -348,13 +362,15 @@ describe('graphicItemDefinitions', () => {
 		expect(graphicsHostTokenCatalogue(BROADCAST_GRAPHICS_HOST_CONTRACT)).toEqual([]);
 
 		expect(authorsGraphicInputs(FEATURE_MATCH_OVERLAY_HOST_CONTRACT)).toBe(false);
-		expect(graphicsHostTokenCatalogue(FEATURE_MATCH_OVERLAY_HOST_CONTRACT))
-			.toEqual(featureMatchTokenCatalogue('mtg-two-player'));
+		expect(graphicsHostTokenCatalogue(FEATURE_MATCH_OVERLAY_HOST_CONTRACT)).toEqual(
+			featureMatchTokenCatalogue('mtg-two-player'),
+		);
 	});
 
-	it('binds a Commander Event\'s Feature Match Overlay to its own token catalogue', () => {
-		expect(graphicsHostTokenCatalogue(featureMatchOverlayHostContract('mtg-commander')))
-			.toEqual(featureMatchTokenCatalogue('mtg-commander'));
+	it("binds a Commander Event's Feature Match Overlay to its own token catalogue", () => {
+		expect(graphicsHostTokenCatalogue(featureMatchOverlayHostContract('mtg-commander'))).toEqual(
+			featureMatchTokenCatalogue('mtg-commander'),
+		);
 	});
 
 	it('creates a Graphic Group arranging no children yet', () => {
@@ -389,14 +405,16 @@ describe('graphicItemDefinitions', () => {
 		});
 
 		expect(graphicFillSummary({ type: 'solid', color: '#0077a3' })).toBe('#0077a3');
-		expect(graphicFillSummary({
-			type: 'linear-gradient',
-			angle: 90,
-			stops: [
-				{ color: '#000000', position: 0, opacity: 1 },
-				{ color: '#ffffff', position: 1, opacity: 1 },
-			],
-		})).toBe('gradient • 2 stops');
+		expect(
+			graphicFillSummary({
+				type: 'linear-gradient',
+				angle: 90,
+				stops: [
+					{ color: '#000000', position: 0, opacity: 1 },
+					{ color: '#ffffff', position: 1, opacity: 1 },
+				],
+			}),
+		).toBe('gradient • 2 stops');
 		expect(graphicItemSummary(shape)).toBe('#0077a3 • rectangle');
 		expect(graphicItemSummary(group)).toBe('row • 0 items');
 	});
@@ -409,8 +427,7 @@ describe('graphicItemDefinitions', () => {
 			canvasHeight: 1080,
 		});
 
-		if (text.type !== 'text')
-			throw new Error('expected a text Graphic Item');
+		if (text.type !== 'text') throw new Error('expected a text Graphic Item');
 
 		expect(graphicItemSummary(text)).toBe('Text');
 		expect(graphicItemSummary({ ...text, text: '   ' })).toBe('Empty text');
@@ -419,12 +436,12 @@ describe('graphicItemDefinitions', () => {
 	describe('typography and the Text Overflow Policy', () => {
 		/** Stated independently of the Definitions, so a wrong declaration fails here. */
 		const OFFERS: Record<GraphicItemKind, { typography: boolean; textOverflowPolicy: boolean }> = {
-			'text': { typography: true, textOverflowPolicy: true },
-			'shape': { typography: false, textOverflowPolicy: false },
-			'media': { typography: false, textOverflowPolicy: false },
+			text: { typography: true, textOverflowPolicy: true },
+			shape: { typography: false, textOverflowPolicy: false },
+			media: { typography: false, textOverflowPolicy: false },
 			'social-network-icon': { typography: false, textOverflowPolicy: false },
-			'group': { typography: false, textOverflowPolicy: false },
-			'clock': { typography: true, textOverflowPolicy: true },
+			group: { typography: false, textOverflowPolicy: false },
+			clock: { typography: true, textOverflowPolicy: true },
 			'player-life': { typography: true, textOverflowPolicy: true },
 			'game-wins': { typography: true, textOverflowPolicy: false },
 			'deck-list': { typography: true, textOverflowPolicy: false },
@@ -453,25 +470,28 @@ describe('graphicItemDefinitions', () => {
 			expect(Object.keys(OFFERS).sort()).toEqual([...GRAPHIC_ITEM_KINDS].sort());
 		});
 
-		it.each(GRAPHIC_ITEM_KINDS)('declares on the %s Definition what authoring, slots, and defaults then honour', (kind) => {
-			const offers = OFFERS[kind];
-			const item = placed(kind);
+		it.each(GRAPHIC_ITEM_KINDS)(
+			'declares on the %s Definition what authoring, slots, and defaults then honour',
+			(kind) => {
+				const offers = OFFERS[kind];
+				const item = placed(kind);
 
-			expect(ownsGraphicTypography(item)).toBe(offers.typography);
-			expect(ownsTextOverflowPolicy(item)).toBe(offers.textOverflowPolicy);
-			// The typography Theme binding slot exists exactly where the item owns
-			// typography, so a binding can never be bound to text nothing paints.
-			expect(graphicThemeOwnerSupportsSlot(item, 'typography')).toBe(offers.typography);
-			// A new item carries what its Definition declares, and nothing it does not.
-			expect('typography' in item).toBe(offers.typography);
-			expect('overflowPolicy' in item).toBe(offers.textOverflowPolicy);
+				expect(ownsGraphicTypography(item)).toBe(offers.typography);
+				expect(ownsTextOverflowPolicy(item)).toBe(offers.textOverflowPolicy);
+				// The typography Theme binding slot exists exactly where the item owns
+				// typography, so a binding can never be bound to text nothing paints.
+				expect(graphicThemeOwnerSupportsSlot(item, 'typography')).toBe(offers.typography);
+				// A new item carries what its Definition declares, and nothing it does not.
+				expect('typography' in item).toBe(offers.typography);
+				expect('overflowPolicy' in item).toBe(offers.textOverflowPolicy);
 
-			const graphic = composition(item);
-			const typed = patchGraphicTypography(graphic, kind, { fontSize: 97 });
-			expect(typed !== graphic).toBe(offers.typography);
-			const bounded = patchGraphicTextOverflow(graphic, kind, { overflowPolicy: 'shrink' });
-			expect(bounded !== graphic).toBe(offers.textOverflowPolicy);
-		});
+				const graphic = composition(item);
+				const typed = patchGraphicTypography(graphic, kind, { fontSize: 97 });
+				expect(typed !== graphic).toBe(offers.typography);
+				const bounded = patchGraphicTextOverflow(graphic, kind, { overflowPolicy: 'shrink' });
+				expect(bounded !== graphic).toBe(offers.textOverflowPolicy);
+			},
+		);
 
 		it('offers typography in the Inspector only while the item paints text with it', () => {
 			// A Game Wins Item paints text only in its `number` display mode, and a Deck
@@ -490,18 +510,17 @@ describe('graphicItemDefinitions', () => {
 
 			for (const kind of ['text', 'clock', 'player-life'] as const)
 				expect(paintedGraphicTypography(placed(kind))).not.toBeNull();
-			for (const kind of [
-				'shape',
-				'media',
-				'social-network-icon',
-				'group',
-			] as const)
+			for (const kind of ['shape', 'media', 'social-network-icon', 'group'] as const)
 				expect(paintedGraphicTypography(placed(kind))).toBeNull();
 		});
 	});
 
 	describe('surface styles, the Shape Geometry, and the player side', () => {
-		type SurfaceSlot = 'surfaceStyle' | 'defaultChildSurfaceStyle' | 'boxSurfaceStyle' | 'wonBoxSurfaceStyle';
+		type SurfaceSlot =
+			| 'surfaceStyle'
+			| 'defaultChildSurfaceStyle'
+			| 'boxSurfaceStyle'
+			| 'wonBoxSurfaceStyle';
 		type GeometrySlot = 'geometry' | 'clipGeometry' | 'boxGeometry';
 
 		const SURFACE_SLOTS: readonly SurfaceSlot[] = [
@@ -513,25 +532,28 @@ describe('graphicItemDefinitions', () => {
 		const GEOMETRY_SLOTS: readonly GeometrySlot[] = ['geometry', 'clipGeometry', 'boxGeometry'];
 
 		/** Stated independently of the Definitions, so a wrong declaration fails here. */
-		const OWNS: Record<GraphicItemKind, { surfaces: SurfaceSlot[]; geometry: GeometrySlot | null; playerSide: boolean }> = {
-			'text': {
+		const OWNS: Record<
+			GraphicItemKind,
+			{ surfaces: SurfaceSlot[]; geometry: GeometrySlot | null; playerSide: boolean }
+		> = {
+			text: {
 				surfaces: ['surfaceStyle'],
 				geometry: null,
 				playerSide: false,
 			},
-			'shape': {
+			shape: {
 				surfaces: ['surfaceStyle'],
 				geometry: 'geometry',
 				playerSide: false,
 			},
-			'media': { surfaces: [], geometry: 'clipGeometry', playerSide: false },
+			media: { surfaces: [], geometry: 'clipGeometry', playerSide: false },
 			'social-network-icon': { surfaces: [], geometry: null, playerSide: false },
-			'group': {
+			group: {
 				surfaces: ['surfaceStyle', 'defaultChildSurfaceStyle'],
 				geometry: 'geometry',
 				playerSide: false,
 			},
-			'clock': {
+			clock: {
 				surfaces: ['surfaceStyle'],
 				geometry: null,
 				playerSide: false,
@@ -587,39 +609,46 @@ describe('graphicItemDefinitions', () => {
 			expect(Object.keys(OWNS).sort()).toEqual([...GRAPHIC_ITEM_KINDS].sort());
 		});
 
-		it.each(GRAPHIC_ITEM_KINDS)('declares on the %s Definition what slots and authoring then honour', (kind) => {
-			const owns = OWNS[kind];
-			const item = placed(kind);
-			const graphic = composition(item);
+		it.each(GRAPHIC_ITEM_KINDS)(
+			'declares on the %s Definition what slots and authoring then honour',
+			(kind) => {
+				const owns = OWNS[kind];
+				const item = placed(kind);
+				const graphic = composition(item);
 
-			for (const slot of SURFACE_SLOTS) {
-				expect(ownsGraphicSurfaceStyle(item, slot), slot).toBe(owns.surfaces.includes(slot));
-				// The Theme binding slot exists exactly where the item owns the surface.
-				expect(graphicThemeOwnerSupportsSlot(item, slot), slot).toBe(owns.surfaces.includes(slot));
-			}
-			expect(graphicThemeOwnerSupportsSlot(item, 'surfaceStyle.fill')).toBe(owns.surfaces.includes('surfaceStyle'));
-			for (const slot of ['surfaceStyle', 'boxSurfaceStyle', 'wonBoxSurfaceStyle'] as const) {
-				const painted = patchGraphicSurfaceStyle(graphic, kind, { fillOpacity: 0.3 }, slot);
-				expect(painted !== graphic, slot).toBe(owns.surfaces.includes(slot));
-			}
+				for (const slot of SURFACE_SLOTS) {
+					expect(ownsGraphicSurfaceStyle(item, slot), slot).toBe(owns.surfaces.includes(slot));
+					// The Theme binding slot exists exactly where the item owns the surface.
+					expect(graphicThemeOwnerSupportsSlot(item, slot), slot).toBe(
+						owns.surfaces.includes(slot),
+					);
+				}
+				expect(graphicThemeOwnerSupportsSlot(item, 'surfaceStyle.fill')).toBe(
+					owns.surfaces.includes('surfaceStyle'),
+				);
+				for (const slot of ['surfaceStyle', 'boxSurfaceStyle', 'wonBoxSurfaceStyle'] as const) {
+					const painted = patchGraphicSurfaceStyle(graphic, kind, { fillOpacity: 0.3 }, slot);
+					expect(painted !== graphic, slot).toBe(owns.surfaces.includes(slot));
+				}
 
-			expect(ownsShapeGeometry(item)).toBe(owns.geometry !== null);
-			expect(graphicShapeGeometry(item)?.slot ?? null).toBe(owns.geometry);
-			for (const slot of GEOMETRY_SLOTS)
-				expect(graphicThemeOwnerSupportsSlot(item, slot), slot).toBe(owns.geometry === slot);
-			const shaped = patchShapeGeometry(graphic, kind, { leftSlant: 12 });
-			expect(shaped !== graphic).toBe(owns.geometry !== null);
-			if (owns.geometry !== null) {
-				expect(shaped.items[0]).toMatchObject({
-					[owns.geometry]: { leftSlant: 12 },
-				});
-			}
+				expect(ownsShapeGeometry(item)).toBe(owns.geometry !== null);
+				expect(graphicShapeGeometry(item)?.slot ?? null).toBe(owns.geometry);
+				for (const slot of GEOMETRY_SLOTS)
+					expect(graphicThemeOwnerSupportsSlot(item, slot), slot).toBe(owns.geometry === slot);
+				const shaped = patchShapeGeometry(graphic, kind, { leftSlant: 12 });
+				expect(shaped !== graphic).toBe(owns.geometry !== null);
+				if (owns.geometry !== null) {
+					expect(shaped.items[0]).toMatchObject({
+						[owns.geometry]: { leftSlant: 12 },
+					});
+				}
 
-			expect(ownsPlayerSide(item)).toBe(owns.playerSide);
-			expect('playerSide' in item).toBe(owns.playerSide);
-			const sided = patchGraphicPlayerSide(graphic, kind, 'player2');
-			expect(sided !== graphic).toBe(owns.playerSide);
-		});
+				expect(ownsPlayerSide(item)).toBe(owns.playerSide);
+				expect('playerSide' in item).toBe(owns.playerSide);
+				const sided = patchGraphicPlayerSide(graphic, kind, 'player2');
+				expect(sided !== graphic).toBe(owns.playerSide);
+			},
+		);
 
 		// Life is every Seat's; game wins and a Sideboard are a pair's alone (ADR-0087).
 		it.each([
@@ -631,9 +660,7 @@ describe('graphicItemDefinitions', () => {
 
 			expect(graphicItemKindSeats(kind).includes(seat)).toBe(reads);
 			expect(patchGraphicPlayerSide(graphic, kind, seat).items[0]).toMatchObject({
-				playerSide: reads
-					? seat
-					: 'player1',
+				playerSide: reads ? seat : 'player1',
 			});
 		});
 
@@ -642,13 +669,18 @@ describe('graphicItemDefinitions', () => {
 			// The item owns the boxes either way, so a Theme binding slot binds to them
 			// whatever is on screen.
 			const boxes = placed('game-wins');
-			if (boxes.type !== 'game-wins')
-				throw new Error('expected a Game Wins Graphic Item');
+			if (boxes.type !== 'game-wins') throw new Error('expected a Game Wins Graphic Item');
 			const number = { ...boxes, displayMode: 'number' } as const;
 
-			expect(Object.keys(paintedGraphicSurfaceStyles(boxes)).sort())
-				.toEqual(['boxSurfaceStyle', 'surfaceStyle', 'wonBoxSurfaceStyle']);
-			expect(paintedShapeGeometry(boxes)).toMatchObject({ slot: 'boxGeometry', geometry: boxes.boxGeometry });
+			expect(Object.keys(paintedGraphicSurfaceStyles(boxes)).sort()).toEqual([
+				'boxSurfaceStyle',
+				'surfaceStyle',
+				'wonBoxSurfaceStyle',
+			]);
+			expect(paintedShapeGeometry(boxes)).toMatchObject({
+				slot: 'boxGeometry',
+				geometry: boxes.boxGeometry,
+			});
 
 			expect(Object.keys(paintedGraphicSurfaceStyles(number))).toEqual(['surfaceStyle']);
 			expect(paintedShapeGeometry(number)).toBeNull();
@@ -677,14 +709,15 @@ describe('graphicItemDefinitions', () => {
 			});
 
 			expect(paintedShapeGeometry(unclipped)).toBeNull();
-			expect(patchShapeGeometry(composition(unclipped), 'media', { leftSlant: 12 }).items[0]).toEqual(unclipped);
+			expect(
+				patchShapeGeometry(composition(unclipped), 'media', { leftSlant: 12 }).items[0],
+			).toEqual(unclipped);
 			expect(paintedShapeGeometry(placed('media'))).toMatchObject({ slot: 'clipGeometry' });
 		});
 
 		it('sizes a win box preset against the win box rather than the indicator', () => {
 			const wins = placed('game-wins');
-			if (wins.type !== 'game-wins')
-				throw new Error('expected a Game Wins Graphic Item');
+			if (wins.type !== 'game-wins') throw new Error('expected a Game Wins Graphic Item');
 
 			expect(graphicShapeGeometry(wins)).toMatchObject({
 				bounds: { width: wins.boxWidth, height: wins.boxHeight },

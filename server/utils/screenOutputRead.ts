@@ -7,7 +7,10 @@ import { eventIdParamSchema } from '~~/server/schemas/api/eventId';
 import { featureMatchService } from '~~/server/services/featureMatch';
 import { screenService } from '~~/server/services/screen';
 import { screenOutputReader } from '~~/server/utils/screenOutputAuthorization';
-import { screenOutputFeatureMatchSlotId, screenOutputModeConfig } from '~~/server/utils/screenOutputSelection';
+import {
+	screenOutputFeatureMatchSlotId,
+	screenOutputModeConfig,
+} from '~~/server/utils/screenOutputSelection';
 
 const screenOutputReadParamsSchema = z.object({
 	id: eventIdParamSchema,
@@ -49,13 +52,13 @@ export interface ScreenOutputRead {
  * must not outlive a rotation in some intermediary's cache.
  */
 export async function requireScreenOutputRead(event: H3Event): Promise<ScreenOutputRead> {
-	const { id: eventId, screenId } = await getValidatedRouterParams(event, screenOutputReadParamsSchema.parse);
+	const { id: eventId, screenId } = await getValidatedRouterParams(
+		event,
+		screenOutputReadParamsSchema.parse,
+	);
 	const screen = await screenService().findById(screenId, eventId);
-	const reader = screen
-		? await screenOutputReader(event, screen)
-		: null;
-	if (!screen || !reader)
-		screenOutputReadNotFound();
+	const reader = screen ? await screenOutputReader(event, screen) : null;
+	if (!screen || !reader) screenOutputReadNotFound();
 
 	setResponseHeader(event, 'cache-control', 'private, no-store');
 	return { eventId, screen, reader };
@@ -70,8 +73,7 @@ export async function requireScreenOutputRead(event: H3Event): Promise<ScreenOut
  */
 export async function requireScreenOutputModeRead<M extends ScreenMode>(event: H3Event, mode: M) {
 	const read = await requireScreenOutputRead(event);
-	if (read.reader === 'capability' && read.screen.currentMode !== mode)
-		screenOutputReadNotFound();
+	if (read.reader === 'capability' && read.screen.currentMode !== mode) screenOutputReadNotFound();
 
 	return {
 		...read,
@@ -92,8 +94,7 @@ export async function requireScreenOutputFeatureMatchSlot(event: H3Event, slotId
 		screenOutputReadNotFound();
 
 	const slot = await featureMatchService().findById(slotId, read.eventId);
-	if (!slot)
-		screenOutputReadNotFound();
+	if (!slot) screenOutputReadNotFound();
 
 	return { ...read, slot };
 }
@@ -104,19 +105,18 @@ export async function requireScreenOutputFeatureMatchSlot(event: H3Event, slotId
  * a Deck List Screen's Slot side included, since a linked side shows its
  * Player's Deck List (ADR-0074).
  */
-export async function screenOutputPublishedPlayerIds(screen: DbScreen, eventId: number): Promise<number[]> {
+export async function screenOutputPublishedPlayerIds(
+	screen: DbScreen,
+	eventId: number,
+): Promise<number[]> {
 	if (screen.currentMode === 'deck') {
 		const source = screenOutputModeConfig(screen, 'deck').deckSource;
 		if (source.type !== 'featureMatchSlot') {
-			return source.type === 'player' && source.playerId !== null
-				? [source.playerId]
-				: [];
+			return source.type === 'player' && source.playerId !== null ? [source.playerId] : [];
 		}
 	}
 
 	const slotId = screenOutputFeatureMatchSlotId(screen);
-	const slot = slotId
-		? await featureMatchService().findById(slotId, eventId)
-		: undefined;
+	const slot = slotId ? await featureMatchService().findById(slotId, eventId) : undefined;
 	return [slot?.player1Id, slot?.player2Id].filter((id): id is number => id != null);
 }

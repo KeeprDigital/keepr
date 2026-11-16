@@ -45,9 +45,7 @@ export type ScreenOutputOpenResult = 'opened' | 'access-refused' | 'window-block
  * straight to its copy or open control, both of which already report having nothing.
  */
 export function useScreenOutputAccessUrl() {
-	async function screenOutputAccessUrl(
-		options: ScreenOutputAccessUrlOptions,
-	): Promise<string> {
+	async function screenOutputAccessUrl(options: ScreenOutputAccessUrlOptions): Promise<string> {
 		try {
 			const { assetCapability } = await $fetch<{ assetCapability: string }>(
 				`/api/events/${options.eventId}/screens/${options.screenId}/asset-capability`,
@@ -59,8 +57,7 @@ export function useScreenOutputAccessUrl() {
 				download: options.download,
 				assetCapability,
 			})}`;
-		}
-		catch {
+		} catch {
 			return '';
 		}
 	}
@@ -81,10 +78,11 @@ export function useScreenOutputAccessUrl() {
 	 * nowhere to hand one to, and the operator's next move is in their browser rather
 	 * than on this page either way.
 	 */
-	async function openScreenOutput(options: ScreenOutputAccessUrlOptions): Promise<ScreenOutputOpenResult> {
+	async function openScreenOutput(
+		options: ScreenOutputAccessUrlOptions,
+	): Promise<ScreenOutputOpenResult> {
 		const outputWindow = window.open('', '_blank');
-		if (!outputWindow)
-			return 'window-blocked';
+		if (!outputWindow) return 'window-blocked';
 
 		outputWindow.opener = null;
 		const url = await screenOutputAccessUrl(options);

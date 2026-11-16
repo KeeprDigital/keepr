@@ -18,9 +18,9 @@ interface OpCardDeckSourceRuntimeState {
 }
 
 /** Where a Slot side's Deck List is read: its own Feature Match Deck List, or its linked Player's (ADR-0074). */
-type SideDeckListSource
-	= | { owner: 'side'; slotId: number; id: number }
-		| { owner: 'player'; playerId: number; id: number };
+type SideDeckListSource =
+	| { owner: 'side'; slotId: number; id: number }
+	| { owner: 'player'; playerId: number; id: number };
 
 /** Who a Slot side seats now, and where their Deck List is read. */
 interface SeatedSide {
@@ -50,8 +50,7 @@ export function useOpCardDeckSourceRuntime(state: OpCardDeckSourceRuntimeState) 
 	function seatedSide(slot: FeatureMatch, side: PlayerSide): SeatedSide | null {
 		const { playerId, data } = featureMatchSidePlayer(slot, side);
 		const playerName = playerDisplayName(data);
-		if (!playerName && playerId === null)
-			return null;
+		if (!playerName && playerId === null) return null;
 		const gameData = getOpGameData(data?.gameData);
 		const source: SideDeckListSource | null = gameData.featureMatchDeckList
 			? { owner: 'side', slotId: slot.id, id: gameData.featureMatchDeckList.id }
@@ -67,65 +66,62 @@ export function useOpCardDeckSourceRuntime(state: OpCardDeckSourceRuntimeState) 
 	}
 
 	function findSlot(slotId: number): FeatureMatch | null {
-		const slot = toValue(state.featureMatches).find(candidate => candidate.id === slotId);
-		return slot
-			? withFollowedFeatureMatchSession(slot, featureMatchStateStore)
-			: null;
+		const slot = toValue(state.featureMatches).find((candidate) => candidate.id === slotId);
+		return slot ? withFollowedFeatureMatchSession(slot, featureMatchStateStore) : null;
 	}
 
 	/** Both sides of a Slot, in the order its followed Session seats them. */
 	function slotSides(slotId: number): [SeatedSide | null, SeatedSide | null] | null {
 		const slot = findSlot(slotId);
-		return slot
-			? [
-					seatedSide(slot, 'player1'),
-					seatedSide(slot, 'player2'),
-				]
-			: null;
+		return slot ? [seatedSide(slot, 'player1'), seatedSide(slot, 'player2')] : null;
 	}
 
 	/** Whether either side of the Slot holds a Deck List. */
 	function slotHoldsDeckLists(slotId: number): boolean {
-		return slotSides(slotId)?.some(side => side?.source != null) ?? false;
+		return slotSides(slotId)?.some((side) => side?.source != null) ?? false;
 	}
 
 	const canUseDeckListMode = computed(() =>
-		toValue(state.featureMatches).some(slot => slotHoldsDeckLists(slot.id)),
+		toValue(state.featureMatches).some((slot) => slotHoldsDeckLists(slot.id)),
 	);
 
 	/** Deck Lists read so far, by where they were read; a Deck List never changes under its id. */
 	const deckListReads = new Map<string, Promise<OpDeckListView | null>>();
 
-	function readDeckList(eventId: number, source: SideDeckListSource): Promise<OpDeckListView | null> {
-		const key = source.owner === 'player'
-			? `player:${source.playerId}:${source.id}`
-			: `side:${source.slotId}:${source.id}`;
+	function readDeckList(
+		eventId: number,
+		source: SideDeckListSource,
+	): Promise<OpDeckListView | null> {
+		const key =
+			source.owner === 'player'
+				? `player:${source.playerId}:${source.id}`
+				: `side:${source.slotId}:${source.id}`;
 		const held = deckListReads.get(key);
-		if (held)
-			return held;
-		const read = source.owner === 'player'
-			? playerDeckLists.read(eventId, source.playerId).then(answer => answer.deckList)
-			: featureMatchDeckLists.read(eventId, source.slotId, source.id);
+		if (held) return held;
+		const read =
+			source.owner === 'player'
+				? playerDeckLists.read(eventId, source.playerId).then((answer) => answer.deckList)
+				: featureMatchDeckLists.read(eventId, source.slotId, source.id);
 		deckListReads.set(key, read);
 		// A failed read is tried again next time rather than held.
 		read.catch(() => deckListReads.delete(key));
 		return read;
 	}
 
-	async function sideDeckData(eventId: number, side: SeatedSide | null): Promise<OpMatchPlayerDeckData | null> {
-		if (!side)
-			return null;
+	async function sideDeckData(
+		eventId: number,
+		side: SeatedSide | null,
+	): Promise<OpMatchPlayerDeckData | null> {
+		if (!side) return null;
 		const shown = {
 			playerName: side.playerName,
 			playerId: side.playerId,
 			leader: side.leader,
 		};
-		if (!side.source)
-			return { ...shown, deckList: null, failed: false };
+		if (!side.source) return { ...shown, deckList: null, failed: false };
 		try {
 			return { ...shown, deckList: await readDeckList(eventId, side.source), failed: false };
-		}
-		catch (err) {
+		} catch (err) {
 			console.error('Failed to load Feature Match Deck List:', err);
 			return { ...shown, deckList: null, failed: true };
 		}
@@ -134,9 +130,9 @@ export function useOpCardDeckSourceRuntime(state: OpCardDeckSourceRuntimeState) 
 	/** The Feature Match Slot whose Deck Lists the page shows. */
 	const shownSlotId = ref<number | null>(null);
 
-	const shownSlotKey = computed(() => shownSlotId.value === null
-		? null
-		: JSON.stringify(slotSides(shownSlotId.value)));
+	const shownSlotKey = computed(() =>
+		shownSlotId.value === null ? null : JSON.stringify(slotSides(shownSlotId.value)),
+	);
 
 	/** Who the shown rendering's sides seated, as `shownSlotKey` read when it loaded. */
 	let renderedKey: string | null = null;
@@ -144,10 +140,9 @@ export function useOpCardDeckSourceRuntime(state: OpCardDeckSourceRuntimeState) 
 	// A side whose Deck List was not read is no answer about it, so it is read again on the degraded cadence.
 	const slotRefetch = useDegradedRefetch<string>({
 		refetch: () => {
-			if (shownSlotId.value !== null)
-				void runSlotLoad(shownSlotId.value, { silent: true });
+			if (shownSlotId.value !== null) void runSlotLoad(shownSlotId.value, { silent: true });
 		},
-		isUnchanged: key => key === renderedKey,
+		isUnchanged: (key) => key === renderedKey,
 	});
 
 	async function runSlotLoad(slotId: number, options: { silent: boolean }) {
@@ -161,28 +156,25 @@ export function useOpCardDeckSourceRuntime(state: OpCardDeckSourceRuntimeState) 
 
 		const key = JSON.stringify(sides);
 		const flight = slotRefetch.begin();
-		if (!options.silent)
-			state.loadingDeckList.value = true;
+		if (!options.silent) state.loadingDeckList.value = true;
 		try {
-			const [player1, player2] = await Promise.all(sides.map(side => sideDeckData(eventId, side)));
-			if (flight.stale)
-				return;
+			const [player1, player2] = await Promise.all(
+				sides.map((side) => sideDeckData(eventId, side)),
+			);
+			if (flight.stale) return;
 			if (slotRefetch.completeLoad(Boolean(player1?.failed || player2?.failed), key) === 'keep')
 				return;
 			state.deckListPlayer1.value = player1 ?? null;
 			state.deckListPlayer2.value = player2 ?? null;
 			renderedKey = key;
-		}
-		finally {
-			if (!options.silent && flight.current)
-				state.loadingDeckList.value = false;
+		} finally {
+			if (!options.silent && flight.current) state.loadingDeckList.value = false;
 		}
 	}
 
 	// A swap, a new Deck List, or any edit to who the shown Slot seats reloads it in place.
 	watch([shownSlotId, shownSlotKey], ([slotId, key], [previousSlotId, previousKey]) => {
-		if (slotId === null || slotId !== previousSlotId || key === previousKey)
-			return;
+		if (slotId === null || slotId !== previousSlotId || key === previousKey) return;
 		void runSlotLoad(slotId, { silent: true });
 	});
 

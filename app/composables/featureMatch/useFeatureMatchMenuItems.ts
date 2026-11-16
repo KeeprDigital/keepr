@@ -21,10 +21,12 @@ export interface FeatureMatchMenuItem {
 }
 
 function seatDeck(
-	playerData: { name?: string | null; nickname?: string | null; gameData?: unknown } | null | undefined,
+	playerData:
+		| { name?: string | null; nickname?: string | null; gameData?: unknown }
+		| null
+		| undefined,
 ): FeatureMatchMenuSeatDeck | null {
-	if (!playerData || !playerDisplayName(playerData))
-		return null;
+	if (!playerData || !playerDisplayName(playerData)) return null;
 	const gameData = playerData.gameData as Parameters<typeof getMtgGameData>[0];
 	const mtg = getMtgGameData(gameData);
 	const deck = {
@@ -32,9 +34,7 @@ function seatDeck(
 		colors: mtg.deckColors ?? null,
 		leader: getOpGameData(gameData).leader ?? null,
 	};
-	return deck.deckName || deck.leader
-		? deck
-		: null;
+	return deck.deckName || deck.leader ? deck : null;
 }
 
 /**
@@ -42,13 +42,17 @@ function seatDeck(
  * Commander Slot names every Seat somebody sits in and passes over an empty
  * one, which is not in the game (ADR-0087).
  */
-function formatMatchLabel(names: Array<string | null>, kind: EventKind | undefined, index: number): string {
+function formatMatchLabel(
+	names: Array<string | null>,
+	kind: EventKind | undefined,
+	index: number,
+): string {
 	const prefix = `Match ${index + 1}`;
-	if (names.every(name => !name))
-		return prefix;
-	const shown = kind === 'mtg-commander'
-		? names.filter((name): name is string => !!name)
-		: names.map(name => name ?? 'TBD');
+	if (names.every((name) => !name)) return prefix;
+	const shown =
+		kind === 'mtg-commander'
+			? names.filter((name): name is string => !!name)
+			: names.map((name) => name ?? 'TBD');
 	return `${prefix} — ${shown.join(' vs ')}`;
 }
 
@@ -65,11 +69,16 @@ export function useFeatureMatchMenuItems() {
 	const items = computed<FeatureMatchMenuItem[]>(() => {
 		return featureMatchStore.featureMatches.map((match, index) => {
 			const slot = withFollowedFeatureMatchSession(match, featureMatchStateStore);
-			const players = eventSeats(eventKind.value ?? 'mtg-two-player')
-				.map(seat => featureMatchSidePlayer(slot, seat).data);
+			const players = eventSeats(eventKind.value ?? 'mtg-two-player').map(
+				(seat) => featureMatchSidePlayer(slot, seat).data,
+			);
 
 			return {
-				label: formatMatchLabel(players.map(player => playerDisplayName(player) || null), eventKind.value, index),
+				label: formatMatchLabel(
+					players.map((player) => playerDisplayName(player) || null),
+					eventKind.value,
+					index,
+				),
 				value: match.id,
 				decks: players.map(seatDeck).filter((deck): deck is FeatureMatchMenuSeatDeck => !!deck),
 			};

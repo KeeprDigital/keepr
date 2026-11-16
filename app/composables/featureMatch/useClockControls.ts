@@ -11,44 +11,36 @@ export function useClockControls(matchId: MaybeRefOrGetter<number>) {
 
 	const defaultDurationMs = computed(() => {
 		const { clockDuration } = toFeatureMatchDefaults(eventStore.displayEvent);
-		if (!clockDuration)
-			return undefined;
+		if (!clockDuration) return undefined;
 		return minutesToMs(clockDuration);
 	});
 
 	function start() {
-		if (eid())
-			return store.startClock(eid()!, mid());
+		if (eid()) return store.startClock(eid()!, mid());
 	}
 
 	function pause() {
-		if (eid())
-			return store.pauseClock(eid()!, mid());
+		if (eid()) return store.pauseClock(eid()!, mid());
 	}
 
 	function reset() {
-		if (eid())
-			return store.resetClock(eid()!, mid());
+		if (eid()) return store.resetClock(eid()!, mid());
 	}
 
 	function restart() {
-		if (eid())
-			return store.restartClock(eid()!, mid());
+		if (eid()) return store.restartClock(eid()!, mid());
 	}
 
 	function adjust(deltaMs: number) {
-		if (eid())
-			return store.adjustClock(eid()!, mid(), deltaMs);
+		if (eid()) return store.adjustClock(eid()!, mid(), deltaMs);
 	}
 
 	function set(targetMs: number) {
-		if (eid())
-			return store.setClock(eid()!, mid(), targetMs);
+		if (eid()) return store.setClock(eid()!, mid(), targetMs);
 	}
 
 	function resetToDefault() {
-		if (!eid() || !defaultDurationMs.value)
-			return;
+		if (!eid() || !defaultDurationMs.value) return;
 		return store.setClock(eid()!, mid(), defaultDurationMs.value);
 	}
 

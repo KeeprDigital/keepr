@@ -19,8 +19,7 @@ const props = defineProps<{
 const emit = defineEmits<{ takeOver: [] }>();
 
 const notice = computed(() => {
-	if (props.writable === true)
-		return null;
+	if (props.writable === true) return null;
 	if (props.leaseStatus === 'error')
 		return 'The Graphics Authoring Lease for this Edit workspace could not be checked, so authoring stays read-only.';
 	if (props.leaseStatus !== 'ready')

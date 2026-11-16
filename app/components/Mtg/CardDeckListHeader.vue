@@ -20,15 +20,11 @@ const cardStore = useCardStore();
 const featureMatchOptions = useFeatureMatchMenuItems();
 const matchOptions = computed(() => props.matchOptions ?? featureMatchOptions.value);
 /** The picker lists a Round's Matches when given them, and the Feature Match Slots otherwise. */
-const pickerKind = computed<CardMatchup['kind']>(() => props.matchOptions
-	? 'match'
-	: 'slot');
+const pickerKind = computed<CardMatchup['kind']>(() => (props.matchOptions ? 'match' : 'slot'));
 const pickedId = computed<number | undefined>({
 	get: () => matchupIdOf(deckListMatchup.value, pickerKind.value) ?? undefined,
 	set: (id) => {
-		deckListMatchup.value = id
-			? { kind: pickerKind.value, id }
-			: null;
+		deckListMatchup.value = id ? { kind: pickerKind.value, id } : null;
 	},
 });
 
@@ -44,7 +40,10 @@ function loadSelectedMatchup(selectedMatch: Match) {
 }
 
 /** Load the decks the selection names: a Feature Match Slot's, or a Round's Match's once it has loaded. */
-async function loadMatchup(matchup: CardMatchup | null | undefined, selectedMatch: Match | null | undefined) {
+async function loadMatchup(
+	matchup: CardMatchup | null | undefined,
+	selectedMatch: Match | null | undefined,
+) {
 	if (!matchup) {
 		cardStore.clearMatchDeckLists();
 		return;
@@ -55,18 +54,16 @@ async function loadMatchup(matchup: CardMatchup | null | undefined, selectedMatc
 		return;
 	}
 
-	if (selectedMatch)
-		await loadSelectedMatchup(selectedMatch);
+	if (selectedMatch) await loadSelectedMatchup(selectedMatch);
 }
 
 // A selection restored before mount, as by a linked reload, has no decks loaded yet.
 if (deckListMatchup.value && !cardStore.deckListHasData)
 	void loadMatchup(deckListMatchup.value, props.selectedMatch);
 
-watch([
-	deckListMatchup,
-	() => props.selectedMatch,
-], ([matchup, selectedMatch]) => loadMatchup(matchup, selectedMatch));
+watch([deckListMatchup, () => props.selectedMatch], ([matchup, selectedMatch]) =>
+	loadMatchup(matchup, selectedMatch),
+);
 </script>
 
 <template>
@@ -117,7 +114,11 @@ watch([
 						size="sm"
 						icon="i-lucide-x"
 						aria-label="Clear filter"
-						@click="() => { cardStore.deckListFilter = '' }"
+						@click="
+							() => {
+								cardStore.deckListFilter = '';
+							}
+						"
 					/>
 				</template>
 			</UInput>

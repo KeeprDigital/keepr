@@ -21,7 +21,10 @@ import { broadcastGraphicConfigSchema } from './screen';
  */
 
 const templateNameSchema = z.string().trim().min(1).max(MAX_BROADCAST_GRAPHIC_TEMPLATE_NAME_LENGTH);
-const templateDescriptionSchema = z.string().trim().max(MAX_BROADCAST_GRAPHIC_TEMPLATE_DESCRIPTION_LENGTH);
+const templateDescriptionSchema = z
+	.string()
+	.trim()
+	.max(MAX_BROADCAST_GRAPHIC_TEMPLATE_DESCRIPTION_LENGTH);
 
 export const broadcastGraphicTemplateParamsSchema = z.object({
 	templateId: z.string().min(1).max(100),
@@ -36,16 +39,20 @@ export const broadcastGraphicTemplateParamsSchema = z.object({
  * the Screen never accepted, and there is no second copy of the Graphic Item
  * vocabulary on the way in.
  */
-export const saveBroadcastGraphicTemplateSchema = z.object({
-	source: z.object({
-		eventId: z.number().int().positive(),
-		screenId: z.number().int().positive(),
-		graphicId: z.string().min(1).max(100),
-	}).strict(),
-	/** Absent takes the Broadcast Graphic's own name. */
-	name: templateNameSchema.optional(),
-	description: templateDescriptionSchema.optional(),
-}).strict();
+export const saveBroadcastGraphicTemplateSchema = z
+	.object({
+		source: z
+			.object({
+				eventId: z.number().int().positive(),
+				screenId: z.number().int().positive(),
+				graphicId: z.string().min(1).max(100),
+			})
+			.strict(),
+		/** Absent takes the Broadcast Graphic's own name. */
+		name: templateNameSchema.optional(),
+		description: templateDescriptionSchema.optional(),
+	})
+	.strict();
 
 /**
  * `null` clears a description; an omitted field is left as it is.
@@ -64,29 +71,33 @@ export const saveBroadcastGraphicTemplateSchema = z.object({
  * pinning it that way. A caller with no revision to state has not read the template
  * it is revising, which is the case this refuses.
  */
-export const updateBroadcastGraphicTemplateSchema = z.object({
-	name: templateNameSchema.optional(),
-	description: templateDescriptionSchema.nullable().optional(),
-	document: broadcastGraphicConfigSchema.optional(),
-	revision: z.number().int().positive(),
-}).strict().refine(
-	patch => Object.keys(patch).length > 1,
-	'A template revision must change something',
-);
+export const updateBroadcastGraphicTemplateSchema = z
+	.object({
+		name: templateNameSchema.optional(),
+		description: templateDescriptionSchema.nullable().optional(),
+		document: broadcastGraphicConfigSchema.optional(),
+		revision: z.number().int().positive(),
+	})
+	.strict()
+	.refine((patch) => Object.keys(patch).length > 1, 'A template revision must change something');
 
-export const placeBroadcastGraphicTemplateSchema = z.object({
-	templateId: z.string().min(1).max(100),
-	/**
-	 * The Screen state version the author was looking at, so a placement built on a
-	 * stale stack is refused rather than silently discarding a concurrent change.
-	 *
-	 * Required for the same reason the template `revision` is. A placement is a
-	 * read-modify-write of the Screen's whole authored stack, and the Screen write path
-	 * treats an absent version as "do not check" — so an optional field here would be a
-	 * documented protection that any caller could skip by saying nothing.
-	 */
-	stateVersion: z.number().int().nonnegative(),
-}).strict();
+export const placeBroadcastGraphicTemplateSchema = z
+	.object({
+		templateId: z.string().min(1).max(100),
+		/**
+		 * The Screen state version the author was looking at, so a placement built on a
+		 * stale stack is refused rather than silently discarding a concurrent change.
+		 *
+		 * Required for the same reason the template `revision` is. A placement is a
+		 * read-modify-write of the Screen's whole authored stack, and the Screen write path
+		 * treats an absent version as "do not check" — so an optional field here would be a
+		 * documented protection that any caller could skip by saying nothing.
+		 */
+		stateVersion: z.number().int().nonnegative(),
+	})
+	.strict();
 
 export type SaveBroadcastGraphicTemplateInput = z.infer<typeof saveBroadcastGraphicTemplateSchema>;
-export type UpdateBroadcastGraphicTemplateInput = z.infer<typeof updateBroadcastGraphicTemplateSchema>;
+export type UpdateBroadcastGraphicTemplateInput = z.infer<
+	typeof updateBroadcastGraphicTemplateSchema
+>;

@@ -95,14 +95,15 @@ const { assetCapability, assetCapabilitySettled } = useScreenOutputAssetCapabili
  * entrance is not on screen yet, and the values an update is leaving still are.
  */
 const outputsWithoutAssetAccess = useScreenOutputAssetAccess(() => props.screen.id);
-const publishesMedia = computed(() =>
-	broadcastGraphicsGraphicAssetReferences({
-		graphics: [...props.graphics],
-	}).length > 0
-	|| broadcastGraphicsRenderedInputGraphicAssetReferences(
-		props.graphics,
-		sessionStore.renderedInputValues(props.screen.id, props.graphics, now.value),
-	).length > 0,
+const publishesMedia = computed(
+	() =>
+		broadcastGraphicsGraphicAssetReferences({
+			graphics: [...props.graphics],
+		}).length > 0 ||
+		broadcastGraphicsRenderedInputGraphicAssetReferences(
+			props.graphics,
+			sessionStore.renderedInputValues(props.screen.id, props.graphics, now.value),
+		).length > 0,
 );
 
 /**
@@ -118,19 +119,21 @@ const publishesMedia = computed(() =>
  * it rather than playout, and this monitor's embedder pushes none, so it would sit
  * empty however much was on air.
  */
-const programUrl = computed(() => screenOutputPath({
-	eventId: props.eventId,
-	screenSlug: props.screen.slug,
-	output: 'overlay',
-	embed: 'monitor',
-	assetCapability: assetCapability.value,
-}));
+const programUrl = computed(() =>
+	screenOutputPath({
+		eventId: props.eventId,
+		screenSlug: props.screen.slug,
+		output: 'overlay',
+		embed: 'monitor',
+		assetCapability: assetCapability.value,
+	}),
+);
 const PROGRAM_ZOOM_OPTIONS = [
 	{ label: 'Fit', value: 'fit' },
 	{ label: '50%', value: '0.5' },
 	{ label: '100%', value: '1' },
 ] as const;
-type ProgramZoom = typeof PROGRAM_ZOOM_OPTIONS[number]['value'];
+type ProgramZoom = (typeof PROGRAM_ZOOM_OPTIONS)[number]['value'];
 type ProgramBackground = 'transparent' | 'black' | 'white' | 'green';
 const PROGRAM_BACKGROUND_OPTIONS: Array<{ label: string; value: ProgramBackground }> = [
 	{ label: 'Transparency', value: 'transparent' },
@@ -140,24 +143,23 @@ const PROGRAM_BACKGROUND_OPTIONS: Array<{ label: string; value: ProgramBackgroun
 ];
 const programZoom = ref<ProgramZoom>('fit');
 const programBackground = ref<ProgramBackground>('transparent');
-const programAspectStyle = computed(() => programZoom.value === 'fit'
-	? {
-			aspectRatio: `${props.canvasWidth} / ${props.canvasHeight}`,
-			width: `calc(${props.canvasWidth / props.canvasHeight} * ${props.compact ? 23 : 46}vh)`,
-			maxWidth: '100%',
-		}
-	: {
-			width: `${props.canvasWidth * Number(programZoom.value)}px`,
-			height: `${props.canvasHeight * Number(programZoom.value)}px`,
-			maxWidth: 'none',
-		});
+const programAspectStyle = computed(() =>
+	programZoom.value === 'fit'
+		? {
+				aspectRatio: `${props.canvasWidth} / ${props.canvasHeight}`,
+				width: `calc(${props.canvasWidth / props.canvasHeight} * ${props.compact ? 23 : 46}vh)`,
+				maxWidth: '100%',
+			}
+		: {
+				width: `${props.canvasWidth * Number(programZoom.value)}px`,
+				height: `${props.canvasHeight * Number(programZoom.value)}px`,
+				maxWidth: 'none',
+			},
+);
 const programBackgroundStyle = computed(() => {
-	if (programBackground.value === 'black')
-		return { backgroundColor: '#000000' };
-	if (programBackground.value === 'white')
-		return { backgroundColor: '#ffffff' };
-	if (programBackground.value === 'green')
-		return { backgroundColor: '#00b140' };
+	if (programBackground.value === 'black') return { backgroundColor: '#000000' };
+	if (programBackground.value === 'white') return { backgroundColor: '#ffffff' };
+	if (programBackground.value === 'green') return { backgroundColor: '#00b140' };
 	return undefined;
 });
 </script>
@@ -177,7 +179,11 @@ const programBackgroundStyle = computed(() => {
 						:color="programZoom === zoom.value ? 'primary' : 'neutral'"
 						:variant="programZoom === zoom.value ? 'subtle' : 'outline'"
 						:aria-label="`${zoom.label} program monitor zoom`"
-						@click="() => { programZoom = zoom.value }"
+						@click="
+							() => {
+								programZoom = zoom.value;
+							}
+						"
 					>
 						{{ zoom.label }}
 					</UButton>
@@ -211,9 +217,11 @@ const programBackgroundStyle = computed(() => {
 			color="warning"
 			variant="soft"
 			icon="i-lucide-image-off"
-			:title="outputsWithoutAssetAccess === 1
-				? 'One Screen Output cannot resolve this Screen\'s assets'
-				: `${outputsWithoutAssetAccess} Screen Outputs cannot resolve this Screen's assets`"
+			:title="
+				outputsWithoutAssetAccess === 1
+					? 'One Screen Output cannot resolve this Screen\'s assets'
+					: `${outputsWithoutAssetAccess} Screen Outputs cannot resolve this Screen's assets`
+			"
 			description="It is rendering everything except images, video and library fonts. Re-open it with Open above, which is what puts asset access in the URL."
 		/>
 		<!--

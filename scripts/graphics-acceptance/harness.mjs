@@ -16,7 +16,11 @@
  */
 
 import process from 'node:process';
-import { ACCEPTANCE_FAILURE_CODES, AcceptanceFailure, createAcceptanceEvidence } from './evidence.mjs';
+import {
+	ACCEPTANCE_FAILURE_CODES,
+	AcceptanceFailure,
+	createAcceptanceEvidence,
+} from './evidence.mjs';
 
 const PUBLISHED_CODES = new Set(ACCEPTANCE_FAILURE_CODES);
 
@@ -58,9 +62,7 @@ function unexpectedFailure(error) {
  * talking, and is reduced to the fact that a line could not be built.
  */
 function refusalLine(harness, error) {
-	const message = error instanceof Error
-		? error.message
-		: '';
+	const message = error instanceof Error ? error.message : '';
 	return message.startsWith(`${harness} evidence-`) && !/[/\\]/.test(message)
 		? message
 		: `${harness} evidence-report-refused`;
@@ -83,13 +85,14 @@ function refusalLine(harness, error) {
 export function reportFailures(evidence, harness, failures) {
 	try {
 		return evidence.report(failures);
-	}
-	catch (error) {
+	} catch (error) {
 		return [
-			...failures.map(({ code }) =>
-				`${harness} ${PUBLISHED_CODES.has(code)
-					? code
-					: 'evidence-unknown-code'} detail=withheld`),
+			...failures.map(
+				({ code }) =>
+					`${harness} ${
+						PUBLISHED_CODES.has(code) ? code : 'evidence-unknown-code'
+					} detail=withheld`,
+			),
 			refusalLine(harness, error),
 		].join('\n');
 	}
@@ -138,20 +141,21 @@ export async function runAcceptanceHarness({ harness, secrets = [], run }) {
 
 	let summary;
 	try {
-		summary = await run(context) ?? {};
-	}
-	catch (error) {
-		const failure = error instanceof AcceptanceFailure
-			? error
-			: unexpectedFailure(error);
+		summary = (await run(context)) ?? {};
+	} catch (error) {
+		const failure = error instanceof AcceptanceFailure ? error : unexpectedFailure(error);
 		failures.push({ code: failure.code, detail: failure.detail });
 	}
 
 	for (const entry of notes)
-		process.stdout.write(`${reportFailures(evidence, harness, [entry])} (reported, not enforced)\n`);
+		process.stdout.write(
+			`${reportFailures(evidence, harness, [entry])} (reported, not enforced)\n`,
+		);
 
 	if (failures.length > 0) {
-		process.stderr.write(`${harness} acceptance failed:\n${reportFailures(evidence, harness, failures)}\n`);
+		process.stderr.write(
+			`${harness} acceptance failed:\n${reportFailures(evidence, harness, failures)}\n`,
+		);
 		process.exitCode = 1;
 		return;
 	}
@@ -162,8 +166,7 @@ export async function runAcceptanceHarness({ harness, secrets = [], run }) {
 	let closing;
 	try {
 		closing = evidence.passed({ checks, ...summary });
-	}
-	catch (error) {
+	} catch (error) {
 		process.stderr.write(`${harness} acceptance failed:\n${refusalLine(harness, error)}\n`);
 		process.exitCode = 1;
 		return;

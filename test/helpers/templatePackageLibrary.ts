@@ -3,15 +3,24 @@
  * revisions a package carries, and the export → preflight → install steps.
  */
 import type { SilentVideoPlaybackValidator } from '~~/server/modules/graphics-asset-library/silent-video-playback-validator';
-import type { GraphicAssetReference, GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
-import type { TemplatePackagePreflightIssueCode, TemplatePackagePreflightReport } from '~~/shared/types/templatePackage';
+import type {
+	GraphicAssetReference,
+	GraphicsIngestionOperation,
+} from '~~/shared/types/graphicsAsset';
+import type {
+	TemplatePackagePreflightIssueCode,
+	TemplatePackagePreflightReport,
+} from '~~/shared/types/templatePackage';
 import { readFile } from 'node:fs/promises';
 import { createGraphicsAssetLibrary } from '~~/server/modules/graphics-asset-library';
 import {
 	createInMemoryCanonicalGraphicsObjectStore,
 	createInMemoryStagingGraphicsObjectStore,
 } from '~~/server/modules/graphics-asset-library/in-memory-object-store';
-import { createBoundedByteStream, graphicsObjectIdentity } from '~~/server/modules/graphics-asset-library/object-store';
+import {
+	createBoundedByteStream,
+	graphicsObjectIdentity,
+} from '~~/server/modules/graphics-asset-library/object-store';
 import { MAX_SILENT_VIDEO_POSTER_BYTES } from '~~/shared/utils/graphicsAssetCompatibility';
 import { digestOf, pixelPng, sixteenPixelPng, vp9Webm } from '~~/test/helpers/graphicsFixtures';
 import { boundedBytes, createSqliteGraphicsAssetCatalogue } from '~~/test/helpers/graphicsLibrary';
@@ -21,7 +30,7 @@ import { acceptEveryTemplateDocument } from '~~/test/helpers/templatePackagePayl
 /** A playback validator that accepts every silent video with a 16×16 poster. */
 export function acceptEverySilentVideo(): SilentVideoPlaybackValidator {
 	return {
-		validate: async input => ({
+		validate: async (input) => ({
 			outcome: 'accepted' as const,
 			operationId: input.operationId,
 			idempotencyKey: input.idempotencyKey,
@@ -53,7 +62,9 @@ export function acceptStagedSilentVideo(
 	const accepting = acceptEverySilentVideo();
 	return {
 		validate: async (input) => {
-			const staged = await staging.read(graphicsObjectIdentity(`ingestion/${input.operationId}/source`));
+			const staged = await staging.read(
+				graphicsObjectIdentity(`ingestion/${input.operationId}/source`),
+			);
 			if (staged.outcome !== 'available')
 				return { outcome: 'unavailable' as const, retryable: true as const };
 			const bytes = await collectStream(staged.body);
@@ -78,11 +89,15 @@ type LibraryDependencies = Parameters<typeof createGraphicsAssetLibrary>[0];
  * A library minting `<label>-identity-N`, at a fixed instant. Each has a
  * catalogue of its own unless given one, so a sender and a receiver share nothing.
  */
-export async function createPackageLibrary(label: string, dependencies: Partial<LibraryDependencies> = {}) {
+export async function createPackageLibrary(
+	label: string,
+	dependencies: Partial<LibraryDependencies> = {},
+) {
 	let nextIdentity = 0;
 	const canonical = createInMemoryCanonicalGraphicsObjectStore();
 	const staging = createInMemoryStagingGraphicsObjectStore();
-	const catalogue = dependencies.catalogue ?? (await createSqliteGraphicsAssetCatalogue()).catalogue;
+	const catalogue =
+		dependencies.catalogue ?? (await createSqliteGraphicsAssetCatalogue()).catalogue;
 	const library = createGraphicsAssetLibrary({
 		staging,
 		canonical,
@@ -103,7 +118,9 @@ const author = 'package-author';
 
 function published(operation: GraphicsIngestionOperation): GraphicAssetReference {
 	if (!operation.result)
-		throw new Error(`Ingestion did not publish: ${JSON.stringify(operation.failure ?? operation.stage)}`);
+		throw new Error(
+			`Ingestion did not publish: ${JSON.stringify(operation.failure ?? operation.stage)}`,
+		);
 	return { assetId: operation.result.assetId, revisionId: operation.result.revisionId };
 }
 
@@ -117,9 +134,7 @@ export async function ingestPackageImage(
 		idempotencyKey: `ingest-${name}-${++sequence}`,
 		initiatedBy: author,
 		name,
-		sourceFileName: mime === 'image/png'
-			? `${name}.png`
-			: `${name}.webp`,
+		sourceFileName: mime === 'image/png' ? `${name}.png` : `${name}.webp`,
 		declaredMime: mime,
 		duplicateContentPolicy: 'create-separate',
 		browserDecodeEvidence: {
@@ -130,12 +145,14 @@ export async function ingestPackageImage(
 		},
 		declaredByteLength: bytes.byteLength,
 	});
-	return published(await library.uploadGraphicAsset({
-		operationId: operation.id,
-		initiatedBy: operation.initiatedBy,
-		declaredMime: mime,
-		bytes: boundedBytes(bytes),
-	}));
+	return published(
+		await library.uploadGraphicAsset({
+			operationId: operation.id,
+			initiatedBy: operation.initiatedBy,
+			declaredMime: mime,
+			bytes: boundedBytes(bytes),
+		}),
+	);
 }
 
 /** A second source revision of `reference`, decoded at `dimensions`. */
@@ -158,15 +175,20 @@ export async function replacePackageImage(
 		},
 		declaredByteLength: bytes.byteLength,
 	});
-	return published(await library.uploadGraphicAsset({
-		operationId: operation.id,
-		initiatedBy: operation.initiatedBy,
-		declaredMime: 'image/png',
-		bytes: boundedBytes(bytes),
-	}));
+	return published(
+		await library.uploadGraphicAsset({
+			operationId: operation.id,
+			initiatedBy: operation.initiatedBy,
+			declaredMime: 'image/png',
+			bytes: boundedBytes(bytes),
+		}),
+	);
 }
 
-export async function ingestPackageSilentVideo(library: PackageLibrary, name: string): Promise<GraphicAssetReference> {
+export async function ingestPackageSilentVideo(
+	library: PackageLibrary,
+	name: string,
+): Promise<GraphicAssetReference> {
 	const operation = await library.initiateGraphicsIngestion({
 		idempotencyKey: `ingest-${name}-${++sequence}`,
 		initiatedBy: author,
@@ -175,16 +197,21 @@ export async function ingestPackageSilentVideo(library: PackageLibrary, name: st
 		declaredMime: 'video/webm',
 		declaredByteLength: vp9Webm.byteLength,
 	});
-	return published(await library.uploadGraphicAsset({
-		operationId: operation.id,
-		initiatedBy: operation.initiatedBy,
-		declaredMime: 'video/webm',
-		bytes: boundedBytes(vp9Webm),
-	}));
+	return published(
+		await library.uploadGraphicAsset({
+			operationId: operation.id,
+			initiatedBy: operation.initiatedBy,
+			declaredMime: 'video/webm',
+			bytes: boundedBytes(vp9Webm),
+		}),
+	);
 }
 
 /** The bundled Mana WOFF, through validation and a passing browser proof. */
-export async function ingestPackageStaticFont(library: PackageLibrary, name: string): Promise<GraphicAssetReference> {
+export async function ingestPackageStaticFont(
+	library: PackageLibrary,
+	name: string,
+): Promise<GraphicAssetReference> {
 	const source = new Uint8Array(await readFile('public/fonts/mana.woff'));
 	const operation = await library.initiateGraphicsIngestion({
 		idempotencyKey: `ingest-${name}-${++sequence}`,
@@ -200,25 +227,30 @@ export async function ingestPackageStaticFont(library: PackageLibrary, name: str
 		declaredMime: 'font/woff',
 		bytes: boundedBytes(source),
 	});
-	if (awaitingEvidence.report?.outcome !== 'accepted' || awaitingEvidence.report.facts.kind !== 'font')
+	if (
+		awaitingEvidence.report?.outcome !== 'accepted' ||
+		awaitingEvidence.report.facts.kind !== 'font'
+	)
 		throw new Error('Expected a validated font challenge');
 	const { facts } = awaitingEvidence.report;
-	return published(await library.confirmFontBrowserEvidence({
-		operationId: awaitingEvidence.id,
-		initiatedBy: awaitingEvidence.initiatedBy,
-		evidence: {
-			outcome: 'font-loaded',
-			sourceDigest: facts.sha256,
-			challengeDigest: facts.browserChallenge.digest,
-			glyphProofs: facts.browserChallenge.codePoints.map(codePoint => ({
-				codePoint,
-				exactWithSansDigest: '1'.repeat(64),
-				exactWithMonoDigest: '1'.repeat(64),
-				sansFallbackDigest: '2'.repeat(64),
-				monoFallbackDigest: '3'.repeat(64),
-			})),
-		},
-	}));
+	return published(
+		await library.confirmFontBrowserEvidence({
+			operationId: awaitingEvidence.id,
+			initiatedBy: awaitingEvidence.initiatedBy,
+			evidence: {
+				outcome: 'font-loaded',
+				sourceDigest: facts.sha256,
+				challengeDigest: facts.browserChallenge.digest,
+				glyphProofs: facts.browserChallenge.codePoints.map((codePoint) => ({
+					codePoint,
+					exactWithSansDigest: '1'.repeat(64),
+					exactWithMonoDigest: '1'.repeat(64),
+					sansFallbackDigest: '2'.repeat(64),
+					monoFallbackDigest: '3'.repeat(64),
+				})),
+			},
+		}),
+	);
 }
 
 /** Exports one `.skgraphic` whose document maps each slot to its reference; returns the archive bytes. */
@@ -236,7 +268,9 @@ export async function exportPackage(
 		template: {
 			identity: input.templateIdentity ?? 'template-1',
 			name: input.templateName ?? 'Lower third',
-			document: input.document ?? Object.fromEntries(input.assets.map(asset => [asset.slot, asset.reference])),
+			document:
+				input.document ??
+				Object.fromEntries(input.assets.map((asset) => [asset.slot, asset.reference])),
 		},
 		assets: input.assets,
 	});
@@ -254,9 +288,10 @@ export async function preflightPackage(
 	const operation = await library.initiateTemplatePackagePreflight({
 		idempotencyKey: `preflight-${++sequence}`,
 		initiatedBy: author,
-		sourceFileName: options.sourceFileName === null
-			? undefined
-			: options.sourceFileName ?? 'lower-third.skgraphic',
+		sourceFileName:
+			options.sourceFileName === null
+				? undefined
+				: (options.sourceFileName ?? 'lower-third.skgraphic'),
 		declaredByteLength: archive.byteLength,
 		defaultEventId: options.defaultEventId,
 	});
@@ -287,14 +322,18 @@ export async function installPackage(
 	});
 }
 
-export function preflightReportOf(operation: { templatePackagePreflight?: TemplatePackagePreflightReport }) {
+export function preflightReportOf(operation: {
+	templatePackagePreflight?: TemplatePackagePreflightReport;
+}) {
 	if (!operation.templatePackagePreflight)
 		throw new Error('Expected the operation to carry a Template Package preflight report');
 	return operation.templatePackagePreflight;
 }
 
-export function issueCodes(report: TemplatePackagePreflightReport): TemplatePackagePreflightIssueCode[] {
-	return report.issues.map(issue => issue.code);
+export function issueCodes(
+	report: TemplatePackagePreflightReport,
+): TemplatePackagePreflightIssueCode[] {
+	return report.issues.map((issue) => issue.code);
 }
 
 export function installationOf(operation: GraphicsIngestionOperation) {

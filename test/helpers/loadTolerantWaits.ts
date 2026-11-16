@@ -23,6 +23,8 @@ if (!target[WRAPPED]) {
 	target[WRAPPED] = true;
 	const waitFor = vi.waitFor.bind(vi);
 	const waitUntil = vi.waitUntil.bind(vi);
-	vi.waitFor = ((callback, options) => waitFor(callback, withDefaultBound(options))) as typeof vi.waitFor;
-	vi.waitUntil = ((callback, options) => waitUntil(callback, withDefaultBound(options))) as typeof vi.waitUntil;
+	vi.waitFor = ((callback, options) =>
+		waitFor(callback, withDefaultBound(options))) as typeof vi.waitFor;
+	vi.waitUntil = ((callback, options) =>
+		waitUntil(callback, withDefaultBound(options))) as typeof vi.waitUntil;
 }

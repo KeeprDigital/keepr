@@ -5,9 +5,7 @@ import {
 	createInMemoryCanonicalGraphicsObjectStore,
 	createInMemoryStagingGraphicsObjectStore,
 } from '~~/server/modules/graphics-asset-library/in-memory-object-store';
-import {
-	graphicsObjectIdentity,
-} from '~~/server/modules/graphics-asset-library/object-store';
+import { graphicsObjectIdentity } from '~~/server/modules/graphics-asset-library/object-store';
 import { TEMPLATE_PACKAGE_LIMITS } from '~~/shared/types/templatePackage';
 import { broadcastGraphicTemplatePackageRequirements } from '~~/shared/utils/templatePackageRequirements';
 import { testGraphicAssetRevisionId } from '~~/test/helpers/graphicsAssetIdentities';
@@ -39,9 +37,7 @@ describe('the Template Package preflight contract', () => {
 		const { library } = await createLibrary('sender');
 		const backdrop = await ingestImage(library, 'Backdrop');
 		const archive = await exportPackage(library, {
-			assets: [
-				{ slot: 'backdrop', reference: backdrop },
-			],
+			assets: [{ slot: 'backdrop', reference: backdrop }],
 		});
 
 		const operation = await preflight(library, archive);
@@ -62,7 +58,7 @@ describe('the Template Package preflight contract', () => {
 		expect(report.quota.canonicalGrowthBytes).toBe(0);
 	});
 
-	it('revalidates every embedded source under this installation\'s current profiles', async () => {
+	it("revalidates every embedded source under this installation's current profiles", async () => {
 		const { library: sender } = await createLibrary('sender');
 		const backdrop = await ingestImage(sender, 'Backdrop');
 		const motion = await ingestSilentVideo(sender, 'Motion');
@@ -90,9 +86,11 @@ describe('the Template Package preflight contract', () => {
 		expect(report.mappings).toHaveLength(3);
 		// Nothing in the receiving library matches, so every packaged identity
 		// becomes a separate local Graphic Asset carrying new content.
-		expect(report.mappings.every(mapping =>
-			mapping.proposal === 'create-graphic-asset' && mapping.basis === 'new-content',
-		)).toBe(true);
+		expect(
+			report.mappings.every(
+				(mapping) => mapping.proposal === 'create-graphic-asset' && mapping.basis === 'new-content',
+			),
+		).toBe(true);
 	});
 
 	it.each([
@@ -108,72 +106,67 @@ describe('the Template Package preflight contract', () => {
 			canonicalMime: 'image/jpeg',
 			validationCode: 'image-pixels-exceeded',
 		},
-	] as const)('rejects packaged content that is $label under the receiver\'s compatibility profile', async ({
-		replacement: notAnImage,
-		canonicalMime,
-		validationCode,
-	}) => {
-		const { library: sender } = await createLibrary('sender');
-		const backdrop = await ingestImage(sender, 'Backdrop');
-		const parts = readTemplatePackageParts(
-			await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
-			}),
-		);
-		// The bytes are replaced and the manifest is told the truth about their
-		// digest, so the only thing left to reject them is local validation.
-		const replacedDigest = digestOf(notAnImage);
-		const original = parts.contents[0]!;
-		parts.contents = [
-			{ name: `content/sha256-${replacedDigest}.bin`, bytes: notAnImage },
-		];
-		parts.manifest.contents = [
-			{
-				...parts.manifest.contents[0]!,
-				digest: replacedDigest,
-				byteLength: notAnImage.byteLength,
-				canonicalMime,
-				entry: `content/sha256-${replacedDigest}.bin`,
-			},
-		];
-		parts.manifest.packagedAssets = [
-			{
-				...parts.manifest.packagedAssets[0]!,
-				origin: { ...parts.manifest.packagedAssets[0]!.origin, digest: replacedDigest },
-				integrity: {
-					...parts.manifest.packagedAssets[0]!.integrity,
+	] as const)(
+		"rejects packaged content that is $label under the receiver's compatibility profile",
+		async ({ replacement: notAnImage, canonicalMime, validationCode }) => {
+			const { library: sender } = await createLibrary('sender');
+			const backdrop = await ingestImage(sender, 'Backdrop');
+			const parts = readTemplatePackageParts(
+				await exportPackage(sender, {
+					assets: [{ slot: 'backdrop', reference: backdrop }],
+				}),
+			);
+			// The bytes are replaced and the manifest is told the truth about their
+			// digest, so the only thing left to reject them is local validation.
+			const replacedDigest = digestOf(notAnImage);
+			const original = parts.contents[0]!;
+			parts.contents = [{ name: `content/sha256-${replacedDigest}.bin`, bytes: notAnImage }];
+			parts.manifest.contents = [
+				{
+					...parts.manifest.contents[0]!,
 					digest: replacedDigest,
 					byteLength: notAnImage.byteLength,
 					canonicalMime,
+					entry: `content/sha256-${replacedDigest}.bin`,
 				},
-				content: { entry: `content/sha256-${replacedDigest}.bin` },
-			},
-		];
-		expect(original.bytes).not.toEqual(notAnImage);
+			];
+			parts.manifest.packagedAssets = [
+				{
+					...parts.manifest.packagedAssets[0]!,
+					origin: { ...parts.manifest.packagedAssets[0]!.origin, digest: replacedDigest },
+					integrity: {
+						...parts.manifest.packagedAssets[0]!.integrity,
+						digest: replacedDigest,
+						byteLength: notAnImage.byteLength,
+						canonicalMime,
+					},
+					content: { entry: `content/sha256-${replacedDigest}.bin` },
+				},
+			];
+			expect(original.bytes).not.toEqual(notAnImage);
 
-		const { library: receiver } = await createLibrary('receiver');
-		const operation = await preflight(receiver, writeTemplatePackage(parts));
-		const report = reportOf(operation);
+			const { library: receiver } = await createLibrary('receiver');
+			const operation = await preflight(receiver, writeTemplatePackage(parts));
+			const report = reportOf(operation);
 
-		expect(report.outcome).toBe('rejected');
-		expect(report.issues).toContainEqual(expect.objectContaining({
-			code: 'incompatible-graphic-asset-content',
-			message: expect.stringContaining(`${validationCode}: `),
-		}));
-		expect(operation.stage).toBe('failed');
-		expect(operation.failure).toMatchObject({ retryable: false });
-	});
+			expect(report.outcome).toBe('rejected');
+			expect(report.issues).toContainEqual(
+				expect.objectContaining({
+					code: 'incompatible-graphic-asset-content',
+					message: expect.stringContaining(`${validationCode}: `),
+				}),
+			);
+			expect(operation.stage).toBe('failed');
+			expect(operation.failure).toMatchObject({ retryable: false });
+		},
+	);
 
 	it('rejects packaged content whose bytes do not match its recorded digest', async () => {
 		const { library: sender } = await createLibrary('sender');
 		const backdrop = await ingestImage(sender, 'Backdrop');
 		const parts = readTemplatePackageParts(
 			await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			}),
 		);
 		// The entry keeps its declared name and size but carries other bytes.
@@ -195,9 +188,7 @@ describe('the Template Package preflight contract', () => {
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			return readTemplatePackageParts(
 				await exportPackage(sender, {
-					assets: [
-						{ slot: 'backdrop', reference: backdrop },
-					],
+					assets: [{ slot: 'backdrop', reference: backdrop }],
 				}),
 			);
 		}
@@ -217,27 +208,11 @@ describe('the Template Package preflight contract', () => {
 				{ name: '../escaped.json' },
 				'package-entry-path-traversal',
 			],
-			[
-				'an absolute path',
-				{ name: '/etc/passwd' },
-				'unsafe-package-entry-path',
-			],
-			[
-				'a Windows path',
-				{ name: 'C:\\windows\\system32' },
-				'unsafe-package-entry-path',
-			],
-			[
-				'a directory entry',
-				{ name: 'nested/' },
-				'unsafe-package-entry-path',
-			],
+			['an absolute path', { name: '/etc/passwd' }, 'unsafe-package-entry-path'],
+			['a Windows path', { name: 'C:\\windows\\system32' }, 'unsafe-package-entry-path'],
+			['a directory entry', { name: 'nested/' }, 'unsafe-package-entry-path'],
 			// A Unix symlink mode in the high half of the external attributes.
-			[
-				'a link entry',
-				{ name: 'link.bin', externalAttributes: 0xA1FF0000 },
-				'package-entry-link',
-			],
+			['a link entry', { name: 'link.bin', externalAttributes: 0xa1ff0000 }, 'package-entry-link'],
 			[
 				'entry paths that collide only by case',
 				{ name: 'Manifest.JSON' },
@@ -258,21 +233,21 @@ describe('the Template Package preflight contract', () => {
 				{ name: 'lying.bin', declaredUncompressedSize: 64 },
 				'inconsistent-package-entry-size',
 			],
-			[
-				'an entry the manifest never declares',
-				{ name: 'extra.bin' },
-				'undeclared-package-entry',
-			],
+			['an entry the manifest never declares', { name: 'extra.bin' }, 'undeclared-package-entry'],
 		] as const)('rejects %s', async (_label, entry, code) => {
 			const parts = await validParts();
-			expect(await rejectionCodes(writeTemplatePackage(parts, {
-				extraEntries: [
-					{
-						bytes: new Uint8Array([1, 2, 3, 4]),
-						...entry,
-					},
-				],
-			}))).toContain(code);
+			expect(
+				await rejectionCodes(
+					writeTemplatePackage(parts, {
+						extraEntries: [
+							{
+								bytes: new Uint8Array([1, 2, 3, 4]),
+								...entry,
+							},
+						],
+					}),
+				),
+			).toContain(code);
 		});
 
 		it('rejects content the manifest declares but the archive omits', async () => {
@@ -280,8 +255,7 @@ describe('the Template Package preflight contract', () => {
 			const contents = parts.contents;
 			parts.contents = [];
 			expect(contents).toHaveLength(1);
-			expect(await rejectionCodes(writeTemplatePackage(parts)))
-				.toContain('missing-package-entry');
+			expect(await rejectionCodes(writeTemplatePackage(parts))).toContain('missing-package-entry');
 		});
 
 		it('rejects a nested archive travelling as packaged content', async () => {
@@ -293,9 +267,7 @@ describe('the Template Package preflight contract', () => {
 				},
 			]);
 			const nestedDigest = digestOf(nested);
-			parts.contents = [
-				{ name: `content/sha256-${nestedDigest}.bin`, bytes: nested },
-			];
+			parts.contents = [{ name: `content/sha256-${nestedDigest}.bin`, bytes: nested }];
 			parts.manifest.contents = [
 				{
 					...parts.manifest.contents[0]!,
@@ -317,8 +289,7 @@ describe('the Template Package preflight contract', () => {
 				},
 			];
 
-			expect(await rejectionCodes(writeTemplatePackage(parts)))
-				.toContain('nested-package-archive');
+			expect(await rejectionCodes(writeTemplatePackage(parts))).toContain('nested-package-archive');
 		});
 
 		it('rejects a nested tar, whose magic is not at the start of the file', async () => {
@@ -329,9 +300,7 @@ describe('the Template Package preflight contract', () => {
 			tar.set(new TextEncoder().encode('payload.bin'), 0);
 			tar.set(new TextEncoder().encode('ustar'), 257);
 			const tarDigest = digestOf(tar);
-			parts.contents = [
-				{ name: `content/sha256-${tarDigest}.bin`, bytes: tar },
-			];
+			parts.contents = [{ name: `content/sha256-${tarDigest}.bin`, bytes: tar }];
 			parts.manifest.contents = [
 				{
 					...parts.manifest.contents[0]!,
@@ -353,49 +322,59 @@ describe('the Template Package preflight contract', () => {
 				},
 			];
 
-			expect(await rejectionCodes(writeTemplatePackage(parts)))
-				.toContain('nested-package-archive');
+			expect(await rejectionCodes(writeTemplatePackage(parts))).toContain('nested-package-archive');
 		});
 
 		it('rejects an entry whose local header contradicts the central directory', async () => {
 			// Without a data descriptor both records state the CRC and sizes. A
 			// reader trusting either one could extract something different.
 			const parts = await validParts();
-			expect(await rejectionCodes(writeTemplatePackage(parts, {
-				extraEntries: [
-					{
-						name: 'two-faced.bin',
-						bytes: new Uint8Array([1, 2, 3, 4]),
-						// Bit 3 cleared, so the local header carries its own sizes — and
-						// this one is told a size the central directory disagrees with.
-						generalPurposeFlags: 0x0800,
-						localUncompressedSize: 64,
-					},
-				],
-			}))).toContain('malformed-package-archive');
+			expect(
+				await rejectionCodes(
+					writeTemplatePackage(parts, {
+						extraEntries: [
+							{
+								name: 'two-faced.bin',
+								bytes: new Uint8Array([1, 2, 3, 4]),
+								// Bit 3 cleared, so the local header carries its own sizes — and
+								// this one is told a size the central directory disagrees with.
+								generalPurposeFlags: 0x0800,
+								localUncompressedSize: 64,
+							},
+						],
+					}),
+				),
+			).toContain('malformed-package-archive');
 		});
 
 		it('rejects bytes appended after the archive ends', async () => {
 			const parts = await validParts();
-			expect(await rejectionCodes(writeTemplatePackage(parts, {
-				trailingBytes: new TextEncoder().encode('smuggled'),
-			}))).toContain('malformed-package-archive');
+			expect(
+				await rejectionCodes(
+					writeTemplatePackage(parts, {
+						trailingBytes: new TextEncoder().encode('smuggled'),
+					}),
+				),
+			).toContain('malformed-package-archive');
 		});
 
 		it('rejects an archive that is not readable at all', async () => {
-			expect(await rejectionCodes(new TextEncoder().encode('definitely not a zip archive')))
-				.toContain('malformed-package-archive');
+			expect(
+				await rejectionCodes(new TextEncoder().encode('definitely not a zip archive')),
+			).toContain('malformed-package-archive');
 		});
 	});
 
 	describe('envelope limits', () => {
 		it('refuses to initiate a package beyond the received archive limit', async () => {
 			const { library } = await createLibrary('receiver');
-			await expect(library.initiateTemplatePackagePreflight({
-				idempotencyKey: 'oversized',
-				initiatedBy: 'package-author',
-				declaredByteLength: TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength + 1,
-			})).rejects.toMatchObject({ code: 'invalid-ingestion-input' });
+			await expect(
+				library.initiateTemplatePackagePreflight({
+					idempotencyKey: 'oversized',
+					initiatedBy: 'package-author',
+					declaredByteLength: TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength + 1,
+				}),
+			).rejects.toMatchObject({ code: 'invalid-ingestion-input' });
 		});
 
 		it('accepts a declared length at exactly the received archive limit', async () => {
@@ -430,9 +409,7 @@ describe('the Template Package preflight contract', () => {
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const parts = readTemplatePackageParts(
 				await exportPackage(sender, {
-					assets: [
-						{ slot: 'backdrop', reference: backdrop },
-					],
+					assets: [{ slot: 'backdrop', reference: backdrop }],
 				}),
 			);
 			const template = parts.manifest.packagedAssets[0]!;
@@ -462,9 +439,7 @@ describe('the Template Package preflight contract', () => {
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const parts = readTemplatePackageParts(
 				await exportPackage(sender, {
-					assets: [
-						{ slot: 'backdrop', reference: backdrop },
-					],
+					assets: [{ slot: 'backdrop', reference: backdrop }],
 				}),
 			);
 			(parts.manifest as { templateKind: string }).templateKind = 'feature-match-layout-template';
@@ -480,9 +455,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 
 			const { library: receiver } = await createLibrary('receiver');
@@ -500,9 +473,7 @@ describe('the Template Package preflight contract', () => {
 			// The document names nothing, so the declared asset is dead weight.
 			const archive = await exportPackage(sender, {
 				document: { title: 'Lower third' },
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 
 			const { library: receiver } = await createLibrary('receiver');
@@ -517,9 +488,7 @@ describe('the Template Package preflight contract', () => {
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const parts = readTemplatePackageParts(
 				await exportPackage(sender, {
-					assets: [
-						{ slot: 'backdrop', reference: backdrop },
-					],
+					assets: [{ slot: 'backdrop', reference: backdrop }],
 				}),
 			);
 			parts.template = {
@@ -539,9 +508,7 @@ describe('the Template Package preflight contract', () => {
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const parts = readTemplatePackageParts(
 				await exportPackage(sender, {
-					assets: [
-						{ slot: 'backdrop', reference: backdrop },
-					],
+					assets: [{ slot: 'backdrop', reference: backdrop }],
 				}),
 			);
 			parts.template = {
@@ -561,9 +528,7 @@ describe('the Template Package preflight contract', () => {
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const parts = readTemplatePackageParts(
 				await exportPackage(sender, {
-					assets: [
-						{ slot: 'backdrop', reference: backdrop },
-					],
+					assets: [{ slot: 'backdrop', reference: backdrop }],
 				}),
 			);
 			parts.template = {
@@ -592,9 +557,7 @@ describe('the Template Package preflight contract', () => {
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const parts = readTemplatePackageParts(
 				await exportPackage(sender, {
-					assets: [
-						{ slot: 'backdrop', reference: backdrop },
-					],
+					assets: [{ slot: 'backdrop', reference: backdrop }],
 				}),
 			);
 			(parts.manifest as { schemaVersion: number }).schemaVersion = 99;
@@ -616,9 +579,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 
 			const { library: receiver } = await createLibrary('receiver');
@@ -633,9 +594,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 
 			// The receiver already holds these exact bytes under its own provenance.
@@ -661,9 +620,7 @@ describe('the Template Package preflight contract', () => {
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const parts = readTemplatePackageParts(
 				await exportPackage(sender, {
-					assets: [
-						{ slot: 'backdrop', reference: backdrop },
-					],
+					assets: [{ slot: 'backdrop', reference: backdrop }],
 				}),
 			);
 			// Same source asset, a revision this installation does not hold.
@@ -701,9 +658,7 @@ describe('the Template Package preflight contract', () => {
 			const other = await ingestImage(sender, 'Other', webpPixel, 'image/webp');
 			const parts = readTemplatePackageParts(
 				await exportPackage(sender, {
-					assets: [
-						{ slot: 'other', reference: other },
-					],
+					assets: [{ slot: 'other', reference: other }],
 				}),
 			);
 			// The package claims the backdrop's exact provenance while carrying the
@@ -746,13 +701,13 @@ describe('the Template Package preflight contract', () => {
 
 			expect(report.mappings).toHaveLength(2);
 			expect(report.observed.uniqueContentCount).toBe(1);
-			expect(report.mappings.every(mapping =>
-				mapping.proposal === 'create-graphic-asset',
-			)).toBe(true);
+			expect(report.mappings.every((mapping) => mapping.proposal === 'create-graphic-asset')).toBe(
+				true,
+			);
 			// Two Graphic Assets, one set of bytes: only one mapping is charged for
 			// them, so the quota reflects what would actually be stored.
-			const growth = report.mappings.map(mapping => mapping.canonicalGrowthBytes);
-			expect(growth.filter(bytes => bytes > 0)).toHaveLength(1);
+			const growth = report.mappings.map((mapping) => mapping.canonicalGrowthBytes);
+			expect(growth.filter((bytes) => bytes > 0)).toHaveLength(1);
 			expect(Math.max(...growth)).toBe(transparentPixelPng.byteLength);
 		});
 	});
@@ -762,9 +717,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 			const { library: receiver, staging } = await createLibrary('receiver');
 			await ingestImage(receiver, 'Locally uploaded backdrop');
@@ -795,11 +748,13 @@ describe('the Template Package preflight contract', () => {
 		it('refuses a confirmation that does not match the current report', async () => {
 			const { receiver, operation } = await pausedPackage();
 
-			await expect(receiver.confirmTemplatePackagePreflight({
-				operationId: operation.id,
-				initiatedBy: operation.initiatedBy,
-				fingerprint: 'a'.repeat(64),
-			})).rejects.toMatchObject({ code: 'invalid-ingestion-input' });
+			await expect(
+				receiver.confirmTemplatePackagePreflight({
+					operationId: operation.id,
+					initiatedBy: operation.initiatedBy,
+					fingerprint: 'a'.repeat(64),
+				}),
+			).rejects.toMatchObject({ code: 'invalid-ingestion-input' });
 
 			const unchanged = await receiver.getIngestionOperation({
 				operationId: operation.id,
@@ -814,16 +769,22 @@ describe('the Template Package preflight contract', () => {
 			const other = await ingestImage(sender, 'Other', webpPixel, 'image/webp');
 			const { library: receiver } = await createLibrary('receiver');
 
-			const first = reportOf(await preflight(receiver, await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
-			})));
-			const second = reportOf(await preflight(receiver, await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: other },
-				],
-			})));
+			const first = reportOf(
+				await preflight(
+					receiver,
+					await exportPackage(sender, {
+						assets: [{ slot: 'backdrop', reference: backdrop }],
+					}),
+				),
+			);
+			const second = reportOf(
+				await preflight(
+					receiver,
+					await exportPackage(sender, {
+						assets: [{ slot: 'backdrop', reference: other }],
+					}),
+				),
+			);
 
 			expect(first.fingerprint).not.toBe(second.fingerprint);
 		});
@@ -832,9 +793,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 			const { library: receiver } = await createLibrary('receiver');
 			await ingestImage(receiver, 'Locally uploaded backdrop');
@@ -860,9 +819,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 
 			const { catalogue: base } = await createSqliteGraphicsAssetCatalogue();
@@ -874,8 +831,10 @@ describe('the Template Package preflight contract', () => {
 					if (property !== 'getTemplatePackagePreflight' || typeof value !== 'function')
 						return value;
 					return async (...args: unknown[]) => {
-						const result = await (value as (...a: unknown[]) => Promise<unknown>)
-							.apply(target, args);
+						const result = await (value as (...a: unknown[]) => Promise<unknown>).apply(
+							target,
+							args,
+						);
 						const run = interleave;
 						interleave = undefined;
 						await run?.();
@@ -928,11 +887,13 @@ describe('the Template Package preflight contract', () => {
 				});
 			};
 
-			await expect(receiver.confirmTemplatePackagePreflight({
-				operationId: paused.id,
-				initiatedBy: paused.initiatedBy,
-				fingerprint: superseded,
-			})).rejects.toMatchObject({ code: 'invalid-ingestion-input' });
+			await expect(
+				receiver.confirmTemplatePackagePreflight({
+					operationId: paused.id,
+					initiatedBy: paused.initiatedBy,
+					fingerprint: superseded,
+				}),
+			).rejects.toMatchObject({ code: 'invalid-ingestion-input' });
 
 			const final = await receiver.getIngestionOperation({
 				operationId: paused.id,
@@ -970,9 +931,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 			const { library: receiver } = await createLibrary('receiver');
 			const local = await ingestImage(receiver, 'Local original name');
@@ -994,19 +953,22 @@ describe('the Template Package preflight contract', () => {
 		it('does not pause a proposal that carries nothing to confirm', async () => {
 			const { library } = await createLibrary('sender');
 			const backdrop = await ingestImage(library, 'Backdrop');
-			const operation = await preflight(library, await exportPackage(library, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
-			}));
+			const operation = await preflight(
+				library,
+				await exportPackage(library, {
+					assets: [{ slot: 'backdrop', reference: backdrop }],
+				}),
+			);
 
 			expect(reportOf(operation).outcome).toBe('ready');
 			expect(operation.stage).toBe('awaiting-installation');
-			await expect(library.confirmTemplatePackagePreflight({
-				operationId: operation.id,
-				initiatedBy: operation.initiatedBy,
-				fingerprint: reportOf(operation).fingerprint,
-			})).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
+			await expect(
+				library.confirmTemplatePackagePreflight({
+					operationId: operation.id,
+					initiatedBy: operation.initiatedBy,
+					fingerprint: reportOf(operation).fingerprint,
+				}),
+			).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
 		});
 	});
 
@@ -1092,11 +1054,12 @@ describe('the Template Package preflight contract', () => {
 		const { library: receiver } = await createLibrary('receiver');
 		const report = reportOf(await preflight(receiver, archive));
 
-		expect(report.issues.filter(issue => issue.severity === 'error')).toEqual([]);
+		expect(report.issues.filter((issue) => issue.severity === 'error')).toEqual([]);
 		expect(report.outcome).toBe('ready');
 		expect(report.mappings).toHaveLength(2);
-		expect(report.mappings.map(mapping => mapping.origin.sourceRevisionId).sort())
-			.toEqual([backdrop.revisionId, insert.revisionId].sort());
+		expect(report.mappings.map((mapping) => mapping.origin.sourceRevisionId).sort()).toEqual(
+			[backdrop.revisionId, insert.revisionId].sort(),
+		);
 		// Neither direction of the "every and only" rule fires on a valid package.
 		expect(codes(report)).not.toContain('undeclared-graphic-asset-dependency');
 		expect(codes(report)).not.toContain('unused-packaged-graphic-asset');
@@ -1107,9 +1070,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const face = await ingestStaticFont(sender, 'Face');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'face', reference: face },
-				],
+				assets: [{ slot: 'face', reference: face }],
 			});
 
 			const { library: receiver } = await createLibrary('receiver');
@@ -1124,8 +1085,9 @@ describe('the Template Package preflight contract', () => {
 			expect(report.outcome).toBe('requires-confirmation');
 			expect(operation.stage).toBe('awaiting-confirmation');
 			// The gap is a warning the author accepts, never a silent pass.
-			const warning = report.issues
-				.find(issue => issue.code === 'graphic-asset-font-attestation-deferred');
+			const warning = report.issues.find(
+				(issue) => issue.code === 'graphic-asset-font-attestation-deferred',
+			);
 			expect(warning).toMatchObject({ severity: 'warning', retryable: false });
 			expect(warning!.remediation).toContain('upload the font directly');
 		});
@@ -1135,11 +1097,12 @@ describe('the Template Package preflight contract', () => {
 			// earned, so there is no weaker profile for the author to accept.
 			const { library } = await createLibrary('sender');
 			const face = await ingestStaticFont(library, 'Face');
-			const operation = await preflight(library, await exportPackage(library, {
-				assets: [
-					{ slot: 'face', reference: face },
-				],
-			}));
+			const operation = await preflight(
+				library,
+				await exportPackage(library, {
+					assets: [{ slot: 'face', reference: face }],
+				}),
+			);
 			const report = reportOf(operation);
 
 			expect(report.mappings[0]).toMatchObject({
@@ -1150,13 +1113,13 @@ describe('the Template Package preflight contract', () => {
 			expect(report.outcome).toBe('ready');
 		});
 
-		it('leaves an uploaded font\'s own full attestation untouched', async () => {
+		it("leaves an uploaded font's own full attestation untouched", async () => {
 			// The upload path still collects real evidence, so the weaker profile is
 			// scoped to the packaged path rather than a library-wide downgrade.
 			const { library } = await createLibrary('sender');
 			const face = await ingestStaticFont(library, 'Face');
 			const assets = await library.listGraphicAssets({});
-			const uploaded = assets.find(asset => asset.id === face.assetId);
+			const uploaded = assets.find((asset) => asset.id === face.assetId);
 
 			expect(uploaded?.facts).toMatchObject({
 				kind: 'font',
@@ -1171,9 +1134,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 			const { library: receiver, staging } = await createLibrary('receiver');
 			await ingestImage(receiver, 'Locally uploaded backdrop');
@@ -1196,20 +1157,20 @@ describe('the Template Package preflight contract', () => {
 			);
 			expect(staged.outcome).toBe('missing');
 			// Cancellation cannot leave a confirmable proposal behind.
-			await expect(receiver.confirmTemplatePackagePreflight({
-				operationId: operation.id,
-				initiatedBy: operation.initiatedBy,
-				fingerprint: reportOf(cancelled).fingerprint,
-			})).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
+			await expect(
+				receiver.confirmTemplatePackagePreflight({
+					operationId: operation.id,
+					initiatedBy: operation.initiatedBy,
+					fingerprint: reportOf(cancelled).fingerprint,
+				}),
+			).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
 		});
 
 		it('resumes from durably staged bytes after a transient staging failure', async () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 			const { library: receiver, staging } = await createLibrary('receiver');
 
@@ -1231,9 +1192,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 			const { library: receiver } = await createLibrary('receiver');
 
@@ -1243,9 +1202,11 @@ describe('the Template Package preflight contract', () => {
 			expect(reportOf(operation).mappings).toHaveLength(1);
 			// The proposal exists, the Graphic Asset it proposes does not.
 			expect(await receiver.listGraphicAssets({})).toEqual([]);
-			expect(await receiver.listGraphicAssets({
-				lifecycleStates: ['active', 'retired', 'trashed'],
-			})).toEqual([]);
+			expect(
+				await receiver.listGraphicAssets({
+					lifecycleStates: ['active', 'retired', 'trashed'],
+				}),
+			).toEqual([]);
 		});
 	});
 
@@ -1282,8 +1243,7 @@ describe('the Template Package preflight contract', () => {
 			});
 			expect(report.quota.canonicalGrowthBytes).toBeGreaterThan(0);
 			expect(report.quota.canonicalLimitBytes).toBeGreaterThan(0);
-			expect(report.mappings.map(mapping => mapping.kind).sort())
-				.toEqual(['font', 'image']);
+			expect(report.mappings.map((mapping) => mapping.kind).sort()).toEqual(['font', 'image']);
 			expect(report.checkedAt).toBe('2026-07-30T09:00:00.000Z');
 		});
 
@@ -1292,9 +1252,7 @@ describe('the Template Package preflight contract', () => {
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const parts = readTemplatePackageParts(
 				await exportPackage(sender, {
-					assets: [
-						{ slot: 'backdrop', reference: backdrop },
-					],
+					assets: [{ slot: 'backdrop', reference: backdrop }],
 				}),
 			);
 			parts.template = {
@@ -1310,8 +1268,8 @@ describe('the Template Package preflight contract', () => {
 				expect.arrayContaining(['executable-template-content', 'remote-resource-dependency']),
 			);
 			// Every issue names what to do about it, not just what went wrong.
-			expect(report.issues.every(issue => issue.remediation.length > 0)).toBe(true);
-			expect(report.issues.every(issue => issue.severity === 'error')).toBe(true);
+			expect(report.issues.every((issue) => issue.remediation.length > 0)).toBe(true);
+			expect(report.issues.every((issue) => issue.severity === 'error')).toBe(true);
 		});
 
 		// Growth is what the catalogue would newly hold. Bytes lying in the
@@ -1321,9 +1279,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 			const { library: clean } = await createLibrary('clean-receiver');
 			const expected = reportOf(await preflight(clean, archive));
@@ -1348,9 +1304,7 @@ describe('the Template Package preflight contract', () => {
 			const { library: sender } = await createLibrary('sender');
 			const backdrop = await ingestImage(sender, 'Backdrop');
 			const archive = await exportPackage(sender, {
-				assets: [
-					{ slot: 'backdrop', reference: backdrop },
-				],
+				assets: [{ slot: 'backdrop', reference: backdrop }],
 			});
 			const { library: receiver } = await createLibrary('receiver');
 			await receiver.updateCapacityLimits({
@@ -1365,8 +1319,9 @@ describe('the Template Package preflight contract', () => {
 			expect(codes(report)).toContain('canonical-capacity-blocked');
 			// Capacity is the one blocking condition an installation can itself fix.
 			expect(operation.failure).toMatchObject({ retryable: true });
-			expect(report.issues.find(issue => issue.code === 'canonical-capacity-blocked'))
-				.toMatchObject({ retryable: true });
+			expect(
+				report.issues.find((issue) => issue.code === 'canonical-capacity-blocked'),
+			).toMatchObject({ retryable: true });
 		});
 	});
 });

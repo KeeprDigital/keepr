@@ -71,15 +71,21 @@ export interface TableRowLayout {
 	padding: { y: number; x: number } | null;
 }
 
-export function tableRowLayout({ density, measuredHeight, rowCount, insetY = 0 }: TableRowLayoutInput): TableRowLayout {
+export function tableRowLayout({
+	density,
+	measuredHeight,
+	rowCount,
+	insetY = 0,
+}: TableRowLayoutInput): TableRowLayout {
 	const rule = DENSITY_RULES[density];
 	const rows = Math.max(rowCount, 1);
-	const availableHeight = measuredHeight > 0
-		? measuredHeight
-		: rows * rule.naturalRowHeight;
+	const availableHeight = measuredHeight > 0 ? measuredHeight : rows * rule.naturalRowHeight;
 	const usableHeight = Math.max(availableHeight - insetY, rows * rule.minRowHeight);
 	const rowHeight = usableHeight / rows;
-	const fontSize = Math.max(rule.baseFontSize, rule.baseFontSize + ((rowHeight - rule.fontBaseRowHeight) * rule.fontGrowth));
+	const fontSize = Math.max(
+		rule.baseFontSize,
+		rule.baseFontSize + (rowHeight - rule.fontBaseRowHeight) * rule.fontGrowth,
+	);
 	const secondaryFontSize = Math.max(rule.minSecondaryFontSize, fontSize * rule.secondaryFontScale);
 	const padding = rule.padding
 		? {
@@ -100,7 +106,10 @@ export function tableRowLayout({ density, measuredHeight, rowCount, insetY = 0 }
  * The layout as the custom properties the mode's stylesheet reads, named
  * `--<prefix>-row-*`.
  */
-export function tableRowLayoutStyle(prefix: string, layout: TableRowLayout): Record<string, string> {
+export function tableRowLayoutStyle(
+	prefix: string,
+	layout: TableRowLayout,
+): Record<string, string> {
 	const style: Record<string, string> = {
 		[`--${prefix}-row-height`]: `${layout.rowHeight}px`,
 		[`--${prefix}-row-font-size`]: `${layout.fontSize}px`,
@@ -137,8 +146,7 @@ export function createLeavingRowHold() {
 		/** The row `TransitionGroup`'s `before-leave`. */
 		hold(row: Element) {
 			const place = places.get(row);
-			if (!place || !(row instanceof HTMLElement))
-				return;
+			if (!place || !(row instanceof HTMLElement)) return;
 			row.style.top = `${place.top}px`;
 			row.style.height = `${place.height}px`;
 		},

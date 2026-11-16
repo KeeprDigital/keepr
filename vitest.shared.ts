@@ -4,7 +4,12 @@ import { createRequire } from 'node:module';
 import { dirname } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { acquireRunSlots, RUN_SLOTS_HELD_ENV, runSlotCount, suiteSlotCeiling } from './scripts/slots.mjs';
+import {
+	acquireRunSlots,
+	RUN_SLOTS_HELD_ENV,
+	runSlotCount,
+	suiteSlotCeiling,
+} from './scripts/slots.mjs';
 
 export const rootDir = fileURLToPath(new URL('.', import.meta.url));
 
@@ -16,10 +21,16 @@ export const rootDir = fileURLToPath(new URL('.', import.meta.url));
  * test server code against a major version it never runs on.
  */
 const requireFromNuxt = createRequire(createRequire(import.meta.url).resolve('nuxt/package.json'));
-const requireFromNitroServer = createRequire(requireFromNuxt.resolve('@nuxt/nitro-server/package.json'));
+const requireFromNitroServer = createRequire(
+	requireFromNuxt.resolve('@nuxt/nitro-server/package.json'),
+);
 export const nitroH3Directory = dirname(requireFromNitroServer.resolve('h3/package.json'));
 
-export { LOAD_TOLERANT_BAIL_AFTER_FAILURES, LOAD_TOLERANT_HOOK_TIMEOUT_MS, LOAD_TOLERANT_TEST_TIMEOUT_MS } from './test/helpers/loadTolerantBounds.ts';
+export {
+	LOAD_TOLERANT_BAIL_AFTER_FAILURES,
+	LOAD_TOLERANT_HOOK_TIMEOUT_MS,
+	LOAD_TOLERANT_TEST_TIMEOUT_MS,
+} from './test/helpers/loadTolerantBounds.ts';
 
 /**
  * Reports a timed-out `vi.waitFor`/`vi.waitUntil` at the test's line: without
@@ -45,12 +56,15 @@ const RUN_SLOT_REPORTER = Symbol.for('stream-keepr.runSlotReporter');
  * A plugin rather than a reporter in the config: `--reporter` on the command
  * line replaces the config's list, and would take this with it.
  */
-export function heldToRunSlots(label: string, ledger: { path?: string; total?: number } = {}): Plugin {
+export function heldToRunSlots(
+	label: string,
+	ledger: { path?: string; total?: number } = {},
+): Plugin {
 	return {
 		name: 'stream-keepr:run-slots',
 		configureVitest({ vitest }) {
 			const total = ledger.total ?? runSlotCount();
-			if (total === 0 || vitest.config.reporters.some(reporter => RUN_SLOT_REPORTER in reporter))
+			if (total === 0 || vitest.config.reporters.some((reporter) => RUN_SLOT_REPORTER in reporter))
 				return;
 			const ceiling = Math.min(vitest.config.maxWorkers, suiteSlotCeiling(total));
 			let lease: Awaited<ReturnType<typeof acquireRunSlots>> | undefined;
@@ -63,8 +77,7 @@ export function heldToRunSlots(label: string, ledger: { path?: string; total?: n
 				[RUN_SLOT_REPORTER]: true,
 				async onTestRunStart(specifications) {
 					giveBack();
-					if (specifications.length === 0)
-						return;
+					if (specifications.length === 0) return;
 					const want = Math.min(specifications.length, ceiling);
 					lease = await acquireRunSlots({
 						...ledger,
@@ -73,9 +86,10 @@ export function heldToRunSlots(label: string, ledger: { path?: string; total?: n
 						// Half of what it could use: a suite that started on the one free
 						// slot would keep that one worker long after the rest came free.
 						min: Math.ceil(want / 2),
-						label: specifications.length === 1
-							? `${label}, 1 file`
-							: `${label}, ${specifications.length} files`,
+						label:
+							specifications.length === 1
+								? `${label}, 1 file`
+								: `${label}, ${specifications.length} files`,
 					});
 					// The workers start after this and inherit it: a test that runs a gate
 					// of its own (a script under test) then takes nothing more, where it
@@ -84,7 +98,7 @@ export function heldToRunSlots(label: string, ledger: { path?: string; total?: n
 					// Read when the run groups its files, which is after this hook returns.
 					for (const config of new Set([
 						vitest.config,
-						...vitest.projects.map(project => project.config),
+						...vitest.projects.map((project) => project.config),
 					]))
 						config.maxWorkers = lease.slots;
 				},
@@ -119,7 +133,7 @@ export const rootAliases = {
 	'~~/': `${rootDir}/`,
 	'~': `${rootDir}/app`,
 	'~/': `${rootDir}/app/`,
-	'h3': nitroH3Directory,
+	h3: nitroH3Directory,
 };
 
 /** App code tested in the unit suite alone: measured there, and left out of the Nuxt suite's floor. */
@@ -208,8 +222,5 @@ export const nuxtCoverageConfig: CoverageOptions = {
 		'app/composables/**/*.ts',
 		'app/utils/**/*.ts',
 	],
-	exclude: [
-		...coverageExclude,
-		...nodeOnlyAppCoverageInclude,
-	],
+	exclude: [...coverageExclude, ...nodeOnlyAppCoverageInclude],
 };

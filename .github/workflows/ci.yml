@@ -309,7 +309,8 @@ jobs:
 
   passed:
     name: CI passed
-    needs: [scope, checks, typecheck, unit, nuxt, integration, server-and-browser, worker-guard, record]
+    needs:
+      [scope, checks, typecheck, unit, nuxt, integration, server-and-browser, worker-guard, record]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2

@@ -8,15 +8,10 @@
  * every process that renders it.
  */
 export function canonicalJson(value: unknown): string {
-	if (Array.isArray(value))
-		return `[${value.map(canonicalJson).join(',')}]`;
+	if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
 	if (value && typeof value === 'object') {
 		return `{${Object.entries(value)
-			.toSorted(([left], [right]) => (left < right
-				? -1
-				: left > right
-					? 1
-					: 0))
+			.toSorted(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
 			.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)
 			.join(',')}}`;
 	}

@@ -55,12 +55,16 @@ export function themeService() {
 	}
 
 	async function create(input: { id: string; name: string }): Promise<DbTheme> {
-		const [theme] = await db.insert(themes).values({ ...input, tokens: {} }).returning();
+		const [theme] = await db
+			.insert(themes)
+			.values({ ...input, tokens: {} })
+			.returning();
 		return theme!;
 	}
 
 	async function rename(id: string, name: string): Promise<DbTheme | undefined> {
-		const [theme] = await db.update(themes)
+		const [theme] = await db
+			.update(themes)
 			.set({
 				name,
 				updatedAt: new Date(),
@@ -86,11 +90,13 @@ export function themeService() {
 		const slotPrefix = `${name}${THEME_TOKEN_SLOT_SEPARATOR}`;
 		const referenceVersion = crypto.randomUUID();
 		const now = Date.now();
-		const boundFacts = boundGraphicAssetReferenceFacts(references.map(item => ({
-			...item,
-			id: crypto.randomUUID(),
-			allowRetired: false,
-		})));
+		const boundFacts = boundGraphicAssetReferenceFacts(
+			references.map((item) => ({
+				...item,
+				id: crypto.randomUUID(),
+				allowRetired: false,
+			})),
+		);
 		const client = db.$client;
 		const versionGuard = `
 			AND EXISTS (
@@ -99,31 +105,38 @@ export function themeService() {
 		`;
 		const [written] = await client.batch([
 			value
-				? client.prepare(`
+				? client
+						.prepare(`
 					UPDATE themes
 					SET tokens = json_set(tokens, ?, json(?)), revision = revision + 1,
 						graphic_asset_reference_version = ?, updated_at = ?
 					WHERE id = ?
 						${REQUIRED_GRAPHIC_ASSET_REFERENCES_RESOLVE}
-				`).bind(path, JSON.stringify(value.set), referenceVersion, now, id, boundFacts)
-				// A token the Theme does not set is cleared already: nothing is written.
-				: client.prepare(`
+				`)
+						.bind(path, JSON.stringify(value.set), referenceVersion, now, id, boundFacts)
+				: // A token the Theme does not set is cleared already: nothing is written.
+					client
+						.prepare(`
 					UPDATE themes
 					SET tokens = json_remove(tokens, ?), revision = revision + 1,
 						graphic_asset_reference_version = ?, updated_at = ?
 					WHERE id = ? AND json_type(tokens, ?) IS NOT NULL
-				`).bind(path, referenceVersion, now, id, path),
+				`)
+						.bind(path, referenceVersion, now, id, path),
 			// Scoped to this token's own slots, so a write never releases another token's references.
-			client.prepare(`
+			client
+				.prepare(`
 				DELETE FROM graphic_asset_references
 				WHERE owner_kind = '${THEME_REFERENCE_OWNER_KIND}' AND owner_id = ?
 					AND (owner_slot = ? OR substr(owner_slot, 1, ?) = ?)
 					${versionGuard}
-			`).bind(id, name, slotPrefix.length, slotPrefix, id, referenceVersion),
+			`)
+				.bind(id, name, slotPrefix.length, slotPrefix, id, referenceVersion),
 			...(references.length === 0
 				? []
 				: [
-						client.prepare(`
+						client
+							.prepare(`
 							INSERT INTO graphic_asset_references (
 								id, asset_id, revision_id, owner_kind, owner_id, owner_slot,
 								event_id, created_at, updated_at
@@ -139,32 +152,39 @@ export function themeService() {
 								${jsonElementGraphicAssetRevisionResolution('item')}
 							)
 								${versionGuard}
-						`).bind(id, now, now, boundFacts, id, referenceVersion),
+						`)
+							.bind(id, now, now, boundFacts, id, referenceVersion),
 					]),
 		]);
 		const theme = await findById(id);
-		if (!theme)
-			return undefined;
-		if (written?.meta.changes === 1)
-			return { theme, written: true };
+		if (!theme) return undefined;
+		if (written?.meta.changes === 1) return { theme, written: true };
 		// The Theme stands, so a set was refused by a reference that stopped resolving.
-		if (value)
-			throw new ThemeAssetReferenceConflict();
+		if (value) throw new ThemeAssetReferenceConflict();
 		return { theme, written: false };
 	}
 
-	async function setToken(id: string, name: string, value: unknown, references: readonly ScreenGraphicAssetReference[] = []): Promise<DbTheme | undefined> {
+	async function setToken(
+		id: string,
+		name: string,
+		value: unknown,
+		references: readonly ScreenGraphicAssetReference[] = [],
+	): Promise<DbTheme | undefined> {
 		return (await writeToken(id, name, { set: value }, references))?.theme;
 	}
 
 	/** Clear a token the Theme sets; a token it does not set is answered `cleared: false`, unwritten. */
-	async function clearToken(id: string, name: string): Promise<{ theme: DbTheme; cleared: boolean } | undefined> {
+	async function clearToken(
+		id: string,
+		name: string,
+	): Promise<{ theme: DbTheme; cleared: boolean } | undefined> {
 		const result = await writeToken(id, name, null, []);
 		return result && { theme: result.theme, cleared: result.written };
 	}
 
 	async function eventsUsing(id: string): Promise<EventUsingTheme[]> {
-		return await db.select({ id: events.id, name: events.name })
+		return await db
+			.select({ id: events.id, name: events.name })
 			.from(events)
 			.where(eq(events.themeId, id))
 			.orderBy(asc(events.name), asc(events.id));
@@ -177,25 +197,24 @@ export function themeService() {
 	 */
 	async function remove(id: string): Promise<boolean> {
 		const users = await eventsUsing(id);
-		if (users.length)
-			throw new ThemeInUseError(users);
+		if (users.length) throw new ThemeInUseError(users);
 		try {
 			// Its Graphic Asset References go with it, in the same commit.
 			const client = db.$client;
 			const [, deleted] = await client.batch([
-				client.prepare(`
+				client
+					.prepare(`
 					DELETE FROM graphic_asset_references
 					WHERE owner_kind = '${THEME_REFERENCE_OWNER_KIND}' AND owner_id = ?
 						AND NOT EXISTS (SELECT 1 FROM events WHERE theme_id = ?)
-				`).bind(id, id),
+				`)
+					.bind(id, id),
 				client.prepare('DELETE FROM themes WHERE id = ?').bind(id),
 			]);
 			return (deleted?.meta.changes ?? 0) > 0;
-		}
-		catch (error) {
+		} catch (error) {
 			const raced = await eventsUsing(id);
-			if (raced.length)
-				throw new ThemeInUseError(raced);
+			if (raced.length) throw new ThemeInUseError(raced);
 			throw error;
 		}
 	}

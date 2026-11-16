@@ -56,15 +56,15 @@ export const RUN_SLOTS_HELD_ENV = 'STREAM_KEEPR_RUN_SLOTS_HELD';
  * is not here: it takes one slot per worker (`vitest.shared.ts`).
  */
 export const RUN_SLOT_COSTS = /** @type {const} */ ({
-	'lint': 3,
-	'typecheck': 3,
-	'build': 3,
+	lint: 3,
+	typecheck: 3,
+	build: 3,
 	// One `nuxt dev` with its workerd, and a Chrome beside it.
 	'local-auth': 3,
 	'browser-gate': 2,
 	'worker-smoke': 2,
 	// Several `nuxt dev` servers whose tests time real requests: nothing beside it.
-	'integration': 'all',
+	integration: 'all',
 });
 
 /**
@@ -74,16 +74,16 @@ export const RUN_SLOT_COSTS = /** @type {const} */ ({
  *
  * @returns {number} the pool's size, or 0 when `STREAM_KEEPR_RUN_SLOTS=off`
  */
-export function runSlotCount({ cores = availableParallelism(), memoryBytes = totalmem(), env = process.env } = {}) {
+export function runSlotCount({
+	cores = availableParallelism(),
+	memoryBytes = totalmem(),
+	env = process.env,
+} = {}) {
 	const stated = env[RUN_SLOTS_ENV];
-	if (stated === 'off')
-		return 0;
+	if (stated === 'off') return 0;
 	const requested = Number.parseInt(stated ?? '', 10);
-	if (Number.isInteger(requested) && requested > 0)
-		return requested;
-	const byCores = cores > 4
-		? cores - 2
-		: cores - 1;
+	if (Number.isInteger(requested) && requested > 0) return requested;
+	const byCores = cores > 4 ? cores - 2 : cores - 1;
 	const byMemory = Math.floor(memoryBytes / SLOT_BYTES) - SLOTS_LEFT_FOR_THE_MACHINE;
 	return Math.max(2, Math.min(byCores, byMemory));
 }
@@ -94,9 +94,7 @@ export function runSlotCount({ cores = availableParallelism(), memoryBytes = tot
  * also ran both suites faster here than the nine Vitest would start.
  */
 export function suiteSlotCeiling(total = runSlotCount()) {
-	return total > 4
-		? total - 2
-		: total;
+	return total > 4 ? total - 2 : total;
 }
 
 /**
@@ -109,25 +107,23 @@ export function gitCommonDirectory(from = fileURLToPath(new URL('../', import.me
 	for (let directory = resolve(from); ; directory = dirname(directory)) {
 		const dotGit = join(directory, '.git');
 		if (existsSync(dotGit)) {
-			if (statSync(dotGit).isDirectory())
-				return dotGit;
+			if (statSync(dotGit).isDirectory()) return dotGit;
 			// A worktree: `gitdir: <common>/worktrees/<name>`, which names its common directory.
-			const gitDirectory = readFileSync(dotGit, 'utf8').match(/^gitdir: (.+)$/m)?.[1]?.trim();
-			if (!gitDirectory)
-				return undefined;
+			const gitDirectory = readFileSync(dotGit, 'utf8')
+				.match(/^gitdir: (.+)$/m)?.[1]
+				?.trim();
+			if (!gitDirectory) return undefined;
 			const worktreeDirectory = isAbsolute(gitDirectory)
 				? gitDirectory
 				: resolve(directory, gitDirectory);
 			try {
 				const common = readFileSync(join(worktreeDirectory, 'commondir'), 'utf8').trim();
 				return resolve(worktreeDirectory, common);
-			}
-			catch {
+			} catch {
 				return undefined;
 			}
 		}
-		if (dirname(directory) === directory)
-			return undefined;
+		if (dirname(directory) === directory) return undefined;
 	}
 }
 
@@ -141,8 +137,7 @@ function processIsAlive(pid) {
 	try {
 		process.kill(pid, 0);
 		return true;
-	}
-	catch (error) {
+	} catch (error) {
 		// EPERM: it exists and is another user's.
 		return error?.code === 'EPERM';
 	}
@@ -185,8 +180,7 @@ function transaction(ledger, work) {
 		const result = work();
 		ledger.exec('COMMIT');
 		return result;
-	}
-	catch (error) {
+	} catch (error) {
 		ledger.exec('ROLLBACK');
 		throw error;
 	}
@@ -209,43 +203,47 @@ function dropTheDead(ledger, { isAlive, now }) {
  * @typedef {{ slots: number, label: string, checkout: string, since: number, pid: number }} RunSlotRow
  * @returns {{ total: number, holders: RunSlotRow[], waiters: RunSlotRow[] }} who holds slots and who waits, oldest first
  */
-export function runSlotStatus({ path = runSlotLedgerPath(), total = runSlotCount(), isAlive = processIsAlive, now = Date.now() } = {}) {
-	if (!path || total === 0)
-		return { total, holders: [], waiters: [] };
+export function runSlotStatus({
+	path = runSlotLedgerPath(),
+	total = runSlotCount(),
+	isAlive = processIsAlive,
+	now = Date.now(),
+} = {}) {
+	if (!path || total === 0) return { total, holders: [], waiters: [] };
 	const ledger = openLedger(path);
 	try {
 		return transaction(ledger, () => {
 			dropTheDead(ledger, { isAlive, now });
 			return {
 				total,
-				holders: ledger.prepare('SELECT pid, slots, label, checkout, since FROM holders ORDER BY id').all(),
-				waiters: ledger.prepare('SELECT pid, slots, label, checkout, since FROM waiters ORDER BY id').all(),
+				holders: ledger
+					.prepare('SELECT pid, slots, label, checkout, since FROM holders ORDER BY id')
+					.all(),
+				waiters: ledger
+					.prepare('SELECT pid, slots, label, checkout, since FROM waiters ORDER BY id')
+					.all(),
 			};
 		});
-	}
-	finally {
+	} finally {
 		ledger.close();
 	}
 }
 
 function age(since, now) {
 	const seconds = Math.max(0, Math.round((now - since) / 1000));
-	return seconds < 90
-		? `${seconds}s`
-		: `${Math.round(seconds / 60)}m`;
+	return seconds < 90 ? `${seconds}s` : `${Math.round(seconds / 60)}m`;
 }
 
 /** One line per holder and waiter, as the status command and a waiting gate print it. */
 export function describeRunSlots({ total, holders, waiters }, now = Date.now()) {
 	const held = holders.reduce((sum, row) => sum + row.slots, 0);
-	const line = row => `${row.label} ×${row.slots} (${basename(row.checkout)}, pid ${row.pid}, ${age(row.since, now)})`;
+	const line = (row) =>
+		`${row.label} ×${row.slots} (${basename(row.checkout)}, pid ${row.pid}, ${age(row.since, now)})`;
 	return [
-		`${held} of ${total} run slots held${holders.length
-			? `: ${holders.map(line).join(', ')}`
-			: ''}`,
-		...(waiters.length
-			? [`waiting, in order: ${waiters.map(line).join(', ')}`]
-			: []),
+		`${held} of ${total} run slots held${
+			holders.length ? `: ${holders.map(line).join(', ')}` : ''
+		}`,
+		...(waiters.length ? [`waiting, in order: ${waiters.map(line).join(', ')}`] : []),
 	].join('\n');
 }
 
@@ -275,13 +273,11 @@ export async function acquireRunSlots({
 	pid = process.pid,
 	checkout = checkoutRoot,
 	isAlive = processIsAlive,
-	sleep = ms => new Promise(done => setTimeout(done, ms)),
-	say = line => process.stderr.write(`${line}\n`),
+	sleep = (ms) => new Promise((done) => setTimeout(done, ms)),
+	say = (line) => process.stderr.write(`${line}\n`),
 	clock = Date.now,
 }) {
-	const most = want === 'all'
-		? Math.max(total, 1)
-		: want;
+	const most = want === 'all' ? Math.max(total, 1) : want;
 	const inherited = Number.parseInt(env[RUN_SLOTS_HELD_ENV] ?? '', 10);
 	if (Number.isInteger(inherited) && inherited > 0) {
 		return {
@@ -297,9 +293,7 @@ export async function acquireRunSlots({
 	}
 
 	const wanted = Math.min(most, total);
-	const least = min === 'all'
-		? total
-		: Math.min(min, total);
+	const least = min === 'all' ? total : Math.min(min, total);
 	let ledger;
 	let waiterId;
 	try {
@@ -311,25 +305,32 @@ export async function acquireRunSlots({
 			const granted = transaction(ledger, () => {
 				dropTheDead(ledger, { isAlive, now });
 				// Its place in line, taken once; and again if the row was dropped under it.
-				if (waiterId === undefined || !ledger.prepare('SELECT id FROM waiters WHERE id = ?').get(waiterId)) {
-					waiterId = ledger.prepare('INSERT INTO waiters (pid, slots, label, checkout, since) VALUES (?, ?, ?, ?, ?)')
-						.run(pid, least, label, checkout, now)
-						.lastInsertRowid;
+				if (
+					waiterId === undefined ||
+					!ledger.prepare('SELECT id FROM waiters WHERE id = ?').get(waiterId)
+				) {
+					waiterId = ledger
+						.prepare(
+							'INSERT INTO waiters (pid, slots, label, checkout, since) VALUES (?, ?, ?, ?, ?)',
+						)
+						.run(pid, least, label, checkout, now).lastInsertRowid;
 				}
 				const head = ledger.prepare('SELECT MIN(id) AS id FROM waiters').get().id;
-				if (head !== waiterId)
-					return undefined;
-				const held = ledger.prepare('SELECT COALESCE(SUM(slots), 0) AS slots FROM holders').get().slots;
+				if (head !== waiterId) return undefined;
+				const held = ledger
+					.prepare('SELECT COALESCE(SUM(slots), 0) AS slots FROM holders')
+					.get().slots;
 				const free = total - held;
-				if (free < least)
-					return undefined;
+				if (free < least) return undefined;
 				const slots = Math.min(wanted, free);
 				ledger.prepare('DELETE FROM waiters WHERE id = ?').run(waiterId);
 				return {
 					slots,
-					id: ledger.prepare('INSERT INTO holders (pid, slots, label, checkout, since) VALUES (?, ?, ?, ?, ?)')
-						.run(pid, slots, label, checkout, now)
-						.lastInsertRowid,
+					id: ledger
+						.prepare(
+							'INSERT INTO holders (pid, slots, label, checkout, since) VALUES (?, ?, ?, ?, ?)',
+						)
+						.run(pid, slots, label, checkout, now).lastInsertRowid,
 				};
 			});
 			if (granted) {
@@ -338,15 +339,13 @@ export async function acquireRunSlots({
 				let released = false;
 				const held = ledger;
 				const release = () => {
-					if (released)
-						return;
+					if (released) return;
 					released = true;
 					process.removeListener('exit', release);
 					try {
 						held.prepare('DELETE FROM holders WHERE id = ?').run(granted.id);
 						held.close();
-					}
-					catch {
+					} catch {
 						// The next reader drops this holder once the process is gone.
 					}
 				};
@@ -357,23 +356,24 @@ export async function acquireRunSlots({
 			if (now - lastSaid >= 15_000 || (lastSaid === started && now - started >= 2_000)) {
 				lastSaid = now;
 				const status = runSlotStatus({ path, total, isAlive, now });
-				say(`[run-slots] ${label} has waited ${age(started, now)} for ${least === wanted
-					? least
-					: `${least} to ${wanted}`} run slots. ${describeRunSlots(status, now).replace('\n', '; ')}`);
+				say(
+					`[run-slots] ${label} has waited ${age(started, now)} for ${
+						least === wanted ? least : `${least} to ${wanted}`
+					} run slots. ${describeRunSlots(status, now).replace('\n', '; ')}`,
+				);
 			}
 			await sleep(250);
 		}
-	}
-	catch (error) {
+	} catch (error) {
 		try {
-			if (waiterId !== undefined)
-				ledger?.prepare('DELETE FROM waiters WHERE id = ?').run(waiterId);
+			if (waiterId !== undefined) ledger?.prepare('DELETE FROM waiters WHERE id = ?').run(waiterId);
 			ledger?.close();
-		}
-		catch {}
-		say(`[run-slots] ledger unavailable (${error instanceof Error
-			? error.message
-			: error}); ${label} runs unqueued`);
+		} catch {}
+		say(
+			`[run-slots] ledger unavailable (${
+				error instanceof Error ? error.message : error
+			}); ${label} runs unqueued`,
+		);
 		return {
 			slots: most,
 			release() {},
@@ -391,11 +391,11 @@ export async function acquireRunSlots({
  * @returns {Promise<number>} the command's exit status
  */
 export async function runHoldingSlots(cost, command, ledger = {}) {
-	const slots = RUN_SLOT_COSTS[cost] ?? (cost === 'all'
-		? 'all'
-		: Number.parseInt(cost, 10));
+	const slots = RUN_SLOT_COSTS[cost] ?? (cost === 'all' ? 'all' : Number.parseInt(cost, 10));
 	if (slots !== 'all' && !(Number.isInteger(slots) && slots > 0)) {
-		process.stderr.write(`slots: unknown cost "${cost}": name one of ${Object.keys(RUN_SLOT_COSTS).join(', ')}, a number, or "all"\n`);
+		process.stderr.write(
+			`slots: unknown cost "${cost}": name one of ${Object.keys(RUN_SLOT_COSTS).join(', ')}, a number, or "all"\n`,
+		);
 		return 2;
 	}
 	const lease = await acquireRunSlots({ ...ledger, want: slots, label: cost });
@@ -406,32 +406,29 @@ export async function runHoldingSlots(cost, command, ledger = {}) {
 			[RUN_SLOTS_HELD_ENV]: String(lease.slots),
 		},
 	});
-	const forward = signal => child.kill(signal);
+	const forward = (signal) => child.kill(signal);
 	const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
-	for (const signal of signals)
-		process.on(signal, forward);
+	for (const signal of signals) process.on(signal, forward);
 	try {
 		return await new Promise((done) => {
 			child.once('error', (error) => {
 				process.stderr.write(`slots: ${error.message}\n`);
 				done(127);
 			});
-			child.once('close', (status, signal) => done(status ?? (signal
-				? 1
-				: 0)));
+			child.once('close', (status, signal) => done(status ?? (signal ? 1 : 0)));
 		});
-	}
-	finally {
-		for (const signal of signals)
-			process.removeListener(signal, forward);
+	} finally {
+		for (const signal of signals) process.removeListener(signal, forward);
 		lease.release();
 	}
 }
 
 if (import.meta.main) {
 	const separator = process.argv.indexOf('--');
-	if (separator === -1)
-		process.stdout.write(`${describeRunSlots(runSlotStatus())}\n`);
+	if (separator === -1) process.stdout.write(`${describeRunSlots(runSlotStatus())}\n`);
 	else
-		process.exitCode = await runHoldingSlots(process.argv[separator - 1], process.argv.slice(separator + 1));
+		process.exitCode = await runHoldingSlots(
+			process.argv[separator - 1],
+			process.argv.slice(separator + 1),
+		);
 }

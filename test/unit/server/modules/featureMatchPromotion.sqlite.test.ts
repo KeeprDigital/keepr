@@ -16,8 +16,11 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  * one's plan-to-commit window, by way of this one's own batch call.
  */
 
-vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; statusMessage?: string }) =>
-	Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode?: number; message?: string; statusMessage?: string }) =>
+		Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -34,8 +37,8 @@ vi.doMock('~~/server/utils/ably', () => ({
 }));
 // Counted rather than run: what is under test is how often a promotion asks
 // Broadcast Graphics to re-resolve, not the re-resolution itself.
-vi.doMock('~~/server/modules/broadcast-graphics-live-session', async importOriginal => ({
-	...await importOriginal<typeof import('~~/server/modules/broadcast-graphics-live-session')>(),
+vi.doMock('~~/server/modules/broadcast-graphics-live-session', async (importOriginal) => ({
+	...(await importOriginal<typeof import('~~/server/modules/broadcast-graphics-live-session')>()),
 	refreshBroadcastGraphicsBindings,
 }));
 
@@ -66,8 +69,7 @@ db.batch = (async (queries: unknown) => {
 	const after = afterNextBatch;
 	beforeNextBatch = null;
 	afterNextBatch = null;
-	if (faulting)
-		throw new Error('D1_ERROR: storage unavailable');
+	if (faulting) throw new Error('D1_ERROR: storage unavailable');
 	await before?.();
 	const results = await realBatch(queries);
 	await after?.();
@@ -95,14 +97,17 @@ interface Stage {
 }
 
 async function stageEvent(): Promise<Stage> {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Promotion Fence Open', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning();
 	const eventId = event!.id;
-	const [phase] = await db.insert(schema.phases)
+	const [phase] = await db
+		.insert(schema.phases)
 		.values({ eventId, name: 'Swiss', sortOrder: 0 })
 		.returning();
-	const [round] = await db.insert(schema.rounds)
+	const [round] = await db
+		.insert(schema.rounds)
 		.values({
 			eventId,
 			phaseId: phase!.id,
@@ -110,30 +115,36 @@ async function stageEvent(): Promise<Stage> {
 			roundNumber: 1,
 		})
 		.returning();
-	const players = await db.insert(schema.players).values([
-		{ eventId, name: 'Mia' },
-		{ eventId, name: 'Max' },
-		{ eventId, name: 'Nia' },
-		{ eventId, name: 'Ned' },
-	]).returning();
-	const [matchM, matchN] = await db.insert(schema.matches).values([
-		{
-			eventId,
-			roundId: round!.id,
-			tableNumber: 1,
-			player1Id: players[0]!.id,
-			player2Id: players[1]!.id,
-			sortOrder: 0,
-		},
-		{
-			eventId,
-			roundId: round!.id,
-			tableNumber: 2,
-			player1Id: players[2]!.id,
-			player2Id: players[3]!.id,
-			sortOrder: 1,
-		},
-	]).returning();
+	const players = await db
+		.insert(schema.players)
+		.values([
+			{ eventId, name: 'Mia' },
+			{ eventId, name: 'Max' },
+			{ eventId, name: 'Nia' },
+			{ eventId, name: 'Ned' },
+		])
+		.returning();
+	const [matchM, matchN] = await db
+		.insert(schema.matches)
+		.values([
+			{
+				eventId,
+				roundId: round!.id,
+				tableNumber: 1,
+				player1Id: players[0]!.id,
+				player2Id: players[1]!.id,
+				sortOrder: 0,
+			},
+			{
+				eventId,
+				roundId: round!.id,
+				tableNumber: 2,
+				player1Id: players[2]!.id,
+				player2Id: players[3]!.id,
+				sortOrder: 1,
+			},
+		])
+		.returning();
 
 	const slots = featureMatchService();
 	const slot1 = await slots.create(eventId, {});
@@ -153,7 +164,11 @@ async function stageEvent(): Promise<Stage> {
 }
 
 function promote(stage: Stage, slotId: number, matchId: number) {
-	return featureMatchPromotionModule().promoteMatchToSlot({ eventId: stage.eventId, slotId, matchId });
+	return featureMatchPromotionModule().promoteMatchToSlot({
+		eventId: stage.eventId,
+		slotId,
+		matchId,
+	});
 }
 
 async function slotRow(slotId: number) {
@@ -195,7 +210,9 @@ describe('feature Match Slot Promotion against a stale plan', () => {
 			promotedN = await promote(stage, stage.slot1, stage.matchN);
 		};
 
-		await expect(promote(stage, stage.slot2, stage.matchM)).rejects.toMatchObject({ statusCode: 409 });
+		await expect(promote(stage, stage.slot2, stage.matchM)).rejects.toMatchObject({
+			statusCode: 409,
+		});
 
 		const slot1 = await slotRow(stage.slot1);
 		expect(slot1?.matchId).toBe(stage.matchN);
@@ -206,7 +223,11 @@ describe('feature Match Slot Promotion against a stale plan', () => {
 		expect(session?.status).toBe('active');
 		expect(session?.sourceSnapshot.matchId).toBe(stage.matchN);
 		expect(await assignmentsOf(stage)).toEqual([
-			expect.objectContaining({ id: promotedN!.assignment.id, slotId: stage.slot1, matchId: stage.matchN }),
+			expect.objectContaining({
+				id: promotedN!.assignment.id,
+				slotId: stage.slot1,
+				matchId: stage.matchN,
+			}),
 		]);
 	});
 
@@ -221,7 +242,9 @@ describe('feature Match Slot Promotion against a stale plan', () => {
 			publishMessage.mockClear();
 		};
 
-		await expect(promote(stage, stage.slot2, stage.matchM)).rejects.toMatchObject({ statusCode: 409 });
+		await expect(promote(stage, stage.slot2, stage.matchM)).rejects.toMatchObject({
+			statusCode: 409,
+		});
 
 		expect(await promotionState(stage)).toEqual(afterOtherPromotion);
 		expect(publishMessage).not.toHaveBeenCalled();
@@ -232,7 +255,8 @@ describe('feature Match Slot Promotion histories that still resolve', () => {
 	it('moves a Match serially, continuing its Assignment and clearing the source Slot with a fresh Session', async () => {
 		const stage = await stageEvent();
 		const first = await promote(stage, stage.slot1, stage.matchM);
-		await db.update(schema.featureMatchAssignments)
+		await db
+			.update(schema.featureMatchAssignments)
 			.set({ note: 'Watch the sideboard' })
 			.where(eq(schema.featureMatchAssignments.id, first.assignment.id));
 
@@ -248,7 +272,11 @@ describe('feature Match Slot Promotion histories that still resolve', () => {
 		expect(moved.clearedSlots).toEqual([
 			expect.objectContaining({ id: stage.slot1, matchId: null }),
 		]);
-		expect(moved.assignment).toMatchObject({ id: first.assignment.id, slotId: stage.slot2, note: 'Watch the sideboard' });
+		expect(moved.assignment).toMatchObject({
+			id: first.assignment.id,
+			slotId: stage.slot2,
+			note: 'Watch the sideboard',
+		});
 
 		const slot1 = await slotRow(stage.slot1);
 		expect(slot1?.matchId).toBeNull();
@@ -259,7 +287,11 @@ describe('feature Match Slot Promotion histories that still resolve', () => {
 		expect(clearedSession).toMatchObject({ status: 'active', sequence: 1 });
 		expect(clearedSession?.sourceSnapshot.matchId).toBeNull();
 		expect(await assignmentsOf(stage)).toEqual([
-			expect.objectContaining({ id: first.assignment.id, slotId: stage.slot2, matchId: stage.matchM }),
+			expect.objectContaining({
+				id: first.assignment.id,
+				slotId: stage.slot2,
+				matchId: stage.matchM,
+			}),
 		]);
 	});
 
@@ -272,7 +304,9 @@ describe('feature Match Slot Promotion histories that still resolve', () => {
 			winner = await promote(stage, stage.slot1, stage.matchM);
 		};
 
-		await expect(promote(stage, stage.slot2, stage.matchM)).rejects.toMatchObject({ statusCode: 409 });
+		await expect(promote(stage, stage.slot2, stage.matchM)).rejects.toMatchObject({
+			statusCode: 409,
+		});
 
 		expect(winner?.promotedSlot).toMatchObject({ id: stage.slot1, matchId: stage.matchM });
 		expect(await slotRow(stage.slot2)).toEqual(slot2Before);
@@ -281,7 +315,7 @@ describe('feature Match Slot Promotion histories that still resolve', () => {
 		]);
 	});
 
-	it('refuses the later of two simultaneous promotions of one Match into one Slot, keeping the first one\'s Session', async () => {
+	it("refuses the later of two simultaneous promotions of one Match into one Slot, keeping the first one's Session", async () => {
 		const stage = await stageEvent();
 
 		// The later plan read the Slot empty, so committing it would reset the
@@ -291,13 +325,19 @@ describe('feature Match Slot Promotion histories that still resolve', () => {
 			first = await promote(stage, stage.slot1, stage.matchM);
 		};
 
-		await expect(promote(stage, stage.slot1, stage.matchM)).rejects.toMatchObject({ statusCode: 409 });
+		await expect(promote(stage, stage.slot1, stage.matchM)).rejects.toMatchObject({
+			statusCode: 409,
+		});
 
 		const slot1 = await slotRow(stage.slot1);
 		expect(slot1?.matchId).toBe(stage.matchM);
 		expect(slot1?.activeSessionId).toBe(first!.promotedSlot.activeSessionId);
 		expect(await assignmentsOf(stage)).toEqual([
-			expect.objectContaining({ id: first!.assignment.id, slotId: stage.slot1, matchId: stage.matchM }),
+			expect.objectContaining({
+				id: first!.assignment.id,
+				slotId: stage.slot1,
+				matchId: stage.matchM,
+			}),
 		]);
 	});
 
@@ -311,7 +351,9 @@ describe('feature Match Slot Promotion histories that still resolve', () => {
 			refreshBroadcastGraphicsBindings.mockClear();
 		};
 
-		await expect(promote(stage, stage.slot2, stage.matchM)).rejects.toMatchObject({ statusCode: 409 });
+		await expect(promote(stage, stage.slot2, stage.matchM)).rejects.toMatchObject({
+			statusCode: 409,
+		});
 
 		// Its operator is told it lost, so no peer is shown any of it, not even the
 		// new Session it opened on the Slot it promoted into (#576, ADR-0029).
@@ -336,7 +378,10 @@ describe('feature Match Slot Promotion histories that still resolve', () => {
 });
 
 function published() {
-	return publishMessage.mock.calls.map(([, type, payload]) => ({ type, payload }) as { type: string; payload: Record<string, unknown> });
+	return publishMessage.mock.calls.map(
+		([, type, payload]) =>
+			({ type, payload }) as { type: string; payload: Record<string, unknown> },
+	);
 }
 
 describe('feature Match Slot Promotion publication', () => {
@@ -345,11 +390,13 @@ describe('feature Match Slot Promotion publication', () => {
 		await promote(stage, stage.slot1, stage.matchM);
 		// A third Slot names the same Match by the external identity it was given
 		// since, so moving the Match to Slot 2 clears two Slots.
-		await db.update(schema.matches)
+		await db
+			.update(schema.matches)
 			.set({ externalId: 'melee-m', externalSource: 'melee' })
 			.where(eq(schema.matches.id, stage.matchM));
 		const slot3 = await featureMatchService().create(stage.eventId, {});
-		await db.update(schema.featureMatches)
+		await db
+			.update(schema.featureMatches)
 			.set({ externalId: 'melee-m', externalSource: 'melee' })
 			.where(eq(schema.featureMatches.id, slot3.id));
 		publishMessage.mockClear();
@@ -358,14 +405,13 @@ describe('feature Match Slot Promotion publication', () => {
 		const moved = await promote(stage, stage.slot2, stage.matchM);
 
 		const bySlot = (a: { id: number }, b: { id: number }) => a.id - b.id;
-		expect(moved.clearedSlots.map(slot => ({ id: slot.id })).sort(bySlot)).toEqual([
-			{ id: stage.slot1 },
-			{ id: slot3.id },
-		].sort(bySlot));
+		expect(moved.clearedSlots.map((slot) => ({ id: slot.id })).sort(bySlot)).toEqual(
+			[{ id: stage.slot1 }, { id: slot3.id }].sort(bySlot),
+		);
 		expect(refreshBroadcastGraphicsBindings).toHaveBeenCalledOnce();
 		expect(refreshBroadcastGraphicsBindings).toHaveBeenCalledWith(stage.eventId);
 		const messages = published();
-		expect(messages.map(message => message.type)).toEqual([
+		expect(messages.map((message) => message.type)).toEqual([
 			'featureMatchSession:eventApplied',
 			'featureMatchSession:eventApplied',
 			'featureMatchSession:eventApplied',
@@ -375,14 +421,27 @@ describe('feature Match Slot Promotion publication', () => {
 			'featureMatch:updated',
 		]);
 		// Every moved Slot's new Session.
-		expect(messages.slice(0, 3).map(message => message.payload.slotId).sort()).toEqual([stage.slot1, stage.slot2, slot3.id].sort());
-		expect(messages.slice(0, 3).every(message => message.payload.eventType === 'SessionStarted')).toBe(true);
+		expect(
+			messages
+				.slice(0, 3)
+				.map((message) => message.payload.slotId)
+				.sort(),
+		).toEqual([stage.slot1, stage.slot2, slot3.id].sort());
+		expect(
+			messages.slice(0, 3).every((message) => message.payload.eventType === 'SessionStarted'),
+		).toBe(true);
 		// The promoted Slot last, carrying the Session the response answers with.
 		expect(messages[6]!.payload).toMatchObject({
-			featureMatch: { id: stage.slot2, matchId: stage.matchM, activeSessionId: moved.promotedSlot.activeSessionId },
+			featureMatch: {
+				id: stage.slot2,
+				matchId: stage.matchM,
+				activeSessionId: moved.promotedSlot.activeSessionId,
+			},
 		});
 		// Re-resolved once everything it reads has been announced.
-		expect(refreshBroadcastGraphicsBindings.mock.invocationCallOrder[0]).toBeGreaterThan(publishMessage.mock.invocationCallOrder.at(-1)!);
+		expect(refreshBroadcastGraphicsBindings.mock.invocationCallOrder[0]).toBeGreaterThan(
+			publishMessage.mock.invocationCallOrder.at(-1)!,
+		);
 	});
 });
 
@@ -391,19 +450,28 @@ describe('feature Match Slot Promotion around its batch', () => {
 		const stage = await stageEvent();
 		const before = await promotionState(stage);
 
-		await expect(promote(stage, stage.slot1, 999_999)).rejects.toMatchObject({ statusCode: 404, message: 'Match not found' });
-		await expect(promote(stage, 999_999, stage.matchM)).rejects.toMatchObject({ statusCode: 404, message: 'Feature match slot not found' });
+		await expect(promote(stage, stage.slot1, 999_999)).rejects.toMatchObject({
+			statusCode: 404,
+			message: 'Match not found',
+		});
+		await expect(promote(stage, 999_999, stage.matchM)).rejects.toMatchObject({
+			statusCode: 404,
+			message: 'Feature match slot not found',
+		});
 
 		expect(await promotionState(stage)).toEqual(before);
 		expect(publishMessage).not.toHaveBeenCalled();
 	});
 
-	it('publishes the promoted players\' latest data, which the Reverse Sync applied after the commit', async () => {
+	it("publishes the promoted players' latest data, which the Reverse Sync applied after the commit", async () => {
 		const stage = await stageEvent();
 		const match = await db.query.matches.findFirst({
 			where: (matches, { eq }) => eq(matches.id, stage.matchM),
 		});
-		await db.update(schema.players).set({ name: 'Mia Renamed' }).where(eq(schema.players.id, match!.player1Id!));
+		await db
+			.update(schema.players)
+			.set({ name: 'Mia Renamed' })
+			.where(eq(schema.players.id, match!.player1Id!));
 
 		const promoted = await promote(stage, stage.slot1, stage.matchM);
 
@@ -421,14 +489,17 @@ describe('feature Match Slot Promotion around its batch', () => {
 		const match = await db.query.matches.findFirst({
 			where: (matches, { eq }) => eq(matches.id, stage.matchM),
 		});
-		await db.update(schema.players).set({ name: 'Mia Renamed' }).where(eq(schema.players.id, match!.player1Id!));
+		await db
+			.update(schema.players)
+			.set({ name: 'Mia Renamed' })
+			.where(eq(schema.players.id, match!.player1Id!));
 		faultAfterNextBatch = true;
 
 		await expect(promote(stage, stage.slot1, stage.matchM)).rejects.toThrow('storage unavailable');
 		faulting = false;
 
 		// Peers still learn of the committed promotion, as it is without the sync.
-		expect(published().map(message => message.type)).toEqual([
+		expect(published().map((message) => message.type)).toEqual([
 			'featureMatchSession:eventApplied',
 			'featureMatchAssignment:created',
 			'featureMatch:updated',
@@ -440,17 +511,16 @@ describe('feature Match Slot Promotion around its batch', () => {
 		expect((await slotRow(stage.slot1))?.matchId).toBe(stage.matchM);
 	});
 
-	it('refuses to discard a Note given to its destination\'s Assignment while it planned', async () => {
+	it("refuses to discard a Note given to its destination's Assignment while it planned", async () => {
 		const stage = await stageEvent();
 		beforeNextBatch = async () => {
-			await db.insert(schema.featureMatchAssignments)
-				.values({
-					eventId: stage.eventId,
-					roundId: stage.roundId,
-					slotId: stage.slot1,
-					matchId: stage.matchN,
-					note: 'Feature this next',
-				});
+			await db.insert(schema.featureMatchAssignments).values({
+				eventId: stage.eventId,
+				roundId: stage.roundId,
+				slotId: stage.slot1,
+				matchId: stage.matchN,
+				note: 'Feature this next',
+			});
 		};
 
 		await expect(promote(stage, stage.slot1, stage.matchM)).rejects.toMatchObject({
@@ -459,7 +529,11 @@ describe('feature Match Slot Promotion around its batch', () => {
 		});
 
 		expect(await assignmentsOf(stage)).toEqual([
-			expect.objectContaining({ slotId: stage.slot1, matchId: stage.matchN, note: 'Feature this next' }),
+			expect.objectContaining({
+				slotId: stage.slot1,
+				matchId: stage.matchN,
+				note: 'Feature this next',
+			}),
 		]);
 		expect((await slotRow(stage.slot1))?.matchId).toBeNull();
 		expect(publishMessage).not.toHaveBeenCalled();
@@ -468,7 +542,8 @@ describe('feature Match Slot Promotion around its batch', () => {
 	it('refuses a Note discard confirmation for an Assignment that has changed since it was reviewed', async () => {
 		const stage = await stageEvent();
 		const first = await promote(stage, stage.slot1, stage.matchN);
-		await db.update(schema.featureMatchAssignments)
+		await db
+			.update(schema.featureMatchAssignments)
 			.set({
 				note: null,
 				updatedAt: new Date(Date.now() + 1000),
@@ -477,17 +552,19 @@ describe('feature Match Slot Promotion around its batch', () => {
 		const before = await promotionState(stage);
 		publishMessage.mockClear();
 
-		await expect(featureMatchPromotionModule().promoteMatchToSlot({
-			eventId: stage.eventId,
-			slotId: stage.slot1,
-			matchId: stage.matchM,
-			confirmedNoteDiscards: [
-				{
-					assignmentId: first.assignment.id,
-					updatedAt: new Date(first.assignment.updatedAt),
-				},
-			],
-		})).rejects.toMatchObject({ statusCode: 409 });
+		await expect(
+			featureMatchPromotionModule().promoteMatchToSlot({
+				eventId: stage.eventId,
+				slotId: stage.slot1,
+				matchId: stage.matchM,
+				confirmedNoteDiscards: [
+					{
+						assignmentId: first.assignment.id,
+						updatedAt: new Date(first.assignment.updatedAt),
+					},
+				],
+			}),
+		).rejects.toMatchObject({ statusCode: 409 });
 
 		expect(await promotionState(stage)).toEqual(before);
 		expect(publishMessage).not.toHaveBeenCalled();
@@ -496,34 +573,36 @@ describe('feature Match Slot Promotion around its batch', () => {
 	it('answers a confirmed Note discard whose Assignment was deleted while it planned as a conflict', async () => {
 		const stage = await stageEvent();
 		const first = await promote(stage, stage.slot1, stage.matchN);
-		const [noted] = await db.update(schema.featureMatchAssignments)
+		const [noted] = await db
+			.update(schema.featureMatchAssignments)
 			.set({ note: 'Reviewed note' })
 			.where(eq(schema.featureMatchAssignments.id, first.assignment.id))
 			.returning();
 		beforeNextBatch = async () => {
-			await db.delete(schema.featureMatchAssignments).where(eq(schema.featureMatchAssignments.id, noted!.id));
+			await db
+				.delete(schema.featureMatchAssignments)
+				.where(eq(schema.featureMatchAssignments.id, noted!.id));
 		};
 
-		await expect(featureMatchPromotionModule().promoteMatchToSlot({
-			eventId: stage.eventId,
-			slotId: stage.slot1,
-			matchId: stage.matchM,
-			confirmedNoteDiscards: [
-				{ assignmentId: noted!.id, updatedAt: noted!.updatedAt },
-			],
-		})).rejects.toMatchObject({ statusCode: 409, name: 'StateConflictError' });
+		await expect(
+			featureMatchPromotionModule().promoteMatchToSlot({
+				eventId: stage.eventId,
+				slotId: stage.slot1,
+				matchId: stage.matchM,
+				confirmedNoteDiscards: [{ assignmentId: noted!.id, updatedAt: noted!.updatedAt }],
+			}),
+		).rejects.toMatchObject({ statusCode: 409, name: 'StateConflictError' });
 
 		expect((await slotRow(stage.slot1))?.matchId).toBe(stage.matchN);
 	});
 });
 
 async function noteAssignment(assignmentId: number, note: string, updatedAt?: Date) {
-	const [noted] = await db.update(schema.featureMatchAssignments)
+	const [noted] = await db
+		.update(schema.featureMatchAssignments)
 		.set({
 			note,
-			...(updatedAt
-				? { updatedAt }
-				: {}),
+			...(updatedAt ? { updatedAt } : {}),
 		})
 		.where(eq(schema.featureMatchAssignments.id, assignmentId))
 		.returning();
@@ -531,14 +610,17 @@ async function noteAssignment(assignmentId: number, note: string, updatedAt?: Da
 }
 
 /** Promotes having confirmed the discard of `reviewed`'s Note, as it stood when read. */
-function promoteConfirming(stage: Stage, slotId: number, matchId: number, reviewed: { id: number; updatedAt: Date }) {
+function promoteConfirming(
+	stage: Stage,
+	slotId: number,
+	matchId: number,
+	reviewed: { id: number; updatedAt: Date },
+) {
 	return featureMatchPromotionModule().promoteMatchToSlot({
 		eventId: stage.eventId,
 		slotId,
 		matchId,
-		confirmedNoteDiscards: [
-			{ assignmentId: reviewed.id, updatedAt: reviewed.updatedAt },
-		],
+		confirmedNoteDiscards: [{ assignmentId: reviewed.id, updatedAt: reviewed.updatedAt }],
 	});
 }
 
@@ -547,7 +629,10 @@ function promoteConfirming(stage: Stage, slotId: number, matchId: number, review
 describe('feature Match Slot Promotion over an Assignment carrying a Note', () => {
 	it('is refused, naming the Note and its Match, before any Slot, Assignment or Session changes', async () => {
 		const stage = await stageEvent();
-		const noted = await noteAssignment((await promote(stage, stage.slot1, stage.matchN)).assignment.id, 'Do not lose this');
+		const noted = await noteAssignment(
+			(await promote(stage, stage.slot1, stage.matchN)).assignment.id,
+			'Do not lose this',
+		);
 		const before = await promotionState(stage);
 		publishMessage.mockClear();
 
@@ -570,12 +655,19 @@ describe('feature Match Slot Promotion over an Assignment carrying a Note', () =
 
 	it('replaces it with a new Assignment holding no Note, once exactly the version reviewed is confirmed', async () => {
 		const stage = await stageEvent();
-		const noted = await noteAssignment((await promote(stage, stage.slot1, stage.matchN)).assignment.id, 'The reviewed note');
+		const noted = await noteAssignment(
+			(await promote(stage, stage.slot1, stage.matchN)).assignment.id,
+			'The reviewed note',
+		);
 
 		const replaced = await promoteConfirming(stage, stage.slot1, stage.matchM, noted);
 
 		expect(replaced.promotedSlot).toMatchObject({ id: stage.slot1, matchId: stage.matchM });
-		expect(replaced.assignment).toMatchObject({ slotId: stage.slot1, matchId: stage.matchM, note: null });
+		expect(replaced.assignment).toMatchObject({
+			slotId: stage.slot1,
+			matchId: stage.matchM,
+			note: null,
+		});
 		expect(replaced.assignment.id).not.toBe(noted.id);
 		expect(await assignmentsOf(stage)).toEqual([
 			expect.objectContaining({ id: replaced.assignment.id, matchId: stage.matchM, note: null }),
@@ -584,12 +676,21 @@ describe('feature Match Slot Promotion over an Assignment carrying a Note', () =
 
 	it('answers a confirmation of an earlier version with the Note as it now stands, changing nothing', async () => {
 		const stage = await stageEvent();
-		const reviewed = await noteAssignment((await promote(stage, stage.slot1, stage.matchN)).assignment.id, 'Version one');
-		const current = await noteAssignment(reviewed.id, 'Version two', new Date(reviewed.updatedAt.getTime() + 1000));
+		const reviewed = await noteAssignment(
+			(await promote(stage, stage.slot1, stage.matchN)).assignment.id,
+			'Version one',
+		);
+		const current = await noteAssignment(
+			reviewed.id,
+			'Version two',
+			new Date(reviewed.updatedAt.getTime() + 1000),
+		);
 		const before = await promotionState(stage);
 		publishMessage.mockClear();
 
-		await expect(promoteConfirming(stage, stage.slot1, stage.matchM, reviewed)).rejects.toMatchObject({
+		await expect(
+			promoteConfirming(stage, stage.slot1, stage.matchM, reviewed),
+		).rejects.toMatchObject({
 			statusCode: 409,
 			data: {
 				code: 'feature-match-note-discard-required',
@@ -607,8 +708,14 @@ describe('feature Match Slot Promotion over an Assignment carrying a Note', () =
 
 	it('moves a continuing Assignment with its own Note, asking only about the Note it displaces', async () => {
 		const stage = await stageEvent();
-		const continuing = await noteAssignment((await promote(stage, stage.slot1, stage.matchM)).assignment.id, 'Carry this Note');
-		const displaced = await noteAssignment((await promote(stage, stage.slot2, stage.matchN)).assignment.id, 'Confirm losing this Note');
+		const continuing = await noteAssignment(
+			(await promote(stage, stage.slot1, stage.matchM)).assignment.id,
+			'Carry this Note',
+		);
+		const displaced = await noteAssignment(
+			(await promote(stage, stage.slot2, stage.matchN)).assignment.id,
+			'Confirm losing this Note',
+		);
 
 		await expect(promote(stage, stage.slot2, stage.matchM)).rejects.toMatchObject({
 			statusCode: 409,
@@ -634,12 +741,13 @@ describe('feature Match Slot Promotion over an Assignment carrying a Note', () =
 		]);
 	});
 
-	it('leaves the Slot\'s Assignment in another Round, and its Note, as they were', async () => {
+	it("leaves the Slot's Assignment in another Round, and its Note, as they were", async () => {
 		const stage = await stageEvent();
 		const round = await db.query.rounds.findFirst({
 			where: (rounds, { eq }) => eq(rounds.id, stage.roundId),
 		});
-		const [otherRound] = await db.insert(schema.rounds)
+		const [otherRound] = await db
+			.insert(schema.rounds)
 			.values({
 				eventId: stage.eventId,
 				phaseId: round!.phaseId,
@@ -647,7 +755,8 @@ describe('feature Match Slot Promotion over an Assignment carrying a Note', () =
 				roundNumber: 2,
 			})
 			.returning();
-		const [otherMatch] = await db.insert(schema.matches)
+		const [otherMatch] = await db
+			.insert(schema.matches)
 			.values({
 				eventId: stage.eventId,
 				roundId: otherRound!.id,
@@ -655,20 +764,32 @@ describe('feature Match Slot Promotion over an Assignment carrying a Note', () =
 				sortOrder: 0,
 			})
 			.returning();
-		const retained = await noteAssignment((await promote(stage, stage.slot1, otherMatch!.id)).assignment.id, 'Historical context');
+		const retained = await noteAssignment(
+			(await promote(stage, stage.slot1, otherMatch!.id)).assignment.id,
+			'Historical context',
+		);
 
 		await promote(stage, stage.slot1, stage.matchM);
 
-		expect(await db.query.featureMatchAssignments.findMany({
-			where: (assignments, { eq }) => eq(assignments.roundId, otherRound!.id),
-		})).toEqual([
-			expect.objectContaining({ id: retained.id, matchId: otherMatch!.id, note: 'Historical context' }),
+		expect(
+			await db.query.featureMatchAssignments.findMany({
+				where: (assignments, { eq }) => eq(assignments.roundId, otherRound!.id),
+			}),
+		).toEqual([
+			expect.objectContaining({
+				id: retained.id,
+				matchId: otherMatch!.id,
+				note: 'Historical context',
+			}),
 		]);
 	});
 
 	it('keeps the Assignment and its Note when the Match its Slot holds is promoted there again', async () => {
 		const stage = await stageEvent();
-		const noted = await noteAssignment((await promote(stage, stage.slot1, stage.matchM)).assignment.id, 'Keep this note');
+		const noted = await noteAssignment(
+			(await promote(stage, stage.slot1, stage.matchM)).assignment.id,
+			'Keep this note',
+		);
 
 		const again = await promote(stage, stage.slot1, stage.matchM);
 

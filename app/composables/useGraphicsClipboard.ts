@@ -1,4 +1,10 @@
-import type { ClipboardPasteRefusal, CopiedLayers, CopiedStyle, GraphicsClipboardEntry, GraphicsClipboardHost } from '~/modules/graphics/clipboard';
+import type {
+	ClipboardPasteRefusal,
+	CopiedLayers,
+	CopiedStyle,
+	GraphicsClipboardEntry,
+	GraphicsClipboardHost,
+} from '~/modules/graphics/clipboard';
 import {
 	clipboardRefusalMessage,
 	readGraphicsClipboard,
@@ -25,7 +31,11 @@ export function useGraphicsClipboard(host: GraphicsClipboardHost) {
 
 	function keep(entry: CopiedLayers | CopiedStyle, title: string): boolean {
 		if (!writeGraphicsClipboard(entry)) {
-			toast.add({ title: 'Nothing copied', description: 'This browser would not keep it.', color: 'error' });
+			toast.add({
+				title: 'Nothing copied',
+				description: 'This browser would not keep it.',
+				color: 'error',
+			});
 			return false;
 		}
 		toast.add({ title, color: 'neutral' });
@@ -34,19 +44,15 @@ export function useGraphicsClipboard(host: GraphicsClipboardHost) {
 
 	/** Keep copied layers. Answers whether there were any to keep. */
 	function copyLayers(copied: CopiedLayers | null): boolean {
-		if (!copied)
-			return false;
+		if (!copied) return false;
 		const count = copied.items.length + copied.sources.length;
-		keep(copied, count === 1
-			? 'Copied 1 layer'
-			: `Copied ${count} layers`);
+		keep(copied, count === 1 ? 'Copied 1 layer' : `Copied ${count} layers`);
 		return true;
 	}
 
 	/** Keep a copied style. Answers whether there was one to keep. */
 	function copyStyle(copied: CopiedStyle | null): boolean {
-		if (!copied)
-			return false;
+		if (!copied) return false;
 		keep(copied, `Copied the style of "${copied.item.label}"`);
 		return true;
 	}
@@ -55,10 +61,11 @@ export function useGraphicsClipboard(host: GraphicsClipboardHost) {
 	 * What was copied of one kind, once it is this host's and every Graphic Asset
 	 * it would pin is still selectable; nothing, with the reason shown, otherwise.
 	 */
-	async function toPaste<K extends GraphicsClipboardEntry['kind']>(kind: K): Promise<Extract<GraphicsClipboardEntry, { kind: K }> | null> {
+	async function toPaste<K extends GraphicsClipboardEntry['kind']>(
+		kind: K,
+	): Promise<Extract<GraphicsClipboardEntry, { kind: K }> | null> {
 		const copied = readGraphicsClipboard(kind);
-		if (!copied)
-			return null;
+		if (!copied) return null;
 		// Before asking the library: the other host's entry is refused for that alone.
 		if (copied.host !== host) {
 			refuse({ reason: 'other-host', from: copied.host });

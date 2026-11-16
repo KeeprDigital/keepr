@@ -41,7 +41,8 @@ vi.mock('@vueuse/core', async () => {
 describe('useFeatureMatchStateStore', () => {
 	let store: ReturnType<typeof useFeatureMatchStateStore>;
 
-	const seedState = (overrides?: Partial<FeatureMatchState>, matchId = MATCH_ID) => seed(store, overrides, matchId);
+	const seedState = (overrides?: Partial<FeatureMatchState>, matchId = MATCH_ID) =>
+		seed(store, overrides, matchId);
 	const held = (matchId = MATCH_ID) => store.featureMatchStates.get(matchId)!;
 
 	beforeEach(() => {
@@ -50,7 +51,7 @@ describe('useFeatureMatchStateStore', () => {
 	});
 
 	describe('loadState', () => {
-		it('holds the Slot\'s Session: its state, id and sequence', async () => {
+		it("holds the Slot's Session: its state, id and sequence", async () => {
 			const state = createMockFeatureMatchState();
 			sessionClient.ensureSession.mockResolvedValue(createSession(state));
 
@@ -70,10 +71,13 @@ describe('useFeatureMatchStateStore', () => {
 			],
 			[
 				'a refusal',
-				() => sessionClient.ensureSession.mockRejectedValue(transportFailure({
-					status: 409,
-					body: { message: 'That Feature Match slot is not assigned to a match yet' },
-				})),
+				() =>
+					sessionClient.ensureSession.mockRejectedValue(
+						transportFailure({
+							status: 409,
+							body: { message: 'That Feature Match slot is not assigned to a match yet' },
+						}),
+					),
 				'That Feature Match slot is not assigned to a match yet',
 			],
 		])('reports a load answered with %s', async (_, answer, reported) => {
@@ -86,7 +90,7 @@ describe('useFeatureMatchStateStore', () => {
 		});
 	});
 
-	it('reads the active Feature Match\'s state', () => {
+	it("reads the active Feature Match's state", () => {
 		const state = seedState({}, 42);
 
 		store.setActiveFeatureMatch(42);
@@ -118,10 +122,12 @@ describe('useFeatureMatchStateStore', () => {
 
 		it('rolls back every field of a refused multi-field save, leaving no partial state, and reports why', async () => {
 			const state = seedState({ turnNumber: 2 });
-			sessionClient.updateState.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { message: 'Feature match session has advanced' },
-			}));
+			sessionClient.updateState.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { message: 'Feature match session has advanced' },
+				}),
+			);
 
 			await store.updateState(EVENT_ID, MATCH_ID, {
 				turnNumber: 9,
@@ -153,7 +159,7 @@ describe('useFeatureMatchStateStore', () => {
 		});
 	});
 
-	describe('a peer\'s applied Session event', () => {
+	describe("a peer's applied Session event", () => {
 		function sessionEvent(
 			overrides: Partial<FeatureMatchSessionEventAppliedPayload> = {},
 		): MessageData<'featureMatchSession:eventApplied'> {
@@ -173,12 +179,14 @@ describe('useFeatureMatchStateStore', () => {
 		it('applies the next event for the current Session, with its snapshot', async () => {
 			store.cacheSession(createSession());
 
-			await store.applyRemoteSessionEvent(sessionEvent({
-				sourceSnapshot: {
-					...createSourceSnapshot(),
-					bestOf: 5,
-				},
-			}));
+			await store.applyRemoteSessionEvent(
+				sessionEvent({
+					sourceSnapshot: {
+						...createSourceSnapshot(),
+						bestOf: 5,
+					},
+				}),
+			);
 
 			expect(held().turnNumber).toBe(4);
 			expect(store.sessionSequenceBySlotId.get(MATCH_ID)).toBe(4);
@@ -190,7 +198,9 @@ describe('useFeatureMatchStateStore', () => {
 			store.cacheSession(createSession());
 			const nextState = createMockFeatureMatchState({ currentGame: 2 });
 
-			await store.applyRemoteSessionEvent(sessionEvent({ sessionId: 600, sequence: 1, currentState: nextState }));
+			await store.applyRemoteSessionEvent(
+				sessionEvent({ sessionId: 600, sequence: 1, currentState: nextState }),
+			);
 
 			expect(store.sessionIdBySlotId.get(MATCH_ID)).toBe(600);
 			expect(store.sessionSequenceBySlotId.get(MATCH_ID)).toBe(1);
@@ -200,7 +210,9 @@ describe('useFeatureMatchStateStore', () => {
 
 		it('re-reads the Session when a sequence gap shows an event was missed', async () => {
 			store.cacheSession(createSession());
-			sessionClient.ensureSession.mockResolvedValue(createSession(createMockFeatureMatchState({ turnNumber: 8 })));
+			sessionClient.ensureSession.mockResolvedValue(
+				createSession(createMockFeatureMatchState({ turnNumber: 8 })),
+			);
 
 			await store.applyRemoteSessionEvent(sessionEvent({ sequence: 6 }));
 
@@ -219,9 +231,13 @@ describe('useFeatureMatchStateStore', () => {
 
 		expect(duplicate).toBeNull();
 
-		first.resolve(commandResult(createMockFeatureMatchState({
-			clock: clock({ isRunning: true, lastStartedAt: SERVER_NOW }),
-		})));
+		first.resolve(
+			commandResult(
+				createMockFeatureMatchState({
+					clock: clock({ isRunning: true, lastStartedAt: SERVER_NOW }),
+				}),
+			),
+		);
 		await starting;
 
 		expect(sessionClient.startClock).toHaveBeenCalledTimes(1);

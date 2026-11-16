@@ -36,14 +36,16 @@ export function useApplicationFontFaces(
 	const loads = createGuardedSequence();
 
 	/** The `font` shorthand of each distinct packaged face; a system stack has none to load. */
-	const fonts = computed(() => [
-		...new Set(toValue(requests).flatMap(({ fontId, weight, style }) => {
-			const family = getGraphicFontDefinition(fontId)?.package?.family;
-			return family
-				? [`${style} ${weight} 1em "${family}"`]
-				: [];
-		})),
-	].sort());
+	const fonts = computed(() =>
+		[
+			...new Set(
+				toValue(requests).flatMap(({ fontId, weight, style }) => {
+					const family = getGraphicFontDefinition(fontId)?.package?.family;
+					return family ? [`${style} ${weight} 1em "${family}"`] : [];
+				}),
+			),
+		].sort(),
+	);
 
 	/**
 	 * Which faces are required, as one comparable value. A host rebuilds its
@@ -52,21 +54,24 @@ export function useApplicationFontFaces(
 	 */
 	const loadKey = computed(() => fonts.value.join('\n'));
 
-	watch(loadKey, async () => {
-		const pending = fonts.value;
-		const flight = loads.begin();
-		fontsReady.value = pending.length === 0;
-		fontsFailed.value = false;
-		if (pending.length === 0 || !import.meta.client)
-			return;
-		const loaded = await Promise.allSettled(pending.map(async font => document.fonts.load(font)));
-		if (flight.stale)
-			return;
-		if (loaded.every(result => result.status === 'fulfilled' && result.value.length > 0))
-			fontsReady.value = true;
-		else
-			fontsFailed.value = true;
-	}, { immediate: true });
+	watch(
+		loadKey,
+		async () => {
+			const pending = fonts.value;
+			const flight = loads.begin();
+			fontsReady.value = pending.length === 0;
+			fontsFailed.value = false;
+			if (pending.length === 0 || !import.meta.client) return;
+			const loaded = await Promise.allSettled(
+				pending.map(async (font) => document.fonts.load(font)),
+			);
+			if (flight.stale) return;
+			if (loaded.every((result) => result.status === 'fulfilled' && result.value.length > 0))
+				fontsReady.value = true;
+			else fontsFailed.value = true;
+		},
+		{ immediate: true },
+	);
 
 	onScopeDispose(() => loads.supersede());
 
@@ -86,11 +91,18 @@ export function useApplicationFontFaces(
  * library fonts load and never for an application font, which holds the
  * rendering off program instead and, once it is on program, swaps in late.
  */
-export function useCombinedFontFaces(library: FontFaceState, application: FontFaceState): FontFaceState {
+export function useCombinedFontFaces(
+	library: FontFaceState,
+	application: FontFaceState,
+): FontFaceState {
 	const settled = (state: FontFaceState) => state.fontsReady.value || state.fontsFailed.value;
 	return {
 		fontsReady: computed(() => library.fontsReady.value && application.fontsReady.value),
-		fontsFailed: computed(() => settled(library) && settled(application)
-			&& (library.fontsFailed.value || application.fontsFailed.value)),
+		fontsFailed: computed(
+			() =>
+				settled(library) &&
+				settled(application) &&
+				(library.fontsFailed.value || application.fontsFailed.value),
+		),
 	};
 }

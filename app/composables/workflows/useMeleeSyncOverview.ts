@@ -1,4 +1,11 @@
-type MeleeSyncState = 'disabled' | 'not-configured' | 'setup-required' | 'in-progress' | 'ready' | 'error' | 'complete';
+type MeleeSyncState =
+	| 'disabled'
+	| 'not-configured'
+	| 'setup-required'
+	| 'in-progress'
+	| 'ready'
+	| 'error'
+	| 'complete';
 type MeleeSyncActionType = 'configure' | 'setup' | 'update' | 'open';
 
 interface MeleeSyncAction {
@@ -15,12 +22,20 @@ export function useMeleeSyncOverview() {
 	const event = computed(() => eventStore.event);
 	const eventId = computed(() => event.value?.id ?? null);
 	const isEnabled = computed(() => !!event.value?.meleeEnabled);
-	const isConfigured = computed(() => !!(event.value?.meleeEnabled && event.value?.meleeConfigured));
+	const isConfigured = computed(
+		() => !!(event.value?.meleeEnabled && event.value?.meleeConfigured),
+	);
 	const setupCompletedAt = computed(() => event.value?.initialSetupCompletedAt ?? null);
 	const isSetupComplete = computed(() => !!setupCompletedAt.value);
 	const hasLastError = computed(() => !!event.value?.lastSyncError);
-	const isAnySyncRunning = computed(() =>
-		meleeStore.syncing || meleeStore.syncingPlayers || meleeStore.syncingDecklists || meleeStore.syncingRound || meleeStore.updatingFromMelee || meleeStore.runningSetup,
+	const isAnySyncRunning = computed(
+		() =>
+			meleeStore.syncing ||
+			meleeStore.syncingPlayers ||
+			meleeStore.syncingDecklists ||
+			meleeStore.syncingRound ||
+			meleeStore.updatingFromMelee ||
+			meleeStore.runningSetup,
 	);
 
 	const state = computed<MeleeSyncState>(() => {
@@ -64,7 +79,10 @@ export function useMeleeSyncOverview() {
 			};
 		}
 
-		if (state.value === 'setup-required' || (state.value === 'in-progress' && !isSetupComplete.value)) {
+		if (
+			state.value === 'setup-required' ||
+			(state.value === 'in-progress' && !isSetupComplete.value)
+		) {
 			return {
 				type: 'setup',
 				label: 'Run Initial Setup',
@@ -73,7 +91,12 @@ export function useMeleeSyncOverview() {
 			};
 		}
 
-		if (state.value === 'ready' || state.value === 'error' || state.value === 'complete' || (state.value === 'in-progress' && isSetupComplete.value)) {
+		if (
+			state.value === 'ready' ||
+			state.value === 'error' ||
+			state.value === 'complete' ||
+			(state.value === 'in-progress' && isSetupComplete.value)
+		) {
 			return {
 				type: 'update',
 				label: 'Update from Melee',
@@ -99,13 +122,20 @@ export function useMeleeSyncOverview() {
 
 	const statusTitle = computed(() => {
 		switch (state.value) {
-			case 'not-configured': return 'Melee Sync Not Configured';
-			case 'setup-required': return 'Initial Setup Required';
-			case 'in-progress': return isSetupComplete.value ? 'Melee Sync In Progress' : 'Initial Setup In Progress';
-			case 'ready': return 'Melee Update Ready';
-			case 'error': return 'Melee Sync Needs Attention';
-			case 'complete': return 'Melee Sync Ready';
-			default: return 'Melee Sync';
+			case 'not-configured':
+				return 'Melee Sync Not Configured';
+			case 'setup-required':
+				return 'Initial Setup Required';
+			case 'in-progress':
+				return isSetupComplete.value ? 'Melee Sync In Progress' : 'Initial Setup In Progress';
+			case 'ready':
+				return 'Melee Update Ready';
+			case 'error':
+				return 'Melee Sync Needs Attention';
+			case 'complete':
+				return 'Melee Sync Ready';
+			default:
+				return 'Melee Sync';
 		}
 	});
 

@@ -23,9 +23,11 @@ export function useFeatureMatchOverlayModeData(context: ScreenContext) {
 	 * their unsaved edits, and reading the guides flag here meant switching guides
 	 * off silently swapped the preview back to the saved configuration.
 	 */
-	const config = computed(() => isPreview?.value && previewConfigOverride.value
-		? previewConfigOverride.value
-		: storedConfig.value);
+	const config = computed(() =>
+		isPreview?.value && previewConfigOverride.value
+			? previewConfigOverride.value
+			: storedConfig.value,
+	);
 	const eventStore = useEventStore();
 
 	/**
@@ -39,7 +41,11 @@ export function useFeatureMatchOverlayModeData(context: ScreenContext) {
 		mode: 'feature-match-overlay',
 		config: () => config.value,
 		slotId: () => config.value.featureMatchId,
-		keep: read => ({ sourceMatch: read.match, round: read.round ?? undefined, phase: read.phase ?? undefined }),
+		keep: (read) => ({
+			sourceMatch: read.match,
+			round: read.round ?? undefined,
+			phase: read.phase ?? undefined,
+		}),
 		initialData: { sourceMatch: null, round: undefined, phase: undefined },
 		errorMessage: 'Failed to load broadcast layout data',
 	});
@@ -49,10 +55,13 @@ export function useFeatureMatchOverlayModeData(context: ScreenContext) {
 	const phase = computed(() => slotData.data.value.phase);
 
 	function handlePreviewConfigMessage(message: MessageEvent) {
-		if (!isPreview?.value || !isFeatureMatchOverlayPreviewConfigMessage(message, {
-			origin: window.location.origin,
-			source: window.parent,
-		})) {
+		if (
+			!isPreview?.value ||
+			!isFeatureMatchOverlayPreviewConfigMessage(message, {
+				origin: window.location.origin,
+				source: window.parent,
+			})
+		) {
 			return;
 		}
 
@@ -78,7 +87,9 @@ export function useFeatureMatchOverlayModeData(context: ScreenContext) {
 	 * renders empty on air, which is the one behaviour sample data must never
 	 * change.
 	 */
-	const usesSampleDataset = computed(() => Boolean(isPreview?.value) && !config.value.featureMatchId);
+	const usesSampleDataset = computed(
+		() => Boolean(isPreview?.value) && !config.value.featureMatchId,
+	);
 
 	return {
 		config,

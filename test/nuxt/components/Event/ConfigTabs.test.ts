@@ -20,7 +20,7 @@ function tabLabels(game: Game, variant: Variant | null) {
 			stubs: { ...nuxtUiStubs, UNavigationMenu: UNavigationMenuStub },
 		},
 	});
-	return wrapper.findAll('a').map(link => link.text());
+	return wrapper.findAll('a').map((link) => link.text());
 }
 
 describe('event config tabs', () => {
@@ -30,32 +30,10 @@ describe('event config tabs', () => {
 		[
 			'mtg',
 			'two-player',
-			[
-				'Event',
-				'Event Structure',
-				'Feature Matches',
-				'Broadcast',
-				'Integrations',
-			],
+			['Event', 'Event Structure', 'Feature Matches', 'Broadcast', 'Integrations'],
 		],
-		[
-			'op',
-			null,
-			[
-				'Event',
-				'Feature Matches',
-				'Broadcast',
-			],
-		],
-		[
-			'mtg',
-			'commander',
-			[
-				'Event',
-				'Feature Matches',
-				'Broadcast',
-			],
-		],
+		['op', null, ['Event', 'Feature Matches', 'Broadcast']],
+		['mtg', 'commander', ['Event', 'Feature Matches', 'Broadcast']],
 	] as const)('on a %s Event of Variant %s, offers %j', (game, variant, tabs) => {
 		expect(tabLabels(game, variant)).toEqual(tabs);
 	});

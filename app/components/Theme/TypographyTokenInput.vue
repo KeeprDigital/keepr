@@ -19,7 +19,10 @@ const emit = defineEmits<{
 	commit: [value: ThemeTypography];
 }>();
 
-type Fields = Pick<GraphicTypography, 'fontWeight' | 'letterSpacing' | 'lineHeight' | 'textTransform'>;
+type Fields = Pick<
+	GraphicTypography,
+	'fontWeight' | 'letterSpacing' | 'lineHeight' | 'textTransform'
+>;
 
 /** The token as the typography editor names its fields. */
 const fields = computed<Fields>(() => ({
@@ -38,18 +41,10 @@ function commit(patch: Partial<ThemeTypography>) {
 
 function edit(patch: Partial<Fields>) {
 	commit({
-		...(patch.fontWeight === undefined
-			? {}
-			: { weight: patch.fontWeight }),
-		...(patch.letterSpacing === undefined
-			? {}
-			: { tracking: patch.letterSpacing }),
-		...(patch.lineHeight === undefined
-			? {}
-			: { lineHeight: patch.lineHeight }),
-		...(patch.textTransform === undefined
-			? {}
-			: { case: patch.textTransform }),
+		...(patch.fontWeight === undefined ? {} : { weight: patch.fontWeight }),
+		...(patch.letterSpacing === undefined ? {} : { tracking: patch.letterSpacing }),
+		...(patch.lineHeight === undefined ? {} : { lineHeight: patch.lineHeight }),
+		...(patch.textTransform === undefined ? {} : { case: patch.textTransform }),
 	});
 }
 
@@ -58,9 +53,12 @@ function edit(patch: Partial<Fields>) {
  * revision is picked, and a typography token must always name a font.
  */
 const fontSource = ref<GraphicFontSource>(props.modelValue.font.kind);
-watch(() => props.modelValue.font.kind, (kind) => {
-	fontSource.value = kind;
-});
+watch(
+	() => props.modelValue.font.kind,
+	(kind) => {
+		fontSource.value = kind;
+	},
+);
 
 function chooseFontSource(source: GraphicFontSource) {
 	fontSource.value = source;
@@ -83,7 +81,11 @@ function chooseFontSource(source: GraphicFontSource) {
 			@update="edit"
 		>
 			<template #font>
-				<div class="flex flex-col gap-2" data-token-part="font" :data-font-kind="modelValue.font.kind">
+				<div
+					class="flex flex-col gap-2"
+					data-token-part="font"
+					:data-font-kind="modelValue.font.kind"
+				>
 					<GraphicsCompositorFontSelectionField
 						:source="fontSource"
 						:font="modelValue.font"
@@ -92,7 +94,7 @@ function chooseFontSource(source: GraphicFontSource) {
 						size="sm"
 						:test-id-prefix="`theme-${label}`"
 						@update:source="chooseFontSource"
-						@application="fontId => commit({ font: { kind: 'application', fontId } })"
+						@application="(fontId) => commit({ font: { kind: 'application', fontId } })"
 						@select="(_asset, reference) => commit({ font: { kind: 'asset', reference } })"
 						@clear="chooseFontSource('application')"
 					/>

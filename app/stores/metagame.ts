@@ -56,7 +56,9 @@ export const useMetagameStore = defineStore('metagame', () => {
 	 * detail options. It is the operator's Event's, so a write shows here while it
 	 * is pending and an announced change from another operator lands here too.
 	 */
-	const conversionTarget = computed<ConversionTarget>(() => eventConversionTarget(eventStore.event));
+	const conversionTarget = computed<ConversionTarget>(() =>
+		eventConversionTarget(eventStore.event),
+	);
 
 	function applyRemoteInvalidated() {
 		summaryData.value = null;
@@ -70,10 +72,8 @@ export const useMetagameStore = defineStore('metagame', () => {
 		const token = beginLoad();
 		try {
 			const data = await metagameClient.loadSummary(eventId, buildScopeQuery());
-			if (generation === summaryGeneration)
-				summaryData.value = data;
-		}
-		catch (e: unknown) {
+			if (generation === summaryGeneration) summaryData.value = data;
+		} catch (e: unknown) {
 			// The sentence the authority wrote about the refusal, where it wrote one.
 			// This store used to discard the failure entirely and report a static line,
 			// so a summary refused for a nameable reason — a scope the installation may
@@ -84,8 +84,7 @@ export const useMetagameStore = defineStore('metagame', () => {
 			if (generation === summaryGeneration)
 				error.value = failureSentence(e) ?? 'Failed to load metagame summary';
 			console.error(e);
-		}
-		finally {
+		} finally {
 			endLoad(token);
 		}
 	}

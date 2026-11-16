@@ -12,21 +12,40 @@ function fromBase64(base64: string) {
 }
 
 /** A valid 1×1 greyscale PNG. */
-export const pixelPng = fromBase64('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+export const pixelPng = fromBase64(
+	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+);
 
 /** A valid 16×16 RGBA PNG, large enough to pass as a silent video's poster. */
-export const sixteenPixelPng = fromBase64('iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAHUlEQVR4nGP8x8Dwn4ECwEKJ5lEDRg0YNWAwGQAAkU4CO63xbeIAAAAASUVORK5CYII=');
+export const sixteenPixelPng = fromBase64(
+	'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAABAAAAAQBPJcTWAAAAHUlEQVR4nGP8x8Dwn4ECwEKJ5lEDRg0YNWAwGQAAkU4CO63xbeIAAAAASUVORK5CYII=',
+);
 
 /** An empty, CRC-valid `tEXt` chunk: inserting it changes a PNG's digest, not its pixels. */
-export const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xC5, 0x85);
+export const emptyTextChunk = Uint8Array.of(
+	0,
+	0,
+	0,
+	0,
+	0x74,
+	0x45,
+	0x58,
+	0x74,
+	0x96,
+	0x42,
+	0xc5,
+	0x85,
+);
 
 /** `pixelPng` with `count` empty `tEXt` chunks before `IEND`: a distinct digest per count. */
 export function pngWithTextChunks(count: number): Uint8Array {
-	return Uint8Array.from(Buffer.concat([
-		pixelPng.slice(0, -12),
-		...Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[],
-		pixelPng.slice(-12),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			pixelPng.slice(0, -12),
+			...(Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[]),
+			pixelPng.slice(-12),
+		]),
+	);
 }
 
 /** The same 1×1 image as `pixelPng` under a different digest. */
@@ -37,9 +56,7 @@ const crcTable = (() => {
 	for (let index = 0; index < table.length; index++) {
 		let value = index;
 		for (let bit = 0; bit < 8; bit++) {
-			value = value & 1
-				? 0xEDB88320 ^ (value >>> 1)
-				: value >>> 1;
+			value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
 		}
 		table[index] = value >>> 0;
 	}
@@ -47,18 +64,17 @@ const crcTable = (() => {
 })();
 
 function crc32(bytes: Uint8Array): number {
-	let crc = 0xFFFFFFFF;
-	for (const byte of bytes)
-		crc = crcTable[(crc ^ byte) & 0xFF]! ^ (crc >>> 8);
-	return (crc ^ 0xFFFFFFFF) >>> 0;
+	let crc = 0xffffffff;
+	for (const byte of bytes) crc = crcTable[(crc ^ byte) & 0xff]! ^ (crc >>> 8);
+	return (crc ^ 0xffffffff) >>> 0;
 }
 
 function uint32(value: number): Uint8Array {
 	return Uint8Array.of(
-		(value >>> 24) & 0xFF,
-		(value >>> 16) & 0xFF,
-		(value >>> 8) & 0xFF,
-		value & 0xFF,
+		(value >>> 24) & 0xff,
+		(value >>> 16) & 0xff,
+		(value >>> 8) & 0xff,
+		value & 0xff,
 	);
 }
 

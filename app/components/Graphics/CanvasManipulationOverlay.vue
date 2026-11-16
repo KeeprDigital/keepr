@@ -75,9 +75,7 @@ const ROTATION_STEP = 15;
 
 const root = ref<HTMLElement | null>(null);
 const { width: drawnWidth } = useElementSize(root);
-const scale = computed(() => props.canvasWidth > 0
-	? drawnWidth.value / props.canvasWidth
-	: 0);
+const scale = computed(() => (props.canvasWidth > 0 ? drawnWidth.value / props.canvasWidth : 0));
 
 const origin = computed(() => props.origin ?? { x: 0, y: 0 });
 
@@ -95,7 +93,7 @@ if (import.meta.client) {
 function canvasBoxStyles(boxes: readonly GraphicRect[] | undefined) {
 	return scale.value === 0
 		? []
-		: (boxes ?? []).map(box => ({
+		: (boxes ?? []).map((box) => ({
 				left: `${box.x * scale.value}px`,
 				top: `${box.y * scale.value}px`,
 				width: `${box.width * scale.value}px`,
@@ -107,12 +105,11 @@ const memberStyles = computed(() => canvasBoxStyles(props.members));
 const lockedStyles = computed(() => canvasBoxStyles(props.locked));
 
 const snapLines = computed<SnapLines>(() => {
-	if (props.snapLines)
-		return props.snapLines;
+	if (props.snapLines) return props.snapLines;
 	const lines = canvasSnapLines({ width: props.canvasWidth, height: props.canvasHeight });
 	return {
-		x: lines.x.map(line => line - origin.value.x),
-		y: lines.y.map(line => line - origin.value.y),
+		x: lines.x.map((line) => line - origin.value.x),
+		y: lines.y.map((line) => line - origin.value.y),
 	};
 });
 
@@ -131,7 +128,11 @@ interface Drag {
 let gestureCount = 0;
 const drag = shallowRef<Drag | null>(null);
 /** What the gesture is drawing, ahead of the round trip through the stored layout. */
-const live = shallowRef<{ rect: GraphicRect; rotation: number; snapped: { x?: number; y?: number } } | null>(null);
+const live = shallowRef<{
+	rect: GraphicRect;
+	rotation: number;
+	snapped: { x?: number; y?: number };
+} | null>(null);
 
 const shownRect = computed(() => live.value?.rect ?? props.rect);
 const shownRotation = computed(() => live.value?.rotation ?? props.rotation ?? 0);
@@ -142,8 +143,7 @@ function toCanvas(rect: GraphicRect): GraphicRect {
 
 const boxStyle = computed(() => {
 	const rect = shownRect.value;
-	if (!rect || scale.value === 0)
-		return null;
+	if (!rect || scale.value === 0) return null;
 	const canvasRect = toCanvas(rect);
 	return {
 		left: `${canvasRect.x * scale.value}px`,
@@ -168,19 +168,22 @@ const ROTATE_HANDLE_OFFSET = 24;
  */
 const rotateHandlePlacement = computed<'above' | 'below' | 'inside'>(() => {
 	const rect = shownRect.value;
-	if (!rect || scale.value === 0)
-		return 'above';
+	if (!rect || scale.value === 0) return 'above';
 	const canvasRect = toCanvas(rect);
 	const offset = ROTATE_HANDLE_OFFSET / scale.value / Math.max(canvasRect.height, 1);
 	const onCanvas = (fraction: number) => {
-		const point = drawnPoint(canvasRect, { x: 0.5, y: fraction }, shownRotation.value, props.anchor);
-		return point.x >= 0 && point.x <= props.canvasWidth && point.y >= 0 && point.y <= props.canvasHeight;
+		const point = drawnPoint(
+			canvasRect,
+			{ x: 0.5, y: fraction },
+			shownRotation.value,
+			props.anchor,
+		);
+		return (
+			point.x >= 0 && point.x <= props.canvasWidth && point.y >= 0 && point.y <= props.canvasHeight
+		);
 	};
-	if (onCanvas(-offset))
-		return 'above';
-	return onCanvas(1 + offset)
-		? 'below'
-		: 'inside';
+	if (onCanvas(-offset)) return 'above';
+	return onCanvas(1 + offset) ? 'below' : 'inside';
 });
 
 const ROTATE_HANDLE_POSITION = {
@@ -225,8 +228,7 @@ function handleCursor(handle: (typeof RESIZE_HANDLES)[number]): string {
 }
 
 function start(event: PointerEvent, handle: ManipulationHandle | 'rotate') {
-	if (!props.rect || event.button !== 0 || isSelectionToggle(event))
-		return;
+	if (!props.rect || event.button !== 0 || isSelectionToggle(event)) return;
 	event.preventDefault();
 	(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 	gestureCount += 1;
@@ -254,21 +256,17 @@ function turnTo(current: Drag, delta: { x: number; y: number }, event: PointerEv
 		current.startPoint,
 		{ x: current.startPoint.x + delta.x, y: current.startPoint.y + delta.y },
 		{
-			step: event.shiftKey
-				? ROTATION_STEP
-				: undefined,
+			step: event.shiftKey ? ROTATION_STEP : undefined,
 		},
 	);
 	const previous = live.value?.rotation ?? current.startRotation;
 	live.value = { rect: current.startRect, rotation, snapped: {} };
-	if (rotation !== previous)
-		emit('rotate', rotation, current.gesture);
+	if (rotation !== previous) emit('rotate', rotation, current.gesture);
 }
 
 function moveTo(event: PointerEvent) {
 	const current = drag.value;
-	if (!current || event.pointerId !== current.pointerId || scale.value === 0)
-		return;
+	if (!current || event.pointerId !== current.pointerId || scale.value === 0) return;
 	const delta = {
 		x: (event.clientX - current.startX) / scale.value,
 		y: (event.clientY - current.startY) / scale.value,
@@ -291,60 +289,57 @@ function moveTo(event: PointerEvent) {
 	const rect = result.rect;
 	const previous = live.value?.rect ?? current.startRect;
 	live.value = { rect, rotation: current.startRotation, snapped: result.snapped };
-	if (rect.x !== previous.x || rect.y !== previous.y || rect.width !== previous.width || rect.height !== previous.height)
+	if (
+		rect.x !== previous.x ||
+		rect.y !== previous.y ||
+		rect.width !== previous.width ||
+		rect.height !== previous.height
+	)
 		emit('change', rect, current.gesture);
 }
 
 function end(event: PointerEvent) {
-	if (drag.value?.pointerId !== event.pointerId)
-		return;
+	if (drag.value?.pointerId !== event.pointerId) return;
 	drag.value = null;
 	live.value = null;
 	emit('gestureEnd');
 }
 
 onBeforeUnmount(() => {
-	if (drag.value)
-		emit('gestureEnd');
+	if (drag.value) emit('gestureEnd');
 });
 
 // A selection the canvas may no longer move ends its drag: handles removed
 // before the first frame get no pointerup.
-watch(() => props.rect, (rect) => {
-	if (rect || !drag.value)
-		return;
-	drag.value = null;
-	live.value = null;
-	emit('gestureEnd');
-});
+watch(
+	() => props.rect,
+	(rect) => {
+		if (rect || !drag.value) return;
+		drag.value = null;
+		live.value = null;
+		emit('gestureEnd');
+	},
+);
 
 /** The guides and gaps a drag draws, in drawn pixels. */
 const guides = computed(() => {
 	const current = live.value;
-	if (!current || scale.value === 0)
-		return null;
+	if (!current || scale.value === 0) return null;
 	const { x, y } = origin.value;
-	const gaps = neighbourGaps(rotatedBounds(current.rect, current.rotation, props.anchor), snapLines.value.neighbours ?? []);
+	const gaps = neighbourGaps(
+		rotatedBounds(current.rect, current.rotation, props.anchor),
+		snapLines.value.neighbours ?? [],
+	);
 	return {
-		x: current.snapped.x === undefined
-			? undefined
-			: (current.snapped.x + x) * scale.value,
-		y: current.snapped.y === undefined
-			? undefined
-			: (current.snapped.y + y) * scale.value,
+		x: current.snapped.x === undefined ? undefined : (current.snapped.x + x) * scale.value,
+		y: current.snapped.y === undefined ? undefined : (current.snapped.y + y) * scale.value,
 		gaps: (['x', 'y'] as const).flatMap((axis) => {
 			const gap = gaps[axis];
-			if (!gap)
-				return [];
-			const [along, across, length] = axis === 'x'
-				? ['left', 'top', 'width'] as const
-				: ['top', 'left', 'height'] as const;
-			const start = axis === 'x'
-				? x
-				: y;
-			const cross = axis === 'x'
-				? y
-				: x;
+			if (!gap) return [];
+			const [along, across, length] =
+				axis === 'x' ? (['left', 'top', 'width'] as const) : (['top', 'left', 'height'] as const);
+			const start = axis === 'x' ? x : y;
+			const cross = axis === 'x' ? y : x;
 			return [
 				{
 					axis,
@@ -362,19 +357,19 @@ const guides = computed(() => {
 
 const readout = computed(() => {
 	const current = live.value;
-	if (!current)
-		return null;
+	if (!current) return null;
 	const { rect } = current;
-	if (drag.value?.handle === 'rotate')
-		return `${current.rotation}°`;
-	return drag.value?.handle === 'move'
-		? `${rect.x}, ${rect.y}`
-		: `${rect.width} × ${rect.height}`;
+	if (drag.value?.handle === 'rotate') return `${current.rotation}°`;
+	return drag.value?.handle === 'move' ? `${rect.x}, ${rect.y}` : `${rect.width} × ${rect.height}`;
 });
 </script>
 
 <template>
-	<div ref="root" class="pointer-events-none absolute inset-0 overflow-hidden" data-testid="canvas-manipulation-overlay">
+	<div
+		ref="root"
+		class="pointer-events-none absolute inset-0 overflow-hidden"
+		data-testid="canvas-manipulation-overlay"
+	>
 		<template v-if="guides">
 			<div
 				v-if="guides.x !== undefined"
@@ -399,7 +394,10 @@ const readout = computed(() => {
 				data-testid="canvas-manipulation-gap"
 				:data-axis="gap.axis"
 			>
-				<span class="whitespace-nowrap rounded bg-pink-500 px-1 font-mono text-[0.6875rem] text-white">{{ gap.size }}</span>
+				<span
+					class="whitespace-nowrap rounded bg-pink-500 px-1 font-mono text-[0.6875rem] text-white"
+					>{{ gap.size }}</span
+				>
 			</div>
 		</template>
 
@@ -468,7 +466,8 @@ const readout = computed(() => {
 				v-if="readout"
 				class="absolute left-0 top-full mt-1 origin-top-left whitespace-nowrap rounded bg-inverted px-1.5 py-0.5 font-mono text-[0.6875rem] text-inverted"
 				:style="isTurned(shownRotation) ? { transform: `rotate(${-shownRotation}deg)` } : undefined"
-			>{{ readout }}</span>
+				>{{ readout }}</span
+			>
 		</div>
 	</div>
 </template>

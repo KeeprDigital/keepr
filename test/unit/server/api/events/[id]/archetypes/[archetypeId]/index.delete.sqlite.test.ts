@@ -18,7 +18,8 @@ const params = vi.fn();
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
 vi.stubGlobal('getValidatedRouterParams', params);
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message), input));
+	Object.assign(new Error(input.message), input),
+);
 
 vi.doMock('~~/server/db', () => ({ db }));
 vi.doMock('~~/server/modules/player-update', () => ({
@@ -34,19 +35,23 @@ vi.doMock('~~/server/utils/ably', () => ({
 	getOriginConnectionId: () => 'origin-1',
 }));
 
-const { default: handler } = await import('~~/server/api/events/[id]/archetypes/[archetypeId]/index.delete');
+const { default: handler } =
+	await import('~~/server/api/events/[id]/archetypes/[archetypeId]/index.delete');
 
 afterAll(async () => await harness.close());
 
 async function stage() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
-	const [archetype] = await db.insert(schema.archetypes)
+	const [archetype] = await db
+		.insert(schema.archetypes)
 		.values({ eventId, name: 'Burn' })
 		.returning({ id: schema.archetypes.id });
-	const [primary, secondary] = await db.insert(schema.players)
+	const [primary, secondary] = await db
+		.insert(schema.players)
 		.values([
 			{ eventId, name: 'Primary' },
 			{ eventId, name: 'Secondary' },
@@ -96,9 +101,14 @@ describe('delete /api/events/[id]/archetypes/[archetypeId]', () => {
 
 		await expect(handler({} as never)).resolves.toEqual({ success: true });
 
-		expect(await db.select().from(schema.archetypes).where(eq(schema.archetypes.id, archetypeId))).toEqual([]);
-		const decks = await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.eventId, eventId));
-		expect(decks.map(deck => [deck.archetypeId, deck.reviewedAt])).toEqual([
+		expect(
+			await db.select().from(schema.archetypes).where(eq(schema.archetypes.id, archetypeId)),
+		).toEqual([]);
+		const decks = await db
+			.select()
+			.from(schema.playerDecks)
+			.where(eq(schema.playerDecks.eventId, eventId));
+		expect(decks.map((deck) => [deck.archetypeId, deck.reviewedAt])).toEqual([
 			[null, null],
 			[null, null],
 		]);
@@ -112,17 +122,23 @@ describe('delete /api/events/[id]/archetypes/[archetypeId]', () => {
 			playerIds: [secondaryId],
 			originConnectionId: 'origin-1',
 		});
-		expect(mockArchetypeDeleted).toHaveBeenCalledWith({ eventId, id: archetypeId, originConnectionId: 'origin-1' });
+		expect(mockArchetypeDeleted).toHaveBeenCalledWith({
+			eventId,
+			id: archetypeId,
+			originConnectionId: 'origin-1',
+		});
 	});
 
-	it('answers 404 for another Event\'s Archetype and changes nothing', async () => {
+	it("answers 404 for another Event's Archetype and changes nothing", async () => {
 		const { archetypeId } = await stage();
 		const { eventId: otherEventId } = await stage();
 		params.mockResolvedValue({ id: otherEventId, archetypeId });
 
 		await expect(handler({} as never)).rejects.toMatchObject({ statusCode: 404 });
 
-		expect(await db.select().from(schema.archetypes).where(eq(schema.archetypes.id, archetypeId))).toHaveLength(1);
+		expect(
+			await db.select().from(schema.archetypes).where(eq(schema.archetypes.id, archetypeId)),
+		).toHaveLength(1);
 		expect(mockArchetypeDeleted).not.toHaveBeenCalled();
 	});
 });

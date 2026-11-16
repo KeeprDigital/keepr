@@ -12,18 +12,30 @@ export function useDeckCardGroups<T extends GroupableCard>(cards: MaybeRefOrGett
 
 	const mainboardCards = computed(() =>
 		resolved.value
-			.filter(card => card.compartment === 'mainboard')
-			.sort((a, b) => getCardTypeBucketOrder(a.cardType) - getCardTypeBucketOrder(b.cardType) || a.name.localeCompare(b.name)),
+			.filter((card) => card.compartment === 'mainboard')
+			.sort(
+				(a, b) =>
+					getCardTypeBucketOrder(a.cardType) - getCardTypeBucketOrder(b.cardType) ||
+					a.name.localeCompare(b.name),
+			),
 	);
 
 	const sideboardCards = computed(() =>
 		resolved.value
-			.filter(card => card.compartment === 'sideboard')
-			.sort((a, b) => getCardTypeBucketOrder(a.cardType) - getCardTypeBucketOrder(b.cardType) || a.name.localeCompare(b.name)),
+			.filter((card) => card.compartment === 'sideboard')
+			.sort(
+				(a, b) =>
+					getCardTypeBucketOrder(a.cardType) - getCardTypeBucketOrder(b.cardType) ||
+					a.name.localeCompare(b.name),
+			),
 	);
 
-	const mainboardTotal = computed(() => mainboardCards.value.reduce((sum, c) => sum + c.quantity, 0));
-	const sideboardTotal = computed(() => sideboardCards.value.reduce((sum, c) => sum + c.quantity, 0));
+	const mainboardTotal = computed(() =>
+		mainboardCards.value.reduce((sum, c) => sum + c.quantity, 0),
+	);
+	const sideboardTotal = computed(() =>
+		sideboardCards.value.reduce((sum, c) => sum + c.quantity, 0),
+	);
 
 	const mainboardByType = computed(() => groupByType(mainboardCards.value));
 	const sideboardByType = computed(() => groupByType(sideboardCards.value));

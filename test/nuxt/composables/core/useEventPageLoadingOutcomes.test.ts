@@ -24,18 +24,23 @@ const readSince = createMockPlayer({ id: 2, eventId: 1, name: 'Read since' }) as
 let pageScope = effectScope();
 function usePlayersPage(afterLoad?: (eventId: number) => Promise<void>) {
 	const playerStore = usePlayerStore();
-	return pageScope.run(() => useEventPageLoading([
-		{
-			consumes: 'players',
-			isLoaded: () => playerStore.isLoaded,
-			isLoading: () => playerStore.loading,
-			load: id => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
-		},
-	], afterLoad))!;
+	return pageScope.run(() =>
+		useEventPageLoading(
+			[
+				{
+					consumes: 'players',
+					isLoaded: () => playerStore.isLoaded,
+					isLoading: () => playerStore.loading,
+					load: (id) => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
+				},
+			],
+			afterLoad,
+		),
+	)!;
 }
 
 function heldPlayers() {
-	return usePlayerStore().players.map(player => player.name);
+	return usePlayerStore().players.map((player) => player.name);
 }
 
 describe('useEventPageLoading, by how its load ends', () => {
@@ -60,9 +65,7 @@ describe('useEventPageLoading, by how its load ends', () => {
 		async function supersedePageLoad(afterLoad?: (eventId: number) => Promise<void>) {
 			const pageRead = deferred<Player[]>();
 			const newerRead = deferred<Player[]>();
-			mockFetch
-				.mockReturnValueOnce(pageRead.promise)
-				.mockReturnValueOnce(newerRead.promise);
+			mockFetch.mockReturnValueOnce(pageRead.promise).mockReturnValueOnce(newerRead.promise);
 			const page = usePlayersPage(afterLoad);
 			await flushPromises();
 			const newerLoad = usePlayerStore().loadPlayersByEventId(1);

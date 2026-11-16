@@ -2,10 +2,12 @@ import { z } from 'zod';
 import { meleeSyncModule } from '~~/server/modules/melee-sync';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
 
-const updateFromMeleeBodySchema = z.object({
-	includeDeckLists: z.boolean().optional(),
-	advanceRound: z.boolean().optional(),
-}).default({});
+const updateFromMeleeBodySchema = z
+	.object({
+		includeDeckLists: z.boolean().optional(),
+		advanceRound: z.boolean().optional(),
+	})
+	.default({});
 
 export default defineEventHandler(async (event) => {
 	const params = await getValidatedRouterParams(event, eventParamsSchema.parse);

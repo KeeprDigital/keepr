@@ -14,9 +14,7 @@ const mockModalOpen = vi.fn();
 const mockOverlayCreate = vi.fn(() => ({ open: mockModalOpen }));
 const mockAssignmentStore = {
 	currentEventId: 1 as number | null,
-	assignmentsByRound: new Map<number, unknown[]>([
-		[3, []],
-	]),
+	assignmentsByRound: new Map<number, unknown[]>([[3, []]]),
 	applySavedAssignment: vi.fn(),
 	currentLifetime: () => ({ stale: false, current: true }),
 };
@@ -31,9 +29,7 @@ describe('useFeatureMatchPromotion', () => {
 		vi.clearAllMocks();
 		mockRepo.promoteMatch.mockReset();
 		mockAssignmentStore.currentEventId = 1;
-		mockAssignmentStore.assignmentsByRound = new Map([
-			[3, []],
-		]);
+		mockAssignmentStore.assignmentsByRound = new Map([[3, []]]);
 		mockModalOpen.mockReset();
 		mockOverlayCreate.mockClear();
 	});
@@ -78,12 +74,14 @@ describe('useFeatureMatchPromotion', () => {
 			},
 		];
 		mockRepo.promoteMatch
-			.mockRejectedValueOnce(transportFailure({
-				status: 409,
-				body: {
-					data: { code: 'feature-match-note-discard-required', assignments: conflictAssignments },
-				},
-			}))
+			.mockRejectedValueOnce(
+				transportFailure({
+					status: 409,
+					body: {
+						data: { code: 'feature-match-note-discard-required', assignments: conflictAssignments },
+					},
+				}),
+			)
 			.mockResolvedValueOnce({
 				promotedSlot: createMockFeatureMatch({ id: 2, matchId: 7 }),
 				clearedSlots: [],
@@ -140,18 +138,22 @@ describe('useFeatureMatchPromotion', () => {
 			},
 		];
 		mockRepo.promoteMatch
-			.mockRejectedValueOnce(transportFailure({
-				status: 409,
-				body: {
-					data: { code: 'feature-match-note-discard-required', assignments: reviewed },
-				},
-			}))
-			.mockRejectedValueOnce(transportFailure({
-				status: 409,
-				body: {
-					data: { code: 'feature-match-note-discard-required', assignments: current },
-				},
-			}))
+			.mockRejectedValueOnce(
+				transportFailure({
+					status: 409,
+					body: {
+						data: { code: 'feature-match-note-discard-required', assignments: reviewed },
+					},
+				}),
+			)
+			.mockRejectedValueOnce(
+				transportFailure({
+					status: 409,
+					body: {
+						data: { code: 'feature-match-note-discard-required', assignments: current },
+					},
+				}),
+			)
 			.mockResolvedValueOnce({
 				promotedSlot: createMockFeatureMatch({ id: 2, matchId: 7 }),
 				clearedSlots: [],
@@ -190,24 +192,26 @@ describe('useFeatureMatchPromotion', () => {
 	});
 
 	it('does not retry a destructive reassignment when the user cancels confirmation', async () => {
-		mockRepo.promoteMatch.mockRejectedValueOnce(transportFailure({
-			status: 409,
-			body: {
-				data: {
-					code: 'feature-match-note-discard-required',
-					assignments: [
-						{
-							assignment: {
-								id: 9,
-								updatedAt: new Date(),
-								note: 'Keep me',
+		mockRepo.promoteMatch.mockRejectedValueOnce(
+			transportFailure({
+				status: 409,
+				body: {
+					data: {
+						code: 'feature-match-note-discard-required',
+						assignments: [
+							{
+								assignment: {
+									id: 9,
+									updatedAt: new Date(),
+									note: 'Keep me',
+								},
+								match: { id: 8, tableNumber: 12 },
 							},
-							match: { id: 8, tableNumber: 12 },
-						},
-					],
+						],
+					},
 				},
-			},
-		}));
+			}),
+		);
 		mockModalOpen.mockReturnValue({
 			result: Promise.resolve(false),
 		});
@@ -258,9 +262,7 @@ describe('useFeatureMatchPromotion', () => {
 	});
 
 	it('does not apply Assignment when another Round is loaded', async () => {
-		mockAssignmentStore.assignmentsByRound = new Map([
-			[4, []],
-		]);
+		mockAssignmentStore.assignmentsByRound = new Map([[4, []]]);
 		mockRepo.promoteMatch.mockResolvedValue({
 			promotedSlot: createMockFeatureMatch({ id: 2, matchId: 7 }),
 			clearedSlots: [],

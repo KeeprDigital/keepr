@@ -7,12 +7,15 @@ import {
 	featureMatchTokenPresentations,
 	isFeatureMatchTokenKey,
 } from '~~/shared/featureMatchTokenCatalogue';
-import { graphicTextTemplateInputKeys, renderGraphicTextTemplate } from '~~/shared/modules/graphics';
+import {
+	graphicTextTemplateInputKeys,
+	renderGraphicTextTemplate,
+} from '~~/shared/modules/graphics';
 
 /** What a template renders, with the placeholder boundaries collapsed away. */
 function rendered(template: string, values: Record<string, string>): string {
 	return renderGraphicTextTemplate(template, featureMatchTokenDeclarations(), values)
-		.map(segment => segment.text)
+		.map((segment) => segment.text)
 		.join('');
 }
 
@@ -20,28 +23,31 @@ describe('featureMatchTokenCatalogue', () => {
 	/** One Seat's token suffixes, in the order an Event of `kind` is offered them. */
 	function seatTokens(kind: EventKind, seat: number): string[] {
 		return featureMatchTokenCatalogue(kind)
-			.map(token => token.key)
-			.filter(key => key.startsWith(`player${seat}`))
-			.map(key => key.slice(`player${seat}`.length));
+			.map((token) => token.key)
+			.filter((key) => key.startsWith(`player${seat}`))
+			.map((key) => key.slice(`player${seat}`.length));
 	}
 
 	// A pair's tokens name two Seats, with a record and a Leader's image and no Commander term (ADR-0087).
-	it.each(['mtg-two-player', 'op'] as const)('offers a %s Event the pair\'s tokens and no third Seat', (kind) => {
-		expect(seatTokens(kind, 1)).toEqual([
-			'Name',
-			'Record',
-			'Deck',
-			'DeckColors',
-			'Pronouns',
-			'Lgs',
-			'LeaderImage',
-		]);
-		expect(seatTokens(kind, 2)).toEqual(seatTokens(kind, 1));
-		expect(seatTokens(kind, 3)).toEqual([]);
-		expect(seatTokens(kind, 4)).toEqual([]);
-	});
+	it.each(['mtg-two-player', 'op'] as const)(
+		"offers a %s Event the pair's tokens and no third Seat",
+		(kind) => {
+			expect(seatTokens(kind, 1)).toEqual([
+				'Name',
+				'Record',
+				'Deck',
+				'DeckColors',
+				'Pronouns',
+				'Lgs',
+				'LeaderImage',
+			]);
+			expect(seatTokens(kind, 2)).toEqual(seatTokens(kind, 1));
+			expect(seatTokens(kind, 3)).toEqual([]);
+			expect(seatTokens(kind, 4)).toEqual([]);
+		},
+	);
 
-	it('offers a Commander Event each of four Seats\' tokens, with its Commanders\' images and no record', () => {
+	it("offers a Commander Event each of four Seats' tokens, with its Commanders' images and no record", () => {
 		expect(seatTokens('mtg-commander', 1)).toEqual([
 			'Name',
 			'Deck',
@@ -56,14 +62,11 @@ describe('featureMatchTokenCatalogue', () => {
 	});
 
 	it('carries the Match, Round, and Event tokens beside the per-Seat ones', () => {
-		expect(featureMatchTokenCatalogue('mtg-commander').map(token => token.key).filter(key => !key.startsWith('player')))
-			.toEqual([
-				'round',
-				'stage',
-				'table',
-				'format',
-				'eventName',
-			]);
+		expect(
+			featureMatchTokenCatalogue('mtg-commander')
+				.map((token) => token.key)
+				.filter((key) => !key.startsWith('player')),
+		).toEqual(['round', 'stage', 'table', 'format', 'eventName']);
 	});
 
 	it('gives every token a distinct key', () => {
@@ -85,9 +88,13 @@ describe('featureMatchTokenCatalogue', () => {
 	it.each([
 		{ kind: 'mtg-two-player' as const, key: 'player2Lgs', label: 'Player 2 Local Game Store' },
 		{ kind: 'mtg-commander' as const, key: 'player2Lgs', label: 'Seat 2 Local Game Store' },
-		{ kind: 'mtg-commander' as const, key: 'player4Commander2Image', label: 'Seat 4 Second Commander Image' },
+		{
+			kind: 'mtg-commander' as const,
+			key: 'player4Commander2Image',
+			label: 'Seat 4 Second Commander Image',
+		},
 	])('labels $key "$label" on a $kind Event', ({ kind, key, label }) => {
-		expect(featureMatchTokenCatalogue(kind).find(token => token.key === key)?.label).toBe(label);
+		expect(featureMatchTokenCatalogue(kind).find((token) => token.key === key)?.label).toBe(label);
 	});
 
 	// Deck Colours hold mana letters on a Magic Event and Leader colours on a One Piece one.
@@ -107,21 +114,25 @@ describe('featureMatchTokenCatalogue', () => {
 		},
 		{
 			kind: 'mtg-commander' as const,
-			presentations: Object.fromEntries([1, 2, 3, 4].flatMap(seat => [
-				[`player${seat}DeckColors`, 'mtg-mana-colors'],
-				[`player${seat}Commander1Image`, 'mtg-card-image'],
-				[`player${seat}Commander2Image`, 'mtg-card-image'],
-			])),
+			presentations: Object.fromEntries(
+				[1, 2, 3, 4].flatMap((seat) => [
+					[`player${seat}DeckColors`, 'mtg-mana-colors'],
+					[`player${seat}Commander1Image`, 'mtg-card-image'],
+					[`player${seat}Commander2Image`, 'mtg-card-image'],
+				]),
+			),
 		},
-	])('paints only the $kind Event\'s visual tokens as more than text', ({ kind, presentations }) => {
+	])("paints only the $kind Event's visual tokens as more than text", ({ kind, presentations }) => {
 		expect(featureMatchTokenPresentations(kind)).toEqual(presentations);
 	});
 
 	it('resolves a token through the shared Graphic Text Template mechanism', () => {
-		expect(rendered('{player1Name} vs {player2Name}', {
-			player1Name: 'Ada',
-			player2Name: 'Grace',
-		})).toBe('Ada vs Grace');
+		expect(
+			rendered('{player1Name} vs {player2Name}', {
+				player1Name: 'Ada',
+				player2Name: 'Grace',
+			}),
+		).toBe('Ada vs Grace');
 	});
 
 	it('renders a token with no resolved value as nothing rather than as its braces', () => {
@@ -143,11 +154,13 @@ describe('featureMatchTokenCatalogue', () => {
 	it('declares every catalogue token as a text Graphic Input the mechanism can resolve', () => {
 		const declarations = featureMatchTokenDeclarations();
 
-		expect(declarations.map(declaration => declaration.key)).toEqual([...FEATURE_MATCH_TOKEN_KEYS]);
-		expect(declarations.every(declaration => declaration.type === 'text')).toBe(true);
+		expect(declarations.map((declaration) => declaration.key)).toEqual([
+			...FEATURE_MATCH_TOKEN_KEYS,
+		]);
+		expect(declarations.every((declaration) => declaration.type === 'text')).toBe(true);
 		// Nothing on a Feature Match Overlay accepts a staged value, so no token is
 		// required and none is staged for an Update Graphic that does not exist.
-		expect(declarations.every(declaration => !declaration.required)).toBe(true);
-		expect(declarations.every(declaration => declaration.updatePolicy === 'live')).toBe(true);
+		expect(declarations.every((declaration) => !declaration.required)).toBe(true);
+		expect(declarations.every((declaration) => declaration.updatePolicy === 'live')).toBe(true);
 	});
 });

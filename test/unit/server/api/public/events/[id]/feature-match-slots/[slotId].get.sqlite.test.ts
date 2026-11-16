@@ -1,4 +1,7 @@
-import type { FeatureMatchSessionCommand, FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
+import type {
+	FeatureMatchSessionCommand,
+	FeatureMatchSourceSnapshot,
+} from '~~/shared/types/featureMatchSession';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
@@ -17,19 +20,29 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 
-interface StubEvent { params: Record<string, string>; headers: Record<string, string> }
+interface StubEvent {
+	params: Record<string, string>;
+	headers: Record<string, string>;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
 vi.stubGlobal('setResponseHeader', (event: StubEvent, name: string, value: string) => {
 	event.headers[name] = value;
 });
-vi.stubGlobal('createError', (input: { statusCode?: number; statusMessage?: string; message?: string }) =>
-	Object.assign(new Error(input.statusMessage ?? input.message), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode?: number; statusMessage?: string; message?: string }) =>
+		Object.assign(new Error(input.statusMessage ?? input.message), input),
+);
 vi.stubGlobal('useRuntimeConfig', () => ({ bandaiKeeprApiKey: '', bandaiKeeprApiUrl: '' }));
 
 mockOpWriteBoundaries(db, () => fakeOpCardBulkLookup([]));
 
-const { default: handler } = await import('~~/server/api/public/events/[id]/feature-match-slots/[slotId].get');
+const { default: handler } =
+	await import('~~/server/api/public/events/[id]/feature-match-slots/[slotId].get');
 const { featureMatchSlotWriteModule } = await import('~~/server/modules/feature-match-slot-write');
 const { featureMatchSessionModule } = await import('~~/server/modules/feature-match-session');
 const { eventService } = await import('~~/server/services/event');
@@ -54,11 +67,13 @@ afterAll(async () => await harness.close());
 
 /** Alice and Bo on a Two-Player Event's Slot, stored as a Slot and Session were before Commander. */
 async function stage(withSession: boolean) {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Regional Championship', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
-	const [slot] = await db.insert(schema.featureMatchSlots)
+	const [slot] = await db
+		.insert(schema.featureMatchSlots)
 		.values({
 			eventId,
 			tableNumber: 4,
@@ -74,7 +89,8 @@ async function stage(withSession: boolean) {
 		state.player1.lifeTotal = 12;
 		state.player1.gameWins = 1;
 		state.clock = { ...state.clock, isRunning: true, lastStartedAt: NOW - 90_000 };
-		const [session] = await db.insert(schema.featureMatchSessions)
+		const [session] = await db
+			.insert(schema.featureMatchSessions)
 			.values({
 				eventId,
 				slotId,
@@ -87,7 +103,8 @@ async function stage(withSession: boolean) {
 				currentState: state,
 			})
 			.returning({ id: schema.featureMatchSessions.id });
-		await db.update(schema.featureMatchSlots)
+		await db
+			.update(schema.featureMatchSlots)
 			.set({ activeSessionId: session!.id })
 			.where(eq(schema.featureMatchSlots.id, slotId));
 	}
@@ -97,7 +114,11 @@ async function stage(withSession: boolean) {
 /** Ana, Ben, Cleo and Dara seated on a Commander Event's Slot by its setup save, which opens its Session. */
 async function stageCommander() {
 	// Created as the app creates one, so it holds a Commander Event's Match Format: 40 life, untimed.
-	const { id: eventId } = await eventService().create({ name: 'Commander Night', game: 'mtg', variant: 'commander' });
+	const { id: eventId } = await eventService().create({
+		name: 'Commander Night',
+		game: 'mtg',
+		variant: 'commander',
+	});
 	const slot = await featureMatchService().create(eventId, {});
 	await featureMatchSlotWriteModule().updateSetup({
 		eventId,
@@ -113,7 +134,11 @@ async function stageCommander() {
 }
 
 /** One operator command sent to the Slot's active Session. */
-async function send(eventId: number, slotId: number, command: Pick<FeatureMatchSessionCommand, 'type' | 'payload'>) {
+async function send(
+	eventId: number,
+	slotId: number,
+	command: Pick<FeatureMatchSessionCommand, 'type' | 'payload'>,
+) {
 	const slot = await featureMatchService().findById(slotId, eventId);
 	const active = slot!.activeSession!;
 	await featureMatchSessionModule().applyCommand(active.id, eventId, {
@@ -181,7 +206,10 @@ describe('the public Feature Match read', () => {
 			['player2Game1Win', '#00000000'],
 			['player2Game2Win', '#00000000'],
 		]);
-		expect(event.headers).toEqual({ 'access-control-allow-origin': '*', 'cache-control': 'no-store' });
+		expect(event.headers).toEqual({
+			'access-control-allow-origin': '*',
+			'cache-control': 'no-store',
+		});
 	});
 
 	it('answers a Commander Slot its four Seats, and a Seat Eliminated since on the next read', async () => {
@@ -201,7 +229,7 @@ describe('the public Feature Match read', () => {
 		expect(opened).toEqual([
 			{
 				player1Name: 'Ana',
-				player1Deck: 'Atraxa, Praetors\' Voice',
+				player1Deck: "Atraxa, Praetors' Voice",
 				player1DeckColors: 'WUBG',
 				player1Pronouns: '',
 				player1Lgs: '',
@@ -215,7 +243,7 @@ describe('the public Feature Match read', () => {
 				player2Commander1Image: scryfallCardImageUrl(TYMNA.scryfallId),
 				player2Commander2Image: '',
 				player3Name: 'Cleo',
-				player3Deck: 'Tymna the Weaver / Kraum, Ludevic\'s Opus',
+				player3Deck: "Tymna the Weaver / Kraum, Ludevic's Opus",
 				player3DeckColors: 'WUBR',
 				player3Pronouns: 'she/her',
 				player3Lgs: 'Card Shop',
@@ -244,9 +272,7 @@ describe('the public Feature Match read', () => {
 				player4Eliminated: '#00000000',
 			},
 		]);
-		expect(later).toEqual([
-			{ ...opened[0], player2Life: '33', player3Eliminated: '#FFFFFFFF' },
-		]);
+		expect(later).toEqual([{ ...opened[0], player2Life: '33', player3Eliminated: '#FFFFFFFF' }]);
 	});
 
 	it.each([
@@ -256,7 +282,10 @@ describe('the public Feature Match read', () => {
 		},
 		{
 			name: 'a Slot of another Event',
-			target: async () => ({ eventId: (await stage(false)).eventId, slotId: (await stage(false)).slotId }),
+			target: async () => ({
+				eventId: (await stage(false)).eventId,
+				slotId: (await stage(false)).slotId,
+			}),
 		},
 	])('answers 404 for $name', async ({ target }) => {
 		const { eventId, slotId } = await target();

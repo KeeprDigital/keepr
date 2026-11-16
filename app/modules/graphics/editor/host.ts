@@ -5,7 +5,12 @@ import type { BroadcastGraphicConfig, GraphicRect } from '~~/shared/types/graphi
 import type { SnapLayer } from '~/modules/graphics/canvasManipulation';
 import type { ClipboardPasteRefusal, CopiedLayers } from '~/modules/graphics/clipboard';
 import { toValue } from 'vue';
-import { findGraphicItem, patchGraphicItem, replaceGraphicItemById, withoutLayerLock } from '~~/shared/modules/graphics';
+import {
+	findGraphicItem,
+	patchGraphicItem,
+	replaceGraphicItemById,
+	withoutLayerLock,
+} from '~~/shared/modules/graphics';
 
 /**
  * The editor half of the Host Contract: what a graphics Screen Mode declares to
@@ -46,11 +51,15 @@ export interface GraphicsEditorCanvasSelection {
 }
 
 /** One selection: the canvas, or one layer. */
-export type GraphicsEditorSelection<L extends GraphicsEditorLayer> = GraphicsEditorCanvasSelection | L;
+export type GraphicsEditorSelection<L extends GraphicsEditorLayer> =
+	| GraphicsEditorCanvasSelection
+	| L;
 
 export const CANVAS_SELECTION: GraphicsEditorCanvasSelection = { type: 'canvas' };
 
-export function isCanvasSelection(selection: GraphicsEditorLayer): selection is GraphicsEditorCanvasSelection {
+export function isCanvasSelection(
+	selection: GraphicsEditorLayer,
+): selection is GraphicsEditorCanvasSelection {
 	return selection.type === 'canvas';
 }
 
@@ -63,7 +72,11 @@ export interface GraphicsEditorLayerConfig extends GraphicRect {
 }
 
 /** A write to what every layer stores. `locked: false` stores the layer as one never locked. */
-export type GraphicsEditorLayerPatch = Partial<GraphicRect> & { label?: string; visible?: boolean; locked?: boolean };
+export type GraphicsEditorLayerPatch = Partial<GraphicRect> & {
+	label?: string;
+	visible?: boolean;
+	locked?: boolean;
+};
 
 /** The writes of a layer kind the host owns, each answering the same document when it changes nothing. */
 export interface GraphicsEditorOwnedLayers<D, L extends GraphicsEditorLayer> {
@@ -84,9 +97,9 @@ export interface GraphicsEditorOwnedLayers<D, L extends GraphicsEditorLayer> {
 	reorder: (document: D, layer: L, index: number) => D;
 }
 
-export type GraphicsEditorPaste<D, L extends GraphicsEditorLayer>
-	= | { ok: true; document: D; pasted: L[] }
-		| { ok: false; refusal: ClipboardPasteRefusal };
+export type GraphicsEditorPaste<D, L extends GraphicsEditorLayer> =
+	| { ok: true; document: D; pasted: L[] }
+	| { ok: false; refusal: ClipboardPasteRefusal };
 
 /** Item tree contents: the layers a host's document holds, and how each is written. */
 export interface GraphicsEditorTree<D, L extends GraphicsEditorLayer> {
@@ -183,13 +196,18 @@ export interface GraphicsEditorHostContract<D, L extends GraphicsEditorLayer> {
  * A composition's Graphic Item layers in the layer list's order: front to
  * back, each Graphic Group's children beneath it.
  */
-export function compositionItemLayers<L>(composition: GraphicComposition, layer: (itemId: string) => L): L[] {
-	return [...composition.items].reverse().flatMap(item => [
-		layer(item.id),
-		...(item.type === 'group'
-			? [...item.children].reverse().map(child => layer(child.id))
-			: []),
-	]);
+export function compositionItemLayers<L>(
+	composition: GraphicComposition,
+	layer: (itemId: string) => L,
+): L[] {
+	return [...composition.items]
+		.reverse()
+		.flatMap((item) => [
+			layer(item.id),
+			...(item.type === 'group'
+				? [...item.children].reverse().map((child) => layer(child.id))
+				: []),
+		]);
 }
 
 /** What every host's session says alike: whether it may write, whether it is held, and its canvas. */
@@ -203,7 +221,12 @@ export interface GraphicsEditorSessionOptions {
 }
 
 /** A host's lease and placement edits forbidden, and its canvas, from its session. */
-export function graphicsEditorSession(options: GraphicsEditorSessionOptions): Pick<GraphicsEditorHostContract<unknown, GraphicsEditorLayer>, 'canvas'> & { forbidden: Required<Pick<GraphicsEditorForbiddenEdits, 'writable' | 'held'>> } {
+export function graphicsEditorSession(options: GraphicsEditorSessionOptions): Pick<
+	GraphicsEditorHostContract<unknown, GraphicsEditorLayer>,
+	'canvas'
+> & {
+	forbidden: Required<Pick<GraphicsEditorForbiddenEdits, 'writable' | 'held'>>;
+} {
 	return {
 		forbidden: {
 			writable: () => toValue(options.writable),
@@ -226,9 +249,7 @@ export function layerItemLocation<D, L extends GraphicsEditorLayer>(
 ): (GraphicItemLocation & { composition: GraphicComposition }) | undefined {
 	const item = tree.item(document, layer);
 	const location = item && findGraphicItem(item.composition, item.itemId);
-	return item && location
-		? { ...location, composition: item.composition }
-		: undefined;
+	return item && location ? { ...location, composition: item.composition } : undefined;
 }
 
 /** The stored layer a reference names, of either kind; nothing once it has left the document. */
@@ -249,13 +270,15 @@ export function layerParentGroup<D, L extends GraphicsEditorLayer>(
 	layer: L,
 ): L | undefined {
 	const location = layerItemLocation(tree, document, layer);
-	return location?.group
-		? tree.itemLayer(location.composition, location.group.id)
-		: undefined;
+	return location?.group ? tree.itemLayer(location.composition, location.group.id) : undefined;
 }
 
 /** Whether two layers are the same layer. */
-export function isSameLayer<D, L extends GraphicsEditorLayer>(tree: GraphicsEditorTree<D, L>, a: L, b: L): boolean {
+export function isSameLayer<D, L extends GraphicsEditorLayer>(
+	tree: GraphicsEditorTree<D, L>,
+	a: L,
+	b: L,
+): boolean {
 	return tree.key(a) === tree.key(b);
 }
 
@@ -267,21 +290,18 @@ export function patchLayer<D, L extends GraphicsEditorLayer>(
 	patch: GraphicsEditorLayerPatch,
 ): D {
 	const item = tree.item(document, layer);
-	if (!item)
-		return tree.owned?.patch(document, layer, patch) ?? document;
+	if (!item) return tree.owned?.patch(document, layer, patch) ?? document;
 	const { locked, ...fields } = patch;
-	let composition = Object.keys(fields).length > 0
-		? patchGraphicItem(item.composition, item.itemId, fields)
-		: item.composition;
-	const stored = locked === undefined
-		? undefined
-		: findGraphicItem(composition, item.itemId)?.item;
+	let composition =
+		Object.keys(fields).length > 0
+			? patchGraphicItem(item.composition, item.itemId, fields)
+			: item.composition;
+	const stored = locked === undefined ? undefined : findGraphicItem(composition, item.itemId)?.item;
 	if (stored) {
-		composition = replaceGraphicItemById(composition, locked
-			? { ...stored, locked: true }
-			: withoutLayerLock(stored));
+		composition = replaceGraphicItemById(
+			composition,
+			locked ? { ...stored, locked: true } : withoutLayerLock(stored),
+		);
 	}
-	return composition === item.composition
-		? document
-		: tree.withComposition(document, composition);
+	return composition === item.composition ? document : tree.withComposition(document, composition);
 }

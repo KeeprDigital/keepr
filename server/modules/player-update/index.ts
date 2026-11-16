@@ -75,9 +75,11 @@ async function eventGame(eventId: number): Promise<Game> {
  * write's: their Deck List reference, and the Archetype their Leader derives
  * (ADR-0074). A Player write leaves them as they are.
  */
-function withoutDeckListOwnedFields<T extends { gameData?: unknown; archetypeId?: unknown }>(game: Game, input: T): T {
-	if (game !== 'op')
-		return input;
+function withoutDeckListOwnedFields<T extends { gameData?: unknown; archetypeId?: unknown }>(
+	game: Game,
+	input: T,
+): T {
+	if (game !== 'op') return input;
 	const { gameData: _gameData, archetypeId: _archetypeId, ...written } = input;
 	return written as T;
 }
@@ -89,8 +91,7 @@ function withoutDeckListOwnedFields<T extends { gameData?: unknown; archetypeId?
  */
 function requireShownPlayer(game: Game, player: PlayerNameFacts) {
 	const reason = unshownPlayerReason(game, player);
-	if (reason)
-		throw createError({ statusCode: 400, message: reason });
+	if (reason) throw createError({ statusCode: 400, message: reason });
 }
 
 export function playerUpdateModule() {
@@ -106,7 +107,10 @@ export function playerUpdateModule() {
 		// Every caller reaches here after its Player write has committed, so the
 		// reverse sync is a follow-on and a lost Session race must not become the
 		// answer to a write that already happened.
-		const updatedMatchIds = await playerFeatureMatchSync.syncMatchesFromPlayersAfterCommit(eventId, playerIds);
+		const updatedMatchIds = await playerFeatureMatchSync.syncMatchesFromPlayersAfterCommit(
+			eventId,
+			playerIds,
+		);
 
 		await publication.featureMatchSlotsUpdated({
 			eventId,
@@ -125,11 +129,13 @@ export function playerUpdateModule() {
 		// One bulk write for every affected Player, all or none, then one message
 		// naming them in the order of the requested Player IDs (ADR-0084). It answers
 		// the Players it wrote; none written, nothing is announced.
-		const updatedPlayers = await playerDeckService().reconcilePrimaryArchetypesForPlayers(eventId, playerIds);
-		if (updatedPlayers.length === 0)
-			return [];
+		const updatedPlayers = await playerDeckService().reconcilePrimaryArchetypesForPlayers(
+			eventId,
+			playerIds,
+		);
+		if (updatedPlayers.length === 0) return [];
 
-		const updatedIds = updatedPlayers.map(player => player.id);
+		const updatedIds = updatedPlayers.map((player) => player.id);
 		await publication.playerDeckProjectionsChanged({
 			eventId,
 			playerIds: updatedIds,
@@ -157,9 +163,7 @@ export function playerUpdateModule() {
 			if (current) {
 				requireShownPlayer(game, {
 					name: written.name ?? current.name,
-					nickname: written.nickname !== undefined
-						? written.nickname
-						: current.nickname,
+					nickname: written.nickname !== undefined ? written.nickname : current.nickname,
 				});
 			}
 		}
@@ -247,8 +251,7 @@ export function playerUpdateModule() {
 			});
 		}
 		// A One Piece Card Game Leader Archetype goes with its last Player, unless customised (ADR-0074).
-		if (archetypeId !== null)
-			await releaseEmptiedLeaderArchetypes(eventId, [archetypeId]);
+		if (archetypeId !== null) await releaseEmptiedLeaderArchetypes(eventId, [archetypeId]);
 
 		return { success: true };
 	}
@@ -260,8 +263,12 @@ export function playerUpdateModule() {
 		archetypeId,
 		originConnectionId,
 	}: ReviewPlayerDeckParams): Promise<ReviewPlayerDeckResult> {
-		if (await eventGame(eventId) === 'op')
-			throw createError({ statusCode: 400, statusMessage: 'A One Piece Card Game Player\'s Archetype follows their Leader, so is not reviewed' });
+		if ((await eventGame(eventId)) === 'op')
+			throw createError({
+				statusCode: 400,
+				statusMessage:
+					"A One Piece Card Game Player's Archetype follows their Leader, so is not reviewed",
+			});
 		const archetype = await archetypeService().findById(archetypeId, eventId);
 		if (!archetype) {
 			throw createError({ statusCode: 404, statusMessage: 'Archetype not found' });
@@ -302,8 +309,12 @@ export function playerUpdateModule() {
 		deckId,
 		originConnectionId,
 	}: Omit<ReviewPlayerDeckParams, 'archetypeId'>): Promise<ReviewPlayerDeckResult> {
-		if (await eventGame(eventId) === 'op')
-			throw createError({ statusCode: 400, statusMessage: 'A One Piece Card Game Player\'s Archetype follows their Leader, so is not reviewed' });
+		if ((await eventGame(eventId)) === 'op')
+			throw createError({
+				statusCode: 400,
+				statusMessage:
+					"A One Piece Card Game Player's Archetype follows their Leader, so is not reviewed",
+			});
 
 		const cleared = await playerDeckService().clearDeckReview(eventId, playerId, deckId);
 		if (!cleared) {

@@ -5,7 +5,10 @@ import type {
 	BroadcastDeckListCardResolver,
 	ResolvedBroadcastDeckListCard,
 } from './index';
-import { normalizeImportedCardName, normalizeImportedSetCode } from '~~/server/utils/cardNameNormalization';
+import {
+	normalizeImportedCardName,
+	normalizeImportedSetCode,
+} from '~~/server/utils/cardNameNormalization';
 import {
 	batchLookupScryfallIds,
 	batchLookupScryfallPrintings,
@@ -25,7 +28,9 @@ export interface BroadcastDeckListScryfallBoundary {
 		requests: ReadonlyArray<{ name: string; setCode: string | null }>,
 	) => Promise<ReadonlyArray<ScryfallCardData | null>>;
 	/** Each exact printing asked for, in order, or `null` for one that does not exist. */
-	lookupPrintings: (requests: readonly ScryfallPrintingRequest[]) => Promise<ReadonlyArray<ScryfallCardData | null>>;
+	lookupPrintings: (
+		requests: readonly ScryfallPrintingRequest[],
+	) => Promise<ReadonlyArray<ScryfallCardData | null>>;
 }
 
 export class BroadcastDeckListCardProviderError extends Error {
@@ -49,16 +54,22 @@ async function lookupScryfallCardsByName(
 		throw new ScryfallRequestError('Scryfall exact batch lookup failed', { retryable: true });
 	}
 
-	const cards = requests.map(request => lookup.results.get(createCardKey(request.name, request.setCode)) ?? null);
+	const cards = requests.map(
+		(request) => lookup.results.get(createCardKey(request.name, request.setCode)) ?? null,
+	);
 	const missed = requests.filter((_, index) => cards[index] === null);
-	if (missed.length === 0)
-		return cards;
+	if (missed.length === 0) return cards;
 
 	// A name printed on a printing in place of its own is matched by search alone (#1201).
 	const printings = await searchScryfallPrintingsByPrintedName(missed);
-	return requests.map((request, index) => cards[index]
-		?? printings.find(card => cardMatchesName(card, request.name) && inSet(card, request.setCode))
-		?? null);
+	return requests.map(
+		(request, index) =>
+			cards[index] ??
+			printings.find(
+				(card) => cardMatchesName(card, request.name) && inSet(card, request.setCode),
+			) ??
+			null,
+	);
 }
 
 const DEFAULT_SCRYFALL_BOUNDARY: BroadcastDeckListScryfallBoundary = {
@@ -67,7 +78,10 @@ const DEFAULT_SCRYFALL_BOUNDARY: BroadcastDeckListScryfallBoundary = {
 };
 
 function normalizeSlashSpelling(name: string): string {
-	return name.trim().replace(/\s*\/{1,2}\s*/g, ' // ').replace(/\s+/g, ' ');
+	return name
+		.trim()
+		.replace(/\s*\/{1,2}\s*/g, ' // ')
+		.replace(/\s+/g, ' ');
 }
 
 function resolutionKey(request: BroadcastDeckListCardResolutionRequest): string {
@@ -85,15 +99,12 @@ function overrideKey(name: string, setCode: string | null): string {
 function cardMatchesName(card: ScryfallCardData, name: string): boolean {
 	const expected = normalizeImportedCardName(normalizeSlashSpelling(name));
 	const canonical = normalizeImportedCardName(card.name);
-	if (expected === canonical)
-		return true;
+	if (expected === canonical) return true;
 
 	// A Universes Within printing is named by the name printed on it, as Moxfield's own copy names it (#1201).
-	return [
-		...card.name.split(' // '),
-		...(card.printedNames ?? []),
-	]
-		.some(faceName => normalizeImportedCardName(faceName) === expected);
+	return [...card.name.split(' // '), ...(card.printedNames ?? [])].some(
+		(faceName) => normalizeImportedCardName(faceName) === expected,
+	);
 }
 
 function inSet(card: ScryfallCardData, setCode: string | null): boolean {
@@ -104,9 +115,11 @@ function isExactPrinting(
 	card: ScryfallCardData,
 	request: BroadcastDeckListCardResolutionRequest,
 ): boolean {
-	return cardMatchesName(card, request.name)
-		&& inSet(card, request.setCode)
-		&& (request.collectorNumber === null || card.collectorNumber === request.collectorNumber);
+	return (
+		cardMatchesName(card, request.name) &&
+		inSet(card, request.setCode) &&
+		(request.collectorNumber === null || card.collectorNumber === request.collectorNumber)
+	);
 }
 
 function canonicalCard(card: ScryfallCardData): ResolvedBroadcastDeckListCard {
@@ -124,10 +137,12 @@ function canonicalCard(card: ScryfallCardData): ResolvedBroadcastDeckListCard {
 	};
 }
 
-export function createBroadcastDeckListScryfallResolver(options: {
-	overrides?: readonly BroadcastDeckListNameOverride[];
-	scryfall?: BroadcastDeckListScryfallBoundary;
-} = {}): BroadcastDeckListCardResolver {
+export function createBroadcastDeckListScryfallResolver(
+	options: {
+		overrides?: readonly BroadcastDeckListNameOverride[];
+		scryfall?: BroadcastDeckListScryfallBoundary;
+	} = {},
+): BroadcastDeckListCardResolver {
 	const scryfall = options.scryfall ?? DEFAULT_SCRYFALL_BOUNDARY;
 	const overrides = new Map<string, string>();
 	for (const override of options.overrides ?? [])
@@ -136,41 +151,37 @@ export function createBroadcastDeckListScryfallResolver(options: {
 	return {
 		async resolve(requests): Promise<readonly BroadcastDeckListCardResolution[]> {
 			const prepared = requests.map((request) => {
-				const setCode = request.setCode
-					? request.setCode.toLowerCase()
-					: null;
-				const canonicalName = overrides.get(overrideKey(request.name, setCode))
-					?? overrides.get(overrideKey(request.name, null))
-					?? request.name;
+				const setCode = request.setCode ? request.setCode.toLowerCase() : null;
+				const canonicalName =
+					overrides.get(overrideKey(request.name, setCode)) ??
+					overrides.get(overrideKey(request.name, null)) ??
+					request.name;
 				return {
 					name: normalizeSlashSpelling(canonicalName),
 					setCode,
 					collectorNumber: request.collectorNumber,
 				} satisfies BroadcastDeckListCardResolutionRequest;
 			});
-			const unique = new Map(prepared.map(request => [
-				resolutionKey(request),
-				request,
-			]));
-			const named = [
-				...unique.values(),
-			].filter(request => request.collectorNumber === null);
-			const collectors = [
-				...unique.values(),
-			].filter(request => request.collectorNumber !== null);
+			const unique = new Map(prepared.map((request) => [resolutionKey(request), request]));
+			const named = [...unique.values()].filter((request) => request.collectorNumber === null);
+			const collectors = [...unique.values()].filter((request) => request.collectorNumber !== null);
 
 			try {
-				const namedCards = await scryfall.lookupByName(named.map(request => ({
-					name: request.name,
-					setCode: request.setCode,
-				})));
+				const namedCards = await scryfall.lookupByName(
+					named.map((request) => ({
+						name: request.name,
+						setCode: request.setCode,
+					})),
+				);
 				const cards = new Map<string, ScryfallCardData | null>();
 				for (const [index, request] of named.entries())
 					cards.set(resolutionKey(request), namedCards[index] ?? null);
-				const printings = await scryfall.lookupPrintings(collectors.map(request => ({
-					setCode: request.setCode!,
-					collectorNumber: request.collectorNumber!,
-				})));
+				const printings = await scryfall.lookupPrintings(
+					collectors.map((request) => ({
+						setCode: request.setCode!,
+						collectorNumber: request.collectorNumber!,
+					})),
+				);
 				for (const [index, request] of collectors.entries())
 					cards.set(resolutionKey(request), printings[index] ?? null);
 
@@ -183,10 +194,8 @@ export function createBroadcastDeckListScryfallResolver(options: {
 							}
 						: { status: 'unresolved' as const };
 				});
-			}
-			catch (error) {
-				if (error instanceof BroadcastDeckListCardProviderError)
-					throw error;
+			} catch (error) {
+				if (error instanceof BroadcastDeckListCardProviderError) throw error;
 				throw new BroadcastDeckListCardProviderError(error);
 			}
 		},

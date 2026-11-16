@@ -12,10 +12,7 @@ import { events } from '~~/server/db/schema';
 import { mapScreenToResponse } from '~~/server/mappers/screen';
 import { broadcastGraphicsLiveSessionModule } from '~~/server/modules/broadcast-graphics-live-session';
 import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
-import {
-	graphicAssetId,
-	graphicAssetRevisionId,
-} from '~~/server/modules/graphics-asset-library';
+import { graphicAssetId, graphicAssetRevisionId } from '~~/server/modules/graphics-asset-library';
 import { admitScreenGraphicsEditWrite } from '~~/server/modules/graphics-authoring-lease/screenEditWorkspace';
 import { parseModeConfigPatchResult } from '~~/server/schemas/api/screen';
 import { cardService } from '~~/server/services/card';
@@ -30,7 +27,10 @@ import {
 import { eventKind, isOfferedToEvent } from '~~/shared/config/games';
 import { isFeatureMatchLayoutHeldBy } from '~~/shared/featureMatchLayoutSeats';
 import { SCREEN_MODES } from '~~/shared/screenModes';
-import { parseScreenThemeOverrideWrite, SCREEN_THEME_OVERRIDE_REFUSALS } from '~~/shared/screenThemeOverrides';
+import {
+	parseScreenThemeOverrideWrite,
+	SCREEN_THEME_OVERRIDE_REFUSALS,
+} from '~~/shared/screenThemeOverrides';
 import { storedThemeTokenGraphicAssetReferences } from '~~/shared/themeAssetReferences';
 import { mergeScreenModeConfig, resolveScreenModeConfig } from '~~/shared/types/screenConfig';
 import {
@@ -120,8 +120,8 @@ interface UpdateThemeOverridesParams {
 	originConnectionId?: string;
 }
 
-const MODE_CONFIG_ENDPOINT_REQUIRED
-	= 'Graphic Asset References must be changed through the Screen Mode configuration endpoint';
+const MODE_CONFIG_ENDPOINT_REQUIRED =
+	'Graphic Asset References must be changed through the Screen Mode configuration endpoint';
 
 /**
  * A generic Screen write indexes nothing, so it may not introduce a reference.
@@ -149,8 +149,7 @@ function rejectChangedGraphicAssetReferencesOnGenericUpdate(
 	currentModeConfigs: ScreenResponse['modeConfigs'],
 	nextModeConfigs: UpdateScreenInput['modeConfigs'],
 ) {
-	if (nextModeConfigs === undefined)
-		return;
+	if (nextModeConfigs === undefined) return;
 	for (const mode of GRAPHIC_ASSET_REFERENCING_SCREEN_MODES) {
 		const currentReferences = screenModeGraphicAssetReferences(mode, currentModeConfigs);
 		const nextReferences = screenModeGraphicAssetReferences(mode, nextModeConfigs);
@@ -166,8 +165,10 @@ function rejectChangedGraphicAssetReferencesOnGenericUpdate(
 
 /** Compared as JSON, so a stack sent back exactly as it was read is no change. */
 function sameJson(left: unknown, right: unknown): boolean {
-	return canonicalJson(JSON.parse(JSON.stringify(left ?? null)))
-		=== canonicalJson(JSON.parse(JSON.stringify(right ?? null)));
+	return (
+		canonicalJson(JSON.parse(JSON.stringify(left ?? null))) ===
+		canonicalJson(JSON.parse(JSON.stringify(right ?? null)))
+	);
 }
 
 /**
@@ -185,9 +186,8 @@ const EDIT_WORKSPACE_FIELDS: Partial<Record<ScreenMode, 'whole' | readonly strin
 
 function editWorkspaceOf(mode: ScreenMode, config: unknown): unknown {
 	const fields = EDIT_WORKSPACE_FIELDS[mode];
-	if (fields === 'whole')
-		return config;
-	return fields?.map(field => (config as Record<string, unknown> | undefined)?.[field]);
+	if (fields === 'whole') return config;
+	return fields?.map((field) => (config as Record<string, unknown> | undefined)?.[field]);
 }
 
 /**
@@ -202,12 +202,14 @@ function genericWriteEditsWorkspace(
 	existing: { modeConfigs: ScreenResponse['modeConfigs'] },
 	data: Omit<UpdateScreenInput, 'stateVersion'>,
 ): boolean {
-	if (data.modeConfigs === undefined)
-		return false;
-	return (Object.keys(EDIT_WORKSPACE_FIELDS) as ScreenMode[]).some(mode => !sameJson(
-		editWorkspaceOf(mode, existing.modeConfigs?.[mode]),
-		editWorkspaceOf(mode, data.modeConfigs?.[mode]),
-	));
+	if (data.modeConfigs === undefined) return false;
+	return (Object.keys(EDIT_WORKSPACE_FIELDS) as ScreenMode[]).some(
+		(mode) =>
+			!sameJson(
+				editWorkspaceOf(mode, existing.modeConfigs?.[mode]),
+				editWorkspaceOf(mode, data.modeConfigs?.[mode]),
+			),
+	);
 }
 
 /**
@@ -216,9 +218,8 @@ function genericWriteEditsWorkspace(
  */
 function modeConfigWriteEditsWorkspace(mode: ScreenMode, config: Record<string, unknown>): boolean {
 	const fields = EDIT_WORKSPACE_FIELDS[mode];
-	if (fields === 'whole')
-		return true;
-	return fields?.some(field => Object.hasOwn(config, field)) ?? false;
+	if (fields === 'whole') return true;
+	return fields?.some((field) => Object.hasOwn(config, field)) ?? false;
 }
 
 /** A Broadcast Graphic as the on-air rule compares it: its Graphic Channel is set beside the stack, on air or off. */
@@ -236,11 +237,14 @@ export function editedOnAirBroadcastGraphic(
 	next: readonly BroadcastGraphicConfig[],
 	onAirIds: readonly string[],
 ): BroadcastGraphicConfig | undefined {
-	const onAir = current.filter(graphic => onAirIds.includes(graphic.id));
-	const after = next.filter(graphic => onAirIds.includes(graphic.id));
-	return onAir.find((graphic, index) => !after[index]
-		|| after[index].id !== graphic.id
-		|| !sameJson(withoutChannel(after[index]), withoutChannel(graphic)));
+	const onAir = current.filter((graphic) => onAirIds.includes(graphic.id));
+	const after = next.filter((graphic) => onAirIds.includes(graphic.id));
+	return onAir.find(
+		(graphic, index) =>
+			!after[index] ||
+			after[index].id !== graphic.id ||
+			!sameJson(withoutChannel(after[index]), withoutChannel(graphic)),
+	);
 }
 
 /** What a Screen write reads of its Event to decide what the Event is offered. */
@@ -271,9 +275,7 @@ function requireScreenModeOffered(event: EventKindFields, mode: ScreenMode): voi
 /** A Feature Match Overlay's layout in a mode configuration, or `undefined` where it carries none. */
 function featureMatchLayoutOf(config: unknown): FeatureMatchLayoutConfig | undefined {
 	const layout = (config as { layout?: unknown } | null | undefined)?.layout;
-	return layout && typeof layout === 'object'
-		? layout as FeatureMatchLayoutConfig
-		: undefined;
+	return layout && typeof layout === 'object' ? (layout as FeatureMatchLayoutConfig) : undefined;
 }
 
 /**
@@ -282,15 +284,19 @@ function featureMatchLayoutOf(config: unknown): FeatureMatchLayoutConfig | undef
  * a layout the write changes, so a Screen already holding one keeps saving.
  * Its Event is read only then.
  */
-async function requireFeatureMatchLayoutHeld(eventId: number, current: unknown, next: unknown): Promise<void> {
+async function requireFeatureMatchLayoutHeld(
+	eventId: number,
+	current: unknown,
+	next: unknown,
+): Promise<void> {
 	const layout = featureMatchLayoutOf(next);
-	if (!layout || sameJson(featureMatchLayoutOf(current), layout))
-		return;
+	if (!layout || sameJson(featureMatchLayoutOf(current), layout)) return;
 	const event = await readEventKindFields(eventId);
 	if (event && !isFeatureMatchLayoutHeldBy(layout, eventKind(event))) {
 		throw createError({
 			statusCode: 422,
-			message: 'This layout names a third or fourth Seat or a Commander, which only a Commander Event holds',
+			message:
+				'This layout names a third or fourth Seat or a Commander, which only a Commander Event holds',
 			data: { code: 'FOUR_SEAT_LAYOUT_COMMANDER_ONLY' },
 		});
 	}
@@ -315,8 +321,7 @@ async function withSeatDeckSourceDefault(
 	const deckSource = modeConfigs?.deck?.deckSource;
 	if (deckSource && !(deckSource.type === 'player' && deckSource.playerId === null))
 		return undefined;
-	if (!event || (event.game !== 'op' && eventKind(event) !== 'mtg-commander'))
-		return undefined;
+	if (!event || (event.game !== 'op' && eventKind(event) !== 'mtg-commander')) return undefined;
 	return {
 		...modeConfigs,
 		deck: {
@@ -339,11 +344,13 @@ export function screenWriteModule() {
 	 * (ADR-0081): it would reach program at once. The editor refuses it first; this
 	 * holds for a stale client, a second tab, and a save that a Take overtook.
 	 */
-	async function refuseOnAirGraphicEdit(existing: DbScreen, nextConfigs: ModeConfigsMap | null | undefined): Promise<void> {
+	async function refuseOnAirGraphicEdit(
+		existing: DbScreen,
+		nextConfigs: ModeConfigsMap | null | undefined,
+	): Promise<void> {
 		const current = resolveScreenModeConfig(existing.modeConfigs, 'broadcast-graphics').graphics;
 		const next = resolveScreenModeConfig(nextConfigs, 'broadcast-graphics').graphics;
-		if (sameJson(current, next))
-			return;
+		if (sameJson(current, next)) return;
 		const onAirIds = await broadcastGraphicsLiveSessionModule().onAirGraphicIds(existing);
 		const edited = editedOnAirBroadcastGraphic(current, next, onAirIds);
 		if (edited) {
@@ -355,14 +362,20 @@ export function screenWriteModule() {
 		}
 	}
 
-	async function createScreen({ eventId, input, originConnectionId, screenOutputAssetCapabilities }: CreateScreenParams): Promise<ScreenResponse> {
+	async function createScreen({
+		eventId,
+		input,
+		originConnectionId,
+		screenOutputAssetCapabilities,
+	}: CreateScreenParams): Promise<ScreenResponse> {
 		// Read only by a write that names a mode: what the Event is offered, and an OP Deck List Screen's default.
-		const event = input.currentMode
-			? await readEventKindFields(eventId)
-			: undefined;
-		if (input.currentMode)
-			requireScreenModeOffered(event, input.currentMode);
-		await requireFeatureMatchLayoutHeld(eventId, undefined, input.modeConfigs?.['feature-match-overlay']);
+		const event = input.currentMode ? await readEventKindFields(eventId) : undefined;
+		if (input.currentMode) requireScreenModeOffered(event, input.currentMode);
+		await requireFeatureMatchLayoutHeld(
+			eventId,
+			undefined,
+			input.modeConfigs?.['feature-match-overlay'],
+		);
 		await validateScreenModeConfigsReferences(eventId, input.modeConfigs);
 		rejectUnindexedGraphicAssetReferencesOnCreate(input.modeConfigs);
 
@@ -377,15 +390,14 @@ export function screenWriteModule() {
 		// Constructed here rather than by the route, so a create refused for its
 		// slug or its Graphic Asset References never reaches for a signing key it
 		// was not going to use.
-		const withDeckSource = input.currentMode === 'deck'
-			? await withSeatDeckSourceDefault(eventId, event, input.modeConfigs)
-			: undefined;
+		const withDeckSource =
+			input.currentMode === 'deck'
+				? await withSeatDeckSourceDefault(eventId, event, input.modeConfigs)
+				: undefined;
 		const preparedCapability = await screenOutputAssetCapabilities().prepare();
 		const newScreen = await screens.create(
 			eventId,
-			withDeckSource
-				? { ...input, modeConfigs: withDeckSource }
-				: input,
+			withDeckSource ? { ...input, modeConfigs: withDeckSource } : input,
 			preparedCapability.persisted,
 		);
 
@@ -396,15 +408,21 @@ export function screenWriteModule() {
 		});
 	}
 
-	async function updateScreen({ eventId, screenId, input, originConnectionId, authoringSessionId }: UpdateScreenParams): Promise<ScreenResponse> {
+	async function updateScreen({
+		eventId,
+		screenId,
+		input,
+		originConnectionId,
+		authoringSessionId,
+	}: UpdateScreenParams): Promise<ScreenResponse> {
 		const { stateVersion, ...data } = input;
 		const existingScreen = await screens.findById(screenId, eventId);
-		if (!existingScreen)
-			throw createError({ statusCode: 404, message: 'Screen not found' });
+		if (!existingScreen) throw createError({ statusCode: 404, message: 'Screen not found' });
 		// Read only by a write that changes the mode: what the Event is offered, and an OP Deck List Screen's default.
-		const event = data.currentMode && data.currentMode !== existingScreen.currentMode
-			? await readEventKindFields(eventId)
-			: undefined;
+		const event =
+			data.currentMode && data.currentMode !== existingScreen.currentMode
+				? await readEventKindFields(eventId)
+				: undefined;
 		if (data.currentMode && data.currentMode !== existingScreen.currentMode)
 			requireScreenModeOffered(event, data.currentMode);
 		await requireFeatureMatchLayoutHeld(
@@ -446,31 +464,32 @@ export function screenWriteModule() {
 		// mode with its epoch still active, which the next activation resurrected with
 		// the previous show's graphics on air (#305). Committed together there is no
 		// instant between them, and the end's own condition covers the refused write.
-		const epochEnd = existingScreen.currentMode === 'broadcast-graphics'
-			&& data.currentMode !== undefined
-			&& data.currentMode !== 'broadcast-graphics'
-			? await broadcastGraphicsLiveSessionModule()
-					.endEpochOnLeavingBroadcastGraphics(screenId, eventId, originConnectionId)
-			: undefined;
+		const epochEnd =
+			existingScreen.currentMode === 'broadcast-graphics' &&
+			data.currentMode !== undefined &&
+			data.currentMode !== 'broadcast-graphics'
+				? await broadcastGraphicsLiveSessionModule().endEpochOnLeavingBroadcastGraphics(
+						screenId,
+						eventId,
+						originConnectionId,
+					)
+				: undefined;
 
 		// Only a Screen entering Deck List mode takes the default, so no
 		// other save moves a Deck List Screen already on air.
-		const withDeckSource = data.currentMode === 'deck' && existingScreen.currentMode !== 'deck'
-			? await withSeatDeckSourceDefault(
-					eventId,
-					event,
-					data.modeConfigs !== undefined
-						? data.modeConfigs
-						: existingScreen.modeConfigs,
-				)
-			: undefined;
+		const withDeckSource =
+			data.currentMode === 'deck' && existingScreen.currentMode !== 'deck'
+				? await withSeatDeckSourceDefault(
+						eventId,
+						event,
+						data.modeConfigs !== undefined ? data.modeConfigs : existingScreen.modeConfigs,
+					)
+				: undefined;
 
 		const updatedScreen = await screens.update(
 			screenId,
 			eventId,
-			withDeckSource
-				? { ...data, modeConfigs: withDeckSource }
-				: data,
+			withDeckSource ? { ...data, modeConfigs: withDeckSource } : data,
 			stateVersion,
 			epochEnd?.statements,
 			leaseFence,
@@ -489,8 +508,10 @@ export function screenWriteModule() {
 		// effect of a component remount.
 		if (epochEnd) {
 			await epochEnd.announceEnded();
-		}
-		else if (data.modeConfigs !== undefined && updatedScreen.currentMode === 'broadcast-graphics') {
+		} else if (
+			data.modeConfigs !== undefined &&
+			updatedScreen.currentMode === 'broadcast-graphics'
+		) {
 			// A generic write may not change the authored Graphic Asset References — that
 			// is refused above — but it may still stop declaring a media Graphic Input
 			// whose default is null, which changes what the Live Session publishes without
@@ -509,7 +530,11 @@ export function screenWriteModule() {
 		});
 	}
 
-	async function deleteScreen({ eventId, screenId, originConnectionId }: DeleteScreenParams): Promise<{ success: boolean }> {
+	async function deleteScreen({
+		eventId,
+		screenId,
+		originConnectionId,
+	}: DeleteScreenParams): Promise<{ success: boolean }> {
 		// End any playout epoch before the delete, and only for a Screen that has
 		// one. Ending is what discards the epoch's Command Receipts, and it has to
 		// happen while the sessions still exist: the Screen's cascade delete removes
@@ -546,7 +571,16 @@ export function screenWriteModule() {
 		return { success: true };
 	}
 
-	async function updateModeConfig({ eventId, screenId, mode, config, stateVersion, originConnectionId, graphicsAssets, authoringSessionId }: UpdateModeConfigParams): Promise<ScreenResponse> {
+	async function updateModeConfig({
+		eventId,
+		screenId,
+		mode,
+		config,
+		stateVersion,
+		originConnectionId,
+		graphicsAssets,
+		authoringSessionId,
+	}: UpdateModeConfigParams): Promise<ScreenResponse> {
 		// The Broadcast Graphics stack and the Feature Match Layout are the Screen's
 		// graphics Edit workspace. Live Control reaches the Screen through its own
 		// live command surface and is never admitted here.
@@ -557,8 +591,7 @@ export function screenWriteModule() {
 		await validateScreenModeConfigReferences(eventId, mode, config);
 
 		const existing = await screens.findById(screenId, eventId);
-		if (!existing)
-			throw createError({ statusCode: 404, message: 'Screen not found' });
+		if (!existing) throw createError({ statusCode: 404, message: 'Screen not found' });
 
 		/*
 		 * Every whole-object rule the mode configuration has to satisfy is checked
@@ -578,23 +611,25 @@ export function screenWriteModule() {
 			await requireFeatureMatchLayoutHeld(eventId, existing.modeConfigs?.[mode], config);
 
 		if (mode === 'broadcast-graphics')
-			await refuseOnAirGraphicEdit(existing, mergeScreenModeConfig(existing.modeConfigs ?? {}, mode, config));
+			await refuseOnAirGraphicEdit(
+				existing,
+				mergeScreenModeConfig(existing.modeConfigs ?? {}, mode, config),
+			);
 
 		if (isGraphicAssetReferencingScreenMode(mode)) {
 			const nextConfigs = mergeScreenModeConfig(existing.modeConfigs ?? {}, mode, config);
 			const currentReferences = new Map(
-				screenModeGraphicAssetReferences(mode, existing.modeConfigs)
-					.map(item => [item.ownerSlot, item.reference] as const),
+				screenModeGraphicAssetReferences(mode, existing.modeConfigs).map(
+					(item) => [item.ownerSlot, item.reference] as const,
+				),
 			);
 			// A newly chosen revision must be one an author could legitimately select
 			// right now. An unchanged one is deliberately not re-checked: a pinned
 			// revision keeps resolving after its asset is retired, so re-checking it
 			// would make every later edit of an unrelated property fail.
-			const changed = screenModeGraphicAssetReferences(mode, nextConfigs)
-				.filter(item => !sameGraphicAssetReference(
-					currentReferences.get(item.ownerSlot),
-					item.reference,
-				));
+			const changed = screenModeGraphicAssetReferences(mode, nextConfigs).filter(
+				(item) => !sameGraphicAssetReference(currentReferences.get(item.ownerSlot), item.reference),
+			);
 			// The library is built only once a reference this write actually changes
 			// has been found — most writes change no reference at all, and a write
 			// that changes no reference asks it nothing — and it is asked
@@ -603,7 +638,7 @@ export function screenWriteModule() {
 			// what put the documented-cap save at ~90 s on deployed remote D1 (#374).
 			if (changed.length > 0) {
 				const statuses = await graphicsAssets().inspectGraphicAssetRevisions({
-					references: changed.map(item => ({
+					references: changed.map((item) => ({
 						assetId: graphicAssetId(item.reference.assetId),
 						revisionId: graphicAssetRevisionId(item.reference.revisionId),
 					})),
@@ -611,9 +646,9 @@ export function screenWriteModule() {
 				for (const [index, item] of changed.entries()) {
 					const status = statuses[index];
 					if (
-						status?.outcome !== 'available'
-						|| status.lifecycleState !== 'active'
-						|| status.kind !== item.kind
+						status?.outcome !== 'available' ||
+						status.lifecycleState !== 'active' ||
+						status.kind !== item.kind
 					) {
 						throw createError({
 							statusCode: 409,
@@ -625,7 +660,14 @@ export function screenWriteModule() {
 			}
 		}
 
-		const updatedScreen = await screens.updateModeConfig(screenId, eventId, mode, config, stateVersion, leaseFence);
+		const updatedScreen = await screens.updateModeConfig(
+			screenId,
+			eventId,
+			mode,
+			config,
+			stateVersion,
+			leaseFence,
+		);
 
 		if (!updatedScreen) {
 			throw createError({
@@ -662,10 +704,16 @@ export function screenWriteModule() {
 	 * stale. An override of another mode's Mode Token is left as stored, and a
 	 * former token named is dropped.
 	 */
-	async function updateThemeOverrides({ eventId, screenId, tokens, stateVersion, originConnectionId, graphicsAssets }: UpdateThemeOverridesParams): Promise<ScreenResponse> {
+	async function updateThemeOverrides({
+		eventId,
+		screenId,
+		tokens,
+		stateVersion,
+		originConnectionId,
+		graphicsAssets,
+	}: UpdateThemeOverridesParams): Promise<ScreenResponse> {
 		const existing = await screens.findById(screenId, eventId);
-		if (!existing)
-			throw createError({ statusCode: 404, message: 'Screen not found' });
+		if (!existing) throw createError({ statusCode: 404, message: 'Screen not found' });
 
 		const next: Record<string, unknown> = { ...existing.themeOverrides };
 		let applied = 0;
@@ -678,32 +726,41 @@ export function screenWriteModule() {
 					data: { code: write.refusal, token },
 				});
 			}
-			if (write.dropped)
-				continue;
+			if (write.dropped) continue;
 			applied += 1;
-			if (write.value === null)
-				delete next[token];
-			else
-				next[token] = write.value;
+			if (write.value === null) delete next[token];
+			else next[token] = write.value;
 		}
 		// Every token named was a former one: accepted, with nothing to store, version or announce.
-		if (applied === 0)
-			return mapScreenToResponse(existing);
+		if (applied === 0) return mapScreenToResponse(existing);
 
 		// A newly named Graphic Asset Revision must be one an author could select
 		// now (ADR-0050); one the override already held is not asked again.
 		const held = new Map(
-			storedThemeTokenGraphicAssetReferences(existing.themeOverrides, SCREEN_THEME_OVERRIDE_SLOT_PREFIX)
-				.map(item => [item.ownerSlot, item.reference] as const),
+			storedThemeTokenGraphicAssetReferences(
+				existing.themeOverrides,
+				SCREEN_THEME_OVERRIDE_SLOT_PREFIX,
+			).map((item) => [item.ownerSlot, item.reference] as const),
 		);
-		const changed = storedThemeTokenGraphicAssetReferences(next, SCREEN_THEME_OVERRIDE_SLOT_PREFIX)
-			.filter(item => !sameGraphicAssetReference(held.get(item.ownerSlot), item.reference));
+		const changed = storedThemeTokenGraphicAssetReferences(
+			next,
+			SCREEN_THEME_OVERRIDE_SLOT_PREFIX,
+		).filter((item) => !sameGraphicAssetReference(held.get(item.ownerSlot), item.reference));
 		if (changed.length > 0)
-			await assertGraphicsTemplateReferencesSelectable(graphicsAssets(), changed, 'Screen Theme Override');
+			await assertGraphicsTemplateReferencesSelectable(
+				graphicsAssets(),
+				changed,
+				'Screen Theme Override',
+			);
 
-		const updatedScreen = await screens.updateThemeOverrides(screenId, eventId, next, existing.themeOverrides, stateVersion ?? existing.stateVersion);
-		if (!updatedScreen)
-			throw createError({ statusCode: 404, message: 'Screen not found' });
+		const updatedScreen = await screens.updateThemeOverrides(
+			screenId,
+			eventId,
+			next,
+			existing.themeOverrides,
+			stateVersion ?? existing.stateVersion,
+		);
+		if (!updatedScreen) throw createError({ statusCode: 404, message: 'Screen not found' });
 
 		return await publication.screenUpdated({
 			eventId,

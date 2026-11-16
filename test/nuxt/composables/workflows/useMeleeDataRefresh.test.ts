@@ -40,7 +40,7 @@ mockNuxtImport('clearPlayerDeckCache', () => mockClearPlayerDeckCache);
 /** Rounds as structure reconciliation leaves them, applied when the rounds reload. */
 function roundsAfterReload(ids: number[]) {
 	mockRoundStore.loadRoundsByEventId.mockImplementation(async () => {
-		mockRoundStore.rounds = ids.map(id => ({ id }));
+		mockRoundStore.rounds = ids.map((id) => ({ id }));
 	});
 }
 
@@ -48,9 +48,7 @@ describe('useMeleeDataRefresh', () => {
 	beforeEach(() => {
 		mockMatchStore.isLoaded = true;
 		mockMatchStore.loadedRoundId = null;
-		mockRoundStore.rounds = [
-			{ id: 8 },
-		];
+		mockRoundStore.rounds = [{ id: 8 }];
 		roundsAfterReload([8]);
 	});
 
@@ -111,16 +109,8 @@ describe('useMeleeDataRefresh', () => {
 
 		await useMeleeDataRefresh().refreshAfterMeleeReset(1);
 
-		expect(mockMatchStore.loadMatchesByRoundId.mock.calls).toEqual(byRound
-			? [
-					[1, 8],
-				]
-			: []);
-		expect(mockMatchStore.loadMatchesByEventId.mock.calls).toEqual(byRound
-			? []
-			: [
-					[1],
-				]);
+		expect(mockMatchStore.loadMatchesByRoundId.mock.calls).toEqual(byRound ? [[1, 8]] : []);
+		expect(mockMatchStore.loadMatchesByEventId.mock.calls).toEqual(byRound ? [] : [[1]]);
 	});
 
 	it('reloads every Melee projection and invalidates derived caches after a destructive reset', async () => {

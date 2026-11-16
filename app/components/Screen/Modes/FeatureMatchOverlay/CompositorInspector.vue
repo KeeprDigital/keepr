@@ -31,14 +31,13 @@ const stack = computed(() => featureMatchLayoutStack(props.layout));
 
 /** This Event's contract: its token catalogue and Seats are a Commander Event's four where it is one (ADR-0087). */
 const eventKind = useEventKind();
-const contract = computed(() => featureMatchOverlayHostContract(eventKind.value ?? 'mtg-two-player'));
+const contract = computed(() =>
+	featureMatchOverlayHostContract(eventKind.value ?? 'mtg-two-player'),
+);
 
 function updateStack(next: BroadcastGraphicConfig[]) {
-	const composition = next.length === 1
-		? next[0]
-		: undefined;
-	if (composition)
-		emit('update:composition', composition);
+	const composition = next.length === 1 ? next[0] : undefined;
+	if (composition) emit('update:composition', composition);
 }
 </script>
 

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { modeConfigPatchSchemaMap, parseModeConfigPatchResult } from '~~/server/schemas/api/screen';
-import { getDisplayDefaultsForMode, resolveScreenModeConfig, toModeConfigPatch } from '~~/shared/types/screenConfig';
+import {
+	getDisplayDefaultsForMode,
+	resolveScreenModeConfig,
+	toModeConfigPatch,
+} from '~~/shared/types/screenConfig';
 
 // A card badge's size is Auto, stored as absent, or a text size in px from 8 to 48.
 // A size stored before Auto existed, the former default included, stays that px.
@@ -43,8 +47,18 @@ describe.each(BADGE_SIZES)('the $mode $field', ({ mode, field }) => {
 		const stored = {
 			[mode]: { [field]: 30 },
 		};
-		const cleared = parseModeConfigPatchResult(stored, mode, modeConfigPatchSchemaMap[mode].parse({ [field]: null }) as Record<string, unknown>);
-		const reset = parseModeConfigPatchResult(stored, mode, modeConfigPatchSchemaMap[mode].parse(toModeConfigPatch(mode, getDisplayDefaultsForMode(mode))) as Record<string, unknown>);
+		const cleared = parseModeConfigPatchResult(
+			stored,
+			mode,
+			modeConfigPatchSchemaMap[mode].parse({ [field]: null }) as Record<string, unknown>,
+		);
+		const reset = parseModeConfigPatchResult(
+			stored,
+			mode,
+			modeConfigPatchSchemaMap[mode].parse(
+				toModeConfigPatch(mode, getDisplayDefaultsForMode(mode)),
+			) as Record<string, unknown>,
+		);
 
 		expect(resolveScreenModeConfig(cleared, mode)[field as never]).toBeUndefined();
 		expect(resolveScreenModeConfig(reset, mode)[field as never]).toBeUndefined();

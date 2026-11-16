@@ -31,8 +31,7 @@ export const localConfigurationModule = defineNuxtModule({
 			localAuthBypassLogLine(context, bypassActive),
 			localConfigurationLogLine(context, bypassActive),
 		]) {
-			if (line !== undefined)
-				logger[line.level](line.message);
+			if (line !== undefined) logger[line.level](line.message);
 		}
 	},
 });

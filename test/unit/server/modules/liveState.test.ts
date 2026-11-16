@@ -14,7 +14,8 @@ vi.stubGlobal('createError', (opts: any) => {
 	return err;
 });
 
-const { commandContentKey, createSequencedLiveState } = await import('~~/server/modules/live-state');
+const { commandContentKey, createSequencedLiveState } =
+	await import('~~/server/modules/live-state');
 
 /**
  * A stand-in aggregate carrying the only two facts the module insists on: an
@@ -57,23 +58,23 @@ function createPort(overrides: Partial<CounterPort> = {}): CounterPort {
 	return {
 		aggregateKind: 'counter',
 		aggregateLabel: 'Counter',
-		aggregateIdOf: ref => ref.id,
-		eventIdOf: ref => ref.eventId,
+		aggregateIdOf: (ref) => ref.id,
+		eventIdOf: (ref) => ref.eventId,
 		load: vi.fn(async () => counter()),
-		sequenceOf: aggregate => aggregate.sequence,
+		sequenceOf: (aggregate) => aggregate.sequence,
 		admit: vi.fn(),
 		// `Add` is relative, so it survives a writer that got in first; `Set` claims
 		// the state it saw.
-		isMergeable: command => command.type === 'Add',
+		isMergeable: (command) => command.type === 'Add',
 		reduce: (aggregate, command) => ({
 			...aggregate,
-			total: command.type === 'Add'
-				? aggregate.total + command.payload.amount
-				: command.payload.amount,
+			total:
+				command.type === 'Add' ? aggregate.total + command.payload.amount : command.payload.amount,
 		}),
-		casGuard: aggregate => sql`from counters where id = ${aggregate.id} and sequence = ${aggregate.sequence}`,
+		casGuard: (aggregate) =>
+			sql`from counters where id = ${aggregate.id} and sequence = ${aggregate.sequence}`,
 		projection: vi.fn(() => PROJECTION),
-		toResult: aggregate => aggregate,
+		toResult: (aggregate) => aggregate,
 		publish: vi.fn(async () => {}),
 		...overrides,
 	};
@@ -91,13 +92,7 @@ function stageSuccessfulCommit(port: CounterPort): void {
 		// under test. What it buys is the named error: read inside a callback, an
 		// empty call list used to surface as a TypeError with no subject in it (#280).
 		const [input] = lastCallTo(vi.mocked(port.projection));
-		return [
-			[],
-			[],
-			[
-				{ ...input.reduction, sequence: input.nextSequence },
-			],
-		];
+		return [[], [], [{ ...input.reduction, sequence: input.nextSequence }]];
 	});
 }
 
@@ -228,7 +223,9 @@ describe('sequenced live state', () => {
 			});
 			const liveState = createSequencedLiveState(port);
 
-			await expect(liveState.execute(REF, add('cmd-1', 5))).rejects.toMatchObject({ statusCode: 404 });
+			await expect(liveState.execute(REF, add('cmd-1', 5))).rejects.toMatchObject({
+				statusCode: 404,
+			});
 		});
 
 		it('resolves a command ID that lands concurrently as a retry rather than an error', async () => {
@@ -265,7 +262,8 @@ describe('sequenced live state', () => {
 
 		it('re-reduces a mergeable command onto the aggregate that won', async () => {
 			const port = createPort({
-				load: vi.fn()
+				load: vi
+					.fn()
 					.mockResolvedValueOnce(counter({ sequence: 3, total: 10 }))
 					.mockResolvedValueOnce(counter({ sequence: 4, total: 100 })),
 			});
@@ -282,14 +280,17 @@ describe('sequenced live state', () => {
 
 		it('retries a mergeable command only once', async () => {
 			const port = createPort({
-				load: vi.fn()
+				load: vi
+					.fn()
 					.mockResolvedValueOnce(counter({ sequence: 3 }))
 					.mockResolvedValueOnce(counter({ sequence: 4 })),
 			});
 			stageLostRace();
 			const liveState = createSequencedLiveState(port);
 
-			await expect(liveState.execute(REF, add('cmd-1', 5))).rejects.toMatchObject({ statusCode: 409 });
+			await expect(liveState.execute(REF, add('cmd-1', 5))).rejects.toMatchObject({
+				statusCode: 409,
+			});
 			expect(mockDb.batch).toHaveBeenCalledTimes(2);
 		});
 
@@ -297,13 +298,16 @@ describe('sequenced live state', () => {
 			stageLostRace();
 			const liveState = createSequencedLiveState(createPort());
 
-			await expect(liveState.execute(REF, add('cmd-1', 5))).rejects.toMatchObject({ statusCode: 409 });
+			await expect(liveState.execute(REF, add('cmd-1', 5))).rejects.toMatchObject({
+				statusCode: 409,
+			});
 			expect(mockDb.batch).toHaveBeenCalledOnce();
 		});
 
 		it('re-runs admission against the newer aggregate before the merge retry', async () => {
 			const port = createPort({
-				load: vi.fn()
+				load: vi
+					.fn()
 					.mockResolvedValueOnce(counter({ sequence: 3, total: 10 }))
 					.mockResolvedValueOnce(counter({ sequence: 4, total: 100 })),
 			});
@@ -321,7 +325,8 @@ describe('sequenced live state', () => {
 
 		it('rejects a merge retry the newer aggregate no longer admits', async () => {
 			const port = createPort({
-				load: vi.fn()
+				load: vi
+					.fn()
 					.mockResolvedValueOnce(counter({ sequence: 3, total: 10 }))
 					.mockResolvedValueOnce(counter({ sequence: 4, total: 100 })),
 				// A state-dependent admission rule the compare-and-swap guard cannot
@@ -351,7 +356,10 @@ describe('sequenced live state', () => {
 			stageSuccessfulCommit(port);
 			const liveState = createSequencedLiveState(port);
 
-			await liveState.execute(REF, set('cmd-1', 1), { publish: true, originConnectionId: 'origin-1' });
+			await liveState.execute(REF, set('cmd-1', 1), {
+				publish: true,
+				originConnectionId: 'origin-1',
+			});
 
 			expect(port.publish).toHaveBeenCalledWith(
 				expect.objectContaining({ sequence: 4 }),
@@ -381,22 +389,15 @@ describe('sequenced live state', () => {
 			// computed from, so a difference measured against it would leave every peer
 			// holding a state the store does not have.
 			const port = createPort({
-				load: vi.fn()
+				load: vi
+					.fn()
 					.mockResolvedValueOnce(counter({ sequence: 3, total: 10 }))
 					.mockResolvedValueOnce(counter({ sequence: 4, total: 100 })),
 			});
-			mockDb.batch
-				.mockResolvedValueOnce([[], [], []])
-				.mockImplementation(async () => {
-					const [input] = lastCallTo(vi.mocked(port.projection));
-					return [
-						[],
-						[],
-						[
-							{ ...input.reduction, sequence: input.nextSequence },
-						],
-					];
-				});
+			mockDb.batch.mockResolvedValueOnce([[], [], []]).mockImplementation(async () => {
+				const [input] = lastCallTo(vi.mocked(port.projection));
+				return [[], [], [{ ...input.reduction, sequence: input.nextSequence }]];
+			});
 			const liveState = createSequencedLiveState(port);
 
 			await liveState.execute(REF, add('cmd-1', 5), { publish: true });
@@ -447,7 +448,10 @@ describe('sequenced live state', () => {
 
 			await liveState.execute(REF, add('cmd-1', 5), { publish: true });
 
-			expect(port.publish).toHaveBeenCalledWith(expect.anything(), { previous: undefined, originConnectionId: undefined });
+			expect(port.publish).toHaveBeenCalledWith(expect.anything(), {
+				previous: undefined,
+				originConnectionId: undefined,
+			});
 		});
 
 		it('stays silent for writes that accompany their own notification', async () => {
@@ -465,28 +469,38 @@ describe('sequenced live state', () => {
 			stageLostRace();
 			const liveState = createSequencedLiveState(port);
 
-			await expect(liveState.execute(REF, set('cmd-1', 1), { publish: true })).rejects.toMatchObject({ statusCode: 409 });
+			await expect(
+				liveState.execute(REF, set('cmd-1', 1), { publish: true }),
+			).rejects.toMatchObject({ statusCode: 409 });
 			expect(port.publish).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('command content keys', () => {
 		it('ignores key order so a re-serialized retry still matches', () => {
-			expect(commandContentKey('Set', { a: 1, b: 2 })).toBe(commandContentKey('Set', { b: 2, a: 1 }));
+			expect(commandContentKey('Set', { a: 1, b: 2 })).toBe(
+				commandContentKey('Set', { b: 2, a: 1 }),
+			);
 		});
 
 		it('orders keys by codepoint so the key never depends on the runtime locale', () => {
 			// A locale-aware comparator sorts these the other way round. The key is
 			// persisted and compared across processes, so the ordering must be fixed.
-			expect(commandContentKey('Set', { a: 1, B: 2 })).toBe('{"payload":{"B":2,"a":1},"type":"Set"}');
+			expect(commandContentKey('Set', { a: 1, B: 2 })).toBe(
+				'{"payload":{"B":2,"a":1},"type":"Set"}',
+			);
 		});
 
 		it('separates commands that differ only by type', () => {
-			expect(commandContentKey('Set', { amount: 1 })).not.toBe(commandContentKey('Add', { amount: 1 }));
+			expect(commandContentKey('Set', { amount: 1 })).not.toBe(
+				commandContentKey('Add', { amount: 1 }),
+			);
 		});
 
 		it('separates commands that differ only by value', () => {
-			expect(commandContentKey('Set', { amount: 1 })).not.toBe(commandContentKey('Set', { amount: 2 }));
+			expect(commandContentKey('Set', { amount: 1 })).not.toBe(
+				commandContentKey('Set', { amount: 2 }),
+			);
 		});
 	});
 });

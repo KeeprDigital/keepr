@@ -6,13 +6,29 @@ interface Options {
 
 export function createFeatureMatchRealtimeHandlers({ accept }: Options) {
 	return {
-		'featureMatch:created': accept('featureMatch:created', data => useFeatureMatchStore().applyRemoteCreated(data)),
-		'featureMatch:updated': accept('featureMatch:updated', data => useFeatureMatchStore().applyRemoteUpdated(data)),
-		'featureMatch:deleted': accept('featureMatch:deleted', data => useFeatureMatchStore().applyRemoteDeleted(data)),
-		'featureMatch:reordered': accept('featureMatch:reordered', data => useFeatureMatchStore().applyRemoteReordered(data)),
-		'featureMatchAssignment:created': accept('featureMatchAssignment:created', data => useFeatureMatchAssignmentStore().applyRemoteCreated(data)),
-		'featureMatchAssignment:updated': accept('featureMatchAssignment:updated', data => useFeatureMatchAssignmentStore().applyRemoteUpdated(data)),
-		'featureMatchAssignment:deleted': accept('featureMatchAssignment:deleted', data => useFeatureMatchAssignmentStore().applyRemoteDeleted(data)),
-		'featureMatchSession:eventApplied': accept('featureMatchSession:eventApplied', data => useFeatureMatchStateStore().applyRemoteSessionEvent(data)),
+		'featureMatch:created': accept('featureMatch:created', (data) =>
+			useFeatureMatchStore().applyRemoteCreated(data),
+		),
+		'featureMatch:updated': accept('featureMatch:updated', (data) =>
+			useFeatureMatchStore().applyRemoteUpdated(data),
+		),
+		'featureMatch:deleted': accept('featureMatch:deleted', (data) =>
+			useFeatureMatchStore().applyRemoteDeleted(data),
+		),
+		'featureMatch:reordered': accept('featureMatch:reordered', (data) =>
+			useFeatureMatchStore().applyRemoteReordered(data),
+		),
+		'featureMatchAssignment:created': accept('featureMatchAssignment:created', (data) =>
+			useFeatureMatchAssignmentStore().applyRemoteCreated(data),
+		),
+		'featureMatchAssignment:updated': accept('featureMatchAssignment:updated', (data) =>
+			useFeatureMatchAssignmentStore().applyRemoteUpdated(data),
+		),
+		'featureMatchAssignment:deleted': accept('featureMatchAssignment:deleted', (data) =>
+			useFeatureMatchAssignmentStore().applyRemoteDeleted(data),
+		),
+		'featureMatchSession:eventApplied': accept('featureMatchSession:eventApplied', (data) =>
+			useFeatureMatchStateStore().applyRemoteSessionEvent(data),
+		),
 	};
 }

@@ -27,7 +27,7 @@ export function usePlayerFeatureMatchData(
 	const side = () => toValue(playerSide);
 
 	const match = computed(() => {
-		return featureMatchStore.featureMatches.find(m => m.id === mid()) ?? null;
+		return featureMatchStore.featureMatches.find((m) => m.id === mid()) ?? null;
 	});
 
 	const matchState = computed(() => {
@@ -35,9 +35,9 @@ export function usePlayerFeatureMatchData(
 	});
 
 	/** The Slot carrying the Session the Live State Follower holds for it, which owns side order (ADR-0058). */
-	const followedSlot = computed(() => match.value
-		? withFollowedFeatureMatchSession(match.value, featureMatchStateStore)
-		: null);
+	const followedSlot = computed(() =>
+		match.value ? withFollowedFeatureMatchSession(match.value, featureMatchStateStore) : null,
+	);
 
 	const activeSession = computed(() => followedSlot.value?.activeSession ?? null);
 
@@ -58,9 +58,7 @@ export function usePlayerFeatureMatchData(
 
 	const linkedPlayer = computed(() => {
 		const playerId = seatedPlayerId.value;
-		return playerId
-			? playerStore.players.find(p => p.id === playerId) ?? null
-			: null;
+		return playerId ? (playerStore.players.find((p) => p.id === playerId) ?? null) : null;
 	});
 
 	const playerPronouns = computed(() => {
@@ -73,8 +71,8 @@ export function usePlayerFeatureMatchData(
 		if (game.value === 'mtg') {
 			const playerId = seatedPlayerId.value;
 			const rosterPlayer = playerId
-				? playerStore.players.find(p => p.id === playerId)
-				: playerStore.players.find(p => p.name.toLowerCase() === playerName.value.toLowerCase());
+				? playerStore.players.find((p) => p.id === playerId)
+				: playerStore.players.find((p) => p.name.toLowerCase() === playerName.value.toLowerCase());
 			if (rosterPlayer) {
 				return getMtgGameData(rosterPlayer.gameData).deckName ?? undefined;
 			}
@@ -90,9 +88,7 @@ export function usePlayerFeatureMatchData(
 	const seatLabel = computed(() => {
 		const orientation = eventStore.displayEvent?.featureMatchOrientation;
 		if (orientation === 'vertical') {
-			return side() === 'player1'
-				? 'Top'
-				: 'Bottom';
+			return side() === 'player1' ? 'Top' : 'Bottom';
 		}
 		return undefined;
 	});
@@ -103,20 +99,16 @@ export function usePlayerFeatureMatchData(
 
 	const playerRecord = computed(() => {
 		const data = playerData.value;
-		const displayMode = activeSession.value?.sourceSnapshot.playerDisplayMode ?? match.value?.playerDisplayMode;
-		if (!data || !displayMode)
-			return undefined;
+		const displayMode =
+			activeSession.value?.sourceSnapshot.playerDisplayMode ?? match.value?.playerDisplayMode;
+		if (!data || !displayMode) return undefined;
 		const event = eventStore.displayEvent;
 
 		if (displayMode === 'position') {
 			const pos = data.position;
-			if (pos === null || pos === undefined)
-				return undefined;
-			const num = typeof pos === 'number'
-				? pos
-				: Number.parseInt(String(pos), 10);
-			if (Number.isNaN(num))
-				return String(pos);
+			if (pos === null || pos === undefined) return undefined;
+			const num = typeof pos === 'number' ? pos : Number.parseInt(String(pos), 10);
+			if (Number.isNaN(num)) return String(pos);
 			if (event?.displayPositionFormat === 'ordinal') {
 				return formatOrdinal(num);
 			}

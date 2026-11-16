@@ -4,7 +4,7 @@ import type { CommanderNumber, FeatureMatchOutcome, FeatureMatchState } from './
 import type { PlayerGameData } from './game';
 
 export const FEATURE_MATCH_SESSION_STATUS_VALUES = ['active', 'closed'] as const;
-export type FeatureMatchSessionStatus = typeof FEATURE_MATCH_SESSION_STATUS_VALUES[number];
+export type FeatureMatchSessionStatus = (typeof FEATURE_MATCH_SESSION_STATUS_VALUES)[number];
 
 export const FEATURE_MATCH_SESSION_EVENT_TYPE_VALUES = [
 	'SessionStarted',
@@ -38,7 +38,7 @@ export const FEATURE_MATCH_SESSION_EVENT_TYPE_VALUES = [
 	'Batch',
 ] as const;
 
-export type FeatureMatchSessionEventType = typeof FEATURE_MATCH_SESSION_EVENT_TYPE_VALUES[number];
+export type FeatureMatchSessionEventType = (typeof FEATURE_MATCH_SESSION_EVENT_TYPE_VALUES)[number];
 export type FeatureMatchCommandType = Exclude<FeatureMatchSessionEventType, 'SessionStarted'>;
 
 /**
@@ -69,9 +69,12 @@ export const MERGEABLE_FEATURE_MATCH_COMMAND_TYPES = [
 	'SwapSeats',
 ] as const satisfies readonly FeatureMatchCommandType[];
 
-export type MergeableFeatureMatchCommandType = typeof MERGEABLE_FEATURE_MATCH_COMMAND_TYPES[number];
+export type MergeableFeatureMatchCommandType =
+	(typeof MERGEABLE_FEATURE_MATCH_COMMAND_TYPES)[number];
 
-export function isMergeableFeatureMatchCommand(type: FeatureMatchCommandType): type is MergeableFeatureMatchCommandType {
+export function isMergeableFeatureMatchCommand(
+	type: FeatureMatchCommandType,
+): type is MergeableFeatureMatchCommandType {
 	return (MERGEABLE_FEATURE_MATCH_COMMAND_TYPES as readonly string[]).includes(type);
 }
 
@@ -173,34 +176,49 @@ export interface FeatureMatchCommandBase<TType extends FeatureMatchCommandType, 
 	baseSequence?: number;
 }
 
-type FeatureMatchPrimitiveSessionCommand
-	= | FeatureMatchCommandBase<'SnapshotCorrected', { sourceSnapshot: FeatureMatchSourceSnapshot }>
-		| FeatureMatchCommandBase<'AdjustLife', { player: Seat; delta: number }>
-		| FeatureMatchCommandBase<'SetLife', { player: Seat; lifeTotal: number }>
-		| FeatureMatchCommandBase<'SetCounters', { player: Seat; counters: { type: string; value: number }[] }>
-		| FeatureMatchCommandBase<'SetCardsKept', { player: Seat; cardsKept: number }>
-		| FeatureMatchCommandBase<'SetSideboardRevealed', { player: PlayerSide; revealed: boolean }>
-		| FeatureMatchCommandBase<'AdjustClock', { deltaMs: number }>
-		| FeatureMatchCommandBase<'SetClock', { targetMs: number }>
-		| FeatureMatchCommandBase<'StartClock', Record<string, never>>
-		| FeatureMatchCommandBase<'PauseClock', Record<string, never>>
-		| FeatureMatchCommandBase<'ResetClock', { durationMs?: number }>
-		| FeatureMatchCommandBase<'RestartClock', Record<string, never>>
-		| FeatureMatchCommandBase<'SelectFirstPlayer', { player: Seat }>
-		| FeatureMatchCommandBase<'SetFirstPlayer', { player: Seat }>
-		| FeatureMatchCommandBase<'SetActivePlayer', { player: Seat | null }>
-		| FeatureMatchCommandBase<'SetTurnNumber', { turnNumber: number }>
-		| FeatureMatchCommandBase<'RecordGameWin', { player: PlayerSide; resetLife?: boolean; resetCounters?: boolean; startingLife?: number }>
-		| FeatureMatchCommandBase<'UndoGameWin', { player: PlayerSide; resetLife?: boolean; resetCounters?: boolean; startingLife?: number }>
-		| FeatureMatchCommandBase<'ResetState', { type: 'game' | 'match'; startingLife?: number }>
-		| FeatureMatchCommandBase<'StartOvertime', { totalTurns: number }>
-		| FeatureMatchCommandBase<'StepTurn', { delta: number }>
-		| FeatureMatchCommandBase<'StepOvertime', { delta: number }>
-		| FeatureMatchCommandBase<'SwapPlayers', Record<string, never>>
-		| FeatureMatchCommandBase<'AdjustCommanderDamage', { player: Seat; from: Seat; commander: CommanderNumber; delta: number }>
-		| FeatureMatchCommandBase<'SetEliminated', { player: Seat; eliminated: boolean }>
-		| FeatureMatchCommandBase<'SetOutcome', { outcome: FeatureMatchOutcome | null }>
-		| FeatureMatchCommandBase<'SwapSeats', { seats: [Seat, Seat]; sourceSnapshot: FeatureMatchSourceSnapshot }>;
+type FeatureMatchPrimitiveSessionCommand =
+	| FeatureMatchCommandBase<'SnapshotCorrected', { sourceSnapshot: FeatureMatchSourceSnapshot }>
+	| FeatureMatchCommandBase<'AdjustLife', { player: Seat; delta: number }>
+	| FeatureMatchCommandBase<'SetLife', { player: Seat; lifeTotal: number }>
+	| FeatureMatchCommandBase<
+			'SetCounters',
+			{ player: Seat; counters: { type: string; value: number }[] }
+	  >
+	| FeatureMatchCommandBase<'SetCardsKept', { player: Seat; cardsKept: number }>
+	| FeatureMatchCommandBase<'SetSideboardRevealed', { player: PlayerSide; revealed: boolean }>
+	| FeatureMatchCommandBase<'AdjustClock', { deltaMs: number }>
+	| FeatureMatchCommandBase<'SetClock', { targetMs: number }>
+	| FeatureMatchCommandBase<'StartClock', Record<string, never>>
+	| FeatureMatchCommandBase<'PauseClock', Record<string, never>>
+	| FeatureMatchCommandBase<'ResetClock', { durationMs?: number }>
+	| FeatureMatchCommandBase<'RestartClock', Record<string, never>>
+	| FeatureMatchCommandBase<'SelectFirstPlayer', { player: Seat }>
+	| FeatureMatchCommandBase<'SetFirstPlayer', { player: Seat }>
+	| FeatureMatchCommandBase<'SetActivePlayer', { player: Seat | null }>
+	| FeatureMatchCommandBase<'SetTurnNumber', { turnNumber: number }>
+	| FeatureMatchCommandBase<
+			'RecordGameWin',
+			{ player: PlayerSide; resetLife?: boolean; resetCounters?: boolean; startingLife?: number }
+	  >
+	| FeatureMatchCommandBase<
+			'UndoGameWin',
+			{ player: PlayerSide; resetLife?: boolean; resetCounters?: boolean; startingLife?: number }
+	  >
+	| FeatureMatchCommandBase<'ResetState', { type: 'game' | 'match'; startingLife?: number }>
+	| FeatureMatchCommandBase<'StartOvertime', { totalTurns: number }>
+	| FeatureMatchCommandBase<'StepTurn', { delta: number }>
+	| FeatureMatchCommandBase<'StepOvertime', { delta: number }>
+	| FeatureMatchCommandBase<'SwapPlayers', Record<string, never>>
+	| FeatureMatchCommandBase<
+			'AdjustCommanderDamage',
+			{ player: Seat; from: Seat; commander: CommanderNumber; delta: number }
+	  >
+	| FeatureMatchCommandBase<'SetEliminated', { player: Seat; eliminated: boolean }>
+	| FeatureMatchCommandBase<'SetOutcome', { outcome: FeatureMatchOutcome | null }>
+	| FeatureMatchCommandBase<
+			'SwapSeats',
+			{ seats: [Seat, Seat]; sourceSnapshot: FeatureMatchSourceSnapshot }
+	  >;
 
 /**
  * The command types a `Batch` may carry. Absolute setters only: a batch is one
@@ -223,7 +241,8 @@ export const FEATURE_MATCH_BATCHABLE_COMMAND_TYPES = [
 	'StartOvertime',
 ] as const satisfies readonly FeatureMatchCommandType[];
 
-export type FeatureMatchBatchableCommandType = typeof FEATURE_MATCH_BATCHABLE_COMMAND_TYPES[number];
+export type FeatureMatchBatchableCommandType =
+	(typeof FEATURE_MATCH_BATCHABLE_COMMAND_TYPES)[number];
 
 export type FeatureMatchBatchSubCommand = {
 	[K in FeatureMatchBatchableCommandType]: {
@@ -237,9 +256,9 @@ export type FeatureMatchBatchSubCommand = {
  * one sequence increment, one receipt, one publication — so a multi-field
  * operator save is a single round trip that either lands whole or not at all.
  */
-export type FeatureMatchSessionCommand
-	= | FeatureMatchPrimitiveSessionCommand
-		| FeatureMatchCommandBase<'Batch', { commands: FeatureMatchBatchSubCommand[] }>;
+export type FeatureMatchSessionCommand =
+	| FeatureMatchPrimitiveSessionCommand
+	| FeatureMatchCommandBase<'Batch', { commands: FeatureMatchBatchSubCommand[] }>;
 
 export interface FeatureMatchSessionEventAppliedPayload {
 	slotId: number;

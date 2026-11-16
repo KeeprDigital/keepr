@@ -38,8 +38,7 @@ async function useIntegrationD1<T>(
 
 	try {
 		return await callback(proxy.env.DB);
-	}
-	finally {
+	} finally {
 		await proxy.dispose();
 	}
 }
@@ -69,19 +68,16 @@ if (process.env.VITEST_WORKER_ID !== undefined || process.env.VITEST_POOL_ID !==
 }
 
 async function withFileDatabase<T>(callback: (database: D1Database) => Promise<T>): Promise<T> {
-	if (!closedAfterFile)
-		return await useIntegrationD1(callback);
+	if (!closedAfterFile) return await useIntegrationD1(callback);
 
 	fileProxy ??= openIntegrationD1();
 	const opening = fileProxy;
 	let proxy: Awaited<typeof opening>;
 	try {
 		proxy = await opening;
-	}
-	catch (error) {
+	} catch (error) {
 		// A proxy that failed to start is not kept: the next statement opens another.
-		if (fileProxy === opening)
-			fileProxy = undefined;
+		if (fileProxy === opening) fileProxy = undefined;
 		throw error;
 	}
 	return await callback(proxy.env.DB);
@@ -89,7 +85,7 @@ async function withFileDatabase<T>(callback: (database: D1Database) => Promise<T
 
 async function getMigrationFiles() {
 	return (await readdir(migrationDirectory))
-		.filter(name => /^\d{4}_.+\.sql$/.test(name))
+		.filter((name) => /^\d{4}_.+\.sql$/.test(name))
 		.toSorted();
 }
 
@@ -97,63 +93,72 @@ async function getMigrationFiles() {
  * Apply every checked-in migration before the Nuxt test server can open D1, then
  * start its Event ids at `firstEventId` (see `integrationEventIdBlocks`).
  */
-export async function prepareIntegrationD1(persistDir?: string, { firstEventId }: { firstEventId?: number } = {}) {
+export async function prepareIntegrationD1(
+	persistDir?: string,
+	{ firstEventId }: { firstEventId?: number } = {},
+) {
 	const expectedMigrations = await getMigrationFiles();
-	if (expectedMigrations.length === 0)
-		throw new Error('Integration D1 migration chain is empty');
+	if (expectedMigrations.length === 0) throw new Error('Integration D1 migration chain is empty');
 
-	await useIntegrationD1(async (database) => {
-		await database.prepare(createMigrationsTableSql).run();
-		const existing = await database
-			.prepare('SELECT name FROM _hub_migrations ORDER BY id')
-			.all<{ name: string }>();
-		const appliedMigrations = new Set(existing.results.map(row => row.name));
+	await useIntegrationD1(
+		async (database) => {
+			await database.prepare(createMigrationsTableSql).run();
+			const existing = await database
+				.prepare('SELECT name FROM _hub_migrations ORDER BY id')
+				.all<{ name: string }>();
+			const appliedMigrations = new Set(existing.results.map((row) => row.name));
 
-		for (const filename of expectedMigrations) {
-			const migrationName = filename.replace(/\.sql$/, '');
-			if (appliedMigrations.has(migrationName))
-				continue;
+			for (const filename of expectedMigrations) {
+				const migrationName = filename.replace(/\.sql$/, '');
+				if (appliedMigrations.has(migrationName)) continue;
 
-			const sql = await readFile(resolve(migrationDirectory, filename), 'utf8');
-			const statements = unstable_splitSqlQuery(sql)
-				.filter(statement => statement.trim().length > 0)
-				.map(statement => database.prepare(statement));
-			statements.push(
-				database.prepare('INSERT INTO _hub_migrations (name) VALUES (?)').bind(migrationName),
-			);
-			await database.batch(statements);
-		}
+				const sql = await readFile(resolve(migrationDirectory, filename), 'utf8');
+				const statements = unstable_splitSqlQuery(sql)
+					.filter((statement) => statement.trim().length > 0)
+					.map((statement) => database.prepare(statement));
+				statements.push(
+					database.prepare('INSERT INTO _hub_migrations (name) VALUES (?)').bind(migrationName),
+				);
+				await database.batch(statements);
+			}
 
-		const final = await database
-			.prepare('SELECT name FROM _hub_migrations ORDER BY id')
-			.all<{ name: string }>();
-		const finalAppliedMigrations = new Set(final.results.map(row => row.name));
-		const missingMigrations = expectedMigrations
-			.map(filename => filename.replace(/\.sql$/, ''))
-			.filter(name => !finalAppliedMigrations.has(name));
+			const final = await database
+				.prepare('SELECT name FROM _hub_migrations ORDER BY id')
+				.all<{ name: string }>();
+			const finalAppliedMigrations = new Set(final.results.map((row) => row.name));
+			const missingMigrations = expectedMigrations
+				.map((filename) => filename.replace(/\.sql$/, ''))
+				.filter((name) => !finalAppliedMigrations.has(name));
 
-		if (missingMigrations.length > 0) {
-			throw new Error(`Integration D1 migration chain is incomplete; missing: ${missingMigrations.join(', ')}`);
-		}
+			if (missingMigrations.length > 0) {
+				throw new Error(
+					`Integration D1 migration chain is incomplete; missing: ${missingMigrations.join(', ')}`,
+				);
+			}
 
-		if (firstEventId !== undefined) {
-			await database.batch([
-				database.prepare('DELETE FROM sqlite_sequence WHERE name = \'events\''),
-				database.prepare('INSERT INTO sqlite_sequence (name, seq) VALUES (\'events\', MAX(?, (SELECT COALESCE(MAX(id), 0) FROM events)))')
-					.bind(firstEventId - 1),
-			]);
-		}
-	}, persistDir === undefined
-		? undefined
-		: resolveIntegrationWranglerPersistDir(process.cwd(), persistDir));
+			if (firstEventId !== undefined) {
+				await database.batch([
+					database.prepare("DELETE FROM sqlite_sequence WHERE name = 'events'"),
+					database
+						.prepare(
+							"INSERT INTO sqlite_sequence (name, seq) VALUES ('events', MAX(?, (SELECT COALESCE(MAX(id), 0) FROM events)))",
+						)
+						.bind(firstEventId - 1),
+				]);
+			}
+		},
+		persistDir === undefined
+			? undefined
+			: resolveIntegrationWranglerPersistDir(process.cwd(), persistDir),
+	);
 }
 
 /** Execute controlled fixture SQL against the isolated integration database. */
 export async function executeIntegrationD1(command: string) {
 	await withFileDatabase(async (database) => {
 		const statements = unstable_splitSqlQuery(command)
-			.filter(statement => statement.trim().length > 0)
-			.map(statement => database.prepare(statement));
+			.filter((statement) => statement.trim().length > 0)
+			.map((statement) => database.prepare(statement));
 		await database.batch(statements);
 	});
 }

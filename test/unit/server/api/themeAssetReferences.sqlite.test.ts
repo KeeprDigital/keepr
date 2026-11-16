@@ -40,13 +40,22 @@ vi.doMock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	graphicsAssetLibraryForEvent: () => ({ inspectGraphicAssetRevisions }),
 }));
 
-interface StubEvent { params: Record<string, string>; body?: unknown }
+interface StubEvent {
+	params: Record<string, string>;
+	body?: unknown;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.body));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) =>
+	parse(event.body),
+);
 vi.stubGlobal('setResponseStatus', () => {});
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; data?: unknown }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 type Handler = (event: H3Event) => Promise<any>;
 const handler = (module: { default: unknown }) => module.default as Handler;
@@ -54,16 +63,19 @@ const createTheme = handler(await import('~~/server/api/themes/index.post'));
 const deleteTheme = handler(await import('~~/server/api/themes/[themeId]/index.delete'));
 const setToken = handler(await import('~~/server/api/themes/[themeId]/tokens/[token].put'));
 const clearToken = handler(await import('~~/server/api/themes/[themeId]/tokens/[token].delete'));
-const patchOverrides = handler(await import('~~/server/api/events/[id]/screens/[screenId]/theme-overrides.patch'));
+const patchOverrides = handler(
+	await import('~~/server/api/events/[id]/screens/[screenId]/theme-overrides.patch'),
+);
 
 function call(handler: Handler, params: Record<string, string | number>, body?: unknown) {
-	return handler(stubH3Event({
-		params: Object.fromEntries(Object.entries(params).map(([key, value]) => [
-			key,
-			String(value),
-		])),
-		body,
-	}));
+	return handler(
+		stubH3Event({
+			params: Object.fromEntries(
+				Object.entries(params).map(([key, value]) => [key, String(value)]),
+			),
+			body,
+		}),
+	);
 }
 
 async function refusal(promise: Promise<unknown>) {
@@ -71,7 +83,10 @@ async function refusal(promise: Promise<unknown>) {
 		() => {
 			throw new Error('The write was not refused');
 		},
-		(error: { statusCode?: number; message?: string }) => ({ statusCode: error.statusCode, message: error.message }),
+		(error: { statusCode?: number; message?: string }) => ({
+			statusCode: error.statusCode,
+			message: error.message,
+		}),
 	);
 }
 
@@ -82,10 +97,15 @@ const context = createTestGraphicsLibrary({
 });
 const authorizer = createD1ScreenOutputAssetAuthorizer(harness.database);
 
-interface Revision { assetId: GraphicAssetId; revisionId: GraphicAssetRevisionId }
+interface Revision {
+	assetId: GraphicAssetId;
+	revisionId: GraphicAssetRevisionId;
+}
 let images = 0;
 async function ingest(): Promise<Revision> {
-	return publishedRevision(await ingestImage(context, { idempotencyKey: `image-${++images}`, initiatedBy: 'author' }));
+	return publishedRevision(
+		await ingestImage(context, { idempotencyKey: `image-${++images}`, initiatedBy: 'author' }),
+	);
 }
 
 let face: Revision;
@@ -125,14 +145,17 @@ let screenId: number;
 let digest: number;
 
 async function createScreen(name: string, mode = 'standings') {
-	const [screen] = await db.insert(schema.screens).values({
-		eventId,
-		name,
-		slug: name,
-		currentMode: mode as never,
-		assetCapabilitySeed: `${name}-${++digest}-seed`,
-		assetCapabilityDigest: `${name}-${digest}-digest`,
-	}).returning();
+	const [screen] = await db
+		.insert(schema.screens)
+		.values({
+			eventId,
+			name,
+			slug: name,
+			currentMode: mode as never,
+			assetCapabilitySeed: `${name}-${++digest}-seed`,
+			assetCapabilityDigest: `${name}-${digest}-digest`,
+		})
+		.returning();
 	return screen!;
 }
 
@@ -144,7 +167,8 @@ beforeEach(async () => {
 	unrelated = await ingest();
 	digest = (digest ?? 0) + 1;
 	themeId = (await call(createTheme, {}, { name: 'Brand' })).id;
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({
 			name: 'Finals',
 			game: 'mtg',
@@ -158,7 +182,8 @@ beforeEach(async () => {
 
 /** A Theme storing the Feature Match Overlay's Frame media, as one written before a Theme held Foundation Tokens only did. */
 async function storeThemeFrameMedia(revision: Revision) {
-	await db.update(schema.themes)
+	await db
+		.update(schema.themes)
 		.set({
 			tokens: {
 				'feature-match-overlay.frame-media': { kind: 'image', ...revision },
@@ -178,22 +203,21 @@ async function storeThemeFrameMedia(revision: Revision) {
 
 /** Overrides on the main Screen, showing `mode`. */
 async function overrideOn(mode: string, tokens: Record<string, unknown>) {
-	await db.update(schema.screens).set({ currentMode: mode as never }).where(eq(schema.screens.id, screenId));
+	await db
+		.update(schema.screens)
+		.set({ currentMode: mode as never })
+		.where(eq(schema.screens.id, screenId));
 	await call(patchOverrides, { id: eventId, screenId }, { tokens });
 }
 
-const retire = (revision: Revision) => context.library.retireGraphicAsset({ assetId: revision.assetId, actor: 'author' });
-const trash = (revision: Revision) => context.library.trashGraphicAsset({ assetId: revision.assetId, actor: 'author' });
+const retire = (revision: Revision) =>
+	context.library.retireGraphicAsset({ assetId: revision.assetId, actor: 'author' });
+const trash = (revision: Revision) =>
+	context.library.trashGraphicAsset({ assetId: revision.assetId, actor: 'author' });
 
 describe('a Graphic Asset a Theme or Screen Theme Override references', () => {
 	it.each([
-		[
-			'the Theme\'s logo',
-			'theme',
-			'logo',
-			() => ({ kind: 'image', ...logo }),
-			() => logo,
-		],
+		["the Theme's logo", 'theme', 'logo', () => ({ kind: 'image', ...logo }), () => logo],
 		[
 			'a Theme background layer',
 			'theme',
@@ -201,67 +225,76 @@ describe('a Graphic Asset a Theme or Screen Theme Override references', () => {
 			() => libraryImageLayer(plate),
 			() => plate,
 		],
+		['a Theme library font', 'theme', 'heading', () => libraryFont(face), () => face],
 		[
-			'a Theme library font',
-			'theme',
-			'heading',
-			() => libraryFont(face),
-			() => face,
-		],
-		[
-			'an override\'s Frame media',
+			"an override's Frame media",
 			'screen',
 			'feature-match-overlay.frame-media',
 			() => ({ kind: 'image', ...plate }),
 			() => plate,
 		],
-	])('refuses Retire and Trash while %s references it, naming the referrer', async (_case, owner, token, value, revision) => {
-		if (owner === 'theme') {
-			await call(setToken, { themeId, token }, {
-				value: value(),
-			});
-		}
-		else {
-			await overrideOn('feature-match-overlay', {
-				[token]: value(),
-			});
-		}
-		const named = owner === 'theme'
-			? { kind: 'theme', id: themeId, name: 'Brand' }
-			: {
-					kind: 'screen',
-					id: String(screenId),
-					name: 'main',
-				};
+	])(
+		'refuses Retire and Trash while %s references it, naming the referrer',
+		async (_case, owner, token, value, revision) => {
+			if (owner === 'theme') {
+				await call(
+					setToken,
+					{ themeId, token },
+					{
+						value: value(),
+					},
+				);
+			} else {
+				await overrideOn('feature-match-overlay', {
+					[token]: value(),
+				});
+			}
+			const named =
+				owner === 'theme'
+					? { kind: 'theme', id: themeId, name: 'Brand' }
+					: {
+							kind: 'screen',
+							id: String(screenId),
+							name: 'main',
+						};
 
-		for (const action of [retire, trash]) {
-			expect(await action(revision())).toMatchObject({
-				outcome: 'in-use',
-				usage: [
-					expect.objectContaining({
-						owner: expect.objectContaining(named),
-					}),
-				],
-			});
-		}
-	});
+			for (const action of [retire, trash]) {
+				expect(await action(revision())).toMatchObject({
+					outcome: 'in-use',
+					usage: [
+						expect.objectContaining({
+							owner: expect.objectContaining(named),
+						}),
+					],
+				});
+			}
+		},
+	);
 
 	it.each([
 		[
-			'clearing the Theme\'s token',
+			"clearing the Theme's token",
 			async () => {
-				await call(setToken, { themeId, token: 'logo' }, {
-					value: { kind: 'image', ...logo },
-				});
+				await call(
+					setToken,
+					{ themeId, token: 'logo' },
+					{
+						value: { kind: 'image', ...logo },
+					},
+				);
 				await call(clearToken, { themeId, token: 'logo' });
 			},
 		],
 		[
-			'setting the Theme\'s token to none',
+			"setting the Theme's token to none",
 			async () => {
-				await call(setToken, { themeId, token: 'logo' }, {
-					value: { kind: 'image', ...logo },
-				});
+				await call(
+					setToken,
+					{ themeId, token: 'logo' },
+					{
+						value: { kind: 'image', ...logo },
+					},
+				);
 				await call(setToken, { themeId, token: 'logo' }, { value: null });
 			},
 		],
@@ -277,9 +310,13 @@ describe('a Graphic Asset a Theme or Screen Theme Override references', () => {
 		[
 			'deleting the Theme no Event uses',
 			async () => {
-				await call(setToken, { themeId, token: 'logo' }, {
-					value: { kind: 'image', ...logo },
-				});
+				await call(
+					setToken,
+					{ themeId, token: 'logo' },
+					{
+						value: { kind: 'image', ...logo },
+					},
+				);
 				await db.update(schema.events).set({ themeId: null }).where(eq(schema.events.id, eventId));
 				await call(deleteTheme, { themeId });
 			},
@@ -290,13 +327,21 @@ describe('a Graphic Asset a Theme or Screen Theme Override references', () => {
 		expect((await retire(logo)).outcome).toBe('retired');
 	});
 
-	it('releases only the token written, keeping another token\'s reference', async () => {
-		await call(setToken, { themeId, token: 'logo' }, {
-			value: { kind: 'image', ...logo },
-		});
-		await call(setToken, { themeId, token: 'background' }, {
-			value: libraryImageLayer(plate),
-		});
+	it("releases only the token written, keeping another token's reference", async () => {
+		await call(
+			setToken,
+			{ themeId, token: 'logo' },
+			{
+				value: { kind: 'image', ...logo },
+			},
+		);
+		await call(
+			setToken,
+			{ themeId, token: 'background' },
+			{
+				value: libraryImageLayer(plate),
+			},
+		);
 
 		await call(clearToken, { themeId, token: 'background' });
 
@@ -316,12 +361,11 @@ describe('a Graphic Asset a Theme or Screen Theme Override references', () => {
 			'a revision that does not exist',
 			async () => ({ kind: 'image', assetId: logo.assetId, revisionId: 'revision-invented' }),
 		],
-		[
-			'an image named as a silent video',
-			async () => ({ kind: 'silent-video', ...logo }),
-		],
+		['an image named as a silent video', async () => ({ kind: 'silent-video', ...logo })],
 	])('refuses a Theme write naming %s, storing nothing', async (_case, value) => {
-		const refused = await refusal(call(setToken, { themeId, token: 'logo' }, { value: await value() }));
+		const refused = await refusal(
+			call(setToken, { themeId, token: 'logo' }, { value: await value() }),
+		);
 
 		expect(refused).toMatchObject({
 			statusCode: 409,
@@ -329,16 +373,27 @@ describe('a Graphic Asset a Theme or Screen Theme Override references', () => {
 		});
 		const [theme] = await db.select().from(schema.themes).where(eq(schema.themes.id, themeId));
 		expect(theme!.tokens).toEqual({});
-		expect(await db.select().from(graphicAssetReferences).where(eq(graphicAssetReferences.ownerKind, 'theme'))).toEqual([]);
+		expect(
+			await db
+				.select()
+				.from(graphicAssetReferences)
+				.where(eq(graphicAssetReferences.ownerKind, 'theme')),
+		).toEqual([]);
 	});
 
 	it('refuses at the commit a Theme write whose asset was retired after the library answered', async () => {
 		await retire(unrelated);
 		answeredBeforeRetirement.add(unrelated.assetId);
 
-		const refused = await refusal(call(setToken, { themeId, token: 'logo' }, {
-			value: { kind: 'image', ...unrelated },
-		}));
+		const refused = await refusal(
+			call(
+				setToken,
+				{ themeId, token: 'logo' },
+				{
+					value: { kind: 'image', ...unrelated },
+				},
+			),
+		);
 
 		expect(refused).toMatchObject({
 			statusCode: 409,
@@ -346,10 +401,15 @@ describe('a Graphic Asset a Theme or Screen Theme Override references', () => {
 		});
 		const [theme] = await db.select().from(schema.themes).where(eq(schema.themes.id, themeId));
 		expect(theme!.tokens).toEqual({});
-		expect(await db.select().from(graphicAssetReferences).where(eq(graphicAssetReferences.ownerKind, 'theme'))).toEqual([]);
+		expect(
+			await db
+				.select()
+				.from(graphicAssetReferences)
+				.where(eq(graphicAssetReferences.ownerKind, 'theme')),
+		).toEqual([]);
 	});
 
-	it('releases a Foundation Token\'s slots alone, never a same-named mode\'s Mode Token slots', async () => {
+	it("releases a Foundation Token's slots alone, never a same-named mode's Mode Token slots", async () => {
 		await db.insert(graphicAssetReferences).values({
 			id: 'background-mode-token',
 			assetId: logo.assetId,
@@ -359,20 +419,30 @@ describe('a Graphic Asset a Theme or Screen Theme Override references', () => {
 			ownerSlot: 'background.plate',
 			eventId: null,
 		} as never);
-		await call(setToken, { themeId, token: 'background' }, {
-			value: libraryImageLayer(plate),
-		});
+		await call(
+			setToken,
+			{ themeId, token: 'background' },
+			{
+				value: libraryImageLayer(plate),
+			},
+		);
 
 		await call(clearToken, { themeId, token: 'background' });
 
-		expect((await db.select().from(graphicAssetReferences)).map(row => row.ownerSlot)).toEqual(['background.plate']);
+		expect((await db.select().from(graphicAssetReferences)).map((row) => row.ownerSlot)).toEqual([
+			'background.plate',
+		]);
 	});
 
 	// A Theme stores Foundation Tokens only: a Mode Token is set per Screen.
 	it('pins nothing for a Mode Token a Theme write names', async () => {
-		await call(setToken, { themeId, token: 'feature-match-overlay.frame-media' }, {
-			value: { kind: 'image', ...plate },
-		});
+		await call(
+			setToken,
+			{ themeId, token: 'feature-match-overlay.frame-media' },
+			{
+				value: { kind: 'image', ...plate },
+			},
+		);
 
 		expect((await retire(plate)).outcome).toBe('retired');
 	});
@@ -389,9 +459,11 @@ describe('a Graphic Asset a Theme or Screen Theme Override references', () => {
 	it('refuses an override naming a retired asset, storing nothing', async () => {
 		await retire(unrelated);
 
-		const refused = await refusal(overrideOn('feature-match-overlay', {
-			'feature-match-overlay.frame-media': { kind: 'image', ...unrelated },
-		}));
+		const refused = await refusal(
+			overrideOn('feature-match-overlay', {
+				'feature-match-overlay.frame-media': { kind: 'image', ...unrelated },
+			}),
+		);
 
 		expect(refused.statusCode).toBe(409);
 		const [screen] = await db.select().from(schema.screens).where(eq(schema.screens.id, screenId));
@@ -399,8 +471,11 @@ describe('a Graphic Asset a Theme or Screen Theme Override references', () => {
 	});
 });
 
-describe('a Screen Output\'s capability over its Theme\'s content', () => {
-	async function resolves(screen: { id: number; assetCapabilityDigest: string | null }, revision: Revision) {
+describe("a Screen Output's capability over its Theme's content", () => {
+	async function resolves(
+		screen: { id: number; assetCapabilityDigest: string | null },
+		revision: Revision,
+	) {
 		const outcome = await authorizer.authorize({
 			screenId: screen.id,
 			capabilityDigest: screen.assetCapabilityDigest!,
@@ -415,13 +490,21 @@ describe('a Screen Output\'s capability over its Theme\'s content', () => {
 		return screen!;
 	}
 
-	it('resolves the Theme\'s logo and font, and no unrelated asset', async () => {
-		await call(setToken, { themeId, token: 'logo' }, {
-			value: { kind: 'image', ...logo },
-		});
-		await call(setToken, { themeId, token: 'heading' }, {
-			value: libraryFont(face),
-		});
+	it("resolves the Theme's logo and font, and no unrelated asset", async () => {
+		await call(
+			setToken,
+			{ themeId, token: 'logo' },
+			{
+				value: { kind: 'image', ...logo },
+			},
+		);
+		await call(
+			setToken,
+			{ themeId, token: 'heading' },
+			{
+				value: libraryFont(face),
+			},
+		);
 		const screen = await screenRow(screenId);
 
 		expect([
@@ -431,7 +514,7 @@ describe('a Screen Output\'s capability over its Theme\'s content', () => {
 		]).toEqual([true, true, false]);
 	});
 
-	it('resolves the content of an override of its mode\'s Mode Token', async () => {
+	it("resolves the content of an override of its mode's Mode Token", async () => {
 		await overrideOn('feature-match-overlay', {
 			'feature-match-overlay.frame-media': { kind: 'image', ...plate },
 		});
@@ -442,65 +525,86 @@ describe('a Screen Output\'s capability over its Theme\'s content', () => {
 	// A Screen takes these from its Theme alone; one stored before is read by nothing.
 	it.each([
 		[
-			'a plain mode\'s background',
+			"a plain mode's background",
 			'top-cut',
 			'background',
 			(revision: Revision) => libraryImageLayer(revision),
 		],
 		[
-			'a graphics host\'s logo',
+			"a graphics host's logo",
 			'broadcast-graphics',
 			'logo',
 			(revision: Revision) => ({ kind: 'image', ...revision }),
 		],
-	])('resolves the Theme\'s content for %s, never a stored override of it', async (_case, mode, token, value) => {
-		await call(setToken, { themeId, token }, {
-			value: value(plate),
-		});
-		await db.update(schema.screens)
-			.set({
-				currentMode: mode as never,
-				themeOverrides: {
-					[token]: value(logo),
+	])(
+		"resolves the Theme's content for %s, never a stored override of it",
+		async (_case, mode, token, value) => {
+			await call(
+				setToken,
+				{ themeId, token },
+				{
+					value: value(plate),
 				},
-			})
-			.where(eq(schema.screens.id, screenId));
-		await db.insert(graphicAssetReferences).values({
-			id: 'stored-foundation-override',
-			assetId: logo.assetId,
-			revisionId: logo.revisionId,
-			ownerKind: 'screen',
-			ownerId: String(screenId),
-			ownerSlot: `themeOverrides.${token}`,
-			eventId,
-		} as never);
-		const screen = await screenRow(screenId);
+			);
+			await db
+				.update(schema.screens)
+				.set({
+					currentMode: mode as never,
+					themeOverrides: {
+						[token]: value(logo),
+					},
+				})
+				.where(eq(schema.screens.id, screenId));
+			await db.insert(graphicAssetReferences).values({
+				id: 'stored-foundation-override',
+				assetId: logo.assetId,
+				revisionId: logo.revisionId,
+				ownerKind: 'screen',
+				ownerId: String(screenId),
+				ownerSlot: `themeOverrides.${token}`,
+				eventId,
+			} as never);
+			const screen = await screenRow(screenId);
 
-		expect([await resolves(screen, plate), await resolves(screen, logo)]).toEqual([true, false]);
-	});
+			expect([await resolves(screen, plate), await resolves(screen, logo)]).toEqual([true, false]);
+		},
+	);
 
-	it('resolves a dormant override of another mode\'s Mode Token only once the Screen shows that mode again', async () => {
+	it("resolves a dormant override of another mode's Mode Token only once the Screen shows that mode again", async () => {
 		await overrideOn('feature-match-overlay', {
 			'feature-match-overlay.frame-media': { kind: 'image', ...plate },
 		});
-		await db.update(schema.screens).set({ currentMode: 'card' }).where(eq(schema.screens.id, screenId));
+		await db
+			.update(schema.screens)
+			.set({ currentMode: 'card' })
+			.where(eq(schema.screens.id, screenId));
 		expect(await resolves(await screenRow(screenId), plate)).toBe(false);
 
-		await db.update(schema.screens).set({ currentMode: 'feature-match-overlay' }).where(eq(schema.screens.id, screenId));
+		await db
+			.update(schema.screens)
+			.set({ currentMode: 'feature-match-overlay' })
+			.where(eq(schema.screens.id, screenId));
 		expect(await resolves(await screenRow(screenId), plate)).toBe(true);
 	});
 
 	it('resolves nothing of a Mode Token its Theme stored before', async () => {
 		await storeThemeFrameMedia(plate);
-		await db.update(schema.screens).set({ currentMode: 'feature-match-overlay' }).where(eq(schema.screens.id, screenId));
+		await db
+			.update(schema.screens)
+			.set({ currentMode: 'feature-match-overlay' })
+			.where(eq(schema.screens.id, screenId));
 
 		expect(await resolves(await screenRow(screenId), plate)).toBe(false);
 	});
 
 	it('resolves nothing of a Theme its Event does not use', async () => {
-		await call(setToken, { themeId, token: 'logo' }, {
-			value: { kind: 'image', ...logo },
-		});
+		await call(
+			setToken,
+			{ themeId, token: 'logo' },
+			{
+				value: { kind: 'image', ...logo },
+			},
+		);
 		await db.update(schema.events).set({ themeId: null }).where(eq(schema.events.id, eventId));
 
 		expect(await resolves(await screenRow(screenId), logo)).toBe(false);

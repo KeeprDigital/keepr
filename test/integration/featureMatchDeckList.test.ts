@@ -8,7 +8,7 @@ import { $fetch } from './client';
 const ZORO_DECK = '1x OP01-001 Roronoa Zoro\n4x OP01-025\n2x OP99-999';
 const NAMI_DECK = '1x OP01-016 Nami\n4x OP01-040';
 
-describe('a Feature Match Slot side\'s Deck List', () => {
+describe("a Feature Match Slot side's Deck List", () => {
 	let eventId: number;
 	let slotId: number;
 	let sessionId: number;
@@ -16,7 +16,11 @@ describe('a Feature Match Slot side\'s Deck List', () => {
 	beforeAll(async () => {
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration One Piece Deck Lists', game: 'op', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration One Piece Deck Lists',
+				game: 'op',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 		const slot = await $fetch(`/api/events/${eventId}/feature-match-slots`, {
@@ -27,25 +31,26 @@ describe('a Feature Match Slot side\'s Deck List', () => {
 			},
 		});
 		slotId = slot.id;
-		const session = await $fetch(`/api/events/${eventId}/feature-match-slots/${slotId}/sessions`, { method: 'POST' });
+		const session = await $fetch(`/api/events/${eventId}/feature-match-slots/${slotId}/sessions`, {
+			method: 'POST',
+		});
 		sessionId = session.id;
 	});
 
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	async function paste(text: string) {
-		return await $fetch(`/api/events/${eventId}/feature-match-slots/${slotId}/deck-lists`, {
+		return (await $fetch(`/api/events/${eventId}/feature-match-slots/${slotId}/deck-lists`, {
 			method: 'POST',
 			body: { side: 'player1', text },
-		}) as any;
+		})) as any;
 	}
 
-	it('reaches the active Session\'s snapshot when replaced, without reopening it', async () => {
+	it("reaches the active Session's snapshot when replaced, without reopening it", async () => {
 		await paste(ZORO_DECK);
 		const replaced = await paste(NAMI_DECK);
 
@@ -56,7 +61,9 @@ describe('a Feature Match Slot side\'s Deck List', () => {
 			leader: { number: 'OP01-016', name: 'Nami' },
 			featureMatchDeckList: { id: replaced.deckList.id, mainboardCount: 4 },
 		});
-		const read = await $fetch(`/api/events/${eventId}/feature-match-slots/${slotId}/deck-lists/${replaced.deckList.id}`) as any;
+		const read = (await $fetch(
+			`/api/events/${eventId}/feature-match-slots/${slotId}/deck-lists/${replaced.deckList.id}`,
+		)) as any;
 		expect(read.sourceText).toBe(NAMI_DECK);
 	});
 });

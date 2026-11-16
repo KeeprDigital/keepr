@@ -6,9 +6,15 @@ import type { FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSes
 import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { events, featureMatches, featureMatchSessions, matches } from '~~/server/db/schema';
-import { toStoredSlotLeaders, withCatalogueLeaders } from '~~/server/services/featureMatchSlotLeader';
+import {
+	toStoredSlotLeaders,
+	withCatalogueLeaders,
+} from '~~/server/services/featureMatchSlotLeader';
 import { featureMatchStateService } from '~~/server/services/featureMatchState';
-import { buildClearDeckSourceSlotsQuery, buildReleaseScreenEventReferencesQuery } from '~~/server/services/screen';
+import {
+	buildClearDeckSourceSlotsQuery,
+	buildReleaseScreenEventReferencesQuery,
+} from '~~/server/services/screen';
 import { inJsonArray, observedValue, selectForInsert } from '~~/server/utils/db';
 import { runCompensation, StateConflictError } from '~~/server/utils/errors';
 import { pickManualWritable } from '~~/server/utils/provenance';
@@ -47,10 +53,7 @@ export async function buildClearImportedMatchDataQueries(
 	const importedSlots = await db
 		.select()
 		.from(featureMatches)
-		.where(and(
-			eq(featureMatches.eventId, eventId),
-			eq(featureMatches.externalSource, 'melee'),
-		));
+		.where(and(eq(featureMatches.eventId, eventId), eq(featureMatches.externalSource, 'melee')));
 
 	if (importedSlots.length === 0) {
 		return {
@@ -80,9 +83,13 @@ export async function buildClearImportedMatchDataQueries(
 	// starts. This prevents a stale preparation read from resetting a slot that
 	// was manually rebound before the transaction acquired its write lock.
 	const stillMeleeOwned = eq(featureMatches.externalSource, 'melee');
-	const sessionReplacement = await featureMatchStateService().buildSessionReplacement(eventId, clearedSlots, {
-		slotCondition: stillMeleeOwned,
-	});
+	const sessionReplacement = await featureMatchStateService().buildSessionReplacement(
+		eventId,
+		clearedSlots,
+		{
+			slotCondition: stillMeleeOwned,
+		},
+	);
 
 	// After the Session statements, which select their Slots through the same
 	// Melee ownership this clears.
@@ -101,11 +108,16 @@ export async function buildClearImportedMatchDataQueries(
 			player2Data: null,
 			updatedAt: resetAt,
 		})
-		.where(and(
-			eq(featureMatches.eventId, eventId),
-			stillMeleeOwned,
-			inJsonArray(featureMatches.id, importedSlots.map(slot => slot.id)),
-		));
+		.where(
+			and(
+				eq(featureMatches.eventId, eventId),
+				stillMeleeOwned,
+				inJsonArray(
+					featureMatches.id,
+					importedSlots.map((slot) => slot.id),
+				),
+			),
+		);
 
 	return {
 		queries: [...sessionReplacement.statements, clearSlotQuery],
@@ -132,48 +144,46 @@ export function observedSlotPairing(slot: DbFeatureMatch) {
 /** The Screens a Slot delete released: one both releases rewrote answers once, at the later version. */
 function releasedOnce(deckSourceScreens: DbScreen[], referenceScreens: DbScreen[]): DbScreen[] {
 	return [
-		...new Map([
-			...deckSourceScreens,
-			...referenceScreens,
-		].map(screen => [screen.id, screen])).values(),
+		...new Map(
+			[...deckSourceScreens, ...referenceScreens].map((screen) => [screen.id, screen]),
+		).values(),
 	];
 }
 
 export function featureMatchService() {
 	const resolveMatchProvenance = async (eventId: number, matchId: number | null | undefined) => {
-		if (matchId == null)
-			return { externalId: null, externalSource: 'manual' as const };
+		if (matchId == null) return { externalId: null, externalSource: 'manual' as const };
 
 		const match = await db.query.matches.findFirst({
 			where: and(eq(matches.id, matchId), eq(matches.eventId, eventId)),
 			columns: { externalId: true, externalSource: true },
 		});
-		if (!match)
-			throw createError({ statusCode: 404, message: 'Match not found' });
+		if (!match) throw createError({ statusCode: 404, message: 'Match not found' });
 		return {
 			externalId: match.externalId,
 			externalSource: match.externalSource ?? 'manual',
 		};
 	};
 
-	const withActiveSession = async <T extends DbFeatureMatch>(slot: T): Promise<T & { activeSession: DbFeatureMatchSession | null }> => {
+	const withActiveSession = async <T extends DbFeatureMatch>(
+		slot: T,
+	): Promise<T & { activeSession: DbFeatureMatchSession | null }> => {
 		const activeSession = slot.activeSessionId
-			? await db.query.featureMatchSessions.findFirst({
-				where: and(eq(featureMatchSessions.id, slot.activeSessionId), eq(featureMatchSessions.eventId, slot.eventId)),
-			}) ?? null
+			? ((await db.query.featureMatchSessions.findFirst({
+					where: and(
+						eq(featureMatchSessions.id, slot.activeSessionId),
+						eq(featureMatchSessions.eventId, slot.eventId),
+					),
+				})) ?? null)
 			: null;
 		return { ...slot, activeSession };
 	};
 
 	const findById = async (id: number, eventId: number) => {
 		const slot = await db.query.featureMatches.findFirst({
-			where: and(
-				eq(featureMatches.id, id),
-				eq(featureMatches.eventId, eventId),
-			),
+			where: and(eq(featureMatches.id, id), eq(featureMatches.eventId, eventId)),
 		});
-		if (!slot)
-			return undefined;
+		if (!slot) return undefined;
 		const [read] = await withCatalogueLeaders([slot]);
 		return await withActiveSession(read!);
 	};
@@ -182,11 +192,13 @@ export function featureMatchService() {
 		// Relational loading emits one joined query instead of one Session query
 		// per Slot. At the supported 50-Slot maximum this keeps the request well
 		// below D1 query-count limits.
-		return await withCatalogueLeaders(await db.query.featureMatches.findMany({
-			where: eq(featureMatches.eventId, eventId),
-			with: { activeSession: true },
-			orderBy: [featureMatches.sortOrder, featureMatches.id],
-		}));
+		return await withCatalogueLeaders(
+			await db.query.featureMatches.findMany({
+				where: eq(featureMatches.eventId, eventId),
+				with: { activeSession: true },
+				orderBy: [featureMatches.sortOrder, featureMatches.id],
+			}),
+		);
 	};
 
 	const create = async (
@@ -227,13 +239,13 @@ export function featureMatchService() {
 
 		try {
 			await featureMatchStateService().createSessionForSlot(newMatch.id, eventId);
-		}
-		catch (error) {
+		} catch (error) {
 			// A Slot is not usable without its initial Session projection.
-			await runCompensation(error, () => db.delete(featureMatches).where(and(
-				eq(featureMatches.id, newMatch.id),
-				eq(featureMatches.eventId, eventId),
-			)));
+			await runCompensation(error, () =>
+				db
+					.delete(featureMatches)
+					.where(and(eq(featureMatches.id, newMatch.id), eq(featureMatches.eventId, eventId))),
+			);
 			throw error;
 		}
 
@@ -251,23 +263,22 @@ export function featureMatchService() {
 		};
 	}
 
-	function desiredIdentity(current: DbFeatureMatch, data: FeatureMatchIdentityInput): PairingIdentity {
+	function desiredIdentity(
+		current: DbFeatureMatch,
+		data: FeatureMatchIdentityInput,
+	): PairingIdentity {
 		return {
-			matchId: data.matchId === undefined
-				? current.matchId ?? null
-				: data.matchId ?? null,
-			externalId: data.externalId === undefined
-				? current.externalId ?? null
-				: data.externalId ?? null,
-			externalSource: data.externalSource === undefined
-				? current.externalSource ?? null
-				: data.externalSource ?? null,
-			player1Id: data.player1Id === undefined
-				? current.player1Id ?? null
-				: data.player1Id ?? null,
-			player2Id: data.player2Id === undefined
-				? current.player2Id ?? null
-				: data.player2Id ?? null,
+			matchId: data.matchId === undefined ? (current.matchId ?? null) : (data.matchId ?? null),
+			externalId:
+				data.externalId === undefined ? (current.externalId ?? null) : (data.externalId ?? null),
+			externalSource:
+				data.externalSource === undefined
+					? (current.externalSource ?? null)
+					: (data.externalSource ?? null),
+			player1Id:
+				data.player1Id === undefined ? (current.player1Id ?? null) : (data.player1Id ?? null),
+			player2Id:
+				data.player2Id === undefined ? (current.player2Id ?? null) : (data.player2Id ?? null),
 		};
 	}
 
@@ -282,33 +293,42 @@ export function featureMatchService() {
 	}
 
 	function identitiesEqual(left: PairingIdentity, right: PairingIdentity): boolean {
-		return left.matchId === right.matchId
-			&& left.externalId === right.externalId
-			&& left.externalSource === right.externalSource
-			&& left.player1Id === right.player1Id
-			&& left.player2Id === right.player2Id;
+		return (
+			left.matchId === right.matchId &&
+			left.externalId === right.externalId &&
+			left.externalSource === right.externalSource &&
+			left.player1Id === right.player1Id &&
+			left.player2Id === right.player2Id
+		);
 	}
 
-	async function shouldCreateSessionForIdentityChange(current: DbFeatureMatch, data: FeatureMatchIdentityInput): Promise<boolean> {
+	async function shouldCreateSessionForIdentityChange(
+		current: DbFeatureMatch,
+		data: FeatureMatchIdentityInput,
+	): Promise<boolean> {
 		const nextIdentity = desiredIdentity(current, data);
-		if (identitiesEqual(slotIdentity(current), nextIdentity))
-			return false;
+		if (identitiesEqual(slotIdentity(current), nextIdentity)) return false;
 
-		if (!current.activeSessionId)
-			return true;
+		if (!current.activeSessionId) return true;
 
 		const activeSession = await db.query.featureMatchSessions.findFirst({
-			where: and(eq(featureMatchSessions.id, current.activeSessionId), eq(featureMatchSessions.eventId, current.eventId)),
+			where: and(
+				eq(featureMatchSessions.id, current.activeSessionId),
+				eq(featureMatchSessions.eventId, current.eventId),
+			),
 		});
 
-		return !activeSession || !identitiesEqual(snapshotIdentity(activeSession.sourceSnapshot), nextIdentity);
+		return (
+			!activeSession ||
+			!identitiesEqual(snapshotIdentity(activeSession.sourceSnapshot), nextIdentity)
+		);
 	}
 
 	/** Corrects the Slot's active Session to the Slot as it now stands, leaving the Session's state alone. */
 	async function correctSessionSnapshot(slot: DbFeatureMatch) {
 		const stateSvc = featureMatchStateService();
 		const snapshot = await stateSvc.buildSourceSnapshot(slot);
-		await stateSvc.applyCommandToActiveSession(slot.id, slot.eventId, session => ({
+		await stateSvc.applyCommandToActiveSession(slot.id, slot.eventId, (session) => ({
 			commandId: randomCommandId('SnapshotCorrected'),
 			type: 'SnapshotCorrected',
 			payload: { sourceSnapshot: snapshot },
@@ -324,13 +344,13 @@ export function featureMatchService() {
 		const current = await db.query.featureMatches.findFirst({
 			where: and(eq(featureMatches.id, id), eq(featureMatches.eventId, eventId)),
 		});
-		if (!current)
-			return undefined;
+		if (!current) return undefined;
 
 		const manualData = toStoredSlotLeaders(pickManualWritable('featureMatchSlots', data));
-		const provenance = manualData.matchId !== undefined
-			? await resolveMatchProvenance(eventId, manualData.matchId)
-			: {};
+		const provenance =
+			manualData.matchId !== undefined
+				? await resolveMatchProvenance(eventId, manualData.matchId)
+				: {};
 		const shouldCreateSession = await shouldCreateSessionForIdentityChange(current, {
 			...manualData,
 			...provenance,
@@ -361,15 +381,13 @@ export function featureMatchService() {
 				where: and(eq(featureMatches.id, id), eq(featureMatches.eventId, eventId)),
 				columns: { id: true },
 			});
-			if (!survivingSlot)
-				return undefined;
+			if (!survivingSlot) return undefined;
 			throw new StateConflictError('Feature match slot', id);
 		}
 
 		if (shouldCreateSession)
 			await featureMatchStateService().createSessionForSlot(updatedMatch.id, eventId);
-		else
-			await correctSessionSnapshot(updatedMatch);
+		else await correctSessionSnapshot(updatedMatch);
 
 		return await findById(updatedMatch.id, eventId);
 	};
@@ -380,7 +398,12 @@ export function featureMatchService() {
 	 * live state with them. One statement, which reads both Seats as they were
 	 * before it, so no save between a read and a write can be lost.
 	 */
-	const swapSeats = async (id: number, eventId: number, first: Seat, second: Seat): Promise<DbFeatureMatch | undefined> => {
+	const swapSeats = async (
+		id: number,
+		eventId: number,
+		first: Seat,
+		second: Seat,
+	): Promise<DbFeatureMatch | undefined> => {
 		const firstKey = SLOT_SEAT_DATA_KEY[first];
 		const secondKey = SLOT_SEAT_DATA_KEY[second];
 		const [swapped] = await db
@@ -391,8 +414,7 @@ export function featureMatchService() {
 			})
 			.where(and(eq(featureMatches.id, id), eq(featureMatches.eventId, eventId)))
 			.returning();
-		if (!swapped)
-			return undefined;
+		if (!swapped) return undefined;
 
 		// One Session event moves each player's live state with them and takes the
 		// Slot as it now stands, so no reader sees a player beside another's life.
@@ -421,16 +443,14 @@ export function featureMatchService() {
 			.set({ bestOf })
 			.where(and(eq(featureMatches.eventId, eventId), ne(featureMatches.bestOf, bestOf)))
 			.returning();
-		if (changed.length === 0)
-			return [];
+		if (changed.length === 0) return [];
 
 		const stateSvc = featureMatchStateService();
 		const defaults = await stateSvc.loadEventDefaults(eventId);
 		for (const slot of changed) {
-			if (slot.activeSessionId === null)
-				continue;
+			if (slot.activeSessionId === null) continue;
 			const snapshot = await stateSvc.buildSourceSnapshot(slot, defaults);
-			await stateSvc.applyCommandToActiveSession(slot.id, eventId, session => ({
+			await stateSvc.applyCommandToActiveSession(slot.id, eventId, (session) => ({
 				commandId: randomCommandId('SnapshotCorrected'),
 				type: 'SnapshotCorrected',
 				payload: { sourceSnapshot: snapshot },
@@ -438,7 +458,7 @@ export function featureMatchService() {
 			}));
 		}
 
-		return changed.map(slot => slot.id);
+		return changed.map((slot) => slot.id);
 	};
 
 	/**
@@ -451,14 +471,13 @@ export function featureMatchService() {
 		const slots = await db.query.featureMatches.findMany({
 			where: and(eq(featureMatches.eventId, eventId), isNotNull(featureMatches.activeSessionId)),
 		});
-		if (slots.length === 0)
-			return [];
+		if (slots.length === 0) return [];
 
 		const stateSvc = featureMatchStateService();
 		const defaults = await stateSvc.loadEventDefaults(eventId);
 		for (const slot of slots) {
 			const snapshot = await stateSvc.buildSourceSnapshot(slot, defaults);
-			await stateSvc.applyCommandToActiveSession(slot.id, eventId, session => ({
+			await stateSvc.applyCommandToActiveSession(slot.id, eventId, (session) => ({
 				commandId: randomCommandId('SnapshotCorrected'),
 				type: 'SnapshotCorrected',
 				payload: { sourceSnapshot: snapshot },
@@ -466,24 +485,22 @@ export function featureMatchService() {
 			}));
 		}
 
-		return slots.map(slot => slot.id);
+		return slots.map((slot) => slot.id);
 	};
 
 	/**
 	 * Deletes the Slot, and in the same write releases every Deck Source showing
 	 * a side of it and every Screen reference to it (ADR-0060).
 	 */
-	const remove = async (id: number, eventId: number): Promise<{ deleted: boolean; clearedScreens: DbScreen[] }> => {
+	const remove = async (
+		id: number,
+		eventId: number,
+	): Promise<{ deleted: boolean; clearedScreens: DbScreen[] }> => {
 		const [deckSourceScreens, deleted, referenceScreens] = await db.batch([
 			buildClearDeckSourceSlotsQuery(eventId, [id]),
 			db
 				.delete(featureMatches)
-				.where(
-					and(
-						eq(featureMatches.id, id),
-						eq(featureMatches.eventId, eventId),
-					),
-				)
+				.where(and(eq(featureMatches.id, id), eq(featureMatches.eventId, eventId)))
 				.returning({ id: featureMatches.id }),
 			buildReleaseScreenEventReferencesQuery(eventId, ['featureMatchSlot']),
 		]);
@@ -496,10 +513,7 @@ export function featureMatchService() {
 
 	const exists = async (id: number, eventId: number): Promise<boolean> => {
 		const match = await db.query.featureMatches.findFirst({
-			where: and(
-				eq(featureMatches.id, id),
-				eq(featureMatches.eventId, eventId),
-			),
+			where: and(eq(featureMatches.id, id), eq(featureMatches.eventId, eventId)),
 			columns: { id: true },
 		});
 
@@ -529,7 +543,10 @@ export function featureMatchService() {
 	 * Adds or deletes Slots to `targetCount`; a delete releases every Deck Source
 	 * showing a side of a deleted Slot and every Screen reference to one (ADR-0060).
 	 */
-	const syncFeatureMatches = async (eventId: number, targetCount: number): Promise<{ created: DbFeatureMatch[]; deleted: number[]; clearedScreens: DbScreen[] }> => {
+	const syncFeatureMatches = async (
+		eventId: number,
+		targetCount: number,
+	): Promise<{ created: DbFeatureMatch[]; deleted: number[]; clearedScreens: DbScreen[] }> => {
 		// Get current matches ordered by sortOrder, then id
 		const currentMatches = await findByEventId(eventId);
 
@@ -552,60 +569,75 @@ export function featureMatchService() {
 			const lastSortOrder = sql`(select coalesce(max(${featureMatches.sortOrder}), -1) from ${featureMatches} where ${featureMatches.eventId} = ${eventId})`;
 			const now = Date.now();
 			const [createdMatches] = await db.batch([
-				db.insert(featureMatches).select(selectForInsert(featureMatches, {
-					id: sql`null`,
-					eventId: sql`${eventId}`,
-					matchId: sql`null`,
-					externalId: sql`null`,
-					externalSource: sql`null`,
-					tableNumber: sql`null`,
-					roundName: sql`null`,
-					formatName: sql`null`,
-					player1Id: sql`null`,
-					player2Id: sql`null`,
-					player1Data: sql`null`,
-					player2Data: sql`null`,
-					player3Data: sql`null`,
-					player4Data: sql`null`,
-					bestOf: sql`${bestOf}`,
-					sortOrder: sql`${lastSortOrder} + value + 1`,
-					playerDisplayMode: sql`'score'`,
-					activeSessionId: sql`null`,
-					createdAt: sql`${now}`,
-					updatedAt: sql`${now}`,
-				}, sql`from json_each(${JSON.stringify(Array.from({ length: targetCount - currentCount }, (_, index) => index))}) where ${liveCount} + value < ${targetCount}`)).returning(),
+				db
+					.insert(featureMatches)
+					.select(
+						selectForInsert(
+							featureMatches,
+							{
+								id: sql`null`,
+								eventId: sql`${eventId}`,
+								matchId: sql`null`,
+								externalId: sql`null`,
+								externalSource: sql`null`,
+								tableNumber: sql`null`,
+								roundName: sql`null`,
+								formatName: sql`null`,
+								player1Id: sql`null`,
+								player2Id: sql`null`,
+								player1Data: sql`null`,
+								player2Data: sql`null`,
+								player3Data: sql`null`,
+								player4Data: sql`null`,
+								bestOf: sql`${bestOf}`,
+								sortOrder: sql`${lastSortOrder} + value + 1`,
+								playerDisplayMode: sql`'score'`,
+								activeSessionId: sql`null`,
+								createdAt: sql`${now}`,
+								updatedAt: sql`${now}`,
+							},
+							sql`from json_each(${JSON.stringify(Array.from({ length: targetCount - currentCount }, (_, index) => index))}) where ${liveCount} + value < ${targetCount}`,
+						),
+					)
+					.returning(),
 			]);
 			created.push(...createdMatches);
 
 			// Initialize state for created matches in one commit, reusing event defaults
 			try {
-				await stateService.openSessionsForSlots(eventId, createdMatches.map(match => match.id), { defaults: eventDefaults });
-			}
-			catch (error) {
+				await stateService.openSessionsForSlots(
+					eventId,
+					createdMatches.map((match) => match.id),
+					{ defaults: eventDefaults },
+				);
+			} catch (error) {
 				// A Slot is not usable without its first Session: remove every Slot
 				// this call created, so the Event holds only the Slots it held before.
-				await runCompensation(error, () => db.delete(featureMatches).where(and(
-					eq(featureMatches.eventId, eventId),
-					inJsonArray(featureMatches.id, createdMatches.map(match => match.id)),
-				)));
+				await runCompensation(error, () =>
+					db.delete(featureMatches).where(
+						and(
+							eq(featureMatches.eventId, eventId),
+							inJsonArray(
+								featureMatches.id,
+								createdMatches.map((match) => match.id),
+							),
+						),
+					),
+				);
 				throw error;
 			}
-		}
-		else if (currentCount > targetCount) {
+		} else if (currentCount > targetCount) {
 			// Delete matches from the end of display order (highest sortOrder first)
 			const sorted = currentMatches.toSorted((a, b) => b.sortOrder - a.sortOrder);
 			const matchesToDelete = sorted.slice(0, currentCount - targetCount);
-			const idsToDelete = matchesToDelete.map(m => m.id);
+			const idsToDelete = matchesToDelete.map((m) => m.id);
 
 			const [deckSourceScreens, , referenceScreens] = await db.batch([
 				buildClearDeckSourceSlotsQuery(eventId, idsToDelete),
 				db
 					.delete(featureMatches)
 					.where(
-						and(
-							eq(featureMatches.eventId, eventId),
-							inJsonArray(featureMatches.id, idsToDelete),
-						),
+						and(eq(featureMatches.eventId, eventId), inJsonArray(featureMatches.id, idsToDelete)),
 					),
 				buildReleaseScreenEventReferencesQuery(eventId, ['featureMatchSlot']),
 			]);
@@ -642,8 +674,8 @@ export function featureMatchService() {
 		let allMatches = await findByEventId(eventId);
 
 		// Normalize sortOrder if needed (all zeros, or duplicates)
-		const needsNormalize = allMatches.some((match, index) =>
-			index > 0 && match.sortOrder === allMatches[index - 1]!.sortOrder,
+		const needsNormalize = allMatches.some(
+			(match, index) => index > 0 && match.sortOrder === allMatches[index - 1]!.sortOrder,
 		);
 
 		// A normalise moves Slots besides the two swapped; the answer names them too,
@@ -657,11 +689,13 @@ export function featureMatchService() {
 			const normalizeQueries = allMatches.map((m, i) =>
 				db.update(featureMatches).set({ sortOrder: i }).where(eq(featureMatches.id, m.id)),
 			);
-			await db.batch(normalizeQueries as [typeof normalizeQueries[0], ...typeof normalizeQueries]);
+			await db.batch(
+				normalizeQueries as [(typeof normalizeQueries)[0], ...typeof normalizeQueries],
+			);
 			allMatches = await findByEventId(eventId);
 		}
 
-		const index = allMatches.findIndex(m => m.id === matchId);
+		const index = allMatches.findIndex((m) => m.id === matchId);
 		if (index === -1) {
 			throw createError({ statusCode: 404, message: 'Feature match not found in event' });
 		}
@@ -672,21 +706,25 @@ export function featureMatchService() {
 			throw createError({ statusCode: 400, message: 'Feature match is already last' });
 		}
 
-		const swapIndex = direction === 'up'
-			? index - 1
-			: index + 1;
+		const swapIndex = direction === 'up' ? index - 1 : index + 1;
 		const current = allMatches[index]!;
 		const neighbor = allMatches[swapIndex]!;
 
 		await db.batch([
-			db.update(featureMatches).set({ sortOrder: neighbor.sortOrder }).where(eq(featureMatches.id, current.id)),
-			db.update(featureMatches).set({ sortOrder: current.sortOrder }).where(eq(featureMatches.id, neighbor.id)),
+			db
+				.update(featureMatches)
+				.set({ sortOrder: neighbor.sortOrder })
+				.where(eq(featureMatches.id, current.id)),
+			db
+				.update(featureMatches)
+				.set({ sortOrder: current.sortOrder })
+				.where(eq(featureMatches.id, neighbor.id)),
 		]);
 
 		return [
 			{ matchId: current.id, sortOrder: neighbor.sortOrder },
 			{ matchId: neighbor.id, sortOrder: current.sortOrder },
-			...renumbered.filter(slot => slot.matchId !== neighbor.id),
+			...renumbered.filter((slot) => slot.matchId !== neighbor.id),
 		];
 	};
 

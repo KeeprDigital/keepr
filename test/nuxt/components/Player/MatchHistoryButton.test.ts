@@ -23,18 +23,21 @@ const alice = createMockPlayer({ id: 7, name: 'Alice' }) as never;
 const bob = createMockPlayer({ id: 8, name: 'Bob' }) as never;
 
 function mountNames(players: unknown[], name?: string) {
-	return mount(defineComponent({
-		components: { PlayerMatchHistoryButton },
-		setup: () => ({ players, name }),
-		template: '<div><PlayerMatchHistoryButton v-for="(player, i) in players" :key="i" :player="player" :name="name" /></div>',
-	}));
+	return mount(
+		defineComponent({
+			components: { PlayerMatchHistoryButton },
+			setup: () => ({ players, name }),
+			template:
+				'<div><PlayerMatchHistoryButton v-for="(player, i) in players" :key="i" :player="player" :name="name" /></div>',
+		}),
+	);
 }
 
 /** The Players each modal was opened for, per modal that was opened at all. */
 function openedPlayers() {
 	return modals
-		.filter(modal => modal.open.mock.calls.length > 0)
-		.map(modal => modal.open.mock.calls.map(([props]) => props.player.name));
+		.filter((modal) => modal.open.mock.calls.length > 0)
+		.map((modal) => modal.open.mock.calls.map(([props]) => props.player.name));
 }
 
 enableAutoUnmount(afterEach);
@@ -44,16 +47,14 @@ describe('player match history button', () => {
 		modals.length = 0;
 	});
 
-	it('opens the Player\'s match history from their name', async () => {
+	it("opens the Player's match history from their name", async () => {
 		const wrapper = mountNames([alice]);
 
 		const button = wrapper.get('button');
 		expect(button.text()).toBe('Alice');
 		await button.trigger('click');
 
-		expect(openedPlayers()).toEqual([
-			['Alice'],
-		]);
+		expect(openedPlayers()).toEqual([['Alice']]);
 	});
 
 	it('opens every name into one modal, so a second Player replaces the first', async () => {
@@ -63,37 +64,20 @@ describe('player match history button', () => {
 		await first!.trigger('click');
 		await second!.trigger('click');
 
-		expect(openedPlayers()).toEqual([
-			['Alice', 'Bob'],
-		]);
+		expect(openedPlayers()).toEqual([['Alice', 'Bob']]);
 	});
 
 	it.each([
-		[
-			'the Player\'s',
-			alice,
-			undefined,
-			'Alice',
-			true,
-		],
-		[
-			'a given',
-			alice,
-			'Alice (seat)',
-			'Alice (seat)',
-			true,
-		],
-		[
-			'a Player-less',
-			null,
-			'TBD',
-			'TBD',
-			false,
-		],
-	])('shows %s name, as a button only when a Player is behind it', (_, player, name, text, clickable) => {
-		const wrapper = mountNames([player], name);
+		["the Player's", alice, undefined, 'Alice', true],
+		['a given', alice, 'Alice (seat)', 'Alice (seat)', true],
+		['a Player-less', null, 'TBD', 'TBD', false],
+	])(
+		'shows %s name, as a button only when a Player is behind it',
+		(_, player, name, text, clickable) => {
+			const wrapper = mountNames([player], name);
 
-		expect(wrapper.text()).toBe(text);
-		expect(wrapper.find('button').exists()).toBe(clickable);
-	});
+			expect(wrapper.text()).toBe(text);
+			expect(wrapper.find('button').exists()).toBe(clickable);
+		},
+	);
 });

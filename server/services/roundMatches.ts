@@ -1,5 +1,9 @@
 import type { PlayerSlotData } from '~~/shared/api';
-import type { ScreenOutputMatchSide, ScreenOutputPairingsResponse, ScreenOutputRoundMatch } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputMatchSide,
+	ScreenOutputPairingsResponse,
+	ScreenOutputRoundMatch,
+} from '~~/shared/types/screenOutputReads';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import { db } from '~~/server/db';
@@ -18,12 +22,13 @@ const player2 = alias(players, 'match_player2');
  * `joinedName` is the seated Player's name, absent when no Player of the Event
  * is seated there.
  */
-function matchSide(joinedName: string | null, playerId: number | null, slot: PlayerSlotData | null): ScreenOutputMatchSide | null {
-	if (joinedName != null && playerId != null)
-		return { id: playerId, name: joinedName };
-	return slot?.name
-		? { id: null, name: slot.name }
-		: null;
+function matchSide(
+	joinedName: string | null,
+	playerId: number | null,
+	slot: PlayerSlotData | null,
+): ScreenOutputMatchSide | null {
+	if (joinedName != null && playerId != null) return { id: playerId, name: joinedName };
+	return slot?.name ? { id: null, name: slot.name } : null;
 }
 
 /**
@@ -32,10 +37,12 @@ function matchSide(joinedName: string | null, playerId: number | null, slot: Pla
  * absent. Shared by the Pairings (#751) and Top Cut Bracket (#752) Screen Output reads,
  * so both name a Match's sides alike.
  */
-export async function findMatchesByRound(eventId: number, roundIds: readonly number[]): Promise<Map<number, ScreenOutputRoundMatch[]>> {
+export async function findMatchesByRound(
+	eventId: number,
+	roundIds: readonly number[],
+): Promise<Map<number, ScreenOutputRoundMatch[]>> {
 	const byRound = new Map<number, ScreenOutputRoundMatch[]>();
-	if (roundIds.length === 0)
-		return byRound;
+	if (roundIds.length === 0) return byRound;
 
 	const rows = await db
 		.select({
@@ -47,7 +54,12 @@ export async function findMatchesByRound(eventId: number, roundIds: readonly num
 		.leftJoin(player1, and(eq(player1.id, matches.player1Id), eq(player1.eventId, eventId)))
 		.leftJoin(player2, and(eq(player2.id, matches.player2Id), eq(player2.eventId, eventId)))
 		.where(and(eq(matches.eventId, eventId), inArray(matches.roundId, [...roundIds])))
-		.orderBy(sql`${matches.tableNumber} is null`, asc(matches.tableNumber), asc(matches.sortOrder), asc(matches.id));
+		.orderBy(
+			sql`${matches.tableNumber} is null`,
+			asc(matches.tableNumber),
+			asc(matches.sortOrder),
+			asc(matches.id),
+		);
 
 	for (const { match, player1Name, player2Name } of rows) {
 		const roundMatches = byRound.get(match.roundId) ?? [];
@@ -73,10 +85,12 @@ export async function findMatchesByRound(eventId: number, roundIds: readonly num
  *
  * The Pairings Screen Output's read (#751).
  */
-export async function findRoundMatches(eventId: number, roundId: number): Promise<ScreenOutputPairingsResponse | null> {
+export async function findRoundMatches(
+	eventId: number,
+	roundId: number,
+): Promise<ScreenOutputPairingsResponse | null> {
 	const round = await roundService().findById(roundId, eventId);
-	if (!round)
-		return null;
+	if (!round) return null;
 
 	const byRound = await findMatchesByRound(eventId, [roundId]);
 	return {

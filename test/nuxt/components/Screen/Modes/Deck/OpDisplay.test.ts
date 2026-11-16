@@ -21,7 +21,7 @@ const measured = vi.hoisted(() => ({ width: 0, height: 0 }));
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const { ref } = await import('vue');
 	return {
-		...await importOriginal<typeof import('@vueuse/core')>(),
+		...(await importOriginal<typeof import('@vueuse/core')>()),
 		useElementSize: () => ({
 			width: ref(measured.width),
 			height: ref(measured.height),
@@ -135,7 +135,10 @@ function followSwappedSession() {
 	featureMatchStateStore.sessionIdBySlotId.set(SLOT_ID, 90);
 }
 
-const screen = ref<{ id: number; modeConfigs: Record<string, unknown> }>({ id: 42, modeConfigs: {} });
+const screen = ref<{ id: number; modeConfigs: Record<string, unknown> }>({
+	id: 42,
+	modeConfigs: {},
+});
 
 function showSource(deckSource: Record<string, unknown>) {
 	screen.value = {
@@ -175,12 +178,8 @@ function shown(wrapper: VueWrapper) {
 	return {
 		state: root.attributes('data-deck-state'),
 		deckListId: root.attributes('data-deck-list-id'),
-		player: player.exists()
-			? player.text()
-			: null,
-		leader: leader.exists()
-			? leader.attributes('data-number')
-			: null,
+		player: player.exists() ? player.text() : null,
+		leader: leader.exists() ? leader.attributes('data-number') : null,
 	};
 }
 
@@ -200,11 +199,9 @@ beforeEach(() => {
 		deckList: deckList(601, ZORO_LIST_ENTRIES),
 	};
 	mockFetch.mockImplementation(async (path: string) => {
-		if (path.endsWith('players/31/deck-list'))
-			return playerRead.value;
+		if (path.endsWith('players/31/deck-list')) return playerRead.value;
 		const listId = /feature-match-slots\/11\/deck-lists\/(\d+)$/.exec(path)?.[1];
-		if (listId)
-			return await deckListReads.get(Number(listId));
+		if (listId) return await deckListReads.get(Number(listId));
 		if (path.endsWith('feature-match-slots/11')) {
 			return {
 				slot: slot(ALICE, BOB),
@@ -218,7 +215,7 @@ beforeEach(() => {
 });
 
 describe('a Deck List Screen showing a Feature Match Slot side', () => {
-	it('shows the side\'s Leader, the Mainboard grouped Character, Event, Stage by cost, and its cost curve', async () => {
+	it("shows the side's Leader, the Mainboard grouped Character, Event, Stage by cost, and its cost curve", async () => {
 		const wrapper = mountDisplay();
 		await flushPromises();
 
@@ -228,11 +225,17 @@ describe('a Deck List Screen showing a Feature Match Slot side', () => {
 			player: 'Alice',
 			leader: LUFFY.number,
 		});
-		expect(wrapper.findAll('[data-testid="op-deck-group"]').map(group => ({
-			group: group.attributes('data-group'),
-			count: group.attributes('data-count'),
-			cards: group.findAll('[data-testid="op-deck-card"]').map(entry => `${entry.attributes('data-quantity')} ${entry.attributes('data-number')}`),
-		}))).toEqual([
+		expect(
+			wrapper.findAll('[data-testid="op-deck-group"]').map((group) => ({
+				group: group.attributes('data-group'),
+				count: group.attributes('data-count'),
+				cards: group
+					.findAll('[data-testid="op-deck-card"]')
+					.map(
+						(entry) => `${entry.attributes('data-quantity')} ${entry.attributes('data-number')}`,
+					),
+			})),
+		).toEqual([
 			{
 				group: 'character',
 				count: '8',
@@ -250,8 +253,11 @@ describe('a Deck List Screen showing a Feature Match Slot side', () => {
 			},
 		]);
 		// The curve's counting is `opDeckLayout`'s; here, that its buckets render.
-		expect(wrapper.findAll('[data-testid="op-cost-curve-bar"]').map(bar => bar.attributes('data-cost')))
-			.toEqual(['0', '1', '2', '3', '4', '5']);
+		expect(
+			wrapper
+				.findAll('[data-testid="op-cost-curve-bar"]')
+				.map((bar) => bar.attributes('data-cost')),
+		).toEqual(['0', '1', '2', '3', '4', '5']);
 	});
 
 	it.each([
@@ -266,7 +272,7 @@ describe('a Deck List Screen showing a Feature Match Slot side', () => {
 			},
 		},
 		{
-			name: 'a re-paste replaces the side\'s Deck List',
+			name: "a re-paste replaces the side's Deck List",
 			change: () => featureMatchStore.holdFeatureMatch(slot(side('Alice', LUFFY, 503), BOB)),
 			after: {
 				state: 'deck',
@@ -312,20 +318,26 @@ describe('a Deck List Screen showing a Feature Match Slot side', () => {
 			quantityBadgeSize: 20,
 			size: '20px',
 		},
-	])('sizes its quantity badges at $size on a $mainboard.maxCardSize px card, set to $quantityBadgeSize', async ({ mainboard, quantityBadgeSize, size }) => {
-		[measured.width, measured.height] = [2000, 2000];
-		const wrapper = mountDisplay();
-		screen.value = {
-			id: 42,
-			modeConfigs: {
-				deck: { ...screen.value.modeConfigs.deck as object, mainboard, quantityBadgeSize },
-			},
-		};
-		await flushPromises();
+	])(
+		'sizes its quantity badges at $size on a $mainboard.maxCardSize px card, set to $quantityBadgeSize',
+		async ({ mainboard, quantityBadgeSize, size }) => {
+			[measured.width, measured.height] = [2000, 2000];
+			const wrapper = mountDisplay();
+			screen.value = {
+				id: 42,
+				modeConfigs: {
+					deck: { ...(screen.value.modeConfigs.deck as object), mainboard, quantityBadgeSize },
+				},
+			};
+			await flushPromises();
 
-		expect(wrapper.findAll('[data-testid="op-deck-quantity-badge"]').map(badge => (badge.element as HTMLElement).style.fontSize))
-			.toEqual(Array.from({ length: 5 }).fill(size));
-	});
+			expect(
+				wrapper
+					.findAll('[data-testid="op-deck-quantity-badge"]')
+					.map((badge) => (badge.element as HTMLElement).style.fontSize),
+			).toEqual(Array.from({ length: 5 }).fill(size));
+		},
+	);
 
 	it('shows the Deck List of a Player linked into the side, through a re-import', async () => {
 		/** A linked side's slot data: the Player's Leader and Deck List, by reference (ADR-0074). */
@@ -365,7 +377,7 @@ describe('a Deck List Screen showing a Feature Match Slot side', () => {
 		expect(shown(wrapper)).toMatchObject({ state: 'deck', deckListId: '602' });
 	});
 
-	it('shows the side the Session puts the Slot\'s first player on', async () => {
+	it("shows the side the Session puts the Slot's first player on", async () => {
 		followSwappedSession();
 		const wrapper = mountDisplay('player2');
 		await flushPromises();
@@ -400,16 +412,24 @@ describe('a Deck List Screen showing a Feature Match Slot side', () => {
 
 	// On a live rendering a re-pasted Deck List arrives as a Slot cause on the Screen's channel.
 	it('shows a re-pasted Deck List after its Screen channel names the Slot, keeping the outgoing one until then', async () => {
-		const wrapper = mountSource({ type: 'featureMatchSlot', slotId: SLOT_ID, side: 'player1' }, { live: true });
+		const wrapper = mountSource(
+			{ type: 'featureMatchSlot', slotId: SLOT_ID, side: 'player1' },
+			{ live: true },
+		);
 		await flushPromises();
 		expect(shown(wrapper).deckListId).toBe('501');
 		const slotRead = deferred<unknown>();
 		mockFetch.mockImplementationOnce(async () => await slotRead.promise);
 
-		realtime.deliverToScreen(42, 'output:modeDataChanged', {
-			screenId: 42,
-			causes: ['featureMatchSlot'],
-		}, 7);
+		realtime.deliverToScreen(
+			42,
+			'output:modeDataChanged',
+			{
+				screenId: 42,
+				causes: ['featureMatchSlot'],
+			},
+			7,
+		);
 		await flushPromises();
 		expect(shown(wrapper)).toMatchObject({ state: 'deck', deckListId: '501', player: 'Alice' });
 
@@ -459,8 +479,11 @@ describe('a Deck List Screen showing a One Piece Card Game Player', () => {
 			player: 'zoro_main',
 			leader: 'OP01-001',
 		});
-		expect(wrapper.findAll('[data-testid="op-deck-group"]').map(group => `${group.attributes('data-group')} ${group.attributes('data-count')}`))
-			.toEqual(['character 4', 'event 3', 'unknown 2']);
+		expect(
+			wrapper
+				.findAll('[data-testid="op-deck-group"]')
+				.map((group) => `${group.attributes('data-group')} ${group.attributes('data-count')}`),
+		).toEqual(['character 4', 'event 3', 'unknown 2']);
 	});
 
 	it.each([
@@ -530,9 +553,11 @@ describe('a Deck List Screen showing a One Piece Card Game Player', () => {
 
 		playerRead.value = read;
 		// An import announces itself once, not each Player it wrote.
-		realtime.deliver(message, message === 'player:updated'
-			? { player: read.player }
-			: { playerCount: 512, deckCount: 512 }, 7);
+		realtime.deliver(
+			message,
+			message === 'player:updated' ? { player: read.player } : { playerCount: 512, deckCount: 512 },
+			7,
+		);
 		await flushPromises();
 
 		expect(shown(wrapper)).toEqual(after);

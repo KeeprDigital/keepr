@@ -3,28 +3,44 @@ import { tableRowLayout, tableRowLayoutStyle } from '~~/app/utils/tableRowLayout
 
 describe('tableRowLayout', () => {
 	it('shares the measured height, less the page inset, across a page of rows', () => {
-		expect(tableRowLayout({ density: 'compact', measuredHeight: 800, rowCount: 8 }).rowHeight).toBe(100);
-		expect(tableRowLayout({
-			density: 'compact',
-			measuredHeight: 800,
-			rowCount: 8,
-			insetY: 80,
-		}).rowHeight).toBe(90);
-		expect(tableRowLayout({ density: 'roomy', measuredHeight: 800, rowCount: 4 }).rowHeight).toBe(200);
+		expect(tableRowLayout({ density: 'compact', measuredHeight: 800, rowCount: 8 }).rowHeight).toBe(
+			100,
+		);
+		expect(
+			tableRowLayout({
+				density: 'compact',
+				measuredHeight: 800,
+				rowCount: 8,
+				insetY: 80,
+			}).rowHeight,
+		).toBe(90);
+		expect(tableRowLayout({ density: 'roomy', measuredHeight: 800, rowCount: 4 }).rowHeight).toBe(
+			200,
+		);
 	});
 
-	it('sizes rows at the density\'s natural height before the table is measured', () => {
-		expect(tableRowLayout({ density: 'compact', measuredHeight: 0, rowCount: 10 }).rowHeight).toBe(44);
-		expect(tableRowLayout({ density: 'roomy', measuredHeight: 0, rowCount: 10 }).rowHeight).toBe(72);
+	it("sizes rows at the density's natural height before the table is measured", () => {
+		expect(tableRowLayout({ density: 'compact', measuredHeight: 0, rowCount: 10 }).rowHeight).toBe(
+			44,
+		);
+		expect(tableRowLayout({ density: 'roomy', measuredHeight: 0, rowCount: 10 }).rowHeight).toBe(
+			72,
+		);
 	});
 
-	it('never squeezes a row below the density\'s floor', () => {
-		expect(tableRowLayout({ density: 'compact', measuredHeight: 100, rowCount: 8 }).rowHeight).toBe(24);
-		expect(tableRowLayout({ density: 'roomy', measuredHeight: 100, rowCount: 8 }).rowHeight).toBe(44);
+	it("never squeezes a row below the density's floor", () => {
+		expect(tableRowLayout({ density: 'compact', measuredHeight: 100, rowCount: 8 }).rowHeight).toBe(
+			24,
+		);
+		expect(tableRowLayout({ density: 'roomy', measuredHeight: 100, rowCount: 8 }).rowHeight).toBe(
+			44,
+		);
 	});
 
 	it('lays out at least one row', () => {
-		expect(tableRowLayout({ density: 'compact', measuredHeight: 800, rowCount: 0 }).rowHeight).toBe(800);
+		expect(tableRowLayout({ density: 'compact', measuredHeight: 800, rowCount: 0 }).rowHeight).toBe(
+			800,
+		);
 	});
 
 	it('grows compact type and padding with the row height', () => {
@@ -56,24 +72,25 @@ describe('tableRowLayout', () => {
 	});
 
 	it('keeps roomy type at its minimums in short rows', () => {
-		expect(tableRowLayout({ density: 'roomy', measuredHeight: 352, rowCount: 8 }))
-			.toEqual({
-				rowHeight: 44,
-				fontSize: 18,
-				secondaryFontSize: 13,
-				padding: null,
-			});
+		expect(tableRowLayout({ density: 'roomy', measuredHeight: 352, rowCount: 8 })).toEqual({
+			rowHeight: 44,
+			fontSize: 18,
+			secondaryFontSize: 13,
+			padding: null,
+		});
 	});
 });
 
 describe('tableRowLayoutStyle', () => {
 	it('names each measure as a custom property under the given prefix', () => {
-		expect(tableRowLayoutStyle('standings', {
-			rowHeight: 50,
-			fontSize: 16,
-			secondaryFontSize: 13,
-			padding: { y: 6, x: 12 },
-		})).toEqual({
+		expect(
+			tableRowLayoutStyle('standings', {
+				rowHeight: 50,
+				fontSize: 16,
+				secondaryFontSize: 13,
+				padding: { y: 6, x: 12 },
+			}),
+		).toEqual({
 			'--standings-row-height': '50px',
 			'--standings-row-font-size': '16px',
 			'--standings-row-secondary-font-size': '13px',
@@ -83,12 +100,14 @@ describe('tableRowLayoutStyle', () => {
 	});
 
 	it('leaves padding properties out when the density does not size padding', () => {
-		expect(tableRowLayoutStyle('pairings', {
-			rowHeight: 50,
-			fontSize: 18,
-			secondaryFontSize: 13,
-			padding: null,
-		})).toEqual({
+		expect(
+			tableRowLayoutStyle('pairings', {
+				rowHeight: 50,
+				fontSize: 18,
+				secondaryFontSize: 13,
+				padding: null,
+			}),
+		).toEqual({
 			'--pairings-row-height': '50px',
 			'--pairings-row-font-size': '18px',
 			'--pairings-row-secondary-font-size': '13px',

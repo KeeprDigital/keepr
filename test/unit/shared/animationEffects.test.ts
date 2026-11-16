@@ -40,7 +40,7 @@ describe('animationEffects catalogue', () => {
 		for (const effect of ANIMATION_EFFECT_VALUES) {
 			const defaults = animationEffectDefaultParams(effect) as Record<string, unknown>;
 			const fields = animationEffectParamFields(effect);
-			expect(fields.map(field => field.key).sort()).toEqual(Object.keys(defaults).sort());
+			expect(fields.map((field) => field.key).sort()).toEqual(Object.keys(defaults).sort());
 			for (const field of fields) {
 				expect(field.label.length).toBeGreaterThan(0);
 				expect(field.defaultValue).toEqual(defaults[field.key]);
@@ -57,11 +57,16 @@ describe('animationEffects catalogue', () => {
 
 	it('refuses an out-of-range parameter rather than clamping it', () => {
 		// Rings carries no number param — its schema is a background colour alone.
-		const effectsWithNumbers = ANIMATION_EFFECT_VALUES.filter(effect =>
-			animationEffectParamFields(effect).some(field => field.control === 'number'));
-		expect(effectsWithNumbers).toEqual(ANIMATION_EFFECT_VALUES.filter(effect => effect !== 'rings'));
+		const effectsWithNumbers = ANIMATION_EFFECT_VALUES.filter((effect) =>
+			animationEffectParamFields(effect).some((field) => field.control === 'number'),
+		);
+		expect(effectsWithNumbers).toEqual(
+			ANIMATION_EFFECT_VALUES.filter((effect) => effect !== 'rings'),
+		);
 		for (const effect of effectsWithNumbers) {
-			const [numberField] = animationEffectParamFields(effect).filter(field => field.control === 'number');
+			const [numberField] = animationEffectParamFields(effect).filter(
+				(field) => field.control === 'number',
+			);
 			const outcome = ANIMATION_EFFECT_CATALOGUE[effect].paramsSchema.safeParse({
 				[numberField!.key]: numberField!.max! + 1,
 			});
@@ -71,7 +76,9 @@ describe('animationEffects catalogue', () => {
 
 	it('refuses a colour that is not a hex colour', () => {
 		for (const effect of ANIMATION_EFFECT_VALUES) {
-			const [colorField] = animationEffectParamFields(effect).filter(field => field.control === 'color');
+			const [colorField] = animationEffectParamFields(effect).filter(
+				(field) => field.control === 'color',
+			);
 			expect(colorField).toBeDefined();
 			const outcome = ANIMATION_EFFECT_CATALOGUE[effect].paramsSchema.safeParse({
 				[colorField!.key]: 'url(javascript:alert(1))',
@@ -80,7 +87,7 @@ describe('animationEffects catalogue', () => {
 		}
 	});
 
-	it('names every spatial param by the catalogue\'s standard', () => {
+	it("names every spatial param by the catalogue's standard", () => {
 		// One meaning per name across effects (ADR-0025, #503): `scale` for a
 		// field's feature size, defaulting to the designed look; `size` for a
 		// discrete element. No `zoom`, and no qualified variants of either.
@@ -89,23 +96,21 @@ describe('animationEffects catalogue', () => {
 				if (field.key === 'scale') {
 					expect(field.label, `${effect}.scale`).toMatch(/^\S+ scale$/);
 					expect(field.defaultValue, `${effect}.scale`).toBe(1);
-				}
-				else if (field.key === 'size') {
+				} else if (field.key === 'size') {
 					expect(field.label, `${effect}.size`).toMatch(/^\S+ size$/);
-				}
-				else {
+				} else {
 					expect(field.key, effect).not.toMatch(/zoom|scale|size/i);
 				}
 			}
 		}
 	});
 
-	it('names every param by what it controls, never by the fork\'s shader quantity', () => {
+	it("names every param by what it controls, never by the fork's shader quantity", () => {
 		// One rule across the catalogue (ADR-0025, #583): semantic names, colours
 		// named by the role they paint, shared concepts under the shared name.
 		for (const effect of ANIMATION_EFFECT_VALUES) {
 			const fields = animationEffectParamFields(effect);
-			const keys = fields.map(field => field.key);
+			const keys = fields.map((field) => field.key);
 			for (const field of fields) {
 				const where = `${effect}.${field.key}`;
 				// No implementation multipliers (`amplitudeFactor`) or numbered keys
@@ -118,8 +123,7 @@ describe('animationEffects catalogue', () => {
 					expect(field.key, where).toMatch(/^[a-z]+Color$/);
 					const role = field.key.slice(0, -'Color'.length);
 					expect(field.label, where).toBe(`${role[0]!.toUpperCase()}${role.slice(1)} color`);
-				}
-				else {
+				} else {
 					expect(field.key, where).not.toMatch(/Color$/);
 				}
 				if (field.control === 'toggle') {
@@ -139,7 +143,9 @@ describe('animationEffects catalogue', () => {
 
 	it('refuses a parameter no effect schema declares', () => {
 		for (const effect of ANIMATION_EFFECT_VALUES) {
-			const outcome = ANIMATION_EFFECT_CATALOGUE[effect].paramsSchema.safeParse({ mouseDriftEnabled: true });
+			const outcome = ANIMATION_EFFECT_CATALOGUE[effect].paramsSchema.safeParse({
+				mouseDriftEnabled: true,
+			});
 			expect(outcome.success).toBe(false);
 		}
 	});
@@ -177,14 +183,15 @@ describe('animationEffectSelectionSchema', () => {
 	});
 
 	it('re-proves a stored selection: parsed through, or null for anything this build does not ship', () => {
-		expect(parseAnimationEffectSelection({
-			effect: 'fog',
-			params: { speed: 2 },
-		}))
-			.toMatchObject({
+		expect(
+			parseAnimationEffectSelection({
 				effect: 'fog',
-				params: expect.objectContaining({ speed: 2, softness: 0.55 }),
-			});
+				params: { speed: 2 },
+			}),
+		).toMatchObject({
+			effect: 'fog',
+			params: expect.objectContaining({ speed: 2, softness: 0.55 }),
+		});
 		expect(parseAnimationEffectSelection({ effect: 'not-an-effect' })).toBeNull();
 		expect(parseAnimationEffectSelection(undefined)).toBeNull();
 	});
@@ -194,51 +201,73 @@ describe('animation effect host unions', () => {
 	it('pairs each effect with its own params, and only those, in every union', () => {
 		// Checked by `pnpm typecheck`: the per-effect pairing is the property a
 		// derived declaration could silently collapse into one wide union.
-		interface Rings { backgroundColor: string }
-		interface Cells { lowlightColor: string; highlightColor: string; scale: number; speed: number }
+		interface Rings {
+			backgroundColor: string;
+		}
+		interface Cells {
+			lowlightColor: string;
+			highlightColor: string;
+			scale: number;
+			speed: number;
+		}
 		expectTypeOf<'not-an-effect'>().not.toExtend<AnimationEffectName>();
 		expectTypeOf<AnimationEffectParams<'rings'>>().toEqualTypeOf<Rings>();
 		expectTypeOf<AnimationEffectParams<'cells'>>().toEqualTypeOf<Cells>();
 
 		type Selection = z.output<typeof animationEffectSelectionSchema>;
 		type Background = z.output<typeof broadcastGraphicsBackgroundConfigSchema>;
-		expectTypeOf<Extract<Selection, { effect: 'rings' }>>().toEqualTypeOf<{ effect: 'rings'; params?: Rings | undefined }>();
-		expectTypeOf<Extract<Background, { effect: 'rings' }>>().toEqualTypeOf<{ effect: 'rings'; params?: Rings | undefined; enabled: boolean; opacity: number }>();
+		expectTypeOf<Extract<Selection, { effect: 'rings' }>>().toEqualTypeOf<{
+			effect: 'rings';
+			params?: Rings | undefined;
+		}>();
+		expectTypeOf<Extract<Background, { effect: 'rings' }>>().toEqualTypeOf<{
+			effect: 'rings';
+			params?: Rings | undefined;
+			enabled: boolean;
+			opacity: number;
+		}>();
 	});
 
 	it('covers the whole catalogue in every host union, in catalogue order', () => {
 		// Every host union is mapped from the catalogue; an effect missing from one
 		// would be an effect that silently cannot be selected on that host.
-		expect(broadcastGraphicsBackgroundConfigSchema.options.map(branch => branch.shape.effect.value)).toEqual([...ANIMATION_EFFECT_VALUES]);
+		expect(
+			broadcastGraphicsBackgroundConfigSchema.options.map((branch) => branch.shape.effect.value),
+		).toEqual([...ANIMATION_EFFECT_VALUES]);
 	});
 
-	it('fills each effect\'s params from that effect\'s own schema in every union', () => {
+	it("fills each effect's params from that effect's own schema in every union", () => {
 		// The branch list is asserted to its per-effect type, so this is what proves
 		// the runtime pairing the type claims.
 		for (const effect of ANIMATION_EFFECT_VALUES) {
 			const expected = animationEffectDefaultParams(effect);
 			expect(animationEffectSelectionSchema.parse({ effect, params: {} }).params).toEqual(expected);
-			expect(broadcastGraphicsBackgroundConfigSchema.parse({
-				effect,
-				params: {},
-				enabled: true,
-				opacity: 1,
-			}).params).toEqual(expected);
+			expect(
+				broadcastGraphicsBackgroundConfigSchema.parse({
+					effect,
+					params: {},
+					enabled: true,
+					opacity: 1,
+				}).params,
+			).toEqual(expected);
 		}
 	});
 });
 
 describe('featureMatchOverlayFrameAnimationConfigSchema', () => {
 	// The Frame's effect is its Theme's `frame-animation-effect` Mode Token (#831).
-	it.each(ANIMATION_EFFECT_VALUES)('reads a layout stored with its own %s effect and params as its switch and opacity alone', (effect) => {
-		const outcome = featureMatchOverlayFrameAnimationConfigSchema.safeParse({
-			enabled: true,
-			effect,
-			opacity: 0.5,
-			params: { speed: 2 },
-		});
-		expect(outcome.data).toEqual({ enabled: true, opacity: 0.5 });
-	});
+	it.each(ANIMATION_EFFECT_VALUES)(
+		'reads a layout stored with its own %s effect and params as its switch and opacity alone',
+		(effect) => {
+			const outcome = featureMatchOverlayFrameAnimationConfigSchema.safeParse({
+				enabled: true,
+				effect,
+				opacity: 0.5,
+				params: { speed: 2 },
+			});
+			expect(outcome.data).toEqual({ enabled: true, opacity: 0.5 });
+		},
+	);
 
 	it('refuses an effect outside the closed vocabulary, which no stored layout held', () => {
 		const outcome = featureMatchOverlayFrameAnimationConfigSchema.safeParse({
@@ -303,35 +332,60 @@ describe('broadcastGraphicsBackgroundConfigSchema', () => {
 	});
 
 	it('carries the host fields the Screen needs, and refuses one it does not declare', () => {
-		expect(broadcastGraphicsBackgroundConfigSchema.safeParse({ effect: 'fog', opacity: 0.5 }).success).toBe(false);
-		expect(broadcastGraphicsBackgroundConfigSchema.safeParse({ effect: 'fog', enabled: true }).success).toBe(false);
-		expect(broadcastGraphicsBackgroundConfigSchema.safeParse({
-			enabled: true,
-			effect: 'fog',
-			opacity: 0.5,
-			fit: 'cover',
-		}).success).toBe(false);
+		expect(
+			broadcastGraphicsBackgroundConfigSchema.safeParse({ effect: 'fog', opacity: 0.5 }).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsBackgroundConfigSchema.safeParse({ effect: 'fog', enabled: true }).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsBackgroundConfigSchema.safeParse({
+				enabled: true,
+				effect: 'fog',
+				opacity: 0.5,
+				fit: 'cover',
+			}).success,
+		).toBe(false);
 	});
 
 	it('holds opacity to the same nought-to-one range every host reads it as', () => {
-		expect(broadcastGraphicsBackgroundConfigSchema.safeParse({ enabled: true, effect: 'fog', opacity: 1.5 }).success).toBe(false);
-		expect(broadcastGraphicsBackgroundConfigSchema.safeParse({ enabled: true, effect: 'fog', opacity: -0.1 }).success).toBe(false);
+		expect(
+			broadcastGraphicsBackgroundConfigSchema.safeParse({
+				enabled: true,
+				effect: 'fog',
+				opacity: 1.5,
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsBackgroundConfigSchema.safeParse({
+				enabled: true,
+				effect: 'fog',
+				opacity: -0.1,
+			}).success,
+		).toBe(false);
 	});
 
 	it('re-proves a stored background: parsed through with defaults filled, or null for anything this build does not ship', () => {
-		expect(parseBroadcastGraphicsBackgroundConfig({
-			enabled: true,
-			effect: 'fog',
-			opacity: 0.4,
-			params: { speed: 2 },
-		}))
-			.toMatchObject({
+		expect(
+			parseBroadcastGraphicsBackgroundConfig({
 				enabled: true,
 				effect: 'fog',
 				opacity: 0.4,
-				params: expect.objectContaining({ speed: 2, softness: 0.55 }),
-			});
-		expect(parseBroadcastGraphicsBackgroundConfig({ enabled: true, effect: 'not-an-effect', opacity: 0.4 })).toBeNull();
+				params: { speed: 2 },
+			}),
+		).toMatchObject({
+			enabled: true,
+			effect: 'fog',
+			opacity: 0.4,
+			params: expect.objectContaining({ speed: 2, softness: 0.55 }),
+		});
+		expect(
+			parseBroadcastGraphicsBackgroundConfig({
+				enabled: true,
+				effect: 'not-an-effect',
+				opacity: 0.4,
+			}),
+		).toBeNull();
 		expect(parseBroadcastGraphicsBackgroundConfig(undefined)).toBeNull();
 	});
 });

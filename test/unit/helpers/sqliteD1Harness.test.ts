@@ -30,11 +30,13 @@ describe('the libSQL D1 harness', () => {
 		// Four columns, two distinct names. By name the first row reads
 		// [1, 'alpha', 1, 'alpha']; D1 answers [1, 'alpha', 99, 'beta'], and so must this.
 		// Two rows of it, so a `raw()` that answered only the first is caught here too.
-		const rows = await harness.database.prepare(`
+		const rows = await harness.database
+			.prepare(`
 			SELECT left_table.id, left_table.name, right_table.id, right_table.name
 			FROM left_table JOIN right_table
 			ORDER BY left_table.id
-		`).raw<unknown[]>();
+		`)
+			.raw<unknown[]>();
 
 		expect(rows).toEqual([
 			[1, 'alpha', 99, 'beta'],
@@ -46,10 +48,12 @@ describe('the libSQL D1 harness', () => {
 		// Repeated names catch a name-keyed rebuild, the distinct-name count a length from
 		// `Object.keys`, the zero and empty string a `||` for `??`, and the second row a
 		// single-array answer (#211).
-		const rows = await harness.database.prepare(`
+		const rows = await harness.database
+			.prepare(`
 			SELECT id, NULL AS missing, 0 AS id, '' AS name, name FROM left_table
 			ORDER BY left_table.id
-		`).raw<unknown[]>();
+		`)
+			.raw<unknown[]>();
 
 		expect(rows).toEqual([
 			[1, null, 0, '', 'alpha'],

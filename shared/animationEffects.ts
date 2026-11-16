@@ -45,14 +45,19 @@ export function isAnimationEffectHexColor(value: string): boolean {
  * which silently misreads anything richer, and the colour picker emits hex.
  */
 function colorParam(label: string, defaultValue: string) {
-	return z.string()
+	return z
+		.string()
 		.regex(HEX_COLOR_PATTERN, 'Expected a hex colour such as #06b6d4')
 		.default(defaultValue)
 		.meta({ label, control: 'color' } satisfies AnimationEffectParamMeta);
 }
 
-function numberParam(label: string, range: { min: number; max: number; step: number; default: number }) {
-	return z.number()
+function numberParam(
+	label: string,
+	range: { min: number; max: number; step: number; default: number },
+) {
+	return z
+		.number()
 		.min(range.min)
 		.max(range.max)
 		.default(range.default)
@@ -60,7 +65,8 @@ function numberParam(label: string, range: { min: number; max: number; step: num
 }
 
 function toggleParam(label: string, description: string, defaultValue: boolean) {
-	return z.boolean()
+	return z
+		.boolean()
 		.default(defaultValue)
 		.meta({ label, control: 'toggle', description } satisfies AnimationEffectParamMeta);
 }
@@ -181,7 +187,11 @@ export const ANIMATION_EFFECT_CATALOGUE = {
 				step: 1,
 				default: 34,
 			}),
-			showLines: toggleParam('Connecting lines', 'Render connecting line segments between dots.', true),
+			showLines: toggleParam(
+				'Connecting lines',
+				'Render connecting line segments between dots.',
+				true,
+			),
 		}),
 	},
 	/**
@@ -660,10 +670,14 @@ type AnimationEffectCatalogue = typeof ANIMATION_EFFECT_CATALOGUE;
 export type AnimationEffectName = keyof AnimationEffectCatalogue;
 
 /** The closed vocabulary, in catalogue order. */
-export const ANIMATION_EFFECT_VALUES = Object.keys(ANIMATION_EFFECT_CATALOGUE) as readonly AnimationEffectName[];
+export const ANIMATION_EFFECT_VALUES = Object.keys(
+	ANIMATION_EFFECT_CATALOGUE,
+) as readonly AnimationEffectName[];
 
 /** One effect's fully-defaulted params, as its renderer receives them. */
-export type AnimationEffectParams<Effect extends AnimationEffectName> = z.output<AnimationEffectCatalogue[Effect]['paramsSchema']>;
+export type AnimationEffectParams<Effect extends AnimationEffectName> = z.output<
+	AnimationEffectCatalogue[Effect]['paramsSchema']
+>;
 
 export function animationEffectDefaultParams<Effect extends AnimationEffectName>(
 	effect: Effect,
@@ -687,16 +701,22 @@ export interface AnimationEffectParamField {
  * The editor-facing view of one effect's schema, read from the schema itself so
  * a range or default changed there is the one the editor offers.
  */
-export function animationEffectParamFields(effect: AnimationEffectName): AnimationEffectParamField[] {
+export function animationEffectParamFields(
+	effect: AnimationEffectName,
+): AnimationEffectParamField[] {
 	const schema = ANIMATION_EFFECT_CATALOGUE[effect].paramsSchema;
-	const defaults = animationEffectDefaultParams(effect) as Record<string, AnimationEffectParamValue>;
+	const defaults = animationEffectDefaultParams(effect) as Record<
+		string,
+		AnimationEffectParamValue
+	>;
 	return Object.entries(schema.shape).map(([key, field]) => {
 		const meta = field.meta() as unknown as AnimationEffectParamMeta;
 		// Every param is `.default()`-wrapped, so the checks live one level in.
 		const inner = (field as z.ZodDefault).def.innerType;
-		const bounds = inner instanceof z.ZodNumber
-			? { min: inner.minValue ?? undefined, max: inner.maxValue ?? undefined }
-			: {};
+		const bounds =
+			inner instanceof z.ZodNumber
+				? { min: inner.minValue ?? undefined, max: inner.maxValue ?? undefined }
+				: {};
 		return {
 			key,
 			label: meta.label,
@@ -722,7 +742,8 @@ function animationEffectHostBranch<Effect extends AnimationEffectName, Shape ext
 ) {
 	// Narrowed by annotation, which the compiler takes on trust: reading through
 	// the generic index alone widens it to every effect's schema.
-	const paramsSchema: AnimationEffectCatalogue[Effect]['paramsSchema'] = ANIMATION_EFFECT_CATALOGUE[effect].paramsSchema;
+	const paramsSchema: AnimationEffectCatalogue[Effect]['paramsSchema'] =
+		ANIMATION_EFFECT_CATALOGUE[effect].paramsSchema;
 	return z.strictObject({
 		...shape,
 		effect: z.literal(effect),
@@ -754,7 +775,7 @@ type AnimationEffectHostBranches<Shape extends z.ZodRawShape> = {
  * `test/unit/shared/animationEffects.test.ts` pins it at runtime.
  */
 function animationEffectHostBranches<Shape extends z.ZodRawShape>(shape: Shape) {
-	return ANIMATION_EFFECT_VALUES.map(effect => animationEffectHostBranch(effect, shape)) as [
+	return ANIMATION_EFFECT_VALUES.map((effect) => animationEffectHostBranch(effect, shape)) as [
 		AnimationEffectHostBranches<Shape>,
 		...AnimationEffectHostBranches<Shape>[],
 	];
@@ -773,7 +794,10 @@ function animationEffectHostBranches<Shape extends z.ZodRawShape>(shape: Shape) 
  * `params` is optional and may be sparse: every field defaults from the effect's
  * schema, so an absent bag means "as shipped" and survives new params being added.
  */
-export const animationEffectSelectionSchema = z.discriminatedUnion('effect', animationEffectHostBranches({}));
+export const animationEffectSelectionSchema = z.discriminatedUnion(
+	'effect',
+	animationEffectHostBranches({}),
+);
 
 /** The stored/authored selection shape: params sparse, defaults implied. */
 export type AnimationEffectSelection = z.input<typeof animationEffectSelectionSchema>;
@@ -836,11 +860,13 @@ const enabledAndOpacityShape = {
  * with its own `effect` and `params` reads with them dropped, not migrated:
  * the Frame then draws its Theme's effect.
  */
-export const featureMatchOverlayFrameAnimationConfigSchema = z.strictObject({
-	...enabledAndOpacityShape,
-	effect: z.enum(ANIMATION_EFFECT_VALUES).optional(),
-	params: z.record(z.string(), z.unknown()).optional(),
-}).transform(({ enabled, opacity }) => ({ enabled, opacity }));
+export const featureMatchOverlayFrameAnimationConfigSchema = z
+	.strictObject({
+		...enabledAndOpacityShape,
+		effect: z.enum(ANIMATION_EFFECT_VALUES).optional(),
+		params: z.record(z.string(), z.unknown()).optional(),
+	})
+	.transform(({ enabled, opacity }) => ({ enabled, opacity }));
 
 /**
  * A Broadcast Graphics Screen's background: the shared effect selection plus the
@@ -858,7 +884,9 @@ export const broadcastGraphicsBackgroundConfigSchema = z.discriminatedUnion(
 );
 
 /** The stored/authored shape: params sparse, defaults implied. */
-export type BroadcastGraphicsBackgroundConfig = z.input<typeof broadcastGraphicsBackgroundConfigSchema>;
+export type BroadcastGraphicsBackgroundConfig = z.input<
+	typeof broadcastGraphicsBackgroundConfigSchema
+>;
 
 /**
  * A stored Broadcast Graphics background re-proven rather than trusted: the
@@ -874,7 +902,9 @@ export function parseBroadcastGraphicsBackgroundConfig(
 }
 
 /** The Frame's stored animation switch and opacity. */
-export type FeatureMatchOverlayFrameAnimationConfig = z.output<typeof featureMatchOverlayFrameAnimationConfigSchema>;
+export type FeatureMatchOverlayFrameAnimationConfig = z.output<
+	typeof featureMatchOverlayFrameAnimationConfigSchema
+>;
 
 /**
  * A stored `frame.animation` value re-proven rather than trusted, for the

@@ -1,5 +1,15 @@
 import type { InjectionKey, MaybeRefOrGetter, Ref } from 'vue';
-import { computed, inject, onScopeDispose, provide, ref, shallowReactive, shallowRef, toValue, watch } from 'vue';
+import {
+	computed,
+	inject,
+	onScopeDispose,
+	provide,
+	ref,
+	shallowReactive,
+	shallowRef,
+	toValue,
+	watch,
+} from 'vue';
 import { createGuardedSequence } from '~/utils/guardedSequence';
 import { preloadImages } from '~/utils/preloadImage';
 
@@ -14,7 +24,8 @@ interface ScreenModeReadinessRegistry {
 	declare: (ready: () => boolean) => () => void;
 }
 
-const SCREEN_MODE_READINESS: InjectionKey<ScreenModeReadinessRegistry> = Symbol('screen-mode-readiness');
+const SCREEN_MODE_READINESS: InjectionKey<ScreenModeReadinessRegistry> =
+	Symbol('screen-mode-readiness');
 
 /**
  * Rendering Readiness, as one Screen Mode rendering's host sees it: whether
@@ -31,7 +42,7 @@ export function provideScreenModeReadiness() {
 		},
 	});
 	return {
-		declared: computed(() => declarations.size > 0 && [...declarations].every(ready => ready())),
+		declared: computed(() => declarations.size > 0 && [...declarations].every((ready) => ready())),
 	};
 }
 
@@ -43,8 +54,7 @@ export function provideScreenModeReadiness() {
  */
 export function useScreenModeReady(ready: MaybeRefOrGetter<boolean>) {
 	const registry = inject(SCREEN_MODE_READINESS, null);
-	if (!registry)
-		return;
+	if (!registry) return;
 	onScopeDispose(registry.declare(() => toValue(ready)));
 }
 
@@ -62,15 +72,18 @@ export function useStagedScreenContent<T>(
 	const staging = ref(true);
 	const stages = createGuardedSequence();
 
-	watch(content, async (next) => {
-		const flight = stages.begin();
-		staging.value = true;
-		await preloadImages(imageUrls(next));
-		if (flight.stale)
-			return;
-		shown.value = next;
-		staging.value = false;
-	}, { immediate: true });
+	watch(
+		content,
+		async (next) => {
+			const flight = stages.begin();
+			staging.value = true;
+			await preloadImages(imageUrls(next));
+			if (flight.stale) return;
+			shown.value = next;
+			staging.value = false;
+		},
+		{ immediate: true },
+	);
 
 	onScopeDispose(() => stages.supersede());
 

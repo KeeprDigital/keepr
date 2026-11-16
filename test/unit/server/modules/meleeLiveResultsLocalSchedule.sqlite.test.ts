@@ -16,8 +16,10 @@ const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 vi.stubGlobal('defineNitroPlugin', (plugin: unknown) => plugin);
 
-const { default: installCronPlugin } = await import('~~/server/plugins/melee-live-results-schedule');
-const { startLocalLiveResultsSchedule } = await import('~~/server/modules/melee-sync/liveResults/localSchedule');
+const { default: installCronPlugin } =
+	await import('~~/server/plugins/melee-live-results-schedule');
+const { startLocalLiveResultsSchedule } =
+	await import('~~/server/modules/melee-sync/liveResults/localSchedule');
 
 afterAll(async () => await harness.close());
 
@@ -36,14 +38,17 @@ const start = new Date('2026-11-03T12:00:00.000Z');
 
 /** An Event with Live Results on and no Rounds: every tick idles, asking Melee nothing. */
 async function seedEvent() {
-	const [event] = await db.insert(schema.events).values({
-		name: 'Melee Championship',
-		game: 'mtg',
-		featureMatchOrientation: 'horizontal',
-		meleeEnabled: true,
-		meleeEventId: 'melee-local',
-		meleeLiveResultsEnabled: true,
-	}).returning();
+	const [event] = await db
+		.insert(schema.events)
+		.values({
+			name: 'Melee Championship',
+			game: 'mtg',
+			featureMatchOrientation: 'horizontal',
+			meleeEnabled: true,
+			meleeEventId: 'melee-local',
+			meleeLiveResultsEnabled: true,
+		})
+		.returning();
 	return event!.id;
 }
 
@@ -56,8 +61,7 @@ async function lastCheckedAt(eventId: number) {
 
 /** Advances the clock a minute at a time, letting each firing settle. */
 async function advanceMinutes(minutes: number) {
-	for (let minute = 0; minute < minutes; minute++)
-		await vi.advanceTimersByTimeAsync(60_000);
+	for (let minute = 0; minute < minutes; minute++) await vi.advanceTimersByTimeAsync(60_000);
 }
 
 beforeEach(() => {

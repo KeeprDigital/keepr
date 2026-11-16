@@ -16,7 +16,7 @@ export const MOXFIELD_COPY = [
 	'1 Ashling, the Limitless (ECC) 1',
 	'1 Animar, Soul of Elements (2X2) 171',
 	'1 Eirdu, Carrier of Dawn / Isilu, Carrier of Twilight (ECL) 13',
-	'1 Garruk\'s Uprising (PLST) M21-186',
+	"1 Garruk's Uprising (PLST) M21-186",
 	'1 Graveshifter (ECL) 104 *F*',
 	'1 Hedge Maze (PMKM) 262p',
 	'3 Forest (KLD) 264',
@@ -34,7 +34,7 @@ export const ARENA_COPY = [
 	'1 Ashling, the Limitless',
 	'',
 	'Deck',
-	'1 Ashnod\'s Altar',
+	"1 Ashnod's Altar",
 	'',
 	'Sideboard',
 	'1 Endurance',
@@ -57,7 +57,7 @@ export const MTGO_COPY = [
  * deck has no Sideboard, so the MTGO and plain-text copies name none.
  */
 export const PARTNER_MOXFIELD_COPY = [
-	'1 Kraum, Ludevic\'s Opus (C16) 34 *F*',
+	"1 Kraum, Ludevic's Opus (C16) 34 *F*",
 	'1 Tymna the Weaver (C16) 48 *F*',
 	'1 Ad Nauseam (SOA) 25',
 	'1 Badlands (OLGC) 2016NA',
@@ -73,7 +73,7 @@ export const PARTNER_ARENA_COPY = [
 	'Name Kraum & Tymna',
 	'',
 	'Commander',
-	'1 Kraum, Ludevic\'s Opus',
+	"1 Kraum, Ludevic's Opus",
 	'1 Tymna the Weaver',
 	'',
 	'Deck',
@@ -87,7 +87,7 @@ export const PARTNER_MTGO_COPY = [
 	'1 Badlands',
 	'1 Wishclaw Talisman',
 	'',
-	'1 Kraum, Ludevic\'s Opus',
+	"1 Kraum, Ludevic's Opus",
 	'1 Tymna the Weaver',
 ].join('\n');
 
@@ -119,7 +119,7 @@ export const MOXFIELD_CARDS = {
 	},
 	garruksUprising: {
 		id: '0a5b1c2d-3e4f-4a6b-8c7d-9e0f1a2b3c04',
-		name: 'Garruk\'s Uprising',
+		name: "Garruk's Uprising",
 		set: 'plst',
 		collector_number: 'M21-186',
 		type_line: 'Enchantment',
@@ -151,7 +151,7 @@ export const MOXFIELD_CARDS = {
 	},
 	ashnodsAltar: {
 		id: '0a5b1c2d-3e4f-4a6b-8c7d-9e0f1a2b3c08',
-		name: 'Ashnod\'s Altar',
+		name: "Ashnod's Altar",
 		set: 'ema',
 		collector_number: '218',
 		type_line: 'Artifact',
@@ -190,7 +190,11 @@ export function deckListEntryOf(card: FakeScryfallCard, quantity = 1): Commander
 }
 
 /** The id a resolved request's printing answers by: its name, set and collector number. */
-export function printingId(name: string, setCode: string | null = null, collectorNumber: string | null = null): string {
+export function printingId(
+	name: string,
+	setCode: string | null = null,
+	collectorNumber: string | null = null,
+): string {
 	return `${name}-${setCode ?? 'default'}-${collectorNumber ?? 'default'}`;
 }
 
@@ -216,12 +220,15 @@ export function resolvedCard(
 /** A resolver that knows every card asked of it but those named in `unknown`. */
 export function resolvingAllCards(unknown: readonly string[] = []): BroadcastDeckListCardResolver {
 	return {
-		resolve: vi.fn(async (requests: readonly BroadcastDeckListCardResolutionRequest[]) => requests.map(request =>
-			unknown.includes(request.name)
-				? { status: 'unresolved' as const }
-				: {
-						status: 'resolved' as const,
-						card: resolvedCard(request),
-					})),
+		resolve: vi.fn(async (requests: readonly BroadcastDeckListCardResolutionRequest[]) =>
+			requests.map((request) =>
+				unknown.includes(request.name)
+					? { status: 'unresolved' as const }
+					: {
+							status: 'resolved' as const,
+							card: resolvedCard(request),
+						},
+			),
+		),
 	};
 }

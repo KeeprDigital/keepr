@@ -10,17 +10,27 @@ import { eventOpCardNumberResolutions } from '~~/server/db/schema';
 export function opCardNumberResolutionService() {
 	/** The Event's resolutions, the card number each resolved number names. */
 	async function findByEvent(eventId: number): Promise<Map<string, string>> {
-		const rows = await db.select({
-			cardNumber: eventOpCardNumberResolutions.cardNumber,
-			resolvedCardNumber: eventOpCardNumberResolutions.resolvedCardNumber,
-		})
+		const rows = await db
+			.select({
+				cardNumber: eventOpCardNumberResolutions.cardNumber,
+				resolvedCardNumber: eventOpCardNumberResolutions.resolvedCardNumber,
+			})
 			.from(eventOpCardNumberResolutions)
 			.where(eq(eventOpCardNumberResolutions.eventId, eventId));
-		return new Map(rows.map(row => [row.cardNumber, row.resolvedCardNumber]));
+		return new Map(rows.map((row) => [row.cardNumber, row.resolvedCardNumber]));
 	}
 
-	async function record({ eventId, cardNumber, resolvedCardNumber }: { eventId: number; cardNumber: string; resolvedCardNumber: string }): Promise<void> {
-		await db.insert(eventOpCardNumberResolutions)
+	async function record({
+		eventId,
+		cardNumber,
+		resolvedCardNumber,
+	}: {
+		eventId: number;
+		cardNumber: string;
+		resolvedCardNumber: string;
+	}): Promise<void> {
+		await db
+			.insert(eventOpCardNumberResolutions)
 			.values({ eventId, cardNumber, resolvedCardNumber })
 			.onConflictDoUpdate({
 				target: [eventOpCardNumberResolutions.eventId, eventOpCardNumberResolutions.cardNumber],

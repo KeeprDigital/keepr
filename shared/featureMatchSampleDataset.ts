@@ -153,7 +153,7 @@ export const FEATURE_MATCH_SAMPLE_CONTEXT: FeatureMatchSampleContext = {
 			{ name: 'Duress', quantity: 3, imageUrl: null },
 			{ name: 'Negate', quantity: 2, imageUrl: null },
 			{ name: 'Sheoldred, the Apocalypse', quantity: 2, imageUrl: null },
-			{ name: 'Gix\'s Command', quantity: 2, imageUrl: null },
+			{ name: "Gix's Command", quantity: 2, imageUrl: null },
 			{ name: 'Cut Down', quantity: 3, imageUrl: null },
 			{ name: 'Disdainful Stroke', quantity: 3, imageUrl: null },
 		],
@@ -165,7 +165,15 @@ export const FEATURE_MATCH_SAMPLE_CONTEXT: FeatureMatchSampleContext = {
 };
 
 /** A One Piece sample Mainboard card, as a pasted Deck List snapshots it from bandai-keepr. */
-function opEntry(number: string, quantity: number, name: string, category: OpCardCategory, cost: number, power: number | null, counter: number | null): FeatureMatchDeckListEntry {
+function opEntry(
+	number: string,
+	quantity: number,
+	name: string,
+	category: OpCardCategory,
+	cost: number,
+	power: number | null,
+	counter: number | null,
+): FeatureMatchDeckListEntry {
 	return {
 		number,
 		quantity,
@@ -226,7 +234,7 @@ const PURPLE_LUFFY_DECK_LIST: FeatureMatchDeckListEntry[] = [
 	opEntry('OP05-065', 4, 'San-Gorou', 'character', 6, 8000, 1000),
 	opEntry('OP03-070', 2, 'Monkey.D.Luffy', 'character', 6, 7000, null),
 	opEntry('OP05-119', 4, 'Monkey.D.Luffy', 'character', 10, 12000, null),
-	opEntry('OP05-076', 3, 'When You\'re at Sea You Fight against Pirates!!', 'event', 1, null, null),
+	opEntry('OP05-076', 3, "When You're at Sea You Fight against Pirates!!", 'event', 1, null, null),
 	opEntry('OP05-077', 4, 'Gamma Knife', 'event', 2, null, null),
 	opEntry('OP09-080', 2, 'Thousand Sunny', 'stage', 1, null, null),
 ];
@@ -249,7 +257,10 @@ export interface OpFeatureMatchSampleSide {
  * Shared with the Screen Mode Sample Dataset, whose Slot and Deck List Screen
  * show them.
  */
-export const OP_FEATURE_MATCH_SAMPLE_SIDES: readonly [OpFeatureMatchSampleSide, OpFeatureMatchSampleSide] = [
+export const OP_FEATURE_MATCH_SAMPLE_SIDES: readonly [
+	OpFeatureMatchSampleSide,
+	OpFeatureMatchSampleSide,
+] = [
 	{
 		name: 'Sebastián Castellanos-Ruiz',
 		pronouns: 'he/him',
@@ -267,7 +278,10 @@ export const OP_FEATURE_MATCH_SAMPLE_SIDES: readonly [OpFeatureMatchSampleSide, 
 ];
 
 /** A One Piece side's player tokens: a deck is named and coloured by its Leader, which a Leader Image shows. */
-function opPlayerTokens(side: OpFeatureMatchSampleSide, prefix: 'player1' | 'player2'): Record<string, GraphicInputValue> {
+function opPlayerTokens(
+	side: OpFeatureMatchSampleSide,
+	prefix: 'player1' | 'player2',
+): Record<string, GraphicInputValue> {
 	return {
 		[`${prefix}Name`]: side.name,
 		// An OP Event keeps no results, so a side has no record.
@@ -322,7 +336,13 @@ export interface CommanderFeatureMatchSampleSeat {
 }
 
 /** A Commander as a Seat holds one: a real printing, so a preview shows its card. */
-export function sampleCommander(scryfallId: string, name: string, colorIdentity: string, setCode: string, collectorNumber: string): Commander {
+export function sampleCommander(
+	scryfallId: string,
+	name: string,
+	colorIdentity: string,
+	setCode: string,
+	collectorNumber: string,
+): Commander {
 	return {
 		scryfallId,
 		name,
@@ -344,8 +364,20 @@ export const COMMANDER_FEATURE_MATCH_SAMPLE_SEATS: readonly CommanderFeatureMatc
 		pronouns: 'she/her',
 		lgs: 'Northgate Games',
 		commanders: [
-			sampleCommander('bc7cbe9b-324e-42b8-94e2-36e91cb32163', 'Tymna the Weaver', 'WB', 'c16', '48'),
-			sampleCommander('557fcd17-6cb3-414a-b2b1-ea9ae32e5aec', 'Kraum, Ludevic\'s Opus', 'UR', 'c16', '34'),
+			sampleCommander(
+				'bc7cbe9b-324e-42b8-94e2-36e91cb32163',
+				'Tymna the Weaver',
+				'WB',
+				'c16',
+				'48',
+			),
+			sampleCommander(
+				'557fcd17-6cb3-414a-b2b1-ea9ae32e5aec',
+				"Kraum, Ludevic's Opus",
+				'UR',
+				'c16',
+				'34',
+			),
 		],
 		lifeTotal: 31,
 		damageFrom: { player2: 9 },
@@ -355,7 +387,13 @@ export const COMMANDER_FEATURE_MATCH_SAMPLE_SEATS: readonly CommanderFeatureMatc
 		pronouns: 'he/him',
 		lgs: 'The Battered Sleeve',
 		commanders: [
-			sampleCommander('d0d33d52-3d28-4635-b985-51e126289259', 'Atraxa, Praetors\' Voice', 'WUBG', '2xm', '190'),
+			sampleCommander(
+				'd0d33d52-3d28-4635-b985-51e126289259',
+				"Atraxa, Praetors' Voice",
+				'WUBG',
+				'2xm',
+				'190',
+			),
 		],
 		lifeTotal: 40,
 	},
@@ -364,7 +402,13 @@ export const COMMANDER_FEATURE_MATCH_SAMPLE_SEATS: readonly CommanderFeatureMatc
 		pronouns: 'they/them',
 		lgs: 'Dice & Daggers',
 		commanders: [
-			sampleCommander('824b2d73-2151-4e5e-9f05-8f63e2bdcaa9', 'Krenko, Mob Boss', 'R', 'fdn', '204'),
+			sampleCommander(
+				'824b2d73-2151-4e5e-9f05-8f63e2bdcaa9',
+				'Krenko, Mob Boss',
+				'R',
+				'fdn',
+				'204',
+			),
 		],
 		lifeTotal: 17,
 	},
@@ -373,7 +417,13 @@ export const COMMANDER_FEATURE_MATCH_SAMPLE_SEATS: readonly CommanderFeatureMatc
 		pronouns: 'he/him',
 		lgs: 'Mana Vault Café',
 		commanders: [
-			sampleCommander('c41554e7-2a07-4cc7-b01b-44deed08e588', 'Kozilek, the Great Distortion', '', 'cmm', '2'),
+			sampleCommander(
+				'c41554e7-2a07-4cc7-b01b-44deed08e588',
+				'Kozilek, the Great Distortion',
+				'',
+				'cmm',
+				'2',
+			),
 		],
 		lifeTotal: 6,
 		damageFrom: { player1: 14, player3: 20 },
@@ -382,7 +432,10 @@ export const COMMANDER_FEATURE_MATCH_SAMPLE_SEATS: readonly CommanderFeatureMatc
 ];
 
 /** A Commander Seat's tokens: its deck is its Commanders' names and colour identity, and each Commander a card (ADR-0087). */
-function commanderSeatTokens(seat: CommanderFeatureMatchSampleSeat, prefix: Seat): Record<string, GraphicInputValue> {
+function commanderSeatTokens(
+	seat: CommanderFeatureMatchSampleSeat,
+	prefix: Seat,
+): Record<string, GraphicInputValue> {
 	const deck = commanderDeckIdentity(seat.commanders);
 	return {
 		[`${prefix}Name`]: seat.name,
@@ -396,12 +449,20 @@ function commanderSeatTokens(seat: CommanderFeatureMatchSampleSeat, prefix: Seat
 }
 
 /** Four Commander Seats' token values, in Seat order. */
-export function commanderSeatsTokenValues(seats: readonly CommanderFeatureMatchSampleSeat[]): Record<string, GraphicInputValue> {
-	return Object.assign({}, ...SEAT_VALUES.map((seat, index) => commanderSeatTokens(seats[index]!, seat)));
+export function commanderSeatsTokenValues(
+	seats: readonly CommanderFeatureMatchSampleSeat[],
+): Record<string, GraphicInputValue> {
+	return Object.assign(
+		{},
+		...SEAT_VALUES.map((seat, index) => commanderSeatTokens(seats[index]!, seat)),
+	);
 }
 
 /** A Commander Seat's live state: its life, whether it is Eliminated and the Commander Damage it has taken, with no game wins or Sideboard (ADR-0087). */
-function commanderSeatState(seats: readonly CommanderFeatureMatchSampleSeat[], index: number): FeatureMatchSamplePlayerState {
+function commanderSeatState(
+	seats: readonly CommanderFeatureMatchSampleSeat[],
+	index: number,
+): FeatureMatchSamplePlayerState {
 	const seat = seats[index]!;
 	return {
 		lifeTotal: seat.lifeTotal,
@@ -409,19 +470,22 @@ function commanderSeatState(seats: readonly CommanderFeatureMatchSampleSeat[], i
 		sideboard: null,
 		sideboardRevealed: false,
 		eliminated: seat.eliminated ?? false,
-		commanderDamage: SEAT_VALUES.flatMap((opposing, opposingIndex) => opposingIndex === index
-			? []
-			: seats[opposingIndex]!.commanders.map((commander, commanderIndex) => ({
-					damage: commanderIndex === 0
-						? seat.damageFrom?.[opposing] ?? 0
-						: 0,
-					imageUrl: scryfallCardImageUrl(commander.scryfallId),
-				}))),
+		commanderDamage: SEAT_VALUES.flatMap((opposing, opposingIndex) =>
+			opposingIndex === index
+				? []
+				: seats[opposingIndex]!.commanders.map((commander, commanderIndex) => ({
+						damage: commanderIndex === 0 ? (seat.damageFrom?.[opposing] ?? 0) : 0,
+						imageUrl: scryfallCardImageUrl(commander.scryfallId),
+					})),
+		),
 	};
 }
 
 /** A Commander game's live state: one game across four Seats, each in it. */
-export function commanderSampleContext(seats: readonly CommanderFeatureMatchSampleSeat[], clockDisplayTime: string): FeatureMatchSampleContext {
+export function commanderSampleContext(
+	seats: readonly CommanderFeatureMatchSampleSeat[],
+	clockDisplayTime: string,
+): FeatureMatchSampleContext {
 	return {
 		clockDisplayTime,
 		player1: commanderSeatState(seats, 0),
@@ -452,13 +516,17 @@ export interface FeatureMatchSample {
 }
 
 const SAMPLES: Readonly<Record<EventKind, FeatureMatchSample>> = {
-	'mtg-two-player': { kind: 'mtg-two-player', tokenValues: FEATURE_MATCH_SAMPLE_TOKEN_VALUES, context: FEATURE_MATCH_SAMPLE_CONTEXT },
+	'mtg-two-player': {
+		kind: 'mtg-two-player',
+		tokenValues: FEATURE_MATCH_SAMPLE_TOKEN_VALUES,
+		context: FEATURE_MATCH_SAMPLE_CONTEXT,
+	},
 	'mtg-commander': {
 		kind: 'mtg-commander',
 		tokenValues: COMMANDER_SAMPLE_TOKEN_VALUES,
 		context: commanderSampleContext(COMMANDER_FEATURE_MATCH_SAMPLE_SEATS, '12:34'),
 	},
-	'op': { kind: 'op', tokenValues: OP_SAMPLE_TOKEN_VALUES, context: OP_SAMPLE_CONTEXT },
+	op: { kind: 'op', tokenValues: OP_SAMPLE_TOKEN_VALUES, context: OP_SAMPLE_CONTEXT },
 };
 
 /** The Feature Match sample of an Event of this kind. */
@@ -476,6 +544,7 @@ export function featureMatchSampleDataset(kind: EventKind): FeatureMatchSample {
  * where it is enforced.
  */
 export function featureMatchSampleDatasetIsComplete(): boolean {
-	return EVENT_KIND_VALUES.every(kind =>
-		featureMatchTokenCatalogue(kind).every(token => token.key in SAMPLES[kind].tokenValues));
+	return EVENT_KIND_VALUES.every((kind) =>
+		featureMatchTokenCatalogue(kind).every((token) => token.key in SAMPLES[kind].tokenValues),
+	);
 }

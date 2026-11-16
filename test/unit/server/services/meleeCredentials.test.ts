@@ -3,11 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockRuntimeConfig = vi.fn();
 vi.stubGlobal('useRuntimeConfig', mockRuntimeConfig);
 
-const {
-	getMeleeCredentialKeyring,
-	protectMeleeClientSecret,
-	revealMeleeClientSecret,
-} = await import('~~/server/services/meleeCredentials');
+const { getMeleeCredentialKeyring, protectMeleeClientSecret, revealMeleeClientSecret } =
+	await import('~~/server/services/meleeCredentials');
 
 function base64Key(fill: number): string {
 	return btoa(String.fromCharCode(...new Uint8Array(32).fill(fill)));
@@ -107,12 +104,7 @@ describe('melee credential runtime service', () => {
 	 * are read; everything else still refuses by name.
 	 */
 	it.each([
-		[
-			'an array',
-			[
-				base64Key(1),
-			],
-		],
+		['an array', [base64Key(1)]],
 		['a bare number', 1],
 		['a boolean', true],
 	])('still refuses previous keys handed over as %s', (_shape, configuredValue) => {
@@ -122,9 +114,11 @@ describe('melee credential runtime service', () => {
 			meleeCredentialEncryptionPreviousKeys: configuredValue,
 		});
 
-		expect(() => getMeleeCredentialKeyring()).toThrowError(expect.objectContaining({
-			code: 'MELEE_CREDENTIAL_PREVIOUS_KEYS_INVALID',
-		}));
+		expect(() => getMeleeCredentialKeyring()).toThrowError(
+			expect.objectContaining({
+				code: 'MELEE_CREDENTIAL_PREVIOUS_KEYS_INVALID',
+			}),
+		);
 	});
 
 	it('reports malformed previous-key configuration without including its contents', () => {
@@ -135,9 +129,11 @@ describe('melee credential runtime service', () => {
 			meleeCredentialEncryptionPreviousKeys: configuredValue,
 		});
 
-		expect(() => getMeleeCredentialKeyring()).toThrowError(expect.objectContaining({
-			code: 'MELEE_CREDENTIAL_PREVIOUS_KEYS_INVALID',
-			message: expect.not.stringContaining(configuredValue),
-		}));
+		expect(() => getMeleeCredentialKeyring()).toThrowError(
+			expect.objectContaining({
+				code: 'MELEE_CREDENTIAL_PREVIOUS_KEYS_INVALID',
+				message: expect.not.stringContaining(configuredValue),
+			}),
+		);
 	});
 });

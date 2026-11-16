@@ -17,9 +17,7 @@ const { runRequest } = useRequestFeedback();
 
 const isMtg = computed(() => eventStore.event?.game === 'mtg');
 // What the Event's Metagame reads: an OP one reads participation only (ADR-0074).
-const rules = computed(() => eventStore.event
-	? getMetagameRules(eventStore.event.game)
-	: null);
+const rules = computed(() => (eventStore.event ? getMetagameRules(eventStore.event.game) : null));
 const eventId = computed(() => eventStore.eventId ?? 0);
 
 const route = useRoute();
@@ -60,16 +58,16 @@ useConsumedEventData(['playerLists']);
  * re-reads on the pending target and returns to the stored one if refused.
  */
 async function saveConversionTarget(target: ConversionTarget) {
-	if (!eventStore.event)
-		return;
-	await runRequest(
-		() => eventStore.updateEvent(target),
-		{
-			latestKey: 'conversion-target',
-			success: false,
-			error: () => ({ title: 'Failed to save the conversion target', description: eventStore.error ?? undefined, color: 'error' }),
-		},
-	);
+	if (!eventStore.event) return;
+	await runRequest(() => eventStore.updateEvent(target), {
+		latestKey: 'conversion-target',
+		success: false,
+		error: () => ({
+			title: 'Failed to save the conversion target',
+			description: eventStore.error ?? undefined,
+			color: 'error',
+		}),
+	});
 }
 
 onMounted(async () => {

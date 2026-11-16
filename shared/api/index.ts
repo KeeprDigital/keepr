@@ -98,7 +98,10 @@ import type {
 	UnresolvedDeckEntryType,
 	Variant,
 } from '~~/shared/types/enums';
-import type { FeatureMatchSessionCommand, FeatureMatchSessionResponse } from '~~/shared/types/featureMatchSession';
+import type {
+	FeatureMatchSessionCommand,
+	FeatureMatchSessionResponse,
+} from '~~/shared/types/featureMatchSession';
 import type { PlayerGameData } from '~~/shared/types/game';
 import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
 import type { ModeConfigsMap } from '~~/shared/types/screenConfig';
@@ -572,7 +575,9 @@ export interface SaveFeatureMatchAssignmentInput extends CreateFeatureMatchAssig
 	confirmedNoteDiscards?: FeatureMatchNoteDiscardConfirmation[];
 }
 
-export type UpdateFeatureMatchAssignmentInput = Partial<Pick<CreateFeatureMatchAssignmentInput, 'note'>>;
+export type UpdateFeatureMatchAssignmentInput = Partial<
+	Pick<CreateFeatureMatchAssignmentInput, 'note'>
+>;
 
 export interface ArchetypeResponse {
 	id: number;

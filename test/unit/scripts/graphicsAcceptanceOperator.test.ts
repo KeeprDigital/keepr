@@ -30,7 +30,11 @@ describe('how an acceptance run acquires an operator', () => {
 			newPassword: PASSWORD,
 		});
 
-		expect(plan).toEqual({ kind: 'sign-in', email: 'ops@keepr.digital', password: 'their-password' });
+		expect(plan).toEqual({
+			kind: 'sign-in',
+			email: 'ops@keepr.digital',
+			password: 'their-password',
+		});
 	});
 
 	it('prefers a named account to the bootstrap, so a run never resets an account it was not asked to', () => {
@@ -74,14 +78,16 @@ describe('how an acceptance run acquires an operator', () => {
 		expect(plan).toMatchObject({ kind: 'bootstrap', bootstrapToken: A_TOKEN });
 	});
 
-	it('never sends a checkout\'s own secret to a deployed installation', () => {
+	it("never sends a checkout's own secret to a deployed installation", () => {
 		// The one state a default must not reach. A deployed origin is a remote
 		// host, and this checkout's `.env` is not its secret to present.
-		expect(() => planFor({
-			deployed: true,
-			supplied: { [BOOTSTRAP_TOKEN_NAME]: A_TOKEN },
-			newPassword: PASSWORD,
-		})).toThrow(expect.objectContaining({ code: 'harness-operator-unavailable' }));
+		expect(() =>
+			planFor({
+				deployed: true,
+				supplied: { [BOOTSTRAP_TOKEN_NAME]: A_TOKEN },
+				newPassword: PASSWORD,
+			}),
+		).toThrow(expect.objectContaining({ code: 'harness-operator-unavailable' }));
 	});
 
 	it('takes a token from the shell even when deployed, because that is the operator saying so', () => {
@@ -99,25 +105,28 @@ describe('how an acceptance run acquires an operator', () => {
 	it.each([
 		[
 			'blank values',
-			{ [OPERATOR_EMAIL_ENV]: 'ops@keepr.digital', [OPERATOR_PASSWORD_ENV]: '   ', [BOOTSTRAP_TOKEN_NAME]: '' },
+			{
+				[OPERATOR_EMAIL_ENV]: 'ops@keepr.digital',
+				[OPERATOR_PASSWORD_ENV]: '   ',
+				[BOOTSTRAP_TOKEN_NAME]: '',
+			},
 		],
-		[
-			'half a credential',
-			{ [OPERATOR_EMAIL_ENV]: 'ops@keepr.digital' },
-		],
+		['half a credential', { [OPERATOR_EMAIL_ENV]: 'ops@keepr.digital' }],
 	])('refuses %s rather than signing in with an empty password', (_, env) => {
-		expect(() => planFor({ env, newPassword: PASSWORD }))
-			.toThrow(expect.objectContaining({ code: 'harness-operator-unavailable' }));
+		expect(() => planFor({ env, newPassword: PASSWORD })).toThrow(
+			expect.objectContaining({ code: 'harness-operator-unavailable' }),
+		);
 	});
 
 	it('stops with a registered code, and prose above it', () => {
 		const written = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
-		expect(() => operatorCredentialPlan({ env: {}, newPassword: PASSWORD }))
-			.toThrow(expect.objectContaining({
+		expect(() => operatorCredentialPlan({ env: {}, newPassword: PASSWORD })).toThrow(
+			expect.objectContaining({
 				code: 'harness-operator-unavailable',
 				detail: { mode: 'local' },
-			}));
+			}),
+		);
 		expect(ACCEPTANCE_FAILURE_CODES).toContain('harness-operator-unavailable');
 		expect(written).toHaveBeenCalledTimes(1);
 		expect(written.mock.calls[0]![0]).toBe(`${operatorUnavailableNotice({ deployed: false })}\n`);
@@ -138,12 +147,9 @@ describe('whether local secrets may reach an origin', () => {
 		'http://localhost:3000',
 		'http://[::1]:8787',
 		'http://0.0.0.0:8787',
-	])(
-		'says yes to %s, a server on this machine',
-		(origin) => {
-			expect(isLoopbackOrigin(origin)).toBe(true);
-		},
-	);
+	])('says yes to %s, a server on this machine', (origin) => {
+		expect(isLoopbackOrigin(origin)).toBe(true);
+	});
 
 	it.each([
 		'https://stream.keepr.digital',

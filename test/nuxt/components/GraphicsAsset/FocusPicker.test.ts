@@ -241,9 +241,7 @@ describe('the contextual Graphic Asset Focus Picker', () => {
 		await wrapper.get('[data-testid="select-asset-shared"]').trigger('click');
 
 		expect(wrapper.emitted('update:modelValue')).toEqual([
-			[
-				{ assetId: 'asset-shared', revisionId: 'revision-shared-1' },
-			],
+			[{ assetId: 'asset-shared', revisionId: 'revision-shared-1' }],
 		]);
 	});
 
@@ -276,7 +274,8 @@ describe('the contextual Graphic Asset Focus Picker', () => {
 	}
 
 	function activeScope(wrapper: Awaited<ReturnType<typeof mountPicker>>) {
-		return wrapper.get('[data-testid="graphic-asset-scope-event"]').attributes('aria-pressed') === 'true'
+		return wrapper.get('[data-testid="graphic-asset-scope-event"]').attributes('aria-pressed') ===
+			'true'
 			? 'event'
 			: 'library';
 	}
@@ -305,7 +304,9 @@ describe('the contextual Graphic Asset Focus Picker', () => {
 		await wrapper.get('[data-testid="open-graphic-asset-picker"]').trigger('click');
 
 		expect(wrapper.get('[data-testid="graphic-asset-scope-event"]').text()).toBe('This Event (1)');
-		expect(wrapper.get('[data-testid="graphic-asset-scope-library"]').text()).toBe('All assets (2)');
+		expect(wrapper.get('[data-testid="graphic-asset-scope-library"]').text()).toBe(
+			'All assets (2)',
+		);
 	});
 
 	it('carries a widened scope to the next picker the author opens', async () => {
@@ -521,8 +522,8 @@ describe('the contextual Graphic Asset Focus Picker', () => {
 		let resolveFirst!: (status: { outcome: 'available'; lifecycleState: 'active' }) => void;
 		let resolveSecond!: (status: { outcome: 'missing' }) => void;
 		mockApiFetch
-			.mockReturnValueOnce(new Promise(resolve => (resolveFirst = resolve)))
-			.mockReturnValueOnce(new Promise(resolve => (resolveSecond = resolve)));
+			.mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+			.mockReturnValueOnce(new Promise((resolve) => (resolveSecond = resolve)));
 		const wrapper = mount(FocusPicker, {
 			props: {
 				modelValue: {
@@ -602,8 +603,9 @@ describe('the contextual Graphic Asset Focus Picker', () => {
 
 		const wrapper = await mountWithListingFailure();
 
-		expect(wrapper.get('[data-testid="library-listing-error"]').text())
-			.toContain('NUXT_GRAPHICS_ADMIN_TOKEN is not configured');
+		expect(wrapper.get('[data-testid="library-listing-error"]').text()).toContain(
+			'NUXT_GRAPHICS_ADMIN_TOKEN is not configured',
+		);
 	});
 
 	it('falls back to the status line when the sanitizer got to the 5xx first', async () => {
@@ -615,7 +617,8 @@ describe('the contextual Graphic Asset Focus Picker', () => {
 
 		const wrapper = await mountWithListingFailure();
 
-		expect(wrapper.get('[data-testid="library-listing-error"]').text())
-			.toContain('[GET] "/api/graphics-assets": 500 Internal Server Error');
+		expect(wrapper.get('[data-testid="library-listing-error"]').text()).toContain(
+			'[GET] "/api/graphics-assets": 500 Internal Server Error',
+		);
 	});
 });

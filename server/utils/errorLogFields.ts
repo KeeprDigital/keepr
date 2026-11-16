@@ -24,12 +24,9 @@ export interface LoggedNitroError {
  * is neither a string nor a number is absent, not `Number(code)`.
  */
 function errorCodeOf(code: unknown): string | number | null {
-	if (typeof code === 'string')
-		return code;
+	if (typeof code === 'string') return code;
 
-	return typeof code === 'number' && Number.isFinite(code)
-		? code
-		: null;
+	return typeof code === 'number' && Number.isFinite(code) ? code : null;
 }
 
 /**
@@ -57,8 +54,7 @@ function nearestCauseCode(cause: unknown): string | number | null {
 		record = (record as { cause?: unknown }).cause, depth += 1
 	) {
 		const code = errorCodeOf((record as { code?: unknown }).code);
-		if (code !== null)
-			return code;
+		if (code !== null) return code;
 	}
 	return null;
 }
@@ -76,16 +72,12 @@ function nearestCauseCode(cause: unknown): string | number | null {
  */
 export function errorLogFields(error: LoggedNitroError, path: string | undefined) {
 	const cause = error.cause;
-	const causeRecord = cause && typeof cause === 'object'
-		? cause as { name?: unknown }
-		: null;
+	const causeRecord = cause && typeof cause === 'object' ? (cause as { name?: unknown }) : null;
 	return {
 		message: 'api_request_failed',
 		path: path ?? null,
 		statusCode: error.statusCode,
-		errorName: typeof causeRecord?.name === 'string'
-			? causeRecord.name
-			: error.name,
+		errorName: typeof causeRecord?.name === 'string' ? causeRecord.name : error.name,
 		errorCode: nearestCauseCode(cause),
 		unhandled: error.unhandled ?? false,
 	};
@@ -93,7 +85,5 @@ export function errorLogFields(error: LoggedNitroError, path: string | undefined
 
 /** A failure's class name for a structured log line, or `null` for a non-Error throw. */
 export function errorNameOf(error: unknown): string | null {
-	return error instanceof Error
-		? error.name
-		: null;
+	return error instanceof Error ? error.name : null;
 }

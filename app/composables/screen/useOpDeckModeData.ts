@@ -25,9 +25,9 @@ interface SideShown {
 }
 
 /** A Slot side's Deck List: its own Feature Match Deck List, or its linked Player's (ADR-0074). */
-type SideDeckList
-	= { owner: 'side'; id: number }
-		| { owner: 'player'; playerId: number; id: number };
+type SideDeckList =
+	| { owner: 'side'; id: number }
+	| { owner: 'player'; playerId: number; id: number };
 
 /** A Deck List as read for program. */
 interface DeckRead {
@@ -67,15 +67,16 @@ interface OpDeckSourceRead {
  * A Theme preview shows the One Piece Screen Mode Sample Dataset's Slot and
  * Deck List, read once, and holds no Slot in the stores.
  */
-function useSlotSideSource(context: ScreenContext, config: ComputedRef<DeckModeConfig>): OpDeckSourceRead {
+function useSlotSideSource(
+	context: ScreenContext,
+	config: ComputedRef<DeckModeConfig>,
+): OpDeckSourceRead {
 	const { sampleDataset } = context;
 	const outputReads = useScreenOutputReads(context);
 
 	const source = computed(() => {
 		const deckSource = config.value.deckSource;
-		return deckSource.type === 'featureMatchSlot'
-			? deckSource
-			: null;
+		return deckSource.type === 'featureMatchSlot' ? deckSource : null;
 	});
 	const slotId = () => source.value?.slotId ?? null;
 
@@ -92,8 +93,7 @@ function useSlotSideSource(context: ScreenContext, config: ComputedRef<DeckModeC
 
 	const seated = computed(() => {
 		const shownSide = source.value?.side;
-		if (!shownSide || !slotRead.slot.value)
-			return null;
+		if (!shownSide || !slotRead.slot.value) return null;
 		const { playerId, data } = featureMatchSidePlayer(slotRead.slot.value, shownSide);
 		const gameData = getOpGameData(data?.gameData);
 		const sideDeckList: SideDeckList | null = gameData.featureMatchDeckList
@@ -119,8 +119,7 @@ function useSlotSideSource(context: ScreenContext, config: ComputedRef<DeckModeC
 		source: () => {
 			const id = slotId();
 			const deckList = sideDeckList.value;
-			if (!id || !deckList || !outputReads.scopeKey.value)
-				return null;
+			if (!id || !deckList || !outputReads.scopeKey.value) return null;
 			return deckList.owner === 'player'
 				? `${outputReads.scopeKey.value}:${id}:player:${deckList.playerId}:${deckList.id}`
 				: `${outputReads.scopeKey.value}:${id}:${deckList.id}`;
@@ -145,11 +144,11 @@ function useSlotSideSource(context: ScreenContext, config: ComputedRef<DeckModeC
 }
 
 /** The Leader a Player's Deck List marks, as the catalogue names it; none for an Unresolved Deck Card. */
-function deckListLeader(deckList: ScreenOutputOpPlayerDeckListResponse['deckList']): OpLeader | null {
-	const entry = deckList?.entries.find(candidate => candidate.number === deckList.leaderNumber);
-	return entry?.card
-		? catalogueOpLeader(entry.number, entry.card)
-		: null;
+function deckListLeader(
+	deckList: ScreenOutputOpPlayerDeckListResponse['deckList'],
+): OpLeader | null {
+	const entry = deckList?.entries.find((candidate) => candidate.number === deckList.leaderNumber);
+	return entry?.card ? catalogueOpLeader(entry.number, entry.card) : null;
 }
 
 /**
@@ -159,13 +158,14 @@ function deckListLeader(deckList: ScreenOutputOpPlayerDeckListResponse['deckList
  * revision held carries nothing new. A TCG+ Import announces itself, not each
  * Player it wrote, so it is always read again.
  */
-function usePlayerSource(context: ScreenContext, config: ComputedRef<DeckModeConfig>): OpDeckSourceRead {
+function usePlayerSource(
+	context: ScreenContext,
+	config: ComputedRef<DeckModeConfig>,
+): OpDeckSourceRead {
 	const outputReads = useScreenOutputReads(context);
 	const playerId = () => {
 		const deckSource = config.value.deckSource;
-		return deckSource.type === 'player'
-			? deckSource.playerId
-			: null;
+		return deckSource.type === 'player' ? deckSource.playerId : null;
 	};
 
 	const read = useScreenModeFreshness<ScreenOutputOpPlayerDeckListResponse | null>({
@@ -212,9 +212,7 @@ export function useOpDeckModeData(context: ScreenContext) {
 	const config = useScreenModeConfig(context, 'deck');
 	const slotSide = useSlotSideSource(context, config);
 	const player = usePlayerSource(context, config);
-	const source = computed(() => config.value.deckSource.type === 'player'
-		? player
-		: slotSide);
+	const source = computed(() => (config.value.deckSource.type === 'player' ? player : slotSide));
 
 	const side = computed(() => source.value.side.value);
 	const deckListId = computed(() => side.value?.deckListId ?? null);
@@ -227,59 +225,50 @@ export function useOpDeckModeData(context: ScreenContext) {
 		const flight = builds.begin();
 		const layout = opDeckLayout(read.entries);
 		const failed = import.meta.client
-			? await preloadImages([
-					sideShown.leader?.imageUrl,
-					...layout.groups.flatMap(group => group.cards.map(card => card.imageUrl)),
-				].filter((url): url is string => !!url))
+			? await preloadImages(
+					[
+						sideShown.leader?.imageUrl,
+						...layout.groups.flatMap((group) => group.cards.map((card) => card.imageUrl)),
+					].filter((url): url is string => !!url),
+				)
 			: new Set<string>();
 		// The source may have moved on while the images loaded, back to what is shown.
-		if (flight.stale || deckListId.value !== read.id)
-			return;
+		if (flight.stale || deckListId.value !== read.id) return;
 		// A card whose image failed shows its name instead.
-		for (const card of layout.groups.flatMap(group => group.cards)) {
-			if (card.imageUrl && failed.has(card.imageUrl))
-				card.imageUrl = null;
+		for (const card of layout.groups.flatMap((group) => group.cards)) {
+			if (card.imageUrl && failed.has(card.imageUrl)) card.imageUrl = null;
 		}
 		displayed.value = { ...layout, deckListId: read.id, side: sideShown };
 	}
 
-	watch([
-		deckListId,
-		() => source.value.deck.value,
-	], ([id, read]) => {
-		if (id === null || displayed.value?.deckListId === id) {
-			// What the source holds is shown, or nothing is: no build in flight may replace it.
-			builds.supersede();
-			if (id === null)
-				displayed.value = null;
-			return;
-		}
-		if (read?.id === id && side.value)
-			void show(read, side.value);
-	}, { immediate: true });
+	watch(
+		[deckListId, () => source.value.deck.value],
+		([id, read]) => {
+			if (id === null || displayed.value?.deckListId === id) {
+				// What the source holds is shown, or nothing is: no build in flight may replace it.
+				builds.supersede();
+				if (id === null) displayed.value = null;
+				return;
+			}
+			if (read?.id === id && side.value) void show(read, side.value);
+		},
+		{ immediate: true },
+	);
 
 	/** The Deck List shown is its holder's own: their name and Leader follow live. */
 	const shownSide = computed(() => {
 		const deck = displayed.value;
-		if (!deck)
-			return null;
-		return side.value && side.value.deckListId === deck.deckListId
-			? side.value
-			: deck.side;
+		if (!deck) return null;
+		return side.value && side.value.deckListId === deck.deckListId ? side.value : deck.side;
 	});
 
-	const error = computed(() => displayed.value
-		? null
-		: source.value.error.value);
+	const error = computed(() => (displayed.value ? null : source.value.error.value));
 
 	/** Rendering Readiness: the source's Deck List is on program, or there is none to show. */
 	const ready = computed(() => {
-		if (error.value)
-			return true;
-		if (!source.value.selected())
-			return true;
-		if (!source.value.answered.value)
-			return false;
+		if (error.value) return true;
+		if (!source.value.selected()) return true;
+		if (!source.value.answered.value) return false;
 		return deckListId.value === null || displayed.value?.deckListId === deckListId.value;
 	});
 

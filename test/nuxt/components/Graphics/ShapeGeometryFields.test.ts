@@ -49,7 +49,9 @@ function mountFields(props: { geometry?: ShapeGeometry; disabled?: boolean } = {
 type Wrapper = ReturnType<typeof mountFields>;
 
 function number(wrapper: Wrapper, ariaLabel: string) {
-	return wrapper.findAllComponents({ name: 'UInputNumber' }).find(input => input.attributes('aria-label') === ariaLabel);
+	return wrapper
+		.findAllComponents({ name: 'UInputNumber' })
+		.find((input) => input.attributes('aria-label') === ariaLabel);
 }
 
 describe('shape geometry fields', () => {
@@ -64,7 +66,9 @@ describe('shape geometry fields', () => {
 		const wrapper = mountFields();
 
 		number(wrapper, 'Top right size')!.vm.$emit('update:modelValue', 40);
-		await wrapper.get('[data-testid="shape-corner-topLeft"] [data-treatment-option="rounded"]').trigger('click');
+		await wrapper
+			.get('[data-testid="shape-corner-topLeft"] [data-treatment-option="rounded"]')
+			.trigger('click');
 		await flushPromises();
 
 		expect(wrapper.emitted('update')).toEqual([
@@ -88,28 +92,29 @@ describe('shape geometry fields', () => {
 		number(wrapper, 'Left edge slant')!.vm.$emit('update:modelValue', null);
 		await flushPromises();
 
-		expect(wrapper.emitted('update')).toEqual([
-			[
-				{ rightSlant: -48 },
-			],
-			[
-				{ leftSlant: 0 },
-			],
-		]);
+		expect(wrapper.emitted('update')).toEqual([[{ rightSlant: -48 }], [{ leftSlant: 0 }]]);
 	});
 
-	it('shows each corner\'s treatment where the corner sits', () => {
+	it("shows each corner's treatment where the corner sits", () => {
 		const wrapper = mountFields();
 
-		expect(wrapper.get('[data-testid="shape-corner-topRight"]').attributes('data-treatment')).toBe('cut');
-		expect(wrapper.get('[data-testid="shape-corner-topRight"] [data-treatment-option="cut"]').attributes('aria-pressed')).toBe('true');
+		expect(wrapper.get('[data-testid="shape-corner-topRight"]').attributes('data-treatment')).toBe(
+			'cut',
+		);
+		expect(
+			wrapper
+				.get('[data-testid="shape-corner-topRight"] [data-treatment-option="cut"]')
+				.attributes('aria-pressed'),
+		).toBe('true');
 	});
 
 	it('applies a corner edit to all four while All corners is on', async () => {
 		const wrapper = mountFields();
 
 		await wrapper.get('[data-testid="shape-corners-linked"]').trigger('click');
-		await wrapper.get('[data-testid="shape-corner-bottomLeft"] [data-treatment-option="rounded"]').trigger('click');
+		await wrapper
+			.get('[data-testid="shape-corner-bottomLeft"] [data-treatment-option="rounded"]')
+			.trigger('click');
 
 		const rounded = { treatment: 'rounded', size: 0 };
 		expect(wrapper.emitted('update')).toEqual([
@@ -130,9 +135,7 @@ describe('shape geometry fields', () => {
 		await wrapper.get('[data-testid="shape-geometry-preset-corner-cut"]').trigger('click');
 		await flushPromises();
 
-		expect(wrapper.emitted('preset')).toEqual([
-			['corner-cut'],
-		]);
+		expect(wrapper.emitted('preset')).toEqual([['corner-cut']]);
 		expect(wrapper.emitted('update')).toBeUndefined();
 	});
 

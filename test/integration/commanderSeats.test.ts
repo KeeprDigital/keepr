@@ -4,7 +4,7 @@ import { $fetch } from './client';
 import { $fetchRaw } from './helpers';
 
 // One pass through the API boundary: a Commander Slot's Seats are saved, read and swapped (ADR-0087).
-describe('a Commander Event\'s Feature Match Slot Seats', () => {
+describe("a Commander Event's Feature Match Slot Seats", () => {
 	let eventId: number;
 	let slotId: number;
 
@@ -19,15 +19,17 @@ describe('a Commander Event\'s Feature Match Slot Seats', () => {
 			},
 		});
 		eventId = event.id;
-		const slot = await $fetch(`/api/events/${eventId}/feature-match-slots`, { method: 'POST', body: {} });
+		const slot = await $fetch(`/api/events/${eventId}/feature-match-slots`, {
+			method: 'POST',
+			body: {},
+		});
 		slotId = slot.id;
 	});
 
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('saves a Seat with two Commanders, swaps it into another Seat, and reads both back', async () => {
@@ -45,12 +47,15 @@ describe('a Commander Event\'s Feature Match Slot Seats', () => {
 			},
 		});
 
-		const swapped = await $fetchRaw(`/api/events/${eventId}/feature-match-slots/${slotId}/swap-seats`, {
-			method: 'POST',
-			body: {
-				seats: ['player1', 'player3'],
+		const swapped = await $fetchRaw(
+			`/api/events/${eventId}/feature-match-slots/${slotId}/swap-seats`,
+			{
+				method: 'POST',
+				body: {
+					seats: ['player1', 'player3'],
+				},
 			},
-		});
+		);
 		expect(swapped.status).toBe(200);
 
 		const slot = await $fetch(`/api/events/${eventId}/feature-match-slots/${slotId}`);
@@ -59,7 +64,7 @@ describe('a Commander Event\'s Feature Match Slot Seats', () => {
 			gameData: {
 				type: 'mtg',
 				commanders: [TYMNA, KRAUM],
-				deckName: 'Tymna the Weaver / Kraum, Ludevic\'s Opus',
+				deckName: "Tymna the Weaver / Kraum, Ludevic's Opus",
 				deckColors: 'WUBR',
 			},
 		});

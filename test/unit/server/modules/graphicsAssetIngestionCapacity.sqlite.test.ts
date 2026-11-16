@@ -4,14 +4,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GraphicsAssetLibraryError } from '~~/server/modules/graphics-asset-library';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 import { createInMemoryCanonicalGraphicsObjectStore } from '~~/server/modules/graphics-asset-library/in-memory-object-store';
-import {
-	graphicsObjectIdentity,
-} from '~~/server/modules/graphics-asset-library/object-store';
+import { graphicsObjectIdentity } from '~~/server/modules/graphics-asset-library/object-store';
 import {
 	DEFAULT_GRAPHICS_CANONICAL_QUOTA_BYTES,
 	DEFAULT_GRAPHICS_STAGING_ALLOWANCE_BYTES,
 } from '~~/shared/types/graphicsAsset';
-import { pngWithTextChunks, pixelPng as transparentPixelPng } from '~~/test/helpers/graphicsFixtures';
+import {
+	pngWithTextChunks,
+	pixelPng as transparentPixelPng,
+} from '~~/test/helpers/graphicsFixtures';
 import {
 	boundedBytes,
 	createTestGraphicsIngestion,
@@ -32,10 +33,12 @@ afterEach(async () => {
 
 type D1Catalogue = ReturnType<typeof createD1GraphicsAssetCatalogue>;
 
-function createIngestion(options: {
-	catalogue?: D1Catalogue;
-	canonical?: ReturnType<typeof createInMemoryCanonicalGraphicsObjectStore>;
-} = {}) {
+function createIngestion(
+	options: {
+		catalogue?: D1Catalogue;
+		canonical?: ReturnType<typeof createInMemoryCanonicalGraphicsObjectStore>;
+	} = {},
+) {
 	return createTestGraphicsIngestion({
 		catalogue: createD1GraphicsAssetCatalogue(harness.database),
 		...options,
@@ -57,17 +60,15 @@ describe('the Graphics Asset Library Capacity at the Graphic Asset ingestion sea
 			canonicalLimitBytes: DEFAULT_GRAPHICS_CANONICAL_QUOTA_BYTES,
 			stagingLimitBytes: 68,
 		});
-		const admission = (idempotencyKey: string) => ingestion.initiateGraphicsIngestion({
-			idempotencyKey,
-			initiatedBy: 'graphics-author-1',
-			name: idempotencyKey,
-			declaredByteLength: 68,
-		});
+		const admission = (idempotencyKey: string) =>
+			ingestion.initiateGraphicsIngestion({
+				idempotencyKey,
+				initiatedBy: 'graphics-author-1',
+				name: idempotencyKey,
+				declaredByteLength: 68,
+			});
 
-		const outcomes = await Promise.allSettled([
-			admission('first'),
-			admission('second'),
-		]);
+		const outcomes = await Promise.allSettled([admission('first'), admission('second')]);
 		const accepted = outcomes.find(
 			(outcome): outcome is PromiseFulfilledResult<Awaited<ReturnType<typeof admission>>> =>
 				outcome.status === 'fulfilled',
@@ -114,8 +115,8 @@ describe('the Graphics Asset Library Capacity at the Graphic Asset ingestion sea
 		const canonicalDelegate = createInMemoryCanonicalGraphicsObjectStore();
 		let releaseCanonical!: () => void;
 		let reportCanonicalStarted!: () => void;
-		const canonicalGate = new Promise<void>(resolve => releaseCanonical = resolve);
-		const canonicalStarted = new Promise<void>(resolve => reportCanonicalStarted = resolve);
+		const canonicalGate = new Promise<void>((resolve) => (releaseCanonical = resolve));
+		const canonicalStarted = new Promise<void>((resolve) => (reportCanonicalStarted = resolve));
 		const canonical = {
 			...canonicalDelegate,
 			async createImmutable(input: Parameters<typeof canonicalDelegate.createImmutable>[0]) {
@@ -206,9 +207,13 @@ describe('the Graphics Asset Library Capacity at the Graphic Asset ingestion sea
 				availableBytes: 1,
 			},
 		});
-		await expect(canonical.readMetadata(graphicsObjectIdentity(
-			'sha256/431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460',
-		))).resolves.toEqual({ outcome: 'missing' });
+		await expect(
+			canonical.readMetadata(
+				graphicsObjectIdentity(
+					'sha256/431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460',
+				),
+			),
+		).resolves.toEqual({ outcome: 'missing' });
 	});
 
 	it('never answers a lost publication claim with exhausted capacity', async () => {
@@ -278,13 +283,13 @@ describe('the Graphics Asset Library Capacity at the Graphic Asset ingestion sea
 			growthBytes: expect.any(Number),
 		});
 		const initialCapacity = await context.catalogue.getCapacity();
-		expect(initialCapacity.canonical.breakdown.retainedSourceBytes)
-			.toBe(transparentPixelPng.byteLength);
-		expect(initialCapacity.canonical.breakdown.retainedDerivativeBytes)
-			.toBeGreaterThan(0);
+		expect(initialCapacity.canonical.breakdown.retainedSourceBytes).toBe(
+			transparentPixelPng.byteLength,
+		);
+		expect(initialCapacity.canonical.breakdown.retainedDerivativeBytes).toBeGreaterThan(0);
 		expect(initialCapacity.canonical.usedBytes).toBe(
-			initialCapacity.canonical.breakdown.retainedSourceBytes
-			+ initialCapacity.canonical.breakdown.retainedDerivativeBytes,
+			initialCapacity.canonical.breakdown.retainedSourceBytes +
+				initialCapacity.canonical.breakdown.retainedDerivativeBytes,
 		);
 
 		await setCapacityLimits(context, {
@@ -339,8 +344,8 @@ describe('the Graphics Asset Library Capacity at the Graphic Asset ingestion sea
 		const before = await context.catalogue.getCapacity();
 		const firstCandidate = pngWithTextChunks(1);
 		const secondCandidate = pngWithTextChunks(2);
-		const hardLimit = before.canonical.usedBytes
-			+ Math.max(firstCandidate.byteLength, secondCandidate.byteLength);
+		const hardLimit =
+			before.canonical.usedBytes + Math.max(firstCandidate.byteLength, secondCandidate.byteLength);
 		await setCapacityLimits(context, {
 			canonicalLimitBytes: hardLimit,
 			stagingLimitBytes: before.staging.limitBytes,
@@ -351,10 +356,10 @@ describe('the Graphics Asset Library Capacity at the Graphic Asset ingestion sea
 			upload('canonical-concurrency-second', secondCandidate),
 		]);
 
-		expect(outcomes.filter(outcome => outcome.stage === 'completed')).toHaveLength(1);
-		expect(outcomes.filter(
-			outcome => outcome.failure?.code === 'canonical-capacity-exhausted',
-		)).toHaveLength(1);
+		expect(outcomes.filter((outcome) => outcome.stage === 'completed')).toHaveLength(1);
+		expect(
+			outcomes.filter((outcome) => outcome.failure?.code === 'canonical-capacity-exhausted'),
+		).toHaveLength(1);
 		const after = await context.catalogue.getCapacity();
 		expect(after.canonical.usedBytes).toBeLessThanOrEqual(hardLimit);
 		expect(after.canonical.reservedBytes).toBe(0);

@@ -41,11 +41,13 @@ describe('screenTopCardsCard', () => {
 		const wrapper = mount(Card, { props: baseProps });
 
 		const img = wrapper.get('img');
-		expect(img.attributes('src')).toBe('https://cards.scryfall.io/normal/front/a/b/abcd1234-0000-0000-0000-000000000000.jpg');
+		expect(img.attributes('src')).toBe(
+			'https://cards.scryfall.io/normal/front/a/b/abcd1234-0000-0000-0000-000000000000.jpg',
+		);
 		expect(img.attributes('alt')).toBe('Lightning Bolt');
 	});
 
-	it('renders a One Piece card\'s standard Printing image', () => {
+	it("renders a One Piece card's standard Printing image", () => {
 		const wrapper = mount(Card, {
 			props: {
 				...baseProps,
@@ -59,7 +61,9 @@ describe('screenTopCardsCard', () => {
 			},
 		});
 
-		expect(wrapper.get('img').attributes('src')).toBe('https://cards-img.keepr.digital/OP01-040.png');
+		expect(wrapper.get('img').attributes('src')).toBe(
+			'https://cards-img.keepr.digital/OP01-040.png',
+		);
 	});
 
 	it('falls back to the card name when there is no scryfall id', () => {
@@ -106,8 +110,7 @@ describe('screenTopCardsCard', () => {
 
 		const badge = wrapper.find('[data-testid="top-cards-points-badge"]');
 		expect(badge.exists()).toBe(shown);
-		if (shown)
-			expect(badge.text()).toBe(pointsText);
+		if (shown) expect(badge.text()).toBe(pointsText);
 	});
 
 	it('shows the card name label when enabled', () => {

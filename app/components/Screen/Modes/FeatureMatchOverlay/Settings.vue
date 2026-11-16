@@ -35,7 +35,18 @@ const previewTheme = useGraphicsPreviewTheme(() => previewEventStore.event?.them
 const screenStore = useScreenStore();
 const eventStore = useEventStore();
 
-const { config, saving, saveState, saveError, updateConfig, resetConfig, resetReady, retry: retrySave, discard, flush } = useModeConfigUpdate(
+const {
+	config,
+	saving,
+	saveState,
+	saveError,
+	updateConfig,
+	resetConfig,
+	resetReady,
+	retry: retrySave,
+	discard,
+	flush,
+} = useModeConfigUpdate(
 	() => props.eventId,
 	() => props.screen.id,
 	'feature-match-overlay',
@@ -48,7 +59,8 @@ const { config, saving, saveState, saveError, updateConfig, resetConfig, resetRe
  * live operation and never consults it.
  */
 const editLease = useGraphicsAuthoringLease({
-	endpoint: () => `/api/events/${props.eventId}/screens/${props.screen.id}/graphics-authoring-lease`,
+	endpoint: () =>
+		`/api/events/${props.eventId}/screens/${props.screen.id}/graphics-authoring-lease`,
 });
 const { writable } = editLease;
 
@@ -59,8 +71,7 @@ const { writable } = editLease;
  * built on.
  */
 watch(editLease.lost, (lost) => {
-	if (lost)
-		discard(['layout']);
+	if (lost) discard(['layout']);
 });
 
 /**
@@ -75,8 +86,7 @@ const canAuthor = computed(() => writable.value && !placing.value);
 
 /** A display reset replaces the layout, so it is an authoring write like any other. */
 function resetLayout() {
-	if (canAuthor.value)
-		resetConfig();
+	if (canAuthor.value) resetConfig();
 }
 
 const {
@@ -89,11 +99,13 @@ const {
 defineExpose({
 	resetConfig: resetLayout,
 	/** Why the header's Reset is held, if it is. */
-	resetBlockedReason: computed(() => !resetReady.value
-		? 'Waiting for this Event to load'
-		: !canAuthor.value
-				? 'Another session is editing this Screen\'s graphics'
-				: undefined),
+	resetBlockedReason: computed(() =>
+		!resetReady.value
+			? 'Waiting for this Event to load'
+			: !canAuthor.value
+				? "Another session is editing this Screen's graphics"
+				: undefined,
+	),
 	saving,
 });
 
@@ -106,14 +118,16 @@ const canvasHeight = computed(() => eventCanvas.value.height);
  * The editor: one selection of layers, one history
  * ──────────────────────────────────────────────── */
 
-const editor = useGraphicsEditor(featureMatchLayoutEditorHost({
-	config,
-	updateConfig,
-	canvasWidth,
-	canvasHeight,
-	writable,
-	held: placing,
-}));
+const editor = useGraphicsEditor(
+	featureMatchLayoutEditorHost({
+		config,
+		updateConfig,
+		canvasWidth,
+		canvasHeight,
+		writable,
+		held: placing,
+	}),
+);
 const { selection, layers } = editor;
 /** Several layers selected: the panel edits what they share, and the preview marks none alone (#740). */
 const severalSelected = computed(() => layers.value.length > 1);
@@ -125,10 +139,8 @@ const compositorTarget = computed(() => compositorSelectionTarget(selection.valu
 
 /** A click in the preview selects that layer alone; a ⌘- or Ctrl-click adds it or takes it out (#740). */
 function selectInPreview(target: ReturnType<typeof fromHostSelectionTarget>, toggle: boolean) {
-	if (toggle && target.type !== 'canvas')
-		editor.toggleSelect(target);
-	else
-		editor.select(target);
+	if (toggle && target.type !== 'canvas') editor.toggleSelect(target);
+	else editor.select(target);
 }
 
 function selectHostTarget(target: FeatureMatchOverlaySelectionTarget, toggle = false) {
@@ -143,19 +155,19 @@ function selectCompositorTarget(target: GraphicsSelectionTarget, toggle = false)
  * Where the canvas handles go, with the lines they snap to; none while this
  * session may not move anything, so neither handles nor snap guides show.
  */
-const selectionFrame = computed(() => canAuthor.value
-	? editor.selectionFrame.value
-	: null);
+const selectionFrame = computed(() => (canAuthor.value ? editor.selectionFrame.value : null));
 /** Each selected layer's stored rectangle, for the panel that edits several. */
-const selectedRects = computed(() => layers.value.flatMap((layer) => {
-	const rect = editorSelectionLayer(config.value.layout, layer);
-	return rect
-		? [rect]
-		: [];
-}));
-const selectionLabel = computed(() => severalSelected.value
-	? `${layers.value.length} layers`
-	: editorSelectionLabel(config.value.layout, selection.value));
+const selectedRects = computed(() =>
+	layers.value.flatMap((layer) => {
+		const rect = editorSelectionLayer(config.value.layout, layer);
+		return rect ? [rect] : [];
+	}),
+);
+const selectionLabel = computed(() =>
+	severalSelected.value
+		? `${layers.value.length} layers`
+		: editorSelectionLabel(config.value.layout, selection.value),
+);
 
 // A canvas drag is bracketed as one gesture below, so it undoes as one step
 // however long it pauses; the key coalesces frames arriving outside one.
@@ -180,15 +192,18 @@ function rotate(rotation: number, gesture: number) {
  */
 const toast = useToast();
 const stopWatchingRemoteUpdates = screenStore.$onAction(({ name, args, after }) => {
-	if (name !== 'applyRemoteUpdated' || (args[0] as { screenId?: number } | undefined)?.screenId !== props.screen.id)
+	if (
+		name !== 'applyRemoteUpdated' ||
+		(args[0] as { screenId?: number } | undefined)?.screenId !== props.screen.id
+	)
 		return;
 	const before = JSON.stringify(config.value.layout);
 	after(() => {
-		if (JSON.stringify(config.value.layout) === before || !editor.discardHistory())
-			return;
+		if (JSON.stringify(config.value.layout) === before || !editor.discardHistory()) return;
 		toast.add({
 			title: 'Layout changed elsewhere',
-			description: 'Another session edited this layout, so undo history was cleared to keep their change.',
+			description:
+				'Another session edited this layout, so undo history was cleared to keep their change.',
 			color: 'info',
 		});
 	});
@@ -238,7 +253,10 @@ useGraphicsEditorKeyboard(editor, 'feature-match-overlay', {
 			@take-over="editLease.takeOver"
 		/>
 
-		<section class="rounded-lg border border-default/70 bg-default p-3" data-testid="overlay-toolbar">
+		<section
+			class="rounded-lg border border-default/70 bg-default p-3"
+			data-testid="overlay-toolbar"
+		>
 			<div class="flex flex-wrap items-end gap-3">
 				<ScreenFeatureMatchSlotField
 					:model-value="config.featureMatchId"
@@ -300,18 +318,15 @@ useGraphicsEditorKeyboard(editor, 'feature-match-overlay', {
 						/>
 						<template #content>
 							<div class="w-72 space-y-1.5 p-3 text-sm">
-								<p class="mb-2 font-medium">
-									Keyboard shortcuts
-								</p>
-								<div v-for="shortcut in SHORTCUTS" :key="shortcut.label" class="flex items-center justify-between gap-3">
+								<p class="mb-2 font-medium">Keyboard shortcuts</p>
+								<div
+									v-for="shortcut in SHORTCUTS"
+									:key="shortcut.label"
+									class="flex items-center justify-between gap-3"
+								>
 									<span class="text-muted">{{ shortcut.label }}</span>
 									<span class="flex gap-0.5">
-										<UKbd
-											v-for="key in shortcut.keys"
-											:key="key"
-											:value="key"
-											size="sm"
-										/>
+										<UKbd v-for="key in shortcut.keys" :key="key" :value="key" size="sm" />
 									</span>
 								</div>
 							</div>
@@ -328,11 +343,13 @@ useGraphicsEditorKeyboard(editor, 'feature-match-overlay', {
 				class="mt-3"
 				:color="assetPublicationEligibility.outcome === 'missing' ? 'error' : 'warning'"
 				variant="soft"
-				:title="assetPublicationEligibility.outcome === 'missing'
-					? 'Missing Graphic Asset Reference'
-					: assetPublicationEligibility.outcome === 'unavailable'
-						? 'Unavailable Graphic Asset Content'
-						: 'Checking Graphic Asset References'"
+				:title="
+					assetPublicationEligibility.outcome === 'missing'
+						? 'Missing Graphic Asset Reference'
+						: assetPublicationEligibility.outcome === 'unavailable'
+							? 'Unavailable Graphic Asset Content'
+							: 'Checking Graphic Asset References'
+				"
 				:description="assetPublicationBlockReason"
 			/>
 			<UButton
@@ -348,8 +365,12 @@ useGraphicsEditorKeyboard(editor, 'feature-match-overlay', {
 			</UButton>
 		</section>
 
-		<div class="grid items-start gap-4 xl:grid-cols-[15rem_minmax(0,1fr)_18rem] 2xl:grid-cols-[19rem_minmax(0,1fr)_24rem]">
-			<section class="min-w-0 rounded-lg border border-default/70 bg-default p-3 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
+		<div
+			class="grid items-start gap-4 xl:grid-cols-[15rem_minmax(0,1fr)_18rem] 2xl:grid-cols-[19rem_minmax(0,1fr)_24rem]"
+		>
+			<section
+				class="min-w-0 rounded-lg border border-default/70 bg-default p-3 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto"
+			>
 				<FeatureMatchOverlayLayerList
 					:layout="config.layout"
 					:editor="editor"
@@ -388,7 +409,9 @@ useGraphicsEditorKeyboard(editor, 'feature-match-overlay', {
 				/>
 			</section>
 
-			<section class="min-w-0 rounded-lg border border-default/70 bg-default p-3 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
+			<section
+				class="min-w-0 rounded-lg border border-default/70 bg-default p-3 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto"
+			>
 				<GraphicsMultiLayerInspector
 					v-if="severalSelected"
 					:rects="selectedRects"
@@ -398,8 +421,8 @@ useGraphicsEditorKeyboard(editor, 'feature-match-overlay', {
 					:can-distribute="editor.canDistribute()"
 					@update="editor.setLayersGeometry"
 					@group="editor.group()"
-					@align="edge => editor.align(edge)"
-					@distribute="axis => editor.distribute(axis)"
+					@align="(edge) => editor.align(edge)"
+					@distribute="(axis) => editor.distribute(axis)"
 				/>
 				<FeatureMatchOverlayCompositorInspector
 					v-else-if="selection.type === 'item'"
@@ -410,7 +433,9 @@ useGraphicsEditorKeyboard(editor, 'feature-match-overlay', {
 					:event-id="eventId"
 					:theme-tokens="previewTheme.themeTokens.value"
 					:writable="canAuthor"
-					@update:composition="composition => updateFields({ layout: { ...config.layout, composition } })"
+					@update:composition="
+						(composition) => updateFields({ layout: { ...config.layout, composition } })
+					"
 				/>
 				<FeatureMatchOverlayLayerInspector
 					v-else

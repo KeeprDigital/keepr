@@ -1,12 +1,30 @@
 import type { SQL } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type { DbPlayer } from '~~/server/db/schema';
-import type { OpDeckListLine, OpDeckListView, SavedOpPlayerDeckList } from '~~/shared/types/opDeckList';
+import type {
+	OpDeckListLine,
+	OpDeckListView,
+	SavedOpPlayerDeckList,
+} from '~~/shared/types/opDeckList';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
-import { cards, playerDeckCards, playerDecks, playerDeckUnresolvedCards, players } from '~~/server/db/schema';
-import { opDeckListLeaderCard, opDeckListText, opDeckListView } from '~~/server/modules/op-deck-list-write/paste';
-import { opCatalogueCardColumns, opCatalogueRowFor, toOpCatalogueCard } from '~~/server/services/opCardCatalogue';
+import {
+	cards,
+	playerDeckCards,
+	playerDecks,
+	playerDeckUnresolvedCards,
+	players,
+} from '~~/server/db/schema';
+import {
+	opDeckListLeaderCard,
+	opDeckListText,
+	opDeckListView,
+} from '~~/server/modules/op-deck-list-write/paste';
+import {
+	opCatalogueCardColumns,
+	opCatalogueRowFor,
+	toOpCatalogueCard,
+} from '~~/server/services/opCardCatalogue';
 import { chunkJsonRows, selectForInsert } from '~~/server/utils/db';
 import { formatOpColors } from '~~/shared/utils/card/op';
 
@@ -54,104 +72,134 @@ export function opPlayerDeckListService() {
 	 * they are a few bulk statements; the last `playerQueryCount` return the
 	 * Players written.
 	 */
-	const buildReplaceManyQueries = (eventId: number, replacements: readonly OpPlayerDeckListReplacement[]): { queries: BatchItem<'sqlite'>[]; playerQueryCount: number } => {
+	const buildReplaceManyQueries = (
+		eventId: number,
+		replacements: readonly OpPlayerDeckListReplacement[],
+	): { queries: BatchItem<'sqlite'>[]; playerQueryCount: number } => {
 		const writeAtMs = Date.now();
 		const decks = replacements.map(({ playerId, view, archetypeId, handEdited }) => {
 			const leader = opDeckListLeaderCard(view);
 			return {
 				playerId,
 				name: leader?.name ?? '',
-				colors: leader
-					? formatOpColors(leader.colors)
-					: '',
+				colors: leader ? formatOpColors(leader.colors) : '',
 				archetypeId,
 				leaderNumber: view.leaderNumber,
 				handEdited,
 				mainboardCount: view.mainboardCount,
 			};
 		});
-		const rows = replacements.flatMap(({ playerId, view }) => view.entries.map((entry, sortOrder) => ({
-			playerId,
-			number: entry.number,
-			quantity: entry.quantity,
-			sortOrder,
-			catalogued: entry.card !== null,
-		})));
-		const catalogued = rows.filter(row => row.catalogued);
-		const unresolved = rows.filter(row => !row.catalogued);
+		const rows = replacements.flatMap(({ playerId, view }) =>
+			view.entries.map((entry, sortOrder) => ({
+				playerId,
+				number: entry.number,
+				quantity: entry.quantity,
+				sortOrder,
+				catalogued: entry.card !== null,
+			})),
+		);
+		const catalogued = rows.filter((row) => row.catalogued);
+		const unresolved = rows.filter((row) => !row.catalogued);
 		const deckId = primaryDeckIdOf(PAYLOAD_PLAYER_ID);
 		const deckPayloads = chunkJsonRows(decks);
 		const inPayload = (column: SQL | typeof playerDecks.playerId, payload: string) =>
 			sql`${column} in (select json_extract(value, '$.playerId') from json_each(${payload}))`;
 
-		const deleteDecks = deckPayloads.map(payload => db.delete(playerDecks)
-			.where(and(eq(playerDecks.eventId, eventId), inPayload(playerDecks.playerId, payload))));
-		const insertDecks = deckPayloads.map(payload => db
-			.insert(playerDecks)
-			.select(selectForInsert(playerDecks, {
-				id: sql`null`,
-				eventId: sql`${eventId}`,
-				playerId: PAYLOAD_PLAYER_ID,
-				// One Deck List per Player; its identity is the Player's, not an import's.
-				externalId: sql`'player:' || json_extract(value, '$.playerId')`,
-				externalSource: sql`'manual'`,
-				formatExternalId: sql`'op'`,
-				name: sql`json_extract(value, '$.name')`,
-				colors: sql`json_extract(value, '$.colors')`,
-				sortOrder: sql`0`,
-				isPrimary: sql`1`,
-				archetypeId: sql`json_extract(value, '$.archetypeId')`,
-				reviewedAt: sql`null`,
-				leaderCardNumber: sql`json_extract(value, '$.leaderNumber')`,
-				handEdited: sql`json_extract(value, '$.handEdited')`,
-				createdAt: sql`${writeAtMs}`,
-				updatedAt: sql`${writeAtMs}`,
-			}, sql`from json_each(${payload}) where true`)));
-		const insertCards = chunkJsonRows(catalogued).map(payload => db
-			.insert(playerDeckCards)
-			.select(selectForInsert(playerDeckCards, {
-				id: sql`null`,
-				deckId,
-				cardId: sql`(select ${cards.id} from ${cards} where ${opCatalogueRowFor(sql`json_extract(value, '$.number')`)})`,
-				quantity: sql`json_extract(value, '$.quantity')`,
-				compartment: sql`'mainboard'`,
-				sortOrder: sql`json_extract(value, '$.sortOrder')`,
-			}, sql`from json_each(${payload}) where true`)));
-		const insertUnresolved = chunkJsonRows(unresolved).map(payload => db
-			.insert(playerDeckUnresolvedCards)
-			.select(selectForInsert(playerDeckUnresolvedCards, {
-				id: sql`null`,
-				deckId,
-				entryType: sql`'card'`,
-				// An OP card number is its own normalised name: Unresolved Deck Cards are found by it.
-				originalName: sql`json_extract(value, '$.number')`,
-				normalizedOriginalName: sql`json_extract(value, '$.number')`,
-				setCode: sql`null`,
-				normalizedSetCode: sql`''`,
-				quantity: sql`json_extract(value, '$.quantity')`,
-				compartment: sql`'mainboard'`,
-				sortOrder: sql`json_extract(value, '$.sortOrder')`,
-				cardType: sql`null`,
-				createdAt: sql`${writeAtMs}`,
-				updatedAt: sql`${writeAtMs}`,
-			}, sql`from json_each(${payload}) where true`)));
+		const deleteDecks = deckPayloads.map((payload) =>
+			db
+				.delete(playerDecks)
+				.where(and(eq(playerDecks.eventId, eventId), inPayload(playerDecks.playerId, payload))),
+		);
+		const insertDecks = deckPayloads.map((payload) =>
+			db.insert(playerDecks).select(
+				selectForInsert(
+					playerDecks,
+					{
+						id: sql`null`,
+						eventId: sql`${eventId}`,
+						playerId: PAYLOAD_PLAYER_ID,
+						// One Deck List per Player; its identity is the Player's, not an import's.
+						externalId: sql`'player:' || json_extract(value, '$.playerId')`,
+						externalSource: sql`'manual'`,
+						formatExternalId: sql`'op'`,
+						name: sql`json_extract(value, '$.name')`,
+						colors: sql`json_extract(value, '$.colors')`,
+						sortOrder: sql`0`,
+						isPrimary: sql`1`,
+						archetypeId: sql`json_extract(value, '$.archetypeId')`,
+						reviewedAt: sql`null`,
+						leaderCardNumber: sql`json_extract(value, '$.leaderNumber')`,
+						handEdited: sql`json_extract(value, '$.handEdited')`,
+						createdAt: sql`${writeAtMs}`,
+						updatedAt: sql`${writeAtMs}`,
+					},
+					sql`from json_each(${payload}) where true`,
+				),
+			),
+		);
+		const insertCards = chunkJsonRows(catalogued).map((payload) =>
+			db.insert(playerDeckCards).select(
+				selectForInsert(
+					playerDeckCards,
+					{
+						id: sql`null`,
+						deckId,
+						cardId: sql`(select ${cards.id} from ${cards} where ${opCatalogueRowFor(sql`json_extract(value, '$.number')`)})`,
+						quantity: sql`json_extract(value, '$.quantity')`,
+						compartment: sql`'mainboard'`,
+						sortOrder: sql`json_extract(value, '$.sortOrder')`,
+					},
+					sql`from json_each(${payload}) where true`,
+				),
+			),
+		);
+		const insertUnresolved = chunkJsonRows(unresolved).map((payload) =>
+			db.insert(playerDeckUnresolvedCards).select(
+				selectForInsert(
+					playerDeckUnresolvedCards,
+					{
+						id: sql`null`,
+						deckId,
+						entryType: sql`'card'`,
+						// An OP card number is its own normalised name: Unresolved Deck Cards are found by it.
+						originalName: sql`json_extract(value, '$.number')`,
+						normalizedOriginalName: sql`json_extract(value, '$.number')`,
+						setCode: sql`null`,
+						normalizedSetCode: sql`''`,
+						quantity: sql`json_extract(value, '$.quantity')`,
+						compartment: sql`'mainboard'`,
+						sortOrder: sql`json_extract(value, '$.sortOrder')`,
+						cardType: sql`null`,
+						createdAt: sql`${writeAtMs}`,
+						updatedAt: sql`${writeAtMs}`,
+					},
+					sql`from json_each(${payload}) where true`,
+				),
+			),
+		);
 		const deckOf = (payload: string, expression: SQL) =>
 			sql`(select ${expression} from json_each(${payload}) where json_extract(value, '$.playerId') = ${PLAYER_ID})`;
-		const updatePlayers = deckPayloads.map(payload => db.update(players)
-			.set({
-				archetypeId: deckOf(payload, sql`json_extract(value, '$.archetypeId')`),
-				gameData: deckOf(payload, sql`json_object(
+		const updatePlayers = deckPayloads.map((payload) =>
+			db
+				.update(players)
+				.set({
+					archetypeId: deckOf(payload, sql`json_extract(value, '$.archetypeId')`),
+					gameData: deckOf(
+						payload,
+						sql`json_object(
 					'type', 'op',
 					'deckList', json_object(
 						'id', ${primaryDeckIdOf(PLAYER_ID)},
 						'mainboardCount', json_extract(value, '$.mainboardCount'),
 						'leaderNumber', json_extract(value, '$.leaderNumber')
 					)
-				)`),
-				updatedAt: new Date(writeAtMs),
-			})
-			.where(and(eq(players.eventId, eventId), inPayload(PLAYER_ID, payload)))
-			.returning());
+				)`,
+					),
+					updatedAt: new Date(writeAtMs),
+				})
+				.where(and(eq(players.eventId, eventId), inPayload(PLAYER_ID, payload)))
+				.returning(),
+		);
 
 		return {
 			queries: [
@@ -170,11 +218,13 @@ export function opPlayerDeckListService() {
 		buildReplaceManyQueries(replacement.eventId, [replacement]).queries;
 
 	/** Replaces each Player's Deck List in one batch, answering the Players as written; a missing Player is left out. */
-	const replaceMany = async (eventId: number, replacements: readonly OpPlayerDeckListReplacement[]): Promise<DbPlayer[]> => {
-		if (replacements.length === 0)
-			return [];
+	const replaceMany = async (
+		eventId: number,
+		replacements: readonly OpPlayerDeckListReplacement[],
+	): Promise<DbPlayer[]> => {
+		if (replacements.length === 0) return [];
 		const { queries, playerQueryCount } = buildReplaceManyQueries(eventId, replacements);
-		const results = await db.batch(queries as [typeof queries[0], ...typeof queries]);
+		const results = await db.batch(queries as [(typeof queries)[0], ...typeof queries]);
 		return results.slice(-playerQueryCount).flat() as DbPlayer[];
 	};
 
@@ -185,39 +235,47 @@ export function opPlayerDeckListService() {
 	};
 
 	/** A Player's Deck List, each entry's card read from the catalogue; `null` for a Player with none. */
-	const findByPlayer = async (eventId: number, playerId: number): Promise<SavedOpPlayerDeckList | null> => {
+	const findByPlayer = async (
+		eventId: number,
+		playerId: number,
+	): Promise<SavedOpPlayerDeckList | null> => {
 		const deck = await db.query.playerDecks.findFirst({
-			where: and(eq(playerDecks.eventId, eventId), eq(playerDecks.playerId, playerId), eq(playerDecks.isPrimary, true)),
+			where: and(
+				eq(playerDecks.eventId, eventId),
+				eq(playerDecks.playerId, playerId),
+				eq(playerDecks.isPrimary, true),
+			),
 		});
-		if (!deck)
-			return null;
+		if (!deck) return null;
 		const [catalogued, unresolved] = await Promise.all([
-			db.select({
-				number: cards.cardNumber,
-				quantity: playerDeckCards.quantity,
-				sortOrder: playerDeckCards.sortOrder,
-				...opCatalogueCardColumns,
-			})
+			db
+				.select({
+					number: cards.cardNumber,
+					quantity: playerDeckCards.quantity,
+					sortOrder: playerDeckCards.sortOrder,
+					...opCatalogueCardColumns,
+				})
 				.from(playerDeckCards)
 				.innerJoin(cards, eq(cards.id, playerDeckCards.cardId))
 				.where(eq(playerDeckCards.deckId, deck.id)),
-			db.select({
-				number: playerDeckUnresolvedCards.originalName,
-				quantity: playerDeckUnresolvedCards.quantity,
-				sortOrder: playerDeckUnresolvedCards.sortOrder,
-			})
+			db
+				.select({
+					number: playerDeckUnresolvedCards.originalName,
+					quantity: playerDeckUnresolvedCards.quantity,
+					sortOrder: playerDeckUnresolvedCards.sortOrder,
+				})
 				.from(playerDeckUnresolvedCards)
 				.where(eq(playerDeckUnresolvedCards.deckId, deck.id))
 				.orderBy(asc(playerDeckUnresolvedCards.sortOrder)),
 		]);
 		const entries = [
-			...catalogued.map(row => ({
+			...catalogued.map((row) => ({
 				number: row.number ?? '',
 				quantity: row.quantity,
 				sortOrder: row.sortOrder,
 				card: toOpCatalogueCard(row),
 			})),
-			...unresolved.map(row => ({ ...row, card: null })),
+			...unresolved.map((row) => ({ ...row, card: null })),
 		]
 			.toSorted((left, right) => left.sortOrder - right.sortOrder)
 			.map(({ number, quantity, card }) => ({ number, quantity, card }));
@@ -232,40 +290,48 @@ export function opPlayerDeckListService() {
 	};
 
 	/** What each Player in the Event holds in their Deck List, by Player. */
-	const findContentsByEvent = async (eventId: number): Promise<Map<number, OpPlayerDeckListContents>> => {
+	const findContentsByEvent = async (
+		eventId: number,
+	): Promise<Map<number, OpPlayerDeckListContents>> => {
 		const primary = and(eq(playerDecks.eventId, eventId), eq(playerDecks.isPrimary, true));
 		const [decks, catalogued, unresolved] = await Promise.all([
-			db.select({ playerId: playerDecks.playerId, leaderNumber: playerDecks.leaderCardNumber, handEdited: playerDecks.handEdited })
+			db
+				.select({
+					playerId: playerDecks.playerId,
+					leaderNumber: playerDecks.leaderCardNumber,
+					handEdited: playerDecks.handEdited,
+				})
 				.from(playerDecks)
 				.where(primary),
-			db.select({
-				playerId: playerDecks.playerId,
-				number: cards.cardNumber,
-				quantity: playerDeckCards.quantity,
-				sortOrder: playerDeckCards.sortOrder,
-			})
+			db
+				.select({
+					playerId: playerDecks.playerId,
+					number: cards.cardNumber,
+					quantity: playerDeckCards.quantity,
+					sortOrder: playerDeckCards.sortOrder,
+				})
 				.from(playerDeckCards)
 				.innerJoin(playerDecks, eq(playerDecks.id, playerDeckCards.deckId))
 				.innerJoin(cards, eq(cards.id, playerDeckCards.cardId))
 				.where(primary),
-			db.select({
-				playerId: playerDecks.playerId,
-				number: playerDeckUnresolvedCards.originalName,
-				quantity: playerDeckUnresolvedCards.quantity,
-				sortOrder: playerDeckUnresolvedCards.sortOrder,
-			})
+			db
+				.select({
+					playerId: playerDecks.playerId,
+					number: playerDeckUnresolvedCards.originalName,
+					quantity: playerDeckUnresolvedCards.quantity,
+					sortOrder: playerDeckUnresolvedCards.sortOrder,
+				})
 				.from(playerDeckUnresolvedCards)
 				.innerJoin(playerDecks, eq(playerDecks.id, playerDeckUnresolvedCards.deckId))
 				.where(primary),
 		]);
-		const contents = new Map<number, OpPlayerDeckListContents>(decks.map(({ playerId, ...deck }) => [
-			playerId,
-			{ ...deck, entries: [] },
-		]));
+		const contents = new Map<number, OpPlayerDeckListContents>(
+			decks.map(({ playerId, ...deck }) => [playerId, { ...deck, entries: [] }]),
+		);
 		// In the Deck List's own order, so a rewrite built from these keeps it.
 		const rows = [
-			...catalogued.map(row => ({ ...row, number: row.number ?? '', resolved: true })),
-			...unresolved.map(row => ({ ...row, resolved: false })),
+			...catalogued.map((row) => ({ ...row, number: row.number ?? '', resolved: true })),
+			...unresolved.map((row) => ({ ...row, resolved: false })),
 		].toSorted((left, right) => left.sortOrder - right.sortOrder);
 		for (const { playerId, number, quantity, resolved } of rows)
 			contents.get(playerId)?.entries.push({ number, quantity, resolved });

@@ -1,7 +1,13 @@
 import type { SQL } from 'drizzle-orm';
 import type { DbFeatureMatch, DbFeatureMatchSession, DbPlayer } from '~~/server/db/schema';
-import type { SequencedLiveEpochTransition, SequencedLiveStateExecuteOptions } from '~~/server/modules/live-state';
-import type { FeatureMatchSessionEventPayload, FeatureMatchSessionReducerResult } from '~~/shared/modules/feature-match-session';
+import type {
+	SequencedLiveEpochTransition,
+	SequencedLiveStateExecuteOptions,
+} from '~~/server/modules/live-state';
+import type {
+	FeatureMatchSessionEventPayload,
+	FeatureMatchSessionReducerResult,
+} from '~~/shared/modules/feature-match-session';
 import type { Game, Variant } from '~~/shared/types/enums';
 import type { FeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
 import type {
@@ -15,11 +21,17 @@ import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { events, featureMatches, featureMatchSessions, players } from '~~/server/db/schema';
-import { mapFeatureMatchSessionToResponse, mapFeatureMatchSessionToStarted } from '~~/server/mappers/featureMatch';
+import {
+	mapFeatureMatchSessionToResponse,
+	mapFeatureMatchSessionToStarted,
+} from '~~/server/mappers/featureMatch';
 import { refreshBroadcastGraphicsBindings } from '~~/server/modules/broadcast-graphics-live-session';
 import { createSequencedLiveEpochs, createSequencedLiveState } from '~~/server/modules/live-state';
 import { asOneOutputChange } from '~~/server/modules/screen-output-publication';
-import { linkedOpSideGameData, withCatalogueLeaders } from '~~/server/services/featureMatchSlotLeader';
+import {
+	linkedOpSideGameData,
+	withCatalogueLeaders,
+} from '~~/server/services/featureMatchSlotLeader';
 import { publishMessage } from '~~/server/utils/ably';
 import { chunkJsonRows, inJsonArray, selectForInsert } from '~~/server/utils/db';
 import { eventKind } from '~~/shared/config/games';
@@ -30,7 +42,10 @@ import {
 	isCommandOutsideSessionVariant,
 	normalizeFeatureMatchSessionCommandPayload,
 } from '~~/shared/modules/feature-match-session';
-import { FEATURE_MATCH_DEFAULT_COLUMN_SELECTION, toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
+import {
+	FEATURE_MATCH_DEFAULT_COLUMN_SELECTION,
+	toFeatureMatchDefaults,
+} from '~~/shared/types/featureMatchDefaults';
 import { isMergeableFeatureMatchCommand } from '~~/shared/types/featureMatchSession';
 
 export { applyFeatureMatchSessionEvent } from '~~/shared/modules/feature-match-session';
@@ -80,8 +95,7 @@ export function featureMatchStateService() {
 				...FEATURE_MATCH_DEFAULT_COLUMN_SELECTION,
 			},
 		});
-		if (!row)
-			return undefined;
+		if (!row) return undefined;
 		return {
 			...toFeatureMatchDefaults(row),
 			game: row.game,
@@ -89,7 +103,9 @@ export function featureMatchStateService() {
 		};
 	};
 
-	function playerToSnapshotData(player: NonNullable<Awaited<ReturnType<typeof db.query.players.findFirst>>>): FeatureMatchSnapshotPlayerData {
+	function playerToSnapshotData(
+		player: NonNullable<Awaited<ReturnType<typeof db.query.players.findFirst>>>,
+	): FeatureMatchSnapshotPlayerData {
 		return {
 			name: player.name,
 			nickname: player.nickname,
@@ -108,33 +124,36 @@ export function featureMatchStateService() {
 	}
 
 	function hasMeaningfulSnapshotValue(value: unknown): boolean {
-		if (value === undefined || value === null)
-			return false;
-		if (typeof value === 'string')
-			return value.trim().length > 0;
+		if (value === undefined || value === null) return false;
+		if (typeof value === 'string') return value.trim().length > 0;
 		if (typeof value === 'object') {
-			if (Array.isArray(value))
-				return value.some(hasMeaningfulSnapshotValue);
-			return Object.entries(value).some(([key, entry]) => key !== 'type' && hasMeaningfulSnapshotValue(entry));
+			if (Array.isArray(value)) return value.some(hasMeaningfulSnapshotValue);
+			return Object.entries(value).some(
+				([key, entry]) => key !== 'type' && hasMeaningfulSnapshotValue(entry),
+			);
 		}
 		return true;
 	}
 
-	function compactSnapshotOverrides(data: FeatureMatchSnapshotPlayerData): Partial<FeatureMatchSnapshotPlayerData> {
+	function compactSnapshotOverrides(
+		data: FeatureMatchSnapshotPlayerData,
+	): Partial<FeatureMatchSnapshotPlayerData> {
 		// These fields are match/deck identity, not optional display enrichment.
 		// Explicit null/empty values mean that no deck was selected for this match
 		// and must not fall back to the player's current primary deck.
 		return Object.fromEntries(
-			Object.entries(data).filter(([key, value]) =>
-				value !== undefined
-				&& (AUTHORITATIVE_DECK_SNAPSHOT_FIELDS.has(key as keyof FeatureMatchSnapshotPlayerData)
-					|| hasMeaningfulSnapshotValue(value))),
+			Object.entries(data).filter(
+				([key, value]) =>
+					value !== undefined &&
+					(AUTHORITATIVE_DECK_SNAPSHOT_FIELDS.has(key as keyof FeatureMatchSnapshotPlayerData) ||
+						hasMeaningfulSnapshotValue(value)),
+			),
 		) as Partial<FeatureMatchSnapshotPlayerData>;
 	}
 
 	function hasAuthoritativeDeckSnapshotValue(data: FeatureMatchSnapshotPlayerData): boolean {
-		return [...AUTHORITATIVE_DECK_SNAPSHOT_FIELDS].some(field =>
-			Object.hasOwn(data, field) && data[field] !== undefined,
+		return [...AUTHORITATIVE_DECK_SNAPSHOT_FIELDS].some(
+			(field) => Object.hasOwn(data, field) && data[field] !== undefined,
 		);
 	}
 
@@ -170,9 +189,7 @@ export function featureMatchStateService() {
 		}
 
 		const playerData = playerToSnapshotData(player);
-		const overrides = data
-			? compactSnapshotOverrides(data)
-			: {};
+		const overrides = data ? compactSnapshotOverrides(data) : {};
 		const merged = hasSlotData
 			? {
 					...playerData,
@@ -183,11 +200,12 @@ export function featureMatchStateService() {
 		return {
 			playerId,
 			// A One Piece side linked to a Player shows the Player's Leader and Deck List, whatever the Slot holds (ADR-0074).
-			data: game === 'op'
-				? Object.assign(merged, {
-					gameData: linkedOpSideGameData(player.gameData),
-				} satisfies Partial<FeatureMatchSnapshotPlayerData>)
-				: merged,
+			data:
+				game === 'op'
+					? Object.assign(merged, {
+							gameData: linkedOpSideGameData(player.gameData),
+						} satisfies Partial<FeatureMatchSnapshotPlayerData>)
+					: merged,
 		};
 	};
 
@@ -196,14 +214,26 @@ export function featureMatchStateService() {
 		preloadedDefaults?: EventDefaults,
 		preloadedPlayers?: ReadonlyMap<number, DbPlayer>,
 	): Promise<FeatureMatchSourceSnapshot> => {
-		const defaults = preloadedDefaults ?? await loadEventDefaults(slot.eventId);
+		const defaults = preloadedDefaults ?? (await loadEventDefaults(slot.eventId));
 		const { variant, ...eventDefaults }: EventDefaults = defaults ?? {
 			...toFeatureMatchDefaults(null),
 			game: 'mtg',
 		};
 
-		const player1 = await resolveSnapshotPlayer(slot.eventId, eventDefaults.game, slot.player1Id, slot.player1Data ?? null, preloadedPlayers);
-		const player2 = await resolveSnapshotPlayer(slot.eventId, eventDefaults.game, slot.player2Id, slot.player2Data ?? null, preloadedPlayers);
+		const player1 = await resolveSnapshotPlayer(
+			slot.eventId,
+			eventDefaults.game,
+			slot.player1Id,
+			slot.player1Data ?? null,
+			preloadedPlayers,
+		);
+		const player2 = await resolveSnapshotPlayer(
+			slot.eventId,
+			eventDefaults.game,
+			slot.player2Id,
+			slot.player2Data ?? null,
+			preloadedPlayers,
+		);
 		// A side's Leader is a catalogue reference; the snapshot holds the card it names.
 		const [sides] = await withCatalogueLeaders([
 			{ player1Data: player1.data, player2Data: player2.data },
@@ -228,8 +258,18 @@ export function featureMatchStateService() {
 			// Every other snapshot reads as it did before a Slot had them.
 			...(eventKind({ game: eventDefaults.game, variant }) === 'mtg-commander' && {
 				variant: 'commander' as const,
-				player3: await resolveSnapshotPlayer(slot.eventId, eventDefaults.game, null, slot.player3Data ?? null),
-				player4: await resolveSnapshotPlayer(slot.eventId, eventDefaults.game, null, slot.player4Data ?? null),
+				player3: await resolveSnapshotPlayer(
+					slot.eventId,
+					eventDefaults.game,
+					null,
+					slot.player3Data ?? null,
+				),
+				player4: await resolveSnapshotPlayer(
+					slot.eventId,
+					eventDefaults.game,
+					null,
+					slot.player4Data ?? null,
+				),
 			}),
 			// The build time, which is the right answer only for the builds that open a
 			// Session. A rebuild for a `SnapshotCorrected` has this discarded in favour
@@ -239,13 +279,19 @@ export function featureMatchStateService() {
 		};
 	};
 
-	const findSessionById = async (sessionId: number, eventId: number): Promise<DbFeatureMatchSession | undefined> => {
+	const findSessionById = async (
+		sessionId: number,
+		eventId: number,
+	): Promise<DbFeatureMatchSession | undefined> => {
 		return await db.query.featureMatchSessions.findFirst({
 			where: and(eq(featureMatchSessions.id, sessionId), eq(featureMatchSessions.eventId, eventId)),
 		});
 	};
 
-	const findActiveSessionBySlot = async (slotId: number, eventId: number): Promise<DbFeatureMatchSession | undefined> => {
+	const findActiveSessionBySlot = async (
+		slotId: number,
+		eventId: number,
+	): Promise<DbFeatureMatchSession | undefined> => {
 		return await db.query.featureMatchSessions.findFirst({
 			where: and(
 				eq(featureMatchSessions.slotId, slotId),
@@ -255,23 +301,27 @@ export function featureMatchStateService() {
 		});
 	};
 
-	const getActiveSession = async (slotId: number, eventId: number): Promise<DbFeatureMatchSession | undefined> => {
+	const getActiveSession = async (
+		slotId: number,
+		eventId: number,
+	): Promise<DbFeatureMatchSession | undefined> => {
 		const slot = await db.query.featureMatches.findFirst({
 			where: and(eq(featureMatches.id, slotId), eq(featureMatches.eventId, eventId)),
 			columns: { activeSessionId: true },
 		});
 		if (slot?.activeSessionId) {
 			const linkedSession = await findSessionById(slot.activeSessionId, eventId);
-			if (linkedSession?.status === 'active')
-				return linkedSession;
+			if (linkedSession?.status === 'active') return linkedSession;
 		}
 
 		return await findActiveSessionBySlot(slotId, eventId);
 	};
 
-	const findActiveSessions = async ({ eventId, slotIds }: FeatureMatchSessionScope): Promise<DbFeatureMatchSession[]> => {
-		if (slotIds.length === 0)
-			return [];
+	const findActiveSessions = async ({
+		eventId,
+		slotIds,
+	}: FeatureMatchSessionScope): Promise<DbFeatureMatchSession[]> => {
+		if (slotIds.length === 0) return [];
 		return await db.query.featureMatchSessions.findMany({
 			where: and(
 				eq(featureMatchSessions.eventId, eventId),
@@ -280,9 +330,7 @@ export function featureMatchStateService() {
 			),
 			// Announcements follow this order, so it is Slot order by contract
 			// rather than whichever plan the lookup happens to get.
-			orderBy: [
-				asc(featureMatchSessions.slotId),
-			],
+			orderBy: [asc(featureMatchSessions.slotId)],
 		});
 	};
 
@@ -309,25 +357,32 @@ export function featureMatchStateService() {
 	 * held a Session always holds one. Clients rely on that to order Slot reads,
 	 * refusing a Slot read without a Session over one they hold (ADR-0026, #658).
 	 */
-	const sessionEpochs = createSequencedLiveEpochs<FeatureMatchSessionScope, FeatureMatchSessionOpening[], DbFeatureMatchSession>({
+	const sessionEpochs = createSequencedLiveEpochs<
+		FeatureMatchSessionScope,
+		FeatureMatchSessionOpening[],
+		DbFeatureMatchSession
+	>({
 		aggregateKind: FEATURE_MATCH_SESSION_AGGREGATE_KIND,
-		idOf: session => session.id,
+		idOf: (session) => session.id,
 		findActive: findActiveSessions,
 
 		close: (scope) => {
 			const now = new Date();
 			return [
-				db.update(featureMatchSessions)
+				db
+					.update(featureMatchSessions)
 					.set({ status: 'closed', closedAt: now, updatedAt: now })
-					.where(and(
-						eq(featureMatchSessions.eventId, scope.eventId),
-						eq(featureMatchSessions.status, 'active'),
-						sql`${featureMatchSessions.slotId} in (${scopedSlotIds(scope)})`,
-					)),
+					.where(
+						and(
+							eq(featureMatchSessions.eventId, scope.eventId),
+							eq(featureMatchSessions.status, 'active'),
+							sql`${featureMatchSessions.slotId} in (${scopedSlotIds(scope)})`,
+						),
+					),
 			];
 		},
 
-		closedIds: scope => sql`
+		closedIds: (scope) => sql`
 			select ${featureMatchSessions.id}
 			from ${featureMatchSessions}
 			where ${featureMatchSessions.eventId} = ${scope.eventId}
@@ -339,25 +394,32 @@ export function featureMatchStateService() {
 			const now = Date.now();
 			// Chunked so a whole Event's Slots open in a handful of statements rather
 			// than one per Slot, within D1's per-statement payload bound.
-			const inserts = chunkJsonRows(openings).map(payload => db
-				.insert(featureMatchSessions)
-				.select(selectForInsert(featureMatchSessions, {
-					id: sql`null`,
-					eventId: sql`${scope.eventId}`,
-					slotId: sql`cast(json_extract(input.value, '$.slotId') as integer)`,
-					status: sql`'active'`,
-					sourceSnapshot: sql`json_extract(input.value, '$.sourceSnapshot')`,
-					currentState: sql`json_extract(input.value, '$.currentState')`,
-					sequence: sql`1`,
-					closedAt: sql`null`,
-					createdAt: sql`${now}`,
-					updatedAt: sql`${now}`,
-				}, sql`from json_each(${payload}) as input
-					where cast(json_extract(input.value, '$.slotId') as integer) in (${scopedSlotIds(scope)})`)));
+			const inserts = chunkJsonRows(openings).map((payload) =>
+				db.insert(featureMatchSessions).select(
+					selectForInsert(
+						featureMatchSessions,
+						{
+							id: sql`null`,
+							eventId: sql`${scope.eventId}`,
+							slotId: sql`cast(json_extract(input.value, '$.slotId') as integer)`,
+							status: sql`'active'`,
+							sourceSnapshot: sql`json_extract(input.value, '$.sourceSnapshot')`,
+							currentState: sql`json_extract(input.value, '$.currentState')`,
+							sequence: sql`1`,
+							closedAt: sql`null`,
+							createdAt: sql`${now}`,
+							updatedAt: sql`${now}`,
+						},
+						sql`from json_each(${payload}) as input
+					where cast(json_extract(input.value, '$.slotId') as integer) in (${scopedSlotIds(scope)})`,
+					),
+				),
+			);
 
 			return [
 				...inserts,
-				db.update(featureMatches)
+				db
+					.update(featureMatches)
 					.set({
 						activeSessionId: sql<number>`(
 							select ${featureMatchSessions.id}
@@ -370,10 +432,12 @@ export function featureMatchStateService() {
 						)`,
 						updatedAt: new Date(now),
 					})
-					.where(and(
-						eq(featureMatches.eventId, scope.eventId),
-						sql`${featureMatches.id} in (${scopedSlotIds(scope)})`,
-					)),
+					.where(
+						and(
+							eq(featureMatches.eventId, scope.eventId),
+							sql`${featureMatches.id} in (${scopedSlotIds(scope)})`,
+						),
+					),
 			];
 		},
 
@@ -386,11 +450,15 @@ export function featureMatchStateService() {
 		announce: async ({ opened }, { originConnectionId }) => {
 			await asOneOutputChange(async () => {
 				for (const session of opened)
-					await publishMessage(session.eventId, 'featureMatchSession:eventApplied', mapFeatureMatchSessionToStarted(session), originConnectionId);
+					await publishMessage(
+						session.eventId,
+						'featureMatchSession:eventApplied',
+						mapFeatureMatchSessionToStarted(session),
+						originConnectionId,
+					);
 			});
 			const eventId = opened[0]?.eventId;
-			if (eventId !== undefined)
-				await refreshBroadcastGraphicsBindings(eventId);
+			if (eventId !== undefined) await refreshBroadcastGraphicsBindings(eventId);
 		},
 	});
 
@@ -417,19 +485,21 @@ export function featureMatchStateService() {
 			players?: ReadonlyMap<number, DbPlayer>;
 		} = {},
 	): Promise<SequencedLiveEpochTransition<DbFeatureMatchSession>> => {
-		const defaults = options.defaults ?? await loadEventDefaults(eventId);
-		const openings = await Promise.all(slots.map(async (slot) => {
-			const sourceSnapshot = await buildSourceSnapshot(slot, defaults, options.players);
-			return {
-				slotId: slot.id,
-				sourceSnapshot,
-				currentState: createInitialFeatureMatchSessionStateFromSnapshot(sourceSnapshot),
-			};
-		}));
+		const defaults = options.defaults ?? (await loadEventDefaults(eventId));
+		const openings = await Promise.all(
+			slots.map(async (slot) => {
+				const sourceSnapshot = await buildSourceSnapshot(slot, defaults, options.players);
+				return {
+					slotId: slot.id,
+					sourceSnapshot,
+					currentState: createInitialFeatureMatchSessionStateFromSnapshot(sourceSnapshot),
+				};
+			}),
+		);
 		return await sessionEpochs.replace(
 			{
 				eventId,
-				slotIds: slots.map(slot => slot.id),
+				slotIds: slots.map((slot) => slot.id),
 				slotCondition: options.slotCondition,
 			},
 			openings,
@@ -457,24 +527,23 @@ export function featureMatchStateService() {
 		slotIds: readonly number[],
 		options: { defaults?: EventDefaults; originConnectionId?: string } = {},
 	): Promise<Map<number, DbFeatureMatchSession>> => {
-		if (slotIds.length === 0)
-			return new Map();
+		if (slotIds.length === 0) return new Map();
 		const slots = await db.query.featureMatches.findMany({
 			where: and(eq(featureMatches.eventId, eventId), inJsonArray(featureMatches.id, slotIds)),
 		});
-		if (slots.length === 0)
-			return new Map();
+		if (slots.length === 0) return new Map();
 
-		const replacement = await buildSessionReplacement(eventId, slots, { defaults: options.defaults });
+		const replacement = await buildSessionReplacement(eventId, slots, {
+			defaults: options.defaults,
+		});
 		await sessionEpochs.commit(replacement, { originConnectionId: options.originConnectionId });
 
 		const active = await findActiveSessions({
 			eventId,
-			slotIds: slots.map(slot => slot.id),
+			slotIds: slots.map((slot) => slot.id),
 		});
-		if (active.length < slots.length)
-			throw new Error('Failed to create feature match session');
-		return new Map(active.map(session => [session.slotId, session]));
+		if (active.length < slots.length) throw new Error('Failed to create feature match session');
+		return new Map(active.map((session) => [session.slotId, session]));
 	};
 
 	const createSessionForSlot = async (
@@ -485,7 +554,9 @@ export function featureMatchStateService() {
 		return (await openSessionsForSlots(eventId, [slotId], options)).get(slotId) ?? null;
 	};
 
-	function toEventAppliedPayload(result: FeatureMatchSessionCommandResult): FeatureMatchSessionEventAppliedPayload {
+	function toEventAppliedPayload(
+		result: FeatureMatchSessionCommandResult,
+	): FeatureMatchSessionEventAppliedPayload {
 		return {
 			slotId: result.slotId,
 			sessionId: result.sessionId,
@@ -511,25 +582,33 @@ export function featureMatchStateService() {
 		aggregateKind: FEATURE_MATCH_SESSION_AGGREGATE_KIND,
 		aggregateLabel: 'Feature match session',
 
-		aggregateIdOf: ref => ref.sessionId,
-		eventIdOf: ref => ref.eventId,
-		load: ref => findSessionById(ref.sessionId, ref.eventId),
-		sequenceOf: session => session.sequence,
+		aggregateIdOf: (ref) => ref.sessionId,
+		eventIdOf: (ref) => ref.eventId,
+		load: (ref) => findSessionById(ref.sessionId, ref.eventId),
+		sequenceOf: (session) => session.sequence,
 
 		admit: (session, command) => {
 			if (session.status !== 'active')
 				throw createError({ statusCode: 409, message: 'Feature match session is closed' });
 
-			if (command.type === 'SnapshotCorrected'
-				&& (command.payload.sourceSnapshot.eventId !== session.eventId
-					|| command.payload.sourceSnapshot.slotId !== session.slotId)) {
+			if (
+				command.type === 'SnapshotCorrected' &&
+				(command.payload.sourceSnapshot.eventId !== session.eventId ||
+					command.payload.sourceSnapshot.slotId !== session.slotId)
+			) {
 				throw createError({
 					statusCode: 400,
 					message: 'Snapshot correction does not belong to this session',
 				});
 			}
 
-			if (isCommandOutsideSessionVariant(session.sourceSnapshot, command.type, command.payload as FeatureMatchSessionEventPayload)) {
+			if (
+				isCommandOutsideSessionVariant(
+					session.sourceSnapshot,
+					command.type,
+					command.payload as FeatureMatchSessionEventPayload,
+				)
+			) {
 				throw createError({
 					statusCode: 400,
 					message: isCommanderSession(session.sourceSnapshot)
@@ -541,7 +620,10 @@ export function featureMatchStateService() {
 			// Field Ownership discipline: an absolute command claims the state it saw,
 			// so a session that has moved on invalidates it. Mergeable commands are
 			// relative and survive.
-			if (!isMergeableFeatureMatchCommand(command.type) && command.baseSequence !== session.sequence) {
+			if (
+				!isMergeableFeatureMatchCommand(command.type) &&
+				command.baseSequence !== session.sequence
+			) {
 				throw createError({
 					statusCode: 409,
 					message: 'Feature match session has advanced',
@@ -552,16 +634,20 @@ export function featureMatchStateService() {
 			}
 		},
 
-		isMergeable: command => isMergeableFeatureMatchCommand(command.type),
+		isMergeable: (command) => isMergeableFeatureMatchCommand(command.type),
 
-		reduce: (session, command) => applyFeatureMatchSessionEvent(
-			session.currentState,
-			session.sourceSnapshot,
-			command.type,
-			normalizeFeatureMatchSessionCommandPayload(command.type, command.payload as FeatureMatchSessionEventPayload),
-		),
+		reduce: (session, command) =>
+			applyFeatureMatchSessionEvent(
+				session.currentState,
+				session.sourceSnapshot,
+				command.type,
+				normalizeFeatureMatchSessionCommandPayload(
+					command.type,
+					command.payload as FeatureMatchSessionEventPayload,
+				),
+			),
 
-		casGuard: session => sql`
+		casGuard: (session) => sql`
 			from ${featureMatchSessions}
 			where ${featureMatchSessions.id} = ${session.id}
 				and ${featureMatchSessions.eventId} = ${session.eventId}
@@ -569,21 +655,24 @@ export function featureMatchStateService() {
 				and ${featureMatchSessions.status} = 'active'
 		`,
 
-		projection: ({ aggregate, reduction, nextSequence }) => db
-			.update(featureMatchSessions)
-			.set({
-				currentState: reduction.currentState,
-				sourceSnapshot: reduction.sourceSnapshot,
-				sequence: nextSequence,
-				updatedAt: new Date(),
-			})
-			.where(and(
-				eq(featureMatchSessions.id, aggregate.id),
-				eq(featureMatchSessions.eventId, aggregate.eventId),
-				eq(featureMatchSessions.sequence, aggregate.sequence),
-				eq(featureMatchSessions.status, 'active'),
-			))
-			.returning(),
+		projection: ({ aggregate, reduction, nextSequence }) =>
+			db
+				.update(featureMatchSessions)
+				.set({
+					currentState: reduction.currentState,
+					sourceSnapshot: reduction.sourceSnapshot,
+					sequence: nextSequence,
+					updatedAt: new Date(),
+				})
+				.where(
+					and(
+						eq(featureMatchSessions.id, aggregate.id),
+						eq(featureMatchSessions.eventId, aggregate.eventId),
+						eq(featureMatchSessions.sequence, aggregate.sequence),
+						eq(featureMatchSessions.status, 'active'),
+					),
+				)
+				.returning(),
 
 		toResult: (session, commandType) => ({
 			slotId: session.slotId,
@@ -596,7 +685,12 @@ export function featureMatchStateService() {
 		}),
 
 		publish: async (result, { originConnectionId }) => {
-			await publishMessage(result.sourceSnapshot.eventId, 'featureMatchSession:eventApplied', toEventAppliedPayload(result), originConnectionId);
+			await publishMessage(
+				result.sourceSnapshot.eventId,
+				'featureMatchSession:eventApplied',
+				toEventAppliedPayload(result),
+				originConnectionId,
+			);
 		},
 	});
 
@@ -607,7 +701,10 @@ export function featureMatchStateService() {
 		originConnectionId?: string,
 		options: Omit<SequencedLiveStateExecuteOptions, 'originConnectionId'> = {},
 	): Promise<FeatureMatchSessionCommandResult> => {
-		return await liveState.execute({ sessionId, eventId }, command, { ...options, originConnectionId });
+		return await liveState.execute({ sessionId, eventId }, command, {
+			...options,
+			originConnectionId,
+		});
 	};
 
 	/**
@@ -620,17 +717,17 @@ export function featureMatchStateService() {
 	const applyCommandToActiveSession = async (
 		slotId: number,
 		eventId: number,
-		createCommand: (session: DbFeatureMatchSession) =>
-			FeatureMatchSessionCommand | null | Promise<FeatureMatchSessionCommand | null>,
+		createCommand: (
+			session: DbFeatureMatchSession,
+		) => FeatureMatchSessionCommand | null | Promise<FeatureMatchSessionCommand | null>,
 		originConnectionId?: string,
 	): Promise<FeatureMatchSessionCommandResult | null> => {
-		const session = await getActiveSession(slotId, eventId) ?? await createSessionForSlot(slotId, eventId);
-		if (!session)
-			return null;
+		const session =
+			(await getActiveSession(slotId, eventId)) ?? (await createSessionForSlot(slotId, eventId));
+		if (!session) return null;
 
 		const command = await createCommand(session);
-		if (!command)
-			return null;
+		if (!command) return null;
 		return await applyCommand(session.id, eventId, command, originConnectionId);
 	};
 

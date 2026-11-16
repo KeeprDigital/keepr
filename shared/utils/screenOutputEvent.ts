@@ -40,7 +40,10 @@ export const SCREEN_OUTPUT_EVENT_FIELDS = [
 	'tableNumberEnabled',
 ] as const satisfies readonly (keyof EventListResponse)[];
 
-export type ScreenOutputEvent = Pick<EventListResponse, typeof SCREEN_OUTPUT_EVENT_FIELDS[number]> & {
+export type ScreenOutputEvent = Pick<
+	EventListResponse,
+	(typeof SCREEN_OUTPUT_EVENT_FIELDS)[number]
+> & {
 	/**
 	 * What a Screen needs of its Event's Theme to resolve its tokens: the Theme
 	 * `themeId` names, or null for the Default Theme. The read always carries
@@ -58,11 +61,9 @@ export type ScreenOutputEvent = Pick<EventListResponse, typeof SCREEN_OUTPUT_EVE
  */
 export function toScreenOutputEvent(event: ScreenOutputEvent): ScreenOutputEvent {
 	const narrowed = Object.fromEntries(
-		SCREEN_OUTPUT_EVENT_FIELDS.map(field => [field, event[field]]),
+		SCREEN_OUTPUT_EVENT_FIELDS.map((field) => [field, event[field]]),
 	) as ScreenOutputEvent;
-	return event.theme === undefined
-		? narrowed
-		: { ...narrowed, theme: event.theme };
+	return event.theme === undefined ? narrowed : { ...narrowed, theme: event.theme };
 }
 
 /** Whether a held Event context holds the Theme its Event uses. */

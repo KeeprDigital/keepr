@@ -56,9 +56,11 @@ mockNuxtImport('useScreenModeConfig', () => () => computed(() => mutableConfig))
 
 // Server time is the Page Rotation's clock; synced and controllable here.
 let mockServerNow = 1_000_000;
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
-	getServerTime: () => mockServerNow,
-})));
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+		getServerTime: () => mockServerNow,
+	})),
+);
 
 /** `count` ranked cards, named by their rank. */
 function rankedCards(count: number) {
@@ -87,16 +89,12 @@ describe('useTopCardsModeData', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
 	it.each([
 		['the full field', {}, 'Most Played Cards'],
-		[
-			'the Top N scope',
-			{ scope: 'topN', topN: 8 },
-			'Top 8 Most Played Cards',
-		],
+		['the Top N scope', { scope: 'topN', topN: 8 }, 'Top 8 Most Played Cards'],
 		[
 			'the Minimum Points scope',
 			{ scope: 'minPoints', minPoints: 12 },
@@ -107,11 +105,7 @@ describe('useTopCardsModeData', () => {
 			{ scope: 'topN', topN: 8, pointedOnly: true },
 			'Top 8 Most Played Pointed Cards',
 		],
-		[
-			'a custom header',
-			{ headerText: 'The Chase Cards' },
-			'The Chase Cards',
-		],
+		['a custom header', { headerText: 'The Chase Cards' }, 'The Chase Cards'],
 	] as const)('heads the grid with %s', (_, config, expected) => {
 		Object.assign(mutableConfig, config);
 
@@ -120,14 +114,16 @@ describe('useTopCardsModeData', () => {
 
 	// The Screen holds the Archetype's id alone (ADR-0038); its read names it, so a rename shows.
 	it('heads the grid with the Archetype its read narrowed the cards to, and re-reads when the filter changes', async () => {
-		mockFetch.mockImplementation(async () => mutableConfig.archetypeId === 4
-			? {
-					entries: [],
-					totalDecks: 2,
-					scope: 'all',
-					archetype: { id: 4, name: 'Mono Red' },
-				}
-			: { entries: [], totalDecks: 5, scope: 'all' });
+		mockFetch.mockImplementation(async () =>
+			mutableConfig.archetypeId === 4
+				? {
+						entries: [],
+						totalDecks: 2,
+						scope: 'all',
+						archetype: { id: 4, name: 'Mono Red' },
+					}
+				: { entries: [], totalDecks: 5, scope: 'all' },
+		);
 		const { headerText } = makeTopCardsModeData();
 		await flushPromises();
 		expect(headerText.value).toBe('Most Played Cards');
@@ -153,7 +149,7 @@ describe('useTopCardsModeData', () => {
 			'/api/screen-output/events/1/screens/1/top-cards',
 			expect.objectContaining({ headers: undefined }),
 		);
-		expect(entries.value.map(entry => entry.name)).toEqual(['Card 1']);
+		expect(entries.value.map((entry) => entry.name)).toEqual(['Card 1']);
 	});
 
 	it.each([
@@ -167,17 +163,23 @@ describe('useTopCardsModeData', () => {
 			scoped: { scope: 'minPoints' },
 			change: { minPoints: 12 },
 		},
-	] as const)('re-reads when $field, a configuration field the breakdown depends on, changes', async ({ scoped, change }) => {
-		Object.assign(mutableConfig, scoped);
-		makeTopCardsModeData();
-		await flushPromises();
-		mockFetch.mockClear();
+	] as const)(
+		're-reads when $field, a configuration field the breakdown depends on, changes',
+		async ({ scoped, change }) => {
+			Object.assign(mutableConfig, scoped);
+			makeTopCardsModeData();
+			await flushPromises();
+			mockFetch.mockClear();
 
-		Object.assign(mutableConfig, change);
-		await flushPromises();
+			Object.assign(mutableConfig, change);
+			await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/screen-output/events/1/screens/1/top-cards', expect.anything());
-	});
+			expect(mockFetch).toHaveBeenCalledWith(
+				'/api/screen-output/events/1/screens/1/top-cards',
+				expect.anything(),
+			);
+		},
+	);
 
 	it.each([
 		{
@@ -198,16 +200,19 @@ describe('useTopCardsModeData', () => {
 			pointedOnly: true,
 			expected: 'No pointed cards played',
 		},
-	])('is empty with a message for a field with $field', async ({ totalDecks, pointedOnly, expected }) => {
-		mutableConfig.pointedOnly = pointedOnly;
-		mockFetch.mockResolvedValue({ entries: [], totalDecks, scope: 'all' });
+	])(
+		'is empty with a message for a field with $field',
+		async ({ totalDecks, pointedOnly, expected }) => {
+			mutableConfig.pointedOnly = pointedOnly;
+			mockFetch.mockResolvedValue({ entries: [], totalDecks, scope: 'all' });
 
-		const { isEmpty, emptyMessage } = makeTopCardsModeData();
-		await flushPromises();
+			const { isEmpty, emptyMessage } = makeTopCardsModeData();
+			await flushPromises();
 
-		expect(isEmpty.value).toBe(true);
-		expect(emptyMessage.value).toBe(expected);
-	});
+			expect(isEmpty.value).toBe(true);
+			expect(emptyMessage.value).toBe(expected);
+		},
+	);
 	describe('page rotation', () => {
 		/** The cards a page shows, as `rank:name`. */
 		function shown(page: { entry: { name: string }; rank: number }[]) {
@@ -231,7 +236,7 @@ describe('useTopCardsModeData', () => {
 			expect(shown(pageEntries.value).at(-1)).toBe('12:Card 12');
 		});
 
-		it('pages the ranking by cards, keeping each card\'s overall rank', async () => {
+		it("pages the ranking by cards, keeping each card's overall rank", async () => {
 			mockFetch.mockResolvedValue({
 				entries: rankedCards(5),
 				totalDecks: 5,
@@ -263,28 +268,28 @@ describe('useTopCardsModeData', () => {
 		});
 
 		// Columns never move a card to another page; every page lays out as a full one would.
-		it.each([
-			{ columns: 1 },
-			{ columns: undefined },
-		])('pages the same cards in $columns columns', async ({ columns }) => {
-			mockFetch.mockResolvedValue({
-				entries: rankedCards(10),
-				totalDecks: 5,
-				scope: 'all',
-			});
-			Object.assign(mutableConfig, {
-				columns,
-				cardsPerPage: 4,
-				currentPage: 3,
-			});
+		it.each([{ columns: 1 }, { columns: undefined }])(
+			'pages the same cards in $columns columns',
+			async ({ columns }) => {
+				mockFetch.mockResolvedValue({
+					entries: rankedCards(10),
+					totalDecks: 5,
+					scope: 'all',
+				});
+				Object.assign(mutableConfig, {
+					columns,
+					cardsPerPage: 4,
+					currentPage: 3,
+				});
 
-			const { pageEntries, totalPages, pageCapacity } = makeTopCardsModeData();
-			await flushPromises();
+				const { pageEntries, totalPages, pageCapacity } = makeTopCardsModeData();
+				await flushPromises();
 
-			expect(totalPages.value).toBe(3);
-			expect(shown(pageEntries.value)).toEqual(['9:Card 9', '10:Card 10']);
-			expect(pageCapacity.value).toBe(4);
-		});
+				expect(totalPages.value).toBe(3);
+				expect(shown(pageEntries.value)).toEqual(['9:Card 9', '10:Card 10']);
+				expect(pageCapacity.value).toBe(4);
+			},
+		);
 
 		it('shows the page projected from the Rotation Anchor while auto-page is on', async () => {
 			mockFetch.mockResolvedValue({
@@ -309,7 +314,7 @@ describe('useTopCardsModeData', () => {
 		});
 		it('turns to a page, with its page indicator, once its card images have loaded', async () => {
 			mockFetch.mockResolvedValue({
-				entries: rankedCards(4).map(card => ({ ...card, scryfallId: `${card.id}0-card` })),
+				entries: rankedCards(4).map((card) => ({ ...card, scryfallId: `${card.id}0-card` })),
 				totalDecks: 5,
 				scope: 'all',
 			});
@@ -356,7 +361,10 @@ describe('useTopCardsModeData', () => {
 			await flushPromises();
 
 			expect(mockFetch).toHaveBeenCalledTimes(1);
-			expect(mockFetch).toHaveBeenLastCalledWith('/api/screen-output/events/1/screens/1/top-cards', expect.anything());
+			expect(mockFetch).toHaveBeenLastCalledWith(
+				'/api/screen-output/events/1/screens/1/top-cards',
+				expect.anything(),
+			);
 			expect(usePlayerStore().dataVersion).toBe(0);
 		});
 

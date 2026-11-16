@@ -17,7 +17,11 @@ async function flushPromises() {
 	await Promise.resolve();
 }
 
-interface SlotState { life1: number; life2: number; clockMs: number }
+interface SlotState {
+	life1: number;
+	life2: number;
+	clockMs: number;
+}
 
 describe('optimistic-state module', () => {
 	beforeEach(() => {
@@ -30,12 +34,7 @@ describe('optimistic-state module', () => {
 	});
 
 	function createTestSetup(flush = vi.fn(async (entry: any) => entry.payload)) {
-		const stateMap = ref(new Map<number, SlotState>([
-			[
-				1,
-				{ life1: 20, life2: 20, clockMs: 100 },
-			],
-		]));
+		const stateMap = ref(new Map<number, SlotState>([[1, { life1: 20, life2: 20, clockMs: 100 }]]));
 		const errorRef = ref<string | null>(null);
 
 		const optimistic = createOptimisticState<SlotState>({ stateMap, errorRef });
@@ -60,7 +59,12 @@ describe('optimistic-state module', () => {
 			const { stateMap, enqueue, applyRemote } = createTestSetup();
 
 			// Operator taps life +1 — optimistic, batch still pending (no timer advance).
-			enqueue('life-1', 1, current => ({ ...current, life1: 21 }), () => ({ life1: 21 }));
+			enqueue(
+				'life-1',
+				1,
+				(current) => ({ ...current, life1: 21 }),
+				() => ({ life1: 21 }),
+			);
 			expect(stateMap.value.get(1)).toEqual({ life1: 21, life2: 20, clockMs: 100 });
 
 			// A remote session frame arrives reflecting server state that predates the
@@ -77,10 +81,15 @@ describe('optimistic-state module', () => {
 			let resolveApi!: (state: SlotState) => void;
 			const { stateMap, run } = createTestSetup();
 
-			void run('swap', 1, current => ({ ...current, life1: 15 }), () =>
-				new Promise<SlotState>((resolve) => {
-					resolveApi = resolve;
-				}));
+			void run(
+				'swap',
+				1,
+				(current) => ({ ...current, life1: 15 }),
+				() =>
+					new Promise<SlotState>((resolve) => {
+						resolveApi = resolve;
+					}),
+			);
 			expect(stateMap.value.get(1)).toEqual({ life1: 15, life2: 20, clockMs: 100 });
 
 			// While the call is in flight, another action's remote-ish server result for
@@ -95,8 +104,8 @@ describe('optimistic-state module', () => {
 			const apiCall = vi.fn(() => new Promise<SlotState>(() => {}));
 			const { run } = createTestSetup();
 
-			const first = run('swap', 1, current => ({ ...current, life1: 15 }), apiCall);
-			const second = run('swap', 1, current => ({ ...current, life1: 10 }), apiCall);
+			const first = run('swap', 1, (current) => ({ ...current, life1: 15 }), apiCall);
+			const second = run('swap', 1, (current) => ({ ...current, life1: 10 }), apiCall);
 
 			expect(first).not.toBeNull();
 			expect(second).toBeNull();
@@ -107,10 +116,15 @@ describe('optimistic-state module', () => {
 			let rejectApi!: (error: Error) => void;
 			const { stateMap, run, applyRemote } = createTestSetup();
 
-			void run('swap', 1, current => ({ ...current, life1: 15 }), () =>
-				new Promise<SlotState>((_resolve, reject) => {
-					rejectApi = reject;
-				}));
+			void run(
+				'swap',
+				1,
+				(current) => ({ ...current, life1: 15 }),
+				() =>
+					new Promise<SlotState>((_resolve, reject) => {
+						rejectApi = reject;
+					}),
+			);
 			expect(stateMap.value.get(1)).toEqual({ life1: 15, life2: 20, clockMs: 100 });
 
 			// A remote frame lands mid-flight and moves an unowned field.
@@ -134,11 +148,21 @@ describe('optimistic-state module', () => {
 			let resolveApi!: (state: SlotState) => void;
 			const { stateMap, enqueue, run } = createTestSetup();
 
-			void run('both', 1, current => ({ ...current, life1: 25, life2: 25 }), () =>
-				new Promise<SlotState>((resolve) => {
-					resolveApi = resolve;
-				}));
-			enqueue('life-1', 1, current => ({ ...current, life1: current.life1 - 1 }), () => ({ life1: 24 }));
+			void run(
+				'both',
+				1,
+				(current) => ({ ...current, life1: 25, life2: 25 }),
+				() =>
+					new Promise<SlotState>((resolve) => {
+						resolveApi = resolve;
+					}),
+			);
+			enqueue(
+				'life-1',
+				1,
+				(current) => ({ ...current, life1: current.life1 - 1 }),
+				() => ({ life1: 24 }),
+			);
 			expect(stateMap.value.get(1)).toEqual({ life1: 24, life2: 25, clockMs: 100 });
 
 			// The older action settles with a state that predates the pending tap.
@@ -152,11 +176,21 @@ describe('optimistic-state module', () => {
 			let rejectApi!: (error: Error) => void;
 			const { stateMap, enqueue, run } = createTestSetup();
 
-			const settled = run('both', 1, current => ({ ...current, life1: 25, life2: 25 }), () =>
-				new Promise<SlotState>((_resolve, reject) => {
-					rejectApi = reject;
-				}));
-			enqueue('life-1', 1, current => ({ ...current, life1: current.life1 - 1 }), () => ({ life1: 24 }));
+			const settled = run(
+				'both',
+				1,
+				(current) => ({ ...current, life1: 25, life2: 25 }),
+				() =>
+					new Promise<SlotState>((_resolve, reject) => {
+						rejectApi = reject;
+					}),
+			);
+			enqueue(
+				'life-1',
+				1,
+				(current) => ({ ...current, life1: current.life1 - 1 }),
+				() => ({ life1: 24 }),
+			);
 
 			rejectApi(new Error('network error'));
 			await settled;
@@ -179,16 +213,23 @@ describe('optimistic-state module', () => {
 			let rejectApi!: (error: unknown) => void;
 			const { stateMap, errorRef, run } = createTestSetup();
 
-			void run('swap', 1, current => ({ ...current, life1: 15 }), () =>
-				new Promise<SlotState>((_resolve, reject) => {
-					rejectApi = reject;
-				}));
+			void run(
+				'swap',
+				1,
+				(current) => ({ ...current, life1: 15 }),
+				() =>
+					new Promise<SlotState>((_resolve, reject) => {
+						rejectApi = reject;
+					}),
+			);
 
-			rejectApi(transportFailure({
-				status: 409,
-				body: { message: 'This Feature Match has already been reset' },
-				request: `[PATCH] "/api/events/1/feature-matches/1/state"`,
-			}));
+			rejectApi(
+				transportFailure({
+					status: 409,
+					body: { message: 'This Feature Match has already been reset' },
+					request: `[PATCH] "/api/events/1/feature-matches/1/state"`,
+				}),
+			);
 			await flushPromises();
 
 			expect(errorRef.value).toBe('This Feature Match has already been reset');
@@ -199,35 +240,55 @@ describe('optimistic-state module', () => {
 			let rejectApi!: (error: unknown) => void;
 			const { errorRef, run } = createTestSetup();
 
-			void run('swap', 1, current => ({ ...current, life1: 15 }), () =>
-				new Promise<SlotState>((_resolve, reject) => {
-					rejectApi = reject;
-				}));
+			void run(
+				'swap',
+				1,
+				(current) => ({ ...current, life1: 15 }),
+				() =>
+					new Promise<SlotState>((_resolve, reject) => {
+						rejectApi = reject;
+					}),
+			);
 
-			rejectApi(transportFailure({
-				status: 503,
-				request: `[PATCH] "/api/events/1/feature-matches/1/state"`,
-			}));
+			rejectApi(
+				transportFailure({
+					status: 503,
+					request: `[PATCH] "/api/events/1/feature-matches/1/state"`,
+				}),
+			);
 			await flushPromises();
 
-			expect(errorRef.value).toBe('[PATCH] "/api/events/1/feature-matches/1/state": 503 Service Unavailable');
+			expect(errorRef.value).toBe(
+				'[PATCH] "/api/events/1/feature-matches/1/state": 503 Service Unavailable',
+			);
 		});
 	});
 
 	describe('batched flush with derived Field Ownership', () => {
-		it('key A\'s flush result cannot clobber key B\'s still-pending optimistic value', async () => {
+		it("key A's flush result cannot clobber key B's still-pending optimistic value", async () => {
 			let resolveLife1!: (state: SlotState) => void;
 			let resolveLife2!: (state: SlotState) => void;
-			const flush = vi.fn((entry: any) => new Promise<SlotState>((resolve) => {
-				if ('life1' in entry.payload)
-					resolveLife1 = resolve;
-				else
-					resolveLife2 = resolve;
-			}));
+			const flush = vi.fn(
+				(entry: any) =>
+					new Promise<SlotState>((resolve) => {
+						if ('life1' in entry.payload) resolveLife1 = resolve;
+						else resolveLife2 = resolve;
+					}),
+			);
 			const { stateMap, enqueue } = createTestSetup(flush as any);
 
-			enqueue('life-1', 1, current => ({ ...current, life1: 21 }), () => ({ life1: 21 }));
-			enqueue('life-2', 1, current => ({ ...current, life2: 18 }), () => ({ life2: 18 }));
+			enqueue(
+				'life-1',
+				1,
+				(current) => ({ ...current, life1: 21 }),
+				() => ({ life1: 21 }),
+			);
+			enqueue(
+				'life-2',
+				1,
+				(current) => ({ ...current, life2: 18 }),
+				() => ({ life2: 18 }),
+			);
 
 			vi.advanceTimersByTime(200);
 			expect(stateMap.value.get(1)).toEqual({ life1: 21, life2: 18, clockMs: 100 });
@@ -244,12 +305,20 @@ describe('optimistic-state module', () => {
 
 		it('keeps the claim through an in-flight flush, releasing it once the result merges', async () => {
 			let resolveFlush!: (state: SlotState) => void;
-			const flush = vi.fn(() => new Promise<SlotState>((resolve) => {
-				resolveFlush = resolve;
-			}));
+			const flush = vi.fn(
+				() =>
+					new Promise<SlotState>((resolve) => {
+						resolveFlush = resolve;
+					}),
+			);
 			const { stateMap, enqueue, applyRemote } = createTestSetup(flush as any);
 
-			enqueue('life-1', 1, current => ({ ...current, life1: 21 }), () => ({ life1: 21 }));
+			enqueue(
+				'life-1',
+				1,
+				(current) => ({ ...current, life1: 21 }),
+				() => ({ life1: 21 }),
+			);
 			vi.advanceTimersByTime(200);
 			expect(flush).toHaveBeenCalledOnce();
 
@@ -270,15 +339,18 @@ describe('optimistic-state module', () => {
 			// server recalculates it — the result's clockMs must merge in, and a
 			// remote frame mid-flight must NOT overwrite the pending clockMs.
 			let resolveFlush!: (state: SlotState) => void;
-			const flush = vi.fn(() => new Promise<SlotState>((resolve) => {
-				resolveFlush = resolve;
-			}));
+			const flush = vi.fn(
+				() =>
+					new Promise<SlotState>((resolve) => {
+						resolveFlush = resolve;
+					}),
+			);
 			const { stateMap, enqueue, applyRemote } = createTestSetup(flush as any);
 
 			enqueue(
 				'clock',
 				1,
-				current => ({ ...current, life1: 21 }),
+				(current) => ({ ...current, life1: 21 }),
 				() => ({ life1: 21 }),
 				{
 					serverOwns: ['clockMs'],
@@ -301,7 +373,12 @@ describe('optimistic-state module', () => {
 			});
 			const { stateMap, enqueue } = createTestSetup(flush as any);
 
-			enqueue('life-1', 1, current => ({ ...current, life1: 21, life2: 19 }), () => ({ life1: 21, life2: 19 }));
+			enqueue(
+				'life-1',
+				1,
+				(current) => ({ ...current, life1: 21, life2: 19 }),
+				() => ({ life1: 21, life2: 19 }),
+			);
 			vi.advanceTimersByTime(200);
 			await flushPromises();
 
@@ -310,12 +387,9 @@ describe('optimistic-state module', () => {
 		});
 
 		it('claims are shared across batches of the same instance', () => {
-			const stateMap = ref(new Map<number, SlotState>([
-				[
-					1,
-					{ life1: 20, life2: 20, clockMs: 100 },
-				],
-			]));
+			const stateMap = ref(
+				new Map<number, SlotState>([[1, { life1: 20, life2: 20, clockMs: 100 }]]),
+			);
 			const errorRef = ref<string | null>(null);
 			const optimistic = createOptimisticState<SlotState>({ stateMap, errorRef });
 			const lifeBatch = optimistic.batch<Partial<SlotState>>({
@@ -327,8 +401,18 @@ describe('optimistic-state module', () => {
 				debounceMs: 100,
 			});
 
-			lifeBatch.enqueue('life-1', 1, current => ({ ...current, life1: 21 }), () => ({ life1: 21 }));
-			clockBatch.enqueue('clock', 1, current => ({ ...current, clockMs: 110 }), () => ({ clockMs: 110 }));
+			lifeBatch.enqueue(
+				'life-1',
+				1,
+				(current) => ({ ...current, life1: 21 }),
+				() => ({ life1: 21 }),
+			);
+			clockBatch.enqueue(
+				'clock',
+				1,
+				(current) => ({ ...current, clockMs: 110 }),
+				() => ({ clockMs: 110 }),
+			);
 
 			// Remote must merge around BOTH batches' Field Ownership.
 			optimistic.applyRemote(1, { life1: 20, life2: 15, clockMs: 90 });
@@ -337,35 +421,40 @@ describe('optimistic-state module', () => {
 	});
 
 	describe('multi-target entries (bulk actions)', () => {
-		function createBulkSetup(flush: (entry: any, controls: any) => Promise<ReadonlyMap<number, SlotState>>) {
-			const stateMap = ref(new Map<number, SlotState>([
-				[
-					1,
-					{ life1: 20, life2: 20, clockMs: 100 },
-				],
-				[
-					2,
-					{ life1: 20, life2: 20, clockMs: 200 },
-				],
-			]));
+		function createBulkSetup(
+			flush: (entry: any, controls: any) => Promise<ReadonlyMap<number, SlotState>>,
+		) {
+			const stateMap = ref(
+				new Map<number, SlotState>([
+					[1, { life1: 20, life2: 20, clockMs: 100 }],
+					[2, { life1: 20, life2: 20, clockMs: 200 }],
+				]),
+			);
 			const errorRef = ref<string | null>(null);
 			const optimistic = createOptimisticState<SlotState>({ stateMap, errorRef });
-			const bulk = optimistic.batch<{ deltaMs: number }>({ flush: flush as any, debounceMs: 100, maxWaitMs: 500 });
+			const bulk = optimistic.batch<{ deltaMs: number }>({
+				flush: flush as any,
+				debounceMs: 100,
+				maxWaitMs: 500,
+			});
 			return { stateMap, optimistic, bulk };
 		}
 
 		it('an accumulating bulk batch claims and merges per target', async () => {
 			let resolveFlush!: (states: ReadonlyMap<number, SlotState>) => void;
-			const flush = vi.fn(() => new Promise<ReadonlyMap<number, SlotState>>((resolve) => {
-				resolveFlush = resolve;
-			}));
+			const flush = vi.fn(
+				() =>
+					new Promise<ReadonlyMap<number, SlotState>>((resolve) => {
+						resolveFlush = resolve;
+					}),
+			);
 			const { stateMap, optimistic, bulk } = createBulkSetup(flush);
 
 			bulk.enqueue(
 				'all',
 				[1, 2],
-				current => ({ ...current, clockMs: current.clockMs - 10 }),
-				existing => ({ deltaMs: (existing?.deltaMs ?? 0) - 10 }),
+				(current) => ({ ...current, clockMs: current.clockMs - 10 }),
+				(existing) => ({ deltaMs: (existing?.deltaMs ?? 0) - 10 }),
 			);
 			expect(stateMap.value.get(1)!.clockMs).toBe(90);
 			expect(stateMap.value.get(2)!.clockMs).toBe(190);
@@ -375,16 +464,12 @@ describe('optimistic-state module', () => {
 			expect(stateMap.value.get(1)).toEqual({ life1: 11, life2: 20, clockMs: 90 });
 
 			vi.advanceTimersByTime(200);
-			resolveFlush(new Map([
-				[
-					1,
-					{ life1: 11, life2: 20, clockMs: 90 },
-				],
-				[
-					2,
-					{ life1: 20, life2: 20, clockMs: 190 },
-				],
-			]));
+			resolveFlush(
+				new Map([
+					[1, { life1: 11, life2: 20, clockMs: 90 }],
+					[2, { life1: 20, life2: 20, clockMs: 190 }],
+				]),
+			);
 			await flushPromises();
 			expect(stateMap.value.get(1)).toEqual({ life1: 11, life2: 20, clockMs: 90 });
 			expect(stateMap.value.get(2)).toEqual({ life1: 20, life2: 20, clockMs: 190 });
@@ -399,8 +484,8 @@ describe('optimistic-state module', () => {
 			bulk.enqueue(
 				'all',
 				[1, 2],
-				current => ({ ...current, clockMs: current.clockMs - 10 }),
-				existing => ({ deltaMs: (existing?.deltaMs ?? 0) - 10 }),
+				(current) => ({ ...current, clockMs: current.clockMs - 10 }),
+				(existing) => ({ deltaMs: (existing?.deltaMs ?? 0) - 10 }),
 			);
 
 			// An unowned field moves remotely mid-pending — rollback must not revert it.
@@ -415,16 +500,12 @@ describe('optimistic-state module', () => {
 		});
 
 		it('run accepts multiple targets and skips ids whose optimistic change is null', async () => {
-			const stateMap = ref(new Map<number, SlotState>([
-				[
-					1,
-					{ life1: 20, life2: 20, clockMs: 100 },
-				],
-				[
-					2,
-					{ life1: 20, life2: 20, clockMs: 200 },
-				],
-			]));
+			const stateMap = ref(
+				new Map<number, SlotState>([
+					[1, { life1: 20, life2: 20, clockMs: 100 }],
+					[2, { life1: 20, life2: 20, clockMs: 200 }],
+				]),
+			);
 			const errorRef = ref<string | null>(null);
 			const optimistic = createOptimisticState<SlotState>({ stateMap, errorRef });
 
@@ -433,22 +514,16 @@ describe('optimistic-state module', () => {
 			void optimistic.run(
 				'bulk:set-clock',
 				[1, 2],
-				current => (current.clockMs === 200
-					? null
-					: { ...current, clockMs: 200 }),
-				() => new Promise<ReadonlyMap<number, SlotState>>((resolve) => {
-					resolveApi = resolve;
-				}),
+				(current) => (current.clockMs === 200 ? null : { ...current, clockMs: 200 }),
+				() =>
+					new Promise<ReadonlyMap<number, SlotState>>((resolve) => {
+						resolveApi = resolve;
+					}),
 			);
 			expect(stateMap.value.get(1)!.clockMs).toBe(200);
 			expect(stateMap.value.get(2)!.clockMs).toBe(200);
 
-			resolveApi(new Map([
-				[
-					1,
-					{ life1: 20, life2: 20, clockMs: 200 },
-				],
-			]));
+			resolveApi(new Map([[1, { life1: 20, life2: 20, clockMs: 200 }]]));
 			await flushPromises();
 			expect(stateMap.value.get(1)).toEqual({ life1: 20, life2: 20, clockMs: 200 });
 			expect(stateMap.value.get(2)).toEqual({ life1: 20, life2: 20, clockMs: 200 });

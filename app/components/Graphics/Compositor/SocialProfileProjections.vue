@@ -48,17 +48,19 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:graphics': [graphics: BroadcastGraphicConfig[]] }>();
 const { canAuthor, edit } = useCompositorEditing(
 	() => props,
-	graphics => emit('update:graphics', graphics),
+	(graphics) => emit('update:graphics', graphics),
 );
 const selection = computed(() => resolveGraphicsSelection(props.graphics, props.selectedTarget));
-const selectedGraphic = computed(() => selection.value.kind === 'graphic'
-	? selection.value.graphic
-	: null);
+const selectedGraphic = computed(() =>
+	selection.value.kind === 'graphic' ? selection.value.graphic : null,
+);
 const projections = computed(() => selectedGraphic.value?.socialProfileProjections ?? []);
-const screenProjectionCount = computed(() => props.graphics.reduce(
-	(total, graphic) => total + (graphic.socialProfileProjections?.length ?? 0),
-	0,
-));
+const screenProjectionCount = computed(() =>
+	props.graphics.reduce(
+		(total, graphic) => total + (graphic.socialProfileProjections?.length ?? 0),
+		0,
+	),
+);
 const projectionBudgetFeedback = computed(() => {
 	if (projections.value.length >= MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHIC)
 		return `Broadcast Graphic limit reached (${MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHIC}).`;
@@ -66,24 +68,30 @@ const projectionBudgetFeedback = computed(() => {
 		return `Screen limit reached (${MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHICS_SCREEN}).`;
 	return null;
 });
-const talentSources = computed(() => (selectedGraphic.value?.sources ?? []).filter(source => source.kind === 'talent'));
+const talentSources = computed(() =>
+	(selectedGraphic.value?.sources ?? []).filter((source) => source.kind === 'talent'),
+);
 
-const sourceOptions = computed(() => talentSources.value.map(source => ({
-	label: source.from
-		? `${source.label} (${source.from.relation === 'commentator1'
-			? 'Event Talent 1'
-			: source.from.relation === 'commentator2'
-				? 'Event Talent 2'
-				: 'derived'})`
-		: `${source.label} (operator selected)`,
-	value: source.key,
-})));
+const sourceOptions = computed(() =>
+	talentSources.value.map((source) => ({
+		label: source.from
+			? `${source.label} (${
+					source.from.relation === 'commentator1'
+						? 'Event Talent 1'
+						: source.from.relation === 'commentator2'
+							? 'Event Talent 2'
+							: 'derived'
+				})`
+			: `${source.label} (operator selected)`,
+		value: source.key,
+	})),
+);
 
 const eligibleGroups = computed(() => {
-	const assigned = new Set(projections.value.map(projection => projection.presentationGroupId));
+	const assigned = new Set(projections.value.map((projection) => projection.presentationGroupId));
 	return (selectedGraphic.value?.items ?? [])
-		.filter(item => item.type === 'group' && !assigned.has(item.id))
-		.map(item => ({ label: item.label, value: item.id }));
+		.filter((item) => item.type === 'group' && !assigned.has(item.id))
+		.map((item) => ({ label: item.label, value: item.id }));
 });
 const groupOptions = computed(() => [
 	{ label: 'Create starter Presentation Group', value: '' },
@@ -94,17 +102,23 @@ const newLabel = ref('Social Profile 1');
 const newSourceKey = ref('');
 const newGroupId = ref('');
 
-watch(talentSources, (sources) => {
-	if (!sources.some(source => source.key === newSourceKey.value))
-		newSourceKey.value = sources[0]?.key ?? '';
-}, { immediate: true });
+watch(
+	talentSources,
+	(sources) => {
+		if (!sources.some((source) => source.key === newSourceKey.value))
+			newSourceKey.value = sources[0]?.key ?? '';
+	},
+	{ immediate: true },
+);
 
 /**
  * Edit the selected Broadcast Graphic through the compositor editing module. Answers
  * whether the edit was committed: one that was refused, or that changed nothing,
  * leaves the form as the author left it.
  */
-function editSelectedGraphic(apply: (graphic: BroadcastGraphicConfig) => BroadcastGraphicConfig): boolean {
+function editSelectedGraphic(
+	apply: (graphic: BroadcastGraphicConfig) => BroadcastGraphicConfig,
+): boolean {
 	const graphic = selectedGraphic.value;
 	return graphic !== null && edit({ kind: 'named-graphic', graphicId: graphic.id, apply });
 }
@@ -118,7 +132,7 @@ function addProjection() {
 	const added = editSelectedGraphic((graphic) => {
 		const projectionKey = graphicInputKeyFromLabel(
 			newLabel.value,
-			(graphic.socialProfileProjections ?? []).map(projection => projection.key),
+			(graphic.socialProfileProjections ?? []).map((projection) => projection.key),
 		);
 		return newGroupId.value
 			? associateSocialProfileProjection(graphic, {
@@ -138,18 +152,19 @@ function addProjection() {
 					canvasHeight: props.canvasHeight,
 				});
 	});
-	if (!added)
-		return;
+	if (!added) return;
 	newLabel.value = nextLabel;
 	newGroupId.value = '';
 }
 
 function patchProjection(key: string, patch: SocialProfileProjectionPatch) {
-	editSelectedGraphic(graphic => patchSocialProfileProjection(graphic, key, patch));
+	editSelectedGraphic((graphic) => patchSocialProfileProjection(graphic, key, patch));
 }
 
 function removeProjection(key: string, deletePresentationGroup: boolean) {
-	editSelectedGraphic(graphic => deleteSocialProfileProjection(graphic, key, { deletePresentationGroup }));
+	editSelectedGraphic((graphic) =>
+		deleteSocialProfileProjection(graphic, key, { deletePresentationGroup }),
+	);
 }
 
 function consumerCount(key: string) {
@@ -159,14 +174,17 @@ function consumerCount(key: string) {
 }
 
 const TRANSITION_LABELS: Record<SocialProfileTransition, string> = {
-	'cut': 'Cut',
-	'crossfade': 'Crossfade',
+	cut: 'Cut',
+	crossfade: 'Crossfade',
 	'slide-left': 'Slide Left',
 	'slide-right': 'Slide Right',
 	'slide-up': 'Slide Up',
 	'slide-down': 'Slide Down',
 };
-const transitionOptions = SOCIAL_PROFILE_TRANSITION_VALUES.map(value => ({ label: TRANSITION_LABELS[value], value }));
+const transitionOptions = SOCIAL_PROFILE_TRANSITION_VALUES.map((value) => ({
+	label: TRANSITION_LABELS[value],
+	value,
+}));
 const updatePolicyOptions = [
 	{ label: 'Staged', value: 'staged' },
 	{ label: 'Live', value: 'live' },
@@ -174,17 +192,23 @@ const updatePolicyOptions = [
 </script>
 
 <template>
-	<section v-if="selectedGraphic" class="space-y-3 rounded-lg border border-default/70 p-3" data-testid="social-profile-projections">
+	<section
+		v-if="selectedGraphic"
+		class="space-y-3 rounded-lg border border-default/70 p-3"
+		data-testid="social-profile-projections"
+	>
 		<div>
-			<p class="text-sm font-semibold">
-				Social Profile Projections
-			</p>
+			<p class="text-sm font-semibold">Social Profile Projections</p>
 			<p class="text-xs text-muted">
 				Read-only correlated profile values presented through ordinary Graphic Groups.
 			</p>
 		</div>
 
-		<div v-if="canAuthor" class="space-y-2 rounded-lg border border-default/70 p-2" data-testid="social-profile-projection-new">
+		<div
+			v-if="canAuthor"
+			class="space-y-2 rounded-lg border border-default/70 p-2"
+			data-testid="social-profile-projection-new"
+		>
 			<UFormField label="Label" size="xs" data-testid="social-profile-projection-label-new">
 				<UInput
 					v-model="newLabel"
@@ -193,7 +217,11 @@ const updatePolicyOptions = [
 					size="sm"
 				/>
 			</UFormField>
-			<UFormField label="Talent source" size="xs" data-testid="social-profile-projection-source-new">
+			<UFormField
+				label="Talent source"
+				size="xs"
+				data-testid="social-profile-projection-source-new"
+			>
 				<USelect
 					v-model="newSourceKey"
 					:items="sourceOptions"
@@ -202,7 +230,11 @@ const updatePolicyOptions = [
 					size="sm"
 				/>
 			</UFormField>
-			<UFormField label="Presentation Group" size="xs" data-testid="social-profile-projection-group-new">
+			<UFormField
+				label="Presentation Group"
+				size="xs"
+				data-testid="social-profile-projection-group-new"
+			>
 				<USelect
 					v-model="newGroupId"
 					:items="groupOptions"
@@ -211,17 +243,28 @@ const updatePolicyOptions = [
 					size="sm"
 				/>
 			</UFormField>
-			<p v-if="talentSources.length === 0" class="text-xs text-warning" data-testid="social-profile-projection-no-talent-source">
-				Declare a Talent Graphic Source Selection first. It may be operator selected or derived from Event Talent 1 or Talent 2.
+			<p
+				v-if="talentSources.length === 0"
+				class="text-xs text-warning"
+				data-testid="social-profile-projection-no-talent-source"
+			>
+				Declare a Talent Graphic Source Selection first. It may be operator selected or derived from
+				Event Talent 1 or Talent 2.
 			</p>
-			<p v-if="projectionBudgetFeedback" class="text-xs text-warning" data-testid="social-profile-projection-budget-feedback">
+			<p
+				v-if="projectionBudgetFeedback"
+				class="text-xs text-warning"
+				data-testid="social-profile-projection-budget-feedback"
+			>
 				{{ projectionBudgetFeedback }}
 			</p>
 			<UButton
 				size="sm"
 				variant="soft"
 				icon="i-lucide-plus"
-				:disabled="talentSources.length === 0 || newLabel.trim() === '' || projectionBudgetFeedback !== null"
+				:disabled="
+					talentSources.length === 0 || newLabel.trim() === '' || projectionBudgetFeedback !== null
+				"
 				data-testid="social-profile-projection-add"
 				@click="addProjection"
 			>
@@ -245,9 +288,7 @@ const updatePolicyOptions = [
 					data-testid="social-profile-projection-label"
 					@update:model-value="patchProjection(projection.key, { label: String($event) })"
 				/>
-				<UBadge size="xs" variant="soft">
-					Projection
-				</UBadge>
+				<UBadge size="xs" variant="soft"> Projection </UBadge>
 			</div>
 			<p class="font-mono text-xs text-muted" data-testid="social-profile-projection-key">
 				{{ projection.key }}
@@ -273,7 +314,9 @@ const updatePolicyOptions = [
 					size="sm"
 					:disabled="!canAuthor"
 					data-testid="social-profile-projection-update-policy"
-					@update:model-value="patchProjection(projection.key, { updatePolicy: $event as OnAirUpdatePolicy })"
+					@update:model-value="
+						patchProjection(projection.key, { updatePolicy: $event as OnAirUpdatePolicy })
+					"
 				/>
 			</UFormField>
 			<div class="grid grid-cols-2 gap-2">
@@ -295,7 +338,9 @@ const updatePolicyOptions = [
 						value-key="value"
 						:disabled="!canAuthor"
 						data-testid="social-profile-projection-transition"
-						@update:model-value="patchProjection(projection.key, { transition: $event as SocialProfileTransition })"
+						@update:model-value="
+							patchProjection(projection.key, { transition: $event as SocialProfileTransition })
+						"
 					/>
 				</UFormField>
 			</div>
@@ -309,13 +354,21 @@ const updatePolicyOptions = [
 				:step="1"
 				:disabled="!canAuthor"
 				data-testid="social-profile-projection-transition-duration"
-				@update:model-value="patchProjection(projection.key, { transitionDurationMs: $event ?? 250 })"
+				@update:model-value="
+					patchProjection(projection.key, { transitionDurationMs: $event ?? 250 })
+				"
 			/>
 			<p class="text-xs text-muted" data-testid="social-profile-projection-group">
 				Presentation Group: {{ projection.presentationGroupId }}
 			</p>
-			<p v-if="consumerCount(projection.key) > 0" class="text-xs text-warning" data-testid="social-profile-projection-deletion-feedback">
-				{{ consumerCount(projection.key) }} projected icon or text consumer(s) still depend on this projection. Replace them first to keep the group, or delete the projection and Presentation Group together.
+			<p
+				v-if="consumerCount(projection.key) > 0"
+				class="text-xs text-warning"
+				data-testid="social-profile-projection-deletion-feedback"
+			>
+				{{ consumerCount(projection.key) }} projected icon or text consumer(s) still depend on this
+				projection. Replace them first to keep the group, or delete the projection and Presentation
+				Group together.
 			</p>
 			<div v-if="canAuthor" class="flex flex-wrap gap-2">
 				<UButton

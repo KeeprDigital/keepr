@@ -25,7 +25,9 @@ const HOST = '127.0.0.1';
 const START_TIMEOUT_MS = 180_000;
 const LOG_LINES_KEPT = 200;
 /** Each server's whole output, one file per persist directory, kept after the run. */
-const logDirectory = fileURLToPath(new URL('../../node_modules/.cache/integration-servers/', import.meta.url));
+const logDirectory = fileURLToPath(
+	new URL('../../node_modules/.cache/integration-servers/', import.meta.url),
+);
 
 /** Where the server over `persistDir` writes its output; `./serverLogWindow.ts` reads it back. */
 export function integrationServerLogPath(persistDir: string): string {
@@ -66,20 +68,25 @@ export function testContextFor(server: IntegrationServerAddress): string {
  * port silently when its own is taken, which would put two workers on one server.
  */
 export async function freePorts(count: number): Promise<number[]> {
-	const probes = await Promise.all(Array.from({ length: count }, () => new Promise<Server>((resolve, reject) => {
-		const probe = createServer();
-		probe.once('error', reject);
-		probe.listen(0, HOST, () => resolve(probe));
-	})));
-	const ports = probes.map(probe => (probe.address() as AddressInfo).port);
-	await Promise.all(probes.map(probe => new Promise(resolve => probe.close(resolve))));
+	const probes = await Promise.all(
+		Array.from(
+			{ length: count },
+			() =>
+				new Promise<Server>((resolve, reject) => {
+					const probe = createServer();
+					probe.once('error', reject);
+					probe.listen(0, HOST, () => resolve(probe));
+				}),
+		),
+	);
+	const ports = probes.map((probe) => (probe.address() as AddressInfo).port);
+	await Promise.all(probes.map((probe) => new Promise((resolve) => probe.close(resolve))));
 	return ports;
 }
 
 function exited(child: ChildProcess): Promise<void> {
-	if (child.exitCode !== null || child.signalCode !== null)
-		return Promise.resolve();
-	return new Promise(resolve => child.once('exit', () => resolve()));
+	if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+	return new Promise((resolve) => child.once('exit', () => resolve()));
 }
 
 /**
@@ -89,8 +96,7 @@ function exited(child: ChildProcess): Promise<void> {
 function signalGroup(child: ChildProcess, signal: NodeJS.Signals) {
 	try {
 		process.kill(-child.pid!, signal);
-	}
-	catch {
+	} catch {
 		// The group is already gone.
 	}
 }
@@ -102,23 +108,16 @@ function signalGroup(child: ChildProcess, signal: NodeJS.Signals) {
  */
 const running = new Set<ChildProcess>();
 process.once('exit', () => {
-	for (const child of running)
-		signalGroup(child, 'SIGKILL');
+	for (const child of running) signalGroup(child, 'SIGKILL');
 });
 
 async function stopChild(child: ChildProcess) {
-	const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+	const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 	signalGroup(child, 'SIGTERM');
-	await Promise.race([
-		exited(child),
-		sleep(5_000),
-	]);
+	await Promise.race([exited(child), sleep(5_000)]);
 	// Unconditional: workerd may outlive a leader that exited on SIGTERM.
 	signalGroup(child, 'SIGKILL');
-	await Promise.race([
-		exited(child),
-		sleep(5_000),
-	]);
+	await Promise.race([exited(child), sleep(5_000)]);
 }
 
 /**
@@ -129,9 +128,15 @@ async function stopChild(child: ChildProcess) {
  * rejects with the tail of its own output, which `createTest` captured and never
  * showed.
  */
-export async function startIntegrationServer(
-	{ persistDir, env, port }: { persistDir: string; env: Record<string, string>; port: number },
-): Promise<IntegrationServer> {
+export async function startIntegrationServer({
+	persistDir,
+	env,
+	port,
+}: {
+	persistDir: string;
+	env: Record<string, string>;
+	port: number;
+}): Promise<IntegrationServer> {
 	const url = `http://${HOST}:${port}/`;
 	const logs: string[] = [];
 	const child = spawn(nuxi, ['_dev'], {
@@ -170,10 +175,12 @@ export async function startIntegrationServer(
 		persistDir,
 		stop: () => stopChild(child),
 	};
-	const failure = (reason: string) => new Error(
-		`Integration server over ${persistDir} ${reason}. Full output in ${logFile.path}; the last of it:\n${
-			logs.slice(-40).join('\n')}`,
-	);
+	const failure = (reason: string) =>
+		new Error(
+			`Integration server over ${persistDir} ${reason}. Full output in ${logFile.path}; the last of it:\n${logs
+				.slice(-40)
+				.join('\n')}`,
+		);
 
 	const deadline = Date.now() + START_TIMEOUT_MS;
 	while (Date.now() < deadline) {
@@ -186,11 +193,10 @@ export async function startIntegrationServer(
 			// `nuxt dev` answers 503, then a loading page, before the app is up.
 			if (response.status !== 503 && !(await response.text()).includes('__NUXT_LOADING__'))
 				return server;
-		}
-		catch {
+		} catch {
 			// Not listening yet.
 		}
-		await new Promise(resolve => setTimeout(resolve, 200));
+		await new Promise((resolve) => setTimeout(resolve, 200));
 	}
 	await server.stop();
 	throw failure(`was not ready within ${START_TIMEOUT_MS / 1000}s`);

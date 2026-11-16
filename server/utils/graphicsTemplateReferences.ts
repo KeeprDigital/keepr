@@ -8,17 +8,17 @@ import { graphicAssetId, graphicAssetRevisionId } from '~~/server/modules/graphi
  * or a Theme, Screen Theme Override or Talent, held to the same rule (ADR-0050,
  * ADR-0067).
  */
-export type GraphicsTemplateArtifact
-	= | 'Broadcast Graphic Template'
-		| 'Feature Match Layout Template'
-		| 'Theme'
-		| 'Screen Theme Override'
-		| 'Talent';
+export type GraphicsTemplateArtifact =
+	| 'Broadcast Graphic Template'
+	| 'Feature Match Layout Template'
+	| 'Theme'
+	| 'Screen Theme Override'
+	| 'Talent';
 
 const KIND_NOUNS: Record<ScreenGraphicAssetReference['kind'], string> = {
-	'image': 'an image',
+	image: 'an image',
 	'silent-video': 'a silent video',
-	'font': 'a font',
+	font: 'a font',
 };
 
 /**
@@ -31,12 +31,9 @@ function refusal(
 	item: ScreenGraphicAssetReference,
 	status: GraphicAssetReferenceStatus | undefined,
 ): string | null {
-	if (status === undefined || status.outcome === 'missing')
-		return 'does not exist';
-	if (status.outcome === 'unavailable')
-		return 'content unavailable';
-	if (status.lifecycleState !== 'active')
-		return status.lifecycleState;
+	if (status === undefined || status.outcome === 'missing') return 'does not exist';
+	if (status.outcome === 'unavailable') return 'content unavailable';
+	if (status.lifecycleState !== 'active') return status.lifecycleState;
 	if (status.kind !== item.kind)
 		return `is ${KIND_NOUNS[status.kind]}, not ${KIND_NOUNS[item.kind]}`;
 	return null;
@@ -67,20 +64,17 @@ export async function assertGraphicsTemplateReferencesSelectable(
 	references: readonly ScreenGraphicAssetReference[],
 	artifact: GraphicsTemplateArtifact,
 ): Promise<void> {
-	if (references.length === 0)
-		return;
+	if (references.length === 0) return;
 
 	const statuses = await library.inspectGraphicAssetRevisions({
-		references: references.map(item => ({
+		references: references.map((item) => ({
 			assetId: graphicAssetId(item.reference.assetId),
 			revisionId: graphicAssetRevisionId(item.reference.revisionId),
 		})),
 	});
 	const refused = references.flatMap((item, index) => {
 		const reason = refusal(item, statuses[index]);
-		return reason === null
-			? []
-			: [`${item.ownerSlot} (${reason})`];
+		return reason === null ? [] : [`${item.ownerSlot} (${reason})`];
 	});
 
 	if (refused.length > 0) {

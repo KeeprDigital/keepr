@@ -12,17 +12,7 @@ export interface GroupableCard {
 	quantity: number;
 }
 
-const CMC_ORDER = [
-	'0',
-	'1',
-	'2',
-	'3',
-	'4',
-	'5',
-	'6',
-	'7+',
-	'?',
-] as const;
+const CMC_ORDER = ['0', '1', '2', '3', '4', '5', '6', '7+', '?'] as const;
 
 /**
  * Group cards by card type. Preserves the concrete card type T.
@@ -31,8 +21,7 @@ export function groupByType<T extends GroupableCard>(cards: T[]): Map<string, T[
 	const groups = new Map<string, T[]>();
 	for (const card of cards) {
 		const type = getCardTypeBucket(card.cardType);
-		if (!groups.has(type))
-			groups.set(type, []);
+		if (!groups.has(type)) groups.set(type, []);
 		groups.get(type)!.push(card);
 	}
 
@@ -53,19 +42,13 @@ export function groupByType<T extends GroupableCard>(cards: T[]): Map<string, T[
 export function groupByCmc<T extends GroupableCard>(cards: T[]): Map<string, T[]> {
 	const groups = new Map<string, T[]>();
 	for (const card of cards) {
-		const key = card.cmc == null
-			? '?'
-			: card.cmc >= 7
-				? '7+'
-				: String(Math.floor(card.cmc));
-		if (!groups.has(key))
-			groups.set(key, []);
+		const key = card.cmc == null ? '?' : card.cmc >= 7 ? '7+' : String(Math.floor(card.cmc));
+		if (!groups.has(key)) groups.set(key, []);
 		groups.get(key)!.push(card);
 	}
 	const sorted = new Map<string, T[]>();
 	for (const k of CMC_ORDER) {
-		if (groups.has(k))
-			sorted.set(k, groups.get(k)!);
+		if (groups.has(k)) sorted.set(k, groups.get(k)!);
 	}
 	return sorted;
 }

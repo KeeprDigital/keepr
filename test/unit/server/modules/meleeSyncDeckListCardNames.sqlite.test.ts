@@ -34,7 +34,8 @@ vi.doMock('~~/server/modules/broadcast-graphics-live-session', () => ({
 	refreshBroadcastGraphicsBindings: vi.fn(),
 }));
 vi.stubGlobal('createError', (input: { statusCode: number; message?: string }) =>
-	Object.assign(new Error(input.message), input));
+	Object.assign(new Error(input.message), input),
+);
 
 const { meleeSyncModule } = await import('~~/server/modules/melee-sync');
 
@@ -54,7 +55,8 @@ function deckRecord(name: string, type: string) {
 }
 
 async function mainboardOf(eventId: number) {
-	return await db.select({ name: schema.cards.name, quantity: schema.playerDeckCards.quantity })
+	return await db
+		.select({ name: schema.cards.name, quantity: schema.playerDeckCards.quantity })
 		.from(schema.playerDeckCards)
 		.innerJoin(schema.playerDecks, eq(schema.playerDecks.id, schema.playerDeckCards.deckId))
 		.innerJoin(schema.cards, eq(schema.cards.id, schema.playerDeckCards.cardId))
@@ -64,45 +66,49 @@ async function mainboardOf(eventId: number) {
 
 beforeEach(() => {
 	vi.stubGlobal('fetch', createScryfallFake(Object.values(FACE_NAME_COLLISIONS)).fetch);
-	melee.fetchEvent.mockResolvedValue({ Name: 'Melee Championship', Game: 'Magic: The Gathering', Phases: [] });
+	melee.fetchEvent.mockResolvedValue({
+		Name: 'Melee Championship',
+		Game: 'Magic: The Gathering',
+		Phases: [],
+	});
 	melee.fetchMergedPlayers.mockResolvedValue([]);
 });
 
 describe('importing a Deck List holding a card and another card that has its name as a face', () => {
 	// Melee lists the creature first, so its card reaches Scryfall before Sign in Blood.
-	it.each([
-		'Scheming Silvertongue // Sign in Blood',
-		'Scheming Silvertongue',
-	])('stores Sign in Blood as its own card beside "%s"', async (creature) => {
-		const [event] = await db.insert(schema.events).values({
-			name: 'Melee Championship',
-			game: 'mtg',
-			featureMatchOrientation: 'horizontal',
-			meleeEnabled: true,
-			meleeEventId: 'melee-1',
-		}).returning({ id: schema.events.id });
-		melee.fetchPlayers.mockResolvedValue([
-			meleePlayer(1, {
-				Decklists: [
-					{
-						Guid: 'deck-1',
-						FormatId: 'standard',
-						DecklistName: 'Rakdos',
-						Records: [
-							deckRecord(creature, 'Creature'),
-							deckRecord('Sign in Blood', 'Sorcery'),
-						],
-						Attributes: [],
-					},
-				],
-			}),
-		]);
+	it.each(['Scheming Silvertongue // Sign in Blood', 'Scheming Silvertongue'])(
+		'stores Sign in Blood as its own card beside "%s"',
+		async (creature) => {
+			const [event] = await db
+				.insert(schema.events)
+				.values({
+					name: 'Melee Championship',
+					game: 'mtg',
+					featureMatchOrientation: 'horizontal',
+					meleeEnabled: true,
+					meleeEventId: 'melee-1',
+				})
+				.returning({ id: schema.events.id });
+			melee.fetchPlayers.mockResolvedValue([
+				meleePlayer(1, {
+					Decklists: [
+						{
+							Guid: 'deck-1',
+							FormatId: 'standard',
+							DecklistName: 'Rakdos',
+							Records: [deckRecord(creature, 'Creature'), deckRecord('Sign in Blood', 'Sorcery')],
+							Attributes: [],
+						},
+					],
+				}),
+			]);
 
-		await meleeSyncModule().syncDeckLists(stubH3Event(), event!.id);
+			await meleeSyncModule().syncDeckLists(stubH3Event(), event!.id);
 
-		expect(await mainboardOf(event!.id)).toEqual([
-			{ name: schemingSilvertongue.name, quantity: 1 },
-			{ name: signInBlood.name, quantity: 1 },
-		]);
-	});
+			expect(await mainboardOf(event!.id)).toEqual([
+				{ name: schemingSilvertongue.name, quantity: 1 },
+				{ name: signInBlood.name, quantity: 1 },
+			]);
+		},
+	);
 });

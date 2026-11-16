@@ -18,5 +18,8 @@ import { betterAuthUserAdministrationPort } from '~~/server/modules/user-adminis
 export default defineEventHandler(async (event) => {
 	await requireGraphicsAdministrator(event);
 
-	return revokeUserSessions(await betterAuthUserAdministrationPort(), administeredUserIdFrom(event));
+	return revokeUserSessions(
+		await betterAuthUserAdministrationPort(),
+		administeredUserIdFrom(event),
+	);
 });

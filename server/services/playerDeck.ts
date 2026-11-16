@@ -20,17 +20,29 @@ import {
 	players,
 	rounds,
 } from '~~/server/db/schema';
-import { chunkArray, chunkJsonRows, inJsonArray, SAFE_INARRAY_SIZE, selectForInsert } from '~~/server/utils/db';
+import {
+	chunkArray,
+	chunkJsonRows,
+	inJsonArray,
+	SAFE_INARRAY_SIZE,
+	selectForInsert,
+} from '~~/server/utils/db';
 
-export type UpsertMeleePlayerDeck = Omit<DbPlayerDeckInsert, 'id' | 'createdAt' | 'updatedAt' | 'externalSource' | 'archetypeId' | 'reviewedAt'>;
+export type UpsertMeleePlayerDeck = Omit<
+	DbPlayerDeckInsert,
+	'id' | 'createdAt' | 'updatedAt' | 'externalSource' | 'archetypeId' | 'reviewedAt'
+>;
 
 export type MeleeDeckCardSnapshot = Omit<DbPlayerDeckCardInsert, 'id' | 'deckId'>;
-export type MeleeDeckUnresolvedCardSnapshot = Omit<DbPlayerDeckUnresolvedCardInsert, 'id' | 'deckId' | 'createdAt' | 'updatedAt'>;
+export type MeleeDeckUnresolvedCardSnapshot = Omit<
+	DbPlayerDeckUnresolvedCardInsert,
+	'id' | 'deckId' | 'createdAt' | 'updatedAt'
+>;
 
-export type ImportedCompanionMutation
-	= | { action: 'set'; cardId: number }
-		| { action: 'clear' }
-		| { action: 'preserve' };
+export type ImportedCompanionMutation =
+	| { action: 'set'; cardId: number }
+	| { action: 'clear' }
+	| { action: 'preserve' };
 
 export interface MeleePlayerDeckSnapshot {
 	deck: UpsertMeleePlayerDeck;
@@ -97,7 +109,7 @@ function meleeDeckIdByExternalId(eventId: number): SQL {
 }
 
 function canonicalRows(rows: unknown[][]): string {
-	return JSON.stringify(rows.map(row => JSON.stringify(row)).sort());
+	return JSON.stringify(rows.map((row) => JSON.stringify(row)).sort());
 }
 
 /** Compare classification-relevant contents; source ordering and display metadata are not deck changes. */
@@ -108,38 +120,35 @@ function submittedDeckContentsChanged(
 	existingUnresolvedCards: ComparableUnresolvedDeckCardRow[],
 	existingCompanion: ComparableDeckCompanionRow | undefined,
 ): boolean {
-	if (existingDeck.formatExternalId !== snapshot.deck.formatExternalId)
-		return true;
+	if (existingDeck.formatExternalId !== snapshot.deck.formatExternalId) return true;
 
-	const persistedCards = canonicalRows(existingCards.map(card => [
-		card.cardId,
-		card.quantity,
-		card.compartment,
-	]));
-	const importedCards = canonicalRows(snapshot.cards.map(card => [
-		card.cardId,
-		card.quantity,
-		card.compartment,
-	]));
-	if (persistedCards !== importedCards)
-		return true;
+	const persistedCards = canonicalRows(
+		existingCards.map((card) => [card.cardId, card.quantity, card.compartment]),
+	);
+	const importedCards = canonicalRows(
+		snapshot.cards.map((card) => [card.cardId, card.quantity, card.compartment]),
+	);
+	if (persistedCards !== importedCards) return true;
 
-	const persistedUnresolvedCards = canonicalRows(existingUnresolvedCards.map(card => [
-		card.entryType,
-		card.normalizedOriginalName,
-		card.normalizedSetCode,
-		card.quantity,
-		card.compartment ?? null,
-	]));
-	const importedUnresolvedCards = canonicalRows(snapshot.unresolvedCards.map(card => [
-		card.entryType,
-		card.normalizedOriginalName,
-		card.normalizedSetCode,
-		card.quantity,
-		card.compartment ?? null,
-	]));
-	if (persistedUnresolvedCards !== importedUnresolvedCards)
-		return true;
+	const persistedUnresolvedCards = canonicalRows(
+		existingUnresolvedCards.map((card) => [
+			card.entryType,
+			card.normalizedOriginalName,
+			card.normalizedSetCode,
+			card.quantity,
+			card.compartment ?? null,
+		]),
+	);
+	const importedUnresolvedCards = canonicalRows(
+		snapshot.unresolvedCards.map((card) => [
+			card.entryType,
+			card.normalizedOriginalName,
+			card.normalizedSetCode,
+			card.quantity,
+			card.compartment ?? null,
+		]),
+	);
+	if (persistedUnresolvedCards !== importedUnresolvedCards) return true;
 
 	switch (snapshot.importedCompanion.action) {
 		case 'preserve':
@@ -147,10 +156,8 @@ function submittedDeckContentsChanged(
 		case 'clear':
 			return existingCompanion?.source === 'melee';
 		case 'set':
-			if (!existingCompanion)
-				return true;
-			if (existingCompanion.source !== 'melee')
-				return false;
+			if (!existingCompanion) return true;
+			if (existingCompanion.source !== 'melee') return false;
 			return existingCompanion.companionCardId !== snapshot.importedCompanion.cardId;
 	}
 }
@@ -160,10 +167,7 @@ export function playerDeckService() {
 		return await db
 			.select()
 			.from(playerDecks)
-			.where(and(
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.playerId, playerId),
-			))
+			.where(and(eq(playerDecks.eventId, eventId), eq(playerDecks.playerId, playerId)))
 			.orderBy(desc(playerDecks.isPrimary), asc(playerDecks.sortOrder), asc(playerDecks.id));
 	};
 
@@ -172,7 +176,12 @@ export function playerDeckService() {
 			.select()
 			.from(playerDecks)
 			.where(eq(playerDecks.eventId, eventId))
-			.orderBy(asc(playerDecks.playerId), desc(playerDecks.isPrimary), asc(playerDecks.sortOrder), asc(playerDecks.id));
+			.orderBy(
+				asc(playerDecks.playerId),
+				desc(playerDecks.isPrimary),
+				asc(playerDecks.sortOrder),
+				asc(playerDecks.id),
+			);
 	};
 
 	/** Atomically reconcile all Melee-owned deck snapshots for an event import. */
@@ -180,14 +189,15 @@ export function playerDeckService() {
 		eventId: number,
 		replacements: MeleePlayerDeckReplacement[],
 	): Promise<void> => {
-		if (replacements.length === 0)
-			return;
+		if (replacements.length === 0) return;
 
 		const playerIds = new Set<number>();
 		const deckExternalIds = new Set<string>();
 		for (const replacement of replacements) {
 			if (playerIds.has(replacement.playerId))
-				throw new Error(`Duplicate Melee deck replacement player identity: ${replacement.playerId}`);
+				throw new Error(
+					`Duplicate Melee deck replacement player identity: ${replacement.playerId}`,
+				);
 			playerIds.add(replacement.playerId);
 			for (const snapshot of replacement.snapshots) {
 				if (snapshot.deck.eventId !== eventId || snapshot.deck.playerId !== replacement.playerId)
@@ -199,17 +209,20 @@ export function playerDeckService() {
 		}
 
 		const targetRows = replacements.map((replacement) => {
-			const primary = replacement.snapshots.find(snapshot => snapshot.deck.isPrimary)
-				?? replacement.snapshots[0]
-				?? null;
+			const primary =
+				replacement.snapshots.find((snapshot) => snapshot.deck.isPrimary) ??
+				replacement.snapshots[0] ??
+				null;
 			return {
 				playerId: replacement.playerId,
 				primaryExternalId: primary?.deck.externalId ?? null,
-				retainedExternalIds: replacement.snapshots.map(snapshot => snapshot.deck.externalId),
+				retainedExternalIds: replacement.snapshots.map((snapshot) => snapshot.deck.externalId),
 			};
 		});
 		const targetPayloads = chunkJsonRows(targetRows);
-		const primaryTargetPayloads = chunkJsonRows(targetRows.filter(row => row.primaryExternalId != null));
+		const primaryTargetPayloads = chunkJsonRows(
+			targetRows.filter((row) => row.primaryExternalId != null),
+		);
 		const projections: Array<{
 			playerId: number;
 			gameData: DbPlayer['gameData'];
@@ -226,164 +239,209 @@ export function playerDeckService() {
 				where cast(json_extract(value, '$.playerId') as integer) = ${players.id}
 				limit 1
 			)`;
-			projections.push(...await db
-				.select({
-					playerId: players.id,
-					gameData: players.gameData,
-					deckId: playerDecks.id,
-					archetypeId: playerDecks.archetypeId,
-					reviewedAt: playerDecks.reviewedAt,
-					archetypeName: archetypes.name,
-					archetypeColors: archetypes.colors,
-				})
-				.from(players)
-				.leftJoin(playerDecks, and(
-					eq(playerDecks.eventId, eventId),
-					eq(playerDecks.playerId, players.id),
-					eq(playerDecks.externalId, primaryExternalId),
-					eq(playerDecks.externalSource, 'melee'),
-				))
-				.leftJoin(archetypes, eq(playerDecks.archetypeId, archetypes.id))
-				.where(and(
-					eq(players.eventId, eventId),
-					sql`${players.id} in (select cast(json_extract(value, '$.playerId') as integer) from json_each(${payload}))`,
-				)));
+			projections.push(
+				...(await db
+					.select({
+						playerId: players.id,
+						gameData: players.gameData,
+						deckId: playerDecks.id,
+						archetypeId: playerDecks.archetypeId,
+						reviewedAt: playerDecks.reviewedAt,
+						archetypeName: archetypes.name,
+						archetypeColors: archetypes.colors,
+					})
+					.from(players)
+					.leftJoin(
+						playerDecks,
+						and(
+							eq(playerDecks.eventId, eventId),
+							eq(playerDecks.playerId, players.id),
+							eq(playerDecks.externalId, primaryExternalId),
+							eq(playerDecks.externalSource, 'melee'),
+						),
+					)
+					.leftJoin(archetypes, eq(playerDecks.archetypeId, archetypes.id))
+					.where(
+						and(
+							eq(players.eventId, eventId),
+							sql`${players.id} in (select cast(json_extract(value, '$.playerId') as integer) from json_each(${payload}))`,
+						),
+					)),
+			);
 		}
 		if (projections.length !== replacements.length) {
-			const found = new Set(projections.map(projection => projection.playerId));
-			const missing = replacements.find(replacement => !found.has(replacement.playerId));
-			throw new Error(`Player ${missing?.playerId ?? 'unknown'} was not found while persisting Melee decks`);
+			const found = new Set(projections.map((projection) => projection.playerId));
+			const missing = replacements.find((replacement) => !found.has(replacement.playerId));
+			throw new Error(
+				`Player ${missing?.playerId ?? 'unknown'} was not found while persisting Melee decks`,
+			);
 		}
 
-		const snapshots = replacements.flatMap(replacement => replacement.snapshots);
-		const snapshotsByExternalId = new Map(snapshots.map(snapshot => [snapshot.deck.externalId, snapshot]));
-		const deckIdentityRows = snapshots.map(snapshot => ({ externalId: snapshot.deck.externalId }));
+		const snapshots = replacements.flatMap((replacement) => replacement.snapshots);
+		const snapshotsByExternalId = new Map(
+			snapshots.map((snapshot) => [snapshot.deck.externalId, snapshot]),
+		);
+		const deckIdentityRows = snapshots.map((snapshot) => ({
+			externalId: snapshot.deck.externalId,
+		}));
 		const reviewedDecks: ReviewedMeleeDeckRow[] = [];
 		for (const payload of chunkJsonRows(deckIdentityRows)) {
-			reviewedDecks.push(...await db
-				.select({
-					id: playerDecks.id,
-					externalId: playerDecks.externalId,
-					formatExternalId: playerDecks.formatExternalId,
-				})
-				.from(playerDecks)
-				.where(and(
-					eq(playerDecks.eventId, eventId),
-					eq(playerDecks.externalSource, 'melee'),
-					isNotNull(playerDecks.archetypeId),
-					isNotNull(playerDecks.reviewedAt),
-					sql`${playerDecks.externalId} in (select json_extract(value, '$.externalId') from json_each(${payload}))`,
-				)));
+			reviewedDecks.push(
+				...(await db
+					.select({
+						id: playerDecks.id,
+						externalId: playerDecks.externalId,
+						formatExternalId: playerDecks.formatExternalId,
+					})
+					.from(playerDecks)
+					.where(
+						and(
+							eq(playerDecks.eventId, eventId),
+							eq(playerDecks.externalSource, 'melee'),
+							isNotNull(playerDecks.archetypeId),
+							isNotNull(playerDecks.reviewedAt),
+							sql`${playerDecks.externalId} in (select json_extract(value, '$.externalId') from json_each(${payload}))`,
+						),
+					)),
+			);
 		}
 
-		const reviewedDeckIds = reviewedDecks.map(deck => ({ deckId: deck.id }));
+		const reviewedDeckIds = reviewedDecks.map((deck) => ({ deckId: deck.id }));
 		const existingCards: ComparableDeckCardRow[] = [];
 		const existingUnresolvedCards: ComparableUnresolvedDeckCardRow[] = [];
 		const existingCompanions: ComparableDeckCompanionRow[] = [];
 		for (const payload of chunkJsonRows(reviewedDeckIds)) {
-			existingCards.push(...await db
-				.select({
-					deckId: playerDeckCards.deckId,
-					cardId: playerDeckCards.cardId,
-					quantity: playerDeckCards.quantity,
-					compartment: playerDeckCards.compartment,
-				})
-				.from(playerDeckCards)
-				.where(sql`${playerDeckCards.deckId} in (select cast(json_extract(value, '$.deckId') as integer) from json_each(${payload}))`));
-			existingUnresolvedCards.push(...await db
-				.select({
-					deckId: playerDeckUnresolvedCards.deckId,
-					entryType: playerDeckUnresolvedCards.entryType,
-					normalizedOriginalName: playerDeckUnresolvedCards.normalizedOriginalName,
-					normalizedSetCode: playerDeckUnresolvedCards.normalizedSetCode,
-					quantity: playerDeckUnresolvedCards.quantity,
-					compartment: playerDeckUnresolvedCards.compartment,
-				})
-				.from(playerDeckUnresolvedCards)
-				.where(sql`${playerDeckUnresolvedCards.deckId} in (select cast(json_extract(value, '$.deckId') as integer) from json_each(${payload}))`));
-			existingCompanions.push(...await db
-				.select({
-					deckId: playerDeckCompanions.deckId,
-					companionCardId: playerDeckCompanions.companionCardId,
-					source: playerDeckCompanions.source,
-				})
-				.from(playerDeckCompanions)
-				.where(sql`${playerDeckCompanions.deckId} in (select cast(json_extract(value, '$.deckId') as integer) from json_each(${payload}))`));
+			existingCards.push(
+				...(await db
+					.select({
+						deckId: playerDeckCards.deckId,
+						cardId: playerDeckCards.cardId,
+						quantity: playerDeckCards.quantity,
+						compartment: playerDeckCards.compartment,
+					})
+					.from(playerDeckCards)
+					.where(
+						sql`${playerDeckCards.deckId} in (select cast(json_extract(value, '$.deckId') as integer) from json_each(${payload}))`,
+					)),
+			);
+			existingUnresolvedCards.push(
+				...(await db
+					.select({
+						deckId: playerDeckUnresolvedCards.deckId,
+						entryType: playerDeckUnresolvedCards.entryType,
+						normalizedOriginalName: playerDeckUnresolvedCards.normalizedOriginalName,
+						normalizedSetCode: playerDeckUnresolvedCards.normalizedSetCode,
+						quantity: playerDeckUnresolvedCards.quantity,
+						compartment: playerDeckUnresolvedCards.compartment,
+					})
+					.from(playerDeckUnresolvedCards)
+					.where(
+						sql`${playerDeckUnresolvedCards.deckId} in (select cast(json_extract(value, '$.deckId') as integer) from json_each(${payload}))`,
+					)),
+			);
+			existingCompanions.push(
+				...(await db
+					.select({
+						deckId: playerDeckCompanions.deckId,
+						companionCardId: playerDeckCompanions.companionCardId,
+						source: playerDeckCompanions.source,
+					})
+					.from(playerDeckCompanions)
+					.where(
+						sql`${playerDeckCompanions.deckId} in (select cast(json_extract(value, '$.deckId') as integer) from json_each(${payload}))`,
+					)),
+			);
 		}
 
-		const cardsByDeckId = Map.groupBy(existingCards, card => card.deckId);
-		const unresolvedCardsByDeckId = Map.groupBy(existingUnresolvedCards, card => card.deckId);
-		const companionByDeckId = new Map(existingCompanions.map(companion => [companion.deckId, companion]));
-		const changedReviewedDeckIds = new Set(reviewedDecks.flatMap((deck) => {
-			const snapshot = snapshotsByExternalId.get(deck.externalId);
-			return snapshot && submittedDeckContentsChanged(
-				deck,
-				snapshot,
-				cardsByDeckId.get(deck.id) ?? [],
-				unresolvedCardsByDeckId.get(deck.id) ?? [],
-				companionByDeckId.get(deck.id),
-			)
-				? [deck.id]
-				: [];
-		}));
+		const cardsByDeckId = Map.groupBy(existingCards, (card) => card.deckId);
+		const unresolvedCardsByDeckId = Map.groupBy(existingUnresolvedCards, (card) => card.deckId);
+		const companionByDeckId = new Map(
+			existingCompanions.map((companion) => [companion.deckId, companion]),
+		);
+		const changedReviewedDeckIds = new Set(
+			reviewedDecks.flatMap((deck) => {
+				const snapshot = snapshotsByExternalId.get(deck.externalId);
+				return snapshot &&
+					submittedDeckContentsChanged(
+						deck,
+						snapshot,
+						cardsByDeckId.get(deck.id) ?? [],
+						unresolvedCardsByDeckId.get(deck.id) ?? [],
+						companionByDeckId.get(deck.id),
+					)
+					? [deck.id]
+					: [];
+			}),
+		);
 
 		const now = new Date();
 		const nowMs = now.getTime();
 		const queries: BatchItem<'sqlite'>[] = [];
 		for (const payload of targetPayloads) {
-			queries.push(db
-				.update(playerDecks)
-				.set({ isPrimary: false, updatedAt: now })
-				.where(and(
-					eq(playerDecks.eventId, eventId),
-					eq(playerDecks.isPrimary, true),
-					sql`${playerDecks.playerId} in (select cast(json_extract(value, '$.playerId') as integer) from json_each(${payload}))`,
-				)));
+			queries.push(
+				db
+					.update(playerDecks)
+					.set({ isPrimary: false, updatedAt: now })
+					.where(
+						and(
+							eq(playerDecks.eventId, eventId),
+							eq(playerDecks.isPrimary, true),
+							sql`${playerDecks.playerId} in (select cast(json_extract(value, '$.playerId') as integer) from json_each(${payload}))`,
+						),
+					),
+			);
 		}
 
-		const deckRows = snapshots.map(snapshot => snapshot.deck);
+		const deckRows = snapshots.map((snapshot) => snapshot.deck);
 		for (const payload of chunkJsonRows(deckRows)) {
-			queries.push(db
-				.insert(playerDecks)
-				.select(selectForInsert(playerDecks, {
-					id: sql`null`,
-					eventId: sql`json_extract(value, '$.eventId')`,
-					playerId: sql`json_extract(value, '$.playerId')`,
-					externalId: sql`json_extract(value, '$.externalId')`,
-					externalSource: sql`'melee'`,
-					formatExternalId: sql`json_extract(value, '$.formatExternalId')`,
-					name: sql`json_extract(value, '$.name')`,
-					colors: sql`coalesce(json_extract(value, '$.colors'), '')`,
-					sortOrder: sql`coalesce(json_extract(value, '$.sortOrder'), 0)`,
-					isPrimary: sql`0`,
-					archetypeId: sql`null`,
-					reviewedAt: sql`null`,
-					leaderCardNumber: sql`null`,
-					handEdited: sql`0`,
-					createdAt: sql`${nowMs}`,
-					updatedAt: sql`${nowMs}`,
-				}, sql`from json_each(${payload}) where true`))
-				.onConflictDoUpdate({
-					target: [playerDecks.eventId, playerDecks.externalId, playerDecks.externalSource],
-					set: {
-						playerId: sql.raw('excluded.player_id'),
-						formatExternalId: sql.raw('excluded.format_external_id'),
-						name: sql.raw('excluded.name'),
-						colors: sql.raw('excluded.colors'),
-						sortOrder: sql.raw('excluded.sort_order'),
-						isPrimary: false,
-						updatedAt: now,
-					},
-				}));
+			queries.push(
+				db
+					.insert(playerDecks)
+					.select(
+						selectForInsert(
+							playerDecks,
+							{
+								id: sql`null`,
+								eventId: sql`json_extract(value, '$.eventId')`,
+								playerId: sql`json_extract(value, '$.playerId')`,
+								externalId: sql`json_extract(value, '$.externalId')`,
+								externalSource: sql`'melee'`,
+								formatExternalId: sql`json_extract(value, '$.formatExternalId')`,
+								name: sql`json_extract(value, '$.name')`,
+								colors: sql`coalesce(json_extract(value, '$.colors'), '')`,
+								sortOrder: sql`coalesce(json_extract(value, '$.sortOrder'), 0)`,
+								isPrimary: sql`0`,
+								archetypeId: sql`null`,
+								reviewedAt: sql`null`,
+								leaderCardNumber: sql`null`,
+								handEdited: sql`0`,
+								createdAt: sql`${nowMs}`,
+								updatedAt: sql`${nowMs}`,
+							},
+							sql`from json_each(${payload}) where true`,
+						),
+					)
+					.onConflictDoUpdate({
+						target: [playerDecks.eventId, playerDecks.externalId, playerDecks.externalSource],
+						set: {
+							playerId: sql.raw('excluded.player_id'),
+							formatExternalId: sql.raw('excluded.format_external_id'),
+							name: sql.raw('excluded.name'),
+							colors: sql.raw('excluded.colors'),
+							sortOrder: sql.raw('excluded.sort_order'),
+							isPrimary: false,
+							updatedAt: now,
+						},
+					}),
+			);
 		}
 		for (const deckIds of chunkArray([...changedReviewedDeckIds], SAFE_INARRAY_SIZE)) {
-			queries.push(db
-				.update(playerDecks)
-				.set({ archetypeId: null, reviewedAt: null, updatedAt: now })
-				.where(and(
-					eq(playerDecks.eventId, eventId),
-					inArray(playerDecks.id, deckIds),
-				)));
+			queries.push(
+				db
+					.update(playerDecks)
+					.set({ archetypeId: null, reviewedAt: null, updatedAt: now })
+					.where(and(eq(playerDecks.eventId, eventId), inArray(playerDecks.id, deckIds))),
+			);
 		}
 
 		for (const payload of chunkJsonRows(deckIdentityRows)) {
@@ -391,94 +449,139 @@ export function playerDeckService() {
 				where ${playerDecks.eventId} = ${eventId}
 					and ${playerDecks.externalSource} = 'melee'
 					and ${playerDecks.externalId} in (select json_extract(value, '$.externalId') from json_each(${payload}))`;
-			queries.push(db.delete(playerDeckCards).where(sql`${playerDeckCards.deckId} in (${incomingDeckIds})`));
-			queries.push(db.delete(playerDeckUnresolvedCards).where(sql`${playerDeckUnresolvedCards.deckId} in (${incomingDeckIds})`));
+			queries.push(
+				db.delete(playerDeckCards).where(sql`${playerDeckCards.deckId} in (${incomingDeckIds})`),
+			);
+			queries.push(
+				db
+					.delete(playerDeckUnresolvedCards)
+					.where(sql`${playerDeckUnresolvedCards.deckId} in (${incomingDeckIds})`),
+			);
 		}
 
-		const cardRows = snapshots.flatMap(snapshot => snapshot.cards.map(card => ({
-			externalId: snapshot.deck.externalId,
-			...card,
-		})));
+		const cardRows = snapshots.flatMap((snapshot) =>
+			snapshot.cards.map((card) => ({
+				externalId: snapshot.deck.externalId,
+				...card,
+			})),
+		);
 		for (const payload of chunkJsonRows(cardRows)) {
-			queries.push(db.insert(playerDeckCards).select(selectForInsert(playerDeckCards, {
-				id: sql`null`,
-				deckId: meleeDeckIdByExternalId(eventId),
-				cardId: sql`json_extract(value, '$.cardId')`,
-				quantity: sql`json_extract(value, '$.quantity')`,
-				compartment: sql`json_extract(value, '$.compartment')`,
-				sortOrder: sql`json_extract(value, '$.sortOrder')`,
-			}, sql`from json_each(${payload})`)));
+			queries.push(
+				db.insert(playerDeckCards).select(
+					selectForInsert(
+						playerDeckCards,
+						{
+							id: sql`null`,
+							deckId: meleeDeckIdByExternalId(eventId),
+							cardId: sql`json_extract(value, '$.cardId')`,
+							quantity: sql`json_extract(value, '$.quantity')`,
+							compartment: sql`json_extract(value, '$.compartment')`,
+							sortOrder: sql`json_extract(value, '$.sortOrder')`,
+						},
+						sql`from json_each(${payload})`,
+					),
+				),
+			);
 		}
 
-		const unresolvedRows = snapshots.flatMap(snapshot => snapshot.unresolvedCards.map(card => ({
-			externalId: snapshot.deck.externalId,
-			...card,
-		})));
+		const unresolvedRows = snapshots.flatMap((snapshot) =>
+			snapshot.unresolvedCards.map((card) => ({
+				externalId: snapshot.deck.externalId,
+				...card,
+			})),
+		);
 		for (const payload of chunkJsonRows(unresolvedRows)) {
-			queries.push(db.insert(playerDeckUnresolvedCards).select(selectForInsert(playerDeckUnresolvedCards, {
-				id: sql`null`,
-				deckId: meleeDeckIdByExternalId(eventId),
-				entryType: sql`json_extract(value, '$.entryType')`,
-				originalName: sql`json_extract(value, '$.originalName')`,
-				normalizedOriginalName: sql`json_extract(value, '$.normalizedOriginalName')`,
-				setCode: sql`json_extract(value, '$.setCode')`,
-				normalizedSetCode: sql`coalesce(json_extract(value, '$.normalizedSetCode'), '')`,
-				quantity: sql`coalesce(json_extract(value, '$.quantity'), 1)`,
-				compartment: sql`json_extract(value, '$.compartment')`,
-				sortOrder: sql`coalesce(json_extract(value, '$.sortOrder'), 0)`,
-				cardType: sql`json_extract(value, '$.cardType')`,
-				createdAt: sql`${nowMs}`,
-				updatedAt: sql`${nowMs}`,
-			}, sql`from json_each(${payload})`)));
+			queries.push(
+				db.insert(playerDeckUnresolvedCards).select(
+					selectForInsert(
+						playerDeckUnresolvedCards,
+						{
+							id: sql`null`,
+							deckId: meleeDeckIdByExternalId(eventId),
+							entryType: sql`json_extract(value, '$.entryType')`,
+							originalName: sql`json_extract(value, '$.originalName')`,
+							normalizedOriginalName: sql`json_extract(value, '$.normalizedOriginalName')`,
+							setCode: sql`json_extract(value, '$.setCode')`,
+							normalizedSetCode: sql`coalesce(json_extract(value, '$.normalizedSetCode'), '')`,
+							quantity: sql`coalesce(json_extract(value, '$.quantity'), 1)`,
+							compartment: sql`json_extract(value, '$.compartment')`,
+							sortOrder: sql`coalesce(json_extract(value, '$.sortOrder'), 0)`,
+							cardType: sql`json_extract(value, '$.cardType')`,
+							createdAt: sql`${nowMs}`,
+							updatedAt: sql`${nowMs}`,
+						},
+						sql`from json_each(${payload})`,
+					),
+				),
+			);
 		}
 
 		const companionClearRows = snapshots
-			.filter(snapshot => snapshot.importedCompanion.action === 'clear')
-			.map(snapshot => ({ externalId: snapshot.deck.externalId }));
+			.filter((snapshot) => snapshot.importedCompanion.action === 'clear')
+			.map((snapshot) => ({ externalId: snapshot.deck.externalId }));
 		for (const payload of chunkJsonRows(companionClearRows)) {
-			queries.push(db.delete(playerDeckCompanions).where(and(
-				eq(playerDeckCompanions.source, 'melee'),
-				sql`${playerDeckCompanions.deckId} in (
+			queries.push(
+				db.delete(playerDeckCompanions).where(
+					and(
+						eq(playerDeckCompanions.source, 'melee'),
+						sql`${playerDeckCompanions.deckId} in (
 					select ${playerDecks.id} from ${playerDecks}
 					where ${playerDecks.eventId} = ${eventId}
 						and ${playerDecks.externalSource} = 'melee'
 						and ${playerDecks.externalId} in (select json_extract(value, '$.externalId') from json_each(${payload}))
 				)`,
-			)));
+					),
+				),
+			);
 		}
 
-		const companionSetRows = snapshots.flatMap(snapshot => snapshot.importedCompanion.action === 'set'
-			? [
-					{ externalId: snapshot.deck.externalId, companionCardId: snapshot.importedCompanion.cardId },
-				]
-			: []);
+		const companionSetRows = snapshots.flatMap((snapshot) =>
+			snapshot.importedCompanion.action === 'set'
+				? [
+						{
+							externalId: snapshot.deck.externalId,
+							companionCardId: snapshot.importedCompanion.cardId,
+						},
+					]
+				: [],
+		);
 		for (const payload of chunkJsonRows(companionSetRows)) {
-			queries.push(db
-				.insert(playerDeckCompanions)
-				.select(selectForInsert(playerDeckCompanions, {
-					id: sql`null`,
-					deckId: meleeDeckIdByExternalId(eventId),
-					companionCardId: sql`json_extract(value, '$.companionCardId')`,
-					source: sql`'melee'`,
-					createdAt: sql`${nowMs}`,
-					updatedAt: sql`${nowMs}`,
-				}, sql`from json_each(${payload}) where true`))
-				.onConflictDoUpdate({
-					target: playerDeckCompanions.deckId,
-					set: {
-						companionCardId: sql.raw('excluded.companion_card_id'),
-						source: 'melee',
-						updatedAt: now,
-					},
-					setWhere: eq(playerDeckCompanions.source, 'melee'),
-				}));
+			queries.push(
+				db
+					.insert(playerDeckCompanions)
+					.select(
+						selectForInsert(
+							playerDeckCompanions,
+							{
+								id: sql`null`,
+								deckId: meleeDeckIdByExternalId(eventId),
+								companionCardId: sql`json_extract(value, '$.companionCardId')`,
+								source: sql`'melee'`,
+								createdAt: sql`${nowMs}`,
+								updatedAt: sql`${nowMs}`,
+							},
+							sql`from json_each(${payload}) where true`,
+						),
+					)
+					.onConflictDoUpdate({
+						target: playerDeckCompanions.deckId,
+						set: {
+							companionCardId: sql.raw('excluded.companion_card_id'),
+							source: 'melee',
+							updatedAt: now,
+						},
+						setWhere: eq(playerDeckCompanions.source, 'melee'),
+					}),
+			);
 		}
 
 		for (const payload of targetPayloads) {
-			queries.push(db.delete(playerDecks).where(and(
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.externalSource, 'melee'),
-				sql`exists (
+			queries.push(
+				db.delete(playerDecks).where(
+					and(
+						eq(playerDecks.eventId, eventId),
+						eq(playerDecks.externalSource, 'melee'),
+						sql`exists (
 					select 1 from json_each(${payload}) target
 					where cast(json_extract(target.value, '$.playerId') as integer) = ${playerDecks.playerId}
 						and not exists (
@@ -486,45 +589,58 @@ export function playerDeckService() {
 							where retained.value = ${playerDecks.externalId}
 						)
 				)`,
-			)));
+					),
+				),
+			);
 		}
 		for (const payload of primaryTargetPayloads) {
-			queries.push(db.update(playerDecks).set({ isPrimary: true, updatedAt: now }).where(and(
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.externalSource, 'melee'),
-				sql`exists (
+			queries.push(
+				db
+					.update(playerDecks)
+					.set({ isPrimary: true, updatedAt: now })
+					.where(
+						and(
+							eq(playerDecks.eventId, eventId),
+							eq(playerDecks.externalSource, 'melee'),
+							sql`exists (
 					select 1 from json_each(${payload}) target
 					where cast(json_extract(target.value, '$.playerId') as integer) = ${playerDecks.playerId}
 						and json_extract(target.value, '$.primaryExternalId') = ${playerDecks.externalId}
 				)`,
-			)));
+						),
+					),
+			);
 		}
 
-		const projectionByPlayerId = new Map(projections.map(projection => [projection.playerId, projection]));
+		const projectionByPlayerId = new Map(
+			projections.map((projection) => [projection.playerId, projection]),
+		);
 		const playerProjectionRows = replacements.map((replacement) => {
 			const projection = projectionByPlayerId.get(replacement.playerId)!;
-			const primary = replacement.snapshots.find(snapshot => snapshot.deck.isPrimary)
-				?? replacement.snapshots[0]
-				?? null;
-			const reviewInvalidated = projection.deckId != null && changedReviewedDeckIds.has(projection.deckId);
-			const reviewed = primary != null && !reviewInvalidated && projection.reviewedAt != null && projection.archetypeName != null;
+			const primary =
+				replacement.snapshots.find((snapshot) => snapshot.deck.isPrimary) ??
+				replacement.snapshots[0] ??
+				null;
+			const reviewInvalidated =
+				projection.deckId != null && changedReviewedDeckIds.has(projection.deckId);
+			const reviewed =
+				primary != null &&
+				!reviewInvalidated &&
+				projection.reviewedAt != null &&
+				projection.archetypeName != null;
 			const gameData = primary
-				? {
-					...(projection.gameData?.type === 'mtg'
-						? projection.gameData
-						: {}),
-					type: 'mtg',
-					deckName: reviewed ? projection.archetypeName : primary.deck.name,
-					deckColors: reviewed ? projection.archetypeColors : primary.deck.colors,
-				} satisfies MtgPlayerGameData
+				? ({
+						...(projection.gameData?.type === 'mtg' ? projection.gameData : {}),
+						type: 'mtg',
+						deckName: reviewed ? projection.archetypeName : primary.deck.name,
+						deckColors: reviewed ? projection.archetypeColors : primary.deck.colors,
+					} satisfies MtgPlayerGameData)
 				: projection.gameData?.type === 'mtg'
 					? { ...projection.gameData, deckName: null, deckColors: null }
-					: projection.gameData ?? null;
+					: (projection.gameData ?? null);
 			return {
 				playerId: replacement.playerId,
-				archetypeId: primary && !reviewInvalidated
-					? projection.archetypeId ?? null
-					: null,
+				archetypeId: primary && !reviewInvalidated ? (projection.archetypeId ?? null) : null,
 				gameData,
 			};
 		});
@@ -534,17 +650,24 @@ export function playerDeckService() {
 				where cast(json_extract(value, '$.playerId') as integer) = ${players.id}
 				limit 1
 			)`;
-			queries.push(db.update(players).set({
-				archetypeId: sql`json_extract(${incoming}, '$.archetypeId')`,
-				gameData: sql`json_extract(${incoming}, '$.gameData')`,
-				updatedAt: now,
-			}).where(and(
-				eq(players.eventId, eventId),
-				sql`${players.id} in (select cast(json_extract(value, '$.playerId') as integer) from json_each(${payload}))`,
-			)));
+			queries.push(
+				db
+					.update(players)
+					.set({
+						archetypeId: sql`json_extract(${incoming}, '$.archetypeId')`,
+						gameData: sql`json_extract(${incoming}, '$.gameData')`,
+						updatedAt: now,
+					})
+					.where(
+						and(
+							eq(players.eventId, eventId),
+							sql`${players.id} in (select cast(json_extract(value, '$.playerId') as integer) from json_each(${payload}))`,
+						),
+					),
+			);
 		}
 
-		await db.batch(queries as [typeof queries[0], ...typeof queries]);
+		await db.batch(queries as [(typeof queries)[0], ...typeof queries]);
 	};
 
 	interface PrimaryArchetypeProjectionRow {
@@ -563,17 +686,20 @@ export function playerDeckService() {
 		const reviewed = projection.reviewedAt != null && projection.archetypeName != null;
 		// A One Piece Card Game Player's Archetype is their Leader's, and their game data the OP Deck List write's (ADR-0074).
 		if (projection.gameData?.type === 'op')
-			return { reviewed, gameData: projection.gameData, archetypeId: projection.archetypeId ?? null };
-		const gameData = projection.deckId != null
-			? {
-				...(projection.gameData?.type === 'mtg'
-					? projection.gameData
-					: {}),
-				type: 'mtg',
-				deckName: reviewed ? projection.archetypeName : projection.importedName,
-				deckColors: reviewed ? projection.archetypeColors : projection.importedColors,
-			} satisfies MtgPlayerGameData
-			: projection.gameData;
+			return {
+				reviewed,
+				gameData: projection.gameData,
+				archetypeId: projection.archetypeId ?? null,
+			};
+		const gameData =
+			projection.deckId != null
+				? ({
+						...(projection.gameData?.type === 'mtg' ? projection.gameData : {}),
+						type: 'mtg',
+						deckName: reviewed ? projection.archetypeName : projection.importedName,
+						deckColors: reviewed ? projection.archetypeColors : projection.importedColors,
+					} satisfies MtgPlayerGameData)
+				: projection.gameData;
 
 		return { reviewed, gameData, archetypeId: projection.archetypeId ?? null };
 	}
@@ -596,20 +722,21 @@ export function playerDeckService() {
 				archetypeColors: archetypes.colors,
 			})
 			.from(players)
-			.leftJoin(playerDecks, and(
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.playerId, playerId),
-				eq(playerDecks.isPrimary, true),
-			))
+			.leftJoin(
+				playerDecks,
+				and(
+					eq(playerDecks.eventId, eventId),
+					eq(playerDecks.playerId, playerId),
+					eq(playerDecks.isPrimary, true),
+				),
+			)
 			.leftJoin(archetypes, eq(playerDecks.archetypeId, archetypes.id))
 			.where(and(eq(players.id, playerId), eq(players.eventId, eventId)))
 			.limit(1);
-		if (!projection)
-			return null;
+		if (!projection) return null;
 
 		const { reviewed, gameData, archetypeId } = computeArchetypeProjection(projection);
-		if (options.reviewedOnly && !reviewed)
-			return null;
+		if (options.reviewedOnly && !reviewed) return null;
 
 		const [player] = await db
 			.update(players)
@@ -636,11 +763,8 @@ export function playerDeckService() {
 		eventId: number,
 		playerIds: number[],
 	): Promise<DbPlayer[]> => {
-		const uniqueIds = [
-			...new Set(playerIds),
-		];
-		if (uniqueIds.length === 0)
-			return [];
+		const uniqueIds = [...new Set(playerIds)];
+		if (uniqueIds.length === 0) return [];
 
 		const projections = await db
 			.select({
@@ -655,76 +779,82 @@ export function playerDeckService() {
 				archetypeColors: archetypes.colors,
 			})
 			.from(players)
-			.leftJoin(playerDecks, and(
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.playerId, players.id),
-				eq(playerDecks.isPrimary, true),
-			))
+			.leftJoin(
+				playerDecks,
+				and(
+					eq(playerDecks.eventId, eventId),
+					eq(playerDecks.playerId, players.id),
+					eq(playerDecks.isPrimary, true),
+				),
+			)
 			.leftJoin(archetypes, eq(playerDecks.archetypeId, archetypes.id))
-			.where(and(
-				eq(players.eventId, eventId),
-				inJsonArray(players.id, uniqueIds),
-			));
-		const projectedById = new Map(projections.map((projection) => {
-			const { gameData, archetypeId } = computeArchetypeProjection(projection);
-			return [
-				projection.playerId,
-				{ playerId: projection.playerId, archetypeId, gameData: gameData ?? null },
-			];
-		}));
-		if (projectedById.size === 0)
-			return [];
+			.where(and(eq(players.eventId, eventId), inJsonArray(players.id, uniqueIds)));
+		const projectedById = new Map(
+			projections.map((projection) => {
+				const { gameData, archetypeId } = computeArchetypeProjection(projection);
+				return [
+					projection.playerId,
+					{ playerId: projection.playerId, archetypeId, gameData: gameData ?? null },
+				];
+			}),
+		);
+		if (projectedById.size === 0) return [];
 
 		const now = new Date();
-		const queries = chunkJsonRows([
-			...projectedById.values(),
-		]).map((payload) => {
+		const queries = chunkJsonRows([...projectedById.values()]).map((payload) => {
 			const incoming = sql`(
 				select value from json_each(${payload})
 				where cast(json_extract(value, '$.playerId') as integer) = ${players.id}
 				limit 1
 			)`;
-			return db.update(players).set({
-				archetypeId: sql`json_extract(${incoming}, '$.archetypeId')`,
-				gameData: sql`json_extract(${incoming}, '$.gameData')`,
-				updatedAt: now,
-			}).where(and(
-				eq(players.eventId, eventId),
-				sql`${players.id} in (select cast(json_extract(value, '$.playerId') as integer) from json_each(${payload}))`,
-			)).returning();
+			return db
+				.update(players)
+				.set({
+					archetypeId: sql`json_extract(${incoming}, '$.archetypeId')`,
+					gameData: sql`json_extract(${incoming}, '$.gameData')`,
+					updatedAt: now,
+				})
+				.where(
+					and(
+						eq(players.eventId, eventId),
+						sql`${players.id} in (select cast(json_extract(value, '$.playerId') as integer) from json_each(${payload}))`,
+					),
+				)
+				.returning();
 		});
-		const written = (await db.batch(queries as [typeof queries[0], ...typeof queries])).flat();
-		const writtenById = new Map(written.map(player => [player.id, player]));
-		return uniqueIds.flatMap(playerId => writtenById.get(playerId) ?? []);
+		const written = (await db.batch(queries as [(typeof queries)[0], ...typeof queries])).flat();
+		const writtenById = new Map(written.map((player) => [player.id, player]));
+		return uniqueIds.flatMap((playerId) => writtenById.get(playerId) ?? []);
 	};
 
-	const listPrimaryPlayerIdsByArchetype = async (eventId: number, archetypeId: number): Promise<number[]> => {
+	const listPrimaryPlayerIdsByArchetype = async (
+		eventId: number,
+		archetypeId: number,
+	): Promise<number[]> => {
 		const rows = await db
 			.select({ playerId: playerDecks.playerId })
 			.from(playerDecks)
-			.where(and(
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.archetypeId, archetypeId),
-				eq(playerDecks.isPrimary, true),
-			));
+			.where(
+				and(
+					eq(playerDecks.eventId, eventId),
+					eq(playerDecks.archetypeId, archetypeId),
+					eq(playerDecks.isPrimary, true),
+				),
+			);
 
-		return [
-			...new Set(rows.map(row => row.playerId)),
-		];
+		return [...new Set(rows.map((row) => row.playerId))];
 	};
 
-	const listPlayerIdsByArchetype = async (eventId: number, archetypeId: number): Promise<number[]> => {
+	const listPlayerIdsByArchetype = async (
+		eventId: number,
+		archetypeId: number,
+	): Promise<number[]> => {
 		const rows = await db
 			.select({ playerId: playerDecks.playerId })
 			.from(playerDecks)
-			.where(and(
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.archetypeId, archetypeId),
-			));
+			.where(and(eq(playerDecks.eventId, eventId), eq(playerDecks.archetypeId, archetypeId)));
 
-		return [
-			...new Set(rows.map(row => row.playerId)),
-		];
+		return [...new Set(rows.map((row) => row.playerId))];
 	};
 
 	/**
@@ -741,27 +871,25 @@ export function playerDeckService() {
 				reviewedAt: null,
 				updatedAt: new Date(),
 			})
-			.where(and(
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.archetypeId, archetypeId),
-			));
+			.where(and(eq(playerDecks.eventId, eventId), eq(playerDecks.archetypeId, archetypeId)));
 	};
 
 	/**
 	 * Build (without executing) the write that moves every deck reviewed as one
 	 * Archetype to another, still reviewed. For the batch that merges the two.
 	 */
-	const buildMoveReviewsQuery = (eventId: number, fromArchetypeId: number, toArchetypeId: number) => {
+	const buildMoveReviewsQuery = (
+		eventId: number,
+		fromArchetypeId: number,
+		toArchetypeId: number,
+	) => {
 		return db
 			.update(playerDecks)
 			.set({
 				archetypeId: toArchetypeId,
 				updatedAt: new Date(),
 			})
-			.where(and(
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.archetypeId, fromArchetypeId),
-			));
+			.where(and(eq(playerDecks.eventId, eventId), eq(playerDecks.archetypeId, fromArchetypeId)));
 	};
 
 	const reviewDeck = async (
@@ -773,14 +901,15 @@ export function playerDeckService() {
 		const [existingDeck] = await db
 			.select()
 			.from(playerDecks)
-			.where(and(
-				eq(playerDecks.id, deckId),
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.playerId, playerId),
-			))
+			.where(
+				and(
+					eq(playerDecks.id, deckId),
+					eq(playerDecks.eventId, eventId),
+					eq(playerDecks.playerId, playerId),
+				),
+			)
 			.limit(1);
-		if (!existingDeck)
-			return null;
+		if (!existingDeck) return null;
 
 		const [deck] = await db
 			.update(playerDecks)
@@ -789,14 +918,15 @@ export function playerDeckService() {
 				reviewedAt: new Date(),
 				updatedAt: new Date(),
 			})
-			.where(and(
-				eq(playerDecks.id, deckId),
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.playerId, playerId),
-			))
+			.where(
+				and(
+					eq(playerDecks.id, deckId),
+					eq(playerDecks.eventId, eventId),
+					eq(playerDecks.playerId, playerId),
+				),
+			)
 			.returning();
-		if (!deck)
-			return null;
+		if (!deck) return null;
 
 		const player = existingDeck.isPrimary
 			? await reconcilePrimaryArchetype(eventId, playerId)
@@ -820,18 +950,17 @@ export function playerDeckService() {
 				reviewedAt: null,
 				updatedAt: new Date(),
 			})
-			.where(and(
-				eq(playerDecks.id, deckId),
-				eq(playerDecks.eventId, eventId),
-				eq(playerDecks.playerId, playerId),
-			))
+			.where(
+				and(
+					eq(playerDecks.id, deckId),
+					eq(playerDecks.eventId, eventId),
+					eq(playerDecks.playerId, playerId),
+				),
+			)
 			.returning();
-		if (!deck)
-			return null;
+		if (!deck) return null;
 
-		const player = deck.isPrimary
-			? await reconcilePrimaryArchetype(eventId, playerId)
-			: null;
+		const player = deck.isPrimary ? await reconcilePrimaryArchetype(eventId, playerId) : null;
 		return { deck, player };
 	};
 
@@ -866,37 +995,34 @@ export function playerDeckService() {
 		decks: DbPlayerDeck[],
 		selection: PlayerDeckSelection = {},
 	): Promise<DbPlayerDeck | null> => {
-		if (decks.length === 0)
-			return null;
+		if (decks.length === 0) return null;
 
 		if (selection.deckId != null) {
-			return decks.find(deck => deck.id === selection.deckId) ?? null;
+			return decks.find((deck) => deck.id === selection.deckId) ?? null;
 		}
 
 		const formatExternalId = await getFormatExternalIdForSelection(eventId, selection);
 		if (formatExternalId) {
-			const formatDecks = decks.filter(deck => deck.formatExternalId === formatExternalId);
+			const formatDecks = decks.filter((deck) => deck.formatExternalId === formatExternalId);
 			if (formatDecks.length > 0) {
 				return formatDecks[0] ?? null;
 			}
 		}
 
-		return decks.find(deck => deck.isPrimary) ?? decks[0] ?? null;
+		return decks.find((deck) => deck.isPrimary) ?? decks[0] ?? null;
 	};
 
 	const findManyByIds = async (eventId: number, deckIds: number[]): Promise<DbPlayerDeck[]> => {
-		if (deckIds.length === 0)
-			return [];
+		if (deckIds.length === 0) return [];
 
 		const decks: DbPlayerDeck[] = [];
 		for (const idChunk of chunkArray(deckIds, SAFE_INARRAY_SIZE)) {
-			decks.push(...await db
-				.select()
-				.from(playerDecks)
-				.where(and(
-					eq(playerDecks.eventId, eventId),
-					inArray(playerDecks.id, idChunk),
-				)));
+			decks.push(
+				...(await db
+					.select()
+					.from(playerDecks)
+					.where(and(eq(playerDecks.eventId, eventId), inArray(playerDecks.id, idChunk)))),
+			);
 		}
 		return decks;
 	};

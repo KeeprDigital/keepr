@@ -20,10 +20,7 @@ export async function rewrapMeleeClientSecret(
 			meleeClientSecret: protectedValue,
 			updatedAt: new Date(),
 		})
-		.where(and(
-			eq(events.id, eventId),
-			eq(events.meleeClientSecret, expectedStoredValue),
-		))
+		.where(and(eq(events.id, eventId), eq(events.meleeClientSecret, expectedStoredValue)))
 		.returning({ id: events.id });
 
 	return updated.length > 0;

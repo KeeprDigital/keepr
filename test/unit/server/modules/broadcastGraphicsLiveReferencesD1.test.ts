@@ -27,9 +27,8 @@ vi.doMock('~~/server/db', () => ({
 	db: { $client: harness.database },
 }));
 
-const { updateBroadcastGraphicsLiveSessionGraphicAssetReferences } = await import(
-	'~~/server/modules/screen-graphic-asset-references',
-);
+const { updateBroadcastGraphicsLiveSessionGraphicAssetReferences } =
+	await import('~~/server/modules/screen-graphic-asset-references');
 
 const ASSET_ID = 'asset-clip';
 const FIRST_REVISION = 'revision-one';
@@ -53,30 +52,39 @@ let screenId: number;
 let sessionId: number;
 
 beforeAll(async () => {
-	const [event] = await db.insert(schema.events).values({
-		name: 'D1 guard',
-		game: 'mtg',
-		featureMatchOrientation: 'horizontal',
-	} as never).returning();
+	const [event] = await db
+		.insert(schema.events)
+		.values({
+			name: 'D1 guard',
+			game: 'mtg',
+			featureMatchOrientation: 'horizontal',
+		} as never)
+		.returning();
 	eventId = event!.id;
 
-	const [screen] = await db.insert(schema.screens).values({
-		eventId,
-		name: 'Program',
-		slug: 'program',
-		currentMode: 'broadcast-graphics',
-		assetCapabilitySeed: 'seed',
-		assetCapabilityDigest: 'digest',
-	} as never).returning();
+	const [screen] = await db
+		.insert(schema.screens)
+		.values({
+			eventId,
+			name: 'Program',
+			slug: 'program',
+			currentMode: 'broadcast-graphics',
+			assetCapabilitySeed: 'seed',
+			assetCapabilityDigest: 'digest',
+		} as never)
+		.returning();
 	screenId = screen!.id;
 
-	const [session] = await db.insert(schema.broadcastGraphicsLiveSessions).values({
-		eventId,
-		screenId,
-		status: 'active',
-		currentState: { playout: {}, inputs: {} },
-		sequence: 5,
-	} as never).returning();
+	const [session] = await db
+		.insert(schema.broadcastGraphicsLiveSessions)
+		.values({
+			eventId,
+			screenId,
+			status: 'active',
+			currentState: { playout: {}, inputs: {} },
+			sequence: 5,
+		} as never)
+		.returning();
 	sessionId = session!.id;
 
 	await db.insert(graphicAssetContents).values({
@@ -103,10 +111,13 @@ beforeAll(async () => {
 
 /** What the Live Session currently publishes at its own owner slot. */
 async function publishedRevision(): Promise<string | undefined> {
-	const row = await harness.database.prepare(`
+	const row = await harness.database
+		.prepare(`
 		SELECT revision_id AS revisionId FROM graphic_asset_references
 		WHERE owner_kind = 'screen' AND owner_id = ? AND owner_slot = ?
-	`).bind(String(screenId), OWNER_SLOT).first<{ revisionId: string }>();
+	`)
+		.bind(String(screenId), OWNER_SLOT)
+		.first<{ revisionId: string }>();
 	return row?.revisionId;
 }
 
@@ -145,21 +156,26 @@ describe('the Live Session reference guard against a real D1 binding', () => {
 	it('rolls the batch back when a statement genuinely fails, which is the distinction', async () => {
 		// A real error on the owner-slot unique index does roll back, so the test above is a distinction.
 		const client = harness.database;
-		const insert = (id: string, ownerSlot: string) => client.prepare(`
+		const insert = (id: string, ownerSlot: string) =>
+			client
+				.prepare(`
 			INSERT INTO graphic_asset_references (
 				id, asset_id, revision_id, owner_kind, owner_id, owner_slot,
 				event_id, created_at, updated_at
 			) VALUES (?, ?, ?, 'screen', ?, ?, ?, ?, ?)
-		`).bind(id, ASSET_ID, SECOND_REVISION, String(screenId), ownerSlot, eventId, 0, 0);
+		`)
+				.bind(id, ASSET_ID, SECOND_REVISION, String(screenId), ownerSlot, eventId, 0, 0);
 
-		await expect(client.batch([
-			insert('would-have-committed', 'liveSession.slate.inputs.other'),
-			// Same owner slot as the row the first test indexed.
-			insert('violates-the-owner-slot-index', OWNER_SLOT),
-		])).rejects.toThrow();
+		await expect(
+			client.batch([
+				insert('would-have-committed', 'liveSession.slate.inputs.other'),
+				// Same owner slot as the row the first test indexed.
+				insert('violates-the-owner-slot-index', OWNER_SLOT),
+			]),
+		).rejects.toThrow();
 
 		const survivors = await db.select().from(graphicAssetReferences);
-		expect(survivors.map(row => row.id)).not.toContain('would-have-committed');
+		expect(survivors.map((row) => row.id)).not.toContain('would-have-committed');
 		expect(await publishedRevision()).toBe(FIRST_REVISION);
 	});
 });

@@ -71,7 +71,16 @@ const ALICE = opSlotSide('Alice', null, 501);
 const BOB = opSlotSide('Bob', null, null);
 const mockFeatureMatchStore = reactive({
 	isLoaded: true,
-	featureMatches: <Array<{ id: number; player1Id: null; player2Id: null; player1Data: unknown; player2Data: unknown; activeSession: null }>>[],
+	featureMatches: <
+		Array<{
+			id: number;
+			player1Id: null;
+			player2Id: null;
+			player1Data: unknown;
+			player2Data: unknown;
+			activeSession: null;
+		}>
+	>[],
 	loadFeatureMatchesByEventId: vi.fn(),
 });
 const mockFeatureMatchStateStore = reactive({
@@ -82,9 +91,10 @@ const mockFeatureMatchStateStore = reactive({
 mockNuxtImport('usePlayerStore', () => () => mockPlayerStore);
 mockNuxtImport('useFeatureMatchStore', () => () => mockFeatureMatchStore);
 mockNuxtImport('useFeatureMatchStateStore', () => () => mockFeatureMatchStateStore);
-mockNuxtImport('useFeatureMatchMenuItems', () => () => ref([
-	{ label: 'Alice vs Bob', value: 11, decks: [] },
-]));
+mockNuxtImport(
+	'useFeatureMatchMenuItems',
+	() => () => ref([{ label: 'Alice vs Bob', value: 11, decks: [] }]),
+);
 mockNuxtImport('useEventStore', () => () => mockEventStore);
 mockNuxtImport('useBroadcastDeckListStore', () => () => mockBroadcastDeckListStore);
 
@@ -92,7 +102,8 @@ const UFormFieldStub = defineComponent({
 	props: {
 		label: { type: String, required: false },
 	},
-	template: '<div data-testid="form-field" :data-label="label"><span>{{ label }}</span><slot /></div>',
+	template:
+		'<div data-testid="form-field" :data-label="label"><span>{{ label }}</span><slot /></div>',
 });
 
 const USelectStub = defineComponent({
@@ -104,7 +115,8 @@ const USelectStub = defineComponent({
 		items: { type: Array, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<div data-testid="u-select"><button v-for="item in (items || [])" :key="String(item.value)" type="button" :data-value="String(item.value)" @click="$emit(\'update:modelValue\', item.value)">{{ item.label }}</button></div>',
+	template:
+		'<div data-testid="u-select"><button v-for="item in (items || [])" :key="String(item.value)" type="button" :data-value="String(item.value)" @click="$emit(\'update:modelValue\', item.value)">{{ item.label }}</button></div>',
 });
 
 const UTabsStub = defineComponent({
@@ -113,7 +125,8 @@ const UTabsStub = defineComponent({
 		items: { type: Array, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<div data-testid="source-tabs"><button v-for="item in (items || [])" :key="item.value" type="button" :data-value="item.value" @click="$emit(\'update:modelValue\', item.value)">{{ item.label }}</button></div>',
+	template:
+		'<div data-testid="source-tabs"><button v-for="item in (items || [])" :key="item.value" type="button" :data-value="item.value" @click="$emit(\'update:modelValue\', item.value)">{{ item.label }}</button></div>',
 });
 
 async function mountField(modelValue: DeckSource) {
@@ -133,7 +146,8 @@ async function mountField(modelValue: DeckSource) {
 	return wrapper;
 }
 
-const emitted = (wrapper: Awaited<ReturnType<typeof mountField>>) => wrapper.emitted('update:modelValue')?.map(([deckSource]) => deckSource) ?? [];
+const emitted = (wrapper: Awaited<ReturnType<typeof mountField>>) =>
+	wrapper.emitted('update:modelValue')?.map(([deckSource]) => deckSource) ?? [];
 
 describe('the Deck Source picker on a Magic: The Gathering Event', () => {
 	beforeEach(() => {
@@ -156,12 +170,17 @@ describe('the Deck Source picker on a Magic: The Gathering Event', () => {
 			tabs: ['Player Deck', 'Broadcast Deck List'],
 		},
 		{ enabled: false, tabs: [] },
-	])('offers a tab per source while Broadcast Deck Lists are enabled: $enabled', async ({ enabled, tabs }) => {
-		mockEventStore.event.broadcastDeckListsEnabled = enabled;
-		const wrapper = await mountField({ type: 'player', playerId: 1 });
+	])(
+		'offers a tab per source while Broadcast Deck Lists are enabled: $enabled',
+		async ({ enabled, tabs }) => {
+			mockEventStore.event.broadcastDeckListsEnabled = enabled;
+			const wrapper = await mountField({ type: 'player', playerId: 1 });
 
-		expect(wrapper.findAll('[data-testid="source-tabs"] button').map(tab => tab.text())).toEqual(tabs);
-	});
+			expect(
+				wrapper.findAll('[data-testid="source-tabs"] button').map((tab) => tab.text()),
+			).toEqual(tabs);
+		},
+	);
 
 	it('changes nothing on opening a tab, and emits the Broadcast Deck List picked there', async () => {
 		const wrapper = await mountField({ type: 'player', playerId: 1 });
@@ -169,10 +188,10 @@ describe('the Deck Source picker on a Magic: The Gathering Event', () => {
 		await wrapper.get('[data-testid="source-tabs"] [data-value="broadcast"]').trigger('click');
 		expect(emitted(wrapper)).toEqual([]);
 
-		await wrapper.get('[data-testid="form-field"][data-label="Broadcast Deck List"] [data-value="23"]').trigger('click');
-		expect(emitted(wrapper)).toEqual([
-			{ type: 'broadcast', broadcastDeckListId: 23 },
-		]);
+		await wrapper
+			.get('[data-testid="form-field"][data-label="Broadcast Deck List"] [data-value="23"]')
+			.trigger('click');
+		expect(emitted(wrapper)).toEqual([{ type: 'broadcast', broadcastDeckListId: 23 }]);
 	});
 
 	it('says so, and changes nothing, when the Event has no Broadcast Deck List', async () => {
@@ -227,12 +246,10 @@ describe('the Deck Source picker on a One Piece Card Game Event', () => {
 		await wrapper.get('[data-testid="source-tabs"] [data-value="player"]').trigger('click');
 		await wrapper.get('[data-testid="deck-source-player"] [role="combobox"]').setValue(search);
 		const options = wrapper.findAll('[role="option"]');
-		expect(options.map(option => option.text())).toEqual(['zoro_main']);
+		expect(options.map((option) => option.text())).toEqual(['zoro_main']);
 		await options[0]!.trigger('click');
 
-		expect(emitted(wrapper)).toEqual([
-			{ type: 'player', playerId: 5 },
-		]);
+		expect(emitted(wrapper)).toEqual([{ type: 'player', playerId: 5 }]);
 	});
 
 	it.each([
@@ -270,32 +287,36 @@ describe('the Deck Source picker on a One Piece Card Game Event', () => {
 			linked: true,
 			hint: false,
 		},
-	] as const)('says the Screen shows nothing only for $name of a Slot', async ({ side, swapped, hint, ...rest }) => {
-		mockFeatureMatchStore.featureMatches[0]!.player2Data = 'linked' in rest
-			? {
-					name: '',
-					nickname: 'zoro_main',
-					gameData: {
-						type: 'op',
-						leader: null,
-						deckList: { id: 601, mainboardCount: 50, leaderNumber: null },
+	] as const)(
+		'says the Screen shows nothing only for $name of a Slot',
+		async ({ side, swapped, hint, ...rest }) => {
+			mockFeatureMatchStore.featureMatches[0]!.player2Data =
+				'linked' in rest
+					? {
+							name: '',
+							nickname: 'zoro_main',
+							gameData: {
+								type: 'op',
+								leader: null,
+								deckList: { id: 601, mainboardCount: 50, leaderNumber: null },
+							},
+						}
+					: BOB;
+			if (swapped) {
+				mockFeatureMatchStateStore.featureMatchSessions.set(90, {
+					id: 90,
+					sourceSnapshot: {
+						player1: { playerId: null, data: BOB },
+						player2: { playerId: null, data: ALICE },
 					},
-				}
-			: BOB;
-		if (swapped) {
-			mockFeatureMatchStateStore.featureMatchSessions.set(90, {
-				id: 90,
-				sourceSnapshot: {
-					player1: { playerId: null, data: BOB },
-					player2: { playerId: null, data: ALICE },
-				},
-			});
-			mockFeatureMatchStateStore.sessionIdBySlotId.set(11, 90);
-		}
-		const wrapper = await mountField({ type: 'featureMatchSlot', slotId: 11, side });
+				});
+				mockFeatureMatchStateStore.sessionIdBySlotId.set(11, 90);
+			}
+			const wrapper = await mountField({ type: 'featureMatchSlot', slotId: 11, side });
 
-		expect(wrapper.find('[data-testid="empty-side-hint"]').exists()).toBe(hint);
-	});
+			expect(wrapper.find('[data-testid="empty-side-hint"]').exists()).toBe(hint);
+		},
+	);
 });
 
 // A Commander Event has no Players and no Broadcast Deck Lists: its only Deck Source is a Seat (ADR-0087).
@@ -329,8 +350,9 @@ describe('the Deck Source picker on a Commander Event', () => {
 
 		expect(wrapper.find('[data-testid="source-tabs"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="deck-source-player"]').exists()).toBe(false);
-		expect(wrapper.findAll('[data-testid="deck-source-side"] button').map(option => option.text()))
-			.toEqual(['Seat 1', 'Seat 2', 'Seat 3', 'Seat 4']);
+		expect(
+			wrapper.findAll('[data-testid="deck-source-side"] button').map((option) => option.text()),
+		).toEqual(['Seat 1', 'Seat 2', 'Seat 3', 'Seat 4']);
 
 		await wrapper.get('[data-testid="deck-source-slot"] [data-value="11"]').trigger('click');
 		await wrapper.setProps({ modelValue: emitted(wrapper)[0] as DeckSource });

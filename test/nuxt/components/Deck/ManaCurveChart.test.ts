@@ -24,8 +24,7 @@ interface ChartOption {
 
 function makeCurve(overrides: Record<number, number> = {}): ManaCurve {
 	const curve = Array.from({ length: CURVE_MAX_BUCKET + 1 }).fill(0) as ManaCurve;
-	for (const [index, value] of Object.entries(overrides))
-		curve[Number(index)] = value;
+	for (const [index, value] of Object.entries(overrides)) curve[Number(index)] = value;
 	return curve;
 }
 
@@ -38,12 +37,14 @@ function chartOption(curve: ManaCurve): ChartOption {
 
 describe('deckManaCurveChart', () => {
 	it('charts each bucket up to the highest one used, the last labelled as a floor', () => {
-		const option = chartOption(makeCurve({
-			0: 1,
-			1: 3,
-			2: 2,
-			[CURVE_MAX_BUCKET]: 4,
-		}));
+		const option = chartOption(
+			makeCurve({
+				0: 1,
+				1: 3,
+				2: 2,
+				[CURVE_MAX_BUCKET]: 4,
+			}),
+		);
 
 		expect(option.xAxis.data).toEqual(['0', '1', '2', `${CURVE_MAX_BUCKET}+`]);
 		expect(option.series[0]?.data).toEqual([1, 3, 2, 4]);

@@ -17,7 +17,7 @@ function side(name: string, sideLeader: unknown) {
 	};
 }
 
-describe('a Feature Match Slot side\'s Leader', () => {
+describe("a Feature Match Slot side's Leader", () => {
 	let eventId: number;
 	let slotId: number;
 	let sessionId: number;
@@ -25,7 +25,11 @@ describe('a Feature Match Slot side\'s Leader', () => {
 	beforeAll(async () => {
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration One Piece Leaders', game: 'op', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration One Piece Leaders',
+				game: 'op',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 		const slot = await $fetch(`/api/events/${eventId}/feature-match-slots`, {
@@ -36,7 +40,9 @@ describe('a Feature Match Slot side\'s Leader', () => {
 			},
 		});
 		slotId = slot.id;
-		const session = await $fetch(`/api/events/${eventId}/feature-match-slots/${slotId}/sessions`, { method: 'POST' });
+		const session = await $fetch(`/api/events/${eventId}/feature-match-slots/${slotId}/sessions`, {
+			method: 'POST',
+		});
 		sessionId = session.id;
 		// The side holds another Leader mid-Session, so picking Zoro below is a change.
 		await changeLeader(NAMI);
@@ -45,8 +51,7 @@ describe('a Feature Match Slot side\'s Leader', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	async function changeLeader(sideLeader: unknown) {
@@ -59,48 +64,51 @@ describe('a Feature Match Slot side\'s Leader', () => {
 	}
 
 	// The Slot's own announcement carries its corrected Session; the correction announces nothing itself.
-	it.skipIf(!integrationRealtimeConfigured)('announces the change with the Slot and its corrected Session', async () => {
-		const realtime = new Ably.Realtime(INTEGRATION_ABLY_API_KEY);
-		const channel = realtime.channels.get(eventRealtimeChannel(eventId));
-		let resolveMessage!: (message: InboundMessage) => void;
-		const announced = new Promise<InboundMessage>((resolve) => {
-			resolveMessage = resolve;
-		});
-		const listener = (message: InboundMessage) => {
-			if (JSON.stringify(message.data).includes('Roronoa Zoro'))
-				resolveMessage(message);
-		};
-		let timeout: ReturnType<typeof setTimeout> | undefined;
+	it.skipIf(!integrationRealtimeConfigured)(
+		'announces the change with the Slot and its corrected Session',
+		async () => {
+			const realtime = new Ably.Realtime(INTEGRATION_ABLY_API_KEY);
+			const channel = realtime.channels.get(eventRealtimeChannel(eventId));
+			let resolveMessage!: (message: InboundMessage) => void;
+			const announced = new Promise<InboundMessage>((resolve) => {
+				resolveMessage = resolve;
+			});
+			const listener = (message: InboundMessage) => {
+				if (JSON.stringify(message.data).includes('Roronoa Zoro')) resolveMessage(message);
+			};
+			let timeout: ReturnType<typeof setTimeout> | undefined;
 
-		try {
-			await channel.subscribe('featureMatch:updated', listener);
-			await changeLeader(ZORO);
+			try {
+				await channel.subscribe('featureMatch:updated', listener);
+				await changeLeader(ZORO);
 
-			const message = await Promise.race([
-				announced,
-				new Promise<never>((_resolve, reject) => {
-					timeout = setTimeout(() => reject(new Error('Timed out waiting for the Leader announcement')), LOAD_TOLERANT_WAIT_MS);
-				}),
-			]);
+				const message = await Promise.race([
+					announced,
+					new Promise<never>((_resolve, reject) => {
+						timeout = setTimeout(
+							() => reject(new Error('Timed out waiting for the Leader announcement')),
+							LOAD_TOLERANT_WAIT_MS,
+						);
+					}),
+				]);
 
-			const { featureMatch } = message.data;
-			expect(featureMatch.player1Data.gameData).toEqual({ type: 'op', leader: ZORO });
-			expect(featureMatch.activeSession).toMatchObject({
-				id: sessionId,
-				sourceSnapshot: {
-					player1: {
-						data: {
-							gameData: { type: 'op', leader: ZORO },
+				const { featureMatch } = message.data;
+				expect(featureMatch.player1Data.gameData).toEqual({ type: 'op', leader: ZORO });
+				expect(featureMatch.activeSession).toMatchObject({
+					id: sessionId,
+					sourceSnapshot: {
+						player1: {
+							data: {
+								gameData: { type: 'op', leader: ZORO },
+							},
 						},
 					},
-				},
-			});
-		}
-		finally {
-			if (timeout)
-				clearTimeout(timeout);
-			channel.unsubscribe(listener);
-			realtime.close();
-		}
-	});
+				});
+			} finally {
+				if (timeout) clearTimeout(timeout);
+				channel.unsubscribe(listener);
+				realtime.close();
+			}
+		},
+	);
 });

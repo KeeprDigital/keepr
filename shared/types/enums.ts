@@ -79,28 +79,12 @@ export const SEAT_VALUES = [...PLAYER_SIDE_VALUES, 'player3', 'player4'] as cons
 export const HORIZONTAL_ALIGN_VALUES = ['left', 'center', 'right'] as const;
 export const VERTICAL_ALIGN_VALUES = ['top', 'center', 'bottom'] as const;
 export const RESET_TYPE_VALUES = ['game', 'match'] as const;
-export const BULK_CLOCK_ACTION_VALUES = [
-	'start',
-	'pause',
-	'reset',
-	'restart',
-	'adjust',
-] as const;
+export const BULK_CLOCK_ACTION_VALUES = ['start', 'pause', 'reset', 'restart', 'adjust'] as const;
 export const DECK_LIST_COMPARTMENT_VALUES = ['mainboard', 'sideboard'] as const;
 export const UNRESOLVED_DECK_ENTRY_TYPE_VALUES = ['card', 'companion'] as const;
 export const METAGAME_VIEW_MODE_VALUES = ['archetype', 'cards', 'chart'] as const;
-export const METAGAME_SCOPE_VALUES = [
-	'all',
-	'topN',
-	'playerList',
-	'minPoints',
-] as const;
-export const METAGAME_SORT_BY_VALUES = [
-	'count',
-	'winRate',
-	'metaShare',
-	'conversionRate',
-] as const;
+export const METAGAME_SCOPE_VALUES = ['all', 'topN', 'playerList', 'minPoints'] as const;
+export const METAGAME_SORT_BY_VALUES = ['count', 'winRate', 'metaShare', 'conversionRate'] as const;
 export const METAGAME_CONVERSION_METRIC_VALUES = ['topN', 'minPoints'] as const;
 export const METAGAME_CARD_SORT_BY_VALUES = ['inclusionRate', 'avgCopies', 'totalCopies'] as const;
 export const TOP_CARDS_STAT_VALUES = [
@@ -130,12 +114,7 @@ export const METAGAME_CARD_COLUMN_KEY_VALUES = [
 	'mainboardCount',
 	'sideboardCount',
 ] as const;
-export const STANDINGS_VIEW_MODE_VALUES = [
-	'all',
-	'range',
-	'watchlist',
-	'reveal',
-] as const;
+export const STANDINGS_VIEW_MODE_VALUES = ['all', 'range', 'watchlist', 'reveal'] as const;
 export const STANDINGS_COLUMN_KEY_VALUES = [
 	'position',
 	'name',
@@ -157,47 +136,47 @@ export const ROUND_CONTROL_MODE_VALUES = ['default', 'manual_override'] as const
 /** Why Live Results switched itself off: 12 hours without a change, or Melee refused the credentials. */
 export const MELEE_LIVE_RESULTS_STOP_REASON_VALUES = ['idle', 'auth'] as const;
 
-export type Game = typeof GAME_VALUES[number];
-export type Variant = typeof VARIANT_VALUES[number];
-export type PointsSystem = typeof POINTS_SYSTEM_VALUES[number];
-export type DeckCompanionSource = typeof DECK_COMPANION_SOURCE_VALUES[number];
-export type ClockType = typeof CLOCK_TYPE_VALUES[number];
-export type FeatureMatchOrientation = typeof FEATURE_MATCH_ORIENTATION_VALUES[number];
-export type ExternalSource = typeof EXTERNAL_SOURCE_VALUES[number];
-export type PlayerManuallyEditedField = typeof PLAYER_MANUALLY_EDITED_FIELD_VALUES[number];
-export type PlayerDisplayMode = typeof PLAYER_DISPLAY_MODE_VALUES[number];
-export type PositionFormat = typeof POSITION_FORMAT_VALUES[number];
-export type DisplayType = typeof DISPLAY_TYPE_VALUES[number];
-export type ScreenMode = typeof SCREEN_MODE_VALUES[number];
-export type HeadToHeadPlayerSource = typeof HEAD_TO_HEAD_PLAYER_SOURCE_VALUES[number];
-export type TalentScreenSelection = typeof TALENT_SCREEN_SELECTION_VALUES[number];
-export type TalentScreenLayout = typeof TALENT_SCREEN_LAYOUT_VALUES[number];
-export type ScreenCommand = typeof SCREEN_COMMAND_VALUES[number];
-export type RecordSeparator = typeof RECORD_SEPARATOR_VALUES[number];
-export type MainboardView = typeof MAINBOARD_VIEW_VALUES[number];
-export type SideboardView = typeof SIDEBOARD_VIEW_VALUES[number];
-export type QuantityPosition = typeof QUANTITY_POSITION_VALUES[number];
-export type SideboardPlacement = typeof SIDEBOARD_PLACEMENT_VALUES[number];
-export type BoardSelection = typeof BOARD_SELECTION_VALUES[number];
-export type PlayerSide = typeof PLAYER_SIDE_VALUES[number];
-export type Seat = typeof SEAT_VALUES[number];
-export type HorizontalAlign = typeof HORIZONTAL_ALIGN_VALUES[number];
-export type VerticalAlign = typeof VERTICAL_ALIGN_VALUES[number];
-export type ResetType = typeof RESET_TYPE_VALUES[number];
-export type BulkClockAction = typeof BULK_CLOCK_ACTION_VALUES[number];
-export type StandingsViewMode = typeof STANDINGS_VIEW_MODE_VALUES[number];
-export type StandingsColumnKey = typeof STANDINGS_COLUMN_KEY_VALUES[number];
-export type PlayerHistoryColumnKey = typeof PLAYER_HISTORY_COLUMN_KEY_VALUES[number];
-export type DeckListCompartment = typeof DECK_LIST_COMPARTMENT_VALUES[number];
-export type UnresolvedDeckEntryType = typeof UNRESOLVED_DECK_ENTRY_TYPE_VALUES[number];
-export type MetagameViewMode = typeof METAGAME_VIEW_MODE_VALUES[number];
-export type MetagameScope = typeof METAGAME_SCOPE_VALUES[number];
-export type MetagameSortBy = typeof METAGAME_SORT_BY_VALUES[number];
-export type MetagameConversionMetric = typeof METAGAME_CONVERSION_METRIC_VALUES[number];
-export type MetagameCardSortBy = typeof METAGAME_CARD_SORT_BY_VALUES[number];
-export type TopCardsStat = typeof TOP_CARDS_STAT_VALUES[number];
-export type MetagameArchetypeColumnKey = typeof METAGAME_ARCHETYPE_COLUMN_KEY_VALUES[number];
-export type MetagameCardColumnKey = typeof METAGAME_CARD_COLUMN_KEY_VALUES[number];
-export type RevealOrder = typeof REVEAL_ORDER_VALUES[number];
-export type RoundControlMode = typeof ROUND_CONTROL_MODE_VALUES[number];
-export type MeleeLiveResultsStopReason = typeof MELEE_LIVE_RESULTS_STOP_REASON_VALUES[number];
+export type Game = (typeof GAME_VALUES)[number];
+export type Variant = (typeof VARIANT_VALUES)[number];
+export type PointsSystem = (typeof POINTS_SYSTEM_VALUES)[number];
+export type DeckCompanionSource = (typeof DECK_COMPANION_SOURCE_VALUES)[number];
+export type ClockType = (typeof CLOCK_TYPE_VALUES)[number];
+export type FeatureMatchOrientation = (typeof FEATURE_MATCH_ORIENTATION_VALUES)[number];
+export type ExternalSource = (typeof EXTERNAL_SOURCE_VALUES)[number];
+export type PlayerManuallyEditedField = (typeof PLAYER_MANUALLY_EDITED_FIELD_VALUES)[number];
+export type PlayerDisplayMode = (typeof PLAYER_DISPLAY_MODE_VALUES)[number];
+export type PositionFormat = (typeof POSITION_FORMAT_VALUES)[number];
+export type DisplayType = (typeof DISPLAY_TYPE_VALUES)[number];
+export type ScreenMode = (typeof SCREEN_MODE_VALUES)[number];
+export type HeadToHeadPlayerSource = (typeof HEAD_TO_HEAD_PLAYER_SOURCE_VALUES)[number];
+export type TalentScreenSelection = (typeof TALENT_SCREEN_SELECTION_VALUES)[number];
+export type TalentScreenLayout = (typeof TALENT_SCREEN_LAYOUT_VALUES)[number];
+export type ScreenCommand = (typeof SCREEN_COMMAND_VALUES)[number];
+export type RecordSeparator = (typeof RECORD_SEPARATOR_VALUES)[number];
+export type MainboardView = (typeof MAINBOARD_VIEW_VALUES)[number];
+export type SideboardView = (typeof SIDEBOARD_VIEW_VALUES)[number];
+export type QuantityPosition = (typeof QUANTITY_POSITION_VALUES)[number];
+export type SideboardPlacement = (typeof SIDEBOARD_PLACEMENT_VALUES)[number];
+export type BoardSelection = (typeof BOARD_SELECTION_VALUES)[number];
+export type PlayerSide = (typeof PLAYER_SIDE_VALUES)[number];
+export type Seat = (typeof SEAT_VALUES)[number];
+export type HorizontalAlign = (typeof HORIZONTAL_ALIGN_VALUES)[number];
+export type VerticalAlign = (typeof VERTICAL_ALIGN_VALUES)[number];
+export type ResetType = (typeof RESET_TYPE_VALUES)[number];
+export type BulkClockAction = (typeof BULK_CLOCK_ACTION_VALUES)[number];
+export type StandingsViewMode = (typeof STANDINGS_VIEW_MODE_VALUES)[number];
+export type StandingsColumnKey = (typeof STANDINGS_COLUMN_KEY_VALUES)[number];
+export type PlayerHistoryColumnKey = (typeof PLAYER_HISTORY_COLUMN_KEY_VALUES)[number];
+export type DeckListCompartment = (typeof DECK_LIST_COMPARTMENT_VALUES)[number];
+export type UnresolvedDeckEntryType = (typeof UNRESOLVED_DECK_ENTRY_TYPE_VALUES)[number];
+export type MetagameViewMode = (typeof METAGAME_VIEW_MODE_VALUES)[number];
+export type MetagameScope = (typeof METAGAME_SCOPE_VALUES)[number];
+export type MetagameSortBy = (typeof METAGAME_SORT_BY_VALUES)[number];
+export type MetagameConversionMetric = (typeof METAGAME_CONVERSION_METRIC_VALUES)[number];
+export type MetagameCardSortBy = (typeof METAGAME_CARD_SORT_BY_VALUES)[number];
+export type TopCardsStat = (typeof TOP_CARDS_STAT_VALUES)[number];
+export type MetagameArchetypeColumnKey = (typeof METAGAME_ARCHETYPE_COLUMN_KEY_VALUES)[number];
+export type MetagameCardColumnKey = (typeof METAGAME_CARD_COLUMN_KEY_VALUES)[number];
+export type RevealOrder = (typeof REVEAL_ORDER_VALUES)[number];
+export type RoundControlMode = (typeof ROUND_CONTROL_MODE_VALUES)[number];
+export type MeleeLiveResultsStopReason = (typeof MELEE_LIVE_RESULTS_STOP_REASON_VALUES)[number];

@@ -72,8 +72,7 @@ function installedEntry(
 	// exported, or counted, so it is left out of the library rather than listed as an
 	// entry that fails on use. Preflight refuses one on the way in, so this is the
 	// backstop for a row that predates that check or was written by something else.
-	if (!document)
-		return undefined;
+	if (!document) return undefined;
 	const installedAt = new Date(template.installedAt);
 	return {
 		id: template.id,
@@ -100,7 +99,9 @@ const BUILT_IN_ID_PREFIX = 'builtin:';
 /** A built-in has shipped unrevised since the application has existed. */
 const BUILT_IN_SINCE = new Date(0);
 
-function builtInEntry(builtIn: BuiltInFeatureMatchLayoutTemplate): FeatureMatchLayoutTemplateLibraryEntry {
+function builtInEntry(
+	builtIn: BuiltInFeatureMatchLayoutTemplate,
+): FeatureMatchLayoutTemplateLibraryEntry {
 	return {
 		id: `${BUILT_IN_ID_PREFIX}${builtIn.id}`,
 		name: builtIn.label,
@@ -121,9 +122,10 @@ function builtInEntry(builtIn: BuiltInFeatureMatchLayoutTemplate): FeatureMatchL
 export function findBuiltInFeatureMatchLayoutTemplate(
 	templateId: string,
 ): FeatureMatchLayoutTemplateLibraryEntry | undefined {
-	if (!templateId.startsWith(BUILT_IN_ID_PREFIX))
-		return undefined;
-	const builtIn = BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find(entry => entry.id === templateId.slice(BUILT_IN_ID_PREFIX.length));
+	if (!templateId.startsWith(BUILT_IN_ID_PREFIX)) return undefined;
+	const builtIn = BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find(
+		(entry) => entry.id === templateId.slice(BUILT_IN_ID_PREFIX.length),
+	);
 	return builtIn && builtInEntry(builtIn);
 }
 
@@ -146,7 +148,7 @@ export async function listFeatureMatchLayoutTemplateLibrary(
 	]);
 	return [
 		...BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.map(builtInEntry),
-		...authored.map(template => ({
+		...authored.map((template) => ({
 			id: template.id,
 			name: template.name,
 			description: template.description,
@@ -156,7 +158,7 @@ export async function listFeatureMatchLayoutTemplateLibrary(
 			createdAt: template.createdAt,
 			updatedAt: template.updatedAt,
 		})),
-		...installed.map(installedEntry).filter(entry => entry !== undefined),
+		...installed.map(installedEntry).filter((entry) => entry !== undefined),
 	].sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
 }
 
@@ -173,8 +175,7 @@ export async function findFeatureMatchLayoutTemplateLibraryEntry(
 	templateId: string,
 ): Promise<FeatureMatchLayoutTemplateLibraryEntry | undefined> {
 	const builtIn = findBuiltInFeatureMatchLayoutTemplate(templateId);
-	if (builtIn)
-		return builtIn;
+	if (builtIn) return builtIn;
 	const authored = await featureMatchLayoutTemplateService().findById(templateId);
 	if (authored) {
 		return {
@@ -188,15 +189,14 @@ export async function findFeatureMatchLayoutTemplateLibraryEntry(
 			updatedAt: authored.updatedAt,
 		};
 	}
-	const installed = await graphicsAssetLibraryForEvent(event)
-		.findInstalledGraphicsTemplate({ templateId });
+	const installed = await graphicsAssetLibraryForEvent(event).findInstalledGraphicsTemplate({
+		templateId,
+	});
 	// A Broadcast Graphic Template is a real Installed Graphics Template and a
 	// perfectly valid identity — it is simply not an entry in *this* library, and
 	// answering with it would hand a caller a document it cannot place. This is the
 	// read side of the two package kinds being non-interchangeable.
-	return installed?.kind === 'feature-match-layout'
-		? installedEntry(installed)
-		: undefined;
+	return installed?.kind === 'feature-match-layout' ? installedEntry(installed) : undefined;
 }
 
 export function featureMatchLayoutTemplateLibrarySummary(
@@ -211,9 +211,7 @@ export function featureMatchLayoutTemplateLibrarySummary(
 		authored: entry.authored,
 		builtIn: entry.builtIn,
 		aspectRatio: entry.aspectRatio,
-		...(isFourSeatFeatureMatchLayout(entry.document)
-			? { fourSeat: true as const }
-			: {}),
+		...(isFourSeatFeatureMatchLayout(entry.document) ? { fourSeat: true as const } : {}),
 		itemCount: flattenGraphicItems(entry.document.composition).length,
 		sourceCount: entry.document.sources.length,
 		createdAt: entry.createdAt,

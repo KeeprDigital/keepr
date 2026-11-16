@@ -31,17 +31,19 @@ export interface RecordOptions {
 }
 
 /** Record the state before an edit. A new edit always clears what could be redone. */
-export function recordEdit<T>(history: EditHistory<T>, before: T, options: RecordOptions): EditHistory<T> {
+export function recordEdit<T>(
+	history: EditHistory<T>,
+	before: T,
+	options: RecordOptions,
+): EditHistory<T> {
 	const { now, key } = options;
-	const coalesces = key !== undefined
-		&& history.last?.key === key
-		&& now - history.last.at <= EDIT_HISTORY_COALESCE_MS
-		&& history.past.length > 0;
-	const last = key === undefined
-		? undefined
-		: { key, at: now };
-	if (coalesces)
-		return { past: history.past, future: [], last };
+	const coalesces =
+		key !== undefined &&
+		history.last?.key === key &&
+		now - history.last.at <= EDIT_HISTORY_COALESCE_MS &&
+		history.past.length > 0;
+	const last = key === undefined ? undefined : { key, at: now };
+	if (coalesces) return { past: history.past, future: [], last };
 	return {
 		past: [...history.past, before].slice(-EDIT_HISTORY_LIMIT),
 		future: [],
@@ -50,10 +52,12 @@ export function recordEdit<T>(history: EditHistory<T>, before: T, options: Recor
 }
 
 /** Step back: the state to restore, and the history with `current` redoable. */
-export function undoEdit<T>(history: EditHistory<T>, current: T): { history: EditHistory<T>; restore: T } | null {
+export function undoEdit<T>(
+	history: EditHistory<T>,
+	current: T,
+): { history: EditHistory<T>; restore: T } | null {
 	const restore = history.past.at(-1);
-	if (restore === undefined)
-		return null;
+	if (restore === undefined) return null;
 	return {
 		history: {
 			past: history.past.slice(0, -1),
@@ -64,10 +68,12 @@ export function undoEdit<T>(history: EditHistory<T>, current: T): { history: Edi
 }
 
 /** Step forward again: the state to restore, and the history with `current` undoable. */
-export function redoEdit<T>(history: EditHistory<T>, current: T): { history: EditHistory<T>; restore: T } | null {
+export function redoEdit<T>(
+	history: EditHistory<T>,
+	current: T,
+): { history: EditHistory<T>; restore: T } | null {
 	const restore = history.future.at(-1);
-	if (restore === undefined)
-		return null;
+	if (restore === undefined) return null;
 	return {
 		history: {
 			past: [...history.past, current],

@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateHighlanderDeck, formatHighlanderIssueSummary, formatHighlanderPointsLabel } from '~~/shared/utils/highlander';
+import {
+	evaluateHighlanderDeck,
+	formatHighlanderIssueSummary,
+	formatHighlanderPointsLabel,
+} from '~~/shared/utils/highlander';
 
-function makeCard(overrides: Partial<{
-	name: string;
-	oracleId: string | null;
-	cardType: string | null;
-	quantity: number;
-	compartment: 'mainboard' | 'sideboard';
-}> = {}) {
+function makeCard(
+	overrides: Partial<{
+		name: string;
+		oracleId: string | null;
+		cardType: string | null;
+		quantity: number;
+		compartment: 'mainboard' | 'sideboard';
+	}> = {},
+) {
 	return {
 		name: 'Test Card',
 		oracleId: 'oracle-1',
@@ -84,7 +90,11 @@ describe('highlander utils', () => {
 
 	it('marks duplicate non-basic cards illegal and exempts basic lands', () => {
 		const summary = evaluateHighlanderDeck('7ph', [
-			makeCard({ name: 'Mana Drain', oracleId: '74d3277a-38e5-4732-afed-084a56148f20', quantity: 2 }),
+			makeCard({
+				name: 'Mana Drain',
+				oracleId: '74d3277a-38e5-4732-afed-084a56148f20',
+				quantity: 2,
+			}),
 			makeCard({
 				name: 'Island',
 				oracleId: 'basic-island',
@@ -94,9 +104,7 @@ describe('highlander utils', () => {
 		]);
 
 		expect(summary.status).toBe('illegal');
-		expect(summary.duplicateCards).toEqual([
-			{ name: 'Mana Drain', quantity: 2 },
-		]);
+		expect(summary.duplicateCards).toEqual([{ name: 'Mana Drain', quantity: 2 }]);
 		expect(formatHighlanderIssueSummary(summary)).toBe('1 duplicate');
 	});
 
@@ -141,7 +149,10 @@ describe('highlander utils', () => {
 
 	it('ignores companion-only pointed cards until companion intent is modeled', () => {
 		const summary = evaluateHighlanderDeck('7ph', [
-			makeCard({ name: 'Lurrus of the Dream-Den', oracleId: '3bc757c1-3adb-4321-8832-8e1cc9e687f7' }),
+			makeCard({
+				name: 'Lurrus of the Dream-Den',
+				oracleId: '3bc757c1-3adb-4321-8832-8e1cc9e687f7',
+			}),
 		]);
 
 		expect(summary.points).toBe(0);
@@ -151,9 +162,7 @@ describe('highlander utils', () => {
 	it('counts companion-only pointed cards when an explicit companion is set', () => {
 		const summary = evaluateHighlanderDeck(
 			'7ph',
-			[
-				makeCard({ name: 'Lightning Bolt', oracleId: 'oracle-bolt' }),
-			],
+			[makeCard({ name: 'Lightning Bolt', oracleId: 'oracle-bolt' })],
 			{ name: 'Lutri, the Spellchaser', oracleId: '158a6225-a246-4fd6-aa57-0df8067b4383' },
 		);
 

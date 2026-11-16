@@ -35,9 +35,7 @@ describe('storeReloaders', () => {
 		});
 		stores.round = reactive({
 			isLoaded: true,
-			rounds: [
-				{ id: 3 },
-			],
+			rounds: [{ id: 3 }],
 			loadRoundsByEventId: vi.fn(async () => []),
 		});
 		stores.match = reactive({
@@ -79,8 +77,8 @@ describe('storeReloaders', () => {
 
 	// A Match re-read that did not land leaves Matches behind, in either scope (ADR-0028).
 	it.each([
-		{ scope: 'a Round\'s', loadedRoundId: 3, load: 'loadMatchesByRoundId' },
-		{ scope: 'the Event\'s', loadedRoundId: null, load: 'loadMatchesByEventId' },
+		{ scope: "a Round's", loadedRoundId: 3, load: 'loadMatchesByRoundId' },
+		{ scope: "the Event's", loadedRoundId: null, load: 'loadMatchesByEventId' },
 	])('reports a re-read of $scope Matches that did not land', async ({ loadedRoundId, load }) => {
 		stores.match.loadedRoundId = loadedRoundId;
 		const reload = storeReloaders();
@@ -92,7 +90,7 @@ describe('storeReloaders', () => {
 		await expect(reload.matches()).resolves.toBe(false);
 	});
 
-	it('re-reads the selected Screen\'s Card without deselecting the Screen', async () => {
+	it("re-reads the selected Screen's Card without deselecting the Screen", async () => {
 		await storeReloaders().card();
 
 		expect(stores.card.loadActiveCard).toHaveBeenCalledOnce();
@@ -107,7 +105,7 @@ describe('storeReloaders', () => {
 		expect(stores.card.loadActiveCard).not.toHaveBeenCalled();
 	});
 
-	it('re-reads the operator\'s Event, and none on a rendering of a Screen, which holds no Event', async () => {
+	it("re-reads the operator's Event, and none on a rendering of a Screen, which holds no Event", async () => {
 		await storeReloaders().event();
 		expect(stores.event.loadEvent).toHaveBeenCalledWith(12);
 

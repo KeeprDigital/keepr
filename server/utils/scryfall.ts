@@ -1,12 +1,16 @@
 import type { ScryfallCard } from '@scryfall/api-types';
 import type { DeckTokenRequirement } from '~~/shared/utils/deckTokens';
-import { scryfallCardListResponseSchema, scryfallCardSchema, scryfallCollectionResponseSchema } from '~~/server/schemas/external/scryfall';
+import {
+	scryfallCardListResponseSchema,
+	scryfallCardSchema,
+	scryfallCollectionResponseSchema,
+} from '~~/server/schemas/external/scryfall';
 import { deriveDeckCounterTypesFromScryfallCard } from '~~/shared/utils/deckCounters';
 import { deriveDeckTokensFromScryfallCard } from '~~/shared/utils/deckTokens';
 
 const SCRYFALL_API_URL = 'https://api.scryfall.com';
 const SCRYFALL_HEADERS = {
-	'Accept': 'application/json',
+	Accept: 'application/json',
 	'User-Agent': 'stream-keepr/1.0',
 };
 const SCRYFALL_REQUEST_TIMEOUT_MS = 10_000;
@@ -23,11 +27,14 @@ export class ScryfallRequestError extends Error {
 
 	constructor(
 		message: string,
-		options: { status?: number | null; retryable?: boolean; notFound?: boolean; cause?: unknown } = {},
+		options: {
+			status?: number | null;
+			retryable?: boolean;
+			notFound?: boolean;
+			cause?: unknown;
+		} = {},
 	) {
-		super(message, options.cause === undefined
-			? undefined
-			: { cause: options.cause });
+		super(message, options.cause === undefined ? undefined : { cause: options.cause });
 		this.name = 'ScryfallRequestError';
 		this.status = options.status ?? null;
 		this.retryable = options.retryable ?? false;
@@ -61,32 +68,30 @@ function parseScryfallCollection(raw: unknown, errorPrefix: string): ScryfallCol
 	return {
 		object: parsed.data.object,
 		not_found: parsed.data.not_found,
-		data: parsed.data.data.map(card => card as ScryfallCard.Any),
+		data: parsed.data.data.map((card) => card as ScryfallCard.Any),
 	};
 }
 
 function delay(milliseconds: number): Promise<void> {
-	return new Promise(resolve => setTimeout(resolve, milliseconds));
+	return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function isRetryableStatus(status: number): boolean {
 	return status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
-async function createScryfallResponseError(response: Response, prefix: string): Promise<ScryfallRequestError> {
+async function createScryfallResponseError(
+	response: Response,
+	prefix: string,
+): Promise<ScryfallRequestError> {
 	await response.body?.cancel().catch(() => undefined);
-	const status = Number.isInteger(response.status)
-		? response.status
-		: null;
+	const status = Number.isInteger(response.status) ? response.status : null;
 	const notFound = status === 404 || response.statusText?.toLowerCase() === 'not found';
-	return new ScryfallRequestError(
-		`${prefix}: HTTP ${status ?? 'unknown'}`,
-		{
-			status,
-			notFound,
-			retryable: status !== null && isRetryableStatus(status),
-		},
-	);
+	return new ScryfallRequestError(`${prefix}: HTTP ${status ?? 'unknown'}`, {
+		status,
+		notFound,
+		retryable: status !== null && isRetryableStatus(status),
+	});
 }
 
 async function readJsonResponseLimited(
@@ -104,15 +109,14 @@ async function readJsonResponseLimited(
 		try {
 			const value = await response.json();
 			const serialized = JSON.stringify(value);
-			if (serialized === undefined)
-				throw new SyntaxError('JSON response was empty');
+			if (serialized === undefined) throw new SyntaxError('JSON response was empty');
 			if (new TextEncoder().encode(serialized).byteLength > maxBytes)
-				throw new ScryfallRequestError(`${errorPrefix}: response exceeded the configured size limit`);
+				throw new ScryfallRequestError(
+					`${errorPrefix}: response exceeded the configured size limit`,
+				);
 			return value;
-		}
-		catch (error) {
-			if (error instanceof ScryfallRequestError)
-				throw error;
+		} catch (error) {
+			if (error instanceof ScryfallRequestError) throw error;
 			throw new ScryfallRequestError(`${errorPrefix}: invalid JSON response`, { cause: error });
 		}
 	}
@@ -123,17 +127,17 @@ async function readJsonResponseLimited(
 	try {
 		while (true) {
 			const { done, value } = await reader.read();
-			if (done)
-				break;
+			if (done) break;
 			totalBytes += value.byteLength;
 			if (totalBytes > maxBytes) {
 				await reader.cancel().catch(() => undefined);
-				throw new ScryfallRequestError(`${errorPrefix}: response exceeded the configured size limit`);
+				throw new ScryfallRequestError(
+					`${errorPrefix}: response exceeded the configured size limit`,
+				);
 			}
 			chunks.push(value);
 		}
-	}
-	finally {
+	} finally {
 		reader.releaseLock();
 	}
 
@@ -146,8 +150,7 @@ async function readJsonResponseLimited(
 
 	try {
 		return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) as unknown;
-	}
-	catch (error) {
+	} catch (error) {
 		throw new ScryfallRequestError(`${errorPrefix}: invalid JSON response`, { cause: error });
 	}
 }
@@ -166,29 +169,22 @@ async function fetchScryfallJson(
 			const response = await fetch(input, { ...init, signal: controller.signal });
 			if (response.ok)
 				return await readJsonResponseLimited(response, maxResponseBytes, errorPrefix);
-			else
-				failure = await createScryfallResponseError(response, errorPrefix);
-		}
-		catch (error) {
+			else failure = await createScryfallResponseError(response, errorPrefix);
+		} catch (error) {
 			if (error instanceof ScryfallRequestError) {
 				failure = error;
-			}
-			else {
+			} else {
 				const timedOut = controller.signal.aborted;
 				failure = new ScryfallRequestError(
-					timedOut
-						? `${errorPrefix}: request timed out`
-						: `${errorPrefix}: network request failed`,
+					timedOut ? `${errorPrefix}: request timed out` : `${errorPrefix}: network request failed`,
 					{ retryable: true, cause: error },
 				);
 			}
-		}
-		finally {
+		} finally {
 			clearTimeout(timeout);
 		}
 
-		if (!failure.retryable || attempt === SCRYFALL_MAX_RETRIES)
-			throw failure;
+		if (!failure.retryable || attempt === SCRYFALL_MAX_RETRIES) throw failure;
 
 		await delay(SCRYFALL_RETRY_BASE_DELAY_MS * 2 ** attempt);
 	}
@@ -219,24 +215,25 @@ interface ScryfallCollectionResponse {
 }
 
 function mapScryfallCardData(card: ScryfallCard.Any): ScryfallCardData {
-	const colorIdentity = 'color_identity' in card && Array.isArray(card.color_identity)
-		? (card.color_identity as string[]).join('')
-		: null;
+	const colorIdentity =
+		'color_identity' in card && Array.isArray(card.color_identity)
+			? (card.color_identity as string[]).join('')
+			: null;
 
-	const typeLine = 'type_line' in card && card.type_line
-		? (card.type_line as string)
-		: null;
+	const typeLine = 'type_line' in card && card.type_line ? (card.type_line as string) : null;
 
-	const cmc = 'cmc' in card && (card as { cmc?: number | null }).cmc != null
-		? (card as { cmc: number }).cmc
-		: null;
+	const cmc =
+		'cmc' in card && (card as { cmc?: number | null }).cmc != null
+			? (card as { cmc: number }).cmc
+			: null;
 
 	return {
 		name: card.name,
 		setCode: card.set,
-		collectorNumber: 'collector_number' in card && typeof card.collector_number === 'string'
-			? card.collector_number
-			: null,
+		collectorNumber:
+			'collector_number' in card && typeof card.collector_number === 'string'
+				? card.collector_number
+				: null,
 		id: card.id,
 		oracleId: extractOracleId(card),
 		manaCost: extractManaCost(card),
@@ -256,11 +253,8 @@ interface PrintedNameFields {
 
 function printedNamesOf(card: ScryfallCard.Any): string[] {
 	const named = card as PrintedNameFields & { card_faces?: PrintedNameFields[] | null };
-	return [
-		named,
-		...(named.card_faces ?? []),
-	]
-		.flatMap(fields => [fields.flavor_name, fields.printed_name])
+	return [named, ...(named.card_faces ?? [])]
+		.flatMap((fields) => [fields.flavor_name, fields.printed_name])
 		.filter((name): name is string => typeof name === 'string' && name.length > 0);
 }
 
@@ -331,15 +325,22 @@ export async function fetchScryfallCardByName(params: {
  * Fetch Scryfall card data for a batch of card identifiers
  * Uses the /cards/collection endpoint which accepts up to 75 cards per request
  */
-async function fetchCardCollection(identifiers: Array<CardIdentifier | PrintingIdentifier>): Promise<ScryfallCollectionResponse> {
-	const raw = await fetchScryfallJson(`${SCRYFALL_API_URL}/cards/collection`, {
-		method: 'POST',
-		headers: {
-			...SCRYFALL_HEADERS,
-			'Content-Type': 'application/json',
+async function fetchCardCollection(
+	identifiers: Array<CardIdentifier | PrintingIdentifier>,
+): Promise<ScryfallCollectionResponse> {
+	const raw = await fetchScryfallJson(
+		`${SCRYFALL_API_URL}/cards/collection`,
+		{
+			method: 'POST',
+			headers: {
+				...SCRYFALL_HEADERS,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ identifiers }),
 		},
-		body: JSON.stringify({ identifiers }),
-	}, 'Scryfall API request failed', SCRYFALL_COLLECTION_BODY_LIMIT_BYTES);
+		'Scryfall API request failed',
+		SCRYFALL_COLLECTION_BODY_LIMIT_BYTES,
+	);
 
 	// Validate the response shape at the external API boundary.
 	// scryfallCollectionResponseSchema uses .passthrough() so extra Scryfall fields are preserved.
@@ -350,9 +351,7 @@ async function fetchCardCollection(identifiers: Array<CardIdentifier | PrintingI
  * Create a lookup key for card identification
  */
 export function createCardKey(name: string, setCode: string | null): string {
-	return setCode
-		? `${name.toLowerCase()}|${setCode.toLowerCase()}`
-		: name.toLowerCase();
+	return setCode ? `${name.toLowerCase()}|${setCode.toLowerCase()}` : name.toLowerCase();
 }
 
 /**
@@ -418,9 +417,7 @@ function providerFailureReason(error: unknown): { reason: string; status: number
 	if (!(error instanceof ScryfallRequestError))
 		return { reason: 'provider returned an invalid response', status: null };
 	return {
-		reason: `provider request failed${error.status === null
-			? ''
-			: ` (HTTP ${error.status})`}`,
+		reason: `provider request failed${error.status === null ? '' : ` (HTTP ${error.status})`}`,
 		status: error.status,
 	};
 }
@@ -437,8 +434,11 @@ async function lookUpNamesAlone(
 ): Promise<void> {
 	for (let index = 0; index < requests.length; index += NAMED_LOOKUP_CONCURRENCY) {
 		const chunk = requests.slice(index, index + NAMED_LOOKUP_CONCURRENCY);
-		const settled = await Promise.allSettled(chunk.map(request =>
-			fetchScryfallCardByName({ exact: request.name, setCode: request.setCode })));
+		const settled = await Promise.allSettled(
+			chunk.map((request) =>
+				fetchScryfallCardByName({ exact: request.name, setCode: request.setCode }),
+			),
+		);
 		let failed = false;
 		for (const [chunkIndex, outcome] of settled.entries()) {
 			const request = chunk[chunkIndex]!;
@@ -446,19 +446,19 @@ async function lookUpNamesAlone(
 				results.set(createCardKey(request.name, request.setCode), outcome.value);
 				continue;
 			}
-			if (isScryfallNotFoundError(outcome.reason))
-				continue;
+			if (isScryfallNotFoundError(outcome.reason)) continue;
 			const { reason, status } = providerFailureReason(outcome.reason);
-			console.error(JSON.stringify({
-				service: 'scryfall',
-				event: 'named_lookup_failed',
-				status,
-			}));
+			console.error(
+				JSON.stringify({
+					service: 'scryfall',
+					event: 'named_lookup_failed',
+					status,
+				}),
+			);
 			errors.push(`Scryfall named lookup failed: ${reason}`);
 			failed = true;
 		}
-		if (failed && stopOnError)
-			return;
+		if (failed && stopOnError) return;
 	}
 }
 
@@ -508,9 +508,7 @@ export async function batchLookupScryfallIds(
 	const uniqueIdentifiers = new Map<string, CardIdentifier>();
 	for (const request of requests.values())
 		uniqueIdentifiers.set(identifierKey(request.identifier), request.identifier);
-	const identifiers = [
-		...uniqueIdentifiers.values(),
-	];
+	const identifiers = [...uniqueIdentifiers.values()];
 	const answeredIdentifiers = new Set<string>();
 	let providerFailed = false;
 	const totalBatches = Math.ceil(identifiers.length / COLLECTION_BATCH_SIZE);
@@ -536,11 +534,9 @@ export async function batchLookupScryfallIds(
 				}
 			}
 
-			const notFound = response.not_found.flatMap(identifier => identifier.name === undefined
-				? []
-				: [
-						{ name: identifier.name, set: identifier.set },
-					]);
+			const notFound = response.not_found.flatMap((identifier) =>
+				identifier.name === undefined ? [] : [{ name: identifier.name, set: identifier.set }],
+			);
 			const notFoundKeys = new Set(notFound.map(identifierKey));
 			for (const identifier of batch) {
 				if (!notFoundKeys.has(identifierKey(identifier)))
@@ -549,15 +545,17 @@ export async function batchLookupScryfallIds(
 
 			// Warn about cards Scryfall could not find (bad name, wrong set, etc.)
 			if (notFound.length > 0) {
-				const names = notFound.map(identifier => identifier.name).join(', ');
+				const names = notFound.map((identifier) => identifier.name).join(', ');
 				const msg = `Scryfall batch ${batchIndex}/${totalBatches}: ${notFound.length} card(s) not found — ${names}`;
-				console.warn(JSON.stringify({
-					service: 'scryfall',
-					event: 'cards_not_found',
-					batch: batchIndex,
-					totalBatches,
-					count: notFound.length,
-				}));
+				console.warn(
+					JSON.stringify({
+						service: 'scryfall',
+						event: 'cards_not_found',
+						batch: batchIndex,
+						totalBatches,
+						count: notFound.length,
+					}),
+				);
 				if (!options.suppressNotFoundErrors) {
 					errors.push(msg);
 				}
@@ -567,35 +565,34 @@ export async function batchLookupScryfallIds(
 			if (i + COLLECTION_BATCH_SIZE < identifiers.length) {
 				await delay(COLLECTION_BATCH_PAUSE_MS);
 			}
-		}
-		catch (error) {
+		} catch (error) {
 			const { reason, status } = providerFailureReason(error);
 			const errorMsg = `Scryfall batch ${batchIndex}/${totalBatches} failed: ${reason}`;
-			console.error(JSON.stringify({
-				service: 'scryfall',
-				event: 'batch_failed',
-				batch: batchIndex,
-				totalBatches,
-				status,
-			}));
+			console.error(
+				JSON.stringify({
+					service: 'scryfall',
+					event: 'batch_failed',
+					batch: batchIndex,
+					totalBatches,
+					status,
+				}),
+			);
 			errors.push(errorMsg);
 			providerFailed = true;
 			// Authoritative imports abort on the first provider failure so an outage
 			// cannot fan out into hundreds of doomed retries. Best-effort callers may
 			// still opt into partial results by leaving stopOnError disabled.
-			if (options.stopOnError)
-				break;
+			if (options.stopOnError) break;
 		}
 	}
 
-	if (providerFailed && options.stopOnError)
-		return { results, errors };
+	if (providerFailed && options.stopOnError) return { results, errors };
 
-	const answeredWithAnotherName = [
-		...requests.values(),
-	].filter(request =>
-		answeredIdentifiers.has(identifierKey(request.identifier))
-		&& !results.has(createCardKey(request.name, request.setCode)));
+	const answeredWithAnotherName = [...requests.values()].filter(
+		(request) =>
+			answeredIdentifiers.has(identifierKey(request.identifier)) &&
+			!results.has(createCardKey(request.name, request.setCode)),
+	);
 	await lookUpNamesAlone(answeredWithAnotherName, results, errors, options.stopOnError ?? false);
 
 	return { results, errors };
@@ -626,14 +623,11 @@ export async function batchLookupScryfallPrintings(
 			collector_number: request.collectorNumber,
 		});
 	}
-	const unique = [
-		...identifiers.values(),
-	];
+	const unique = [...identifiers.values()];
 	const cards = new Map<string, ScryfallCardData>();
 	for (let index = 0; index < unique.length; index += COLLECTION_BATCH_SIZE) {
 		// The pause a lookup by name takes between batches, to respect rate limits.
-		if (index > 0)
-			await delay(COLLECTION_BATCH_PAUSE_MS);
+		if (index > 0) await delay(COLLECTION_BATCH_PAUSE_MS);
 		const response = await fetchCardCollection(unique.slice(index, index + COLLECTION_BATCH_SIZE));
 		for (const card of response.data) {
 			const data = mapScryfallCardData(card);
@@ -641,7 +635,9 @@ export async function batchLookupScryfallPrintings(
 				cards.set(printingKey(data.setCode, data.collectorNumber), data);
 		}
 	}
-	return requests.map(request => cards.get(printingKey(request.setCode, request.collectorNumber)) ?? null);
+	return requests.map(
+		(request) => cards.get(printingKey(request.setCode, request.collectorNumber)) ?? null,
+	);
 }
 
 const PRINTED_NAME_SEARCH_BATCH_SIZE = 20;
@@ -653,25 +649,17 @@ const SCRYFALL_SEARCH_URL = `${SCRYFALL_API_URL}/cards/search`;
  * `!"…"`, or `!'…'` for a name holding a double quote. One holding both cannot be asked.
  */
 function quotedExactName(name: string): string | null {
-	if (!name.includes('"'))
-		return `!"${name}"`;
-	return name.includes('\'')
-		? null
-		: `!'${name}'`;
+	if (!name.includes('"')) return `!"${name}"`;
+	return name.includes("'") ? null : `!'${name}'`;
 }
 
 function printedNameTerm(request: { name: string; setCode: string | null }): string | null {
 	const name = request.name.trim();
-	if (!name)
-		return null;
-	if (request.setCode && !/^[a-z0-9]+$/i.test(request.setCode))
-		return null;
+	if (!name) return null;
+	if (request.setCode && !/^[a-z0-9]+$/i.test(request.setCode)) return null;
 	const exact = quotedExactName(name);
-	if (exact === null)
-		return null;
-	return request.setCode
-		? `(${exact} set:${request.setCode.toLowerCase()})`
-		: exact;
+	if (exact === null) return null;
+	return request.setCode ? `(${exact} set:${request.setCode.toLowerCase()})` : exact;
 }
 
 /**
@@ -685,43 +673,44 @@ function printedNameTerm(request: { name: string; setCode: string | null }): str
 export async function searchScryfallPrintingsByPrintedName(
 	requests: ReadonlyArray<{ name: string; setCode: string | null }>,
 ): Promise<ScryfallCardData[]> {
-	const terms = [
-		...new Set(requests.flatMap(request => printedNameTerm(request) ?? [])),
-	];
+	const terms = [...new Set(requests.flatMap((request) => printedNameTerm(request) ?? []))];
 	const errorPrefix = 'Scryfall printed name search failed';
 	const cards: ScryfallCardData[] = [];
 	for (let index = 0; index < terms.length; index += PRINTED_NAME_SEARCH_BATCH_SIZE) {
-		if (index > 0)
-			await delay(COLLECTION_BATCH_PAUSE_MS);
+		if (index > 0) await delay(COLLECTION_BATCH_PAUSE_MS);
 		const query = new URLSearchParams({
 			q: terms.slice(index, index + PRINTED_NAME_SEARCH_BATCH_SIZE).join(' or '),
 			unique: 'prints',
 		});
 		let page: string | null = `${SCRYFALL_SEARCH_URL}?${query.toString()}`;
-		for (let pageCount = 0; page !== null && pageCount < PRINTED_NAME_SEARCH_MAX_PAGES; pageCount++) {
-			if (pageCount > 0)
-				await delay(COLLECTION_BATCH_PAUSE_MS);
+		for (
+			let pageCount = 0;
+			page !== null && pageCount < PRINTED_NAME_SEARCH_MAX_PAGES;
+			pageCount++
+		) {
+			if (pageCount > 0) await delay(COLLECTION_BATCH_PAUSE_MS);
 			let raw: unknown;
 			try {
-				raw = await fetchScryfallJson(page, { headers: SCRYFALL_HEADERS }, errorPrefix, SCRYFALL_COLLECTION_BODY_LIMIT_BYTES);
-			}
-			catch (error) {
+				raw = await fetchScryfallJson(
+					page,
+					{ headers: SCRYFALL_HEADERS },
+					errorPrefix,
+					SCRYFALL_COLLECTION_BODY_LIMIT_BYTES,
+				);
+			} catch (error) {
 				// A search matching nothing answers 404.
-				if (isScryfallNotFoundError(error))
-					break;
+				if (isScryfallNotFoundError(error)) break;
 				throw error;
 			}
 			const parsed = scryfallCardListResponseSchema.safeParse(raw);
 			if (!parsed.success)
-				throw new ScryfallRequestError(`${errorPrefix}: invalid response schema`, { cause: parsed.error });
-			cards.push(...parsed.data.data.map(card => mapScryfallCardData(card as ScryfallCard.Any)));
+				throw new ScryfallRequestError(`${errorPrefix}: invalid response schema`, {
+					cause: parsed.error,
+				});
+			cards.push(...parsed.data.data.map((card) => mapScryfallCardData(card as ScryfallCard.Any)));
 			// Only a further page of this same search is followed.
-			const next = parsed.data.has_more
-				? parsed.data.next_page
-				: null;
-			page = next?.startsWith(`${SCRYFALL_SEARCH_URL}?`)
-				? next
-				: null;
+			const next = parsed.data.has_more ? parsed.data.next_page : null;
+			page = next?.startsWith(`${SCRYFALL_SEARCH_URL}?`) ? next : null;
 		}
 	}
 	return cards;

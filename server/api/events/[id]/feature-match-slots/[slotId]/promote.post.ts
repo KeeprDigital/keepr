@@ -5,7 +5,10 @@ import { getOriginConnectionId } from '~~/server/utils/ably';
 
 export default defineEventHandler(async (event) => {
 	const { id, slotId } = await getValidatedRouterParams(event, featureMatchSlotParamsSchema.parse);
-	const { matchId, confirmedNoteDiscards } = await readValidatedBody(event, promoteMatchSchema.parse);
+	const { matchId, confirmedNoteDiscards } = await readValidatedBody(
+		event,
+		promoteMatchSchema.parse,
+	);
 	const originConnectionId = getOriginConnectionId(event);
 	return await featureMatchPromotionModule().promoteMatchToSlot({
 		eventId: id,

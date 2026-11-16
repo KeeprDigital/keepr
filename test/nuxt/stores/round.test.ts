@@ -18,9 +18,7 @@ describe('useRoundStore "Start now"', () => {
 	it('asks the server to start the Round, and holds the start it answers', async () => {
 		const store = useRoundStore();
 		mockFetch.mockResolvedValueOnce({
-			rounds: [
-				toWire(createMockRound({ id: 7, durationMinutes: 50 })),
-			],
+			rounds: [toWire(createMockRound({ id: 7, durationMinutes: 50 }))],
 			total: 1,
 		});
 		await store.loadRoundsByEventId(1);
@@ -29,16 +27,26 @@ describe('useRoundStore "Start now"', () => {
 
 		const started = store.startRound(1, 7);
 
-		expect(mockFetch).toHaveBeenLastCalledWith('/api/events/1/rounds/7/start', expect.objectContaining({ method: 'POST' }));
+		expect(mockFetch).toHaveBeenLastCalledWith(
+			'/api/events/1/rounds/7/start',
+			expect.objectContaining({ method: 'POST' }),
+		);
 		expect(store.getRoundById(7)?.startedAt).toBeNull();
 
-		answer.resolve(toWire(createMockRound({
-			id: 7,
-			durationMinutes: 50,
-			startedAt: new Date('2026-11-04T10:00:00.000Z'),
-		})));
+		answer.resolve(
+			toWire(
+				createMockRound({
+					id: 7,
+					durationMinutes: 50,
+					startedAt: new Date('2026-11-04T10:00:00.000Z'),
+				}),
+			),
+		);
 		await started;
 
-		expect(store.getRoundById(7)).toMatchObject({ startedAt: '2026-11-04T10:00:00.000Z', durationMinutes: 50 });
+		expect(store.getRoundById(7)).toMatchObject({
+			startedAt: '2026-11-04T10:00:00.000Z',
+			durationMinutes: 50,
+		});
 	});
 });

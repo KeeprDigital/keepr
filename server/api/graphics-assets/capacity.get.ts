@@ -13,8 +13,7 @@ export default defineEventHandler(async (event) => {
 	await requireUserId(event);
 	try {
 		return await graphicsAssetLibraryForEvent(event).getCapacity();
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

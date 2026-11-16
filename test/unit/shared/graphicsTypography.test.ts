@@ -11,30 +11,38 @@ import {
 describe('shared graphics typography', () => {
 	it('resolves an application font selection to its CSS font-family value', () => {
 		expect(getGraphicFontDefinition('saira-condensed')?.label).toBe('Saira Condensed');
-		expect(resolveGraphicFontFamily({ kind: 'application', fontId: 'saira-condensed' }))
-			.toBe('var(--font-saira-condensed)');
-		expect(resolveGraphicFontFamily({ kind: 'application', fontId: 'inter' }))
-			.toBe('var(--font-inter)');
+		expect(resolveGraphicFontFamily({ kind: 'application', fontId: 'saira-condensed' })).toBe(
+			'var(--font-saira-condensed)',
+		);
+		expect(resolveGraphicFontFamily({ kind: 'application', fontId: 'inter' })).toBe(
+			'var(--font-inter)',
+		);
 	});
 
 	it.each([
 		['roboto', true],
 		['system-mono', false],
-	])('resolves %s to its custom property, with a package only when packaged', (fontId, packaged) => {
-		const definition = GRAPHIC_FONTS.find(font => font.id === fontId);
-		expect(resolveGraphicFontFamily({ kind: 'application', fontId: fontId as never }))
-			.toBe(`var(--font-${fontId})`);
-		expect(definition?.package !== undefined).toBe(packaged);
-	});
+	])(
+		'resolves %s to its custom property, with a package only when packaged',
+		(fontId, packaged) => {
+			const definition = GRAPHIC_FONTS.find((font) => font.id === fontId);
+			expect(resolveGraphicFontFamily({ kind: 'application', fontId: fontId as never })).toBe(
+				`var(--font-${fontId})`,
+			);
+			expect(definition?.package !== undefined).toBe(packaged);
+		},
+	);
 
 	it('offers every application font once, grouped, in registry order', () => {
-		expect(GRAPHIC_FONT_OPTION_GROUPS.flatMap(group => group.options.map(option => option.value)))
-			.toEqual([...GRAPHIC_FONT_IDS]);
+		expect(
+			GRAPHIC_FONT_OPTION_GROUPS.flatMap((group) => group.options.map((option) => option.value)),
+		).toEqual([...GRAPHIC_FONT_IDS]);
 	});
 
 	it('does not resolve unknown application font capabilities to CSS', () => {
-		expect(resolveGraphicFontFamily({ kind: 'application', fontId: 'Impact, Arial Black' as never }))
-			.toBeUndefined();
+		expect(
+			resolveGraphicFontFamily({ kind: 'application', fontId: 'Impact, Arial Black' as never }),
+		).toBeUndefined();
 		expect(resolveGraphicFontFamily(undefined)).toBeUndefined();
 	});
 
@@ -43,9 +51,11 @@ describe('shared graphics typography', () => {
 			assetId: 'font/asset' as never,
 			revisionId: 'revision:7' as never,
 		};
-		expect(graphicAssetFontFaceFamily(reference))
-			.toBe('stream-keepr-graphic-asset-font_asset-revision_7');
-		expect(resolveGraphicFontFamily({ kind: 'asset', reference }))
-			.toBe('"stream-keepr-graphic-asset-font_asset-revision_7"');
+		expect(graphicAssetFontFaceFamily(reference)).toBe(
+			'stream-keepr-graphic-asset-font_asset-revision_7',
+		);
+		expect(resolveGraphicFontFamily({ kind: 'asset', reference })).toBe(
+			'"stream-keepr-graphic-asset-font_asset-revision_7"',
+		);
 	});
 });

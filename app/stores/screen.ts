@@ -99,12 +99,9 @@ export const useScreenStore = defineStore('screen', () => {
 	function keptRevision(fetched: Screen): Screen {
 		// A revision kept is kept with every field a write still owns laid over it, so
 		// a load cannot take back an edit that is still out either (#703).
-		if (!screenRuntime.isSupersededByCache(fetched))
-			return screenRuntime.withOwnedFields(fetched);
+		if (!screenRuntime.isSupersededByCache(fetched)) return screenRuntime.withOwnedFields(fetched);
 		const cached = screenRuntime.cachedRevision(fetched.id);
-		return cached
-			? toRaw(cached)
-			: fetched;
+		return cached ? toRaw(cached) : fetched;
 	}
 
 	let latestScreensLoad: Promise<Screen[] | null> | null = null;
@@ -124,7 +121,10 @@ export const useScreenStore = defineStore('screen', () => {
 		return load;
 	}
 
-	async function fetchScreens(eventId: number, { failure }: EventDataLoadOptions = {}): Promise<Screen[] | null> {
+	async function fetchScreens(
+		eventId: number,
+		{ failure }: EventDataLoadOptions = {},
+	): Promise<Screen[] | null> {
 		const flight = screensLoads.begin();
 		const token = beginLoad();
 		currentEventId.value = eventId;
@@ -132,7 +132,7 @@ export const useScreenStore = defineStore('screen', () => {
 			const data = await screenRepo.list(eventId);
 			if (flight.stale || currentEventId.value !== eventId) {
 				return currentEventId.value === eventId
-					? latestScreensLoad?.catch(() => null) ?? null
+					? (latestScreensLoad?.catch(() => null) ?? null)
 					: null;
 			}
 			// Per Screen, not wholesale. The list is the authority on *membership* —
@@ -144,16 +144,12 @@ export const useScreenStore = defineStore('screen', () => {
 			screens.value = kept;
 			hasFetched.value = true;
 			return kept;
-		}
-		catch (caughtError) {
-			if (flight.stale)
-				return null;
+		} catch (caughtError) {
+			if (flight.stale) return null;
 			error.value = loadErrorMessage(caughtError);
-			if (failure === 'raise')
-				throw caughtError;
+			if (failure === 'raise') throw caughtError;
 			return null;
-		}
-		finally {
+		} finally {
 			endLoad(token);
 		}
 	}
@@ -184,21 +180,16 @@ export const useScreenStore = defineStore('screen', () => {
 		activeScreenLookup.value = null;
 		try {
 			const screen = await screenRepo.getBySlug(eventId, slug, assetCapability);
-			if (!screen)
-				throw new Error('Screen not found');
-			if (flight.stale)
-				return null;
+			if (!screen) throw new Error('Screen not found');
+			if (flight.stale) return null;
 			const kept = keptRevision(screen);
 			activeScreen.value = kept;
 			activeScreenLookup.value = { assetCapability: assetCapability ?? null };
 			return kept;
-		}
-		catch (caughtError) {
-			if (flight.current)
-				error.value = loadErrorMessage(caughtError);
+		} catch (caughtError) {
+			if (flight.current) error.value = loadErrorMessage(caughtError);
 			throw caughtError;
-		}
-		finally {
+		} finally {
 			endLoad(token);
 		}
 	}
@@ -226,19 +217,20 @@ export const useScreenStore = defineStore('screen', () => {
 	 * throwing on a refusal or a failure alike: nothing is waiting on this to decide
 	 * what to render, and program keeps what it last accepted.
 	 */
-	async function refreshActiveScreen(eventId: number, screenId: number, assetCapability?: string | null) {
+	async function refreshActiveScreen(
+		eventId: number,
+		screenId: number,
+		assetCapability?: string | null,
+	) {
 		const flight = activeScreenLoads.begin();
 		try {
 			const screen = await screenRepo.getScreenOutputById(eventId, screenId, assetCapability);
-			if (!screen || flight.stale || activeScreen.value?.id !== screenId)
-				return null;
+			if (!screen || flight.stale || activeScreen.value?.id !== screenId) return null;
 			const kept = keptRevision(screen);
 			activeScreen.value = kept;
 			return kept;
-		}
-		catch (caughtError) {
-			if (flight.current)
-				error.value = loadErrorMessage(caughtError);
+		} catch (caughtError) {
+			if (flight.current) error.value = loadErrorMessage(caughtError);
 			return null;
 		}
 	}
@@ -259,11 +251,10 @@ export const useScreenStore = defineStore('screen', () => {
 					return kept;
 				}
 				// Ensure screen is in the screens array for updateModeConfig to work
-				const existingIndex = screens.value.findIndex(s => s.id === screenId);
+				const existingIndex = screens.value.findIndex((s) => s.id === screenId);
 				if (existingIndex === -1) {
 					screens.value.push(kept);
-				}
-				else {
+				} else {
 					screens.value[existingIndex] = kept;
 				}
 				return kept;

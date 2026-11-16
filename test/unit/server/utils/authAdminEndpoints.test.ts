@@ -19,8 +19,10 @@ interface RoutedEndpoint {
 
 /** Every route the installed plugin ships, read from the plugin itself. */
 const adminRoutes = Object.values(admin().endpoints as unknown as Record<string, RoutedEndpoint>)
-	.filter(endpoint => endpoint.path)
-	.flatMap(endpoint => [endpoint.options?.method ?? 'POST'].flat().map(method => [method, endpoint.path!] as const));
+	.filter((endpoint) => endpoint.path)
+	.flatMap((endpoint) =>
+		[endpoint.options?.method ?? 'POST'].flat().map((method) => [method, endpoint.path!] as const),
+	);
 
 let auth: ThrowawayAuth;
 let cookie: string;
@@ -28,17 +30,22 @@ let cookie: string;
 function request(method: string, path: string, body: unknown = {}) {
 	const headers = {
 		'content-type': 'application/json',
-		'host': LOCAL_HOST,
-		'origin': LOCAL_ORIGIN,
+		host: LOCAL_HOST,
+		origin: LOCAL_ORIGIN,
 		cookie,
 	};
-	return auth.handler(new Request(`${LOCAL_ORIGIN}/api/auth${path}`, method === 'GET'
-		? { method, headers }
-		: {
-				method,
-				headers,
-				body: JSON.stringify(body),
-			}));
+	return auth.handler(
+		new Request(
+			`${LOCAL_ORIGIN}/api/auth${path}`,
+			method === 'GET'
+				? { method, headers }
+				: {
+						method,
+						headers,
+						body: JSON.stringify(body),
+					},
+		),
+	);
 }
 
 beforeAll(async () => {
@@ -54,22 +61,29 @@ beforeAll(async () => {
 		},
 	});
 	const signedIn = await request('POST', '/sign-in/email', { email: EMAIL, password: PASSWORD });
-	cookie = signedIn.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
+	cookie = signedIn.headers
+		.getSetCookie()
+		.map((value) => value.split(';')[0])
+		.join('; ');
 });
 
 describe('the admin-plugin endpoints of Better Auth', () => {
 	it('are found on the plugin, so this cannot pass by asking nothing', () => {
 		expect(adminRoutes.length).toBeGreaterThanOrEqual(15);
-		expect(adminRoutes.map(([, path]) => path)).toEqual(expect.arrayContaining([
-			'/admin/remove-user',
-			'/admin/impersonate-user',
-			'/admin/set-role',
-			'/admin/set-user-password',
-		]));
+		expect(adminRoutes.map(([, path]) => path)).toEqual(
+			expect.arrayContaining([
+				'/admin/remove-user',
+				'/admin/impersonate-user',
+				'/admin/set-role',
+				'/admin/set-user-password',
+			]),
+		);
 	});
 
 	it('are asked by a Session Better Auth itself admits as an admin', async () => {
-		const session = await (await request('GET', '/get-session')).json() as { user?: { role?: string } };
+		const session = (await (await request('GET', '/get-session')).json()) as {
+			user?: { role?: string };
+		};
 
 		expect(session.user?.role).toBe('admin');
 	});

@@ -8,12 +8,12 @@
  * - `none`: nothing to compare, because there is no previous Round or a
  *   position is missing on either side.
  */
-export type PositionChange
-	= | { kind: 'up'; by: number }
-		| { kind: 'down'; by: number }
-		| { kind: 'unchanged' }
-		| { kind: 'new' }
-		| { kind: 'none' };
+export type PositionChange =
+	| { kind: 'up'; by: number }
+	| { kind: 'down'; by: number }
+	| { kind: 'unchanged' }
+	| { kind: 'new' }
+	| { kind: 'none' };
 
 /** Each Player's position in the previous Round's Round Standings, by Player id. */
 export type PreviousRoundPositionMap = ReadonlyMap<number, number | null>;
@@ -23,20 +23,15 @@ export function positionChange(
 	position: number | null,
 	previousRound: PreviousRoundPositionMap | null,
 ): PositionChange {
-	if (!previousRound || position == null)
-		return { kind: 'none' };
-	if (!previousRound.has(playerId))
-		return { kind: 'new' };
+	if (!previousRound || position == null) return { kind: 'none' };
+	if (!previousRound.has(playerId)) return { kind: 'new' };
 
 	const previous = previousRound.get(playerId);
-	if (previous == null)
-		return { kind: 'none' };
+	if (previous == null) return { kind: 'none' };
 
 	const climbed = previous - position;
-	if (climbed > 0)
-		return { kind: 'up', by: climbed };
-	if (climbed < 0)
-		return { kind: 'down', by: -climbed };
+	if (climbed > 0) return { kind: 'up', by: climbed };
+	if (climbed < 0) return { kind: 'down', by: -climbed };
 	return { kind: 'unchanged' };
 }
 

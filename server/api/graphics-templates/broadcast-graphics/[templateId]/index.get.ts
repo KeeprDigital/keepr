@@ -20,7 +20,10 @@ import { requireUserId } from '~~/server/utils/auth';
  */
 export default defineEventHandler(async (event) => {
 	await requireUserId(event);
-	const { templateId } = await getValidatedRouterParams(event, broadcastGraphicTemplateParamsSchema.parse);
+	const { templateId } = await getValidatedRouterParams(
+		event,
+		broadcastGraphicTemplateParamsSchema.parse,
+	);
 
 	const entry = await findBroadcastGraphicTemplateLibraryEntry(event, templateId);
 	if (!entry) {

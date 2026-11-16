@@ -23,16 +23,10 @@ function card(number, name, category, colors) {
 		name,
 		category,
 		colors,
-		cost: category === 'leader'
-			? null
-			: 2,
-		life: category === 'leader'
-			? 5
-			: null,
+		cost: category === 'leader' ? null : 2,
+		life: category === 'leader' ? 5 : null,
 		power: 5000,
-		counter: category === 'leader'
-			? null
-			: 1000,
+		counter: category === 'leader' ? null : 1000,
 		types: [],
 		effect: null,
 		trigger: null,
@@ -47,20 +41,19 @@ function card(number, name, category, colors) {
 	};
 }
 
-const cards = new Map([
-	card('OP01-001', 'Roronoa Zoro', 'leader', ['Red']),
-	card('OP01-002', 'Trafalgar Law', 'leader', ['Red', 'Green']),
-	card('OP01-016', 'Nami', 'leader', ['Blue']),
-	card('OP01-025', 'Roronoa Zoro', 'character', ['Red']),
-	card('OP01-040', 'Usopp', 'character', ['Blue']),
-].map(entry => [entry.number, entry]));
+const cards = new Map(
+	[
+		card('OP01-001', 'Roronoa Zoro', 'leader', ['Red']),
+		card('OP01-002', 'Trafalgar Law', 'leader', ['Red', 'Green']),
+		card('OP01-016', 'Nami', 'leader', ['Blue']),
+		card('OP01-025', 'Roronoa Zoro', 'character', ['Red']),
+		card('OP01-040', 'Usopp', 'character', ['Blue']),
+	].map((entry) => [entry.number, entry]),
+);
 
 globalThis.fetch = async (input, init) => {
-	const requestUrl = new URL(input instanceof Request
-		? input.url
-		: String(input));
-	if (requestUrl.origin !== bandaiKeeprOrigin)
-		return await upstreamFetch(input, init);
+	const requestUrl = new URL(input instanceof Request ? input.url : String(input));
+	if (requestUrl.origin !== bandaiKeeprOrigin) return await upstreamFetch(input, init);
 
 	if (requestUrl.pathname === '/cards/collection') {
 		const request = new Request(input, init);
@@ -79,13 +72,9 @@ globalThis.fetch = async (input, init) => {
 	}
 
 	const number = /^\/cards\/([^/]+)$/.exec(requestUrl.pathname)?.[1];
-	const found = number
-		? cards.get(decodeURIComponent(number))
-		: undefined;
+	const found = number ? cards.get(decodeURIComponent(number)) : undefined;
 	return new Response(JSON.stringify(found ?? { error: 'Card not found' }), {
-		status: found
-			? 200
-			: 404,
+		status: found ? 200 : 404,
 		headers: { 'content-type': 'application/json' },
 	});
 };

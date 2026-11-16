@@ -40,9 +40,7 @@ describe('metagame ConversionControl', () => {
 
 		await wrapper.get('select[aria-label="Conversion target"]').setValue(pick);
 
-		expect(wrapper.emitted('update')).toEqual([
-			[wrote],
-		]);
+		expect(wrapper.emitted('update')).toEqual([[wrote]]);
 	});
 
 	it.each([
@@ -58,19 +56,20 @@ describe('metagame ConversionControl', () => {
 			min: '1',
 			typed: 24,
 		},
-	] as const)('bounds and writes a typed $target.conversionMetric threshold', async ({ target, label, min, typed }) => {
-		const wrapper = mountControl(target);
-		const input = wrapper.get(`input[aria-label="${label}"]`);
+	] as const)(
+		'bounds and writes a typed $target.conversionMetric threshold',
+		async ({ target, label, min, typed }) => {
+			const wrapper = mountControl(target);
+			const input = wrapper.get(`input[aria-label="${label}"]`);
 
-		expect(input.attributes('min')).toBe(min);
-		await input.setValue(String(typed));
+			expect(input.attributes('min')).toBe(min);
+			await input.setValue(String(typed));
 
-		expect(wrapper.emitted('update')).toEqual([
-			[
-				{ conversionMetric: target.conversionMetric, conversionThreshold: typed },
-			],
-		]);
-	});
+			expect(wrapper.emitted('update')).toEqual([
+				[{ conversionMetric: target.conversionMetric, conversionThreshold: typed }],
+			]);
+		},
+	);
 
 	it('writes nothing for an emptied threshold', async () => {
 		const wrapper = mountControl({ conversionMetric: 'minPoints', conversionThreshold: 9 });

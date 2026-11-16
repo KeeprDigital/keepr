@@ -1,9 +1,5 @@
 import type { EventDataLoadOptions } from '~/modules/event-data/lifecycle';
-import type {
-	Archetype,
-	CreateArchetypeInput,
-	UpdateArchetypeInput,
-} from '~/types';
+import type { Archetype, CreateArchetypeInput, UpdateArchetypeInput } from '~/types';
 import type { MessageData } from '~/types/realtime';
 import { sameArchetypeName } from '~~/shared/utils/archetypeName';
 import { useEventDataResource } from '~/modules/event-data/client';
@@ -41,21 +37,21 @@ export const useArchetypeStore = defineStore('archetype', () => {
 	async function createArchetype(eventId: number, input: CreateArchetypeInput) {
 		const flight = lifecycle.currentLifetime();
 		const created = await lifecycle.create(eventId, input);
-		if (created && flight.current)
-			invalidateMetagame();
+		if (created && flight.current) invalidateMetagame();
 		return created;
 	}
 
-	async function updateArchetype(eventId: number, archetypeId: number, input: UpdateArchetypeInput) {
+	async function updateArchetype(
+		eventId: number,
+		archetypeId: number,
+		input: UpdateArchetypeInput,
+	) {
 		const flight = lifecycle.currentLifetime();
 		const updated = await lifecycle.update(eventId, archetypeId, input);
 		if (updated && flight.current) {
 			usePlayerDeckStore().applyArchetypeUpdated(updated);
-			await Promise.allSettled([
-				useFeatureMatchStore().loadFeatureMatchesByEventId(eventId),
-			]);
-			if (flight.current)
-				invalidateMetagame();
+			await Promise.allSettled([useFeatureMatchStore().loadFeatureMatchesByEventId(eventId)]);
+			if (flight.current) invalidateMetagame();
 		}
 		return updated;
 	}
@@ -72,18 +68,25 @@ export const useArchetypeStore = defineStore('archetype', () => {
 		const flight = lifecycle.currentLifetime();
 		return executeReporting(
 			async () => {
-				const result = await $fetch<{ keyCards: Array<{ id: number; name: string; game: string; scryfallId: string | null; cardType: string | null; colors: string | null; cmc: number | null; manaCost: string | null }> }>(
-					`/api/events/${eventId}/archetypes/${archetypeId}/cards`,
-					{
-						method: 'PATCH',
-						body: { cardNames },
-						headers: apiHeaders.getHeaders(),
-					},
-				);
-				if (flight.stale)
-					return result.keyCards;
+				const result = await $fetch<{
+					keyCards: Array<{
+						id: number;
+						name: string;
+						game: string;
+						scryfallId: string | null;
+						cardType: string | null;
+						colors: string | null;
+						cmc: number | null;
+						manaCost: string | null;
+					}>;
+				}>(`/api/events/${eventId}/archetypes/${archetypeId}/cards`, {
+					method: 'PATCH',
+					body: { cardNames },
+					headers: apiHeaders.getHeaders(),
+				});
+				if (flight.stale) return result.keyCards;
 				// Update local archetype with new key cards
-				const index = archetypes.value.findIndex(a => a.id === archetypeId);
+				const index = archetypes.value.findIndex((a) => a.id === archetypeId);
 				if (index !== -1) {
 					archetypes.value[index] = { ...archetypes.value[index]!, keyCards: result.keyCards };
 				}
@@ -99,22 +102,16 @@ export const useArchetypeStore = defineStore('archetype', () => {
 		const removed = await lifecycle.remove(eventId, archetypeId);
 		if (removed && flight.current) {
 			usePlayerDeckStore().applyArchetypeDeleted(archetypeId);
-			await Promise.allSettled([
-				useFeatureMatchStore().loadFeatureMatchesByEventId(eventId),
-			]);
-			if (flight.current)
-				invalidateMetagame();
+			await Promise.allSettled([useFeatureMatchStore().loadFeatureMatchesByEventId(eventId)]);
+			if (flight.current) invalidateMetagame();
 		}
 		return removed;
 	}
 
 	/** What an Archetype write touches beyond the Archetypes: the Event's Feature Match Slots and its Metagame. */
 	async function followUp(eventId: number, flight: { current: boolean }) {
-		await Promise.allSettled([
-			useFeatureMatchStore().loadFeatureMatchesByEventId(eventId),
-		]);
-		if (flight.current)
-			invalidateMetagame();
+		await Promise.allSettled([useFeatureMatchStore().loadFeatureMatchesByEventId(eventId)]);
+		if (flight.current) invalidateMetagame();
 	}
 
 	/**
@@ -134,8 +131,7 @@ export const useArchetypeStore = defineStore('archetype', () => {
 			},
 			{ errorRef: error, flight },
 		);
-		if (!merged || flight.stale)
-			return false;
+		if (!merged || flight.stale) return false;
 
 		applyMerged(archetypeId, intoArchetypeId);
 		await followUp(eventId, flight);
@@ -144,33 +140,35 @@ export const useArchetypeStore = defineStore('archetype', () => {
 
 	function applyMerged(archetypeId: number, intoArchetypeId: number) {
 		lifecycle.applyRemoteDeleted(archetypeId);
-		const survivor = archetypes.value.find(archetype => archetype.id === intoArchetypeId);
-		if (survivor)
-			usePlayerDeckStore().applyArchetypeMerged(archetypeId, survivor);
+		const survivor = archetypes.value.find((archetype) => archetype.id === intoArchetypeId);
+		if (survivor) usePlayerDeckStore().applyArchetypeMerged(archetypeId, survivor);
 	}
 
 	/** Removes the Event's Empty Archetypes, answering the ids the server removed. */
 	async function removeEmptyArchetypes(eventId: number) {
 		const flight = lifecycle.currentLifetime();
 		const removed = await executeReporting(
-			async () => (await $fetch<{ archetypeIds: number[] }>(`/api/events/${eventId}/archetypes/empty`, {
-				method: 'DELETE',
-				headers: apiHeaders.getHeaders(),
-			})).archetypeIds,
+			async () =>
+				(
+					await $fetch<{ archetypeIds: number[] }>(`/api/events/${eventId}/archetypes/empty`, {
+						method: 'DELETE',
+						headers: apiHeaders.getHeaders(),
+					})
+				).archetypeIds,
 			{ errorRef: error, flight },
 		);
-		if (!removed || flight.stale)
-			return null;
+		if (!removed || flight.stale) return null;
 
-		for (const archetypeId of removed)
-			lifecycle.applyRemoteDeleted(archetypeId);
+		for (const archetypeId of removed) lifecycle.applyRemoteDeleted(archetypeId);
 		invalidateMetagame();
 		return removed;
 	}
 
 	/** The Event's other Archetype holding a name, ignoring case and surrounding spaces. */
 	function findNameHolder(name: string, renamedArchetypeId?: number): Archetype | undefined {
-		return archetypes.value.find(archetype => archetype.id !== renamedArchetypeId && sameArchetypeName(archetype.name, name));
+		return archetypes.value.find(
+			(archetype) => archetype.id !== renamedArchetypeId && sameArchetypeName(archetype.name, name),
+		);
 	}
 
 	/** The Event's Archetype of a name, ignoring case and surrounding spaces, as the write compares them. */
@@ -182,9 +180,7 @@ export const useArchetypeStore = defineStore('archetype', () => {
 	function findByNameAndColors(name: string, colors: string[]): Archetype | undefined {
 		const archetype = findNameHolder(name);
 		const sorted = (identity: Iterable<string>) => [...identity].sort().join(',');
-		return archetype && sorted(archetype.colors ?? '') === sorted(colors)
-			? archetype
-			: undefined;
+		return archetype && sorted(archetype.colors ?? '') === sorted(colors) ? archetype : undefined;
 	}
 
 	// ── Realtime Handlers ──
@@ -208,7 +204,7 @@ export const useArchetypeStore = defineStore('archetype', () => {
 	}
 
 	function applyRemoteKeyCardsUpdated(data: MessageData<'archetype:keyCardsUpdated'>) {
-		const index = archetypes.value.findIndex(a => a.id === data.archetypeId);
+		const index = archetypes.value.findIndex((a) => a.id === data.archetypeId);
 		if (index !== -1) {
 			archetypes.value[index] = {
 				...archetypes.value[index]!,

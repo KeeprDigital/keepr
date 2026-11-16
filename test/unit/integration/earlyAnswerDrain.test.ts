@@ -20,8 +20,7 @@ import { installEarlyAnswerDrain } from '~~/test/integration/earlyAnswerDrain.mj
 const cleanups: Array<() => unknown> = [];
 
 afterEach(async () => {
-	for (const cleanup of cleanups.splice(0).reverse())
-		await cleanup();
+	for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
 async function serve(handler: Parameters<typeof createServer>[1]) {
@@ -30,12 +29,15 @@ async function serve(handler: Parameters<typeof createServer>[1]) {
 	// Nothing here closes a connection for being idle: Node would reset one 5 s
 	// after its last answer, which a busy enough machine spends between two requests.
 	server.keepAliveTimeout = 0;
-	await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
-	cleanups.push(() => new Promise((resolve) => {
-		server.close(resolve);
-		// One left with a body unread never sees its client go.
-		server.closeAllConnections();
-	}));
+	await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+	cleanups.push(
+		() =>
+			new Promise((resolve) => {
+				server.close(resolve);
+				// One left with a body unread never sees its client go.
+				server.closeAllConnections();
+			}),
+	);
 	return (server.address() as AddressInfo).port;
 }
 
@@ -52,22 +54,24 @@ function connection(port: number) {
 	const socket = connect(port, '127.0.0.1');
 	let received = '';
 	socket.setEncoding('utf8');
-	socket.on('data', (chunk: string) => received += chunk);
+	socket.on('data', (chunk: string) => (received += chunk));
 	socket.on('error', () => {});
 	cleanups.push(() => socket.destroy());
 	const answers = () => received.split('HTTP/1.1 200 OK').length - 1;
 	return { socket, answers };
 }
 
-describe('an integration server\'s early answer', () => {
+describe("an integration server's early answer", () => {
 	it('reads the rest of a body its handler stopped forwarding, so the next request on the connection is answered', async () => {
 		const port = await serve((request, response) => {
 			if (request.url === '/api/parts/1') {
 				// A hop that never drains, as Nitro's proxy is once the worker has answered.
-				request.pipe(new Writable({
-					highWaterMark: 1,
-					write: () => {},
-				}));
+				request.pipe(
+					new Writable({
+						highWaterMark: 1,
+						write: () => {},
+					}),
+				);
 				response.end('already held');
 				return;
 			}
@@ -87,7 +91,7 @@ describe('an integration server\'s early answer', () => {
 	it('leaves alone a body its handler read to the end', async () => {
 		const port = await serve((request, response) => {
 			let length = 0;
-			request.on('data', (chunk: Buffer) => length += chunk.byteLength);
+			request.on('data', (chunk: Buffer) => (length += chunk.byteLength));
 			request.on('end', () => response.end(String(length)));
 		});
 		const { socket, answers } = connection(port);

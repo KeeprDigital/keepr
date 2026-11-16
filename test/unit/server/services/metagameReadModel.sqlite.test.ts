@@ -37,7 +37,8 @@ let monoRedId: number;
 const playerIds: number[] = [];
 
 beforeAll(async () => {
-	const [event, empty] = await db.insert(schema.events)
+	const [event, empty] = await db
+		.insert(schema.events)
 		.values([
 			{ name: 'Metagame', game: 'mtg', featureMatchOrientation: 'horizontal' },
 			{ name: 'Empty', game: 'mtg', featureMatchOrientation: 'horizontal' },
@@ -46,7 +47,8 @@ beforeAll(async () => {
 	eventId = event!.id;
 	emptyEventId = empty!.id;
 
-	const [monoRed] = await db.insert(schema.archetypes)
+	const [monoRed] = await db
+		.insert(schema.archetypes)
 		.values([
 			{ eventId, name: 'Mono Red', colors: 'R' },
 			{ eventId, name: 'Unplayed' },
@@ -54,42 +56,39 @@ beforeAll(async () => {
 		.returning({ id: schema.archetypes.id });
 	monoRedId = monoRed!.id;
 
-	const cardRows = await db.insert(schema.cards)
-		.values([
-			{ name: 'Mountain', cardType: 'Basic Land' },
-			{ name: 'Lightning Bolt', cardType: 'Instant' },
-			{ name: 'Shatterskull Smashing', cardType: 'Sorcery // Land' },
-			{ name: 'Treasure Vault', cardType: 'Artifact Land' },
-			{ name: 'Disdainful Stroke', cardType: 'Instant' },
-			{ name: 'Negate', cardType: 'Instant' },
-			{
-				name: 'Fable of the Mirror-Breaker',
-				cardType: 'Enchantment',
-				deckTokens: [
-					token('token-a', 'Map'),
-				],
-			},
-			{
-				name: 'Reflection Spell',
-				cardType: 'Sorcery',
-				deckTokens: [
-					token('token-b', 'Reflection'),
-					token('token-a', 'Map'),
-				],
-			},
-			{
-				name: 'Surveyor Saga',
-				cardType: 'Enchantment',
-				deckTokens: [
-					token('token-a-copy', ' map '),
-				],
-			},
-			{ name: 'Wrath of God', cardType: 'Sorcery' },
-		].map(card => ({ game: 'mtg' as const, ...card })))
+	const cardRows = await db
+		.insert(schema.cards)
+		.values(
+			[
+				{ name: 'Mountain', cardType: 'Basic Land' },
+				{ name: 'Lightning Bolt', cardType: 'Instant' },
+				{ name: 'Shatterskull Smashing', cardType: 'Sorcery // Land' },
+				{ name: 'Treasure Vault', cardType: 'Artifact Land' },
+				{ name: 'Disdainful Stroke', cardType: 'Instant' },
+				{ name: 'Negate', cardType: 'Instant' },
+				{
+					name: 'Fable of the Mirror-Breaker',
+					cardType: 'Enchantment',
+					deckTokens: [token('token-a', 'Map')],
+				},
+				{
+					name: 'Reflection Spell',
+					cardType: 'Sorcery',
+					deckTokens: [token('token-b', 'Reflection'), token('token-a', 'Map')],
+				},
+				{
+					name: 'Surveyor Saga',
+					cardType: 'Enchantment',
+					deckTokens: [token('token-a-copy', ' map ')],
+				},
+				{ name: 'Wrath of God', cardType: 'Sorcery' },
+			].map((card) => ({ game: 'mtg' as const, ...card })),
+		)
 		.returning({ id: schema.cards.id, name: schema.cards.name });
-	const card = (name: string) => cardRows.find(row => row.name === name)!.id;
+	const card = (name: string) => cardRows.find((row) => row.name === name)!.id;
 
-	const playerRows = await db.insert(schema.players)
+	const playerRows = await db
+		.insert(schema.players)
 		.values([
 			{
 				eventId,
@@ -128,9 +127,15 @@ beforeAll(async () => {
 			{ eventId, name: 'p5', archetypeId: monoRedId },
 		])
 		.returning({ id: schema.players.id });
-	playerIds.push(...playerRows.map(row => row.id));
+	playerIds.push(...playerRows.map((row) => row.id));
 
-	const decks: { player: number; name: string; primary: boolean; reviewed?: boolean; cards: [string, number, 'mainboard' | 'sideboard'][] }[] = [
+	const decks: {
+		player: number;
+		name: string;
+		primary: boolean;
+		reviewed?: boolean;
+		cards: [string, number, 'mainboard' | 'sideboard'][];
+	}[] = [
 		{
 			player: 0,
 			name: 'Red Deck Wins',
@@ -178,13 +183,12 @@ beforeAll(async () => {
 			player: 0,
 			name: 'Old List',
 			primary: false,
-			cards: [
-				['Wrath of God', 4, 'mainboard'],
-			],
+			cards: [['Wrath of God', 4, 'mainboard']],
 		},
 	];
 	for (const [index, deck] of decks.entries()) {
-		const [row] = await db.insert(schema.playerDecks)
+		const [row] = await db
+			.insert(schema.playerDecks)
 			.values({
 				eventId,
 				playerId: playerIds[deck.player]!,
@@ -194,24 +198,24 @@ beforeAll(async () => {
 				name: deck.name,
 				isPrimary: deck.primary,
 				archetypeId: deck.reviewed ? monoRedId : null,
-				reviewedAt: deck.reviewed
-					? new Date('2026-09-01T00:00:00Z')
-					: null,
+				reviewedAt: deck.reviewed ? new Date('2026-09-01T00:00:00Z') : null,
 			})
 			.returning({ id: schema.playerDecks.id });
-		await db.insert(schema.playerDeckCards).values(deck.cards.map(([name, quantity, compartment], sortOrder) => ({
-			deckId: row!.id,
-			cardId: card(name),
-			quantity,
-			compartment,
-			sortOrder,
-		})));
+		await db.insert(schema.playerDeckCards).values(
+			deck.cards.map(([name, quantity, compartment], sortOrder) => ({
+				deckId: row!.id,
+				cardId: card(name),
+				quantity,
+				compartment,
+				sortOrder,
+			})),
+		);
 	}
 });
 
 afterAll(async () => await harness.close());
 
-const names = (entries: { name: string }[]) => entries.map(entry => entry.name).toSorted();
+const names = (entries: { name: string }[]) => entries.map((entry) => entry.name).toSorted();
 
 describe('card breakdown', () => {
 	it('counts primary decks only and leaves basic lands out, keeping nonbasic lands and land-backed spells', async () => {
@@ -228,7 +232,7 @@ describe('card breakdown', () => {
 			'Surveyor Saga',
 			'Treasure Vault',
 		]);
-		expect(result.entries.find(entry => entry.name === 'Lightning Bolt')).toMatchObject({
+		expect(result.entries.find((entry) => entry.name === 'Lightning Bolt')).toMatchObject({
 			totalCopies: 8,
 			deckCount: 2,
 			avgCopies: 4,
@@ -239,10 +243,21 @@ describe('card breakdown', () => {
 	});
 
 	it('recomputes metrics from the chosen board before sorting', async () => {
-		const mainboard = await metagameReadModel().getCardBreakdown(eventId, { scope: 'all', board: 'mainboard', sortBy: 'totalCopies' });
-		const sideboard = await metagameReadModel().getCardBreakdown(eventId, { scope: 'all', board: 'sideboard', sortBy: 'totalCopies' });
+		const mainboard = await metagameReadModel().getCardBreakdown(eventId, {
+			scope: 'all',
+			board: 'mainboard',
+			sortBy: 'totalCopies',
+		});
+		const sideboard = await metagameReadModel().getCardBreakdown(eventId, {
+			scope: 'all',
+			board: 'sideboard',
+			sortBy: 'totalCopies',
+		});
 
-		expect(mainboard.entries.map(entry => entry.name).slice(0, 2)).toEqual(['Lightning Bolt', 'Negate']);
+		expect(mainboard.entries.map((entry) => entry.name).slice(0, 2)).toEqual([
+			'Lightning Bolt',
+			'Negate',
+		]);
 		expect(mainboard.entries[0]).toMatchObject({
 			totalCopies: 6,
 			deckCount: 2,
@@ -250,14 +265,19 @@ describe('card breakdown', () => {
 			inclusionRate: 50,
 		});
 		expect(names(mainboard.entries)).not.toContain('Disdainful Stroke');
-		expect(sideboard.entries.map(entry => [entry.name, entry.totalCopies, entry.deckCount])).toEqual([
+		expect(
+			sideboard.entries.map((entry) => [entry.name, entry.totalCopies, entry.deckCount]),
+		).toEqual([
 			['Disdainful Stroke', 4, 2],
 			['Lightning Bolt', 2, 1],
 		]);
 	});
 
 	it('sorts by the selected metric and honours the limit', async () => {
-		const byAverage = await metagameReadModel().getCardBreakdown(eventId, { scope: 'all', sortBy: 'avgCopies' });
+		const byAverage = await metagameReadModel().getCardBreakdown(eventId, {
+			scope: 'all',
+			sortBy: 'avgCopies',
+		});
 		const limited = await metagameReadModel().getCardBreakdown(eventId, { scope: 'all', limit: 1 });
 
 		expect(byAverage.entries[0]!.name).toBe('Lightning Bolt');
@@ -267,7 +287,7 @@ describe('card breakdown', () => {
 	it.each([
 		{ scope: 'topN', topN: 2 },
 		{ scope: 'minPoints', minPoints: 9 },
-	] as const)('narrows to the scoped Players\' decks: $scope', async (scope) => {
+	] as const)("narrows to the scoped Players' decks: $scope", async (scope) => {
 		const scoped = await metagameReadModel().getCardBreakdown(eventId, scope);
 
 		expect(scoped.totalDecks).toBe(2);
@@ -275,12 +295,16 @@ describe('card breakdown', () => {
 	});
 
 	it('answers an Event without decks with nothing', async () => {
-		expect(await metagameReadModel().getCardBreakdown(emptyEventId, { scope: 'all' }))
-			.toMatchObject({ entries: [], totalDecks: 0, scope: 'all' });
+		expect(
+			await metagameReadModel().getCardBreakdown(emptyEventId, { scope: 'all' }),
+		).toMatchObject({ entries: [], totalDecks: 0, scope: 'all' });
 	});
 
-	it('narrows to one Archetype\'s decks by its id, and names the Archetype it counted', async () => {
-		const filtered = await metagameReadModel().getCardBreakdown(eventId, { scope: 'all', archetypeId: monoRedId });
+	it("narrows to one Archetype's decks by its id, and names the Archetype it counted", async () => {
+		const filtered = await metagameReadModel().getCardBreakdown(eventId, {
+			scope: 'all',
+			archetypeId: monoRedId,
+		});
 
 		expect(filtered).toMatchObject({
 			totalDecks: 2,
@@ -294,24 +318,31 @@ describe('card breakdown', () => {
 		]);
 	});
 
-	it('names no Archetype while it counts every Archetype\'s decks', async () => {
-		expect(await metagameReadModel().getCardBreakdown(eventId, { scope: 'all' })).not.toHaveProperty('archetype');
+	it("names no Archetype while it counts every Archetype's decks", async () => {
+		expect(
+			await metagameReadModel().getCardBreakdown(eventId, { scope: 'all' }),
+		).not.toHaveProperty('archetype');
 	});
 
 	it.each([
+		['an Archetype no Event holds', async () => 999_999],
 		[
-			'an Archetype no Event holds',
-			async () => 999_999,
-		],
-		[
-			'another Event\'s Archetype',
-			async () => (await db.insert(schema.archetypes)
-				.values({ eventId: emptyEventId, name: 'Elsewhere' })
-				.returning({ id: schema.archetypes.id }))[0]!.id,
+			"another Event's Archetype",
+			async () =>
+				(
+					await db
+						.insert(schema.archetypes)
+						.values({ eventId: emptyEventId, name: 'Elsewhere' })
+						.returning({ id: schema.archetypes.id })
+				)[0]!.id,
 		],
 	])('counts nothing, and names nothing, for %s', async (_what, archetypeId) => {
-		expect(await metagameReadModel().getCardBreakdown(eventId, { scope: 'all', archetypeId: await archetypeId() }))
-			.toEqual({ entries: [], totalDecks: 0, scope: 'all' });
+		expect(
+			await metagameReadModel().getCardBreakdown(eventId, {
+				scope: 'all',
+				archetypeId: await archetypeId(),
+			}),
+		).toEqual({ entries: [], totalDecks: 0, scope: 'all' });
 	});
 });
 
@@ -321,7 +352,8 @@ describe('pointed cards', () => {
 	let pointedEventId: number;
 
 	beforeAll(async () => {
-		const [event] = await db.insert(schema.events)
+		const [event] = await db
+			.insert(schema.events)
 			.values({
 				name: 'Pointed',
 				game: 'mtg',
@@ -331,16 +363,35 @@ describe('pointed cards', () => {
 			.returning({ id: schema.events.id });
 		pointedEventId = event!.id;
 
-		const cardRows = await db.insert(schema.cards)
-			.values([
-				{ name: 'Demonic Tutor', cardType: 'Sorcery', oracleId: '82004860-e589-4e38-8d61-8c0210e4ea39' },
-				{ name: 'Tolarian Academy', cardType: 'Legendary Land', oracleId: 'dba4fd31-8931-42dd-bd86-45479c2abf74' },
-				{ name: 'Snapcaster Mage', cardType: 'Creature', oracleId: '2bb2eda7-3b38-4c56-870f-c3218a1056f5' },
-				{ name: 'Lurrus of the Dream-Den', cardType: 'Creature', oracleId: '3bc757c1-3adb-4321-8832-8e1cc9e687f7' },
-				{ name: 'Counterspell', cardType: 'Instant', oracleId: 'counterspell-oracle' },
-			].map(card => ({ game: 'mtg' as const, ...card })))
+		const cardRows = await db
+			.insert(schema.cards)
+			.values(
+				[
+					{
+						name: 'Demonic Tutor',
+						cardType: 'Sorcery',
+						oracleId: '82004860-e589-4e38-8d61-8c0210e4ea39',
+					},
+					{
+						name: 'Tolarian Academy',
+						cardType: 'Legendary Land',
+						oracleId: 'dba4fd31-8931-42dd-bd86-45479c2abf74',
+					},
+					{
+						name: 'Snapcaster Mage',
+						cardType: 'Creature',
+						oracleId: '2bb2eda7-3b38-4c56-870f-c3218a1056f5',
+					},
+					{
+						name: 'Lurrus of the Dream-Den',
+						cardType: 'Creature',
+						oracleId: '3bc757c1-3adb-4321-8832-8e1cc9e687f7',
+					},
+					{ name: 'Counterspell', cardType: 'Instant', oracleId: 'counterspell-oracle' },
+				].map((card) => ({ game: 'mtg' as const, ...card })),
+			)
 			.returning({ id: schema.cards.id, name: schema.cards.name });
-		const card = (name: string) => cardRows.find(row => row.name === name)!.id;
+		const card = (name: string) => cardRows.find((row) => row.name === name)!.id;
 
 		const decks: [string, [string, number, 'mainboard' | 'sideboard'][]][] = [
 			[
@@ -361,10 +412,12 @@ describe('pointed cards', () => {
 			],
 		];
 		for (const [index, [name, deckCards]] of decks.entries()) {
-			const [player] = await db.insert(schema.players)
+			const [player] = await db
+				.insert(schema.players)
 				.values({ eventId: pointedEventId, name, position: index + 1 })
 				.returning({ id: schema.players.id });
-			const [deck] = await db.insert(schema.playerDecks)
+			const [deck] = await db
+				.insert(schema.playerDecks)
 				.values({
 					eventId: pointedEventId,
 					playerId: player!.id,
@@ -375,20 +428,22 @@ describe('pointed cards', () => {
 					isPrimary: true,
 				})
 				.returning({ id: schema.playerDecks.id });
-			await db.insert(schema.playerDeckCards).values(deckCards.map(([cardName, quantity, compartment], sortOrder) => ({
-				deckId: deck!.id,
-				cardId: card(cardName),
-				quantity,
-				compartment,
-				sortOrder,
-			})));
+			await db.insert(schema.playerDeckCards).values(
+				deckCards.map(([cardName, quantity, compartment], sortOrder) => ({
+					deckId: deck!.id,
+					cardId: card(cardName),
+					quantity,
+					compartment,
+					sortOrder,
+				})),
+			);
 		}
 	});
 
-	it('gives each card its points under the Event\'s points system, and none to cards it does not point', async () => {
+	it("gives each card its points under the Event's points system, and none to cards it does not point", async () => {
 		const result = await metagameReadModel().getCardBreakdown(pointedEventId, { scope: 'all' });
 
-		expect(result.entries.map(entry => [entry.name, entry.highlanderPoints]).toSorted()).toEqual([
+		expect(result.entries.map((entry) => [entry.name, entry.highlanderPoints]).toSorted()).toEqual([
 			['Counterspell', null],
 			['Demonic Tutor', 2],
 			['Lurrus of the Dream-Den', null],
@@ -398,16 +453,23 @@ describe('pointed cards', () => {
 	});
 
 	it('keeps only pointed cards before the limit applies', async () => {
-		const result = await metagameReadModel().getCardBreakdown(pointedEventId, { scope: 'all', pointedOnly: true, limit: 2 });
+		const result = await metagameReadModel().getCardBreakdown(pointedEventId, {
+			scope: 'all',
+			pointedOnly: true,
+			limit: 2,
+		});
 
-		expect(result.entries.map(entry => entry.name)).toEqual(['Demonic Tutor', 'Snapcaster Mage']);
+		expect(result.entries.map((entry) => entry.name)).toEqual(['Demonic Tutor', 'Snapcaster Mage']);
 	});
 
 	it('leaves points off an Event without a points system, where no card is pointed', async () => {
 		const all = await metagameReadModel().getCardBreakdown(eventId, { scope: 'all' });
-		const pointed = await metagameReadModel().getCardBreakdown(eventId, { scope: 'all', pointedOnly: true });
+		const pointed = await metagameReadModel().getCardBreakdown(eventId, {
+			scope: 'all',
+			pointedOnly: true,
+		});
 
-		expect(all.entries.some(entry => 'highlanderPoints' in entry)).toBe(false);
+		expect(all.entries.some((entry) => 'highlanderPoints' in entry)).toBe(false);
 		expect(pointed.entries).toEqual([]);
 	});
 });
@@ -417,11 +479,13 @@ describe('token requirements', () => {
 		const result = await metagameReadModel().getTokenRequirements(eventId, { scope: 'all' });
 
 		expect(result.totalDecks).toBe(4);
-		expect(result.entries.map(entry => [entry.name, entry.deckCount, entry.sourceCardCount])).toEqual([
+		expect(
+			result.entries.map((entry) => [entry.name, entry.deckCount, entry.sourceCardCount]),
+		).toEqual([
 			['Map', 2, 3],
 			['Reflection', 1, 1],
 		]);
-		expect(result.entries[0]!.sourceCards.map(card => card.name)).toEqual([
+		expect(result.entries[0]!.sourceCards.map((card) => card.name)).toEqual([
 			'Fable of the Mirror-Breaker',
 			'Reflection Spell',
 			'Surveyor Saga',
@@ -429,13 +493,14 @@ describe('token requirements', () => {
 	});
 
 	it('answers no tokens for a scope whose decks need none', async () => {
-		expect(await metagameReadModel().getTokenRequirements(eventId, { scope: 'topN', topN: 2 }))
-			.toEqual({ entries: [], totalDecks: 2, scope: 'topN' });
+		expect(
+			await metagameReadModel().getTokenRequirements(eventId, { scope: 'topN', topN: 2 }),
+		).toEqual({ entries: [], totalDecks: 2, scope: 'topN' });
 	});
 });
 
 describe('summary', () => {
-	it('reports the Event\'s counts and leaves basic lands out of the top cards', async () => {
+	it("reports the Event's counts and leaves basic lands out of the top cards", async () => {
 		const result = await metagameReadModel().getSummary(eventId, { scope: 'all' });
 
 		expect(result).toMatchObject({
@@ -446,22 +511,27 @@ describe('summary', () => {
 			scopedArchetypeCount: 1,
 			scope: 'all',
 		});
-		expect(result.topCards.map(entry => entry.name)).not.toContain('Mountain');
-		expect(result.facts).toEqual(expect.arrayContaining([
-			expect.objectContaining({ key: 'mostPlayedCards' }),
-		]));
+		expect(result.topCards.map((entry) => entry.name)).not.toContain('Mountain');
+		expect(result.facts).toEqual(
+			expect.arrayContaining([expect.objectContaining({ key: 'mostPlayedCards' })]),
+		);
 	});
 });
 
 describe('archetype detail', () => {
-	it('names each Player\'s deck by the reviewed Archetype, the submitted deck, or nothing', async () => {
-		const detail = await metagameReadModel().getArchetypeDetail(eventId, { scope: 'all', archetypeId: monoRedId });
+	it("names each Player's deck by the reviewed Archetype, the submitted deck, or nothing", async () => {
+		const detail = await metagameReadModel().getArchetypeDetail(eventId, {
+			scope: 'all',
+			archetypeId: monoRedId,
+		});
 
-		expect(detail?.players.map(player => [player.name, player.deckName])).toEqual(expect.arrayContaining([
-			['p1', 'Mono Red'],
-			['p2', 'Boros Burn'],
-			['p5', null],
-		]));
+		expect(detail?.players.map((player) => [player.name, player.deckName])).toEqual(
+			expect.arrayContaining([
+				['p1', 'Mono Red'],
+				['p2', 'Boros Burn'],
+				['p5', null],
+			]),
+		);
 		expect(detail?.playerCount).toBe(3);
 	});
 });

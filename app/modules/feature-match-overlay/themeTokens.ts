@@ -16,12 +16,17 @@ export interface FeatureMatchOverlayThemeValues {
 	sourceSurface: FeatureMatchOverlaySurface;
 }
 
-export function resolveFeatureMatchOverlayThemeValues(theme: StoredThemeTokens, overrides: StoredThemeTokens): FeatureMatchOverlayThemeValues {
+export function resolveFeatureMatchOverlayThemeValues(
+	theme: StoredThemeTokens,
+	overrides: StoredThemeTokens,
+): FeatureMatchOverlayThemeValues {
 	const { values } = resolveScreenThemeTokens('feature-match-overlay', theme, overrides);
 	return {
 		frameSurface: values['feature-match-overlay.frame-surface'] as FeatureMatchOverlaySurface,
 		frameMedia: values['feature-match-overlay.frame-media'] as ThemeAsset | null,
-		frameAnimationEffect: values['feature-match-overlay.frame-animation-effect'] as AnimationEffectSelection,
+		frameAnimationEffect: values[
+			'feature-match-overlay.frame-animation-effect'
+		] as AnimationEffectSelection,
 		sourceSurface: values['feature-match-overlay.source-surface'] as FeatureMatchOverlaySurface,
 	};
 }

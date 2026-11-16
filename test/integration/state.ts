@@ -25,8 +25,7 @@ export const INTEGRATION_SERVERS_ENV = 'STREAM_KEEPR_INTEGRATION_SERVERS';
  */
 export function integrationServerCount(env: NodeJS.ProcessEnv = process.env): number {
 	const requested = Number.parseInt(env[INTEGRATION_SERVERS_ENV] ?? '', 10);
-	if (Number.isInteger(requested) && requested > 0)
-		return requested;
+	if (Number.isInteger(requested) && requested > 0) return requested;
 	return Math.max(1, Math.min(4, Math.floor(availableParallelism() / 3)));
 }
 
@@ -46,16 +45,21 @@ const INTEGRATION_EVENT_ID_BLOCKS = Math.floor((2 ** 31 - 1) / INTEGRATION_EVENT
  * is never drawn, and every id stays a positive int32 like the small ids a
  * production database mints. `random` returns [0, 1), as `Math.random` does.
  */
-export function integrationEventIdBlocks(count: number, random: () => number = Math.random): number[] {
+export function integrationEventIdBlocks(
+	count: number,
+	random: () => number = Math.random,
+): number[] {
 	if (count > INTEGRATION_EVENT_ID_BLOCKS)
-		throw new Error(`Cannot give ${count} integration servers disjoint Event ids; at most ${INTEGRATION_EVENT_ID_BLOCKS}`);
+		throw new Error(
+			`Cannot give ${count} integration servers disjoint Event ids; at most ${INTEGRATION_EVENT_ID_BLOCKS}`,
+		);
 	const blocks = new Set<number>();
 	let block = 1 + Math.floor(random() * INTEGRATION_EVENT_ID_BLOCKS);
 	while (blocks.size < count) {
 		blocks.add(block);
-		block = block % INTEGRATION_EVENT_ID_BLOCKS + 1;
+		block = (block % INTEGRATION_EVENT_ID_BLOCKS) + 1;
 	}
-	return [...blocks].map(drawn => drawn * INTEGRATION_EVENT_ID_BLOCK_SIZE);
+	return [...blocks].map((drawn) => drawn * INTEGRATION_EVENT_ID_BLOCK_SIZE);
 }
 
 /** The state directory of the `slot`th server (1-based), matching `VITEST_POOL_ID`. */
@@ -94,12 +98,11 @@ export function withoutAblyKey(env: Record<string, string>): Record<string, stri
  * this it would wait out its timeout for a publish that never left.
  */
 export function assertRealtimeTestFile(env: NodeJS.ProcessEnv = process.env) {
-	if (env[INTEGRATION_KEYLESS_WORKER_ENV] !== 'true')
-		return;
+	if (env[INTEGRATION_KEYLESS_WORKER_ENV] !== 'true') return;
 	throw new Error(
-		'This file reads the Ably key, but it runs against an integration server that has none. '
-		+ 'Only *.realtime.test.ts files run against the server holding the key: rename this file, '
-		+ 'or move its realtime test into one that is. See test/integration/state.ts § realtime server.',
+		'This file reads the Ably key, but it runs against an integration server that has none. ' +
+			'Only *.realtime.test.ts files run against the server holding the key: rename this file, ' +
+			'or move its realtime test into one that is. See test/integration/state.ts § realtime server.',
 	);
 }
 
@@ -120,13 +123,23 @@ export function announceIntegrationMode(env: NodeJS.ProcessEnv = process.env) {
 }
 
 export function getIntegrationWranglerPersistDir() {
-	return process.env[INTEGRATION_WRANGLER_PERSIST_DIR_ENV] ?? DEFAULT_INTEGRATION_WRANGLER_PERSIST_DIR;
+	return (
+		process.env[INTEGRATION_WRANGLER_PERSIST_DIR_ENV] ?? DEFAULT_INTEGRATION_WRANGLER_PERSIST_DIR
+	);
 }
 
-export function resolveIntegrationWranglerPersistDir(rootDir = process.cwd(), persistDir = getIntegrationWranglerPersistDir()) {
+export function resolveIntegrationWranglerPersistDir(
+	rootDir = process.cwd(),
+	persistDir = getIntegrationWranglerPersistDir(),
+) {
 	return resolve(rootDir, persistDir);
 }
 
-export async function resetIntegrationWranglerState(persistDir = getIntegrationWranglerPersistDir()) {
-	await rm(resolveIntegrationWranglerPersistDir(process.cwd(), persistDir), { recursive: true, force: true });
+export async function resetIntegrationWranglerState(
+	persistDir = getIntegrationWranglerPersistDir(),
+) {
+	await rm(resolveIntegrationWranglerPersistDir(process.cwd(), persistDir), {
+		recursive: true,
+		force: true,
+	});
 }

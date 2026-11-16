@@ -29,7 +29,7 @@ function mountPanel({
 	const { layout } = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 	return mount(MultiLayerInspector, {
 		props: {
-			rects: layers.map(layer => editorSelectionLayer(layout, layer)!),
+			rects: layers.map((layer) => editorSelectionLayer(layout, layer)!),
 			writable,
 			groupRefusal,
 			canAlign,
@@ -66,26 +66,18 @@ describe('graphicsMultiLayerInspector', () => {
 
 		await field(wrapper, 'y').setValue('120');
 
-		expect(wrapper.emitted('update')).toEqual([
-			[
-				{ y: 120 },
-			],
-		]);
+		expect(wrapper.emitted('update')).toEqual([[{ y: 120 }]]);
 	});
 
 	it.each([
 		{
-			case: 'a shared field\'s label writes the dragged value to every layer',
+			case: "a shared field's label writes the dragged value to every layer",
 			axis: 'X',
 			writable: true,
-			updates: [
-				[
-					{ x: 27 },
-				],
-			],
+			updates: [[{ x: 27 }]],
 		},
 		{
-			case: 'a Mixed field\'s label writes nothing',
+			case: "a Mixed field's label writes nothing",
 			axis: 'Y',
 			writable: true,
 			updates: undefined,
@@ -99,7 +91,7 @@ describe('graphicsMultiLayerInspector', () => {
 	])('dragging $case', async ({ axis, writable, updates }) => {
 		stubPointerCapture();
 		const wrapper = mountPanel({ writable });
-		const label = wrapper.findAll('[data-number-scrub]').find(handle => handle.text() === axis)!;
+		const label = wrapper.findAll('[data-number-scrub]').find((handle) => handle.text() === axis)!;
 
 		await label.trigger('pointerdown', { button: 0, pointerId: 1, clientX: 0 });
 		await label.trigger('pointermove', { pointerId: 1, clientX: 6 });
@@ -121,18 +113,12 @@ describe('graphicsMultiLayerInspector', () => {
 
 	// E8: a selection ⌘G cannot group says why beside the disabled control (#920).
 	it.each([
-		[
-			'groups a selection it can',
-			{ groupRefusal: null },
-			false,
-			'',
-			[[]],
-		],
+		['groups a selection it can', { groupRefusal: null }, false, '', [[]]],
 		[
 			'says why a Source Item keeps it from grouping',
 			{ groupRefusal: 'source-item' as const },
 			true,
-			'Source Items can\'t be grouped',
+			"Source Items can't be grouped",
 			undefined,
 		],
 		[
@@ -150,9 +136,7 @@ describe('graphicsMultiLayerInspector', () => {
 		await button.trigger('click');
 
 		expect(button.attributes('disabled') !== undefined).toBe(disabled);
-		expect(refusal.exists()
-			? refusal.text()
-			: '').toBe(reason);
+		expect(refusal.exists() ? refusal.text() : '').toBe(reason);
 		expect(wrapper.emitted('group')).toEqual(emitted);
 	});
 
@@ -166,37 +150,34 @@ describe('graphicsMultiLayerInspector', () => {
 
 		await wrapper.get(`button[aria-label="${label}"]`).trigger('click');
 
-		expect(wrapper.emitted(event)).toEqual([
-			[argument],
-		]);
+		expect(wrapper.emitted(event)).toEqual([[argument]]);
 	});
 
 	// Distributing needs three, so two selected layers are offered alignment alone.
 	it.each([
 		[2, 6, 0],
 		[3, 6, 2],
-	])('offers %i selected layers %i align and %i distribute controls', (count, aligns, distributes) => {
-		const wrapper = mountPanel({
-			layers: SELECTED.slice(0, count),
-		});
+	])(
+		'offers %i selected layers %i align and %i distribute controls',
+		(count, aligns, distributes) => {
+			const wrapper = mountPanel({
+				layers: SELECTED.slice(0, count),
+			});
 
-		expect(wrapper.findAll('button[aria-label^="Align "]')).toHaveLength(aligns);
-		expect(wrapper.findAll('button[aria-label^="Distribute "]')).toHaveLength(distributes);
-	});
+			expect(wrapper.findAll('button[aria-label^="Align "]')).toHaveLength(aligns);
+			expect(wrapper.findAll('button[aria-label^="Distribute "]')).toHaveLength(distributes);
+		},
+	);
 
 	it.each([
-		[
-			'layers that do not align',
-			{ canAlign: false, canDistribute: false },
-		],
-		[
-			'a session without the lease',
-			{ writable: false },
-		],
+		['layers that do not align', { canAlign: false, canDistribute: false }],
+		['a session without the lease', { writable: false }],
 	])('aligns and distributes nothing for %s', async (_case, options) => {
 		const wrapper = mountPanel(options);
 
-		for (const button of wrapper.findAll('button[aria-label^="Align "], button[aria-label^="Distribute "]')) {
+		for (const button of wrapper.findAll(
+			'button[aria-label^="Align "], button[aria-label^="Distribute "]',
+		)) {
 			expect(button.attributes('disabled')).toBeDefined();
 			await button.trigger('click');
 		}

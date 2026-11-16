@@ -6,7 +6,11 @@ const ALICE = 1;
 const BOB = 2;
 const CAROL = 3;
 
-function playerFacts(id: number, name: string, overrides: Partial<HeadToHeadPlayerFacts> = {}): HeadToHeadPlayerFacts {
+function playerFacts(
+	id: number,
+	name: string,
+	overrides: Partial<HeadToHeadPlayerFacts> = {},
+): HeadToHeadPlayerFacts {
 	return {
 		player: {
 			id,
@@ -148,13 +152,14 @@ describe('projectHeadToHead', () => {
 		});
 
 		it('leaves a side no Player fills empty', () => {
-			expect(projectHeadToHead({
-				player1: null,
-				player2: null,
-				matches: [],
-				currentMatchId: null,
-			}))
-				.toEqual({ player1: null, player2: null, earlierMatches: [] });
+			expect(
+				projectHeadToHead({
+					player1: null,
+					player2: null,
+					matches: [],
+					currentMatchId: null,
+				}),
+			).toEqual({ player1: null, player2: null, earlierMatches: [] });
 		});
 	});
 
@@ -210,12 +215,14 @@ describe('projectHeadToHead', () => {
 		it('leaves out the current Match even once it is reported', () => {
 			const current = match();
 
-			expect(projectHeadToHead({
-				player1: alice,
-				player2: bob,
-				matches: [current],
-				currentMatchId: current.id,
-			}).earlierMatches).toEqual([]);
+			expect(
+				projectHeadToHead({
+					player1: alice,
+					player2: bob,
+					matches: [current],
+					currentMatchId: current.id,
+				}).earlierMatches,
+			).toEqual([]);
 		});
 
 		it('leaves out Matches against anyone else', () => {
@@ -225,12 +232,14 @@ describe('projectHeadToHead', () => {
 				match({ player1Id: ALICE, player2Id: null, isBye: true }),
 			];
 
-			expect(projectHeadToHead({
-				player1: alice,
-				player2: bob,
-				matches: others,
-				currentMatchId: null,
-			}).earlierMatches).toEqual([]);
+			expect(
+				projectHeadToHead({
+					player1: alice,
+					player2: bob,
+					matches: others,
+					currentMatchId: null,
+				}).earlierMatches,
+			).toEqual([]);
 		});
 
 		it('lists earlier Matches oldest first: by Phase, then Round, then table order', () => {
@@ -250,18 +259,22 @@ describe('projectHeadToHead', () => {
 				currentMatchId: null,
 			});
 
-			expect(earlierMatches.map(earlierMatch => earlierMatch.roundName)).toEqual(['Round 2', 'Round 5', 'Quarterfinal']);
+			expect(earlierMatches.map((earlierMatch) => earlierMatch.roundName)).toEqual([
+				'Round 2',
+				'Round 5',
+				'Quarterfinal',
+			]);
 		});
 
 		it('lists none until both sides hold a Player', () => {
-			expect(projectHeadToHead({
-				player1: alice,
-				player2: null,
-				matches: [
-					match(),
-				],
-				currentMatchId: null,
-			}).earlierMatches).toEqual([]);
+			expect(
+				projectHeadToHead({
+					player1: alice,
+					player2: null,
+					matches: [match()],
+					currentMatchId: null,
+				}).earlierMatches,
+			).toEqual([]);
 		});
 	});
 });

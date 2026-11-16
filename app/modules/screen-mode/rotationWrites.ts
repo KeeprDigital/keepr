@@ -4,7 +4,13 @@ import type { PageRotationConfig } from '~~/shared/screenModeConfigs/subShapes';
 import type { PageRotationMode } from '~~/shared/screenModes';
 import type { ModeConfigTypeMap, ScreenModeConfigPatch } from '~~/shared/types/screenConfig';
 import { computed } from 'vue';
-import { pageRotationEdit, restartedRotationAnchor, rotationAnchorForPage, rotationPageCount, rotationPageSize } from '~~/shared/modules/page-rotation';
+import {
+	pageRotationEdit,
+	restartedRotationAnchor,
+	rotationAnchorForPage,
+	rotationPageCount,
+	rotationPageSize,
+} from '~~/shared/modules/page-rotation';
 import { screenModeConfigContract, screenModePageRotation } from '~~/shared/screenModes';
 import { useProjectedRotationPage } from './pagination';
 
@@ -76,7 +82,10 @@ export function useRotationConfigWrites<M extends PageRotationMode>(
 ): RotationConfigWrites<M> {
 	const { getServerTime } = useServerTime();
 	const declaration = screenModePageRotation(options.mode);
-	const contractFields = screenModeConfigContract(options.mode).fields as Record<string, ScreenModeConfigField>;
+	const contractFields = screenModeConfigContract(options.mode).fields as Record<
+		string,
+		ScreenModeConfigField
+	>;
 	const fields: PageRotationFields = {
 		pageSize: contractFields[declaration.pageSize]!,
 		autoPageEnabled: contractFields.autoPageEnabled!,
@@ -119,12 +128,14 @@ export function useRotationConfigWrites<M extends PageRotationMode>(
 	}
 
 	function setAutoPageEnabled(enabled: boolean) {
-		saveRotation(enabled
-			? {
-					autoPageEnabled: true,
-					rotationAnchor: restartedRotationAnchor(getServerTime()),
-				}
-			: { autoPageEnabled: false });
+		saveRotation(
+			enabled
+				? {
+						autoPageEnabled: true,
+						rotationAnchor: restartedRotationAnchor(getServerTime()),
+					}
+				: { autoPageEnabled: false },
+		);
 	}
 
 	// A manual selection while the rotation runs re-anchors it — the chosen
@@ -141,22 +152,17 @@ export function useRotationConfigWrites<M extends PageRotationMode>(
 					now: getServerTime(),
 				}),
 			});
-		}
-		else {
+		} else {
 			saveRotation({ currentPage: page });
 		}
 	}
 
 	function adminNextPage() {
-		adminSetPage(currentPage.value < totalPages.value
-			? currentPage.value + 1
-			: 1);
+		adminSetPage(currentPage.value < totalPages.value ? currentPage.value + 1 : 1);
 	}
 
 	function adminPrevPage() {
-		adminSetPage(currentPage.value > 1
-			? currentPage.value - 1
-			: totalPages.value);
+		adminSetPage(currentPage.value > 1 ? currentPage.value - 1 : totalPages.value);
 	}
 
 	return {

@@ -1,4 +1,7 @@
-import type { GraphicAssetReference, GraphicAssetReferenceStatus } from '~~/shared/types/graphicsAsset';
+import type {
+	GraphicAssetReference,
+	GraphicAssetReferenceStatus,
+} from '~~/shared/types/graphicsAsset';
 import { graphicAssetRevisionStatusPath } from '~~/shared/utils/graphicsAssetReferences';
 
 /**
@@ -34,6 +37,8 @@ export async function graphicAssetReferenceStatus(
 export async function graphicAssetReferenceStatusOrUnavailable(
 	reference: GraphicAssetReference,
 ): Promise<GraphicAssetReferenceStatus> {
-	return await graphicAssetReferenceStatus(reference)
-		.catch((): GraphicAssetReferenceStatus => ({ outcome: 'unavailable', retryable: true }));
+	return await graphicAssetReferenceStatus(reference).catch((): GraphicAssetReferenceStatus => ({
+		outcome: 'unavailable',
+		retryable: true,
+	}));
 }

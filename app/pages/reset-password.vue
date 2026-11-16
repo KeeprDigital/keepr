@@ -44,15 +44,15 @@ const submitting = ref(false);
 const refusal = ref<string | null>(null);
 const done = ref(false);
 
-const mismatched = computed(() =>
-	form.confirmation.length > 0 && form.password !== form.confirmation);
+const mismatched = computed(
+	() => form.confirmation.length > 0 && form.password !== form.confirmation,
+);
 
 async function submit() {
 	// Enter pressed twice on a slow connection is one person asking once — and
 	// here it is worse than wasted: the link is single-use, so a second request
 	// carrying the same token is one the server has already consumed.
-	if (submitting.value || !token.value)
-		return;
+	if (submitting.value || !token.value) return;
 
 	if (form.password !== form.confirmation) {
 		refusal.value = 'The two passwords do not match.';
@@ -83,16 +83,12 @@ async function submit() {
 	<div class="min-h-screen flex items-center justify-center p-4">
 		<UCard class="w-full max-w-sm">
 			<div v-if="done" class="flex flex-col gap-4">
-				<h1 class="text-lg font-semibold">
-					Password set
-				</h1>
+				<h1 class="text-lg font-semibold">Password set</h1>
 				<p class="text-sm text-muted">
-					You can sign in with it now. This link has been used and will not work again,
-					and anywhere else this account was signed in has been signed out.
+					You can sign in with it now. This link has been used and will not work again, and anywhere
+					else this account was signed in has been signed out.
 				</p>
-				<UButton :to="LOGIN_PATH" color="primary" block>
-					Go to sign in
-				</UButton>
+				<UButton :to="LOGIN_PATH" color="primary" block> Go to sign in </UButton>
 			</div>
 
 			<!--
@@ -101,28 +97,17 @@ async function submit() {
 				that fixes it, rather than shown a form that could not work.
 			-->
 			<div v-else-if="token === null" class="flex flex-col gap-4">
-				<h1 class="text-lg font-semibold">
-					This link is not valid
-				</h1>
+				<h1 class="text-lg font-semibold">This link is not valid</h1>
 				<p class="text-sm text-muted">
-					Password reset links are issued by an administrator and can only be used
-					once. Ask for a new one.
+					Password reset links are issued by an administrator and can only be used once. Ask for a
+					new one.
 				</p>
-				<UButton
-					:to="LOGIN_PATH"
-					color="neutral"
-					variant="outline"
-					block
-				>
-					Go to sign in
-				</UButton>
+				<UButton :to="LOGIN_PATH" color="neutral" variant="outline" block> Go to sign in </UButton>
 			</div>
 
 			<UForm v-else :state="form" @submit="submit">
 				<div class="flex flex-col gap-4">
-					<h1 class="text-lg font-semibold">
-						Set a password
-					</h1>
+					<h1 class="text-lg font-semibold">Set a password</h1>
 
 					<UAlert
 						v-if="refusal"
@@ -167,9 +152,7 @@ async function submit() {
 						Set password
 					</UButton>
 
-					<p class="text-xs text-muted text-center">
-						This link can only be used once.
-					</p>
+					<p class="text-xs text-muted text-center">This link can only be used once.</p>
 				</div>
 			</UForm>
 		</UCard>

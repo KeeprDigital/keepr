@@ -32,7 +32,7 @@ const RETRY_DELAY_MS = 10_000;
 
 /** @param {number} ms */
 function sleep(ms) {
-	return new Promise(resolve => setTimeout(resolve, ms));
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -53,7 +53,11 @@ function sleep(ms) {
  * @param {{ attempts?: number, wait?: (ms: number) => Promise<void> }} [options] how long to wait for an unfinished run
  * @returns {Promise<string[]>} one line per refused release
  */
-export async function checkPendingReleases(pending, runsFor, { attempts = DEFAULT_ATTEMPTS, wait = sleep } = {}) {
+export async function checkPendingReleases(
+	pending,
+	runsFor,
+	{ attempts = DEFAULT_ATTEMPTS, wait = sleep } = {},
+) {
 	/** @type {string[]} */
 	const problems = [];
 	for (const { number, mergeCommit } of pending) {
@@ -63,16 +67,19 @@ export async function checkPendingReleases(pending, runsFor, { attempts = DEFAUL
 		}
 		let verified = false;
 		for (let attempt = 1; attempt <= attempts; attempt += 1) {
-			const queueRuns = (await runsFor(mergeCommit)).filter(run => run.event === 'merge_group'
-				&& run.path === CI_WORKFLOW
-				&& run.head_sha === mergeCommit);
-			verified = queueRuns.some(run => run.conclusion === 'success');
-			if (verified || !queueRuns.some(run => run.conclusion === null) || attempt === attempts)
+			const queueRuns = (await runsFor(mergeCommit)).filter(
+				(run) =>
+					run.event === 'merge_group' && run.path === CI_WORKFLOW && run.head_sha === mergeCommit,
+			);
+			verified = queueRuns.some((run) => run.conclusion === 'success');
+			if (verified || !queueRuns.some((run) => run.conclusion === null) || attempt === attempts)
 				break;
 			await wait(RETRY_DELAY_MS);
 		}
 		if (!verified)
-			problems.push(`Release PR #${number} landed as ${mergeCommit}, which no successful merge-queue CI run verified.`);
+			problems.push(
+				`Release PR #${number} landed as ${mergeCommit}, which no successful merge-queue CI run verified.`,
+			);
 	}
 	return problems;
 }
@@ -102,20 +109,31 @@ async function main() {
 		'--json',
 		'number,mergeCommit',
 	]);
-	const pending = merged.map(pr => ({ number: pr.number, mergeCommit: pr.mergeCommit?.oid ?? null }));
-	const problems = await checkPendingReleases(pending, async sha => gh(['api', `repos/${repository}/actions/runs?head_sha=${sha}&event=merge_group&per_page=100`]).workflow_runs);
+	const pending = merged.map((pr) => ({
+		number: pr.number,
+		mergeCommit: pr.mergeCommit?.oid ?? null,
+	}));
+	const problems = await checkPendingReleases(
+		pending,
+		async (sha) =>
+			gh(['api', `repos/${repository}/actions/runs?head_sha=${sha}&event=merge_group&per_page=100`])
+				.workflow_runs,
+	);
 	if (problems.length === 0) {
-		console.log(pending.length === 0
-			? 'No merged Release PR is waiting for its tag.'
-			: `Pending release${pending.length > 1
-				? 's'
-				: ''} ${pending.map(pr => `#${pr.number}`).join(', ')} passed CI in the merge queue.`);
+		console.log(
+			pending.length === 0
+				? 'No merged Release PR is waiting for its tag.'
+				: `Pending release${
+						pending.length > 1 ? 's' : ''
+					} ${pending.map((pr) => `#${pr.number}`).join(', ')} passed CI in the merge queue.`,
+		);
 		return;
 	}
 	for (const problem of problems)
-		console.log(`::error title=Release refused::${problem} Releases are cut only from a revision the merge queue verified (README.md § Releases).`);
+		console.log(
+			`::error title=Release refused::${problem} Releases are cut only from a revision the merge queue verified (README.md § Releases).`,
+		);
 	process.exitCode = 1;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href)
-	await main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await main();

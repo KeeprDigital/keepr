@@ -24,7 +24,9 @@ const nodeOptions = [
 	// Connection diagnostics, and reading an early answer's body to its end (#633).
 	'--require',
 	INTEGRATION_SERVER_PRELOAD,
-].filter(Boolean).join(' ');
+]
+	.filter(Boolean)
+	.join(' ');
 
 /**
  * The invented secrets and the suite's operator, re-exported because this file is
@@ -137,10 +139,12 @@ export const keylessIntegrationServerEnv = withoutAblyKey(integrationServerEnv);
  * Needed because `@nuxt/test-utils`'s exported `$fetch` is a function wrapper
  * that doesn't expose the `.raw` property from the underlying ofetch instance.
  */
-export async function $fetchRaw(path: string, opts: { method?: string; body?: unknown; ignoreResponseError?: boolean } = {}) {
+export async function $fetchRaw(
+	path: string,
+	opts: { method?: string; body?: unknown; ignoreResponseError?: boolean } = {},
+) {
 	const init: RequestInit = {};
-	if (opts.method)
-		init.method = opts.method;
+	if (opts.method) init.method = opts.method;
 	if (opts.body !== undefined) {
 		init.body = JSON.stringify(opts.body);
 		init.headers = { 'Content-Type': 'application/json' };
@@ -150,10 +154,8 @@ export async function $fetchRaw(path: string, opts: { method?: string; body?: un
 	let _data: any = null;
 	try {
 		const text = await res.text();
-		if (text)
-			_data = JSON.parse(text);
-	}
-	catch {}
+		if (text) _data = JSON.parse(text);
+	} catch {}
 
 	return { status: res.status, _data };
 }

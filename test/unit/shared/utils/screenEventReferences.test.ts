@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { screensNamingEventReference } from '~~/shared/utils/screenEventReferences';
 
-const screen = (id: number, modeConfigs: Record<string, Record<string, unknown>>) => ({ id, modeConfigs });
+const screen = (id: number, modeConfigs: Record<string, Record<string, unknown>>) => ({
+	id,
+	modeConfigs,
+});
 
 describe('the Screens naming a record in an Event Reference', () => {
 	const screens = [
@@ -19,25 +22,12 @@ describe('the Screens naming a record in an Event Reference', () => {
 	];
 
 	it.each([
-		[
-			'an Archetype one Screen names',
-			'archetype',
-			7,
-			[1],
-		],
-		[
-			'a Round of the same id',
-			'round',
-			7,
-			[3],
-		],
-		[
-			'an Archetype no Screen names',
-			'archetype',
-			9,
-			[],
-		],
+		['an Archetype one Screen names', 'archetype', 7, [1]],
+		['a Round of the same id', 'round', 7, [3]],
+		['an Archetype no Screen names', 'archetype', 9, []],
 	] as const)('finds those naming %s', (_case, kind, id, screenIds) => {
-		expect(screensNamingEventReference(screens, kind, id).map(found => found.id)).toEqual(screenIds);
+		expect(screensNamingEventReference(screens, kind, id).map((found) => found.id)).toEqual(
+			screenIds,
+		);
 	});
 });

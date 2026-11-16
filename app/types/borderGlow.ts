@@ -20,6 +20,6 @@ export interface GlowFieldsValue {
  * switches it on, so the host decides what an empty one holds, as
  * `GraphicSurfaceStyleEdit` does.
  */
-export type BorderGlowEdit
-	= | { kind: 'border'; patch: Partial<BorderFieldsValue> | null }
-		| { kind: 'glow'; patch: Partial<GlowFieldsValue> | null };
+export type BorderGlowEdit =
+	| { kind: 'border'; patch: Partial<BorderFieldsValue> | null }
+	| { kind: 'glow'; patch: Partial<GlowFieldsValue> | null };

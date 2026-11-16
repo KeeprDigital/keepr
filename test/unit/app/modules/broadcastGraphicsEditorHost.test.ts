@@ -1,11 +1,19 @@
 import type { BroadcastGraphicsEditorLayer } from '~~/app/modules/broadcast-graphics/editorHost';
 import type { BroadcastGraphicConfig } from '~~/shared/types/graphics';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { broadcastGraphicsEditorHost, broadcastGraphicsEditorTree, PRESENTATION_GROUP_REMOVAL } from '~~/app/modules/broadcast-graphics/editorHost';
+import {
+	broadcastGraphicsEditorHost,
+	broadcastGraphicsEditorTree,
+	PRESENTATION_GROUP_REMOVAL,
+} from '~~/app/modules/broadcast-graphics/editorHost';
 import { dropLayer, layerDropAt } from '~~/app/modules/graphics/editor/layerDrag';
 import { editorSelectionFrame } from '~~/app/modules/graphics/editor/layerFrame';
 import { isLayerLocked, toggleLayerLocks } from '~~/app/modules/graphics/editor/layerLocks';
-import { extendLayerSelection, onlyLayer, toggleLayer } from '~~/app/modules/graphics/editor/layerSelection';
+import {
+	extendLayerSelection,
+	onlyLayer,
+	toggleLayer,
+} from '~~/app/modules/graphics/editor/layerSelection';
 import { group, shape, text } from '~~/test/helpers/graphicsComposition';
 
 /**
@@ -25,21 +33,12 @@ const CANVAS = { width: 1920, height: 1080 };
 const slate: BroadcastGraphicConfig = {
 	id: SLATE,
 	name: 'Slate',
-	items: [
-		text('a', { x: 40, y: 40 }),
-		text('s', { x: 700, y: 500 }),
-	],
+	items: [text('a', { x: 40, y: 40 }), text('s', { x: 700, y: 500 })],
 };
 const lowerThird: BroadcastGraphicConfig = {
 	id: LOWER_THIRD,
 	name: 'Lower Third',
-	items: [
-		shape('a', { x: 10, y: 20 }),
-		group('g', [
-			text('g1'),
-		]),
-		shape('bar', { x: 400, y: 600 }),
-	],
+	items: [shape('a', { x: 10, y: 20 }), group('g', [text('g1')]), shape('bar', { x: 400, y: 600 })],
 };
 /** Back to front. Both Broadcast Graphics hold a Graphic Item `a`. */
 const STACK: Stack = [slate, lowerThird];
@@ -51,14 +50,15 @@ let hostSelected: string | null = null;
 const tree = broadcastGraphicsEditorTree(() => hostSelected);
 
 const keys = (layers: readonly Layer[]) => layers.map(tree.key);
-const itemIds = (stack: Stack, graphicId: string) => stack.find(graphic => graphic.id === graphicId)?.items.map(item => item.id);
+const itemIds = (stack: Stack, graphicId: string) =>
+	stack.find((graphic) => graphic.id === graphicId)?.items.map((item) => item.id);
 
 describe('the Broadcast Graphics editor tree', () => {
 	beforeEach(() => {
 		hostSelected = null;
 	});
 
-	it('lists the front Broadcast Graphic\'s layers first, each front to back, a group\'s children beneath it', () => {
+	it("lists the front Broadcast Graphic's layers first, each front to back, a group's children beneath it", () => {
 		expect(keys(tree.order(STACK))).toEqual([
 			'item:lower-third:bar',
 			'item:lower-third:g',
@@ -70,7 +70,13 @@ describe('the Broadcast Graphics editor tree', () => {
 	});
 
 	// Align, group and paste act within one composition, so a selection never spans two.
-	it.each<{ click: string; select: typeof toggleLayer; from: Layer; to: Layer; selected: string[] }>([
+	it.each<{
+		click: string;
+		select: typeof toggleLayer;
+		from: Layer;
+		to: Layer;
+		selected: string[];
+	}>([
 		{
 			click: '⌘-click on a layer of another Broadcast Graphic',
 			select: toggleLayer,
@@ -79,7 +85,7 @@ describe('the Broadcast Graphics editor tree', () => {
 			selected: ['item:slate:s'],
 		},
 		{
-			click: '⌘-click on another Broadcast Graphic\'s item of the same id',
+			click: "⌘-click on another Broadcast Graphic's item of the same id",
 			select: toggleLayer,
 			from: layer(LOWER_THIRD, 'a'),
 			to: layer(SLATE, 'a'),
@@ -96,10 +102,8 @@ describe('the Broadcast Graphics editor tree', () => {
 		expect(keys(select(tree, STACK, onlyLayer(from), to).layers)).toEqual(selected);
 	});
 
-	it('locks a Graphic Item in its own Broadcast Graphic, leaving another\'s item of the same id unlocked', () => {
-		const locked = toggleLayerLocks(tree, STACK, [
-			layer(LOWER_THIRD, 'a'),
-		]);
+	it("locks a Graphic Item in its own Broadcast Graphic, leaving another's item of the same id unlocked", () => {
+		const locked = toggleLayerLocks(tree, STACK, [layer(LOWER_THIRD, 'a')]);
 
 		expect(isLayerLocked(tree, locked, layer(LOWER_THIRD, 'a'))).toBe(true);
 		expect(isLayerLocked(tree, locked, layer(SLATE, 'a'))).toBe(false);
@@ -108,28 +112,25 @@ describe('the Broadcast Graphics editor tree', () => {
 
 	// The others may never share program with it.
 	it('snaps a layer to the items of its own Broadcast Graphic, and to none of another', () => {
-		const snapLines = (stack: Stack) => editorSelectionFrame(tree, stack, layer(LOWER_THIRD, 'bar'), CANVAS)!.snapLines;
+		const snapLines = (stack: Stack) =>
+			editorSelectionFrame(tree, stack, layer(LOWER_THIRD, 'bar'), CANVAS)!.snapLines;
 		const alone = snapLines([lowerThird]);
 
 		expect(snapLines(STACK)).toEqual(alone);
-		expect(snapLines([
-			{
-				...lowerThird,
-				items: [slate.items[1]!, ...lowerThird.items],
-			},
-		])).not.toEqual(alone);
+		expect(
+			snapLines([
+				{
+					...lowerThird,
+					items: [slate.items[1]!, ...lowerThird.items],
+				},
+			]),
+		).not.toEqual(alone);
 	});
 
 	describe('reordering', () => {
 		it.each<[string, Layer]>([
-			[
-				'a layer of another Broadcast Graphic',
-				layer(SLATE, 's'),
-			],
-			[
-				'another Broadcast Graphic\'s item of the same id',
-				layer(SLATE, 'a'),
-			],
+			['a layer of another Broadcast Graphic', layer(SLATE, 's')],
+			["another Broadcast Graphic's item of the same id", layer(SLATE, 'a')],
 		])('offers no drop over %s', (_, over) => {
 			expect(layerDropAt(tree, STACK, layer(LOWER_THIRD, 'a'), over, 0.25)).toBeNull();
 		});
@@ -148,9 +149,7 @@ describe('the Broadcast Graphics editor tree', () => {
 	// A new or pasted item joins the selection's Broadcast Graphic, or the one the host has selected.
 	it.each<{ selected: Layer[]; host: string | null; destination: string | null }>([
 		{
-			selected: [
-				layer(SLATE, 's'),
-			],
+			selected: [layer(SLATE, 's')],
 			host: LOWER_THIRD,
 			destination: SLATE,
 		},
@@ -169,18 +168,17 @@ describe('the Broadcast Graphics editor tree', () => {
 			host: 'since deleted',
 			destination: null,
 		},
-	])('adds to $destination with $selected selected and the host on $host', ({ selected, host, destination }) => {
-		hostSelected = host;
+	])(
+		'adds to $destination with $selected selected and the host on $host',
+		({ selected, host, destination }) => {
+			hostSelected = host;
 
-		expect(tree.destination(STACK, selected)?.id ?? null).toBe(destination);
-	});
+			expect(tree.destination(STACK, selected)?.id ?? null).toBe(destination);
+		},
+	);
 
 	it.each<[string, string, string[]]>([
-		[
-			'in its place',
-			SLATE,
-			[SLATE, LOWER_THIRD],
-		],
+		['in its place', SLATE, [SLATE, LOWER_THIRD]],
 		[
 			'at the front, where the stack no longer holds it',
 			'removed since',
@@ -191,36 +189,36 @@ describe('the Broadcast Graphics editor tree', () => {
 
 		const next = tree.withComposition(STACK, written);
 
-		expect(next.map(graphic => graphic.id)).toEqual(stacked);
-		expect(next.find(graphic => graphic.id === id)).toBe(written);
+		expect(next.map((graphic) => graphic.id)).toEqual(stacked);
+		expect(next.find((graphic) => graphic.id === id)).toBe(written);
 	});
 
 	// A projection reads its Presentation Group, so the two go together or not at all.
 	it.each<[string, string, string | null]>([
 		['its Presentation Group', 'g', PRESENTATION_GROUP_REMOVAL],
 		['any other layer', 'bar', null],
-	])('answers a removal of a Social Profile Projection\'s Broadcast Graphic\'s %s with %s', (_, itemId, refusal) => {
-		const projecting: Stack = [
-			slate,
-			{
-				...lowerThird,
-				socialProfileProjections: [
-					{ presentationGroupId: 'g' },
-				],
-			} as BroadcastGraphicConfig,
-		];
+	])(
+		"answers a removal of a Social Profile Projection's Broadcast Graphic's %s with %s",
+		(_, itemId, refusal) => {
+			const projecting: Stack = [
+				slate,
+				{
+					...lowerThird,
+					socialProfileProjections: [{ presentationGroupId: 'g' }],
+				} as BroadcastGraphicConfig,
+			];
 
-		expect(tree.removal!(projecting, layer(LOWER_THIRD, itemId))).toBe(refusal);
-	});
+			expect(tree.removal!(projecting, layer(LOWER_THIRD, itemId))).toBe(refusal);
+		},
+	);
 
 	describe('pasting copied layers', () => {
-		const copied = tree.copy(STACK, [
-			layer(LOWER_THIRD, 'bar'),
-		])!;
-		const pasteInto = (selected: Layer[]) => tree.paste(copied, STACK, {
-			selected,
-			nextId: () => 'pasted',
-		});
+		const copied = tree.copy(STACK, [layer(LOWER_THIRD, 'bar')])!;
+		const pasteInto = (selected: Layer[]) =>
+			tree.paste(copied, STACK, {
+				selected,
+				nextId: () => 'pasted',
+			});
 
 		it('pastes into the Broadcast Graphic the host has selected, naming the copies as its layers', () => {
 			hostSelected = SLATE;
@@ -229,9 +227,7 @@ describe('the Broadcast Graphics editor tree', () => {
 
 			expect(outcome).toMatchObject({
 				ok: true,
-				pasted: [
-					layer(SLATE, 'pasted'),
-				],
+				pasted: [layer(SLATE, 'pasted')],
 			});
 			expect(outcome.ok && itemIds(outcome.document, SLATE)).toEqual(['a', 's', 'pasted']);
 			expect(outcome.ok && outcome.document[1]).toBe(lowerThird);
@@ -248,21 +244,31 @@ describe('the Broadcast Graphics editor tree', () => {
 
 /** What an undo writes: the restored stack, around what the stack holds now that undo does not cover. */
 describe('the Broadcast Graphics host restoring a stack', () => {
-	function restore(restored: Stack, current: Stack, { onAir = [] as string[], channels = [] as string[] } = {}) {
+	function restore(
+		restored: Stack,
+		current: Stack,
+		{ onAir = [] as string[], channels = [] as string[] } = {},
+	) {
 		return broadcastGraphicsEditorHost({
 			graphics: () => current,
-			channels: () => channels.map(id => ({ id, name: id })),
+			channels: () => channels.map((id) => ({ id, name: id })),
 			write: () => {},
 			selectedGraphicId: () => null,
 			canvasWidth: CANVAS.width,
 			canvasHeight: CANVAS.height,
 			writable: true,
-			onAir: graphicId => onAir.includes(graphicId),
+			onAir: (graphicId) => onAir.includes(graphicId),
 		}).document.restore!(restored, current);
 	}
 
 	// A Graphic Channel is assigned beside the stack, outside undo.
-	it.each<{ graphic: string; restoredIn?: string; nowIn?: string | null; channels: string[]; keeps?: string }>([
+	it.each<{
+		graphic: string;
+		restoredIn?: string;
+		nowIn?: string | null;
+		channels: string[];
+		keeps?: string;
+	}>([
 		{
 			graphic: 'one moved to another Graphic Channel since',
 			restoredIn: 'thirds',
@@ -292,16 +298,8 @@ describe('the Broadcast Graphics host restoring a stack', () => {
 			keeps: undefined,
 		},
 	])('restores $graphic in Graphic Channel $keeps', ({ restoredIn, nowIn, channels, keeps }) => {
-		const restored: Stack = [
-			slate,
-			{ ...lowerThird, channelId: restoredIn },
-		];
-		const current: Stack = nowIn === null
-			? [slate]
-			: [
-					slate,
-					{ ...lowerThird, channelId: nowIn },
-				];
+		const restored: Stack = [slate, { ...lowerThird, channelId: restoredIn }];
+		const current: Stack = nowIn === null ? [slate] : [slate, { ...lowerThird, channelId: nowIn }];
 
 		const [, graphic] = restore(restored, current, { channels });
 
@@ -315,8 +313,7 @@ describe('the Broadcast Graphics host restoring a stack', () => {
 
 		const order = restore([lowerThird, bug, slate], [slate, bug, lowerThird], {
 			onAir: [SLATE, LOWER_THIRD],
-		})
-			.map(graphic => graphic.id);
+		}).map((graphic) => graphic.id);
 
 		expect(order).toEqual([SLATE, 'bug', LOWER_THIRD]);
 	});

@@ -60,14 +60,13 @@ export async function requireSharedSecret(event: H3Event, surface: SharedSecretS
 		configuredToken = readConfiguredSecret(surface.configuredToken, surface.settingName, {
 			minLength: SHARED_SECRET_MIN_LENGTH,
 		});
-	}
-	catch (failure) {
-		throw failure instanceof ServiceConfigurationError
-			? unavailable(failure)
-			: failure;
+	} catch (failure) {
+		throw failure instanceof ServiceConfigurationError ? unavailable(failure) : failure;
 	}
 	if (!configuredToken)
-		throw unavailable(new ServiceConfigurationError(surface.settingName, surface.unavailableClause));
+		throw unavailable(
+			new ServiceConfigurationError(surface.settingName, surface.unavailableClause),
+		);
 
 	const suppliedToken = getRequestHeader(event, surface.headerName)?.trim() ?? '';
 	if (!suppliedToken || !(await secretTokensMatch(suppliedToken, configuredToken))) {

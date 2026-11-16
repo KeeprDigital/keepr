@@ -13,12 +13,12 @@ export default defineEventHandler(async (event) => {
 	}
 
 	// Fetch key cards for all archetypes in one batch query
-	const archetypeIds = list.map(a => a.id);
+	const archetypeIds = list.map((a) => a.id);
 	const keyCardsMap = await archetypeCardService().getKeyCardsByArchetypeIds(archetypeIds);
 
-	const archetypes = list.map(archetype => ({
+	const archetypes = list.map((archetype) => ({
 		...mapArchetypeToResponse(archetype),
-		keyCards: (keyCardsMap.get(archetype.id) ?? []).map(c => ({
+		keyCards: (keyCardsMap.get(archetype.id) ?? []).map((c) => ({
 			id: c.id,
 			name: c.name,
 			game: c.game,

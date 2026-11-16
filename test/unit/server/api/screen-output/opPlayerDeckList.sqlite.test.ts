@@ -16,15 +16,23 @@ vi.doMock('~~/server/utils/screenOutputAuthorization', () => ({
 	screenOutputReader: async () => 'capability',
 }));
 
-interface StubEvent { params: Record<string, string> }
+interface StubEvent {
+	params: Record<string, string>;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
 vi.stubGlobal('setResponseHeader', vi.fn());
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 type Handler = (event: StubEvent) => Promise<unknown>;
-const readDeckList = (await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/players/[playerId]/deck-list.get')).default as unknown as Handler;
+const readDeckList = (
+	await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/players/[playerId]/deck-list.get')
+).default as unknown as Handler;
 const { opPlayerDeckListService } = await import('~~/server/services/opPlayerDeckList');
 const { opCardCatalogueService } = await import('~~/server/services/opCardCatalogue');
 
@@ -53,44 +61,68 @@ const ids = {
 	screens: {} as Record<string, number>,
 };
 
-async function stageScreens(eventId: number, screens: Array<{ slug: string; mode: 'deck' | 'card'; playerId?: number; deckSource?: unknown }>) {
-	const rows = await db.insert(schema.screens).values(screens.map(({ slug, mode, playerId, deckSource }) => ({
-		eventId,
-		name: slug,
-		slug,
-		currentMode: mode,
-		modeConfigs: {
-			deck: {
-				deckSource: deckSource ?? { type: 'player', playerId },
-			},
-		} as never,
-		assetCapabilitySeed: `seed-${slug}`,
-		assetCapabilityDigest: `digest-${slug}`,
-	}))).returning({ id: schema.screens.id, slug: schema.screens.slug });
-	for (const row of rows)
-		ids.screens[row.slug] = row.id;
+async function stageScreens(
+	eventId: number,
+	screens: Array<{ slug: string; mode: 'deck' | 'card'; playerId?: number; deckSource?: unknown }>,
+) {
+	const rows = await db
+		.insert(schema.screens)
+		.values(
+			screens.map(({ slug, mode, playerId, deckSource }) => ({
+				eventId,
+				name: slug,
+				slug,
+				currentMode: mode,
+				modeConfigs: {
+					deck: {
+						deckSource: deckSource ?? { type: 'player', playerId },
+					},
+				} as never,
+				assetCapabilitySeed: `seed-${slug}`,
+				assetCapabilityDigest: `digest-${slug}`,
+			})),
+		)
+		.returning({ id: schema.screens.id, slug: schema.screens.slug });
+	for (const row of rows) ids.screens[row.slug] = row.id;
 }
 
 beforeAll(async () => {
-	const [event, mtgEvent] = await db.insert(schema.events).values([
-		{ name: 'OP Event', game: 'op', featureMatchOrientation: 'horizontal' },
-		{ name: 'MTG Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
-	]).returning({ id: schema.events.id });
+	const [event, mtgEvent] = await db
+		.insert(schema.events)
+		.values([
+			{ name: 'OP Event', game: 'op', featureMatchOrientation: 'horizontal' },
+			{ name: 'MTG Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+		])
+		.returning({ id: schema.events.id });
 	ids.event = event!.id;
 	ids.mtgEvent = mtgEvent!.id;
-	const [shown, other, empty] = await db.insert(schema.players).values([
-		{ eventId: ids.event, name: '', nickname: 'zoro_main' },
-		{ eventId: ids.event, name: 'Bea' },
-		{ eventId: ids.event, name: 'Cal' },
-	]).returning({ id: schema.players.id });
-	const [mtgPlayer] = await db.insert(schema.players).values({ eventId: ids.mtgEvent, name: 'Dee' }).returning({ id: schema.players.id });
+	const [shown, other, empty] = await db
+		.insert(schema.players)
+		.values([
+			{ eventId: ids.event, name: '', nickname: 'zoro_main' },
+			{ eventId: ids.event, name: 'Bea' },
+			{ eventId: ids.event, name: 'Cal' },
+		])
+		.returning({ id: schema.players.id });
+	const [mtgPlayer] = await db
+		.insert(schema.players)
+		.values({ eventId: ids.mtgEvent, name: 'Dee' })
+		.returning({ id: schema.players.id });
 	ids.shown = shown!.id;
 	ids.other = other!.id;
 	ids.empty = empty!.id;
 	ids.mtgPlayer = mtgPlayer!.id;
 
 	await opCardCatalogueService().add([ZORO, SANJI]);
-	const catalogued = ({ name, category, colors, cost, power, counter, imageUrl }: OpCardSummary): OpCatalogueCard => ({
+	const catalogued = ({
+		name,
+		category,
+		colors,
+		cost,
+		power,
+		counter,
+		imageUrl,
+	}: OpCardSummary): OpCatalogueCard => ({
 		name,
 		category,
 		colors: colors as OpCatalogueCard['colors'],
@@ -137,7 +169,10 @@ beforeAll(async () => {
 		{ slug: 'empty', mode: 'deck', playerId: ids.empty },
 	]);
 	// A Slot seating the shown Player and the one with no Deck List.
-	const [slot] = await db.insert(schema.featureMatchSlots).values({ eventId: ids.event, player1Id: ids.shown, player2Id: ids.empty }).returning({ id: schema.featureMatchSlots.id });
+	const [slot] = await db
+		.insert(schema.featureMatchSlots)
+		.values({ eventId: ids.event, player1Id: ids.shown, player2Id: ids.empty })
+		.returning({ id: schema.featureMatchSlots.id });
 	await stageScreens(ids.event, [
 		{
 			slug: 'slot',
@@ -145,9 +180,7 @@ beforeAll(async () => {
 			deckSource: { type: 'featureMatchSlot', slotId: slot!.id, side: 'player2' },
 		},
 	]);
-	await stageScreens(ids.mtgEvent, [
-		{ slug: 'mtg', mode: 'deck', playerId: ids.mtgPlayer },
-	]);
+	await stageScreens(ids.mtgEvent, [{ slug: 'mtg', mode: 'deck', playerId: ids.mtgPlayer }]);
 });
 
 afterAll(async () => await harness.close());
@@ -204,7 +237,7 @@ describe('a Deck List Screen showing a One Piece Card Game Player, read with its
 
 	it.each([
 		{
-			name: 'another Player\'s Deck List',
+			name: "another Player's Deck List",
 			screen: 'deck',
 			playerId: () => ids.other,
 			eventId: () => ids.event,
@@ -228,6 +261,9 @@ describe('a Deck List Screen showing a One Piece Card Game Player, read with its
 			eventId: () => ids.mtgEvent,
 		},
 	])('reaches nothing else: $name', async ({ screen, playerId, eventId }) => {
-		await expect(readDeckList(params(screen, playerId(), eventId()))).rejects.toMatchObject({ statusCode: 404, message: 'Not found' });
+		await expect(readDeckList(params(screen, playerId(), eventId()))).rejects.toMatchObject({
+			statusCode: 404,
+			message: 'Not found',
+		});
 	});
 });

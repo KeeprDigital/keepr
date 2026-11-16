@@ -38,28 +38,29 @@ function pool(total: number) {
 		total,
 		env: {},
 		isAlive: (_pid: number) => true,
-		sleep: () => new Promise<void>(done => setImmediate(done)),
+		sleep: () => new Promise<void>((done) => setImmediate(done)),
 		say: (line: string) => said.push(line),
 	};
 	return {
 		said,
 		seams,
-		take: (pid: number, want: number | 'all', min: number | 'all' = want) => acquireRunSlots({
-			...seams,
-			pid,
-			want,
-			min,
-			label: `gate ${pid}`,
-		}),
-		held: () => runSlotStatus(seams).holders.map(holder => [holder.pid, holder.slots]),
-		waiting: () => runSlotStatus(seams).waiters.map(waiter => waiter.pid),
+		take: (pid: number, want: number | 'all', min: number | 'all' = want) =>
+			acquireRunSlots({
+				...seams,
+				pid,
+				want,
+				min,
+				label: `gate ${pid}`,
+			}),
+		held: () => runSlotStatus(seams).holders.map((holder) => [holder.pid, holder.slots]),
+		waiting: () => runSlotStatus(seams).waiters.map((waiter) => waiter.pid),
 	};
 }
 
 /** The child's exit status and what it wrote to stderr; a child that outlasts the bound is stopped, never waited on. */
 function finished(child: ChildProcess) {
 	let stderr = '';
-	child.stderr?.setEncoding('utf8').on('data', (chunk: string) => stderr += chunk);
+	child.stderr?.setEncoding('utf8').on('data', (chunk: string) => (stderr += chunk));
 	const stop = setTimeout(() => child.kill('SIGKILL'), LOAD_TOLERANT_TEST_TIMEOUT_MS / 2);
 	return new Promise<{ status: number | null; stderr: string }>((done) => {
 		child.once('close', (status) => {
@@ -71,8 +72,7 @@ function finished(child: ChildProcess) {
 
 /** Long enough for every waiter to have asked the ledger several times. */
 async function severalTurns() {
-	for (let turn = 0; turn < 20; turn++)
-		await new Promise(done => setImmediate(done));
+	for (let turn = 0; turn < 20; turn++) await new Promise((done) => setImmediate(done));
 }
 
 describe('how many run slots a machine has', () => {
@@ -110,11 +110,13 @@ describe('how many run slots a machine has', () => {
 		{ stated: 'off', slots: 0 },
 		{ stated: 'plenty', slots: 8 },
 	])('sTREAM_KEEPR_RUN_SLOTS=$stated: $slots', ({ stated, slots }) => {
-		expect(runSlotCount({
-			cores: 10,
-			memoryBytes: 16 * GIB,
-			env: { STREAM_KEEPR_RUN_SLOTS: stated },
-		})).toBe(slots);
+		expect(
+			runSlotCount({
+				cores: 10,
+				memoryBytes: 16 * GIB,
+				env: { STREAM_KEEPR_RUN_SLOTS: stated },
+			}),
+		).toBe(slots);
 	});
 
 	// Two stay free on a machine with room, so one test file never waits behind a suite.
@@ -158,14 +160,14 @@ describe('taking run slots', () => {
 			want: 3,
 			label: 'typecheck',
 			// Each look at the ledger is five seconds after the last.
-			clock: () => now += 5_000,
+			clock: () => (now += 5_000),
 		});
 		await severalTurns();
 
-		expect(held()).toEqual([
-			[1, 3],
-		]);
-		expect(said.some(line => line.includes('typecheck has waited') && line.includes('gate 1 ×3'))).toBe(true);
+		expect(held()).toEqual([[1, 3]]);
+		expect(
+			said.some((line) => line.includes('typecheck has waited') && line.includes('gate 1 ×3')),
+		).toBe(true);
 
 		first.release();
 
@@ -182,18 +184,14 @@ describe('taking run slots', () => {
 		const oneFile = take(3, 1);
 		await severalTurns();
 
-		expect(held()).toEqual([
-			[1, 6],
-		]);
+		expect(held()).toEqual([[1, 6]]);
 		expect(waiting()).toEqual([2, 3]);
 
 		running.release();
 		const whole = await integration;
 		await severalTurns();
 
-		expect(held()).toEqual([
-			[2, 8],
-		]);
+		expect(held()).toEqual([[2, 8]]);
 		expect(waiting()).toEqual([3]);
 
 		whole.release();
@@ -230,9 +228,7 @@ describe('taking run slots', () => {
 		});
 
 		expect(next.slots).toBe(4);
-		expect(held()).toEqual([
-			[2, 4],
-		]);
+		expect(held()).toEqual([[2, 4]]);
 	});
 
 	// A gate started by a command that holds slots would otherwise wait on its own parent.
@@ -284,7 +280,7 @@ describe('taking run slots', () => {
 		lease.release();
 
 		expect(lease.slots).toBe(3);
-		expect(said.some(line => line.includes('lint runs unqueued'))).toBe(says);
+		expect(said.some((line) => line.includes('lint runs unqueued'))).toBe(says);
 	});
 });
 
@@ -295,7 +291,10 @@ describe('one ledger for every worktree of a checkout', () => {
 		writeFileSync(join(main, '.git', 'worktrees', 'agent-1', 'commondir'), '../..\n');
 		const worktree = join(main, '.claude', 'worktrees', 'agent-1');
 		mkdirSync(join(worktree, 'scripts'), { recursive: true });
-		writeFileSync(join(worktree, '.git'), `gitdir: ${join(main, '.git', 'worktrees', 'agent-1')}\n`);
+		writeFileSync(
+			join(worktree, '.git'),
+			`gitdir: ${join(main, '.git', 'worktrees', 'agent-1')}\n`,
+		);
 
 		const ledger = join(main, '.git', 'stream-keepr-run-slots.sqlite');
 
@@ -319,12 +318,18 @@ describe('running a command inside run slots', () => {
 		{ command: 'a command that passes', code: 0 },
 		{ command: 'a command that fails', code: 7 },
 	])('answers with the status of $command', async ({ code }) => {
-		expect(await runHoldingSlots('1', [process.execPath, '-e', `process.exit(${code})`], ledger())).toBe(code);
+		expect(
+			await runHoldingSlots('1', [process.execPath, '-e', `process.exit(${code})`], ledger()),
+		).toBe(code);
 	});
 
 	// What stops a gate the command starts from waiting in line behind the command itself.
 	it('tells the command how many slots it runs inside', async () => {
-		const held = await runHoldingSlots('3', [process.execPath, '-e', 'process.exit(Number(process.env.STREAM_KEEPR_RUN_SLOTS_HELD))'], ledger());
+		const held = await runHoldingSlots(
+			'3',
+			[process.execPath, '-e', 'process.exit(Number(process.env.STREAM_KEEPR_RUN_SLOTS_HELD))'],
+			ledger(),
+		);
 
 		expect(held).toBe(3);
 	});
@@ -332,7 +337,11 @@ describe('running a command inside run slots', () => {
 	it('refuses a cost it does not know, without running the command', async () => {
 		const marker = join(scratch(), 'ran');
 
-		const code = await runHoldingSlots('everything', [process.execPath, '-e', `require('node:fs').writeFileSync(${JSON.stringify(marker)}, '')`], ledger());
+		const code = await runHoldingSlots(
+			'everything',
+			[process.execPath, '-e', `require('node:fs').writeFileSync(${JSON.stringify(marker)}, '')`],
+			ledger(),
+		);
 
 		expect(code).toBe(2);
 		expect(readdirSync(join(marker, '..'))).toEqual([]);
@@ -353,23 +362,29 @@ describe('a Vitest run held to its run slots', () => {
 		const poolIds = join(fixture, 'pool-ids');
 		mkdirSync(poolIds);
 		for (const file of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) {
-			writeFileSync(join(fixture, `${file}.test.ts`), `
+			writeFileSync(
+				join(fixture, `${file}.test.ts`),
+				`
 				import { writeFileSync } from 'node:fs';
 				import { it } from 'vitest';
 				it('records its worker', async () => {
 					writeFileSync(${JSON.stringify(poolIds)} + '/${file}', (process.env.VITEST_POOL_ID ?? '') + ' of ' + process.env.STREAM_KEEPR_RUN_SLOTS_HELD);
 					await new Promise(done => setTimeout(done, 150));
 				});
-			`);
+			`,
+			);
 		}
-		writeFileSync(join(fixture, 'vitest.config.mts'), `
+		writeFileSync(
+			join(fixture, 'vitest.config.mts'),
+			`
 			import { defineConfig } from 'vitest/config';
 			import { heldToRunSlots } from ${JSON.stringify(join(repositoryRoot, 'vitest.shared.ts'))};
 			export default defineConfig({
 				plugins: [heldToRunSlots('fixture', { path: ${JSON.stringify(ledger)}, total: 8 })],
 				test: { include: ['*.test.ts'], exclude: [] },
 			});
-		`);
+		`,
+		);
 		// Another gate holds five of the eight, so the run gets the three left: half of the six it could use.
 		const other = await acquireRunSlots({
 			path: ledger,
@@ -379,18 +394,22 @@ describe('a Vitest run held to its run slots', () => {
 			label: 'another worktree',
 		});
 
-		const run = await finished(spawn(join(repositoryRoot, 'node_modules/.bin/vitest'), ['run', '--root', fixture], {
-			cwd: repositoryRoot,
-			stdio: ['ignore', 'ignore', 'pipe'],
-			env: Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('VITEST') && !name.startsWith('STREAM_KEEPR_RUN_SLOTS'))),
-		}));
+		const run = await finished(
+			spawn(join(repositoryRoot, 'node_modules/.bin/vitest'), ['run', '--root', fixture], {
+				cwd: repositoryRoot,
+				stdio: ['ignore', 'ignore', 'pipe'],
+				env: Object.fromEntries(
+					Object.entries(process.env).filter(
+						([name]) => !name.startsWith('VITEST') && !name.startsWith('STREAM_KEEPR_RUN_SLOTS'),
+					),
+				),
+			}),
+		);
 		other.release();
 
 		expect(run.status, run.stderr).toBe(0);
-		const used = readdirSync(poolIds).map(file => readFileSync(join(poolIds, file), 'utf8'));
+		const used = readdirSync(poolIds).map((file) => readFileSync(join(poolIds, file), 'utf8'));
 		expect(used).toHaveLength(8);
-		expect([
-			...new Set(used),
-		].toSorted()).toEqual(['1 of 3', '2 of 3', '3 of 3']);
+		expect([...new Set(used)].toSorted()).toEqual(['1 of 3', '2 of 3', '3 of 3']);
 	});
 });

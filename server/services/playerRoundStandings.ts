@@ -39,10 +39,7 @@ export function playerRoundStandingsService() {
 			.select()
 			.from(playerRoundStandings)
 			.where(
-				and(
-					eq(playerRoundStandings.eventId, eventId),
-					eq(playerRoundStandings.roundId, roundId),
-				),
+				and(eq(playerRoundStandings.eventId, eventId), eq(playerRoundStandings.roundId, roundId)),
 			)
 			.orderBy(playerRoundStandings.position);
 	};
@@ -59,22 +56,23 @@ export function playerRoundStandingsService() {
 			.innerJoin(phases, eq(phases.id, rounds.phaseId))
 			.where(eq(rounds.eventId, eventId))
 			.orderBy(phases.sortOrder, rounds.roundNumber, rounds.id);
-		return ordered.map(round => ({
+		return ordered.map((round) => ({
 			...round,
 			hasStandings: Boolean(round.hasStandings),
 		}));
 	};
 
-	const findRoundPositions = async (eventId: number, roundId: number | null): Promise<RoundStandingPositions | null> => {
-		if (roundId == null)
-			return null;
+	const findRoundPositions = async (
+		eventId: number,
+		roundId: number | null,
+	): Promise<RoundStandingPositions | null> => {
+		if (roundId == null) return null;
 		const positions = await db
 			.select({ playerId: playerRoundStandings.playerId, position: playerRoundStandings.position })
 			.from(playerRoundStandings)
-			.where(and(
-				eq(playerRoundStandings.eventId, eventId),
-				eq(playerRoundStandings.roundId, roundId),
-			));
+			.where(
+				and(eq(playerRoundStandings.eventId, eventId), eq(playerRoundStandings.roundId, roundId)),
+			);
 		return { roundId, positions };
 	};
 
@@ -91,7 +89,10 @@ export function playerRoundStandingsService() {
 		eventId: number,
 		roundId: number | null,
 	): Promise<RoundStandingPositions | null> =>
-		await findRoundPositions(eventId, previousStandingsRoundId(await listEventRounds(eventId), roundId));
+		await findRoundPositions(
+			eventId,
+			previousStandingsRoundId(await listEventRounds(eventId), roundId),
+		);
 
 	/**
 	 * The Players a Phase's Top Cut Bracket seeds (#759), best Seed first, each
@@ -100,25 +101,29 @@ export function playerRoundStandingsService() {
 	 * them. None when no such Round exists, or the Phase holds no Round of the
 	 * Event. A Player that Round gives no position has no Seed.
 	 */
-	const findSeededPlayers = async (eventId: number, phaseId: number): Promise<SeededPlayerRow[]> => {
+	const findSeededPlayers = async (
+		eventId: number,
+		phaseId: number,
+	): Promise<SeededPlayerRow[]> => {
 		const roundId = seedingRoundId(await listEventRounds(eventId), phaseId);
-		if (roundId == null)
-			return [];
+		if (roundId == null) return [];
 		const rows = await db
-			.select({ playerId: playerRoundStandings.playerId, name: players.name, seed: playerRoundStandings.position })
+			.select({
+				playerId: playerRoundStandings.playerId,
+				name: players.name,
+				seed: playerRoundStandings.position,
+			})
 			.from(playerRoundStandings)
 			.innerJoin(players, eq(players.id, playerRoundStandings.playerId))
-			.where(and(
-				eq(playerRoundStandings.eventId, eventId),
-				eq(playerRoundStandings.roundId, roundId),
-				isNotNull(playerRoundStandings.position),
-			))
+			.where(
+				and(
+					eq(playerRoundStandings.eventId, eventId),
+					eq(playerRoundStandings.roundId, roundId),
+					isNotNull(playerRoundStandings.position),
+				),
+			)
 			.orderBy(playerRoundStandings.position);
-		return rows.flatMap(({ seed, ...row }) => seed == null
-			? []
-			: [
-					{ ...row, seed },
-				]);
+		return rows.flatMap(({ seed, ...row }) => (seed == null ? [] : [{ ...row, seed }]));
 	};
 
 	return {

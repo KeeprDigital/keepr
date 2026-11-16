@@ -16,7 +16,7 @@ const category = ref<OpCardCategory | typeof ANY>(ANY);
 
 const colorItems = [
 	{ label: 'Any colour', value: ANY },
-	...OP_CARD_COLORS.map(value => ({ label: value, value })),
+	...OP_CARD_COLORS.map((value) => ({ label: value, value })),
 ];
 const categoryItems = [
 	{ label: 'Any category', value: ANY },
@@ -29,12 +29,8 @@ const categoryItems = [
 function searchNow() {
 	void cardStore.searchOpCards({
 		text: text.value,
-		color: color.value === ANY
-			? null
-			: color.value,
-		category: category.value === ANY
-			? null
-			: category.value,
+		color: color.value === ANY ? null : color.value,
+		category: category.value === ANY ? null : category.value,
 	});
 }
 
@@ -58,13 +54,7 @@ function clear() {
 			@update:model-value="search"
 			@keydown.enter="searchNow"
 		/>
-		<UButton
-			size="xl"
-			:disabled="!text.length"
-			variant="outline"
-			color="neutral"
-			@click="clear"
-		>
+		<UButton size="xl" :disabled="!text.length" variant="outline" color="neutral" @click="clear">
 			Clear
 		</UButton>
 		<USelect

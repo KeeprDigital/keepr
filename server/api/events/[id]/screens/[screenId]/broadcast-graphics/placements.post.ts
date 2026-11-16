@@ -27,7 +27,7 @@ import { randomUuid } from '~~/shared/utils/uuid';
  */
 export default defineEventHandler(async (event) => {
 	const { id: eventId, screenId } = await getValidatedRouterParams(event, screenParamsSchema.parse);
-	const body = placeBroadcastGraphicTemplateSchema.parse(await readBody(event) ?? {});
+	const body = placeBroadcastGraphicTemplateSchema.parse((await readBody(event)) ?? {});
 
 	const screen = await screenService().findById(screenId, eventId);
 	if (!screen)
@@ -84,8 +84,7 @@ export default defineEventHandler(async (event) => {
 
 		setResponseStatus(event, 201);
 		return { screen: updated, graphic };
-	}
-	catch (error) {
+	} catch (error) {
 		throw templateOrientedPlacementError(error, template, graphic.id, idMap);
 	}
 });
@@ -109,10 +108,8 @@ function templateOrientedPlacementError(
 	idMap: Map<string, string>,
 ): unknown {
 	const failure = error as { statusCode?: number; message?: string };
-	if (failure?.statusCode !== 409 || typeof failure.message !== 'string')
-		return error;
-	if (!failure.message.startsWith('Graphic Asset Reference at '))
-		return error;
+	if (failure?.statusCode !== 409 || typeof failure.message !== 'string') return error;
+	if (!failure.message.startsWith('Graphic Asset Reference at ')) return error;
 
 	const toTemplateId = new Map([
 		[placedGraphicId, template.document.id],
@@ -122,7 +119,7 @@ function templateOrientedPlacementError(
 		.slice('Graphic Asset Reference at '.length)
 		.replace(/ is not selectable$/, '')
 		.split('.')
-		.map(segment => toTemplateId.get(segment) ?? segment)
+		.map((segment) => toTemplateId.get(segment) ?? segment)
 		.join('.');
 
 	return createError({

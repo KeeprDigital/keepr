@@ -17,7 +17,8 @@ mockNuxtImport('usePlayerListStore', () => () => playerListStore);
 
 const UButtonStub = defineComponent({
 	emits: ['click'],
-	template: '<button type="button" v-bind="$attrs" @click="$emit(\'click\', $event)"><slot /></button>',
+	template:
+		'<button type="button" v-bind="$attrs" @click="$emit(\'click\', $event)"><slot /></button>',
 });
 
 const VueDraggableStub = defineComponent({

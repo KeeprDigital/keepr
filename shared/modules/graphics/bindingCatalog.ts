@@ -63,7 +63,7 @@ import { scryfallCardImageUrl } from '../../utils/scryfallCardImage';
 /** Whether a field is one stored value or a composed broadcast rendering of several. */
 export const GRAPHIC_BINDING_FIELD_SHAPE_VALUES = ['atomic', 'formatted'] as const;
 
-export type GraphicBindingFieldShape = typeof GRAPHIC_BINDING_FIELD_SHAPE_VALUES[number];
+export type GraphicBindingFieldShape = (typeof GRAPHIC_BINDING_FIELD_SHAPE_VALUES)[number];
 
 /** The Event facts the catalog reads, including how this Event formats for broadcast. */
 export interface GraphicBindingEvent {
@@ -217,33 +217,30 @@ export interface GraphicBindingField<TEntity = unknown> {
 
 /** Which entity each Graphic Source Selection kind resolves to. */
 export interface GraphicBindingEntityByKind {
-	'event': GraphicBindingEvent;
-	'player': GraphicBindingPlayer;
-	'talent': GraphicBindingTalent;
-	'phase': GraphicBindingPhase;
-	'round': GraphicBindingRound;
-	'match': GraphicBindingMatch;
+	event: GraphicBindingEvent;
+	player: GraphicBindingPlayer;
+	talent: GraphicBindingTalent;
+	phase: GraphicBindingPhase;
+	round: GraphicBindingRound;
+	match: GraphicBindingMatch;
 	'feature-match-slot': GraphicBindingFeatureMatchSlot;
-	'archetype': GraphicBindingArchetype;
+	archetype: GraphicBindingArchetype;
 }
 
 export type GraphicBindingCatalog = {
-	[Kind in GraphicSourceSelectionKind]: readonly GraphicBindingField<GraphicBindingEntityByKind[Kind]>[];
+	[Kind in GraphicSourceSelectionKind]: readonly GraphicBindingField<
+		GraphicBindingEntityByKind[Kind]
+	>[];
 };
 
 /** A stored string field: absent, null, and blank are all "no value". */
 function textOf(value: string | null | undefined): string | undefined {
-	if (value === null || value === undefined)
-		return undefined;
-	return value.trim() === ''
-		? undefined
-		: value;
+	if (value === null || value === undefined) return undefined;
+	return value.trim() === '' ? undefined : value;
 }
 
 function numberOf(value: number | null | undefined): number | undefined {
-	return typeof value === 'number' && Number.isFinite(value)
-		? value
-		: undefined;
+	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
 /**
@@ -256,36 +253,35 @@ function numberOf(value: number | null | undefined): number | undefined {
  * A Player with no recorded results has no record: the fields are absent rather
  * than zero, and reporting "0-0" would be inventing a result.
  */
-function formattedRecord(player: GraphicBindingPlayer, event: GraphicBindingEvent | null): string | undefined {
+function formattedRecord(
+	player: GraphicBindingPlayer,
+	event: GraphicBindingEvent | null,
+): string | undefined {
 	const wins = numberOf(player.wins);
 	const losses = numberOf(player.losses);
 	const draws = numberOf(player.draws);
-	if (wins === undefined && losses === undefined && draws === undefined)
-		return undefined;
+	if (wins === undefined && losses === undefined && draws === undefined) return undefined;
 
 	const separator = event?.displayRecordSeparator ?? '-';
 	const hideZeroDraws = event?.displayHideZeroDraws ?? true;
 	const parts = [wins ?? 0, losses ?? 0];
-	if (!(hideZeroDraws && (draws ?? 0) === 0))
-		parts.push(draws ?? 0);
+	if (!(hideZeroDraws && (draws ?? 0) === 0)) parts.push(draws ?? 0);
 
 	return parts.join(separator);
 }
 
-function formattedPosition(player: GraphicBindingPlayer, event: GraphicBindingEvent | null): string | undefined {
+function formattedPosition(
+	player: GraphicBindingPlayer,
+	event: GraphicBindingEvent | null,
+): string | undefined {
 	const position = numberOf(player.position);
-	if (position === undefined)
-		return undefined;
-	return event?.displayPositionFormat === 'number'
-		? String(position)
-		: formatOrdinal(position);
+	if (position === undefined) return undefined;
+	return event?.displayPositionFormat === 'number' ? String(position) : formatOrdinal(position);
 }
 
 function formattedTable(tableNumber: number | null | undefined): string | undefined {
 	const table = numberOf(tableNumber);
-	return table === undefined
-		? undefined
-		: `Table ${table}`;
+	return table === undefined ? undefined : `Table ${table}`;
 }
 
 /** The Feature Match Session source snapshot a slot reports its identity from, if any. */
@@ -304,14 +300,14 @@ const EVENT_FIELDS: readonly GraphicBindingField<GraphicBindingEvent>[] = [
 		label: 'Event name',
 		type: 'text',
 		shape: 'atomic',
-		resolve: event => textOf(event.name),
+		resolve: (event) => textOf(event.name),
 	},
 	{
 		id: 'event.description',
 		label: 'Event description',
 		type: 'text',
 		shape: 'atomic',
-		resolve: event => textOf(event.description),
+		resolve: (event) => textOf(event.description),
 	},
 	{
 		id: 'event.gameName',
@@ -338,49 +334,49 @@ const PLAYER_FIELDS: readonly GraphicBindingField<GraphicBindingPlayer>[] = [
 		label: 'Name',
 		type: 'text',
 		shape: 'atomic',
-		resolve: player => textOf(playerDisplayName(player)),
+		resolve: (player) => textOf(playerDisplayName(player)),
 	},
 	{
 		id: 'player.pronouns',
 		label: 'Pronouns',
 		type: 'text',
 		shape: 'atomic',
-		resolve: player => textOf(player.pronouns),
+		resolve: (player) => textOf(player.pronouns),
 	},
 	{
 		id: 'player.wins',
 		label: 'Wins',
 		type: 'number',
 		shape: 'atomic',
-		resolve: player => numberOf(player.wins),
+		resolve: (player) => numberOf(player.wins),
 	},
 	{
 		id: 'player.losses',
 		label: 'Losses',
 		type: 'number',
 		shape: 'atomic',
-		resolve: player => numberOf(player.losses),
+		resolve: (player) => numberOf(player.losses),
 	},
 	{
 		id: 'player.draws',
 		label: 'Draws',
 		type: 'number',
 		shape: 'atomic',
-		resolve: player => numberOf(player.draws),
+		resolve: (player) => numberOf(player.draws),
 	},
 	{
 		id: 'player.points',
 		label: 'Points',
 		type: 'number',
 		shape: 'atomic',
-		resolve: player => numberOf(player.points),
+		resolve: (player) => numberOf(player.points),
 	},
 	{
 		id: 'player.position',
 		label: 'Standing',
 		type: 'number',
 		shape: 'atomic',
-		resolve: player => numberOf(player.position),
+		resolve: (player) => numberOf(player.position),
 	},
 	{
 		id: 'player.record',
@@ -406,8 +402,7 @@ const PLAYER_FIELDS: readonly GraphicBindingField<GraphicBindingPlayer>[] = [
 		// select a second time.
 		resolve: (player, data) => {
 			const archetypeId = numberOf(player.archetypeId);
-			if (archetypeId === undefined)
-				return undefined;
+			if (archetypeId === undefined) return undefined;
 			return textOf(data.archetypes[archetypeId]?.name);
 		},
 	},
@@ -416,7 +411,7 @@ const PLAYER_FIELDS: readonly GraphicBindingField<GraphicBindingPlayer>[] = [
 		label: 'Local game store',
 		type: 'text',
 		shape: 'atomic',
-		resolve: player => textOf(player.lgs),
+		resolve: (player) => textOf(player.lgs),
 	},
 	{
 		id: 'player.deckName',
@@ -424,7 +419,7 @@ const PLAYER_FIELDS: readonly GraphicBindingField<GraphicBindingPlayer>[] = [
 		type: 'text',
 		shape: 'atomic',
 		game: 'mtg',
-		resolve: player => textOf(getMtgGameData(player.gameData).deckName),
+		resolve: (player) => textOf(getMtgGameData(player.gameData).deckName),
 	},
 	{
 		id: 'player.deckColors',
@@ -432,7 +427,7 @@ const PLAYER_FIELDS: readonly GraphicBindingField<GraphicBindingPlayer>[] = [
 		type: 'text',
 		shape: 'atomic',
 		game: 'mtg',
-		resolve: player => textOf(getMtgGameData(player.gameData).deckColors),
+		resolve: (player) => textOf(getMtgGameData(player.gameData).deckColors),
 	},
 	// The Leader's name keeps the id it had as free text: a stored binding id is never renamed.
 	{
@@ -441,7 +436,7 @@ const PLAYER_FIELDS: readonly GraphicBindingField<GraphicBindingPlayer>[] = [
 		type: 'text',
 		shape: 'atomic',
 		game: 'op',
-		resolve: player => textOf(getOpGameData(player.gameData).leader?.name),
+		resolve: (player) => textOf(getOpGameData(player.gameData).leader?.name),
 	},
 	{
 		id: 'player.leaderColors',
@@ -451,9 +446,7 @@ const PLAYER_FIELDS: readonly GraphicBindingField<GraphicBindingPlayer>[] = [
 		game: 'op',
 		resolve: (player) => {
 			const leader = getOpGameData(player.gameData).leader;
-			return leader
-				? textOf(formatOpColors(leader.colors))
-				: undefined;
+			return leader ? textOf(formatOpColors(leader.colors)) : undefined;
 		},
 	},
 	{
@@ -462,7 +455,7 @@ const PLAYER_FIELDS: readonly GraphicBindingField<GraphicBindingPlayer>[] = [
 		type: 'text',
 		shape: 'atomic',
 		game: 'op',
-		resolve: player => textOf(getOpGameData(player.gameData).leader?.imageUrl),
+		resolve: (player) => textOf(getOpGameData(player.gameData).leader?.imageUrl),
 	},
 	// A Commander Seat's one or two Commanders, each the card of the printing it holds (ADR-0087).
 	{
@@ -472,7 +465,8 @@ const PLAYER_FIELDS: readonly GraphicBindingField<GraphicBindingPlayer>[] = [
 		shape: 'atomic',
 		game: 'mtg',
 		variant: 'commander',
-		resolve: player => textOf(scryfallCardImageUrl(getMtgGameData(player.gameData).commanders?.[0]?.scryfallId)),
+		resolve: (player) =>
+			textOf(scryfallCardImageUrl(getMtgGameData(player.gameData).commanders?.[0]?.scryfallId)),
 	},
 	{
 		id: 'player.commander2Image',
@@ -481,7 +475,8 @@ const PLAYER_FIELDS: readonly GraphicBindingField<GraphicBindingPlayer>[] = [
 		shape: 'atomic',
 		game: 'mtg',
 		variant: 'commander',
-		resolve: player => textOf(scryfallCardImageUrl(getMtgGameData(player.gameData).commanders?.[1]?.scryfallId)),
+		resolve: (player) =>
+			textOf(scryfallCardImageUrl(getMtgGameData(player.gameData).commanders?.[1]?.scryfallId)),
 	},
 	// The Deck List a side shows, counted without its Leader: 50 in a legal deck. An
 	// unlinked side holds a Feature Match Deck List; a Player, and a side linked to one, theirs.
@@ -510,7 +505,7 @@ function talentSocialProfileFields(
 			label: `${network.label} handle`,
 			type: 'text',
 			shape: 'atomic',
-			resolve: talent => textOf(talent.socialProfiles[networkKey]),
+			resolve: (talent) => textOf(talent.socialProfiles[networkKey]),
 		},
 		{
 			id: profileUrlId,
@@ -519,9 +514,7 @@ function talentSocialProfileFields(
 			shape: 'formatted',
 			resolve: (talent) => {
 				const handle = textOf(talent.socialProfiles[networkKey]);
-				return handle === undefined
-					? undefined
-					: canonicalSocialProfileUrl(networkKey, handle);
+				return handle === undefined ? undefined : canonicalSocialProfileUrl(networkKey, handle);
 			},
 		},
 	];
@@ -533,7 +526,7 @@ const TALENT_FIELDS: readonly GraphicBindingField<GraphicBindingTalent>[] = [
 		label: 'Name',
 		type: 'text',
 		shape: 'atomic',
-		resolve: talent => textOf(talent.name),
+		resolve: (talent) => textOf(talent.name),
 	},
 	...talentSocialProfileFields('twitch', 'talent.twitchHandle', 'talent.twitchProfileUrl'),
 	...talentSocialProfileFields('youtube', 'talent.youtubeHandle', 'talent.youtubeProfileUrl'),
@@ -549,7 +542,7 @@ const PHASE_FIELDS: readonly GraphicBindingField<GraphicBindingPhase>[] = [
 		label: 'Phase name',
 		type: 'text',
 		shape: 'atomic',
-		resolve: phase => textOf(phase.name),
+		resolve: (phase) => textOf(phase.name),
 	},
 ];
 
@@ -559,14 +552,14 @@ const ROUND_FIELDS: readonly GraphicBindingField<GraphicBindingRound>[] = [
 		label: 'Round name',
 		type: 'text',
 		shape: 'atomic',
-		resolve: round => textOf(round.name),
+		resolve: (round) => textOf(round.name),
 	},
 	{
 		id: 'round.number',
 		label: 'Round number',
 		type: 'number',
 		shape: 'atomic',
-		resolve: round => numberOf(round.roundNumber),
+		resolve: (round) => numberOf(round.roundNumber),
 	},
 ];
 
@@ -576,14 +569,14 @@ const MATCH_FIELDS: readonly GraphicBindingField<GraphicBindingMatch>[] = [
 		label: 'Table number',
 		type: 'number',
 		shape: 'atomic',
-		resolve: match => numberOf(match.tableNumber),
+		resolve: (match) => numberOf(match.tableNumber),
 	},
 	{
 		id: 'match.tableLabel',
 		label: 'Table (formatted)',
 		type: 'text',
 		shape: 'formatted',
-		resolve: match => formattedTable(match.tableNumber),
+		resolve: (match) => formattedTable(match.tableNumber),
 	},
 	{
 		id: 'match.result',
@@ -591,27 +584,30 @@ const MATCH_FIELDS: readonly GraphicBindingField<GraphicBindingMatch>[] = [
 		type: 'text',
 		shape: 'atomic',
 		// Its Game Score from player 1's side; a bye or an unreported Match has none.
-		resolve: match => formatGameScore(readMatchFromPlayer1Side({
-			hasResult: match.hasResult ?? false,
-			isBye: match.isBye ?? false,
-			player1GameWins: numberOf(match.player1GameWins) ?? null,
-			player2GameWins: numberOf(match.player2GameWins) ?? null,
-			gameDraws: numberOf(match.gameDraws) ?? null,
-		})) ?? undefined,
+		resolve: (match) =>
+			formatGameScore(
+				readMatchFromPlayer1Side({
+					hasResult: match.hasResult ?? false,
+					isBye: match.isBye ?? false,
+					player1GameWins: numberOf(match.player1GameWins) ?? null,
+					player2GameWins: numberOf(match.player2GameWins) ?? null,
+					gameDraws: numberOf(match.gameDraws) ?? null,
+				}),
+			) ?? undefined,
 	},
 	{
 		id: 'match.player1GameWins',
 		label: 'Player 1 game wins',
 		type: 'number',
 		shape: 'atomic',
-		resolve: match => numberOf(match.player1GameWins),
+		resolve: (match) => numberOf(match.player1GameWins),
 	},
 	{
 		id: 'match.player2GameWins',
 		label: 'Player 2 game wins',
 		type: 'number',
 		shape: 'atomic',
-		resolve: match => numberOf(match.player2GameWins),
+		resolve: (match) => numberOf(match.player2GameWins),
 	},
 	{
 		id: 'match.gameWinsLine',
@@ -621,9 +617,7 @@ const MATCH_FIELDS: readonly GraphicBindingField<GraphicBindingMatch>[] = [
 		resolve: (match) => {
 			const first = numberOf(match.player1GameWins);
 			const second = numberOf(match.player2GameWins);
-			return first === undefined || second === undefined
-				? undefined
-				: `${first} - ${second}`;
+			return first === undefined || second === undefined ? undefined : `${first} - ${second}`;
 		},
 	},
 	// The three toggle fields are the module's one documented exception to "resolve
@@ -635,14 +629,14 @@ const MATCH_FIELDS: readonly GraphicBindingField<GraphicBindingMatch>[] = [
 		label: 'Has a result',
 		type: 'toggle',
 		shape: 'atomic',
-		resolve: match => match.hasResult ?? false,
+		resolve: (match) => match.hasResult ?? false,
 	},
 	{
 		id: 'match.isBye',
 		label: 'Is a bye',
 		type: 'toggle',
 		shape: 'atomic',
-		resolve: match => match.isBye ?? false,
+		resolve: (match) => match.isBye ?? false,
 	},
 ];
 
@@ -662,49 +656,49 @@ const FEATURE_MATCH_SLOT_FIELDS: readonly GraphicBindingField<GraphicBindingFeat
 		label: 'Table number',
 		type: 'number',
 		shape: 'atomic',
-		resolve: slot => numberOf(slotSnapshot(slot)?.tableNumber ?? slot.tableNumber),
+		resolve: (slot) => numberOf(slotSnapshot(slot)?.tableNumber ?? slot.tableNumber),
 	},
 	{
 		id: 'featureMatchSlot.tableLabel',
 		label: 'Table (formatted)',
 		type: 'text',
 		shape: 'formatted',
-		resolve: slot => formattedTable(slotSnapshot(slot)?.tableNumber ?? slot.tableNumber),
+		resolve: (slot) => formattedTable(slotSnapshot(slot)?.tableNumber ?? slot.tableNumber),
 	},
 	{
 		id: 'featureMatchSlot.roundName',
 		label: 'Round name',
 		type: 'text',
 		shape: 'atomic',
-		resolve: slot => textOf(slotSnapshot(slot)?.roundName ?? slot.roundName),
+		resolve: (slot) => textOf(slotSnapshot(slot)?.roundName ?? slot.roundName),
 	},
 	{
 		id: 'featureMatchSlot.formatName',
 		label: 'Format name',
 		type: 'text',
 		shape: 'atomic',
-		resolve: slot => textOf(slotSnapshot(slot)?.formatName ?? slot.formatName),
+		resolve: (slot) => textOf(slotSnapshot(slot)?.formatName ?? slot.formatName),
 	},
 	{
 		id: 'featureMatchSlot.bestOf',
 		label: 'Best of',
 		type: 'number',
 		shape: 'atomic',
-		resolve: slot => numberOf(slotSnapshot(slot)?.bestOf ?? slot.bestOf),
+		resolve: (slot) => numberOf(slotSnapshot(slot)?.bestOf ?? slot.bestOf),
 	},
 	{
 		id: 'featureMatchSlot.player1Life',
 		label: 'Player 1 life total',
 		type: 'number',
 		shape: 'atomic',
-		resolve: slot => numberOf(slotLiveState(slot)?.player1.lifeTotal),
+		resolve: (slot) => numberOf(slotLiveState(slot)?.player1.lifeTotal),
 	},
 	{
 		id: 'featureMatchSlot.player2Life',
 		label: 'Player 2 life total',
 		type: 'number',
 		shape: 'atomic',
-		resolve: slot => numberOf(slotLiveState(slot)?.player2.lifeTotal),
+		resolve: (slot) => numberOf(slotLiveState(slot)?.player2.lifeTotal),
 	},
 	{
 		id: 'featureMatchSlot.player3Life',
@@ -713,7 +707,7 @@ const FEATURE_MATCH_SLOT_FIELDS: readonly GraphicBindingField<GraphicBindingFeat
 		shape: 'atomic',
 		game: 'mtg',
 		variant: 'commander',
-		resolve: slot => numberOf(slotLiveState(slot)?.player3?.lifeTotal),
+		resolve: (slot) => numberOf(slotLiveState(slot)?.player3?.lifeTotal),
 	},
 	{
 		id: 'featureMatchSlot.player4Life',
@@ -722,21 +716,21 @@ const FEATURE_MATCH_SLOT_FIELDS: readonly GraphicBindingField<GraphicBindingFeat
 		shape: 'atomic',
 		game: 'mtg',
 		variant: 'commander',
-		resolve: slot => numberOf(slotLiveState(slot)?.player4?.lifeTotal),
+		resolve: (slot) => numberOf(slotLiveState(slot)?.player4?.lifeTotal),
 	},
 	{
 		id: 'featureMatchSlot.player1GameWins',
 		label: 'Player 1 game wins',
 		type: 'number',
 		shape: 'atomic',
-		resolve: slot => numberOf(slotLiveState(slot)?.player1.gameWins),
+		resolve: (slot) => numberOf(slotLiveState(slot)?.player1.gameWins),
 	},
 	{
 		id: 'featureMatchSlot.player2GameWins',
 		label: 'Player 2 game wins',
 		type: 'number',
 		shape: 'atomic',
-		resolve: slot => numberOf(slotLiveState(slot)?.player2.gameWins),
+		resolve: (slot) => numberOf(slotLiveState(slot)?.player2.gameWins),
 	},
 	{
 		id: 'featureMatchSlot.gameWinsLine',
@@ -745,9 +739,7 @@ const FEATURE_MATCH_SLOT_FIELDS: readonly GraphicBindingField<GraphicBindingFeat
 		shape: 'formatted',
 		resolve: (slot) => {
 			const live = slotLiveState(slot);
-			return live
-				? `${live.player1.gameWins} - ${live.player2.gameWins}`
-				: undefined;
+			return live ? `${live.player1.gameWins} - ${live.player2.gameWins}` : undefined;
 		},
 	},
 	{
@@ -755,14 +747,14 @@ const FEATURE_MATCH_SLOT_FIELDS: readonly GraphicBindingField<GraphicBindingFeat
 		label: 'Current game',
 		type: 'number',
 		shape: 'atomic',
-		resolve: slot => numberOf(slotLiveState(slot)?.currentGame),
+		resolve: (slot) => numberOf(slotLiveState(slot)?.currentGame),
 	},
 	{
 		id: 'featureMatchSlot.turnNumber',
 		label: 'Turn number',
 		type: 'number',
 		shape: 'atomic',
-		resolve: slot => numberOf(slotLiveState(slot)?.turnNumber),
+		resolve: (slot) => numberOf(slotLiveState(slot)?.turnNumber),
 	},
 	{
 		id: 'featureMatchSlot.isComplete',
@@ -771,7 +763,7 @@ const FEATURE_MATCH_SLOT_FIELDS: readonly GraphicBindingField<GraphicBindingFeat
 		shape: 'atomic',
 		// Absent reads as false, as with the Match toggles above: a slot with no live
 		// session has not completed a match.
-		resolve: slot => slotLiveState(slot)?.isComplete ?? false,
+		resolve: (slot) => slotLiveState(slot)?.isComplete ?? false,
 	},
 ];
 
@@ -781,38 +773,38 @@ const ARCHETYPE_FIELDS: readonly GraphicBindingField<GraphicBindingArchetype>[] 
 		label: 'Archetype name',
 		type: 'text',
 		shape: 'atomic',
-		resolve: archetype => textOf(archetype.name),
+		resolve: (archetype) => textOf(archetype.name),
 	},
 	{
 		id: 'archetype.colors',
 		label: 'Archetype colours',
 		type: 'text',
 		shape: 'atomic',
-		resolve: archetype => textOf(archetype.colors),
+		resolve: (archetype) => textOf(archetype.colors),
 	},
 ];
 
 export const GRAPHIC_BINDING_CATALOG: GraphicBindingCatalog = {
-	'event': EVENT_FIELDS,
-	'player': PLAYER_FIELDS,
-	'talent': TALENT_FIELDS,
-	'phase': PHASE_FIELDS,
-	'round': ROUND_FIELDS,
-	'match': MATCH_FIELDS,
+	event: EVENT_FIELDS,
+	player: PLAYER_FIELDS,
+	talent: TALENT_FIELDS,
+	phase: PHASE_FIELDS,
+	round: ROUND_FIELDS,
+	match: MATCH_FIELDS,
 	'feature-match-slot': FEATURE_MATCH_SLOT_FIELDS,
-	'archetype': ARCHETYPE_FIELDS,
+	archetype: ARCHETYPE_FIELDS,
 };
 
 /** What an author reads when choosing what one Graphic Source Selection selects. */
 export const GRAPHIC_SOURCE_SELECTION_KIND_LABELS: Record<GraphicSourceSelectionKind, string> = {
-	'event': 'Current Event',
-	'player': 'Player',
-	'talent': 'Talent',
-	'phase': 'Phase',
-	'round': 'Round',
-	'match': 'Match',
+	event: 'Current Event',
+	player: 'Player',
+	talent: 'Talent',
+	phase: 'Phase',
+	round: 'Round',
+	match: 'Match',
 	'feature-match-slot': 'Feature Match Slot',
-	'archetype': 'Archetype',
+	archetype: 'Archetype',
 };
 
 /**
@@ -820,11 +812,16 @@ export const GRAPHIC_SOURCE_SELECTION_KIND_LABELS: Record<GraphicSourceSelection
  * context, which has every field. A game with no Variant named is a Two-Player
  * Event's, as every Magic: The Gathering Event is unless it says Commander.
  */
-function isFieldOffered(field: Pick<GraphicBindingField, 'game' | 'variant'>, game?: Game, variant?: Variant | null): boolean {
-	if (game === undefined)
-		return true;
-	return (field.game === undefined || field.game === game)
-		&& (field.variant === undefined || field.variant === variant);
+function isFieldOffered(
+	field: Pick<GraphicBindingField, 'game' | 'variant'>,
+	game?: Game,
+	variant?: Variant | null,
+): boolean {
+	if (game === undefined) return true;
+	return (
+		(field.game === undefined || field.game === game) &&
+		(field.variant === undefined || field.variant === variant)
+	);
 }
 
 /**
@@ -841,7 +838,7 @@ export function graphicBindingFields<Kind extends GraphicSourceSelectionKind>(
 	game?: Game,
 	variant?: Variant | null,
 ): readonly GraphicBindingField<GraphicBindingEntityByKind[Kind]>[] {
-	return GRAPHIC_BINDING_CATALOG[kind].filter(field => isFieldOffered(field, game, variant));
+	return GRAPHIC_BINDING_CATALOG[kind].filter((field) => isFieldOffered(field, game, variant));
 }
 
 /** One catalog field by the id a Graphic Input Binding stores. */
@@ -849,8 +846,9 @@ export function graphicBindingField(
 	kind: GraphicSourceSelectionKind,
 	fieldId: string,
 ): GraphicBindingField<unknown> | undefined {
-	return (GRAPHIC_BINDING_CATALOG[kind] as readonly GraphicBindingField<unknown>[])
-		.find(field => field.id === fieldId);
+	return (GRAPHIC_BINDING_CATALOG[kind] as readonly GraphicBindingField<unknown>[]).find(
+		(field) => field.id === fieldId,
+	);
 }
 
 /**
@@ -889,18 +887,21 @@ export function bindableGraphicBindingFields(
 	game?: Game,
 	variant?: Variant | null,
 ): { common: GraphicBindingField<unknown>[]; gameSpecific: GraphicBindingField<unknown>[] } {
-	const fields = (graphicBindingFields(kind, game, variant) as readonly GraphicBindingField<unknown>[])
-		.filter(field => field.type === inputType);
+	const fields = (
+		graphicBindingFields(kind, game, variant) as readonly GraphicBindingField<unknown>[]
+	).filter((field) => field.type === inputType);
 
 	return {
-		common: fields.filter(field => field.game === undefined),
-		gameSpecific: fields.filter(field => field.game !== undefined),
+		common: fields.filter((field) => field.game === undefined),
+		gameSpecific: fields.filter((field) => field.game !== undefined),
 	};
 }
 
 /** Every field id the catalog defines, across every Graphic Source Selection kind. */
 export function graphicBindingFieldIds(): string[] {
-	return Object.values(GRAPHIC_BINDING_CATALOG).flatMap(fields => fields.map(field => field.id));
+	return Object.values(GRAPHIC_BINDING_CATALOG).flatMap((fields) =>
+		fields.map((field) => field.id),
+	);
 }
 
 /**

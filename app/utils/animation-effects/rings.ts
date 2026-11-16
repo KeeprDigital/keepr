@@ -119,8 +119,7 @@ export function createRingsDelegate(): SceneEffectDelegate<AnimationEffectParams
 					y: y + randomBetween(-3, 1),
 					speed,
 				});
-			}
-			catch {}
+			} catch {}
 		}
 	}
 
@@ -149,12 +148,12 @@ export function createRingsDelegate(): SceneEffectDelegate<AnimationEffectParams
 				let radius: number;
 				let width: number;
 				if (randomInt(0, 3)) {
-					radius = randomBetween(2, 4)
-						+ randomBetween(1, 30) * randomBetween(1, 2) * randomBetween(1, 2) * randomBetween(1, 2);
-					width = randomBetween(0, 3.5) + randomBetween(0, 3.5)
-						- randomInt(0, radius / 4) - radius / 50;
-				}
-				else {
+					radius =
+						randomBetween(2, 4) +
+						randomBetween(1, 30) * randomBetween(1, 2) * randomBetween(1, 2) * randomBetween(1, 2);
+					width =
+						randomBetween(0, 3.5) + randomBetween(0, 3.5) - randomInt(0, radius / 4) - radius / 50;
+				} else {
 					radius = randomBetween(1, 3) * randomBetween(2, 4);
 					width = randomBetween(1, 2) * randomBetween(1, 2) * randomBetween(1.1, 1.5);
 				}
@@ -168,16 +167,17 @@ export function createRingsDelegate(): SceneEffectDelegate<AnimationEffectParams
 					startAngle: randomBetween(0, 1000),
 					arc: randomBetween(1, 6),
 					y: randomBetween(0, 50 / (radius + 1) + 5) + 5 / width / (radius + 0.5),
-					speed: Math.max(-randomBetween(0.5, 2), randomBetween(1, 50 - radius / 2) - radius / 2) * 0.25,
+					speed:
+						Math.max(-randomBetween(0.5, 2), randomBetween(1, 50 - radius / 2) - radius / 2) * 0.25,
 				});
 			}
 
-			const ambience = new three.AmbientLight(0xFFFFFF, 0.5);
+			const ambience = new three.AmbientLight(0xffffff, 0.5);
 			scene.add(ambience);
-			const pointLight = new three.PointLight(0xFFFFFF, 0.5);
+			const pointLight = new three.PointLight(0xffffff, 0.5);
 			pointLight.position.set(0, CAMERA_START_Y, CAMERA_Z);
 			scene.add(pointLight);
-			const spot = new three.SpotLight(0xFFFFFF, 1);
+			const spot = new three.SpotLight(0xffffff, 1);
 			spot.position.set(-15, 50, 100);
 			spot.penumbra = 1;
 			spot.angle = 0.5;
@@ -193,7 +193,11 @@ export function createRingsDelegate(): SceneEffectDelegate<AnimationEffectParams
 
 		update: ({ camera, elapsedSeconds }) => {
 			const remaining = CAMERA_REMAINING_PER_SECOND ** elapsedSeconds;
-			camera.position.set(0, CAMERA_TARGET_Y + (CAMERA_START_Y - CAMERA_TARGET_Y) * remaining, CAMERA_Z);
+			camera.position.set(
+				0,
+				CAMERA_TARGET_Y + (CAMERA_START_Y - CAMERA_TARGET_Y) * remaining,
+				CAMERA_Z,
+			);
 			camera.lookAt(CAMERA_LOOK_TARGET.x, CAMERA_LOOK_TARGET.y, CAMERA_LOOK_TARGET.z);
 
 			for (const { mesh, startAngle, spinSpeed } of rings)
@@ -210,9 +214,12 @@ export default function createRingsEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'rings'>,
 ): AnimationEffectInstance<AnimationEffectParams<'rings'>> {
-	return createSceneEffect({
-		three: THREE,
-		host,
-		delegate: createRingsDelegate(),
-	}, params);
+	return createSceneEffect(
+		{
+			three: THREE,
+			host,
+			delegate: createRingsDelegate(),
+		},
+		params,
+	);
 }

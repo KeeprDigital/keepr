@@ -102,8 +102,7 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 			token,
 			release: () => {
 				forId!.delete(token);
-				if (forId!.size === 0)
-					claims.delete(id);
+				if (forId!.size === 0) claims.delete(id);
 			},
 		};
 	}
@@ -112,10 +111,8 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 	function ownedFieldsFor(id: number, except?: object): Set<keyof S> {
 		const union = new Set<keyof S>();
 		for (const [token, owned] of claims.get(id) ?? []) {
-			if (token === except)
-				continue;
-			for (const field of owned)
-				union.add(field);
+			if (token === except) continue;
+			for (const field of owned) union.add(field);
 		}
 		return union;
 	}
@@ -123,26 +120,21 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 	function deriveOwnership(current: S, optimistic: S, extra?: readonly (keyof S)[]): Set<keyof S> {
 		const owned = new Set<keyof S>();
 		for (const field of Object.keys(optimistic as Record<string, unknown>) as (keyof S)[]) {
-			if (!Object.is(current[field], optimistic[field]))
-				owned.add(field);
+			if (!Object.is(current[field], optimistic[field])) owned.add(field);
 		}
-		for (const field of extra ?? [])
-			owned.add(field);
+		for (const field of extra ?? []) owned.add(field);
 		return owned;
 	}
 
 	function mergeOwned(live: S, source: S, owned: ReadonlySet<keyof S>): S {
 		const merged = { ...live };
-		for (const field of owned)
-			merged[field] = source[field];
+		for (const field of owned) merged[field] = source[field];
 		return merged;
 	}
 
 	function mergeIntoState(id: number, source: S, owned: ReadonlySet<keyof S>) {
 		const live = options.stateMap.value.get(id);
-		options.stateMap.value.set(id, live
-			? mergeOwned(live, source, owned)
-			: source);
+		options.stateMap.value.set(id, live ? mergeOwned(live, source, owned) : source);
 	}
 
 	/**
@@ -153,21 +145,16 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 	 */
 	function settleIntoState(id: number, answer: S, target: TargetState<S>) {
 		const others = ownedFieldsFor(id, target.token);
-		mergeIntoState(id, answer, new Set([...target.owned].filter(field => !others.has(field))));
+		mergeIntoState(id, answer, new Set([...target.owned].filter((field) => !others.has(field))));
 	}
 
 	function resultFor(result: FlushResult<S>, id: number): S | undefined {
-		if (result == null)
-			return undefined;
-		return result instanceof Map
-			? result.get(id)
-			: result as S;
+		if (result == null) return undefined;
+		return result instanceof Map ? result.get(id) : (result as S);
 	}
 
 	function normalizeTargets(targets: number | readonly number[]): readonly number[] {
-		return typeof targets === 'number'
-			? [targets]
-			: targets;
+		return typeof targets === 'number' ? [targets] : targets;
 	}
 
 	/**
@@ -181,70 +168,68 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 		const flights = createKeyedGuardedSequence();
 		const queue = createKeyedQueue();
 
-		const debouncedFlush = useDebounceFn(() => {
-			const entries = [
-				...pending.entries(),
-			];
-			pending.clear();
+		const debouncedFlush = useDebounceFn(
+			() => {
+				const entries = [...pending.entries()];
+				pending.clear();
 
-			for (const [key, entry] of entries) {
-				const flight = flights.begin(key);
-				// Pending claims stay live through the in-flight flush and are
-				// released only once the result (or rollback) has been merged.
-				const targets = entry.targets;
-				const [firstId, firstTarget] = [
-					...targets.entries(),
-				][0]!;
-				const snapshots = new Map([
-					...targets.entries(),
-				].map(([id, t]) => [id, t.snapshot]));
-				const flushEntry: FlushEntry<S, P> = {
-					targets: snapshots,
-					payload: entry.payload,
-					id: firstId,
-					snapshot: firstTarget.snapshot,
-				};
-				let committed: S | ReadonlyMap<number, S> | undefined;
-				const controls: FlushControls<S> = {
-					commit: (state) => {
-						committed = state;
-					},
-				};
-				const releaseAll = () => {
-					for (const target of targets.values())
-						target.release();
-				};
-
-				void queue.enqueue(key, () => executeReporting(
-					async () => {
-						const result = await batchOptions.flush(flushEntry, controls);
-						// Only apply the server response if no newer batch has started
-						if (flight.current) {
-							for (const [id, target] of targets) {
-								const state = resultFor(result, id);
-								if (state !== undefined)
-									settleIntoState(id, state, target);
-							}
-						}
-						return result;
-					},
-					{
-						errorRef: options.errorRef,
-						onError: () => {
-							// Only roll back if no newer batch has superseded this one.
-							// Confirmed mid-flush progress (commit) is kept; only work past
-							// the last committed state rolls back to the snapshot.
-							if (flight.current) {
-								for (const [id, target] of targets) {
-									const baseline = resultFor(committed, id) ?? target.snapshot;
-									mergeIntoState(id, baseline, target.owned);
-								}
-							}
+				for (const [key, entry] of entries) {
+					const flight = flights.begin(key);
+					// Pending claims stay live through the in-flight flush and are
+					// released only once the result (or rollback) has been merged.
+					const targets = entry.targets;
+					const [firstId, firstTarget] = [...targets.entries()][0]!;
+					const snapshots = new Map([...targets.entries()].map(([id, t]) => [id, t.snapshot]));
+					const flushEntry: FlushEntry<S, P> = {
+						targets: snapshots,
+						payload: entry.payload,
+						id: firstId,
+						snapshot: firstTarget.snapshot,
+					};
+					let committed: S | ReadonlyMap<number, S> | undefined;
+					const controls: FlushControls<S> = {
+						commit: (state) => {
+							committed = state;
 						},
-					},
-				).finally(releaseAll));
-			}
-		}, batchOptions.debounceMs ?? 300, { maxWait: batchOptions.maxWaitMs ?? 1000 });
+					};
+					const releaseAll = () => {
+						for (const target of targets.values()) target.release();
+					};
+
+					void queue.enqueue(key, () =>
+						executeReporting(
+							async () => {
+								const result = await batchOptions.flush(flushEntry, controls);
+								// Only apply the server response if no newer batch has started
+								if (flight.current) {
+									for (const [id, target] of targets) {
+										const state = resultFor(result, id);
+										if (state !== undefined) settleIntoState(id, state, target);
+									}
+								}
+								return result;
+							},
+							{
+								errorRef: options.errorRef,
+								onError: () => {
+									// Only roll back if no newer batch has superseded this one.
+									// Confirmed mid-flush progress (commit) is kept; only work past
+									// the last committed state rolls back to the snapshot.
+									if (flight.current) {
+										for (const [id, target] of targets) {
+											const baseline = resultFor(committed, id) ?? target.snapshot;
+											mergeIntoState(id, baseline, target.owned);
+										}
+									}
+								},
+							},
+						).finally(releaseAll),
+					);
+				}
+			},
+			batchOptions.debounceMs ?? 300,
+			{ maxWait: batchOptions.maxWaitMs ?? 1000 },
+		);
 
 		/**
 		 * Enqueue an optimistic update for batching. Field Ownership is derived
@@ -274,12 +259,10 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 			let touched = false;
 			for (const id of ids) {
 				const current = options.stateMap.value.get(id);
-				if (!current)
-					continue;
+				if (!current) continue;
 
 				const optimistic = getOptimistic(current, id);
-				if (optimistic === null)
-					continue;
+				if (optimistic === null) continue;
 
 				touched = true;
 				options.stateMap.value.set(id, optimistic);
@@ -288,10 +271,8 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 				const target = entry.targets.get(id);
 				if (target) {
 					// Union ownership; keep the pre-first-update snapshot.
-					for (const field of owned)
-						target.owned.add(field);
-				}
-				else {
+					for (const field of owned) target.owned.add(field);
+				} else {
 					entry.targets.set(id, {
 						snapshot: current,
 						owned,
@@ -300,20 +281,17 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 				}
 			}
 
-			if (!touched && entry.targets.size === 0)
-				return;
+			if (!touched && entry.targets.size === 0) return;
 
 			entry.payload = getPayload(existing?.payload);
-			if (!existing)
-				pending.set(key, entry);
+			if (!existing) pending.set(key, entry);
 
 			void debouncedFlush();
 		}
 
 		function reset() {
 			for (const entry of pending.values()) {
-				for (const target of entry.targets.values())
-					target.release();
+				for (const target of entry.targets.values()) target.release();
 			}
 			pending.clear();
 			flights.supersedeAll();
@@ -339,18 +317,15 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 		apiCall: () => Promise<FlushResult<S>>,
 		ownership?: OwnershipOptions<S>,
 	) {
-		if (actionKey && inFlightActions.has(actionKey))
-			return null;
+		if (actionKey && inFlightActions.has(actionKey)) return null;
 
 		const ids = normalizeTargets(targets);
 		const applied = new Map<number, TargetState<S>>();
 		for (const id of ids) {
 			const current = options.stateMap.value.get(id);
-			if (!current)
-				continue;
+			if (!current) continue;
 			const optimistic = getOptimistic(current, id);
-			if (optimistic === null)
-				continue;
+			if (optimistic === null) continue;
 			options.stateMap.value.set(id, optimistic);
 			const owned = deriveOwnership(current, optimistic, ownership?.serverOwns);
 			applied.set(id, {
@@ -360,37 +335,33 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 			});
 		}
 
-		if (applied.size === 0)
-			return null;
+		if (applied.size === 0) return null;
 
-		if (actionKey)
-			inFlightActions.add(actionKey);
+		if (actionKey) inFlightActions.add(actionKey);
 
 		const promise = executeReporting(
 			async () => {
 				const result = await apiCall();
 				for (const [id, target] of applied) {
 					const state = resultFor(result, id);
-					if (state !== undefined)
-						settleIntoState(id, state, target);
+					if (state !== undefined) settleIntoState(id, state, target);
 				}
 				return result;
 			},
 			{
 				errorRef: options.errorRef,
 				onError: () => {
-					for (const [id, target] of applied)
-						mergeIntoState(id, target.snapshot, target.owned);
+					for (const [id, target] of applied) mergeIntoState(id, target.snapshot, target.owned);
 				},
 			},
 		);
 
-		void promise.finally(() => {
-			if (actionKey)
-				inFlightActions.delete(actionKey);
-			for (const target of applied.values())
-				target.release();
-		}).catch(() => {});
+		void promise
+			.finally(() => {
+				if (actionKey) inFlightActions.delete(actionKey);
+				for (const target of applied.values()) target.release();
+			})
+			.catch(() => {});
 
 		return promise;
 	}

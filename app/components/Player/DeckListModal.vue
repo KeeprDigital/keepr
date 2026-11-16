@@ -24,9 +24,11 @@ const emit = defineEmits<{
 const eventStore = useEventStore();
 const eventRepo = useEventRepository();
 const playerStore = usePlayerStore();
-const player = computed(() => props.playerId == null
-	? null
-	: playerStore.players.find(p => p.id === props.playerId) ?? null);
+const player = computed(() =>
+	props.playerId == null
+		? null
+		: (playerStore.players.find((p) => p.id === props.playerId) ?? null),
+);
 // Props arrive as reactive proxies from useOverlay, so they must not be structuredClone()d.
 const localDeckLists = computed(() => props.deckLists);
 
@@ -36,15 +38,13 @@ const { hasDeckScreens, deckScreens, sendToScreen, sendToFirstDeckScreen } = use
 const canSendToScreen = computed(() => props.playerId != null && hasDeckScreens.value);
 
 async function handleSendToScreen(screenId?: number) {
-	if (props.playerId == null)
-		return;
+	if (props.playerId == null) return;
 	if (screenId) {
-		const screen = deckScreens.value.find(s => s.id === screenId);
+		const screen = deckScreens.value.find((s) => s.id === screenId);
 		if (screen) {
 			await sendToScreen(props.playerId, screen);
 		}
-	}
-	else {
+	} else {
 		await sendToFirstDeckScreen(props.playerId);
 	}
 }
@@ -55,13 +55,11 @@ const currentRoundPhaseId = ref<number | null>(null);
 const pickedDeckIndex = ref<number | null>(null);
 
 onMounted(async () => {
-	if (!eventStore.eventId)
-		return;
+	if (!eventStore.eventId) return;
 	try {
 		const status = await eventRepo.getMeleeLiveResultsStatus(eventStore.eventId);
 		currentRoundPhaseId.value = status.currentRound?.phaseId ?? null;
-	}
-	catch {
+	} catch {
 		// No Current Round to follow: the primary deck stays the default.
 	}
 });
@@ -70,7 +68,10 @@ const defaultDeckIndex = computed(() => {
 	const phaseId = currentRoundPhaseId.value;
 	return phaseId == null
 		? 0
-		: Math.max(localDeckLists.value.findIndex(deck => deck.phaseIds.includes(phaseId)), 0);
+		: Math.max(
+				localDeckLists.value.findIndex((deck) => deck.phaseIds.includes(phaseId)),
+				0,
+			);
 });
 
 const selectedDeckIndex = computed(() => pickedDeckIndex.value ?? defaultDeckIndex.value);
@@ -79,13 +80,14 @@ const selectedDeckIndex = computed(() => pickedDeckIndex.value ?? defaultDeckInd
 const selectedDeck = computed(() => localDeckLists.value[selectedDeckIndex.value] ?? null);
 
 // Archetype Review opens on the Deck List shown here: a Player can hold several.
-const reviewPagePath = computed(() => props.playerId != null && eventStore.eventId && selectedDeck.value
-	? `/event/${eventStore.eventId}/archetype-review?deckId=${selectedDeck.value.deckId}`
-	: null);
+const reviewPagePath = computed(() =>
+	props.playerId != null && eventStore.eventId && selectedDeck.value
+		? `/event/${eventStore.eventId}/archetype-review?deckId=${selectedDeck.value.deckId}`
+		: null,
+);
 
 async function reviewDeck() {
-	if (!reviewPagePath.value)
-		return;
+	if (!reviewPagePath.value) return;
 	close();
 	await navigateTo(reviewPagePath.value);
 }
@@ -116,12 +118,8 @@ const sideboardGroupContainer = ref<HTMLElement | null>(null);
 const { width: mainboardGroupWidth } = useElementSize(mainboardGroupContainer);
 const { width: sideboardGroupWidth } = useElementSize(sideboardGroupContainer);
 
-const mainboardGroups = computed(() => [
-	...mainboardByType.value.entries(),
-]);
-const sideboardGroups = computed(() => [
-	...sideboardByType.value.entries(),
-]);
+const mainboardGroups = computed(() => [...mainboardByType.value.entries()]);
+const sideboardGroups = computed(() => [...sideboardByType.value.entries()]);
 
 function getGroupColumnWeight<T>(groups: readonly (readonly [string, T[]])[]) {
 	return groups.reduce((total, [, groupedCards]) => total + groupedCards.length + 1, 0);
@@ -183,19 +181,25 @@ const modalContentClass = computed(() => {
 		getGroupColumnWeight(mainboardGroups.value),
 		mainboardGroups.value.length,
 	);
-	const sideboardPreferredColumns = sideboardGroups.value.length > 0
-		? getPreferredGroupColumnCount(getGroupColumnWeight(sideboardGroups.value), sideboardGroups.value.length)
-		: 0;
-	const preferredWidth = MODAL_BASE_CONTENT_WIDTH
-		+ (mainboardPreferredColumns * MODAL_DECK_TYPE_MIN_COLUMN_WIDTH)
-		+ (sideboardPreferredColumns > 0
+	const sideboardPreferredColumns =
+		sideboardGroups.value.length > 0
+			? getPreferredGroupColumnCount(
+					getGroupColumnWeight(sideboardGroups.value),
+					sideboardGroups.value.length,
+				)
+			: 0;
+	const preferredWidth =
+		MODAL_BASE_CONTENT_WIDTH +
+		mainboardPreferredColumns * MODAL_DECK_TYPE_MIN_COLUMN_WIDTH +
+		(sideboardPreferredColumns > 0
 			? sideboardPreferredColumns * MODAL_DECK_TYPE_MIN_COLUMN_WIDTH
-			: 0)
-		+ ((mainboardPreferredColumns > 0 && sideboardPreferredColumns > 0)
-			? DECK_TYPE_COLUMN_GAP
-			: 0);
+			: 0) +
+		(mainboardPreferredColumns > 0 && sideboardPreferredColumns > 0 ? DECK_TYPE_COLUMN_GAP : 0);
 
-	return MODAL_WIDTH_BUCKETS.find(({ maxWidth }) => preferredWidth <= maxWidth)?.className ?? 'sm:max-w-screen-xl';
+	return (
+		MODAL_WIDTH_BUCKETS.find(({ maxWidth }) => preferredWidth <= maxWidth)?.className ??
+		'sm:max-w-screen-xl'
+	);
 });
 
 // Curve data comes pre-calculated from the server
@@ -214,26 +218,24 @@ const tabItems = computed(() => {
 const { fetchScryfallCards } = useScryfallBatch();
 const cardDataMap = shallowRef(new Map<string, MtgCard>());
 
-const {
-	activePreviewCard,
-	handlePreviewUpdate,
-	togglePreviewPin,
-	resetPreview,
-} = useCardPreview();
+const { activePreviewCard, handlePreviewUpdate, togglePreviewPin, resetPreview } = useCardPreview();
 
 function close() {
 	resetPreview();
 	emit('close');
 }
 
-watch(selectedDeck, async (deck) => {
-	resetPreview();
-	cardDataMap.value = new Map();
-	if (!deck)
-		return;
-	const lookupCards = createDeckLookupCards(deck.cards, deck.companion);
-	cardDataMap.value = (await fetchScryfallCards(lookupCards)).cards;
-}, { immediate: true });
+watch(
+	selectedDeck,
+	async (deck) => {
+		resetPreview();
+		cardDataMap.value = new Map();
+		if (!deck) return;
+		const lookupCards = createDeckLookupCards(deck.cards, deck.companion);
+		cardDataMap.value = (await fetchScryfallCards(lookupCards)).cards;
+	},
+	{ immediate: true },
+);
 
 function getCardImageUrl(card: DeckListCard): string | null {
 	return getDeckCardImageUrl(cardDataMap.value, card);
@@ -283,22 +285,24 @@ const highlanderImageUrlsByCardName = computed<Record<string, string | null>>(()
 });
 
 const selectedDeckCounters = computed(() => {
-	const counterTypes = cards.value.flatMap(card => card.deckCounterTypes ?? []);
+	const counterTypes = cards.value.flatMap((card) => card.deckCounterTypes ?? []);
 	return counterConfigsForDeckCounterTypes(counterTypes, getCounterTypeConfigs('mtg'));
 });
 
 const selectedDeckTokens = computed(() => {
-	return uniqueDeckTokens(cards.value.flatMap(card => card.deckTokens ?? []));
+	return uniqueDeckTokens(cards.value.flatMap((card) => card.deckTokens ?? []));
 });
 
-const tokenCards = computed<DeckListCard[]>(() => selectedDeckTokens.value.map(token => ({
-	name: token.name,
-	setCode: null,
-	quantity: 0,
-	compartment: 'sideboard',
-	cardType: token.typeLine,
-	scryfallId: token.scryfallId,
-})));
+const tokenCards = computed<DeckListCard[]>(() =>
+	selectedDeckTokens.value.map((token) => ({
+		name: token.name,
+		setCode: null,
+		quantity: 0,
+		compartment: 'sideboard',
+		cardType: token.typeLine,
+		scryfallId: token.scryfallId,
+	})),
+);
 
 function tokenImageUrl(scryfallId: string | null): string | null {
 	return scryfallId
@@ -308,10 +312,7 @@ function tokenImageUrl(scryfallId: string | null): string | null {
 </script>
 
 <template>
-	<UModal
-		:close="{ onClick: close }"
-		:ui="{ content: modalContentClass }"
-	>
+	<UModal :close="{ onClick: close }" :ui="{ content: modalContentClass }">
 		<template v-if="selectedDeck" #title>
 			<div class="flex items-center gap-2">
 				<PlayerMatchHistoryButton :player="player" :name="playerName" />
@@ -319,7 +320,10 @@ function tokenImageUrl(scryfallId: string | null): string | null {
 				<span class="text-muted">
 					{{ selectedDeck.name }}
 				</span>
-				<div v-if="selectedDeck.pips && formatPips(selectedDeck.pips).length > 0" class="flex items-center gap-2 ml-1">
+				<div
+					v-if="selectedDeck.pips && formatPips(selectedDeck.pips).length > 0"
+					class="flex items-center gap-2 ml-1"
+				>
 					<div
 						v-for="pip in formatPips(selectedDeck.pips)"
 						:key="pip.color"
@@ -368,7 +372,10 @@ function tokenImageUrl(scryfallId: string | null): string | null {
 			</div>
 		</template>
 		<template #body>
-			<div v-if="props.loading && localDeckLists.length === 0" class="min-h-48 flex items-center justify-center">
+			<div
+				v-if="props.loading && localDeckLists.length === 0"
+				class="min-h-48 flex items-center justify-center"
+			>
 				<UILoadingSpinner size="sm" label="Loading deck list..." />
 			</div>
 
@@ -380,14 +387,18 @@ function tokenImageUrl(scryfallId: string | null): string | null {
 			/>
 
 			<div v-else class="flex flex-col gap-4">
-				<MtgHighlanderSummary :highlander="selectedDeck?.highlander" :image-urls-by-card-name="highlanderImageUrlsByCardName" compact />
+				<MtgHighlanderSummary
+					:highlander="selectedDeck?.highlander"
+					:image-urls-by-card-name="highlanderImageUrlsByCardName"
+					compact
+				/>
 
 				<!-- Deck selector tabs (only show if multiple decks) -->
 				<UISegmentedTabs
 					v-if="localDeckLists.length > 1"
 					:items="tabItems"
 					:model-value="selectedDeckIndex.toString()"
-					@update:model-value="(val) => pickedDeckIndex = Number(val)"
+					@update:model-value="(val) => (pickedDeckIndex = Number(val))"
 				/>
 
 				<!-- Deck list content -->
@@ -400,7 +411,11 @@ function tokenImageUrl(scryfallId: string | null): string | null {
 								Mainboard ({{ mainboardTotal }})
 							</h4>
 							<div ref="mainboardGroupContainer" class="deck-type-grid" :style="mainboardGridStyle">
-								<div v-for="(column, columnIndex) in mainboardColumns" :key="`mainboard-column-${columnIndex}`" class="deck-type-column">
+								<div
+									v-for="(column, columnIndex) in mainboardColumns"
+									:key="`mainboard-column-${columnIndex}`"
+									class="deck-type-column"
+								>
 									<div v-for="[type, groupedCards] in column" :key="type" class="deck-type-group">
 										<p class="text-xs text-muted uppercase mb-1">
 											{{ type }} <em>({{ groupedCards.reduce((s, c) => s + c.quantity, 0) }})</em>
@@ -422,11 +437,21 @@ function tokenImageUrl(scryfallId: string | null): string | null {
 						</div>
 
 						<!-- Sideboard -->
-						<div v-if="companionCard || sideboardCards.length > 0 || tokenCards.length > 0 || selectedDeckCounters.length > 0" class="shrink-0 border-l border-default pl-6">
-							<section v-if="companionCard" data-deck-companion :class="{ 'mb-5': sideboardCards.length > 0 }">
-								<h4 class="font-semibold mb-3 text-sm uppercase tracking-wide">
-									Companion
-								</h4>
+						<div
+							v-if="
+								companionCard ||
+								sideboardCards.length > 0 ||
+								tokenCards.length > 0 ||
+								selectedDeckCounters.length > 0
+							"
+							class="shrink-0 border-l border-default pl-6"
+						>
+							<section
+								v-if="companionCard"
+								data-deck-companion
+								:class="{ 'mb-5': sideboardCards.length > 0 }"
+							>
+								<h4 class="font-semibold mb-3 text-sm uppercase tracking-wide">Companion</h4>
 								<ul class="flex flex-col gap-0.5">
 									<PlayerDeckListCardItem
 										:card="companionCard"
@@ -442,8 +467,16 @@ function tokenImageUrl(scryfallId: string | null): string | null {
 								<h4 class="font-semibold mb-3 text-sm uppercase tracking-wide">
 									Sideboard ({{ sideboardHeadingCount }})
 								</h4>
-								<div ref="sideboardGroupContainer" class="deck-type-grid" :style="sideboardGridStyle">
-									<div v-for="(column, columnIndex) in sideboardColumns" :key="`sideboard-column-${columnIndex}`" class="deck-type-column">
+								<div
+									ref="sideboardGroupContainer"
+									class="deck-type-grid"
+									:style="sideboardGridStyle"
+								>
+									<div
+										v-for="(column, columnIndex) in sideboardColumns"
+										:key="`sideboard-column-${columnIndex}`"
+										class="deck-type-column"
+									>
 										<div v-for="[type, groupedCards] in column" :key="type" class="deck-type-group">
 											<p class="text-xs text-muted uppercase mb-1">
 												{{ type }} <em>({{ groupedCards.reduce((s, c) => s + c.quantity, 0) }})</em>
@@ -464,7 +497,11 @@ function tokenImageUrl(scryfallId: string | null): string | null {
 								</div>
 							</div>
 
-							<section v-if="tokenCards.length > 0" class="supplementary-section" :class="{ 'mt-5': sideboardCards.length > 0 }">
+							<section
+								v-if="tokenCards.length > 0"
+								class="supplementary-section"
+								:class="{ 'mt-5': sideboardCards.length > 0 }"
+							>
 								<h4 class="font-semibold mb-3 text-sm uppercase tracking-wide">
 									Tokens ({{ tokenCards.length }})
 								</h4>
@@ -489,11 +526,13 @@ function tokenImageUrl(scryfallId: string | null): string | null {
 								class="supplementary-section"
 								:class="{ 'mt-5': sideboardCards.length > 0 || tokenCards.length > 0 }"
 							>
-								<h4 class="font-semibold mb-3 text-sm uppercase tracking-wide">
-									Counters
-								</h4>
+								<h4 class="font-semibold mb-3 text-sm uppercase tracking-wide">Counters</h4>
 								<ul class="flex flex-col gap-1">
-									<li v-for="counter in selectedDeckCounters" :key="counter.key" class="flex items-center gap-2 text-sm">
+									<li
+										v-for="counter in selectedDeckCounters"
+										:key="counter.key"
+										class="flex items-center gap-2 text-sm"
+									>
 										<UIcon :name="counter.icon" class="size-4 shrink-0 text-muted" />
 										{{ counter.label }}
 									</li>
@@ -504,9 +543,7 @@ function tokenImageUrl(scryfallId: string | null): string | null {
 
 					<!-- Mana curve chart full width below -->
 					<div v-if="Object.keys(curveData).length > 0">
-						<h4 class="font-semibold mb-3 text-sm uppercase tracking-wide">
-							Mana Curve
-						</h4>
+						<h4 class="font-semibold mb-3 text-sm uppercase tracking-wide">Mana Curve</h4>
 						<DeckManaCurveChart :curve="curveData" />
 					</div>
 				</div>
@@ -540,19 +577,17 @@ function tokenImageUrl(scryfallId: string | null): string | null {
 					<!-- Multiple Deck List Screens - dropdown -->
 					<UDropdownMenu
 						v-else
-						:items="[[
-							...deckScreens.map(s => ({
-								label: s.name,
-								icon: 'i-lucide-monitor',
-								onSelect: () => handleSendToScreen(s.id),
-							})),
-						]]"
+						:items="[
+							[
+								...deckScreens.map((s) => ({
+									label: s.name,
+									icon: 'i-lucide-monitor',
+									onSelect: () => handleSendToScreen(s.id),
+								})),
+							],
+						]"
 					>
-						<UButton
-							icon="i-lucide-send"
-							color="primary"
-							trailing-icon="i-lucide-chevron-down"
-						>
+						<UButton icon="i-lucide-send" color="primary" trailing-icon="i-lucide-chevron-down">
 							Send to Screen
 						</UButton>
 					</UDropdownMenu>

@@ -44,34 +44,39 @@ function createServer(initial: Screen) {
 	const holds: Array<() => void> = [];
 	let holding = false;
 
-	mockRepo.list.mockImplementation(async () => [
-		wire(held),
-	]);
+	mockRepo.list.mockImplementation(async () => [wire(held)]);
 	mockRepo.getById.mockImplementation(async () => wire(held));
-	mockRepo.updateModeConfig.mockImplementation(async (eventId: number, screenId: number, mode: ScreenMode, config: Record<string, unknown>, stateVersion: number) => {
-		const body = wire({ ...config, stateVersion });
-		bodies.push(body);
-		if (holding)
-			await new Promise<void>(resolve => holds.push(resolve));
-		if (eventId !== held.eventId || screenId !== held.id)
-			throw Object.assign(new Error('Screen not found'), { statusCode: 404 });
-		const { stateVersion: sent, ...raw } = body;
-		const patch = modeConfigPatchSchemaMap[mode].parse(raw) as Record<string, unknown>;
-		if (sent !== held.stateVersion) {
-			throw Object.assign(new Error('Conflict'), {
-				statusCode: 409,
-				data: {
-					data: { code: STATE_CONFLICT_CODE },
-				},
-			});
-		}
-		held = {
-			...held,
-			modeConfigs: mergeScreenModeConfig((held.modeConfigs ?? {}) as ModeConfigsMap, mode, patch),
-			stateVersion: held.stateVersion + 1,
-		};
-		return wire(held);
-	});
+	mockRepo.updateModeConfig.mockImplementation(
+		async (
+			eventId: number,
+			screenId: number,
+			mode: ScreenMode,
+			config: Record<string, unknown>,
+			stateVersion: number,
+		) => {
+			const body = wire({ ...config, stateVersion });
+			bodies.push(body);
+			if (holding) await new Promise<void>((resolve) => holds.push(resolve));
+			if (eventId !== held.eventId || screenId !== held.id)
+				throw Object.assign(new Error('Screen not found'), { statusCode: 404 });
+			const { stateVersion: sent, ...raw } = body;
+			const patch = modeConfigPatchSchemaMap[mode].parse(raw) as Record<string, unknown>;
+			if (sent !== held.stateVersion) {
+				throw Object.assign(new Error('Conflict'), {
+					statusCode: 409,
+					data: {
+						data: { code: STATE_CONFLICT_CODE },
+					},
+				});
+			}
+			held = {
+				...held,
+				modeConfigs: mergeScreenModeConfig((held.modeConfigs ?? {}) as ModeConfigsMap, mode, patch),
+				stateVersion: held.stateVersion + 1,
+			};
+			return wire(held);
+		},
+	);
 
 	return {
 		bodies,
@@ -84,8 +89,7 @@ function createServer(initial: Screen) {
 		},
 		release() {
 			holding = false;
-			for (const resolve of holds.splice(0))
-				resolve();
+			for (const resolve of holds.splice(0)) resolve();
 		},
 	};
 }
@@ -235,56 +239,56 @@ describe('screen settings saves', () => {
 	 * field stands for all: every mode's PATCH form and merge are derived the same way.
 	 */
 	describe.each<[ScreenMode, string, unknown, Record<string, unknown>]>([
-		[
-			'metagame',
-			'archetypeId',
-			4,
-			{ topN: 16 },
-		],
+		['metagame', 'archetypeId', 4, { topN: 16 }],
 	])('clearing %s %s', (mode, field, storedValue, unrelated) => {
 		it.each([
 			['null, the deletion the PATCH contract defines', null],
 			['undefined, which JSON would omit', undefined],
-		])('as %s deletes it, keeps the rest, and reads the default from then on', async (_, cleared) => {
-			const declared = fieldOf(getDefaultConfigForMode(mode), field);
-			const server = await openScreen(createMockScreen({
+		])(
+			'as %s deletes it, keeps the rest, and reads the default from then on',
+			async (_, cleared) => {
+				const declared = fieldOf(getDefaultConfigForMode(mode), field);
+				const server = await openScreen(
+					createMockScreen({
+						id: 1,
+						eventId: 1,
+						stateVersion: 1,
+						modeConfigs: {
+							[mode]: { ...unrelated, [field]: storedValue },
+						},
+					}),
+				);
+				const scope = effectScope();
+				const { config, updateConfig } = scope.run(() => useModeConfigUpdate(1, 1, mode))!;
+				expect(fieldOf(config.value, field)).toBe(storedValue);
+
+				updateConfig({ [field]: cleared } as never);
+				expect(fieldOf(config.value, field)).toBe(declared);
+				await sendPending();
+
+				expect(server.bodies).toEqual([{ [field]: null, stateVersion: 1 }]);
+				expect(server.held.modeConfigs).toEqual({ [mode]: unrelated });
+				expect(fieldOf(config.value, field)).toBe(declared);
+				scope.stop();
+
+				const reloaded = await reloadedConfig(mode);
+				expect(fieldOf(reloaded, field)).toBe(declared);
+				expect(reloaded).toMatchObject(unrelated);
+			},
+		);
+	});
+
+	it('a display reset clears a custom header rather than leaving the old one stored', async () => {
+		const server = await openScreen(
+			createMockScreen({
 				id: 1,
 				eventId: 1,
 				stateVersion: 1,
 				modeConfigs: {
-					[mode]: { ...unrelated, [field]: storedValue },
+					metagame: { headerText: 'Day 2 Metagame', archetypeId: 4 },
 				},
-			}));
-			const scope = effectScope();
-			const { config, updateConfig } = scope.run(() => useModeConfigUpdate(1, 1, mode))!;
-			expect(fieldOf(config.value, field)).toBe(storedValue);
-
-			updateConfig({ [field]: cleared } as never);
-			expect(fieldOf(config.value, field)).toBe(declared);
-			await sendPending();
-
-			expect(server.bodies).toEqual([
-				{ [field]: null, stateVersion: 1 },
-			]);
-			expect(server.held.modeConfigs).toEqual({ [mode]: unrelated });
-			expect(fieldOf(config.value, field)).toBe(declared);
-			scope.stop();
-
-			const reloaded = await reloadedConfig(mode);
-			expect(fieldOf(reloaded, field)).toBe(declared);
-			expect(reloaded).toMatchObject(unrelated);
-		});
-	});
-
-	it('a display reset clears a custom header rather than leaving the old one stored', async () => {
-		const server = await openScreen(createMockScreen({
-			id: 1,
-			eventId: 1,
-			stateVersion: 1,
-			modeConfigs: {
-				metagame: { headerText: 'Day 2 Metagame', archetypeId: 4 },
-			},
-		}));
+			}),
+		);
 		const scope = effectScope();
 		const { config, resetConfig } = scope.run(() => useModeConfigUpdate(1, 1, 'metagame'))!;
 

@@ -1,4 +1,9 @@
-import type { HearingScreen, OutputChange, OutputChangeKind, ScreenHearsContext } from '~~/shared/screenOutputInterest';
+import type {
+	HearingScreen,
+	OutputChange,
+	OutputChangeKind,
+	ScreenHearsContext,
+} from '~~/shared/screenOutputInterest';
 import type { MessagePayload, MessageType } from '~~/shared/types/messages';
 import type { ModeConfigsMap } from '~~/shared/types/screenConfig';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -8,7 +13,12 @@ import { featureMatches, matches, rounds, screens } from '~~/server/db/schema';
 import { publishFailureFields } from '~~/server/utils/realtimePublishFailure';
 import { screenOutputFeatureMatchSlotId } from '~~/server/utils/screenOutputSelection';
 import { SCREEN_MODES } from '~~/shared/screenModes';
-import { OUTPUT_CHANGE_KINDS, outputChangeOf, screenHears, slotNarrowingOf } from '~~/shared/screenOutputInterest';
+import {
+	OUTPUT_CHANGE_KINDS,
+	outputChangeOf,
+	screenHears,
+	slotNarrowingOf,
+} from '~~/shared/screenOutputInterest';
 import { SCREEN_MODE_VALUES } from '~~/shared/types/enums';
 import { resolveScreenModeConfig } from '~~/shared/types/screenConfig';
 
@@ -73,7 +83,10 @@ interface HeardMessage {
 }
 
 interface OutputChangeRun {
-	byEvent: Map<number, { heard: HeardMessage[]; publish: PublishToScreenChannels; afterAnswer?: AfterAnswer }>;
+	byEvent: Map<
+		number,
+		{ heard: HeardMessage[]; publish: PublishToScreenChannels; afterAnswer?: AfterAnswer }
+	>;
 }
 
 const currentRun = new AsyncLocalStorage<OutputChangeRun>();
@@ -83,8 +96,9 @@ const currentRun = new AsyncLocalStorage<OutputChangeRun>();
  * configuration is loaded: a Broadcast Graphics or Background Screen's holds
  * its Authored Stack, hundreds of kilobytes no follow reads.
  */
-const CONFIG_READING_MODES = SCREEN_MODE_VALUES.filter(mode =>
-	Object.values(SCREEN_MODES[mode].outputFollows).some(follow => typeof follow === 'function'));
+const CONFIG_READING_MODES = SCREEN_MODE_VALUES.filter((mode) =>
+	Object.values(SCREEN_MODES[mode].outputFollows).some((follow) => typeof follow === 'function'),
+);
 
 /** D1 binds at most a hundred parameters a statement; past this the Slot read is skipped, and every change a Slot would narrow is heard. */
 const MAX_SLOTS_READ = 90;
@@ -101,17 +115,21 @@ async function readScreens(eventId: number): Promise<JudgedScreen[]> {
 		.select({
 			id: screens.id,
 			mode: screens.currentMode,
-			config: sql<string | null>`case when ${inArray(screens.currentMode, CONFIG_READING_MODES)} then json_extract(${screens.modeConfigs}, '$."' || ${screens.currentMode} || '"') end`,
+			config: sql<
+				string | null
+			>`case when ${inArray(screens.currentMode, CONFIG_READING_MODES)} then json_extract(${screens.modeConfigs}, '$."' || ${screens.currentMode} || '"') end`,
 		})
 		.from(screens)
 		.where(eq(screens.eventId, eventId));
 
 	return rows.map(({ id, mode, config }) => {
-		const modeConfigs = (config
-			? {
-					[mode]: JSON.parse(config),
-				}
-			: null) as ModeConfigsMap | null;
+		const modeConfigs = (
+			config
+				? {
+						[mode]: JSON.parse(config),
+					}
+				: null
+		) as ModeConfigsMap | null;
 		return {
 			hearing: {
 				id,
@@ -138,10 +156,13 @@ async function readSlots(
 ): Promise<Map<number, ReadSlot>> {
 	const read = new Map<number, ReadSlot>();
 	const slotIds = [
-		...new Set(changes.flatMap(change => judged.flatMap(({ hearing }) => slotNarrowingOf(hearing, change) ?? []))),
+		...new Set(
+			changes.flatMap((change) =>
+				judged.flatMap(({ hearing }) => slotNarrowingOf(hearing, change) ?? []),
+			),
+		),
 	];
-	if (slotIds.length === 0 || slotIds.length > MAX_SLOTS_READ)
-		return read;
+	if (slotIds.length === 0 || slotIds.length > MAX_SLOTS_READ) return read;
 
 	const slots = await db
 		.select({
@@ -159,27 +180,28 @@ async function readSlots(
 	for (const { id, player1Id, player2Id, matchId, roundId, phaseId } of slots) {
 		read.set(id, {
 			id,
-			playerIds: [player1Id, player2Id].filter(playerId => playerId != null),
+			playerIds: [player1Id, player2Id].filter((playerId) => playerId != null),
 			// A Match whose Round or Phase the read could not name is left untold.
 			...(matchId === null
 				? { match: null }
-				: roundId !== null && phaseId !== null && {
-					match: { id: matchId, roundId, phaseId },
-				}),
+				: roundId !== null &&
+					phaseId !== null && {
+						match: { id: matchId, roundId, phaseId },
+					}),
 		});
 	}
 	return read;
 }
 
 /** What `screenHears` needs beside the Screen for one change: the Slot narrowing it, as read. A Slot not read admits every id. */
-function hearingContext(hearing: HearingScreen, change: OutputChange, slots: ReadonlyMap<number, ReadSlot>): ScreenHearsContext {
+function hearingContext(
+	hearing: HearingScreen,
+	change: OutputChange,
+	slots: ReadonlyMap<number, ReadSlot>,
+): ScreenHearsContext {
 	const slotId = slotNarrowingOf(hearing, change);
-	const slot = slotId === null
-		? undefined
-		: slots.get(slotId);
-	return slot
-		? { slot }
-		: {};
+	const slot = slotId === null ? undefined : slots.get(slotId);
+	return slot ? { slot } : {};
 }
 
 /** What one Screen's channel is to receive for a run, as it accumulates. */
@@ -190,9 +212,16 @@ interface ScreenTelling {
 }
 
 /** The kinds whose one message names its Screen and goes to it with no read: a Take must not wait on one (ADR-0004). */
-function namesItsScreenUnread(type: MessageType, change: OutputChange): change is OutputChange & { screenId: number } {
-	return change.screenId !== undefined
-		&& (change.kind === 'broadcastGraphicsLiveSession' || type === 'screen:updated' || type === 'screen:deleted');
+function namesItsScreenUnread(
+	type: MessageType,
+	change: OutputChange,
+): change is OutputChange & { screenId: number } {
+	return (
+		change.screenId !== undefined &&
+		(change.kind === 'broadcastGraphicsLiveSession' ||
+			type === 'screen:updated' ||
+			type === 'screen:deleted')
+	);
 }
 
 /**
@@ -200,13 +229,20 @@ function namesItsScreenUnread(type: MessageType, change: OutputChange): change i
  * published: its own messages in order, then at most one notice that its Event
  * context changed, then at most one naming every kind of change its mode shows.
  */
-async function decideDeliveries(eventId: number, heard: readonly HeardMessage[]): Promise<ScreenChannelDelivery[]> {
+async function decideDeliveries(
+	eventId: number,
+	heard: readonly HeardMessage[],
+): Promise<ScreenChannelDelivery[]> {
 	const changed = heard.flatMap(({ message, originConnectionId }) =>
-		outputChangeOf(message.type, message.payload as never).map(change => ({ message, originConnectionId, change })));
+		outputChangeOf(message.type, message.payload as never).map((change) => ({
+			message,
+			originConnectionId,
+			change,
+		})),
+	);
 	// A new Screen has no output to tell.
 	const shown = changed.filter(({ message }) => message.type !== 'screen:created');
-	if (shown.length === 0)
-		return [];
+	if (shown.length === 0) return [];
 
 	const tellings = new Map<number, ScreenTelling>();
 	const telling = (screenId: number) => {
@@ -222,22 +258,29 @@ async function decideDeliveries(eventId: number, heard: readonly HeardMessage[])
 		return entry;
 	};
 
-	const needsScreens = shown.some(({ message, change }) => !namesItsScreenUnread(message.type, change));
-	const judged = needsScreens
-		? await readScreens(eventId)
-		: [];
-	const slots = judged.length > 0
-		? await readSlots(eventId, judged, shown.map(({ change }) => change))
-		: new Map<number, ReadSlot>();
+	const needsScreens = shown.some(
+		({ message, change }) => !namesItsScreenUnread(message.type, change),
+	);
+	const judged = needsScreens ? await readScreens(eventId) : [];
+	const slots =
+		judged.length > 0
+			? await readSlots(
+					eventId,
+					judged,
+					shown.map(({ change }) => change),
+				)
+			: new Map<number, ReadSlot>();
 
 	for (const { message, originConnectionId, change } of shown) {
 		if (namesItsScreenUnread(message.type, change)) {
-			telling(change.screenId).forwarded.push(change.kind === 'screen'
-				? {
-						type: message.type,
-						payload: { screenId: change.screenId },
-					} as ScreenChannelMessage
-				: { ...message, originConnectionId });
+			telling(change.screenId).forwarded.push(
+				change.kind === 'screen'
+					? ({
+							type: message.type,
+							payload: { screenId: change.screenId },
+						} as ScreenChannelMessage)
+					: { ...message, originConnectionId },
+			);
 			continue;
 		}
 
@@ -246,18 +289,19 @@ async function decideDeliveries(eventId: number, heard: readonly HeardMessage[])
 				telling(hearing.id).eventContext = true;
 				continue;
 			}
-			if (!screenHears(hearing, change, hearingContext(hearing, change, slots)))
-				continue;
+			if (!screenHears(hearing, change, hearingContext(hearing, change, slots))) continue;
 			// A payload reaches a Screen only where its own read answers the same: the Card
 			// while in Card Spotlight, the Session of the Slot it shows.
 			if (change.kind === 'screenCard') {
 				if (hearing.mode === 'card')
 					telling(hearing.id).forwarded.push({ ...message, originConnectionId });
-			}
-			else if (change.kind === 'featureMatchSession' && shownSlotId !== null && change.slotIds?.includes(shownSlotId)) {
+			} else if (
+				change.kind === 'featureMatchSession' &&
+				shownSlotId !== null &&
+				change.slotIds?.includes(shownSlotId)
+			) {
 				telling(hearing.id).forwarded.push({ ...message, originConnectionId });
-			}
-			else {
+			} else {
 				telling(hearing.id).causes.add(change.kind);
 			}
 		}
@@ -267,18 +311,14 @@ async function decideDeliveries(eventId: number, heard: readonly HeardMessage[])
 		screenId,
 		messages: [
 			...forwarded,
-			...(eventContext
-				? [
-						{ type: 'output:eventContextChanged', payload: {} } as const,
-					]
-				: []),
+			...(eventContext ? [{ type: 'output:eventContextChanged', payload: {} } as const] : []),
 			...(causes.size > 0
 				? [
 						{
 							type: 'output:modeDataChanged',
 							payload: {
 								screenId,
-								causes: OUTPUT_CHANGE_KINDS.filter(kind => causes.has(kind)),
+								causes: OUTPUT_CHANGE_KINDS.filter((kind) => causes.has(kind)),
 							},
 						} as const,
 					]
@@ -294,8 +334,7 @@ async function attempt(
 ): Promise<ScreenChannelFailure[]> {
 	try {
 		return await publish(eventId, deliveries);
-	}
-	catch (error) {
+	} catch (error) {
 		return deliveries.map(({ screenId }) => ({ screenId, error }));
 	}
 }
@@ -307,48 +346,72 @@ async function attempt(
  * revisioned and the notices idempotent, so a duplicate is safe and a loss is
  * what an output's Reconnect Resync and slow re-read already recover from.
  */
-async function deliver(eventId: number, deliveries: readonly ScreenChannelDelivery[], publish: PublishToScreenChannels): Promise<void> {
-	if (deliveries.length === 0)
-		return;
+async function deliver(
+	eventId: number,
+	deliveries: readonly ScreenChannelDelivery[],
+	publish: PublishToScreenChannels,
+): Promise<void> {
+	if (deliveries.length === 0) return;
 	let failures = await attempt(eventId, deliveries, publish);
 	if (failures.length > 0) {
-		const refused = new Set(failures.map(failure => failure.screenId));
-		failures = await attempt(eventId, deliveries.filter(delivery => refused.has(delivery.screenId)), publish);
+		const refused = new Set(failures.map((failure) => failure.screenId));
+		failures = await attempt(
+			eventId,
+			deliveries.filter((delivery) => refused.has(delivery.screenId)),
+			publish,
+		);
 	}
 	for (const { screenId, error } of failures) {
-		console.error(JSON.stringify({
-			message: 'realtime_publish_failed',
-			eventId,
-			screenId,
-			messageTypes: deliveries.find(delivery => delivery.screenId === screenId)?.messages.map(message => message.type) ?? [],
-			...publishFailureFields(error),
-		}));
+		console.error(
+			JSON.stringify({
+				message: 'realtime_publish_failed',
+				eventId,
+				screenId,
+				messageTypes:
+					deliveries
+						.find((delivery) => delivery.screenId === screenId)
+						?.messages.map((message) => message.type) ?? [],
+				...publishFailureFields(error),
+			}),
+		);
 	}
 }
 
-async function tellScreens(eventId: number, heard: readonly HeardMessage[], publish: PublishToScreenChannels): Promise<void> {
+async function tellScreens(
+	eventId: number,
+	heard: readonly HeardMessage[],
+	publish: PublishToScreenChannels,
+): Promise<void> {
 	try {
 		await deliver(eventId, await decideDeliveries(eventId, heard), publish);
-	}
-	catch (error) {
+	} catch (error) {
 		// The write committed and its Event message went out: failing to work out
 		// who else to tell must not turn that into a failure inviting a retry.
-		console.error(JSON.stringify({
-			message: 'screen_output_publication_failed',
-			eventId,
-			messageTypes: heard.map(({ message }) => message.type),
-			...publishFailureFields(error),
-		}));
+		console.error(
+			JSON.stringify({
+				message: 'screen_output_publication_failed',
+				eventId,
+				messageTypes: heard.map(({ message }) => message.type),
+				...publishFailureFields(error),
+			}),
+		);
 	}
 }
 
 /** The kinds whose message may reach a Screen whole, payload and all. */
-const FORWARDED_WHOLE = ['broadcastGraphicsLiveSession', 'screenCard', 'featureMatchSession'] as const satisfies readonly OutputChangeKind[];
+const FORWARDED_WHOLE = [
+	'broadcastGraphicsLiveSession',
+	'screenCard',
+	'featureMatchSession',
+] as const satisfies readonly OutputChangeKind[];
 
 /** Whether any of these messages may reach a Screen whole: a Take, a Card or a score, which the write's answer waits for. */
 function forwardsPayload(heard: readonly HeardMessage[]): boolean {
-	return heard.some(({ message }) => outputChangeOf(message.type, message.payload as never)
-		.some(change => (FORWARDED_WHOLE as readonly OutputChangeKind[]).includes(change.kind)));
+	return heard.some(({ message }) =>
+		outputChangeOf(message.type, message.payload as never).some((change) =>
+			(FORWARDED_WHOLE as readonly OutputChangeKind[]).includes(change.kind),
+		),
+	);
 }
 
 /** Each request's tellings still to finish, one behind the other. */
@@ -370,12 +433,13 @@ async function tellScreensInTime(
 		return;
 	}
 	// `tellScreens` never rejects, so neither does the chain handed over.
-	const telling = (finishing.get(afterAnswer.request) ?? Promise.resolve()).then(async () => await tellScreens(eventId, heard, publish));
+	const telling = (finishing.get(afterAnswer.request) ?? Promise.resolve()).then(
+		async () => await tellScreens(eventId, heard, publish),
+	);
 	finishing.set(afterAnswer.request, telling);
 	try {
 		afterAnswer.waitUntil(telling);
-	}
-	catch {
+	} catch {
 		// The request cannot take it: the write waits, as with no request.
 		await telling;
 	}
@@ -396,9 +460,7 @@ export async function publishToScreenOutputs(
 	const run = currentRun.getStore();
 	// A Live Session message is never held: it is sequenced by itself, and a run must not delay playout.
 	if (!run || message.type.startsWith('broadcastGraphicsLiveSession:')) {
-		await tellScreensInTime(eventId, [
-			{ message, originConnectionId },
-		], publish, afterAnswer);
+		await tellScreensInTime(eventId, [{ message, originConnectionId }], publish, afterAnswer);
 		return;
 	}
 	let held = run.byEvent.get(eventId);
@@ -416,16 +478,14 @@ export async function publishToScreenOutputs(
  * run joins it.
  */
 export async function asOneOutputChange<T>(work: () => Promise<T>): Promise<T> {
-	if (currentRun.getStore())
-		return await work();
+	if (currentRun.getStore()) return await work();
 
 	const run: OutputChangeRun = {
 		byEvent: new Map(),
 	};
 	try {
 		return await currentRun.run(run, work);
-	}
-	finally {
+	} finally {
 		// What was announced before a failure announced a committed write all the same.
 		for (const [eventId, { heard, publish, afterAnswer }] of run.byEvent)
 			await tellScreensInTime(eventId, heard, publish, afterAnswer);

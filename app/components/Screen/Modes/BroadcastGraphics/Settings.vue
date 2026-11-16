@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { BroadcastGraphicsBackgroundConfig } from '~~/shared/animationEffects';
 import type { BroadcastGraphicConfig, GraphicChannelConfig } from '~~/shared/types/graphics';
-import type { BroadcastGraphicsWorkspace, BroadcastGraphicsWorkspaceLocation } from '~/modules/broadcast-graphics/workspace';
+import type {
+	BroadcastGraphicsWorkspace,
+	BroadcastGraphicsWorkspaceLocation,
+} from '~/modules/broadcast-graphics/workspace';
 import type { GraphicsSelectionTarget } from '~/modules/graphics/selection';
 import type { Screen } from '~/types';
 import { eventCanvasOf } from '~~/shared/eventCanvas';
@@ -26,11 +29,12 @@ const route = useRoute();
 const router = useRouter();
 const eventStore = useEventStore();
 
-const { config, saving, saveState, saveError, updateConfig, resetConfig, retry, discard, flush } = useModeConfigUpdate(
-	() => props.eventId,
-	() => props.screen.id,
-	'broadcast-graphics',
-);
+const { config, saving, saveState, saveError, updateConfig, resetConfig, retry, discard, flush } =
+	useModeConfigUpdate(
+		() => props.eventId,
+		() => props.screen.id,
+		'broadcast-graphics',
+	);
 
 defineExpose({ resetConfig, saving });
 
@@ -46,9 +50,13 @@ const graphics = computed<readonly BroadcastGraphicConfig[]>(() => config.value.
 const channels = computed<readonly GraphicChannelConfig[]>(() => config.value.channels ?? []);
 
 /** The Screen's Broadcast Graphics Background, or none authored. */
-const background = computed<BroadcastGraphicsBackgroundConfig | undefined>(() => config.value.background);
+const background = computed<BroadcastGraphicsBackgroundConfig | undefined>(
+	() => config.value.background,
+);
 
-const workspace = computed(() => resolveBroadcastGraphicsWorkspace(route.query[BROADCAST_GRAPHICS_WORKSPACE_QUERY_KEY]));
+const workspace = computed(() =>
+	resolveBroadcastGraphicsWorkspace(route.query[BROADCAST_GRAPHICS_WORKSPACE_QUERY_KEY]),
+);
 
 /**
  * The Screen's graphics Edit workspace is one leased authoring artifact, and the
@@ -57,7 +65,8 @@ const workspace = computed(() => resolveBroadcastGraphicsWorkspace(route.query[B
  * is for the live path not to know the lease exists.
  */
 const editLease = useGraphicsAuthoringLease({
-	endpoint: () => `/api/events/${props.eventId}/screens/${props.screen.id}/graphics-authoring-lease`,
+	endpoint: () =>
+		`/api/events/${props.eventId}/screens/${props.screen.id}/graphics-authoring-lease`,
 	enabled: () => workspace.value === 'edit',
 });
 
@@ -69,8 +78,7 @@ const editLease = useGraphicsAuthoringLease({
  * Closing the Edit workspace loses nothing, so a save still pending then lands.
  */
 watch(editLease.lost, (lost) => {
-	if (lost)
-		discard(['graphics', 'channels', 'background']);
+	if (lost) discard(['graphics', 'channels', 'background']);
 });
 
 /**
@@ -88,10 +96,12 @@ const { disconnected: playoutDisconnected } = useBroadcastGraphicsLiveSessionSyn
 	() => props.eventId,
 	() => props.screen.id,
 );
-const selectedGraphicId = computed(() => resolveSelectedBroadcastGraphicId(
-	route.query[BROADCAST_GRAPHICS_GRAPHIC_QUERY_KEY],
-	graphics.value,
-));
+const selectedGraphicId = computed(() =>
+	resolveSelectedBroadcastGraphicId(
+		route.query[BROADCAST_GRAPHICS_GRAPHIC_QUERY_KEY],
+		graphics.value,
+	),
+);
 const selectedTarget = ref<GraphicsSelectionTarget>({ type: 'canvas' });
 
 const WORKSPACE_OPTIONS = [
@@ -120,13 +130,14 @@ function setSelectedTarget(target: GraphicsSelectionTarget) {
 		navigate({ workspace: workspace.value, selectedGraphicId: graphicId });
 }
 
-watch(selectedGraphicId, (graphicId) => {
-	if (graphicsSelectionGraphicId(selectedTarget.value) === graphicId)
-		return;
-	selectedTarget.value = graphicId
-		? { type: 'graphic', graphicId }
-		: { type: 'canvas' };
-}, { immediate: true });
+watch(
+	selectedGraphicId,
+	(graphicId) => {
+		if (graphicsSelectionGraphicId(selectedTarget.value) === graphicId) return;
+		selectedTarget.value = graphicId ? { type: 'graphic', graphicId } : { type: 'canvas' };
+	},
+	{ immediate: true },
+);
 
 /**
  * The single write funnel for the authored stack, so one check covers every
@@ -134,8 +145,7 @@ watch(selectedGraphicId, (graphicId) => {
  * write regardless; this keeps a read-only editor from ever asking.
  */
 function updateGraphics(next: BroadcastGraphicConfig[]) {
-	if (!editLease.writable.value)
-		return;
+	if (!editLease.writable.value) return;
 	updateConfig({ graphics: next });
 }
 
@@ -146,16 +156,17 @@ function updateGraphics(next: BroadcastGraphicConfig[]) {
  * would briefly hold graphics naming a lane it no longer declares — resolved
  * tolerantly everywhere, but a state no authoring action should be able to create.
  */
-function updateChannels(next: { channels?: GraphicChannelConfig[]; graphics?: BroadcastGraphicConfig[] }) {
-	if (!editLease.writable.value)
-		return;
+function updateChannels(next: {
+	channels?: GraphicChannelConfig[];
+	graphics?: BroadcastGraphicConfig[];
+}) {
+	if (!editLease.writable.value) return;
 	updateConfig(next);
 }
 
 /** The Screen's Broadcast Graphics Background, through the same lease-gated funnel. */
 function updateBackground(next: BroadcastGraphicsBackgroundConfig) {
-	if (!editLease.writable.value)
-		return;
+	if (!editLease.writable.value) return;
 	updateConfig({ background: next });
 }
 </script>
@@ -195,9 +206,11 @@ function updateBackground(next: BroadcastGraphicsBackgroundConfig) {
 			place while the workspace beside it changes.
 		-->
 		<div
-			:class="workspace === 'edit'
-				? 'space-y-4'
-				: 'grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,24rem)]'"
+			:class="
+				workspace === 'edit'
+					? 'space-y-4'
+					: 'grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,24rem)]'
+			"
 		>
 			<BroadcastGraphicsProgramMonitor
 				:event-id="eventId"

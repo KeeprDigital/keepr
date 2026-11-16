@@ -35,14 +35,11 @@ function route(path: string, options?: { method?: string }) {
 	if (path.includes('/op-cards')) {
 		return Promise.resolve({
 			available: true,
-			items: [
-				opCardSummary(),
-			],
+			items: [opCardSummary()],
 			total: 1,
 		});
 	}
-	if (options?.method === 'GET')
-		return Promise.resolve({ deckList: SAVED });
+	if (options?.method === 'GET') return Promise.resolve({ deckList: SAVED });
 	throw new Error(`unexpected ${path}`);
 }
 
@@ -62,10 +59,10 @@ function mountModal(player: Parameters<typeof createMockPlayer>[0] = {}, readonl
 }
 
 function useImportedButton(wrapper: ReturnType<typeof mountModal>) {
-	return wrapper.findAll('button').find(button => button.text() === 'Use imported Deck List');
+	return wrapper.findAll('button').find((button) => button.text() === 'Use imported Deck List');
 }
 
-describe('a Player\'s Deck List editor', () => {
+describe("a Player's Deck List editor", () => {
 	beforeEach(() => {
 		mockFetch.mockReset();
 		mockFetch.mockImplementation(route);
@@ -79,28 +76,28 @@ describe('a Player\'s Deck List editor', () => {
 		expect(wrapper.get('[data-leader]').text()).toContain('OP01-001');
 
 		const saving = deferred<unknown>();
-		mockFetch.mockImplementation((path: string, options?: { method?: string }) => options?.method === 'PUT'
-			? saving.promise
-			: route(path, options));
+		mockFetch.mockImplementation((path: string, options?: { method?: string }) =>
+			options?.method === 'PUT' ? saving.promise : route(path, options),
+		);
 		await wrapper.get('textarea').setValue('4x OP01-025\n4x OP99-999');
 		await wrapper.get('button[aria-label="Save Deck List"]').trigger('click');
 		await flushPromises();
 
 		expect(wrapper.get('button[aria-label="Save Deck List"]').attributes('aria-busy')).toBe('true');
-		expect(mockFetch).toHaveBeenCalledWith('/api/events/7/players/4/deck-list', expect.objectContaining({
-			method: 'PUT',
-			body: { text: '4x OP01-025\n4x OP99-999', leaderNumber: 'OP01-001' },
-		}));
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/events/7/players/4/deck-list',
+			expect.objectContaining({
+				method: 'PUT',
+				body: { text: '4x OP01-025\n4x OP99-999', leaderNumber: 'OP01-001' },
+			}),
+		);
 
 		saving.resolve({
 			deckList: {
 				...SAVED,
 				id: 31,
 				handEdited: true,
-				entries: [
-					...SAVED.entries,
-					opDeckListEntry('OP99-999', 4, null),
-				],
+				entries: [...SAVED.entries, opDeckListEntry('OP99-999', 4, null)],
 				warnings: [
 					{
 						code: 'UNKNOWN_CARD',
@@ -113,52 +110,46 @@ describe('a Player\'s Deck List editor', () => {
 		});
 		await flushPromises();
 
-		expect(wrapper.findAll('[data-warning-code]').map(warning => warning.attributes('data-warning-code'))).toEqual(['UNKNOWN_CARD']);
-		expect(wrapper.findAll('[data-deck-list-entry]').map(entry => [
-			entry.attributes('data-number'),
-			entry.attributes('data-resolved'),
-		]))
-			.toEqual([
-				['OP01-001', 'true'],
-				['OP01-025', 'true'],
-				['OP99-999', 'false'],
-			]);
+		expect(
+			wrapper
+				.findAll('[data-warning-code]')
+				.map((warning) => warning.attributes('data-warning-code')),
+		).toEqual(['UNKNOWN_CARD']);
+		expect(
+			wrapper
+				.findAll('[data-deck-list-entry]')
+				.map((entry) => [entry.attributes('data-number'), entry.attributes('data-resolved')]),
+		).toEqual([
+			['OP01-001', 'true'],
+			['OP01-025', 'true'],
+			['OP99-999', 'false'],
+		]);
 	});
 
 	// A TCG+ Import keeps a hand edit it differs from (ADR-0074).
 	it.each([
-		[
-			'a hand edit to an imported Player\'s list',
-			'tcgplus',
-			true,
-			true,
-		],
-		[
-			'an imported list',
-			'tcgplus',
-			false,
-			false,
-		],
-		[
-			'a hand-added Player\'s list',
-			null,
-			true,
-			false,
-		],
-	] as const)('offers to use the imported Deck List over %s: %s', async (_label, externalSource, handEdited, offered) => {
-		mockFetch.mockImplementation((path: string, options?: { method?: string }) => options?.method === 'GET'
-			? Promise.resolve({
-					deckList: { ...SAVED, handEdited },
-				})
-			: route(path, options));
-		const wrapper = mountModal({
-			externalSource,
-			externalId: externalSource ? '0001' : null,
-		});
-		await flushPromises();
+		["a hand edit to an imported Player's list", 'tcgplus', true, true],
+		['an imported list', 'tcgplus', false, false],
+		["a hand-added Player's list", null, true, false],
+	] as const)(
+		'offers to use the imported Deck List over %s: %s',
+		async (_label, externalSource, handEdited, offered) => {
+			mockFetch.mockImplementation((path: string, options?: { method?: string }) =>
+				options?.method === 'GET'
+					? Promise.resolve({
+							deckList: { ...SAVED, handEdited },
+						})
+					: route(path, options),
+			);
+			const wrapper = mountModal({
+				externalSource,
+				externalId: externalSource ? '0001' : null,
+			});
+			await flushPromises();
 
-		expect(useImportedButton(wrapper) !== undefined).toBe(offered);
-	});
+			expect(useImportedButton(wrapper) !== undefined).toBe(offered);
+		},
+	);
 
 	it('takes the imported Deck List, showing it as saved', async () => {
 		const imported = {
@@ -174,8 +165,7 @@ describe('a Player\'s Deck List editor', () => {
 					deckList: { ...SAVED, handEdited: true },
 				});
 			}
-			if (path.endsWith('/deck-list/use-imported'))
-				return taking.promise;
+			if (path.endsWith('/deck-list/use-imported')) return taking.promise;
 			return route(path, options);
 		});
 		const wrapper = mountModal({ externalSource: 'tcgplus', externalId: '0001' });
@@ -185,7 +175,10 @@ describe('a Player\'s Deck List editor', () => {
 		await flushPromises();
 
 		expect(useImportedButton(wrapper)!.attributes('aria-busy')).toBe('true');
-		expect(mockFetch).toHaveBeenCalledWith('/api/events/7/players/4/deck-list/use-imported', expect.objectContaining({ method: 'POST' }));
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/events/7/players/4/deck-list/use-imported',
+			expect.objectContaining({ method: 'POST' }),
+		);
 		taking.resolve({
 			deckList: imported,
 			player: createWireMockPlayer({ id: 4 }),
@@ -198,17 +191,21 @@ describe('a Player\'s Deck List editor', () => {
 	});
 
 	// Read from the Metagame, a Deck List is shown, never edited (ADR-0074).
-	it('shows the saved list read-only, under the Player\'s shown name', async () => {
-		mockFetch.mockImplementation((path: string, options?: { method?: string }) => options?.method === 'GET'
-			? Promise.resolve({
-					deckList: { ...SAVED, handEdited: true },
-				})
-			: route(path, options));
+	it("shows the saved list read-only, under the Player's shown name", async () => {
+		mockFetch.mockImplementation((path: string, options?: { method?: string }) =>
+			options?.method === 'GET'
+				? Promise.resolve({
+						deckList: { ...SAVED, handEdited: true },
+					})
+				: route(path, options),
+		);
 		const wrapper = mountModal({ externalSource: 'tcgplus', externalId: '0001' }, true);
 		await flushPromises();
 
 		expect(wrapper.text()).toContain('Deck List: ana');
-		expect(wrapper.findAll('[data-deck-list-entry]').map(entry => entry.attributes('data-number'))).toEqual(['OP01-001', 'OP01-025']);
+		expect(
+			wrapper.findAll('[data-deck-list-entry]').map((entry) => entry.attributes('data-number')),
+		).toEqual(['OP01-001', 'OP01-025']);
 		expect(wrapper.find('textarea').exists()).toBe(false);
 		expect(wrapper.find('button[aria-label="Save Deck List"]').exists()).toBe(false);
 		expect(useImportedButton(wrapper)).toBeUndefined();

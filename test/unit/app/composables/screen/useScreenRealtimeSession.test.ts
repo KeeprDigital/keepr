@@ -12,10 +12,8 @@ describe('useScreenRealtimeSession', () => {
 	const realtime = {
 		onChannel: vi.fn((channel: string, type: string, handler: ChannelHandler) => {
 			handlers.set(`${channel}:${type}`, handler);
-			if (type === 'screen:command:refresh')
-				return unsubscribers.refresh;
-			if (type === 'screen:command:identify')
-				return unsubscribers.identify;
+			if (type === 'screen:command:refresh') return unsubscribers.refresh;
+			if (type === 'screen:command:identify') return unsubscribers.identify;
 			return unsubscribers.debug;
 		}),
 		enterPresence: vi.fn(),
@@ -46,12 +44,16 @@ describe('useScreenRealtimeSession', () => {
 	});
 
 	async function createSession(
-		getPresenceData: (eventId: number, screenId: number) => Record<string, unknown> = (_eventId, screenId) => ({
+		getPresenceData: (eventId: number, screenId: number) => Record<string, unknown> = (
+			_eventId,
+			screenId,
+		) => ({
 			screenId,
 			connectedAt: 123,
 		}),
 	) {
-		const { useScreenRealtimeSession } = await import('~~/app/composables/screen/useScreenRealtimeSession');
+		const { useScreenRealtimeSession } =
+			await import('~~/app/composables/screen/useScreenRealtimeSession');
 
 		return useScreenRealtimeSession({
 			...callbacks,
@@ -64,9 +66,21 @@ describe('useScreenRealtimeSession', () => {
 
 		await session.start(1, 10);
 
-		expect(realtime.onChannel).toHaveBeenCalledWith('screen:1:10', 'screen:command:refresh', expect.any(Function));
-		expect(realtime.onChannel).toHaveBeenCalledWith('screen:1:10', 'screen:command:identify', expect.any(Function));
-		expect(realtime.onChannel).toHaveBeenCalledWith('screen:1:10', 'screen:command:debug', expect.any(Function));
+		expect(realtime.onChannel).toHaveBeenCalledWith(
+			'screen:1:10',
+			'screen:command:refresh',
+			expect.any(Function),
+		);
+		expect(realtime.onChannel).toHaveBeenCalledWith(
+			'screen:1:10',
+			'screen:command:identify',
+			expect.any(Function),
+		);
+		expect(realtime.onChannel).toHaveBeenCalledWith(
+			'screen:1:10',
+			'screen:command:debug',
+			expect.any(Function),
+		);
 		expect(realtime.enterPresence).toHaveBeenCalledWith('screen:1:10', {
 			screenId: 10,
 			connectedAt: 123,

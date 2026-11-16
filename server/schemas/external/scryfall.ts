@@ -10,78 +10,92 @@ import { z } from 'zod';
 
 // ── Card face (for double-faced / transform cards) ───────────────────────────
 
-export const scryfallCardFaceSchema = z.object({
-	/** null on back faces of some DFCs */
-	mana_cost: z.string().max(500).nullable().optional(),
-	oracle_text: z.string().max(50_000).nullable().optional(),
-	flavor_name: z.string().max(500).nullable().optional(),
-	printed_name: z.string().max(500).nullable().optional(),
-}).passthrough();
+export const scryfallCardFaceSchema = z
+	.object({
+		/** null on back faces of some DFCs */
+		mana_cost: z.string().max(500).nullable().optional(),
+		oracle_text: z.string().max(50_000).nullable().optional(),
+		flavor_name: z.string().max(500).nullable().optional(),
+		printed_name: z.string().max(500).nullable().optional(),
+	})
+	.passthrough();
 
-const scryfallRelatedCardSchema = z.object({
-	id: z.string().max(100).nullable().optional(),
-	component: z.string().max(50).nullable().optional(),
-	name: z.string().max(500).nullable().optional(),
-	type_line: z.string().max(500).nullable().optional(),
-	uri: z.string().max(2_048).nullable().optional(),
-}).passthrough();
+const scryfallRelatedCardSchema = z
+	.object({
+		id: z.string().max(100).nullable().optional(),
+		component: z.string().max(50).nullable().optional(),
+		name: z.string().max(500).nullable().optional(),
+		type_line: z.string().max(500).nullable().optional(),
+		uri: z.string().max(2_048).nullable().optional(),
+	})
+	.passthrough();
 
 // ── Individual card ───────────────────────────────────────────────────────────
 
-export const scryfallCardSchema = z.object({
-	/** Scryfall card ID (UUID in production; string here to allow test stubs) */
-	id: z.string().min(1).max(100),
-	/** Card name — may include " // " for double-faced cards */
-	name: z.string().min(1).max(500),
-	/** The name a Universes Within printing is printed with, which deck sites name it by. */
-	flavor_name: z.string().max(500).nullable().optional(),
-	/** The name a printing is printed with where it differs from the card's, as Secret Lair's Walking Dead cards' does. */
-	printed_name: z.string().max(500).nullable().optional(),
-	/** Three-letter set code */
-	set: z.string().min(1).max(20),
-	/** Printing identity within the set. */
-	collector_number: z.string().min(1).max(100).nullable().optional(),
-	/** Mana cost string e.g. "{1}{W}{W}" — null for lands / colorless permanents */
-	mana_cost: z.string().max(500).nullable().optional(),
-	/** Converted mana cost — null for tokens and emblems that have no mana value */
-	cmc: z.number().nullable().optional(),
-	/** Color identity array — null on some token/emblem records */
-	color_identity: z.array(z.string().max(10)).max(10).nullable().optional(),
-	/** Full type line — null on some token subtypes */
-	type_line: z.string().max(500).nullable().optional(),
-	/** Rules fields consumed when deriving player counters. */
-	oracle_text: z.string().max(50_000).nullable().optional(),
-	keywords: z.array(z.string().max(100)).max(100).nullable().optional(),
-	/** Card faces for double-faced cards */
-	card_faces: z.array(scryfallCardFaceSchema).max(10).nullable().optional(),
-	/** Related token parts consumed when deriving deck token requirements. */
-	all_parts: z.array(scryfallRelatedCardSchema).max(100).nullable().optional(),
-}).passthrough();
+export const scryfallCardSchema = z
+	.object({
+		/** Scryfall card ID (UUID in production; string here to allow test stubs) */
+		id: z.string().min(1).max(100),
+		/** Card name — may include " // " for double-faced cards */
+		name: z.string().min(1).max(500),
+		/** The name a Universes Within printing is printed with, which deck sites name it by. */
+		flavor_name: z.string().max(500).nullable().optional(),
+		/** The name a printing is printed with where it differs from the card's, as Secret Lair's Walking Dead cards' does. */
+		printed_name: z.string().max(500).nullable().optional(),
+		/** Three-letter set code */
+		set: z.string().min(1).max(20),
+		/** Printing identity within the set. */
+		collector_number: z.string().min(1).max(100).nullable().optional(),
+		/** Mana cost string e.g. "{1}{W}{W}" — null for lands / colorless permanents */
+		mana_cost: z.string().max(500).nullable().optional(),
+		/** Converted mana cost — null for tokens and emblems that have no mana value */
+		cmc: z.number().nullable().optional(),
+		/** Color identity array — null on some token/emblem records */
+		color_identity: z.array(z.string().max(10)).max(10).nullable().optional(),
+		/** Full type line — null on some token subtypes */
+		type_line: z.string().max(500).nullable().optional(),
+		/** Rules fields consumed when deriving player counters. */
+		oracle_text: z.string().max(50_000).nullable().optional(),
+		keywords: z.array(z.string().max(100)).max(100).nullable().optional(),
+		/** Card faces for double-faced cards */
+		card_faces: z.array(scryfallCardFaceSchema).max(10).nullable().optional(),
+		/** Related token parts consumed when deriving deck token requirements. */
+		all_parts: z.array(scryfallRelatedCardSchema).max(100).nullable().optional(),
+	})
+	.passthrough();
 
 // ── Collection response ───────────────────────────────────────────────────────
 
-export const scryfallCollectionResponseSchema = z.object({
-	object: z.literal('list'),
-	// An identifier Scryfall could not answer, as it was sent: a name, or a set and collector number.
-	not_found: z.array(
-		z.object({
-			name: z.string().max(500).optional(),
-			set: z.string().max(20).optional(),
-			collector_number: z.string().max(50).optional(),
-		}).passthrough(),
-	).max(75),
-	data: z.array(scryfallCardSchema).max(75),
-}).passthrough();
+export const scryfallCollectionResponseSchema = z
+	.object({
+		object: z.literal('list'),
+		// An identifier Scryfall could not answer, as it was sent: a name, or a set and collector number.
+		not_found: z
+			.array(
+				z
+					.object({
+						name: z.string().max(500).optional(),
+						set: z.string().max(20).optional(),
+						collector_number: z.string().max(50).optional(),
+					})
+					.passthrough(),
+			)
+			.max(75),
+		data: z.array(scryfallCardSchema).max(75),
+	})
+	.passthrough();
 
 // ── Search response ───────────────────────────────────────────────────────────
 
 /** One page of `/cards/search`: at most 175 cards, and the next page's URL while there are more. */
-export const scryfallCardListResponseSchema = z.object({
-	object: z.literal('list'),
-	has_more: z.boolean().optional(),
-	next_page: z.string().max(2_048).nullable().optional(),
-	data: z.array(scryfallCardSchema).max(175),
-}).passthrough();
+export const scryfallCardListResponseSchema = z
+	.object({
+		object: z.literal('list'),
+		has_more: z.boolean().optional(),
+		next_page: z.string().max(2_048).nullable().optional(),
+		data: z.array(scryfallCardSchema).max(175),
+	})
+	.passthrough();
 
 // ── Inferred types ────────────────────────────────────────────────────────────
 

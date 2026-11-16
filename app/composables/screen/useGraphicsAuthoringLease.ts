@@ -97,19 +97,15 @@ export function useGraphicsAuthoringLease(options: UseGraphicsAuthoringLeaseOpti
 	}
 
 	async function ask(body: { takeover?: boolean } = {}): Promise<void> {
-		if (disposed || !enabled.value)
-			return;
+		if (disposed || !enabled.value) return;
 		// Sent behind a takeover, a plain ask could be answered "observer" first and
 		// then be the newest answer; the takeover's own answer says more.
-		if (!body.takeover && takeoverInFlight?.current)
-			return;
+		if (!body.takeover && takeoverInFlight?.current) return;
 		const asked = endpoint.value;
 		const askedAt = Date.now();
 		const flight = asks.begin();
-		if (body.takeover)
-			takeoverInFlight = flight;
-		if (status.value === 'idle')
-			status.value = 'pending';
+		if (body.takeover) takeoverInFlight = flight;
+		if (status.value === 'idle') status.value = 'pending';
 		try {
 			const response = await $fetch<LeaseEnvelope>(asked, {
 				method: 'POST',
@@ -124,21 +120,14 @@ export function useGraphicsAuthoringLease(options: UseGraphicsAuthoringLeaseOpti
 				return;
 			}
 			// A newer ask owns the answer.
-			if (flight.stale)
-				return;
+			if (flight.stale) return;
 			cancelRetry();
 			lease.value = response.lease;
-			heldUntil = response.lease.role === 'holder'
-				? askedAt + LEASE_TTL_MS
-				: 0;
+			heldUntil = response.lease.role === 'holder' ? askedAt + LEASE_TTL_MS : 0;
 			status.value = 'ready';
-		}
-		catch {
-			if (!wanted(asked) || flight.stale)
-				return;
-			const remainingMs = lease.value?.role === 'holder'
-				? heldUntil - Date.now()
-				: 0;
+		} catch {
+			if (!wanted(asked) || flight.stale) return;
+			const remainingMs = lease.value?.role === 'holder' ? heldUntil - Date.now() : 0;
 			if (remainingMs > 0) {
 				cancelRetry();
 				retryTimer = setTimeout(() => void ask(), Math.min(UNANSWERED_RETRY_MS, remainingMs));
@@ -146,10 +135,8 @@ export function useGraphicsAuthoringLease(options: UseGraphicsAuthoringLeaseOpti
 			}
 			lease.value = null;
 			status.value = 'error';
-		}
-		finally {
-			if (takeoverInFlight === flight)
-				takeoverInFlight = null;
+		} finally {
+			if (takeoverInFlight === flight) takeoverInFlight = null;
 		}
 	}
 
@@ -159,14 +146,12 @@ export function useGraphicsAuthoringLease(options: UseGraphicsAuthoringLeaseOpti
 	}
 
 	async function release(target = endpoint.value): Promise<void> {
-		if (!lease.value || lease.value.role !== 'holder')
-			return;
+		if (!lease.value || lease.value.role !== 'holder') return;
 		lease.value = null;
 		status.value = 'idle';
 		try {
 			await $fetch(target, { method: 'DELETE' });
-		}
-		catch {
+		} catch {
 			// A lease nobody releases still expires; there is nothing to recover here.
 		}
 	}
@@ -177,32 +162,34 @@ export function useGraphicsAuthoringLease(options: UseGraphicsAuthoringLeaseOpti
 		{ immediate: false },
 	);
 
-	watch([enabled, endpoint], ([isEnabled], previous) => {
-		// Whatever is in flight was asked for the artifact or the authoring state
-		// this change just left.
-		asks.supersede();
-		cancelRetry();
-		const previousEndpoint = previous?.[1];
-		if (previousEndpoint && previousEndpoint !== endpoint.value)
-			void release(previousEndpoint);
+	watch(
+		[enabled, endpoint],
+		([isEnabled], previous) => {
+			// Whatever is in flight was asked for the artifact or the authoring state
+			// this change just left.
+			asks.supersede();
+			cancelRetry();
+			const previousEndpoint = previous?.[1];
+			if (previousEndpoint && previousEndpoint !== endpoint.value) void release(previousEndpoint);
 
-		if (!isEnabled) {
-			pause();
-			void release();
-			status.value = 'idle';
-			return;
-		}
-		void ask();
-		resume();
-	}, { immediate: true });
+			if (!isEnabled) {
+				pause();
+				void release();
+				status.value = 'idle';
+				return;
+			}
+			void ask();
+			resume();
+		},
+		{ immediate: true },
+	);
 
 	// A closing tab releases its lease so the next author does not wait out a
 	// deadline. `keepalive` is what lets the request outlive the page; the deadline
 	// is what covers every close that never gets here at all.
 	if (import.meta.client) {
 		useEventListener(window, 'pagehide', () => {
-			if (lease.value?.role !== 'holder')
-				return;
+			if (lease.value?.role !== 'holder') return;
 			void fetch(endpoint.value, { method: 'DELETE', keepalive: true }).catch(() => {});
 		});
 
@@ -212,8 +199,7 @@ export function useGraphicsAuthoringLease(options: UseGraphicsAuthoringLeaseOpti
 		// both renews a lease that survived and discovers one that did not, before the
 		// author touches anything.
 		useEventListener(document, 'visibilitychange', () => {
-			if (document.visibilityState === 'visible')
-				void ask();
+			if (document.visibilityState === 'visible') void ask();
 		});
 	}
 

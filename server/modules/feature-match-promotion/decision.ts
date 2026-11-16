@@ -53,16 +53,16 @@ export interface PromotionPublication {
 	response: FeatureMatchPromotionResponse;
 }
 
-export type PromotionDecision
-	= | { outcome: 'lost' }
-		| PromotionFailed
-		| {
+export type PromotionDecision =
+	| { outcome: 'lost' }
+	| PromotionFailed
+	| {
 			outcome: 'standing';
 			/** The Assignment the promotion committed. */
 			assignment: DbFeatureMatchAssignment;
 			/** The only way to the messages a promotion may publish. */
 			publication: (current: PromotionCurrentReads) => PromotionPublication | PromotionFailed;
-		};
+	  };
 
 /**
  * Decide a Feature Match Slot Promotion's outcome from what it read before its
@@ -78,36 +78,32 @@ export type PromotionDecision
  * the shape of "decide the outcome before publishing" (#577): there is no message
  * to publish without a standing decision to build it from.
  */
-export function decidePromotion(pre: PromotionPreState, committed: PromotionCommittedReads): PromotionDecision {
-	if (!committed.slot)
-		return { outcome: 'failed', message: SLOT_UNREADABLE };
-	if (committed.slot.matchId !== pre.matchId)
-		return { outcome: 'lost' };
+export function decidePromotion(
+	pre: PromotionPreState,
+	committed: PromotionCommittedReads,
+): PromotionDecision {
+	if (!committed.slot) return { outcome: 'failed', message: SLOT_UNREADABLE };
+	if (committed.slot.matchId !== pre.matchId) return { outcome: 'lost' };
 	const assignment = committed.assignment;
-	if (!assignment)
-		return { outcome: 'failed', message: 'Failed to save feature match assignment' };
+	if (!assignment) return { outcome: 'failed', message: 'Failed to save feature match assignment' };
 
 	return {
 		outcome: 'standing',
 		assignment,
 		publication: (current) => {
-			const slotsById = new Map(current.slots.map(slot => [slot.id, slot]));
+			const slotsById = new Map(current.slots.map((slot) => [slot.id, slot]));
 			const promotedSlot = slotsById.get(pre.slotId);
-			if (!promotedSlot)
-				return { outcome: 'failed', message: SLOT_UNREADABLE };
+			if (!promotedSlot) return { outcome: 'failed', message: SLOT_UNREADABLE };
 
 			const clearedSlots = pre.clearedSlotIds.flatMap((id) => {
 				const slot = slotsById.get(id);
-				return slot
-					? [
-							featureMatchMessages.slotUpdated(slot),
-						]
-					: [];
+				return slot ? [featureMatchMessages.slotUpdated(slot)] : [];
 			});
 			const promoted = featureMatchMessages.slotUpdated(promotedSlot);
-			const displaced = pre.displacedAssignment && pre.displacedAssignment.id !== assignment.id
-				? pre.displacedAssignment
-				: undefined;
+			const displaced =
+				pre.displacedAssignment && pre.displacedAssignment.id !== assignment.id
+					? pre.displacedAssignment
+					: undefined;
 
 			const messages: EventDataMessage[] = [
 				...current.openedSessions.map(featureMatchMessages.sessionStarted),
@@ -116,25 +112,19 @@ export function decidePromotion(pre: PromotionPreState, committed: PromotionComm
 				pre.continuedAssignment
 					? featureMatchMessages.assignmentUpdated(assignment)
 					: featureMatchMessages.assignmentCreated(assignment),
-				...(displaced
-					? [
-							featureMatchMessages.assignmentDeleted(displaced.id),
-						]
-					: []),
+				...(displaced ? [featureMatchMessages.assignmentDeleted(displaced.id)] : []),
 				...clearedSlots,
 				promoted,
 			];
 
 			return {
-				outcome: promotedSlot.matchId === pre.matchId
-					? 'won'
-					: 'won-then-moved',
+				outcome: promotedSlot.matchId === pre.matchId ? 'won' : 'won-then-moved',
 				messages,
 				// Answered as things are now, so this operator's client cannot overwrite
 				// a move it has already applied with what this promotion committed.
 				response: {
 					promotedSlot: promoted.payload.featureMatch,
-					clearedSlots: clearedSlots.map(message => message.payload.featureMatch),
+					clearedSlots: clearedSlots.map((message) => message.payload.featureMatch),
 					assignment: mapFeatureMatchAssignmentToResponse(current.assignment ?? assignment),
 				},
 			};

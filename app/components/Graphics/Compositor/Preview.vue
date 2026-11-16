@@ -6,8 +6,15 @@ import type { EditorSelectionFrame } from '~/modules/graphics/editor/layerFrame'
 import type { GraphicsPreviewAnimationPlan } from '~/modules/graphics/previewMessages';
 import type { GraphicsSelectionTarget } from '~/modules/graphics/selection';
 import type { Screen } from '~/types';
-import { canonicalSocialProfileUrl, SUPPORTED_SOCIAL_NETWORK_BY_KEY, SUPPORTED_SOCIAL_NETWORKS } from '~~/shared/socialProfiles';
-import { GRAPHICS_PREVIEW_STATE_MESSAGE, GRAPHICS_PREVIEW_THEME_MESSAGE } from '~/modules/graphics/previewMessages';
+import {
+	canonicalSocialProfileUrl,
+	SUPPORTED_SOCIAL_NETWORK_BY_KEY,
+	SUPPORTED_SOCIAL_NETWORKS,
+} from '~~/shared/socialProfiles';
+import {
+	GRAPHICS_PREVIEW_STATE_MESSAGE,
+	GRAPHICS_PREVIEW_THEME_MESSAGE,
+} from '~/modules/graphics/previewMessages';
 import { graphicsSelectionGraphicId } from '~/modules/graphics/selection';
 
 /**
@@ -65,7 +72,11 @@ const emit = defineEmits<{
 }>();
 
 type PreviewBackground = 'transparent' | 'black' | 'white' | 'green';
-const PREVIEW_BACKGROUND_OPTIONS: Array<{ label: string; value: PreviewBackground; color?: string }> = [
+const PREVIEW_BACKGROUND_OPTIONS: Array<{
+	label: string;
+	value: PreviewBackground;
+	color?: string;
+}> = [
 	{ label: 'Transparency', value: 'transparent' },
 	{ label: 'Black', value: 'black', color: '#000000' },
 	{ label: 'White', value: 'white', color: '#ffffff' },
@@ -73,8 +84,10 @@ const PREVIEW_BACKGROUND_OPTIONS: Array<{ label: string; value: PreviewBackgroun
 ];
 
 const previewBackground = ref<PreviewBackground>('transparent');
-const previewBackgroundColor = computed(() =>
-	PREVIEW_BACKGROUND_OPTIONS.find(option => option.value === previewBackground.value)?.color);
+const previewBackgroundColor = computed(
+	() =>
+		PREVIEW_BACKGROUND_OPTIONS.find((option) => option.value === previewBackground.value)?.color,
+);
 
 /** The run the shared controls describe; null composes at the Graphic Resting State. */
 const animationPlan = ref<GraphicsPreviewAnimationPlan | null>(null);
@@ -90,34 +103,49 @@ interface SocialProfileSample {
  */
 const socialProfileSamples = ref<Record<string, Record<string, SocialProfileSample>>>({});
 
-watch(() => props.graphics, (graphics) => {
-	const next: Record<string, Record<string, SocialProfileSample>> = {};
-	for (const graphic of graphics) {
-		const projections = graphic.socialProfileProjections ?? [];
-		if (projections.length === 0)
-			continue;
-		next[graphic.id] = Object.fromEntries(projections.map(projection => [
-			projection.key,
-			socialProfileSamples.value[graphic.id]?.[projection.key] ?? { network: 'twitch', handle: 'example' },
-		]));
-	}
-	socialProfileSamples.value = next;
-}, { deep: true, immediate: true });
+watch(
+	() => props.graphics,
+	(graphics) => {
+		const next: Record<string, Record<string, SocialProfileSample>> = {};
+		for (const graphic of graphics) {
+			const projections = graphic.socialProfileProjections ?? [];
+			if (projections.length === 0) continue;
+			next[graphic.id] = Object.fromEntries(
+				projections.map((projection) => [
+					projection.key,
+					socialProfileSamples.value[graphic.id]?.[projection.key] ?? {
+						network: 'twitch',
+						handle: 'example',
+					},
+				]),
+			);
+		}
+		socialProfileSamples.value = next;
+	},
+	{ deep: true, immediate: true },
+);
 
-const socialProfileSampleRows = computed(() => props.graphics.flatMap(graphic =>
-	(graphic.socialProfileProjections ?? []).map(projection => ({
-		graphicId: graphic.id,
-		projection,
-	})),
-));
+const socialProfileSampleRows = computed(() =>
+	props.graphics.flatMap((graphic) =>
+		(graphic.socialProfileProjections ?? []).map((projection) => ({
+			graphicId: graphic.id,
+			projection,
+		})),
+	),
+);
 
-const SOCIAL_PROFILE_NETWORK_OPTIONS = SUPPORTED_SOCIAL_NETWORKS.map(network => ({
+const SOCIAL_PROFILE_NETWORK_OPTIONS = SUPPORTED_SOCIAL_NETWORKS.map((network) => ({
 	label: network.label,
 	value: network.key,
 }));
 
 function socialProfileSample(graphicId: string, projectionKey: string): SocialProfileSample {
-	return socialProfileSamples.value[graphicId]?.[projectionKey] ?? { network: 'twitch', handle: 'example' };
+	return (
+		socialProfileSamples.value[graphicId]?.[projectionKey] ?? {
+			network: 'twitch',
+			handle: 'example',
+		}
+	);
 }
 
 function updateSocialProfileSample(
@@ -138,20 +166,24 @@ function updateSocialProfileSample(
 	};
 }
 
-const previewSocialProfileValues = computed(() => Object.fromEntries(
-	Object.entries(socialProfileSamples.value).map(([graphicId, samples]) => [
-		graphicId,
-		Object.fromEntries(Object.entries(samples).map(([projectionKey, sample]) => [
-			projectionKey,
-			{
-				network: sample.network,
-				networkLabel: SUPPORTED_SOCIAL_NETWORK_BY_KEY[sample.network].label,
-				handle: sample.handle,
-				profileUrl: canonicalSocialProfileUrl(sample.network, sample.handle),
-			},
-		])),
-	]),
-));
+const previewSocialProfileValues = computed(() =>
+	Object.fromEntries(
+		Object.entries(socialProfileSamples.value).map(([graphicId, samples]) => [
+			graphicId,
+			Object.fromEntries(
+				Object.entries(samples).map(([projectionKey, sample]) => [
+					projectionKey,
+					{
+						network: sample.network,
+						networkLabel: SUPPORTED_SOCIAL_NETWORK_BY_KEY[sample.network].label,
+						handle: sample.handle,
+						profileUrl: canonicalSocialProfileUrl(sample.network, sample.handle),
+					},
+				]),
+			),
+		]),
+	),
+);
 
 /**
  * The Broadcast Graphic a run applies to: the one under authoring. Selecting a
@@ -161,9 +193,9 @@ const previewSocialProfileValues = computed(() => Object.fromEntries(
 const previewGraphicId = computed(() => graphicsSelectionGraphicId(props.selectedTarget));
 
 /** A run plays a whole Broadcast Graphic. */
-const animationTarget = computed(() => previewGraphicId.value === null
-	? null
-	: { graphicId: previewGraphicId.value });
+const animationTarget = computed(() =>
+	previewGraphicId.value === null ? null : { graphicId: previewGraphicId.value },
+);
 
 /**
  * What the frame is told: one preview state — the working stack, what is
@@ -182,9 +214,7 @@ const previewMessages = computed(() => [
 	},
 	...(props.previewThemeValues === undefined
 		? []
-		: [
-				{ type: GRAPHICS_PREVIEW_THEME_MESSAGE, tokens: props.previewThemeValues },
-			]),
+		: [{ type: GRAPHICS_PREVIEW_THEME_MESSAGE, tokens: props.previewThemeValues }]),
 ]);
 </script>
 
@@ -225,9 +255,7 @@ const previewMessages = computed(() => [
 			class="mb-3 space-y-2 rounded-md border border-default/70 p-2"
 			data-testid="social-profile-preview-samples"
 		>
-			<p class="text-xs font-semibold text-muted">
-				Social Profile samples
-			</p>
+			<p class="text-xs font-semibold text-muted">Social Profile samples</p>
 			<div
 				v-for="row in socialProfileSampleRows"
 				:key="`${row.graphicId}:${row.projection.key}`"
@@ -240,20 +268,26 @@ const previewMessages = computed(() => [
 						:items="SOCIAL_PROFILE_NETWORK_OPTIONS"
 						value-key="value"
 						data-testid="social-profile-sample-network"
-						@update:model-value="updateSocialProfileSample(row.graphicId, row.projection.key, { network: $event as SupportedSocialNetwork })"
+						@update:model-value="
+							updateSocialProfileSample(row.graphicId, row.projection.key, {
+								network: $event as SupportedSocialNetwork,
+							})
+						"
 					/>
 				</UFormField>
 				<UFormField :label="`${row.projection.label} handle`" size="xs">
 					<UInput
 						:model-value="socialProfileSample(row.graphicId, row.projection.key).handle"
 						data-testid="social-profile-sample-handle"
-						@update:model-value="updateSocialProfileSample(row.graphicId, row.projection.key, { handle: String($event) })"
+						@update:model-value="
+							updateSocialProfileSample(row.graphicId, row.projection.key, {
+								handle: String($event),
+							})
+						"
 					/>
 				</UFormField>
 			</div>
-			<p class="text-xs text-muted">
-				Samples affect this preview only and are never saved.
-			</p>
+			<p class="text-xs text-muted">Samples affect this preview only and are never saved.</p>
 		</div>
 	</GraphicsEditorPreview>
 </template>

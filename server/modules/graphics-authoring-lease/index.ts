@@ -87,7 +87,10 @@ export interface GraphicsAuthoringLeaseFence extends GraphicsAuthoringLeaseRef {
  * Built once as a Drizzle expression; `graphicsAuthoringLeaseFenceClause` renders
  * this same expression for a raw D1 statement, so there is one spelling of it.
  */
-export function graphicsAuthoringLeaseFenceCondition(fence: GraphicsAuthoringLeaseFence, now: number): SQL {
+export function graphicsAuthoringLeaseFenceCondition(
+	fence: GraphicsAuthoringLeaseFence,
+	now: number,
+): SQL {
 	return sql`NOT EXISTS (
 		SELECT 1 FROM graphics_authoring_leases
 		WHERE artifact_kind = ${fence.artifact.kind}
@@ -119,8 +122,7 @@ export function graphicsAuthoringLeaseConflict() {
 type StoredLease = typeof graphicsAuthoringLeases.$inferSelect;
 
 function toRecord(row: StoredLease | undefined): GraphicsAuthoringLeaseRecord | undefined {
-	if (!row)
-		return undefined;
+	if (!row) return undefined;
 	return {
 		holderSessionId: row.holderSessionId,
 		acquiredAt: row.acquiredAt.getTime(),
@@ -184,13 +186,10 @@ export function graphicsAuthoringLeaseModule() {
 		state: GraphicsAuthoringLeaseState,
 		record: GraphicsAuthoringLeaseRecord | undefined,
 	): Promise<GraphicsAuthoringLeaseReading> {
-		if (!state.heldByAnotherSession || !record)
-			return state;
+		if (!state.heldByAnotherSession || !record) return state;
 
 		const holderName = await sessionHolderName(record.holderSessionId);
-		return holderName === null
-			? state
-			: { ...state, holderName };
+		return holderName === null ? state : { ...state, holderName };
 	}
 
 	/**
@@ -205,8 +204,7 @@ export function graphicsAuthoringLeaseModule() {
 		sessionId: string | undefined,
 	): Promise<void> {
 		const state = await describe(ref, sessionId);
-		if (state.writable)
-			return;
+		if (state.writable) return;
 		throw graphicsAuthoringLeaseConflict();
 	}
 
@@ -240,10 +238,9 @@ export function graphicsAuthoringLeaseModule() {
 				.set({
 					expiresAt: new Date(expiresAt),
 				})
-				.where(and(
-					artifactCondition(artifact),
-					eq(graphicsAuthoringLeases.holderSessionId, sessionId),
-				))
+				.where(
+					and(artifactCondition(artifact), eq(graphicsAuthoringLeases.holderSessionId, sessionId)),
+				)
 				.returning();
 			if (renewed.length > 0) {
 				return {
@@ -264,12 +261,16 @@ export function graphicsAuthoringLeaseModule() {
 		// wins in the table, and the loser is demoted at its next heartbeat. Closing it
 		// would mean guarding a takeover on the holder it intends to displace — and a
 		// takeover exists precisely to not care who that is.
-		const claimable = resolution.outcome === 'takeover'
-			? artifactCondition(artifact)
-			: and(artifactCondition(artifact), or(
-				lte(graphicsAuthoringLeases.expiresAt, new Date(now)),
-				eq(graphicsAuthoringLeases.holderSessionId, sessionId),
-			))!;
+		const claimable =
+			resolution.outcome === 'takeover'
+				? artifactCondition(artifact)
+				: and(
+						artifactCondition(artifact),
+						or(
+							lte(graphicsAuthoringLeases.expiresAt, new Date(now)),
+							eq(graphicsAuthoringLeases.holderSessionId, sessionId),
+						),
+					)!;
 
 		const claimed = await db
 			.update(graphicsAuthoringLeases)
@@ -308,8 +309,7 @@ export function graphicsAuthoringLeaseModule() {
 					outcome: resolution.outcome,
 				};
 			}
-		}
-		catch {
+		} catch {
 			// Lost the insert race; fall through to re-resolve against the winner.
 		}
 		return await acquireAfterRace(params);
@@ -349,7 +349,11 @@ export function graphicsAuthoringLeaseModule() {
 	 * in between can change the answer, and either way the write stands refused.
 	 */
 	async function fenceRefused(fence: GraphicsAuthoringLeaseFence, now: number): Promise<boolean> {
-		return !graphicsAuthoringLeaseAllowsWrite(await loadRecord(fence.artifact), fence.sessionId, now);
+		return !graphicsAuthoringLeaseAllowsWrite(
+			await loadRecord(fence.artifact),
+			fence.sessionId,
+			now,
+		);
 	}
 
 	/** Give up a lease this session holds. Another session's lease is untouched. */
@@ -359,10 +363,12 @@ export function graphicsAuthoringLeaseModule() {
 	): Promise<GraphicsAuthoringLeaseReading> {
 		await db
 			.delete(graphicsAuthoringLeases)
-			.where(and(
-				artifactCondition(ref.artifact),
-				eq(graphicsAuthoringLeases.holderSessionId, sessionId),
-			));
+			.where(
+				and(
+					artifactCondition(ref.artifact),
+					eq(graphicsAuthoringLeases.holderSessionId, sessionId),
+				),
+			);
 		return await describe(ref, sessionId);
 	}
 

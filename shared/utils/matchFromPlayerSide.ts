@@ -44,13 +44,13 @@ function readSide(match: SeatedMatchResultFacts, isPlayer1: boolean): MatchSide 
 	let outcome: MatchSideOutcome = 'pending';
 	if (match.isBye) {
 		outcome = 'bye';
-	}
-	else if (match.hasResult && playerGameWins != null && opponentGameWins != null) {
-		outcome = playerGameWins > opponentGameWins
-			? 'win'
-			: playerGameWins < opponentGameWins
-				? 'loss'
-				: 'draw';
+	} else if (match.hasResult && playerGameWins != null && opponentGameWins != null) {
+		outcome =
+			playerGameWins > opponentGameWins
+				? 'win'
+				: playerGameWins < opponentGameWins
+					? 'loss'
+					: 'draw';
 	}
 
 	return {
@@ -68,9 +68,14 @@ function readSide(match: SeatedMatchResultFacts, isPlayer1: boolean): MatchSide 
  * which have none.
  */
 export function formatGameScore(side: MatchSide): string | null {
-	if (side.outcome === 'bye' || !side.hasResult || side.playerGameWins == null || side.opponentGameWins == null)
+	if (
+		side.outcome === 'bye' ||
+		!side.hasResult ||
+		side.playerGameWins == null ||
+		side.opponentGameWins == null
+	)
 		return null;
-	return `${side.playerGameWins}–${side.opponentGameWins}${side.gameDraws
-		? `–${side.gameDraws}`
-		: ''}`;
+	return `${side.playerGameWins}–${side.opponentGameWins}${
+		side.gameDraws ? `–${side.gameDraws}` : ''
+	}`;
 }

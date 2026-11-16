@@ -29,28 +29,33 @@ function numberedName(name: string, number: string): string {
 }
 
 /** The Archetype derived from a catalogued Leader, created, with any clash renamed, if the Event has none yet. */
-export async function deriveLeaderArchetype(eventId: number, number: string, leader: OpCatalogueCard): Promise<LeaderArchetype> {
+export async function deriveLeaderArchetype(
+	eventId: number,
+	number: string,
+	leader: OpCatalogueCard,
+): Promise<LeaderArchetype> {
 	const held = await db.query.archetypes.findFirst({
 		where: and(eq(archetypes.eventId, eventId), eq(archetypes.leaderCardNumber, number)),
 	});
-	if (held)
-		return { archetype: held, created: null, renamed: [] };
+	if (held) return { archetype: held, created: null, renamed: [] };
 
 	// Another Archetype already shown by this Leader's name: a derived one whose Leader shares it, or a renamed one.
-	const clashing = await db.select({ archetype: archetypes, leaderName: cards.name })
+	const clashing = await db
+		.select({ archetype: archetypes, leaderName: cards.name })
 		.from(archetypes)
 		.leftJoin(cards, opCatalogueRowFor(archetypes.leaderCardNumber))
-		.where(and(
-			eq(archetypes.eventId, eventId),
-			or(eq(archetypes.name, leader.name), eq(cards.name, leader.name)),
-		));
+		.where(
+			and(
+				eq(archetypes.eventId, eventId),
+				or(eq(archetypes.name, leader.name), eq(cards.name, leader.name)),
+			),
+		);
 
-	const [created] = await db.insert(archetypes)
+	const [created] = await db
+		.insert(archetypes)
 		.values({
 			eventId,
-			name: clashing.length > 0
-				? numberedName(leader.name, number)
-				: leader.name,
+			name: clashing.length > 0 ? numberedName(leader.name, number) : leader.name,
 			colors: formatOpColors(leader.colors),
 			leaderCardNumber: number,
 		})
@@ -62,23 +67,30 @@ export async function deriveLeaderArchetype(eventId: number, number: string, lea
 			where: and(eq(archetypes.eventId, eventId), eq(archetypes.leaderCardNumber, number)),
 		});
 		if (!raced)
-			throw createError({ statusCode: 409, message: `An Archetype is already named ${leader.name}` });
+			throw createError({
+				statusCode: 409,
+				message: `An Archetype is already named ${leader.name}`,
+			});
 		return { archetype: raced, created: null, renamed: [] };
 	}
 
 	const renamed: DbArchetype[] = [];
 	for (const { archetype, leaderName } of clashing) {
-		if (archetype.customised || archetype.leaderCardNumber === null || archetype.name !== leaderName)
+		if (
+			archetype.customised ||
+			archetype.leaderCardNumber === null ||
+			archetype.name !== leaderName
+		)
 			continue;
-		const [row] = await db.update(archetypes)
+		const [row] = await db
+			.update(archetypes)
 			.set({
 				name: numberedName(archetype.name, archetype.leaderCardNumber),
 				updatedAt: new Date(),
 			})
 			.where(and(eq(archetypes.id, archetype.id), eq(archetypes.customised, false)))
 			.returning();
-		if (row)
-			renamed.push(row);
+		if (row) renamed.push(row);
 	}
 	return { archetype: created, created, renamed };
 }
@@ -100,15 +112,20 @@ function unheldDerivedArchetype(eventId: number, ids: readonly number[]) {
  * every Screen naming them, in one batch (ADR-0060). Answers what it deleted
  * and the Screens it released.
  */
-export async function removeEmptiedLeaderArchetypes(eventId: number, ids: readonly number[]): Promise<{ deletedIds: number[]; releasedScreens: DbScreen[] }> {
-	if (ids.length === 0)
-		return { deletedIds: [], releasedScreens: [] };
+export async function removeEmptiedLeaderArchetypes(
+	eventId: number,
+	ids: readonly number[],
+): Promise<{ deletedIds: number[]; releasedScreens: DbScreen[] }> {
+	if (ids.length === 0) return { deletedIds: [], releasedScreens: [] };
 	const [deleted, releasedScreens] = await db.batch([
-		db.delete(archetypes).where(unheldDerivedArchetype(eventId, ids)).returning({ id: archetypes.id }),
+		db
+			.delete(archetypes)
+			.where(unheldDerivedArchetype(eventId, ids))
+			.returning({ id: archetypes.id }),
 		buildReleaseScreenEventReferencesQuery(eventId, ['archetype']),
 	]);
 	return {
-		deletedIds: deleted.map(row => row.id),
+		deletedIds: deleted.map((row) => row.id),
 		releasedScreens,
 	};
 }
@@ -118,13 +135,17 @@ export async function removeEmptiedLeaderArchetypes(eventId: number, ids: readon
  * a clash renamed. A later Leader's clash may rename one created or renamed
  * earlier, so the last name stands.
  */
-export async function announceDerivedArchetypes(eventId: number, derived: readonly LeaderArchetype[]): Promise<void> {
+export async function announceDerivedArchetypes(
+	eventId: number,
+	derived: readonly LeaderArchetype[],
+): Promise<void> {
 	const publication = eventDataPublicationModule();
 	for (const { created } of derived) {
-		if (created)
-			await publication.archetypeCreated({ eventId, entity: created });
+		if (created) await publication.archetypeCreated({ eventId, entity: created });
 	}
-	const renamed = new Map(derived.flatMap(({ renamed }) => renamed).map(archetype => [archetype.id, archetype]));
+	const renamed = new Map(
+		derived.flatMap(({ renamed }) => renamed).map((archetype) => [archetype.id, archetype]),
+	);
 	for (const archetype of renamed.values())
 		await publication.archetypeUpdated({ eventId, entity: archetype });
 }
@@ -134,11 +155,13 @@ export async function announceDerivedArchetypes(eventId: number, derived: readon
  * Players, unless customised, and announces it: the released Screens, then
  * the deleted Archetypes. Announced with no origin, as no client applied it.
  */
-export async function releaseEmptiedLeaderArchetypes(eventId: number, ids: readonly number[]): Promise<void> {
+export async function releaseEmptiedLeaderArchetypes(
+	eventId: number,
+	ids: readonly number[],
+): Promise<void> {
 	const { deletedIds, releasedScreens } = await removeEmptiedLeaderArchetypes(eventId, ids);
 	const publication = eventDataPublicationModule();
 	for (const screen of releasedScreens)
 		await publication.screenUpdated({ eventId, entity: screen });
-	for (const id of deletedIds)
-		await publication.archetypeDeleted({ eventId, id });
+	for (const id of deletedIds) await publication.archetypeDeleted({ eventId, id });
 }

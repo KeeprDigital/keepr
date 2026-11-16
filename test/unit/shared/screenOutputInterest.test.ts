@@ -1,9 +1,18 @@
-import type { OutputChange, OutputChangeKind, ScreenHearsContext } from '~~/shared/screenOutputInterest';
+import type {
+	OutputChange,
+	OutputChangeKind,
+	ScreenHearsContext,
+} from '~~/shared/screenOutputInterest';
 import type { ScreenMode } from '~~/shared/types/enums';
 import type { MessageType } from '~~/shared/types/messages';
 import type { ModeConfigTypeMap } from '~~/shared/types/screenConfig';
 import { describe, expect, it } from 'vitest';
-import { OUTPUT_CHANGE_KINDS, outputChangeOf, screenHears, slotNarrowingOf } from '~~/shared/screenOutputInterest';
+import {
+	OUTPUT_CHANGE_KINDS,
+	outputChangeOf,
+	screenHears,
+	slotNarrowingOf,
+} from '~~/shared/screenOutputInterest';
 import { getDefaultConfigForMode } from '~~/shared/types/screenConfig';
 import { eventMessageSamples } from '~~/test/helpers/eventMessageSamples';
 
@@ -65,10 +74,7 @@ const positionChangeShown = [
 ] satisfies ModeConfigTypeMap['standings']['columns'];
 const manualBracket = {
 	size: 4,
-	entrants: [
-		{ playerId: PLAYER },
-		{ name: 'A typed name' },
-	],
+	entrants: [{ playerId: PLAYER }, { name: 'A typed name' }],
 	results: [],
 } satisfies ModeConfigTypeMap['top-cut']['manualBracket'];
 function seats(slotId: number): ScreenHearsContext {
@@ -84,33 +90,16 @@ function follows(slotId: number, match: 'its Match' | 'no Match'): ScreenHearsCo
 	return {
 		slot: {
 			...seats(slotId).slot!,
-			match: match === 'its Match'
-				? { id: MATCH, roundId: ROUND, phaseId: PHASE }
-				: null,
+			match: match === 'its Match' ? { id: MATCH, roundId: ROUND, phaseId: PHASE } : null,
 		},
 	};
 }
 
 describe('outputChangeOf', () => {
 	it.each<[MessageType, OutputChange[]]>([
-		[
-			'event:updated',
-			[
-				{ kind: 'event' },
-			],
-		],
-		[
-			'event:deleted',
-			[
-				{ kind: 'event' },
-			],
-		],
-		[
-			'theme:updated',
-			[
-				{ kind: 'theme' },
-			],
-		],
+		['event:updated', [{ kind: 'event' }]],
+		['event:deleted', [{ kind: 'event' }]],
+		['theme:updated', [{ kind: 'theme' }]],
 		[
 			'talent:updated',
 			[
@@ -248,12 +237,7 @@ describe('outputChangeOf', () => {
 				},
 			],
 		],
-		[
-			'match:deleted',
-			[
-				{ kind: 'match' },
-			],
-		],
+		['match:deleted', [{ kind: 'match' }]],
 		[
 			'featureMatch:updated',
 			[
@@ -292,15 +276,11 @@ describe('outputChangeOf', () => {
 		],
 		[
 			'broadcastGraphicsLiveSession:commandApplied',
-			[
-				{ kind: 'broadcastGraphicsLiveSession', screenId: SCREEN },
-			],
+			[{ kind: 'broadcastGraphicsLiveSession', screenId: SCREEN }],
 		],
 		[
 			'broadcastGraphicsLiveSession:epochEnded',
-			[
-				{ kind: 'broadcastGraphicsLiveSession', screenId: SCREEN },
-			],
+			[{ kind: 'broadcastGraphicsLiveSession', screenId: SCREEN }],
 		],
 		[
 			'playerList:updated',
@@ -393,30 +373,10 @@ describe('outputChangeOf', () => {
 				},
 			],
 		],
-		[
-			'card:updated',
-			[
-				{ kind: 'screenCard', screenId: SCREEN },
-			],
-		],
-		[
-			'card:cleared',
-			[
-				{ kind: 'screenCard', screenId: SCREEN },
-			],
-		],
-		[
-			'screen:updated',
-			[
-				{ kind: 'screen', screenId: SCREEN },
-			],
-		],
-		[
-			'screen:deleted',
-			[
-				{ kind: 'screen', screenId: SCREEN },
-			],
-		],
+		['card:updated', [{ kind: 'screenCard', screenId: SCREEN }]],
+		['card:cleared', [{ kind: 'screenCard', screenId: SCREEN }]],
+		['screen:updated', [{ kind: 'screen', screenId: SCREEN }]],
+		['screen:deleted', [{ kind: 'screen', screenId: SCREEN }]],
 		// What is new names its id as what changes it does, so an output following every one shows it.
 		[
 			'talent:created',
@@ -499,12 +459,7 @@ describe('outputChangeOf', () => {
 				},
 			],
 		],
-		[
-			'screen:created',
-			[
-				{ kind: 'screen', screenId: SCREEN },
-			],
-		],
+		['screen:created', [{ kind: 'screen', screenId: SCREEN }]],
 	])('%s names what it changed', (type, changes) => {
 		expect(outputChangeOf(type, SAMPLES[type])).toEqual(changes);
 	});
@@ -520,11 +475,7 @@ describe('outputChangeOf', () => {
 				playerIds: [OTHER_PLAYER, PLAYER],
 			},
 		],
-		[
-			'the whole kind when it names none',
-			null,
-			{ kind: 'player' },
-		],
+		['the whole kind when it names none', null, { kind: 'player' }],
 	])('player:deckProjectionsChanged changes %s', (_case, playerIds, change) => {
 		expect(outputChangeOf('player:deckProjectionsChanged', { playerIds })).toEqual([change]);
 	});
@@ -533,39 +484,21 @@ describe('outputChangeOf', () => {
 	it.each<[MessageType, OutputChangeKind[]]>([
 		[
 			'melee:dataReset',
-			[
-				'player',
-				'playerDeck',
-				'phase',
-				'round',
-				'match',
-				'roundStandings',
-				'featureMatchSlot',
-			],
+			['player', 'playerDeck', 'phase', 'round', 'match', 'roundStandings', 'featureMatchSlot'],
 		],
-		[
-			'melee:structureSynced',
-			['phase', 'round'],
-		],
-		[
-			'melee:playersSynced',
-			['player'],
-		],
-		[
-			'melee:decklistsSynced',
-			['playerDeck'],
-		],
-		[
-			'tcgplus:imported',
-			['player', 'playerDeck'],
-		],
+		['melee:structureSynced', ['phase', 'round']],
+		['melee:playersSynced', ['player']],
+		['melee:decklistsSynced', ['playerDeck']],
+		['tcgplus:imported', ['player', 'playerDeck']],
 	])('%s changes whole kinds, naming no id', (type, kinds) => {
-		expect(outputChangeOf(type, SAMPLES[type])).toEqual(kinds.map(kind => ({ kind })));
+		expect(outputChangeOf(type, SAMPLES[type])).toEqual(kinds.map((kind) => ({ kind })));
 	});
 
 	// A merge moves the merged Archetype's decks to the survivor, so a Screen showing either shows a change.
 	it('names the survivor of a merge beside the Archetype merged away', () => {
-		expect(outputChangeOf('archetype:deleted', { archetypeId: 91, mergedIntoArchetypeId: 92 })).toEqual([
+		expect(
+			outputChangeOf('archetype:deleted', { archetypeId: 91, mergedIntoArchetypeId: 92 }),
+		).toEqual([
 			{
 				kind: 'archetype',
 				archetypeIds: [91, 92],
@@ -577,7 +510,9 @@ describe('outputChangeOf', () => {
 	// the notices of these changes), which are no change to what an output shows.
 	// One starting to reach outputs must be a decision made here.
 	it('says nothing an output shows changed for exactly the operator-only messages', () => {
-		expect(MESSAGE_TYPES.filter(type => outputChangeOf(type, SAMPLES[type]).length === 0)).toEqual([
+		expect(
+			MESSAGE_TYPES.filter((type) => outputChangeOf(type, SAMPLES[type]).length === 0),
+		).toEqual([
 			'featureMatchAssignment:created',
 			'featureMatchAssignment:updated',
 			'featureMatchAssignment:deleted',
@@ -593,13 +528,15 @@ describe('outputChangeOf', () => {
 
 describe('screenHears', () => {
 	const EVERY_SCREEN_FOLLOWS: OutputChangeKind[] = ['event', 'theme', 'screen'];
-	const SCREEN_ADDRESSED: OutputChangeKind[] = ['screen', 'screenCard', 'broadcastGraphicsLiveSession'];
+	const SCREEN_ADDRESSED: OutputChangeKind[] = [
+		'screen',
+		'screenCard',
+		'broadcastGraphicsLiveSession',
+	];
 
 	/** A change of the whole kind: it names no id, but its own Screen where the kind belongs to one. */
 	function wholeKind(kind: OutputChangeKind, screenId = SCREEN): OutputChange {
-		return SCREEN_ADDRESSED.includes(kind)
-			? { kind, screenId }
-			: { kind };
+		return SCREEN_ADDRESSED.includes(kind) ? { kind, screenId } : { kind };
 	}
 
 	// Decided before the mode is read: Background, which declares nothing, shows it.
@@ -608,7 +545,7 @@ describe('screenHears', () => {
 			expect(screenHears(screenIn('background'), wholeKind(kind))).toBe(true);
 		});
 
-		it('does not hear another Screen\'s screen change', () => {
+		it("does not hear another Screen's screen change", () => {
 			expect(screenHears(screenIn('background'), wholeKind('screen', OTHER_SCREEN))).toBe(false);
 		});
 	});
@@ -616,21 +553,9 @@ describe('screenHears', () => {
 	// The kinds each mode's output follows beyond its Screen, Event and Theme,
 	// as its config stands; every other kind it ignores entirely.
 	it.each<[string, ReturnType<typeof screenIn>, OutputChangeKind[]]>([
-		[
-			'Background',
-			screenIn('background'),
-			[],
-		],
-		[
-			'Card Spotlight',
-			screenIn('card'),
-			['screenCard'],
-		],
-		[
-			'Deck List of no Player',
-			screenIn('deck'),
-			[],
-		],
+		['Background', screenIn('background'), []],
+		['Card Spotlight', screenIn('card'), ['screenCard']],
+		['Deck List of no Player', screenIn('deck'), []],
 		[
 			'Deck List of a Player',
 			screenIn('deck', {
@@ -652,11 +577,7 @@ describe('screenHears', () => {
 			}),
 			['featureMatchSlot', 'featureMatchSession'],
 		],
-		[
-			'Standings',
-			screenIn('standings'),
-			['player', 'round', 'roundStandings'],
-		],
+		['Standings', screenIn('standings'), ['player', 'round', 'roundStandings']],
 		[
 			'Standings fixed at a Round',
 			screenIn('standings', { roundId: ROUND }),
@@ -665,22 +586,12 @@ describe('screenHears', () => {
 		[
 			'Standings showing Position Change',
 			screenIn('standings', { columns: positionChangeShown }),
-			[
-				'player',
-				'phase',
-				'round',
-				'roundStandings',
-			],
+			['player', 'phase', 'round', 'roundStandings'],
 		],
 		[
 			'Standings of a watchlist',
 			screenIn('standings', { viewMode: 'watchlist', playerListId: LIST }),
-			[
-				'player',
-				'round',
-				'roundStandings',
-				'playerList',
-			],
+			['player', 'round', 'roundStandings', 'playerList'],
 		],
 		[
 			'Standings holding an unused watchlist',
@@ -690,57 +601,26 @@ describe('screenHears', () => {
 		[
 			'Top Cut Bracket of a Phase',
 			screenIn('top-cut', { phaseId: PHASE }),
-			[
-				'player',
-				'phase',
-				'round',
-				'match',
-				'roundStandings',
-			],
+			['player', 'phase', 'round', 'match', 'roundStandings'],
 		],
 		[
 			'Top Cut Bracket of a Phase showing Archetypes',
 			screenIn('top-cut', { phaseId: PHASE, showArchetypes: true }),
-			[
-				'player',
-				'playerDeck',
-				'phase',
-				'round',
-				'match',
-				'roundStandings',
-				'archetype',
-			],
+			['player', 'playerDeck', 'phase', 'round', 'match', 'roundStandings', 'archetype'],
 		],
-		[
-			'Manual Bracket',
-			screenIn('top-cut', { bracketSource: 'manual', manualBracket }),
-			['player'],
-		],
+		['Manual Bracket', screenIn('top-cut', { bracketSource: 'manual', manualBracket }), ['player']],
 		[
 			'Manual Bracket showing Archetypes',
 			screenIn('top-cut', { bracketSource: 'manual', manualBracket, showArchetypes: true }),
 			['player', 'playerDeck', 'archetype'],
 		],
-		[
-			'Feature Match Controls of no Slot',
-			screenIn('feature-match'),
-			[],
-		],
+		['Feature Match Controls of no Slot', screenIn('feature-match'), []],
 		[
 			'Feature Match Controls',
 			screenIn('feature-match', { featureMatchId: SLOT }),
-			[
-				'player',
-				'playerDeck',
-				'featureMatchSlot',
-				'featureMatchSession',
-			],
+			['player', 'playerDeck', 'featureMatchSlot', 'featureMatchSession'],
 		],
-		[
-			'Feature Match Overlay of no Slot',
-			screenIn('feature-match-overlay'),
-			[],
-		],
+		['Feature Match Overlay of no Slot', screenIn('feature-match-overlay'), []],
 		[
 			'Feature Match Overlay',
 			screenIn('feature-match-overlay', { featureMatchId: SLOT }),
@@ -754,96 +634,37 @@ describe('screenHears', () => {
 				'featureMatchSession',
 			],
 		],
-		[
-			'Broadcast Graphics',
-			screenIn('broadcast-graphics'),
-			['broadcastGraphicsLiveSession'],
-		],
-		[
-			'Metagame',
-			screenIn('metagame'),
-			[
-				'player',
-				'playerDeck',
-				'roundStandings',
-				'archetype',
-			],
-		],
+		['Broadcast Graphics', screenIn('broadcast-graphics'), ['broadcastGraphicsLiveSession']],
+		['Metagame', screenIn('metagame'), ['player', 'playerDeck', 'roundStandings', 'archetype']],
 		[
 			'Metagame of a Player List',
 			screenIn('metagame', { scope: 'playerList', playerListId: LIST }),
-			[
-				'player',
-				'playerDeck',
-				'roundStandings',
-				'archetype',
-				'playerList',
-			],
+			['player', 'playerDeck', 'roundStandings', 'archetype', 'playerList'],
 		],
 		[
 			'Metagame holding an unused Player List',
 			screenIn('metagame', { scope: 'all', playerListId: LIST }),
-			[
-				'player',
-				'playerDeck',
-				'roundStandings',
-				'archetype',
-			],
+			['player', 'playerDeck', 'roundStandings', 'archetype'],
 		],
 		[
 			'Most Played Cards of a Player List',
 			screenIn('top-cards', { scope: 'playerList', playerListId: LIST }),
-			[
-				'player',
-				'playerDeck',
-				'roundStandings',
-				'archetype',
-				'playerList',
-			],
+			['player', 'playerDeck', 'roundStandings', 'archetype', 'playerList'],
 		],
 		[
 			'Archetype Spotlight of a Player List',
 			screenIn('archetype-spotlight', { scope: 'playerList', playerListId: LIST }),
-			[
-				'player',
-				'playerDeck',
-				'roundStandings',
-				'archetype',
-				'playerList',
-			],
+			['player', 'playerDeck', 'roundStandings', 'archetype', 'playerList'],
 		],
-		[
-			'Player History of no Player',
-			screenIn('player-history'),
-			[],
-		],
+		['Player History of no Player', screenIn('player-history'), []],
 		[
 			'Player History',
 			screenIn('player-history', { playerId: PLAYER }),
-			[
-				'player',
-				'playerDeck',
-				'phase',
-				'round',
-				'match',
-				'archetype',
-			],
+			['player', 'playerDeck', 'phase', 'round', 'match', 'archetype'],
 		],
-		[
-			'Pairings of no Round',
-			screenIn('pairings'),
-			[],
-		],
-		[
-			'Pairings',
-			screenIn('pairings', { roundId: ROUND }),
-			['player', 'round', 'match'],
-		],
-		[
-			'Head-to-Head of nothing',
-			screenIn('head-to-head'),
-			[],
-		],
+		['Pairings of no Round', screenIn('pairings'), []],
+		['Pairings', screenIn('pairings', { roundId: ROUND }), ['player', 'round', 'match']],
+		['Head-to-Head of nothing', screenIn('head-to-head'), []],
 		[
 			'Head-to-Head of a Slot',
 			screenIn('head-to-head', { featureMatchId: SLOT }),
@@ -867,38 +688,17 @@ describe('screenHears', () => {
 				player2Id: OPPONENT,
 				featureMatchId: SLOT,
 			}),
-			[
-				'player',
-				'playerDeck',
-				'phase',
-				'round',
-				'match',
-				'roundStandings',
-				'archetype',
-			],
+			['player', 'playerDeck', 'phase', 'round', 'match', 'roundStandings', 'archetype'],
 		],
-		[
-			'Round Clock of the Current Round',
-			screenIn('round-clock'),
-			['phase', 'round', 'match'],
-		],
-		[
-			'Round Clock of a picked Round',
-			screenIn('round-clock', { roundId: ROUND }),
-			['round'],
-		],
-		[
-			'Talent of no Talent',
-			screenIn('talent'),
-			[],
-		],
-		[
-			'Talent',
-			screenIn('talent', { talentId: TALENT }),
-			['talent'],
-		],
+		['Round Clock of the Current Round', screenIn('round-clock'), ['phase', 'round', 'match']],
+		['Round Clock of a picked Round', screenIn('round-clock', { roundId: ROUND }), ['round']],
+		['Talent of no Talent', screenIn('talent'), []],
+		['Talent', screenIn('talent', { talentId: TALENT }), ['talent']],
 	])('%s follows only its kinds', (_name, screen, follows) => {
-		const heard = OUTPUT_CHANGE_KINDS.filter(kind => !EVERY_SCREEN_FOLLOWS.includes(kind) && screenHears(screen, wholeKind(kind), seats(SLOT)));
+		const heard = OUTPUT_CHANGE_KINDS.filter(
+			(kind) =>
+				!EVERY_SCREEN_FOLLOWS.includes(kind) && screenHears(screen, wholeKind(kind), seats(SLOT)),
+		);
 		expect(heard).toEqual(follows);
 	});
 
@@ -1005,7 +805,7 @@ describe('screenHears', () => {
 			false,
 		],
 		[
-			'Feature Match Controls hears its Slot\'s Session',
+			"Feature Match Controls hears its Slot's Session",
 			screenIn('feature-match', { featureMatchId: SLOT }),
 			{
 				kind: 'featureMatchSession',
@@ -1014,7 +814,7 @@ describe('screenHears', () => {
 			true,
 		],
 		[
-			'Feature Match Controls ignores another Slot\'s Session',
+			"Feature Match Controls ignores another Slot's Session",
 			screenIn('feature-match', { featureMatchId: SLOT }),
 			{
 				kind: 'featureMatchSession',
@@ -1041,7 +841,7 @@ describe('screenHears', () => {
 			false,
 		],
 		[
-			'Feature Match Overlay hears its Slot\'s Session',
+			"Feature Match Overlay hears its Slot's Session",
 			screenIn('feature-match-overlay', { featureMatchId: SLOT }),
 			{
 				kind: 'featureMatchSession',
@@ -1050,7 +850,7 @@ describe('screenHears', () => {
 			true,
 		],
 		[
-			'Feature Match Overlay ignores another Slot\'s Session',
+			"Feature Match Overlay ignores another Slot's Session",
 			screenIn('feature-match-overlay', { featureMatchId: SLOT }),
 			{
 				kind: 'featureMatchSession',
@@ -1077,7 +877,7 @@ describe('screenHears', () => {
 			false,
 		],
 		[
-			'Head-to-Head hears its Slot\'s Session',
+			"Head-to-Head hears its Slot's Session",
 			screenIn('head-to-head', { featureMatchId: SLOT }),
 			{
 				kind: 'featureMatchSession',
@@ -1086,7 +886,7 @@ describe('screenHears', () => {
 			true,
 		],
 		[
-			'Head-to-Head ignores another Slot\'s Session',
+			"Head-to-Head ignores another Slot's Session",
 			screenIn('head-to-head', { featureMatchId: SLOT }),
 			{
 				kind: 'featureMatchSession',
@@ -1117,7 +917,7 @@ describe('screenHears', () => {
 			false,
 		],
 		[
-			'a Deck List of a Slot side hears its Slot\'s Session',
+			"a Deck List of a Slot side hears its Slot's Session",
 			screenIn('deck', {
 				deckSource: { type: 'featureMatchSlot', slotId: SLOT, side: 'player2' },
 			}),
@@ -1128,7 +928,7 @@ describe('screenHears', () => {
 			true,
 		],
 		[
-			'a Deck List of a Slot side ignores another Slot\'s Session',
+			"a Deck List of a Slot side ignores another Slot's Session",
 			screenIn('deck', {
 				deckSource: { type: 'featureMatchSlot', slotId: SLOT, side: 'player2' },
 			}),
@@ -1162,7 +962,7 @@ describe('screenHears', () => {
 			false,
 		],
 		[
-			'a Deck List hears its Player\'s deck',
+			"a Deck List hears its Player's deck",
 			screenIn('deck', {
 				deckSource: { type: 'player', playerId: PLAYER },
 			}),
@@ -1173,7 +973,7 @@ describe('screenHears', () => {
 			true,
 		],
 		[
-			'a Deck List ignores another Player\'s deck',
+			"a Deck List ignores another Player's deck",
 			screenIn('deck', {
 				deckSource: { type: 'player', playerId: PLAYER },
 			}),
@@ -1330,49 +1130,26 @@ describe('screenHears', () => {
 	// A mode showing the Players its Slot seats is told who they are; told
 	// nothing, or of another Slot, it hears every Player rather than miss one.
 	describe.each([
-		[
-			'Feature Match Controls',
-			screenIn('feature-match', { featureMatchId: SLOT }),
-		],
-		[
-			'Feature Match Overlay',
-			screenIn('feature-match-overlay', { featureMatchId: SLOT }),
-		],
-		[
-			'Head-to-Head of a Slot',
-			screenIn('head-to-head', { featureMatchId: SLOT }),
-		],
+		['Feature Match Controls', screenIn('feature-match', { featureMatchId: SLOT })],
+		['Feature Match Overlay', screenIn('feature-match-overlay', { featureMatchId: SLOT })],
+		['Head-to-Head of a Slot', screenIn('head-to-head', { featureMatchId: SLOT })],
 	])('%s', (_name, screen) => {
 		it.each<[string, number, ScreenHearsContext | undefined, boolean]>([
-			[
-				'hears a seated Player',
-				OPPONENT,
-				seats(SLOT),
-				true,
-			],
-			[
-				'ignores an unseated Player',
-				OTHER_PLAYER,
-				seats(SLOT),
-				false,
-			],
-			[
-				'hears any Player, told of no Slot',
-				OTHER_PLAYER,
-				undefined,
-				true,
-			],
-			[
-				'hears any Player, told of another Slot',
-				OTHER_PLAYER,
-				seats(OTHER_SLOT),
-				true,
-			],
+			['hears a seated Player', OPPONENT, seats(SLOT), true],
+			['ignores an unseated Player', OTHER_PLAYER, seats(SLOT), false],
+			['hears any Player, told of no Slot', OTHER_PLAYER, undefined, true],
+			['hears any Player, told of another Slot', OTHER_PLAYER, seats(OTHER_SLOT), true],
 		])('%s', (_case, playerId, context, hears) => {
-			expect(screenHears(screen, {
-				kind: 'player',
-				playerIds: [playerId],
-			}, context)).toBe(hears);
+			expect(
+				screenHears(
+					screen,
+					{
+						kind: 'player',
+						playerIds: [playerId],
+					},
+					context,
+				),
+			).toBe(hears);
 		});
 	});
 
@@ -1463,7 +1240,7 @@ describe('screenHears', () => {
 			true,
 		],
 		[
-			'hears its Match\'s Round',
+			"hears its Match's Round",
 			{
 				kind: 'round',
 				roundIds: [ROUND],
@@ -1498,14 +1275,9 @@ describe('screenHears', () => {
 			seats(SLOT),
 			true,
 		],
+		['hears a Round change naming no Round', { kind: 'round' }, follows(SLOT, 'its Match'), true],
 		[
-			'hears a Round change naming no Round',
-			{ kind: 'round' },
-			follows(SLOT, 'its Match'),
-			true,
-		],
-		[
-			'hears its Match\'s Phase',
+			"hears its Match's Phase",
 			{
 				kind: 'phase',
 				phaseIds: [PHASE],
@@ -1549,11 +1321,17 @@ describe('screenHears', () => {
 	// earlier Matches between them are its read's to know.
 	it('a Head-to-Head of a Slot hears every Match, whichever its Slot follows', () => {
 		const screen = screenIn('head-to-head', { featureMatchId: SLOT });
-		expect(screenHears(screen, {
-			kind: 'match',
-			roundIds: [ROUND],
-			matchIds: [OTHER_MATCH],
-		}, follows(SLOT, 'its Match'))).toBe(true);
+		expect(
+			screenHears(
+				screen,
+				{
+					kind: 'match',
+					roundIds: [ROUND],
+					matchIds: [OTHER_MATCH],
+				},
+				follows(SLOT, 'its Match'),
+			),
+		).toBe(true);
 	});
 
 	// The caller reads a Slot only for a change its row can rule out.
@@ -1643,23 +1421,23 @@ describe('screenHears', () => {
 	// The deck counters a control Screen offers, and an Overlay's sideboards,
 	// are read from the decks of the Players their Slot seats.
 	describe.each([
-		[
-			'a Feature Match Controls',
-			screenIn('feature-match', { featureMatchId: SLOT }),
-		],
-		[
-			'a Feature Match Overlay',
-			screenIn('feature-match-overlay', { featureMatchId: SLOT }),
-		],
+		['a Feature Match Controls', screenIn('feature-match', { featureMatchId: SLOT })],
+		['a Feature Match Overlay', screenIn('feature-match-overlay', { featureMatchId: SLOT })],
 	])('%s', (_name, screen) => {
 		it.each<[string, number, boolean]>([
-			['hears a seated Player\'s deck', PLAYER, true],
-			['ignores an unseated Player\'s deck', OTHER_PLAYER, false],
+			["hears a seated Player's deck", PLAYER, true],
+			["ignores an unseated Player's deck", OTHER_PLAYER, false],
 		])('%s', (_case, playerId, hears) => {
-			expect(screenHears(screen, {
-				kind: 'playerDeck',
-				playerIds: [playerId],
-			}, seats(SLOT))).toBe(hears);
+			expect(
+				screenHears(
+					screen,
+					{
+						kind: 'playerDeck',
+						playerIds: [playerId],
+					},
+					seats(SLOT),
+				),
+			).toBe(hears);
 		});
 	});
 });

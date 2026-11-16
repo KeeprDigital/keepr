@@ -17,9 +17,11 @@ const { mockFetch, mockSaveScreenCard, SERVER_NOW, serverNow } = vi.hoisted(() =
 	};
 });
 mockNuxtImport('$fetch', () => mockFetch);
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
-	getServerTime: () => serverNow.value ?? Date.now(),
-})));
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+		getServerTime: () => serverNow.value ?? Date.now(),
+	})),
+);
 
 let revision = 0;
 mockNuxtImport('useCardRepository', () => () => ({
@@ -101,10 +103,8 @@ function server(path: string) {
 			total: 2,
 		};
 	}
-	if (path === '/api/events/1/op-cards/OP01-001')
-		return { available: true, card: zoroDetail };
-	if (path === '/api/events/1/op-cards/OP01-024')
-		return { available: true, card: luffyDetail };
+	if (path === '/api/events/1/op-cards/OP01-001') return { available: true, card: zoroDetail };
+	if (path === '/api/events/1/op-cards/OP01-024') return { available: true, card: luffyDetail };
 	throw new Error(`unrouted ${path}`);
 }
 
@@ -134,11 +134,7 @@ describe('card store on a One Piece Event', () => {
 
 	describe('searching', () => {
 		it.each([
-			[
-				'part of a name',
-				{ text: ' luf ' },
-				{ name: 'luf', limit: 250 },
-			],
+			['part of a name', { text: ' luf ' }, { name: 'luf', limit: 250 }],
 			[
 				'text with colour and category',
 				{ text: 'zoro', color: 'Red', category: 'leader' },
@@ -152,23 +148,29 @@ describe('card store on a One Piece Event', () => {
 		] as const)('asks the server by %s and lists what it answers', async (_case, search, query) => {
 			await store.searchOpCards(search);
 
-			expect(mockFetch).toHaveBeenCalledWith('/api/events/1/op-cards', expect.objectContaining({ query }));
-			expect(store.opSearchResults.map(card => card.number)).toEqual(['OP01-001', 'OP01-024']);
+			expect(mockFetch).toHaveBeenCalledWith(
+				'/api/events/1/op-cards',
+				expect.objectContaining({ query }),
+			);
+			expect(store.opSearchResults.map((card) => card.number)).toEqual(['OP01-001', 'OP01-024']);
 			expect(store.opCardDataAvailable).toBe(true);
 			expect(store.opSearched).toBe(true);
 		});
 
 		// As on Magic: The Gathering, nothing is listed until three characters are typed.
-		it.each(['lu', ' zo '])('lists nothing and asks nothing for %j, clearing what was listed', async (text) => {
-			await store.searchOpCards({ text: 'zoro' });
-			mockFetch.mockClear();
+		it.each(['lu', ' zo '])(
+			'lists nothing and asks nothing for %j, clearing what was listed',
+			async (text) => {
+				await store.searchOpCards({ text: 'zoro' });
+				mockFetch.mockClear();
 
-			await store.searchOpCards({ text, color: 'Red' });
+				await store.searchOpCards({ text, color: 'Red' });
 
-			expect(mockFetch).not.toHaveBeenCalled();
-			expect(store.opSearchResults).toEqual([]);
-			expect(store.opSearched).toBe(false);
-		});
+				expect(mockFetch).not.toHaveBeenCalled();
+				expect(store.opSearchResults).toEqual([]);
+				expect(store.opSearched).toBe(false);
+			},
+		);
 
 		it('says card data is unavailable when the server has no bandai-keepr', async () => {
 			mockFetch.mockResolvedValue({ available: false });
@@ -197,17 +199,20 @@ describe('card store on a One Piece Event', () => {
 			});
 			await slow;
 
-			expect(store.opSearchResults.map(card => card.number)).toEqual(['OP01-024']);
+			expect(store.opSearchResults.map((card) => card.number)).toEqual(['OP01-024']);
 		});
 	});
 
 	describe('choosing a Printing and showing it', () => {
-		it('previews the Card\'s own Printing, offers every Printing, and shows the alt-art chosen with its Card Timeout', async () => {
+		it("previews the Card's own Printing, offers every Printing, and shows the alt-art chosen with its Card Timeout", async () => {
 			mockEventStoreState.event.cardTimeout = 30;
 			await store.selectOpCard(zoro);
 
 			expect(store.opPreviewCard).toMatchObject({ id: 'OP01-001', printingKind: 'standard' });
-			expect(store.opPreviewPrintings.map(printing => printing.kind)).toEqual(['standard', 'alt-art']);
+			expect(store.opPreviewPrintings.map((printing) => printing.kind)).toEqual([
+				'standard',
+				'alt-art',
+			]);
 
 			store.selectOpPrinting('OP01-001_p1');
 			await store.showOpPreviewCard();
@@ -245,7 +250,11 @@ describe('card store on a One Piece Event', () => {
 
 			await store.selectOpCard(luffy);
 
-			expect(mockSaveScreenCard).toHaveBeenCalledWith(1, 5, expect.objectContaining({ id: 'OP01-024' }));
+			expect(mockSaveScreenCard).toHaveBeenCalledWith(
+				1,
+				5,
+				expect.objectContaining({ id: 'OP01-024' }),
+			);
 		});
 
 		it('takes no flip, rotate or turn-over', async () => {
@@ -268,10 +277,10 @@ describe('card store on a One Piece Event', () => {
 			await store.selectOpCard(zoro);
 			store.selectOpPrinting('OP01-001_p1');
 
-			expect(store.opSelectionHistory.map(card => card.id)).toEqual(['OP01-001_p1', 'OP01-024']);
+			expect(store.opSelectionHistory.map((card) => card.id)).toEqual(['OP01-001_p1', 'OP01-024']);
 		});
 
-		it('previews the Printing a History entry holds, offering its Card\'s Printings again', async () => {
+		it("previews the Printing a History entry holds, offering its Card's Printings again", async () => {
 			await store.selectOpCard(zoro);
 			store.selectOpPrinting('OP01-001_p1');
 			await store.selectOpCard(luffy);
@@ -279,7 +288,10 @@ describe('card store on a One Piece Event', () => {
 			await store.selectOpHistoryCard(store.opSelectionHistory[1]!);
 
 			expect(store.opPreviewCard).toMatchObject({ id: 'OP01-001_p1' });
-			expect(store.opPreviewPrintings.map(printing => printing.id)).toEqual(['OP01-001', 'OP01-001_p1']);
+			expect(store.opPreviewPrintings.map((printing) => printing.id)).toEqual([
+				'OP01-001',
+				'OP01-001_p1',
+			]);
 		});
 	});
 });

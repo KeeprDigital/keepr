@@ -45,7 +45,7 @@ function successfulBrowserEvidence(operation: GraphicsIngestionOperation) {
 		outcome: 'font-loaded' as const,
 		sourceDigest: operation.report.facts.sha256,
 		challengeDigest: operation.report.facts.browserChallenge.digest,
-		glyphProofs: operation.report.facts.browserChallenge.codePoints.map(codePoint => ({
+		glyphProofs: operation.report.facts.browserChallenge.codePoints.map((codePoint) => ({
 			codePoint,
 			exactWithSansDigest: exact,
 			exactWithMonoDigest: exact,
@@ -144,7 +144,10 @@ describe('static font ingestion at the Graphic Asset ingestion seam', () => {
 				maximumByteLength: 10 * 1024 * 1024,
 			}),
 		});
-		if (awaitingEvidence.report?.outcome !== 'accepted' || awaitingEvidence.report.facts.kind !== 'font')
+		if (
+			awaitingEvidence.report?.outcome !== 'accepted' ||
+			awaitingEvidence.report.facts.kind !== 'font'
+		)
 			throw new Error('Expected a validated font challenge');
 		const failed = await assets.confirmFontBrowserEvidence({
 			operationId: awaitingEvidence.id,
@@ -161,9 +164,7 @@ describe('static font ingestion at the Graphic Asset ingestion seam', () => {
 			report: {
 				outcome: 'rejected',
 				compatibilityProfile: 'static-font-v1',
-				issues: [
-					{ code: 'browser-font-render-failed' },
-				],
+				issues: [{ code: 'browser-font-render-failed' }],
 			},
 		});
 		await expect(storedGraphicAssets(context)).resolves.toEqual([]);
@@ -200,9 +201,7 @@ describe('static font ingestion at the Graphic Asset ingestion seam', () => {
 			stage: 'failed',
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'browser-font-render-failed' },
-				],
+				issues: [{ code: 'browser-font-render-failed' }],
 			},
 		});
 	});
@@ -230,9 +229,7 @@ describe('static font ingestion at the Graphic Asset ingestion seam', () => {
 			report: {
 				outcome: 'rejected',
 				compatibilityProfile: 'static-font-v1',
-				issues: [
-					{ code: 'font-table-invalid' },
-				],
+				issues: [{ code: 'font-table-invalid' }],
 			},
 		});
 	});
@@ -300,8 +297,8 @@ describe('static font ingestion at the Graphic Asset ingestion seam', () => {
 				revisionNumber: 2,
 			},
 		]);
-		await expect(storedRevisionContent(context, publishedRevision(original)))
-			.resolves
-			.toMatchObject({ contentType: 'font/woff' });
+		await expect(
+			storedRevisionContent(context, publishedRevision(original)),
+		).resolves.toMatchObject({ contentType: 'font/woff' });
 	});
 });

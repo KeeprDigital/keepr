@@ -14,8 +14,9 @@ export const BROADCAST_GRAPHICS_GRAPHIC_QUERY_KEY = 'graphic';
 
 /** Live is the default: an unreadable or unknown selection resolves to it. */
 export function resolveBroadcastGraphicsWorkspace(value: unknown): BroadcastGraphicsWorkspace {
-	return typeof value === 'string' && (BROADCAST_GRAPHICS_WORKSPACES as readonly string[]).includes(value)
-		? value as BroadcastGraphicsWorkspace
+	return typeof value === 'string' &&
+		(BROADCAST_GRAPHICS_WORKSPACES as readonly string[]).includes(value)
+		? (value as BroadcastGraphicsWorkspace)
 		: 'live';
 }
 
@@ -28,11 +29,8 @@ export function resolveSelectedBroadcastGraphicId(
 	value: unknown,
 	graphics: readonly BroadcastGraphicConfig[],
 ): string | null {
-	if (typeof value !== 'string' || value === '')
-		return null;
-	return graphics.some(graphic => graphic.id === value)
-		? value
-		: null;
+	if (typeof value !== 'string' || value === '') return null;
+	return graphics.some((graphic) => graphic.id === value) ? value : null;
 }
 
 export interface BroadcastGraphicsWorkspaceLocation {
@@ -43,9 +41,8 @@ export interface BroadcastGraphicsWorkspaceLocation {
 /** The query patch that addresses one workspace location. */
 export function broadcastGraphicsWorkspaceQuery(location: BroadcastGraphicsWorkspaceLocation) {
 	return {
-		[BROADCAST_GRAPHICS_WORKSPACE_QUERY_KEY]: location.workspace === 'live'
-			? undefined
-			: location.workspace,
+		[BROADCAST_GRAPHICS_WORKSPACE_QUERY_KEY]:
+			location.workspace === 'live' ? undefined : location.workspace,
 		[BROADCAST_GRAPHICS_GRAPHIC_QUERY_KEY]: location.selectedGraphicId ?? undefined,
 	};
 }

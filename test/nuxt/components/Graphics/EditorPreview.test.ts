@@ -5,11 +5,14 @@ import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
 import { stubPointerCapture } from '~~/test/nuxt/helpers/pointerCapture';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import EditorPreview from '~/components/Graphics/EditorPreview.vue';
-import { GRAPHICS_PREVIEW_READY_MESSAGE, GRAPHICS_PREVIEW_SELECT_MESSAGE } from '~/modules/graphics/previewMessages';
+import {
+	GRAPHICS_PREVIEW_READY_MESSAGE,
+	GRAPHICS_PREVIEW_SELECT_MESSAGE,
+} from '~/modules/graphics/previewMessages';
 
 // The preview drawn at half the canvas, so a drag's pixels are canvas pixels doubled.
-vi.mock('@vueuse/core', async importOriginal => ({
-	...await importOriginal<typeof import('@vueuse/core')>(),
+vi.mock('@vueuse/core', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@vueuse/core')>()),
 	useElementSize: () => ({
 		width: ref(960),
 		height: ref(540),
@@ -86,46 +89,32 @@ describe('graphics editor preview — what it tells its frame', () => {
 		await wrapper.setProps({
 			messages: [config, moved],
 		});
-		expect(postMessage.mock.calls).toEqual([
-			[moved, window.location.origin],
-		]);
+		expect(postMessage.mock.calls).toEqual([[moved, window.location.origin]]);
 	});
 
 	// The frame may mount its listeners after `load` fires, so it announces readiness.
 	it.each([
-		[
-			'its own frame',
-			'own',
-			window.location.origin,
-			2,
-		],
-		[
-			'a window it did not embed',
-			'stranger',
-			window.location.origin,
-			0,
-		],
-		[
-			'its frame from another origin',
-			'own',
-			'https://example.invalid',
-			0,
-		],
-	] as const)('answers a ready announced by %s with %s… pushes', async (_, sender, origin, pushes) => {
-		const wrapper = mountPreview();
-		const postMessage = vi.fn();
-		const frame = previewFrame(wrapper, { postMessage });
-		const stranger = {
-			postMessage: vi.fn(),
-		} as unknown as MessageEventSource;
+		['its own frame', 'own', window.location.origin, 2],
+		['a window it did not embed', 'stranger', window.location.origin, 0],
+		['its frame from another origin', 'own', 'https://example.invalid', 0],
+	] as const)(
+		'answers a ready announced by %s with %s… pushes',
+		async (_, sender, origin, pushes) => {
+			const wrapper = mountPreview();
+			const postMessage = vi.fn();
+			const frame = previewFrame(wrapper, { postMessage });
+			const stranger = {
+				postMessage: vi.fn(),
+			} as unknown as MessageEventSource;
 
-		message(origin, sender === 'own'
-			? frame.contentWindow
-			: stranger, { type: GRAPHICS_PREVIEW_READY_MESSAGE });
-		await nextTick();
+			message(origin, sender === 'own' ? frame.contentWindow : stranger, {
+				type: GRAPHICS_PREVIEW_READY_MESSAGE,
+			});
+			await nextTick();
 
-		expect(postMessage).toHaveBeenCalledTimes(pushes);
-	});
+			expect(postMessage).toHaveBeenCalledTimes(pushes);
+		},
+	);
 
 	// Guides ride the preview's URL only, which is what keeps them off air.
 	it.each([
@@ -136,20 +125,8 @@ describe('graphics editor preview — what it tells its frame', () => {
 			['embed=preview', 'guides=1'],
 			['safe=1', 'stress=1'],
 		],
-		[
-			'safe areas once switched on',
-			'preview-safe-area-guides',
-			{},
-			['safe=1'],
-			[],
-		],
-		[
-			'no item guides once switched off',
-			'preview-item-guides',
-			{},
-			[],
-			['guides=1'],
-		],
+		['safe areas once switched on', 'preview-safe-area-guides', {}, ['safe=1'], []],
+		['no item guides once switched off', 'preview-item-guides', {}, [], ['guides=1']],
 		[
 			'what its host adds',
 			undefined,
@@ -161,15 +138,12 @@ describe('graphics editor preview — what it tells its frame', () => {
 		],
 	] as const)('asks its frame for %s', async (_, toggle, props, present, absent) => {
 		const wrapper = mountPreview(props);
-		if (toggle)
-			await wrapper.get(`[data-testid="${toggle}"]`).trigger('click');
+		if (toggle) await wrapper.get(`[data-testid="${toggle}"]`).trigger('click');
 		const src = wrapper.get('iframe').attributes('src')!;
 
 		expect(src.startsWith('/event/1/screen/main?')).toBe(true);
-		for (const token of present)
-			expect(src).toContain(token);
-		for (const token of absent)
-			expect(src).not.toContain(token);
+		for (const token of present) expect(src).toContain(token);
+		for (const token of absent) expect(src).not.toContain(token);
 	});
 });
 
@@ -180,8 +154,15 @@ describe('graphics editor preview — what its frame tells it', () => {
 		const wrapper = mountPreview();
 		previewFrame(wrapper, window);
 
-		message(window.location.origin, window, { type: GRAPHICS_PREVIEW_SELECT_MESSAGE, target: item });
-		message(window.location.origin, window, { type: GRAPHICS_PREVIEW_SELECT_MESSAGE, target: item, toggle: true });
+		message(window.location.origin, window, {
+			type: GRAPHICS_PREVIEW_SELECT_MESSAGE,
+			target: item,
+		});
+		message(window.location.origin, window, {
+			type: GRAPHICS_PREVIEW_SELECT_MESSAGE,
+			target: item,
+			toggle: true,
+		});
 		message('https://example.invalid', window, {
 			type: GRAPHICS_PREVIEW_SELECT_MESSAGE,
 			target: { type: 'canvas' },
@@ -215,8 +196,7 @@ describe('graphics editor preview — what its frame tells it', () => {
 		const received: unknown[] = [];
 		const wrapper = mountPreview({
 			receive: (arrival: MessageEvent, expected: { origin: string; source: unknown }) => {
-				if (arrival.origin !== expected.origin || arrival.source !== expected.source)
-					return false;
+				if (arrival.origin !== expected.origin || arrival.source !== expected.source) return false;
 				received.push(arrival.data);
 				return true;
 			},
@@ -226,21 +206,13 @@ describe('graphics editor preview — what its frame tells it', () => {
 		message(window.location.origin, window, { type: 'host:select', target: 'frame' });
 		await nextTick();
 
-		expect(received).toEqual([
-			{ type: 'host:select', target: 'frame' },
-		]);
+		expect(received).toEqual([{ type: 'host:select', target: 'frame' }]);
 	});
 
 	// A click in the frame focuses its document, whose key presses never reach the editor's shortcuts.
 	it.each([
-		[
-			'a shared selection',
-			{ type: GRAPHICS_PREVIEW_SELECT_MESSAGE, target: item },
-		],
-		[
-			'a host\'s own report',
-			{ type: 'host:select' },
-		],
+		['a shared selection', { type: GRAPHICS_PREVIEW_SELECT_MESSAGE, target: item }],
+		["a host's own report", { type: 'host:select' }],
 	])('hands keyboard focus back to the editor after %s', async (_, data) => {
 		const wrapper = mountPreview({
 			receive: (arrival: MessageEvent) => (arrival.data as { type: string }).type === 'host:select',
@@ -271,14 +243,14 @@ describe('graphics editor preview — canvas handles', () => {
 
 		expect(wrapper.find('[data-testid="canvas-manipulation-box"]').exists()).toBe(drawn);
 		if (drawn)
-			expect(wrapper.get('[data-testid="canvas-manipulation-box"]').attributes('aria-label')).toBe('Move Bar');
+			expect(wrapper.get('[data-testid="canvas-manipulation-box"]').attributes('aria-label')).toBe(
+				'Move Bar',
+			);
 	});
 
 	it('badges each selected locked layer on the canvas', () => {
 		const wrapper = mountPreview({
-			lockedBoxes: [
-				{ x: 0, y: 0, width: 50, height: 50 },
-			],
+			lockedBoxes: [{ x: 0, y: 0, width: 50, height: 50 }],
 		});
 
 		expect(wrapper.findAll('[data-testid="canvas-locked-layer"]')).toHaveLength(1);

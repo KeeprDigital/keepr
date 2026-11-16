@@ -7,16 +7,19 @@ import { useConsumedEventData } from '~/modules/event-data/resync';
  * re-reads the Event on Reconnect Resync (#610). It emits the Talent's id, or
  * `null` for none. It leaves out the `excluded` Talents, such as a lineup's.
  */
-const props = withDefaults(defineProps<{
-	modelValue?: number | null;
-	label?: string;
-	description?: string;
-	nullLabel?: string;
-	excluded?: readonly number[];
-}>(), {
-	label: 'Talent',
-	nullLabel: 'Select a Talent…',
-});
+const props = withDefaults(
+	defineProps<{
+		modelValue?: number | null;
+		label?: string;
+		description?: string;
+		nullLabel?: string;
+		excluded?: readonly number[];
+	}>(),
+	{
+		label: 'Talent',
+		nullLabel: 'Select a Talent…',
+	},
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [talentId: number | null];
@@ -24,9 +27,11 @@ const emit = defineEmits<{
 
 const eventStore = useEventStore();
 
-const items = computed(() => (eventStore.event?.talents ?? [])
-	.filter(talent => !props.excluded?.includes(talent.id))
-	.map(talent => ({ label: talent.name, value: talent.id })));
+const items = computed(() =>
+	(eventStore.event?.talents ?? [])
+		.filter((talent) => !props.excluded?.includes(talent.id))
+		.map((talent) => ({ label: talent.name, value: talent.id })),
+);
 
 useConsumedEventData(['event']);
 </script>

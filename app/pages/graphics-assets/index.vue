@@ -50,7 +50,7 @@ const authorship = useGraphicsAuthorship();
  * deciding whether a reported snapshot is fresher than the one on show.
  */
 const ingestionTransfer = useGraphicsIngestionTransfer({
-	onOperation: operation => observeNewerOperation(operation),
+	onOperation: (operation) => observeNewerOperation(operation),
 });
 const search = ref('');
 const lifecycleState = ref<GraphicAssetLifecycleState>('active');
@@ -78,11 +78,14 @@ const lifecyclePresentation = {
 		badgeColor: 'error',
 		actions: ['restore'],
 	},
-} as const satisfies Record<GraphicAssetLifecycleState, {
-	label: string;
-	badgeColor: 'success' | 'warning' | 'error';
-	actions: readonly GraphicAssetLifecycleAction[];
-}>;
+} as const satisfies Record<
+	GraphicAssetLifecycleState,
+	{
+		label: string;
+		badgeColor: 'success' | 'warning' | 'error';
+		actions: readonly GraphicAssetLifecycleAction[];
+	}
+>;
 const selectedFile = ref<File | null>(null);
 const proposedName = ref('');
 const createSeparateAsset = ref(false);
@@ -157,26 +160,32 @@ const {
  * write.
  */
 const loadFailureMessage = ref<string>();
-watch(error, (caught) => {
-	loadFailureMessage.value = caught
-		? authorship.describeFailure(caught, 'The Graphic Asset listing could not be loaded.')
-		: undefined;
-}, { immediate: true });
+watch(
+	error,
+	(caught) => {
+		loadFailureMessage.value = caught
+			? authorship.describeFailure(caught, 'The Graphic Asset listing could not be loaded.')
+			: undefined;
+	},
+	{ immediate: true },
+);
 const capacityFailureMessage = ref<string>();
-watch(capacityError, (caught) => {
-	capacityFailureMessage.value = caught
-		? authorship.describeFailure(caught, 'Storage capacity could not be loaded.')
-		: undefined;
-}, { immediate: true });
+watch(
+	capacityError,
+	(caught) => {
+		capacityFailureMessage.value = caught
+			? authorship.describeFailure(caught, 'Storage capacity could not be loaded.')
+			: undefined;
+	},
+	{ immediate: true },
+);
 
 watch(selectedFile, (file) => {
-	if (file && !proposedName.value.trim())
-		proposedName.value = file.name;
+	if (file && !proposedName.value.trim()) proposedName.value = file.name;
 });
 
 const selectionError = computed(() => {
-	if (!selectedFile.value)
-		return null;
+	if (!selectedFile.value) return null;
 	const supportedMime = [
 		'image/png',
 		'image/jpeg',
@@ -190,15 +199,16 @@ const selectionError = computed(() => {
 	});
 	const isFont = sourceKind === 'font';
 	const isVideo = sourceKind === 'silent-video';
-	const supportedExtension = /\.(?:png|jpe?g|webp|mp4|webm|woff2?|ttf|otf)$/i.test(selectedFile.value.name);
+	const supportedExtension = /\.(?:png|jpe?g|webp|mp4|webm|woff2?|ttf|otf)$/i.test(
+		selectedFile.value.name,
+	);
 	if (
-		(selectedFile.value.type && !supportedMime && !isFont)
-		|| (!selectedFile.value.type && !supportedExtension)
+		(selectedFile.value.type && !supportedMime && !isFont) ||
+		(!selectedFile.value.type && !supportedExtension)
 	) {
 		return 'Select a PNG, JPEG, WebP, H.264 MP4, VP9 WebM, WOFF2, WOFF, TTF, or OTF source.';
 	}
-	if (selectedFile.value.size === 0)
-		return 'The Graphic Asset source is empty.';
+	if (selectedFile.value.size === 0) return 'The Graphic Asset source is empty.';
 	if (isFont && selectedFile.value.size > MAX_STATIC_FONT_INGESTION_BYTES)
 		return 'The font file must not exceed 10 MiB.';
 	if (isVideo && selectedFile.value.size > MAX_SILENT_VIDEO_INGESTION_BYTES)
@@ -213,15 +223,16 @@ const selectionError = computed(() => {
  * show and the one persisted operation identity, so they run one at a time:
  * while any of them is in flight the others cannot start.
  */
-const ingestionInFlight = computed(() =>
-	uploadPending.value || remoteCopyPending.value || replacementPending.value,
+const ingestionInFlight = computed(
+	() => uploadPending.value || remoteCopyPending.value || replacementPending.value,
 );
 
-const canUpload = computed(() =>
-	selectedFile.value !== null
-	&& proposedName.value.trim().length > 0
-	&& selectionError.value === null
-	&& !ingestionInFlight.value,
+const canUpload = computed(
+	() =>
+		selectedFile.value !== null &&
+		proposedName.value.trim().length > 0 &&
+		selectionError.value === null &&
+		!ingestionInFlight.value,
 );
 
 /**
@@ -232,8 +243,7 @@ const canUpload = computed(() =>
 const remoteSourcePath = computed(() => {
 	try {
 		return new URL(remoteSourceUrl.value.trim());
-	}
-	catch {
+	} catch {
 		return null;
 	}
 });
@@ -246,52 +256,53 @@ const remoteSourceFileName = computed(() => {
 });
 
 const remoteSelectionError = computed(() => {
-	if (!remoteSourceUrl.value.trim())
-		return null;
+	if (!remoteSourceUrl.value.trim()) return null;
 	const url = remoteSourcePath.value;
-	if (!url)
-		return 'Enter an absolute public HTTPS URL.';
-	if (url.protocol !== 'https:')
-		return 'Only public HTTPS sources may be copied into the library.';
+	if (!url) return 'Enter an absolute public HTTPS URL.';
+	if (url.protocol !== 'https:') return 'Only public HTTPS sources may be copied into the library.';
 	if (url.username || url.password)
 		return 'An approved remote source must not carry embedded credentials.';
 	return null;
 });
 
-const canCopyRemoteSource = computed(() =>
-	remoteSourcePath.value !== null
-	&& remoteSelectionError.value === null
-	&& remoteProposedName.value.trim().length > 0
-	&& !ingestionInFlight.value,
+const canCopyRemoteSource = computed(
+	() =>
+		remoteSourcePath.value !== null &&
+		remoteSelectionError.value === null &&
+		remoteProposedName.value.trim().length > 0 &&
+		!ingestionInFlight.value,
 );
 
-const awaitingStagedConfirmation = computed(() =>
-	currentOperation.value?.stage === 'awaiting-confirmation'
-	&& currentOperation.value.source === 'remote-copy',
+const awaitingStagedConfirmation = computed(
+	() =>
+		currentOperation.value?.stage === 'awaiting-confirmation' &&
+		currentOperation.value.source === 'remote-copy',
 );
 /**
  * An approved remote copy whose bytes never reached staging is retried by
  * re-sending the URL, so it remains retryable from `created` as well.
  */
 function needsRemoteSourceRetry(operation: GraphicsIngestionOperation) {
-	return operation.source === 'remote-copy'
-		&& operation.transferredByteLength === 0
-		&& operation.stage !== 'completed'
-		&& operation.stage !== 'cancelled'
-		&& !(operation.stage === 'failed' && !operation.failure?.retryable);
+	return (
+		operation.source === 'remote-copy' &&
+		operation.transferredByteLength === 0 &&
+		operation.stage !== 'completed' &&
+		operation.stage !== 'cancelled' &&
+		!(operation.stage === 'failed' && !operation.failure?.retryable)
+	);
 }
 
 function isRetryableOperation(
 	operation: GraphicsIngestionOperation | null,
 ): operation is GraphicsIngestionOperation {
-	if (operation === null)
-		return false;
-	if (needsRemoteSourceRetry(operation))
-		return true;
-	return operation.stage !== 'created'
-		&& operation.stage !== 'completed'
-		&& operation.stage !== 'cancelled'
-		&& !(operation.stage === 'failed' && !operation.failure?.retryable);
+	if (operation === null) return false;
+	if (needsRemoteSourceRetry(operation)) return true;
+	return (
+		operation.stage !== 'created' &&
+		operation.stage !== 'completed' &&
+		operation.stage !== 'cancelled' &&
+		!(operation.stage === 'failed' && !operation.failure?.retryable)
+	);
 }
 
 const canRetryOperation = computed(() => isRetryableOperation(currentOperation.value));
@@ -302,29 +313,26 @@ const canRetryOperation = computed(() => isRetryableOperation(currentOperation.v
  * single-request transfer applies). Only the author's file can supply it.
  */
 function needsSourceAgain(operation: GraphicsIngestionOperation) {
-	return (operation.source === 'local-upload' || operation.source === 'replacement')
-		&& !operation.transfer
-		&& operation.transferredByteLength === 0
-		&& (operation.stage === 'failed' || operation.stage === 'transferring');
+	return (
+		(operation.source === 'local-upload' || operation.source === 'replacement') &&
+		!operation.transfer &&
+		operation.transferredByteLength === 0 &&
+		(operation.stage === 'failed' || operation.stage === 'transferring')
+	);
 }
 
 const retryLabel = computed(() => {
 	const operation = currentOperation.value;
-	if (operation?.stage !== 'failed')
-		return 'Resume if interrupted';
-	return needsSourceAgain(operation)
-		? 'Send the source again'
-		: 'Retry from staged bytes';
+	if (operation?.stage !== 'failed') return 'Resume if interrupted';
+	return needsSourceAgain(operation) ? 'Send the source again' : 'Retry from staged bytes';
 });
 
 function readPendingInitiation(): PendingInitiation | null {
 	const stored = localStorage.getItem(initiationStorageKey);
-	if (!stored)
-		return null;
+	if (!stored) return null;
 	try {
 		return JSON.parse(stored) as PendingInitiation;
-	}
-	catch {
+	} catch {
 		localStorage.removeItem(initiationStorageKey);
 		return null;
 	}
@@ -334,15 +342,14 @@ function browserEvidenceMatches(
 	left: GraphicAssetBrowserValidationEvidence | undefined,
 	right: GraphicAssetBrowserValidationEvidence | undefined,
 ) {
-	if (!left || !right)
-		return left === right;
-	return left?.outcome === right.outcome
-		&& left.sourceDigest === right.sourceDigest
-		&& (
-			left.outcome !== 'decoded'
-			|| right.outcome !== 'decoded'
-			|| (left.width === right.width && left.height === right.height)
-		);
+	if (!left || !right) return left === right;
+	return (
+		left?.outcome === right.outcome &&
+		left.sourceDigest === right.sourceDigest &&
+		(left.outcome !== 'decoded' ||
+			right.outcome !== 'decoded' ||
+			(left.width === right.width && left.height === right.height))
+	);
 }
 
 function selectedInitiation(
@@ -352,13 +359,13 @@ function selectedInitiation(
 	const duplicateContentPolicy = createSeparateAsset.value ? 'create-separate' : 'reuse';
 	const pending = readPendingInitiation();
 	if (
-		pending
-		&& pending.name === name
-		&& pending.duplicateContentPolicy === duplicateContentPolicy
-		&& pending.declaredByteLength === selectedFile.value!.size
-		&& pending.sourceFileName === selectedFile.value!.name
-		&& pending.declaredMime === (selectedFile.value!.type || undefined)
-		&& browserEvidenceMatches(pending.browserDecodeEvidence, browserDecodeEvidence)
+		pending &&
+		pending.name === name &&
+		pending.duplicateContentPolicy === duplicateContentPolicy &&
+		pending.declaredByteLength === selectedFile.value!.size &&
+		pending.sourceFileName === selectedFile.value!.name &&
+		pending.declaredMime === (selectedFile.value!.type || undefined) &&
+		browserEvidenceMatches(pending.browserDecodeEvidence, browserDecodeEvidence)
 	) {
 		return pending;
 	}
@@ -382,19 +389,20 @@ function clearPersistedOperation() {
 }
 
 const capacityWarning = computed(() => {
-	if (!capacity.value || capacity.value.canonical.pressure === 'normal')
-		return null;
+	if (!capacity.value || capacity.value.canonical.pressure === 'normal') return null;
 	if (capacity.value.canonical.pressure === 'full') {
 		return {
 			title: 'Canonical Capacity Pressure: full',
-			message: 'Operations that add canonical bytes are blocked. Proven no-growth operations may still complete.',
+			message:
+				'Operations that add canonical bytes are blocked. Proven no-growth operations may still complete.',
 			color: 'error' as const,
 		};
 	}
 	if (capacity.value.canonical.pressure === 'critical') {
 		return {
 			title: 'Canonical Capacity Pressure: critical',
-			message: 'Canonical Graphics Quota use is at or above 95%. Reclaim space before net-new ingestion is blocked.',
+			message:
+				'Canonical Graphics Quota use is at or above 95%. Reclaim space before net-new ingestion is blocked.',
 			color: 'error' as const,
 		};
 	}
@@ -406,22 +414,18 @@ const capacityWarning = computed(() => {
 });
 
 function operationColor(stage: GraphicsIngestionOperation['stage']) {
-	if (stage === 'completed')
-		return 'success';
-	if (stage === 'failed')
-		return 'error';
-	if (stage === 'cancelled')
-		return 'neutral';
+	if (stage === 'completed') return 'success';
+	if (stage === 'failed') return 'error';
+	if (stage === 'cancelled') return 'neutral';
 	return 'info';
 }
 
-function operationOutcomeLabel(outcome: NonNullable<GraphicsIngestionOperation['result']>['outcome']) {
-	if (outcome === 'published')
-		return 'Published';
-	if (outcome === 'reused')
-		return 'Reused';
-	if (outcome === 'revision-created')
-		return 'Created Graphic Asset Revision';
+function operationOutcomeLabel(
+	outcome: NonNullable<GraphicsIngestionOperation['result']>['outcome'],
+) {
+	if (outcome === 'published') return 'Published';
+	if (outcome === 'reused') return 'Reused';
+	if (outcome === 'revision-created') return 'Created Graphic Asset Revision';
 	return 'Graphic Asset Content unchanged';
 }
 
@@ -429,9 +433,7 @@ function templatePackageInstallationLabel(
 	installation: NonNullable<GraphicsIngestionOperation['templatePackageInstallation']>,
 ) {
 	return `Installed Template "${installation.templateName}" with ${installation.assets.length} Graphic Asset ${
-		installation.assets.length === 1
-			? 'Revision'
-			: 'Revisions'
+		installation.assets.length === 1 ? 'Revision' : 'Revisions'
 	}`;
 }
 
@@ -441,22 +443,17 @@ async function inspectUsage(asset: GraphicAsset) {
 		usageByAssetId[asset.id] = await $fetch<GraphicAssetUsage[]>(
 			`/api/graphics-assets/${asset.id}/usage`,
 		);
-	}
-	finally {
+	} finally {
 		usagePendingAssetId.value = null;
 	}
 }
 
 function replaceVisibleAsset(updated: GraphicAsset) {
-	const index = assets.value.findIndex(asset => asset.id === updated.id);
-	if (index !== -1)
-		assets.value.splice(index, 1, updated);
+	const index = assets.value.findIndex((asset) => asset.id === updated.id);
+	if (index !== -1) assets.value.splice(index, 1, updated);
 }
 
-async function runLifecycleAction(
-	asset: GraphicAsset,
-	action: GraphicAssetLifecycleAction,
-) {
+async function runLifecycleAction(asset: GraphicAsset, action: GraphicAssetLifecycleAction) {
 	lifecyclePendingAssetId.value = asset.id;
 	lifecycleErrorByAssetId[asset.id] = undefined;
 	try {
@@ -469,32 +466,30 @@ async function runLifecycleAction(
 		);
 		if (outcome.outcome === 'in-use') {
 			usageByAssetId[asset.id] = outcome.usage;
-			lifecycleErrorByAssetId[asset.id] = action === 'retire'
-				? `This Graphic Asset cannot be retired while a saved template, Theme, Screen Theme Override or Talent references it: ${
-					[
-						...new Set(outcome.usage.map(usageReferrer)),
-					].join(', ')
-				}.`
-				: 'This Graphic Asset cannot enter Trash while any Graphic Asset Revision is in use.';
+			lifecycleErrorByAssetId[asset.id] =
+				action === 'retire'
+					? `This Graphic Asset cannot be retired while a saved template, Theme, Screen Theme Override or Talent references it: ${[
+							...new Set(outcome.usage.map(usageReferrer)),
+						].join(', ')}.`
+					: 'This Graphic Asset cannot enter Trash while any Graphic Asset Revision is in use.';
 			return;
 		}
 		replaceVisibleAsset(outcome.asset);
 		await refresh();
-	}
-	catch (caught) {
+	} catch (caught) {
 		lifecycleErrorByAssetId[asset.id] = authorship.describeFailure(
 			caught,
 			'Graphic Asset lifecycle action failed.',
 		);
-	}
-	finally {
+	} finally {
 		lifecyclePendingAssetId.value = null;
 	}
 }
 
 function lifecycleAllows(asset: GraphicAsset, action: GraphicAssetLifecycleAction) {
-	return (lifecyclePresentation[asset.lifecycle.state].actions as readonly GraphicAssetLifecycleAction[])
-		.includes(action);
+	return (
+		lifecyclePresentation[asset.lifecycle.state].actions as readonly GraphicAssetLifecycleAction[]
+	).includes(action);
 }
 
 function beginMetadataEdit(asset: GraphicAsset) {
@@ -506,9 +501,9 @@ function beginMetadataEdit(asset: GraphicAsset) {
 
 async function saveMetadata(asset: GraphicAsset) {
 	const eventIds = editedEventIds.value.trim()
-		? editedEventIds.value.split(',').map(value => Number(value.trim()))
+		? editedEventIds.value.split(',').map((value) => Number(value.trim()))
 		: [];
-	if (eventIds.some(value => !Number.isSafeInteger(value) || value <= 0)) {
+	if (eventIds.some((value) => !Number.isSafeInteger(value) || value <= 0)) {
 		metadataError.value = 'Event associations must be comma-separated positive Event IDs.';
 		return;
 	}
@@ -524,14 +519,12 @@ async function saveMetadata(asset: GraphicAsset) {
 		});
 		editingAssetId.value = null;
 		await refresh();
-	}
-	catch (caught) {
+	} catch (caught) {
 		metadataError.value = authorship.describeFailure(
 			caught,
 			'Graphic Asset metadata could not be updated.',
 		);
-	}
-	finally {
+	} finally {
 		metadataPending.value = false;
 	}
 }
@@ -564,17 +557,14 @@ function transferWasCancelled() {
 	return transferInFlight?.abort.signal.aborted === true;
 }
 
-async function transferGraphicAsset(
-	operation: GraphicsIngestionOperation,
-	file: File,
-) {
+async function transferGraphicAsset(operation: GraphicsIngestionOperation, file: File) {
 	let completed = await ingestionTransfer.transfer(operation, file, {
 		signal: transferSignal(operation),
 	});
 	if (
-		completed.stage === 'awaiting-confirmation'
-		&& completed.report?.outcome === 'accepted'
-		&& completed.report.facts.kind === 'font'
+		completed.stage === 'awaiting-confirmation' &&
+		completed.report?.outcome === 'accepted' &&
+		completed.report.facts.kind === 'font'
 	) {
 		const evidence = await verifyStaticFontBrowserLoad(
 			file,
@@ -597,36 +587,37 @@ async function initiateAndTransferGraphicAsset(
 	body: PendingInitiation | Record<string, unknown>,
 	existingOperation?: GraphicsIngestionOperation,
 ) {
-	const initiated = existingOperation ?? await $fetch<GraphicsIngestionOperation>(
-		endpoint,
-		{ method: 'POST', body },
-	);
+	const initiated =
+		existingOperation ??
+		(await $fetch<GraphicsIngestionOperation>(endpoint, { method: 'POST', body }));
 	currentOperation.value = initiated;
 	localStorage.setItem(operationStorageKey, initiated.id);
 	localStorage.removeItem(initiationStorageKey);
 
 	const completed = await transferGraphicAsset(initiated, file);
 	currentOperation.value = completed;
-	if (completed.stage === 'completed')
-		clearPersistedOperation();
+	if (completed.stage === 'completed') clearPersistedOperation();
 	return completed;
 }
 
 async function replaceAsset(asset: GraphicAsset) {
 	const file = replacementFile.value;
-	if (!file || ingestionInFlight.value)
-		return;
+	if (!file || ingestionInFlight.value) return;
 	replacementPending.value = true;
 	replacementError.value = null;
 	try {
 		const leadingBytes = new Uint8Array(await file.slice(0, 64).arrayBuffer());
-		const sourceKind = graphicAssetSourceKind({
-			sourceFileName: file.name,
-			declaredMime: file.type,
-		}, leadingBytes);
-		const browserDecodeEvidence = sourceKind === 'font' || sourceKind === 'silent-video'
-			? undefined
-			: await verifyStillImageBrowserDecode(file);
+		const sourceKind = graphicAssetSourceKind(
+			{
+				sourceFileName: file.name,
+				declaredMime: file.type,
+			},
+			leadingBytes,
+		);
+		const browserDecodeEvidence =
+			sourceKind === 'font' || sourceKind === 'silent-video'
+				? undefined
+				: await verifyStillImageBrowserDecode(file);
 		const completed = await initiateAndTransferGraphicAsset(
 			file,
 			`/api/graphics-assets/${asset.id}/replacement-operations`,
@@ -645,16 +636,14 @@ async function replaceAsset(asset: GraphicAsset) {
 			await refreshCapacity();
 			await inspectUsage(asset);
 		}
-	}
-	catch (caught) {
+	} catch (caught) {
 		if (!transferWasCancelled()) {
 			replacementError.value = authorship.describeFailure(
 				caught,
 				'Graphic Asset replacement failed.',
 			);
 		}
-	}
-	finally {
+	} finally {
 		transferInFlight = null;
 		replacementPending.value = false;
 	}
@@ -665,10 +654,12 @@ function operationMatchesSelectedFile(
 	file: File,
 	name: string,
 ) {
-	return operation.name === name
-		&& operation.declaredByteLength === file.size
-		&& (!operation.sourceFileName || operation.sourceFileName === file.name)
-		&& (!operation.declaredMime || !file.type || operation.declaredMime === file.type);
+	return (
+		operation.name === name &&
+		operation.declaredByteLength === file.size &&
+		(!operation.sourceFileName || operation.sourceFileName === file.name) &&
+		(!operation.declaredMime || !file.type || operation.declaredMime === file.type)
+	);
 }
 
 /**
@@ -688,10 +679,10 @@ function observeNewerOperation(operation: GraphicsIngestionOperation) {
 		return;
 	}
 	if (
-		operation.id === shown.id
-		&& shown.stage !== 'completed'
-		&& shown.stage !== 'cancelled'
-		&& operation.transferredByteLength >= shown.transferredByteLength
+		operation.id === shown.id &&
+		shown.stage !== 'completed' &&
+		shown.stage !== 'cancelled' &&
+		operation.transferredByteLength >= shown.transferredByteLength
 	) {
 		currentOperation.value = operation;
 	}
@@ -699,8 +690,7 @@ function observeNewerOperation(operation: GraphicsIngestionOperation) {
 
 async function refreshAfterTerminalOperation() {
 	const completed = currentOperation.value;
-	if (completed?.stage !== 'completed')
-		return;
+	if (completed?.stage !== 'completed') return;
 	clearPersistedOperation();
 	// Only a completed upload has used up the upload form. A remote copy or a
 	// replacement finishing leaves a source prepared there as the author left it.
@@ -713,31 +703,31 @@ async function refreshAfterTerminalOperation() {
 }
 
 async function uploadGraphicAsset() {
-	if (!selectedFile.value || !canUpload.value)
-		return;
+	if (!selectedFile.value || !canUpload.value) return;
 
 	uploadPending.value = true;
 	uploadError.value = null;
 	try {
 		const file = selectedFile.value;
 		const leadingBytes = new Uint8Array(await file.slice(0, 64).arrayBuffer());
-		const sourceKind = graphicAssetSourceKind({
-			sourceFileName: file.name,
-			declaredMime: file.type,
-		}, leadingBytes);
-		const browserDecodeEvidence = sourceKind === 'font' || sourceKind === 'silent-video'
-			? undefined
-			: await verifyStillImageBrowserDecode(file);
+		const sourceKind = graphicAssetSourceKind(
+			{
+				sourceFileName: file.name,
+				declaredMime: file.type,
+			},
+			leadingBytes,
+		);
+		const browserDecodeEvidence =
+			sourceKind === 'font' || sourceKind === 'silent-video'
+				? undefined
+				: await verifyStillImageBrowserDecode(file);
 		const initiation = selectedInitiation(browserDecodeEvidence);
-		const reusableOperation = currentOperation.value
-			&& !['completed', 'cancelled'].includes(currentOperation.value.stage)
-			&& operationMatchesSelectedFile(
-				currentOperation.value,
-				file,
-				initiation.name,
-			)
-			? currentOperation.value
-			: undefined;
+		const reusableOperation =
+			currentOperation.value &&
+			!['completed', 'cancelled'].includes(currentOperation.value.stage) &&
+			operationMatchesSelectedFile(currentOperation.value, file, initiation.name)
+				? currentOperation.value
+				: undefined;
 		currentOperation.value = await initiateAndTransferGraphicAsset(
 			file,
 			'/api/graphics-assets/ingestion-operations',
@@ -745,12 +735,10 @@ async function uploadGraphicAsset() {
 			reusableOperation,
 		);
 		await refreshAfterTerminalOperation();
-	}
-	catch (caught) {
+	} catch (caught) {
 		if (!transferWasCancelled())
 			uploadError.value = authorship.describeFailure(caught, 'Graphic Asset upload failed.');
-	}
-	finally {
+	} finally {
 		transferInFlight = null;
 		uploadPending.value = false;
 	}
@@ -762,9 +750,9 @@ async function uploadGraphicAsset() {
  */
 async function confirmStagedGraphicAssetSource(operation: GraphicsIngestionOperation) {
 	if (
-		operation.stage !== 'awaiting-confirmation'
-		|| operation.report?.outcome !== 'accepted'
-		|| operation.source !== 'remote-copy'
+		operation.stage !== 'awaiting-confirmation' ||
+		operation.report?.outcome !== 'accepted' ||
+		operation.source !== 'remote-copy'
 	) {
 		return operation;
 	}
@@ -780,9 +768,10 @@ async function confirmStagedGraphicAssetSource(operation: GraphicsIngestionOpera
 		);
 	}
 	const staged = await response.blob();
-	const evidence = operation.report.facts.kind === 'font'
-		? await verifyStaticFontBrowserLoad(staged, operation.report.facts.browserChallenge)
-		: await verifyStillImageBrowserDecode(staged);
+	const evidence =
+		operation.report.facts.kind === 'font'
+			? await verifyStaticFontBrowserLoad(staged, operation.report.facts.browserChallenge)
+			: await verifyStillImageBrowserDecode(staged);
 	return await ingestionTransfer.observeOperationRequest(
 		operation.id,
 		$fetch<GraphicsIngestionOperation>(
@@ -792,10 +781,7 @@ async function confirmStagedGraphicAssetSource(operation: GraphicsIngestionOpera
 	);
 }
 
-async function sendRemoteSourceCopy(
-	operation: GraphicsIngestionOperation,
-	sourceUrl: string,
-) {
+async function sendRemoteSourceCopy(operation: GraphicsIngestionOperation, sourceUrl: string) {
 	const copied = await ingestionTransfer.observeOperationRequest(
 		operation.id,
 		$fetch<GraphicsIngestionOperation>(
@@ -810,8 +796,7 @@ async function sendRemoteSourceCopy(
 }
 
 async function copyRemoteGraphicAssetSource() {
-	if (!canCopyRemoteSource.value)
-		return;
+	if (!canCopyRemoteSource.value) return;
 	remoteCopyPending.value = true;
 	remoteCopyError.value = null;
 	try {
@@ -826,9 +811,7 @@ async function copyRemoteGraphicAssetSource() {
 					source: 'remote-copy',
 					sourceFileName: remoteSourceFileName.value,
 					defaultEventId: eventStore.eventId ?? undefined,
-					duplicateContentPolicy: remoteCreateSeparateAsset.value
-						? 'create-separate'
-						: 'reuse',
+					duplicateContentPolicy: remoteCreateSeparateAsset.value ? 'create-separate' : 'reuse',
 				},
 			},
 		);
@@ -843,35 +826,30 @@ async function copyRemoteGraphicAssetSource() {
 			remoteProposedName.value = '';
 		}
 		await refreshAfterTerminalOperation();
-	}
-	catch (caught) {
+	} catch (caught) {
 		remoteCopyError.value = authorship.describeFailure(
 			caught,
 			'The approved remote Graphic Asset copy failed.',
 		);
-	}
-	finally {
+	} finally {
 		remoteCopyPending.value = false;
 	}
 }
 
 async function confirmStagedSource() {
 	const operation = currentOperation.value;
-	if (!operation || !awaitingStagedConfirmation.value || ingestionInFlight.value)
-		return;
+	if (!operation || !awaitingStagedConfirmation.value || ingestionInFlight.value) return;
 	remoteCopyPending.value = true;
 	remoteCopyError.value = null;
 	try {
 		currentOperation.value = await confirmStagedGraphicAssetSource(operation);
 		await refreshAfterTerminalOperation();
-	}
-	catch (caught) {
+	} catch (caught) {
 		remoteCopyError.value = authorship.describeFailure(
 			caught,
 			'The staged Graphic Asset source could not be confirmed.',
 		);
-	}
-	finally {
+	} finally {
 		remoteCopyPending.value = false;
 	}
 }
@@ -910,9 +888,7 @@ async function retryOperation() {
 			return;
 		}
 		if (needsSourceAgain(operation)) {
-			const file = operation.source === 'replacement'
-				? replacementFile.value
-				: selectedFile.value;
+			const file = operation.source === 'replacement' ? replacementFile.value : selectedFile.value;
 			if (!file || !operationMatchesSelectedFile(operation, file, operation.name)) {
 				throw new Error(
 					'Reselect the same source file to send it again. Nothing was staged to retry from.',
@@ -930,12 +906,10 @@ async function retryOperation() {
 			),
 		);
 		await refreshAfterTerminalOperation();
-	}
-	catch (caught) {
+	} catch (caught) {
 		if (!transferWasCancelled())
 			uploadError.value = authorship.describeFailure(caught, 'Graphic Asset retry failed.');
-	}
-	finally {
+	} finally {
 		transferInFlight = null;
 		uploadPending.value = false;
 	}
@@ -951,10 +925,10 @@ async function retryOperation() {
 async function cancelOperation() {
 	const operation = currentOperation.value;
 	if (
-		!operation
-		|| cancelPending.value
-		|| operation.stage === 'completed'
-		|| (operation.stage === 'cancelled' && !operation.transfer?.cleanupPending)
+		!operation ||
+		cancelPending.value ||
+		operation.stage === 'completed' ||
+		(operation.stage === 'cancelled' && !operation.transfer?.cleanupPending)
 	) {
 		return;
 	}
@@ -968,14 +942,11 @@ async function cancelOperation() {
 		currentOperation.value = cancelled;
 		if (cancelled.stage === 'cancelled' && transferInFlight?.operationId === cancelled.id)
 			transferInFlight.abort.abort();
-		if (!cancelled.transfer?.cleanupPending)
-			clearPersistedOperation();
+		if (!cancelled.transfer?.cleanupPending) clearPersistedOperation();
 		await refreshCapacity();
-	}
-	catch (caught) {
+	} catch (caught) {
 		uploadError.value = authorship.describeFailure(caught, 'Cancellation failed.');
-	}
-	finally {
+	} finally {
 		cancelPending.value = false;
 	}
 }
@@ -995,26 +966,22 @@ onMounted(async () => {
 			const restoredRemoteCopy = currentOperation.value.source === 'remote-copy';
 			if (restoredRemoteCopy) {
 				remoteProposedName.value ||= currentOperation.value.name;
-				remoteCreateSeparateAsset.value
-					= currentOperation.value.duplicateContentPolicy === 'create-separate';
-			}
-			else {
+				remoteCreateSeparateAsset.value =
+					currentOperation.value.duplicateContentPolicy === 'create-separate';
+			} else {
 				proposedName.value ||= currentOperation.value.name;
-				createSeparateAsset.value
-					= currentOperation.value.duplicateContentPolicy === 'create-separate';
+				createSeparateAsset.value =
+					currentOperation.value.duplicateContentPolicy === 'create-separate';
 			}
 			if (
-				currentOperation.value.stage === 'completed'
-				|| (
-					currentOperation.value.stage === 'cancelled'
-					&& !currentOperation.value.transfer?.cleanupPending
-				)
+				currentOperation.value.stage === 'completed' ||
+				(currentOperation.value.stage === 'cancelled' &&
+					!currentOperation.value.transfer?.cleanupPending)
 			) {
 				clearPersistedOperation();
 			}
 			return;
-		}
-		catch (caught) {
+		} catch (caught) {
 			// The pointer names something unreachable from here, so it goes. What must
 			// not go with it is the news: an operation this browser cannot reconnect to
 			// is one the author has to be told about, and swallowing it left the
@@ -1027,14 +994,12 @@ onMounted(async () => {
 				'The Graphic Asset upload from your last visit could not be reconnected.',
 			);
 			if (!authorship.signedOut.value) {
-				uploadError.value
-					= `The Graphic Asset upload from your last visit could not be reconnected — ${uploadError.value}`;
+				uploadError.value = `The Graphic Asset upload from your last visit could not be reconnected — ${uploadError.value}`;
 			}
 		}
 	}
 
-	if (!pending)
-		return;
+	if (!pending) return;
 	try {
 		currentOperation.value = await $fetch<GraphicsIngestionOperation>(
 			'/api/graphics-assets/ingestion-operations',
@@ -1043,16 +1008,13 @@ onMounted(async () => {
 		localStorage.setItem(operationStorageKey, currentOperation.value.id);
 		localStorage.removeItem(initiationStorageKey);
 		if (
-			currentOperation.value.stage === 'completed'
-			|| (
-				currentOperation.value.stage === 'cancelled'
-				&& !currentOperation.value.transfer?.cleanupPending
-			)
+			currentOperation.value.stage === 'completed' ||
+			(currentOperation.value.stage === 'cancelled' &&
+				!currentOperation.value.transfer?.cleanupPending)
 		) {
 			clearPersistedOperation();
 		}
-	}
-	catch {
+	} catch {
 		// Keep the durable initiation identity so a later reconnect can retry it.
 	}
 });
@@ -1062,9 +1024,7 @@ onMounted(async () => {
 	<NuxtLayout name="default">
 		<div class="mx-auto flex w-full max-w-6xl flex-col gap-6">
 			<div>
-				<h1 class="text-2xl font-semibold text-highlighted">
-					Graphics Asset Library
-				</h1>
+				<h1 class="text-2xl font-semibold text-highlighted">Graphics Asset Library</h1>
 				<p class="mt-1 text-sm text-muted">
 					Upload, verify, preview, and discover installation-wide Graphic Assets.
 				</p>
@@ -1073,17 +1033,17 @@ onMounted(async () => {
 			<UCard v-if="capacity">
 				<div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 					<div>
-						<h2 class="font-semibold text-highlighted">
-							Storage capacity
-						</h2>
+						<h2 class="font-semibold text-highlighted">Storage capacity</h2>
 						<p class="mt-2 text-sm text-muted">
-							Canonical {{ formatByteCount(capacity.canonical.usedBytes) }} of {{ formatByteCount(capacity.canonical.limitBytes) }}
+							Canonical {{ formatByteCount(capacity.canonical.usedBytes) }} of
+							{{ formatByteCount(capacity.canonical.limitBytes) }}
 							<span v-if="capacity.canonical.reservedBytes > 0">
 								· {{ formatByteCount(capacity.canonical.reservedBytes) }} reserved
 							</span>
 						</p>
 						<p class="mt-1 text-sm text-muted">
-							Staging {{ formatByteCount(capacity.staging.usedBytes) }} of {{ formatByteCount(capacity.staging.limitBytes) }}
+							Staging {{ formatByteCount(capacity.staging.usedBytes) }} of
+							{{ formatByteCount(capacity.staging.limitBytes) }}
 							<span v-if="capacity.staging.reservedBytes > 0">
 								· {{ formatByteCount(capacity.staging.reservedBytes) }} reserved
 							</span>
@@ -1091,17 +1051,13 @@ onMounted(async () => {
 					</div>
 					<dl class="grid grid-cols-2 gap-3 text-sm">
 						<div>
-							<dt class="text-xs text-dimmed">
-								Source content
-							</dt>
+							<dt class="text-xs text-dimmed">Source content</dt>
 							<dd class="text-muted">
 								{{ formatByteCount(capacity.canonical.breakdown.retainedSourceBytes) }}
 							</dd>
 						</div>
 						<div>
-							<dt class="text-xs text-dimmed">
-								Derivatives
-							</dt>
+							<dt class="text-xs text-dimmed">Derivatives</dt>
 							<dd class="text-muted">
 								{{ formatByteCount(capacity.canonical.breakdown.retainedDerivativeBytes) }}
 							</dd>
@@ -1134,12 +1090,7 @@ onMounted(async () => {
 				<p>Storage capacity could not be loaded — {{ capacityFailureMessage }}</p>
 			</UAlert>
 
-			<UAlert
-				v-if="authorship.signedOut.value"
-				color="error"
-				variant="soft"
-				icon="i-lucide-user-x"
-			>
+			<UAlert v-if="authorship.signedOut.value" color="error" variant="soft" icon="i-lucide-user-x">
 				<p class="font-medium">
 					{{ authorship.signedOutNotice.title }}
 				</p>
@@ -1158,21 +1109,16 @@ onMounted(async () => {
 			<UCard>
 				<template #header>
 					<div>
-						<h2 class="font-semibold text-highlighted">
-							Add one asset
-						</h2>
+						<h2 class="font-semibold text-highlighted">Add one asset</h2>
 						<p class="mt-1 text-sm text-muted">
-							Upload a local file or copy an approved public HTTPS source. Either way the source is staged privately, validated unchanged, and published only when its dependent preview and catalogue facts are complete.
+							Upload a local file or copy an approved public HTTPS source. Either way the source is
+							staged privately, validated unchanged, and published only when its dependent preview
+							and catalogue facts are complete.
 						</p>
 					</div>
 				</template>
 
-				<UAlert
-					class="mb-4"
-					color="neutral"
-					variant="soft"
-					icon="i-lucide-id-card"
-				>
+				<UAlert class="mb-4" color="neutral" variant="soft" icon="i-lucide-id-card">
 					<p class="font-medium">
 						{{ authorship.ownershipNotice.title }}
 					</p>
@@ -1205,15 +1151,14 @@ onMounted(async () => {
 							description="Searchable library name."
 							required
 						>
-							<UInput
-								v-model="proposedName"
-								placeholder="Scoreboard logo"
-								class="w-full"
-							/>
+							<UInput v-model="proposedName" placeholder="Scoreboard logo" class="w-full" />
 						</UFormField>
 						<label class="flex items-start gap-2 text-sm text-muted">
-							<input v-model="createSeparateAsset" type="checkbox" class="mt-1">
-							<span>Create a separate Graphic Asset even when this exact Graphic Asset Content already exists.</span>
+							<input v-model="createSeparateAsset" type="checkbox" class="mt-1" />
+							<span
+								>Create a separate Graphic Asset even when this exact Graphic Asset Content already
+								exists.</span
+							>
 						</label>
 						<p v-if="eventStore.eventId" class="text-sm text-muted">
 							The upload will be associated with Event {{ eventStore.eventId }}.
@@ -1245,9 +1190,7 @@ onMounted(async () => {
 					icon="i-lucide-circle-x"
 					data-testid="upload-error"
 				>
-					<p class="font-medium">
-						Upload failed
-					</p>
+					<p class="font-medium">Upload failed</p>
 					<p class="mt-1 text-sm">
 						{{ uploadError }}
 					</p>
@@ -1259,15 +1202,17 @@ onMounted(async () => {
 					role="status"
 					data-testid="ingestion-in-flight"
 				>
-					A Graphics Ingestion Operation is in flight. Upload, approved remote copy and file replacement run one at a time, and are available again when it finishes.
+					A Graphics Ingestion Operation is in flight. Upload, approved remote copy and file
+					replacement run one at a time, and are available again when it finishes.
 				</p>
 
 				<div class="mt-6 border-t border-default pt-4">
-					<h3 class="font-semibold text-highlighted">
-						Copy an approved HTTPS source
-					</h3>
+					<h3 class="font-semibold text-highlighted">Copy an approved HTTPS source</h3>
 					<p class="mt-1 text-sm text-muted">
-						A one-time bounded copy of a public HTTPS resource. Only public HTTPS destinations are followed, at most three redirects, and the copy leaves no hotlink or dependency on the remote host. Query parameters and fragments are treated as secrets: they are sent once and never stored, so a later retry asks for the URL again.
+						A one-time bounded copy of a public HTTPS resource. Only public HTTPS destinations are
+						followed, at most three redirects, and the copy leaves no hotlink or dependency on the
+						remote host. Query parameters and fragments are treated as secrets: they are sent once
+						and never stored, so a later retry asks for the URL again.
 					</p>
 					<div class="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.7fr)]">
 						<UFormField
@@ -1298,8 +1243,11 @@ onMounted(async () => {
 								/>
 							</UFormField>
 							<label class="flex items-start gap-2 text-sm text-muted">
-								<input v-model="remoteCreateSeparateAsset" type="checkbox" class="mt-1">
-								<span>Create a separate Graphic Asset even when this exact Graphic Asset Content already exists.</span>
+								<input v-model="remoteCreateSeparateAsset" type="checkbox" class="mt-1" />
+								<span
+									>Create a separate Graphic Asset even when this exact Graphic Asset Content
+									already exists.</span
+								>
 							</label>
 							<UAlert
 								v-if="remoteSelectionError"
@@ -1327,9 +1275,7 @@ onMounted(async () => {
 						icon="i-lucide-circle-x"
 						data-testid="remote-copy-error"
 					>
-						<p class="font-medium">
-							Approved remote copy failed
-						</p>
+						<p class="font-medium">Approved remote copy failed</p>
 						<p class="mt-1 text-sm">
 							{{ remoteCopyError }}
 						</p>
@@ -1351,24 +1297,22 @@ onMounted(async () => {
 						<UBadge
 							variant="soft"
 							color="neutral"
-							:label="currentOperation.source === 'remote-copy'
-								? 'Approved remote copy'
-								: 'Local upload'"
+							:label="
+								currentOperation.source === 'remote-copy' ? 'Approved remote copy' : 'Local upload'
+							"
 						/>
 						<span class="font-mono text-xs text-muted">{{ currentOperation.id }}</span>
 					</div>
 					<p class="mt-2 text-sm text-muted">
 						Transferred {{ formatByteCount(currentOperation.transferredByteLength) }} of
-						{{ formatByteCount(currentOperation.declaredByteLength) }} — stage {{ currentOperation.stage }}.
+						{{ formatByteCount(currentOperation.declaredByteLength) }} — stage
+						{{ currentOperation.stage }}.
 					</p>
 					<p v-if="currentOperation.transfer" class="mt-1 text-sm text-muted">
 						Verified {{ currentOperation.transfer.completedParts.length }} of
 						{{ currentOperation.transfer.partCount }} parts.
 					</p>
-					<p
-						v-if="currentOperation.transfer?.cleanupPending"
-						class="mt-1 text-sm text-warning"
-					>
+					<p v-if="currentOperation.transfer?.cleanupPending" class="mt-1 text-sm text-warning">
 						Staged-byte cleanup is pending and will be retried on cancellation.
 					</p>
 					<p v-if="currentOperation.failure" class="mt-2 text-sm text-error">
@@ -1381,11 +1325,15 @@ onMounted(async () => {
 						No canonical growth — existing source and derivative bytes were reused.
 					</p>
 					<p
-						v-else-if="currentOperation.canonicalCapacityOutcome?.outcome === 'canonical-capacity-blocked'"
+						v-else-if="
+							currentOperation.canonicalCapacityOutcome?.outcome === 'canonical-capacity-blocked'
+						"
 						class="mt-2 text-sm text-error"
 					>
-						Blocked: {{ formatByteCount(currentOperation.canonicalCapacityOutcome.growthBytes) }} of canonical growth required with
-						{{ formatByteCount(currentOperation.canonicalCapacityOutcome.availableBytes) }} available.
+						Blocked: {{ formatByteCount(currentOperation.canonicalCapacityOutcome.growthBytes) }} of
+						canonical growth required with
+						{{ formatByteCount(currentOperation.canonicalCapacityOutcome.availableBytes) }}
+						available.
 					</p>
 					<ul
 						v-if="currentOperation.report?.outcome === 'rejected'"
@@ -1418,13 +1366,18 @@ onMounted(async () => {
 						/>
 						<UButton
 							v-if="
-								(currentOperation.stage !== 'completed' && currentOperation.stage !== 'cancelled')
-									|| currentOperation.transfer?.cleanupPending
+								(currentOperation.stage !== 'completed' &&
+									currentOperation.stage !== 'cancelled') ||
+								currentOperation.transfer?.cleanupPending
 							"
 							color="error"
 							variant="soft"
 							icon="i-lucide-x"
-							:label="currentOperation.stage === 'cancelled' ? 'Retry staged-byte cleanup' : 'Cancel ingestion'"
+							:label="
+								currentOperation.stage === 'cancelled'
+									? 'Retry staged-byte cleanup'
+									: 'Cancel ingestion'
+							"
 							:loading="cancelPending"
 							@click="cancelOperation"
 						/>
@@ -1433,13 +1386,15 @@ onMounted(async () => {
 						{{ templatePackageInstallationLabel(currentOperation.templatePackageInstallation) }}
 					</p>
 					<p v-if="currentOperation.result" class="mt-2 text-sm text-muted">
-						{{ operationOutcomeLabel(currentOperation.result.outcome) }} Graphic Asset {{ currentOperation.result.assetId }} Graphic Asset Revision {{ currentOperation.result.revisionId }}
+						{{ operationOutcomeLabel(currentOperation.result.outcome) }} Graphic Asset
+						{{ currentOperation.result.assetId }} Graphic Asset Revision
+						{{ currentOperation.result.revisionId }}
 					</p>
 					<p
 						v-if="
-							currentOperation.report?.outcome === 'accepted'
-								&& currentOperation.report.facts.kind === 'image'
-								&& currentOperation.report.facts.browserDecodable
+							currentOperation.report?.outcome === 'accepted' &&
+							currentOperation.report.facts.kind === 'image' &&
+							currentOperation.report.facts.browserDecodable
 						"
 						class="mt-2 text-sm text-success"
 					>
@@ -1450,9 +1405,7 @@ onMounted(async () => {
 
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<h2 class="text-lg font-semibold text-highlighted">
-						Graphic Assets
-					</h2>
+					<h2 class="text-lg font-semibold text-highlighted">Graphic Assets</h2>
 					<p class="text-sm text-muted">
 						Manage active discovery, reversible retirement, and the 30-day Trash recovery window.
 					</p>
@@ -1483,9 +1436,7 @@ onMounted(async () => {
 				icon="i-lucide-triangle-alert"
 				data-testid="library-load-error"
 			>
-				<p class="font-medium">
-					Library could not be loaded
-				</p>
+				<p class="font-medium">Library could not be loaded</p>
 				<p class="mt-1 text-sm">
 					{{ loadFailureMessage }}
 				</p>
@@ -1494,12 +1445,14 @@ onMounted(async () => {
 			<div v-if="assets.length > 0" class="grid gap-4 lg:grid-cols-2">
 				<UCard v-for="asset in assets" :key="asset.id">
 					<div class="flex gap-4">
-						<div class="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-default bg-elevated/50">
+						<div
+							class="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-default bg-elevated/50"
+						>
 							<img
 								:src="`/api/graphics-assets/${asset.id}/thumbnail`"
 								:alt="`${asset.name} preview`"
 								class="max-h-full max-w-full object-contain"
-							>
+							/>
 						</div>
 						<div class="min-w-0 flex-1">
 							<div class="flex flex-wrap items-start justify-between gap-2">
@@ -1515,86 +1468,65 @@ onMounted(async () => {
 									/>
 								</div>
 							</div>
-							<p
-								v-if="asset.lifecycle.state === 'trashed'"
-								class="mt-2 text-sm text-muted"
-							>
+							<p v-if="asset.lifecycle.state === 'trashed'" class="mt-2 text-sm text-muted">
 								Previously {{ asset.lifecycle.priorState === 'active' ? 'Active' : 'Retired' }} ·
 								Recoverable until {{ new Date(asset.lifecycle.recoverableUntil).toLocaleString() }}
 							</p>
 							<dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
 								<div v-if="asset.facts.kind === 'image'">
-									<dt class="text-xs text-dimmed">
-										Dimensions
-									</dt>
+									<dt class="text-xs text-dimmed">Dimensions</dt>
+									<dd class="text-muted">{{ asset.facts.width }} × {{ asset.facts.height }}</dd>
+								</div>
+								<div v-if="asset.facts.kind === 'silent-video'">
+									<dt class="text-xs text-dimmed">Video</dt>
 									<dd class="text-muted">
-										{{ asset.facts.width }} × {{ asset.facts.height }}
+										{{ asset.facts.width }} × {{ asset.facts.height }} ·
+										{{ asset.facts.durationSeconds.toFixed(2) }}s ·
+										{{ asset.facts.frameRate.toFixed(2) }} fps
 									</dd>
 								</div>
 								<div v-if="asset.facts.kind === 'silent-video'">
-									<dt class="text-xs text-dimmed">
-										Video
-									</dt>
-									<dd class="text-muted">
-										{{ asset.facts.width }} × {{ asset.facts.height }} · {{ asset.facts.durationSeconds.toFixed(2) }}s · {{ asset.facts.frameRate.toFixed(2) }} fps
-									</dd>
-								</div>
-								<div v-if="asset.facts.kind === 'silent-video'">
-									<dt class="text-xs text-dimmed">
-										Compatibility
-									</dt>
+									<dt class="text-xs text-dimmed">Compatibility</dt>
 									<dd class="text-muted">
 										{{ asset.facts.codec.toUpperCase() }} · 8-bit SDR 4:2:0
-										<template v-if="asset.facts.hasAlpha">
-											· alpha
-										</template>
+										<template v-if="asset.facts.hasAlpha"> · alpha </template>
 									</dd>
 								</div>
 								<div>
-									<dt class="text-xs text-dimmed">
-										Source
-									</dt>
+									<dt class="text-xs text-dimmed">Source</dt>
 									<dd class="text-muted">
 										{{ asset.facts.canonicalMime }} · {{ formatByteCount(asset.facts.byteLength) }}
 									</dd>
 								</div>
 								<div v-if="asset.facts.kind === 'image'">
-									<dt class="text-xs text-dimmed">
-										Pixels
-									</dt>
+									<dt class="text-xs text-dimmed">Pixels</dt>
 									<dd class="text-muted">
 										{{ asset.facts.pixelCount }}
 									</dd>
 								</div>
 								<div v-if="asset.facts.kind === 'image'">
-									<dt class="text-xs text-dimmed">
-										Colour
-									</dt>
+									<dt class="text-xs text-dimmed">Colour</dt>
 									<dd class="text-muted">
-										8-bit {{ asset.facts.colorModel }} · alpha {{ asset.facts.hasAlpha ? 'yes' : 'no' }}
+										8-bit {{ asset.facts.colorModel }} · alpha
+										{{ asset.facts.hasAlpha ? 'yes' : 'no' }}
 									</dd>
 								</div>
 								<div v-if="asset.facts.kind === 'font'">
-									<dt class="text-xs text-dimmed">
-										Verified face
-									</dt>
+									<dt class="text-xs text-dimmed">Verified face</dt>
 									<dd class="text-muted">
 										{{ asset.facts.family }} · {{ asset.facts.weight }} {{ asset.facts.style }}
 									</dd>
 								</div>
 								<div v-if="asset.facts.kind === 'font'">
-									<dt class="text-xs text-dimmed">
-										Coverage
-									</dt>
+									<dt class="text-xs text-dimmed">Coverage</dt>
 									<dd class="text-muted">
-										{{ asset.facts.glyphCount }} glyphs · {{ asset.facts.unicodeCodePoints.length }} Unicode mappings
+										{{ asset.facts.glyphCount }} glyphs ·
+										{{ asset.facts.unicodeCodePoints.length }} Unicode mappings
 									</dd>
 								</div>
 							</dl>
 							<div class="mt-4">
-								<h4 class="text-sm font-semibold text-highlighted">
-									Revision history
-								</h4>
+								<h4 class="text-sm font-semibold text-highlighted">Revision history</h4>
 								<ol class="mt-2 space-y-1 text-xs text-muted">
 									<li
 										v-for="revision in asset.revisions"
@@ -1691,18 +1623,13 @@ onMounted(async () => {
 						</div>
 					</div>
 
-					<div
-						v-if="usageByAssetId[asset.id]"
-						class="mt-4 border-t border-default pt-4"
-					>
+					<div v-if="usageByAssetId[asset.id]" class="mt-4 border-t border-default pt-4">
 						<h4 class="text-sm font-semibold text-highlighted">
 							Exact Graphic Asset Revision usage
 						</h4>
-						<p
-							v-if="usageByAssetId[asset.id]!.length === 0"
-							class="mt-2 text-sm text-muted"
-						>
-							No persisted graphics artifact has a Graphic Asset Reference to any Graphic Asset Revision.
+						<p v-if="usageByAssetId[asset.id]!.length === 0" class="mt-2 text-sm text-muted">
+							No persisted graphics artifact has a Graphic Asset Reference to any Graphic Asset
+							Revision.
 						</p>
 						<ul v-else class="mt-2 space-y-2">
 							<li
@@ -1717,12 +1644,19 @@ onMounted(async () => {
 									<UBadge
 										:color="usage.reference.revisionId === asset.revisionId ? 'success' : 'warning'"
 										variant="soft"
-										:label="usage.reference.revisionId === asset.revisionId ? 'Latest Graphic Asset Revision' : 'Pinned older Graphic Asset Revision'"
+										:label="
+											usage.reference.revisionId === asset.revisionId
+												? 'Latest Graphic Asset Revision'
+												: 'Pinned older Graphic Asset Revision'
+										"
 									/>
 								</div>
 								<p class="mt-1 text-muted">
-									{{ USAGE_OWNER_KIND_LABELS[usage.owner.kind] ?? usage.owner.kind }} {{ usage.owner.id }}
-									<span v-if="usage.owner.eventId"> · Event {{ usage.owner.eventName ?? usage.owner.eventId }}</span>
+									{{ USAGE_OWNER_KIND_LABELS[usage.owner.kind] ?? usage.owner.kind }}
+									{{ usage.owner.id }}
+									<span v-if="usage.owner.eventId">
+										· Event {{ usage.owner.eventName ?? usage.owner.eventId }}</span
+									>
 									· {{ usage.owner.slot }}
 								</p>
 								<p class="mt-1 font-mono text-xs text-dimmed">
@@ -1816,7 +1750,9 @@ onMounted(async () => {
 						<div class="grid gap-1 font-mono text-xs text-dimmed">
 							<span>Operation {{ asset.operation.id }}</span>
 							<span>Result {{ JSON.stringify(asset.operation.result) }}</span>
-							<span>Graphic Asset {{ asset.id }} · Graphic Asset Revision {{ asset.revisionId }}</span>
+							<span
+								>Graphic Asset {{ asset.id }} · Graphic Asset Revision {{ asset.revisionId }}</span
+							>
 						</div>
 					</template>
 				</UCard>
@@ -1827,9 +1763,7 @@ onMounted(async () => {
 				class="rounded-lg border border-dashed border-default px-6 py-10 text-center"
 			>
 				<UIcon name="i-lucide-images" class="mx-auto size-8 text-dimmed" />
-				<p class="mt-3 font-medium text-highlighted">
-					No matching Graphic Assets
-				</p>
+				<p class="mt-3 font-medium text-highlighted">No matching Graphic Assets</p>
 				<p class="mt-1 text-sm text-muted">
 					Upload a PNG, JPEG, WebP, WOFF2, WOFF, TTF, or OTF source, or change the search.
 				</p>

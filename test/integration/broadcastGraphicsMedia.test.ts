@@ -1,8 +1,5 @@
 import type { ScreenResponse } from '~~/shared/api';
-import type {
-	GraphicAssetUsage,
-	GraphicsIngestionOperation,
-} from '~~/shared/types/graphicsAsset';
+import type { GraphicAssetUsage, GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
 import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -22,11 +19,13 @@ import { expectOperationResult, expectResponseStatus, expectResultOf } from './r
  * Output Asset Capability.
  */
 
-const transparentPixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
-const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xC5, 0x85);
+const transparentPixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
+const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xc5, 0x85);
 
 /**
  * Integration suites share one database, and identical bytes deduplicate across
@@ -39,11 +38,13 @@ const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0
  * listed in `helpers.ts`; claim a free range there before adding a fixture.
  */
 function pngWithTextChunks(count: number) {
-	return Uint8Array.from(Buffer.concat([
-		transparentPixelPng.slice(0, -12),
-		...Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[],
-		transparentPixelPng.slice(-12),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			transparentPixelPng.slice(0, -12),
+			...(Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[]),
+			transparentPixelPng.slice(-12),
+		]),
+	);
 }
 
 const pixelPng = pngWithTextChunks(50);
@@ -114,22 +115,25 @@ async function ingestImage(
 	bytes: Uint8Array<ArrayBuffer>,
 	cookie: string,
 ): Promise<Reference> {
-	const initiated = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-		method: 'POST',
-		headers: { cookie },
-		body: graphicsIngestionRequest({
-			idempotencyKey: `${name}-${runId}`,
-			name,
-			defaultEventId: eventId,
-			browserDecodeEvidence: {
-				outcome: 'decoded',
-				sourceDigest: createHash('sha256').update(bytes).digest('hex'),
-				width: 1,
-				height: 1,
-			},
-			declaredByteLength: bytes.byteLength,
-		}),
-	});
+	const initiated = await $fetch<GraphicsIngestionOperation>(
+		'/api/graphics-assets/ingestion-operations',
+		{
+			method: 'POST',
+			headers: { cookie },
+			body: graphicsIngestionRequest({
+				idempotencyKey: `${name}-${runId}`,
+				name,
+				defaultEventId: eventId,
+				browserDecodeEvidence: {
+					outcome: 'decoded',
+					sourceDigest: createHash('sha256').update(bytes).digest('hex'),
+					width: 1,
+					height: 1,
+				},
+				declaredByteLength: bytes.byteLength,
+			}),
+		},
+	);
 	const response = await fetch(
 		`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
 		{
@@ -199,18 +203,21 @@ function textItem(id: string, font: unknown, overrides: Record<string, unknown> 
  */
 async function ingestFont(eventId: number, name: string, cookie: string): Promise<Reference> {
 	const bytes = new Uint8Array(await readFile('public/fonts/mana.ttf'));
-	const initiated = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-		method: 'POST',
-		headers: { cookie },
-		body: graphicsIngestionRequest({
-			idempotencyKey: `${name}-${runId}`,
-			name,
-			defaultEventId: eventId,
-			sourceFileName: 'mana.ttf',
-			declaredMime: 'font/ttf',
-			declaredByteLength: bytes.byteLength,
-		}),
-	});
+	const initiated = await $fetch<GraphicsIngestionOperation>(
+		'/api/graphics-assets/ingestion-operations',
+		{
+			method: 'POST',
+			headers: { cookie },
+			body: graphicsIngestionRequest({
+				idempotencyKey: `${name}-${runId}`,
+				name,
+				defaultEventId: eventId,
+				sourceFileName: 'mana.ttf',
+				declaredMime: 'font/ttf',
+				declaredByteLength: bytes.byteLength,
+			}),
+		},
+	);
 	const response = await fetch(
 		`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
 		{
@@ -220,8 +227,11 @@ async function ingestFont(eventId: number, name: string, cookie: string): Promis
 		},
 	);
 	await expectResponseStatus(response, 200);
-	const awaitingEvidence = await response.json() as GraphicsIngestionOperation;
-	if (awaitingEvidence.report?.outcome !== 'accepted' || awaitingEvidence.report.facts.kind !== 'font')
+	const awaitingEvidence = (await response.json()) as GraphicsIngestionOperation;
+	if (
+		awaitingEvidence.report?.outcome !== 'accepted' ||
+		awaitingEvidence.report.facts.kind !== 'font'
+	)
 		throw new Error('Expected a server-selected font challenge');
 	const exact = '1'.repeat(64);
 	const completed = await $fetch<GraphicsIngestionOperation>(
@@ -233,7 +243,7 @@ async function ingestFont(eventId: number, name: string, cookie: string): Promis
 				outcome: 'font-loaded',
 				sourceDigest: createHash('sha256').update(bytes).digest('hex'),
 				challengeDigest: awaitingEvidence.report.facts.browserChallenge.digest,
-				glyphProofs: awaitingEvidence.report.facts.browserChallenge.codePoints.map(codePoint => ({
+				glyphProofs: awaitingEvidence.report.facts.browserChallenge.codePoints.map((codePoint) => ({
 					codePoint,
 					exactWithSansDigest: exact,
 					exactWithMonoDigest: exact,
@@ -259,12 +269,9 @@ describe('broadcast Graphics Media Graphic Items', () => {
 	}
 
 	async function usageOf(reference: Reference): Promise<GraphicAssetUsage[]> {
-		return await $fetch<GraphicAssetUsage[]>(
-			`/api/graphics-assets/${reference.assetId}/usage`,
-			{
-				headers: { cookie: graphicsAuthorCookie },
-			},
-		);
+		return await $fetch<GraphicAssetUsage[]>(`/api/graphics-assets/${reference.assetId}/usage`, {
+			headers: { cookie: graphicsAuthorCookie },
+		});
 	}
 
 	beforeAll(async () => {
@@ -287,15 +294,24 @@ describe('broadcast Graphics Media Graphic Items', () => {
 			},
 		});
 		screenId = screen.id;
-		logo = await ingestImage(eventId, 'broadcast-graphics-media-logo', pixelPng, graphicsAuthorCookie);
-		badge = await ingestImage(eventId, 'broadcast-graphics-media-badge', taggedPng, graphicsAuthorCookie);
+		logo = await ingestImage(
+			eventId,
+			'broadcast-graphics-media-logo',
+			pixelPng,
+			graphicsAuthorCookie,
+		);
+		badge = await ingestImage(
+			eventId,
+			'broadcast-graphics-media-badge',
+			taggedPng,
+			graphicsAuthorCookie,
+		);
 	});
 
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	/** The stack every test here starts from: the logo at the top level, the badge inside a Graphic Group. */
@@ -323,9 +339,7 @@ describe('broadcast Graphics Media Graphic Items', () => {
 						justify: 'start' as const,
 						clip: false,
 						geometry: SQUARE_GEOMETRY,
-						children: [
-							mediaItem('badge', { asset: badge }),
-						],
+						children: [mediaItem('badge', { asset: badge })],
 					},
 				],
 			},
@@ -376,7 +390,12 @@ describe('broadcast Graphics Media Graphic Items', () => {
 		// A separate Graphic Asset identity over identical content: in the library but
 		// not published by this Screen, which is exactly the case the capability must
 		// refuse.
-		const unreferenced = await ingestImage(eventId, 'broadcast-graphics-media-unreferenced', pixelPng, graphicsAuthorCookie);
+		const unreferenced = await ingestImage(
+			eventId,
+			'broadcast-graphics-media-unreferenced',
+			pixelPng,
+			graphicsAuthorCookie,
+		);
 
 		function outputContent(reference: Reference) {
 			return fetch(
@@ -387,10 +406,12 @@ describe('broadcast Graphics Media Graphic Items', () => {
 			);
 		}
 
-		await expect(outputContent(logo).then(response => response.status)).resolves.toBe(200);
+		await expect(outputContent(logo).then((response) => response.status)).resolves.toBe(200);
 		// The capability is not a library-browsing hole: an asset this Screen does not
 		// publish is invisible to its outputs even with a valid capability.
-		await expect(outputContent(unreferenced).then(response => response.status)).resolves.toBe(404);
+		await expect(outputContent(unreferenced).then((response) => response.status)).resolves.toBe(
+			404,
+		);
 	});
 
 	it('keeps each mode’s references indexed when the other mode is written', async () => {
@@ -419,15 +440,20 @@ describe('broadcast Graphics Media Graphic Items', () => {
 				headers: { cookie: graphicsAuthorCookie },
 			},
 		);
-		expect(overlayConfig.modeConfigs!['feature-match-overlay']!.layout!.frame.backgroundImage).toEqual({ kind: 'asset', ...logo });
+		expect(
+			overlayConfig.modeConfigs!['feature-match-overlay']!.layout!.frame.backgroundImage,
+		).toEqual({ kind: 'asset', ...logo });
 
 		function slotsFor(screen: ScreenResponse, usage: GraphicAssetUsage[]) {
-			return usage.filter(item => item.owner.id === String(screen.id)).map(item => item.owner.slot).sort();
+			return usage
+				.filter((item) => item.owner.id === String(screen.id))
+				.map((item) => item.owner.slot)
+				.sort();
 		}
 
-		await expect(usageOf(logo).then(usage => slotsFor(overlayScreen, usage)))
-			.resolves
-			.toEqual(['layout.frame.backgroundImage']);
+		await expect(usageOf(logo).then((usage) => slotsFor(overlayScreen, usage))).resolves.toEqual([
+			'layout.frame.backgroundImage',
+		]);
 
 		// Now write the other mode's configuration on the same Screen.
 		await $fetch(`/api/events/${eventId}/screens/${overlayScreen.id}/config/broadcast-graphics`, {
@@ -437,9 +463,7 @@ describe('broadcast Graphics Media Graphic Items', () => {
 					{
 						id: 'bug',
 						name: 'Bug',
-						items: [
-							mediaItem('badge', { asset: badge }),
-						],
+						items: [mediaItem('badge', { asset: badge })],
 					},
 				],
 			},
@@ -447,12 +471,12 @@ describe('broadcast Graphics Media Graphic Items', () => {
 		});
 
 		// Both survive, each under its own mode's owner-slot namespace.
-		await expect(usageOf(logo).then(usage => slotsFor(overlayScreen, usage)))
-			.resolves
-			.toEqual(['layout.frame.backgroundImage']);
-		await expect(usageOf(badge).then(usage => slotsFor(overlayScreen, usage)))
-			.resolves
-			.toEqual(['graphics.bug.items.badge.asset']);
+		await expect(usageOf(logo).then((usage) => slotsFor(overlayScreen, usage))).resolves.toEqual([
+			'layout.frame.backgroundImage',
+		]);
+		await expect(usageOf(badge).then((usage) => slotsFor(overlayScreen, usage))).resolves.toEqual([
+			'graphics.bug.items.badge.asset',
+		]);
 
 		// And a Screen resolves only its current mode's references: it is in Feature
 		// Match Overlay mode, so the Broadcast Graphics reference is not on this output.
@@ -470,8 +494,8 @@ describe('broadcast Graphics Media Graphic Items', () => {
 				},
 			);
 		}
-		await expect(outputContent(logo).then(response => response.status)).resolves.toBe(200);
-		await expect(outputContent(badge).then(response => response.status)).resolves.toBe(404);
+		await expect(outputContent(logo).then((response) => response.status)).resolves.toBe(200);
+		await expect(outputContent(badge).then((response) => response.status)).resolves.toBe(404);
 
 		await $fetch(`/api/events/${eventId}/screens/${overlayScreen.id}`, { method: 'DELETE' });
 	});
@@ -486,9 +510,7 @@ describe('broadcast Graphics Media Graphic Items', () => {
 					{
 						id: 'lower-third',
 						name: 'Lower Third',
-						items: [
-							mediaItem('logo', { asset: undefined }),
-						],
+						items: [mediaItem('logo', { asset: undefined })],
 					},
 				],
 			},
@@ -506,7 +528,12 @@ describe('broadcast Graphics Media Graphic Items', () => {
 		// command, or a direct API call all arrive here. A reference that cannot resolve
 		// invalidates the graphic that owns it, so Take is refused — while Out stays
 		// available, because it needs none of the asset's bytes.
-		const takeable = await ingestImage(eventId, 'broadcast-graphics-media-takeable', taggedPng, graphicsAuthorCookie);
+		const takeable = await ingestImage(
+			eventId,
+			'broadcast-graphics-media-takeable',
+			taggedPng,
+			graphicsAuthorCookie,
+		);
 		const screen = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens`, {
 			method: 'POST',
 			body: { name: 'Playout Gate', slug: 'playout-gate', currentMode: 'broadcast-graphics' },
@@ -519,9 +546,7 @@ describe('broadcast Graphics Media Graphic Items', () => {
 					{
 						id: 'sound',
 						name: 'Sound',
-						items: [
-							mediaItem('logo', { asset: takeable }),
-						],
+						items: [mediaItem('logo', { asset: takeable })],
 					},
 					{ id: 'clean', name: 'Clean', items: [] },
 				],
@@ -575,16 +600,15 @@ describe('broadcast Graphics Media Graphic Items', () => {
 		// itself — `Error.message` here is `[POST] "…": 409 Conflict`, which is what a
 		// Live workspace used to show instead (#230). `broadcastGraphicsCommandRefusal`
 		// is written against exactly this shape, so this is where that shape is pinned.
-		await expect(command('Take', 'sound', `gate-blocked-${runId}`))
-			.rejects
-			.toMatchObject({
-				statusCode: 409,
-				data: {
-					message: 'Graphic Asset Content at graphics.sound.items.logo.asset is temporarily '
-						+ 'unavailable, so this Broadcast Graphic cannot be taken on air',
-					data: { code: 'unavailable-asset-content' },
-				},
-			});
+		await expect(command('Take', 'sound', `gate-blocked-${runId}`)).rejects.toMatchObject({
+			statusCode: 409,
+			data: {
+				message:
+					'Graphic Asset Content at graphics.sound.items.logo.asset is temporarily ' +
+					'unavailable, so this Broadcast Graphic cannot be taken on air',
+				data: { code: 'unavailable-asset-content' },
+			},
+		});
 		// Out is never withheld: the graphic an operator most needs to remove is the one
 		// already on air whose media has just gone missing.
 		await expect(command('Out', 'sound', `gate-out-${runId}`)).resolves.toBeTruthy();
@@ -612,7 +636,11 @@ describe('broadcast Graphics Media Graphic Items', () => {
 	 * mechanism with, rather than in a font-shaped suite of its own.
 	 */
 	it('indexes a typography font revision and resolves it through the capability', async () => {
-		const font = await ingestFont(eventId, `broadcast-graphics-typography-font-${runId}`, graphicsAuthorCookie);
+		const font = await ingestFont(
+			eventId,
+			`broadcast-graphics-typography-font-${runId}`,
+			graphicsAuthorCookie,
+		);
 
 		const updated = await $fetch<ScreenResponse>(configPath(), {
 			method: 'PATCH',
@@ -621,9 +649,7 @@ describe('broadcast Graphics Media Graphic Items', () => {
 					{
 						id: 'name-plate',
 						name: 'Name Plate',
-						items: [
-							textItem('player-name', { kind: 'asset', reference: font }),
-						],
+						items: [textItem('player-name', { kind: 'asset', reference: font })],
 					},
 				],
 			},
@@ -631,7 +657,10 @@ describe('broadcast Graphics Media Graphic Items', () => {
 		});
 
 		const saved = updated.modeConfigs!['broadcast-graphics']!.graphics![0]!.items[0]!;
-		expect(saved.type === 'text' && saved.typography.font).toEqual({ kind: 'asset', reference: font });
+		expect(saved.type === 'text' && saved.typography.font).toEqual({
+			kind: 'asset',
+			reference: font,
+		});
 		await expect(usageOf(font)).resolves.toEqual([
 			expect.objectContaining({
 				reference: font,
@@ -665,21 +694,21 @@ describe('broadcast Graphics Media Graphic Items', () => {
 		// The write checks a newly chosen revision's kind against the kind the slot
 		// discovered, so an image cannot be pinned where a font belongs — the same
 		// check that stops a silent video landing in an image slot.
-		await expect($fetch(configPath(), {
-			method: 'PATCH',
-			body: {
-				graphics: [
-					{
-						id: 'name-plate',
-						name: 'Name Plate',
-						items: [
-							textItem('player-name', { kind: 'asset', reference: logo }),
-						],
-					},
-				],
-			},
-			headers: { cookie: graphicsAuthorCookie },
-		})).rejects.toMatchObject({ statusCode: 409 });
+		await expect(
+			$fetch(configPath(), {
+				method: 'PATCH',
+				body: {
+					graphics: [
+						{
+							id: 'name-plate',
+							name: 'Name Plate',
+							items: [textItem('player-name', { kind: 'asset', reference: logo })],
+						},
+					],
+				},
+				headers: { cookie: graphicsAuthorCookie },
+			}),
+		).rejects.toMatchObject({ statusCode: 409 });
 	});
 });
 
@@ -752,7 +781,8 @@ describe('media Graphic Input values on air', () => {
 		return assetCapability;
 	}
 
-	const SAFARI_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 Version/18.5 Safari/605.1.15';
+	const SAFARI_USER_AGENT =
+		'Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/605.1.15 Version/18.5 Safari/605.1.15';
 	const CHROMIUM_USER_AGENT = 'Mozilla/5.0 Chrome/138.0.0.0 Safari/537.36';
 
 	/**
@@ -760,40 +790,47 @@ describe('media Graphic Input values on air', () => {
 	 * transparent revision is involved, to show that no engine is refused one
 	 * (ADR-0020).
 	 */
-	function outputStatus(screenId: number, capability: string, reference: Reference, userAgent?: string) {
+	function outputStatus(
+		screenId: number,
+		capability: string,
+		reference: Reference,
+		userAgent?: string,
+	) {
 		return fetch(
 			`/api/screen-output/screens/${screenId}/assets/${reference.assetId}/revisions/${reference.revisionId}/content`,
 			{
 				headers: {
 					authorization: `Bearer ${capability}`,
-					...(userAgent
-						? { 'user-agent': userAgent }
-						: {}),
+					...(userAgent ? { 'user-agent': userAgent } : {}),
 				},
 			},
-		).then(response => response.status);
+		).then((response) => response.status);
 	}
 
 	async function liveSession(screenId: number) {
-		return await $fetch<{ id: number; currentState: { inputs: Record<string, { accepted: Record<string, unknown>; acceptedRevision: number }> } }>(
-			`/api/events/${eventId}/screens/${screenId}/broadcast-graphics/live-session`,
-		);
+		return await $fetch<{
+			id: number;
+			currentState: {
+				inputs: Record<string, { accepted: Record<string, unknown>; acceptedRevision: number }>;
+			};
+		}>(`/api/events/${eventId}/screens/${screenId}/broadcast-graphics/live-session`);
 	}
 
 	function command(screenId: number, sessionId: number, body: Record<string, unknown>) {
-		return $fetch<{ currentState: { inputs: Record<string, { accepted: Record<string, unknown>; acceptedRevision: number }> } }>(
+		return $fetch<{
+			currentState: {
+				inputs: Record<string, { accepted: Record<string, unknown>; acceptedRevision: number }>;
+			};
+		}>(
 			`/api/events/${eventId}/screens/${screenId}/broadcast-graphics/live-sessions/${sessionId}/commands`,
 			{ method: 'POST', body },
 		);
 	}
 
 	async function usageOf(reference: Reference): Promise<GraphicAssetUsage[]> {
-		return await $fetch<GraphicAssetUsage[]>(
-			`/api/graphics-assets/${reference.assetId}/usage`,
-			{
-				headers: { cookie: graphicsAuthorCookie },
-			},
-		);
+		return await $fetch<GraphicAssetUsage[]>(`/api/graphics-assets/${reference.assetId}/usage`, {
+			headers: { cookie: graphicsAuthorCookie },
+		});
 	}
 
 	beforeAll(async () => {
@@ -807,22 +844,29 @@ describe('media Graphic Input values on air', () => {
 			},
 		});
 		eventId = event.id;
-		first = await ingestImage(eventId, `media-input-first-${runId}`, pngWithTextChunks(100), graphicsAuthorCookie);
-		second = await ingestImage(eventId, `media-input-second-${runId}`, pngWithTextChunks(101), graphicsAuthorCookie);
+		first = await ingestImage(
+			eventId,
+			`media-input-first-${runId}`,
+			pngWithTextChunks(100),
+			graphicsAuthorCookie,
+		);
+		second = await ingestImage(
+			eventId,
+			`media-input-second-${runId}`,
+			pngWithTextChunks(101),
+			graphicsAuthorCookie,
+		);
 	});
 
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('resolves a runtime-chosen revision only while the Live Session accepts it', async () => {
 		const screenId = await createScreen('media-input-runtime');
-		await declare(screenId, [
-			mediaInput('backdrop'),
-		]);
+		await declare(screenId, [mediaInput('backdrop')]);
 		const capability = await capabilityFor(screenId);
 		const session = await liveSession(screenId);
 
@@ -880,9 +924,12 @@ describe('media Graphic Input values on air', () => {
 		await expect(usageOf(first)).resolves.toEqual([]);
 
 		// An epoch that has ended accepted nothing, so it publishes nothing.
-		await $fetch(`/api/events/${eventId}/screens/${screenId}/broadcast-graphics/live-session/reset`, {
-			method: 'POST',
-		});
+		await $fetch(
+			`/api/events/${eventId}/screens/${screenId}/broadcast-graphics/live-session/reset`,
+			{
+				method: 'POST',
+			},
+		);
 		await expect(outputStatus(screenId, capability, second)).resolves.toBe(404);
 		await expect(usageOf(second)).resolves.toEqual([]);
 	});
@@ -894,10 +941,13 @@ describe('media Graphic Input values on air', () => {
 		// the rest of the show, with the output still fetching a value nothing declares
 		// and the asset still pinned against retirement.
 		const screenId = await createScreen('media-input-undeclared');
-		const backdrop = await ingestImage(eventId, `media-input-undeclared-${runId}`, pngWithTextChunks(104), graphicsAuthorCookie);
-		await declare(screenId, [
-			mediaInput('backdrop'),
-		]);
+		const backdrop = await ingestImage(
+			eventId,
+			`media-input-undeclared-${runId}`,
+			pngWithTextChunks(104),
+			graphicsAuthorCookie,
+		);
+		await declare(screenId, [mediaInput('backdrop')]);
 		const capability = await capabilityFor(screenId);
 		const session = await liveSession(screenId);
 
@@ -930,10 +980,13 @@ describe('media Graphic Input values on air', () => {
 
 	it('stops resolving once the authored write removes the whole Broadcast Graphic', async () => {
 		const screenId = await createScreen('media-input-unplaced');
-		const backdrop = await ingestImage(eventId, `media-input-unplaced-${runId}`, pngWithTextChunks(105), graphicsAuthorCookie);
-		await declare(screenId, [
-			mediaInput('backdrop'),
-		]);
+		const backdrop = await ingestImage(
+			eventId,
+			`media-input-unplaced-${runId}`,
+			pngWithTextChunks(105),
+			graphicsAuthorCookie,
+		);
+		await declare(screenId, [mediaInput('backdrop')]);
 		const capability = await capabilityFor(screenId);
 		const session = await liveSession(screenId);
 
@@ -978,10 +1031,13 @@ describe('media Graphic Input values on air', () => {
 		// all, though — it slips through that guard while still changing what the Live
 		// Session publishes, so this route needs the same reconciliation.
 		const screenId = await createScreen('media-input-generic-write');
-		const backdrop = await ingestImage(eventId, `media-input-generic-${runId}`, pngWithTextChunks(107), graphicsAuthorCookie);
-		await declare(screenId, [
-			mediaInput('backdrop'),
-		]);
+		const backdrop = await ingestImage(
+			eventId,
+			`media-input-generic-${runId}`,
+			pngWithTextChunks(107),
+			graphicsAuthorCookie,
+		);
+		await declare(screenId, [mediaInput('backdrop')]);
 		const capability = await capabilityFor(screenId);
 		const session = await liveSession(screenId);
 
@@ -1033,7 +1089,12 @@ describe('media Graphic Input values on air', () => {
 
 	it('publishes an authored media Graphic Input default with no compatibility facts, and reads one that still carries them', async () => {
 		const screenId = await createScreen('media-input-default');
-		const transparent = await ingestImage(eventId, `media-input-default-vp9-${runId}`, pngWithTextChunks(103), graphicsAuthorCookie);
+		const transparent = await ingestImage(
+			eventId,
+			`media-input-default-vp9-${runId}`,
+			pngWithTextChunks(103),
+			graphicsAuthorCookie,
+		);
 		await executeIntegrationD1(`
 			UPDATE graphic_assets
 			SET kind = 'silent-video'
@@ -1058,7 +1119,10 @@ describe('media Graphic Input values on air', () => {
 		await declare(screenId, [
 			mediaInput('sting', {
 				mediaKind: 'silent-video',
-				default: { ...transparent, videoCompatibility: 'chromium-transparency' } as typeof transparent,
+				default: {
+					...transparent,
+					videoCompatibility: 'chromium-transparency',
+				} as typeof transparent,
 			}),
 		]);
 		const stored = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens/${screenId}`, {
@@ -1069,8 +1133,12 @@ describe('media Graphic Input values on air', () => {
 		expect(JSON.stringify(storedInput)).not.toContain('videoCompatibility');
 
 		const capability = await capabilityFor(screenId);
-		await expect(outputStatus(screenId, capability, transparent, CHROMIUM_USER_AGENT)).resolves.toBe(200);
-		await expect(outputStatus(screenId, capability, transparent, SAFARI_USER_AGENT)).resolves.toBe(200);
+		await expect(
+			outputStatus(screenId, capability, transparent, CHROMIUM_USER_AGENT),
+		).resolves.toBe(200);
+		await expect(outputStatus(screenId, capability, transparent, SAFARI_USER_AGENT)).resolves.toBe(
+			200,
+		);
 		await expect(usageOf(transparent)).resolves.toEqual([
 			expect.objectContaining({
 				reference: transparent,

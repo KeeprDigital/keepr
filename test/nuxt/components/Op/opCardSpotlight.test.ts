@@ -74,32 +74,20 @@ describe('one Piece Card Spotlight', () => {
 	});
 
 	it.each([
-		[
-			false,
-			false,
-			null,
-			'Card data unavailable',
-		],
-		[
-			true,
-			true,
-			null,
-			'No cards match this search.',
-		],
-		[
-			true,
-			false,
-			'Card search failed. Try again.',
-			'Card search failed. Try again.',
-		],
-	])('with card data available %s, searched %s and error %s, the list says %j', (available, searched, error, text) => {
-		const store = useMockCardStore();
-		store.opCardDataAvailable = available;
-		store.opSearched = searched;
-		store.opSearchError = error;
+		[false, false, null, 'Card data unavailable'],
+		[true, true, null, 'No cards match this search.'],
+		[true, false, 'Card search failed. Try again.', 'Card search failed. Try again.'],
+	])(
+		'with card data available %s, searched %s and error %s, the list says %j',
+		(available, searched, error, text) => {
+			const store = useMockCardStore();
+			store.opCardDataAvailable = available;
+			store.opSearched = searched;
+			store.opSearchError = error;
 
-		expect(mount(OpCardList, mountOptions).text()).toContain(text);
-	});
+			expect(mount(OpCardList, mountOptions).text()).toContain(text);
+		},
+	);
 
 	it('says nothing before text long enough to search', () => {
 		const store = useMockCardStore();
@@ -124,7 +112,8 @@ describe('one Piece Card Spotlight', () => {
 			...mountOptions,
 			attrs: { open: true },
 		});
-		const choice = (kind: string) => wrapper.get(`[aria-label="Select card Roronoa Zoro ${kind} OP-01"]`);
+		const choice = (kind: string) =>
+			wrapper.get(`[aria-label="Select card Roronoa Zoro ${kind} OP-01"]`);
 
 		expect(choice('Standard').attributes('aria-pressed')).toBe('true');
 		expect(choice('Alt art').attributes('aria-pressed')).toBe('false');

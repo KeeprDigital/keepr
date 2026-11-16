@@ -57,7 +57,11 @@ describe('an interval', () => {
 		const now = 500_000.25;
 		const anchor = intervalAnchorForStep(2, PERIOD, now);
 
-		expect(projectInterval(anchor, PERIOD, now)).toEqual({ step: 2, elapsedInStepMs: 0, nextStepInMs: PERIOD });
+		expect(projectInterval(anchor, PERIOD, now)).toEqual({
+			step: 2,
+			elapsedInStepMs: 0,
+			nextStepInMs: PERIOD,
+		});
 		expect(projectInterval(anchor, PERIOD, now + PERIOD - 1).step).toBe(2);
 		expect(projectInterval(anchor, PERIOD, now + PERIOD).step).toBe(3);
 	});

@@ -93,8 +93,7 @@ export function useGraphicsAdminReading<Reading>(options: {
 			reading.value = await options.read(administratorHeaders());
 			consecutiveFailures.value = 0;
 			await options.onReading?.();
-		}
-		catch (caught) {
+		} catch (caught) {
 			consecutiveFailures.value += 1;
 			loadError.value = describeFailure(caught, options.failureMessage);
 			// A rotated or revoked token must put the token form back rather than
@@ -104,8 +103,7 @@ export function useGraphicsAdminReading<Reading>(options: {
 				reading.value = null;
 				options.onAuthorizationLost?.();
 			}
-		}
-		finally {
+		} finally {
 			loadPending.value = false;
 		}
 	}
@@ -121,8 +119,7 @@ export function useGraphicsAdminReading<Reading>(options: {
 
 	onMounted(() => {
 		pollHandle = window.setInterval(() => {
-			if (!hasReading.value || loadPending.value || options.paused?.())
-				return;
+			if (!hasReading.value || loadPending.value || options.paused?.()) return;
 			if (ticksSinceAttempt < backoffTicks()) {
 				ticksSinceAttempt += 1;
 				return;
@@ -133,8 +130,7 @@ export function useGraphicsAdminReading<Reading>(options: {
 	});
 
 	onBeforeUnmount(() => {
-		if (pollHandle !== undefined)
-			window.clearInterval(pollHandle);
+		if (pollHandle !== undefined) window.clearInterval(pollHandle);
 	});
 
 	return {

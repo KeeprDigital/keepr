@@ -92,9 +92,9 @@ function completeCockpit(
 		ingestion: {
 			counts: {
 				'input-expired': 1,
-				'retryable': 0,
+				retryable: 0,
 				'awaiting-confirmation': 1,
-				'active': 0,
+				active: 0,
 			},
 			operations: [
 				{
@@ -223,7 +223,8 @@ const inputStub = defineComponent({
 });
 
 async function mountPage() {
-	const { default: CockpitPage } = await import('../../../../../app/pages/admin/graphics-assets/index.vue');
+	const { default: CockpitPage } =
+		await import('../../../../../app/pages/admin/graphics-assets/index.vue');
 	return mount(CockpitPage, {
 		global: {
 			stubs: {
@@ -244,8 +245,9 @@ async function mountPage() {
 async function openCockpit() {
 	const wrapper = await mountPage();
 	await wrapper.find('input').setValue('admin-token');
-	await wrapper.findAll('button')
-		.find(button => button.text() === 'Open cockpit')!
+	await wrapper
+		.findAll('button')
+		.find((button) => button.text() === 'Open cockpit')!
 		.trigger('click');
 	await nextTick();
 	return wrapper;
@@ -259,7 +261,8 @@ function serve(reading: GraphicsOperationsCockpitReading, sweep?: unknown) {
 	mockApiFetch.mockImplementation((url: string) =>
 		url === '/api/admin/graphics-assets/operations-cockpit'
 			? Promise.resolve(reading)
-			: Promise.resolve(sweep ?? {}));
+			: Promise.resolve(sweep ?? {}),
+	);
 }
 
 describe('the Graphics Asset Library Operations cockpit page', () => {
@@ -271,12 +274,9 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 	it('answers whether the library is safe, with catalogue and byte health kept separate', async () => {
 		const wrapper = await openCockpit();
 
-		expect(mockApiFetch).toHaveBeenCalledWith(
-			'/api/admin/graphics-assets/operations-cockpit',
-			{
-				headers: { 'x-graphics-admin-token': 'admin-token' },
-			},
-		);
+		expect(mockApiFetch).toHaveBeenCalledWith('/api/admin/graphics-assets/operations-cockpit', {
+			headers: { 'x-graphics-admin-token': 'admin-token' },
+		});
 
 		expect(wrapper.text()).toContain('D1 catalogue');
 		expect(wrapper.text()).toContain('Canonical byte store');
@@ -285,8 +285,9 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 		expect(wrapper.text()).toContain('Healthy');
 
 		// Each side is degraded on its own evidence, and says which.
-		expect(wrapper.text())
-			.toContain('recording 2 Graphic Asset Contents it cannot currently serve');
+		expect(wrapper.text()).toContain(
+			'recording 2 Graphic Asset Contents it cannot currently serve',
+		);
 		expect(wrapper.text()).toContain('disagreeing with the catalogue on 3 subjects');
 	});
 
@@ -300,8 +301,7 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 		expect(wrapper.text()).toContain('95.0 GiB');
 
 		expect(wrapper.text()).toContain('Graphics Staging Allowance');
-		expect(wrapper.text())
-			.toContain('never borrowed from or lent to the Canonical Graphics Quota');
+		expect(wrapper.text()).toContain('never borrowed from or lent to the Canonical Graphics Quota');
 	});
 
 	it('shows each unfinished ingestion with the exact facts of its current stage', async () => {
@@ -344,12 +344,10 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 		expect(wrapper.text()).toContain('Storage pressure never shortens any of these guarantees.');
 
 		// No action on the page proposes trading a guarantee for capacity.
-		const actions = wrapper.findAll('button').map(button => button.text());
-		expect(actions).toEqual(expect.arrayContaining([
-			'Refresh',
-			'Run reconciliation now',
-			'Run retention sweep now',
-		]));
+		const actions = wrapper.findAll('button').map((button) => button.text());
+		expect(actions).toEqual(
+			expect.arrayContaining(['Refresh', 'Run reconciliation now', 'Run retention sweep now']),
+		);
 		expect(actions.join(' ')).not.toContain('Shorten');
 		expect(actions.join(' ')).not.toContain('Purge');
 	});
@@ -375,12 +373,14 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 		expect(wrapper.text()).toContain('Library condition');
 
 		// The token is rotated underneath a page that is already polling.
-		mockApiFetch.mockRejectedValue(Object.assign(
-			new Error('Graphics Administrator authorization is required'),
-			{ statusCode: 403 },
-		));
-		await wrapper.findAll('button')
-			.find(button => button.text() === 'Refresh')!
+		mockApiFetch.mockRejectedValue(
+			Object.assign(new Error('Graphics Administrator authorization is required'), {
+				statusCode: 403,
+			}),
+		);
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Refresh')!
 			.trigger('click');
 		await nextTick();
 
@@ -389,8 +389,7 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 		expect(wrapper.text()).not.toContain('Library condition');
 		expect(wrapper.text()).toContain('Graphics Administrator token');
 		expect(wrapper.text()).toContain('Graphics Administrator authorization is required');
-		expect(wrapper.findAll('button').some(button => button.text() === 'Open cockpit'))
-			.toBe(true);
+		expect(wrapper.findAll('button').some((button) => button.text() === 'Open cockpit')).toBe(true);
 	});
 
 	it('recovers on the next reading after a transient failure', async () => {
@@ -398,12 +397,14 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 
 		// A transient failure is not an authorization failure, so the last good
 		// reading stays on screen while the error is reported alongside it.
-		mockApiFetch.mockRejectedValueOnce(Object.assign(
-			new Error('The Graphics Asset Operations Cockpit is temporarily unavailable'),
-			{ statusCode: 503 },
-		));
-		await wrapper.findAll('button')
-			.find(button => button.text() === 'Refresh')!
+		mockApiFetch.mockRejectedValueOnce(
+			Object.assign(new Error('The Graphics Asset Operations Cockpit is temporarily unavailable'), {
+				statusCode: 503,
+			}),
+		);
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Refresh')!
 			.trigger('click');
 		await nextTick();
 
@@ -411,8 +412,9 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 		expect(wrapper.text()).toContain('Library condition');
 
 		serve(completeCockpit());
-		await wrapper.findAll('button')
-			.find(button => button.text() === 'Refresh')!
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Refresh')!
 			.trigger('click');
 		await nextTick();
 
@@ -435,25 +437,20 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 		const wrapper = await openCockpit();
 		mockApiFetch.mockClear();
 
-		await wrapper.findAll('button')
-			.find(button => button.text() === 'Run reconciliation now')!
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Run reconciliation now')!
 			.trigger('click');
 		await nextTick();
 
-		expect(mockApiFetch).toHaveBeenCalledWith(
-			'/api/admin/graphics-assets/reconciliation',
-			{
-				method: 'POST',
-				headers: { 'x-graphics-admin-token': 'admin-token' },
-			},
-		);
+		expect(mockApiFetch).toHaveBeenCalledWith('/api/admin/graphics-assets/reconciliation', {
+			method: 'POST',
+			headers: { 'x-graphics-admin-token': 'admin-token' },
+		});
 		// The reading is taken again from the server rather than patched locally.
-		expect(mockApiFetch).toHaveBeenCalledWith(
-			'/api/admin/graphics-assets/operations-cockpit',
-			{
-				headers: { 'x-graphics-admin-token': 'admin-token' },
-			},
-		);
+		expect(mockApiFetch).toHaveBeenCalledWith('/api/admin/graphics-assets/operations-cockpit', {
+			headers: { 'x-graphics-admin-token': 'admin-token' },
+		});
 	});
 
 	it('still answers the safety question when the catalogue cannot answer', async () => {

@@ -1,4 +1,7 @@
-import type { FeatureMatchLayoutConfig, FeatureMatchSourceItemConfig } from '~~/shared/types/screenConfig';
+import type {
+	FeatureMatchLayoutConfig,
+	FeatureMatchSourceItemConfig,
+} from '~~/shared/types/screenConfig';
 import { describe, expect, it } from 'vitest';
 import {
 	bringSourceToFront,
@@ -21,7 +24,9 @@ import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConf
  * layout reference so callers know not to submit.
  */
 
-function source(overrides: Partial<FeatureMatchSourceItemConfig> = {}): FeatureMatchSourceItemConfig {
+function source(
+	overrides: Partial<FeatureMatchSourceItemConfig> = {},
+): FeatureMatchSourceItemConfig {
 	return {
 		id: 's1',
 		label: 'Source',
@@ -43,9 +48,7 @@ function layoutOf(sources: FeatureMatchSourceItemConfig[]): FeatureMatchLayoutCo
 
 describe('feature match layout writer', () => {
 	it('patches the Frame without touching the Source Items or the composition', () => {
-		const layout = layoutOf([
-			source(),
-		]);
+		const layout = layoutOf([source()]);
 
 		const next = patchFrame(layout, { opacity: 0.25 });
 
@@ -55,10 +58,7 @@ describe('feature match layout writer', () => {
 	});
 
 	it('patches a Source Item by id', () => {
-		const layout = layoutOf([
-			source(),
-			source({ id: 's2' }),
-		]);
+		const layout = layoutOf([source(), source({ id: 's2' })]);
 
 		const next = patchSource(layout, 's2', { label: 'Renamed' });
 
@@ -75,13 +75,15 @@ describe('feature match layout writer', () => {
 
 		const next = patchSourceFramingStyle(layout, 's1', { glowPosition: 'outside' });
 
-		expect(next.sources[0]!.framingStyle).toEqual({ borderRadius: 8, borderTopVisible: false, glowPosition: 'outside' });
+		expect(next.sources[0]!.framingStyle).toEqual({
+			borderRadius: 8,
+			borderTopVisible: false,
+			glowPosition: 'outside',
+		});
 	});
 
 	it('returns the same layout when an id names nothing', () => {
-		const layout = layoutOf([
-			source(),
-		]);
+		const layout = layoutOf([source()]);
 
 		expect(patchSource(layout, 'missing', { label: 'x' })).toBe(layout);
 		expect(patchSourceFramingStyle(layout, 'missing', { borderRadius: 1 })).toBe(layout);
@@ -90,22 +92,27 @@ describe('feature match layout writer', () => {
 	});
 
 	it('orders Source Items back to front by list order', () => {
-		const layout = layoutOf([
-			source(),
-			source({ id: 's2' }),
-			source({ id: 's3' }),
-		]);
+		const layout = layoutOf([source(), source({ id: 's2' }), source({ id: 's3' })]);
 
-		expect(sendSourceToBack(layout, 's3').sources.map(item => item.id)).toEqual(['s3', 's1', 's2']);
-		expect(bringSourceToFront(layout, 's1').sources.map(item => item.id)).toEqual(['s2', 's3', 's1']);
-		expect(moveSourceOrder(layout, 's1', 1).sources.map(item => item.id)).toEqual(['s2', 's1', 's3']);
+		expect(sendSourceToBack(layout, 's3').sources.map((item) => item.id)).toEqual([
+			's3',
+			's1',
+			's2',
+		]);
+		expect(bringSourceToFront(layout, 's1').sources.map((item) => item.id)).toEqual([
+			's2',
+			's3',
+			's1',
+		]);
+		expect(moveSourceOrder(layout, 's1', 1).sources.map((item) => item.id)).toEqual([
+			's2',
+			's1',
+			's3',
+		]);
 	});
 
 	it('does not reorder past either end', () => {
-		const layout = layoutOf([
-			source(),
-			source({ id: 's2' }),
-		]);
+		const layout = layoutOf([source(), source({ id: 's2' })]);
 
 		expect(moveSourceOrder(layout, 's1', -1)).toBe(layout);
 		expect(moveSourceOrder(layout, 's2', 1)).toBe(layout);
@@ -121,23 +128,17 @@ describe('feature match layout writer', () => {
 	});
 
 	it('removes a Source Item by id', () => {
-		const layout = layoutOf([
-			source(),
-			source({ id: 's2' }),
-		]);
+		const layout = layoutOf([source(), source({ id: 's2' })]);
 
-		expect(removeSource(layout, 's1').sources.map(item => item.id)).toEqual(['s2']);
+		expect(removeSource(layout, 's1').sources.map((item) => item.id)).toEqual(['s2']);
 	});
 
 	it('duplicates a Source Item in front of itself, offset and uniquely named', () => {
-		const layout = layoutOf([
-			source(),
-			source({ id: 's2', label: 'Other' }),
-		]);
+		const layout = layoutOf([source(), source({ id: 's2', label: 'Other' })]);
 
 		const { layout: next, id } = duplicateSource(layout, 's1');
 
-		expect(next.sources.map(item => item.id)).toEqual(['s1', id, 's2']);
+		expect(next.sources.map((item) => item.id)).toEqual(['s1', id, 's2']);
 		expect(next.sources[1]).toMatchObject({
 			label: 'Source copy',
 			x: 120,
@@ -153,19 +154,15 @@ describe('feature match layout writer', () => {
 	});
 
 	it('duplicates a locked Source Item unlocked (ADR-0063)', () => {
-		const layout = layoutOf([
-			source({ locked: true }),
-		]);
+		const layout = layoutOf([source({ locked: true })]);
 
 		const { layout: next } = duplicateSource(layout, 's1');
 
-		expect(next.sources.map(item => item.locked)).toEqual([true, undefined]);
+		expect(next.sources.map((item) => item.locked)).toEqual([true, undefined]);
 	});
 
 	it('duplicates nothing for an unknown Source Item', () => {
-		const layout = layoutOf([
-			source(),
-		]);
+		const layout = layoutOf([source()]);
 
 		expect(duplicateSource(layout, 'missing')).toEqual({ layout, id: '' });
 	});

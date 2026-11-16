@@ -28,18 +28,20 @@ export interface ThemeTokenDraft<T> {
  * nothing pending the draft is the source again, which is the value a write
  * stored, or the value still held when a write was refused.
  */
-export function useThemeTokenDraft<T>(source: () => T, commit: (value: T) => void, writing: () => boolean = () => false): ThemeTokenDraft<T> {
+export function useThemeTokenDraft<T>(
+	source: () => T,
+	commit: (value: T) => void,
+	writing: () => boolean = () => false,
+): ThemeTokenDraft<T> {
 	const draft = shallowRef(source());
 	let pending: ReturnType<typeof setTimeout> | undefined;
 
 	watch(source, (value) => {
-		if (pending === undefined && !writing())
-			draft.value = value;
+		if (pending === undefined && !writing()) draft.value = value;
 	});
 
 	watch(writing, (out) => {
-		if (!out && pending === undefined)
-			draft.value = source();
+		if (!out && pending === undefined) draft.value = source();
 	});
 
 	function flush() {
@@ -66,8 +68,7 @@ export function useThemeTokenDraft<T>(source: () => T, commit: (value: T) => voi
 	}
 
 	onBeforeUnmount(() => {
-		if (pending !== undefined)
-			flush();
+		if (pending !== undefined) flush();
 	});
 
 	return { draft, edit, commitNow, cancel };

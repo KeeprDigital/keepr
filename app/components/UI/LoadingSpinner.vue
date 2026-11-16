@@ -1,19 +1,19 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
-	size?: 'sm' | 'md';
-	fill?: boolean;
-	label?: string;
-}>(), {
-	size: 'md',
-	fill: false,
-});
+withDefaults(
+	defineProps<{
+		size?: 'sm' | 'md';
+		fill?: boolean;
+		label?: string;
+	}>(),
+	{
+		size: 'md',
+		fill: false,
+	},
+);
 </script>
 
 <template>
-	<div
-		class="flex items-center justify-center"
-		:class="fill ? 'h-full' : 'py-12'"
-	>
+	<div class="flex items-center justify-center" :class="fill ? 'h-full' : 'py-12'">
 		<UIcon
 			name="i-lucide-loader-2"
 			class="animate-spin text-primary"

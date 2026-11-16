@@ -3,7 +3,11 @@ import type { Commander, MtgPlayerGameData } from '~~/shared/types/game';
 import { colourIdentityColours, MAX_SEAT_COMMANDERS } from '~~/shared/utils/commander';
 import { commanderOfDeckListEntry } from '~~/shared/utils/commanderDeckList';
 import { scryfallCardImageUrl } from '~~/shared/utils/scryfallCardImage';
-import { COMMANDER_SEARCH_MIN_LENGTH, searchCommanderCards, searchCommanderPrintings } from '~/utils/commanderSearch';
+import {
+	COMMANDER_SEARCH_MIN_LENGTH,
+	searchCommanderCards,
+	searchCommanderPrintings,
+} from '~/utils/commanderSearch';
 
 /**
  * A Seat's one or two Commanders, picked from Scryfall's card search and each
@@ -45,8 +49,7 @@ let deckListCards: { id: number; cards: Commander[] } | null = null;
 
 async function searchDeckList(id: number, namePart: string): Promise<Commander[]> {
 	const eventId = eventStore.eventId;
-	if (!eventId || !props.slotId)
-		return [];
+	if (!eventId || !props.slotId) return [];
 	if (deckListCards?.id !== id) {
 		const saved = await deckListRepository.readCommander(eventId, props.slotId, id);
 		deckListCards = {
@@ -55,9 +58,11 @@ async function searchDeckList(id: number, namePart: string): Promise<Commander[]
 		};
 	}
 	const wanted = namePart.toLowerCase();
-	return deckListCards.cards.filter(card =>
-		card.name.toLowerCase().includes(wanted)
-		&& !commanders.value.some(commander => commander.scryfallId === card.scryfallId));
+	return deckListCards.cards.filter(
+		(card) =>
+			card.name.toLowerCase().includes(wanted) &&
+			!commanders.value.some((commander) => commander.scryfallId === card.scryfallId),
+	);
 }
 
 function hold(next: Commander[]) {
@@ -84,21 +89,15 @@ async function searchNow() {
 		const cards = held
 			? await searchDeckList(held.id, submitted)
 			: await searchCommanderCards(submitted);
-		if (generation !== searchGeneration)
-			return;
+		if (generation !== searchGeneration) return;
 		offered.value = cards;
-		if (cards.length === 0)
-			unmatched.value = submitted;
-	}
-	catch {
-		if (generation !== searchGeneration)
-			return;
+		if (cards.length === 0) unmatched.value = submitted;
+	} catch {
+		if (generation !== searchGeneration) return;
 		offered.value = [];
 		searchFailed.value = true;
-	}
-	finally {
-		if (generation === searchGeneration)
-			searching.value = false;
+	} finally {
+		if (generation === searchGeneration) searching.value = false;
 	}
 }
 
@@ -129,22 +128,18 @@ async function offerPrintings(index: number) {
 			printings.value = found;
 			printingsAnswered.value = true;
 		}
-	}
-	catch {
-		if (printingsOpenAt.value === index)
-			printingsOpenAt.value = null;
+	} catch {
+		if (printingsOpenAt.value === index) printingsOpenAt.value = null;
 	}
 }
 
 /** Whether the printings offered hold one besides the printing held. */
 function offersAnotherPrinting(commander: Commander) {
-	return printings.value.some(printing => printing.scryfallId !== commander.scryfallId);
+	return printings.value.some((printing) => printing.scryfallId !== commander.scryfallId);
 }
 
 function pickPrinting(index: number, printing: Commander) {
-	hold(commanders.value.map((commander, held) => held === index
-		? printing
-		: commander));
+	hold(commanders.value.map((commander, held) => (held === index ? printing : commander)));
 	printingsOpenAt.value = null;
 }
 </script>
@@ -152,15 +147,11 @@ function pickPrinting(index: number, printing: Commander) {
 <template>
 	<!-- A group of controls, so a fieldset, not a form field whose label would claim them all. -->
 	<fieldset class="flex w-full flex-col gap-2">
-		<legend class="text-sm font-medium">
-			Commanders
-		</legend>
+		<legend class="text-sm font-medium">Commanders</legend>
 		<p v-if="deckList" class="text-sm text-muted" data-picked-from-deck-list>
 			One or two of the Deck List's cards. Clear the list to search every card.
 		</p>
-		<p v-else class="text-sm text-muted">
-			One or two, each as the printing you pick.
-		</p>
+		<p v-else class="text-sm text-muted">One or two, each as the printing you pick.</p>
 		<div class="flex flex-col gap-2">
 			<ul v-if="commanders.length > 0" class="flex flex-col gap-2" aria-label="Commanders">
 				<li
@@ -177,14 +168,17 @@ function pickPrinting(index: number, printing: Commander) {
 							class="h-14 rounded-sm"
 							style="aspect-ratio: 488 / 680"
 							loading="lazy"
-						>
+						/>
 						<div class="min-w-0 flex-1">
 							<p class="truncate font-medium">
 								{{ commander.name }}
 							</p>
 							<p class="flex items-center gap-2 text-sm text-muted">
 								{{ printingLabel(commander) }}
-								<MtgManaColorDisplay :colors="colourIdentityColours(commander.colorIdentity)" size="sm" />
+								<MtgManaColorDisplay
+									:colors="colourIdentityColours(commander.colorIdentity)"
+									size="sm"
+								/>
 							</p>
 						</div>
 						<UButton
@@ -225,7 +219,7 @@ function pickPrinting(index: number, printing: Commander) {
 									class="h-24 rounded-sm"
 									style="aspect-ratio: 488 / 680"
 									loading="lazy"
-								>
+								/>
 								{{ printingLabel(printing) }}
 							</button>
 						</li>
@@ -245,7 +239,13 @@ function pickPrinting(index: number, printing: Commander) {
 					v-model="text"
 					class="w-full"
 					icon="i-lucide-search"
-					:placeholder="deckList ? 'Search the Deck List' : commanders.length > 0 ? 'Add a second Commander' : 'Search cards'"
+					:placeholder="
+						deckList
+							? 'Search the Deck List'
+							: commanders.length > 0
+								? 'Add a second Commander'
+								: 'Search cards'
+					"
 					:loading="searching"
 					aria-label="Search Commanders"
 					@update:model-value="searchSoon"
@@ -259,7 +259,11 @@ function pickPrinting(index: number, printing: Commander) {
 					No cards match “{{ unmatched }}”.
 				</p>
 
-				<ul v-if="offered.length > 0" class="flex max-h-72 flex-col gap-1 overflow-y-auto" aria-label="Cards">
+				<ul
+					v-if="offered.length > 0"
+					class="flex max-h-72 flex-col gap-1 overflow-y-auto"
+					aria-label="Cards"
+				>
 					<li v-for="card in offered" :key="card.scryfallId">
 						<button
 							type="button"
@@ -273,7 +277,7 @@ function pickPrinting(index: number, printing: Commander) {
 								class="h-12 rounded-sm"
 								style="aspect-ratio: 488 / 680"
 								loading="lazy"
-							>
+							/>
 							<span class="min-w-0 flex-1 truncate">{{ card.name }}</span>
 							<MtgManaColorDisplay :colors="colourIdentityColours(card.colorIdentity)" size="sm" />
 						</button>

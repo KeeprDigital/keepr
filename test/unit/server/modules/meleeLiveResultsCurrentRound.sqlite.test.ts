@@ -30,94 +30,94 @@ async function seedEvent(options: {
 	matches: Partial<Record<RoundKey, StoredMatch[]>>;
 	round4ControlMode?: 'default' | 'manual_override';
 }) {
-	const [event] = await db.insert(schema.events).values({
-		name: 'Melee Championship',
-		game: 'mtg',
-		featureMatchOrientation: 'horizontal',
-		meleeEnabled: true,
-		meleeEventId: 'melee-1',
-	}).returning({ id: schema.events.id });
+	const [event] = await db
+		.insert(schema.events)
+		.values({
+			name: 'Melee Championship',
+			game: 'mtg',
+			featureMatchOrientation: 'horizontal',
+			meleeEnabled: true,
+			meleeEventId: 'melee-1',
+		})
+		.returning({ id: schema.events.id });
 	const eventId = event!.id;
-	const [topCut, swiss] = await db.insert(schema.phases).values([
-		{
-			eventId,
-			name: 'Top Cut',
-			sortOrder: 1,
-			externalId: '41',
-			externalSource: 'melee',
-		},
-		{
-			eventId,
-			name: 'Swiss',
-			sortOrder: 0,
-			externalId: '40',
-			externalSource: 'melee',
-		},
-	]).returning();
-	const [quarterfinals, manualRound, round3, round4] = await db.insert(schema.rounds).values([
-		{
-			eventId,
-			phaseId: topCut!.id,
-			name: 'Quarterfinals',
-			roundNumber: 1,
-			externalId: '4001',
-			externalSource: 'melee',
-		},
-		{
-			eventId,
-			phaseId: swiss!.id,
-			name: 'Side Event',
-			roundNumber: 0,
-			externalSource: 'manual',
-		},
-		{
-			eventId,
-			phaseId: swiss!.id,
-			name: 'Round 3',
-			roundNumber: 3,
-			externalId: '3003',
-			externalSource: 'melee',
-		},
-		{
-			eventId,
-			phaseId: swiss!.id,
-			name: 'Round 4',
-			roundNumber: 4,
-			externalId: '3004',
-			externalSource: 'melee',
-			controlMode: options.round4ControlMode ?? 'default',
-		},
-	]).returning();
+	const [topCut, swiss] = await db
+		.insert(schema.phases)
+		.values([
+			{
+				eventId,
+				name: 'Top Cut',
+				sortOrder: 1,
+				externalId: '41',
+				externalSource: 'melee',
+			},
+			{
+				eventId,
+				name: 'Swiss',
+				sortOrder: 0,
+				externalId: '40',
+				externalSource: 'melee',
+			},
+		])
+		.returning();
+	const [quarterfinals, manualRound, round3, round4] = await db
+		.insert(schema.rounds)
+		.values([
+			{
+				eventId,
+				phaseId: topCut!.id,
+				name: 'Quarterfinals',
+				roundNumber: 1,
+				externalId: '4001',
+				externalSource: 'melee',
+			},
+			{
+				eventId,
+				phaseId: swiss!.id,
+				name: 'Side Event',
+				roundNumber: 0,
+				externalSource: 'manual',
+			},
+			{
+				eventId,
+				phaseId: swiss!.id,
+				name: 'Round 3',
+				roundNumber: 3,
+				externalId: '3003',
+				externalSource: 'melee',
+			},
+			{
+				eventId,
+				phaseId: swiss!.id,
+				name: 'Round 4',
+				roundNumber: 4,
+				externalId: '3004',
+				externalSource: 'melee',
+				controlMode: options.round4ControlMode ?? 'default',
+			},
+		])
+		.returning();
 	const roundIds: Record<RoundKey, number> = {
 		manualRound: manualRound!.id,
 		round3: round3!.id,
 		round4: round4!.id,
 		quarterfinals: quarterfinals!.id,
 	};
-	const rows = Object.entries(options.matches).flatMap(([key, states]) => states.map((state, index) => ({
-		eventId,
-		roundId: roundIds[key as RoundKey],
-		externalId: state === 'manual'
-			? null
-			: `${key}-${index}`,
-		externalSource: state === 'manual'
-			? 'manual' as const
-			: 'melee' as const,
-		sortOrder: index,
-		hasResult: state === 'reported',
-		player1GameWins: state === 'reported'
-			? 2
-			: null,
-		player2GameWins: state === 'reported'
-			? 0
-			: null,
-		gameDraws: state === 'reported'
-			? 0
-			: null,
-		isBye: state === 'bye',
-	})));
-	if (rows.length > 0)
-		await db.insert(schema.matches).values(rows);
+	const rows = Object.entries(options.matches).flatMap(([key, states]) =>
+		states.map((state, index) => ({
+			eventId,
+			roundId: roundIds[key as RoundKey],
+			externalId: state === 'manual' ? null : `${key}-${index}`,
+			externalSource: state === 'manual' ? ('manual' as const) : ('melee' as const),
+			sortOrder: index,
+			hasResult: state === 'reported',
+			player1GameWins: state === 'reported' ? 2 : null,
+			player2GameWins: state === 'reported' ? 0 : null,
+			gameDraws: state === 'reported' ? 0 : null,
+			isBye: state === 'bye',
+		})),
+	);
+	if (rows.length > 0) await db.insert(schema.matches).values(rows);
 	return { eventId, roundIds };
 }
 
@@ -185,12 +185,13 @@ describe('loadCurrentRound', () => {
 		const resolved = await loadCurrentRound(eventId);
 
 		expect(resolved.current?.id ?? null).toBe(current && roundIds[current]);
-		expect(resolved.target.kind === 'idle'
-			? { kind: 'idle' }
-			: { kind: resolved.target.kind, roundId: resolved.target.round.id })
-			.toEqual(target.kind === 'idle'
-				? target
-				: { kind: target.kind, roundId: roundIds[target.round] });
+		expect(
+			resolved.target.kind === 'idle'
+				? { kind: 'idle' }
+				: { kind: resolved.target.kind, roundId: resolved.target.round.id },
+		).toEqual(
+			target.kind === 'idle' ? target : { kind: target.kind, roundId: roundIds[target.round] },
+		);
 	});
 
 	it('skips a manual-override Round: its Matches are not pairings and it is never probed', async () => {

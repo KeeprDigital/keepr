@@ -87,7 +87,7 @@ function makePlayerHistoryModeData() {
 describe('usePlayerHistoryModeData', () => {
 	beforeEach(() => {
 		Object.assign(mutableConfig, defaultConfig, {
-			columns: defaultConfig.columns.map(column => ({ ...column })),
+			columns: defaultConfig.columns.map((column) => ({ ...column })),
 		});
 		mockEventId.value = 1;
 		mockInteractive.value = false;
@@ -98,22 +98,23 @@ describe('usePlayerHistoryModeData', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
-	it('reads the configured player\'s match history through the Screen', async () => {
+	it("reads the configured player's match history through the Screen", async () => {
 		mutableConfig.playerId = 7;
 		mockFetch.mockResolvedValue({
 			player: mockPlayer,
-			history: [
-				historyEntry(),
-			],
+			history: [historyEntry()],
 		});
 
 		const { player, pageData, isEmpty, error } = makePlayerHistoryModeData();
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/screen-output/events/1/screens/1/player-history', expect.anything());
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/screen-output/events/1/screens/1/player-history',
+			expect.anything(),
+		);
 		expect(player.value).toEqual(mockPlayer);
 		expect(pageData.value).toHaveLength(1);
 		expect(pageData.value[0]!.opponentName).toBe('Nadia Rivers');
@@ -145,9 +146,7 @@ describe('usePlayerHistoryModeData', () => {
 		mutableConfig.playerId = 7;
 		mockFetch.mockResolvedValue({
 			player: mockPlayer,
-			history: [
-				historyEntry(),
-			],
+			history: [historyEntry()],
 		});
 
 		makePlayerHistoryModeData();
@@ -159,15 +158,20 @@ describe('usePlayerHistoryModeData', () => {
 		// The server derives the Player from the saved configuration, so a change
 		// is a second read of the same Screen resource.
 		expect(mockFetch).toHaveBeenCalledTimes(2);
-		expect(mockFetch).toHaveBeenLastCalledWith('/api/screen-output/events/1/screens/1/player-history', expect.anything());
+		expect(mockFetch).toHaveBeenLastCalledWith(
+			'/api/screen-output/events/1/screens/1/player-history',
+			expect.anything(),
+		);
 	});
 
 	it('is not empty while the first load is in flight', async () => {
 		mutableConfig.playerId = 7;
 		let resolveFetch!: (value: unknown) => void;
-		mockFetch.mockReturnValue(new Promise((resolve) => {
-			resolveFetch = resolve;
-		}));
+		mockFetch.mockReturnValue(
+			new Promise((resolve) => {
+				resolveFetch = resolve;
+			}),
+		);
 
 		const { loading, isEmpty, emptyMessage } = makePlayerHistoryModeData();
 		await nextTick();
@@ -189,9 +193,7 @@ describe('usePlayerHistoryModeData', () => {
 			mutableConfig.headerText = 'Feature Player';
 			mockFetch.mockResolvedValue({
 				player: mockPlayer,
-				history: [
-					historyEntry(),
-				],
+				history: [historyEntry()],
 			});
 
 			const { headerText } = makePlayerHistoryModeData();
@@ -204,9 +206,7 @@ describe('usePlayerHistoryModeData', () => {
 			mutableConfig.playerId = 7;
 			mockFetch.mockResolvedValue({
 				player: mockPlayer,
-				history: [
-					historyEntry(),
-				],
+				history: [historyEntry()],
 			});
 
 			const { headerText } = makePlayerHistoryModeData();
@@ -224,16 +224,8 @@ describe('usePlayerHistoryModeData', () => {
 
 	describe('formatOutcome', () => {
 		it.each([
-			[
-				'bye',
-				historyEntry({ outcome: 'bye' }),
-				'BYE',
-			],
-			[
-				'pending',
-				historyEntry({ outcome: 'pending', hasResult: false }),
-				'Pending',
-			],
+			['bye', historyEntry({ outcome: 'bye' }), 'BYE'],
+			['pending', historyEntry({ outcome: 'pending', hasResult: false }), 'Pending'],
 			[
 				'scored win',
 				historyEntry({
@@ -286,9 +278,7 @@ describe('usePlayerHistoryModeData', () => {
 		mutableConfig.playerId = 7;
 		mockFetch.mockResolvedValueOnce({
 			player: mockPlayer,
-			history: [
-				historyEntry(),
-			],
+			history: [historyEntry()],
 		});
 
 		const { error, player, pageData } = makePlayerHistoryModeData();
@@ -319,7 +309,7 @@ describe('usePlayerHistoryModeData', () => {
 		const { pageData } = makePlayerHistoryModeData();
 		await flushPromises();
 
-		expect(pageData.value.map(row => row.roundName)).toEqual(['Round 3']);
+		expect(pageData.value.map((row) => row.roundName)).toEqual(['Round 3']);
 	});
 
 	describe('freshness', () => {

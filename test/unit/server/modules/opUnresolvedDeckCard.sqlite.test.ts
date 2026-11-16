@@ -10,7 +10,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // them. bandai-keepr is faked at its bulk lookup port, Ably at publish.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 const runtimeConfig = { bandaiKeeprApiKey: 'test-key', bandaiKeeprApiUrl: 'https://op-api.test' };
 vi.stubGlobal('useRuntimeConfig', () => runtimeConfig);
 
@@ -71,21 +72,21 @@ afterAll(async () => {
 });
 
 async function stageEvent(game: 'op' | 'mtg' = 'op') {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'One Piece Regional', game, featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	return event!.id;
 }
 
 async function stagePlayer(eventId: number, nickname: string, name = '') {
-	const [player] = await db.insert(schema.players)
-		.values({ eventId, name, nickname })
-		.returning();
+	const [player] = await db.insert(schema.players).values({ eventId, name, nickname }).returning();
 	return player!;
 }
 
 async function stageSlot(eventId: number, player1Name: string) {
-	const [slot] = await db.insert(schema.featureMatches)
+	const [slot] = await db
+		.insert(schema.featureMatches)
 		.values({
 			eventId,
 			player1Data: { name: player1Name },
@@ -95,7 +96,13 @@ async function stageSlot(eventId: number, player1Name: string) {
 	return slot!;
 }
 
-function writePlayer(eventId: number, playerId: number, text: string, source: 'hand' | 'import' = 'import', leaderNumber?: string) {
+function writePlayer(
+	eventId: number,
+	playerId: number,
+	text: string,
+	source: 'hand' | 'import' = 'import',
+	leaderNumber?: string,
+) {
 	return opDeckListWriteModule().write({
 		eventId,
 		owner: { kind: 'player', playerId },
@@ -115,7 +122,7 @@ function pasteToSlot(eventId: number, slotId: number, text: string) {
 
 const unresolved = opUnresolvedDeckCardModule();
 
-describe('an OP Event\'s Unresolved Deck Cards', () => {
+describe("an OP Event's Unresolved Deck Cards", () => {
 	it('are listed by card number, Event-wide, with each Deck List holding one and its copies', async () => {
 		const eventId = await stageEvent();
 		const otherEventId = await stageEvent();
@@ -179,7 +186,8 @@ async function sideDeckList(eventId: number, slotId: number) {
 	const slot = (await db.query.featureMatches.findFirst({
 		where: eq(schema.featureMatches.id, slotId),
 	}))!;
-	const reference = (slot.player1Data!.gameData as { featureMatchDeckList: { id: number } }).featureMatchDeckList;
+	const reference = (slot.player1Data!.gameData as { featureMatchDeckList: { id: number } })
+		.featureMatchDeckList;
 	return (await featureMatchDeckListService().findById(reference.id, slotId, eventId))!;
 }
 
@@ -202,17 +210,17 @@ describe('retrying an Unresolved Deck Card', () => {
 		});
 		const deck = await deckOf(eventId, ana.id);
 		expect(deck.id).not.toBe(before.deckList.id);
-		expect(deck.entries.find(entry => entry.number === 'OP99-999')).toMatchObject({
+		expect(deck.entries.find((entry) => entry.number === 'OP99-999')).toMatchObject({
 			quantity: 4,
 			card: { name: 'Late Card' },
 		});
 		const side = await sideDeckList(eventId, slot.id);
 		expect(side.id).not.toBe(pasted.deckList.id);
-		expect(side.entries.find(entry => entry.number === 'OP99-999')).toMatchObject({
+		expect(side.entries.find((entry) => entry.number === 'OP99-999')).toMatchObject({
 			quantity: 1,
 			card: { name: 'Late Card' },
 		});
-		expect((await unresolved.list({ eventId })).map(card => card.number)).toEqual(['OP98-001']);
+		expect((await unresolved.list({ eventId })).map((card) => card.number)).toEqual(['OP98-001']);
 		expect(upstream.batches()[0]).toEqual(['OP99-999']);
 	});
 
@@ -236,7 +244,9 @@ describe('retrying an Unresolved Deck Card', () => {
 		upstream.know(LATE);
 		upstream.fail(new Error('bandai-keepr down'));
 
-		await expect(unresolved.retry({ eventId, number: 'OP99-999' })).rejects.toThrow('bandai-keepr down');
+		await expect(unresolved.retry({ eventId, number: 'OP99-999' })).rejects.toThrow(
+			'bandai-keepr down',
+		);
 
 		expect((await deckOf(eventId, ana.id)).id).toBe(before.deckList.id);
 	});
@@ -295,13 +305,23 @@ describe('a card many Player Deck Lists hold', () => {
 		const { eventId, holders } = await stageHolders(3);
 		published.length = 0;
 
-		const answer = await unresolved.resolve({ eventId, number: 'OP91-025', cardNumber: 'OP01-025' });
+		const answer = await unresolved.resolve({
+			eventId,
+			number: 'OP91-025',
+			cardNumber: 'OP01-025',
+		});
 
 		expect(answer.rewritten).toBe(3);
 		const announced = published
-			.filter(message => message.type === 'player:updated')
-			.map(message => (message.payload as { player: { id: number; gameData: { deckList: { id: number } } } }).player);
-		expect(announced.map(player => player.id).toSorted()).toEqual(holders.map(player => player.id).toSorted());
+			.filter((message) => message.type === 'player:updated')
+			.map(
+				(message) =>
+					(message.payload as { player: { id: number; gameData: { deckList: { id: number } } } })
+						.player,
+			);
+		expect(announced.map((player) => player.id).toSorted()).toEqual(
+			holders.map((player) => player.id).toSorted(),
+		);
 		for (const player of announced)
 			expect(player.gameData.deckList.id).toBe((await deckOf(eventId, player.id)).id);
 	});
@@ -309,21 +329,24 @@ describe('a card many Player Deck Lists hold', () => {
 	// All or nothing: a failure partway leaves no Player's Deck List rewritten.
 	it('is rewritten in none of them when one cannot be written', async () => {
 		const { eventId, holders } = await stageHolders(3);
-		const before = await Promise.all(holders.map(player => deckOf(eventId, player.id)));
+		const before = await Promise.all(holders.map((player) => deckOf(eventId, player.id)));
 		const allow = await refuseDeckListOf(holders[2]!.id);
 		published.length = 0;
 
-		await expect(unresolved.resolve({ eventId, number: 'OP91-025', cardNumber: 'OP01-025' })).rejects.toThrow();
+		await expect(
+			unresolved.resolve({ eventId, number: 'OP91-025', cardNumber: 'OP01-025' }),
+		).rejects.toThrow();
 		await allow();
 
-		expect(await Promise.all(holders.map(async player => (await deckOf(eventId, player.id)).id)))
-			.toEqual(before.map(deckList => deckList.id));
-		expect(published.filter(message => message.type === 'player:updated')).toEqual([]);
+		expect(
+			await Promise.all(holders.map(async (player) => (await deckOf(eventId, player.id)).id)),
+		).toEqual(before.map((deckList) => deckList.id));
+		expect(published.filter((message) => message.type === 'player:updated')).toEqual([]);
 	});
 });
 
 describe('resolving an Unresolved Deck Card to a picked card', () => {
-	it('rewrites the number in every Player and Slot side Deck List in the Event holding it, adding into the picked card\'s entry', async () => {
+	it("rewrites the number in every Player and Slot side Deck List in the Event holding it, adding into the picked card's entry", async () => {
 		const eventId = await stageEvent();
 		const otherEventId = await stageEvent();
 		const ana = await stagePlayer(eventId, 'ana');
@@ -333,18 +356,29 @@ describe('resolving an Unresolved Deck Card to a picked card', () => {
 		await pasteToSlot(eventId, slot.id, '1x OP01-001\n1x OP91-025');
 		const untouched = await writePlayer(otherEventId, dan.id, '1x OP01-001\n3x OP91-025');
 
-		const answer = await unresolved.resolve({ eventId, number: 'OP91-025', cardNumber: 'OP01-025' });
+		const answer = await unresolved.resolve({
+			eventId,
+			number: 'OP91-025',
+			cardNumber: 'OP01-025',
+		});
 
 		expect(answer).toEqual({
 			number: 'OP91-025',
 			card: { number: 'OP01-025', name: 'Roronoa Zoro' },
 			rewritten: 2,
 		});
-		expect((await deckOf(eventId, ana.id)).entries.map(({ number, quantity }) => ({ number, quantity }))).toEqual([
+		expect(
+			(await deckOf(eventId, ana.id)).entries.map(({ number, quantity }) => ({ number, quantity })),
+		).toEqual([
 			{ number: 'OP01-001', quantity: 1 },
 			{ number: 'OP01-025', quantity: 5 },
 		]);
-		expect((await sideDeckList(eventId, slot.id)).entries.map(({ number, quantity }) => ({ number, quantity }))).toEqual([
+		expect(
+			(await sideDeckList(eventId, slot.id)).entries.map(({ number, quantity }) => ({
+				number,
+				quantity,
+			})),
+		).toEqual([
 			{ number: 'OP01-001', quantity: 1 },
 			{ number: 'OP01-025', quantity: 1 },
 		]);
@@ -352,16 +386,14 @@ describe('resolving an Unresolved Deck Card to a picked card', () => {
 		expect((await deckOf(otherEventId, dan.id)).id).toBe(untouched.deckList.id);
 	});
 
-	it('gives the Players whose Leader it was their Leader\'s Archetype, announced with the Player', async () => {
+	it("gives the Players whose Leader it was their Leader's Archetype, announced with the Player", async () => {
 		const eventId = await stageEvent();
 		const ana = await stagePlayer(eventId, 'ana');
 		await writePlayer(eventId, ana.id, '4x OP01-025', 'import', 'OP13-097');
 		expect(await unresolved.list({ eventId })).toMatchObject([
 			{
 				number: 'OP13-097',
-				deckLists: [
-					{ asLeader: true },
-				],
+				deckLists: [{ asLeader: true }],
 			},
 		]);
 		upstream.know(LATE_LEADER);
@@ -377,28 +409,23 @@ describe('resolving an Unresolved Deck Card to a picked card', () => {
 		});
 		expect(archetype).toMatchObject({ name: 'Imu', leaderCardNumber: 'OP13-079' });
 		expect((await deckOf(eventId, ana.id)).leaderNumber).toBe('OP13-079');
-		expect(published.map(message => message.type)).toEqual(['archetype:created', 'player:updated']);
+		expect(published.map((message) => message.type)).toEqual([
+			'archetype:created',
+			'player:updated',
+		]);
 	});
 
 	it.each([
-		[
-			'a card bandai-keepr does not know',
-			'OP99-999',
-			'OP77-777',
-			400,
-		],
-		[
-			'a number no Deck List holds',
-			'OP55-555',
-			'OP01-025',
-			404,
-		],
+		['a card bandai-keepr does not know', 'OP99-999', 'OP77-777', 400],
+		['a number no Deck List holds', 'OP55-555', 'OP01-025', 404],
 	])('refuses %s, writing nothing', async (_case, number, cardNumber, statusCode) => {
 		const eventId = await stageEvent();
 		const ana = await stagePlayer(eventId, 'ana');
 		const before = await writePlayer(eventId, ana.id, '1x OP01-001\n4x OP99-999');
 
-		await expect(unresolved.resolve({ eventId, number, cardNumber })).rejects.toMatchObject({ statusCode });
+		await expect(unresolved.resolve({ eventId, number, cardNumber })).rejects.toMatchObject({
+			statusCode,
+		});
 
 		expect((await deckOf(eventId, ana.id)).id).toBe(before.deckList.id);
 	});
@@ -406,16 +433,11 @@ describe('resolving an Unresolved Deck Card to a picked card', () => {
 	it.each([
 		[
 			'resolve',
-			(eventId: number) => unresolved.resolve({ eventId, number: 'OP99-999', cardNumber: 'OP01-025' }),
+			(eventId: number) =>
+				unresolved.resolve({ eventId, number: 'OP99-999', cardNumber: 'OP01-025' }),
 		],
-		[
-			'retry',
-			(eventId: number) => unresolved.retry({ eventId, number: 'OP99-999' }),
-		],
-		[
-			'list',
-			(eventId: number) => unresolved.list({ eventId }),
-		],
+		['retry', (eventId: number) => unresolved.retry({ eventId, number: 'OP99-999' })],
+		['list', (eventId: number) => unresolved.list({ eventId })],
 	])('is refused on a Magic: The Gathering Event: %s', async (_action, act) => {
 		const eventId = await stageEvent('mtg');
 
@@ -452,17 +474,28 @@ describe('a resolved Unresolved Deck Card', () => {
 		};
 	}
 
-	function savedAs({ leaderNumber, entries }: { leaderNumber: string | null; entries: ReadonlyArray<{ number: string; quantity: number; card: unknown }> }) {
+	function savedAs({
+		leaderNumber,
+		entries,
+	}: {
+		leaderNumber: string | null;
+		entries: ReadonlyArray<{ number: string; quantity: number; card: unknown }>;
+	}) {
 		return {
 			leaderNumber,
-			entries: entries.map(({ number, quantity, card }) => ({ number, quantity, known: card !== null })),
+			entries: entries.map(({ number, quantity, card }) => ({
+				number,
+				quantity,
+				known: card !== null,
+			})),
 		};
 	}
 
 	it.each([
 		[
 			'pasted to a Player',
-			async ({ eventId, ana }: Resolved) => (await writePlayer(eventId, ana.id, '1x OP01-001\n3x OP91-025', 'hand')).deckList,
+			async ({ eventId, ana }: Resolved) =>
+				(await writePlayer(eventId, ana.id, '1x OP01-001\n3x OP91-025', 'hand')).deckList,
 			{
 				leaderNumber: 'OP01-001',
 				entries: [
@@ -473,18 +506,21 @@ describe('a resolved Unresolved Deck Card', () => {
 		],
 		[
 			'imported beside copies of the card it names, added into them',
-			async ({ eventId, ana }: Resolved) => (await opDeckListWriteModule().write({
-				eventId,
-				owner: { kind: 'player', playerId: ana.id },
-				input: {
-					entries: [
-						{ number: 'OP01-025', quantity: 1 },
-						{ number: 'OP91-025', quantity: 3 },
-					],
-					leaderNumber: 'OP01-001',
-				},
-				source: 'import',
-			})).deckList,
+			async ({ eventId, ana }: Resolved) =>
+				(
+					await opDeckListWriteModule().write({
+						eventId,
+						owner: { kind: 'player', playerId: ana.id },
+						input: {
+							entries: [
+								{ number: 'OP01-025', quantity: 1 },
+								{ number: 'OP91-025', quantity: 3 },
+							],
+							leaderNumber: 'OP01-001',
+						},
+						source: 'import',
+					})
+				).deckList,
 			{
 				leaderNumber: 'OP01-001',
 				entries: [
@@ -495,7 +531,8 @@ describe('a resolved Unresolved Deck Card', () => {
 		],
 		[
 			'marked as the Leader',
-			async ({ eventId, ana }: Resolved) => (await writePlayer(eventId, ana.id, '2x OP01-040', 'import', 'OP13-097')).deckList,
+			async ({ eventId, ana }: Resolved) =>
+				(await writePlayer(eventId, ana.id, '2x OP01-040', 'import', 'OP13-097')).deckList,
 			{
 				leaderNumber: 'OP13-079',
 				entries: [
@@ -506,7 +543,8 @@ describe('a resolved Unresolved Deck Card', () => {
 		],
 		[
 			'pasted to a Slot side',
-			async ({ eventId, slotId }: Resolved) => (await pasteToSlot(eventId, slotId, '1x OP01-001\n2x OP91-025')).deckList,
+			async ({ eventId, slotId }: Resolved) =>
+				(await pasteToSlot(eventId, slotId, '1x OP01-001\n2x OP91-025')).deckList,
 			{
 				leaderNumber: 'OP01-001',
 				entries: [
@@ -517,7 +555,8 @@ describe('a resolved Unresolved Deck Card', () => {
 		],
 		[
 			'written in another Event, which keeps it unresolved',
-			async ({ otherEventId, dan }: Resolved) => (await writePlayer(otherEventId, dan.id, '1x OP01-001\n3x OP91-025')).deckList,
+			async ({ otherEventId, dan }: Resolved) =>
+				(await writePlayer(otherEventId, dan.id, '1x OP01-001\n3x OP91-025')).deckList,
 			{
 				leaderNumber: 'OP01-001',
 				entries: [
@@ -526,10 +565,13 @@ describe('a resolved Unresolved Deck Card', () => {
 				],
 			},
 		],
-	])('saves the card it was resolved to when a later write holds its number: %s', async (_case, write, expected) => {
-		const resolved = await stageResolved();
+	])(
+		'saves the card it was resolved to when a later write holds its number: %s',
+		async (_case, write, expected) => {
+			const resolved = await stageResolved();
 
-		expect(savedAs(await write(resolved))).toEqual(expected);
-		expect(await unresolved.list({ eventId: resolved.eventId })).toEqual([]);
-	});
+			expect(savedAs(await write(resolved))).toEqual(expected);
+			expect(await unresolved.list({ eventId: resolved.eventId })).toEqual([]);
+		},
+	);
 });

@@ -101,7 +101,10 @@ export interface GraphicItemDefinition {
 export type GraphicTypographyItem = Extract<GraphicItemConfig, { typography: GraphicTypography }>;
 
 /** A Graphic Item whose configuration carries a Text Overflow Policy. */
-export type GraphicTextOverflowItem = Extract<GraphicItemConfig, { overflowPolicy: TextOverflowPolicy }>;
+export type GraphicTextOverflowItem = Extract<
+	GraphicItemConfig,
+	{ overflowPolicy: TextOverflowPolicy }
+>;
 
 export interface GraphicTypographyDeclaration {
 	/**
@@ -128,7 +131,9 @@ type GraphicItemOfKind<K extends GraphicItemKind> = Extract<GraphicItemConfig, {
  * key-based `Extract` would also admit every kind lacking an optional key.
  */
 type GraphicItemWithKey<P extends PropertyKey, I = GraphicItemConfig> = I extends unknown
-	? P extends keyof I ? I : never
+	? P extends keyof I
+		? I
+		: never
 	: never;
 
 /**
@@ -141,10 +146,14 @@ export type GraphicSurfaceStyleSlot = Extract<
 >;
 
 /** Every place a Graphic Item can keep its Shape Geometry, named as its Theme binding slot. */
-export type GraphicShapeGeometrySlot = Extract<GraphicThemeSlot, 'geometry' | 'clipGeometry' | 'boxGeometry'>;
+export type GraphicShapeGeometrySlot = Extract<
+	GraphicThemeSlot,
+	'geometry' | 'clipGeometry' | 'boxGeometry'
+>;
 
 /** A Graphic Item that can keep a Graphic Surface Style in this slot. */
-export type GraphicSurfaceStyleItem<S extends GraphicSurfaceStyleSlot = GraphicSurfaceStyleSlot> = GraphicItemWithKey<S>;
+export type GraphicSurfaceStyleItem<S extends GraphicSurfaceStyleSlot = GraphicSurfaceStyleSlot> =
+	GraphicItemWithKey<S>;
 
 /** A Graphic Item that can keep a Shape Geometry. */
 export type GraphicShapeGeometryItem = GraphicItemWithKey<GraphicShapeGeometrySlot>;
@@ -192,7 +201,13 @@ type GraphicSurfaceStylesDeclarationFor<K extends GraphicItemKind> = [
 	Extract<keyof GraphicItemOfKind<K>, GraphicSurfaceStyleSlot>,
 ] extends [never]
 	? { surfaceStyles?: undefined }
-	: { surfaceStyles: { [S in Extract<keyof GraphicItemOfKind<K>, GraphicSurfaceStyleSlot>]: GraphicDisplayDeclarationFor<K> } };
+	: {
+			surfaceStyles: {
+				[
+					S in Extract<keyof GraphicItemOfKind<K>, GraphicSurfaceStyleSlot>
+				]: GraphicDisplayDeclarationFor<K>;
+			};
+		};
 
 type GraphicShapeGeometryDeclarationFor<K extends GraphicItemKind> = [
 	Extract<keyof GraphicItemOfKind<K>, GraphicShapeGeometrySlot>,
@@ -201,22 +216,30 @@ type GraphicShapeGeometryDeclarationFor<K extends GraphicItemKind> = [
 	: {
 			shapeGeometry: GraphicDisplayDeclarationFor<K> & {
 				slot: Extract<keyof GraphicItemOfKind<K>, GraphicShapeGeometrySlot>;
-				bounds?: { width: NumericKeyOf<GraphicItemOfKind<K>>; height: NumericKeyOf<GraphicItemOfKind<K>> };
+				bounds?: {
+					width: NumericKeyOf<GraphicItemOfKind<K>>;
+					height: NumericKeyOf<GraphicItemOfKind<K>>;
+				};
 			};
 		};
 
-type GraphicPlayerSideDeclarationFor<K extends GraphicItemKind> = K extends GraphicPlayerSideItem['type']
-	? { playerSide: Seat extends Extract<GraphicPlayerSideItem, { type: K }>['playerSide'] ? 'seat' : 'pair' }
-	: { playerSide?: undefined };
+type GraphicPlayerSideDeclarationFor<K extends GraphicItemKind> =
+	K extends GraphicPlayerSideItem['type']
+		? {
+				playerSide: Seat extends Extract<GraphicPlayerSideItem, { type: K }>['playerSide']
+					? 'seat'
+					: 'pair';
+			}
+		: { playerSide?: undefined };
 
 type GraphicItemDefinitionFor<K extends GraphicItemKind> = Omit<
 	GraphicItemDefinition,
 	'typography' | 'surfaceStyles' | 'shapeGeometry' | 'playerSide'
->
-& GraphicTypographyDeclarationFor<K>
-& GraphicSurfaceStylesDeclarationFor<K>
-& GraphicShapeGeometryDeclarationFor<K>
-& GraphicPlayerSideDeclarationFor<K>;
+> &
+	GraphicTypographyDeclarationFor<K> &
+	GraphicSurfaceStylesDeclarationFor<K> &
+	GraphicShapeGeometryDeclarationFor<K> &
+	GraphicPlayerSideDeclarationFor<K>;
 
 /**
  * What a kind's Definition must declare about typography, decided by its stored
@@ -224,14 +247,15 @@ type GraphicItemDefinitionFor<K extends GraphicItemKind> = Omit<
  * config carries a Text Overflow Policy must say so, and no other kind may. So a
  * declaration cannot drift from the schema it describes.
  */
-type GraphicTypographyDeclarationFor<K extends GraphicItemKind> = K extends GraphicTypographyItem['type']
-	? {
-			typography: {
-				textOverflowPolicy: K extends GraphicTextOverflowItem['type'] ? true : false;
-				paintsText?: (item: GraphicItemOfKind<K>) => boolean;
-			};
-		}
-	: { typography?: undefined };
+type GraphicTypographyDeclarationFor<K extends GraphicItemKind> =
+	K extends GraphicTypographyItem['type']
+		? {
+				typography: {
+					textOverflowPolicy: K extends GraphicTextOverflowItem['type'] ? true : false;
+					paintsText?: (item: GraphicItemOfKind<K>) => boolean;
+				};
+			}
+		: { typography?: undefined };
 
 export const DEFAULT_GRAPHIC_TYPOGRAPHY: GraphicTypography = {
 	font: applicationGraphicFont(DEFAULT_GRAPHIC_FONT_ID),
@@ -283,15 +307,11 @@ function defaultIconRect(options: GraphicItemDefaultsOptions) {
 
 /** A Graphic Fill in one phrase, for the authoring tree's item summaries. */
 export function graphicFillSummary(fill: GraphicFill): string {
-	return fill.type === 'solid'
-		? fill.color
-		: `gradient • ${fill.stops.length} stops`;
+	return fill.type === 'solid' ? fill.color : `gradient • ${fill.stops.length} stops`;
 }
 
 function surfaceSummary(style: GraphicSurfaceStyle | undefined): string {
-	return style
-		? graphicFillSummary(style.fill)
-		: 'inherited style';
+	return style ? graphicFillSummary(style.fill) : 'inherited style';
 }
 
 /** Whether a Game Wins Item renders win boxes, rather than its win count as text. */
@@ -307,14 +327,14 @@ function playerSideLabel(side: Seat): string {
 }
 
 const DEFINITIONS = {
-	'text': {
+	text: {
 		kind: 'text',
 		configurationVersion: 1,
 		label: 'Text',
 		icon: 'i-lucide-type',
 		typography: { textOverflowPolicy: true },
 		surfaceStyles: { surfaceStyle: {} },
-		createDefault: options => ({
+		createDefault: (options) => ({
 			type: 'text',
 			id: options.id,
 			label: options.label,
@@ -326,18 +346,16 @@ const DEFINITIONS = {
 			overflowPolicy: 'ellipsis',
 			minFontSize: 24,
 		}),
-		summary: item => item.type === 'text'
-			? (item.text.trim() || 'Empty text')
-			: 'Text',
+		summary: (item) => (item.type === 'text' ? item.text.trim() || 'Empty text' : 'Text'),
 	},
-	'shape': {
+	shape: {
 		kind: 'shape',
 		configurationVersion: 1,
 		label: 'Shape',
 		icon: 'i-lucide-square',
 		surfaceStyles: { surfaceStyle: {} },
 		shapeGeometry: { slot: 'geometry' },
-		createDefault: options => ({
+		createDefault: (options) => ({
 			type: 'shape',
 			id: options.id,
 			label: options.label,
@@ -347,11 +365,12 @@ const DEFINITIONS = {
 			geometry: squareShapeGeometry(),
 			surfaceStyle: createDefaultGraphicSurfaceStyle(),
 		}),
-		summary: item => item.type === 'shape'
-			? `${surfaceSummary(item.surfaceStyle)} • ${shapeGeometrySummary(item.geometry)}`
-			: 'Shape',
+		summary: (item) =>
+			item.type === 'shape'
+				? `${surfaceSummary(item.surfaceStyle)} • ${shapeGeometrySummary(item.geometry)}`
+				: 'Shape',
 	},
-	'media': {
+	media: {
 		kind: 'media',
 		configurationVersion: 1,
 		label: 'Media',
@@ -359,7 +378,7 @@ const DEFINITIONS = {
 		// Clips to it only while clipping is switched on, which `clipGeometry` being
 		// present already says; with none, there is nothing for the controls to shape.
 		shapeGeometry: { slot: 'clipGeometry' },
-		createDefault: options => ({
+		createDefault: (options) => ({
 			type: 'media',
 			id: options.id,
 			label: options.label,
@@ -379,13 +398,9 @@ const DEFINITIONS = {
 			loop: true,
 		}),
 		summary: (item) => {
-			if (item.type !== 'media')
-				return 'Media';
-			if (!item.asset)
-				return 'No Graphic Asset';
-			return `${item.mediaKind === 'silent-video'
-				? 'silent video'
-				: 'image'} • ${item.fit}`;
+			if (item.type !== 'media') return 'Media';
+			if (!item.asset) return 'No Graphic Asset';
+			return `${item.mediaKind === 'silent-video' ? 'silent video' : 'image'} • ${item.fit}`;
 		},
 	},
 	'social-network-icon': {
@@ -395,7 +410,7 @@ const DEFINITIONS = {
 		label: 'Social Network Icon',
 		icon: 'i-lucide-at-sign',
 		requiredHost: 'broadcast-graphics',
-		createDefault: options => ({
+		createDefault: (options) => ({
 			type: 'social-network-icon',
 			id: options.id,
 			label: options.label,
@@ -406,20 +421,23 @@ const DEFINITIONS = {
 			color: '#ffffff',
 			opacity: 1,
 		}),
-		summary: item => item.type === 'social-network-icon'
-			? `${typeof item.network === 'string'
-				? SUPPORTED_SOCIAL_NETWORK_BY_KEY[item.network].label
-				: `Projection ${item.network.projectionKey}`} • ${item.color}`
-			: 'Social Network Icon',
+		summary: (item) =>
+			item.type === 'social-network-icon'
+				? `${
+						typeof item.network === 'string'
+							? SUPPORTED_SOCIAL_NETWORK_BY_KEY[item.network].label
+							: `Projection ${item.network.projectionKey}`
+					} • ${item.color}`
+				: 'Social Network Icon',
 	},
-	'group': {
+	group: {
 		kind: 'group',
 		configurationVersion: 1,
 		label: 'Group',
 		icon: 'i-lucide-group',
 		surfaceStyles: { surfaceStyle: {}, defaultChildSurfaceStyle: {} },
 		shapeGeometry: { slot: 'geometry' },
-		createDefault: options => ({
+		createDefault: (options) => ({
 			type: 'group',
 			id: options.id,
 			label: options.label,
@@ -435,11 +453,10 @@ const DEFINITIONS = {
 			geometry: squareShapeGeometry(),
 			children: [],
 		}),
-		summary: item => item.type === 'group'
-			? `${item.arrangement} • ${item.children.length} items`
-			: 'Group',
+		summary: (item) =>
+			item.type === 'group' ? `${item.arrangement} • ${item.children.length} items` : 'Group',
 	},
-	'clock': {
+	clock: {
 		kind: 'clock',
 		configurationVersion: 1,
 		label: 'Clock',
@@ -447,7 +464,7 @@ const DEFINITIONS = {
 		requiredContext: 'feature-match',
 		typography: { textOverflowPolicy: true },
 		surfaceStyles: { surfaceStyle: {} },
-		createDefault: options => ({
+		createDefault: (options) => ({
 			type: 'clock',
 			id: options.id,
 			label: options.label,
@@ -471,7 +488,7 @@ const DEFINITIONS = {
 		typography: { textOverflowPolicy: true },
 		surfaceStyles: { surfaceStyle: {} },
 		playerSide: 'seat',
-		createDefault: options => ({
+		createDefault: (options) => ({
 			type: 'player-life',
 			id: options.id,
 			label: options.label,
@@ -486,9 +503,8 @@ const DEFINITIONS = {
 			lifeAnimationDurationMs: 420,
 			lifeAnimationAccentColor: '#ffffff',
 		}),
-		summary: item => item.type === 'player-life'
-			? `${playerSideLabel(item.playerSide)} life`
-			: 'Life',
+		summary: (item) =>
+			item.type === 'player-life' ? `${playerSideLabel(item.playerSide)} life` : 'Life',
 	},
 	'game-wins': {
 		kind: 'game-wins',
@@ -500,7 +516,7 @@ const DEFINITIONS = {
 		// its bounds, so no Text Overflow Policy bounds it.
 		typography: {
 			textOverflowPolicy: false,
-			paintsText: item => item.displayMode === 'number',
+			paintsText: (item) => item.displayMode === 'number',
 		},
 		// Its own surface frames the indicator in either display mode; the two box
 		// surfaces and the box geometry are on screen only while boxes are. A box
@@ -516,7 +532,7 @@ const DEFINITIONS = {
 			bounds: { width: 'boxWidth', height: 'boxHeight' },
 		},
 		playerSide: 'pair',
-		createDefault: options => ({
+		createDefault: (options) => ({
 			type: 'game-wins',
 			id: options.id,
 			label: options.label,
@@ -544,9 +560,10 @@ const DEFINITIONS = {
 			},
 			typography: { ...DEFAULT_GRAPHIC_TYPOGRAPHY, textAlign: 'center' },
 		}),
-		summary: item => item.type === 'game-wins'
-			? `${playerSideLabel(item.playerSide)} wins • ${item.displayMode}`
-			: 'Wins',
+		summary: (item) =>
+			item.type === 'game-wins'
+				? `${playerSideLabel(item.playerSide)} wins • ${item.displayMode}`
+				: 'Wins',
 	},
 	'deck-list': {
 		kind: 'deck-list',
@@ -558,10 +575,10 @@ const DEFINITIONS = {
 		// fixed shrink-then-clip rather than an authored Text Overflow Policy.
 		typography: {
 			textOverflowPolicy: false,
-			paintsText: item => item.view === 'list',
+			paintsText: (item) => item.view === 'list',
 		},
 		playerSide: 'pair',
-		createDefault: options => ({
+		createDefault: (options) => ({
 			type: 'deck-list',
 			id: options.id,
 			label: options.label,
@@ -580,9 +597,10 @@ const DEFINITIONS = {
 			// row's rather than the display typography the other kinds start with.
 			typography: { ...DEFAULT_GRAPHIC_TYPOGRAPHY, fontSize: 32 },
 		}),
-		summary: item => item.type === 'deck-list'
-			? `${playerSideLabel(item.playerSide)} sideboard • ${item.view}`
-			: 'Deck List',
+		summary: (item) =>
+			item.type === 'deck-list'
+				? `${playerSideLabel(item.playerSide)} sideboard • ${item.view}`
+				: 'Deck List',
 	},
 	'commander-damage': {
 		kind: 'commander-damage',
@@ -594,7 +612,7 @@ const DEFINITIONS = {
 		typography: { textOverflowPolicy: true },
 		surfaceStyles: { surfaceStyle: {} },
 		playerSide: 'seat',
-		createDefault: options => ({
+		createDefault: (options) => ({
 			type: 'commander-damage',
 			id: options.id,
 			label: options.label,
@@ -607,9 +625,10 @@ const DEFINITIONS = {
 			overflowPolicy: 'shrink',
 			minFontSize: 20,
 		}),
-		summary: item => item.type === 'commander-damage'
-			? `${playerSideLabel(item.playerSide)} Commander Damage`
-			: 'Commander Damage',
+		summary: (item) =>
+			item.type === 'commander-damage'
+				? `${playerSideLabel(item.playerSide)} Commander Damage`
+				: 'Commander Damage',
 	},
 	'seat-indicator': {
 		kind: 'seat-indicator',
@@ -620,7 +639,7 @@ const DEFINITIONS = {
 		surfaceStyles: { surfaceStyle: {} },
 		shapeGeometry: { slot: 'geometry' },
 		playerSide: 'seat',
-		createDefault: options => ({
+		createDefault: (options) => ({
 			type: 'seat-indicator',
 			id: options.id,
 			label: options.label,
@@ -632,11 +651,12 @@ const DEFINITIONS = {
 			geometry: squareShapeGeometry(),
 			surfaceStyle: createDefaultGraphicSurfaceStyle(),
 		}),
-		summary: item => item.type === 'seat-indicator'
-			? `${playerSideLabel(item.playerSide)} • ${item.state === 'active'
-				? 'active player'
-				: 'Eliminated'}`
-			: 'Seat Indicator',
+		summary: (item) =>
+			item.type === 'seat-indicator'
+				? `${playerSideLabel(item.playerSide)} • ${
+						item.state === 'active' ? 'active player' : 'Eliminated'
+					}`
+				: 'Seat Indicator',
 	},
 } satisfies { [K in GraphicItemKind]: GraphicItemDefinitionFor<K> };
 
@@ -644,7 +664,7 @@ const DEFINITIONS = {
 export const GRAPHIC_ITEM_KINDS = Object.keys(DEFINITIONS) as readonly GraphicItemKind[];
 
 /** The kinds a Graphic Group may contain: every base kind except another group. */
-export const GRAPHIC_GROUP_CHILD_KINDS = GRAPHIC_ITEM_KINDS.filter(kind => kind !== 'group');
+export const GRAPHIC_GROUP_CHILD_KINDS = GRAPHIC_ITEM_KINDS.filter((kind) => kind !== 'group');
 
 export function getGraphicItemDefinition(kind: GraphicItemKind): GraphicItemDefinition {
 	// Each entry's `paintsText` and `paints` take only its own kind, which the wide
@@ -658,22 +678,28 @@ export function isGraphicItemDefinitionAvailable(
 	definition: GraphicItemDefinition,
 	contract: GraphicsHostContract,
 ): boolean {
-	return (definition.requiredHost === undefined || definition.requiredHost === contract.hostId)
-		&& (definition.requiredContext === undefined
-			|| contract.contextKinds.includes(definition.requiredContext));
+	return (
+		(definition.requiredHost === undefined || definition.requiredHost === contract.hostId) &&
+		(definition.requiredContext === undefined ||
+			contract.contextKinds.includes(definition.requiredContext))
+	);
 }
 
-export function graphicItemDefinitionsForHost(contract: GraphicsHostContract): readonly GraphicItemDefinition[] {
-	return GRAPHIC_ITEM_KINDS
-		.map(getGraphicItemDefinition)
-		.filter(definition => isGraphicItemDefinitionAvailable(definition, contract));
+export function graphicItemDefinitionsForHost(
+	contract: GraphicsHostContract,
+): readonly GraphicItemDefinition[] {
+	return GRAPHIC_ITEM_KINDS.map(getGraphicItemDefinition).filter((definition) =>
+		isGraphicItemDefinitionAvailable(definition, contract),
+	);
 }
 
 /** The Definitions a Graphic Group may offer: never another Graphic Group. */
 export function graphicGroupChildDefinitionsForHost(
 	contract: GraphicsHostContract,
 ): readonly GraphicItemDefinition[] {
-	return graphicItemDefinitionsForHost(contract).filter(definition => definition.kind !== 'group');
+	return graphicItemDefinitionsForHost(contract).filter(
+		(definition) => definition.kind !== 'group',
+	);
 }
 
 /**
@@ -695,8 +721,7 @@ export function ownsTextOverflowPolicy(item: GraphicItemConfig): item is Graphic
  */
 export function paintedGraphicTypography(item: GraphicItemConfig): GraphicTypography | null {
 	const declaration = getGraphicItemDefinition(item.type).typography;
-	if (!declaration || !ownsGraphicTypography(item))
-		return null;
+	if (!declaration || !ownsGraphicTypography(item)) return null;
 	return declaration.paintsText === undefined || declaration.paintsText(item)
 		? item.typography
 		: null;
@@ -738,9 +763,11 @@ export function paintedGraphicSurfaceStyles(
 ): Partial<Record<GraphicSurfaceStyleSlot, GraphicSurfaceStyle | null>> {
 	const declarations = getGraphicItemDefinition(item.type).surfaceStyles ?? {};
 	const painted: Partial<Record<GraphicSurfaceStyleSlot, GraphicSurfaceStyle | null>> = {};
-	for (const [slot, declaration] of Object.entries(declarations) as [GraphicSurfaceStyleSlot, GraphicDisplayDeclaration][]) {
-		if (isPainted(declaration, item))
-			painted[slot] = graphicSurfaceStyleAt(item, slot) ?? null;
+	for (const [slot, declaration] of Object.entries(declarations) as [
+		GraphicSurfaceStyleSlot,
+		GraphicDisplayDeclaration,
+	][]) {
+		if (isPainted(declaration, item)) painted[slot] = graphicSurfaceStyleAt(item, slot) ?? null;
 	}
 	return painted;
 }
@@ -775,12 +802,10 @@ export function ownsShapeGeometry(item: GraphicItemConfig): item is GraphicShape
  */
 export function graphicShapeGeometry(item: GraphicItemConfig): OwnedShapeGeometry | null {
 	const declaration = getGraphicItemDefinition(item.type).shapeGeometry;
-	if (!declaration)
-		return null;
+	if (!declaration) return null;
 	const fields = item as unknown as Record<string, unknown>;
 	const geometry = fields[declaration.slot] as ShapeGeometry | undefined;
-	if (!geometry)
-		return null;
+	if (!geometry) return null;
 	const width = declaration.bounds?.width ?? 'width';
 	const height = declaration.bounds?.height ?? 'height';
 	return {
@@ -794,9 +819,7 @@ export function graphicShapeGeometry(item: GraphicItemConfig): OwnedShapeGeometr
 /** The Shape Geometry this item has on screen as it is displayed now: where the Inspector offers geometry controls. */
 export function paintedShapeGeometry(item: GraphicItemConfig): OwnedShapeGeometry | null {
 	const declaration = getGraphicItemDefinition(item.type).shapeGeometry;
-	return declaration && isPainted(declaration, item)
-		? graphicShapeGeometry(item)
-		: null;
+	return declaration && isPainted(declaration, item) ? graphicShapeGeometry(item) : null;
 }
 
 /** Whether this item reads one Seat's live state: where the Inspector offers the Player, and what authoring accepts. */
@@ -807,11 +830,8 @@ export function ownsPlayerSide(item: GraphicItemConfig): item is GraphicPlayerSi
 /** The Seats an item of this kind can read: none, the pair, or any of four. */
 export function graphicItemKindSeats(kind: GraphicItemKind): readonly Seat[] {
 	const reads = getGraphicItemDefinition(kind).playerSide;
-	if (reads === undefined)
-		return [];
-	return reads === 'seat'
-		? SEAT_VALUES
-		: PLAYER_SIDE_VALUES;
+	if (reads === undefined) return [];
+	return reads === 'seat' ? SEAT_VALUES : PLAYER_SIDE_VALUES;
 }
 
 export function graphicItemSummary(item: GraphicItemConfig): string {

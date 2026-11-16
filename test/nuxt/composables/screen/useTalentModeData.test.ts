@@ -12,14 +12,7 @@ const defaultConfig = {
 	talentId: null as number | null,
 	talentIds: [] as number[],
 	showPhoto: true,
-	socialNetworks: [
-		'twitch',
-		'youtube',
-		'x',
-		'instagram',
-		'tiktok',
-		'bluesky',
-	] as string[],
+	socialNetworks: ['twitch', 'youtube', 'x', 'instagram', 'tiktok', 'bluesky'] as string[],
 	rotateSocialProfiles: false,
 	socialProfileDwellMs: 8000,
 	showHeader: false,
@@ -40,9 +33,11 @@ const serverTime = {
 mockNuxtImport('$fetch', () => mockFetch);
 mockNuxtImport('tryUseRealtime', () => () => realtime.transport);
 mockNuxtImport('useScreenModeConfig', () => () => computed(() => mutableConfig));
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
-	...serverTime,
-})));
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+		...serverTime,
+	})),
+);
 const screenContext = screenContextOf({
 	screen: ref({ id: 1, name: 'Desk' }),
 	eventId: ref<number | null>(1),
@@ -60,7 +55,11 @@ function profile(network: SocialProfileProjectionValue['network']): SocialProfil
 	};
 }
 
-function talent(id: number, name: string, socialProfiles: SocialProfileProjectionValue[] = []): ScreenOutputTalent {
+function talent(
+	id: number,
+	name: string,
+	socialProfiles: SocialProfileProjectionValue[] = [],
+): ScreenOutputTalent {
 	return {
 		id,
 		name,
@@ -89,7 +88,7 @@ describe('useTalentModeData', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 		vi.useRealTimers();
 	});
 
@@ -99,17 +98,17 @@ describe('useTalentModeData', () => {
 			talentIds: [CASTER, HOST],
 		});
 		mockFetch.mockResolvedValue({
-			talents: [
-				talent(CASTER, 'Caster'),
-				talent(HOST, 'Host'),
-			],
+			talents: [talent(CASTER, 'Caster'), talent(HOST, 'Host')],
 		});
 
 		const { talents, isEmpty } = makeTalentModeData();
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/screen-output/events/1/screens/1/talent', expect.anything());
-		expect(talents.value.map(entry => entry.name)).toEqual(['Caster', 'Host']);
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/screen-output/events/1/screens/1/talent',
+			expect.anything(),
+		);
+		expect(talents.value.map((entry) => entry.name)).toEqual(['Caster', 'Host']);
 		expect(isEmpty.value).toBe(false);
 	});
 
@@ -122,10 +121,7 @@ describe('useTalentModeData', () => {
 				talentIds: [HOST],
 			},
 		],
-		[
-			'a lineup with none picked',
-			{ selection: 'lineup', talentId: HOST, talentIds: [] },
-		],
+		['a lineup with none picked', { selection: 'lineup', talentId: HOST, talentIds: [] }],
 	])('reads nothing and is empty while showing %s', async (_case, config) => {
 		Object.assign(mutableConfig, config);
 
@@ -137,10 +133,7 @@ describe('useTalentModeData', () => {
 	});
 
 	it.each([
-		[
-			'the Talent picked',
-			{ talentId: CASTER },
-		],
+		['the Talent picked', { talentId: CASTER }],
 		[
 			'the selection',
 			{
@@ -154,16 +147,11 @@ describe('useTalentModeData', () => {
 				socialNetworks: ['x'],
 			},
 		],
-		[
-			'whether photos show',
-			{ showPhoto: false },
-		],
+		['whether photos show', { showPhoto: false }],
 	])('re-reads when %s changes', async (_case, change) => {
 		mutableConfig.talentId = HOST;
 		mockFetch.mockResolvedValue({
-			talents: [
-				talent(HOST, 'Host'),
-			],
+			talents: [talent(HOST, 'Host')],
 		});
 		makeTalentModeData();
 		await flushPromises();
@@ -195,9 +183,7 @@ describe('useTalentModeData', () => {
 	])('re-reads on %s: %i', async (_case, type, payload, reads) => {
 		mutableConfig.talentId = HOST;
 		mockFetch.mockResolvedValue({
-			talents: [
-				talent(HOST, 'Host'),
-			],
+			talents: [talent(HOST, 'Host')],
 		});
 		makeTalentModeData();
 		await flushPromises();
@@ -212,18 +198,13 @@ describe('useTalentModeData', () => {
 	it('shows every Social Profile while not rotating', async () => {
 		mutableConfig.talentId = HOST;
 		mockFetch.mockResolvedValue({
-			talents: [
-				talent(HOST, 'Host', [
-					profile('twitch'),
-					profile('x'),
-				]),
-			],
+			talents: [talent(HOST, 'Host', [profile('twitch'), profile('x')])],
 		});
 
 		const { talents } = makeTalentModeData();
 		await flushPromises();
 
-		expect(talents.value[0]!.shownProfiles.map(entry => entry.network)).toEqual(['twitch', 'x']);
+		expect(talents.value[0]!.shownProfiles.map((entry) => entry.network)).toEqual(['twitch', 'x']);
 	});
 
 	it('rotates each Talent through its own Social Profiles in step with server time', async () => {
@@ -238,32 +219,20 @@ describe('useTalentModeData', () => {
 		});
 		mockFetch.mockResolvedValue({
 			talents: [
-				talent(HOST, 'Host', [
-					profile('twitch'),
-					profile('x'),
-				]),
-				talent(CASTER, 'Caster', [
-					profile('youtube'),
-					profile('tiktok'),
-					profile('bluesky'),
-				]),
+				talent(HOST, 'Host', [profile('twitch'), profile('x')]),
+				talent(CASTER, 'Caster', [profile('youtube'), profile('tiktok'), profile('bluesky')]),
 			],
 		});
 
 		const { talents } = makeTalentModeData();
 		await flushPromises();
-		const shown = () => talents.value.map(entry => entry.shownProfiles.map(shownProfile => shownProfile.network));
+		const shown = () =>
+			talents.value.map((entry) => entry.shownProfiles.map((shownProfile) => shownProfile.network));
 		// Step 10 of 8 s from epoch zero.
-		expect(shown()).toEqual([
-			['twitch'],
-			['tiktok'],
-		]);
+		expect(shown()).toEqual([['twitch'], ['tiktok']]);
 
 		await vi.advanceTimersByTimeAsync(8000);
-		expect(shown()).toEqual([
-			['x'],
-			['bluesky'],
-		]);
+		expect(shown()).toEqual([['x'], ['bluesky']]);
 	});
 
 	it('holds the first Social Profile while server time is unknown', async () => {
@@ -274,18 +243,13 @@ describe('useTalentModeData', () => {
 		serverTime.isSynced.value = false;
 		Object.assign(mutableConfig, { talentId: HOST, rotateSocialProfiles: true });
 		mockFetch.mockResolvedValue({
-			talents: [
-				talent(HOST, 'Host', [
-					profile('twitch'),
-					profile('x'),
-				]),
-			],
+			talents: [talent(HOST, 'Host', [profile('twitch'), profile('x')])],
 		});
 
 		const { talents } = makeTalentModeData();
 		await flushPromises();
 
-		expect(talents.value[0]!.shownProfiles.map(entry => entry.network)).toEqual(['twitch']);
+		expect(talents.value[0]!.shownProfiles.map((entry) => entry.network)).toEqual(['twitch']);
 	});
 
 	it('falls back to a generic header', () => {

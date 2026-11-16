@@ -18,8 +18,7 @@ describe('events API', () => {
 		// Cleanup: best-effort delete — may fail if context is already torn down
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('creates an event and returns 201', async () => {

@@ -9,7 +9,11 @@ import { featureMatchModeConfigContract } from '~~/shared/screenModeConfigs/feat
 import { fromFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
 import { createInitialOvertimeState } from '~~/shared/types/featureMatchState';
 import { toScreenOutputEvent } from '~~/shared/utils/screenOutputEvent';
-import { createMockEvent, createMockFeatureMatch, createMockFeatureMatchState } from '~~/test/helpers/fixtures';
+import {
+	createMockEvent,
+	createMockFeatureMatch,
+	createMockFeatureMatchState,
+} from '~~/test/helpers/fixtures';
 import { matchStatePart, offeredMatchStateParts } from '~~/test/nuxt/helpers/featureMatchControls';
 import { clock } from '~~/test/nuxt/helpers/featureMatchStateHarness';
 import Display from '~/components/Screen/Modes/FeatureMatch/Display.vue';
@@ -27,9 +31,7 @@ const matchState = createMockFeatureMatchState({
 	overtime: createInitialOvertimeState(5),
 	player1: {
 		...createMockFeatureMatchState().player1,
-		counters: [
-			{ type: 'poison', value: 1 },
-		],
+		counters: [{ type: 'poison', value: 1 }],
 	},
 });
 const THIRTY_MINUTES = 30 * 60_000;
@@ -37,12 +39,16 @@ const match = createMockFeatureMatch({ id: 1 });
 
 // The mode's data is faked, so nothing reads the Screen context it is handed.
 mockNuxtImport('useScreenContext', () => () => ({}));
-mockNuxtImport('useEventStore', () => () => reactive({
-	eventId: 1,
-	event: computed(() => event.value),
-	// As a Screen Output holds its Event: the allowlisted fields alone.
-	displayEvent: computed(() => toScreenOutputEvent(event.value)),
-}));
+mockNuxtImport(
+	'useEventStore',
+	() => () =>
+		reactive({
+			eventId: 1,
+			event: computed(() => event.value),
+			// As a Screen Output holds its Event: the allowlisted fields alone.
+			displayEvent: computed(() => toScreenOutputEvent(event.value)),
+		}),
+);
 mockNuxtImport('useFeatureMatchModeData', () => () => ({
 	config: computed(() => ({ ...featureMatchModeConfigContract.defaults, featureMatchId: 1 })),
 	match: computed(() => match),
@@ -52,22 +58,25 @@ mockNuxtImport('useFeatureMatchModeData', () => () => ({
 	ready: ref(true),
 }));
 mockNuxtImport('useFeatureMatchStateStore', () => () => ({
-	featureMatchStates: new Map([
-		[1, matchState],
-	]),
+	featureMatchStates: new Map([[1, matchState]]),
 	startOvertime: vi.fn(),
 }));
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime());
-mockNuxtImport('usePlayerFeatureMatchData', () => (_matchId: unknown, side: () => 'player1' | 'player2') => ({
-	player: computed(() => matchState[side()]),
-	playerName: computed(() => side()),
-	playerPronouns: computed(() => undefined),
-	deckName: computed(() => undefined),
-	bestOf: computed(() => 1),
-	seatLabel: computed(() => undefined),
-	playerRecord: computed(() => undefined),
-	playerLgs: computed(() => undefined),
-}));
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(),
+);
+mockNuxtImport(
+	'usePlayerFeatureMatchData',
+	() => (_matchId: unknown, side: () => 'player1' | 'player2') => ({
+		player: computed(() => matchState[side()]),
+		playerName: computed(() => side()),
+		playerPronouns: computed(() => undefined),
+		deckName: computed(() => undefined),
+		bestOf: computed(() => 1),
+		seatLabel: computed(() => undefined),
+		playerRecord: computed(() => undefined),
+		playerLgs: computed(() => undefined),
+	}),
+);
 mockNuxtImport('usePlayerControls', () => () => ({}));
 mockNuxtImport('useScreenOutputReads', () => () => ({
 	playerDecks: vi.fn(),
@@ -93,7 +102,9 @@ const EVERY_TOGGLE_ON: Partial<DbEvent> = {
 function mountControls(game: Game, toggles: Partial<DbEvent> = {}) {
 	event.value = createMockEvent({
 		game,
-		...fromFeatureMatchDefaults(getMatchFormatDefaults(eventKind({ game, variant: toggles.variant }))),
+		...fromFeatureMatchDefaults(
+			getMatchFormatDefaults(eventKind({ game, variant: toggles.variant })),
+		),
 		...toggles,
 	});
 	return mount(Display, {
@@ -121,28 +132,17 @@ describe('feature Match Controls by Card Game', () => {
 	});
 
 	it.each([
-		[
-			'mtg',
-			EVERY_TOGGLE_ON,
-			[
-				'counters',
-				'game-wins',
-				'life',
-				'overtime',
-				'turn',
-			],
-		],
-		[
-			'op',
-			{},
-			['game-wins', 'turn'],
-		],
-	] as const)('on a %s Event with toggles %j, offers the match state parts %j', (game, toggles, expected) => {
-		expect(offeredMatchStateParts(mountControls(game, toggles))).toEqual(expected);
-	});
+		['mtg', EVERY_TOGGLE_ON, ['counters', 'game-wins', 'life', 'overtime', 'turn']],
+		['op', {}, ['game-wins', 'turn']],
+	] as const)(
+		'on a %s Event with toggles %j, offers the match state parts %j',
+		(game, toggles, expected) => {
+			expect(offeredMatchStateParts(mountControls(game, toggles))).toEqual(expected);
+		},
+	);
 
 	// A Commander Event's four Seats show where they sit, whatever the Screen's left side says (ADR-0087).
-	it('drives a Commander Event\'s game from its four Seats, with no game count', () => {
+	it("drives a Commander Event's game from its four Seats, with no game count", () => {
 		const wrapper = mountControls('mtg', { variant: 'commander' });
 
 		expect(offeredMatchStateParts(wrapper)).toEqual(['commander-table']);
@@ -157,7 +157,9 @@ describe('feature Match Controls by Card Game', () => {
 		expect(wrapper.text()).toContain('30:00');
 		expect(wrapper.find('[data-player-side="player1"]').attributes('data-active')).toBe('true');
 		expect(wrapper.find('[data-player-side="player2"]').attributes('data-active')).toBe('false');
-		expect(wrapper.find('[data-player-side="player1"] [data-icon="i-lucide-flag"]').exists()).toBe(true);
+		expect(wrapper.find('[data-player-side="player1"] [data-icon="i-lucide-flag"]').exists()).toBe(
+			true,
+		);
 	});
 
 	// Its clock takes its state's colour, pulse and count-up mark; which state takes which is clockAppearance's own test.
@@ -186,6 +188,6 @@ describe('feature Match Controls by Card Game', () => {
 
 		const shown = mountControls('mtg').get('[data-clock-state]').classes();
 
-		expect(shown.filter(token => token !== 'clock').sort()).toEqual([...classes].sort());
+		expect(shown.filter((token) => token !== 'clock').sort()).toEqual([...classes].sort());
 	});
 });

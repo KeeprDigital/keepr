@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
 import { deferred } from '~~/test/helpers/deferred';
 import { stubDocumentFonts } from '~~/test/nuxt/helpers/fontFaces';
-import { useApplicationFontFaces, useCombinedFontFaces } from '~/composables/screen/useApplicationFontFaces';
+import {
+	useApplicationFontFaces,
+	useCombinedFontFaces,
+} from '~/composables/screen/useApplicationFontFaces';
 
 /**
  * Holds a Screen Output not-ready until the application faces it paints have
@@ -12,22 +15,39 @@ import { useApplicationFontFaces, useCombinedFontFaces } from '~/composables/scr
  * same faces (#160). The hosts' own suites keep one wiring test each.
  */
 
-const POPPINS_BOLD: ApplicationFontFaceRequest = { fontId: 'poppins', weight: 700, style: 'normal' };
-const INTER_LIGHT_ITALIC: ApplicationFontFaceRequest = { fontId: 'inter', weight: 300, style: 'italic' };
-const SYSTEM_SANS: ApplicationFontFaceRequest = { fontId: 'system-sans', weight: 400, style: 'normal' };
+const POPPINS_BOLD: ApplicationFontFaceRequest = {
+	fontId: 'poppins',
+	weight: 700,
+	style: 'normal',
+};
+const INTER_LIGHT_ITALIC: ApplicationFontFaceRequest = {
+	fontId: 'inter',
+	weight: 300,
+	style: 'italic',
+};
+const SYSTEM_SANS: ApplicationFontFaceRequest = {
+	fontId: 'system-sans',
+	weight: 400,
+	style: 'normal',
+};
 
 const face = async () => [{}];
 
-function mountFonts(requests: ApplicationFontFaceRequest[], load: (font: string) => Promise<unknown>) {
+function mountFonts(
+	requests: ApplicationFontFaceRequest[],
+	load: (font: string) => Promise<unknown>,
+) {
 	const documentFonts = stubDocumentFonts(load);
 	const source = ref(requests);
 	let fonts!: ReturnType<typeof useApplicationFontFaces>;
-	mount(defineComponent({
-		setup() {
-			fonts = useApplicationFontFaces(source);
-			return () => null;
-		},
-	}));
+	mount(
+		defineComponent({
+			setup() {
+				fonts = useApplicationFontFaces(source);
+				return () => null;
+			},
+		}),
+	);
 	return { fonts, source, documentFonts };
 }
 
@@ -81,10 +101,7 @@ describe('useApplicationFontFaces', () => {
 		},
 		{
 			row: 'duplicate',
-			requests: [
-				POPPINS_BOLD,
-				{ ...POPPINS_BOLD },
-			],
+			requests: [POPPINS_BOLD, { ...POPPINS_BOLD }],
 			load: face,
 			loads: ['normal 700 1em "Poppins"'],
 			fontsReady: true,
@@ -94,27 +111,31 @@ describe('useApplicationFontFaces', () => {
 		{
 			row: 'same values',
 			requests: [POPPINS_BOLD],
-			replacement: [
-				{ ...POPPINS_BOLD },
-			],
+			replacement: [{ ...POPPINS_BOLD }],
 			load: face,
 			loads: ['normal 700 1em "Poppins"'],
 			fontsReady: true,
 			fontsFailed: false,
 		},
-	])('$row: loads $loads', async ({ requests, replacement, load, loads, fontsReady, fontsFailed }) => {
-		const { fonts, source, documentFonts } = mountFonts(requests, load);
-		await settle();
-		if (replacement) {
-			source.value = replacement;
-			await nextTick();
-			expect(fonts.fontsReady.value).toBe(fontsReady);
+	])(
+		'$row: loads $loads',
+		async ({ requests, replacement, load, loads, fontsReady, fontsFailed }) => {
+			const { fonts, source, documentFonts } = mountFonts(requests, load);
 			await settle();
-		}
+			if (replacement) {
+				source.value = replacement;
+				await nextTick();
+				expect(fonts.fontsReady.value).toBe(fontsReady);
+				await settle();
+			}
 
-		expect(documentFonts.load.mock.calls.map(([font]) => font)).toEqual(loads);
-		expect({ fontsReady: fonts.fontsReady.value, fontsFailed: fonts.fontsFailed.value }).toEqual({ fontsReady, fontsFailed });
-	});
+			expect(documentFonts.load.mock.calls.map(([font]) => font)).toEqual(loads);
+			expect({ fontsReady: fonts.fontsReady.value, fontsFailed: fonts.fontsFailed.value }).toEqual({
+				fontsReady,
+				fontsFailed,
+			});
+		},
+	);
 
 	// A superseded load never changes the state its successor settled.
 	it.each([
@@ -132,9 +153,9 @@ describe('useApplicationFontFaces', () => {
 		},
 	])('$row', async ({ first, next, settled }) => {
 		const load = deferred<unknown>();
-		const { fonts, source } = mountFonts([POPPINS_BOLD], font => font.includes('Poppins')
-			? load.promise
-			: next());
+		const { fonts, source } = mountFonts([POPPINS_BOLD], (font) =>
+			font.includes('Poppins') ? load.promise : next(),
+		);
 		await nextTick();
 
 		source.value = [INTER_LIGHT_ITALIC];
@@ -142,15 +163,17 @@ describe('useApplicationFontFaces', () => {
 		first(load);
 		await settle();
 
-		expect({ fontsReady: fonts.fontsReady.value, fontsFailed: fonts.fontsFailed.value }).toEqual(settled);
+		expect({ fontsReady: fonts.fontsReady.value, fontsFailed: fonts.fontsFailed.value }).toEqual(
+			settled,
+		);
 	});
 
 	// "Loaded or failed" means every face: an early rejection does not release a face still loading.
 	it('settles as failed only once a face that rejected is joined by every other', async () => {
 		const poppins = deferred<unknown>();
-		const { fonts } = mountFonts([POPPINS_BOLD, INTER_LIGHT_ITALIC], font => font.includes('Poppins')
-			? poppins.promise
-			: Promise.reject(new Error('blocked')));
+		const { fonts } = mountFonts([POPPINS_BOLD, INTER_LIGHT_ITALIC], (font) =>
+			font.includes('Poppins') ? poppins.promise : Promise.reject(new Error('blocked')),
+		);
 		await settle();
 		const pending = { fontsReady: fonts.fontsReady.value, fontsFailed: fonts.fontsFailed.value };
 
@@ -212,6 +235,8 @@ describe('useCombinedFontFaces', () => {
 
 		const fonts = useCombinedFontFaces(state(library), state(application));
 
-		expect({ fontsReady: fonts.fontsReady.value, fontsFailed: fonts.fontsFailed.value }).toEqual(combined);
+		expect({ fontsReady: fonts.fontsReady.value, fontsFailed: fonts.fontsFailed.value }).toEqual(
+			combined,
+		);
 	});
 });

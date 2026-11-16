@@ -21,9 +21,13 @@ const game = computed(() => eventStore.event?.game);
 const showsPoints = computed(() => game.value !== 'op' && !!eventStore.event?.pointsSystem);
 
 // An OP Player holds their Deck List by reference (ADR-0074); a Magic Player's names its deck.
-const hasDeckData = computed(() => playerStore.players.some(p => game.value === 'op'
-	? getOpGameData(p.gameData).deckList != null
-	: getMtgGameData(p.gameData).deckName));
+const hasDeckData = computed(() =>
+	playerStore.players.some((p) =>
+		game.value === 'op'
+			? getOpGameData(p.gameData).deckList != null
+			: getMtgGameData(p.gameData).deckName,
+	),
+);
 
 function cardRowLink(entry: CardBreakdownEntry) {
 	return `/event/${eventStore.eventId}/metagame/card/${entry.id}`;
@@ -31,16 +35,13 @@ function cardRowLink(entry: CardBreakdownEntry) {
 
 async function fetchCards() {
 	await runRequest(
-		() => metagameClient.loadCardBreakdown(
-			eventStore.eventId!,
-			metagameStore.scopeQuery,
-			{
+		() =>
+			metagameClient.loadCardBreakdown(eventStore.eventId!, metagameStore.scopeQuery, {
 				sortBy: cardSortBy.value,
 				limit: 100,
 				board: cardBoardFilter.value,
 				pointedOnly: showsPoints.value && cardPointedOnly.value,
-			},
-		),
+			}),
 		{
 			latestKey: 'cards',
 			loadingRef: cardLoading,
@@ -58,14 +59,17 @@ async function fetchCards() {
 
 const { summaryLoading, fetchPageData } = useMetagamePage(fetchCards);
 
-const { initialLoading, initialError, retry } = useEventPageLoading([
-	{
-		consumes: 'players',
-		isLoaded: () => playerStore.isLoaded,
-		isLoading: () => playerStore.loading,
-		load: id => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
-	},
-], fetchPageData);
+const { initialLoading, initialError, retry } = useEventPageLoading(
+	[
+		{
+			consumes: 'players',
+			isLoaded: () => playerStore.isLoaded,
+			isLoading: () => playerStore.loading,
+			load: (id) => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
+		},
+	],
+	fetchPageData,
+);
 
 watch([cardSortBy, cardBoardFilter, cardPointedOnly], () => fetchCards());
 </script>
@@ -76,18 +80,17 @@ watch([cardSortBy, cardBoardFilter, cardPointedOnly], () => fetchCards());
 	<UILoadingSpinner v-else-if="initialLoading" />
 
 	<div v-else class="flex flex-col gap-6">
-		<MetagameSummaryPanel
-			:summary="metagameStore.summaryData"
-			:loading="summaryLoading"
-		/>
+		<MetagameSummaryPanel :summary="metagameStore.summaryData" :loading="summaryLoading" />
 
 		<UIEmptyState
 			v-if="!hasDeckData"
 			icon="i-lucide-layers"
 			title="No deck data available"
-			:description="game === 'op'
-				? 'Import the TCG+ deck list export, or enter a Player\'s Deck List on the Players page.'
-				: 'Sync deck lists from Melee or add deck info manually.'"
+			:description="
+				game === 'op'
+					? 'Import the TCG+ deck list export, or enter a Player\'s Deck List on the Players page.'
+					: 'Sync deck lists from Melee or add deck info manually.'
+			"
 		/>
 
 		<MetagameCardsTable

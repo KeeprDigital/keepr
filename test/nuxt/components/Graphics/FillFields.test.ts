@@ -40,7 +40,8 @@ const global = {
 				disabled: { type: Boolean, required: false },
 			},
 			emits: ['click'],
-			template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+			template:
+				'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 		}),
 		USelect: defineComponent({
 			name: 'USelect',
@@ -72,13 +73,17 @@ interface ColorSlotProps {
 
 /** A colour picker of the host's own, as the Theme editor passes one in. */
 function paletteSlot({ value, label, disabled, update }: ColorSlotProps) {
-	return h('select', {
-		'data-palette-picker': '',
-		'aria-label': label,
-		'value': value,
-		disabled,
-		'onChange': (event: Event) => update((event.target as HTMLSelectElement).value),
-	}, ['brand', 'ink'].map(id => h('option', { value: id }, id)));
+	return h(
+		'select',
+		{
+			'data-palette-picker': '',
+			'aria-label': label,
+			value: value,
+			disabled,
+			onChange: (event: Event) => update((event.target as HTMLSelectElement).value),
+		},
+		['brand', 'ink'].map((id) => h('option', { value: id }, id)),
+	);
 }
 
 type Wrapper = VueWrapper<InstanceType<typeof FillFields>>;
@@ -96,12 +101,13 @@ interface Use {
 
 const uses: Use[] = [
 	{
-		name: 'a Graphic Item\'s fill, with the hex picker',
+		name: "a Graphic Item's fill, with the hex picker",
 		colors: ['#123456', '#abcdef'],
-		mount: (fill, props = {}) => mount(FillFields, {
-			global,
-			props: { fill, ...props },
-		}) as Wrapper,
+		mount: (fill, props = {}) =>
+			mount(FillFields, {
+				global,
+				props: { fill, ...props },
+			}) as Wrapper,
 		colorOf: (wrapper, label) => picker(wrapper, label)?.props('modelValue'),
 		pickColor: async (wrapper, label, color) => {
 			picker(wrapper, label)!.vm.$emit('update:modelValue', color);
@@ -112,29 +118,38 @@ const uses: Use[] = [
 	{
 		name: 'a Theme fill token, with a host colour picker',
 		colors: ['brand', 'ink'],
-		mount: (fill, props = {}) => mount(FillFields, {
-			global,
-			props: { fill, ...props },
-			slots: { color: paletteSlot },
-		}) as Wrapper,
-		colorOf: (wrapper, label) => (palette(wrapper, label)?.element as HTMLSelectElement | undefined)?.value,
+		mount: (fill, props = {}) =>
+			mount(FillFields, {
+				global,
+				props: { fill, ...props },
+				slots: { color: paletteSlot },
+			}) as Wrapper,
+		colorOf: (wrapper, label) =>
+			(palette(wrapper, label)?.element as HTMLSelectElement | undefined)?.value,
 		pickColor: async (wrapper, label, color) => {
 			await palette(wrapper, label)!.setValue(color);
 		},
-		colorDisabled: (wrapper, label) => palette(wrapper, label)!.attributes('disabled') !== undefined,
+		colorDisabled: (wrapper, label) =>
+			palette(wrapper, label)!.attributes('disabled') !== undefined,
 	},
 ];
 
 function picker(wrapper: Wrapper, label: string) {
-	return wrapper.findAllComponents({ name: 'UIColorPicker' }).find(entry => entry.attributes('aria-label') === label);
+	return wrapper
+		.findAllComponents({ name: 'UIColorPicker' })
+		.find((entry) => entry.attributes('aria-label') === label);
 }
 
 function palette(wrapper: Wrapper, label: string) {
-	return wrapper.findAll('[data-palette-picker]').find(entry => entry.attributes('aria-label') === label);
+	return wrapper
+		.findAll('[data-palette-picker]')
+		.find((entry) => entry.attributes('aria-label') === label);
 }
 
 function numberField(wrapper: Wrapper, name: string, label: string) {
-	return wrapper.findAllComponents({ name }).find(entry => entry.attributes('aria-label') === label);
+	return wrapper
+		.findAllComponents({ name })
+		.find((entry) => entry.attributes('aria-label') === label);
 }
 
 function lastEdit(wrapper: Wrapper) {
@@ -146,9 +161,7 @@ function gradientOf([first, second]: [string, string], count = 2): GraphicFill {
 		type: 'linear-gradient',
 		angle: 90,
 		stops: Array.from({ length: count }, (_, index) => ({
-			color: index === 0
-				? first
-				: second,
+			color: index === 0 ? first : second,
 			position: index / (count - 1),
 			opacity: 1,
 		})),
@@ -156,7 +169,7 @@ function gradientOf([first, second]: [string, string], count = 2): GraphicFill {
 }
 
 describe.each(uses)('graphic fill fields for $name', (use) => {
-	it('edits a solid fill\'s colour', async () => {
+	it("edits a solid fill's colour", async () => {
 		const wrapper = use.mount({ type: 'solid', color: use.colors[0] });
 
 		expect(use.colorOf(wrapper, 'Fill colour')).toBe(use.colors[0]);
@@ -167,16 +180,18 @@ describe.each(uses)('graphic fill fields for $name', (use) => {
 		expect(lastEdit(wrapper)).toEqual({ kind: 'solid-fill', color: use.colors[1] });
 	});
 
-	it('switches the fill\'s kind', async () => {
+	it("switches the fill's kind", async () => {
 		const wrapper = use.mount({ type: 'solid', color: use.colors[0] });
 
-		wrapper.getComponent<typeof FillFields>('[data-testid="graphic-fill-kind"]').vm.$emit('update:modelValue', 'linear-gradient');
+		wrapper
+			.getComponent<typeof FillFields>('[data-testid="graphic-fill-kind"]')
+			.vm.$emit('update:modelValue', 'linear-gradient');
 		await flushPromises();
 
 		expect(lastEdit(wrapper)).toEqual({ kind: 'fill-kind', fillKind: 'linear-gradient' });
 	});
 
-	it('edits each gradient stop\'s colour, position, and opacity', async () => {
+	it("edits each gradient stop's colour, position, and opacity", async () => {
 		const wrapper = use.mount(gradientOf(use.colors, 3));
 
 		expect(wrapper.findAll('[data-testid="graphic-fill-stop"]')).toHaveLength(3);
@@ -211,10 +226,7 @@ describe.each(uses)('graphic fill fields for $name', (use) => {
 		const wrapper = use.mount(gradientOf(use.colors));
 		const angle = numberField(wrapper, 'UInputNumber', 'Gradient angle')!;
 
-		expect([
-			angle.props('min'),
-			angle.props('max'),
-		]).toEqual([-360, 360]);
+		expect([angle.props('min'), angle.props('max')]).toEqual([-360, 360]);
 
 		angle.vm.$emit('update:modelValue', 135);
 		await flushPromises();
@@ -223,7 +235,9 @@ describe.each(uses)('graphic fill fields for $name', (use) => {
 
 	it('adds and removes stops within two to four', async () => {
 		const two = use.mount(gradientOf(use.colors, 2));
-		expect(two.get('[data-testid="graphic-fill-remove-stop"]').attributes('disabled')).toBeDefined();
+		expect(
+			two.get('[data-testid="graphic-fill-remove-stop"]').attributes('disabled'),
+		).toBeDefined();
 		await two.get('[data-testid="graphic-fill-add-stop"]').trigger('click');
 		expect(lastEdit(two)).toEqual({ kind: 'stop-count', delta: 1 });
 
@@ -234,7 +248,10 @@ describe.each(uses)('graphic fill fields for $name', (use) => {
 	});
 
 	it('names its fields after the surface where one form shows several, and keys its test ids to it', () => {
-		const wrapper = use.mount(gradientOf(use.colors), { ariaLabelPrefix: 'Win box', testIdPrefix: 'game-wins-box-graphic-fill' });
+		const wrapper = use.mount(gradientOf(use.colors), {
+			ariaLabelPrefix: 'Win box',
+			testIdPrefix: 'game-wins-box-graphic-fill',
+		});
 
 		expect(use.colorOf(wrapper, 'Win box stop 1 colour')).toBe(use.colors[0]);
 		expect(numberField(wrapper, 'UInputNumber', 'Win box gradient angle')).toBeDefined();
@@ -246,7 +263,9 @@ describe.each(uses)('graphic fill fields for $name', (use) => {
 
 		expect(use.colorDisabled(wrapper, 'Stop 1 colour')).toBe(true);
 		expect(numberField(wrapper, 'UInputNumber', 'Gradient angle')!.props('disabled')).toBe(true);
-		expect(wrapper.get('[data-testid="graphic-fill-add-stop"]').attributes('disabled')).toBeDefined();
+		expect(
+			wrapper.get('[data-testid="graphic-fill-add-stop"]').attributes('disabled'),
+		).toBeDefined();
 	});
 });
 
@@ -254,11 +273,7 @@ describe.each(uses)('graphic fill fields for $name', (use) => {
 describe('graphic fill fields for a host that fixes the kind', () => {
 	it.each([
 		['offers the kind by default', {}, true],
-		[
-			'offers no kind once the host fixes it',
-			{ fixedKind: true },
-			false,
-		],
+		['offers no kind once the host fixes it', { fixedKind: true }, false],
 	])('%s', (_, props, offered) => {
 		const wrapper = mount(FillFields, {
 			global,

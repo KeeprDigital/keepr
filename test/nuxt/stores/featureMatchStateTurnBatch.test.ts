@@ -1,8 +1,14 @@
-import type { FeatureMatchSessionResponse, FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
+import type {
+	FeatureMatchSessionResponse,
+	FeatureMatchSourceSnapshot,
+} from '~~/shared/types/featureMatchSession';
 import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { applyFeatureMatchOvertimeStep, applyFeatureMatchTurnStep } from '~~/shared/modules/feature-match-session';
+import {
+	applyFeatureMatchOvertimeStep,
+	applyFeatureMatchTurnStep,
+} from '~~/shared/modules/feature-match-session';
 import { toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
 import { createMockFeatureMatchState } from '~~/test/helpers/fixtures';
 
@@ -121,12 +127,18 @@ describe('useFeatureMatchStateStore turn+overtime batch', () => {
 
 		let resolveStepTurn!: (result: ReturnType<typeof commandResult>) => void;
 		let resolveStepOvertime!: (result: ReturnType<typeof commandResult>) => void;
-		mockRepo.stepTurn.mockImplementation(() => new Promise((resolve) => {
-			resolveStepTurn = resolve;
-		}));
-		mockRepo.stepOvertime.mockImplementation(() => new Promise((resolve) => {
-			resolveStepOvertime = resolve;
-		}));
+		mockRepo.stepTurn.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveStepTurn = resolve;
+				}),
+		);
+		mockRepo.stepOvertime.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveStepOvertime = resolve;
+				}),
+		);
 
 		store.stepTurn(EVENT_ID, MATCH_ID, 1);
 		store.nextOvertimeTurn(EVENT_ID, MATCH_ID);
@@ -159,12 +171,18 @@ describe('useFeatureMatchStateStore turn+overtime batch', () => {
 
 		let resolveStepTurn!: (result: ReturnType<typeof commandResult>) => void;
 		let rejectStepOvertime!: (error: Error) => void;
-		mockRepo.stepTurn.mockImplementation(() => new Promise((resolve) => {
-			resolveStepTurn = resolve;
-		}));
-		mockRepo.stepOvertime.mockImplementation(() => new Promise((_resolve, reject) => {
-			rejectStepOvertime = reject;
-		}));
+		mockRepo.stepTurn.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveStepTurn = resolve;
+				}),
+		);
+		mockRepo.stepOvertime.mockImplementation(
+			() =>
+				new Promise((_resolve, reject) => {
+					rejectStepOvertime = reject;
+				}),
+		);
 
 		store.stepTurn(EVENT_ID, MATCH_ID, 1);
 		store.nextOvertimeTurn(EVENT_ID, MATCH_ID);

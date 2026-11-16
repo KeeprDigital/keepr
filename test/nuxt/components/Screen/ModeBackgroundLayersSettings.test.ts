@@ -29,24 +29,32 @@ const EditorStub = defineComponent({
 		eventId: { type: Number, required: true },
 	},
 	emits: ['update:layers'],
-	template: '<div data-testid="layers-editor" :data-layer-count="layers.length" @click="$emit(\'update:layers\', [{ id: \'added\' }])" />',
+	template:
+		'<div data-testid="layers-editor" :data-layer-count="layers.length" @click="$emit(\'update:layers\', [{ id: \'added\' }])" />',
 });
 
 function mountComponent(themeOverrides: StoredThemeTokens = {}) {
 	const screen = createMockScreen({ currentMode: 'metagame', themeOverrides }) as never;
-	return mount(screenSettingsPage(() => screen, () => h(Settings, {
-		screen,
-		eventId: 7,
-		mode: 'metagame',
-	})), {
-		global: {
-			stubs: {
-				...nuxtUiStubs,
-				ScreenSettingsSection: ScreenSettingsSectionStub,
-				ScreenBackgroundLayersEditor: EditorStub,
+	return mount(
+		screenSettingsPage(
+			() => screen,
+			() =>
+				h(Settings, {
+					screen,
+					eventId: 7,
+					mode: 'metagame',
+				}),
+		),
+		{
+			global: {
+				stubs: {
+					...nuxtUiStubs,
+					ScreenSettingsSection: ScreenSettingsSectionStub,
+					ScreenBackgroundLayersEditor: EditorStub,
+				},
 			},
 		},
-	});
+	);
 }
 
 describe('background & Placement', () => {
@@ -55,15 +63,13 @@ describe('background & Placement', () => {
 		updateConfig.mockClear();
 	});
 
-	it('writes the editor\'s stack onto the mode\'s backgroundLayers key', async () => {
+	it("writes the editor's stack onto the mode's backgroundLayers key", async () => {
 		const wrapper = mountComponent();
 
 		await wrapper.get('[data-testid="layers-editor"]').trigger('click');
 
 		expect(updateConfig).toHaveBeenCalledWith({
-			backgroundLayers: [
-				{ id: 'added' },
-			],
+			backgroundLayers: [{ id: 'added' }],
 		});
 	});
 
@@ -72,30 +78,16 @@ describe('background & Placement', () => {
 
 		expect(wrapper.get('[data-section]').attributes('data-section')).toBe('Background & Placement');
 		expect(wrapper.text()).toContain('Placement');
-		expect(wrapper.findAll('[data-token]').map(row => row.attributes('data-token'))).toEqual(['inset', 'alignment']);
+		expect(wrapper.findAll('[data-token]').map((row) => row.attributes('data-token'))).toEqual([
+			'inset',
+			'alignment',
+		]);
 	});
 
 	it.each([
-		[
-			'closed with no layer and no override',
-			[],
-			{},
-			'false',
-		],
-		[
-			'open with a layer',
-			[
-				{ id: 'plate' },
-			],
-			{},
-			'true',
-		],
-		[
-			'open with the inset overridden',
-			[],
-			{ inset: 40 },
-			'true',
-		],
+		['closed with no layer and no override', [], {}, 'false'],
+		['open with a layer', [{ id: 'plate' }], {}, 'true'],
+		['open with the inset overridden', [], { inset: 40 }, 'true'],
 		[
 			'open with the alignment overridden',
 			[],
@@ -104,12 +96,7 @@ describe('background & Placement', () => {
 			},
 			'true',
 		],
-		[
-			'closed with only another token overridden',
-			[],
-			{ divider: '#ff0000' },
-			'false',
-		],
+		['closed with only another token overridden', [], { divider: '#ff0000' }, 'false'],
 	])('starts %s', (_case, layers, overrides, open) => {
 		config.value = { backgroundLayers: layers as never };
 

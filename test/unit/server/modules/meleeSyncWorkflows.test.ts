@@ -131,9 +131,7 @@ beforeEach(() => {
 				Name: 'Swiss',
 				FormatId: 'modern',
 				SortOrder: 0,
-				Rounds: [
-					{ ID: 101, Name: 'Round 1', SortOrder: 0 },
-				],
+				Rounds: [{ ID: 101, Name: 'Round 1', SortOrder: 0 }],
 			},
 		],
 	});
@@ -144,14 +142,18 @@ beforeEach(() => {
 	mockRoundService.findById.mockReset().mockResolvedValue(round);
 	mockRoundService.upsertByExternalId.mockReset().mockResolvedValue({ round, created: false });
 	mockPlayerService.findAll.mockReset().mockResolvedValue([]);
-	mockPlayerService.batchUpsertByExternalId.mockReset().mockResolvedValue({ players: [], created: 0, updated: 0 });
+	mockPlayerService.batchUpsertByExternalId
+		.mockReset()
+		.mockResolvedValue({ players: [], created: 0, updated: 0 });
 	mockPlayerService.reconcileMeleeSnapshot.mockReset().mockResolvedValue({
 		players: [],
 		created: 0,
 		updated: 0,
 		deactivated: 0,
 	});
-	mockPersistPlayerDeckLists.mockReset().mockResolvedValue({ skippedPlayers: 0, unresolvedCards: 0 });
+	mockPersistPlayerDeckLists
+		.mockReset()
+		.mockResolvedValue({ skippedPlayers: 0, unresolvedCards: 0 });
 	mockSyncMatchesFromMelee.mockReset();
 });
 
@@ -161,12 +163,8 @@ describe('the stages a Melee Sync command reports as done when a later one throw
 		const progress: Array<Record<string, Date>> = [];
 
 		await expect(
-			createMeleeSyncWorkflows().runInitialSetup(
-				syncContext,
-				1,
-				eventData,
-				undefined,
-				metadata => progress.push(metadata as Record<string, Date>),
+			createMeleeSyncWorkflows().runInitialSetup(syncContext, 1, eventData, undefined, (metadata) =>
+				progress.push(metadata as Record<string, Date>),
 			),
 		).rejects.toThrow('Deck persistence failed');
 
@@ -192,7 +190,7 @@ describe('the stages a Melee Sync command reports as done when a later one throw
 				eventData,
 				{ includeDeckLists: true },
 				undefined,
-				metadata => progress.push(metadata as Record<string, Date>),
+				(metadata) => progress.push(metadata as Record<string, Date>),
 			),
 		).rejects.toThrow('Round refresh failed');
 

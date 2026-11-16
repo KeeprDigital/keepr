@@ -20,9 +20,15 @@ const isConnected = ref(true);
 const tokenError = ref<Error | null>(null);
 
 mockNuxtImport('tryUseRealtime', () => () => ({
-	get connectionState() { return connectionState.value; },
-	get isConnected() { return isConnected.value; },
-	get tokenError() { return tokenError.value; },
+	get connectionState() {
+		return connectionState.value;
+	},
+	get isConnected() {
+		return isConnected.value;
+	},
+	get tokenError() {
+		return tokenError.value;
+	},
 }));
 
 async function mountStatus() {

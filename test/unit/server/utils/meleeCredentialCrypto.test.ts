@@ -10,9 +10,12 @@ function base64Key(fill: number): string {
 	return btoa(String.fromCharCode(...new Uint8Array(32).fill(fill)));
 }
 
-function keyring(activeKeyVersion = 'v1', keys: Record<string, string> = {
-	v1: base64Key(1),
-}) {
+function keyring(
+	activeKeyVersion = 'v1',
+	keys: Record<string, string> = {
+		v1: base64Key(1),
+	},
+) {
 	return {
 		activeKeyVersion,
 		keys: new Map(Object.entries(keys)),
@@ -74,9 +77,11 @@ describe('melee credential crypto', () => {
 		await expect(decryptMeleeCredential('legacy-secret', keyring())).rejects.toMatchObject({
 			code: 'MELEE_CREDENTIAL_LEGACY_PLAINTEXT',
 		});
-		await expect(decryptMeleeCredential('legacy-secret', keyring(), {
-			allowLegacyPlaintext: true,
-		})).resolves.toEqual({
+		await expect(
+			decryptMeleeCredential('legacy-secret', keyring(), {
+				allowLegacyPlaintext: true,
+			}),
+		).resolves.toEqual({
 			plaintext: 'legacy-secret',
 			legacyPlaintext: true,
 			keyVersion: null,
@@ -86,15 +91,17 @@ describe('melee credential crypto', () => {
 
 	it('fails clearly when the envelope key version is unavailable', async () => {
 		const plaintext = 'never-include-this-secret';
-		const encrypted = await encryptMeleeCredential(plaintext, keyring('retired', {
-			retired: base64Key(3),
-		}));
+		const encrypted = await encryptMeleeCredential(
+			plaintext,
+			keyring('retired', {
+				retired: base64Key(3),
+			}),
+		);
 
 		let error: unknown;
 		try {
 			await decryptMeleeCredential(encrypted, keyring('current'));
-		}
-		catch (caught) {
+		} catch (caught) {
 			error = caught;
 		}
 
@@ -109,7 +116,9 @@ describe('melee credential crypto', () => {
 		const envelope = envelopeJson(encrypted);
 		const prefix = encrypted.slice(0, encrypted.indexOf('{'));
 		const ciphertext = atob(envelope.ciphertext);
-		envelope.ciphertext = btoa(String.fromCharCode(ciphertext.charCodeAt(0) ^ 1) + ciphertext.slice(1));
+		envelope.ciphertext = btoa(
+			String.fromCharCode(ciphertext.charCodeAt(0) ^ 1) + ciphertext.slice(1),
+		);
 		const tampered = `${prefix}${JSON.stringify(envelope)}`;
 
 		await expect(decryptMeleeCredential(`${prefix}{}`, keyring())).rejects.toMatchObject({
@@ -122,9 +131,12 @@ describe('melee credential crypto', () => {
 	});
 
 	it('rejects keys that are not base64-encoded 256-bit values', async () => {
-		const encryption = encryptMeleeCredential('secret', keyring('bad', {
-			bad: btoa('too-short'),
-		}));
+		const encryption = encryptMeleeCredential(
+			'secret',
+			keyring('bad', {
+				bad: btoa('too-short'),
+			}),
+		);
 
 		await expect(encryption).rejects.toMatchObject({ code: 'MELEE_CREDENTIAL_INVALID_KEY' });
 	});

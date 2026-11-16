@@ -21,7 +21,7 @@ const formId = 'create-match-form';
 
 // Form state
 const formData = ref({
-	selectedRoundId: props.defaultRoundId ?? undefined as number | undefined,
+	selectedRoundId: props.defaultRoundId ?? (undefined as number | undefined),
 	selectedPlayer1Id: undefined as number | undefined,
 	selectedPlayer2Id: undefined as number | undefined,
 	tableNumber: undefined as number | undefined,
@@ -37,7 +37,7 @@ const roundOptions = computed(() =>
 
 // Player options for the player picker
 const playerOptions = computed(() =>
-	playerStore.players.map(p => ({
+	playerStore.players.map((p) => ({
 		label: p.name,
 		value: p.id,
 	})),
@@ -48,16 +48,16 @@ const isValid = computed(() => formData.value.selectedRoundId !== undefined);
 async function handleSubmit() {
 	const eventId = eventStore.eventId;
 	const selectedRoundId = formData.value.selectedRoundId;
-	if (!selectedRoundId || !eventId)
-		return;
+	if (!selectedRoundId || !eventId) return;
 
 	await runRequest(
-		() => matchStore.createMatch(eventId, {
-			roundId: selectedRoundId,
-			player1Id: formData.value.selectedPlayer1Id ?? null,
-			player2Id: formData.value.selectedPlayer2Id ?? null,
-			tableNumber: formData.value.tableNumber ?? null,
-		}),
+		() =>
+			matchStore.createMatch(eventId, {
+				roundId: selectedRoundId,
+				player1Id: formData.value.selectedPlayer1Id ?? null,
+				player2Id: formData.value.selectedPlayer2Id ?? null,
+				tableNumber: formData.value.tableNumber ?? null,
+			}),
 		{
 			loadingRef: saving,
 			success: false,
@@ -81,15 +81,10 @@ function handleCancel() {
 		title="Create Match"
 		:close="{ onClick: handleCancel }"
 		:ui="{ footer: 'justify-end' }"
-		@update:open="val => !val && handleCancel()"
+		@update:open="(val) => !val && handleCancel()"
 	>
 		<template #body>
-			<UForm
-				:id="formId"
-				:state="formData"
-				class="flex flex-col gap-4"
-				@submit="handleSubmit"
-			>
+			<UForm :id="formId" :state="formData" class="flex flex-col gap-4" @submit="handleSubmit">
 				<UFormField label="Round" required>
 					<USelectMenu
 						v-model="formData.selectedRoundId"
@@ -134,12 +129,7 @@ function handleCancel() {
 		</template>
 
 		<template #footer>
-			<UButton
-				variant="ghost"
-				color="neutral"
-				label="Cancel"
-				@click="handleCancel"
-			/>
+			<UButton variant="ghost" color="neutral" label="Cancel" @click="handleCancel" />
 			<UButton
 				type="submit"
 				:form="formId"

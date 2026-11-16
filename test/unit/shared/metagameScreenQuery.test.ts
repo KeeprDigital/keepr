@@ -1,17 +1,28 @@
 import type { ModeConfigsMap } from '~~/shared/types/screenConfig';
 import { describe, expect, it } from 'vitest';
-import { metagameArchetypeDetailQuerySchema, metagameArchetypesQuerySchema, metagameCardsQuerySchema } from '~~/server/schemas/api/metagame';
+import {
+	metagameArchetypeDetailQuerySchema,
+	metagameArchetypesQuerySchema,
+	metagameCardsQuerySchema,
+} from '~~/server/schemas/api/metagame';
 import { CONVERSION_THRESHOLD_BOUNDS, DEFAULT_CONVERSION_TARGET } from '~~/shared/conversionTarget';
 import { resolveScreenModeConfig } from '~~/shared/types/screenConfig';
-import { archetypeSpotlightScreenQuery, metagameScreenQuery, topCardsScreenQuery } from '~~/shared/utils/metagameQuery';
+import {
+	archetypeSpotlightScreenQuery,
+	metagameScreenQuery,
+	topCardsScreenQuery,
+} from '~~/shared/utils/metagameQuery';
 
 function screenQuery(stored: ModeConfigsMap['metagame'], target = DEFAULT_CONVERSION_TARGET) {
 	return metagameScreenQuery(resolveScreenModeConfig({ metagame: stored }, 'metagame'), target);
 }
 
 describe('metagameScreenQuery', () => {
-	it('asks the archetype breakdown for the Conversion Rate against its Event\'s Conversion Target, inside the Screen\'s scope', () => {
-		const { query } = screenQuery({ scope: 'topN', topN: 32 }, { conversionMetric: 'minPoints', conversionThreshold: 15 });
+	it("asks the archetype breakdown for the Conversion Rate against its Event's Conversion Target, inside the Screen's scope", () => {
+		const { query } = screenQuery(
+			{ scope: 'topN', topN: 32 },
+			{ conversionMetric: 'minPoints', conversionThreshold: 15 },
+		);
 
 		expect(query).toEqual({
 			scope: 'topN',
@@ -23,19 +34,36 @@ describe('metagameScreenQuery', () => {
 	});
 
 	// A stored per-Screen target is a former field: the Event's target wins over it.
-	it('ignores a Screen\'s former conversion target', () => {
-		const stored = { conversionMetric: 'minPoints', conversionThreshold: 15 } as ModeConfigsMap['metagame'];
+	it("ignores a Screen's former conversion target", () => {
+		const stored = {
+			conversionMetric: 'minPoints',
+			conversionThreshold: 15,
+		} as ModeConfigsMap['metagame'];
 
-		expect(screenQuery(stored).query).toMatchObject({ conversionMetric: 'topN', conversionThreshold: 8 });
+		expect(screenQuery(stored).query).toMatchObject({
+			conversionMetric: 'topN',
+			conversionThreshold: 8,
+		});
 	});
 
 	it.each([
 		{ conversionMetric: 'topN', conversionThreshold: CONVERSION_THRESHOLD_BOUNDS.topN.min },
-		{ conversionMetric: 'minPoints', conversionThreshold: CONVERSION_THRESHOLD_BOUNDS.minPoints.min },
-		{ conversionMetric: 'minPoints', conversionThreshold: CONVERSION_THRESHOLD_BOUNDS.minPoints.max },
-	] as const)('sends every Conversion Target an Event can hold within the archetype read\'s bounds: $conversionMetric $conversionThreshold', (target) => {
-		expect(() => metagameArchetypesQuerySchema.parse(screenQuery({}, target).query)).not.toThrow();
-	});
+		{
+			conversionMetric: 'minPoints',
+			conversionThreshold: CONVERSION_THRESHOLD_BOUNDS.minPoints.min,
+		},
+		{
+			conversionMetric: 'minPoints',
+			conversionThreshold: CONVERSION_THRESHOLD_BOUNDS.minPoints.max,
+		},
+	] as const)(
+		"sends every Conversion Target an Event can hold within the archetype read's bounds: $conversionMetric $conversionThreshold",
+		(target) => {
+			expect(() =>
+				metagameArchetypesQuerySchema.parse(screenQuery({}, target).query),
+			).not.toThrow();
+		},
+	);
 
 	it('leaves the card breakdown without a conversion target', () => {
 		expect(screenQuery({ viewMode: 'cards' }).query).not.toHaveProperty('conversionMetric');
@@ -43,8 +71,14 @@ describe('metagameScreenQuery', () => {
 });
 
 describe('archetypeSpotlightScreenQuery', () => {
-	function spotlightQuery(stored: ModeConfigsMap['archetype-spotlight'], target = DEFAULT_CONVERSION_TARGET) {
-		return archetypeSpotlightScreenQuery(resolveScreenModeConfig({ 'archetype-spotlight': stored }, 'archetype-spotlight'), target);
+	function spotlightQuery(
+		stored: ModeConfigsMap['archetype-spotlight'],
+		target = DEFAULT_CONVERSION_TARGET,
+	) {
+		return archetypeSpotlightScreenQuery(
+			resolveScreenModeConfig({ 'archetype-spotlight': stored }, 'archetype-spotlight'),
+			target,
+		);
 	}
 
 	it('asks nothing while no Archetype is picked', () => {
@@ -63,13 +97,16 @@ describe('archetypeSpotlightScreenQuery', () => {
 		});
 	});
 
-	it('asks for the Screen\'s own scope and board, against its Event\'s Conversion Target', () => {
-		const request = spotlightQuery({
-			archetypeId: 7,
-			scope: 'minPoints',
-			minPoints: 12,
-			board: 'mainboard',
-		}, { conversionMetric: 'minPoints', conversionThreshold: 18 });
+	it("asks for the Screen's own scope and board, against its Event's Conversion Target", () => {
+		const request = spotlightQuery(
+			{
+				archetypeId: 7,
+				scope: 'minPoints',
+				minPoints: 12,
+				board: 'mainboard',
+			},
+			{ conversionMetric: 'minPoints', conversionThreshold: 18 },
+		);
 
 		expect(request?.query).toEqual({
 			scope: 'minPoints',
@@ -78,12 +115,20 @@ describe('archetypeSpotlightScreenQuery', () => {
 			conversionMetric: 'minPoints',
 			conversionThreshold: 18,
 		});
-		expect(metagameArchetypeDetailQuerySchema.parse(request!.query)).toMatchObject({ scope: 'minPoints', minPoints: 12, conversionThreshold: 18 });
+		expect(metagameArchetypeDetailQuerySchema.parse(request!.query)).toMatchObject({
+			scope: 'minPoints',
+			minPoints: 12,
+			conversionThreshold: 18,
+		});
 	});
 
 	it('scopes to its Player List only while the scope names one', () => {
-		expect(spotlightQuery({ archetypeId: 7, scope: 'playerList', playerListId: 3 })?.query).toMatchObject({ scope: 'playerList', playerListId: 3 });
-		expect(spotlightQuery({ archetypeId: 7, scope: 'all', playerListId: 3 })?.query).not.toHaveProperty('playerListId');
+		expect(
+			spotlightQuery({ archetypeId: 7, scope: 'playerList', playerListId: 3 })?.query,
+		).toMatchObject({ scope: 'playerList', playerListId: 3 });
+		expect(
+			spotlightQuery({ archetypeId: 7, scope: 'all', playerListId: 3 })?.query,
+		).not.toHaveProperty('playerListId');
 	});
 });
 
@@ -102,15 +147,19 @@ describe('topCardsScreenQuery', () => {
 		});
 	});
 
-	it('asks for the Screen\'s own scope, and its Player List only while the scope names one', () => {
+	it("asks for the Screen's own scope, and its Player List only while the scope names one", () => {
 		expect(topCardsQuery({ scope: 'topN', topN: 16 })).toMatchObject({ scope: 'topN', topN: 16 });
-		expect(topCardsQuery({ scope: 'playerList', playerListId: 3 })).toMatchObject({ scope: 'playerList', playerListId: 3 });
+		expect(topCardsQuery({ scope: 'playerList', playerListId: 3 })).toMatchObject({
+			scope: 'playerList',
+			playerListId: 3,
+		});
 		expect(topCardsQuery({ scope: 'all', playerListId: 3 })).not.toHaveProperty('playerListId');
 	});
 
 	it('scopes the same way the Metagame card breakdown does', () => {
 		const stored = { scope: 'playerList', playerListId: 3, archetypeId: 4 } as const;
-		const { scope, playerListId, archetypeId } = screenQuery({ ...stored, viewMode: 'cards' }).query as Record<string, unknown>;
+		const { scope, playerListId, archetypeId } = screenQuery({ ...stored, viewMode: 'cards' })
+			.query as Record<string, unknown>;
 
 		expect(archetypeId).toBe(4);
 		expect(topCardsQuery(stored)).toMatchObject({ scope, playerListId, archetypeId });
@@ -128,15 +177,20 @@ describe('topCardsScreenQuery', () => {
 			asked: undefined,
 			excludeTypes: ['Land', 'Creature'],
 		},
-	])('asks for pointed cards only while the Screen filters to them: $pointedOnly', ({ pointedOnly, asked, excludeTypes }) => {
-		const query = metagameCardsQuerySchema.parse(topCardsQuery({
-			pointedOnly,
-			excludedCardTypes: ['Land', 'Creature'],
-		}));
+	])(
+		'asks for pointed cards only while the Screen filters to them: $pointedOnly',
+		({ pointedOnly, asked, excludeTypes }) => {
+			const query = metagameCardsQuerySchema.parse(
+				topCardsQuery({
+					pointedOnly,
+					excludedCardTypes: ['Land', 'Creature'],
+				}),
+			);
 
-		expect(query.pointedOnly).toBe(asked);
-		expect(query.excludeTypes).toEqual(excludeTypes);
-	});
+			expect(query.pointedOnly).toBe(asked);
+			expect(query.excludeTypes).toEqual(excludeTypes);
+		},
+	);
 
 	// A config scoped to Minimum Points that stores no minimum reads with the default one.
 	it.each([
@@ -148,9 +202,12 @@ describe('topCardsScreenQuery', () => {
 			stored: { scope: 'minPoints' },
 			minPoints: 9,
 		},
-	] as const)('asks for its stored or default minimum under the Minimum Points scope: $stored', ({ stored, minPoints }) => {
-		const query = metagameCardsQuerySchema.parse(topCardsQuery(stored));
+	] as const)(
+		'asks for its stored or default minimum under the Minimum Points scope: $stored',
+		({ stored, minPoints }) => {
+			const query = metagameCardsQuerySchema.parse(topCardsQuery(stored));
 
-		expect(query.minPoints).toBe(minPoints);
-	});
+			expect(query.minPoints).toBe(minPoints);
+		},
+	);
 });

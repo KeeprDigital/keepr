@@ -10,7 +10,10 @@ import { defineComponent, reactive } from 'vue';
 import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
 
 const { mockApiFetch, routeQuery, mockRouter } = vi.hoisted(() => {
-	const routeQuery = { queue: undefined as string | undefined, item: undefined as string | undefined };
+	const routeQuery = {
+		queue: undefined as string | undefined,
+		item: undefined as string | undefined,
+	};
 	return {
 		mockApiFetch: vi.fn(),
 		routeQuery,
@@ -35,13 +38,17 @@ const { mockApiFetch, routeQuery, mockRouter } = vi.hoisted(() => {
 
 mockNuxtImport('$fetch', () => mockApiFetch);
 mockNuxtImport('useRouter', () => () => mockRouter);
-mockNuxtImport('useRoute', () => () => reactive({
-	path: '/admin/graphics-assets/queues',
-	fullPath: '/admin/graphics-assets/queues',
-	params: {},
-	meta: {},
-	query: routeQuery,
-}));
+mockNuxtImport(
+	'useRoute',
+	() => () =>
+		reactive({
+			path: '/admin/graphics-assets/queues',
+			fullPath: '/admin/graphics-assets/queues',
+			params: {},
+			meta: {},
+			query: routeQuery,
+		}),
+);
 
 function emptyQueue(id: GraphicsOperationalQueueId, severity: 'critical' | 'warning' | 'info') {
 	return {
@@ -324,7 +331,8 @@ const passthroughStub = defineComponent({
 });
 
 async function mountPage() {
-	const { default: QueuesPage } = await import('../../../../../app/pages/admin/graphics-assets/queues.vue');
+	const { default: QueuesPage } =
+		await import('../../../../../app/pages/admin/graphics-assets/queues.vue');
 	return mount(QueuesPage, {
 		global: {
 			stubs: { ...nuxtUiStubs, NuxtLayout: passthroughStub },
@@ -335,7 +343,7 @@ async function mountPage() {
 /** Lets the page's own fetches resolve before anything is asserted about it. */
 async function settle() {
 	await nextTick();
-	await new Promise(resolve => setTimeout(resolve, 0));
+	await new Promise((resolve) => setTimeout(resolve, 0));
 	await nextTick();
 }
 
@@ -345,8 +353,9 @@ async function openQueues() {
 	const token = wrapper.find('input');
 	if (token.exists()) {
 		await token.setValue('admin-token');
-		await wrapper.findAll('button')
-			.find(button => button.text() === 'Open queues')!
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Open queues')!
 			.trigger('click');
 	}
 	await settle();
@@ -354,15 +363,17 @@ async function openQueues() {
 }
 
 function buttonNamed(wrapper: Awaited<ReturnType<typeof mountPage>>, label: string) {
-	return wrapper.findAll('button').find(button => button.text() === label);
+	return wrapper.findAll('button').find((button) => button.text() === label);
 }
 
 /** Each surface answers with its own payload, so nothing is proved by a uniform mock. */
-function serve(options: {
-	queues?: GraphicsOperationalQueuesOverview;
-	inspection?: GraphicsQueueInspectionReading;
-	action?: unknown;
-} = {}) {
+function serve(
+	options: {
+		queues?: GraphicsOperationalQueuesOverview;
+		inspection?: GraphicsQueueInspectionReading;
+		action?: unknown;
+	} = {},
+) {
 	mockApiFetch.mockImplementation((url: string) => {
 		if (url === '/api/admin/graphics-assets/queues')
 			return Promise.resolve(options.queues ?? overview());
@@ -397,11 +408,10 @@ describe('the Graphics Asset Library operational queues page', () => {
 			'Retired Graphic Assets',
 		];
 		const text = wrapper.text();
-		for (const label of labels)
-			expect(text).toContain(label);
+		for (const label of labels) expect(text).toContain(label);
 
 		// The queues are listed most severe first, so the order is the work order.
-		const positions = labels.map(label => text.indexOf(label));
+		const positions = labels.map((label) => text.indexOf(label));
 		expect(positions).toEqual([...positions].sort((first, second) => first - second));
 
 		// Retirement is the one reversible state under no deadline, and says so.
@@ -413,13 +423,10 @@ describe('the Graphics Asset Library operational queues page', () => {
 		await buttonNamed(wrapper, 'Lower third · revision 1')!.trigger('click');
 		await settle();
 
-		expect(mockApiFetch).toHaveBeenCalledWith(
-			'/api/admin/graphics-assets/queues/inspection',
-			{
-				headers: { 'x-graphics-admin-token': 'admin-token' },
-				query: { queue: 'unavailable-content', subjectId: 'discrepancy-unavailable' },
-			},
-		);
+		expect(mockApiFetch).toHaveBeenCalledWith('/api/admin/graphics-assets/queues/inspection', {
+			headers: { 'x-graphics-admin-token': 'admin-token' },
+			query: { queue: 'unavailable-content', subjectId: 'discrepancy-unavailable' },
+		});
 
 		const text = wrapper.text();
 		// The two sides are named and never merged into one verdict.
@@ -557,8 +564,9 @@ describe('the Graphics Asset Library operational queues page', () => {
 		expect(wrapper.text()).toContain('Type purge-now to confirm');
 		expect(buttonNamed(wrapper, 'Confirm early purge')!.attributes('disabled')).toBeDefined();
 
-		const confirmation = wrapper.findAll('input')
-			.find(input => input.attributes('placeholder') === 'purge-now')!;
+		const confirmation = wrapper
+			.findAll('input')
+			.find((input) => input.attributes('placeholder') === 'purge-now')!;
 		await confirmation.setValue('purge-now');
 		await settle();
 
@@ -590,8 +598,9 @@ describe('the Graphics Asset Library operational queues page', () => {
 
 		await buttonNamed(wrapper, 'Purge now')!.trigger('click');
 		await settle();
-		const confirmation = wrapper.findAll('input')
-			.find(input => input.attributes('placeholder') === 'purge-now')!;
+		const confirmation = wrapper
+			.findAll('input')
+			.find((input) => input.attributes('placeholder') === 'purge-now')!;
 		await confirmation.setValue('purge-now');
 		await settle();
 		await buttonNamed(wrapper, 'Confirm early purge')!.trigger('click');

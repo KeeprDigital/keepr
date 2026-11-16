@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
 import ReviewToolbar from '~/components/Archetype/ReviewToolbar.vue';
 
-function mountToolbar(props: { currentIndex?: number; canGoBack?: boolean; canAdvance?: boolean } = {}) {
+function mountToolbar(
+	props: { currentIndex?: number; canGoBack?: boolean; canAdvance?: boolean } = {},
+) {
 	return mount(ReviewToolbar, {
 		props: {
 			currentIndex: 0,
@@ -30,23 +32,20 @@ function mountToolbar(props: { currentIndex?: number; canGoBack?: boolean; canAd
 
 describe('archetype review toolbar', () => {
 	it.each([
-		[
-			'Previous deck',
-			'back',
-			{ canGoBack: false },
-		],
-		[
-			'Next deck',
-			'advance',
-			{ canAdvance: false },
-		],
-	] as const)('steps with %s, unless the queue has nowhere to go', async (label, event, nowhere) => {
-		const wrapper = mountToolbar();
-		await wrapper.get(`[aria-label="${label}"]`).trigger('click');
-		expect(wrapper.emitted(event)).toHaveLength(1);
+		['Previous deck', 'back', { canGoBack: false }],
+		['Next deck', 'advance', { canAdvance: false }],
+	] as const)(
+		'steps with %s, unless the queue has nowhere to go',
+		async (label, event, nowhere) => {
+			const wrapper = mountToolbar();
+			await wrapper.get(`[aria-label="${label}"]`).trigger('click');
+			expect(wrapper.emitted(event)).toHaveLength(1);
 
-		expect(mountToolbar(nowhere).get(`[aria-label="${label}"]`).attributes('disabled')).toBeDefined();
-	});
+			expect(
+				mountToolbar(nowhere).get(`[aria-label="${label}"]`).attributes('disabled'),
+			).toBeDefined();
+		},
+	);
 
 	it.each([
 		['its place in the list', 1, '2 of 3'],

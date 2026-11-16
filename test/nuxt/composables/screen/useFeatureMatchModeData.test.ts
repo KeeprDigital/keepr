@@ -20,9 +20,7 @@ const mockFeatureMatchStore = {
 
 const mockState = createMockFeatureMatchState();
 const mockFeatureMatchStateStore = {
-	featureMatchStates: new Map([
-		[1, mockState],
-	]),
+	featureMatchStates: new Map([[1, mockState]]),
 	loadState: vi.fn(),
 	readSessionsAsScreenOutput: vi.fn((_read: (slotId: number) => Promise<unknown>) => vi.fn()),
 	currentEventId: null as number | null,
@@ -83,20 +81,17 @@ describe('useFeatureMatchModeData', () => {
 		mockFeatureMatchStore.isLoaded = false;
 		mockFeatureMatchStore.holdFeatureMatch.mockImplementation((slot: { id: number }) => {
 			mockFeatureMatchStore.featureMatches = [
-				...mockFeatureMatchStore.featureMatches.filter(held => held.id !== slot.id),
+				...mockFeatureMatchStore.featureMatches.filter((held) => held.id !== slot.id),
 				slot,
 			];
 			return true;
 		});
 		mockApiFetch.mockImplementation(async (path: string) => {
 			const slotId = Number(/feature-match-slots\/(\d+)$/.exec(path)?.[1]);
-			if (!slotId)
-				throw new Error(`unexpected request ${path}`);
+			if (!slotId) throw new Error(`unexpected request ${path}`);
 			return slotRead(slotId);
 		});
-		mockFeatureMatchStateStore.featureMatchStates = new Map([
-			[1, mockState],
-		]);
+		mockFeatureMatchStateStore.featureMatchStates = new Map([[1, mockState]]);
 		mockFeatureMatchStateStore.currentEventId = null;
 	});
 

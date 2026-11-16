@@ -49,22 +49,17 @@ export function readSocialProfileProjectedValueReference(
 	candidate: string,
 ): SocialProfileProjectedValueReference | undefined {
 	const separator = candidate.lastIndexOf('.');
-	if (separator <= 0)
-		return undefined;
+	if (separator <= 0) return undefined;
 	const projectionKey = candidate.slice(0, separator);
 	const value = candidate.slice(separator + 1) as SocialProfileProjectedTextValue;
-	if (
-		!isInputKey(projectionKey)
-		|| !SOCIAL_PROFILE_PROJECTED_TEXT_VALUE_VALUES.includes(value)
-	) {
+	if (!isInputKey(projectionKey) || !SOCIAL_PROFILE_PROJECTED_TEXT_VALUE_VALUES.includes(value)) {
 		return undefined;
 	}
 	return { projectionKey, value };
 }
 
 function isPlaceholderKey(candidate: string, projectionKeys: ReadonlySet<string>): boolean {
-	if (isInputKey(candidate))
-		return true;
+	if (isInputKey(candidate)) return true;
 	const projected = readSocialProfileProjectedValueReference(candidate);
 	return projected !== undefined && projectionKeys.has(projected.projectionKey);
 }
@@ -86,19 +81,16 @@ export function parseGraphicTextTemplate(
 
 	for (const match of template.matchAll(PLACEHOLDER)) {
 		const key = match[1] ?? '';
-		if (!isPlaceholderKey(key, projectionKeys))
-			continue;
+		if (!isPlaceholderKey(key, projectionKeys)) continue;
 
 		const literal = template.slice(literalStart, match.index);
-		if (literal.length > 0)
-			segments.push({ text: literal });
+		if (literal.length > 0) segments.push({ text: literal });
 		segments.push({ text: '', inputKey: key });
 		literalStart = match.index + match[0].length;
 	}
 
 	const tail = template.slice(literalStart);
-	if (tail.length > 0 || segments.length === 0)
-		segments.push({ text: tail });
+	if (tail.length > 0 || segments.length === 0) segments.push({ text: tail });
 
 	return segments;
 }
@@ -106,11 +98,9 @@ export function parseGraphicTextTemplate(
 /** Which Graphic Inputs this template references, once each, in template order. */
 export function graphicTextTemplateInputKeys(template: string): string[] {
 	const keys = parseGraphicTextTemplate(template)
-		.map(segment => segment.inputKey)
+		.map((segment) => segment.inputKey)
 		.filter((key): key is string => key !== undefined && isInputKey(key));
-	return [
-		...new Set(keys),
-	];
+	return [...new Set(keys)];
 }
 
 /** The projection value references in template order, once each. */
@@ -119,12 +109,13 @@ export function graphicTextTemplateProjectedValueReferences(
 ): SocialProfileProjectedValueReference[] {
 	const references = graphicTextTemplateDottedPlaceholderKeys(template)
 		.map(readSocialProfileProjectedValueReference)
-		.filter((reference): reference is SocialProfileProjectedValueReference => reference !== undefined);
+		.filter(
+			(reference): reference is SocialProfileProjectedValueReference => reference !== undefined,
+		);
 	const seen = new Set<string>();
 	return references.filter((reference) => {
 		const key = `${reference.projectionKey}.${reference.value}`;
-		if (seen.has(key))
-			return false;
+		if (seen.has(key)) return false;
 		seen.add(key);
 		return true;
 	});
@@ -132,14 +123,10 @@ export function graphicTextTemplateProjectedValueReferences(
 
 /** Dotted placeholder candidates, including unsupported projection fields. */
 export function graphicTextTemplateDottedPlaceholderKeys(template: string): string[] {
-	const keys = [
-		...template.matchAll(PLACEHOLDER),
-	]
-		.map(match => match[1] ?? '')
-		.filter(key => key.includes('.'));
-	return [
-		...new Set(keys),
-	];
+	const keys = [...template.matchAll(PLACEHOLDER)]
+		.map((match) => match[1] ?? '')
+		.filter((key) => key.includes('.'));
+	return [...new Set(keys)];
 }
 
 /**
@@ -159,8 +146,7 @@ export function renderGraphicTextTemplate(
 ): GraphicTextTemplateSegment[] {
 	const projectionKeys = new Set(Object.keys(socialProfileValues ?? {}));
 	return parseGraphicTextTemplate(template, projectionKeys).map((segment) => {
-		if (segment.inputKey === undefined)
-			return segment;
+		if (segment.inputKey === undefined) return segment;
 		const projected = readSocialProfileProjectedValueReference(segment.inputKey);
 		if (projected) {
 			return {
@@ -171,9 +157,7 @@ export function renderGraphicTextTemplate(
 
 		const declaration = findGraphicInputDeclaration(declarations, segment.inputKey);
 		return {
-			text: declaration
-				? graphicInputTextValue(declaration, values[segment.inputKey])
-				: '',
+			text: declaration ? graphicInputTextValue(declaration, values[segment.inputKey]) : '',
 			inputKey: segment.inputKey,
 		};
 	});
@@ -181,5 +165,5 @@ export function renderGraphicTextTemplate(
 
 /** Whether this template renders any Graphic Input at all. */
 export function hasGraphicTextTemplatePlaceholders(template: string): boolean {
-	return parseGraphicTextTemplate(template).some(segment => segment.inputKey !== undefined);
+	return parseGraphicTextTemplate(template).some((segment) => segment.inputKey !== undefined);
 }

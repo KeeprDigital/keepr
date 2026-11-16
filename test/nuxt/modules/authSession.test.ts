@@ -121,10 +121,7 @@ describe('useAuthSession ensure', () => {
 		});
 
 		const session = await freshSession();
-		const both = Promise.all([
-			session.ensure(),
-			session.ensure(),
-		]);
+		const both = Promise.all([session.ensure(), session.ensure()]);
 		release?.();
 		await both;
 
@@ -238,7 +235,7 @@ describe('useAuthSession signIn', () => {
 		});
 	});
 
-	it('reports the refusal in the server\'s own words and stays signed out', async () => {
+	it("reports the refusal in the server's own words and stays signed out", async () => {
 		mockSignInEmail.mockResolvedValue({
 			data: null,
 			error: { status: 401, message: 'Invalid email or password' },

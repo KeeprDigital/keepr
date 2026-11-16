@@ -43,9 +43,11 @@ function targetIdentity({ accountId, stagingBucket, workflow }) {
 }
 
 function sameTarget(left, right) {
-	return left.accountId === right.accountId
-		&& left.stagingBucket === right.stagingBucket
-		&& left.workflow === right.workflow;
+	return (
+		left.accountId === right.accountId &&
+		left.stagingBucket === right.stagingBucket &&
+		left.workflow === right.workflow
+	);
 }
 
 /** @param {string} path */
@@ -72,11 +74,11 @@ export function openCleanupManifest(path) {
 			let left;
 			try {
 				left = JSON.parse(await readFile(path, 'utf8'));
-			}
-			catch (error) {
-				if (error?.code === 'ENOENT')
-					return undefined;
-				throw new AcceptanceFailure('harness-precondition-unmet', { reason: 'cleanup-manifest-unreadable' });
+			} catch (error) {
+				if (error?.code === 'ENOENT') return undefined;
+				throw new AcceptanceFailure('harness-precondition-unmet', {
+					reason: 'cleanup-manifest-unreadable',
+				});
 			}
 			if (!Array.isArray(left?.objects) || left.objects.length === 0) {
 				await rm(path, { force: true });
@@ -100,26 +102,24 @@ export function openCleanupManifest(path) {
 		 * Workflow instance that writes it, for an object the run does not write.
 		 */
 		async record(key, { instance } = {}) {
-			if (!state.objects.some(entry => entry.key === key)) {
-				state.objects.push(instance
-					? { key, instance }
-					: { key });
+			if (!state.objects.some((entry) => entry.key === key)) {
+				state.objects.push(instance ? { key, instance } : { key });
 				await persist();
 			}
 		},
 		/** The writing instance has settled, so a delete of this key now stays deleted. */
 		async settle(key) {
-			const entry = state.objects.find(candidate => candidate.key === key);
+			const entry = state.objects.find((candidate) => candidate.key === key);
 			if (entry?.instance) {
 				delete entry.instance;
 				await persist();
 			}
 		},
 		async forget(key) {
-			state.objects = state.objects.filter(entry => entry.key !== key);
+			state.objects = state.objects.filter((entry) => entry.key !== key);
 			await persist();
 		},
-		pending: () => state?.objects.map(entry => ({ ...entry })) ?? [],
+		pending: () => state?.objects.map((entry) => ({ ...entry })) ?? [],
 	};
 }
 
@@ -134,16 +134,14 @@ export async function drainCleanupManifest({ manifest, commands, target }) {
 		try {
 			if (instance) {
 				const { status } = await commands.describeInstance({ target, id: instance });
-				if (isSettledStatus(status))
-					await manifest.settle(key);
+				if (isSettledStatus(status)) await manifest.settle(key);
 			}
 			await commands.deleteObject({ target, key });
-			if (!manifest.pending().find(entry => entry.key === key)?.instance) {
+			if (!manifest.pending().find((entry) => entry.key === key)?.instance) {
 				await manifest.forget(key);
 				cleaned += 1;
 			}
-		}
-		catch {
+		} catch {
 			// Stays listed; the count below reports it.
 		}
 	}
@@ -153,5 +151,7 @@ export async function drainCleanupManifest({ manifest, commands, target }) {
 /** Refuse a manifest that was written for some other account, bucket or Workflow. */
 export function assertManifestTarget(manifest, target) {
 	if (!manifest?.target || !sameTarget(manifest.target, target))
-		throw new AcceptanceFailure('harness-target-inconsistent', { reason: 'manifest-target-mismatch' });
+		throw new AcceptanceFailure('harness-target-inconsistent', {
+			reason: 'manifest-target-mismatch',
+		});
 }

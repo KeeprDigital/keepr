@@ -10,13 +10,13 @@ import { GATES, selectGates } from '../../../scripts/verify.mjs';
  */
 
 interface Step {
-	'name'?: string;
-	'uses'?: string;
-	'run'?: string;
-	'if'?: string;
+	name?: string;
+	uses?: string;
+	run?: string;
+	if?: string;
 	'continue-on-error'?: unknown;
-	'env'?: Record<string, string>;
-	'with'?: Record<string, unknown>;
+	env?: Record<string, string>;
+	with?: Record<string, unknown>;
 }
 interface Workflow {
 	on: Record<string, { inputs?: Record<string, { options?: string[] }> }>;
@@ -24,29 +24,34 @@ interface Workflow {
 	jobs: Record<string, { env?: Record<string, string>; steps?: Step[] }>;
 }
 
-const scripts = (JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> }).scripts;
+const scripts = (
+	JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> }
+).scripts;
 
 function workflow(name: string): Workflow {
 	return parse(readFileSync(`.github/workflows/${name}`, 'utf8')) as Workflow;
 }
 
 function steps(file: Workflow, job?: string): Step[] {
-	return (job === undefined
-		? Object.values(file.jobs)
-		: [file.jobs[job]!]).flatMap(entry => entry.steps ?? []);
+	return (job === undefined ? Object.values(file.jobs) : [file.jobs[job]!]).flatMap(
+		(entry) => entry.steps ?? [],
+	);
 }
 
 const ci = workflow('ci.yml');
-const ciCommands = steps(ci).flatMap(step => (step.run ?? '').split('\n')).map(line => line.trim()).filter(line => line.startsWith('pnpm '));
+const ciCommands = steps(ci)
+	.flatMap((step) => (step.run ?? '').split('\n'))
+	.map((line) => line.trim())
+	.filter((line) => line.startsWith('pnpm '));
 
 describe('verify and CI run the same gates', () => {
 	it('builds once, then runs the Worker dry run and smoke, in verify and in CI', () => {
 		expect(scripts['worker:smoke']).not.toContain('build');
-		expect(Object.values(GATES).filter(gate => gate.command.includes('build'))).toHaveLength(1);
+		expect(Object.values(GATES).filter((gate) => gate.command.includes('build'))).toHaveLength(1);
 
-		const workerGuard = steps(ci, 'worker-guard').map(step => step.run ?? '');
-		const at = (command: string) => workerGuard.findIndex(run => run.includes(command));
-		expect(workerGuard.filter(run => run.includes('pnpm build'))).toHaveLength(1);
+		const workerGuard = steps(ci, 'worker-guard').map((step) => step.run ?? '');
+		const at = (command: string) => workerGuard.findIndex((run) => run.includes(command));
+		expect(workerGuard.filter((run) => run.includes('pnpm build'))).toHaveLength(1);
 		expect(at('pnpm build')).toBeLessThan(at('pnpm worker:dry-run'));
 		expect(at('pnpm worker:dry-run')).toBeLessThan(at('pnpm worker:smoke'));
 	});
@@ -55,7 +60,9 @@ describe('verify and CI run the same gates', () => {
 		expect(scripts.typecheck).toMatch(/&& pnpm typecheck:validator(?: |$)/u);
 		expect(Object.keys(selectGates(['--quick']))).toContain('typecheck:validator');
 		expect(Object.keys(selectGates([]))).toContain('validator:dry-run');
-		expect(ciCommands).toEqual(expect.arrayContaining(['pnpm typecheck', 'pnpm validator:dry-run']));
+		expect(ciCommands).toEqual(
+			expect.arrayContaining(['pnpm typecheck', 'pnpm validator:dry-run']),
+		);
 	});
 
 	it('runs every gate `pnpm test` runs as a CI step', () => {
@@ -64,8 +71,14 @@ describe('verify and CI run the same gates', () => {
 			.filter(([name]) => name !== 'prepare')
 			.map(([, gate]) => `pnpm ${gate.command.slice(1).join(' ')}`);
 
-		expect(commands).toEqual(expect.arrayContaining(['pnpm test:unit:coverage', 'pnpm test:integration --run']));
-		expect(commands.filter(command => !ciCommands.some(step => step === command || step.startsWith(`${command} `)))).toEqual([]);
+		expect(commands).toEqual(
+			expect.arrayContaining(['pnpm test:unit:coverage', 'pnpm test:integration --run']),
+		);
+		expect(
+			commands.filter(
+				(command) => !ciCommands.some((step) => step === command || step.startsWith(`${command} `)),
+			),
+		).toEqual([]);
 	});
 });
 
@@ -93,8 +106,12 @@ describe('verify --quick checks what a checkout changes', () => {
 			'test:unit:changed',
 			'test:nuxt:changed',
 		]);
-		expect(gates['test:unit:changed']!.command.join(' ')).toBe('exec vitest run --changed origin/main --passWithNoTests');
-		expect(gates['test:nuxt:changed']!.command.join(' ')).toBe('exec vitest run --config vitest.nuxt.config.ts --changed origin/main --passWithNoTests');
+		expect(gates['test:unit:changed']!.command.join(' ')).toBe(
+			'exec vitest run --changed origin/main --passWithNoTests',
+		);
+		expect(gates['test:nuxt:changed']!.command.join(' ')).toBe(
+			'exec vitest run --config vitest.nuxt.config.ts --changed origin/main --passWithNoTests',
+		);
 	});
 
 	it.each([
@@ -130,22 +147,32 @@ describe('every heavy gate takes run slots', () => {
 // Each starts servers, and two at once make every result meaningless (README § Testing).
 describe('verify runs the server-backed suites one at a time', () => {
 	it('chains integration, local-auth and the browser gates, each behind the one before', () => {
-		const serverBacked = Object.keys(GATES).filter(name => /^test:(?:integration|local-auth)$|^accept:/u.test(name));
+		const serverBacked = Object.keys(GATES).filter((name) =>
+			/^test:(?:integration|local-auth)$|^accept:/u.test(name),
+		);
 
 		expect(serverBacked.length).toBeGreaterThan(2);
-		expect(GATES['test:integration']!.after).toEqual(expect.arrayContaining(['test:unit:coverage', 'test:nuxt:coverage']));
-		expect(serverBacked.slice(1).map(name => GATES[name as keyof typeof GATES].after)).toEqual(serverBacked.slice(0, -1).map(previous => [previous]));
+		expect(GATES['test:integration']!.after).toEqual(
+			expect.arrayContaining(['test:unit:coverage', 'test:nuxt:coverage']),
+		);
+		expect(serverBacked.slice(1).map((name) => GATES[name as keyof typeof GATES].after)).toEqual(
+			serverBacked.slice(0, -1).map((previous) => [previous]),
+		);
 	});
 });
 
 describe('the deploy advances its promotion markers only behind every check', () => {
 	it('marks the app pending just before the first remote change, and deployed only after deploy:verify', () => {
-		const commands = scripts.deploy!.split('&&').map(command => command.trim());
+		const commands = scripts.deploy!.split('&&').map((command) => command.trim());
 		const pending = commands.indexOf('pnpm deploy:mark-app pending');
 
 		// Only `&&`: nothing may swallow a failed step.
 		expect(scripts.deploy).not.toMatch(/\|\||;|(^|[^&])&([^&]|$)/);
-		expect(commands.slice(0, pending)).toEqual(['pnpm build', 'pnpm worker:dry-run', 'pnpm worker:smoke']);
+		expect(commands.slice(0, pending)).toEqual([
+			'pnpm build',
+			'pnpm worker:dry-run',
+			'pnpm worker:smoke',
+		]);
 		expect(commands[pending + 1]).toBe('pnpm db:migrate:remote');
 		expect(commands.slice(-2)).toEqual(['pnpm deploy:verify', 'pnpm deploy:mark-app deployed']);
 	});
@@ -154,20 +181,27 @@ describe('the deploy advances its promotion markers only behind every check', ()
 		const deploy = workflow('deploy.yml');
 		const all = steps(deploy);
 		const index = (match: (step: Step) => boolean) => all.findIndex(match);
-		const release = index(step => step.with?.ref === '${{ steps.release.outputs.tag }}');
-		const tooling = index(step => step.with?.path === '.deploy-tooling');
-		const install = index(step => step.run === 'pnpm install --frozen-lockfile');
-		const promote = index(step => step.run?.startsWith('node .deploy-tooling/scripts/deploy-promotion.mjs promote') === true);
+		const release = index((step) => step.with?.ref === '${{ steps.release.outputs.tag }}');
+		const tooling = index((step) => step.with?.path === '.deploy-tooling');
+		const install = index((step) => step.run === 'pnpm install --frozen-lockfile');
+		const promote = index(
+			(step) =>
+				step.run?.startsWith('node .deploy-tooling/scripts/deploy-promotion.mjs promote') === true,
+		);
 
 		it('promotes through tooling from its own commit, after installing the release', () => {
 			expect(release).toBeGreaterThanOrEqual(0);
-			expect([release, tooling, install, promote]).toEqual([release, tooling, install, promote].toSorted((a, b) => a - b));
+			expect([release, tooling, install, promote]).toEqual(
+				[release, tooling, install, promote].toSorted((a, b) => a - b),
+			);
 			expect(all[tooling]!.with).toMatchObject({
-				'ref': '${{ github.sha }}',
+				ref: '${{ github.sha }}',
 				'sparse-checkout': 'scripts/deploy-promotion.mjs',
 				'persist-credentials': false,
 			});
-			expect(all.some(step => step.run === 'echo /.deploy-tooling/ >> .git/info/exclude')).toBe(true);
+			expect(all.some((step) => step.run === 'echo /.deploy-tooling/ >> .git/info/exclude')).toBe(
+				true,
+			);
 		});
 
 		it('cannot skip past a failed promotion, and deploys or moves a marker nowhere else', () => {
@@ -183,15 +217,21 @@ describe('the deploy advances its promotion markers only behind every check', ()
 		// Job-level env reaches every step: the install's build scripts and the setup actions too.
 		it('hands the Cloudflare credentials to the promotion step and to nothing else', () => {
 			const holders = [
-				...Object.values(deploy.jobs).map(job => job.env ?? {}),
-				...all.filter((_, position) => position !== promote).map(step => step.env ?? {}),
+				...Object.values(deploy.jobs).map((job) => job.env ?? {}),
+				...all.filter((_, position) => position !== promote).map((step) => step.env ?? {}),
 			];
 
 			expect(all[promote]!.env).toMatchObject({
 				CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
 				CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
 			});
-			expect(holders.flatMap(env => Object.entries(env)).filter(([name, value]) => /^CLOUDFLARE_|^WRANGLER_/.test(name) || value.includes('secrets.'))).toEqual([]);
+			expect(
+				holders
+					.flatMap((env) => Object.entries(env))
+					.filter(
+						([name, value]) => /^CLOUDFLARE_|^WRANGLER_/.test(name) || value.includes('secrets.'),
+					),
+			).toEqual([]);
 		});
 	});
 });

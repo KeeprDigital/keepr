@@ -19,7 +19,7 @@ import {
 } from '~~/shared/utils/graphicsOperationsCockpit';
 
 function quoted(values: readonly string[]) {
-	return values.map(value => `'${value}'`).join(', ');
+	return values.map((value) => `'${value}'`).join(', ');
 }
 
 /**
@@ -28,8 +28,7 @@ function quoted(values: readonly string[]) {
  * Stage alone cannot answer it, for the same reason the retention queries state:
  * `failed` is reachable both mid-transfer and long after the input was staged.
  */
-const TRANSFER_COMPLETE_SQL
-	= 'CASE WHEN transfer_completed_at IS NOT NULL THEN 1 ELSE 0 END';
+const TRANSFER_COMPLETE_SQL = 'CASE WHEN transfer_completed_at IS NOT NULL THEN 1 ELSE 0 END';
 
 /** When this operation's staged input reaches its retention guarantee. */
 const INPUT_EXPIRES_AT_SQL = `(updated_at + CASE
@@ -39,8 +38,7 @@ const INPUT_EXPIRES_AT_SQL = `(updated_at + CASE
 END)`;
 
 /** A retryable failure is resumable; a permanent one leaves nothing to do. */
-const RETRYABLE_FAILURE_SQL
-	= `stage = 'failed' AND json_extract(failure, '$.retryable') = 1`;
+const RETRYABLE_FAILURE_SQL = `stage = 'failed' AND json_extract(failure, '$.retryable') = 1`;
 
 /**
  * What an operation needs from an administrator right now.
@@ -155,8 +153,7 @@ function deadlineGroup(row: {
 
 async function countOf(database: D1Database, sql: string, label: string) {
 	const row = await database.prepare(sql).first<{ total: number }>();
-	if (!row)
-		throw new Error(label);
+	if (!row) throw new Error(label);
 	return row.total;
 }
 
@@ -178,10 +175,11 @@ export function createD1GraphicsOperationsCockpitCatalogue(
 	| 'countIsolatedDiscrepancies'
 	| 'summariseIngestionAttention'
 	| 'summariseRetentionDeadlines'
-> & Pick<
-	GraphicsOperationalQueuesCatalogue,
-	'summariseIngestionQueues' | 'findIngestionAttentionItem'
-> {
+> &
+	Pick<
+		GraphicsOperationalQueuesCatalogue,
+		'summariseIngestionQueues' | 'findIngestionAttentionItem'
+	> {
 	return {
 		async countUnavailableContent() {
 			return await countOf(
@@ -204,13 +202,16 @@ export function createD1GraphicsOperationsCockpitCatalogue(
 			const [counted, listed] = await database.batch<
 				{ attention: GraphicsIngestionAttentionState; total: number } | AttentionRow
 			>([
-				database.prepare(`
+				database
+					.prepare(`
 					SELECT ${ATTENTION_SQL} AS attention, COUNT(*) AS total
 					FROM graphics_ingestion_operations
 					WHERE ${UNFINISHED_SQL}
 					GROUP BY attention
-				`).bind(checkedAt),
-				database.prepare(`
+				`)
+					.bind(checkedAt),
+				database
+					.prepare(`
 					SELECT id, ${ATTENTION_SQL} AS attention, stage, source, initiated_by,
 						proposed_name, transferred_byte_length, declared_byte_length,
 						${TRANSFER_COMPLETE_SQL} AS transfer_complete,
@@ -222,7 +223,8 @@ export function createD1GraphicsOperationsCockpitCatalogue(
 					WHERE ${UNFINISHED_SQL}
 					ORDER BY ${ATTENTION_RISK_ORDER_SQL}
 					LIMIT ?2
-				`).bind(checkedAt, input.limit),
+				`)
+					.bind(checkedAt, input.limit),
 			]);
 			if (!counted?.success || !listed?.success)
 				throw new Error('Graphics Ingestion Operations awaiting attention could not be read');
@@ -232,8 +234,7 @@ export function createD1GraphicsOperationsCockpitCatalogue(
 				attention: GraphicsIngestionAttentionState | null;
 				total: number;
 			}[]) {
-				if (row.attention !== null)
-					counts[row.attention] = row.total;
+				if (row.attention !== null) counts[row.attention] = row.total;
 			}
 
 			return {
@@ -257,20 +258,25 @@ export function createD1GraphicsOperationsCockpitCatalogue(
 			const [counted, retryable, expired] = await database.batch<
 				{ attention: GraphicsIngestionAttentionState; total: number } | AttentionRow
 			>([
-				database.prepare(`
+				database
+					.prepare(`
 					SELECT ${ATTENTION_SQL} AS attention, COUNT(*) AS total
 					FROM graphics_ingestion_operations
 					WHERE ${UNFINISHED_SQL}
 					GROUP BY attention
-				`).bind(checkedAt),
-				...(['retryable', 'input-expired'] as const).map(state =>
-					database.prepare(`
+				`)
+					.bind(checkedAt),
+				...(['retryable', 'input-expired'] as const).map((state) =>
+					database
+						.prepare(`
 						SELECT ${ATTENTION_COLUMNS}
 						FROM graphics_ingestion_operations
 						WHERE ${UNFINISHED_SQL} AND ${ATTENTION_SQL} = ?2
 						ORDER BY input_expires_at, id
 						LIMIT ?3
-					`).bind(checkedAt, state, input.limit)),
+					`)
+						.bind(checkedAt, state, input.limit),
+				),
 			]);
 			if (!counted?.success || !retryable?.success || !expired?.success)
 				throw new Error('Graphics Ingestion Operation queues could not be read');
@@ -280,8 +286,7 @@ export function createD1GraphicsOperationsCockpitCatalogue(
 				attention: GraphicsIngestionAttentionState | null;
 				total: number;
 			}[]) {
-				if (row.attention !== null)
-					counts[row.attention] = row.total;
+				if (row.attention !== null) counts[row.attention] = row.total;
 			}
 			return {
 				counts,
@@ -295,14 +300,15 @@ export function createD1GraphicsOperationsCockpitCatalogue(
 		 * Scanning a triage sample for it would make both fail past the sample.
 		 */
 		async findIngestionAttentionItem(input) {
-			const row = await database.prepare(`
+			const row = await database
+				.prepare(`
 				SELECT ${ATTENTION_COLUMNS}
 				FROM graphics_ingestion_operations
 				WHERE id = ?2 AND ${UNFINISHED_SQL}
-			`).bind(new Date(input.now).getTime(), input.operationId).first<AttentionRow>();
-			return row
-				? attentionItem(row)
-				: undefined;
+			`)
+				.bind(new Date(input.now).getTime(), input.operationId)
+				.first<AttentionRow>();
+			return row ? attentionItem(row) : undefined;
 		},
 		async summariseRetentionDeadlines(): Promise<GraphicsRetentionDeadlineSummary> {
 			const [lifecycle, revisions, quarantine, stagedInput] = await database.batch([
@@ -331,21 +337,29 @@ export function createD1GraphicsOperationsCockpitCatalogue(
 					WHERE ${UNFINISHED_SQL}
 				`),
 			]);
-			if (!lifecycle?.success || !revisions?.success
-				|| !quarantine?.success || !stagedInput?.success) {
+			if (
+				!lifecycle?.success ||
+				!revisions?.success ||
+				!quarantine?.success ||
+				!stagedInput?.success
+			) {
 				throw new Error('Graphics Asset lifecycle deadlines could not be read');
 			}
 
-			const lifecycleRow = (lifecycle.results as {
-				retired_count: number | null;
-				group_count: number | null;
-				next_deadline: number | null;
-			}[])[0];
-			const revisionRow = (revisions.results as {
-				group_count: number | null;
-				next_deadline: number | null;
-				frozen_count: number | null;
-			}[])[0];
+			const lifecycleRow = (
+				lifecycle.results as {
+					retired_count: number | null;
+					group_count: number | null;
+					next_deadline: number | null;
+				}[]
+			)[0];
+			const revisionRow = (
+				revisions.results as {
+					group_count: number | null;
+					next_deadline: number | null;
+					frozen_count: number | null;
+				}[]
+			)[0];
 
 			return {
 				retiredCount: lifecycleRow?.retired_count ?? 0,
@@ -359,12 +373,16 @@ export function createD1GraphicsOperationsCockpitCatalogue(
 				}),
 				frozenRevisionCount: revisionRow?.frozen_count ?? 0,
 				quarantinedContent: deadlineGroup(
-					(quarantine.results as { group_count: number; next_deadline: number | null }[])[0]
-					?? { group_count: 0, next_deadline: null },
+					(quarantine.results as { group_count: number; next_deadline: number | null }[])[0] ?? {
+						group_count: 0,
+						next_deadline: null,
+					},
 				),
 				stagedInput: deadlineGroup(
-					(stagedInput.results as { group_count: number; next_deadline: number | null }[])[0]
-					?? { group_count: 0, next_deadline: null },
+					(stagedInput.results as { group_count: number; next_deadline: number | null }[])[0] ?? {
+						group_count: 0,
+						next_deadline: null,
+					},
 				),
 			};
 		},

@@ -6,10 +6,10 @@ import type { PlayerSide } from './enums';
  */
 
 /** Who holds a Deck List: a Player, or a Slot side with its own Feature Match Deck List. */
-export type OpUnresolvedDeckCardHolder
-	= | { kind: 'player'; playerId: number; name: string }
-		/** A side in the Slot's own order, named as its slot data names it. */
-		| { kind: 'slotSide'; slotId: number; side: PlayerSide; name: string };
+export type OpUnresolvedDeckCardHolder =
+	| { kind: 'player'; playerId: number; name: string }
+	/** A side in the Slot's own order, named as its slot data names it. */
+	| { kind: 'slotSide'; slotId: number; side: PlayerSide; name: string };
 
 export interface OpUnresolvedDeckCardDeckList {
 	holder: OpUnresolvedDeckCardHolder;

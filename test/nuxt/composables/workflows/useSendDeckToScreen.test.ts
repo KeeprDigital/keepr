@@ -47,18 +47,20 @@ describe('useSendDeckToScreen', () => {
 	it('offers only the Screens in Deck List mode', () => {
 		const { deckScreens, hasDeckScreens, hasMultipleDeckScreens } = useSendDeckToScreen();
 
-		expect(deckScreens.value.map(screen => screen.id)).toEqual([1, 3]);
+		expect(deckScreens.value.map((screen) => screen.id)).toEqual([1, 3]);
 		expect(hasDeckScreens.value).toBe(true);
 		expect(hasMultipleDeckScreens.value).toBe(true);
 	});
 
-	it('points a Screen\'s Deck Source at the Player and confirms it', async () => {
+	it("points a Screen's Deck Source at the Player and confirms it", async () => {
 		const { sendToScreen } = useSendDeckToScreen();
 
 		await expect(sendToScreen(42, allScreens[2] as any)).resolves.toBe(true);
 
 		expect(mockUpdateModeConfig).toHaveBeenCalledWith(1, 3, 'deck', deckSourceOf(42));
-		expect(mockToast.add).toHaveBeenCalledWith(expect.objectContaining({ title: 'Deck Sent', color: 'success' }));
+		expect(mockToast.add).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'Deck Sent', color: 'success' }),
+		);
 	});
 
 	it('sends nothing without an Event', async () => {
@@ -73,10 +75,12 @@ describe('useSendDeckToScreen', () => {
 		it('offers nothing for a Player without a deck', () => {
 			const { createSendDeckItems } = useSendDeckToScreen();
 
-			expect(createSendDeckItems({
-				...playerWithDeck,
-				gameData: { type: 'mtg', deckName: null },
-			})).toEqual([]);
+			expect(
+				createSendDeckItems({
+					...playerWithDeck,
+					gameData: { type: 'mtg', deckName: null },
+				}),
+			).toEqual([]);
 		});
 
 		it('offers nothing when no Screen is in Deck List mode', () => {
@@ -90,8 +94,7 @@ describe('useSendDeckToScreen', () => {
 			mockScreenStore.screens = [allScreens[0]!];
 			const [item] = useSendDeckToScreen().createSendDeckItems(playerWithDeck);
 
-			if (!item || !('onSelect' in item))
-				throw new Error('expected a direct send item');
+			if (!item || !('onSelect' in item)) throw new Error('expected a direct send item');
 			void item.onSelect();
 			await flushPromises();
 
@@ -102,7 +105,9 @@ describe('useSendDeckToScreen', () => {
 			const [item] = useSendDeckToScreen().createSendDeckItems(playerWithDeck);
 
 			expect(item!.label).toBe('Send Deck to…');
-			expect((item as { children: { label: string }[] }).children.map(child => child.label)).toEqual(['Screen 1', 'Screen 3']);
+			expect(
+				(item as { children: { label: string }[] }).children.map((child) => child.label),
+			).toEqual(['Screen 1', 'Screen 3']);
 		});
 	});
 });

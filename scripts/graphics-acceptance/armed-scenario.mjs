@@ -60,8 +60,7 @@ export async function readArmedScenario(path) {
 	let parsed;
 	try {
 		parsed = JSON.parse(await readFile(path, 'utf8'));
-	}
-	catch {
+	} catch {
 		throw new AcceptanceFailure('harness-precondition-unmet', {
 			reason: 'the armed scenario could not be read',
 		});
@@ -82,7 +81,10 @@ export async function readArmedScenario(path) {
  */
 export async function releaseArmedScenario(path, { passed }) {
 	if (!passed) {
-		const exists = await readFile(path).then(() => true, () => false);
+		const exists = await readFile(path).then(
+			() => true,
+			() => false,
+		);
 		return { kept: exists };
 	}
 	await rm(path, { force: true });

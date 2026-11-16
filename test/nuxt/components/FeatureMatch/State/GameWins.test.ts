@@ -8,12 +8,7 @@ const playerControls = {
 	recordWin: vi.fn(async () => {}),
 	undoWin: vi.fn(async () => {}),
 };
-const featureMatchStates = new Map([
-	[
-		1,
-		{ currentGame: 2, isComplete: false },
-	],
-]);
+const featureMatchStates = new Map([[1, { currentGame: 2, isComplete: false }]]);
 const toast = {
 	add: vi.fn(),
 };
@@ -26,7 +21,8 @@ mockNuxtImport('useToast', () => () => toast);
 const GameWinModalStub = defineComponent({
 	props: ['open', 'mode'],
 	emits: ['confirm', 'update:open'],
-	template: '<button v-if="open" type="button" data-testid="confirm" :data-mode="mode" @click="$emit(\'confirm\', { resetLife: true, resetCounters: false })" />',
+	template:
+		'<button v-if="open" type="button" data-testid="confirm" :data-mode="mode" @click="$emit(\'confirm\', { resetLife: true, resetCounters: false })" />',
 });
 
 function mountGameWins(props: Record<string, unknown> = {}) {
@@ -46,7 +42,7 @@ function mountGameWins(props: Record<string, unknown> = {}) {
 }
 
 function slot(wrapper: ReturnType<typeof mountGameWins>, label: string) {
-	return wrapper.findAll('button').find(button => button.text() === label)!;
+	return wrapper.findAll('button').find((button) => button.text() === label)!;
 }
 
 describe('featureMatchGameWins', () => {
@@ -54,14 +50,15 @@ describe('featureMatchGameWins', () => {
 		featureMatchStates.set(1, { currentGame: 2, isComplete: false });
 	});
 
-	it('shows one slot per win the match needs, filled up to the Player\'s wins', () => {
+	it("shows one slot per win the match needs, filled up to the Player's wins", () => {
 		const wrapper = mountGameWins({ gameWins: 1, bestOf: 5 });
 
-		expect(wrapper.findAll('button[aria-label]').map(button => button.attributes('aria-label')))
-			.toEqual(['Undo win', 'Record win', 'Record win']);
+		expect(
+			wrapper.findAll('button[aria-label]').map((button) => button.attributes('aria-label')),
+		).toEqual(['Undo win', 'Record win', 'Record win']);
 	});
 
-	it('records a win with the operator\'s reset choices once confirmed', async () => {
+	it("records a win with the operator's reset choices once confirmed", async () => {
 		const wrapper = mountGameWins();
 
 		await slot(wrapper, 'G2').trigger('click');
@@ -69,7 +66,10 @@ describe('featureMatchGameWins', () => {
 		await wrapper.get('[data-testid="confirm"]').trigger('click');
 		await flushPromises();
 
-		expect(playerControls.recordWin).toHaveBeenCalledWith({ resetLife: true, resetCounters: false });
+		expect(playerControls.recordWin).toHaveBeenCalledWith({
+			resetLife: true,
+			resetCounters: false,
+		});
 		expect(toast.add).toHaveBeenCalledWith(expect.objectContaining({ title: 'Alice wins Game 1' }));
 	});
 
@@ -86,30 +86,27 @@ describe('featureMatchGameWins', () => {
 	});
 
 	it.each([
-		[
-			'the winner',
-			2,
-			['Undo win', 'Undo win'],
-			[],
-		],
-		[
-			'the loser',
-			1,
-			['Undo win', 'Record win'],
-			['Record win'],
-		],
-	])('offers %s no new win once the match is decided, but keeps undo', (_, gameWins, labels, disabled) => {
-		featureMatchStates.set(1, { currentGame: 4, isComplete: true });
-		const buttons = mountGameWins({ gameWins }).findAll('button[aria-label]');
+		['the winner', 2, ['Undo win', 'Undo win'], []],
+		['the loser', 1, ['Undo win', 'Record win'], ['Record win']],
+	])(
+		'offers %s no new win once the match is decided, but keeps undo',
+		(_, gameWins, labels, disabled) => {
+			featureMatchStates.set(1, { currentGame: 4, isComplete: true });
+			const buttons = mountGameWins({ gameWins }).findAll('button[aria-label]');
 
-		expect(buttons.map(button => button.attributes('aria-label'))).toEqual(labels);
-		expect(buttons.filter(button => button.attributes('disabled') !== undefined).map(button => button.attributes('aria-label'))).toEqual(disabled);
-	});
+			expect(buttons.map((button) => button.attributes('aria-label'))).toEqual(labels);
+			expect(
+				buttons
+					.filter((button) => button.attributes('disabled') !== undefined)
+					.map((button) => button.attributes('aria-label')),
+			).toEqual(disabled);
+		},
+	);
 
 	it('offers a new win while the match is undecided', () => {
 		const buttons = mountGameWins({ gameWins: 1 }).findAll('button[aria-label]');
 
-		expect(buttons.every(button => button.attributes('disabled') === undefined)).toBe(true);
+		expect(buttons.every((button) => button.attributes('disabled') === undefined)).toBe(true);
 	});
 
 	it('shows the win markers without controls when read-only', () => {

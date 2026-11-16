@@ -66,10 +66,10 @@ export function probeOrigin(env = process.env) {
 	const configured = env.PROBE_ORIGIN?.trim();
 	if (!configured) {
 		throw new RealtimeFanoutProbeRefusal(
-			'PROBE_ORIGIN is unset, and this probe will not guess an installation: it provisions '
-			+ 'an Event, three Screen Outputs and a live session against whatever answers, and '
-			+ '127.0.0.1:8787 is shared by every worktree on this machine. Name the installation '
-			+ 'you started yourself — PROBE_ORIGIN=http://127.0.0.1:8799 node scripts/measure-realtime-fanout.mjs',
+			'PROBE_ORIGIN is unset, and this probe will not guess an installation: it provisions ' +
+				'an Event, three Screen Outputs and a live session against whatever answers, and ' +
+				'127.0.0.1:8787 is shared by every worktree on this machine. Name the installation ' +
+				'you started yourself — PROBE_ORIGIN=http://127.0.0.1:8799 node scripts/measure-realtime-fanout.mjs',
 		);
 	}
 	return configured.replace(/\/$/, '');
@@ -103,8 +103,7 @@ let commandSeq = 0;
 
 async function api(path, init = {}) {
 	const headers = new Headers(init.headers ?? {});
-	if (cookie)
-		headers.set('cookie', cookie);
+	if (cookie) headers.set('cookie', cookie);
 	let body = init.body;
 	if (body !== undefined) {
 		headers.set('content-type', 'application/json');
@@ -114,9 +113,7 @@ async function api(path, init = {}) {
 	const text = await response.text();
 	if (!response.ok)
 		throw new Error(`${init.method ?? 'GET'} ${path} -> ${response.status}: ${text.slice(0, 200)}`);
-	return text.length === 0
-		? undefined
-		: JSON.parse(text);
+	return text.length === 0 ? undefined : JSON.parse(text);
 }
 
 function lowerThirdGraphic(id) {
@@ -178,7 +175,10 @@ function lowerThirdGraphic(id) {
  * The command line names neither dependency. The unit test names both, so a
  * refusal that regressed would reach its stand-in and never an installation.
  */
-export async function main({ env = process.env, openOperatorSession = openOperatorSessionForOrigin } = {}) {
+export async function main({
+	env = process.env,
+	openOperatorSession = openOperatorSessionForOrigin,
+} = {}) {
 	origin = probeOrigin(env);
 	// Said out loud before anything is created, because the failure this guards
 	// against is writing to an installation nobody meant to name.
@@ -208,25 +208,25 @@ export async function main({ env = process.env, openOperatorSession = openOperat
 		['b', 'feature-match-overlay'],
 		['c', 'broadcast-graphics'],
 	]) {
-		screens.push(await api(`/api/events/${event.id}/screens`, {
-			method: 'POST',
-			body: {
-				name: `Screen ${index} ${marker}`,
-				slug: `issue189-fan-${index}-${marker}`,
-				currentMode: mode,
-				...(mode === 'broadcast-graphics'
-					? {
-							modeConfigs: {
-								'broadcast-graphics': {
-									graphics: [
-										lowerThirdGraphic(graphicId),
-									],
+		screens.push(
+			await api(`/api/events/${event.id}/screens`, {
+				method: 'POST',
+				body: {
+					name: `Screen ${index} ${marker}`,
+					slug: `issue189-fan-${index}-${marker}`,
+					currentMode: mode,
+					...(mode === 'broadcast-graphics'
+						? {
+								modeConfigs: {
+									'broadcast-graphics': {
+										graphics: [lowerThirdGraphic(graphicId)],
+									},
 								},
-							},
-						}
-					: {}),
-			},
-		}));
+							}
+						: {}),
+				},
+			}),
+		);
 	}
 
 	const eventChannel = `event:${event.id}`;
@@ -260,11 +260,8 @@ export async function main({ env = process.env, openOperatorSession = openOperat
 				try {
 					const request = await api(`/api/realtime/token?eventId=${event.id}`);
 					callback(null, request);
-				}
-				catch (error) {
-					callback(error instanceof Error
-						? error.message
-						: String(error), null);
+				} catch (error) {
+					callback(error instanceof Error ? error.message : String(error), null);
 				}
 			},
 		});
@@ -273,22 +270,30 @@ export async function main({ env = process.env, openOperatorSession = openOperat
 	}
 
 	const clients = [];
-	for (let i = 1; i <= OPERATOR_CONSOLES; i += 1)
-		clients.push(openClient(`console${i}`));
+	for (let i = 1; i <= OPERATOR_CONSOLES; i += 1) clients.push(openClient(`console${i}`));
 	// Label by index, not by a slug suffix: every slug here ends in the same run
 	// marker, so a suffix-derived label collapses all three outputs into one key.
 	screens.forEach((screen, index) => {
 		clients.push(openClient(`output${index + 1}`, screen.id));
 	});
 
-	await Promise.all(clients.map(entry => new Promise((resolveConnected, reject) => {
-		entry.client.connection.once('connected', resolveConnected);
-		entry.client.connection.once('failed', stateChange => reject(new Error(`${entry.label} failed: ${stateChange.reason?.message}`)));
-	})));
+	await Promise.all(
+		clients.map(
+			(entry) =>
+				new Promise((resolveConnected, reject) => {
+					entry.client.connection.once('connected', resolveConnected);
+					entry.client.connection.once('failed', (stateChange) =>
+						reject(new Error(`${entry.label} failed: ${stateChange.reason?.message}`)),
+					);
+				}),
+		),
+	);
 
-	const connectionIds = clients.map(entry => entry.client.connection.id);
-	if (connectionIds.some(id => !id) || new Set(connectionIds).size !== clients.length)
-		throw new Error(`expected ${clients.length} distinct connection ids, got ${JSON.stringify(connectionIds)}`);
+	const connectionIds = clients.map((entry) => entry.client.connection.id);
+	if (connectionIds.some((id) => !id) || new Set(connectionIds).size !== clients.length)
+		throw new Error(
+			`expected ${clients.length} distinct connection ids, got ${JSON.stringify(connectionIds)}`,
+		);
 
 	function record(entry, channelName) {
 		return (message) => {
@@ -312,14 +317,18 @@ export async function main({ env = process.env, openOperatorSession = openOperat
 			const screenChannel = entry.client.channels.get(screenChannelName);
 			await screenChannel.subscribe(record(entry, 'screen'));
 			if (screenChannel.state !== 'attached')
-				throw new Error(`${entry.label} did not attach to ${screenChannelName} (state=${screenChannel.state})`);
+				throw new Error(
+					`${entry.label} did not attach to ${screenChannelName} (state=${screenChannel.state})`,
+				);
 			await screenChannel.presence.enter({ screenId: entry.screenId });
 		}
 	}
 
 	// ----------------------------------------------------------------- workload
 	const playoutScreen = screens[0];
-	let session = await api(`/api/events/${event.id}/screens/${playoutScreen.id}/broadcast-graphics/live-session`);
+	let session = await api(
+		`/api/events/${event.id}/screens/${playoutScreen.id}/broadcast-graphics/live-session`,
+	);
 
 	const commandId = (prefix) => {
 		commandSeq += 1;
@@ -392,12 +401,14 @@ export async function main({ env = process.env, openOperatorSession = openOperat
 	}
 
 	// Delivery is asynchronous; give it room, then stop counting.
-	await new Promise(done => setTimeout(done, 4000));
+	await new Promise((done) => setTimeout(done, 4000));
 
 	// ------------------------------------------------------------------ results
-	const all = clients.flatMap(entry => entry.received);
+	const all = clients.flatMap((entry) => entry.received);
 	if (all.length === 0)
-		throw new Error('zero messages delivered to any subscriber — the measurement did not measure anything');
+		throw new Error(
+			'zero messages delivered to any subscriber — the measurement did not measure anything',
+		);
 
 	const byType = {};
 	for (const item of all) {
@@ -407,30 +418,37 @@ export async function main({ env = process.env, openOperatorSession = openOperat
 		byType[item.name].minBytes = Math.min(byType[item.name].minBytes, item.bytes);
 	}
 
-	console.log(JSON.stringify({
-		origin,
-		shape: {
-			operatorConsoles: OPERATOR_CONSOLES,
-			screenOutputs: screens.length,
-			totalConnections: clients.length,
-			distinctConnectionIds: new Set(connectionIds).size,
-			channelsInUse: 1 + screens.length,
-		},
-		workload: { cycles: CYCLES, playoutCommands, screenCommands },
-		perClientDelivered: (() => {
-			const rows = Object.fromEntries(clients.map(e => [e.label, e.received.length]));
-			if (Object.keys(rows).length !== clients.length)
-				throw new Error(`client labels collided: ${clients.length} clients produced ${Object.keys(rows).length} rows`);
-			return rows;
-		})(),
-		deliveredTotal: all.length,
-		byChannel: deliveredByChannel(all),
-		byType,
-		largestDeliveredMessageBytes: Math.max(...all.map(i => i.bytes)),
-	}, null, 2));
+	console.log(
+		JSON.stringify(
+			{
+				origin,
+				shape: {
+					operatorConsoles: OPERATOR_CONSOLES,
+					screenOutputs: screens.length,
+					totalConnections: clients.length,
+					distinctConnectionIds: new Set(connectionIds).size,
+					channelsInUse: 1 + screens.length,
+				},
+				workload: { cycles: CYCLES, playoutCommands, screenCommands },
+				perClientDelivered: (() => {
+					const rows = Object.fromEntries(clients.map((e) => [e.label, e.received.length]));
+					if (Object.keys(rows).length !== clients.length)
+						throw new Error(
+							`client labels collided: ${clients.length} clients produced ${Object.keys(rows).length} rows`,
+						);
+					return rows;
+				})(),
+				deliveredTotal: all.length,
+				byChannel: deliveredByChannel(all),
+				byType,
+				largestDeliveredMessageBytes: Math.max(...all.map((i) => i.bytes)),
+			},
+			null,
+			2,
+		),
+	);
 
-	for (const entry of clients)
-		entry.client.close();
+	for (const entry of clients) entry.client.close();
 	await api(`/api/events/${event.id}`, { method: 'DELETE' }).catch(() => undefined);
 	process.exit(0);
 }

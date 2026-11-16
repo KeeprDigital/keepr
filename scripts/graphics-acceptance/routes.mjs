@@ -13,8 +13,8 @@
 
 export const acceptanceRoutes = {
 	events: () => '/api/events',
-	event: eventId => `/api/events/${eventId}`,
-	screens: eventId => `/api/events/${eventId}/screens`,
+	event: (eventId) => `/api/events/${eventId}`,
+	screens: (eventId) => `/api/events/${eventId}/screens`,
 	screenModeConfig: (eventId, screenId, mode) =>
 		`/api/events/${eventId}/screens/${screenId}/config/${mode}`,
 	screenAssetCapability: (eventId, screenId) =>
@@ -24,7 +24,7 @@ export const acceptanceRoutes = {
 
 	/** The document an unattended Screen Output loads. */
 	screenOutputDocument: (eventId, slug) => `/event/${eventId}/screen/${slug}`,
-	capabilitySession: screenId =>
+	capabilitySession: (screenId) =>
 		`/api/screen-output/screens/${screenId}/asset-capability-session`,
 	capabilityContent: (screenId, assetId, revisionId) =>
 		`/api/screen-output/screens/${screenId}/assets/${assetId}/revisions/${revisionId}/content`,
@@ -32,21 +32,20 @@ export const acceptanceRoutes = {
 	graphicsAssets: () => '/api/graphics-assets',
 	editorContent: (assetId, revisionId) =>
 		`/api/graphics-assets/${assetId}/revisions/${revisionId}/content`,
-	assetLifecycleActions: assetId => `/api/graphics-assets/${assetId}/lifecycle-actions`,
-	installedTemplate: templateId => `/api/graphics-assets/installed-templates/${templateId}`,
+	assetLifecycleActions: (assetId) => `/api/graphics-assets/${assetId}/lifecycle-actions`,
+	installedTemplate: (templateId) => `/api/graphics-assets/installed-templates/${templateId}`,
 
 	ingestionOperations: () => '/api/graphics-assets/ingestion-operations',
-	ingestionOperation: operationId =>
-		`/api/graphics-assets/ingestion-operations/${operationId}`,
-	ingestionContent: operationId =>
+	ingestionOperation: (operationId) => `/api/graphics-assets/ingestion-operations/${operationId}`,
+	ingestionContent: (operationId) =>
 		`/api/graphics-assets/ingestion-operations/${operationId}/content`,
-	ingestionStagedSource: operationId =>
+	ingestionStagedSource: (operationId) =>
 		`/api/graphics-assets/ingestion-operations/${operationId}/staged-source`,
-	fontBrowserEvidence: operationId =>
+	fontBrowserEvidence: (operationId) =>
 		`/api/graphics-assets/ingestion-operations/${operationId}/font-browser-evidence`,
-	templatePackageConfirmation: operationId =>
+	templatePackageConfirmation: (operationId) =>
 		`/api/graphics-assets/ingestion-operations/${operationId}/template-package-confirmation`,
-	templatePackageInstallation: operationId =>
+	templatePackageInstallation: (operationId) =>
 		`/api/graphics-assets/ingestion-operations/${operationId}/template-package-installation`,
 };
 

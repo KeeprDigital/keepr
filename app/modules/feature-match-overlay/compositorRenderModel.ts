@@ -3,9 +3,16 @@ import type { GraphicThemeTokens } from '~~/shared/modules/graphics';
 import type { GraphicInputValue } from '~~/shared/types/graphics';
 import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
 import type { FeatureMatchLayoutConfig, ScreenOutput } from '~~/shared/types/screenConfig';
-import type { GraphicsAnimationProjection, GraphicsCompositionRenderModel, GraphicsFeatureMatchContext } from '~/modules/graphics/renderModel';
+import type {
+	GraphicsAnimationProjection,
+	GraphicsCompositionRenderModel,
+	GraphicsFeatureMatchContext,
+} from '~/modules/graphics/renderModel';
 import type { GraphicsSelectionTarget } from '~/modules/graphics/selection';
-import { FEATURE_MATCH_LAYOUT_COMPOSITION_ID, featureMatchLayoutStack } from '~~/shared/featureMatchLayoutComposition';
+import {
+	FEATURE_MATCH_LAYOUT_COMPOSITION_ID,
+	featureMatchLayoutStack,
+} from '~~/shared/featureMatchLayoutComposition';
 import {
 	FEATURE_MATCH_TOKEN_SEATS,
 	featureMatchTokenDeclarations,
@@ -100,9 +107,7 @@ export function resolveFeatureMatchOverlayCompositorRenderModel(
 		canvasRole: 'layer',
 		// Deliberately no `visibleGraphicIds`: the one composition is always composed.
 		textDeclarations: featureMatchTokenDeclarations(),
-		textTokenPresentations: input.kind
-			? featureMatchTokenPresentations(input.kind)
-			: undefined,
+		textTokenPresentations: input.kind ? featureMatchTokenPresentations(input.kind) : undefined,
 		textTokenSeats: FEATURE_MATCH_TOKEN_SEATS,
 		inputValues: input.tokenValues
 			? { [FEATURE_MATCH_LAYOUT_COMPOSITION_ID]: input.tokenValues }

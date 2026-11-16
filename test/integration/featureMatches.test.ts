@@ -11,7 +11,11 @@ describe('feature match slots API', () => {
 	beforeAll(async () => {
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Feature Matches Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Feature Matches Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 
@@ -31,8 +35,7 @@ describe('feature match slots API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('creates a feature match slot and returns 201', async () => {
@@ -114,10 +117,13 @@ describe('feature match slots API', () => {
 			body: { matchId: sourceMatch.id },
 		});
 
-		const result = await $fetch(`/api/events/${eventId}/feature-match-slots/${targetSlot.id}/promote`, {
-			method: 'POST',
-			body: { matchId: sourceMatch.id },
-		});
+		const result = await $fetch(
+			`/api/events/${eventId}/feature-match-slots/${targetSlot.id}/promote`,
+			{
+				method: 'POST',
+				body: { matchId: sourceMatch.id },
+			},
+		);
 
 		expect(result.promotedSlot).toMatchObject({
 			id: targetSlot.id,
@@ -172,15 +178,21 @@ describe('feature match slots API', () => {
 			method: 'POST',
 			body: { matchId: notedMatch.id },
 		});
-		const noted = await $fetch(`/api/events/${eventId}/feature-match-assignments/${promoted.assignment.id}`, {
-			method: 'PATCH',
-			body: { note: 'Do not lose this' },
-		});
+		const noted = await $fetch(
+			`/api/events/${eventId}/feature-match-assignments/${promoted.assignment.id}`,
+			{
+				method: 'PATCH',
+				body: { note: 'Do not lose this' },
+			},
+		);
 
-		const refused = await $fetchRaw(`/api/events/${eventId}/feature-match-slots/${slot.id}/promote`, {
-			method: 'POST',
-			body: { matchId: replacementMatch.id },
-		});
+		const refused = await $fetchRaw(
+			`/api/events/${eventId}/feature-match-slots/${slot.id}/promote`,
+			{
+				method: 'POST',
+				body: { matchId: replacementMatch.id },
+			},
+		);
 
 		expect(refused.status).toBe(409);
 		expect(refused._data.data).toMatchObject({
@@ -197,13 +209,15 @@ describe('feature match slots API', () => {
 			method: 'POST',
 			body: {
 				matchId: replacementMatch.id,
-				confirmedNoteDiscards: [
-					{ assignmentId: noted.id, updatedAt: noted.updatedAt },
-				],
+				confirmedNoteDiscards: [{ assignmentId: noted.id, updatedAt: noted.updatedAt }],
 			},
 		});
 		expect(replaced.promotedSlot).toMatchObject({ id: slot.id, matchId: replacementMatch.id });
-		expect(replaced.assignment).toMatchObject({ matchId: replacementMatch.id, slotId: slot.id, note: null });
+		expect(replaced.assignment).toMatchObject({
+			matchId: replacementMatch.id,
+			slotId: slot.id,
+			note: null,
+		});
 	});
 
 	it('protects the direct Assignment save endpoint with the same exact Note discard confirmation', async () => {
@@ -233,10 +247,13 @@ describe('feature match slots API', () => {
 			method: 'POST',
 			body: { matchId: notedMatch.id },
 		});
-		const reviewed = await $fetch(`/api/events/${eventId}/feature-match-assignments/${promoted.assignment.id}`, {
-			method: 'PATCH',
-			body: { note: 'Protect direct saves too' },
-		});
+		const reviewed = await $fetch(
+			`/api/events/${eventId}/feature-match-assignments/${promoted.assignment.id}`,
+			{
+				method: 'PATCH',
+				body: { note: 'Protect direct saves too' },
+			},
+		);
 
 		const refused = await $fetchRaw(`/api/events/${eventId}/feature-match-assignments`, {
 			method: 'POST',
@@ -258,9 +275,7 @@ describe('feature match slots API', () => {
 				roundId,
 				slotId: slot.id,
 				matchId: replacementMatch.id,
-				confirmedNoteDiscards: [
-					{ assignmentId: reviewed.id, updatedAt: reviewed.updatedAt },
-				],
+				confirmedNoteDiscards: [{ assignmentId: reviewed.id, updatedAt: reviewed.updatedAt }],
 			},
 		});
 		expect(replaced).toMatchObject({
@@ -305,12 +320,15 @@ describe('feature match slots API', () => {
 
 		// Exactly one Slot ends up holding the Match: the winner's.
 		const stored = await $fetch(`/api/events/${eventId}/feature-match-slots`);
-		const holders = stored.featureMatchSlots.filter((slot: { matchId: number | null }) => slot.matchId === contested.id);
+		const holders = stored.featureMatchSlots.filter(
+			(slot: { matchId: number | null }) => slot.matchId === contested.id,
+		);
 		expect(holders).toHaveLength(1);
 		const winner = holders[0]!;
-		const [winning, other, otherSlotBefore] = winner.id === lane1.id
-			? [responses[0]!, responses[1]!, lane2]
-			: [responses[1]!, responses[0]!, lane1];
+		const [winning, other, otherSlotBefore] =
+			winner.id === lane1.id
+				? [responses[0]!, responses[1]!, lane2]
+				: [responses[1]!, responses[0]!, lane1];
 		expect(winning.status).toBe(200);
 
 		// The other Slot ends up empty by one of three histories, and the race picks
@@ -324,8 +342,12 @@ describe('feature match slots API', () => {
 		//    winner moved the Match off. That is a serial "promoted, then moved",
 		//    so it answers 200. It must never answer 200 for a promotion the
 		//    winner did not then undo.
-		const movedOffOther = winning._data.clearedSlots.some((slot: { id: number }) => slot.id === otherSlotBefore.id);
-		const otherSlotAfter = stored.featureMatchSlots.find((slot: { id: number }) => slot.id === otherSlotBefore.id)!;
+		const movedOffOther = winning._data.clearedSlots.some(
+			(slot: { id: number }) => slot.id === otherSlotBefore.id,
+		);
+		const otherSlotAfter = stored.featureMatchSlots.find(
+			(slot: { id: number }) => slot.id === otherSlotBefore.id,
+		)!;
 		expect(otherSlotAfter).toMatchObject({ id: otherSlotBefore.id, matchId: null });
 		if (movedOffOther) {
 			expect(otherSlotAfter.activeSessionId).not.toBe(otherSlotBefore.activeSessionId);
@@ -334,14 +356,12 @@ describe('feature match slots API', () => {
 				sequence: 1,
 				sourceSnapshot: { matchId: null },
 			});
-		}
-		else {
+		} else {
 			expect(otherSlotAfter.activeSessionId).toBe(otherSlotBefore.activeSessionId);
 		}
 		if (other.status === 200) {
 			expect(movedOffOther).toBe(true);
-		}
-		else {
+		} else {
 			expect(other.status).toBe(409);
 			// Classified as this promotion losing a race, not as the generic
 			// "resource already exists" any unique index violation would otherwise
@@ -356,11 +376,11 @@ describe('feature match slots API', () => {
 		const assignments = await $fetch(`/api/events/${eventId}/feature-match-assignments`, {
 			query: { roundId },
 		});
-		expect(assignments.featureMatchAssignments.filter(
-			(assignment: { matchId: number }) => assignment.matchId === contested.id,
-		)).toEqual([
-			expect.objectContaining({ slotId: winner.id }),
-		]);
+		expect(
+			assignments.featureMatchAssignments.filter(
+				(assignment: { matchId: number }) => assignment.matchId === contested.id,
+			),
+		).toEqual([expect.objectContaining({ slotId: winner.id })]);
 	});
 
 	it('keeps a Player rename and a concurrent operator command from cancelling each other', async () => {
@@ -406,21 +426,17 @@ describe('feature match slots API', () => {
 		const maxTicks = 200;
 		let renameProgress: unknown;
 		do {
-			commands.push(await $fetchRaw(
-				`/api/events/${eventId}/feature-match-sessions/${session.id}/commands`,
-				{
+			commands.push(
+				await $fetchRaw(`/api/events/${eventId}/feature-match-sessions/${session.id}/commands`, {
 					method: 'POST',
 					body: {
 						commandId: `rename-race:${session.id}:${commands.length}`,
 						type: 'AdjustLife',
 						payload: { player: 'player1', delta: -1 },
 					},
-				},
-			));
-			renameProgress = await Promise.race([
-				renaming,
-				Promise.resolve(inFlight),
-			]);
+				}),
+			);
+			renameProgress = await Promise.race([renaming, Promise.resolve(inFlight)]);
 		} while (renameProgress === inFlight && commands.length < maxTicks);
 		const renamed = await renaming;
 
@@ -431,7 +447,7 @@ describe('feature match slots API', () => {
 		// the operator command policy and not what this test is about. What matters
 		// is that every tick answered with success is in the projection, and the
 		// rename is in the snapshot — neither erased the other.
-		const accepted = commands.filter(command => command.status === 200).length;
+		const accepted = commands.filter((command) => command.status === 200).length;
 		expect(accepted).toBeGreaterThan(0);
 
 		const startingLife = session.currentState.player1.lifeTotal;
@@ -461,7 +477,11 @@ describe('feature match slots API', () => {
 	it('syncs feature match slot count when numFeatureMatches is updated', async () => {
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Sync FM Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Sync FM Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 
 		try {
@@ -490,8 +510,7 @@ describe('feature match slots API', () => {
 
 			const decreased = await $fetch(`/api/events/${event.id}/feature-match-slots`);
 			expect(decreased.featureMatchSlots).toHaveLength(2);
-		}
-		finally {
+		} finally {
 			await $fetch(`/api/events/${event.id}`, { method: 'DELETE' });
 		}
 	});

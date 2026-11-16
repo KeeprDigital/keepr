@@ -41,11 +41,8 @@ export class GraphicsAssetLibraryError extends Error {
 
 export function graphicsCapacityErrorDescriptor(error: unknown) {
 	if (
-		!(error instanceof GraphicsAssetLibraryError)
-		|| (
-			error.code !== 'staging-capacity-exhausted'
-			&& error.code !== 'canonical-capacity-exhausted'
-		)
+		!(error instanceof GraphicsAssetLibraryError) ||
+		(error.code !== 'staging-capacity-exhausted' && error.code !== 'canonical-capacity-exhausted')
 	) {
 		return undefined;
 	}

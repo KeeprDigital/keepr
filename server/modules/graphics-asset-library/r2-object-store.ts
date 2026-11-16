@@ -48,13 +48,13 @@ const R2_NO_SUCH_UPLOAD_MESSAGE = 'ultipart upload does not exist';
  * the same fact.
  */
 function isMissingMultipartUpload(error: unknown): boolean {
-	if (typeof error !== 'object' || error === null)
-		return false;
-	if ('code' in error && (error as { code: unknown }).code === R2_NO_SUCH_UPLOAD_CODE)
-		return true;
-	return 'message' in error
-		&& typeof (error as { message: unknown }).message === 'string'
-		&& (error as { message: string }).message.includes(R2_NO_SUCH_UPLOAD_MESSAGE);
+	if (typeof error !== 'object' || error === null) return false;
+	if ('code' in error && (error as { code: unknown }).code === R2_NO_SUCH_UPLOAD_CODE) return true;
+	return (
+		'message' in error &&
+		typeof (error as { message: unknown }).message === 'string' &&
+		(error as { message: string }).message.includes(R2_NO_SUCH_UPLOAD_MESSAGE)
+	);
 }
 
 /**
@@ -83,8 +83,7 @@ function createR2ObjectStoreAccess(bucket: R2Bucket) {
 			try {
 				await bucket.head('.stream-keepr-health');
 				return { outcome: 'healthy' as const };
-			}
-			catch (error) {
+			} catch (error) {
 				return loggedUnavailable('checkHealth', error);
 			}
 		},
@@ -97,26 +96,30 @@ function createR2ObjectStoreAccess(bucket: R2Bucket) {
 							object: mapR2Object(object),
 						}
 					: { outcome: 'missing' as const };
-			}
-			catch (error) {
+			} catch (error) {
 				return loggedUnavailable('readMetadata', error);
 			}
 		},
-		async read(identity: GraphicsObjectIdentity, requestedRange?: { offset: number; length: number }) {
+		async read(
+			identity: GraphicsObjectIdentity,
+			requestedRange?: { offset: number; length: number },
+		) {
 			validateRequestedRange(requestedRange);
 			try {
-				const object = await bucket.get(identity, requestedRange
-					? { range: requestedRange }
-					: undefined);
-				if (!object)
-					return { outcome: 'missing' as const };
+				const object = await bucket.get(
+					identity,
+					requestedRange ? { range: requestedRange } : undefined,
+				);
+				if (!object) return { outcome: 'missing' as const };
 
-				const offset = object.range && 'offset' in object.range
-					? object.range.offset ?? 0
-					: requestedRange?.offset ?? 0;
-				const length = object.range && 'length' in object.range
-					? object.range.length ?? object.size
-					: requestedRange?.length ?? object.size;
+				const offset =
+					object.range && 'offset' in object.range
+						? (object.range.offset ?? 0)
+						: (requestedRange?.offset ?? 0);
+				const length =
+					object.range && 'length' in object.range
+						? (object.range.length ?? object.size)
+						: (requestedRange?.length ?? object.size);
 				return {
 					outcome: 'available' as const,
 					object: mapR2Object(object),
@@ -127,8 +130,7 @@ function createR2ObjectStoreAccess(bucket: R2Bucket) {
 						completeLength: object.size,
 					},
 				};
-			}
-			catch (error) {
+			} catch (error) {
 				return loggedUnavailable('read', error);
 			}
 		},
@@ -150,20 +152,17 @@ function createR2ObjectStoreAccess(bucket: R2Bucket) {
 						cursor: page.truncated ? page.cursor : undefined,
 					},
 				};
-			}
-			catch (error) {
+			} catch (error) {
 				return loggedUnavailable('list', error);
 			}
 		},
 		async delete(identity: GraphicsObjectIdentity) {
 			try {
 				const existing = await bucket.head(identity);
-				if (!existing)
-					return { outcome: 'missing' as const };
+				if (!existing) return { outcome: 'missing' as const };
 				await bucket.delete(identity);
 				return { outcome: 'deleted' as const };
-			}
-			catch (error) {
+			} catch (error) {
 				return loggedUnavailable('delete', error);
 			}
 		},
@@ -179,15 +178,12 @@ async function createImmutable(
 		// streaming write and its authoritative length for R2. Nuxt's local
 		// Miniflare binding is a Node-side proxy without that runtime primitive,
 		// so the already-bounded local fallback supplies a fixed-length value.
-		const fixedLength = typeof FixedLengthStream === 'undefined'
-			? undefined
-			: new FixedLengthStream(input.bytes.byteLength);
-		const transfer = fixedLength
-			? input.bytes.body.pipeTo(fixedLength.writable)
-			: undefined;
-		const value = fixedLength
-			? fixedLength.readable
-			: await consumeBoundedByteStream(input.bytes);
+		const fixedLength =
+			typeof FixedLengthStream === 'undefined'
+				? undefined
+				: new FixedLengthStream(input.bytes.byteLength);
+		const transfer = fixedLength ? input.bytes.body.pipeTo(fixedLength.writable) : undefined;
+		const value = fixedLength ? fixedLength.readable : await consumeBoundedByteStream(input.bytes);
 		let object: R2Object | null;
 		try {
 			object = await bucket.put(input.identity, value, {
@@ -195,13 +191,10 @@ async function createImmutable(
 				httpMetadata: input.metadata?.contentType
 					? { contentType: input.metadata.contentType }
 					: undefined,
-				customMetadata: input.metadata?.custom
-					? { ...input.metadata.custom }
-					: undefined,
+				customMetadata: input.metadata?.custom ? { ...input.metadata.custom } : undefined,
 			});
 			await transfer;
-		}
-		catch (error) {
+		} catch (error) {
 			await transfer?.catch(() => undefined);
 			throw error;
 		}
@@ -219,8 +212,7 @@ async function createImmutable(
 					object: mapR2Object(existing),
 				}
 			: unavailableObjectStoreOutcome();
-	}
-	catch (error) {
+	} catch (error) {
 		rethrowGraphicsObjectInputError(error);
 		return loggedUnavailable('createImmutable', error);
 	}
@@ -230,10 +222,12 @@ async function createImmutable(
  * Private canonical R2 binding. Multipart completion is intentionally absent
  * from the returned object so digest-owned content cannot be overwritten.
  */
-export function createR2CanonicalGraphicsObjectStore(bucket: R2Bucket): GraphicsCanonicalObjectStore {
+export function createR2CanonicalGraphicsObjectStore(
+	bucket: R2Bucket,
+): GraphicsCanonicalObjectStore {
 	return {
 		...createR2ObjectStoreAccess(bucket),
-		createImmutable: input => createImmutable(bucket, input),
+		createImmutable: (input) => createImmutable(bucket, input),
 	};
 }
 
@@ -244,16 +238,14 @@ export function createR2CanonicalGraphicsObjectStore(bucket: R2Bucket): Graphics
 export function createR2StagingGraphicsObjectStore(bucket: R2Bucket): GraphicsStagingObjectStore {
 	return {
 		...createR2ObjectStoreAccess(bucket),
-		createImmutable: input => createImmutable(bucket, input),
+		createImmutable: (input) => createImmutable(bucket, input),
 		async beginMultipart(input) {
 			try {
 				const upload = await bucket.createMultipartUpload(input.identity, {
 					httpMetadata: input.metadata?.contentType
 						? { contentType: input.metadata.contentType }
 						: undefined,
-					customMetadata: input.metadata?.custom
-						? { ...input.metadata.custom }
-						: undefined,
+					customMetadata: input.metadata?.custom ? { ...input.metadata.custom } : undefined,
 				});
 				return {
 					outcome: 'started',
@@ -262,8 +254,7 @@ export function createR2StagingGraphicsObjectStore(bucket: R2Bucket): GraphicsSt
 						uploadId: upload.uploadId as GraphicsMultipartUploadIdentity,
 					},
 				};
-			}
-			catch (error) {
+			} catch (error) {
 				return loggedUnavailable('beginMultipart', error);
 			}
 		},
@@ -277,8 +268,7 @@ export function createR2StagingGraphicsObjectStore(bucket: R2Bucket): GraphicsSt
 						uploadId: upload.uploadId as GraphicsMultipartUploadIdentity,
 					},
 				};
-			}
-			catch (error) {
+			} catch (error) {
 				return loggedUnavailable('resumeMultipart', error);
 			}
 		},
@@ -286,12 +276,11 @@ export function createR2StagingGraphicsObjectStore(bucket: R2Bucket): GraphicsSt
 			validateMultipartPartNumber(input.partNumber);
 			try {
 				const upload = bucket.resumeMultipartUpload(input.upload.identity, input.upload.uploadId);
-				const fixedLength = typeof FixedLengthStream === 'undefined'
-					? undefined
-					: new FixedLengthStream(input.bytes.byteLength);
-				const transfer = fixedLength
-					? input.bytes.body.pipeTo(fixedLength.writable)
-					: undefined;
+				const fixedLength =
+					typeof FixedLengthStream === 'undefined'
+						? undefined
+						: new FixedLengthStream(input.bytes.byteLength);
+				const transfer = fixedLength ? input.bytes.body.pipeTo(fixedLength.writable) : undefined;
 				const partBody = fixedLength
 					? fixedLength.readable
 					: await consumeBoundedByteStream(input.bytes);
@@ -299,8 +288,7 @@ export function createR2StagingGraphicsObjectStore(bucket: R2Bucket): GraphicsSt
 				try {
 					part = await upload.uploadPart(input.partNumber, partBody);
 					await transfer;
-				}
-				catch (error) {
+				} catch (error) {
 					await transfer?.catch(() => undefined);
 					throw error;
 				}
@@ -312,39 +300,40 @@ export function createR2StagingGraphicsObjectStore(bucket: R2Bucket): GraphicsSt
 						byteLength: input.bytes.byteLength,
 					},
 				};
-			}
-			catch (error) {
+			} catch (error) {
 				rethrowGraphicsObjectInputError(error);
 				return loggedUnavailable('uploadPart', error);
 			}
 		},
 		async completeMultipart(input) {
-			for (const part of input.parts)
-				validateMultipartPartNumber(part.partNumber);
+			for (const part of input.parts) validateMultipartPartNumber(part.partNumber);
 			try {
 				const upload = bucket.resumeMultipartUpload(input.upload.identity, input.upload.uploadId);
-				const object = await upload.complete(input.parts
-					.toSorted((left, right) => left.partNumber - right.partNumber)
-					.map(part => ({
-						partNumber: part.partNumber,
-						etag: part.partIdentity,
-					})));
+				const object = await upload.complete(
+					input.parts
+						.toSorted((left, right) => left.partNumber - right.partNumber)
+						.map((part) => ({
+							partNumber: part.partNumber,
+							etag: part.partIdentity,
+						})),
+				);
 				return {
 					outcome: 'created',
 					object: mapR2Object(object),
 				};
-			}
-			catch (error) {
+			} catch (error) {
 				return loggedUnavailable('completeMultipart', error);
 			}
 		},
 		async abortMultipart(uploadIdentity) {
 			try {
-				const upload = bucket.resumeMultipartUpload(uploadIdentity.identity, uploadIdentity.uploadId);
+				const upload = bucket.resumeMultipartUpload(
+					uploadIdentity.identity,
+					uploadIdentity.uploadId,
+				);
 				await upload.abort();
 				return { outcome: 'aborted' };
-			}
-			catch (error) {
+			} catch (error) {
 				return isMissingMultipartUpload(error)
 					? { outcome: 'missing' }
 					: loggedUnavailable('abortMultipart', error);

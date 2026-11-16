@@ -28,21 +28,24 @@ const roundIds: Record<'day1r1' | 'day1r2' | 'day1r3' | 'day2r1', number> = {
 };
 
 async function insertEvent(name: string) {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name, game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	return event!.id;
 }
 
 async function insertPhase(forEvent: number, name: string, sortOrder: number) {
-	const [phase] = await db.insert(schema.phases)
+	const [phase] = await db
+		.insert(schema.phases)
 		.values({ eventId: forEvent, name, sortOrder })
 		.returning({ id: schema.phases.id });
 	return phase!.id;
 }
 
 async function insertRound(forEvent: number, phaseId: number, roundNumber: number) {
-	const [round] = await db.insert(schema.rounds)
+	const [round] = await db
+		.insert(schema.rounds)
 		.values({
 			eventId: forEvent,
 			phaseId,
@@ -53,20 +56,28 @@ async function insertRound(forEvent: number, phaseId: number, roundNumber: numbe
 	return round!.id;
 }
 
-async function insertStandings(forEvent: number, roundId: number, positions: Array<[playerId: number, position: number | null]>) {
-	await db.insert(schema.playerRoundStandings)
-		.values(positions.map(([playerId, position]) => ({
+async function insertStandings(
+	forEvent: number,
+	roundId: number,
+	positions: Array<[playerId: number, position: number | null]>,
+) {
+	await db.insert(schema.playerRoundStandings).values(
+		positions.map(([playerId, position]) => ({
 			eventId: forEvent,
 			playerId,
 			roundId,
 			position,
-		})));
+		})),
+	);
 }
 
 beforeAll(async () => {
 	eventId = await insertEvent('Event');
 	for (const name of ['alpha', 'beta', 'gamma'] as const) {
-		const [player] = await db.insert(schema.players).values({ eventId, name }).returning({ id: schema.players.id });
+		const [player] = await db
+			.insert(schema.players)
+			.values({ eventId, name })
+			.returning({ id: schema.players.id });
 		players[name] = player!.id;
 	}
 
@@ -99,35 +110,46 @@ beforeAll(async () => {
 	otherEventId = await insertEvent('Other Event');
 	const otherPhase = await insertPhase(otherEventId, 'Other Day', 1);
 	otherRoundId = await insertRound(otherEventId, otherPhase, 2);
-	const [otherPlayer] = await db.insert(schema.players).values({ eventId: otherEventId, name: 'other' }).returning({ id: schema.players.id });
-	await insertStandings(otherEventId, otherRoundId, [
-		[otherPlayer!.id, 1],
-	]);
+	const [otherPlayer] = await db
+		.insert(schema.players)
+		.values({ eventId: otherEventId, name: 'other' })
+		.returning({ id: schema.players.id });
+	await insertStandings(otherEventId, otherRoundId, [[otherPlayer!.id, 1]]);
 });
 
 afterAll(async () => await harness.close());
 
 describe('playerRoundStandingsService.findPreviousRoundPositions', () => {
 	it('answers the Round Standings of the Round before the selected one', async () => {
-		const previous = await playerRoundStandingsService().findPreviousRoundPositions(eventId, roundIds.day2r1);
+		const previous = await playerRoundStandingsService().findPreviousRoundPositions(
+			eventId,
+			roundIds.day2r1,
+		);
 
 		expect(previous?.roundId).toBe(roundIds.day1r3);
-		expect(previous?.positions).toEqual(expect.arrayContaining([
-			{ playerId: players.beta, position: 1 },
-			{ playerId: players.alpha, position: 2 },
-			{ playerId: players.gamma, position: null },
-		]));
+		expect(previous?.positions).toEqual(
+			expect.arrayContaining([
+				{ playerId: players.beta, position: 1 },
+				{ playerId: players.alpha, position: 2 },
+				{ playerId: players.gamma, position: null },
+			]),
+		);
 		expect(previous?.positions).toHaveLength(3);
 	});
 
 	it('passes over an earlier Round that holds no Round Standings', async () => {
-		const previous = await playerRoundStandingsService().findPreviousRoundPositions(eventId, roundIds.day1r3);
+		const previous = await playerRoundStandingsService().findPreviousRoundPositions(
+			eventId,
+			roundIds.day1r3,
+		);
 
 		expect(previous?.roundId).toBe(roundIds.day1r1);
 	});
 
-	it('answers nothing for the Event\'s first Round', async () => {
-		expect(await playerRoundStandingsService().findPreviousRoundPositions(eventId, roundIds.day1r1)).toBeNull();
+	it("answers nothing for the Event's first Round", async () => {
+		expect(
+			await playerRoundStandingsService().findPreviousRoundPositions(eventId, roundIds.day1r1),
+		).toBeNull();
 	});
 
 	it('measures current standings against the Round before the latest one holding Round Standings', async () => {
@@ -137,10 +159,14 @@ describe('playerRoundStandingsService.findPreviousRoundPositions', () => {
 	});
 
 	it('answers nothing for a Round outside the asking Event', async () => {
-		expect(await playerRoundStandingsService().findPreviousRoundPositions(eventId, otherRoundId)).toBeNull();
+		expect(
+			await playerRoundStandingsService().findPreviousRoundPositions(eventId, otherRoundId),
+		).toBeNull();
 	});
 
 	it('answers nothing for current standings in an Event with a single Round holding Round Standings', async () => {
-		expect(await playerRoundStandingsService().findPreviousRoundPositions(otherEventId, null)).toBeNull();
+		expect(
+			await playerRoundStandingsService().findPreviousRoundPositions(otherEventId, null),
+		).toBeNull();
 	});
 });

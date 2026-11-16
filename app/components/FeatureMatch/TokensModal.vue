@@ -29,7 +29,9 @@ const deckCache = usePlayerDeckCache();
 const loading = ref(false);
 const playerDecks = shallowRef<PlayerDeckTokenSource[]>([]);
 
-const players = computed(() => [props.playerOne, props.playerTwo].filter((player): player is Player => player != null));
+const players = computed(() =>
+	[props.playerOne, props.playerTwo].filter((player): player is Player => player != null),
+);
 
 function tokenKey(token: DeckTokenRequirement): string {
 	return token.name.trim().toLowerCase();
@@ -46,12 +48,13 @@ async function loadTokenSources() {
 
 	loading.value = true;
 	try {
-		playerDecks.value = await Promise.all(players.value.map(async player => ({
-			player,
-			deck: await deckCache.fetchDeck(player.id, eventStore.eventId!, player.updatedAt),
-		})));
-	}
-	finally {
+		playerDecks.value = await Promise.all(
+			players.value.map(async (player) => ({
+				player,
+				deck: await deckCache.fetchDeck(player.id, eventStore.eventId!, player.updatedAt),
+			})),
+		);
+	} finally {
 		loading.value = false;
 	}
 }
@@ -89,8 +92,7 @@ const tokenEntries = computed(() => {
 		for (const card of deck?.cards ?? []) {
 			for (const token of card.deckTokens ?? []) {
 				const trimmedName = token.name.trim();
-				if (!trimmedName)
-					continue;
+				if (!trimmedName) continue;
 
 				const key = tokenKey(token);
 				const entry = tokenMap.get(key) ?? {
@@ -110,10 +112,8 @@ const tokenEntries = computed(() => {
 		}
 	}
 
-	return [
-		...tokenMap.values(),
-	]
-		.map(entry => ({
+	return [...tokenMap.values()]
+		.map((entry) => ({
 			...entry,
 			playerNames: [...entry.playerNames].sort((a, b) => a.localeCompare(b)),
 			sourceCardNames: [...entry.sourceCardNames].sort((a, b) => a.localeCompare(b)),
@@ -132,9 +132,7 @@ const tokenEntries = computed(() => {
 	>
 		<template #body>
 			<div class="flex flex-col gap-4">
-				<p class="text-sm text-muted">
-					Tokens required by the selected feature match players.
-				</p>
+				<p class="text-sm text-muted">Tokens required by the selected feature match players.</p>
 
 				<UILoadingSpinner v-if="loading" size="sm" label="Loading token requirements..." />
 
@@ -152,11 +150,7 @@ const tokenEntries = computed(() => {
 						:key="token.name"
 						class="flex gap-3 rounded-md border border-default bg-elevated/50 p-3"
 					>
-						<MetagameCardThumbnail
-							:scryfall-id="token.scryfallId"
-							:name="token.name"
-							size="sm"
-						/>
+						<MetagameCardThumbnail :scryfall-id="token.scryfallId" :name="token.name" size="sm" />
 						<div class="min-w-0 flex-1">
 							<div class="font-medium truncate">
 								{{ token.name }}
@@ -186,9 +180,7 @@ const tokenEntries = computed(() => {
 		</template>
 
 		<template #footer>
-			<UButton variant="ghost" color="neutral" @click="close">
-				Close
-			</UButton>
+			<UButton variant="ghost" color="neutral" @click="close"> Close </UButton>
 		</template>
 	</UModal>
 </template>

@@ -35,7 +35,9 @@ function createSetup(commanderSeats: Record<string, unknown> = {}) {
 		tableNumber: null as number | null,
 		...commanderSeats,
 	});
-	const getDeckForCurrentPhase = vi.fn((_: number | null, name: string | null, colors: string | null) => ({ name, colors }));
+	const getDeckForCurrentPhase = vi.fn(
+		(_: number | null, name: string | null, colors: string | null) => ({ name, colors }),
+	);
 	return {
 		...useFeatureMatchSetupActions({ formData: formData as any, getDeckForCurrentPhase }),
 		formData,
@@ -79,20 +81,19 @@ describe('useFeatureMatchSetupActions', () => {
 				answer: () => Promise.reject(new Error('refused')),
 				toast: { title: 'Failed to swap players', color: 'error' },
 			},
-		])('swaps the Session, leaving the form\'s seats, when the Session $outcome it', async ({ answer, toast }) => {
-			mockFeatureMatchStateStore.swapPlayers.mockImplementation(answer);
-			const { swapPlayers, formData } = createSetup();
+		])(
+			"swaps the Session, leaving the form's seats, when the Session $outcome it",
+			async ({ answer, toast }) => {
+				mockFeatureMatchStateStore.swapPlayers.mockImplementation(answer);
+				const { swapPlayers, formData } = createSetup();
 
-			await swapPlayers();
+				await swapPlayers();
 
-			expect(seats(formData)).toEqual([10, 'Alice', 20, 'Bob']);
-			expect(mockFeatureMatchStateStore.swapPlayers).toHaveBeenCalledWith(1, 1);
-			expect(mockToast.add.mock.calls).toEqual([
-				[
-					expect.objectContaining(toast),
-				],
-			]);
-		});
+				expect(seats(formData)).toEqual([10, 'Alice', 20, 'Bob']);
+				expect(mockFeatureMatchStateStore.swapPlayers).toHaveBeenCalledWith(1, 1);
+				expect(mockToast.add.mock.calls).toEqual([[expect.objectContaining(toast)]]);
+			},
+		);
 	});
 
 	// Swap Seats is the Slot's own (ADR-0087): the server swaps, and this client holds the Slot it answers.
@@ -107,9 +108,7 @@ describe('useFeatureMatchSetupActions', () => {
 			{
 				outcome: 'answers',
 				answer: () => Promise.resolve(swapped),
-				held: [
-					[swapped],
-				],
+				held: [[swapped]],
 				toast: { title: 'Seats swapped', color: 'success' },
 			},
 			{
@@ -118,40 +117,42 @@ describe('useFeatureMatchSetupActions', () => {
 				held: [],
 				toast: { title: 'Failed to swap Seats', color: 'error' },
 			},
-		])('asks the server to swap the two Seats, and when it $outcome holds $held.length Slot', async ({ answer, held, toast }) => {
-			mockFetch.mockReset().mockImplementation(answer);
-			applySavedSlot.mockClear();
-			const { swapSeats } = createSetup();
+		])(
+			'asks the server to swap the two Seats, and when it $outcome holds $held.length Slot',
+			async ({ answer, held, toast }) => {
+				mockFetch.mockReset().mockImplementation(answer);
+				applySavedSlot.mockClear();
+				const { swapSeats } = createSetup();
 
-			await swapSeats('player1', 'player3');
+				await swapSeats('player1', 'player3');
 
-			expect(mockFetch.mock.calls.map(([path, options]) => [path, options.method, options.body])).toEqual([
-				[
-					'/api/events/1/feature-match-slots/1/swap-seats',
-					'POST',
-					{
-						seats: ['player1', 'player3'],
-					},
-				],
-			]);
-			expect(applySavedSlot.mock.calls).toEqual(held);
-			expect(mockToast.add.mock.calls).toEqual([
-				[
-					expect.objectContaining(toast),
-				],
-			]);
-		});
+				expect(
+					mockFetch.mock.calls.map(([path, options]) => [path, options.method, options.body]),
+				).toEqual([
+					[
+						'/api/events/1/feature-match-slots/1/swap-seats',
+						'POST',
+						{
+							seats: ['player1', 'player3'],
+						},
+					],
+				]);
+				expect(applySavedSlot.mock.calls).toEqual(held);
+				expect(mockToast.add.mock.calls).toEqual([[expect.objectContaining(toast)]]);
+			},
+		);
 	});
 
 	describe('clearing the match', () => {
-		it('empties a Commander Slot\'s Seats 3 and 4 too, and restores them when the reset fails', async () => {
+		it("empties a Commander Slot's Seats 3 and 4 too, and restores them when the reset fails", async () => {
 			const reset = deferred<null>();
 			mockFeatureMatchStateStore.resetMatch.mockReturnValue(reset.promise);
 			const { clearMatch, formData } = createSetup({
 				player3Data: { ...DEFAULT_PLAYER_DATA, name: 'Cyd' },
 				player4Data: { ...DEFAULT_PLAYER_DATA, name: 'Dee' },
 			});
-			const laterSeats = () => [3, 4].map(seat => (formData.value as any)[`player${seat}Data`].name);
+			const laterSeats = () =>
+				[3, 4].map((seat) => (formData.value as any)[`player${seat}Data`].name);
 
 			const clearing = clearMatch();
 			expect(laterSeats()).toEqual(['', '']);
@@ -166,7 +167,7 @@ describe('useFeatureMatchSetupActions', () => {
 
 			await clearMatch();
 
-			expect(Object.keys(formData.value).filter(key => /player[34]/.test(key))).toEqual([]);
+			expect(Object.keys(formData.value).filter((key) => /player[34]/.test(key))).toEqual([]);
 		});
 
 		it('empties both seats and resets the Session', async () => {
@@ -177,37 +178,34 @@ describe('useFeatureMatchSetupActions', () => {
 			expect(seats(formData)).toEqual([null, '', null, '']);
 			expect(formData.value.externalId).toBeNull();
 			expect(mockFeatureMatchStateStore.resetMatch).toHaveBeenCalledWith(1, 1, { type: 'match' });
-			expect(mockToast.add).toHaveBeenCalledWith(expect.objectContaining({ title: 'Match cleared', color: 'success' }));
+			expect(mockToast.add).toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Match cleared', color: 'success' }),
+			);
 		});
 
 		it.each([
-			[
-				'answers null',
-				(reset: ReturnType<typeof deferred<null>>) => reset.resolve(null),
-			],
-			[
-				'throws',
-				(reset: ReturnType<typeof deferred<null>>) => reset.reject(new Error('refused')),
-			],
-		])('empties the seats while the reset is pending, and restores them when it %s', async (_, fail) => {
-			const reset = deferred<null>();
-			mockFeatureMatchStateStore.resetMatch.mockReturnValue(reset.promise);
-			const { clearMatch, formData } = createSetup();
+			['answers null', (reset: ReturnType<typeof deferred<null>>) => reset.resolve(null)],
+			['throws', (reset: ReturnType<typeof deferred<null>>) => reset.reject(new Error('refused'))],
+		])(
+			'empties the seats while the reset is pending, and restores them when it %s',
+			async (_, fail) => {
+				const reset = deferred<null>();
+				mockFeatureMatchStateStore.resetMatch.mockReturnValue(reset.promise);
+				const { clearMatch, formData } = createSetup();
 
-			const clearing = clearMatch();
-			expect(seats(formData)).toEqual([null, '', null, '']);
+				const clearing = clearMatch();
+				expect(seats(formData)).toEqual([null, '', null, '']);
 
-			fail(reset);
-			await clearing;
+				fail(reset);
+				await clearing;
 
-			expect(seats(formData)).toEqual([10, 'Alice', 20, 'Bob']);
-			expect(formData.value.externalId).toBe('ext-000');
-			expect(mockToast.add.mock.calls).toEqual([
-				[
-					expect.objectContaining({ title: 'Failed to clear match', color: 'error' }),
-				],
-			]);
-		});
+				expect(seats(formData)).toEqual([10, 'Alice', 20, 'Bob']);
+				expect(formData.value.externalId).toBe('ext-000');
+				expect(mockToast.add.mock.calls).toEqual([
+					[expect.objectContaining({ title: 'Failed to clear match', color: 'error' })],
+				]);
+			},
+		);
 	});
 
 	describe('populating from Melee', () => {
@@ -230,7 +228,7 @@ describe('useFeatureMatchSetupActions', () => {
 			});
 		}
 
-		it('seats the Match\'s Players with this Phase\'s decks, resets the Session and closes the picker', async () => {
+		it("seats the Match's Players with this Phase's decks, resets the Session and closes the picker", async () => {
 			const { populateFromMelee, formData, getDeckForCurrentPhase, meleeModalOpen } = createSetup();
 			getDeckForCurrentPhase
 				.mockReturnValueOnce({ name: 'Azorius Control', colors: 'WU' })
@@ -242,12 +240,26 @@ describe('useFeatureMatchSetupActions', () => {
 			expect(getDeckForCurrentPhase).toHaveBeenNthCalledWith(1, 10, 'Bogles', 'GW');
 			expect(getDeckForCurrentPhase).toHaveBeenNthCalledWith(2, 20, 'Burn', 'R');
 			expect(seats(formData)).toEqual([10, 'Alice', 20, 'Bob']);
-			expect(formData.value).toMatchObject({ externalId: 'ext-001', externalSource: 'melee', tableNumber: 7 });
-			expect(formData.value.player1Data.gameData).toMatchObject({ type: 'mtg', deckName: 'Azorius Control', deckColors: 'WU' });
-			expect(formData.value.player2Data.gameData).toMatchObject({ type: 'mtg', deckName: 'Rakdos Midrange', deckColors: 'BR' });
+			expect(formData.value).toMatchObject({
+				externalId: 'ext-001',
+				externalSource: 'melee',
+				tableNumber: 7,
+			});
+			expect(formData.value.player1Data.gameData).toMatchObject({
+				type: 'mtg',
+				deckName: 'Azorius Control',
+				deckColors: 'WU',
+			});
+			expect(formData.value.player2Data.gameData).toMatchObject({
+				type: 'mtg',
+				deckName: 'Rakdos Midrange',
+				deckColors: 'BR',
+			});
 			expect(mockFeatureMatchStateStore.resetMatch).toHaveBeenCalledWith(1, 1, { type: 'match' });
 			expect(meleeModalOpen.value).toBe(false);
-			expect(mockToast.add).toHaveBeenCalledWith(expect.objectContaining({ description: 'Populated from Table 7', color: 'success' }));
+			expect(mockToast.add).toHaveBeenCalledWith(
+				expect.objectContaining({ description: 'Populated from Table 7', color: 'success' }),
+			);
 		});
 
 		it('reports a Session reset the store answered with null as failed', async () => {
@@ -257,9 +269,7 @@ describe('useFeatureMatchSetupActions', () => {
 			await populateFromMelee(meleeMatch() as any);
 
 			expect(mockToast.add.mock.calls).toEqual([
-				[
-					expect.objectContaining({ title: 'Failed to reset match state', color: 'error' }),
-				],
+				[expect.objectContaining({ title: 'Failed to reset match state', color: 'error' })],
 			]);
 		});
 

@@ -11,30 +11,13 @@ import {
 	STILL_IMAGE_COMPATIBILITY_PROFILE,
 } from '~~/shared/utils/graphicsAssetCompatibility';
 import { consumeBoundedByteStream } from './object-store';
-import {
-	encodeThumbnail,
-	processPng,
-	processPngStream,
-	sha256Hex,
-} from './png';
+import { encodeThumbnail, processPng, processPngStream, sha256Hex } from './png';
 import { resizeRgbaThumbnail } from './thumbnail';
 import { validationError } from './validation';
 
 const PNG_SIGNATURE = Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10);
 const JPEG_START_OF_FRAME_MARKERS = new Set([
-	0xC0,
-	0xC1,
-	0xC2,
-	0xC3,
-	0xC5,
-	0xC6,
-	0xC7,
-	0xC9,
-	0xCA,
-	0xCB,
-	0xCD,
-	0xCE,
-	0xCF,
+	0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
 ]);
 
 export type StillImageDeclarations = GraphicAssetSourceDeclarations;
@@ -55,8 +38,10 @@ export interface ProcessedStillImage {
 }
 
 function bytesStartWith(bytes: Uint8Array, signature: Uint8Array) {
-	return bytes.byteLength >= signature.byteLength
-		&& signature.every((value, index) => bytes[index] === value);
+	return (
+		bytes.byteLength >= signature.byteLength &&
+		signature.every((value, index) => bytes[index] === value)
+	);
 }
 
 function readUint16BigEndian(bytes: Uint8Array, offset: number) {
@@ -69,11 +54,12 @@ function readUint24LittleEndian(bytes: Uint8Array, offset: number) {
 
 function readUint32LittleEndian(bytes: Uint8Array, offset: number) {
 	return (
-		bytes[offset]!
-		| (bytes[offset + 1]! << 8)
-		| (bytes[offset + 2]! << 16)
-		| (bytes[offset + 3]! * 0x1000000)
-	) >>> 0;
+		(bytes[offset]! |
+			(bytes[offset + 1]! << 8) |
+			(bytes[offset + 2]! << 16) |
+			(bytes[offset + 3]! * 0x1000000)) >>>
+		0
+	);
 }
 
 function ascii(bytes: Uint8Array, offset: number, length: number) {
@@ -92,30 +78,26 @@ function jpegExifOrientation(
 			validationError('malformed-jpeg', 'JPEG EXIF signature is truncated.');
 		return;
 	}
-	if (availableSignature !== exifSignature)
-		return;
-	if (dataLength < 14)
-		validationError('malformed-jpeg', 'JPEG EXIF TIFF header is incomplete.');
+	if (availableSignature !== exifSignature) return;
+	if (dataLength < 14) validationError('malformed-jpeg', 'JPEG EXIF TIFF header is incomplete.');
 	const tiffOffset = dataOffset + 6;
 	const littleEndian = ascii(bytes, tiffOffset, 2) === 'II';
 	if (!littleEndian && ascii(bytes, tiffOffset, 2) !== 'MM')
 		validationError('malformed-jpeg', 'JPEG EXIF byte order is malformed.');
-	const read16 = (offset: number) => littleEndian
-		? bytes[offset]! | (bytes[offset + 1]! << 8)
-		: readUint16BigEndian(bytes, offset);
-	const read32 = (offset: number) => littleEndian
-		? (
-				bytes[offset]!
-				| (bytes[offset + 1]! << 8)
-				| (bytes[offset + 2]! << 16)
-				| (bytes[offset + 3]! * 0x1000000)
-			) >>> 0
-		: (
-				(bytes[offset]! * 0x1000000)
-				+ (bytes[offset + 1]! << 16)
-				+ (bytes[offset + 2]! << 8)
-				+ bytes[offset + 3]!
-			) >>> 0;
+	const read16 = (offset: number) =>
+		littleEndian ? bytes[offset]! | (bytes[offset + 1]! << 8) : readUint16BigEndian(bytes, offset);
+	const read32 = (offset: number) =>
+		littleEndian
+			? (bytes[offset]! |
+					(bytes[offset + 1]! << 8) |
+					(bytes[offset + 2]! << 16) |
+					(bytes[offset + 3]! * 0x1000000)) >>>
+				0
+			: (bytes[offset]! * 0x1000000 +
+					(bytes[offset + 1]! << 16) +
+					(bytes[offset + 2]! << 8) +
+					bytes[offset + 3]!) >>>
+				0;
 	const tiffEnd = dataOffset + dataLength;
 	if (read16(tiffOffset + 2) !== 42)
 		validationError('malformed-jpeg', 'JPEG EXIF TIFF header is malformed.');
@@ -127,8 +109,7 @@ function jpegExifOrientation(
 		validationError('malformed-jpeg', 'JPEG EXIF directory is incomplete.');
 	for (let index = 0; index < entryCount; index++) {
 		const entryOffset = directoryOffset + 2 + index * 12;
-		if (read16(entryOffset) !== 0x0112)
-			continue;
+		if (read16(entryOffset) !== 0x0112) continue;
 		if (read16(entryOffset + 2) !== 3 || read32(entryOffset + 4) !== 1)
 			validationError('malformed-jpeg', 'JPEG EXIF orientation value is malformed.');
 		return read16(entryOffset + 8);
@@ -160,16 +141,19 @@ function assertDimensions(
 	if (bounds === 'ingestion' && width * height > MAX_FULLY_DECODED_STILL_IMAGE_PIXELS) {
 		validationError(
 			'image-pixels-exceeded',
-			`${formatLabel} images must not exceed ${MAX_FULLY_DECODED_STILL_IMAGE_PIXELS.toLocaleString('en-US')} pixels `
-			+ `(3840 × 2160 or the same area in another shape); this one is ${width} × ${height}. `
-			+ 'A PNG may be larger.',
+			`${formatLabel} images must not exceed ${MAX_FULLY_DECODED_STILL_IMAGE_PIXELS.toLocaleString('en-US')} pixels ` +
+				`(3840 × 2160 or the same area in another shape); this one is ${width} × ${height}. ` +
+				'A PNG may be larger.',
 		);
 	}
 }
 
 function parseJpeg(bytes: Uint8Array, bounds: StillImageBounds) {
-	if (!bytesStartWith(bytes, Uint8Array.of(0xFF, 0xD8)))
-		validationError('invalid-jpeg-signature', 'Source bytes do not have the canonical JPEG signature.');
+	if (!bytesStartWith(bytes, Uint8Array.of(0xff, 0xd8)))
+		validationError(
+			'invalid-jpeg-signature',
+			'Source bytes do not have the canonical JPEG signature.',
+		);
 
 	let offset = 2;
 	let width: number | undefined;
@@ -179,21 +163,19 @@ function parseJpeg(bytes: Uint8Array, bounds: StillImageBounds) {
 	let foundEnd = false;
 
 	while (offset < bytes.byteLength) {
-		if (bytes[offset] !== 0xFF)
+		if (bytes[offset] !== 0xff)
 			validationError('malformed-jpeg', 'JPEG marker framing is malformed.');
-		while (bytes[offset] === 0xFF)
-			offset++;
+		while (bytes[offset] === 0xff) offset++;
 		const marker = bytes[offset++];
 		if (marker === undefined)
 			validationError('incomplete-jpeg-frame', 'JPEG ends inside a marker.');
-		if (marker === 0xD9) {
+		if (marker === 0xd9) {
 			foundEnd = true;
 			break;
 		}
-		if (marker === 0x00 || marker === 0xD8)
+		if (marker === 0x00 || marker === 0xd8)
 			validationError('malformed-jpeg', 'JPEG contains a misplaced marker.');
-		if (marker >= 0xD0 && marker <= 0xD7)
-			continue;
+		if (marker >= 0xd0 && marker <= 0xd7) continue;
 		if (offset + 2 > bytes.byteLength)
 			validationError('incomplete-jpeg-frame', 'JPEG ends before a segment length is complete.');
 		const segmentLength = readUint16BigEndian(bytes, offset);
@@ -202,13 +184,13 @@ function parseJpeg(bytes: Uint8Array, bounds: StillImageBounds) {
 		const dataOffset = offset + 2;
 		const dataLength = segmentLength - 2;
 
-		if (marker === 0xE2 && ascii(bytes, dataOffset, Math.min(12, dataLength)) === 'ICC_PROFILE\0') {
+		if (marker === 0xe2 && ascii(bytes, dataOffset, Math.min(12, dataLength)) === 'ICC_PROFILE\0') {
 			validationError(
 				'unsupported-jpeg-profile',
 				'Embedded JPEG colour profiles are not supported by still-image-v1.',
 			);
 		}
-		if (marker === 0xE1) {
+		if (marker === 0xe1) {
 			const orientation = jpegExifOrientation(bytes, dataOffset, dataLength);
 			if (orientation !== undefined && orientation !== 1) {
 				validationError(
@@ -217,9 +199,10 @@ function parseJpeg(bytes: Uint8Array, bounds: StillImageBounds) {
 				);
 			}
 			if (
-				orientation === undefined
-				&& ascii(bytes, dataOffset, Math.min(29, dataLength))
-					.startsWith('http://ns.adobe.com/xap/1.0/')
+				orientation === undefined &&
+				ascii(bytes, dataOffset, Math.min(29, dataLength)).startsWith(
+					'http://ns.adobe.com/xap/1.0/',
+				)
 			) {
 				validationError(
 					'unsupported-jpeg-profile',
@@ -244,31 +227,26 @@ function parseJpeg(bytes: Uint8Array, bounds: StillImageBounds) {
 					'JPEG must use supported 8-bit SDR grayscale or three-channel colour.',
 				);
 			}
-			if (marker !== 0xC0 && marker !== 0xC2) {
+			if (marker !== 0xc0 && marker !== 0xc2) {
 				validationError(
 					'unsupported-jpeg-colour',
 					'JPEG must use sequential or progressive Huffman coding.',
 				);
 			}
-			colorModel = components === 1
-				? 'grayscale'
-				: 'rgb';
+			colorModel = components === 1 ? 'grayscale' : 'rgb';
 			assertDimensions(width, height, 'JPEG', 'malformed-jpeg', bounds);
 		}
 
 		offset += segmentLength;
-		if (marker !== 0xDA)
-			continue;
+		if (marker !== 0xda) continue;
 
 		while (offset < bytes.byteLength) {
-			if (bytes[offset++] !== 0xFF)
-				continue;
-			while (bytes[offset] === 0xFF)
-				offset++;
+			if (bytes[offset++] !== 0xff) continue;
+			while (bytes[offset] === 0xff) offset++;
 			const entropyMarker = bytes[offset];
 			if (entropyMarker === undefined)
 				validationError('incomplete-jpeg-frame', 'JPEG entropy data is truncated.');
-			if (entropyMarker === 0x00 || (entropyMarker >= 0xD0 && entropyMarker <= 0xD7)) {
+			if (entropyMarker === 0x00 || (entropyMarker >= 0xd0 && entropyMarker <= 0xd7)) {
 				offset++;
 				continue;
 			}
@@ -290,12 +268,11 @@ function parseJpeg(bytes: Uint8Array, bounds: StillImageBounds) {
 }
 
 function parseWebp(bytes: Uint8Array, bounds: StillImageBounds) {
-	if (
-		bytes.byteLength < 20
-		|| ascii(bytes, 0, 4) !== 'RIFF'
-		|| ascii(bytes, 8, 4) !== 'WEBP'
-	) {
-		validationError('invalid-webp-signature', 'Source bytes do not have the canonical WebP signature.');
+	if (bytes.byteLength < 20 || ascii(bytes, 0, 4) !== 'RIFF' || ascii(bytes, 8, 4) !== 'WEBP') {
+		validationError(
+			'invalid-webp-signature',
+			'Source bytes do not have the canonical WebP signature.',
+		);
 	}
 	if (readUint32LittleEndian(bytes, 4) !== bytes.byteLength - 8)
 		validationError('malformed-webp', 'WebP RIFF length does not match the exact source bytes.');
@@ -330,9 +307,7 @@ function parseWebp(bytes: Uint8Array, bounds: StillImageBounds) {
 		}
 		if (type === 'ICCP' || type === 'EXIF' || type === 'XMP ') {
 			validationError(
-				type === 'EXIF'
-					? 'unsupported-image-orientation'
-					: 'unsupported-webp-profile',
+				type === 'EXIF' ? 'unsupported-image-orientation' : 'unsupported-webp-profile',
 				type === 'ICCP'
 					? 'Embedded WebP colour profiles are not supported by still-image-v1.'
 					: type === 'EXIF'
@@ -342,19 +317,19 @@ function parseWebp(bytes: Uint8Array, bounds: StillImageBounds) {
 		}
 		if (type === 'VP8X') {
 			if (
-				offset !== 12
-				|| length !== 10
-				|| width !== undefined
-				|| height !== undefined
-				|| bytes[dataOffset + 1] !== 0
-				|| bytes[dataOffset + 2] !== 0
-				|| bytes[dataOffset + 3] !== 0
+				offset !== 12 ||
+				length !== 10 ||
+				width !== undefined ||
+				height !== undefined ||
+				bytes[dataOffset + 1] !== 0 ||
+				bytes[dataOffset + 2] !== 0 ||
+				bytes[dataOffset + 3] !== 0
 			) {
 				validationError('malformed-webp', 'WebP extended header is malformed or duplicated.');
 			}
 			hasExtendedHeader = true;
 			const flags = bytes[dataOffset]!;
-			if ((flags & 0xC1) !== 0)
+			if ((flags & 0xc1) !== 0)
 				validationError('malformed-webp', 'WebP extended header sets reserved feature bits.');
 			if ((flags & 0x02) !== 0) {
 				validationError(
@@ -383,63 +358,58 @@ function parseWebp(bytes: Uint8Array, bounds: StillImageBounds) {
 			extendedAlpha = (flags & 0x10) !== 0;
 			width = readUint24LittleEndian(bytes, dataOffset + 4) + 1;
 			height = readUint24LittleEndian(bytes, dataOffset + 7) + 1;
-		}
-		else if (type === 'ALPH') {
+		} else if (type === 'ALPH') {
 			if (
-				!hasExtendedHeader
-				|| !extendedAlpha
-				|| foundAlphaChunk
-				|| foundImagePayload
-				|| length < 1
+				!hasExtendedHeader ||
+				!extendedAlpha ||
+				foundAlphaChunk ||
+				foundImagePayload ||
+				length < 1
 			) {
 				validationError('malformed-webp', 'WebP alpha chunk is missing, misplaced, or duplicated.');
 			}
 			const alphaHeader = bytes[dataOffset]!;
 			const preprocessing = (alphaHeader >>> 4) & 0x03;
-			if ((alphaHeader & 0xC3) !== 0 || preprocessing > 1)
+			if ((alphaHeader & 0xc3) !== 0 || preprocessing > 1)
 				validationError('unsupported-webp-profile', 'WebP alpha coding is outside still-image-v1.');
 			foundAlphaChunk = true;
-		}
-		else if (type === 'VP8L') {
-			if (foundImagePayload || length < 5 || bytes[dataOffset] !== 0x2F)
+		} else if (type === 'VP8L') {
+			if (foundImagePayload || length < 5 || bytes[dataOffset] !== 0x2f)
 				validationError('malformed-webp', 'WebP lossless frame is malformed or duplicated.');
 			foundImagePayload = true;
 			imagePayloadType = 'lossless';
 			const bits = readUint32LittleEndian(bytes, dataOffset + 1);
-			if ((bits >>> 29) !== 0) {
+			if (bits >>> 29 !== 0) {
 				validationError(
 					'unsupported-webp-profile',
 					'WebP lossless format version must be zero for still-image-v1.',
 				);
 			}
-			const payloadWidth = (bits & 0x3FFF) + 1;
-			const payloadHeight = ((bits >>> 14) & 0x3FFF) + 1;
+			const payloadWidth = (bits & 0x3fff) + 1;
+			const payloadHeight = ((bits >>> 14) & 0x3fff) + 1;
 			hasAlpha = ((bits >>> 28) & 1) === 1;
 			width ??= payloadWidth;
 			height ??= payloadHeight;
 			if (width !== payloadWidth || height !== payloadHeight)
 				validationError('malformed-webp', 'WebP frame dimensions conflict with its canvas.');
-		}
-		else if (type === 'VP8 ') {
+		} else if (type === 'VP8 ') {
 			if (
-				foundImagePayload
-				|| length < 10
-				|| bytes[dataOffset + 3] !== 0x9D
-				|| bytes[dataOffset + 4] !== 0x01
-				|| bytes[dataOffset + 5] !== 0x2A
+				foundImagePayload ||
+				length < 10 ||
+				bytes[dataOffset + 3] !== 0x9d ||
+				bytes[dataOffset + 4] !== 0x01 ||
+				bytes[dataOffset + 5] !== 0x2a
 			) {
 				validationError('malformed-webp', 'WebP lossy frame is malformed or duplicated.');
 			}
 			foundImagePayload = true;
 			imagePayloadType = 'lossy';
-			const payloadWidth = readUint16BigEndian(
-				Uint8Array.of(bytes[dataOffset + 7]!, bytes[dataOffset + 6]!),
-				0,
-			) & 0x3FFF;
-			const payloadHeight = readUint16BigEndian(
-				Uint8Array.of(bytes[dataOffset + 9]!, bytes[dataOffset + 8]!),
-				0,
-			) & 0x3FFF;
+			const payloadWidth =
+				readUint16BigEndian(Uint8Array.of(bytes[dataOffset + 7]!, bytes[dataOffset + 6]!), 0) &
+				0x3fff;
+			const payloadHeight =
+				readUint16BigEndian(Uint8Array.of(bytes[dataOffset + 9]!, bytes[dataOffset + 8]!), 0) &
+				0x3fff;
 			width ??= payloadWidth;
 			height ??= payloadHeight;
 			hasAlpha = extendedAlpha;
@@ -453,19 +423,18 @@ function parseWebp(bytes: Uint8Array, bounds: StillImageBounds) {
 	if (!foundImagePayload || width === undefined || height === undefined)
 		validationError('incomplete-webp-frame', 'WebP does not contain one complete image frame.');
 	if (
-		(imagePayloadType === 'lossy' && extendedAlpha !== foundAlphaChunk)
-		|| (imagePayloadType === 'lossless' && foundAlphaChunk)
-		|| (hasExtendedHeader && imagePayloadType === 'lossless' && extendedAlpha !== hasAlpha)
+		(imagePayloadType === 'lossy' && extendedAlpha !== foundAlphaChunk) ||
+		(imagePayloadType === 'lossless' && foundAlphaChunk) ||
+		(hasExtendedHeader && imagePayloadType === 'lossless' && extendedAlpha !== hasAlpha)
 	) {
 		validationError('malformed-webp', 'WebP alpha evidence conflicts with its image payload.');
 	}
-	if (imagePayloadType === 'lossy')
-		hasAlpha = foundAlphaChunk;
+	if (imagePayloadType === 'lossy') hasAlpha = foundAlphaChunk;
 	assertDimensions(width, height, 'WebP', 'malformed-webp', bounds);
 	return {
 		width,
 		height,
-		colorModel: hasAlpha ? 'rgba' as const : 'rgb' as const,
+		colorModel: hasAlpha ? ('rgba' as const) : ('rgb' as const),
 		hasAlpha,
 	};
 }
@@ -479,19 +448,14 @@ function validateDeclarations(
 		?.trim()
 		.toLocaleLowerCase()
 		.match(/\.([^.]+)$/)?.[1];
-	const acceptedExtensions = format === 'jpeg'
-		? ['jpg', 'jpeg']
-		: [format];
+	const acceptedExtensions = format === 'jpeg' ? ['jpg', 'jpeg'] : [format];
 	if (extension && !acceptedExtensions.includes(extension)) {
 		validationError(
 			'conflicting-image-extension',
 			`Source extension .${extension} conflicts with canonical ${format.toUpperCase()} bytes.`,
 		);
 	}
-	const declaredMime = declarations.declaredMime
-		?.split(';', 1)[0]
-		?.trim()
-		.toLocaleLowerCase();
+	const declaredMime = declarations.declaredMime?.split(';', 1)[0]?.trim().toLocaleLowerCase();
 	if (declaredMime && declaredMime !== canonicalMime) {
 		validationError(
 			'conflicting-image-mime',
@@ -535,33 +499,32 @@ export async function processStillImage(
 		return await processPng(bytes);
 	}
 
-	const isJpeg = bytesStartWith(bytes, Uint8Array.of(0xFF, 0xD8));
-	const isWebp = bytes.byteLength >= 12
-		&& ascii(bytes, 0, 4) === 'RIFF'
-		&& ascii(bytes, 8, 4) === 'WEBP';
+	const isJpeg = bytesStartWith(bytes, Uint8Array.of(0xff, 0xd8));
+	const isWebp =
+		bytes.byteLength >= 12 && ascii(bytes, 0, 4) === 'RIFF' && ascii(bytes, 8, 4) === 'WEBP';
 	if (!isJpeg && !isWebp)
-		validationError('unsupported-image-format', 'Source bytes are not a supported PNG, JPEG, or WebP image.');
+		validationError(
+			'unsupported-image-format',
+			'Source bytes are not a supported PNG, JPEG, or WebP image.',
+		);
 
-	const format = isJpeg
-		? encodedStillImageFormats.jpeg
-		: encodedStillImageFormats.webp;
+	const format = isJpeg ? encodedStillImageFormats.jpeg : encodedStillImageFormats.webp;
 	validateDeclarations(format.format, format.canonicalMime, declarations);
 	const parsed = format.parse(bytes, bounds);
 	let decoded: ImageData;
 	try {
 		const input = Uint8Array.from(bytes).buffer;
 		decoded = await format.decode(input);
-	}
-	catch {
+	} catch {
 		validationError(
 			format.incompleteFrameCode,
 			`${format.label} does not contain one complete decodable frame.`,
 		);
 	}
 	if (
-		decoded.width !== parsed.width
-		|| decoded.height !== parsed.height
-		|| decoded.data.byteLength !== parsed.width * parsed.height * 4
+		decoded.width !== parsed.width ||
+		decoded.height !== parsed.height ||
+		decoded.data.byteLength !== parsed.width * parsed.height * 4
 	) {
 		validationError(
 			format.incompleteFrameCode,
@@ -608,14 +571,12 @@ export async function processStillImageStream(
 	try {
 		while (signatureOffset < signature.byteLength) {
 			const { done, value } = await sniffingReader.read();
-			if (done)
-				break;
+			if (done) break;
 			const copiedLength = Math.min(value.byteLength, signature.byteLength - signatureOffset);
 			signature.set(value.subarray(0, copiedLength), signatureOffset);
 			signatureOffset += copiedLength;
 		}
-	}
-	finally {
+	} finally {
 		void sniffingReader.cancel().catch(() => undefined);
 	}
 
@@ -627,8 +588,5 @@ export async function processStillImageStream(
 		validateDeclarations('png', 'image/png', declarations);
 		return await processPngStream(processingStream, sourceDigest);
 	}
-	return await processStillImage(
-		await consumeBoundedByteStream(processingStream),
-		declarations,
-	);
+	return await processStillImage(await consumeBoundedByteStream(processingStream), declarations);
 }

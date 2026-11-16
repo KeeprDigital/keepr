@@ -18,23 +18,25 @@ defineProps<{
  */
 type PreviewPick = Game | 'commander';
 const PICKS: Record<PreviewPick, { label: string; game: Game; variant?: Variant }> = {
-	...Object.fromEntries(GAME_VALUES.map(value => [
-		value,
-		{ label: GAME_CONFIGS[value].label, game: value },
-	])) as Record<Game, { label: string; game: Game }>,
+	...(Object.fromEntries(
+		GAME_VALUES.map((value) => [value, { label: GAME_CONFIGS[value].label, game: value }]),
+	) as Record<Game, { label: string; game: Game }>),
 	commander: { label: 'Commander', game: 'mtg', variant: 'commander' },
 };
 const PICK_ORDER: readonly PreviewPick[] = [
 	'mtg',
 	'commander',
-	...GAME_VALUES.filter(value => value !== 'mtg'),
+	...GAME_VALUES.filter((value) => value !== 'mtg'),
 ];
 
 const pick = ref<PreviewPick>('mtg');
-const picks = PICK_ORDER.map(value => ({ label: PICKS[value].label, value }));
+const picks = PICK_ORDER.map((value) => ({ label: PICKS[value].label, value }));
 const picked = computed(() => PICKS[pick.value]);
-const modes = computed(() => THEME_PREVIEW_SCREEN_MODES.filter(mode =>
-	isOfferedToEvent(SCREEN_MODES[mode].offeredTo, eventKind(picked.value))));
+const modes = computed(() =>
+	THEME_PREVIEW_SCREEN_MODES.filter((mode) =>
+		isOfferedToEvent(SCREEN_MODES[mode].offeredTo, eventKind(picked.value)),
+	),
+);
 </script>
 
 <template>
@@ -43,7 +45,7 @@ const modes = computed(() => THEME_PREVIEW_SCREEN_MODES.filter(mode =>
 			:model-value="pick"
 			:items="picks"
 			aria-label="Card Game or Variant"
-			@update:model-value="value => pick = value as PreviewPick"
+			@update:model-value="(value) => (pick = value as PreviewPick)"
 		/>
 		<!-- Every Screen Mode a Theme preview shows, read off its definition: a newly themed mode appears with no change here. -->
 		<div class="grid gap-4 sm:grid-cols-2">

@@ -32,17 +32,11 @@ function atScore(player1Wins: number, player2Wins: number): FeatureMatchState {
 	let state = createInitialFeatureMatchState();
 	const player1 = Array.from({ length: player1Wins }).fill('player1');
 	const player2 = Array.from({ length: player2Wins }).fill('player2');
-	const wins = player1Wins >= player2Wins
-		? [
-				...player2,
-				...player1,
-			]
-		: [
-				...player1,
-				...player2,
-			];
+	const wins = player1Wins >= player2Wins ? [...player2, ...player1] : [...player1, ...player2];
 	for (const player of wins)
-		state = applyFeatureMatchSessionEvent(state, bestOfThree, 'RecordGameWin', { player }).currentState;
+		state = applyFeatureMatchSessionEvent(state, bestOfThree, 'RecordGameWin', {
+			player,
+		}).currentState;
 	return state;
 }
 
@@ -56,26 +50,37 @@ describe('game wins in a Feature Match Session', () => {
 		expect(atScore(2, 1).isComplete).toBe(true);
 	});
 
-	it.each(['player1', 'player2'])('records no further win for %s once the match is decided', (player) => {
-		const decided = atScore(2, 0);
+	it.each(['player1', 'player2'])(
+		'records no further win for %s once the match is decided',
+		(player) => {
+			const decided = atScore(2, 0);
 
-		const after = applyFeatureMatchSessionEvent(decided, bestOfThree, 'RecordGameWin', { player }).currentState;
+			const after = applyFeatureMatchSessionEvent(decided, bestOfThree, 'RecordGameWin', {
+				player,
+			}).currentState;
 
-		expect(after).toEqual(decided);
-	});
+			expect(after).toEqual(decided);
+		},
+	);
 
 	it('reopens the match when the deciding win is undone, so the right Player can take it', () => {
-		const reopened = applyFeatureMatchSessionEvent(atScore(2, 1), bestOfThree, 'UndoGameWin', { player: 'player1' }).currentState;
+		const reopened = applyFeatureMatchSessionEvent(atScore(2, 1), bestOfThree, 'UndoGameWin', {
+			player: 'player1',
+		}).currentState;
 		expect(reopened.isComplete).toBe(false);
 
-		const corrected = applyFeatureMatchSessionEvent(reopened, bestOfThree, 'RecordGameWin', { player: 'player2' }).currentState;
+		const corrected = applyFeatureMatchSessionEvent(reopened, bestOfThree, 'RecordGameWin', {
+			player: 'player2',
+		}).currentState;
 
 		expect(score(corrected)).toEqual([1, 2]);
 		expect(corrected.isComplete).toBe(true);
 	});
 
-	it('keeps the match decided when the loser\'s win is undone', () => {
-		const after = applyFeatureMatchSessionEvent(atScore(2, 1), bestOfThree, 'UndoGameWin', { player: 'player2' }).currentState;
+	it("keeps the match decided when the loser's win is undone", () => {
+		const after = applyFeatureMatchSessionEvent(atScore(2, 1), bestOfThree, 'UndoGameWin', {
+			player: 'player2',
+		}).currentState;
 
 		expect(score(after)).toEqual([2, 0]);
 		expect(after.isComplete).toBe(true);

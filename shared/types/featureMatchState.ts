@@ -31,7 +31,7 @@ export interface PlayerFeatureMatchState {
 
 /** Which of a Seat's Commanders: its first or, for a pair, its second. */
 export const COMMANDER_NUMBER_VALUES = [1, 2] as const;
-export type CommanderNumber = typeof COMMANDER_NUMBER_VALUES[number];
+export type CommanderNumber = (typeof COMMANDER_NUMBER_VALUES)[number];
 
 /** One Commander at the table: the Seat holding it, and which of that Seat's Commanders it is. */
 export interface CommanderSource {
@@ -102,7 +102,9 @@ export const DEFAULT_CLOCK_DURATION_MS = 50 * 60 * 1000; // 50 minutes in ms
 export const DEFAULT_CLOCK_TYPE: ClockType = 'countdown';
 
 // Helper to create initial player feature match state
-export function createInitialPlayerFeatureMatchState(startingLife: number = DEFAULT_STARTING_LIFE): PlayerFeatureMatchState {
+export function createInitialPlayerFeatureMatchState(
+	startingLife: number = DEFAULT_STARTING_LIFE,
+): PlayerFeatureMatchState {
 	return {
 		lifeTotal: startingLife,
 		gameWins: 0,
@@ -150,7 +152,12 @@ export function createInitialFeatureMatchState(
 	return {
 		player1: createInitialPlayerFeatureMatchState(startingLife),
 		player2: createInitialPlayerFeatureMatchState(startingLife),
-		clock: createInitialClockState(clockType, clockDurationMs, countUpAfterCountdown, countUpLimitMs),
+		clock: createInitialClockState(
+			clockType,
+			clockDurationMs,
+			countUpAfterCountdown,
+			countUpLimitMs,
+		),
 		currentGame: 1,
 		turnNumber: startingTurnNumber,
 		isComplete: false,
@@ -195,9 +202,7 @@ export function resetPlayerFeatureMatchStateForNewGame(
 	return {
 		...player,
 		lifeTotal: startingLife,
-		counters: resetCounters
-			? []
-			: player.counters,
+		counters: resetCounters ? [] : player.counters,
 		cardsKept: undefined,
 	};
 }

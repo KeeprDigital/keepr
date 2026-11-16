@@ -36,10 +36,7 @@ import {
 
 async function findScreen(id: number, eventId: number): Promise<DbScreen | undefined> {
 	return await db.query.screens.findFirst({
-		where: and(
-			eq(screens.id, id),
-			eq(screens.eventId, eventId),
-		),
+		where: and(eq(screens.id, id), eq(screens.eventId, eventId)),
 	});
 }
 
@@ -50,12 +47,15 @@ export async function deleteScreenWithGraphicAssetReferences(
 	const referenceVersion = crypto.randomUUID();
 	const client = db.$client;
 	const results = await client.batch([
-		client.prepare(`
+		client
+			.prepare(`
 			UPDATE screens
 			SET graphic_asset_reference_version = ?
 			WHERE id = ? AND event_id = ?
-		`).bind(referenceVersion, id, eventId),
-		client.prepare(`
+		`)
+			.bind(referenceVersion, id, eventId),
+		client
+			.prepare(`
 			DELETE FROM graphic_asset_references
 			WHERE owner_kind = 'screen' AND owner_id = ?
 				AND EXISTS (
@@ -63,12 +63,15 @@ export async function deleteScreenWithGraphicAssetReferences(
 					WHERE id = ? AND event_id = ?
 						AND graphic_asset_reference_version = ?
 				)
-		`).bind(String(id), id, eventId, referenceVersion),
-		client.prepare(`
+		`)
+			.bind(String(id), id, eventId, referenceVersion),
+		client
+			.prepare(`
 			DELETE FROM screens
 			WHERE id = ? AND event_id = ?
 				AND graphic_asset_reference_version = ?
-		`).bind(id, eventId, referenceVersion),
+		`)
+			.bind(id, eventId, referenceVersion),
 	]);
 	return results[2]?.meta.changes === 1;
 }
@@ -94,24 +97,23 @@ export async function updateScreenModeConfigWithGraphicAssetReferences(input: {
 	leaseFence?: GraphicsAuthoringLeaseFence;
 }): Promise<DbScreen | undefined> {
 	const screen = await findScreen(input.id, input.eventId);
-	if (!screen)
-		return undefined;
+	if (!screen) return undefined;
 
 	const mergedConfigs = mergeScreenModeConfig(
 		screen.modeConfigs ?? {},
 		input.mode,
 		input.partialConfig,
 	);
-	if (!mergedConfigs[input.mode])
-		throw new Error(`${input.mode} configuration is missing`);
+	if (!mergedConfigs[input.mode]) throw new Error(`${input.mode} configuration is missing`);
 
 	const expectedVersion = input.stateVersion ?? screen.stateVersion;
 	const referenceVersion = crypto.randomUUID();
 	const now = Date.now();
 	const references = screenModeGraphicAssetReferences(input.mode, mergedConfigs);
 	const previousReferences = new Map(
-		screenModeGraphicAssetReferences(input.mode, screen.modeConfigs)
-			.map(item => [item.ownerSlot, item.reference] as const),
+		screenModeGraphicAssetReferences(input.mode, screen.modeConfigs).map(
+			(item) => [item.ownerSlot, item.reference] as const,
+		),
 	);
 	const indexedReferences = references.map((item) => {
 		const previous = previousReferences.get(item.ownerSlot);
@@ -129,30 +131,31 @@ export async function updateScreenModeConfigWithGraphicAssetReferences(input: {
 		: undefined;
 	const client = db.$client;
 	const statements: D1PreparedStatement[] = [
-		client.prepare(`
+		client
+			.prepare(`
 			UPDATE screens
 			SET mode_configs = ?, state_version = state_version + 1,
 				graphic_asset_reference_version = ?, updated_at = ?
 			WHERE id = ? AND event_id = ? AND state_version = ?
 				${REQUIRED_GRAPHIC_ASSET_REFERENCES_RESOLVE}
-				${fence
-					? `AND ${fence.sql}`
-					: ''}
-		`).bind(
-			JSON.stringify(mergedConfigs),
-			referenceVersion,
-			now,
-			input.id,
-			input.eventId,
-			expectedVersion,
-			boundFacts,
-			...(fence?.params ?? []),
-		),
+				${fence ? `AND ${fence.sql}` : ''}
+		`)
+			.bind(
+				JSON.stringify(mergedConfigs),
+				referenceVersion,
+				now,
+				input.id,
+				input.eventId,
+				expectedVersion,
+				boundFacts,
+				...(fence?.params ?? []),
+			),
 		// Scoped to this mode's own owner-slot namespace. A Screen may hold a
 		// configuration for every mode at once, so an unscoped delete would clear
 		// another mode's rows and leave its outputs unable to resolve content the
 		// Screen still publishes — silently, because the revisions still exist.
-		client.prepare(`
+		client
+			.prepare(`
 			DELETE FROM graphic_asset_references
 			WHERE owner_kind = 'screen' AND owner_id = ?
 				AND owner_slot LIKE ?
@@ -161,13 +164,14 @@ export async function updateScreenModeConfigWithGraphicAssetReferences(input: {
 					WHERE id = ? AND event_id = ?
 						AND graphic_asset_reference_version = ?
 				)
-		`).bind(
-			String(input.id),
-			`${graphicAssetReferenceSlotPrefix(input.mode)}%`,
-			input.id,
-			input.eventId,
-			referenceVersion,
-		),
+		`)
+			.bind(
+				String(input.id),
+				`${graphicAssetReferenceSlotPrefix(input.mode)}%`,
+				input.id,
+				input.eventId,
+				referenceVersion,
+			),
 		// The whole index in one statement, derived from the same bound array the
 		// precondition reads (#374). One `INSERT` per reference made a maximal
 		// authored save a six-hundred-statement batch, and remote D1 prices a batch
@@ -180,7 +184,8 @@ export async function updateScreenModeConfigWithGraphicAssetReferences(input: {
 		...(indexedReferences.length === 0
 			? []
 			: [
-					client.prepare(`
+					client
+						.prepare(`
 				INSERT INTO graphic_asset_references (
 					id, asset_id, revision_id, owner_kind, owner_id, owner_slot,
 					event_id, created_at, updated_at
@@ -200,23 +205,23 @@ export async function updateScreenModeConfigWithGraphicAssetReferences(input: {
 						WHERE id = ? AND event_id = ?
 							AND graphic_asset_reference_version = ?
 					)
-			`).bind(
-						String(input.id),
-						input.eventId,
-						now,
-						now,
-						boundFacts,
-						input.id,
-						input.eventId,
-						referenceVersion,
-					),
+			`)
+						.bind(
+							String(input.id),
+							input.eventId,
+							now,
+							now,
+							boundFacts,
+							input.id,
+							input.eventId,
+							referenceVersion,
+						),
 				]),
 	];
 	const [updateResult] = await client.batch(statements).catch(mapDeckSourceConflict);
 	if (updateResult?.meta.changes !== 1) {
 		const current = await findScreen(input.id, input.eventId);
-		if (!current)
-			return undefined;
+		if (!current) return undefined;
 		// Which of the guards refused it, told apart so the operator is not pointed
 		// at a retry that can never succeed. A version that still stands means the
 		// lease fence or a reference refused it: the fence first, because a lease
@@ -225,8 +230,11 @@ export async function updateScreenModeConfigWithGraphicAssetReferences(input: {
 		// read — and that is a different conflict from a concurrent Screen edit,
 		// which the client's own reload-and-restate does converge on. All are 409;
 		// only the last is worth restating.
-		if (current.stateVersion === expectedVersion && input.leaseFence
-			&& await graphicsAuthoringLeaseModule().fenceRefused(input.leaseFence, now)) {
+		if (
+			current.stateVersion === expectedVersion &&
+			input.leaseFence &&
+			(await graphicsAuthoringLeaseModule().fenceRefused(input.leaseFence, now))
+		) {
 			throw graphicsAuthoringLeaseConflict();
 		}
 		throw current.stateVersion === expectedVersion
@@ -255,15 +263,19 @@ export async function updateScreenThemeOverridesWithGraphicAssetReferences(input
 	const referenceVersion = crypto.randomUUID();
 	const now = Date.now();
 	const previous = new Map(
-		storedThemeTokenGraphicAssetReferences(input.previousOverrides, SCREEN_THEME_OVERRIDE_SLOT_PREFIX)
-			.map(item => [item.ownerSlot, item.reference] as const),
+		storedThemeTokenGraphicAssetReferences(
+			input.previousOverrides,
+			SCREEN_THEME_OVERRIDE_SLOT_PREFIX,
+		).map((item) => [item.ownerSlot, item.reference] as const),
 	);
-	const references = storedThemeTokenGraphicAssetReferences(input.themeOverrides, SCREEN_THEME_OVERRIDE_SLOT_PREFIX)
-		.map(item => ({
-			...item,
-			id: crypto.randomUUID(),
-			allowRetired: sameGraphicAssetReference(previous.get(item.ownerSlot), item.reference),
-		}));
+	const references = storedThemeTokenGraphicAssetReferences(
+		input.themeOverrides,
+		SCREEN_THEME_OVERRIDE_SLOT_PREFIX,
+	).map((item) => ({
+		...item,
+		id: crypto.randomUUID(),
+		allowRetired: sameGraphicAssetReference(previous.get(item.ownerSlot), item.reference),
+	}));
 	const boundFacts = boundGraphicAssetReferenceFacts(references);
 	const client = db.$client;
 	const versionGuard = `
@@ -274,31 +286,42 @@ export async function updateScreenThemeOverridesWithGraphicAssetReferences(input
 		)
 	`;
 	const [updateResult] = await client.batch([
-		client.prepare(`
+		client
+			.prepare(`
 			UPDATE screens
 			SET theme_overrides = ?, state_version = state_version + 1,
 				graphic_asset_reference_version = ?, updated_at = ?
 			WHERE id = ? AND event_id = ? AND state_version = ?
 				${REQUIRED_GRAPHIC_ASSET_REFERENCES_RESOLVE}
-		`).bind(
-			JSON.stringify(input.themeOverrides),
-			referenceVersion,
-			now,
-			input.id,
-			input.eventId,
-			input.stateVersion,
-			boundFacts,
-		),
-		client.prepare(`
+		`)
+			.bind(
+				JSON.stringify(input.themeOverrides),
+				referenceVersion,
+				now,
+				input.id,
+				input.eventId,
+				input.stateVersion,
+				boundFacts,
+			),
+		client
+			.prepare(`
 			DELETE FROM graphic_asset_references
 			WHERE owner_kind = 'screen' AND owner_id = ?
 				AND owner_slot LIKE ?
 				${versionGuard}
-		`).bind(String(input.id), `${SCREEN_THEME_OVERRIDE_SLOT_PREFIX}%`, input.id, input.eventId, referenceVersion),
+		`)
+			.bind(
+				String(input.id),
+				`${SCREEN_THEME_OVERRIDE_SLOT_PREFIX}%`,
+				input.id,
+				input.eventId,
+				referenceVersion,
+			),
 		...(references.length === 0
 			? []
 			: [
-					client.prepare(`
+					client
+						.prepare(`
 						INSERT INTO graphic_asset_references (
 							id, asset_id, revision_id, owner_kind, owner_id, owner_slot,
 							event_id, created_at, updated_at
@@ -314,22 +337,22 @@ export async function updateScreenThemeOverridesWithGraphicAssetReferences(input
 							${jsonElementGraphicAssetRevisionResolution('item')}
 						)
 							${versionGuard}
-					`).bind(
-						String(input.id),
-						input.eventId,
-						now,
-						now,
-						boundFacts,
-						input.id,
-						input.eventId,
-						referenceVersion,
-					),
+					`)
+						.bind(
+							String(input.id),
+							input.eventId,
+							now,
+							now,
+							boundFacts,
+							input.id,
+							input.eventId,
+							referenceVersion,
+						),
 				]),
 	]);
 	if (updateResult?.meta.changes !== 1) {
 		const current = await findScreen(input.id, input.eventId);
-		if (!current)
-			return undefined;
+		if (!current) return undefined;
 		throw current.stateVersion === input.stateVersion
 			? new StateConflictError('Graphic Asset Reference', input.id)
 			: new StateConflictError('Screen', input.id);
@@ -388,7 +411,7 @@ export async function updateBroadcastGraphicsLiveSessionGraphicAssetReferences(i
 	previousReferences?: readonly ScreenGraphicAssetReference[];
 }): Promise<{ expected: number; indexed: number }> {
 	const previousBySlot = new Map(
-		(input.previousReferences ?? []).map(item => [item.ownerSlot, item.reference] as const),
+		(input.previousReferences ?? []).map((item) => [item.ownerSlot, item.reference] as const),
 	);
 	const now = Date.now();
 	const client = db.$client;
@@ -401,13 +424,17 @@ export async function updateBroadcastGraphicsLiveSessionGraphicAssetReferences(i
 	const sessionGuardBindings = [input.sessionId, input.screenId, input.sequence] as const;
 
 	const results = await client.batch([
-		client.prepare(`
+		client
+			.prepare(`
 			DELETE FROM graphic_asset_references
 			WHERE owner_kind = 'screen' AND owner_id = ?
 				AND owner_slot LIKE ?
 				${sessionGuard}
-		`).bind(String(input.screenId), LIVE_SESSION_SLOT_PATTERN, ...sessionGuardBindings),
-		...input.references.map(item => client.prepare(`
+		`)
+			.bind(String(input.screenId), LIVE_SESSION_SLOT_PATTERN, ...sessionGuardBindings),
+		...input.references.map((item) =>
+			client
+				.prepare(`
 			INSERT INTO graphic_asset_references (
 				id, asset_id, revision_id, owner_kind, owner_id, owner_slot,
 				event_id, created_at, updated_at
@@ -415,22 +442,27 @@ export async function updateBroadcastGraphicsLiveSessionGraphicAssetReferences(i
 			SELECT ?, ?, ?, 'screen', ?, ?, ?, ?, ?
 			${BOUND_GRAPHIC_ASSET_REFERENCE_RESOLUTION}
 				${sessionGuard}
-		`).bind(
-			crypto.randomUUID(),
-			item.reference.assetId,
-			item.reference.revisionId,
-			String(input.screenId),
-			item.ownerSlot,
-			input.eventId,
-			now,
-			now,
-			...graphicAssetReferenceBindings({
-				reference: item.reference,
-				allowRetired: sameGraphicAssetReference(previousBySlot.get(item.ownerSlot), item.reference),
-				kind: item.kind,
-			}),
-			...sessionGuardBindings,
-		)),
+		`)
+				.bind(
+					crypto.randomUUID(),
+					item.reference.assetId,
+					item.reference.revisionId,
+					String(input.screenId),
+					item.ownerSlot,
+					input.eventId,
+					now,
+					now,
+					...graphicAssetReferenceBindings({
+						reference: item.reference,
+						allowRetired: sameGraphicAssetReference(
+							previousBySlot.get(item.ownerSlot),
+							item.reference,
+						),
+						kind: item.kind,
+					}),
+					...sessionGuardBindings,
+				),
+		),
 	]);
 
 	return {
@@ -463,12 +495,16 @@ export function clearBroadcastGraphicsLiveSessionGraphicAssetReferencesStatement
 	screenId: number,
 	onlyIf?: SQL,
 ): BatchItem<'sqlite'> {
-	return db.delete(graphicAssetReferences).where(and(
-		eq(graphicAssetReferences.ownerKind, 'screen'),
-		eq(graphicAssetReferences.ownerId, String(screenId)),
-		like(graphicAssetReferences.ownerSlot, LIVE_SESSION_SLOT_PATTERN),
-		onlyIf,
-	));
+	return db
+		.delete(graphicAssetReferences)
+		.where(
+			and(
+				eq(graphicAssetReferences.ownerKind, 'screen'),
+				eq(graphicAssetReferences.ownerId, String(screenId)),
+				like(graphicAssetReferences.ownerSlot, LIVE_SESSION_SLOT_PATTERN),
+				onlyIf,
+			),
+		);
 }
 
 /**

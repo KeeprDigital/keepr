@@ -43,7 +43,9 @@ export function buildCardSearchFormatQuery(format: MtgFormat): string {
  */
 export function useCardSearchRuntime(state: CardSearchRuntimeState) {
 	const { getServerTime } = useServerTime();
-	const searchFormatQuery = computed(() => buildCardSearchFormatQuery(state.selectedSearchFormat.value));
+	const searchFormatQuery = computed(() =>
+		buildCardSearchFormatQuery(state.selectedSearchFormat.value),
+	);
 	let fuzzySearchGeneration = 0;
 	let printSearchGeneration = 0;
 	let meldSearchGeneration = 0;
@@ -65,14 +67,17 @@ export function useCardSearchRuntime(state: CardSearchRuntimeState) {
 	}
 
 	function isMessageForActiveScreen(messageData?: { screenId?: number }) {
-		if (!messageData)
-			return false;
-		return state.activeScreenId.value !== null && messageData.screenId === state.activeScreenId.value;
+		if (!messageData) return false;
+		return (
+			state.activeScreenId.value !== null && messageData.screenId === state.activeScreenId.value
+		);
 	}
 
 	function pushToHistory(cardData: MtgCard) {
 		const cardCopy = cloneMtgCard(toRaw(cardData));
-		const existingIndex = state.selectionHistory.value.findIndex(card => card.name === cardData.name);
+		const existingIndex = state.selectionHistory.value.findIndex(
+			(card) => card.name === cardData.name,
+		);
 		if (existingIndex !== -1) {
 			state.selectionHistory.value.splice(existingIndex, 1);
 		}
@@ -101,18 +106,12 @@ export function useCardSearchRuntime(state: CardSearchRuntimeState) {
 				timeout: SCRYFALL_CLIENT_TIMEOUT_MS,
 			});
 			if (generation === fuzzySearchGeneration) {
-				state.searchResults.value = data
-					? data.data.map(card => cardParser(card))
-					: [];
+				state.searchResults.value = data ? data.data.map((card) => cardParser(card)) : [];
 			}
-		}
-		catch {
-			if (generation === fuzzySearchGeneration)
-				state.searchResults.value = [];
-		}
-		finally {
-			if (fuzzySearchController === controller)
-				fuzzySearchController = null;
+		} catch {
+			if (generation === fuzzySearchGeneration) state.searchResults.value = [];
+		} finally {
+			if (fuzzySearchController === controller) fuzzySearchController = null;
 			endRequest(token);
 		}
 	}
@@ -134,26 +133,22 @@ export function useCardSearchRuntime(state: CardSearchRuntimeState) {
 				timeout: SCRYFALL_CLIENT_TIMEOUT_MS,
 			});
 			if (generation === printSearchGeneration)
-				state.previewCardPrintings.value = data.data.map(card => cardParser(card));
-		}
-		catch {
-			if (generation === printSearchGeneration)
-				state.previewCardPrintings.value = [];
-		}
-		finally {
-			if (printSearchController === controller)
-				printSearchController = null;
+				state.previewCardPrintings.value = data.data.map((card) => cardParser(card));
+		} catch {
+			if (generation === printSearchGeneration) state.previewCardPrintings.value = [];
+		} finally {
+			if (printSearchController === controller) printSearchController = null;
 			endRequest(token);
 		}
 	}
 
 	async function selectPreviewCard(cardData: MtgCard, turnedOver: boolean) {
-		state.showCardControls.value = !state.autoShowSelectedCard.value || state.activeScreenId.value === null;
+		state.showCardControls.value =
+			!state.autoShowSelectedCard.value || state.activeScreenId.value === null;
 		let shouldSearchPrintings = true;
 
 		if (cardData.id === state.previewCard.value?.id) {
-			if (turnedOver === state.previewCard.value.displayData.turnedOver)
-				return;
+			if (turnedOver === state.previewCard.value.displayData.turnedOver) return;
 			shouldSearchPrintings = false;
 		}
 
@@ -189,28 +184,26 @@ export function useCardSearchRuntime(state: CardSearchRuntimeState) {
 				state.previewCard.value = cardParser(data);
 				await searchCardPrints(cardName);
 			}
-		}
-		catch (err) {
+		} catch (err) {
 			if (generation === meldSearchGeneration)
 				console.error('Failed to fetch meld card part:', err);
-		}
-		finally {
-			if (meldSearchController === controller)
-				meldSearchController = null;
+		} finally {
+			if (meldSearchController === controller) meldSearchController = null;
 			endRequest(token);
 		}
 	}
 
 	async function controlPreviewCard(action: MtgPreviewCardAction) {
-		if (!state.previewCard.value)
-			return;
+		if (!state.previewCard.value) return;
 
 		switch (action) {
 			case 'show': {
 				const cardData = cloneMtgCard(state.previewCard.value);
-				const timeoutData = cardTimeoutStartingAt(toValue(state.cardTimeoutSeconds), getServerTime());
-				if (timeoutData)
-					cardData.timeoutData = timeoutData;
+				const timeoutData = cardTimeoutStartingAt(
+					toValue(state.cardTimeoutSeconds),
+					getServerTime(),
+				);
+				if (timeoutData) cardData.timeoutData = timeoutData;
 				await state.saveActiveCard(cardData);
 				break;
 			}
@@ -225,10 +218,12 @@ export function useCardSearchRuntime(state: CardSearchRuntimeState) {
 				state.previewCard.value.displayData.rotated = !state.previewCard.value.displayData.rotated;
 				break;
 			case 'turnOver':
-				state.previewCard.value.displayData.turnedOver = !state.previewCard.value.displayData.turnedOver;
+				state.previewCard.value.displayData.turnedOver =
+					!state.previewCard.value.displayData.turnedOver;
 				break;
 			case 'counterRotate':
-				state.previewCard.value.displayData.counterRotated = !state.previewCard.value.displayData.counterRotated;
+				state.previewCard.value.displayData.counterRotated =
+					!state.previewCard.value.displayData.counterRotated;
 				break;
 		}
 	}
@@ -238,8 +233,7 @@ export function useCardSearchRuntime(state: CardSearchRuntimeState) {
 		fuzzySearchController?.abort();
 		fuzzySearchController = null;
 		state.searchResults.value = [];
-		if (activeRequests.size === 0)
-			state.searching.value = false;
+		if (activeRequests.size === 0) state.searching.value = false;
 	}
 
 	function clearHistory() {

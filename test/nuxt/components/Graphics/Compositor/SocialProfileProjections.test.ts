@@ -15,7 +15,8 @@ const UButtonStub = defineComponent({
 		disabled: { type: Boolean, required: false },
 	},
 	emits: ['click'],
-	template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+	template:
+		'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 });
 const UInputStub = defineComponent({
 	name: 'UInput',
@@ -26,7 +27,8 @@ const UInputStub = defineComponent({
 		},
 	},
 	emits: ['update:modelValue'],
-	template: '<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)">',
+	template:
+		'<input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)">',
 });
 const UInputNumberStub = defineComponent({
 	name: 'UInputNumber',
@@ -34,7 +36,8 @@ const UInputNumberStub = defineComponent({
 		modelValue: { type: Number, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<input type="number" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))">',
+	template:
+		'<input type="number" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))">',
 });
 const USelectStub = defineComponent({
 	name: 'USelect',
@@ -46,7 +49,8 @@ const USelectStub = defineComponent({
 		},
 	},
 	emits: ['update:modelValue'],
-	template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
+	template:
+		'<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
 });
 
 function graphic(overrides: Partial<BroadcastGraphicConfig> = {}): BroadcastGraphicConfig {
@@ -68,16 +72,16 @@ function graphic(overrides: Partial<BroadcastGraphicConfig> = {}): BroadcastGrap
 	};
 }
 
-async function mountComponent(options: {
-	graphics?: BroadcastGraphicConfig[];
-	selectedTarget?: GraphicsSelectionTarget;
-	writable?: boolean;
-} = {}) {
+async function mountComponent(
+	options: {
+		graphics?: BroadcastGraphicConfig[];
+		selectedTarget?: GraphicsSelectionTarget;
+		writable?: boolean;
+	} = {},
+) {
 	return mount(SocialProfileProjections, {
 		props: {
-			graphics: options.graphics ?? [
-				graphic(),
-			],
+			graphics: options.graphics ?? [graphic()],
 			selectedTarget: options.selectedTarget ?? { type: 'graphic', graphicId: 'lower-third' },
 			canvasWidth: 1920,
 			canvasHeight: 1080,
@@ -104,8 +108,12 @@ describe('graphicsCompositorSocialProfileProjections', () => {
 	it('creates the common starter from a named Talent source with settled defaults', async () => {
 		const wrapper = await mountComponent();
 
-		await wrapper.get('[data-testid="social-profile-projection-label-new"] input').setValue('Caster profile');
-		await wrapper.get('[data-testid="social-profile-projection-source-new"] select').setValue('operator-talent');
+		await wrapper
+			.get('[data-testid="social-profile-projection-label-new"] input')
+			.setValue('Caster profile');
+		await wrapper
+			.get('[data-testid="social-profile-projection-source-new"] select')
+			.setValue('operator-talent');
 		await wrapper.get('[data-testid="social-profile-projection-add"]').trigger('click');
 
 		const updated = emittedGraphic(wrapper);
@@ -158,12 +166,18 @@ describe('graphicsCompositorSocialProfileProjections', () => {
 			],
 		});
 
-		await wrapper.get('[data-testid="social-profile-projection-label-new"] input').setValue('Existing profile');
-		await wrapper.get('[data-testid="social-profile-projection-group-new"] select').setValue('designed-group');
+		await wrapper
+			.get('[data-testid="social-profile-projection-label-new"] input')
+			.setValue('Existing profile');
+		await wrapper
+			.get('[data-testid="social-profile-projection-group-new"] select')
+			.setValue('designed-group');
 		await wrapper.get('[data-testid="social-profile-projection-add"]').trigger('click');
 
 		const updated = emittedGraphic(wrapper);
-		expect(updated.socialProfileProjections?.[0]).toMatchObject({ presentationGroupId: 'designed-group' });
+		expect(updated.socialProfileProjections?.[0]).toMatchObject({
+			presentationGroupId: 'designed-group',
+		});
 		expect(updated.items).toEqual([existing]);
 	});
 
@@ -175,27 +189,37 @@ describe('graphicsCompositorSocialProfileProjections', () => {
 		await wrapper.setProps({
 			graphics: [first],
 		});
-		await wrapper.get('[data-testid="social-profile-projection-label-new"] input').setValue('Guest profile');
-		await wrapper.get('[data-testid="social-profile-projection-source-new"] select').setValue('operator-talent');
+		await wrapper
+			.get('[data-testid="social-profile-projection-label-new"] input')
+			.setValue('Guest profile');
+		await wrapper
+			.get('[data-testid="social-profile-projection-source-new"] select')
+			.setValue('operator-talent');
 		await wrapper.get('[data-testid="social-profile-projection-add"]').trigger('click');
 
 		const second = emittedGraphic(wrapper, 1);
-		expect(second.socialProfileProjections?.map(projection => projection.sourceKey))
-			.toEqual(['talent-1', 'operator-talent']);
-		expect(new Set(second.socialProfileProjections?.map(projection => projection.presentationGroupId)).size).toBe(2);
+		expect(second.socialProfileProjections?.map((projection) => projection.sourceKey)).toEqual([
+			'talent-1',
+			'operator-talent',
+		]);
+		expect(
+			new Set(second.socialProfileProjections?.map((projection) => projection.presentationGroupId))
+				.size,
+		).toBe(2);
 		expect(second.items).toHaveLength(2);
 	});
 
 	it('stops before exceeding the strict per-graphic or per-screen projection budgets', async () => {
-		const declarations = (count: number, prefix: string) => Array.from({ length: count }, (_, index) => ({
-			key: `${prefix}-${index}`,
-			label: `${prefix} ${index}`,
-			sourceKey: 'operator-talent',
-			presentationGroupId: `${prefix}-group-${index}`,
-			dwellMs: 8_000,
-			transition: 'crossfade' as const,
-			transitionDurationMs: 250,
-		}));
+		const declarations = (count: number, prefix: string) =>
+			Array.from({ length: count }, (_, index) => ({
+				key: `${prefix}-${index}`,
+				label: `${prefix} ${index}`,
+				sourceKey: 'operator-talent',
+				presentationGroupId: `${prefix}-group-${index}`,
+				dwellMs: 8_000,
+				transition: 'crossfade' as const,
+				transitionDurationMs: 250,
+			}));
 		const selected = graphic({
 			socialProfileProjections: declarations(23, 'selected'),
 		});
@@ -208,9 +232,12 @@ describe('graphicsCompositorSocialProfileProjections', () => {
 			graphics: [selected, other],
 		});
 
-		expect(wrapper.get('[data-testid="social-profile-projection-budget-feedback"]').text())
-			.toContain('Screen limit');
-		expect(wrapper.get('[data-testid="social-profile-projection-add"]').attributes('disabled')).toBeDefined();
+		expect(
+			wrapper.get('[data-testid="social-profile-projection-budget-feedback"]').text(),
+		).toContain('Screen limit');
+		expect(
+			wrapper.get('[data-testid="social-profile-projection-add"]').attributes('disabled'),
+		).toBeDefined();
 		await wrapper.get('[data-testid="social-profile-projection-add"]').trigger('click');
 		expect(wrapper.emitted('update:graphics')).toBeUndefined();
 
@@ -221,17 +248,16 @@ describe('graphicsCompositorSocialProfileProjections', () => {
 				}),
 			],
 		});
-		expect(wrapper.get('[data-testid="social-profile-projection-budget-feedback"]').text())
-			.toContain('Broadcast Graphic limit');
+		expect(
+			wrapper.get('[data-testid="social-profile-projection-budget-feedback"]').text(),
+		).toContain('Broadcast Graphic limit');
 	});
 
 	it('edits dwell and every bounded transition property while Cut ignores duration', async () => {
 		const wrapper = await mountComponent();
 		await wrapper.get('[data-testid="social-profile-projection-add"]').trigger('click');
 		await wrapper.setProps({
-			graphics: [
-				emittedGraphic(wrapper),
-			],
+			graphics: [emittedGraphic(wrapper)],
 		});
 
 		await wrapper.get('[data-testid="social-profile-projection-dwell"]').setValue('60');
@@ -241,14 +267,18 @@ describe('graphicsCompositorSocialProfileProjections', () => {
 		await wrapper.setProps({
 			graphics: [edited],
 		});
-		await wrapper.get('[data-testid="social-profile-projection-transition"]').setValue('slide-down');
+		await wrapper
+			.get('[data-testid="social-profile-projection-transition"]')
+			.setValue('slide-down');
 		edited = emittedGraphic(wrapper, 2);
 		expect(edited.socialProfileProjections?.[0]?.transition).toBe('slide-down');
 
 		await wrapper.setProps({
 			graphics: [edited],
 		});
-		await wrapper.get('[data-testid="social-profile-projection-transition-duration"]').setValue('2000');
+		await wrapper
+			.get('[data-testid="social-profile-projection-transition-duration"]')
+			.setValue('2000');
 		edited = emittedGraphic(wrapper, 3);
 		expect(edited.socialProfileProjections?.[0]?.transitionDurationMs).toBe(2_000);
 
@@ -257,11 +287,11 @@ describe('graphicsCompositorSocialProfileProjections', () => {
 		});
 		await wrapper.get('[data-testid="social-profile-projection-transition"]').setValue('cut');
 		await wrapper.setProps({
-			graphics: [
-				emittedGraphic(wrapper, 4),
-			],
+			graphics: [emittedGraphic(wrapper, 4)],
 		});
-		expect(wrapper.find('[data-testid="social-profile-projection-transition-duration"]').exists()).toBe(false);
+		expect(
+			wrapper.find('[data-testid="social-profile-projection-transition-duration"]').exists(),
+		).toBe(false);
 	});
 
 	it('authors the staged or live On-air Update Policy for each projection', async () => {
@@ -283,29 +313,37 @@ describe('graphicsCompositorSocialProfileProjections', () => {
 		const wrapper = await mountComponent();
 		await wrapper.get('[data-testid="social-profile-projection-add"]').trigger('click');
 		await wrapper.setProps({
-			graphics: [
-				emittedGraphic(wrapper),
-			],
+			graphics: [emittedGraphic(wrapper)],
 		});
 
-		expect(wrapper.get('[data-testid="social-profile-projection-label"]').attributes('maxlength')).toBe('60');
-		expect(wrapper.get('[data-testid="social-profile-projection-dwell"]').attributes('step')).toBe('1');
-		expect(wrapper.get('[data-testid="social-profile-projection-transition-duration"]').attributes('step')).toBe('1');
+		expect(
+			wrapper.get('[data-testid="social-profile-projection-label"]').attributes('maxlength'),
+		).toBe('60');
+		expect(wrapper.get('[data-testid="social-profile-projection-dwell"]').attributes('step')).toBe(
+			'1',
+		);
+		expect(
+			wrapper
+				.get('[data-testid="social-profile-projection-transition-duration"]')
+				.attributes('step'),
+		).toBe('1');
 	});
 
 	it('explains and performs the explicit combined deletion of dependent content', async () => {
 		const wrapper = await mountComponent();
 		await wrapper.get('[data-testid="social-profile-projection-add"]').trigger('click');
 		await wrapper.setProps({
-			graphics: [
-				emittedGraphic(wrapper),
-			],
+			graphics: [emittedGraphic(wrapper)],
 		});
 
-		expect(wrapper.get('[data-testid="social-profile-projection-deletion-feedback"]').text())
-			.toContain('Replace them first');
-		expect(wrapper.get('[data-testid="social-profile-projection-delete-keep-group"]').attributes('disabled'))
-			.toBeDefined();
+		expect(
+			wrapper.get('[data-testid="social-profile-projection-deletion-feedback"]').text(),
+		).toContain('Replace them first');
+		expect(
+			wrapper
+				.get('[data-testid="social-profile-projection-delete-keep-group"]')
+				.attributes('disabled'),
+		).toBeDefined();
 		await wrapper.get('[data-testid="social-profile-projection-delete-combined"]').trigger('click');
 
 		const deleted = emittedGraphic(wrapper, 1);
@@ -317,7 +355,9 @@ describe('graphicsCompositorSocialProfileProjections', () => {
 		const wrapper = await mountComponent({ writable: false });
 
 		expect(wrapper.find('[data-testid="social-profile-projection-new"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="social-profile-projection-delete-combined"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="social-profile-projection-delete-combined"]').exists()).toBe(
+			false,
+		);
 		expect(wrapper.emitted('update:graphics')).toBeUndefined();
 	});
 
@@ -325,16 +365,15 @@ describe('graphicsCompositorSocialProfileProjections', () => {
 		const wrapper = await mountComponent();
 		await wrapper.get('[data-testid="social-profile-projection-add"]').trigger('click');
 		await wrapper.setProps({
-			graphics: [
-				emittedGraphic(wrapper),
-			],
+			graphics: [emittedGraphic(wrapper)],
 			writable: false,
 		});
 
 		// Emitted by the control itself: a disabled input would swallow a DOM event, and
 		// what is under test is that the edit is refused, not that the control is disabled.
-		const dwell = wrapper.findAllComponents(UInputNumberStub)
-			.find(input => input.attributes('data-testid') === 'social-profile-projection-dwell');
+		const dwell = wrapper
+			.findAllComponents(UInputNumberStub)
+			.find((input) => input.attributes('data-testid') === 'social-profile-projection-dwell');
 		dwell!.vm.$emit('update:modelValue', 60);
 		await nextTick();
 
@@ -344,13 +383,14 @@ describe('graphicsCompositorSocialProfileProjections', () => {
 
 	it('names the source prerequisite when no Talent source is declared', async () => {
 		const wrapper = await mountComponent({
-			graphics: [
-				graphic({ sources: [] }),
-			],
+			graphics: [graphic({ sources: [] })],
 		});
 
-		expect(wrapper.get('[data-testid="social-profile-projection-no-talent-source"]').text())
-			.toContain('operator selected or derived from Event Talent 1 or Talent 2');
-		expect(wrapper.get('[data-testid="social-profile-projection-add"]').attributes('disabled')).toBeDefined();
+		expect(
+			wrapper.get('[data-testid="social-profile-projection-no-talent-source"]').text(),
+		).toContain('operator selected or derived from Event Talent 1 or Talent 2');
+		expect(
+			wrapper.get('[data-testid="social-profile-projection-add"]').attributes('disabled'),
+		).toBeDefined();
 	});
 });

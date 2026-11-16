@@ -6,11 +6,11 @@ vi.mock('~~/server/db', () => ({
 }));
 
 vi.stubGlobal('createError', (input: { statusCode: number; message: string }) =>
-	Object.assign(new Error(input.message), input));
-
-const { screenOutputAssetCapabilityManagerForEvent } = await import(
-	'~~/server/modules/screen-output-assets/runtime',
+	Object.assign(new Error(input.message), input),
 );
+
+const { screenOutputAssetCapabilityManagerForEvent } =
+	await import('~~/server/modules/screen-output-assets/runtime');
 
 function withSigningKey(value: unknown) {
 	vi.stubGlobal('useRuntimeConfig', () => ({ screenOutputCapabilitySigningKey: value }));
@@ -26,8 +26,7 @@ describe('a Screen Output capability signing key that cannot be used', () => {
 	function refusalFor(value: unknown) {
 		try {
 			screenOutputAssetCapabilityManagerForEvent(withSigningKey(value));
-		}
-		catch (error) {
+		} catch (error) {
 			return error as Error & { statusCode: number; cause: unknown };
 		}
 		throw new Error('Expected the signing key to be refused');
@@ -47,8 +46,8 @@ describe('a Screen Output capability signing key that cannot be used', () => {
 	});
 
 	it('is not raised for a well-formed key', () => {
-		expect(() => screenOutputAssetCapabilityManagerForEvent(withSigningKey(`${'A'.repeat(43)}=`)))
-			.not
-			.toThrow();
+		expect(() =>
+			screenOutputAssetCapabilityManagerForEvent(withSigningKey(`${'A'.repeat(43)}=`)),
+		).not.toThrow();
 	});
 });

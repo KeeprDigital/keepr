@@ -33,8 +33,11 @@ const placeholderStyle = {
 					:src="card.imageUrl"
 					:alt="card.name ?? card.number"
 					class="w-full h-full object-cover"
+				/>
+				<div
+					v-else
+					class="w-full h-full flex flex-col items-center justify-center gap-1 text-xs text-center p-1"
 				>
-				<div v-else class="w-full h-full flex flex-col items-center justify-center gap-1 text-xs text-center p-1">
 					<span>{{ card.name ?? card.number }}</span>
 					<span v-if="card.name" class="opacity-70">{{ card.number }}</span>
 				</div>

@@ -1,4 +1,9 @@
-import { countdownNextChangeInMs, countUpOvertimeMs, formatClockTime, formatCountdownTime } from './clock';
+import {
+	countdownNextChangeInMs,
+	countUpOvertimeMs,
+	formatClockTime,
+	formatCountdownTime,
+} from './clock';
 
 /** The bounds of a Round's duration, in minutes, as an operator enters it. */
 export const ROUND_DURATION_MINUTES_MIN = 1;
@@ -46,18 +51,19 @@ export interface RoundClockProjection {
  * the time since the end up to its limit. Time remaining rounds up and time
  * since the end rounds down (ADR-0078).
  */
-export function projectRoundClock(timing: RoundTiming, now: number, countUp: RoundClockCountUp = NO_COUNT_UP): RoundClockProjection {
+export function projectRoundClock(
+	timing: RoundTiming,
+	now: number,
+	countUp: RoundClockCountUp = NO_COUNT_UP,
+): RoundClockProjection {
 	const { durationMs } = timing;
-	if (durationMs == null)
-		return { state: 'untimed', display: null, nextChangeInMs: null };
+	if (durationMs == null) return { state: 'untimed', display: null, nextChangeInMs: null };
 
 	if (timing.startedAt == null || now < timing.startedAt) {
 		return {
 			state: 'pending',
 			display: formatClockTime(durationMs),
-			nextChangeInMs: timing.startedAt == null
-				? null
-				: timing.startedAt - now,
+			nextChangeInMs: timing.startedAt == null ? null : timing.startedAt - now,
 		};
 	}
 
@@ -68,9 +74,7 @@ export function projectRoundClock(timing: RoundTiming, now: number, countUp: Rou
 		return {
 			state: 'ended',
 			display: formatClockTime(countUpOvertimeMs(overMs, limitMs)),
-			nextChangeInMs: limitMs != null && overMs >= limitMs
-				? null
-				: 1000 - (overMs % 1000),
+			nextChangeInMs: limitMs != null && overMs >= limitMs ? null : 1000 - (overMs % 1000),
 		};
 	}
 

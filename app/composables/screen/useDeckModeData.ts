@@ -1,4 +1,7 @@
-import type { BroadcastDeckListEntryResponse, BroadcastDeckListResponse } from '~~/shared/types/broadcastDeckList';
+import type {
+	BroadcastDeckListEntryResponse,
+	BroadcastDeckListResponse,
+} from '~~/shared/types/broadcastDeckList';
 import type { DeckCompanion } from '~~/shared/types/deckCompanion';
 import type { DeckListStats } from '~~/shared/types/deckList';
 import type { Seat } from '~~/shared/types/enums';
@@ -57,10 +60,10 @@ interface SeatDeckSource {
 	seat: Seat;
 }
 
-type LoadedDeckSource
-	= { type: 'player'; playerId: number }
-		| { type: 'broadcast'; broadcastDeckListId: number }
-		| SeatDeckSource;
+type LoadedDeckSource =
+	| { type: 'player'; playerId: number }
+	| { type: 'broadcast'; broadcastDeckListId: number }
+	| SeatDeckSource;
 
 /**
  * The Deck Source a configuration selects; `null` while it selects no Player
@@ -75,21 +78,21 @@ function selectedDeckSource(source: DeckSource, followsSeat: boolean): LoadedDec
 			? { type: 'seat', slotId: source.slotId, seat: source.side }
 			: null;
 	}
-	return source.playerId === null
-		? null
-		: { type: 'player', playerId: source.playerId };
+	return source.playerId === null ? null : { type: 'player', playerId: source.playerId };
 }
 
 /** One Deck Source as one comparable value. */
 function deckSourceKey(source: LoadedDeckSource): string {
-	if (source.type === 'seat')
-		return `seat:${source.slotId}:${source.seat}`;
+	if (source.type === 'seat') return `seat:${source.slotId}:${source.seat}`;
 	return source.type === 'player'
 		? `player:${source.playerId}`
 		: `broadcast:${source.broadcastDeckListId}`;
 }
 
-function sameDeckSource(left: LoadedDeckSource | null | undefined, right: LoadedDeckSource): boolean {
+function sameDeckSource(
+	left: LoadedDeckSource | null | undefined,
+	right: LoadedDeckSource,
+): boolean {
 	return !!left && deckSourceKey(left) === deckSourceKey(right);
 }
 
@@ -107,15 +110,17 @@ interface SeatDeckRead {
 }
 
 /** What one read of the selected Deck Source answers. */
-type DeckSourceRead
-	= { type: 'player'; player: Player; deck: PlayerDeckResponse | null }
-		| { type: 'broadcast'; list: BroadcastDeckListResponse }
-		| SeatDeckRead;
+type DeckSourceRead =
+	| { type: 'player'; player: Player; deck: PlayerDeckResponse | null }
+	| { type: 'broadcast'; list: BroadcastDeckListResponse }
+	| SeatDeckRead;
 
 /** A Seat whose Deck List is named and not yet read: program keeps what it shows. */
 const SEAT_READ_PENDING = 'pending';
 
-function computeDeckStats(cards: Array<{ quantity: number; compartment: string; cardType: string | null }>): Array<{ type: string; count: number }> {
+function computeDeckStats(
+	cards: Array<{ quantity: number; compartment: string; cardType: string | null }>,
+): Array<{ type: string; count: number }> {
 	const stats: DeckListStats = {
 		creatures: 0,
 		instants: 0,
@@ -135,47 +140,32 @@ function computeDeckStats(cards: Array<{ quantity: number; compartment: string; 
 		const type = card.cardType?.toLowerCase() ?? '';
 		if (type.includes('creature')) {
 			stats.creatures += card.quantity;
-		}
-		else if (type.includes('instant')) {
+		} else if (type.includes('instant')) {
 			stats.instants += card.quantity;
-		}
-		else if (type.includes('sorcery')) {
+		} else if (type.includes('sorcery')) {
 			stats.sorceries += card.quantity;
-		}
-		else if (type.includes('enchantment')) {
+		} else if (type.includes('enchantment')) {
 			stats.enchantments += card.quantity;
-		}
-		else if (type.includes('artifact')) {
+		} else if (type.includes('artifact')) {
 			stats.artifacts += card.quantity;
-		}
-		else if (type.includes('planeswalker')) {
+		} else if (type.includes('planeswalker')) {
 			stats.planeswalkers += card.quantity;
-		}
-		else if (type.includes('land')) {
+		} else if (type.includes('land')) {
 			stats.lands += card.quantity;
-		}
-		else if (type) {
+		} else if (type) {
 			stats.other += card.quantity;
 		}
 	}
 
 	const result: Array<{ type: string; count: number }> = [];
-	if (stats.creatures > 0)
-		result.push({ type: 'Creatures', count: stats.creatures });
-	if (stats.instants > 0)
-		result.push({ type: 'Instants', count: stats.instants });
-	if (stats.sorceries > 0)
-		result.push({ type: 'Sorceries', count: stats.sorceries });
-	if (stats.enchantments > 0)
-		result.push({ type: 'Enchantments', count: stats.enchantments });
-	if (stats.artifacts > 0)
-		result.push({ type: 'Artifacts', count: stats.artifacts });
-	if (stats.planeswalkers > 0)
-		result.push({ type: 'Planeswalkers', count: stats.planeswalkers });
-	if (stats.lands > 0)
-		result.push({ type: 'Lands', count: stats.lands });
-	if (stats.other > 0)
-		result.push({ type: 'Other', count: stats.other });
+	if (stats.creatures > 0) result.push({ type: 'Creatures', count: stats.creatures });
+	if (stats.instants > 0) result.push({ type: 'Instants', count: stats.instants });
+	if (stats.sorceries > 0) result.push({ type: 'Sorceries', count: stats.sorceries });
+	if (stats.enchantments > 0) result.push({ type: 'Enchantments', count: stats.enchantments });
+	if (stats.artifacts > 0) result.push({ type: 'Artifacts', count: stats.artifacts });
+	if (stats.planeswalkers > 0) result.push({ type: 'Planeswalkers', count: stats.planeswalkers });
+	if (stats.lands > 0) result.push({ type: 'Lands', count: stats.lands });
+	if (stats.other > 0) result.push({ type: 'Other', count: stats.other });
 
 	return result;
 }
@@ -199,17 +189,13 @@ async function preloadDeckImages(art: DeckArt[]): Promise<boolean> {
 	}
 
 	const failedUrls = await preloadImages(
-		art
-			.map(deckImageUrl)
-			.filter((url): url is string => !!url),
+		art.map(deckImageUrl).filter((url): url is string => !!url),
 	);
-	if (failedUrls.size === 0)
-		return false;
+	if (failedUrls.size === 0) return false;
 
 	for (const drawn of art) {
 		const url = deckImageUrl(drawn);
-		if (url && failedUrls.has(url))
-			drawn.card.mtgCard = null;
+		if (url && failedUrls.has(url)) drawn.card.mtgCard = null;
 	}
 
 	return true;
@@ -220,7 +206,10 @@ async function preloadDeckImages(art: DeckArt[]): Promise<boolean> {
  * Player's, a Broadcast Deck List's, or, where `followsSeat`, a Commander
  * Seat's, followed live as a One Piece Card Game Seat is (ADR-0087).
  */
-export function useDeckModeData(context: ScreenContext, { followsSeat = false }: { followsSeat?: boolean } = {}) {
+export function useDeckModeData(
+	context: ScreenContext,
+	{ followsSeat = false }: { followsSeat?: boolean } = {},
+) {
 	const { assetCapability, cardDataHealth } = context;
 	const config = useScreenModeConfig(context, 'deck');
 
@@ -247,13 +236,9 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 		const width = unref(viewport.width);
 		const height = unref(viewport.height);
 		// Unmeasured, as on the server, the output is taken as the canvas.
-		const measured = [width, height].every(side => Number.isFinite(side) && side > 0);
-		const scale = measured
-			? Math.min(width / canvas.width, height / canvas.height)
-			: 1;
-		return scale * (import.meta.client
-			? window.devicePixelRatio || 1
-			: 1);
+		const measured = [width, height].every((side) => Number.isFinite(side) && side > 0);
+		const scale = measured ? Math.min(width / canvas.width, height / canvas.height) : 1;
+		return scale * (import.meta.client ? window.devicePixelRatio || 1 : 1);
 	});
 
 	/** The Scryfall image each board draws for decks of these counts, at the config and output now (#1201). */
@@ -275,43 +260,46 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 	async function readDeckSource(): Promise<DeckSourceRead | null> {
 		const source = selectedSource.value;
 		const scope = outputReads.scope.value;
-		if (!source || !scope)
-			return null;
+		if (!source || !scope) return null;
 		// A Seat is followed through the stores, not read here.
-		if (source.type === 'seat')
-			return null;
+		if (source.type === 'seat') return null;
 		if (source.type === 'player') {
 			const { player, decks } = await outputReads.playerDecks(source.playerId);
 			return { type: 'player', player, deck: selectPlayerDeck(decks) ?? null };
 		}
-		const list = await broadcastDeckLists.getSelected(scope.eventId, scope.screenId, assetCapability?.value);
+		const list = await broadcastDeckLists.getSelected(
+			scope.eventId,
+			scope.screenId,
+			assetCapability?.value,
+		);
 		return { type: 'broadcast', list };
 	}
 
 	const freshness = useScreenModeFreshness<DeckSourceRead | null>({
 		hearing: useScreenModeHearing(context, 'deck', () => config.value),
-		source: () => selectedSource.value && selectedSource.value.type !== 'seat' && outputReads.scopeKey.value
-			? `${outputReads.scopeKey.value}:${deckSourceKey(selectedSource.value)}`
-			: null,
+		source: () =>
+			selectedSource.value && selectedSource.value.type !== 'seat' && outputReads.scopeKey.value
+				? `${outputReads.scopeKey.value}:${deckSourceKey(selectedSource.value)}`
+				: null,
 		read: readDeckSource,
 		initialData: null,
 		errorMessage: DECK_LOAD_FAILED,
 	});
 
 	const seat = followsSeat
-		? useSeatDeckRead(context, config, () => selectedSource.value?.type === 'seat'
-				? selectedSource.value
-				: null)
+		? useSeatDeckRead(context, config, () =>
+				selectedSource.value?.type === 'seat' ? selectedSource.value : null,
+			)
 		: null;
 
 	/** What the selected Deck Source answers now. */
-	const sourceRead = computed(() => selectedSource.value?.type === 'seat'
-		? seat?.read.value ?? null
-		: freshness.data.value);
+	const sourceRead = computed(() =>
+		selectedSource.value?.type === 'seat' ? (seat?.read.value ?? null) : freshness.data.value,
+	);
 	/** The source's answer is known: false only while its first read is in flight. */
-	const sourceAnswered = computed(() => selectedSource.value?.type === 'seat'
-		? !!seat?.answered.value
-		: freshness.answered.value);
+	const sourceAnswered = computed(() =>
+		selectedSource.value?.type === 'seat' ? !!seat?.answered.value : freshness.answered.value,
+	);
 
 	/** One build of the deck on program, or of the deck being built for it. */
 	interface DeckBuild {
@@ -336,12 +324,11 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 	 */
 	const degradedRefetch = useDegradedRefetch<DeckDisplayState>({
 		refetch: () => {
-			if (built && isSelected(built.input.source))
-				void buildDeck(built.input);
+			if (built && isSelected(built.input.source)) void buildDeck(built.input);
 		},
 		// Identity is what is on program: a rebuild from the same input carries
 		// nothing new.
-		isUnchanged: next => displayedDeck.value?.inputKey === next.inputKey,
+		isUnchanged: (next) => displayedDeck.value?.inputKey === next.inputKey,
 		report: (degraded) => {
 			if (cardDataHealth) {
 				cardDataHealth.value = degraded ? 'degraded' : 'complete';
@@ -365,24 +352,27 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 	 * preloaded at, and, after a change to its layout or output, the size that
 	 * change needs, which loads in place of the image shown.
 	 */
-	const art = computed(() => artSizesFor({
-		commanders: commanders.value.length,
-		mainboard: mainboard.value.length,
-		sideboard: sideboard.value.length,
-	}));
+	const art = computed(() =>
+		artSizesFor({
+			commanders: commanders.value.length,
+			mainboard: mainboard.value.length,
+			sideboard: sideboard.value.length,
+		}),
+	);
 	const hasDisplayedDeck = computed(() => displayedDeck.value !== null);
 
 	const loading = freshness.loading;
 
 	/** Program never blanks for an error: one shows only while nothing is on air. */
 	const error = computed(() => {
-		if (displayedDeck.value)
-			return null;
+		if (displayedDeck.value) return null;
 		const read = sourceRead.value;
 		// A Seat nobody sits in shows nothing, and says nothing (ADR-0087).
 		if (read && read !== SEAT_READ_PENDING && read.type !== 'seat' && !displayInput(read))
 			return 'Player has no deck list';
-		return freshness.error.value ?? seat?.error.value ?? (buildFailed.value ? DECK_LOAD_FAILED : null);
+		return (
+			freshness.error.value ?? seat?.error.value ?? (buildFailed.value ? DECK_LOAD_FAILED : null)
+		);
 	});
 
 	/**
@@ -390,8 +380,7 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 	 * nothing selected, no deck list, or a failure that shows as the error.
 	 */
 	const ready = computed(() => {
-		if (displayedDeck.value || error.value)
-			return true;
+		if (displayedDeck.value || error.value) return true;
 		const read = sourceRead.value;
 		return sourceAnswered.value && read !== SEAT_READ_PENDING && !(read && displayInput(read));
 	});
@@ -440,33 +429,35 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 		commanders?: Array<{ name: string; scryfallId: string }>;
 	}
 
-	async function buildDeckDisplayState(input: DeckDisplayInput): Promise<{ deck: DeckDisplayState; degraded: boolean }> {
+	async function buildDeckDisplayState(
+		input: DeckDisplayInput,
+	): Promise<{ deck: DeckDisplayState; degraded: boolean }> {
 		// Commanders are drawn as the Mainboard's cards are, from one read of card data.
-		const commanderCards = (input.commanders ?? []).map(commander => ({
+		const commanderCards = (input.commanders ?? []).map((commander) => ({
 			...commander,
 			setCode: null,
 			quantity: 1,
 			compartment: 'mainboard' as const,
 			cardType: '',
 		}));
-		const lookupCards = createDeckLookupCards([
-			...commanderCards,
-			...input.cards,
-		], input.companion);
+		const lookupCards = createDeckLookupCards([...commanderCards, ...input.cards], input.companion);
 		const { cards: cardDataMap, degraded } = await outputReads.cardData(lookupCards);
 		const arrays = buildDeckListArrays(input.cards, cardDataMap);
 		const commanders = buildDeckListArrays(commanderCards, cardDataMap).mainboard;
 		const companionCard = input.companion
-			? buildDeckListArrays([
-				{
-					name: input.companion.name,
-					setCode: null,
-					quantity: 1,
-					compartment: 'sideboard',
-					cardType: '',
-					scryfallId: input.companion.scryfallId,
-				},
-			], cardDataMap).sideboard[0] ?? null
+			? (buildDeckListArrays(
+					[
+						{
+							name: input.companion.name,
+							setCode: null,
+							quantity: 1,
+							compartment: 'sideboard',
+							cardType: '',
+							scryfallId: input.companion.scryfallId,
+						},
+					],
+					cardDataMap,
+				).sideboard[0] ?? null)
 			: null;
 		// First show waits for the art its boards draw (#1201). A listed or hidden
 		// board's art is warmed once that has loaded, never sharing its bandwidth,
@@ -478,30 +469,20 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 			mainboard: arrays.mainboard.length,
 			sideboard: arrays.sideboard.length,
 		});
-		const drawnAt = (size: DeckArtSize) => (card: DeckListCardWithData): DeckArt => ({ card, size });
+		const drawnAt =
+			(size: DeckArtSize) =>
+			(card: DeckListCardWithData): DeckArt => ({ card, size });
 		const mainboardArt = arrays.mainboard.map(drawnAt(sizes.mainboard));
 		const sideboardArt = arrays.sideboard.map(drawnAt(sizes.sideboard));
 		const artDegraded = await preloadDeckImages([
 			...commanders.map(drawnAt(sizes.commanders)),
-			...(shown.mainboard
-				? mainboardArt
-				: []),
-			...(shown.sideboard
-				? sideboardArt
-				: []),
-			...(companionCard
-				? [
-						drawnAt(sizes.companion)(companionCard),
-					]
-				: []),
+			...(shown.mainboard ? mainboardArt : []),
+			...(shown.sideboard ? sideboardArt : []),
+			...(companionCard ? [drawnAt(sizes.companion)(companionCard)] : []),
 		]);
 		warmDeckImages([
-			...(shown.mainboard
-				? []
-				: mainboardArt),
-			...(shown.sideboard
-				? []
-				: sideboardArt),
+			...(shown.mainboard ? [] : mainboardArt),
+			...(shown.sideboard ? [] : sideboardArt),
 		]);
 
 		return {
@@ -525,7 +506,7 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 	}
 
 	function playerDisplayInput(player: Player, deckResponse: PlayerDeckResponse): DeckDisplayInput {
-		const cards = deckResponse.cards.map(c => ({
+		const cards = deckResponse.cards.map((c) => ({
 			name: c.name,
 			setCode: null as string | null,
 			quantity: c.quantity,
@@ -548,9 +529,13 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 
 	function broadcastDisplayInput(list: BroadcastDeckListResponse): DeckDisplayInput {
 		const cards = list.entries
-			.filter((entry): entry is BroadcastDeckListEntryResponse & { compartment: 'mainboard' | 'sideboard' } =>
-				entry.compartment !== 'companion')
-			.map(entry => ({
+			.filter(
+				(
+					entry,
+				): entry is BroadcastDeckListEntryResponse & { compartment: 'mainboard' | 'sideboard' } =>
+					entry.compartment !== 'companion',
+			)
+			.map((entry) => ({
 				name: entry.canonicalName,
 				setCode: entry.setCode,
 				quantity: entry.quantity,
@@ -560,7 +545,7 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 				deckCounterTypes: entry.deckCounterTypes,
 				highlanderPoints: null,
 			}));
-		const companionEntry = list.entries.find(entry => entry.compartment === 'companion');
+		const companionEntry = list.entries.find((entry) => entry.compartment === 'companion');
 		const companion: DeckCompanion | null = companionEntry
 			? {
 					cardId: companionEntry.id,
@@ -590,7 +575,7 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 			primaryHeader: read.playerName,
 			secondaryHeader: read.deckName,
 			deckColors: read.deckColors,
-			cards: commanderMainboard(read.entries, read.commanders).map(entry => ({
+			cards: commanderMainboard(read.entries, read.commanders).map((entry) => ({
 				name: entry.name,
 				setCode: entry.setCode,
 				quantity: entry.quantity,
@@ -608,12 +593,9 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 	/** What a read shows; `null` for a Player with no deck list, or a Seat nobody sits in. */
 	function displayInput(read: DeckSourceRead): DeckDisplayInput | null {
 		if (read.type === 'seat') {
-			return read.commanders.length > 0 || read.entries.length > 0
-				? seatDisplayInput(read)
-				: null;
+			return read.commanders.length > 0 || read.entries.length > 0 ? seatDisplayInput(read) : null;
 		}
-		if (read.type === 'broadcast')
-			return broadcastDisplayInput(read.list);
+		if (read.type === 'broadcast') return broadcastDisplayInput(read.list);
 		return read.deck && read.deck.cards.length > 0
 			? playerDisplayInput(read.player, read.deck)
 			: null;
@@ -624,8 +606,7 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 		// rather than cross-fading to an identical placeholder deck on every
 		// cadence tick. A rebuild whose source has since changed carries new
 		// cards and must still reach program.
-		if (degradedRefetch.completeLoad(degraded, nextDeck) === 'keep')
-			return;
+		if (degradedRefetch.completeLoad(degraded, nextDeck) === 'keep') return;
 		if (!displayedDeck.value) {
 			displayedDeck.value = nextDeck;
 			return;
@@ -644,18 +625,15 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 		buildFailed.value = false;
 		try {
 			const { deck: nextDeck, degraded } = await buildDeckDisplayState(input);
-			if (flight.stale)
-				return;
+			if (flight.stale) return;
 			if (!isSelected(input.source)) {
 				built = null;
 				return;
 			}
 			stageLoadedDeck(nextDeck, degraded);
-		}
-		catch (err) {
+		} catch (err) {
 			console.error('Failed to build deck:', err);
-			if (flight.stale)
-				return;
+			if (flight.stale) return;
 			build.failed = true;
 			buildFailed.value = true;
 			degradedRefetch.keepCadence();
@@ -670,26 +648,21 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 	 * List is gone, blanks program through the same staged swap.
 	 */
 	function followSource(read: DeckSourceRead | typeof SEAT_READ_PENDING | null) {
-		if (read === SEAT_READ_PENDING)
-			return;
+		if (read === SEAT_READ_PENDING) return;
 		const input = read && displayInput(read);
 		if (!input) {
 			built = null;
 			degradedRefetch.settle();
-			if (displayedDeck.value)
-				queuePendingDeck(null);
-			else
-				pendingDeck.value = null;
+			if (displayedDeck.value) queuePendingDeck(null);
+			else pendingDeck.value = null;
 			return;
 		}
-		if (built && !built.failed && built.key === buildKey(input))
-			return;
+		if (built && !built.failed && built.key === buildKey(input)) return;
 		void buildDeck(input);
 	}
 	watch(sourceRead, followSource);
 	// A Seat of a Slot the stores already hold is answered before any read: it is shown at once.
-	if (seat)
-		followSource(sourceRead.value);
+	if (seat) followSource(sourceRead.value);
 
 	return {
 		config,
@@ -746,8 +719,7 @@ function useSeatDeckRead(
 
 	const seated = computed(() => {
 		const shown = source();
-		if (!shown || !slotRead.slot.value)
-			return null;
+		if (!shown || !slotRead.slot.value) return null;
 		const { data } = featureMatchSidePlayer(slotRead.slot.value, shown.seat);
 		const gameData = getMtgGameData(data?.gameData);
 		return {
@@ -777,12 +749,9 @@ function useSeatDeckRead(
 	const read = computed<SeatDeckRead | typeof SEAT_READ_PENDING | null>(() => {
 		const shown = source();
 		const held = seated.value;
-		if (!shown)
-			return null;
+		if (!shown) return null;
 		if (!held) {
-			return slotRead.answered.value
-				? null
-				: SEAT_READ_PENDING;
+			return slotRead.answered.value ? null : SEAT_READ_PENDING;
 		}
 		const { deckListId: id, ...player } = held;
 		if (id === null) {

@@ -52,7 +52,10 @@ const BASE = {
 	lineHeight: 1.15,
 };
 
-function mountFields(props: Record<string, unknown> = {}, slots: Record<string, () => unknown> = {}) {
+function mountFields(
+	props: Record<string, unknown> = {},
+	slots: Record<string, () => unknown> = {},
+) {
 	return mount(TypographyFields, {
 		global,
 		props: { typography: BASE, testIdPrefix: 'type', ...props },
@@ -63,11 +66,15 @@ function mountFields(props: Record<string, unknown> = {}, slots: Record<string, 
 type Wrapper = ReturnType<typeof mountFields>;
 
 function numberField(wrapper: Wrapper, ariaLabel: string) {
-	return wrapper.findAllComponents({ name: 'UInputNumber' }).find(input => input.attributes('aria-label') === ariaLabel);
+	return wrapper
+		.findAllComponents({ name: 'UInputNumber' })
+		.find((input) => input.attributes('aria-label') === ariaLabel);
 }
 
 function selectField(wrapper: Wrapper, testId: string) {
-	return wrapper.findAllComponents({ name: 'USelect' }).find(select => select.attributes('data-testid') === testId);
+	return wrapper
+		.findAllComponents({ name: 'USelect' })
+		.find((select) => select.attributes('data-testid') === testId);
 }
 
 async function enter(wrapper: Wrapper, ariaLabel: string, value: number | null) {
@@ -144,21 +151,27 @@ describe('typography fields', () => {
 
 			expect(selectField(wrapper, 'type-font-style')?.props('modelValue')).toBe('base');
 			expect(selectField(wrapper, 'type-case')?.props('modelValue')).toBe('uppercase');
-			expect((selectField(wrapper, 'type-case')!.props('items') as { value: string }[])[0])
-				.toEqual({ label: 'Same as base', value: 'base' });
+			expect((selectField(wrapper, 'type-case')!.props('items') as { value: string }[])[0]).toEqual(
+				{ label: 'Same as base', value: 'base' },
+			);
 			expect(await choose(wrapper, 'type-case', 'base')).toEqual({ textTransform: undefined });
 			expect(await choose(wrapper, 'type-font-style', 'italic')).toEqual({ fontStyle: 'italic' });
 		});
 	});
 
-	it('puts the host\'s font above the grid and its colour inside it', () => {
-		const wrapper = mountFields({}, {
-			font: () => h('div', { 'data-testid': 'font-slot' }),
-			color: () => h('div', { 'data-testid': 'color-slot' }),
-		});
+	it("puts the host's font above the grid and its colour inside it", () => {
+		const wrapper = mountFields(
+			{},
+			{
+				font: () => h('div', { 'data-testid': 'font-slot' }),
+				color: () => h('div', { 'data-testid': 'color-slot' }),
+			},
+		);
 
 		expect(wrapper.find('[data-testid="font-slot"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="type-grid"] [data-testid="color-slot"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="type-grid"] [data-testid="color-slot"]').exists()).toBe(
+			true,
+		);
 	});
 
 	it('disables every field for an observer', () => {

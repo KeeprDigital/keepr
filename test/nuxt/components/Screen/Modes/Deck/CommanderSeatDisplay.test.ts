@@ -37,13 +37,15 @@ mockNuxtImport('useFeatureMatchStateStore', () => () => featureMatchStateStore);
 mockNuxtImport('tryUseRealtime', () => () => createFakeEventChannel().transport);
 
 const imageOf = (scryfallId: string) => `https://img.test/${scryfallId}.jpg`;
-mockNuxtImport('useScryfallBatch', () => scryfallBatchAnswering(scryfallId => ({
-	imageData: {
-		front: {
-			normal: imageOf(scryfallId),
+mockNuxtImport('useScryfallBatch', () =>
+	scryfallBatchAnswering((scryfallId) => ({
+		imageData: {
+			front: {
+				normal: imageOf(scryfallId),
+			},
 		},
-	},
-})));
+	})),
+);
 
 const mockFetch = vi.hoisted(() => vi.fn());
 mockNuxtImport('$fetch', () => mockFetch);
@@ -56,9 +58,11 @@ const served = {
 };
 
 function seat(name: string, commanders: Commander[], deckListId?: number) {
-	return storedSeat(name, commanders, deckListId === undefined
-		? undefined
-		: { id: deckListId, mainboardCount: 0 });
+	return storedSeat(
+		name,
+		commanders,
+		deckListId === undefined ? undefined : { id: deckListId, mainboardCount: 0 },
+	);
 }
 
 function serveSlot(seats: Record<string, unknown>) {
@@ -105,20 +109,16 @@ function mountSeat(side: string) {
 
 /** Each section shown, in order, with its cards as drawn: name and image. */
 function shown(wrapper: VueWrapper) {
-	return wrapper.findAll('[data-testid$="-section"]').map(section => ({
+	return wrapper.findAll('[data-testid$="-section"]').map((section) => ({
 		section: section.attributes('data-testid'),
-		cards: section.findAll('img').map(image => [
-			image.attributes('alt'),
-			image.attributes('src'),
-		]),
+		cards: section
+			.findAll('img')
+			.map((image) => [image.attributes('alt'), image.attributes('src')]),
 	}));
 }
 
 function drawn(card: { id: string; name: string }) {
-	return [
-		card.name,
-		imageOf(card.id),
-	];
+	return [card.name, imageOf(card.id)];
 }
 
 beforeEach(() => {
@@ -147,7 +147,7 @@ beforeEach(() => {
 });
 
 describe('a Deck List Screen showing a Commander Seat', () => {
-	it('shows the Seat\'s Commanders apart, ahead of its Mainboard, each card as the printing saved', async () => {
+	it("shows the Seat's Commanders apart, ahead of its Mainboard, each card as the printing saved", async () => {
 		served.lists.set(501, [
 			deckListEntryOf(ashling),
 			deckListEntryOf(animar),
@@ -164,21 +164,17 @@ describe('a Deck List Screen showing a Commander Seat', () => {
 		expect(shown(wrapper)).toEqual([
 			{
 				section: 'commanders-section',
-				cards: [
-					drawn(ashling),
-					drawn(animar),
-				],
+				cards: [drawn(ashling), drawn(animar)],
 			},
 			{
 				section: 'mainboard-section',
-				cards: [
-					drawn(forest),
-					drawn(hedgeMaze),
-				],
+				cards: [drawn(forest), drawn(hedgeMaze)],
 			},
 		]);
 		expect(wrapper.get('[data-testid="deck-player-name"]').text()).toBe('Dee');
-		expect(wrapper.get('[data-testid="deck-name"]').text()).toBe('Ashling, the Limitless / Animar, Soul of Elements');
+		expect(wrapper.get('[data-testid="deck-name"]').text()).toBe(
+			'Ashling, the Limitless / Animar, Soul of Elements',
+		);
 	});
 
 	it('shows the Commanders alone when the Seat holds no list', async () => {
@@ -192,9 +188,7 @@ describe('a Deck List Screen showing a Commander Seat', () => {
 		expect(shown(wrapper)).toEqual([
 			{
 				section: 'commanders-section',
-				cards: [
-					drawn(ashling),
-				],
+				cards: [drawn(ashling)],
 			},
 		]);
 	});
@@ -211,7 +205,7 @@ describe('a Deck List Screen showing a Commander Seat', () => {
 	});
 
 	// A Slot the stores already hold answers the Seat at once, whatever becomes of the Slot's own read.
-	it('shows a Seat of a Slot already held, though the Slot\'s read is left behind', async () => {
+	it("shows a Seat of a Slot already held, though the Slot's read is left behind", async () => {
 		serveSlot({
 			player2Data: seat('Ben', [ASHLING]),
 		});
@@ -224,23 +218,15 @@ describe('a Deck List Screen showing a Commander Seat', () => {
 		expect(shown(wrapper)).toEqual([
 			{
 				section: 'commanders-section',
-				cards: [
-					drawn(ashling),
-				],
+				cards: [drawn(ashling)],
 			},
 		]);
 	});
 
 	// The Seat names its list by id, so a re-paste or Swap Seats reaches the Screen with the Slot.
 	it('follows the Seat to the list it holds now', async () => {
-		served.lists.set(501, [
-			deckListEntryOf(ashling),
-			deckListEntryOf(forest, 3),
-		]);
-		served.lists.set(502, [
-			deckListEntryOf(animar),
-			deckListEntryOf(hedgeMaze),
-		]);
+		served.lists.set(501, [deckListEntryOf(ashling), deckListEntryOf(forest, 3)]);
+		served.lists.set(502, [deckListEntryOf(animar), deckListEntryOf(hedgeMaze)]);
 		serveSlot({
 			player1Data: seat('Ana', [ASHLING], 501),
 		});
@@ -254,20 +240,18 @@ describe('a Deck List Screen showing a Commander Seat', () => {
 			},
 		];
 
-		await vi.waitFor(() => expect(shown(wrapper)).toEqual([
-			{
-				section: 'commanders-section',
-				cards: [
-					drawn(animar),
-				],
-			},
-			{
-				section: 'mainboard-section',
-				cards: [
-					drawn(hedgeMaze),
-				],
-			},
-		]));
+		await vi.waitFor(() =>
+			expect(shown(wrapper)).toEqual([
+				{
+					section: 'commanders-section',
+					cards: [drawn(animar)],
+				},
+				{
+					section: 'mainboard-section',
+					cards: [drawn(hedgeMaze)],
+				},
+			]),
+		);
 		expect(wrapper.get('[data-testid="deck-player-name"]').text()).toBe('Cyd');
 	});
 });

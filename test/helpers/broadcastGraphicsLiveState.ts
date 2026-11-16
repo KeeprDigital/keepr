@@ -4,14 +4,18 @@ import type {
 	BroadcastGraphicsReductionContext,
 	SocialProfileProjectionLiveState,
 } from '~~/shared/modules/broadcast-graphics-live-session';
-import type { SocialProfileProjectionDeclaration, SocialProfileProjectionValue } from '~~/shared/types/graphics';
+import type {
+	SocialProfileProjectionDeclaration,
+	SocialProfileProjectionValue,
+} from '~~/shared/types/graphics';
 import {
 	applyBroadcastGraphicsCommand,
 	createInitialBroadcastGraphicsLiveState,
 } from '~~/shared/modules/broadcast-graphics-live-session';
 
 type Playout = BroadcastGraphicsLiveState['playout'][string];
-type Context = Partial<BroadcastGraphicsReductionContext> & Pick<BroadcastGraphicsReductionContext, 'acceptedAt'>;
+type Context = Partial<BroadcastGraphicsReductionContext> &
+	Pick<BroadcastGraphicsReductionContext, 'acceptedAt'>;
 
 export const twitch: SocialProfileProjectionValue = {
 	network: 'twitch',
@@ -48,7 +52,9 @@ export const profileDeclaration: SocialProfileProjectionDeclaration = {
 };
 
 /** A projection rotating automatically through Twitch and YouTube, on Twitch since 1,000,000. */
-export function profileState(overrides: Partial<SocialProfileProjectionLiveState> = {}): SocialProfileProjectionLiveState {
+export function profileState(
+	overrides: Partial<SocialProfileProjectionLiveState> = {},
+): SocialProfileProjectionLiveState {
 	return {
 		acceptedProfiles: [twitch, youtube],
 		currentNetwork: 'twitch',
@@ -64,7 +70,16 @@ export function profileState(overrides: Partial<SocialProfileProjectionLiveState
  */
 export function onAirWith(
 	projections: Record<string, SocialProfileProjectionLiveState> = {},
-	{ graphicId = 'lower', startedAt = 0, playout = {}, ...rest }: { graphicId?: string; startedAt?: number; playout?: Partial<Playout> } & Partial<BroadcastGraphicsLiveState> = {},
+	{
+		graphicId = 'lower',
+		startedAt = 0,
+		playout = {},
+		...rest
+	}: {
+		graphicId?: string;
+		startedAt?: number;
+		playout?: Partial<Playout>;
+	} & Partial<BroadcastGraphicsLiveState> = {},
 ): BroadcastGraphicsLiveState {
 	return {
 		...createInitialBroadcastGraphicsLiveState(),
@@ -88,7 +103,11 @@ export function resolvingProfile(profiles: SocialProfileProjectionValue[], talen
 	});
 }
 
-export function command(live: BroadcastGraphicsLiveState, input: BroadcastGraphicsCommandInput, context: Context): BroadcastGraphicsLiveState {
+export function command(
+	live: BroadcastGraphicsLiveState,
+	input: BroadcastGraphicsCommandInput,
+	context: Context,
+): BroadcastGraphicsLiveState {
 	return applyBroadcastGraphicsCommand(live, input, { inputs: [], ...context });
 }
 
@@ -97,8 +116,12 @@ export function updateGraphic(
 	context: Context & { basedOnAcceptedRevision?: number; graphicId?: string },
 ): BroadcastGraphicsLiveState {
 	const { basedOnAcceptedRevision = 0, graphicId = 'lower', ...rest } = context;
-	return command(live, {
-		type: 'Update Graphic',
-		payload: { graphicId, basedOnAcceptedRevision },
-	}, rest);
+	return command(
+		live,
+		{
+			type: 'Update Graphic',
+			payload: { graphicId, basedOnAcceptedRevision },
+		},
+		rest,
+	);
 }

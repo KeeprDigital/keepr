@@ -38,11 +38,10 @@ export function useArchetypeReviewQueue() {
 
 	const allEntries = computed<ReviewEntry[]>(() => {
 		const entries: ReviewEntry[] = [];
-		const playersById = new Map(playerStore.players.map(player => [player.id, player]));
+		const playersById = new Map(playerStore.players.map((player) => [player.id, player]));
 		for (const deck of playerDeckStore.decks) {
 			const player = playersById.get(deck.playerId);
-			if (!player)
-				continue;
+			if (!player) continue;
 			entries.push({
 				player,
 				deck,
@@ -52,24 +51,17 @@ export function useArchetypeReviewQueue() {
 		}
 
 		entries.sort((a, b) => {
-			const aReviewed = isDeckReviewed(a)
-				? 1
-				: 0;
-			const bReviewed = isDeckReviewed(b)
-				? 1
-				: 0;
-			if (aReviewed !== bReviewed)
-				return aReviewed - bReviewed;
+			const aReviewed = isDeckReviewed(a) ? 1 : 0;
+			const bReviewed = isDeckReviewed(b) ? 1 : 0;
+			if (aReviewed !== bReviewed) return aReviewed - bReviewed;
 			// Reviewed decks run most recently reviewed first.
 			if (aReviewed) {
-				const byReview = new Date(b.deck.reviewedAt!).getTime() - new Date(a.deck.reviewedAt!).getTime();
-				if (byReview !== 0)
-					return byReview;
+				const byReview =
+					new Date(b.deck.reviewedAt!).getTime() - new Date(a.deck.reviewedAt!).getTime();
+				if (byReview !== 0) return byReview;
 			}
 			const byName = a.displayName.localeCompare(b.displayName);
-			return byName !== 0
-				? byName
-				: a.player.name.localeCompare(b.player.name);
+			return byName !== 0 ? byName : a.player.name.localeCompare(b.player.name);
 		});
 
 		return entries;
@@ -79,9 +71,9 @@ export function useArchetypeReviewQueue() {
 	const filteredQueue = computed<ReviewEntry[]>(() => {
 		switch (queueFilter.value) {
 			case 'unreviewed':
-				return allEntries.value.filter(e => !isDeckReviewed(e));
+				return allEntries.value.filter((e) => !isDeckReviewed(e));
 			case 'reviewed':
-				return allEntries.value.filter(e => isDeckReviewed(e));
+				return allEntries.value.filter((e) => isDeckReviewed(e));
 			case 'all':
 			default:
 				return allEntries.value;
@@ -89,16 +81,23 @@ export function useArchetypeReviewQueue() {
 	});
 
 	const filteredCount = computed(() => filteredQueue.value.length);
-	const currentEntry = computed(() => allEntries.value.find(entry => entry.deck.id === shownDeckId.value) ?? null);
+	const currentEntry = computed(
+		() => allEntries.value.find((entry) => entry.deck.id === shownDeckId.value) ?? null,
+	);
 	/** The shown deck's place in the filter's list, or -1 for a deck outside it. */
-	const currentIndex = computed(() => filteredQueue.value.findIndex(entry => entry.deck.id === shownDeckId.value));
+	const currentIndex = computed(() =>
+		filteredQueue.value.findIndex((entry) => entry.deck.id === shownDeckId.value),
+	);
 
 	/** Where the list resumes: the place of the deck last shown from it. */
 	let listPlace = 0;
-	watch(currentIndex, (index) => {
-		if (index >= 0)
-			listPlace = index;
-	}, { immediate: true, flush: 'sync' });
+	watch(
+		currentIndex,
+		(index) => {
+			if (index >= 0) listPlace = index;
+		},
+		{ immediate: true, flush: 'sync' },
+	);
 
 	function deckIdAtListPlace(): number | null {
 		const queue = filteredQueue.value;
@@ -116,46 +115,50 @@ export function useArchetypeReviewQueue() {
 	const deckLoading = ref(false);
 	let activeDeckRequestId = 0;
 
-	watch(currentEntry, async (entry) => {
-		const requestId = ++activeDeckRequestId;
-		if (!entry || !eventStore.eventId) {
-			activeDeck.value = null;
-			deckLoading.value = false;
-			return;
-		}
+	watch(
+		currentEntry,
+		async (entry) => {
+			const requestId = ++activeDeckRequestId;
+			if (!entry || !eventStore.eventId) {
+				activeDeck.value = null;
+				deckLoading.value = false;
+				return;
+			}
 
-		deckLoading.value = true;
-		const deck = await fetchDeck(entry.player.id, eventStore.eventId, entry.player.updatedAt, { deckId: entry.deck.id });
-		if (requestId !== activeDeckRequestId)
-			return;
-		activeDeck.value = deck;
-		deckLoading.value = false;
-	}, { immediate: true });
+			deckLoading.value = true;
+			const deck = await fetchDeck(entry.player.id, eventStore.eventId, entry.player.updatedAt, {
+				deckId: entry.deck.id,
+			});
+			if (requestId !== activeDeckRequestId) return;
+			activeDeck.value = deck;
+			deckLoading.value = false;
+		},
+		{ immediate: true },
+	);
 
 	// A filter change keeps the deck shown when the new list holds it, and
 	// otherwise shows that list's first deck, or none for an empty list.
 	watch(queueFilter, () => {
-		if (currentIndex.value >= 0)
-			return;
+		if (currentIndex.value >= 0) return;
 		listPlace = 0;
 		show(deckIdAtListPlace());
 	});
 
 	// Nothing shown: on load, or once the Event no longer holds the deck shown.
-	watch([currentEntry, filteredQueue], ([entry]) => {
-		if (!entry)
-			shownDeckId.value = deckIdAtListPlace();
-	}, { immediate: true });
+	watch(
+		[currentEntry, filteredQueue],
+		([entry]) => {
+			if (!entry) shownDeckId.value = deckIdAtListPlace();
+		},
+		{ immediate: true },
+	);
 
 	// ── Progress ──
 
 	const totalDecks = computed(() => allEntries.value.length);
-	const reviewedCount = computed(() =>
-		allEntries.value.filter(e => isDeckReviewed(e)).length,
-	);
+	const reviewedCount = computed(() => allEntries.value.filter((e) => isDeckReviewed(e)).length);
 	const progressPercent = computed(() => {
-		if (totalDecks.value === 0)
-			return 100;
+		if (totalDecks.value === 0) return 100;
 		return Math.round((reviewedCount.value / totalDecks.value) * 100);
 	});
 
@@ -163,21 +166,18 @@ export function useArchetypeReviewQueue() {
 	const archetypePlayerCounts = computed(() => {
 		const counts = new Map<number, number>();
 		for (const deck of playerDeckStore.decks) {
-			if (!deck.archetypeId)
-				continue;
+			if (!deck.archetypeId) continue;
 			counts.set(deck.archetypeId, (counts.get(deck.archetypeId) ?? 0) + 1);
 		}
 		return counts;
 	});
 
-	const holdsDeck = (deckId: number) => allEntries.value.some(entry => entry.deck.id === deckId);
+	const holdsDeck = (deckId: number) => allEntries.value.some((entry) => entry.deck.id === deckId);
 
 	/** Shows a deck, or none, as a step the reviewer can go back from. */
 	function show(deckId: number | null) {
-		if (deckId === shownDeckId.value)
-			return;
-		if (currentEntry.value)
-			shownBefore.value.push(currentEntry.value.deck.id);
+		if (deckId === shownDeckId.value) return;
+		if (currentEntry.value) shownBefore.value.push(currentEntry.value.deck.id);
 		goneBackFrom.value = [];
 		shownDeckId.value = deckId;
 	}
@@ -186,42 +186,38 @@ export function useArchetypeReviewQueue() {
 	function takeHeld(history: Ref<number[]>): number | null {
 		while (history.value.length > 0) {
 			const deckId = history.value.pop()!;
-			if (holdsDeck(deckId))
-				return deckId;
+			if (holdsDeck(deckId)) return deckId;
 		}
 		return null;
 	}
 
 	/** The list's next deck: after the deck shown, or where the list was left for a deck outside it. */
 	const nextInListDeckId = computed(() => {
-		if (currentIndex.value < 0)
-			return deckIdAtListPlace();
+		if (currentIndex.value < 0) return deckIdAtListPlace();
 		return filteredQueue.value[currentIndex.value + 1]?.deck.id ?? null;
 	});
 
 	const canGoBack = computed(() => shownBefore.value.some(holdsDeck));
-	const canAdvance = computed(() => goneBackFrom.value.some(holdsDeck) || nextInListDeckId.value != null);
+	const canAdvance = computed(
+		() => goneBackFrom.value.some(holdsDeck) || nextInListDeckId.value != null,
+	);
 
 	/** Retraces a step gone back from, then carries on through the list. */
 	function advance() {
 		const retraced = takeHeld(goneBackFrom);
 		if (retraced == null) {
-			if (nextInListDeckId.value != null)
-				show(nextInListDeckId.value);
+			if (nextInListDeckId.value != null) show(nextInListDeckId.value);
 			return;
 		}
-		if (currentEntry.value)
-			shownBefore.value.push(currentEntry.value.deck.id);
+		if (currentEntry.value) shownBefore.value.push(currentEntry.value.deck.id);
 		shownDeckId.value = retraced;
 	}
 
 	/** Returns to the deck shown before this one, whichever list holds it now. */
 	function goBack() {
 		const before = takeHeld(shownBefore);
-		if (before == null)
-			return;
-		if (currentEntry.value)
-			goneBackFrom.value.push(currentEntry.value.deck.id);
+		if (before == null) return;
+		if (currentEntry.value) goneBackFrom.value.push(currentEntry.value.deck.id);
 		shownDeckId.value = before;
 	}
 
@@ -230,12 +226,9 @@ export function useArchetypeReviewQueue() {
 	 * `history: false` is the page opening on the deck: no step to go back from.
 	 */
 	function jumpToDeck(deckId: number, { history = true }: { history?: boolean } = {}): boolean {
-		if (!holdsDeck(deckId))
-			return false;
-		if (history)
-			show(deckId);
-		else
-			shownDeckId.value = deckId;
+		if (!holdsDeck(deckId)) return false;
+		if (history) show(deckId);
+		else shownDeckId.value = deckId;
 		return true;
 	}
 
@@ -248,9 +241,8 @@ export function useArchetypeReviewQueue() {
 
 		return {
 			commit() {
-				const moveTo = nextDeckId != null && holdsDeck(nextDeckId)
-					? nextDeckId
-					: deckIdAtListPlace();
+				const moveTo =
+					nextDeckId != null && holdsDeck(nextDeckId) ? nextDeckId : deckIdAtListPlace();
 				deckLoading.value = moveTo != null && moveTo !== shownDeckId.value;
 				show(moveTo);
 			},

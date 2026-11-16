@@ -1,23 +1,25 @@
 <script lang="ts" setup>
 /** One One Piece Printing's image, shown as printed: it never flips, rotates or turns over. */
-const props = withDefaults(defineProps<{
-	card: { name: string; imageUrl: string };
-	/** Offers the image as a button that emits `selected`. */
-	selectable?: boolean;
-	/** Marks the image as the one chosen among its siblings. */
-	selected?: boolean;
-}>(), {
-	selectable: false,
-	selected: undefined,
-});
+const props = withDefaults(
+	defineProps<{
+		card: { name: string; imageUrl: string };
+		/** Offers the image as a button that emits `selected`. */
+		selectable?: boolean;
+		/** Marks the image as the one chosen among its siblings. */
+		selected?: boolean;
+	}>(),
+	{
+		selectable: false,
+		selected: undefined,
+	},
+);
 
 const emit = defineEmits<{
 	(e: 'selected'): void;
 }>();
 
 function select() {
-	if (props.selectable)
-		emit('selected');
+	if (props.selectable) emit('selected');
 }
 </script>
 
@@ -33,12 +35,7 @@ function select() {
 		@keydown.enter="select"
 		@keydown.space.prevent="select"
 	>
-		<img
-			class="image"
-			:src="props.card.imageUrl"
-			:alt="props.card.name"
-			loading="lazy"
-		>
+		<img class="image" :src="props.card.imageUrl" :alt="props.card.name" loading="lazy" />
 	</div>
 </template>
 

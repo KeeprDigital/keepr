@@ -27,8 +27,13 @@ vi.doMock('~~/server/utils/ably', () => ({
 vi.doMock('~~/server/modules/broadcast-graphics-live-session', () => ({
 	refreshBroadcastGraphicsBindings: vi.fn(),
 }));
-vi.stubGlobal('createError', (input: { statusCode: number; message?: string; statusMessage?: string }) =>
-	Object.assign(new Error(input.message ?? input.statusMessage), { statusCode: input.statusCode }));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; message?: string; statusMessage?: string }) =>
+		Object.assign(new Error(input.message ?? input.statusMessage), {
+			statusCode: input.statusCode,
+		}),
+);
 
 const { playerUpdateModule } = await import('~~/server/modules/player-update');
 const { featureMatchStateService } = await import('~~/server/services/featureMatchState');
@@ -36,14 +41,18 @@ const { featureMatchStateService } = await import('~~/server/services/featureMat
 afterAll(async () => await harness.close());
 
 async function createEvent(game: 'mtg' | 'op' = 'mtg') {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Player Open', game, featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	return event!.id;
 }
 
 async function createArchetype(eventId: number, name: string) {
-	const [archetype] = await db.insert(schema.archetypes).values({ eventId, name, colors: 'WU' }).returning();
+	const [archetype] = await db
+		.insert(schema.archetypes)
+		.values({ eventId, name, colors: 'WU' })
+		.returning();
 	return archetype!;
 }
 
@@ -53,17 +62,24 @@ async function createPlayer(eventId: number) {
 }
 
 let deckSequence = 0;
-async function createDeck(eventId: number, playerId: number, overrides: Partial<typeof schema.playerDecks.$inferInsert> = {}) {
-	const [deck] = await db.insert(schema.playerDecks).values({
-		eventId,
-		playerId,
-		externalId: `deck-${++deckSequence}`,
-		externalSource: 'melee',
-		formatExternalId: 'modern',
-		name: 'Imported Deck',
-		isPrimary: true,
-		...overrides,
-	}).returning();
+async function createDeck(
+	eventId: number,
+	playerId: number,
+	overrides: Partial<typeof schema.playerDecks.$inferInsert> = {},
+) {
+	const [deck] = await db
+		.insert(schema.playerDecks)
+		.values({
+			eventId,
+			playerId,
+			externalId: `deck-${++deckSequence}`,
+			externalSource: 'melee',
+			formatExternalId: 'modern',
+			name: 'Imported Deck',
+			isPrimary: true,
+			...overrides,
+		})
+		.returning();
 	return deck!;
 }
 
@@ -77,7 +93,7 @@ beforeEach(() => {
 });
 
 describe('updating a Player', () => {
-	it('keeps the reviewed primary Deck List\'s Archetype over a generic edit', async () => {
+	it("keeps the reviewed primary Deck List's Archetype over a generic edit", async () => {
 		const eventId = await createEvent();
 		const reviewed = await createArchetype(eventId, 'Azorius Control');
 		const player = await createPlayer(eventId);
@@ -97,9 +113,11 @@ describe('updating a Player', () => {
 		const stored = await readPlayer(player.id);
 		expect(stored?.archetypeId).toBe(reviewed.id);
 		expect(stored?.gameData).toMatchObject({ deckName: 'Azorius Control' });
-		expect(publication.playerUpdated).toHaveBeenCalledWith(expect.objectContaining({
-			entity: expect.objectContaining({ archetypeId: reviewed.id }),
-		}));
+		expect(publication.playerUpdated).toHaveBeenCalledWith(
+			expect.objectContaining({
+				entity: expect.objectContaining({ archetypeId: reviewed.id }),
+			}),
+		);
 	});
 
 	it('takes the edit as written when no Deck List has been reviewed', async () => {
@@ -121,49 +139,54 @@ describe('updating a Player', () => {
 		const foreign = await createArchetype(await createEvent(), 'Foreign');
 		const player = await createPlayer(eventId);
 
-		await expect(playerUpdateModule().updatePlayer({
-			eventId,
-			playerId: player.id,
-			input: { name: 'Changed', archetypeId: foreign.id },
-		}))
-			.rejects
-			.toMatchObject({ statusCode: 404 });
+		await expect(
+			playerUpdateModule().updatePlayer({
+				eventId,
+				playerId: player.id,
+				input: { name: 'Changed', archetypeId: foreign.id },
+			}),
+		).rejects.toMatchObject({ statusCode: 404 });
 
 		expect(await readPlayer(player.id)).toMatchObject({ name: 'Alice', archetypeId: null });
 		expect(publication.playerUpdated).not.toHaveBeenCalled();
 	});
 
-	it('refuses to create a Player with another Event\'s Archetype', async () => {
+	it("refuses to create a Player with another Event's Archetype", async () => {
 		const eventId = await createEvent();
 		const foreign = await createArchetype(await createEvent(), 'Foreign');
 
-		await expect(playerUpdateModule().createPlayer({
-			eventId,
-			input: { name: 'Bob', archetypeId: foreign.id } as never,
-		}))
-			.rejects
-			.toMatchObject({ statusCode: 404 });
-		expect(await db.select().from(schema.players).where(eq(schema.players.eventId, eventId))).toEqual([]);
+		await expect(
+			playerUpdateModule().createPlayer({
+				eventId,
+				input: { name: 'Bob', archetypeId: foreign.id } as never,
+			}),
+		).rejects.toMatchObject({ statusCode: 404 });
+		expect(
+			await db.select().from(schema.players).where(eq(schema.players.eventId, eventId)),
+		).toEqual([]);
 	});
 
 	it('refuses a Player the Event does not hold', async () => {
 		const eventId = await createEvent();
 		const elsewhere = await createPlayer(await createEvent());
 
-		await expect(playerUpdateModule().updatePlayer({
-			eventId,
-			playerId: elsewhere.id,
-			input: { name: 'Hijack' },
-		}))
-			.rejects
-			.toMatchObject({ statusCode: 404 });
+		await expect(
+			playerUpdateModule().updatePlayer({
+				eventId,
+				playerId: elsewhere.id,
+				input: { name: 'Hijack' },
+			}),
+		).rejects.toMatchObject({ statusCode: 404 });
 		expect((await readPlayer(elsewhere.id))?.name).toBe('Alice');
 	});
 
 	it('announces the Feature Match Slots showing the Player', async () => {
 		const eventId = await createEvent();
 		const player = await createPlayer(eventId);
-		const [slot] = await db.insert(schema.featureMatches).values({ eventId, tableNumber: 1, player1Id: player.id }).returning();
+		const [slot] = await db
+			.insert(schema.featureMatches)
+			.values({ eventId, tableNumber: 1, player1Id: player.id })
+			.returning();
 
 		await playerUpdateModule().updatePlayer({
 			eventId,
@@ -180,7 +203,7 @@ describe('updating a Player', () => {
 	});
 });
 
-describe('a Player\'s name and Nickname', () => {
+describe("a Player's name and Nickname", () => {
 	// Name is optional on One Piece, where the Nickname stands in; Magic still requires one (ADR-0074).
 	it.each([
 		{
@@ -227,15 +250,20 @@ describe('a Player\'s name and Nickname', () => {
 	] as const)('refuses a $game Player from $input, saving nothing', async ({ game, input }) => {
 		const eventId = await createEvent(game);
 
-		await expect(playerUpdateModule().createPlayer({ eventId, input }))
-			.rejects
-			.toMatchObject({ statusCode: 400 });
-		expect(await db.select().from(schema.players).where(eq(schema.players.eventId, eventId))).toEqual([]);
+		await expect(playerUpdateModule().createPlayer({ eventId, input })).rejects.toMatchObject({
+			statusCode: 400,
+		});
+		expect(
+			await db.select().from(schema.players).where(eq(schema.players.eventId, eventId)),
+		).toEqual([]);
 	});
 
-	it('falls back to the Nickname when a One Piece Player\'s name is cleared', async () => {
+	it("falls back to the Nickname when a One Piece Player's name is cleared", async () => {
 		const eventId = await createEvent('op');
-		const [player] = await db.insert(schema.players).values({ eventId, name: 'Big Mom', nickname: 'linlin_88' }).returning();
+		const [player] = await db
+			.insert(schema.players)
+			.values({ eventId, name: 'Big Mom', nickname: 'linlin_88' })
+			.returning();
 
 		const updated = await playerUpdateModule().updatePlayer({
 			eventId,
@@ -263,16 +291,22 @@ describe('a Player\'s name and Nickname', () => {
 			held: { name: 'Alice', nickname: null },
 			input: { name: '' },
 		},
-	] as const)('refuses $input on a $game Player holding $held, keeping them as they were', async ({ game, held, input }) => {
-		const eventId = await createEvent(game);
-		const [player] = await db.insert(schema.players).values({ eventId, ...held }).returning();
+	] as const)(
+		'refuses $input on a $game Player holding $held, keeping them as they were',
+		async ({ game, held, input }) => {
+			const eventId = await createEvent(game);
+			const [player] = await db
+				.insert(schema.players)
+				.values({ eventId, ...held })
+				.returning();
 
-		await expect(playerUpdateModule().updatePlayer({ eventId, playerId: player!.id, input }))
-			.rejects
-			.toMatchObject({ statusCode: 400 });
-		expect(await readPlayer(player!.id)).toMatchObject(held);
-		expect(publication.playerUpdated).not.toHaveBeenCalled();
-	});
+			await expect(
+				playerUpdateModule().updatePlayer({ eventId, playerId: player!.id, input }),
+			).rejects.toMatchObject({ statusCode: 400 });
+			expect(await readPlayer(player!.id)).toMatchObject(held);
+			expect(publication.playerUpdated).not.toHaveBeenCalled();
+		},
+	);
 });
 
 describe('reviewing a Deck List', () => {
@@ -289,14 +323,17 @@ describe('reviewing a Deck List', () => {
 			archetypeId: archetype.id,
 		});
 
-		const [stored] = await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.id, deck.id));
+		const [stored] = await db
+			.select()
+			.from(schema.playerDecks)
+			.where(eq(schema.playerDecks.id, deck.id));
 		expect(stored?.archetypeId).toBe(archetype.id);
 		expect(stored?.reviewedAt).toBeInstanceOf(Date);
 		expect((await readPlayer(player.id))?.archetypeId).toBe(archetype.id);
 		expect(result.player).toMatchObject({ archetypeId: archetype.id });
 	});
 
-	it('leaves the Player\'s projection alone for a secondary Deck List', async () => {
+	it("leaves the Player's projection alone for a secondary Deck List", async () => {
 		const eventId = await createEvent();
 		const archetype = await createArchetype(eventId, 'Azorius Control');
 		const player = await createPlayer(eventId);
@@ -320,23 +357,28 @@ describe('reviewing a Deck List', () => {
 	] as const)('refuses %s', async (_label, foreign) => {
 		const eventId = await createEvent();
 		const player = await createPlayer(eventId);
-		const archetype = await createArchetype(foreign === 'archetype'
-			? await createEvent()
-			: eventId, 'Elsewhere');
-		const deck = await createDeck(eventId, foreign === 'deck'
-			? (await createPlayer(eventId)).id
-			: player.id);
-
-		await expect(playerUpdateModule().reviewPlayerDeck({
+		const archetype = await createArchetype(
+			foreign === 'archetype' ? await createEvent() : eventId,
+			'Elsewhere',
+		);
+		const deck = await createDeck(
 			eventId,
-			playerId: player.id,
-			deckId: deck.id,
-			archetypeId: archetype.id,
-		}))
-			.rejects
-			.toMatchObject({ statusCode: 404 });
+			foreign === 'deck' ? (await createPlayer(eventId)).id : player.id,
+		);
 
-		const [stored] = await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.id, deck.id));
+		await expect(
+			playerUpdateModule().reviewPlayerDeck({
+				eventId,
+				playerId: player.id,
+				deckId: deck.id,
+				archetypeId: archetype.id,
+			}),
+		).rejects.toMatchObject({ statusCode: 404 });
+
+		const [stored] = await db
+			.select()
+			.from(schema.playerDecks)
+			.where(eq(schema.playerDecks.id, deck.id));
 		expect(stored?.reviewedAt).toBeNull();
 	});
 
@@ -347,26 +389,33 @@ describe('reviewing a Deck List', () => {
 		const player = await createPlayer(eventId);
 		const deck = await createDeck(eventId, player.id);
 
-		await expect(playerUpdateModule().reviewPlayerDeck({
-			eventId,
-			playerId: player.id,
-			deckId: deck.id,
-			archetypeId: archetype.id,
-		}))
-			.rejects
-			.toMatchObject({ statusCode: 400 });
+		await expect(
+			playerUpdateModule().reviewPlayerDeck({
+				eventId,
+				playerId: player.id,
+				deckId: deck.id,
+				archetypeId: archetype.id,
+			}),
+		).rejects.toMatchObject({ statusCode: 400 });
 
-		const [stored] = await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.id, deck.id));
+		const [stored] = await db
+			.select()
+			.from(schema.playerDecks)
+			.where(eq(schema.playerDecks.id, deck.id));
 		expect(stored?.reviewedAt).toBeNull();
 	});
 });
 
-describe('clearing a Deck List\'s review', () => {
+describe("clearing a Deck List's review", () => {
 	async function stageReviewed(isPrimary: boolean) {
 		const eventId = await createEvent();
 		const archetype = await createArchetype(eventId, 'Azorius Control');
 		const player = await createPlayer(eventId);
-		const deck = await createDeck(eventId, player.id, { isPrimary, name: 'Imported Deck', colors: 'G' });
+		const deck = await createDeck(eventId, player.id, {
+			isPrimary,
+			name: 'Imported Deck',
+			colors: 'G',
+		});
 		await playerUpdateModule().reviewPlayerDeck({
 			eventId,
 			playerId: player.id,
@@ -387,7 +436,10 @@ describe('clearing a Deck List\'s review', () => {
 			originConnectionId: 'origin-1',
 		});
 
-		const [stored] = await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.id, deck.id));
+		const [stored] = await db
+			.select()
+			.from(schema.playerDecks)
+			.where(eq(schema.playerDecks.id, deck.id));
 		expect(stored).toMatchObject({ archetypeId: null, reviewedAt: null });
 		expect(await readPlayer(player.id)).toMatchObject({
 			archetypeId: null,
@@ -395,19 +447,30 @@ describe('clearing a Deck List\'s review', () => {
 		});
 		expect(result.player).toMatchObject({ archetypeId: null });
 		// An emptied MTG Archetype stays until an operator removes it (ADR-0085).
-		expect(await db.select().from(schema.archetypes).where(eq(schema.archetypes.id, archetype.id))).toHaveLength(1);
-		expect(publication.playerDeckReviewed).toHaveBeenCalledWith(expect.objectContaining({
-			entity: expect.objectContaining({ id: deck.id, archetypeId: null }),
-			originConnectionId: 'origin-1',
-		}));
+		expect(
+			await db.select().from(schema.archetypes).where(eq(schema.archetypes.id, archetype.id)),
+		).toHaveLength(1);
+		expect(publication.playerDeckReviewed).toHaveBeenCalledWith(
+			expect.objectContaining({
+				entity: expect.objectContaining({ id: deck.id, archetypeId: null }),
+				originConnectionId: 'origin-1',
+			}),
+		);
 	});
 
-	it('leaves the Player\'s projection alone for a secondary Deck List', async () => {
+	it("leaves the Player's projection alone for a secondary Deck List", async () => {
 		const { eventId, player, deck } = await stageReviewed(false);
 
-		const result = await playerUpdateModule().clearPlayerDeckReview({ eventId, playerId: player.id, deckId: deck.id });
+		const result = await playerUpdateModule().clearPlayerDeckReview({
+			eventId,
+			playerId: player.id,
+			deckId: deck.id,
+		});
 
-		const [stored] = await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.id, deck.id));
+		const [stored] = await db
+			.select()
+			.from(schema.playerDecks)
+			.where(eq(schema.playerDecks.id, deck.id));
 		expect(stored?.reviewedAt).toBeNull();
 		expect(result.player).toBeNull();
 		expect(publication.playerUpdated).not.toHaveBeenCalled();
@@ -417,18 +480,21 @@ describe('clearing a Deck List\'s review', () => {
 		const { eventId, deck } = await stageReviewed(true);
 		const other = await createPlayer(eventId);
 
-		await expect(playerUpdateModule().clearPlayerDeckReview({ eventId, playerId: other.id, deckId: deck.id }))
-			.rejects
-			.toMatchObject({ statusCode: 404 });
+		await expect(
+			playerUpdateModule().clearPlayerDeckReview({ eventId, playerId: other.id, deckId: deck.id }),
+		).rejects.toMatchObject({ statusCode: 404 });
 
-		const [stored] = await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.id, deck.id));
+		const [stored] = await db
+			.select()
+			.from(schema.playerDecks)
+			.where(eq(schema.playerDecks.id, deck.id));
 		expect(stored?.reviewedAt).toBeInstanceOf(Date);
 		expect(publication.playerDeckReviewed).not.toHaveBeenCalled();
 	});
 });
 
 // The OP Deck List write owns a One Piece Player's game data and Archetype (ADR-0074).
-describe('a One Piece Card Game Player\'s Deck List reference and Archetype', () => {
+describe("a One Piece Card Game Player's Deck List reference and Archetype", () => {
 	const held = {
 		type: 'op' as const,
 		deckList: { id: 7, mainboardCount: 50, leaderNumber: 'OP01-001' },
@@ -438,7 +504,8 @@ describe('a One Piece Card Game Player\'s Deck List reference and Archetype', ()
 		const eventId = await createEvent('op');
 		const archetype = await createArchetype(eventId, 'Roronoa Zoro');
 		const other = await createArchetype(eventId, 'Nami');
-		const [player] = await db.insert(schema.players)
+		const [player] = await db
+			.insert(schema.players)
 			.values({
 				eventId,
 				name: '',
@@ -458,7 +525,11 @@ describe('a One Piece Card Game Player\'s Deck List reference and Archetype', ()
 			},
 		});
 
-		expect(await readPlayer(player!.id)).toMatchObject({ name: 'Alice', gameData: held, archetypeId: archetype.id });
+		expect(await readPlayer(player!.id)).toMatchObject({
+			name: 'Alice',
+			gameData: held,
+			archetypeId: archetype.id,
+		});
 	});
 
 	it('are none on a Player created by hand', async () => {
@@ -474,7 +545,10 @@ describe('a One Piece Card Game Player\'s Deck List reference and Archetype', ()
 			},
 		});
 
-		expect(await readPlayer((created as { id: number }).id)).toMatchObject({ gameData: null, archetypeId: null });
+		expect(await readPlayer((created as { id: number }).id)).toMatchObject({
+			gameData: null,
+			archetypeId: null,
+		});
 	});
 });
 
@@ -484,10 +558,20 @@ describe('deleting a Player', () => {
 		const eventId = await createEvent();
 		const player = await createPlayer(eventId);
 
-		await expect(playerUpdateModule().deletePlayer({ eventId, playerId: player.id, originConnectionId: 'origin-1' })).resolves.toEqual({ success: true });
+		await expect(
+			playerUpdateModule().deletePlayer({
+				eventId,
+				playerId: player.id,
+				originConnectionId: 'origin-1',
+			}),
+		).resolves.toEqual({ success: true });
 
 		expect(await readPlayer(player.id)).toBeUndefined();
-		expect(publication.playerDeleted).toHaveBeenCalledWith({ eventId, id: player.id, originConnectionId: 'origin-1' });
+		expect(publication.playerDeleted).toHaveBeenCalledWith({
+			eventId,
+			id: player.id,
+			originConnectionId: 'origin-1',
+		});
 	});
 
 	// A deleted Player leaves each side they sat on unlinked, on the Slot and in
@@ -521,38 +605,54 @@ describe('deleting a Player', () => {
 				gameData: { type: 'op', leader: null },
 			},
 		},
-	])('unseats them from the $side side of a $game Slot and its Session, and announces the Slot', async ({ game, side, stored, left }) => {
-		const eventId = await createEvent(game);
-		const player = await createPlayer(eventId);
-		const [slot] = await db.insert(schema.featureMatches)
-			.values({
+	])(
+		'unseats them from the $side side of a $game Slot and its Session, and announces the Slot',
+		async ({ game, side, stored, left }) => {
+			const eventId = await createEvent(game);
+			const player = await createPlayer(eventId);
+			const [slot] = await db
+				.insert(schema.featureMatches)
+				.values({
+					eventId,
+					tableNumber: 1,
+					[`${side}Id`]: player.id,
+					[`${side}Data`]: stored,
+				})
+				.returning();
+			await featureMatchStateService().createSessionForSlot(slot!.id, eventId);
+
+			await playerUpdateModule().deletePlayer({
 				eventId,
-				tableNumber: 1,
-				[`${side}Id`]: player.id,
-				[`${side}Data`]: stored,
-			})
-			.returning();
-		await featureMatchStateService().createSessionForSlot(slot!.id, eventId);
+				playerId: player.id,
+				originConnectionId: 'origin-1',
+			});
 
-		await playerUpdateModule().deletePlayer({ eventId, playerId: player.id, originConnectionId: 'origin-1' });
-
-		const [after] = await db.select().from(schema.featureMatches).where(eq(schema.featureMatches.id, slot!.id));
-		expect(after).toMatchObject({ [`${side}Id`]: null });
-		expect(after![`${side}Data`]).toEqual(left);
-		const [session] = await db.select().from(schema.featureMatchSessions).where(eq(schema.featureMatchSessions.id, after!.activeSessionId!));
-		expect(session!.sourceSnapshot[side].playerId).toBeNull();
-		expect(session!.sourceSnapshot[side].data).toEqual(left);
-		expect(publication.featureMatchSlotsUpdated).toHaveBeenCalledWith({
-			eventId,
-			slotIds: [slot!.id],
-		});
-	});
+			const [after] = await db
+				.select()
+				.from(schema.featureMatches)
+				.where(eq(schema.featureMatches.id, slot!.id));
+			expect(after).toMatchObject({ [`${side}Id`]: null });
+			expect(after![`${side}Data`]).toEqual(left);
+			const [session] = await db
+				.select()
+				.from(schema.featureMatchSessions)
+				.where(eq(schema.featureMatchSessions.id, after!.activeSessionId!));
+			expect(session!.sourceSnapshot[side].playerId).toBeNull();
+			expect(session!.sourceSnapshot[side].data).toEqual(left);
+			expect(publication.featureMatchSlotsUpdated).toHaveBeenCalledWith({
+				eventId,
+				slotIds: [slot!.id],
+			});
+		},
+	);
 
 	it('refuses a Player another Event holds', async () => {
 		const eventId = await createEvent();
 		const elsewhere = await createPlayer(await createEvent());
 
-		await expect(playerUpdateModule().deletePlayer({ eventId, playerId: elsewhere.id })).rejects.toMatchObject({ statusCode: 404 });
+		await expect(
+			playerUpdateModule().deletePlayer({ eventId, playerId: elsewhere.id }),
+		).rejects.toMatchObject({ statusCode: 404 });
 		expect(await readPlayer(elsewhere.id)).toBeDefined();
 		expect(publication.playerDeleted).not.toHaveBeenCalled();
 	});

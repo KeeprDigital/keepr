@@ -118,9 +118,7 @@ describe('screenModesPlayerHistoryDisplay', () => {
 			draws: 1,
 			position: 3,
 		};
-		pageData.value = [
-			historyRow(),
-		];
+		pageData.value = [historyRow()];
 	});
 
 	it('renders the header with the player record and position', async () => {
@@ -206,7 +204,9 @@ describe('screenModesPlayerHistoryDisplay', () => {
 
 		const row = wrapper.get('.history-row');
 		expect(row.find('.table').exists()).toBe(false);
-		expect(row.attributes('style')).toContain('grid-template-columns: minmax(10rem, 1fr) minmax(16rem, 2fr) minmax(8rem, auto);');
+		expect(row.attributes('style')).toContain(
+			'grid-template-columns: minmax(10rem, 1fr) minmax(16rem, 2fr) minmax(8rem, auto);',
+		);
 	});
 
 	it('splits a scored outcome into label and score on the badge', async () => {
@@ -219,16 +219,8 @@ describe('screenModesPlayerHistoryDisplay', () => {
 	});
 
 	it.each([
-		[
-			'bye',
-			historyRow({ outcome: 'bye' }),
-			'BYE',
-		],
-		[
-			'loss',
-			historyRow({ outcome: 'loss', playerGameWins: 0, opponentGameWins: 2 }),
-			'LOSS',
-		],
+		['bye', historyRow({ outcome: 'bye' }), 'BYE'],
+		['loss', historyRow({ outcome: 'loss', playerGameWins: 0, opponentGameWins: 2 }), 'LOSS'],
 		[
 			'draw',
 			historyRow({
@@ -239,11 +231,7 @@ describe('screenModesPlayerHistoryDisplay', () => {
 			}),
 			'DRAW',
 		],
-		[
-			'pending',
-			historyRow({ outcome: 'pending', hasResult: false }),
-			'Pending',
-		],
+		['pending', historyRow({ outcome: 'pending', hasResult: false }), 'Pending'],
 	] as const)('badges a %s outcome with its state', async (outcome, row, expectedLabel) => {
 		pageData.value = [row];
 
@@ -256,19 +244,17 @@ describe('screenModesPlayerHistoryDisplay', () => {
 
 	// A bye scores as a win, so it reads in the win colour.
 	it('badges a bye in the win colour', async () => {
-		pageData.value = [
-			historyRow({ outcome: 'bye' }),
-		];
+		pageData.value = [historyRow({ outcome: 'bye' })];
 
 		const badge = (await mountComponent()).get('.outcome-badge');
 
-		expect(badge.attributes('style')).toContain(`color: ${modeTokenVar('player-history', 'outcome-win')};`);
+		expect(badge.attributes('style')).toContain(
+			`color: ${modeTokenVar('player-history', 'outcome-win')};`,
+		);
 	});
 
 	it('leaves the score segment off an unscored outcome', async () => {
-		pageData.value = [
-			historyRow({ outcome: 'bye' }),
-		];
+		pageData.value = [historyRow({ outcome: 'bye' })];
 
 		const wrapper = await mountComponent();
 
@@ -283,9 +269,7 @@ describe('screenModesPlayerHistoryDisplay', () => {
 	});
 
 	it('omits the deck line when the opponent deck is unknown', async () => {
-		pageData.value = [
-			historyRow({ opponentDeckName: null, opponentDeckColors: null }),
-		];
+		pageData.value = [historyRow({ opponentDeckName: null, opponentDeckColors: null })];
 
 		const wrapper = await mountComponent();
 
@@ -297,11 +281,11 @@ describe('screenModesPlayerHistoryDisplay', () => {
 		function showingColumns(...keys: string[]) {
 			config.value = {
 				...config.value,
-				columns: keys.map(key => ({ key, visible: true })),
+				columns: keys.map((key) => ({ key, visible: true })),
 			};
 		}
 
-		it('shows the opponent\'s archetype with its colors in its own column', async () => {
+		it("shows the opponent's archetype with its colors in its own column", async () => {
 			showingColumns('opponent', 'opponentArchetype');
 
 			const wrapper = await mountComponent();
@@ -313,9 +297,7 @@ describe('screenModesPlayerHistoryDisplay', () => {
 
 		it('leaves the archetype column blank when the opponent has none', async () => {
 			showingColumns('opponent', 'opponentArchetype');
-			pageData.value = [
-				historyRow({ opponentDeckName: null, opponentDeckColors: null }),
-			];
+			pageData.value = [historyRow({ opponentDeckName: null, opponentDeckColors: null })];
 
 			const wrapper = await mountComponent();
 
@@ -347,36 +329,16 @@ describe('screenModesPlayerHistoryDisplay', () => {
 			opponentGameWins: 0,
 		});
 		it.each([
-			[
-				'a win, Outcome hidden',
-				historyRow(),
-				['opponent', 'gameScore'],
-				'2–1',
-			],
-			[
-				'an unreported Match, Outcome hidden',
-				unreported,
-				['opponent', 'gameScore'],
-				'Pending',
-			],
+			['a win, Outcome hidden', historyRow(), ['opponent', 'gameScore'], '2–1'],
+			['an unreported Match, Outcome hidden', unreported, ['opponent', 'gameScore'], 'Pending'],
 			[
 				'an unreported Match, Outcome visible',
 				unreported,
 				['opponent', 'outcome', 'gameScore'],
 				'',
 			],
-			[
-				'a bye, Outcome hidden',
-				bye,
-				['opponent', 'gameScore'],
-				'',
-			],
-			[
-				'a bye, Outcome visible',
-				bye,
-				['opponent', 'outcome', 'gameScore'],
-				'',
-			],
+			['a bye, Outcome hidden', bye, ['opponent', 'gameScore'], ''],
+			['a bye, Outcome visible', bye, ['opponent', 'outcome', 'gameScore'], ''],
 		] as const)('scores %s', async (_name, row, columns, expected) => {
 			showingColumns(...columns);
 			pageData.value = [row];

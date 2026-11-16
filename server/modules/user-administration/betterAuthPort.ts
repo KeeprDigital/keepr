@@ -48,11 +48,10 @@ export async function betterAuthUserAdministrationPort(
 			// own `listUsers` leaves the order to the adapter, which means "whatever
 			// D1 returns" — fine for a query, wrong for a page somebody scans for a
 			// name.
-			const users = await context.internalAdapter.listUsers(
-				limit,
-				undefined,
-				{ field: 'createdAt', direction: 'asc' },
-			);
+			const users = await context.internalAdapter.listUsers(limit, undefined, {
+				field: 'createdAt',
+				direction: 'asc',
+			});
 
 			return {
 				users: users.map(toAccount),
@@ -62,16 +61,12 @@ export async function betterAuthUserAdministrationPort(
 
 		findByEmail: async (email) => {
 			const found = await context.internalAdapter.findUserByEmail(email);
-			return found
-				? toAccount(found.user)
-				: null;
+			return found ? toAccount(found.user) : null;
 		},
 
 		findById: async (userId) => {
 			const found = await context.internalAdapter.findUserById(userId);
-			return found
-				? toAccount(found)
-				: null;
+			return found ? toAccount(found) : null;
 		},
 
 		createUser: async ({ email, name }) => {
@@ -94,9 +89,7 @@ export async function betterAuthUserAdministrationPort(
 			// what it returns, and reading them through a cast would be inventing
 			// facts about a row this can simply go and look at.
 			const stored = await context.internalAdapter.findUserById(user.id);
-			return stored
-				? toAccount(stored)
-				: toAccount({ ...user, role: null });
+			return stored ? toAccount(stored) : toAccount({ ...user, role: null });
 		},
 
 		// An invited account has no `credential` row until its link is redeemed, so
@@ -158,7 +151,7 @@ export async function betterAuthUserAdministrationPort(
 		// ended by themselves weeks ago. The number is the whole point of reporting
 		// it — "revoked 0" is how an administrator learns the compromise they are
 		// chasing is not a live session — so an inflated one is worse than none.
-		countSessions: async userId =>
+		countSessions: async (userId) =>
 			(await context.internalAdapter.listSessions(userId, { onlyActiveSessions: true })).length,
 
 		revokeSessions: async (userId) => {
@@ -228,8 +221,6 @@ function toAccount(row: Record<string, unknown>): AdministeredUser {
 		// account.
 		banned: banned === true,
 		banReason: banReason ?? null,
-		createdAt: createdAt
-			? new Date(createdAt).toISOString()
-			: new Date(0).toISOString(),
+		createdAt: createdAt ? new Date(createdAt).toISOString() : new Date(0).toISOString(),
 	};
 }

@@ -29,38 +29,49 @@ const LEADERS = [
 		colors: ['Blue'],
 	}),
 ];
-const CHARACTERS = [
-	...tcgPlusDeck('OP01', 13),
-	...tcgPlusDeck('OP02', 13),
-].map(([number]) => knownOpCard({
-	number,
-	name: `Card ${number}`,
-	category: 'character',
-	colors: ['Red', 'Blue'],
-}));
-let upstream = fakeOpCardBulkLookup([
-	...LEADERS,
-	...CHARACTERS,
-]);
+const CHARACTERS = [...tcgPlusDeck('OP01', 13), ...tcgPlusDeck('OP02', 13)].map(([number]) =>
+	knownOpCard({
+		number,
+		name: `Card ${number}`,
+		category: 'character',
+		colors: ['Red', 'Blue'],
+	}),
+);
+let upstream = fakeOpCardBulkLookup([...LEADERS, ...CHARACTERS]);
 const { published } = mockOpWriteBoundaries(db, () => upstream);
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: { params: unknown }, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('readValidatedBody', async (event: { body: unknown }, parse: (value: unknown) => unknown) => parse(event.body));
-vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) => Object.assign(new Error(input.message), input));
-vi.stubGlobal('useRuntimeConfig', () => ({ bandaiKeeprApiKey: 'test-key', bandaiKeeprApiUrl: 'https://op-api.test' }));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: { params: unknown }, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal(
+	'readValidatedBody',
+	async (event: { body: unknown }, parse: (value: unknown) => unknown) => parse(event.body),
+);
+vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
+	Object.assign(new Error(input.message), input),
+);
+vi.stubGlobal('useRuntimeConfig', () => ({
+	bandaiKeeprApiKey: 'test-key',
+	bandaiKeeprApiUrl: 'https://op-api.test',
+}));
 
 type Handler = (event: H3Event) => Promise<any>;
-const previewRoute = (await import('~~/server/api/events/[id]/tcgplus/preview.post')).default as unknown as Handler;
-const importRoute = (await import('~~/server/api/events/[id]/tcgplus/import.post')).default as unknown as Handler;
-const handWriteRoute = (await import('~~/server/api/events/[id]/players/[playerId]/deck-list.put')).default as unknown as Handler;
-const useImportedRoute = (await import('~~/server/api/events/[id]/players/[playerId]/deck-list/use-imported.post')).default as unknown as Handler;
-const resolveRoute = (await import('~~/server/api/events/[id]/op-unresolved-deck-cards/[number]/index.put')).default as unknown as Handler;
+const previewRoute = (await import('~~/server/api/events/[id]/tcgplus/preview.post'))
+	.default as unknown as Handler;
+const importRoute = (await import('~~/server/api/events/[id]/tcgplus/import.post'))
+	.default as unknown as Handler;
+const handWriteRoute = (await import('~~/server/api/events/[id]/players/[playerId]/deck-list.put'))
+	.default as unknown as Handler;
+const useImportedRoute = (
+	await import('~~/server/api/events/[id]/players/[playerId]/deck-list/use-imported.post')
+).default as unknown as Handler;
+const resolveRoute = (
+	await import('~~/server/api/events/[id]/op-unresolved-deck-cards/[number]/index.put')
+).default as unknown as Handler;
 
 beforeEach(async () => {
-	upstream = fakeOpCardBulkLookup([
-		...LEADERS,
-		...CHARACTERS,
-	]);
+	upstream = fakeOpCardBulkLookup([...LEADERS, ...CHARACTERS]);
 	published.length = 0;
 	await db.delete(schema.cards);
 });
@@ -68,16 +79,14 @@ beforeEach(async () => {
 afterAll(async () => await harness.close());
 
 /** A legal 50-card Zoro deck: twelve Characters at four, and two of a thirteenth. */
-const ZORO_CARDS = [
-	...tcgPlusDeck('OP01', 12),
-	['OP01-042', 2] as const,
-];
-const NAMI_CARDS = [
-	...tcgPlusDeck('OP02', 12),
-	['OP02-042', 2] as const,
-];
+const ZORO_CARDS = [...tcgPlusDeck('OP01', 12), ['OP01-042', 2] as const];
+const NAMI_CARDS = [...tcgPlusDeck('OP02', 12), ['OP02-042', 2] as const];
 
-function zoroPlayer(memberNumber: string, nickname: string, overrides: Partial<TcgPlusExportPlayer> = {}): TcgPlusExportPlayer {
+function zoroPlayer(
+	memberNumber: string,
+	nickname: string,
+	overrides: Partial<TcgPlusExportPlayer> = {},
+): TcgPlusExportPlayer {
 	return {
 		memberNumber,
 		nickname,
@@ -88,65 +97,77 @@ function zoroPlayer(memberNumber: string, nickname: string, overrides: Partial<T
 }
 
 async function stageEvent(game: 'op' | 'mtg' = 'op') {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'One Piece Regional', game, featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	return event!.id;
 }
 
 function preview(eventId: number, csv: string) {
-	return previewRoute(stubH3Event({
-		params: {
-			id: String(eventId),
-		},
-		body: { csv },
-	}));
+	return previewRoute(
+		stubH3Event({
+			params: {
+				id: String(eventId),
+			},
+			body: { csv },
+		}),
+	);
 }
 
 function commit(eventId: number, csv: string) {
-	return importRoute(stubH3Event({
-		params: {
-			id: String(eventId),
-		},
-		body: { csv },
-	}));
+	return importRoute(
+		stubH3Event({
+			params: {
+				id: String(eventId),
+			},
+			body: { csv },
+		}),
+	);
 }
 
 function writeByHand(eventId: number, playerId: number, text: string) {
-	return handWriteRoute(stubH3Event({
-		params: {
-			id: String(eventId),
-			playerId: String(playerId),
-		},
-		body: { text },
-	}));
+	return handWriteRoute(
+		stubH3Event({
+			params: {
+				id: String(eventId),
+				playerId: String(playerId),
+			},
+			body: { text },
+		}),
+	);
 }
 
 function resolveUnresolved(eventId: number, number: string, cardNumber: string) {
-	return resolveRoute(stubH3Event({
-		params: {
-			id: String(eventId),
-			number,
-		},
-		body: { cardNumber },
-	}));
+	return resolveRoute(
+		stubH3Event({
+			params: {
+				id: String(eventId),
+				number,
+			},
+			body: { cardNumber },
+		}),
+	);
 }
 
 function useImported(eventId: number, playerId: number) {
-	return useImportedRoute(stubH3Event({
-		params: {
-			id: String(eventId),
-			playerId: String(playerId),
-		},
-	}));
+	return useImportedRoute(
+		stubH3Event({
+			params: {
+				id: String(eventId),
+				playerId: String(playerId),
+			},
+		}),
+	);
 }
 
 /** Each Player's Deck List id: a write gives a new one. */
 async function eventDeckIds(eventId: number) {
-	const decks = await db.select({ id: schema.playerDecks.id, playerId: schema.playerDecks.playerId })
+	const decks = await db
+		.select({ id: schema.playerDecks.id, playerId: schema.playerDecks.playerId })
 		.from(schema.playerDecks)
 		.where(eq(schema.playerDecks.eventId, eventId));
-	return new Map(decks.map(deck => [deck.playerId, deck.id]));
+	return new Map(decks.map((deck) => [deck.playerId, deck.id]));
 }
 
 async function eventPlayers(eventId: number) {
@@ -158,38 +179,39 @@ async function eventPlayers(eventId: number) {
 
 describe('a TCG+ Import preview', () => {
 	it.each([
-		[
-			'with a BOM and CRLF lines',
-			{ bom: true, lineEnding: '\r\n' as const },
-		],
-		[
-			'without a BOM',
-			{ bom: false, lineEnding: '\n' as const },
-		],
-	])('reads an export %s: quoted Nicknames, member numbers kept with their zeros, the Leader anywhere, and saves no Players', async (_label, options) => {
-		const eventId = await stageEvent();
-		const csv = tcgPlusExport([
-			zoroPlayer('0001234', 'Luffy, "Captain"'),
-			zoroPlayer('0009999', 'nami', { leader: 'OP01-016', cards: NAMI_CARDS, leaderAt: 'last' }),
-			zoroPlayer('42', 'zed', {
-				leaderAt: 5,
-				cards: [
-					['OP01-030', 4, 'Just Watch Me, "Ace"!!!'],
-					...ZORO_CARDS.slice(1),
+		['with a BOM and CRLF lines', { bom: true, lineEnding: '\r\n' as const }],
+		['without a BOM', { bom: false, lineEnding: '\n' as const }],
+	])(
+		'reads an export %s: quoted Nicknames, member numbers kept with their zeros, the Leader anywhere, and saves no Players',
+		async (_label, options) => {
+			const eventId = await stageEvent();
+			const csv = tcgPlusExport(
+				[
+					zoroPlayer('0001234', 'Luffy, "Captain"'),
+					zoroPlayer('0009999', 'nami', {
+						leader: 'OP01-016',
+						cards: NAMI_CARDS,
+						leaderAt: 'last',
+					}),
+					zoroPlayer('42', 'zed', {
+						leaderAt: 5,
+						cards: [['OP01-030', 4, 'Just Watch Me, "Ace"!!!'], ...ZORO_CARDS.slice(1)],
+					}),
 				],
-			}),
-		], options);
+				options,
+			);
 
-		const answer = await preview(eventId, csv);
+			const answer = await preview(eventId, csv);
 
-		expect(answer.added).toEqual([
-			{ memberNumber: '0001234', nickname: 'Luffy, "Captain"', leaderNumber: 'OP01-001' },
-			{ memberNumber: '0009999', nickname: 'nami', leaderNumber: 'OP01-016' },
-			{ memberNumber: '42', nickname: 'zed', leaderNumber: 'OP01-001' },
-		]);
-		expect(answer.warnings.ruleBreaches).toEqual([]);
-		expect(await eventPlayers(eventId)).toEqual([]);
-	});
+			expect(answer.added).toEqual([
+				{ memberNumber: '0001234', nickname: 'Luffy, "Captain"', leaderNumber: 'OP01-001' },
+				{ memberNumber: '0009999', nickname: 'nami', leaderNumber: 'OP01-016' },
+				{ memberNumber: '42', nickname: 'zed', leaderNumber: 'OP01-001' },
+			]);
+			expect(answer.warnings.ruleBreaches).toEqual([]);
+			expect(await eventPlayers(eventId)).toEqual([]);
+		},
+	);
 
 	it('counts each Leader, adds up a card exported over several printings, and warns of rule breaches and unknown cards', async () => {
 		const eventId = await stageEvent();
@@ -200,16 +222,11 @@ describe('a TCG+ Import preview', () => {
 			zoroPlayer('2', 'ben'),
 			zoroPlayer('3', 'cal', {
 				leader: 'OP01-016',
-				cards: [
-					...NAMI_CARDS,
-					['OP99-999', 1],
-				],
+				cards: [...NAMI_CARDS, ['OP99-999', 1]],
 			}),
 			zoroPlayer('4', 'dee', {
 				leader: 'OP99-001',
-				cards: [
-					['OP99-999', 5],
-				],
+				cards: [['OP99-999', 5]],
 			}),
 		]);
 
@@ -235,24 +252,25 @@ describe('a TCG+ Import preview', () => {
 				playerCount: 1,
 			},
 		]);
-		expect(answer.warnings.ruleBreaches.map((breach: any) => [
-			breach.nickname,
-			breach.warnings.map((warning: any) => warning.code),
-		])).toEqual([
-			[
-				'cal',
-				['MAINBOARD_COUNT'],
-			],
-			[
-				'dee',
-				['MAINBOARD_COUNT', 'TOO_MANY_COPIES'],
-			],
+		expect(
+			answer.warnings.ruleBreaches.map((breach: any) => [
+				breach.nickname,
+				breach.warnings.map((warning: any) => warning.code),
+			]),
+		).toEqual([
+			['cal', ['MAINBOARD_COUNT']],
+			['dee', ['MAINBOARD_COUNT', 'TOO_MANY_COPIES']],
 		]);
 		expect(answer.warnings.unknownCards).toEqual([
 			{ number: 'OP99-999', playerCount: 2 },
 			{ number: 'OP99-001', playerCount: 1 },
 		]);
-		expect(answer.added.map((player: any) => player.nickname)).toEqual(['ana', 'ben', 'cal', 'dee']);
+		expect(answer.added.map((player: any) => player.nickname)).toEqual([
+			'ana',
+			'ben',
+			'cal',
+			'dee',
+		]);
 	});
 
 	it.each([
@@ -261,23 +279,15 @@ describe('a TCG+ Import preview', () => {
 			'an export with an unreadable quantity',
 			tcgPlusExport([
 				zoroPlayer('1', 'ana', {
-					cards: [
-						['OP01-030', 0],
-					],
+					cards: [['OP01-030', 0]],
 				}),
 			]),
 		],
-		[
-			'an export with no players',
-			tcgPlusExport([]),
-		],
+		['an export with no players', tcgPlusExport([])],
 		[
 			// A Player always shows by something, and an imported one has only their Nickname.
 			'an export naming a Player by a blank Nickname',
-			tcgPlusExport([
-				zoroPlayer('1', 'ana'),
-				zoroPlayer('2', '   '),
-			]),
+			tcgPlusExport([zoroPlayer('1', 'ana'), zoroPlayer('2', '   ')]),
 		],
 	])('refuses %s', async (_label, csv) => {
 		const eventId = await stageEvent();
@@ -291,9 +301,9 @@ describe('a TCG+ Import preview', () => {
 	it('is refused on a Magic Event', async () => {
 		const eventId = await stageEvent('mtg');
 
-		await expect(preview(eventId, tcgPlusExport([
-			zoroPlayer('1', 'ana'),
-		]))).rejects.toMatchObject({ statusCode: 404 });
+		await expect(preview(eventId, tcgPlusExport([zoroPlayer('1', 'ana')]))).rejects.toMatchObject({
+			statusCode: 404,
+		});
 	});
 });
 
@@ -301,12 +311,15 @@ describe('a TCG+ Import', () => {
 	it('adds each Player by member number with their Nickname and no name, and their Deck List as imported', async () => {
 		const eventId = await stageEvent();
 
-		const answer = await commit(eventId, tcgPlusExport([
-			zoroPlayer('0001234', 'ana', {
-				splitPrintings: ['OP01-030'],
-			}),
-			zoroPlayer('0005678', 'ben', { leader: 'OP01-016', cards: NAMI_CARDS }),
-		]));
+		const answer = await commit(
+			eventId,
+			tcgPlusExport([
+				zoroPlayer('0001234', 'ana', {
+					splitPrintings: ['OP01-030'],
+				}),
+				zoroPlayer('0005678', 'ben', { leader: 'OP01-016', cards: NAMI_CARDS }),
+			]),
+		);
 
 		expect(answer.results).toEqual({
 			created: 2,
@@ -316,36 +329,52 @@ describe('a TCG+ Import', () => {
 			handEditsKept: 0,
 		});
 		const players = await eventPlayers(eventId);
-		expect(players.map(player => [
-			player.externalSource,
-			player.externalId,
-			player.nickname,
-			player.name,
-			player.isActive,
-		])).toEqual([
+		expect(
+			players.map((player) => [
+				player.externalSource,
+				player.externalId,
+				player.nickname,
+				player.name,
+				player.isActive,
+			]),
+		).toEqual([
 			['tcgplus', '0001234', 'ana', '', true],
 			['tcgplus', '0005678', 'ben', '', true],
 		]);
-		const [deck] = await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.playerId, players[0]!.id));
-		expect(deck).toMatchObject({ leaderCardNumber: 'OP01-001', handEdited: false, name: 'Roronoa Zoro' });
-		const entries = await db.select({ number: schema.cards.cardNumber, quantity: schema.playerDeckCards.quantity })
+		const [deck] = await db
+			.select()
+			.from(schema.playerDecks)
+			.where(eq(schema.playerDecks.playerId, players[0]!.id));
+		expect(deck).toMatchObject({
+			leaderCardNumber: 'OP01-001',
+			handEdited: false,
+			name: 'Roronoa Zoro',
+		});
+		const entries = await db
+			.select({ number: schema.cards.cardNumber, quantity: schema.playerDeckCards.quantity })
 			.from(schema.playerDeckCards)
 			.innerJoin(schema.cards, eq(schema.cards.id, schema.playerDeckCards.cardId))
 			.where(eq(schema.playerDeckCards.deckId, deck!.id));
 		expect(entries).toHaveLength(14);
-		expect(entries.find(entry => entry.number === 'OP01-030')).toEqual({ number: 'OP01-030', quantity: 4 });
+		expect(entries.find((entry) => entry.number === 'OP01-030')).toEqual({
+			number: 'OP01-030',
+			quantity: 4,
+		});
 		expect(players[0]!.archetypeId).toBe(deck!.archetypeId);
-		expect(published.map(message => message.type)).toEqual(['archetype:created', 'archetype:created', 'tcgplus:imported']);
+		expect(published.map((message) => message.type)).toEqual([
+			'archetype:created',
+			'archetype:created',
+			'tcgplus:imported',
+		]);
 		expect(published.at(-1)!.payload).toEqual({ playerCount: 2, deckCount: 2 });
 	});
 
 	it('on re-import refreshes Nicknames, keeps operator names, replaces only changed Deck Lists, and marks the missing inactive', async () => {
 		const eventId = await stageEvent();
-		await commit(eventId, tcgPlusExport([
-			zoroPlayer('1', 'ana'),
-			zoroPlayer('2', 'ben'),
-			zoroPlayer('3', 'cal'),
-		]));
+		await commit(
+			eventId,
+			tcgPlusExport([zoroPlayer('1', 'ana'), zoroPlayer('2', 'ben'), zoroPlayer('3', 'cal')]),
+		);
 		const [ana, ben, cal] = await eventPlayers(eventId);
 		await db.update(schema.players).set({ name: 'Ana Lima' }).where(eq(schema.players.id, ana!.id));
 		const decksBefore = await eventDeckIds(eventId);
@@ -360,12 +389,8 @@ describe('a TCG+ Import', () => {
 
 		expect(previewed).toMatchObject({
 			added: [],
-			deckListChanged: [
-				{ playerId: ben!.id, shownAs: 'ben', memberNumber: '2' },
-			],
-			deactivated: [
-				{ playerId: cal!.id, shownAs: 'cal', memberNumber: '3' },
-			],
+			deckListChanged: [{ playerId: ben!.id, shownAs: 'ben', memberNumber: '2' }],
+			deactivated: [{ playerId: cal!.id, shownAs: 'cal', memberNumber: '3' }],
 		});
 		expect(answer.results).toEqual({
 			created: 0,
@@ -374,21 +399,30 @@ describe('a TCG+ Import', () => {
 			deckListsWritten: 1,
 			handEditsKept: 0,
 		});
-		expect((await eventPlayers(eventId)).map(player => [player.name, player.nickname, player.isActive])).toEqual([
+		expect(
+			(await eventPlayers(eventId)).map((player) => [
+				player.name,
+				player.nickname,
+				player.isActive,
+			]),
+		).toEqual([
 			['Ana Lima', 'ana_tcg', true],
 			['', 'ben', true],
 			['', 'cal', false],
 		]);
 		const decksAfter = await eventDeckIds(eventId);
-		expect([ana, ben, cal].map(player => decksAfter.get(player!.id) === decksBefore.get(player!.id))).toEqual([true, false, true]);
-		expect(published.map(message => message.type)).toEqual(['archetype:created', 'tcgplus:imported']);
+		expect(
+			[ana, ben, cal].map((player) => decksAfter.get(player!.id) === decksBefore.get(player!.id)),
+		).toEqual([true, false, true]);
+		expect(published.map((message) => message.type)).toEqual([
+			'archetype:created',
+			'tcgplus:imported',
+		]);
 	});
 
 	it('changes nothing, and announces nothing, when re-imported unchanged', async () => {
 		const eventId = await stageEvent();
-		const csv = tcgPlusExport([
-			zoroPlayer('1', 'ana'),
-		]);
+		const csv = tcgPlusExport([zoroPlayer('1', 'ana')]);
 		await commit(eventId, csv);
 		const before = await eventPlayers(eventId);
 		published.length = 0;
@@ -402,7 +436,9 @@ describe('a TCG+ Import', () => {
 			deckListsWritten: 0,
 			handEditsKept: 0,
 		});
-		expect((await eventPlayers(eventId)).map(player => player.updatedAt)).toEqual(before.map(player => player.updatedAt));
+		expect((await eventPlayers(eventId)).map((player) => player.updatedAt)).toEqual(
+			before.map((player) => player.updatedAt),
+		);
 		expect(published).toEqual([]);
 	});
 
@@ -410,10 +446,7 @@ describe('a TCG+ Import', () => {
 		const eventId = await stageEvent();
 		const csv = tcgPlusExport([
 			zoroPlayer('1', 'ana', {
-				cards: [
-					...ZORO_CARDS.slice(0, 2),
-					['OP99-999', 1],
-				],
+				cards: [...ZORO_CARDS.slice(0, 2), ['OP99-999', 1]],
 			}),
 		]);
 		await commit(eventId, csv);
@@ -421,71 +454,67 @@ describe('a TCG+ Import', () => {
 
 		await commit(eventId, csv);
 
-		expect(upstream.batches()).toEqual([
-			['OP99-999'],
-		]);
+		expect(upstream.batches()).toEqual([['OP99-999']]);
 	});
 
 	// A hand-edited Deck List keeps its own cards and its flag; only the card is named.
 	it.each([
-		[
-			'the import brought',
-			null,
-			'OP99-999',
-			1,
-		],
-		[
-			'a hand edit holds',
-			'1x OP01-001\n3x OP99-998',
-			'OP99-998',
-			3,
-		],
-	] as const)('names an Unresolved Deck Card %s once bandai-keepr knows it, as previewed', async (_holder, handEdit, late, copies) => {
-		const eventId = await stageEvent();
-		const csv = tcgPlusExport([
-			zoroPlayer('1', 'ana', {
-				cards: [
-					['OP99-999', 1],
-				],
-			}),
-		]);
-		await commit(eventId, csv);
-		const [ana] = await eventPlayers(eventId);
-		if (handEdit)
-			await writeByHand(eventId, ana!.id, handEdit);
-		upstream.know(knownOpCard({
-			number: late,
-			name: 'Late Card',
-			category: 'character',
-			colors: ['Red'],
-		}));
+		['the import brought', null, 'OP99-999', 1],
+		['a hand edit holds', '1x OP01-001\n3x OP99-998', 'OP99-998', 3],
+	] as const)(
+		'names an Unresolved Deck Card %s once bandai-keepr knows it, as previewed',
+		async (_holder, handEdit, late, copies) => {
+			const eventId = await stageEvent();
+			const csv = tcgPlusExport([
+				zoroPlayer('1', 'ana', {
+					cards: [['OP99-999', 1]],
+				}),
+			]);
+			await commit(eventId, csv);
+			const [ana] = await eventPlayers(eventId);
+			if (handEdit) await writeByHand(eventId, ana!.id, handEdit);
+			upstream.know(
+				knownOpCard({
+					number: late,
+					name: 'Late Card',
+					category: 'character',
+					colors: ['Red'],
+				}),
+			);
 
-		const previewed = await preview(eventId, csv);
-		const answer = await commit(eventId, csv);
+			const previewed = await preview(eventId, csv);
+			const answer = await commit(eventId, csv);
 
-		expect(previewed.deckListChanged).toEqual([
-			{ playerId: ana!.id, shownAs: 'ana', memberNumber: '1' },
-		]);
-		expect(answer.results.deckListsWritten).toBe(1);
-		const [deck] = await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.playerId, ana!.id));
-		expect(deck!.handEdited).toBe(handEdit !== null);
-		expect(await db.select().from(schema.playerDeckUnresolvedCards).where(eq(schema.playerDeckUnresolvedCards.deckId, deck!.id))).toEqual([]);
-		const held = await db.select({ number: schema.cards.cardNumber, quantity: schema.playerDeckCards.quantity })
-			.from(schema.playerDeckCards)
-			.innerJoin(schema.cards, eq(schema.cards.id, schema.playerDeckCards.cardId))
-			.where(eq(schema.playerDeckCards.deckId, deck!.id));
-		expect(held).toContainEqual({ number: late, quantity: copies });
-	});
+			expect(previewed.deckListChanged).toEqual([
+				{ playerId: ana!.id, shownAs: 'ana', memberNumber: '1' },
+			]);
+			expect(answer.results.deckListsWritten).toBe(1);
+			const [deck] = await db
+				.select()
+				.from(schema.playerDecks)
+				.where(eq(schema.playerDecks.playerId, ana!.id));
+			expect(deck!.handEdited).toBe(handEdit !== null);
+			expect(
+				await db
+					.select()
+					.from(schema.playerDeckUnresolvedCards)
+					.where(eq(schema.playerDeckUnresolvedCards.deckId, deck!.id)),
+			).toEqual([]);
+			const held = await db
+				.select({ number: schema.cards.cardNumber, quantity: schema.playerDeckCards.quantity })
+				.from(schema.playerDeckCards)
+				.innerJoin(schema.cards, eq(schema.cards.id, schema.playerDeckCards.cardId))
+				.where(eq(schema.playerDeckCards.deckId, deck!.id));
+			expect(held).toContainEqual({ number: late, quantity: copies });
+		},
+	);
 
 	// The Event remembers a resolution, so a re-import still exporting the old number brings nothing back.
 	it('saves the card an operator resolved a number to, and changes nothing, when re-imported unchanged', async () => {
 		const eventId = await stageEvent();
 		const csv = tcgPlusExport([
 			zoroPlayer('1', 'ana', {
-				cards: [
-					...tcgPlusDeck('OP01', 12),
-					['OP91-042', 2],
-				],
+				cards: [...tcgPlusDeck('OP01', 12), ['OP91-042', 2]],
 			}),
 		]);
 		await commit(eventId, csv);
@@ -502,8 +531,14 @@ describe('a TCG+ Import', () => {
 		expect(answer.results.deckListsWritten).toBe(0);
 		expect(await eventDeckIds(eventId)).toEqual(resolvedIds);
 		const deckId = resolvedIds.get(ana!.id)!;
-		expect(await db.select().from(schema.playerDeckUnresolvedCards).where(eq(schema.playerDeckUnresolvedCards.deckId, deckId))).toEqual([]);
-		const held = await db.select({ number: schema.cards.cardNumber, quantity: schema.playerDeckCards.quantity })
+		expect(
+			await db
+				.select()
+				.from(schema.playerDeckUnresolvedCards)
+				.where(eq(schema.playerDeckUnresolvedCards.deckId, deckId)),
+		).toEqual([]);
+		const held = await db
+			.select({ number: schema.cards.cardNumber, quantity: schema.playerDeckCards.quantity })
 			.from(schema.playerDeckCards)
 			.innerJoin(schema.cards, eq(schema.cards.id, schema.playerDeckCards.cardId))
 			.where(eq(schema.playerDeckCards.deckId, deckId));
@@ -512,10 +547,7 @@ describe('a TCG+ Import', () => {
 
 	it('keeps a hand-edited Deck List the export differs from, flagged in the preview', async () => {
 		const eventId = await stageEvent();
-		await commit(eventId, tcgPlusExport([
-			zoroPlayer('1', 'ana'),
-			zoroPlayer('2', 'ben'),
-		]));
+		await commit(eventId, tcgPlusExport([zoroPlayer('1', 'ana'), zoroPlayer('2', 'ben')]));
 		const [ana] = await eventPlayers(eventId);
 		const handEdit = await writeByHand(eventId, ana!.id, '1x OP01-016\n4x OP02-030');
 		const csv = tcgPlusExport([
@@ -531,23 +563,28 @@ describe('a TCG+ Import', () => {
 			{ playerId: ana!.id, shownAs: 'ana', memberNumber: '1' },
 		]);
 		expect(answer.results).toMatchObject({ deckListsWritten: 0, handEditsKept: 1 });
-		const [deck] = await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.playerId, ana!.id));
-		expect(deck).toMatchObject({ id: handEdit.deckList.id, handEdited: true, leaderCardNumber: 'OP01-016' });
+		const [deck] = await db
+			.select()
+			.from(schema.playerDecks)
+			.where(eq(schema.playerDecks.playerId, ana!.id));
+		expect(deck).toMatchObject({
+			id: handEdit.deckList.id,
+			handEdited: true,
+			leaderCardNumber: 'OP01-016',
+		});
 	});
 
 	it('flags a Player added by hand whose name or Nickname matches an incoming Nickname, and merges nothing', async () => {
 		const eventId = await stageEvent();
-		const [byName, byNickname] = await db.insert(schema.players)
+		const [byName, byNickname] = await db
+			.insert(schema.players)
 			.values([
 				{ eventId, name: 'Ana', nickname: null },
 				{ eventId, name: '', nickname: 'BEN ' },
 				{ eventId, name: 'Cal', nickname: null },
 			])
 			.returning();
-		const csv = tcgPlusExport([
-			zoroPlayer('1', 'ana'),
-			zoroPlayer('2', 'ben'),
-		]);
+		const csv = tcgPlusExport([zoroPlayer('1', 'ana'), zoroPlayer('2', 'ben')]);
 
 		const previewed = await preview(eventId, csv);
 		await commit(eventId, csv);
@@ -569,7 +606,13 @@ describe('a TCG+ Import', () => {
 			},
 		]);
 		const players = await eventPlayers(eventId);
-		expect(players.map(player => [player.externalSource, player.isActive, player.gameData?.type ?? null])).toEqual([
+		expect(
+			players.map((player) => [
+				player.externalSource,
+				player.isActive,
+				player.gameData?.type ?? null,
+			]),
+		).toEqual([
 			[null, true, null],
 			[null, true, null],
 			[null, true, null],
@@ -580,42 +623,32 @@ describe('a TCG+ Import', () => {
 
 	it('saves nothing when the card lookup fails', async () => {
 		const eventId = await stageEvent();
-		upstream.fail(Object.assign(new Error('bandai-keepr down'), { code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' }));
+		upstream.fail(
+			Object.assign(new Error('bandai-keepr down'), { code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' }),
+		);
 
-		await expect(commit(eventId, tcgPlusExport([
-			zoroPlayer('1', 'ana'),
-		]))).rejects.toMatchObject({ code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' });
+		await expect(commit(eventId, tcgPlusExport([zoroPlayer('1', 'ana')]))).rejects.toMatchObject({
+			code: 'BANDAI_KEEPR_UPSTREAM_FAILURE',
+		});
 
 		expect(await eventPlayers(eventId)).toEqual([]);
-		expect(await db.select().from(schema.archetypes).where(eq(schema.archetypes.eventId, eventId))).toEqual([]);
+		expect(
+			await db.select().from(schema.archetypes).where(eq(schema.archetypes.eventId, eventId)),
+		).toEqual([]);
 		expect(published).toEqual([]);
 	});
 
 	// A Nickname is bounded as one written by hand is.
 	it.each([
-		[
-			'of 100 characters whole',
-			'n'.repeat(100),
-			'n'.repeat(100),
-		],
-		[
-			'over 100 characters cut to 100',
-			'n'.repeat(101),
-			'n'.repeat(100),
-		],
-		[
-			'cut short of a character 100 would split',
-			`${'n'.repeat(99)}\u{1F3F4}`,
-			'n'.repeat(99),
-		],
+		['of 100 characters whole', 'n'.repeat(100), 'n'.repeat(100)],
+		['over 100 characters cut to 100', 'n'.repeat(101), 'n'.repeat(100)],
+		['cut short of a character 100 would split', `${'n'.repeat(99)}\u{1F3F4}`, 'n'.repeat(99)],
 	])('stores a Nickname %s', async (_label, nickname, stored) => {
 		const eventId = await stageEvent();
 
-		await commit(eventId, tcgPlusExport([
-			zoroPlayer('1', nickname),
-		]));
+		await commit(eventId, tcgPlusExport([zoroPlayer('1', nickname)]));
 
-		expect((await eventPlayers(eventId)).map(player => player.nickname)).toEqual([stored]);
+		expect((await eventPlayers(eventId)).map((player) => player.nickname)).toEqual([stored]);
 	});
 
 	// The Players commit before their Deck Lists, so peers hear of them even when the Deck Lists fail.
@@ -624,13 +657,12 @@ describe('a TCG+ Import', () => {
 		await harness.client.execute(`create trigger refuse_deck_list before insert on player_decks
 			when new.event_id = ${eventId} begin select raise(abort, 'deck list refused'); end`);
 
-		await expect(commit(eventId, tcgPlusExport([
-			zoroPlayer('1', 'ana'),
-			zoroPlayer('2', 'ben'),
-		]))).rejects.toThrow('deck list refused');
+		await expect(
+			commit(eventId, tcgPlusExport([zoroPlayer('1', 'ana'), zoroPlayer('2', 'ben')])),
+		).rejects.toThrow('deck list refused');
 		await harness.client.execute('drop trigger refuse_deck_list');
 
-		expect((await eventPlayers(eventId)).map(player => player.nickname)).toEqual(['ana', 'ben']);
+		expect((await eventPlayers(eventId)).map((player) => player.nickname)).toEqual(['ana', 'ben']);
 		expect(published).toEqual([
 			{
 				eventId,
@@ -644,19 +676,27 @@ describe('a TCG+ Import', () => {
 describe('use imported Deck List', () => {
 	it('drops a hand edit for the Deck List the last import brought, so the next import applies again', async () => {
 		const eventId = await stageEvent();
-		await commit(eventId, tcgPlusExport([
-			zoroPlayer('1', 'ana'),
-		]));
+		await commit(eventId, tcgPlusExport([zoroPlayer('1', 'ana')]));
 		const [ana] = await eventPlayers(eventId);
 		await writeByHand(eventId, ana!.id, '1x OP01-016\n4x OP02-030');
 
 		const answer = await useImported(eventId, ana!.id);
-		await commit(eventId, tcgPlusExport([
-			zoroPlayer('1', 'ana', { leader: 'OP01-016', cards: NAMI_CARDS }),
-		]));
+		await commit(
+			eventId,
+			tcgPlusExport([zoroPlayer('1', 'ana', { leader: 'OP01-016', cards: NAMI_CARDS })]),
+		);
 
-		expect(answer.deckList).toMatchObject({ handEdited: false, leaderNumber: 'OP01-001', mainboardCount: 50 });
-		const [deck] = await db.select().from(schema.playerDecks).where(and(eq(schema.playerDecks.eventId, eventId), eq(schema.playerDecks.playerId, ana!.id)));
+		expect(answer.deckList).toMatchObject({
+			handEdited: false,
+			leaderNumber: 'OP01-001',
+			mainboardCount: 50,
+		});
+		const [deck] = await db
+			.select()
+			.from(schema.playerDecks)
+			.where(
+				and(eq(schema.playerDecks.eventId, eventId), eq(schema.playerDecks.playerId, ana!.id)),
+			);
 		expect(deck).toMatchObject({ handEdited: false, leaderCardNumber: 'OP01-016' });
 	});
 

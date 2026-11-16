@@ -18,7 +18,7 @@ export function mtgColorsToString(colors: MtgColor[]): string {
 }
 
 export function mtgColorsFromString(colors: string): MtgColor[] {
-	return colors.split('').map(color => color);
+	return colors.split('').map((color) => color);
 }
 
 export const mtgSets: {
@@ -38,13 +38,16 @@ export const mtgSets: {
 
 export type MtgCardDisplayMode = 'preview' | 'output' | 'list' | 'history';
 
-export const mtgCardDisplayModes: Record<MtgCardDisplayMode, {
-	animated: boolean;
-	turnoverable: boolean;
-	selectable: boolean;
-	rotatable: boolean;
-	counterRotatable: boolean;
-}> = {
+export const mtgCardDisplayModes: Record<
+	MtgCardDisplayMode,
+	{
+		animated: boolean;
+		turnoverable: boolean;
+		selectable: boolean;
+		rotatable: boolean;
+		counterRotatable: boolean;
+	}
+> = {
 	preview: {
 		animated: true,
 		turnoverable: false,

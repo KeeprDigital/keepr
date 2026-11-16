@@ -41,9 +41,9 @@ export interface ResolvedBroadcastDeckListCard {
 	deckCounterTypes: string[];
 }
 
-export type BroadcastDeckListCardResolution
-	= | { status: 'resolved'; card: ResolvedBroadcastDeckListCard }
-		| { status: 'unresolved' };
+export type BroadcastDeckListCardResolution =
+	| { status: 'resolved'; card: ResolvedBroadcastDeckListCard }
+	| { status: 'unresolved' };
 
 export interface BroadcastDeckListCardResolver {
 	resolve: (
@@ -83,8 +83,10 @@ export const BROADCAST_DECK_LIST_LIST_ERROR_CODES = [
 	'EMPTY_DECK_LIST',
 ] as const;
 
-export type BroadcastDeckListImportLineErrorCode = typeof BROADCAST_DECK_LIST_LINE_ERROR_CODES[number];
-export type BroadcastDeckListImportListErrorCode = typeof BROADCAST_DECK_LIST_LIST_ERROR_CODES[number];
+export type BroadcastDeckListImportLineErrorCode =
+	(typeof BROADCAST_DECK_LIST_LINE_ERROR_CODES)[number];
+export type BroadcastDeckListImportListErrorCode =
+	(typeof BROADCAST_DECK_LIST_LIST_ERROR_CODES)[number];
 
 export interface BroadcastDeckListImportLineError {
 	lineNumber: number;
@@ -98,13 +100,13 @@ export interface BroadcastDeckListImportListError {
 	message: string;
 }
 
-export type BroadcastDeckListImportError
-	= | BroadcastDeckListImportLineError
-		| BroadcastDeckListImportListError;
+export type BroadcastDeckListImportError =
+	| BroadcastDeckListImportLineError
+	| BroadcastDeckListImportListError;
 
-export type BroadcastDeckListImportResult
-	= | { ok: true; document: BroadcastDeckListCanonicalDocument }
-		| { ok: false; errors: BroadcastDeckListImportError[] };
+export type BroadcastDeckListImportResult =
+	| { ok: true; document: BroadcastDeckListCanonicalDocument }
+	| { ok: false; errors: BroadcastDeckListImportError[] };
 
 interface ParsedCardRow extends ParsedCardLine {
 	compartment: BroadcastDeckListCompartment;
@@ -132,9 +134,7 @@ function parseCardRow(
 		return lineError(line, 'UNSUPPORTED_SYNTAX', 'Comments and deck metadata are not supported');
 
 	const parsed = parseCardLine(line, compartment === 'companion');
-	return 'code' in parsed
-		? parsed
-		: { ...parsed, compartment };
+	return 'code' in parsed ? parsed : { ...parsed, compartment };
 }
 
 export async function importBroadcastDeckList(
@@ -148,8 +148,8 @@ export async function importBroadcastDeckList(
 			errors: [physicalLines],
 		};
 	}
-	const normalizedLines = physicalLines.filter(line => line.sourceText.length > 0);
-	const sourceText = normalizedLines.map(line => line.sourceText).join('\n');
+	const normalizedLines = physicalLines.filter((line) => line.sourceText.length > 0);
+	const sourceText = normalizedLines.map((line) => line.sourceText).join('\n');
 	let compartment: BroadcastDeckListCompartment = 'mainboard';
 	let companionRows = 0;
 	const rows: ParsedCardRow[] = [];
@@ -170,16 +170,17 @@ export async function importBroadcastDeckList(
 		}
 
 		const parsed = parseCardRow(line, compartment);
-		if ('code' in parsed)
-			errors.push(parsed);
-		else
-			rows.push(parsed);
+		if ('code' in parsed) errors.push(parsed);
+		else rows.push(parsed);
 	}
 	const limitErrors = cardRowLimitErrors(rows);
 	errors.push(...limitErrors);
 	let blocksResolution = limitErrors.length > 0;
-	if (errors.length === 0 && !rows.some(row => row.compartment !== 'companion')) {
-		errors.push({ code: 'EMPTY_DECK_LIST', message: 'At least one Mainboard or Sideboard card is required' });
+	if (errors.length === 0 && !rows.some((row) => row.compartment !== 'companion')) {
+		errors.push({
+			code: 'EMPTY_DECK_LIST',
+			message: 'At least one Mainboard or Sideboard card is required',
+		});
 		blocksResolution = true;
 	}
 
@@ -207,9 +208,11 @@ export async function importBroadcastDeckList(
 			continue;
 		}
 
-		const entry = addToBoard(row.compartment === 'mainboard'
-			? mainboard
-			: sideboard, card, row.quantity);
+		const entry = addToBoard(
+			row.compartment === 'mainboard' ? mainboard : sideboard,
+			card,
+			row.quantity,
+		);
 		const mergeKey = `${row.compartment}:${card.scryfallId}`;
 		if (entry.quantity > MAX_ENTRY_QUANTITY && !exceededMergedEntries.has(mergeKey)) {
 			exceededMergedEntries.add(mergeKey);

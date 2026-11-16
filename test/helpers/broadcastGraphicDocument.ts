@@ -4,10 +4,7 @@ import type {
 	GraphicSurfaceStyle,
 } from '../../shared/types/graphics';
 import type { GraphicAssetReference } from '../../shared/types/graphicsAsset';
-import {
-	addGraphicGroupChild,
-	addGraphicItem,
-} from '../../shared/modules/graphics';
+import { addGraphicGroupChild, addGraphicItem } from '../../shared/modules/graphics';
 
 /**
  * A Broadcast Graphic with every optional field of the vocabulary populated.
@@ -103,61 +100,89 @@ export function maximalBroadcastGraphicDocument(
 	// package carrying one is accepted and installed. A transfer that has never
 	// been held to four of the nine branches is a transfer nobody has tested.
 	const withGroup = addGraphicItem(base, { kind: 'group', id: 'cluster', ...CANVAS }).graphic;
-	const withChild = addGraphicGroupChild(withGroup, { kind: 'shape', groupId: 'cluster', id: 'child' }).graphic;
-	const withProjectedText = addGraphicGroupChild(
-		withChild,
-		{ kind: 'text', groupId: 'cluster', id: 'projected-handle' },
-	).graphic;
-	const withProjectedIcon = addGraphicGroupChild(
-		withProjectedText,
-		{ kind: 'social-network-icon', groupId: 'cluster', id: 'projected-icon' },
-	).graphic;
-	const withHeadline = addGraphicItem(withProjectedIcon, { kind: 'text', id: 'headline', ...CANVAS }).graphic;
-	const withBackdrop = addGraphicItem(withHeadline, { kind: 'media', id: 'backdrop', ...CANVAS }).graphic;
-	const withSocialIcon = addGraphicItem(
-		withBackdrop,
-		{ kind: 'social-network-icon', id: 'social-icon', ...CANVAS },
-	).graphic;
-	const withClock = addGraphicItem(withSocialIcon, { kind: 'clock', id: 'countdown', ...CANVAS }).graphic;
-	const withLife = addGraphicItem(withClock, { kind: 'player-life', id: 'life', ...CANVAS }).graphic;
+	const withChild = addGraphicGroupChild(withGroup, {
+		kind: 'shape',
+		groupId: 'cluster',
+		id: 'child',
+	}).graphic;
+	const withProjectedText = addGraphicGroupChild(withChild, {
+		kind: 'text',
+		groupId: 'cluster',
+		id: 'projected-handle',
+	}).graphic;
+	const withProjectedIcon = addGraphicGroupChild(withProjectedText, {
+		kind: 'social-network-icon',
+		groupId: 'cluster',
+		id: 'projected-icon',
+	}).graphic;
+	const withHeadline = addGraphicItem(withProjectedIcon, {
+		kind: 'text',
+		id: 'headline',
+		...CANVAS,
+	}).graphic;
+	const withBackdrop = addGraphicItem(withHeadline, {
+		kind: 'media',
+		id: 'backdrop',
+		...CANVAS,
+	}).graphic;
+	const withSocialIcon = addGraphicItem(withBackdrop, {
+		kind: 'social-network-icon',
+		id: 'social-icon',
+		...CANVAS,
+	}).graphic;
+	const withClock = addGraphicItem(withSocialIcon, {
+		kind: 'clock',
+		id: 'countdown',
+		...CANVAS,
+	}).graphic;
+	const withLife = addGraphicItem(withClock, {
+		kind: 'player-life',
+		id: 'life',
+		...CANVAS,
+	}).graphic;
 	const withWins = addGraphicItem(withLife, { kind: 'game-wins', id: 'wins', ...CANVAS }).graphic;
-	const withSideboard = addGraphicItem(withWins, { kind: 'deck-list', id: 'sideboard', ...CANVAS }).graphic;
-	const withDamage = addGraphicItem(withSideboard, { kind: 'commander-damage', id: 'commander-damage', ...CANVAS }).graphic;
-	const document = addGraphicItem(withDamage, { kind: 'seat-indicator', id: 'turn', ...CANVAS }).graphic;
+	const withSideboard = addGraphicItem(withWins, {
+		kind: 'deck-list',
+		id: 'sideboard',
+		...CANVAS,
+	}).graphic;
+	const withDamage = addGraphicItem(withSideboard, {
+		kind: 'commander-damage',
+		id: 'commander-damage',
+		...CANVAS,
+	}).graphic;
+	const document = addGraphicItem(withDamage, {
+		kind: 'seat-indicator',
+		id: 'turn',
+		...CANVAS,
+	}).graphic;
 
-	const group = document.items.find(item => item.id === 'cluster');
-	if (group?.type !== 'group')
-		throw new Error('expected a Graphic Group');
+	const group = document.items.find((item) => item.id === 'cluster');
+	if (group?.type !== 'group') throw new Error('expected a Graphic Group');
 	const child = group.children[0];
 	if (child?.type !== 'shape')
 		throw new Error('expected a Shape Graphic Item inside the Graphic Group');
-	const projectedText = group.children.find(item => item.id === 'projected-handle');
+	const projectedText = group.children.find((item) => item.id === 'projected-handle');
 	if (projectedText?.type !== 'text')
 		throw new Error('expected projected text inside the Graphic Group');
-	const projectedIcon = group.children.find(item => item.id === 'projected-icon');
+	const projectedIcon = group.children.find((item) => item.id === 'projected-icon');
 	if (projectedIcon?.type !== 'social-network-icon')
 		throw new Error('expected a projected Social Network Icon inside the Graphic Group');
-	const headline = document.items.find(item => item.id === 'headline');
-	if (headline?.type !== 'text')
-		throw new Error('expected a Text Graphic Item');
-	const backdrop = document.items.find(item => item.id === 'backdrop');
-	if (backdrop?.type !== 'media')
-		throw new Error('expected a Media Graphic Item');
-	const socialIcon = document.items.find(item => item.id === 'social-icon');
+	const headline = document.items.find((item) => item.id === 'headline');
+	if (headline?.type !== 'text') throw new Error('expected a Text Graphic Item');
+	const backdrop = document.items.find((item) => item.id === 'backdrop');
+	if (backdrop?.type !== 'media') throw new Error('expected a Media Graphic Item');
+	const socialIcon = document.items.find((item) => item.id === 'social-icon');
 	if (socialIcon?.type !== 'social-network-icon')
 		throw new Error('expected a Social Network Icon Graphic Item');
-	const countdown = document.items.find(item => item.id === 'countdown');
-	if (countdown?.type !== 'clock')
-		throw new Error('expected a Clock Graphic Item');
-	const life = document.items.find(item => item.id === 'life');
-	if (life?.type !== 'player-life')
-		throw new Error('expected a Player Life Graphic Item');
-	const wins = document.items.find(item => item.id === 'wins');
-	if (wins?.type !== 'game-wins')
-		throw new Error('expected a Game Wins Graphic Item');
-	const sideboard = document.items.find(item => item.id === 'sideboard');
-	if (sideboard?.type !== 'deck-list')
-		throw new Error('expected a Deck List Graphic Item');
+	const countdown = document.items.find((item) => item.id === 'countdown');
+	if (countdown?.type !== 'clock') throw new Error('expected a Clock Graphic Item');
+	const life = document.items.find((item) => item.id === 'life');
+	if (life?.type !== 'player-life') throw new Error('expected a Player Life Graphic Item');
+	const wins = document.items.find((item) => item.id === 'wins');
+	if (wins?.type !== 'game-wins') throw new Error('expected a Game Wins Graphic Item');
+	const sideboard = document.items.find((item) => item.id === 'sideboard');
+	if (sideboard?.type !== 'deck-list') throw new Error('expected a Deck List Graphic Item');
 
 	// The one field a Template Package is *defined* to rewrite, so the round trip has
 	// something to prove it rewrote as well as something to prove it carried.
@@ -182,7 +207,8 @@ export function maximalBroadcastGraphicDocument(
 	socialIcon.color = '#1185fe';
 	socialIcon.opacity = 0.65;
 	socialIcon.rotation = 8;
-	projectedText.text = '{talent-profile.networkLabel} · {talent-profile.handle} · {talent-profile.profileUrl}';
+	projectedText.text =
+		'{talent-profile.networkLabel} · {talent-profile.handle} · {talent-profile.profileUrl}';
 	projectedText.placeholderStyles = {
 		'talent-profile.handle': { color: '#ffcc00', fontWeight: 900 },
 	};
@@ -262,7 +288,7 @@ export function maximalBroadcastGraphicDocument(
 	};
 
 	document.animation = {
-		'enter': {
+		enter: {
 			duration: 400,
 			easing: 'ease-out',
 			delay: 100,
@@ -276,21 +302,21 @@ export function maximalBroadcastGraphicDocument(
 			repeat: 3,
 			scale: { factor: 1.1, origin: 'center' },
 		},
-		'update': {
+		update: {
 			duration: 250,
 			easing: 'ease-in-out',
 			delay: 0,
 			fade: { opacity: 0.5 },
 		},
-		'exit': {
+		exit: {
 			duration: 300,
 			easing: 'ease-in',
 			delay: 0,
 			slide: { direction: 'south', distanceMode: 'fixed', distance: 200 },
 			reveal: { edge: 'left' },
 		},
-		'stagger': {
-			'enter': {
+		stagger: {
+			enter: {
 				order: 'list',
 				step: 80,
 				itemIds: ['headline', 'cluster'],
@@ -300,22 +326,15 @@ export function maximalBroadcastGraphicDocument(
 				step: 40,
 				itemIds: ['cluster'],
 			},
-			'update': {
+			update: {
 				order: 'list',
 				step: 20,
 				itemIds: ['headline'],
 			},
-			'exit': {
+			exit: {
 				order: 'reverse-list',
 				step: 60,
-				itemIds: [
-					'cluster',
-					'backdrop',
-					'social-icon',
-					'countdown',
-					'life',
-					'wins',
-				],
+				itemIds: ['cluster', 'backdrop', 'social-icon', 'countdown', 'life', 'wins'],
 			},
 		},
 	};
@@ -429,9 +448,7 @@ export function maximalBroadcastGraphicDocument(
 		},
 		{ key: 'talent', label: 'Talent', kind: 'talent' },
 	];
-	document.bindings = [
-		{ inputKey: 'headline', sourceKey: 'player', fieldId: 'player.name' },
-	];
+	document.bindings = [{ inputKey: 'headline', sourceKey: 'player', fieldId: 'player.name' }];
 	document.socialProfileProjections = [
 		{
 			key: 'talent-profile',

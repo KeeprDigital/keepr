@@ -21,6 +21,6 @@ const emit = defineEmits<{
 		commit="close"
 		:aria-label="`${label} colour`"
 		data-token-part="colour"
-		@update:model-value="value => value && emit('commit', value)"
+		@update:model-value="(value) => value && emit('commit', value)"
 	/>
 </template>

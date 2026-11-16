@@ -15,8 +15,14 @@ import {
 	graphicAssetRevisions,
 	graphicAssets,
 } from '~~/server/db/schema/graphicsAsset';
-import { createCommandIdSequence, seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
-import { testGraphicAssetId, testGraphicAssetRevisionId } from '~~/test/helpers/graphicsAssetIdentities';
+import {
+	createCommandIdSequence,
+	seedBroadcastGraphicsScreen,
+} from '~~/test/helpers/broadcastGraphicsScreen';
+import {
+	testGraphicAssetId,
+	testGraphicAssetRevisionId,
+} from '~~/test/helpers/graphicsAssetIdentities';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // A playout epoch ends in the same commit as the write that ends it — a Screen
@@ -24,7 +30,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // So failures are injected into that one commit, and nothing may move.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -44,7 +51,8 @@ vi.doMock('~~/server/utils/ably', () => ({
 }));
 
 const { screenWriteModule } = await import('~~/server/modules/screen-write');
-const { broadcastGraphicsLiveSessionModule } = await import('~~/server/modules/broadcast-graphics-live-session');
+const { broadcastGraphicsLiveSessionModule } =
+	await import('~~/server/modules/broadcast-graphics-live-session');
 
 const ASSET_ID = 'asset-clip';
 const REVISION_ID = 'revision-one';
@@ -67,9 +75,7 @@ const SLATE: BroadcastGraphicConfig = {
 	id: 'slate',
 	name: 'Slate',
 	items: [],
-	inputs: [
-		mediaInput(CLIP),
-	],
+	inputs: [mediaInput(CLIP)],
 };
 
 const STACK: BroadcastGraphicsModeConfig = {
@@ -78,7 +84,9 @@ const STACK: BroadcastGraphicsModeConfig = {
 
 /** Answers for the one revision seeded below; `Set Input` asks it at selection. */
 const graphicsAssetLibrary = {
-	async inspectGraphicAssetRevision(input: { revisionId: string }): Promise<GraphicAssetReferenceStatus> {
+	async inspectGraphicAssetRevision(input: {
+		revisionId: string;
+	}): Promise<GraphicAssetReferenceStatus> {
 		return input.revisionId === REVISION_ID
 			? { outcome: 'available', lifecycleState: 'active', kind: 'image' }
 			: { outcome: 'missing' };
@@ -87,7 +95,10 @@ const graphicsAssetLibrary = {
 
 const nextCommandId = createCommandIdSequence();
 
-function command(type: BroadcastGraphicsCommand['type'], payload: Record<string, unknown>): BroadcastGraphicsCommand {
+function command(
+	type: BroadcastGraphicsCommand['type'],
+	payload: Record<string, unknown>,
+): BroadcastGraphicsCommand {
 	return {
 		commandId: nextCommandId(),
 		type,
@@ -117,14 +128,16 @@ async function showOnAir() {
 	};
 
 	await apply(command('Take', { graphicId: SLATE.id, cut: true }));
-	await apply(command('Set Input', {
-		graphicId: SLATE.id,
-		inputKey: CLIP,
-		value: {
-			assetId: testGraphicAssetId(ASSET_ID),
-			revisionId: testGraphicAssetRevisionId(REVISION_ID),
-		} satisfies MediaGraphicInputValue,
-	}));
+	await apply(
+		command('Set Input', {
+			graphicId: SLATE.id,
+			inputKey: CLIP,
+			value: {
+				assetId: testGraphicAssetId(ASSET_ID),
+				revisionId: testGraphicAssetRevisionId(REVISION_ID),
+			} satisfies MediaGraphicInputValue,
+		}),
+	);
 
 	published.length = 0;
 	return { module, sessionId: session.id };
@@ -147,15 +160,18 @@ async function activeSession() {
 
 /** Whether this Screen still publishes anything its Live Session accepted. */
 async function publishesLiveSessionMedia(): Promise<boolean> {
-	const row = await harness.database.prepare(`
+	const row = await harness.database
+		.prepare(`
 		SELECT count(*) AS total FROM graphic_asset_references
 		WHERE owner_kind = 'screen' AND owner_id = ? AND owner_slot LIKE 'liveSession.%'
-	`).bind(String(screenId)).first<{ total: number }>();
+	`)
+		.bind(String(screenId))
+		.first<{ total: number }>();
 	return (row?.total ?? 0) > 0;
 }
 
 function epochEndedAnnouncements() {
-	return published.filter(message => message.name === 'broadcastGraphicsLiveSession:epochEnded');
+	return published.filter((message) => message.name === 'broadcastGraphicsLiveSession:epochEnded');
 }
 
 /** Whichever graphics the Screen's current epoch has on air. */
@@ -214,12 +230,14 @@ describe('a Screen leaving Broadcast Graphics mode', () => {
 		// Fail the one commit carrying both halves.
 		vi.spyOn(db, 'batch').mockRejectedValueOnce(new Error('epoch end failed'));
 
-		await expect(screenWriteModule().updateScreen({
-			authoringSessionId: undefined,
-			eventId,
-			screenId,
-			input: { stateVersion: 0, currentMode: 'background' } as never,
-		})).rejects.toThrow();
+		await expect(
+			screenWriteModule().updateScreen({
+				authoringSessionId: undefined,
+				eventId,
+				screenId,
+				input: { stateVersion: 0, currentMode: 'background' } as never,
+			}),
+		).rejects.toThrow();
 
 		const screen = await screenRow();
 		expect(screen?.currentMode).toBe('broadcast-graphics');
@@ -245,25 +263,33 @@ describe('a Screen leaving Broadcast Graphics mode', () => {
 		const { module } = await showOnAir();
 		vi.spyOn(db, 'batch').mockRejectedValueOnce(new Error('epoch end failed'));
 
-		await expect(screenWriteModule().updateScreen({
-			authoringSessionId: undefined,
-			eventId,
-			screenId,
-			input: { stateVersion: 0, currentMode: 'background' } as never,
-		})).rejects.toThrow();
+		await expect(
+			screenWriteModule().updateScreen({
+				authoringSessionId: undefined,
+				eventId,
+				screenId,
+				input: { stateVersion: 0, currentMode: 'background' } as never,
+			}),
+		).rejects.toThrow();
 
 		// Leave the mode, come back, and find nothing on air.
 		await screenWriteModule().updateScreen({
 			authoringSessionId: undefined,
 			eventId,
 			screenId,
-			input: { stateVersion: (await screenRow())!.stateVersion, currentMode: 'background' } as never,
+			input: {
+				stateVersion: (await screenRow())!.stateVersion,
+				currentMode: 'background',
+			} as never,
 		});
 		await screenWriteModule().updateScreen({
 			authoringSessionId: undefined,
 			eventId,
 			screenId,
-			input: { stateVersion: (await screenRow())!.stateVersion, currentMode: 'broadcast-graphics' } as never,
+			input: {
+				stateVersion: (await screenRow())!.stateVersion,
+				currentMode: 'broadcast-graphics',
+			} as never,
 		});
 		await module.loadSession(eventId, screenId);
 
@@ -275,12 +301,14 @@ describe('a Screen leaving Broadcast Graphics mode', () => {
 		// An end riding with a refused mode change must not blank the show.
 		const { sessionId } = await showOnAir();
 
-		await expect(screenWriteModule().updateScreen({
-			authoringSessionId: undefined,
-			eventId,
-			screenId,
-			input: { stateVersion: 99, currentMode: 'background' } as never,
-		})).rejects.toThrow();
+		await expect(
+			screenWriteModule().updateScreen({
+				authoringSessionId: undefined,
+				eventId,
+				screenId,
+				input: { stateVersion: 99, currentMode: 'background' } as never,
+			}),
+		).rejects.toThrow();
 
 		expect((await screenRow())?.currentMode).toBe('broadcast-graphics');
 		expect((await activeSession())?.id).toBe(sessionId);
@@ -295,11 +323,11 @@ describe('an operator resetting live state', () => {
 	function refuseStandaloneReferenceClears() {
 		const execute = harness.client.execute.bind(harness.client);
 		vi.spyOn(harness.client, 'execute').mockImplementation((async (statement: unknown) => {
-			const sql = typeof statement === 'string'
-				? statement
-				: (statement as { sql: string }).sql;
+			const sql = typeof statement === 'string' ? statement : (statement as { sql: string }).sql;
 			if (/delete\s+from\s+graphic_asset_references/i.test(sql))
-				throw new Error('Live Session references were cleared outside the commit that ended the epoch');
+				throw new Error(
+					'Live Session references were cleared outside the commit that ended the epoch',
+				);
 			return await execute(statement as never);
 		}) as never);
 	}

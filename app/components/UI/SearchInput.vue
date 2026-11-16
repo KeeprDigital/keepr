@@ -1,11 +1,14 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
-	placeholder?: string;
-	ariaLabel?: string;
-}>(), {
-	placeholder: 'Search…',
-	ariaLabel: 'Search',
-});
+withDefaults(
+	defineProps<{
+		placeholder?: string;
+		ariaLabel?: string;
+	}>(),
+	{
+		placeholder: 'Search…',
+		ariaLabel: 'Search',
+	},
+);
 
 const model = defineModel<string>({ default: '' });
 </script>
@@ -26,7 +29,11 @@ const model = defineModel<string>({ default: '' });
 				icon="i-lucide-x"
 				:padded="false"
 				aria-label="Clear search"
-				@click="() => { model = '' }"
+				@click="
+					() => {
+						model = '';
+					}
+				"
 			/>
 		</template>
 	</UInput>

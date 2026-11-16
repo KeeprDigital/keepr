@@ -98,18 +98,21 @@ export default function createEmberEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'ember'>,
 ): AnimationEffectInstance<AnimationEffectParams<'ember'>> {
-	return createShaderPlaneEffect({
-		three: THREE,
-		host,
-		fragmentShader: EMBER_FRAGMENT_SHADER,
-		uniforms: current => ({
-			emberColor: current.emberColor,
-			coreColor: current.coreColor,
-			backgroundColor: current.backgroundColor,
-			density: current.density,
-			size: current.size,
-			intensity: current.intensity,
-		}),
-		timeScale: current => current.speed,
-	}, params);
+	return createShaderPlaneEffect(
+		{
+			three: THREE,
+			host,
+			fragmentShader: EMBER_FRAGMENT_SHADER,
+			uniforms: (current) => ({
+				emberColor: current.emberColor,
+				coreColor: current.coreColor,
+				backgroundColor: current.backgroundColor,
+				density: current.density,
+				size: current.size,
+				intensity: current.intensity,
+			}),
+			timeScale: (current) => current.speed,
+		},
+		params,
+	);
 }

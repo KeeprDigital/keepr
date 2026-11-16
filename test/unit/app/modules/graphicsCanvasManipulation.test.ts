@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { canvasSnapLines, dragRotation, manipulateRect, neighbourGaps, nudgeRect } from '~~/app/modules/graphics/canvasManipulation';
+import {
+	canvasSnapLines,
+	dragRotation,
+	manipulateRect,
+	neighbourGaps,
+	nudgeRect,
+} from '~~/app/modules/graphics/canvasManipulation';
 
 /**
  * Direct manipulation on an editor canvas: what a drag from one handle does to a
@@ -129,7 +135,11 @@ describe('canvas manipulation', () => {
 			snapped: {},
 		},
 	])('a rotated rectangle $name', ({ handle, delta, rect, snapped }) => {
-		const result = manipulateRect(RECT, handle, delta, { snap: SNAP, rotation: 90, anchor: 'center' });
+		const result = manipulateRect(RECT, handle, delta, {
+			snap: SNAP,
+			rotation: 90,
+			anchor: 'center',
+		});
 		expect(result).toEqual({ rect, snapped });
 	});
 
@@ -202,9 +212,14 @@ describe('canvas manipulation', () => {
 				height: 150,
 			},
 		},
-	])('resizes a rotated rectangle by $name', ({ rotation, anchor, handle, delta, keepRatio, rect }) => {
-		expect(manipulateRect(RECT, handle, delta, { rotation, anchor, keepRatio }).rect).toEqual(rect);
-	});
+	])(
+		'resizes a rotated rectangle by $name',
+		({ rotation, anchor, handle, delta, keepRatio, rect }) => {
+			expect(manipulateRect(RECT, handle, delta, { rotation, anchor, keepRatio }).rect).toEqual(
+				rect,
+			);
+		},
+	);
 
 	// The rotation a drag around the Graphic Anchor Point turns to, from where it started.
 	it.each([
@@ -223,7 +238,7 @@ describe('canvas manipulation', () => {
 			expected: 120,
 		},
 		{
-			name: 'sweeps about the item\'s own anchor',
+			name: "sweeps about the item's own anchor",
 			anchor: 'top-left' as const,
 			rotation: 0,
 			from: { x: 200, y: 100 },
@@ -275,7 +290,9 @@ describe('canvas manipulation', () => {
 			expected: -11,
 		},
 	])('a rotate drag $name', ({ anchor, rotation, from, to, step, expected }) => {
-		expect(dragRotation({ rect: RECT, rotation, anchor }, from ?? { x: 300, y: 150 }, to, { step })).toBe(expected);
+		expect(
+			dragRotation({ rect: RECT, rotation, anchor }, from ?? { x: 300, y: 150 }, to, { step }),
+		).toBe(expected);
 	});
 
 	it('does not snap from beyond the threshold', () => {
@@ -286,7 +303,11 @@ describe('canvas manipulation', () => {
 
 	describe('snap lines', () => {
 		const CANVAS = { width: 1000, height: 500 };
-		const layer = (id: string, rect: { x: number; y: number; width: number; height: number }, extra: object = {}) => ({
+		const layer = (
+			id: string,
+			rect: { x: number; y: number; width: number; height: number },
+			extra: object = {},
+		) => ({
 			id,
 			visible: true,
 			...rect,
@@ -312,12 +333,16 @@ describe('canvas manipulation', () => {
 				name: 'a hidden neighbour adds nothing',
 				layers: [
 					layer('self', { x: 0, y: 0, width: 10, height: 10 }),
-					layer('other', {
-						x: 100,
-						y: 50,
-						width: 200,
-						height: 100,
-					}, { visible: false }),
+					layer(
+						'other',
+						{
+							x: 100,
+							y: 50,
+							width: 200,
+							height: 100,
+						},
+						{ visible: false },
+					),
 				],
 				x: [0, 500, 1000],
 				y: [0, 250, 500],
@@ -339,12 +364,16 @@ describe('canvas manipulation', () => {
 				name: 'a neighbour rotated about its centre adds its axis-aligned bounds',
 				layers: [
 					layer('self', { x: 0, y: 0, width: 10, height: 10 }),
-					layer('other', {
-						x: 100,
-						y: 100,
-						width: 200,
-						height: 100,
-					}, { rotation: 90, anchor: 'center' }),
+					layer(
+						'other',
+						{
+							x: 100,
+							y: 100,
+							width: 200,
+							height: 100,
+						},
+						{ rotation: 90, anchor: 'center' },
+					),
 				],
 				x: [0, 150, 200, 250, 500, 1000],
 				y: [0, 50, 150, 250, 500],
@@ -353,12 +382,16 @@ describe('canvas manipulation', () => {
 				name: 'a neighbour rotated about its top-left corner adds the bounds it swings into',
 				layers: [
 					layer('self', { x: 0, y: 0, width: 10, height: 10 }),
-					layer('other', {
-						x: 100,
-						y: 100,
-						width: 200,
-						height: 100,
-					}, { rotation: 90, anchor: 'top-left' }),
+					layer(
+						'other',
+						{
+							x: 100,
+							y: 100,
+							width: 200,
+							height: 100,
+						},
+						{ rotation: 90, anchor: 'top-left' },
+					),
 				],
 				x: [0, 50, 100, 500, 1000],
 				y: [0, 100, 200, 250, 300, 500],
@@ -367,12 +400,16 @@ describe('canvas manipulation', () => {
 				name: 'a neighbour at 45 degrees adds the bounds of its corners',
 				layers: [
 					layer('self', { x: 0, y: 0, width: 10, height: 10 }),
-					layer('other', {
-						x: 100,
-						y: 100,
-						width: 100,
-						height: 100,
-					}, { rotation: 45, anchor: 'center' }),
+					layer(
+						'other',
+						{
+							x: 100,
+							y: 100,
+							width: 100,
+							height: 100,
+						},
+						{ rotation: 45, anchor: 'center' },
+					),
 				],
 				x: [0, 79.29, 150, 220.71, 500, 1000],
 				y: [0, 79.29, 150, 220.71, 250, 500],
@@ -386,114 +423,112 @@ describe('canvas manipulation', () => {
 						width: 100,
 						height: 100,
 					}),
-					layer('cluster', {
-						x: 100,
-						y: 50,
-						width: 400,
-						height: 200,
-					}, {
-						padding: 10,
-						children: [
-							layer('self', { x: 0, y: 0, width: 10, height: 10 }),
-							layer('sibling', { x: 20, y: 30, width: 40, height: 20 }),
-							layer('hidden', {
-								x: 300,
-								y: 150,
-								width: 10,
-								height: 10,
-							}, { visible: false }),
-						],
-					}),
+					layer(
+						'cluster',
+						{
+							x: 100,
+							y: 50,
+							width: 400,
+							height: 200,
+						},
+						{
+							padding: 10,
+							children: [
+								layer('self', { x: 0, y: 0, width: 10, height: 10 }),
+								layer('sibling', { x: 20, y: 30, width: 40, height: 20 }),
+								layer(
+									'hidden',
+									{
+										x: 300,
+										y: 150,
+										width: 10,
+										height: 10,
+									},
+									{ visible: false },
+								),
+							],
+						},
+					),
 				],
-				x: [
-					-110,
-					-10,
-					0,
-					20,
-					40,
-					60,
-					190,
-					380,
-					390,
-					890,
-				],
-				y: [
-					-60,
-					-10,
-					0,
-					30,
-					40,
-					50,
-					90,
-					180,
-					190,
-					440,
-				],
+				x: [-110, -10, 0, 20, 40, 60, 190, 380, 390, 890],
+				y: [-60, -10, 0, 30, 40, 50, 90, 180, 190, 440],
 			},
 			{
-				name: 'a canvas-arranged group\'s visible children add their edges and centres, in canvas pixels',
+				name: "a canvas-arranged group's visible children add their edges and centres, in canvas pixels",
 				layers: [
 					layer('self', { x: 0, y: 0, width: 10, height: 10 }),
-					layer('cluster', {
-						x: 100,
-						y: 50,
-						width: 400,
-						height: 200,
-					}, {
-						arrangement: 'canvas',
-						padding: 10,
-						children: [
-							layer('child', { x: 20, y: 30, width: 40, height: 20 }),
-							layer('hidden', {
-								x: 300,
-								y: 150,
-								width: 10,
-								height: 10,
-							}, { visible: false }),
-						],
-					}),
+					layer(
+						'cluster',
+						{
+							x: 100,
+							y: 50,
+							width: 400,
+							height: 200,
+						},
+						{
+							arrangement: 'canvas',
+							padding: 10,
+							children: [
+								layer('child', { x: 20, y: 30, width: 40, height: 20 }),
+								layer(
+									'hidden',
+									{
+										x: 300,
+										y: 150,
+										width: 10,
+										height: 10,
+									},
+									{ visible: false },
+								),
+							],
+						},
+					),
 				],
 				x: [0, 100, 130, 150, 170, 300, 500, 1000],
 				y: [0, 50, 90, 100, 110, 150, 250, 500],
 			},
 			{
-				name: 'a row group\'s children add nothing, since the group places them',
+				name: "a row group's children add nothing, since the group places them",
 				layers: [
 					layer('self', { x: 0, y: 0, width: 10, height: 10 }),
-					layer('cluster', {
-						x: 100,
-						y: 50,
-						width: 400,
-						height: 200,
-					}, {
-						arrangement: 'row',
-						padding: 10,
-						children: [
-							layer('child', { x: 20, y: 30, width: 40, height: 20 }),
-						],
-					}),
+					layer(
+						'cluster',
+						{
+							x: 100,
+							y: 50,
+							width: 400,
+							height: 200,
+						},
+						{
+							arrangement: 'row',
+							padding: 10,
+							children: [layer('child', { x: 20, y: 30, width: 40, height: 20 })],
+						},
+					),
 				],
 				x: [0, 100, 300, 500, 1000],
 				y: [0, 50, 150, 250, 500],
 			},
 			{
-				name: 'a rotated group\'s children add nothing, since they turn with it',
+				name: "a rotated group's children add nothing, since they turn with it",
 				layers: [
 					layer('self', { x: 0, y: 0, width: 10, height: 10 }),
-					layer('cluster', {
-						x: 100,
-						y: 50,
-						width: 400,
-						height: 200,
-					}, {
-						arrangement: 'canvas',
-						rotation: 90,
-						anchor: 'center',
-						padding: 10,
-						children: [
-							layer('child', { x: 20, y: 30, width: 40, height: 20 }),
-						],
-					}),
+					layer(
+						'cluster',
+						{
+							x: 100,
+							y: 50,
+							width: 400,
+							height: 200,
+						},
+						{
+							arrangement: 'canvas',
+							rotation: 90,
+							anchor: 'center',
+							padding: 10,
+							children: [layer('child', { x: 20, y: 30, width: 40, height: 20 })],
+						},
+					),
 				],
 				x: [0, 200, 300, 400, 500, 1000],
 				y: [-50, 0, 150, 250, 350, 500],
@@ -501,20 +536,24 @@ describe('canvas manipulation', () => {
 			{
 				name: 'a child of a hidden group snaps to the canvas only',
 				layers: [
-					layer('cluster', {
-						x: 100,
-						y: 50,
-						width: 400,
-						height: 200,
-					}, {
-						visible: false,
-						arrangement: 'canvas',
-						padding: 10,
-						children: [
-							layer('self', { x: 0, y: 0, width: 10, height: 10 }),
-							layer('sibling', { x: 20, y: 30, width: 40, height: 20 }),
-						],
-					}),
+					layer(
+						'cluster',
+						{
+							x: 100,
+							y: 50,
+							width: 400,
+							height: 200,
+						},
+						{
+							visible: false,
+							arrangement: 'canvas',
+							padding: 10,
+							children: [
+								layer('self', { x: 0, y: 0, width: 10, height: 10 }),
+								layer('sibling', { x: 20, y: 30, width: 40, height: 20 }),
+							],
+						},
+					),
 				],
 				x: [-110, 390, 890],
 				y: [-60, 190, 440],
@@ -533,7 +572,7 @@ describe('canvas manipulation', () => {
 				y: [0, 50, 150, 250, 300, 350, 400, 500],
 			},
 			{
-				name: 'a moving group\'s children move with it, and add nothing',
+				name: "a moving group's children move with it, and add nothing",
 				moving: ['self', 'cluster'],
 				x: [0, 300, 350, 400, 500, 1000],
 				y: [0, 250, 300, 350, 400, 500],
@@ -553,18 +592,20 @@ describe('canvas manipulation', () => {
 					width: 100,
 					height: 100,
 				}),
-				layer('cluster', {
-					x: 100,
-					y: 50,
-					width: 400,
-					height: 200,
-				}, {
-					arrangement: 'canvas',
-					padding: 10,
-					children: [
-						layer('child', { x: 20, y: 30, width: 40, height: 20 }),
-					],
-				}),
+				layer(
+					'cluster',
+					{
+						x: 100,
+						y: 50,
+						width: 400,
+						height: 200,
+					},
+					{
+						arrangement: 'canvas',
+						padding: 10,
+						children: [layer('child', { x: 20, y: 30, width: 40, height: 20 })],
+					},
+				),
 			];
 			const lines = canvasSnapLines(CANVAS, layers, moving);
 			expect({ x: lines.x, y: lines.y }).toEqual({ x, y });
@@ -659,46 +700,50 @@ describe('canvas manipulation', () => {
 		});
 
 		it('measures a group child against its visible siblings only, not its group box or the canvas', () => {
-			const lines = canvasSnapLines({ width: 1000, height: 500 }, [
-				{
-					id: 'outside',
-					visible: true,
-					x: 600,
-					y: 0,
-					width: 10,
-					height: 500,
-				},
-				{
-					id: 'cluster',
-					visible: true,
-					x: 0,
-					y: 0,
-					width: 500,
-					height: 500,
-					padding: 0,
-					children: [
-						{ id: 'self', visible: true, ...BOX },
-						{
-							id: 'hidden',
-							visible: false,
-							x: 210,
-							y: 100,
-							width: 10,
-							height: 10,
-						},
-						{
-							id: 'sibling',
-							visible: true,
-							x: 230,
-							y: 100,
-							width: 10,
-							height: 10,
-							rotation: 90,
-							anchor: 'top-left' as const,
-						},
-					],
-				},
-			], 'self');
+			const lines = canvasSnapLines(
+				{ width: 1000, height: 500 },
+				[
+					{
+						id: 'outside',
+						visible: true,
+						x: 600,
+						y: 0,
+						width: 10,
+						height: 500,
+					},
+					{
+						id: 'cluster',
+						visible: true,
+						x: 0,
+						y: 0,
+						width: 500,
+						height: 500,
+						padding: 0,
+						children: [
+							{ id: 'self', visible: true, ...BOX },
+							{
+								id: 'hidden',
+								visible: false,
+								x: 210,
+								y: 100,
+								width: 10,
+								height: 10,
+							},
+							{
+								id: 'sibling',
+								visible: true,
+								x: 230,
+								y: 100,
+								width: 10,
+								height: 10,
+								rotation: 90,
+								anchor: 'top-left' as const,
+							},
+						],
+					},
+				],
+				'self',
+			);
 
 			expect(neighbourGaps(BOX, lines.neighbours ?? [])).toEqual({
 				x: { from: 200, to: 220, at: 105 },

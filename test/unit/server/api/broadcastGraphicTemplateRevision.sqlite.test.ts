@@ -32,25 +32,37 @@ vi.doMock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	}),
 }));
 
-interface StubEvent { params: Record<string, string>; body: unknown }
+interface StubEvent {
+	params: Record<string, string>;
+	body: unknown;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
 vi.stubGlobal('getRequestHeader', () => undefined);
 vi.stubGlobal('getRequestWebStream', () => undefined);
 vi.stubGlobal('readBody', async (event: StubEvent) => event.body);
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
-const reviseTemplate = (await import('~~/server/api/graphics-templates/broadcast-graphics/[templateId]/index.patch')).default as unknown as (event: H3Event) => Promise<{ revision: number }>;
-const { broadcastGraphicTemplateService } = await import('~~/server/services/broadcastGraphicTemplate');
+const reviseTemplate = (
+	await import('~~/server/api/graphics-templates/broadcast-graphics/[templateId]/index.patch')
+).default as unknown as (event: H3Event) => Promise<{ revision: number }>;
+const { broadcastGraphicTemplateService } =
+	await import('~~/server/services/broadcastGraphicTemplate');
 
 const TEMPLATE_ID = 'template';
 
 function revise(body: Record<string, unknown>) {
-	return reviseTemplate(stubH3Event({
-		params: { templateId: TEMPLATE_ID },
-		body,
-	}));
+	return reviseTemplate(
+		stubH3Event({
+			params: { templateId: TEMPLATE_ID },
+			body,
+		}),
+	);
 }
 
 async function stored() {
@@ -75,7 +87,9 @@ describe('revising a Broadcast Graphic Template', () => {
 		// Two windows read revision 1; the first to write moves the template to revision 2.
 		expect((await revise({ description: 'First writer wins', revision: 1 })).revision).toBe(2);
 
-		const refusal = await refusalFrom(revise({ description: 'Second writer overwrites', revision: 1 }));
+		const refusal = await refusalFrom(
+			revise({ description: 'Second writer overwrites', revision: 1 }),
+		);
 
 		expect(refusal).toMatchObject({
 			statusCode: 409,
@@ -88,7 +102,9 @@ describe('revising a Broadcast Graphic Template', () => {
 	// Two fields, so the refusal is the missing revision and not a revision with nothing
 	// to change. The error plugin answers a ZodError as the 400 (`error-handler.test.ts`).
 	it('refuses a revision that states no revision at all, revising nothing', async () => {
-		await expect(revise({ name: 'Renamed', description: 'Stated no revision' })).rejects.toMatchObject({
+		await expect(
+			revise({ name: 'Renamed', description: 'Stated no revision' }),
+		).rejects.toMatchObject({
 			name: 'ZodError',
 			issues: [
 				expect.objectContaining({

@@ -16,7 +16,7 @@ const { formData, isDirty, reset, save, saving } = useEventConfigForm({
 	initialData,
 	clearOnReset: errors,
 	validate,
-	toUpdate: changes => changes,
+	toUpdate: (changes) => changes,
 });
 
 function validate(): boolean {
@@ -39,11 +39,7 @@ function validate(): boolean {
 					class="flex max-sm:flex-col justify-between items-start gap-4"
 					:error="errors.cardTimeout"
 				>
-					<UInputNumber
-						v-model="formData.cardTimeout"
-						:min="0"
-						class="w-64"
-					/>
+					<UInputNumber v-model="formData.cardTimeout" :min="0" class="w-64" />
 				</UFormField>
 			</div>
 			<template #footer>

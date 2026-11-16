@@ -25,19 +25,24 @@ vi.mock('~~/server/utils/graphicsAssetApi', () => ({
 
 vi.stubGlobal('setResponseHeader', mockSetResponseHeader);
 vi.stubGlobal('setResponseHeaders', mockSetResponseHeaders);
-vi.stubGlobal('createError', (input: {
-	statusCode: number;
-	statusMessage?: string;
-	message: string;
-	cause?: unknown;
-	data?: unknown;
-}) => Object.assign(new Error(input.message), input));
+vi.stubGlobal(
+	'createError',
+	(input: {
+		statusCode: number;
+		statusMessage?: string;
+		message: string;
+		cause?: unknown;
+		data?: unknown;
+	}) => Object.assign(new Error(input.message), input),
+);
 
 async function respond() {
 	return (await import('~~/server/utils/templatePackageExportApi')).respondWithTemplatePackage;
 }
 
-function rejectedWith(issues: { code: string; retryable: boolean }[]): TemplatePackageExportOutcome {
+function rejectedWith(
+	issues: { code: string; retryable: boolean }[],
+): TemplatePackageExportOutcome {
 	return {
 		outcome: 'rejected',
 		report: { issues },
@@ -50,8 +55,7 @@ async function refusalOf(event: H3Event, outcome: TemplatePackageExportOutcome) 
 	let caught: unknown;
 	try {
 		respondWith(event, outcome);
-	}
-	catch (error) {
+	} catch (error) {
 		caught = error;
 	}
 	if (caught === undefined)
@@ -80,9 +84,10 @@ describe('the Template Package export HTTP boundary', () => {
 	it('says what could not be exported when every issue is retryable', async () => {
 		const event = stubH3Event();
 
-		const failure = await refusalOf(event, rejectedWith([
-			{ code: 'asset-bytes-unreadable', retryable: true },
-		]));
+		const failure = await refusalOf(
+			event,
+			rejectedWith([{ code: 'asset-bytes-unreadable', retryable: true }]),
+		);
 
 		expect(failure).toMatchObject({
 			statusCode: 503,
@@ -93,27 +98,26 @@ describe('the Template Package export HTTP boundary', () => {
 	});
 
 	it('keeps the report beside the sentence, which is what hid the sanitizing', async () => {
-		const failure = await refusalOf(
+		const failure = (await refusalOf(
 			stubH3Event(),
-			rejectedWith([
-				{ code: 'asset-bytes-unreadable', retryable: true },
-			]),
-		) as { data?: unknown };
+			rejectedWith([{ code: 'asset-bytes-unreadable', retryable: true }]),
+		)) as { data?: unknown };
 
 		expect(failure.data).toEqual({
-			issues: [
-				{ code: 'asset-bytes-unreadable', retryable: true },
-			],
+			issues: [{ code: 'asset-bytes-unreadable', retryable: true }],
 		});
 	});
 
 	it('answers a report the author has to act on with 409, which is never sanitized', async () => {
 		const event = stubH3Event();
 
-		const failure = await refusalOf(event, rejectedWith([
-			{ code: 'asset-bytes-unreadable', retryable: true },
-			{ code: 'capability-missing', retryable: false },
-		]));
+		const failure = await refusalOf(
+			event,
+			rejectedWith([
+				{ code: 'asset-bytes-unreadable', retryable: true },
+				{ code: 'capability-missing', retryable: false },
+			]),
+		);
 
 		expect(failure).toMatchObject({
 			statusCode: 409,
@@ -123,7 +127,7 @@ describe('the Template Package export HTTP boundary', () => {
 		expect(mockSetResponseHeader).not.toHaveBeenCalled();
 	});
 
-	it('treats a rejection with no issues at all as the author\'s to correct', async () => {
+	it("treats a rejection with no issues at all as the author's to correct", async () => {
 		const failure = await refusalOf(stubH3Event(), rejectedWith([]));
 
 		expect(failure.statusCode).toBe(409);

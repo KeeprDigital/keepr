@@ -24,14 +24,10 @@ const emit = defineEmits<{
 		<ScreenBackgroundLayersEditor
 			:layers="modelValue"
 			:event-id="eventId"
-			@update:layers="value => emit('commit', value)"
+			@update:layers="(value) => emit('commit', value)"
 		>
 			<template #color="{ value, update }">
-				<ThemeColorField
-					:value="value"
-					:label="`${label} layer colour`"
-					@update="update"
-				/>
+				<ThemeColorField :value="value" :label="`${label} layer colour`" @update="update" />
 			</template>
 		</ScreenBackgroundLayersEditor>
 	</div>

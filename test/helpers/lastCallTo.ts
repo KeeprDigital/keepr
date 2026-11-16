@@ -69,48 +69,39 @@ export function callsTo<Args extends unknown[]>(
 }
 
 /** `describeSelector`'s wording for a count rather than for one call. */
-function describeExpectedCalls<Args extends unknown[]>(select: CallSelector<Args> | undefined, count: number): string {
-	const noun = count === 1
-		? 'call'
-		: 'calls';
-	if (select === undefined)
-		return noun;
-	if (typeof select === 'string')
-		return `${noun} to ${select}`;
+function describeExpectedCalls<Args extends unknown[]>(
+	select: CallSelector<Args> | undefined,
+	count: number,
+): string {
+	const noun = count === 1 ? 'call' : 'calls';
+	if (select === undefined) return noun;
+	if (typeof select === 'string') return `${noun} to ${select}`;
 	return `${noun} matching ${select.name || 'the given matcher'}`;
 }
 
 function matcherFor<Args extends unknown[]>(select?: CallSelector<Args>): (call: Args) => boolean {
-	if (select === undefined)
-		return () => true;
-	if (typeof select === 'function')
-		return select;
-	return call => call[0] === select;
+	if (select === undefined) return () => true;
+	if (typeof select === 'function') return select;
+	return (call) => call[0] === select;
 }
 
 function describeSelector<Args extends unknown[]>(select?: CallSelector<Args>): string {
-	if (select === undefined)
-		return 'a call';
-	if (typeof select === 'string')
-		return `a call to ${select}`;
+	if (select === undefined) return 'a call';
+	if (typeof select === 'string') return `a call to ${select}`;
 	return `a call matching ${select.name || 'the given matcher'}`;
 }
 
 /** What arrived instead: the most recent calls, earlier ones elided. */
 function describeCalls(calls: unknown[][]): string {
-	if (calls.length === 0)
-		return 'none';
+	if (calls.length === 0) return 'none';
 	const listed = calls.slice(-LISTED_CALLS);
 	const elided = calls.length - listed.length;
 	const rendered = listed.map(renderFirstArgument).join(', ');
-	return elided > 0
-		? `only [… ${elided} earlier, ${rendered}]`
-		: `only [${rendered}]`;
+	return elided > 0 ? `only [… ${elided} earlier, ${rendered}]` : `only [${rendered}]`;
 }
 
 function renderFirstArgument(call: unknown[]): string {
-	if (call.length === 0)
-		return '(no arguments)';
+	if (call.length === 0) return '(no arguments)';
 	const rendered = safeStringify(call[0]);
 	return rendered.length > RENDERED_ARGUMENT_CHARS
 		? `${rendered.slice(0, RENDERED_ARGUMENT_CHARS)}…`
@@ -121,12 +112,10 @@ function renderFirstArgument(call: unknown[]): string {
 function safeStringify(value: unknown): string {
 	try {
 		return JSON.stringify(value) ?? String(value);
-	}
-	catch {
+	} catch {
 		try {
 			return String(value);
-		}
-		catch {
+		} catch {
 			return '(unrenderable)';
 		}
 	}

@@ -53,7 +53,10 @@ export async function main(argv = process.argv) {
 					body: keyMatteProofPage(),
 					type: 'text/html; charset=utf-8',
 				}),
-				[KEY_MATTE_PROOF_SCRIPT_PATH]: async () => ({ body: script, type: 'text/javascript; charset=utf-8' }),
+				[KEY_MATTE_PROOF_SCRIPT_PATH]: async () => ({
+					body: script,
+					type: 'text/javascript; charset=utf-8',
+				}),
 			});
 			try {
 				// A page that throws mid-run raises its own code from inside the
@@ -61,11 +64,11 @@ export async function main(argv = process.argv) {
 				// never said it was ready.
 				const observed = await withChromiumPage(
 					{ url: `${local.origin}${KEY_MATTE_PROOF_PAGE_PATH}` },
-					page => observeKeyMatte(page),
+					(page) => observeKeyMatte(page),
 				);
 				if (observed.outcome !== 'passed') {
 					const outcomes = {
-						'unavailable': 'browser-driver-unavailable',
+						unavailable: 'browser-driver-unavailable',
 						'timed-out': 'browser-acceptance-timed-out',
 					};
 					record([
@@ -82,23 +85,18 @@ export async function main(argv = process.argv) {
 				let report;
 				try {
 					report = JSON.parse(observed.value);
-				}
-				catch {
-					record([
-						{ code: 'key-matte-page-failed' },
-					]);
+				} catch {
+					record([{ code: 'key-matte-page-failed' }]);
 					return { mode: 'local' };
 				}
 
 				record(judgeKeyMatteReport(report));
 				return { mode: 'local', scenes: (report.scenes ?? []).length };
-			}
-			finally {
+			} finally {
 				await local.close();
 			}
 		},
 	});
 }
 
-if (import.meta.main)
-	await main();
+if (import.meta.main) await main();

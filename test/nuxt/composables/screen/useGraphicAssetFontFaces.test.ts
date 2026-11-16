@@ -31,25 +31,38 @@ function image(revisionId: string): ScreenGraphicAssetReference {
 	};
 }
 
-const contentUrl = (reference: GraphicAssetReference) => `/private-assets/${reference.assetId}/${reference.revisionId}`;
+const contentUrl = (reference: GraphicAssetReference) =>
+	`/private-assets/${reference.assetId}/${reference.revisionId}`;
 
 /** Every `FontFace` constructed, with a load each test can hold open or fail. */
 let constructed: Array<{ family: string; source: string }>;
 let loadFor: (family: string) => Promise<unknown>;
-let documentFonts: { add: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn>; load: ReturnType<typeof vi.fn>; check: ReturnType<typeof vi.fn>; ready: Promise<void> };
+let documentFonts: {
+	add: ReturnType<typeof vi.fn>;
+	delete: ReturnType<typeof vi.fn>;
+	load: ReturnType<typeof vi.fn>;
+	check: ReturnType<typeof vi.fn>;
+	ready: Promise<void>;
+};
 
 beforeEach(() => {
 	constructed = [];
 	loadFor = async () => undefined;
-	vi.stubGlobal('FontFace', class {
-		constructor(public family: string, public source: string) {
-			constructed.push({ family, source });
-		}
+	vi.stubGlobal(
+		'FontFace',
+		class {
+			constructor(
+				public family: string,
+				public source: string,
+			) {
+				constructed.push({ family, source });
+			}
 
-		load() {
-			return loadFor(this.family).then(() => this);
-		}
-	});
+			load() {
+				return loadFor(this.family).then(() => this);
+			}
+		},
+	);
 	documentFonts = {
 		add: vi.fn(),
 		delete: vi.fn(),
@@ -68,12 +81,14 @@ function mountFonts(initial: ScreenGraphicAssetReference[], settled = true) {
 	const references = ref(initial);
 	const contentUrlsSettled = ref(settled);
 	let fonts!: ReturnType<typeof useGraphicAssetFontFaces>;
-	const wrapper = mount(defineComponent({
-		setup() {
-			fonts = useGraphicAssetFontFaces(references, contentUrl, contentUrlsSettled);
-			return () => null;
-		},
-	}));
+	const wrapper = mount(
+		defineComponent({
+			setup() {
+				fonts = useGraphicAssetFontFaces(references, contentUrl, contentUrlsSettled);
+				return () => null;
+			},
+		}),
+	);
 	return {
 		wrapper,
 		references,
@@ -89,9 +104,7 @@ async function settle() {
 
 describe('useGraphicAssetFontFaces', () => {
 	it('is ready at once for an output naming no library font', () => {
-		const { fonts } = mountFonts([
-			image('image-revision-1'),
-		]);
+		const { fonts } = mountFonts([image('image-revision-1')]);
 
 		expect(fonts.fontsReady.value).toBe(true);
 		expect(constructed).toEqual([]);
@@ -100,10 +113,7 @@ describe('useGraphicAssetFontFaces', () => {
 	it('loads each family once, from its exact content URL, and is not ready until it has', async () => {
 		const load = deferred();
 		loadFor = () => load.promise;
-		const { fonts } = mountFonts([
-			font('font-revision-2'),
-			font('font-revision-2', 'other-item'),
-		]);
+		const { fonts } = mountFonts([font('font-revision-2'), font('font-revision-2', 'other-item')]);
 		await nextTick();
 
 		expect(fonts.fontsReady.value).toBe(false);
@@ -129,9 +139,7 @@ describe('useGraphicAssetFontFaces', () => {
 
 	// An unsettled URL is the empty string, which would be a failure rather than a wait.
 	it('loads nothing until the content URLs have settled', async () => {
-		const { fonts, contentUrlsSettled } = mountFonts([
-			font('font-revision-2'),
-		], false);
+		const { fonts, contentUrlsSettled } = mountFonts([font('font-revision-2')], false);
 		await settle();
 
 		expect(constructed).toEqual([]);
@@ -148,9 +156,7 @@ describe('useGraphicAssetFontFaces', () => {
 		loadFor = async () => {
 			throw new Error('unavailable');
 		};
-		const { fonts } = mountFonts([
-			font('font-revision-2'),
-		]);
+		const { fonts } = mountFonts([font('font-revision-2')]);
 		await settle();
 
 		expect(fonts.fontsFailed.value).toBe(true);
@@ -161,15 +167,10 @@ describe('useGraphicAssetFontFaces', () => {
 	// Hiding means "this font has not loaded yet"; blanking a settled output for an
 	// edit no font depends on is the blank on air the hiding exists to prevent (#160).
 	it('leaves a settled output alone when the references change but the fonts do not', async () => {
-		const { fonts, references } = mountFonts([
-			font('font-revision-2'),
-		]);
+		const { fonts, references } = mountFonts([font('font-revision-2')]);
 		await settle();
 
-		references.value = [
-			font('font-revision-2'),
-			image('image-revision-1'),
-		];
+		references.value = [font('font-revision-2'), image('image-revision-1')];
 		await nextTick();
 		expect(fonts.fontsReady.value).toBe(true);
 		await settle();
@@ -180,15 +181,10 @@ describe('useGraphicAssetFontFaces', () => {
 
 	// A new asset of any kind sends the content URLs through an unsettled round trip.
 	it('sits through an unsettled window that leaves the fonts unchanged', async () => {
-		const { fonts, references, contentUrlsSettled } = mountFonts([
-			font('font-revision-2'),
-		]);
+		const { fonts, references, contentUrlsSettled } = mountFonts([font('font-revision-2')]);
 		await settle();
 
-		references.value = [
-			font('font-revision-2'),
-			image('image-revision-1'),
-		];
+		references.value = [font('font-revision-2'), image('image-revision-1')];
 		contentUrlsSettled.value = false;
 		await nextTick();
 		expect(fonts.fontsReady.value).toBe(true);
@@ -201,16 +197,12 @@ describe('useGraphicAssetFontFaces', () => {
 	});
 
 	it('hides again for a different pinned revision, loading it and discarding the old face', async () => {
-		const { fonts, references } = mountFonts([
-			font('font-revision-2'),
-		]);
+		const { fonts, references } = mountFonts([font('font-revision-2')]);
 		await settle();
 		const load = deferred();
 		loadFor = () => load.promise;
 
-		references.value = [
-			font('font-revision-3'),
-		];
+		references.value = [font('font-revision-3')];
 		await nextTick();
 		expect(fonts.fontsReady.value).toBe(false);
 		expect(documentFonts.delete).toHaveBeenCalledOnce();
@@ -219,7 +211,7 @@ describe('useGraphicAssetFontFaces', () => {
 		await settle();
 
 		expect(fonts.fontsReady.value).toBe(true);
-		expect(constructed.map(face => face.family)).toEqual([
+		expect(constructed.map((face) => face.family)).toEqual([
 			family('font-revision-2'),
 			family('font-revision-3'),
 		]);
@@ -227,17 +219,11 @@ describe('useGraphicAssetFontFaces', () => {
 
 	it('discards a load a newer requirement superseded', async () => {
 		const first = deferred();
-		loadFor = name => name === family('font-revision-2')
-			? first.promise
-			: Promise.resolve();
-		const { fonts, references } = mountFonts([
-			font('font-revision-2'),
-		]);
+		loadFor = (name) => (name === family('font-revision-2') ? first.promise : Promise.resolve());
+		const { fonts, references } = mountFonts([font('font-revision-2')]);
 		await nextTick();
 
-		references.value = [
-			font('font-revision-3'),
-		];
+		references.value = [font('font-revision-3')];
 		await settle();
 		expect(fonts.fontsReady.value).toBe(true);
 
@@ -251,9 +237,7 @@ describe('useGraphicAssetFontFaces', () => {
 	});
 
 	it('takes its faces off the document when its host unmounts', async () => {
-		const { wrapper } = mountFonts([
-			font('font-revision-2'),
-		]);
+		const { wrapper } = mountFonts([font('font-revision-2')]);
 		await settle();
 
 		wrapper.unmount();

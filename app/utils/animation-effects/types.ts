@@ -18,4 +18,7 @@ export interface AnimationEffectInstance<Params = unknown> {
 	dispose: () => void;
 }
 
-export type AnimationEffectFactory<Params> = (host: HTMLElement, params: Params) => AnimationEffectInstance<Params>;
+export type AnimationEffectFactory<Params> = (
+	host: HTMLElement,
+	params: Params,
+) => AnimationEffectInstance<Params>;

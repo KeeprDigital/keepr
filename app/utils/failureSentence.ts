@@ -39,13 +39,10 @@
  * gain a sentence here and still be no refusal at all.
  */
 export function failureSentence(caught: unknown): string | undefined {
-	if (failureStatus(caught) === undefined || isSanitizedFailure(caught))
-		return undefined;
+	if (failureStatus(caught) === undefined || isSanitizedFailure(caught)) return undefined;
 
 	const message = (caught as { data?: { message?: unknown } } | null)?.data?.message;
-	return typeof message === 'string' && message.length > 0
-		? message
-		: undefined;
+	return typeof message === 'string' && message.length > 0 ? message : undefined;
 }
 
 /**
@@ -129,18 +126,13 @@ const SANITIZED_SERVER_MESSAGES: readonly string[] = ['Internal Server Error', '
  */
 function preservedServerSentence(caught: unknown): string | undefined {
 	const status = failureStatus(caught);
-	if (status === undefined || status < 500)
-		return undefined;
-	if (status === 500)
-		return undefined;
+	if (status === undefined || status < 500) return undefined;
+	if (status === 500) return undefined;
 
 	const message = (caught as { data?: { message?: unknown } } | null)?.data?.message;
-	if (typeof message !== 'string' || message.length === 0)
-		return undefined;
+	if (typeof message !== 'string' || message.length === 0) return undefined;
 
-	return SANITIZED_SERVER_MESSAGES.includes(message)
-		? undefined
-		: message;
+	return SANITIZED_SERVER_MESSAGES.includes(message) ? undefined : message;
 }
 
 /**
@@ -210,9 +202,7 @@ export function isSanitizedFailure(caught: unknown): boolean {
 export function reportedMessage(caught: unknown, fallback: string): string;
 export function reportedMessage(caught: unknown, fallback?: string): string | undefined;
 export function reportedMessage(caught: unknown, fallback?: string): string | undefined {
-	return failureSentence(caught) ?? (caught instanceof Error
-		? caught.message
-		: fallback);
+	return failureSentence(caught) ?? (caught instanceof Error ? caught.message : fallback);
 }
 
 /**
@@ -239,11 +229,8 @@ export function reportedMessage(caught: unknown, fallback?: string): string | un
 export async function withFailureSentence<T>(action: () => Promise<T>): Promise<T> {
 	try {
 		return await action();
-	}
-	catch (failure) {
+	} catch (failure) {
 		const sentence = failureSentence(failure);
-		throw sentence === undefined
-			? failure
-			: new Error(sentence, { cause: failure });
+		throw sentence === undefined ? failure : new Error(sentence, { cause: failure });
 	}
 }

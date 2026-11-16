@@ -14,7 +14,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -32,8 +33,8 @@ vi.doMock('~~/server/utils/ably', () => ({
 vi.doMock('~~/server/services/meleeCredentials', () => ({
 	protectMeleeClientSecret: async (secret: string) => `encrypted:${secret}`,
 }));
-vi.doMock('~~/server/modules/broadcast-graphics-live-session', async importOriginal => ({
-	...await importOriginal<object>(),
+vi.doMock('~~/server/modules/broadcast-graphics-live-session', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	refreshBroadcastGraphicsBindings,
 }));
 
@@ -52,7 +53,8 @@ afterAll(async () => {
 });
 
 async function stageEvent() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Openers', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning();
 	return event!.id;
@@ -72,11 +74,18 @@ async function activeSessionId(eventId: number, slotId: number): Promise<number 
 /** The Sessions announced as started, by Slot, in announcement order. */
 function startedSessions(eventId: number) {
 	return publishMessage.mock.calls
-		.filter(([publishedTo, type, payload]) => publishedTo === eventId
-			&& type === 'featureMatchSession:eventApplied'
-			&& (payload as { eventType: string }).eventType === 'SessionStarted')
+		.filter(
+			([publishedTo, type, payload]) =>
+				publishedTo === eventId &&
+				type === 'featureMatchSession:eventApplied' &&
+				(payload as { eventType: string }).eventType === 'SessionStarted',
+		)
 		.map(([, , payload]) => {
-			const { slotId, sessionId, sequence } = payload as { slotId: number; sessionId: number; sequence: number };
+			const { slotId, sessionId, sequence } = payload as {
+				slotId: number;
+				sessionId: number;
+				sequence: number;
+			};
 			return { slotId, sessionId, sequence };
 		});
 }
@@ -90,9 +99,12 @@ async function expectAnnounced(eventId: number, slotIds: number[]) {
 	expect(startedSessions(eventId)).toHaveLength(slotIds.length);
 
 	expect(refreshBroadcastGraphicsBindings).toHaveBeenCalledWith(eventId);
-	const lastStarted = publishMessage.mock.invocationCallOrder.findLast((_, index) =>
-		publishMessage.mock.calls[index]![1] === 'featureMatchSession:eventApplied');
-	expect(Math.max(...refreshBroadcastGraphicsBindings.mock.invocationCallOrder)).toBeGreaterThan(lastStarted!);
+	const lastStarted = publishMessage.mock.invocationCallOrder.findLast(
+		(_, index) => publishMessage.mock.calls[index]![1] === 'featureMatchSession:eventApplied',
+	);
+	expect(Math.max(...refreshBroadcastGraphicsBindings.mock.invocationCallOrder)).toBeGreaterThan(
+		lastStarted!,
+	);
 }
 
 describe('opening a Feature Match Session announces it', () => {
@@ -102,14 +114,23 @@ describe('opening a Feature Match Session announces it', () => {
 		publishMessage.mockClear();
 		refreshBroadcastGraphicsBindings.mockClear();
 
-		const session = await featureMatchSessionModule().createSessionForSlot(slot.id, eventId, 'origin');
+		const session = await featureMatchSessionModule().createSessionForSlot(
+			slot.id,
+			eventId,
+			'origin',
+		);
 
 		expect(session?.id).toBe(await activeSessionId(eventId, slot.id));
 		await expectAnnounced(eventId, [slot.id]);
-		expect(publishMessage).toHaveBeenCalledWith(eventId, 'featureMatchSession:eventApplied', expect.anything(), 'origin');
+		expect(publishMessage).toHaveBeenCalledWith(
+			eventId,
+			'featureMatchSession:eventApplied',
+			expect.anything(),
+			'origin',
+		);
 	});
 
-	it('relinking the Slot and forgetting the ended Session\'s receipts in the same commit', async () => {
+	it("relinking the Slot and forgetting the ended Session's receipts in the same commit", async () => {
 		const eventId = await stageEvent();
 		const slot = await featureMatchService().create(eventId, {});
 		const ended = (await activeSessionId(eventId, slot.id))!;
@@ -119,26 +140,34 @@ describe('opening a Feature Match Session announces it', () => {
 			payload: { player: 'player1', lifeTotal: 18 },
 			baseSequence: 1,
 		});
-		const receipts = async (sessionId: number) => (await harness.client.execute({
-			sql: `select count(*) as count from live_state_command_receipts where aggregate_kind = 'featureMatchSession' and aggregate_id = ?`,
-			args: [sessionId],
-		})).rows[0]!.count;
+		const receipts = async (sessionId: number) =>
+			(
+				await harness.client.execute({
+					sql: `select count(*) as count from live_state_command_receipts where aggregate_kind = 'featureMatchSession' and aggregate_id = ?`,
+					args: [sessionId],
+				})
+			).rows[0]!.count;
 		expect(await receipts(ended)).toBe(1);
 
 		const opened = await featureMatchSessionModule().createSessionForSlot(slot.id, eventId);
 
 		expect(await receipts(ended)).toBe(0);
-		expect((await db.query.featureMatches.findFirst({
-			where: eq(schema.featureMatches.id, slot.id),
-		}))?.activeSessionId)
-			.toBe(opened?.id);
+		expect(
+			(
+				await db.query.featureMatches.findFirst({
+					where: eq(schema.featureMatches.id, slot.id),
+				})
+			)?.activeSessionId,
+		).toBe(opened?.id);
 		// The same command id is a new command in the new Session.
-		await expect(featureMatchSessionModule().applyCommand(opened!.id, eventId, {
-			commandId: 'cmd-1',
-			type: 'SetLife',
-			payload: { player: 'player1', lifeTotal: 12 },
-			baseSequence: 1,
-		})).resolves.toMatchObject({ sessionId: opened!.id, sequence: 2 });
+		await expect(
+			featureMatchSessionModule().applyCommand(opened!.id, eventId, {
+				commandId: 'cmd-1',
+				type: 'SetLife',
+				payload: { player: 'player1', lifeTotal: 12 },
+				baseSequence: 1,
+			}),
+		).resolves.toMatchObject({ sessionId: opened!.id, sequence: 2 });
 	});
 
 	it('when a Slot is created', async () => {
@@ -154,7 +183,10 @@ describe('opening a Feature Match Session announces it', () => {
 
 		const { created } = await featureMatchService().syncFeatureMatches(eventId, 3);
 
-		await expectAnnounced(eventId, created.map(slot => slot.id));
+		await expectAnnounced(
+			eventId,
+			created.map((slot) => slot.id),
+		);
 		expect(refreshBroadcastGraphicsBindings).toHaveBeenCalledTimes(1);
 	});
 
@@ -175,13 +207,17 @@ describe('opening a Feature Match Session announces it', () => {
 	it('when a command finds the Slot without an active Session', async () => {
 		const eventId = await stageEvent();
 		const slot = await featureMatchService().create(eventId, {});
-		await db.update(schema.featureMatchSessions)
+		await db
+			.update(schema.featureMatchSessions)
 			.set({
 				status: 'closed',
 				closedAt: new Date(),
 			})
 			.where(eq(schema.featureMatchSessions.slotId, slot.id));
-		await db.update(schema.featureMatches).set({ activeSessionId: null }).where(eq(schema.featureMatches.id, slot.id));
+		await db
+			.update(schema.featureMatches)
+			.set({ activeSessionId: null })
+			.where(eq(schema.featureMatches.id, slot.id));
 		publishMessage.mockClear();
 		refreshBroadcastGraphicsBindings.mockClear();
 
@@ -194,27 +230,43 @@ describe('opening a Feature Match Session announces it', () => {
 		const eventId = await stageEvent();
 		const imported = await featureMatchService().create(eventId, {});
 		const manual = await featureMatchService().create(eventId, {});
-		await db.update(schema.featureMatches)
+		await db
+			.update(schema.featureMatches)
 			.set({ externalSource: 'melee', externalId: 'melee-1' })
 			.where(eq(schema.featureMatches.id, imported.id));
-		await db.update(schema.events).set({ meleeEnabled: true, meleeEventId: 'old' }).where(eq(schema.events.id, eventId));
+		await db
+			.update(schema.events)
+			.set({ meleeEnabled: true, meleeEventId: 'old' })
+			.where(eq(schema.events.id, eventId));
 		const untouched = await activeSessionId(eventId, manual.id);
 		publishMessage.mockClear();
 		refreshBroadcastGraphicsBindings.mockClear();
 
-		await eventService().updateMeleeConfig(eventId, { meleeEnabled: false, meleeEventId: null, meleeClientId: null });
+		await eventService().updateMeleeConfig(eventId, {
+			meleeEnabled: false,
+			meleeEventId: null,
+			meleeClientId: null,
+		});
 
 		await expectAnnounced(eventId, [imported.id]);
 		expect(await activeSessionId(eventId, manual.id)).toBe(untouched);
-		expect((await db.query.featureMatches.findFirst({
-			where: eq(schema.featureMatches.id, imported.id),
-		}))?.externalSource).toBeNull();
+		expect(
+			(
+				await db.query.featureMatches.findFirst({
+					where: eq(schema.featureMatches.id, imported.id),
+				})
+			)?.externalSource,
+		).toBeNull();
 	});
 
-	it('when a promotion opens the promoted Slot\'s Session and resets the Slot it clears', async () => {
+	it("when a promotion opens the promoted Slot's Session and resets the Slot it clears", async () => {
 		const eventId = await stageEvent();
-		const [phase] = await db.insert(schema.phases).values({ eventId, name: 'Swiss', sortOrder: 0 }).returning();
-		const [round] = await db.insert(schema.rounds)
+		const [phase] = await db
+			.insert(schema.phases)
+			.values({ eventId, name: 'Swiss', sortOrder: 0 })
+			.returning();
+		const [round] = await db
+			.insert(schema.rounds)
 			.values({
 				eventId,
 				phaseId: phase!.id,
@@ -222,7 +274,8 @@ describe('opening a Feature Match Session announces it', () => {
 				roundNumber: 1,
 			})
 			.returning();
-		const [match] = await db.insert(schema.matches)
+		const [match] = await db
+			.insert(schema.matches)
 			.values({
 				eventId,
 				roundId: round!.id,
@@ -232,11 +285,19 @@ describe('opening a Feature Match Session announces it', () => {
 			.returning();
 		const first = await featureMatchService().create(eventId, {});
 		const second = await featureMatchService().create(eventId, {});
-		await featureMatchPromotionModule().promoteMatchToSlot({ eventId, slotId: first.id, matchId: match!.id });
+		await featureMatchPromotionModule().promoteMatchToSlot({
+			eventId,
+			slotId: first.id,
+			matchId: match!.id,
+		});
 		publishMessage.mockClear();
 		refreshBroadcastGraphicsBindings.mockClear();
 
-		await featureMatchPromotionModule().promoteMatchToSlot({ eventId, slotId: second.id, matchId: match!.id });
+		await featureMatchPromotionModule().promoteMatchToSlot({
+			eventId,
+			slotId: second.id,
+			matchId: match!.id,
+		});
 
 		await expectAnnounced(eventId, [first.id, second.id]);
 	});

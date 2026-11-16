@@ -24,24 +24,18 @@ async function request(
 	options: { method?: string; body?: unknown; cookie?: string } = {},
 ): Promise<{ status: number; data: any }> {
 	const headers: Record<string, string> = {};
-	if (options.cookie)
-		headers.cookie = options.cookie;
-	if (options.body !== undefined)
-		headers['content-type'] = 'application/json';
+	if (options.cookie) headers.cookie = options.cookie;
+	if (options.body !== undefined) headers['content-type'] = 'application/json';
 
 	const response = await fetch(path, {
 		method: options.method ?? 'GET',
 		headers,
-		body: options.body === undefined
-			? undefined
-			: JSON.stringify(options.body),
+		body: options.body === undefined ? undefined : JSON.stringify(options.body),
 	});
 	const text = await response.text();
 	return {
 		status: response.status,
-		data: text
-			? JSON.parse(text)
-			: null,
+		data: text ? JSON.parse(text) : null,
 	};
 }
 
@@ -69,17 +63,27 @@ describe('feature Match Layout Template library', () => {
 		return await $fetch<ScreenResponse>(`/api/events/${eventId}/screens/${screenId}`);
 	}
 
-	async function storedLayout(eventId: number, screenId: number): Promise<FeatureMatchLayoutConfig> {
-		return (await storedScreen(eventId, screenId)).modeConfigs!['feature-match-overlay']!.layout as FeatureMatchLayoutConfig;
+	async function storedLayout(
+		eventId: number,
+		screenId: number,
+	): Promise<FeatureMatchLayoutConfig> {
+		return (await storedScreen(eventId, screenId)).modeConfigs!['feature-match-overlay']!
+			.layout as FeatureMatchLayoutConfig;
 	}
 
 	beforeAll(async () => {
 		authorCookie = await operatorSessionCookie();
 
-		const source = await createEventWithOverlayScreen(`Layout Source Event ${runId}`, `layout-source-${runId}`);
+		const source = await createEventWithOverlayScreen(
+			`Layout Source Event ${runId}`,
+			`layout-source-${runId}`,
+		);
 		sourceEventId = source.eventId;
 		sourceScreenId = source.screenId;
-		const other = await createEventWithOverlayScreen(`Layout Target Event ${runId}`, `layout-target-${runId}`);
+		const other = await createEventWithOverlayScreen(
+			`Layout Target Event ${runId}`,
+			`layout-target-${runId}`,
+		);
 		otherEventId = other.eventId;
 		otherScreenId = other.screenId;
 
@@ -113,8 +117,7 @@ describe('feature Match Layout Template library', () => {
 		for (const id of [sourceEventId, otherEventId]) {
 			try {
 				await $fetch(`/api/events/${id}`, { method: 'DELETE' });
-			}
-			catch {}
+			} catch {}
 		}
 	});
 
@@ -124,7 +127,7 @@ describe('feature Match Layout Template library', () => {
 	 * is proved against a genuinely anonymous client in `apiBoundary.test.ts`.
 	 */
 
-	it('saves a Screen\'s layout into the library and places it on a Screen in another Event', async () => {
+	it("saves a Screen's layout into the library and places it on a Screen in another Event", async () => {
 		const savedLayout = await storedLayout(sourceEventId, sourceScreenId);
 		expect(await storedLayout(otherEventId, otherScreenId)).not.toEqual(savedLayout);
 
@@ -167,8 +170,9 @@ describe('feature Match Layout Template library', () => {
 		});
 
 		expect(response.status).toBe(200);
-		expect(response.headers.get('content-type'))
-			.toBe('application/vnd.streamkeepr.feature-match-layout-template+zip');
+		expect(response.headers.get('content-type')).toBe(
+			'application/vnd.streamkeepr.feature-match-layout-template+zip',
+		);
 		expect(response.headers.get('content-disposition')).toContain('.sklayout');
 		await response.arrayBuffer();
 	});

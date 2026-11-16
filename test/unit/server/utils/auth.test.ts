@@ -44,7 +44,9 @@ vi.mock('h3', async (importOriginal) => {
 
 const mockUseRuntimeConfig = vi.fn();
 vi.stubGlobal('useRuntimeConfig', mockUseRuntimeConfig);
-vi.stubGlobal('createError', (input: { statusCode: number; message: string }) => Object.assign(new Error(input.message), input));
+vi.stubGlobal('createError', (input: { statusCode: number; message: string }) =>
+	Object.assign(new Error(input.message), input),
+);
 
 const { optionalUserSession, serverAuth } = await import('~~/server/utils/auth');
 
@@ -63,10 +65,12 @@ describe('the Better Auth instance', () => {
 		// nobody set. The class is what keeps the words (#233).
 		mockUseRuntimeConfig.mockReturnValue({ betterAuthSecret: '' });
 
-		expect(() => serverAuth()).toThrow(expect.objectContaining({
-			name: 'ServiceConfigurationError',
-			statusCode: 503,
-		}));
+		expect(() => serverAuth()).toThrow(
+			expect.objectContaining({
+				name: 'ServiceConfigurationError',
+				statusCode: 503,
+			}),
+		);
 	});
 
 	it('counts a whitespace-only secret as missing, the way the boot notice counts it', () => {
@@ -87,11 +91,14 @@ describe('the Better Auth instance', () => {
 		// signed-in route down with a 500 naming nothing.
 		mockUseRuntimeConfig.mockReturnValue({ betterAuthSecret: 482915736104 });
 
-		expect(() => serverAuth()).toThrow(expect.objectContaining({
-			name: 'ServiceConfigurationError',
-			statusCode: 503,
-			message: 'NUXT_BETTER_AUTH_SECRET does not read as text (a value of only digits, true/false or JSON is read as another type), so it cannot be checked: set one that contains a letter',
-		}));
+		expect(() => serverAuth()).toThrow(
+			expect.objectContaining({
+				name: 'ServiceConfigurationError',
+				statusCode: 503,
+				message:
+					'NUXT_BETTER_AUTH_SECRET does not read as text (a value of only digits, true/false or JSON is read as another type), so it cannot be checked: set one that contains a letter',
+			}),
+		);
 	});
 });
 
@@ -114,10 +121,14 @@ describe('the optional session read', () => {
 	it('answers null on a blank secret rather than raising the 503', async () => {
 		mockUseRuntimeConfig.mockReturnValue({ betterAuthSecret: '' });
 
-		await expect(optionalUserSession(stubH3Event({
-			headers: new Headers(),
-			context: {},
-		}))).resolves.toBeNull();
+		await expect(
+			optionalUserSession(
+				stubH3Event({
+					headers: new Headers(),
+					context: {},
+				}),
+			),
+		).resolves.toBeNull();
 	});
 
 	it('lets every other failure out, so only the configuration fault is absorbed', async () => {
@@ -135,12 +146,14 @@ describe('the optional session read', () => {
 		const unreachable = new Error('D1 is unreachable');
 		vi.spyOn(fresh.serverAuth().api, 'getSession').mockRejectedValue(unreachable);
 
-		await expect(fresh.optionalUserSession(stubH3Event({
-			headers: new Headers(),
-			context: {},
-		})))
-			.rejects
-			.toThrow(unreachable);
+		await expect(
+			fresh.optionalUserSession(
+				stubH3Event({
+					headers: new Headers(),
+					context: {},
+				}),
+			),
+		).rejects.toThrow(unreachable);
 	});
 });
 
@@ -163,7 +176,8 @@ describe('the identities a request carries', () => {
 		const fresh = await import('~~/server/utils/auth');
 		// Better Auth's `returnHeaders` answer: the session, plus the headers the
 		// read would have set on a response of its own.
-		const getSession = vi.spyOn(fresh.serverAuth().api, 'getSession')
+		const getSession = vi
+			.spyOn(fresh.serverAuth().api, 'getSession')
 			.mockResolvedValue({ headers, response: session } as never);
 		return { ...fresh, getSession };
 	}
@@ -197,7 +211,7 @@ describe('the identities a request carries', () => {
 		await expect(optionalBrowserSessionId(requestEvent())).resolves.toBe('a-browser-session');
 	});
 
-	it('refuses a session-less caller in the boundary\'s own words', async () => {
+	it("refuses a session-less caller in the boundary's own words", async () => {
 		// Unreachable through today's callers — every one of them is a private
 		// `/api/**` path the middleware has already refused for. It is spelled so a
 		// caller that stops being one of those fails closed rather than reading
@@ -219,20 +233,18 @@ describe('the identities a request carries', () => {
 		await expect(optionalBrowserSessionId(event)).resolves.toBeUndefined();
 	});
 
-	it('resolves one request\'s session once, however many identities it asks for', async () => {
+	it("resolves one request's session once, however many identities it asks for", async () => {
 		// The middleware has already resolved it before the handler runs, and a
 		// leased ingestion write asks twice more. Three D1 reads per part of a
 		// resumable transfer is what the memo is for — and the two asked here are
 		// asked concurrently, which is the case memoising the value rather than the
 		// promise would miss.
-		const { requestUserSession, requireUserId, optionalBrowserSessionId, getSession } = await freshAuth(signedIn);
+		const { requestUserSession, requireUserId, optionalBrowserSessionId, getSession } =
+			await freshAuth(signedIn);
 		const event = requestEvent();
 
 		await requestUserSession(event);
-		await Promise.all([
-			requireUserId(event),
-			optionalBrowserSessionId(event),
-		]);
+		await Promise.all([requireUserId(event), optionalBrowserSessionId(event)]);
 
 		expect(getSession).toHaveBeenCalledTimes(1);
 	});
@@ -247,16 +259,17 @@ describe('the identities a request carries', () => {
 	 */
 	it('forwards every cookie a session read sets, once, however many identities the request asks for', async () => {
 		const renewal = new Headers();
-		renewal.append('set-cookie', 'better-auth.session_token=renewed; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax');
+		renewal.append(
+			'set-cookie',
+			'better-auth.session_token=renewed; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax',
+		);
 		renewal.append('set-cookie', 'better-auth.session_data=; Max-Age=0; Path=/');
-		const { requestUserSession, requireUserId, optionalBrowserSessionId, getSession } = await freshAuth(signedIn, renewal);
+		const { requestUserSession, requireUserId, optionalBrowserSessionId, getSession } =
+			await freshAuth(signedIn, renewal);
 		const event = requestEvent();
 
 		await requestUserSession(event);
-		await Promise.all([
-			requireUserId(event),
-			optionalBrowserSessionId(event),
-		]);
+		await Promise.all([requireUserId(event), optionalBrowserSessionId(event)]);
 
 		expect(getSession).toHaveBeenCalledTimes(1);
 		expect(event.node.res.getHeader('set-cookie')).toEqual([
@@ -266,7 +279,9 @@ describe('the identities a request carries', () => {
 	});
 
 	it('keeps cookies the request had already set beside the ones a session read adds', async () => {
-		const renewal = new Headers({ 'set-cookie': 'better-auth.session_token=renewed; Max-Age=604800; Path=/' });
+		const renewal = new Headers({
+			'set-cookie': 'better-auth.session_token=renewed; Max-Age=604800; Path=/',
+		});
 		const { requestUserSession } = await freshAuth(signedIn, renewal);
 		const event = requestEvent();
 		event.node.res.setHeader('set-cookie', 'earlier=1; Path=/');
@@ -367,7 +382,9 @@ describe('the Local Developer Session', () => {
 		const auth = await import('~~/server/utils/auth');
 
 		expect(auth.localAuthBypassIsActive(requestEvent())).toBe(false);
-		await expect(auth.requestUserSession(requestEvent())).rejects.toThrow(/NUXT_BETTER_AUTH_SECRET/);
+		await expect(auth.requestUserSession(requestEvent())).rejects.toThrow(
+			/NUXT_BETTER_AUTH_SECRET/,
+		);
 	});
 
 	it('admits an explicitly bypassed production-shaped local Worker', async () => {

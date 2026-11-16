@@ -79,33 +79,19 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
 </script>
 
 <template>
-	<div class="relative flex items-center justify-between gap-3 px-4 sm:px-6 py-2.5 border-t border-(--ui-border)/50 transition-colors">
+	<div
+		class="relative flex items-center justify-between gap-3 px-4 sm:px-6 py-2.5 border-t border-(--ui-border)/50 transition-colors"
+	>
 		<div class="flex items-center gap-2.5 min-w-0">
 			<UIcon name="i-lucide-circle" class="text-muted shrink-0 size-4" />
 			<span class="text-sm">{{ round.name }}</span>
-			<UBadge
-				v-if="isManualOverrideRound(round)"
-				color="warning"
-				variant="subtle"
-				size="xs"
-			>
+			<UBadge v-if="isManualOverrideRound(round)" color="warning" variant="subtle" size="xs">
 				Manual Override
 			</UBadge>
-			<UBadge
-				v-if="round.lastSyncedAt"
-				color="info"
-				variant="subtle"
-				size="xs"
-			>
+			<UBadge v-if="round.lastSyncedAt" color="info" variant="subtle" size="xs">
 				Synced {{ formatSyncTimestamp(round.lastSyncedAt) }}
 			</UBadge>
-			<UBadge
-				v-if="timing"
-				color="neutral"
-				variant="subtle"
-				size="xs"
-				data-testid="round-timing"
-			>
+			<UBadge v-if="timing" color="neutral" variant="subtle" size="xs" data-testid="round-timing">
 				{{ timing }}
 			</UBadge>
 		</div>
@@ -128,12 +114,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
 				:to="`/event/${eventId}/matches?roundId=${round.id}`"
 			/>
 			<UDropdownMenu :items="menuItems" :content="{ align: 'end' }">
-				<UButton
-					icon="i-lucide-ellipsis"
-					size="xs"
-					variant="ghost"
-					color="neutral"
-				/>
+				<UButton icon="i-lucide-ellipsis" size="xs" variant="ghost" color="neutral" />
 			</UDropdownMenu>
 		</div>
 	</div>

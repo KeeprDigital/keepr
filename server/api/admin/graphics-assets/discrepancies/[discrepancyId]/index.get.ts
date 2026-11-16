@@ -9,8 +9,7 @@ export default defineEventHandler(async (event) => {
 		return await graphicsAssetLibraryForEvent(event).inspectGraphicsDiscrepancy({
 			discrepancyId: graphicsDiscrepancyId(getRouterParam(event, 'discrepancyId') ?? ''),
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

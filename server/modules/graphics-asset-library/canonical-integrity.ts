@@ -18,15 +18,15 @@ export interface ExpectedCanonicalObject {
 	canonicalMime: string;
 }
 
-export type CanonicalObjectAgreement
-	= | { outcome: 'agrees' }
-		| {
+export type CanonicalObjectAgreement =
+	| { outcome: 'agrees' }
+	| {
 			outcome: 'mismatched';
 			reasonCode: Extract<
 				GraphicsDiscrepancyReasonCode,
 				'canonical-object-facts-mismatch' | 'canonical-object-redundant-metadata-mismatch'
 			>;
-		};
+	  };
 
 /**
  * Whether one stored object is exactly what the catalogue recorded.
@@ -46,10 +46,7 @@ export function canonicalObjectAgreement(
 	expected: ExpectedCanonicalObject,
 	object: GraphicsObjectMetadata,
 ): CanonicalObjectAgreement {
-	if (
-		object.byteLength !== expected.byteLength
-		|| object.contentType !== expected.canonicalMime
-	) {
+	if (object.byteLength !== expected.byteLength || object.contentType !== expected.canonicalMime) {
 		return { outcome: 'mismatched', reasonCode: 'canonical-object-facts-mismatch' };
 	}
 	if (object.customMetadata.sha256 !== expected.digest)

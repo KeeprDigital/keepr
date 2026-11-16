@@ -4,7 +4,10 @@ import { transportFailure } from '~~/test/helpers/transportFailure';
 
 // `useAsyncAction` runs for real: these are its optimistic update and rollback flows (#263).
 
-interface TestItem { id: number; name: string }
+interface TestItem {
+	id: number;
+	name: string;
+}
 
 /**
  * The sentence the authority wrote about a refused write. This helper reports the transport
@@ -27,7 +30,7 @@ function itemsOf(...names: string[]) {
 
 describe('useStoreHelpers', () => {
 	describe('optimisticUpdate', () => {
-		it('shows the prediction while the call is pending, then the authority\'s answer', async () => {
+		it("shows the prediction while the call is pending, then the authority's answer", async () => {
 			const { optimisticUpdate } = useStoreHelpers();
 			const items = itemsOf('A', 'B', 'C');
 			const call = deferred<TestItem>();
@@ -43,12 +46,12 @@ describe('useStoreHelpers', () => {
 				entityLabel: 'Item',
 				onSuccess,
 			});
-			expect(items.value.map(item => item.name)).toEqual(['A', 'Predicted', 'C']);
+			expect(items.value.map((item) => item.name)).toEqual(['A', 'Predicted', 'C']);
 
 			call.resolve({ id: 2, name: 'From API' });
 
 			await expect(result).resolves.toEqual({ id: 2, name: 'From API' });
-			expect(items.value.map(item => item.name)).toEqual(['A', 'From API', 'C']);
+			expect(items.value.map((item) => item.name)).toEqual(['A', 'From API', 'C']);
 			expect(onSuccess).toHaveBeenCalledOnce();
 			expect(errorRef.value).toBeNull();
 		});
@@ -89,12 +92,12 @@ describe('useStoreHelpers', () => {
 				entityLabel: 'Item',
 				onSuccess,
 			});
-			expect(items.value.map(item => item.id)).toEqual([2]);
+			expect(items.value.map((item) => item.id)).toEqual([2]);
 
 			call.resolve();
 
 			await expect(result).resolves.toBe(true);
-			expect(items.value.map(item => item.id)).toEqual([2]);
+			expect(items.value.map((item) => item.id)).toEqual([2]);
 			expect(onSuccess).toHaveBeenCalledOnce();
 		});
 
@@ -112,7 +115,7 @@ describe('useStoreHelpers', () => {
 			});
 
 			expect(result).toBeNull();
-			expect(items.value.map(item => item.id)).toEqual([1, 2, 3]);
+			expect(items.value.map((item) => item.id)).toEqual([1, 2, 3]);
 			expect(errorRef.value).toBe('[DELETE] "/api/items/2": 409 Conflict');
 			expect(errorRef.value).not.toBe(REFUSAL_SENTENCE);
 		});
@@ -121,22 +124,25 @@ describe('useStoreHelpers', () => {
 	it.each([
 		['optimisticUpdate', 'Player'],
 		['optimisticDelete', 'Round'],
-	] as const)('%s reports an item it does not hold, without calling the authority', async (helper, entityLabel) => {
-		const helpers = useStoreHelpers();
-		const apiCall = vi.fn();
-		const errorRef = ref<string | null>(null);
+	] as const)(
+		'%s reports an item it does not hold, without calling the authority',
+		async (helper, entityLabel) => {
+			const helpers = useStoreHelpers();
+			const apiCall = vi.fn();
+			const errorRef = ref<string | null>(null);
 
-		const result = await (helpers[helper] as (options: object) => Promise<unknown>)({
-			items: itemsOf('A'),
-			id: 999,
-			updates: {},
-			apiCall,
-			errorRef,
-			entityLabel,
-		});
+			const result = await (helpers[helper] as (options: object) => Promise<unknown>)({
+				items: itemsOf('A'),
+				id: 999,
+				updates: {},
+				apiCall,
+				errorRef,
+				entityLabel,
+			});
 
-		expect(result).toBeNull();
-		expect(errorRef.value).toBe(`${entityLabel} not found`);
-		expect(apiCall).not.toHaveBeenCalled();
-	});
+			expect(result).toBeNull();
+			expect(errorRef.value).toBe(`${entityLabel} not found`);
+			expect(apiCall).not.toHaveBeenCalled();
+		},
+	);
 });

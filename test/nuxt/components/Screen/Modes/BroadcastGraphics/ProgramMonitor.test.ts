@@ -5,9 +5,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, ref } from 'vue';
-import {
-	createInitialBroadcastGraphicsLiveState,
-} from '~~/shared/modules/broadcast-graphics-live-session';
+import { createInitialBroadcastGraphicsLiveState } from '~~/shared/modules/broadcast-graphics-live-session';
 import { liveSessionSelectors } from '~~/test/nuxt/helpers/broadcastGraphicsLiveSessionReads';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import ProgramMonitor from '~/components/Screen/Modes/BroadcastGraphics/ProgramMonitor.vue';
@@ -20,7 +18,10 @@ const mockServerNow = ref(1_700_000_000_000);
 const mockSessions = ref(new Map<number, { id: number; sequence: number }>());
 
 mockNuxtImport('useBroadcastGraphicsLiveSessionStore', () => () => ({
-	...liveSessionSelectors(() => mockLiveState.value, () => mockServerNow.value),
+	...liveSessionSelectors(
+		() => mockLiveState.value,
+		() => mockServerNow.value,
+	),
 	get sessions() {
 		return mockSessions.value;
 	},
@@ -33,12 +34,7 @@ const mockPresence = ref<Array<{ data?: { assetAccess?: 'granted' | 'absent' } }
 
 mockNuxtImport('useScreenStore', () => () => ({
 	get screenPresence() {
-		return new Map([
-			[
-				3,
-				{ count: mockPresence.value.length, members: mockPresence.value },
-			],
-		]);
+		return new Map([[3, { count: mockPresence.value.length, members: mockPresence.value }]]);
 	},
 }));
 
@@ -73,7 +69,8 @@ const USelectStub = defineComponent({
 		},
 	},
 	emits: ['update:modelValue'],
-	template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
+	template:
+		'<select :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
 });
 const UButtonStub = defineComponent({
 	name: 'UButton',
@@ -81,7 +78,8 @@ const UButtonStub = defineComponent({
 		disabled: { type: Boolean, default: false },
 	},
 	emits: ['click'],
-	template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+	template:
+		'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 });
 
 const lowerThird: BroadcastGraphicConfig = { id: 'lower-third', name: 'Lower Third', items: [] };
@@ -123,8 +121,7 @@ describe('broadcastGraphicsProgramMonitor', () => {
 		mockCapabilityResponse.value = 'program-capability';
 		mockApiFetch.mockImplementation(async (path: string) => {
 			if (String(path).endsWith('/asset-capability')) {
-				if (!mockCapabilityResponse.value)
-					throw new Error('no capability');
+				if (!mockCapabilityResponse.value) throw new Error('no capability');
 				return { assetCapability: mockCapabilityResponse.value };
 			}
 			throw new Error(`unexpected request: ${String(path)}`);
@@ -204,8 +201,9 @@ describe('broadcastGraphicsProgramMonitor', () => {
 		release();
 		await flushPromises();
 
-		expect(wrapper.get('[data-testid="program-monitor"]').attributes('src'))
-			.toContain(`#asset-capability=${encodeURIComponent('program-capability')}`);
+		expect(wrapper.get('[data-testid="program-monitor"]').attributes('src')).toContain(
+			`#asset-capability=${encodeURIComponent('program-capability')}`,
+		);
 	});
 
 	// And never at all when the answer is no.
@@ -215,8 +213,9 @@ describe('broadcastGraphicsProgramMonitor', () => {
 		const wrapper = await mountComponent();
 
 		expect(wrapper.find('[data-testid="program-monitor"]').exists()).toBe(false);
-		expect(wrapper.get('[data-testid="program-monitor-unavailable"]').text())
-			.toContain('Program monitor unavailable');
+		expect(wrapper.get('[data-testid="program-monitor-unavailable"]').text()).toContain(
+			'Program monitor unavailable',
+		);
 	});
 
 	// Story 23 asks for a *persistent* monitor: one the operator always has, in both workspaces.
@@ -231,7 +230,9 @@ describe('broadcastGraphicsProgramMonitor', () => {
 	it('draws compactly where space is shared, at the same canvas ratio', async () => {
 		const wrapper = await mountComponent([lowerThird, slate], true);
 
-		const style = wrapper.get('[data-testid="program-monitor"]').element.parentElement?.getAttribute('style') ?? '';
+		const style =
+			wrapper.get('[data-testid="program-monitor"]').element.parentElement?.getAttribute('style') ??
+			'';
 		expect(style).toContain('aspect-ratio: 1920 / 1080');
 	});
 
@@ -272,8 +273,9 @@ describe('broadcastGraphicsProgramMonitor', () => {
 
 			const wrapper = await mountComponent([branded]);
 
-			expect(wrapper.get('[data-testid="outputs-without-asset-access"]').text())
-				.toContain('One Screen Output cannot resolve this Screen\'s assets');
+			expect(wrapper.get('[data-testid="outputs-without-asset-access"]').text()).toContain(
+				"One Screen Output cannot resolve this Screen's assets",
+			);
 		});
 
 		// A Screen publishing nothing but Shapes and Text loses nothing to a missing capability,
@@ -295,10 +297,7 @@ describe('broadcastGraphicsProgramMonitor', () => {
 		 * lacking it, and a silence is not a fault to put in front of an operator.
 		 */
 		it('says nothing about an output that reported nothing', async () => {
-			mockPresence.value = [
-				{ data: {} },
-				{},
-			];
+			mockPresence.value = [{ data: {} }, {}];
 
 			const wrapper = await mountComponent([branded]);
 
@@ -359,8 +358,9 @@ describe('broadcastGraphicsProgramMonitor', () => {
 
 				const wrapper = await mountComponent([runtimeChosen]);
 
-				expect(wrapper.get('[data-testid="outputs-without-asset-access"]').text())
-					.toContain('One Screen Output cannot resolve this Screen\'s assets');
+				expect(wrapper.get('[data-testid="outputs-without-asset-access"]').text()).toContain(
+					"One Screen Output cannot resolve this Screen's assets",
+				);
 			});
 
 			// The half that keeps the widening honest.
@@ -419,13 +419,16 @@ describe('broadcastGraphicsProgramMonitor', () => {
 	});
 
 	// Wiring only: the shared hand-out owns its controls and their words.
-	it('hands out this Screen\'s Overlay Output where the operator watches it', async () => {
+	it("hands out this Screen's Overlay Output where the operator watches it", async () => {
 		const outputWindow = {
 			opener: {} as unknown,
 			location: { href: '' },
 			close: vi.fn(),
 		};
-		vi.stubGlobal('open', vi.fn(() => outputWindow));
+		vi.stubGlobal(
+			'open',
+			vi.fn(() => outputWindow),
+		);
 		const wrapper = await mountComponent();
 
 		await wrapper.get('[data-hand-out="open"]').trigger('click');

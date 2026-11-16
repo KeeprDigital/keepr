@@ -18,8 +18,13 @@ const renderer = useTemplateRef<ModeSettingsExposed>('renderer');
 defineExpose(passOnRendererExposed(renderer));
 
 /** The Position Change column shows, yet the Screen's own read found no previous Round to compare with (#905). */
-function warnsPositionChangeHasNoData(config: Readonly<Record<string, any>>, noPreviousRoundStandings: boolean | undefined): boolean {
-	return isColumnVisible(config.columns ?? [], 'positionChange') && noPreviousRoundStandings === true;
+function warnsPositionChangeHasNoData(
+	config: Readonly<Record<string, any>>,
+	noPreviousRoundStandings: boolean | undefined,
+): boolean {
+	return (
+		isColumnVisible(config.columns ?? [], 'positionChange') && noPreviousRoundStandings === true
+	);
 }
 </script>
 

@@ -19,8 +19,8 @@ const emit = defineEmits<{
 
 function getImageUrl(card: DeckListCard): string | null {
 	const mtgCard = card.scryfallId
-		? props.cardDataMap.get(card.scryfallId) ?? null
-		: props.cardDataMap.get(`name:${card.name.toLowerCase()}`) ?? null;
+		? (props.cardDataMap.get(card.scryfallId) ?? null)
+		: (props.cardDataMap.get(`name:${card.name.toLowerCase()}`) ?? null);
 	return mtgCard?.imageData?.front?.normal ?? null;
 }
 
@@ -67,20 +67,22 @@ function handleClick(name: string) {
 						loading="lazy"
 					/>
 					<!-- Fallback when no image -->
-					<div
-						v-else
-						class="w-full h-full bg-elevated flex items-center justify-center p-2"
-					>
+					<div v-else class="w-full h-full bg-elevated flex items-center justify-center p-2">
 						<span class="text-xs text-muted text-center leading-tight">{{ card.name }}</span>
 					</div>
 				</div>
 
 				<!-- Quantity badge -->
-				<div class="absolute top-1 left-1 bg-black/70 text-white text-xs font-mono font-bold rounded px-1.5 py-0.5 leading-none">
+				<div
+					class="absolute top-1 left-1 bg-black/70 text-white text-xs font-mono font-bold rounded px-1.5 py-0.5 leading-none"
+				>
 					{{ card.quantity }}
 				</div>
 
-				<div v-if="card.highlanderPoints" class="absolute bottom-1 right-1 bg-primary text-white text-sm font-mono font-bold rounded-md px-2.5 py-1 leading-none shadow-md">
+				<div
+					v-if="card.highlanderPoints"
+					class="absolute bottom-1 right-1 bg-primary text-white text-sm font-mono font-bold rounded-md px-2.5 py-1 leading-none shadow-md"
+				>
 					{{ card.highlanderPoints }}
 				</div>
 

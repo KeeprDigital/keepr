@@ -9,14 +9,18 @@ const mockGetRequestHeader = vi.fn();
 const mockGetRequestWebStream = vi.fn();
 const mockGetRouteRules = vi.fn();
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('getRequestHeader', mockGetRequestHeader);
 vi.stubGlobal('getRequestWebStream', mockGetRequestWebStream);
 vi.stubGlobal('getRouteRules', mockGetRouteRules);
-vi.stubGlobal('createError', (input: { statusCode: number; statusMessage: string; message: string }) => Object.assign(
-	new Error(input.message),
-	input,
-));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; statusMessage: string; message: string }) =>
+		Object.assign(new Error(input.message), input),
+);
 
 const handler = (await import('~~/server/middleware/request-body-limit')).default;
 
@@ -25,8 +29,7 @@ const RAW_LIMIT_BYTES = 2 * MAX_API_REQUEST_BODY_BYTES;
 function streamOf(...chunkSizes: number[]) {
 	return new ReadableStream<Uint8Array>({
 		start(controller) {
-			for (const size of chunkSizes)
-				controller.enqueue(new Uint8Array(size));
+			for (const size of chunkSizes) controller.enqueue(new Uint8Array(size));
 			controller.close();
 		},
 	});
@@ -54,15 +57,15 @@ beforeEach(() => {
 
 describe.each(MUTATION_BODY_METHODS)('a streamed %s body of unknown length', (method) => {
 	it('is read whole at the general limit', async () => {
-		await expect(bytesReadThrough(method, streamOf(MAX_API_REQUEST_BODY_BYTES)))
-			.resolves
-			.toBe(MAX_API_REQUEST_BODY_BYTES);
+		await expect(bytesReadThrough(method, streamOf(MAX_API_REQUEST_BODY_BYTES))).resolves.toBe(
+			MAX_API_REQUEST_BODY_BYTES,
+		);
 	});
 
 	it('is refused one byte past the general limit', async () => {
-		await expect(bytesReadThrough(method, streamOf(MAX_API_REQUEST_BODY_BYTES, 1)))
-			.rejects
-			.toMatchObject({ statusCode: 413 });
+		await expect(
+			bytesReadThrough(method, streamOf(MAX_API_REQUEST_BODY_BYTES, 1)),
+		).rejects.toMatchObject({ statusCode: 413 });
 	});
 });
 
@@ -81,30 +84,18 @@ describe('a route registering its own limit for one method', () => {
 			() => streamOf(MAX_API_REQUEST_BODY_BYTES, MAX_API_REQUEST_BODY_BYTES),
 			RAW_LIMIT_BYTES,
 		],
-		[
-			'a streamed body past its own limit',
-			() => streamOf(RAW_LIMIT_BYTES, 1),
-			413,
-		],
+		['a streamed body past its own limit', () => streamOf(RAW_LIMIT_BYTES, 1), 413],
 	])('takes %s on that method: %s', async (_case, body, outcome) => {
-		const read = bytesReadThrough('POST', body()).catch((refusal: { statusCode: number }) => refusal.statusCode);
+		const read = bytesReadThrough('POST', body()).catch(
+			(refusal: { statusCode: number }) => refusal.statusCode,
+		);
 
 		await expect(read).resolves.toBe(outcome);
 	});
 
 	it.each([
-		[
-			'one byte past its own limit on that method',
-			'POST',
-			RAW_LIMIT_BYTES + 1,
-			413,
-		],
-		[
-			'at its own limit on that method',
-			'POST',
-			RAW_LIMIT_BYTES,
-			'admitted',
-		],
+		['one byte past its own limit on that method', 'POST', RAW_LIMIT_BYTES + 1, 413],
+		['at its own limit on that method', 'POST', RAW_LIMIT_BYTES, 'admitted'],
 		[
 			'one byte past the general limit on another method',
 			'PUT',
@@ -117,8 +108,7 @@ describe('a route registering its own limit for one method', () => {
 		let answered: unknown = 'admitted';
 		try {
 			handler({ method } as any);
-		}
-		catch (refusal) {
+		} catch (refusal) {
 			answered = (refusal as { statusCode: number }).statusCode;
 		}
 

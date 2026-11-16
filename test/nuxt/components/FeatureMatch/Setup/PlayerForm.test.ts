@@ -13,11 +13,11 @@ async function mountComponent() {
 
 	const wrapper = mount(PlayerForm, {
 		props: {
-			'modelValue': player,
-			'displayMode': 'position',
-			'game': 'mtg',
-			'standingsEnabled': true,
-			'formId': 'feature-match-test-player-form',
+			modelValue: player,
+			displayMode: 'position',
+			game: 'mtg',
+			standingsEnabled: true,
+			formId: 'feature-match-test-player-form',
 			'onUpdate:modelValue': (value: typeof player) => Object.assign(player, value),
 		},
 		global: {
@@ -73,7 +73,9 @@ describe('linking a One Piece Card Game Player into a side', () => {
 	});
 	const ava = createMockPlayer({ id: 8, name: 'Ava Reed', nickname: 'avareed' });
 
-	function mountOpSide(options: { playerId?: number | null; gameData?: PlayerData['gameData'] } = {}) {
+	function mountOpSide(
+		options: { playerId?: number | null; gameData?: PlayerData['gameData'] } = {},
+	) {
 		const player = reactive<PlayerData>({
 			...DEFAULT_PLAYER_DATA,
 			gameData: options.gameData ?? {
@@ -84,14 +86,14 @@ describe('linking a One Piece Card Game Player into a side', () => {
 		});
 		const wrapper = mount(PlayerForm, {
 			props: {
-				'modelValue': player,
-				'displayMode': 'position',
-				'game': 'op',
-				'players': [linlin, ava] as never,
-				'playerId': options.playerId ?? null,
-				'formId': 'op-side-form',
-				'slotId': 3,
-				'side': 'player1',
+				modelValue: player,
+				displayMode: 'position',
+				game: 'op',
+				players: [linlin, ava] as never,
+				playerId: options.playerId ?? null,
+				formId: 'op-side-form',
+				slotId: 3,
+				side: 'player1',
 				'onUpdate:modelValue': (value: typeof player) => Object.assign(player, value),
 			},
 			global: {
@@ -104,7 +106,8 @@ describe('linking a One Piece Card Game Player into a side', () => {
 					PlayerOpDeckListModal: {
 						props: ['player'],
 						emits: ['close'],
-						template: '<div data-player-deck-list-editor :data-player-id="player.id" @click="$emit(\'close\')" />',
+						template:
+							'<div data-player-deck-list-editor :data-player-id="player.id" @click="$emit(\'close\')" />',
 					},
 				},
 			},
@@ -113,26 +116,14 @@ describe('linking a One Piece Card Game Player into a side', () => {
 	}
 
 	const options = (wrapper: ReturnType<typeof mountOpSide>['wrapper']) =>
-		wrapper.findAll('[role="option"]').map(option => option.text());
+		wrapper.findAll('[role="option"]').map((option) => option.text());
 
 	// Pickers show a Player by Nickname, else name, and find them by either (ADR-0077).
 	it.each([
-		[
-			'',
-			['linlin_88', 'avareed'],
-		],
-		[
-			'LINLIN',
-			['linlin_88'],
-		],
-		[
-			'ava reed',
-			['avareed'],
-		],
-		[
-			'0012345',
-			['linlin_88'],
-		],
+		['', ['linlin_88', 'avareed']],
+		['LINLIN', ['linlin_88']],
+		['ava reed', ['avareed']],
+		['0012345', ['linlin_88']],
 	])('searching %j offers %j', async (query, offered) => {
 		const { wrapper } = mountOpSide();
 
@@ -142,14 +133,12 @@ describe('linking a One Piece Card Game Player into a side', () => {
 	});
 
 	// A linked side shows the Player's Deck List, so it drops the side's own (ADR-0074).
-	it('seats the Player with their Nickname and their Deck List in place of the side\'s own', async () => {
+	it("seats the Player with their Nickname and their Deck List in place of the side's own", async () => {
 		const { wrapper, player } = mountOpSide();
 
 		await wrapper.findAll('[role="option"]')[0]!.trigger('click');
 
-		expect(wrapper.emitted('update:playerId')).toEqual([
-			[7],
-		]);
+		expect(wrapper.emitted('update:playerId')).toEqual([[7]]);
 		expect(player).toMatchObject({
 			name: '',
 			nickname: 'linlin_88',
@@ -168,7 +157,7 @@ describe('linking a One Piece Card Game Player into a side', () => {
 		expect(wrapper.find('[data-linked-deck-list]').exists()).toBe(!own);
 	});
 
-	it('shows a linked side\'s Leader and Deck List as the Player\'s, and edits them as the Player\'s', async () => {
+	it("shows a linked side's Leader and Deck List as the Player's, and edits them as the Player's", async () => {
 		const { wrapper } = mountOpSide({
 			playerId: 7,
 			gameData: { type: 'op', leader: ZORO, deckList: linlinDeckList },
@@ -185,7 +174,7 @@ describe('linking a One Piece Card Game Player into a side', () => {
 		expect(wrapper.find('[data-player-deck-list-editor]').exists()).toBe(false);
 	});
 
-	it('names a linked side\'s Leader by its card number until the side is saved', () => {
+	it("names a linked side's Leader by its card number until the side is saved", () => {
 		const { wrapper } = mountOpSide({
 			playerId: 7,
 			gameData: { type: 'op', leader: null, deckList: linlinDeckList },
@@ -196,7 +185,7 @@ describe('linking a One Piece Card Game Player into a side', () => {
 });
 
 // A Commander Event has no Players: its Seat is typed, and its deck is its Commanders (ADR-0087).
-describe('a Commander Event\'s Seat', () => {
+describe("a Commander Event's Seat", () => {
 	function mountSeat(commanderEvent: boolean, held: Partial<PlayerData> = {}) {
 		const player = reactive<PlayerData>({
 			...DEFAULT_PLAYER_DATA,
@@ -204,20 +193,18 @@ describe('a Commander Event\'s Seat', () => {
 		});
 		const wrapper = mount(PlayerForm, {
 			props: {
-				'modelValue': player,
-				'displayMode': 'score',
-				'game': 'mtg',
+				modelValue: player,
+				displayMode: 'score',
+				game: 'mtg',
 				commanderEvent,
-				'pronounsEnabled': true,
-				'standingsEnabled': true,
-				'lgsEnabled': true,
-				'players': [
-					createMockPlayer({ id: 8, name: 'Ava Reed' }),
-				] as never,
-				'formId': 'seat-form',
-				'slotId': 3,
-				'seat': 'player4',
-				'deckListLocked': true,
+				pronounsEnabled: true,
+				standingsEnabled: true,
+				lgsEnabled: true,
+				players: [createMockPlayer({ id: 8, name: 'Ava Reed' })] as never,
+				formId: 'seat-form',
+				slotId: 3,
+				seat: 'player4',
+				deckListLocked: true,
 				'onUpdate:modelValue': (value: typeof player) => Object.assign(player, value),
 			},
 			global: {
@@ -241,20 +228,26 @@ describe('a Commander Event\'s Seat', () => {
 	}
 
 	it.each([
-		{ seat: 'a Commander Event\'s Seat', commanderEvent: true },
+		{ seat: "a Commander Event's Seat", commanderEvent: true },
 		{ seat: 'any other Magic: The Gathering Seat', commanderEvent: false },
-	])('offers $seat a Commander picker in place of a Player, a deck name and a record: $commanderEvent', ({ commanderEvent }) => {
-		const { wrapper } = mountSeat(commanderEvent);
+	])(
+		'offers $seat a Commander picker in place of a Player, a deck name and a record: $commanderEvent',
+		({ commanderEvent }) => {
+			const { wrapper } = mountSeat(commanderEvent);
 
-		expect(wrapper.find('[data-commander-picker]').exists()).toBe(commanderEvent);
-		expect([
-			wrapper.find('[role="combobox"]').exists(),
-			wrapper.find('[data-deck-name]').exists(),
-			wrapper.find('[data-field="wins"]').exists(),
-		]).toEqual([!commanderEvent, !commanderEvent, !commanderEvent]);
-		expect(['name', 'pronouns', 'lgs'].map(field => wrapper.find(`[data-field="${field}"]`).exists()))
-			.toEqual([true, true, true]);
-	});
+			expect(wrapper.find('[data-commander-picker]').exists()).toBe(commanderEvent);
+			expect([
+				wrapper.find('[role="combobox"]').exists(),
+				wrapper.find('[data-deck-name]').exists(),
+				wrapper.find('[data-field="wins"]').exists(),
+			]).toEqual([!commanderEvent, !commanderEvent, !commanderEvent]);
+			expect(
+				['name', 'pronouns', 'lgs'].map((field) =>
+					wrapper.find(`[data-field="${field}"]`).exists(),
+				),
+			).toEqual([true, true, true]);
+		},
+	);
 
 	it('holds the Commanders its picker picks', async () => {
 		const { wrapper, player } = mountSeat(true);
@@ -263,9 +256,7 @@ describe('a Commander Event\'s Seat', () => {
 
 		expect(player.gameData).toEqual({
 			type: 'mtg',
-			commanders: [
-				{ name: 'Atraxa' },
-			],
+			commanders: [{ name: 'Atraxa' }],
 		});
 	});
 

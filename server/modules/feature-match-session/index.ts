@@ -1,4 +1,7 @@
-import type { FeatureMatchSessionCommand, FeatureMatchSessionCommandResult } from '~~/shared/types/featureMatchSession';
+import type {
+	FeatureMatchSessionCommand,
+	FeatureMatchSessionCommandResult,
+} from '~~/shared/types/featureMatchSession';
 import { mapFeatureMatchSessionToResponse } from '~~/server/mappers/featureMatch';
 import { refreshBroadcastGraphicsBindings } from '~~/server/modules/broadcast-graphics-live-session';
 import { featureMatchStateService } from '~~/server/services/featureMatchState';
@@ -50,10 +53,10 @@ export function featureMatchSessionModule() {
 	) {
 		// Opening announces the new Session and catches bindings up, as it does for
 		// every path that opens one.
-		const session = await stateService.createSessionForSlot(slotId, eventId, { originConnectionId });
-		return session
-			? mapFeatureMatchSessionToResponse(session)
-			: null;
+		const session = await stateService.createSessionForSlot(slotId, eventId, {
+			originConnectionId,
+		});
+		return session ? mapFeatureMatchSessionToResponse(session) : null;
 	}
 
 	async function applyCommand(
@@ -62,7 +65,13 @@ export function featureMatchSessionModule() {
 		command: FeatureMatchSessionCommand,
 		originConnectionId?: string,
 	): Promise<FeatureMatchSessionCommandResult> {
-		const result = await stateService.applyCommand(sessionId, eventId, command, originConnectionId, { publish: true });
+		const result = await stateService.applyCommand(
+			sessionId,
+			eventId,
+			command,
+			originConnectionId,
+			{ publish: true },
+		);
 		await refreshBroadcastGraphicsBindings(eventId);
 		return result;
 	}

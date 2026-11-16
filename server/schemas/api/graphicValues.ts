@@ -19,20 +19,24 @@ import {
 
 const finiteNumberSchema = z.number().finite();
 
-const shapeCornerSchema = z.object({
-	treatment: z.enum(SHAPE_CORNER_TREATMENT_VALUES),
-	size: finiteNumberSchema.nonnegative().max(MAX_SHAPE_GEOMETRY_PX),
-}).strict();
+const shapeCornerSchema = z
+	.object({
+		treatment: z.enum(SHAPE_CORNER_TREATMENT_VALUES),
+		size: finiteNumberSchema.nonnegative().max(MAX_SHAPE_GEOMETRY_PX),
+	})
+	.strict();
 const shapeSlantSchema = finiteNumberSchema.min(-MAX_SHAPE_GEOMETRY_PX).max(MAX_SHAPE_GEOMETRY_PX);
 
-export const shapeGeometrySchema = z.object({
-	topLeft: shapeCornerSchema,
-	topRight: shapeCornerSchema,
-	bottomRight: shapeCornerSchema,
-	bottomLeft: shapeCornerSchema,
-	leftSlant: shapeSlantSchema,
-	rightSlant: shapeSlantSchema,
-}).strict();
+export const shapeGeometrySchema = z
+	.object({
+		topLeft: shapeCornerSchema,
+		topRight: shapeCornerSchema,
+		bottomRight: shapeCornerSchema,
+		bottomLeft: shapeCornerSchema,
+		leftSlant: shapeSlantSchema,
+		rightSlant: shapeSlantSchema,
+	})
+	.strict();
 
 /**
  * The bounded typography fields every typography owner shares.

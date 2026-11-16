@@ -14,11 +14,12 @@ function transportFailure(code: string) {
 	});
 }
 
-describe('the integration suite\'s transport retry', () => {
+describe("the integration suite's transport retry", () => {
 	it('makes the second attempt, and only the second', async () => {
 		// The whole of what the broken version got wrong. Two attempts, never three
 		// — a third would mean a second layer had grown back.
-		const request = vi.fn()
+		const request = vi
+			.fn()
 			.mockRejectedValueOnce(transportFailure('ECONNRESET'))
 			.mockResolvedValue('answered');
 

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { INTEGRATION_EVENT_ID_BLOCK_SIZE, integrationEventIdBlocks } from '~~/test/integration/state';
+import {
+	INTEGRATION_EVENT_ID_BLOCK_SIZE,
+	integrationEventIdBlocks,
+} from '~~/test/integration/state';
 
 /**
  * That no two integration servers mint the same Event id (#630).
@@ -16,10 +19,9 @@ describe('integrationEventIdBlocks', () => {
 		const firstIds = integrationEventIdBlocks(4, () => 0.5);
 
 		expect(firstIds).toHaveLength(4);
-		const blocks = firstIds.map(id => Math.floor(id / INTEGRATION_EVENT_ID_BLOCK_SIZE));
+		const blocks = firstIds.map((id) => Math.floor(id / INTEGRATION_EVENT_ID_BLOCK_SIZE));
 		expect(new Set(blocks).size).toBe(4);
-		for (const id of firstIds)
-			expect(id % INTEGRATION_EVENT_ID_BLOCK_SIZE).toBe(0);
+		for (const id of firstIds) expect(id % INTEGRATION_EVENT_ID_BLOCK_SIZE).toBe(0);
 	});
 
 	it('keeps every id a block can mint a positive int32, at either end of the draw', () => {

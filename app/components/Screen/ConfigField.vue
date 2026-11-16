@@ -39,77 +39,83 @@ const emit = defineEmits<{
 }>();
 
 /** A select offers only values its field allows: an enum value outside them would be refused on write. */
-function assertItemsInFieldValues(field: ScreenModeConfigField, items: { value: unknown }[] | undefined) {
-	if (!items || !field.values)
-		return;
-	const outside = items.filter(item => item.value !== null && !field.values!.includes(String(item.value)));
+function assertItemsInFieldValues(
+	field: ScreenModeConfigField,
+	items: { value: unknown }[] | undefined,
+) {
+	if (!items || !field.values) return;
+	const outside = items.filter(
+		(item) => item.value !== null && !field.values!.includes(String(item.value)),
+	);
 	if (outside.length > 0)
-		throw new Error(`Select items for "${field.key}" name ${outside.map(item => `"${String(item.value)}"`).join(', ')}, outside its values: ${field.values.join(', ')}.`);
+		throw new Error(
+			`Select items for "${field.key}" name ${outside.map((item) => `"${String(item.value)}"`).join(', ')}, outside its values: ${field.values.join(', ')}.`,
+		);
 }
 
 if (import.meta.dev || import.meta.test) {
-	watch(() => [props.field, props.items] as const, ([field, items]) => assertItemsInFieldValues(field, items), { immediate: true });
+	watch(
+		() => [props.field, props.items] as const,
+		([field, items]) => assertItemsInFieldValues(field, items),
+		{ immediate: true },
+	);
 }
 
-const selectItems = computed(() => props.items
-	?? (props.field.values ?? []).map(value => ({ label: value, value })));
+const selectItems = computed(
+	() => props.items ?? (props.field.values ?? []).map((value) => ({ label: value, value })),
+);
 
 // `USelect` infers its value type from its items, which a generic `Value` defeats.
 const selectValue = computed(() => (props.modelValue ?? null) as never);
 
 /** A position's points its field does not allow, such as a badge's centre: offered, but not to be picked. */
-const disabledPoints = computed(() => props.field.values
-	? NINE_POINT_VALUES.filter(point => !props.field.values!.includes(point))
-	: []);
+const disabledPoints = computed(() =>
+	props.field.values
+		? NINE_POINT_VALUES.filter((point) => !props.field.values!.includes(point))
+		: [],
+);
 
 const numberMax = computed(() => {
 	const own = props.field.max;
-	if (props.max === undefined)
-		return own;
-	return own === undefined
-		? props.max
-		: Math.min(own, props.max);
+	if (props.max === undefined) return own;
+	return own === undefined ? props.max : Math.min(own, props.max);
 });
 
 function isEmpty(value: unknown): boolean {
-	return value === null || value === undefined || value === '' || (typeof value === 'number' && Number.isNaN(value));
+	return (
+		value === null ||
+		value === undefined ||
+		value === '' ||
+		(typeof value === 'number' && Number.isNaN(value))
+	);
 }
 
 /** An emptied field: `null` when nullable, otherwise nothing, or `fallback` where the control has an empty value of its own. */
 function emitEmpty(fallback?: Value) {
-	if (props.nullable)
-		emit('update:modelValue', null);
-	else if (fallback !== undefined)
-		emit('update:modelValue', fallback);
+	if (props.nullable) emit('update:modelValue', null);
+	else if (fallback !== undefined) emit('update:modelValue', fallback);
 }
 
 function updateNumber(value: number | null | undefined) {
-	if (isEmpty(value))
-		emitEmpty();
-	else
-		emit('update:modelValue', Number(value) as Value);
+	if (isEmpty(value)) emitEmpty();
+	else emit('update:modelValue', Number(value) as Value);
 }
 
 function updateValue(value: unknown) {
-	if (isEmpty(value))
-		emitEmpty();
-	else
-		emit('update:modelValue', value as Value);
+	if (isEmpty(value)) emitEmpty();
+	else emit('update:modelValue', value as Value);
 }
 
 /** A select's null option, where it offers one, is a choice of its own, `nullable` or not. */
 function updateSelect(value: unknown) {
-	if (value === null && selectItems.value.some(item => item.value === null))
+	if (value === null && selectItems.value.some((item) => item.value === null))
 		emit('update:modelValue', null);
-	else
-		updateValue(value);
+	else updateValue(value);
 }
 
 function updateText(value: unknown) {
-	if (isEmpty(value))
-		emitEmpty('' as Value);
-	else
-		emit('update:modelValue', String(value) as Value);
+	if (isEmpty(value)) emitEmpty('' as Value);
+	else emit('update:modelValue', String(value) as Value);
 }
 </script>
 

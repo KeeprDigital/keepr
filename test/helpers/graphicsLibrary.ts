@@ -58,12 +58,14 @@ export async function createSqliteGraphicsAssetCatalogue() {
 /** The Event row an Event-scoped ingestion or installation points at. */
 export async function addEvent(harness: SqliteD1Harness, eventId: number) {
 	await harness.client.execute({
-		sql: 'INSERT INTO events (id, name, game, feature_match_orientation) VALUES (?, ?, \'mtg\', \'landscape\')',
+		sql: "INSERT INTO events (id, name, game, feature_match_orientation) VALUES (?, ?, 'mtg', 'landscape')",
 		args: [eventId, `Event ${eventId}`],
 	});
 }
 
-export type TestGraphicsLibraryOptions = Partial<Omit<LibraryDependencies, 'staging' | 'canonical'>> & {
+export type TestGraphicsLibraryOptions = Partial<
+	Omit<LibraryDependencies, 'staging' | 'canonical'>
+> & {
 	/** The clock's starting instant. */
 	start?: string;
 	/** Prefix for minted identities: `<prefix>-1`, `<prefix>-2`, … */
@@ -88,7 +90,9 @@ function controlledClockAndIdentities(start: string, identityPrefix: string) {
 	};
 }
 
-export function createTestGraphicsLibrary(options: TestGraphicsLibraryOptions & Pick<LibraryDependencies, 'catalogue'>) {
+export function createTestGraphicsLibrary(
+	options: TestGraphicsLibraryOptions & Pick<LibraryDependencies, 'catalogue'>,
+) {
 	const {
 		start = '2026-07-28T00:00:00.000Z',
 		identityPrefix = 'identity',
@@ -96,7 +100,10 @@ export function createTestGraphicsLibrary(options: TestGraphicsLibraryOptions & 
 		canonical = createInMemoryCanonicalGraphicsObjectStore(),
 		...dependencies
 	} = options;
-	const { now, generateIdentity, advance, advanceTo } = controlledClockAndIdentities(start, identityPrefix);
+	const { now, generateIdentity, advance, advanceTo } = controlledClockAndIdentities(
+		start,
+		identityPrefix,
+	);
 	const library = createGraphicsAssetLibrary({
 		staging,
 		canonical,
@@ -120,7 +127,8 @@ type IngestionDependencies = Parameters<typeof createGraphicsAssetIngestion>[0];
 type LifecycleDependencies = Parameters<typeof createGraphicsIngestionOperationLifecycle>[0];
 
 /** What ingestion and the operation lifecycle it runs on both read and write: the D1 catalogue, or a wrapper of it. */
-type IngestionSeamCatalogue = GraphicsAssetIngestionCatalogue & ReturnType<LifecycleDependencies['requireCatalogue']>;
+type IngestionSeamCatalogue = GraphicsAssetIngestionCatalogue &
+	ReturnType<LifecycleDependencies['requireCatalogue']>;
 
 export interface TestGraphicsIngestionOptions<Catalogue extends IngestionSeamCatalogue> {
 	catalogue: Catalogue;
@@ -150,12 +158,15 @@ export function createTestGraphicsIngestion<Catalogue extends IngestionSeamCatal
 		staging = createInMemoryStagingGraphicsObjectStore(),
 		canonical = createInMemoryCanonicalGraphicsObjectStore(),
 	} = options;
-	const { now, generateIdentity, advance, advanceTo } = controlledClockAndIdentities(start, identityPrefix);
+	const { now, generateIdentity, advance, advanceTo } = controlledClockAndIdentities(
+		start,
+		identityPrefix,
+	);
 	const lifecycle = createGraphicsIngestionOperationLifecycle({
 		requireCatalogue: () => catalogue,
 		requireStaging: () => staging,
-		silentVideoPlaybackValidator: options.silentVideoPlaybackValidator
-			?? createUnavailableSilentVideoPlaybackValidator(),
+		silentVideoPlaybackValidator:
+			options.silentVideoPlaybackValidator ?? createUnavailableSilentVideoPlaybackValidator(),
 		now,
 		generateIdentity,
 	});
@@ -210,8 +221,7 @@ export async function storedRevisionContent(
 	reference: { assetId: GraphicAssetId; revisionId: GraphicAssetRevisionId },
 ) {
 	const content = await context.catalogue.findRevisionContent(reference);
-	if (!content)
-		return undefined;
+	if (!content) return undefined;
 	const stored = await context.canonical.read(canonicalIdentity(content.digest));
 	if (stored.outcome !== 'available')
 		throw new Error(`Canonical bytes for revision ${reference.revisionId} are ${stored.outcome}`);
@@ -279,11 +289,14 @@ interface IngestOptions {
 }
 
 /** Initiate a PNG ingestion without uploading it. */
-export async function initiateImage(context: TestGraphicsLibrary, options: IngestOptions & {
-	/** `false` initiates without browser decode evidence, as an abandoned transfer does. */
-	decoded?: boolean;
-	duplicateContentPolicy?: GraphicsDuplicateContentPolicy;
-}): Promise<GraphicsIngestionOperation> {
+export async function initiateImage(
+	context: TestGraphicsLibrary,
+	options: IngestOptions & {
+		/** `false` initiates without browser decode evidence, as an abandoned transfer does. */
+		decoded?: boolean;
+		duplicateContentPolicy?: GraphicsDuplicateContentPolicy;
+	},
+): Promise<GraphicsIngestionOperation> {
 	const bytes = options.bytes ?? pixelPng;
 	return await context.library.initiateGraphicsIngestion({
 		idempotencyKey: options.idempotencyKey,
@@ -304,7 +317,11 @@ export async function initiateImage(context: TestGraphicsLibrary, options: Inges
 }
 
 /** Upload `bytes` for an initiated operation. */
-export async function uploadImage(context: TestGraphicsLibrary, operation: GraphicsIngestionOperation, bytes: Uint8Array = pixelPng) {
+export async function uploadImage(
+	context: TestGraphicsLibrary,
+	operation: GraphicsIngestionOperation,
+	bytes: Uint8Array = pixelPng,
+) {
 	return await context.library.uploadGraphicAsset({
 		operationId: operation.id,
 		initiatedBy: operation.initiatedBy,
@@ -314,8 +331,14 @@ export async function uploadImage(context: TestGraphicsLibrary, operation: Graph
 }
 
 /** Initiate and upload one PNG as a new Graphic Asset, a second apart. */
-export async function ingestImage(context: TestGraphicsLibrary, options: IngestOptions): Promise<GraphicsIngestionOperation> {
-	const operation = await initiateImage(context, { ...options, duplicateContentPolicy: 'create-separate' });
+export async function ingestImage(
+	context: TestGraphicsLibrary,
+	options: IngestOptions,
+): Promise<GraphicsIngestionOperation> {
+	const operation = await initiateImage(context, {
+		...options,
+		duplicateContentPolicy: 'create-separate',
+	});
 	context.advance(1000);
 	return await uploadImage(context, operation, options.bytes);
 }
@@ -351,12 +374,15 @@ export function publishedRevision(operation: GraphicsIngestionOperation) {
 }
 
 /** A Screen-owned reference, written as the Screen reference writer writes it. */
-export async function addScreenReference(harness: SqliteD1Harness, input: {
-	referenceId: string;
-	assetId: GraphicAssetId;
-	revisionId: GraphicAssetRevisionId;
-	ownerSlot?: string;
-}) {
+export async function addScreenReference(
+	harness: SqliteD1Harness,
+	input: {
+		referenceId: string;
+		assetId: GraphicAssetId;
+		revisionId: GraphicAssetRevisionId;
+		ownerSlot?: string;
+	},
+) {
 	await harness.client.execute({
 		sql: `
 			INSERT INTO graphic_asset_references (
@@ -388,31 +414,43 @@ export async function removeScreenReference(harness: SqliteD1Harness, referenceI
 export function catalogueSelectability(harness: SqliteD1Harness) {
 	const answeredBeforeRetirement = new Set<string>();
 
-	async function inspectGraphicAssetRevisions(input: { references: GraphicAssetReference[] }): Promise<GraphicAssetReferenceStatus[]> {
-		return await Promise.all(input.references.map(async (reference) => {
-			const { rows: [row] } = await harness.client.execute({
-				sql: `
+	async function inspectGraphicAssetRevisions(input: {
+		references: GraphicAssetReference[];
+	}): Promise<GraphicAssetReferenceStatus[]> {
+		return await Promise.all(
+			input.references.map(async (reference) => {
+				const {
+					rows: [row],
+				} = await harness.client.execute({
+					sql: `
 					SELECT asset.id AS asset_id, asset.kind, asset.lifecycle_state
 					FROM graphic_asset_revisions revision
 					JOIN graphic_assets asset ON asset.id = revision.asset_id
 					WHERE revision.id = ?
 				`,
-				args: [reference.revisionId],
-			});
-			if (!row)
-				return { outcome: 'missing' as const };
-			const lifecycleState = answeredBeforeRetirement.has(String(row.asset_id))
-				? 'active'
-				: row.lifecycle_state;
-			return { outcome: 'available' as const, kind: row.kind, lifecycleState } as GraphicAssetReferenceStatus;
-		}));
+					args: [reference.revisionId],
+				});
+				if (!row) return { outcome: 'missing' as const };
+				const lifecycleState = answeredBeforeRetirement.has(String(row.asset_id))
+					? 'active'
+					: row.lifecycle_state;
+				return {
+					outcome: 'available' as const,
+					kind: row.kind,
+					lifecycleState,
+				} as GraphicAssetReferenceStatus;
+			}),
+		);
 	}
 
 	return { inspectGraphicAssetRevisions, answeredBeforeRetirement };
 }
 
-const SEEDED_REVISION_FACTS: Record<Exclude<GraphicAsset['kind'], 'image'>, { mime: string; profile: string }> = {
-	'font': { mime: 'font/woff2', profile: 'static-font-v1' },
+const SEEDED_REVISION_FACTS: Record<
+	Exclude<GraphicAsset['kind'], 'image'>,
+	{ mime: string; profile: string }
+> = {
+	font: { mime: 'font/woff2', profile: 'static-font-v1' },
 	'silent-video': { mime: 'video/webm', profile: 'silent-video-v1' },
 };
 
@@ -420,32 +458,34 @@ const SEEDED_REVISION_FACTS: Record<Exclude<GraphicAsset['kind'], 'image'>, { mi
  * A font or silent-video revision, seeded as the catalogue holds one: their
  * ingestion needs a browser's evidence.
  */
-export async function seedGraphicAssetRevision(harness: SqliteD1Harness, kind: keyof typeof SEEDED_REVISION_FACTS, name: string) {
+export async function seedGraphicAssetRevision(
+	harness: SqliteD1Harness,
+	kind: keyof typeof SEEDED_REVISION_FACTS,
+	name: string,
+) {
 	const facts = SEEDED_REVISION_FACTS[kind];
 	const digest = digestOf(new TextEncoder().encode(name));
 	const assetId = `asset-${name}` as GraphicAssetId;
 	const revisionId = `revision-${name}` as GraphicAssetRevisionId;
-	await harness.client.batch([
-		{
-			sql: 'INSERT INTO graphic_asset_contents (digest, byte_length, canonical_mime) VALUES (?, 70, ?)',
-			args: [digest, facts.mime],
-		},
-		{
-			sql: 'INSERT INTO graphic_assets (id, name, kind) VALUES (?, ?, ?)',
-			args: [assetId, name, kind],
-		},
-		{
-			sql: `
+	await harness.client.batch(
+		[
+			{
+				sql: 'INSERT INTO graphic_asset_contents (digest, byte_length, canonical_mime) VALUES (?, 70, ?)',
+				args: [digest, facts.mime],
+			},
+			{
+				sql: 'INSERT INTO graphic_assets (id, name, kind) VALUES (?, ?, ?)',
+				args: [assetId, name, kind],
+			},
+			{
+				sql: `
 				INSERT INTO graphic_asset_revisions (id, asset_id, revision_number, content_digest, compatibility_profile, technical_facts)
 				VALUES (?, ?, 1, ?, ?, '{}')
 			`,
-			args: [
-				revisionId,
-				assetId,
-				digest,
-				facts.profile,
-			],
-		},
-	], 'write');
+				args: [revisionId, assetId, digest, facts.profile],
+			},
+		],
+		'write',
+	);
 	return { assetId, revisionId };
 }

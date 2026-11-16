@@ -21,19 +21,21 @@ export function useTopCardsModeData(context: ScreenContext) {
 	// the read changes with the configuration fields it depends on.
 	const freshness = useScreenModeFreshness<CardBreakdownResponse | null>({
 		hearing: useScreenModeHearing(context, 'top-cards', () => config.value),
-		source: () => outputReads.scopeKey.value && JSON.stringify([
-			outputReads.scopeKey.value,
-			config.value.scope,
-			config.value.topN,
-			config.value.minPoints,
-			config.value.playerListId,
-			config.value.archetypeId,
-			config.value.board,
-			config.value.sortBy,
-			config.value.limit,
-			config.value.excludedCardTypes,
-			config.value.pointedOnly,
-		]),
+		source: () =>
+			outputReads.scopeKey.value &&
+			JSON.stringify([
+				outputReads.scopeKey.value,
+				config.value.scope,
+				config.value.topN,
+				config.value.minPoints,
+				config.value.playerListId,
+				config.value.archetypeId,
+				config.value.board,
+				config.value.sortBy,
+				config.value.limit,
+				config.value.excludedCardTypes,
+				config.value.pointedOnly,
+			]),
 		read: () => outputReads.topCards(),
 		initialData: null,
 		errorMessage: 'Failed to load top cards data',
@@ -49,17 +51,11 @@ export function useTopCardsModeData(context: ScreenContext) {
 	// size) a page, or every card on one while it is Auto. Columns are the
 	// Screen's to lay out in the space it measures; they never change which
 	// cards a page holds (ADR-0054).
-	const rankedCards = computed(() => entries.value.map((entry, index) => ({ entry, rank: index + 1 })));
-	const {
-		rowCount,
-		pageData,
-		pageSize,
-		totalPages,
-		currentPage,
-		setPage,
-		nextPage,
-		prevPage,
-	} = usePaginatedScreenMode(context, { mode: 'top-cards', config, rows: rankedCards });
+	const rankedCards = computed(() =>
+		entries.value.map((entry, index) => ({ entry, rank: index + 1 })),
+	);
+	const { rowCount, pageData, pageSize, totalPages, currentPage, setPage, nextPage, prevPage } =
+		usePaginatedScreenMode(context, { mode: 'top-cards', config, rows: rankedCards });
 	/** The cards a full page holds, which every page lays out as, so a short last page keeps its size. */
 	const pageCapacity = computed(() => Math.max(1, Math.min(pageSize.value, entries.value.length)));
 
@@ -72,14 +68,13 @@ export function useTopCardsModeData(context: ScreenContext) {
 			currentPage: currentPage.value,
 			totalPages: totalPages.value,
 		}),
-		page => page.entries.flatMap(({ entry }) => metagameCardImageUrl(entry) ?? []),
+		(page) => page.entries.flatMap(({ entry }) => metagameCardImageUrl(entry) ?? []),
 	);
 	const pageEntries = computed(() => shownPage.value.entries);
 
 	// ── Header ──
 	const headerText = computed(() => {
-		if (config.value.headerText)
-			return config.value.headerText;
+		if (config.value.headerText) return config.value.headerText;
 
 		const prefix = {
 			all: '',
@@ -88,15 +83,11 @@ export function useTopCardsModeData(context: ScreenContext) {
 			playerList: 'List ',
 		}[offeredMetagameScope(game.value, config.value.scope)];
 
-		const title = config.value.pointedOnly
-			? 'Most Played Pointed Cards'
-			: 'Most Played Cards';
+		const title = config.value.pointedOnly ? 'Most Played Pointed Cards' : 'Most Played Cards';
 
 		// The Archetype as its read names it: the Screen holds its id alone (ADR-0038).
 		const archetype = cardData.value?.archetype?.name;
-		return archetype
-			? `${prefix}${title}: ${archetype}`
-			: `${prefix}${title}`;
+		return archetype ? `${prefix}${title}: ${archetype}` : `${prefix}${title}`;
 	});
 
 	// ── Empty State ──

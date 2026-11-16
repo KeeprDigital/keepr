@@ -9,7 +9,7 @@ import type { BroadcastGraphicConfig } from '../../shared/types/graphics';
 export const GRAPHIC_STYLE_SET_LINK_KEYS = /"style(?:Set|Refs)"/;
 
 const ITEM_STYLE_REFS = {
-	'typography': {
+	typography: {
 		entryId: 'heading',
 		overrides: { fontSize: 30 },
 	},
@@ -17,21 +17,20 @@ const ITEM_STYLE_REFS = {
 };
 
 function isGraphicItem(value: Record<string, unknown>): boolean {
-	return typeof value.type === 'string' && typeof value.id === 'string' && typeof value.visible === 'boolean';
+	return (
+		typeof value.type === 'string' &&
+		typeof value.id === 'string' &&
+		typeof value.visible === 'boolean'
+	);
 }
 
 function linkItems(value: unknown): unknown {
-	if (Array.isArray(value))
-		return value.map(linkItems);
-	if (typeof value !== 'object' || value === null)
-		return value;
-	const linked = Object.fromEntries(Object.entries(value).map(([key, entry]) => [
-		key,
-		linkItems(entry),
-	]));
-	return isGraphicItem(linked)
-		? { ...linked, styleRefs: ITEM_STYLE_REFS }
-		: linked;
+	if (Array.isArray(value)) return value.map(linkItems);
+	if (typeof value !== 'object' || value === null) return value;
+	const linked = Object.fromEntries(
+		Object.entries(value).map(([key, entry]) => [key, linkItems(entry)]),
+	);
+	return isGraphicItem(linked) ? { ...linked, styleRefs: ITEM_STYLE_REFS } : linked;
 }
 
 /** Every Graphic Item in `document`, Graphic Group children included, carrying `styleRefs`. */

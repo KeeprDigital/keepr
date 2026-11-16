@@ -18,14 +18,12 @@ export function useMetagamePage(
 	const summaryLoading = ref(false);
 
 	async function fetchSummary() {
-		if (!eventStore.eventId)
-			return;
+		if (!eventStore.eventId) return;
 
 		await runRequest(
 			async () => {
 				await metagameStore.loadSummary(eventStore.eventId!);
-				if (metagameStore.error)
-					throw new Error(metagameStore.error);
+				if (metagameStore.error) throw new Error(metagameStore.error);
 				return true;
 			},
 			{
@@ -38,10 +36,7 @@ export function useMetagamePage(
 	}
 
 	async function fetchPageData() {
-		await Promise.all([
-			fetchSummary(),
-			fetchSection(),
-		]);
+		await Promise.all([fetchSummary(), fetchSection()]);
 	}
 
 	watch(
@@ -58,8 +53,14 @@ export function useMetagamePage(
 		() => fetchPageData(),
 	);
 
-	watch(() => playerStore.dataVersion, () => fetchPageData());
-	watch(() => metagameStore.invalidationVersion, () => fetchPageData());
+	watch(
+		() => playerStore.dataVersion,
+		() => fetchPageData(),
+	);
+	watch(
+		() => metagameStore.invalidationVersion,
+		() => fetchPageData(),
+	);
 	// No store holds what this fetches, so Reconnect Resync re-runs it directly
 	// rather than relying on a Player re-read to bump the roster version (#610).
 	useConsumedEventData([], fetchPageData);

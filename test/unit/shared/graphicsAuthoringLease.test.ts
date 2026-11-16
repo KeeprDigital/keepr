@@ -23,12 +23,14 @@ function held(overrides: Partial<GraphicsAuthoringLeaseRecord> = {}): GraphicsAu
 describe('graphicsAuthoringLease artifacts', () => {
 	it('addresses one Screen graphics Edit workspace', () => {
 		expect(screenEditWorkspaceArtifact(7)).toEqual({ kind: 'screen-edit-workspace', id: '7' });
-		expect(graphicsAuthoringArtifactKey(screenEditWorkspaceArtifact(7))).toBe('screen-edit-workspace:7');
+		expect(graphicsAuthoringArtifactKey(screenEditWorkspaceArtifact(7))).toBe(
+			'screen-edit-workspace:7',
+		);
 	});
 });
 
 describe('graphicsAuthoringLease deadlines', () => {
-	it('derives the deadline from the holder\'s declared heartbeat cadence', () => {
+	it("derives the deadline from the holder's declared heartbeat cadence", () => {
 		expect(graphicsAuthoringLeaseTtlMs(GRAPHICS_AUTHORING_LEASE_DEFAULT_HEARTBEAT_MS)).toBe(60_000);
 		expect(graphicsAuthoringLeaseDeadline(NOW, 20_000)).toBe(NOW + 60_000);
 	});
@@ -89,7 +91,7 @@ describe('resolveGraphicsAuthoringLease', () => {
 		expect(resolution.writable).toBe(true);
 	});
 
-	it('treats a takeover of the session\'s own lease as an ordinary renewal', () => {
+	it("treats a takeover of the session's own lease as an ordinary renewal", () => {
 		const resolution = resolveGraphicsAuthoringLease(
 			held(),
 			{ sessionId: 'session-a', takeover: true },

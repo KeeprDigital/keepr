@@ -11,5 +11,10 @@ const paramsSchema = eventParamsSchema.extend({
 export default defineEventHandler(async (event) => {
 	const { id, assignmentId } = await getValidatedRouterParams(event, paramsSchema.parse);
 	const input = await readValidatedBody(event, updateFeatureMatchAssignmentSchema.parse);
-	return await featureMatchAssignmentModule().update(id, assignmentId, input, getOriginConnectionId(event));
+	return await featureMatchAssignmentModule().update(
+		id,
+		assignmentId,
+		input,
+		getOriginConnectionId(event),
+	);
 });

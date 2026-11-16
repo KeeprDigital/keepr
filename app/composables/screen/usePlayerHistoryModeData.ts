@@ -31,9 +31,10 @@ export function usePlayerHistoryModeData(context: ScreenContext) {
 
 	const freshness = useScreenModeFreshness<PlayerHistory>({
 		hearing: useScreenModeHearing(context, 'player-history', () => config.value),
-		source: () => outputReads.scopeKey.value && config.value.playerId
-			? `${outputReads.scopeKey.value}:${config.value.playerId}`
-			: null,
+		source: () =>
+			outputReads.scopeKey.value && config.value.playerId
+				? `${outputReads.scopeKey.value}:${config.value.playerId}`
+				: null,
 		read: async () => {
 			const data = await outputReads.playerHistory();
 			return { player: data.player, rows: data.history };
@@ -46,23 +47,30 @@ export function usePlayerHistoryModeData(context: ScreenContext) {
 	const player = computed(() => freshness.data.value.player);
 	const rows = computed(() => freshness.data.value.rows);
 
-	const headerText = computed(() => config.value.headerText || (player.value
-		? `${player.value.name} Match History`
-		: 'Player Match History'));
-	const isEmpty = computed(() => freshness.answered.value && (!config.value.playerId || rows.value.length === 0));
-	const emptyMessage = computed(() => !config.value.playerId
-		? 'Select a player to show match history.'
-		: 'No matches found for this player.');
+	const headerText = computed(
+		() =>
+			config.value.headerText ||
+			(player.value ? `${player.value.name} Match History` : 'Player Match History'),
+	);
+	const isEmpty = computed(
+		() => freshness.answered.value && (!config.value.playerId || rows.value.length === 0),
+	);
+	const emptyMessage = computed(() =>
+		!config.value.playerId
+			? 'Select a player to show match history.'
+			: 'No matches found for this player.',
+	);
 
-	const { pageData, pageSize, rowCount } = usePaginatedScreenMode(context, { mode: 'player-history', config, rows });
+	const { pageData, pageSize, rowCount } = usePaginatedScreenMode(context, {
+		mode: 'player-history',
+		config,
+		rows,
+	});
 
 	function formatOutcome(row: PlayerMatchHistoryEntry) {
-		if (row.outcome === 'bye')
-			return 'BYE';
+		if (row.outcome === 'bye') return 'BYE';
 		const score = formatGameScore(row);
-		return score
-			? `${row.outcome.toUpperCase()} ${score}`
-			: 'Pending';
+		return score ? `${row.outcome.toUpperCase()} ${score}` : 'Pending';
 	}
 
 	return {

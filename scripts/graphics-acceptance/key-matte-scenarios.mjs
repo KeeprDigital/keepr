@@ -13,9 +13,16 @@ export const KEY_MATTE_PROOF_SCENE = Object.freeze({ width: 240, height: 160 });
  * planted control: a Source Item whose Key Output withholds its glow, as every
  * Feature Match Overlay Key Output did before #599. It must fail.
  */
-export const KEY_MATTE_PROOF_HOSTS = Object.freeze(['graphic-item-glow', 'source-item-glow', 'frame-glow']);
+export const KEY_MATTE_PROOF_HOSTS = Object.freeze([
+	'graphic-item-glow',
+	'source-item-glow',
+	'frame-glow',
+]);
 export const KEY_MATTE_PROOF_CONTROL = 'unkeyed-glow-control';
-export const KEY_MATTE_PROOF_SCENES = Object.freeze([...KEY_MATTE_PROOF_HOSTS, KEY_MATTE_PROOF_CONTROL]);
+export const KEY_MATTE_PROOF_SCENES = Object.freeze([
+	...KEY_MATTE_PROOF_HOSTS,
+	KEY_MATTE_PROOF_CONTROL,
+]);
 
 export const KEY_MATTE_PROOF_FLOORS = Object.freeze({
 	/**

@@ -4,22 +4,18 @@ import { mapEventListToResponse, mapEventToResponse } from '~~/server/mappers/ev
 import { createMockEvent, createMockTalent } from '~~/test/helpers/fixtures';
 
 const mappers = [
-	[
-		'mapEventListToResponse',
-		(event: DbEvent) => mapEventListToResponse(event),
-	],
-	[
-		'mapEventToResponse',
-		(event: DbEvent) => mapEventToResponse({ ...event, talents: [] }),
-	],
+	['mapEventListToResponse', (event: DbEvent) => mapEventListToResponse(event)],
+	['mapEventToResponse', (event: DbEvent) => mapEventToResponse({ ...event, talents: [] })],
 ] as const;
 
 describe.each(mappers)('event mapper %s', (_name, map) => {
 	it('never exposes the Melee credentials', () => {
-		const result = map(createMockEvent({
-			meleeClientId: 'my-client-id',
-			meleeClientSecret: 'my-client-secret',
-		}));
+		const result = map(
+			createMockEvent({
+				meleeClientId: 'my-client-id',
+				meleeClientSecret: 'my-client-secret',
+			}),
+		);
 
 		expect(result).not.toHaveProperty('meleeClientId');
 		expect(result).not.toHaveProperty('meleeClientSecret');
@@ -32,15 +28,19 @@ describe.each(mappers)('event mapper %s', (_name, map) => {
 		['no secret', 'id', null, false],
 		['neither', null, null, false],
 	])('reports meleeConfigured with %s', (_case, meleeClientId, meleeClientSecret, configured) => {
-		expect(map(createMockEvent({ meleeClientId, meleeClientSecret })).meleeConfigured).toBe(configured);
+		expect(map(createMockEvent({ meleeClientId, meleeClientSecret })).meleeConfigured).toBe(
+			configured,
+		);
 	});
 
 	it('never exposes the Melee sync lease', () => {
-		const result = map(createMockEvent({
-			meleeSyncLeaseToken: 'opaque-token',
-			meleeSyncLeaseCommand: 'update',
-			meleeSyncLeaseExpiresAt: new Date('2026-01-01T00:15:00.000Z'),
-		}));
+		const result = map(
+			createMockEvent({
+				meleeSyncLeaseToken: 'opaque-token',
+				meleeSyncLeaseCommand: 'update',
+				meleeSyncLeaseExpiresAt: new Date('2026-01-01T00:15:00.000Z'),
+			}),
+		);
 
 		expect(result).not.toHaveProperty('meleeSyncLeaseToken');
 		expect(result).not.toHaveProperty('meleeSyncLeaseCommand');
@@ -49,15 +49,17 @@ describe.each(mappers)('event mapper %s', (_name, map) => {
 
 	it('shows Live Results state but never its poll schedule', () => {
 		const checkedAt = new Date('2026-01-01T00:10:00.000Z');
-		const result = map(createMockEvent({
-			meleeLiveResultsEnabled: true,
-			meleeLiveResultsNextCheckAt: new Date('2026-01-01T00:11:00.000Z'),
-			meleeLiveResultsBackoffStep: 2,
-			meleeLiveResultsLastCheckedAt: checkedAt,
-			meleeLiveResultsLastChangeAt: checkedAt,
-			meleeLiveResultsError: 'Melee.gg is unavailable',
-			meleeLiveResultsStopReason: 'idle',
-		}));
+		const result = map(
+			createMockEvent({
+				meleeLiveResultsEnabled: true,
+				meleeLiveResultsNextCheckAt: new Date('2026-01-01T00:11:00.000Z'),
+				meleeLiveResultsBackoffStep: 2,
+				meleeLiveResultsLastCheckedAt: checkedAt,
+				meleeLiveResultsLastChangeAt: checkedAt,
+				meleeLiveResultsError: 'Melee.gg is unavailable',
+				meleeLiveResultsStopReason: 'idle',
+			}),
+		);
 
 		expect(result).toMatchObject({
 			meleeLiveResultsEnabled: true,

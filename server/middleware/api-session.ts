@@ -44,8 +44,7 @@ import { requestUserSession } from '~~/server/utils/auth';
  */
 export default defineEventHandler(async (event) => {
 	const url = getRequestURL(event);
-	if (!apiPathRequiresSession(url.pathname))
-		return;
+	if (!apiPathRequiresSession(url.pathname)) return;
 
 	// Before the session is read: a Session cookie on a state-changing request
 	// another site's page made is the thing being refused, so whether it is a

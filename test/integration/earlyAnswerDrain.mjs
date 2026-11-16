@@ -37,8 +37,7 @@ export function installEarlyAnswerDrain() {
 			/** @type {[http.IncomingMessage, http.ServerResponse]} */
 			const [request, response] = /** @type {any} */ (args);
 			response.once('finish', () => {
-				if (request.complete || request.destroyed)
-					return;
+				if (request.complete || request.destroyed) return;
 				request.unpipe();
 				request.resume();
 			});

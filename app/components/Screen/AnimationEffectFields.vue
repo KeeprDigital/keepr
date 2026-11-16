@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { AnimationEffectName, AnimationEffectParamField, AnimationEffectParamValue, AnimationEffectSelection } from '~~/shared/animationEffects';
+import type {
+	AnimationEffectName,
+	AnimationEffectParamField,
+	AnimationEffectParamValue,
+	AnimationEffectSelection,
+} from '~~/shared/animationEffects';
 import {
 	ANIMATION_EFFECT_CATALOGUE,
 	ANIMATION_EFFECT_VALUES,
@@ -23,7 +28,7 @@ const emit = defineEmits<{
 	(event: 'update:selection', selection: AnimationEffectSelection): void;
 }>();
 
-const ANIMATION_EFFECT_OPTIONS = ANIMATION_EFFECT_VALUES.map(value => ({
+const ANIMATION_EFFECT_OPTIONS = ANIMATION_EFFECT_VALUES.map((value) => ({
 	value,
 	label: ANIMATION_EFFECT_CATALOGUE[value].label,
 }));
@@ -32,7 +37,10 @@ const paramFields = computed(() => animationEffectParamFields(props.selection.ef
 
 /** The authored bag may be sparse; the editor always shows the completed view. */
 const params = computed<Record<string, AnimationEffectParamValue>>(() => ({
-	...animationEffectDefaultParams(props.selection.effect) as Record<string, AnimationEffectParamValue>,
+	...(animationEffectDefaultParams(props.selection.effect) as Record<
+		string,
+		AnimationEffectParamValue
+	>),
 	...props.selection.params,
 }));
 
@@ -44,21 +52,19 @@ function selectEffect(effect: AnimationEffectName) {
 	emit('update:selection', { effect } as AnimationEffectSelection);
 }
 
-function updateParam(field: AnimationEffectParamField, value: AnimationEffectParamValue | undefined) {
+function updateParam(
+	field: AnimationEffectParamField,
+	value: AnimationEffectParamValue | undefined,
+) {
 	let next = value;
 	if (field.control === 'color') {
-		if (next === undefined || next === '')
-			next = field.defaultValue;
-		else if (typeof next !== 'string' || !isAnimationEffectHexColor(next))
-			return;
-	}
-	else if (field.control === 'toggle') {
+		if (next === undefined || next === '') next = field.defaultValue;
+		else if (typeof next !== 'string' || !isAnimationEffectHexColor(next)) return;
+	} else if (field.control === 'toggle') {
 		next = next === true;
-	}
-	else {
+	} else {
 		const numeric = Number(next);
-		if (!Number.isFinite(numeric))
-			return;
+		if (!Number.isFinite(numeric)) return;
 		next = Math.min(field.max ?? numeric, Math.max(field.min ?? numeric, numeric));
 	}
 	// The full bag is written back, pinning every current value: a default that
@@ -84,10 +90,7 @@ function updateParam(field: AnimationEffectParamField, value: AnimationEffectPar
 		</ScreenSettingsField>
 
 		<div class="grid gap-3 md:grid-cols-3">
-			<template
-				v-for="field in paramFields"
-				:key="`${selection.effect}-${field.key}`"
-			>
+			<template v-for="field in paramFields" :key="`${selection.effect}-${field.key}`">
 				<ScreenSettingsToggle
 					v-if="field.control === 'toggle'"
 					:label="field.label"
@@ -95,11 +98,7 @@ function updateParam(field: AnimationEffectParamField, value: AnimationEffectPar
 					:model-value="Boolean(params[field.key])"
 					@update:model-value="updateParam(field, $event)"
 				/>
-				<ScreenSettingsField
-					v-else
-					stacked
-					:label="field.label"
-				>
+				<ScreenSettingsField v-else stacked :label="field.label">
 					<UIColorPicker
 						v-if="field.control === 'color'"
 						:model-value="String(params[field.key])"

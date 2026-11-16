@@ -45,7 +45,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:anchor': [anchor: NinePoint];
-	'update': [patch: Partial<GraphicRect>];
+	update: [patch: Partial<GraphicRect>];
 }>();
 
 const unit = useGeometryUnit();
@@ -75,9 +75,7 @@ const SIZE_AXES = { width: 'x', height: 'y' } as const;
 const MIN_SIZE_PX = 1;
 
 function containerSpan(axis: 'x' | 'y') {
-	return axis === 'x'
-		? props.container.width
-		: props.container.height;
+	return axis === 'x' ? props.container.width : props.container.height;
 }
 
 const anchoredPosition = computed(() => anchoredGraphicPosition(props.rect, props.anchor));
@@ -103,30 +101,32 @@ function updatePosition(axis: 'x' | 'y', value: number | null | undefined) {
 /** Width over height, captured when the author links them; null while unlinked. */
 const linkedRatio = ref<number | null>(null);
 /** The ratio a size edit keeps: none for a stacked item, whose group may size it. */
-const activeRatio = computed(() => props.stacked ? null : linkedRatio.value);
+const activeRatio = computed(() => (props.stacked ? null : linkedRatio.value));
 const isLinked = computed(() => activeRatio.value !== null);
 
 function toggleLink() {
 	const { width, height } = props.rect;
-	linkedRatio.value = linkedRatio.value === null && width > 0 && height > 0
-		? width / height
-		: null;
+	linkedRatio.value = linkedRatio.value === null && width > 0 && height > 0 ? width / height : null;
 }
 
 function updateSize(axis: 'width' | 'height', value: number | null | undefined) {
-	const size = Math.max(MIN_SIZE_PX, parseGeometryValue(value ?? 0, containerSpan(SIZE_AXES[axis]), unit.value));
+	const size = Math.max(
+		MIN_SIZE_PX,
+		parseGeometryValue(value ?? 0, containerSpan(SIZE_AXES[axis]), unit.value),
+	);
 	const ratio = activeRatio.value;
-	const sizes = ratio === null
-		? { [axis]: size }
-		: axis === 'width'
-			? {
-					width: size,
-					height: Math.max(MIN_SIZE_PX, size / ratio),
-				}
-			: {
-					width: Math.max(MIN_SIZE_PX, size * ratio),
-					height: size,
-				};
+	const sizes =
+		ratio === null
+			? { [axis]: size }
+			: axis === 'width'
+				? {
+						width: size,
+						height: Math.max(MIN_SIZE_PX, size / ratio),
+					}
+				: {
+						width: Math.max(MIN_SIZE_PX, size * ratio),
+						height: size,
+					};
 	emit('update', resizeGraphicRectFromAnchor(props.rect, sizes, props.anchor));
 }
 

@@ -36,7 +36,10 @@ export interface ManualBracket {
 }
 
 /** How a Manual Bracket's entrant shows: resolved by the reader, at its Seed. */
-export type ManualEntrantResolver = (entrant: ManualBracketEntrant, seed: number) => BracketEntrant | null;
+export type ManualEntrantResolver = (
+	entrant: ManualBracketEntrant,
+	seed: number,
+) => BracketEntrant | null;
 
 /** How many positions each column of a bracket of `size` holds, the first column first. */
 export function manualBracketPositionCounts(size: number): number[] {
@@ -76,23 +79,16 @@ function derivePosition(
 	if (top && bottom) {
 		if (result) {
 			position.winner = result.winner;
-			position.gameWins = result.gameWins
-				? [result.gameWins[0], result.gameWins[1]]
-				: [null, null];
+			position.gameWins = result.gameWins ? [result.gameWins[0], result.gameWins[1]] : [null, null];
 			position.status = 'reported';
-		}
-		else {
+		} else {
 			position.status = 'unreported';
 		}
 		return { position, void: false };
 	}
 	// One side can never be filled, so the entrant on the other advances unplayed.
-	const seated = top
-		? 0
-		: bottom ? 1 : null;
-	if (seated != null && sideVoid[seated === 0
-		? 1
-		: 0]) {
+	const seated = top ? 0 : bottom ? 1 : null;
+	if (seated != null && sideVoid[seated === 0 ? 1 : 0]) {
 		position.winner = seated;
 		position.status = 'bye';
 	}
@@ -101,9 +97,7 @@ function derivePosition(
 
 function advancing(derived: DerivedPosition | undefined): BracketEntrant | null {
 	const position = derived?.position;
-	return position?.winner == null
-		? null
-		: position.entrants[position.winner];
+	return position?.winner == null ? null : position.entrants[position.winner];
 }
 
 /**
@@ -111,37 +105,39 @@ function advancing(derived: DerivedPosition | undefined): BracketEntrant | null 
  * `entrantOf` resolves them, and one it resolves to nothing is an empty Seed.
  * A result is read only at a position seating both its entrants.
  */
-export function deriveManualTopCutBracket(manual: ManualBracket, entrantOf: ManualEntrantResolver): TopCutBracket {
+export function deriveManualTopCutBracket(
+	manual: ManualBracket,
+	entrantOf: ManualEntrantResolver,
+): TopCutBracket {
 	const counts = manualBracketPositionCounts(manual.size);
-	if (counts.length === 0)
-		return { size: 0, columns: [], champion: null };
+	if (counts.length === 0) return { size: 0, columns: [], champion: null };
 
 	const seeded = (seed: number): BracketEntrant | null => {
 		const entrant = manual.entrants[seed - 1];
-		return entrant
-			? entrantOf(entrant, seed)
-			: null;
+		return entrant ? entrantOf(entrant, seed) : null;
 	};
 
 	const derived: DerivedPosition[][] = [];
 	counts.forEach((count, column) => {
 		const previous = derived[column - 1];
-		derived.push(Array.from({ length: count }, (_, position) => {
-			const result = manual.results[column]?.[position];
-			if (!previous) {
-				const entrants = manualBracketSeedsAt(manual.size, position).map(seeded) as [BracketEntrant | null, BracketEntrant | null];
-				return derivePosition(entrants, [!entrants[0], !entrants[1]], result);
-			}
-			const feeders = [previous[position * 2], previous[position * 2 + 1]] as const;
-			return derivePosition(
-				[
-					advancing(feeders[0]),
-					advancing(feeders[1]),
-				],
-				[feeders[0]?.void ?? true, feeders[1]?.void ?? true],
-				result,
-			);
-		}));
+		derived.push(
+			Array.from({ length: count }, (_, position) => {
+				const result = manual.results[column]?.[position];
+				if (!previous) {
+					const entrants = manualBracketSeedsAt(manual.size, position).map(seeded) as [
+						BracketEntrant | null,
+						BracketEntrant | null,
+					];
+					return derivePosition(entrants, [!entrants[0], !entrants[1]], result);
+				}
+				const feeders = [previous[position * 2], previous[position * 2 + 1]] as const;
+				return derivePosition(
+					[advancing(feeders[0]), advancing(feeders[1])],
+					[feeders[0]?.void ?? true, feeders[1]?.void ?? true],
+					result,
+				);
+			}),
+		);
 	});
 
 	const columns: BracketColumn[] = derived.map((positions, column) => ({
@@ -157,36 +153,44 @@ export function deriveManualTopCutBracket(manual: ManualBracket, entrantOf: Manu
 }
 
 /** The Manual Bracket with the entrant at `seed` set, or cleared with `null`. */
-export function withManualBracketEntrant(manual: ManualBracket, seed: number, entrant: ManualBracketEntrant | null): ManualBracket {
-	if (seed < 1 || seed > manual.size)
-		return manual;
-	const entrants = Array.from({
-		length: Math.max(manual.entrants.length, seed),
-	}, (_, index) => manual.entrants[index] ?? null);
+export function withManualBracketEntrant(
+	manual: ManualBracket,
+	seed: number,
+	entrant: ManualBracketEntrant | null,
+): ManualBracket {
+	if (seed < 1 || seed > manual.size) return manual;
+	const entrants = Array.from(
+		{
+			length: Math.max(manual.entrants.length, seed),
+		},
+		(_, index) => manual.entrants[index] ?? null,
+	);
 	entrants[seed - 1] = entrant;
-	while (entrants.length > 0 && entrants.at(-1) == null)
-		entrants.pop();
+	while (entrants.length > 0 && entrants.at(-1) == null) entrants.pop();
 	return { ...manual, entrants };
 }
 
 /** The Manual Bracket with the result at `column` and `position` marked, or cleared with `null`. */
-export function withManualBracketResult(manual: ManualBracket, column: number, position: number, result: ManualBracketResult | null): ManualBracket {
+export function withManualBracketResult(
+	manual: ManualBracket,
+	column: number,
+	position: number,
+	result: ManualBracketResult | null,
+): ManualBracket {
 	const counts = manualBracketPositionCounts(manual.size);
 	if (column < 0 || column >= counts.length || position < 0 || position >= counts[column]!)
 		return manual;
-	const results = Array.from({
-		length: Math.max(manual.results.length, column + 1),
-	}, (_, index) => [
-		...(manual.results[index] ?? []),
-	]);
+	const results = Array.from(
+		{
+			length: Math.max(manual.results.length, column + 1),
+		},
+		(_, index) => [...(manual.results[index] ?? [])],
+	);
 	const positions = results[column]!;
-	while (positions.length <= position)
-		positions.push(null);
+	while (positions.length <= position) positions.push(null);
 	positions[position] = result;
-	while (positions.length > 0 && positions.at(-1) == null)
-		positions.pop();
-	while (results.length > 0 && results.at(-1)!.length === 0)
-		results.pop();
+	while (positions.length > 0 && positions.at(-1) == null) positions.pop();
+	while (results.length > 0 && results.at(-1)!.length === 0) results.pop();
 	return { ...manual, results };
 }
 
@@ -196,8 +200,7 @@ export function withManualBracketResult(manual: ManualBracket, column: number, p
  * moves to another position in the new bracket.
  */
 export function resizeManualBracket(manual: ManualBracket, size: TopCutBracketSize): ManualBracket {
-	if (size === manual.size)
-		return manual;
+	if (size === manual.size) return manual;
 	return {
 		size,
 		entrants: manual.entrants.slice(0, size),

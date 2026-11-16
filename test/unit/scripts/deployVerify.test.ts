@@ -21,13 +21,15 @@ describe('deploy:verify against a local stand-in origin', () => {
 
 	afterEach(async () => {
 		vi.unstubAllGlobals();
-		await Promise.all(servers.splice(0).map(server => new Promise(resolve => server.close(resolve))));
+		await Promise.all(
+			servers.splice(0).map((server) => new Promise((resolve) => server.close(resolve))),
+		);
 	});
 
 	async function origin(handler: Handler) {
 		const server = createServer(handler);
 		servers.push(server);
-		await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
 		return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 	}
 
@@ -63,13 +65,25 @@ describe('deploy:verify against a local stand-in origin', () => {
 			body: SPA_FALLBACK,
 			named: /text\/html/,
 		},
-		{ answer: 'a JSON content type whose body does not parse', body: '{"serverTime": 17', named: /not valid JSON/ },
+		{
+			answer: 'a JSON content type whose body does not parse',
+			body: '{"serverTime": 17',
+			named: /not valid JSON/,
+		},
 		{ answer: 'a JSON null', body: 'null', named: /serverTime/ },
 		{ answer: 'a JSON array', body: `[${READING}]`, named: /serverTime/ },
 		{ answer: 'a string serverTime', body: '{"serverTime":"1760000000000"}', named: /serverTime/ },
-		{ answer: 'a fractional serverTime', body: '{"serverTime":1760000000000.5}', named: /serverTime/ },
+		{
+			answer: 'a fractional serverTime',
+			body: '{"serverTime":1760000000000.5}',
+			named: /serverTime/,
+		},
 		{ answer: 'a non-positive serverTime', body: '{"serverTime":0}', named: /serverTime/ },
-		{ answer: 'a JSON error envelope', body: '{"statusCode":503,"message":"Service Unavailable"}', named: /serverTime/ },
+		{
+			answer: 'a JSON error envelope',
+			body: '{"statusCode":503,"message":"Service Unavailable"}',
+			named: /serverTime/,
+		},
 		{
 			answer: 'status 201 with a clock-reading body',
 			status: 201,
@@ -82,27 +96,32 @@ describe('deploy:verify against a local stand-in origin', () => {
 			body: READING,
 			named: /answered 401/,
 		},
-	])('fails $answer on its first answer, following and retrying nothing', async ({ status = 200, contentType = 'application/json', location, body, named }) => {
-		const requested: string[] = [];
-		// Every other path answers the clock reading, so a redirect that was followed would pass.
-		const url = await origin((request, response) => {
-			requested.push(request.url ?? '');
-			if (request.url !== '/api/time')
-				return response.writeHead(200, { 'content-type': 'application/json' }).end(READING);
-			response.writeHead(status, {
-				'content-type': contentType,
-				...(location
-					? { location }
-					: {}),
-			}).end(body);
-		});
+	])(
+		'fails $answer on its first answer, following and retrying nothing',
+		async ({ status = 200, contentType = 'application/json', location, body, named }) => {
+			const requested: string[] = [];
+			// Every other path answers the clock reading, so a redirect that was followed would pass.
+			const url = await origin((request, response) => {
+				requested.push(request.url ?? '');
+				if (request.url !== '/api/time')
+					return response.writeHead(200, { 'content-type': 'application/json' }).end(READING);
+				response
+					.writeHead(status, {
+						'content-type': contentType,
+						...(location ? { location } : {}),
+					})
+					.end(body);
+			});
 
-		const outcome: unknown = await verifyDeployment({ baseUrl: url, ...fast }).catch((error: unknown) => error);
+			const outcome: unknown = await verifyDeployment({ baseUrl: url, ...fast }).catch(
+				(error: unknown) => error,
+			);
 
-		expect(outcome).toBeInstanceOf(DeployVerifyFailure);
-		expect((outcome as DeployVerifyFailure).message).toMatch(named);
-		expect(requested).toEqual(['/api/time']);
-	});
+			expect(outcome).toBeInstanceOf(DeployVerifyFailure);
+			expect((outcome as DeployVerifyFailure).message).toMatch(named);
+			expect(requested).toEqual(['/api/time']);
+		},
+	);
 
 	it.each([
 		'not a url',
@@ -153,7 +172,9 @@ describe('deploy:verify against a local stand-in origin', () => {
 				})(request, response);
 			});
 
-			await expect(verifyDeployment({ baseUrl: url, ...fast })).resolves.toMatchObject({ url: `${url}/api/time` });
+			await expect(verifyDeployment({ baseUrl: url, ...fast })).resolves.toMatchObject({
+				url: `${url}/api/time`,
+			});
 			expect(requests).toBe(2);
 		});
 
@@ -162,7 +183,9 @@ describe('deploy:verify against a local stand-in origin', () => {
 			// released here could be taken again before the probe connected.
 			const fetchRequest = vi.fn(async () => {
 				throw new TypeError('fetch failed', {
-					cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), { code: 'ECONNREFUSED' }),
+					cause: Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), {
+						code: 'ECONNREFUSED',
+					}),
 				});
 			});
 
@@ -182,12 +205,14 @@ describe('deploy:verify against a local stand-in origin', () => {
 			// Counted where the probe asks: a request its timeout cuts off may never reach the origin.
 			const fetchRequest = vi.fn((...request: Parameters<typeof fetch>) => fetch(...request));
 
-			await expect(verifyDeployment({
-				baseUrl: url,
-				fetchRequest: fetchRequest as unknown as typeof fetch,
-				...fast,
-				timeoutMs: 25,
-			})).rejects.toThrow(/could not be reached/);
+			await expect(
+				verifyDeployment({
+					baseUrl: url,
+					fetchRequest: fetchRequest as unknown as typeof fetch,
+					...fast,
+					timeoutMs: 25,
+				}),
+			).rejects.toThrow(/could not be reached/);
 			expect(fetchRequest).toHaveBeenCalledTimes(3);
 		});
 	});
@@ -209,8 +234,8 @@ describe('deploy:verify against a local stand-in origin', () => {
 					: new Response('not the stand-in origin', { status: 421 });
 			}) as typeof fetch;
 			vi.stubGlobal('fetch', fetchRequest);
-			vi.spyOn(console, 'log').mockImplementation(line => void printed.push(String(line)));
-			vi.spyOn(console, 'error').mockImplementation(line => void printed.push(String(line)));
+			vi.spyOn(console, 'log').mockImplementation((line) => void printed.push(String(line)));
+			vi.spyOn(console, 'error').mockImplementation((line) => void printed.push(String(line)));
 
 			const code = await main({
 				env: { STREAM_KEEPR_DEPLOY_HEALTH_URL: healthUrl },
