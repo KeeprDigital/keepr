@@ -12,6 +12,8 @@
 	"ignorePatterns": [
 		"**/migrations/**",
 		"**/worker-configuration.d.ts",
+		// A throwaway prototype, kept as it was written.
+		"apps/score/docs/prototype-matcher/**",
 		// A tsconfig that cannot load, on purpose (apps/stream/test/unit/build/checkoutTsconfig.test.ts).
 		"apps/stream/test/helpers/unloadableTsconfig/**"
 	],
@@ -36,6 +38,23 @@
 		]
 	},
 	"overrides": [
+		{
+			// A package's exports state their types: a reader of the signature, an app's
+			// typecheck among them, needs no inference through the body.
+			"files": ["packages/*/src/**/*.ts"],
+			"rules": {
+				"typescript/explicit-module-boundary-types": "error"
+			}
+		},
+		{
+			// A focused or skipped test is not committed.
+			"files": ["packages/**/*.test.ts"],
+			"plugins": ["vitest"],
+			"rules": {
+				"vitest/no-focused-tests": "error",
+				"vitest/no-disabled-tests": "error"
+			}
+		},
 		{
 			// Tests and scripts are in no tsconfig the linter finds (the tests' program is
 			// `tsconfig.test.json`), so a rule that reads types sees `any` there and reports noise.

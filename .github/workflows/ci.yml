@@ -216,6 +216,23 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm test:nuxt:coverage
 
+  # The packages the apps share (ADR-0092), at the repository's root: each
+  # one's typecheck and tests, then the Pairing Engine's speed targets.
+  packages:
+    name: Packages
+    needs: scope
+    if: needs.scope.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm typecheck:packages
+      - run: pnpm test:packages
+      - run: pnpm bench:packages
+
   integration:
     name: Integration suite (${{ matrix.shard }}/2)
     needs: scope
@@ -301,7 +318,18 @@ jobs:
   # record the group runs everything.
   record:
     name: Record the verified tree
-    needs: [scope, checks, typecheck, unit, nuxt, integration, server-and-browser, worker-guard]
+    needs:
+      [
+        scope,
+        checks,
+        typecheck,
+        unit,
+        nuxt,
+        packages,
+        integration,
+        server-and-browser,
+        worker-guard,
+      ]
     if: >-
       github.event_name == 'pull_request'
       && github.event.pull_request.head.repo.full_name == github.repository
@@ -337,7 +365,18 @@ jobs:
   passed:
     name: CI passed
     needs:
-      [scope, checks, typecheck, unit, nuxt, integration, server-and-browser, worker-guard, record]
+      [
+        scope,
+        checks,
+        typecheck,
+        unit,
+        nuxt,
+        packages,
+        integration,
+        server-and-browser,
+        worker-guard,
+        record,
+      ]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 2

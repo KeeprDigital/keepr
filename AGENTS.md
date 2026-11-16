@@ -8,14 +8,21 @@ in it; `apps/stream/AGENTS.md` adds Stream Keepr's own.
 - `apps/stream`: Stream Keepr (`@keepr/stream`), a Nuxt app on Cloudflare
   Workers. Its scripts run from its directory: `cd apps/stream`, then
   `pnpm dev`, `pnpm test:unit` and the rest of its README.
-- `packages/`: what more than one app uses, each named `@keepr/<name>`. None
-  yet.
+- `packages/`: what more than one app uses, each named `@keepr/<name>` and
+  consumed as TypeScript source: the Pairing and Standings Engines
+  (`pairing`, `standings`), what both use (`engine-core`), and their test
+  support (`testkit`, `engine-integration`). Each has a `typecheck` and a
+  `test` script; `pnpm typecheck:packages` and `pnpm test:packages` at the
+  root run them all. `apps/score` holds the engines' specs, decisions and
+  `GLOSSARY.md`: use its words in the packages.
 - The root holds what every app and package shares: the dependency catalog
   (`pnpm-workspace.yaml`), the lockfile, the lint and format configuration
-  (`.oxlintrc.json`, `.oxfmtrc.json`) and the workflows (`.github/`).
+  (`.oxlintrc.json`, `.oxfmtrc.json`), the packages' compiler options
+  (`tsconfig.base.json`) and the workflows (`.github/`).
 - `pnpm lint`, `pnpm lint:fix`, `pnpm format`, `pnpm verify` and
   `pnpm verify:quick` run from the root as well as from an app. The lint and
-  the format are one run over the whole workspace.
+  the format are one run over the whole workspace. From the root, the two
+  verifies check the packages too; from an app, only that app.
 
 ## Before pushing
 
