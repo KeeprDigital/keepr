@@ -2,7 +2,8 @@ import { getRequestHost, readBody, toWebRequest } from 'h3';
 import { db } from '~~/server/db';
 import { serverAuth } from '~~/server/utils/auth';
 import { declineInvitation } from '~~/server/utils/invitationAcceptance';
-import { answerRefusals, textField } from '~~/server/utils/refusal';
+import { answerRefusals } from '~~/server/utils/refusal';
+import { textField } from '~~/server/utils/textField';
 
 /** The invitee declines, from the Invitation's link, signed in or not. */
 export default defineEventHandler(async (event) => {

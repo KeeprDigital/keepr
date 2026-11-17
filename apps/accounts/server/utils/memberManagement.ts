@@ -194,9 +194,9 @@ export async function setAppAccess(
 }
 
 /** The Organisation roles, as the organisation add-on names them. */
-const ORGANISATION_ROLES: readonly string[] = ['owner', 'admin', 'member'];
+export const ORGANISATION_ROLES: readonly string[] = ['owner', 'admin', 'member'];
 
-const ownerRequired = () =>
+export const ownerRequired = () =>
 	new KeeprRefusal(403, 'OWNER_REQUIRED', 'Only an owner of this Organisation can do this.');
 const lastOwner = () =>
 	new KeeprRefusal(

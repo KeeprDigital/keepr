@@ -1,7 +1,7 @@
 import { getQuery } from 'h3';
 import { answerAsActor } from '~~/server/utils/actorRoute';
 import { findUsers } from '~~/server/utils/keeprAdministration';
-import { textField } from '~~/server/utils/refusal';
+import { textField } from '~~/server/utils/textField';
 
 /** The Users whose name or email contains `?q=`, for a Keepr Administrator. */
 export default defineEventHandler(

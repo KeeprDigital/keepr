@@ -1,7 +1,7 @@
 import { getRouterParam, readBody } from 'h3';
 import { answerAsActor } from '~~/server/utils/actorRoute';
 import { changeOrganisationRole } from '~~/server/utils/memberManagement';
-import { textField } from '~~/server/utils/refusal';
+import { textField } from '~~/server/utils/textField';
 
 /** Changes a member's Organisation role. */
 export default defineEventHandler(async (event) => {

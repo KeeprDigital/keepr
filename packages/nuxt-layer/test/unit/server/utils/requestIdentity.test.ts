@@ -110,6 +110,7 @@ describe('resolveRequestIdentity', () => {
 
 describe('the access helpers', () => {
 	const identity = (appRole: 'member' | 'admin' | null): Identity<'stream'> => ({
+		app: 'stream',
 		user: { id: 'ada', email: 'ada@keepr.digital', name: 'Ada' },
 		sessionId: 's',
 		organisation: { id: 'keepr', role: 'owner' },
@@ -125,7 +126,7 @@ describe('the access helpers', () => {
 		],
 		[
 			'a lower App role than the one required',
-			() => requireAppRole(identity('member'), 'stream', 'admin'),
+			() => requireAppRole(identity('member'), 'admin'),
 			'APP_ROLE_REQUIRED',
 		],
 	])('refuse %s, 403', (_case, require, code) => {
@@ -138,6 +139,6 @@ describe('the access helpers', () => {
 		['the role itself', 'member', 'member'],
 		['a higher role', 'admin', 'member'],
 	] as const)('admit %s', (_case, held, required) => {
-		expect(() => requireAppRole(identity(held), 'stream', required)).not.toThrow();
+		expect(() => requireAppRole(identity(held), required)).not.toThrow();
 	});
 });

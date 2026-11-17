@@ -2,7 +2,8 @@ import { appendResponseHeader, getRequestHost, readBody, toWebRequest } from 'h3
 import { db } from '~~/server/db';
 import { serverAuth } from '~~/server/utils/auth';
 import { claimFirstAdministrator } from '~~/server/utils/firstAdministrator';
-import { answerRefusals, textField } from '~~/server/utils/refusal';
+import { answerRefusals } from '~~/server/utils/refusal';
+import { textField } from '~~/server/utils/textField';
 
 /**
  * Claims a First Administrator Claim the command wrote, and signs the new Keepr

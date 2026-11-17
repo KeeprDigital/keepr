@@ -1,10 +1,6 @@
 import type { IdentityProofClaims } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { exportJWK, generateKeyPair, type JWK, SignJWT } from 'jose';
-import {
-	APP_REGISTRY,
-	highestAppRole,
-	type AppId,
-} from '@keepr/nuxt-layer/shared/utils/appRegistry';
+import { APP_IDS, highestAppRole } from '@keepr/nuxt-layer/shared/utils/appRegistry';
 import {
 	IDENTITY_PROOF_ALGORITHM,
 	IDENTITY_PROOF_AUDIENCE,
@@ -25,14 +21,6 @@ export const LOCAL_DEVELOPER = {
 /** The Keepr Organisation the Local Developer User works in: the same id every run. */
 export const LOCAL_ORGANISATION_ID = 'keepr-local';
 
-/**
- * Answers as Keepr Accounts does for an App, without anyone signing in: every
- * Identity Proof names the Local Developer User, a Keepr Administrator who owns
- * the Keepr Organisation and holds the highest App role in every App (ADR-0113).
- * It signs with the production issuer and audience, so an App's verifier has
- * no development branch, and with a key of its own, made on its first request, which
- * Keepr Accounts never publishes.
- */
 /** Keepr Accounts' answers to an App, as the stand-in gives them. */
 export interface AccountsStandIn {
 	fetch: (request: Request) => Promise<Response>;
@@ -44,6 +32,14 @@ interface StandInKey {
 	jwk: JWK;
 }
 
+/**
+ * Answers as Keepr Accounts does for an App, without anyone signing in: every
+ * Identity Proof names the Local Developer User, a Keepr Administrator who owns
+ * the Keepr Organisation and holds the highest App role in every App (ADR-0113).
+ * It signs with the production issuer and audience, so an App's verifier has
+ * no development branch, and with a key of its own, made on its first request, which
+ * Keepr Accounts never publishes.
+ */
 export function createAccountsStandIn(): AccountsStandIn {
 	// Made on the first request: a Worker may not generate keys at global scope.
 	let key: Promise<StandInKey> | undefined;
@@ -67,9 +63,7 @@ export function createAccountsStandIn(): AccountsStandIn {
 		name: LOCAL_DEVELOPER.name,
 		org: LOCAL_ORGANISATION_ID,
 		orgRole: 'owner',
-		apps: Object.fromEntries(
-			(Object.keys(APP_REGISTRY) as AppId[]).map((app) => [app, highestAppRole(app)]),
-		),
+		apps: Object.fromEntries(APP_IDS.map((app) => [app, highestAppRole(app)])),
 		keeprAdmin: true,
 	};
 

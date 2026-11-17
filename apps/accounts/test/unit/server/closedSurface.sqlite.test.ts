@@ -109,21 +109,33 @@ describe('the library’s Organisation routes', () => {
 	});
 });
 
-// Keepr Accounts' own member routes ask for a recent sign-in and keep App access
-// with the member; the library's would do neither.
-describe('the library’s member routes', () => {
+// Keepr Accounts' own member and Invitation routes admit a Keepr Administrator to
+// any Organisation, ask for a recent sign-in where a change needs one, and keep
+// App access with the member; the library's would do none of it.
+describe('the library’s member and Invitation routes', () => {
 	it.each([
-		['/organization/update-member-role', 'roles'],
-		['/organization/remove-member', 'removals'],
-	])('%s answers 404 to the Organisation’s owner', async (path, slug) => {
+		['POST', '/organization/update-member-role', 'roles'],
+		['POST', '/organization/remove-member', 'removals'],
+		['POST', '/organization/invite-member', 'invites'],
+		['GET', '/organization/list-invitations', 'invitation-lists'],
+		['POST', '/organization/cancel-invitation', 'cancellations'],
+	])('%s %s answers 404 to the Organisation’s owner', async (method, path, slug) => {
 		const organisation = await accounts.createOrganisation(slug, 'administrator@keepr.digital');
 		const { id } = await accounts.createUser(`member-of-${slug}@keepr.digital`);
 		const { memberId } = await accounts.addMember(id, slug);
+		const body = {
+			organizationId: organisation.id,
+			memberId,
+			memberIdOrEmail: memberId,
+			email: 'invitee@example.com',
+			invitationId: 'any',
+			role: 'admin',
+		};
 
-		const response = await accounts.send(path, {
-			body: { organizationId: organisation.id, memberId, memberIdOrEmail: memberId, role: 'admin' },
-			headers: { cookie: administratorCookie },
-		});
+		const response = await accounts.send(
+			method === 'GET' ? `${path}?organizationId=${organisation.id}` : path,
+			{ method, headers: { cookie: administratorCookie }, ...(method === 'GET' ? {} : { body }) },
+		);
 
 		expect(response.status).toBe(404);
 	});

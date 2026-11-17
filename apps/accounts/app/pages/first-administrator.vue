@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { AuthFailure } from '~~/shared/utils/newPassword';
-import { MIN_PASSWORD_LENGTH, newPasswordRefusal } from '~~/shared/utils/newPassword';
+import { NEW_PASSWORD_REFUSALS, refusalSentence } from '~/utils/refusal';
+import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 
 /**
  * Where the link the first-administrator command prints lands (ADR-0115). The
@@ -33,16 +33,7 @@ const mismatched = computed(
 	() => form.confirmation.length > 0 && form.password !== form.confirmation,
 );
 
-function refusalOf(failure: AuthFailure): string {
-	switch (failure.data?.code) {
-		case 'CLAIM_NOT_FOUND':
-		case 'KEEPR_ADMINISTRATOR_EXISTS':
-			return 'This claim no longer works: a Keepr Administrator exists, or it was never written.';
-		case 'NAME_REQUIRED':
-			return 'Enter your name.';
-	}
-	return newPasswordRefusal(failure) ?? 'Claiming failed. Try again.';
-}
+const SPENT = 'This claim no longer works: a Keepr Administrator exists, or it was never written.';
 
 async function claim() {
 	if (submitting.value || !claimId.value || mismatched.value) return;
@@ -54,7 +45,16 @@ async function claim() {
 			body: { claimId: claimId.value, name: form.name, password: form.password },
 		});
 	} catch (failure) {
-		refusal.value = refusalOf(failure as AuthFailure);
+		refusal.value = refusalSentence(failure, {
+			...NEW_PASSWORD_REFUSALS,
+			codes: {
+				...NEW_PASSWORD_REFUSALS.codes,
+				CLAIM_NOT_FOUND: SPENT,
+				KEEPR_ADMINISTRATOR_EXISTS: SPENT,
+				NAME_REQUIRED: 'Enter your name.',
+			},
+			otherwise: 'Claiming failed. Try again.',
+		});
 		return;
 	} finally {
 		submitting.value = false;

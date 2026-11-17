@@ -1,12 +1,14 @@
 import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import type { EmailRecorder } from '~~/server/email/recorder';
 import type { EmailSender } from '~~/server/email/sender';
+import type { Actor } from '~~/server/utils/actor';
 import type { KeeprAuth } from '~~/server/utils/auth';
 import { eq, sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
 import { identityDatabase, schema } from '~~/server/db';
 import { createEmailRecorder } from '~~/server/email/recorder';
+import { requestActor } from '~~/server/utils/actor';
 import { createKeeprAuth } from '~~/server/utils/auth';
 import { sharedCookieDomainFor } from '~~/server/utils/authOptions';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
@@ -40,6 +42,8 @@ export interface TestAccounts {
 	createUser: (email: string, extra?: { role?: 'admin' | 'user' }) => Promise<{ id: string }>;
 	/** Signs `email` in and answers the cookie a browser would send back. */
 	signIn: (email: string, host?: string) => Promise<string>;
+	/** Signs `email` in: the Actor their browser is, sending `method` from Keepr Accounts' own page. */
+	actor: (email: string, method?: string) => Promise<Actor>;
 	/** An Organisation with `ownerEmail`'s User as its owner, made through the library. */
 	createOrganisation: (name: string, ownerEmail: string) => Promise<{ id: string }>;
 	/** The Audit Record, in the order it was written. */
@@ -103,6 +107,15 @@ export async function createTestAccounts(
 		);
 	};
 
+	const signIn: TestAccounts['signIn'] = async (email, signInHost) => {
+		const response = await send('/sign-in/email', {
+			body: { email, password: PASSWORD },
+			host: signInHost,
+		});
+		if (response.status !== 200) throw new Error(`sign-in answered ${response.status}`);
+		return cookiesOf(response);
+	};
+
 	return {
 		auth,
 		harness,
@@ -117,13 +130,15 @@ export async function createTestAccounts(
 			});
 			return user;
 		},
-		async signIn(email, signInHost) {
-			const response = await send('/sign-in/email', {
-				body: { email, password: PASSWORD },
-				host: signInHost,
-			});
-			if (response.status !== 200) throw new Error(`sign-in answered ${response.status}`);
-			return cookiesOf(response);
+		signIn,
+		async actor(email, method = 'POST') {
+			return await requestActor(
+				auth,
+				new Request(`http://${host}/api/organisations`, {
+					method,
+					headers: { cookie: await signIn(email), 'sec-fetch-site': 'same-origin' },
+				}),
+			);
 		},
 		async createOrganisation(name, ownerEmail) {
 			const organisation = await auth.api.createOrganization({

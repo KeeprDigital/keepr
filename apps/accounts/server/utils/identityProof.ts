@@ -6,6 +6,7 @@ import type {
 import { APIError } from 'better-auth/api';
 import { and, asc, eq } from 'drizzle-orm';
 import { schema } from '~~/server/db';
+import { isKeeprAdministrator } from '~~/shared/utils/keeprAdministrator';
 
 /**
  * What Keepr Accounts reads from the identity database to mint an Identity
@@ -74,8 +75,7 @@ export function identityProofSource(database: IdentityDatabase): IdentityProofSo
 				org: member ? org : null,
 				orgRole: (member?.role as OrganisationRole | undefined) ?? null,
 				apps: Object.fromEntries(access.map(({ app, role }) => [app, role])),
-				// The admin add-on keeps several roles comma-separated.
-				keeprAdmin: typeof user.role === 'string' && user.role.split(',').includes('admin'),
+				keeprAdmin: isKeeprAdministrator(user.role),
 			};
 		},
 	};

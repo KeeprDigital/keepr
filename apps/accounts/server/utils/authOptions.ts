@@ -36,6 +36,10 @@ export const SESSION_UPDATE_AGE_SECONDS = 60 * 60 * 24;
 /** How long an Invitation stays open: seven days. */
 export const INVITATION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7;
 
+/** How many members, and how many pending Invitations, one Organisation admits. */
+export const MEMBERSHIP_LIMIT = 10_000;
+export const INVITATION_LIMIT = 10_000;
+
 /** How long an emailed reset link works: one hour, and once. */
 export const RESET_LINK_EXPIRES_IN_SECONDS = 60 * 60;
 
@@ -100,6 +104,11 @@ export const CLOSED_PATHS = httpPaths(adminPlugin);
 export const MEMBER_PATHS_KEEPR_SERVES = [
 	'/organization/update-member-role',
 	'/organization/remove-member',
+	// `invitations.ts`: these would admit no Keepr Administrator to an Organisation
+	// they are not a member of (#1228 story 48).
+	'/organization/invite-member',
+	'/organization/list-invitations',
+	'/organization/cancel-invitation',
 ];
 
 /**
@@ -181,8 +190,8 @@ export function authOptions({
 				allowUserToCreateOrganization: false,
 				invitationExpiresIn: INVITATION_EXPIRES_IN_SECONDS,
 				cancelPendingInvitationsOnReInvite: true,
-				membershipLimit: 10_000,
-				invitationLimit: 10_000,
+				membershipLimit: MEMBERSHIP_LIMIT,
+				invitationLimit: INVITATION_LIMIT,
 				schema: {
 					invitation: {
 						additionalFields: {

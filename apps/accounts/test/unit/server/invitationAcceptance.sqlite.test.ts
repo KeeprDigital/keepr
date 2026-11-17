@@ -7,6 +7,7 @@ import {
 	declineInvitation,
 	invitationOffer,
 } from '~~/server/utils/invitationAcceptance';
+import { cancelInvitation, inviteMember } from '~~/server/utils/invitations';
 import {
 	createTestAccounts,
 	fakeBreachedPasswordService,
@@ -38,11 +39,13 @@ async function invite(
 	appRoles: Record<string, string> = { stream: 'admin', score: 'member' },
 	email = INVITEE,
 ) {
-	const response = await accounts.send('/organization/invite-member', {
-		body: { email, role: 'admin', organizationId: keepr.id, appRoles: JSON.stringify(appRoles) },
-		headers: { cookie: await accounts.signIn(OWNER) },
-	});
-	return ((await response.json()) as { id: string }).id;
+	const { invitationId } = await inviteMember(
+		database(),
+		await accounts.actor(OWNER),
+		{ organizationId: keepr.id, email, role: 'admin', appRoles },
+		{ email: accounts.email, origin: 'http://localhost:3000' },
+	);
+	return invitationId;
 }
 
 async function usersCalled(email: string) {
@@ -238,9 +241,9 @@ async function closeBy(how: 'expiring' | 'cancelling' | 'accepting' | 'declining
 			vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 8 * DAY_MS });
 			return;
 		case 'cancelling':
-			await accounts.send('/organization/cancel-invitation', {
-				body: { invitationId: id },
-				headers: { cookie: await accounts.signIn(OWNER) },
+			await cancelInvitation(database(), await accounts.actor(OWNER), {
+				organizationId: keepr.id,
+				invitationId: id,
 			});
 			return;
 		case 'accepting':

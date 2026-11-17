@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import type { AppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
-import { APP_REGISTRY } from '@keepr/nuxt-layer/shared/utils/appRegistry';
+import { failureStatus } from '@keepr/nuxt-layer/app/utils/failureStatus';
+import { APP_ROLE_CHOICES, chosenAppRoles, noAppAccess } from '~/utils/appRoleChoices';
+import { readRefusal, refusalSentence } from '~/utils/refusal';
+import { RECENT_SIGN_IN_REQUIRED } from '~~/shared/utils/recentSignIn';
 
 /**
  * The platform screen, a Keepr Administrator's: every Organisation, each opening
@@ -40,22 +42,6 @@ interface AuditRow {
 	detail: Record<string, unknown> | null;
 }
 
-interface Refused {
-	data?: { code?: string; message?: string };
-	statusCode?: number;
-}
-
-const NO_ACCESS = 'none';
-
-const apps = (Object.keys(APP_REGISTRY) as AppId[]).map((app) => ({
-	app,
-	name: APP_REGISTRY[app].name,
-	items: [
-		{ label: 'No access', value: NO_ACCESS },
-		...APP_REGISTRY[app].roles.map((role) => ({ label: role, value: role })),
-	],
-}));
-
 const state = ref<'loading' | 'open' | 'closed' | 'failed'>('loading');
 const organisations = ref<ListedOrganisation[]>([]);
 const auditRows = ref<AuditRow[]>([]);
@@ -76,7 +62,7 @@ onMounted(async () => {
 	try {
 		await loadOrganisations();
 	} catch (failure) {
-		state.value = (failure as Refused).statusCode === 403 ? 'closed' : 'failed';
+		state.value = failureStatus(failure) === 403 ? 'closed' : 'failed';
 		return;
 	}
 	state.value = 'open';
@@ -84,26 +70,26 @@ onMounted(async () => {
 });
 
 /** What a refused change says, unless it is a sign-in too old, which asks for a new one. */
-function refusalOf(failure: unknown, fallback: string): string | null {
-	const { data } = failure as Refused;
-	if (data?.code === 'RECENT_SIGN_IN_REQUIRED') {
+function refusalOf(failure: unknown, otherwise: string): string | null {
+	if (readRefusal(failure).code === RECENT_SIGN_IN_REQUIRED) {
 		signInAgain.value = true;
 		return null;
 	}
-	return data?.message ?? fallback;
+	return refusalSentence(failure, { serverMessage: true, otherwise });
 }
 
 // A new Organisation, and its first owner.
 const createForm = reactive({
 	name: '',
 	ownerEmail: '',
-	appRoles: Object.fromEntries(apps.map(({ app }) => [app, NO_ACCESS])) as Record<AppId, string>,
+	appRoles: noAppAccess(),
 });
 const creating = ref(false);
 const createRefusal = ref<string | null>(null);
 /** The Invitation link of the Organisation last created, to copy. */
 const createdLink = ref<string | null>(null);
 const copied = ref(false);
+const { copyToClipboard } = useCopyToClipboard();
 
 async function create() {
 	if (creating.value) return;
@@ -118,9 +104,7 @@ async function create() {
 			body: {
 				name: createForm.name,
 				ownerEmail: createForm.ownerEmail,
-				appRoles: Object.fromEntries(
-					Object.entries(createForm.appRoles).filter(([, role]) => role !== NO_ACCESS),
-				),
+				appRoles: chosenAppRoles(createForm.appRoles),
 			},
 		});
 		createdLink.value = link;
@@ -135,9 +119,7 @@ async function create() {
 }
 
 async function copy() {
-	if (!createdLink.value) return;
-	await navigator.clipboard.writeText(createdLink.value);
-	copied.value = true;
+	if (createdLink.value) copied.value = await copyToClipboard(createdLink.value);
 }
 
 // Finding a User, and disabling or enabling them.
@@ -264,7 +246,12 @@ function shownAt(at: string): string {
 								:disabled="creating"
 							/>
 						</UFormField>
-						<UFormField v-for="app in apps" :key="app.app" :name="app.app" :label="app.name">
+						<UFormField
+							v-for="app in APP_ROLE_CHOICES"
+							:key="app.app"
+							:name="app.app"
+							:label="app.name"
+						>
 							<USelect
 								v-model="createForm.appRoles[app.app]"
 								:data-app="app.app"

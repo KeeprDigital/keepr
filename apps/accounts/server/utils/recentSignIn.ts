@@ -1,4 +1,5 @@
 import type { Actor } from './actor';
+import { RECENT_SIGN_IN_REQUIRED } from '~~/shared/utils/recentSignIn';
 import { KeeprRefusal } from './refusal';
 
 /**
@@ -9,8 +10,6 @@ import { KeeprRefusal } from './refusal';
  */
 export const RECENT_SIGN_IN_MS = 10 * 60 * 1000;
 
-/** What a sign-in too old for a sensitive action answers; the page asks for a new one. */
-export const RECENT_SIGN_IN_REQUIRED = 'RECENT_SIGN_IN_REQUIRED';
 
 /** Refuses 403 an Actor whose sign-in is more than ten minutes old at `now`. */
 export function requireRecentSignIn(

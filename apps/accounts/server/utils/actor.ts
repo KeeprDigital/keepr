@@ -1,5 +1,6 @@
 import type { KeeprAuth } from './auth';
 import { requestIsCrossSiteMutation } from '@keepr/nuxt-layer/server/utils/crossSiteMutation';
+import { isKeeprAdministrator } from '~~/shared/utils/keeprAdministrator';
 import { KeeprRefusal } from './refusal';
 
 /**
@@ -41,9 +42,7 @@ export async function requestActor(auth: KeeprAuth, request: Request): Promise<A
 	if (!signedIn) throw new KeeprRefusal(401, 'SIGNED_OUT', 'Sign in to do this.');
 	return {
 		userId: signedIn.user.id,
-		// The admin add-on keeps several roles comma-separated.
-		keeprAdministrator:
-			typeof signedIn.user.role === 'string' && signedIn.user.role.split(',').includes('admin'),
+		keeprAdministrator: isKeeprAdministrator(signedIn.user.role),
 		signedInAt: new Date(signedIn.session.createdAt),
 	};
 }

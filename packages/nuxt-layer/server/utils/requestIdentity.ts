@@ -285,16 +285,15 @@ export function requireAppAccess<App extends AppId>(
 }
 
 /**
- * Refuses an Identity without `role` or a role above it in `app`, 403. The
+ * Refuses an Identity without `role` or a role above it in its App, 403. The
  * registry lists each App's roles from lowest to highest.
  */
 export function requireAppRole<App extends AppId>(
 	identity: Identity<App>,
-	app: App,
-	role: AppRole<App>,
+	role: NoInfer<AppRole<App>>,
 ): void {
 	requireAppAccess(identity);
-	const roles = APP_REGISTRY[app].roles as readonly string[];
+	const roles = APP_REGISTRY[identity.app].roles as readonly string[];
 	if (roles.indexOf(identity.appRole) < roles.indexOf(role))
 		throw createError({
 			statusCode: 403,

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { RefusalSentences } from '~/utils/refusal';
+import { refusalSentence } from '~/utils/refusal';
 import { acceptedReturnAddress } from '~~/shared/utils/returnAddress';
 
 const route = useRoute();
@@ -18,17 +20,15 @@ const credentials = reactive({ email: '', password: '' });
 const submitting = ref(false);
 const refusal = ref<string | null>(null);
 
-interface SignInFailure {
-	statusCode?: number;
-	data?: { code?: string; message?: string };
-}
-
-function refusalOf(failure: SignInFailure): string {
-	if (failure.data?.code === 'BANNED_USER' && failure.data.message) return failure.data.message;
-	if (failure.statusCode === 401) return 'That email and password do not match an account.';
-	if (failure.statusCode === 429) return 'Too many attempts. Wait a few seconds and try again.';
-	return 'Signing in failed. Try again.';
-}
+const SIGN_IN_REFUSALS: RefusalSentences = {
+	// A disabled User is told so, in the server's words.
+	serverMessage: ['BANNED_USER'],
+	statuses: {
+		401: 'That email and password do not match an account.',
+		429: 'Too many attempts. Wait a few seconds and try again.',
+	},
+	otherwise: 'Signing in failed. Try again.',
+};
 
 async function submit() {
 	// One attempt at a time: a second would spend the rate limit the first is using.
@@ -42,7 +42,7 @@ async function submit() {
 			body: { email: credentials.email, password: credentials.password },
 		});
 	} catch (failure) {
-		refusal.value = refusalOf(failure as SignInFailure);
+		refusal.value = refusalSentence(failure, SIGN_IN_REFUSALS);
 		return;
 	} finally {
 		submitting.value = false;

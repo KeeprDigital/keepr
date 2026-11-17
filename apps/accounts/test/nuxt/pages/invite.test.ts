@@ -4,14 +4,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import InvitePage from '~/pages/invite.vue';
 
-// The page sends the address, the Organisation role and the App roles chosen to the
-// library's invite route, and shows the Invitation's link to copy; the rules are
-// the server's.
+// The page sends the address, the Organisation role and the App roles chosen to
+// the Organisation's invitation route, and shows the Invitation's link to copy;
+// the rules are the server's.
 
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn<(to: string) => void>() }));
 mockNuxtImport('navigateTo', () => navigate);
 
-const invited: unknown[] = [];
+const INVITATIONS = '/api/organisations/keepr/invitations';
+const LINK = 'http://localhost:3000/invitation#id=the-invitation';
+
+const invited: { path: string; body: unknown }[] = [];
 let answer: { status: number; body: unknown };
 
 let standing: { status: number; body: unknown };
@@ -31,30 +34,35 @@ registerEndpoint('/api/organisations/keepr/standing', {
 		return standing.body;
 	},
 });
-registerEndpoint('/api/auth/organization/invite-member', {
-	method: 'POST',
-	handler: async (event) => {
-		const { readBody, setResponseStatus } = await import('h3');
-		invited.push(await readBody(event));
-		setResponseStatus(event, answer.status);
-		return answer.body;
-	},
+registerEndpoint('/api/organisations/club/standing', {
+	method: 'GET',
+	handler: () => ({
+		organisation: { id: 'club', name: 'The Club' },
+		standing: 'keepr-administrator',
+	}),
 });
+for (const path of [INVITATIONS, '/api/organisations/club/invitations'])
+	registerEndpoint(path, {
+		method: 'POST',
+		handler: async (event) => {
+			const { readBody, setResponseStatus } = await import('h3');
+			invited.push({ path, body: await readBody(event) });
+			setResponseStatus(event, answer.status);
+			return answer.body;
+		},
+	});
 
-const cancelled: unknown[] = [];
-let pending: unknown[];
+const cancelled: string[] = [];
+let pending: { id: string }[];
 
-registerEndpoint('/api/invitation/pending', { method: 'GET', handler: () => pending });
-registerEndpoint('/api/auth/organization/cancel-invitation', {
-	method: 'POST',
-	handler: async (event) => {
-		const { readBody } = await import('h3');
-		const body = (await readBody(event)) as { invitationId: string };
-		cancelled.push(body);
-		pending = pending.filter(
-			(invitation) => (invitation as { id: string }).id !== body.invitationId,
-		);
-		return { status: 'canceled' };
+registerEndpoint(INVITATIONS, { method: 'GET', handler: () => pending });
+registerEndpoint('/api/organisations/club/invitations', { method: 'GET', handler: () => [] });
+registerEndpoint(`${INVITATIONS}/first`, {
+	method: 'DELETE',
+	handler: () => {
+		cancelled.push('first');
+		pending = pending.filter(({ id }) => id !== 'first');
+		return { cancelled: true };
 	},
 });
 
@@ -75,7 +83,7 @@ beforeEach(() => {
 	invited.length = 0;
 	cancelled.length = 0;
 	pending = [];
-	answer = { status: 200, body: { id: 'the-invitation' } };
+	answer = { status: 200, body: { invitationId: 'the-invitation', link: LINK } };
 	standing = {
 		status: 200,
 		body: { organisation: { id: 'keepr', name: 'Keepr' }, standing: 'owner' },
@@ -111,7 +119,7 @@ describe('the pending Invitations', () => {
 		await expect
 			.poll(() => rows(page).map((row) => row.attributes('data-pending-invitation')))
 			.toEqual(['second']);
-		expect(cancelled).toEqual([{ invitationId: 'first' }]);
+		expect(cancelled).toEqual(['first']);
 	});
 
 	it('show the one just made', async () => {
@@ -132,21 +140,26 @@ describe('the invite page', () => {
 
 		expect(invited).toEqual([
 			{
-				email: 'newcomer@example.com',
-				role: 'admin',
-				appRoles: JSON.stringify({ stream: 'admin' }),
+				path: INVITATIONS,
+				body: { email: 'newcomer@example.com', role: 'admin', appRoles: { stream: 'admin' } },
 			},
 		]);
-		expect((page.get('[data-link]').element as HTMLInputElement).value).toBe(
-			`${window.location.origin}/invitation#id=the-invitation`,
-		);
+		expect((page.get('[data-link]').element as HTMLInputElement).value).toBe(LINK);
+	});
+
+	// Story 48: a Keepr Administrator invites to an Organisation they are not in.
+	it('invites to the Organisation the address names, rather than the one worked in', async () => {
+		await useRouter().push('/invite?organisation=club');
+
+		const page = await invite(async () => {});
+
+		expect(page.get('[data-organisation]').text()).toContain('The Club');
+		expect(invited.map(({ path }) => path)).toEqual(['/api/organisations/club/invitations']);
+		await useRouter().push('/invite');
 	});
 
 	it('says why an Invitation was refused', async () => {
-		answer = {
-			status: 403,
-			body: { code: 'YOU_ARE_NOT_ALLOWED_TO_INVITE_USER_WITH_THIS_ROLE', message: 'no' },
-		};
+		answer = { status: 403, body: { code: 'OWNER_REQUIRED', message: 'no' } };
 
 		const page = await invite(async () => {});
 

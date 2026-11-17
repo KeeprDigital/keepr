@@ -9,6 +9,7 @@ mockNuxtImport('$fetch', () => mockFetch);
 mockNuxtImport('navigateTo', () => mockNavigateTo);
 
 const ADA = {
+	app: 'stream',
 	user: { id: 'ada', email: 'ada@keepr.digital', name: 'Ada' },
 	sessionId: 's',
 	organisation: null,

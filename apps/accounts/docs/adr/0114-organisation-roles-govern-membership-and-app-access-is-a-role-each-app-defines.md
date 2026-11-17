@@ -24,7 +24,7 @@ What each of these makes true is in `apps/accounts/RULES.md` under Organisation 
 
 - **Two kinds of role, kept apart.** Who may hand out access and what a person may do in an App are different questions. One role answering both would make an Organisation admin an admin of every App, and each App's needs would leak into the Organisation's.
 - **The App owns the meaning of its roles.** Keepr Accounts stores and checks names; the App decides what `admin` permits. The registry is the one place both read.
-- **The library does part of this.** Its organisation add-on gives Organisations, members, Invitations, the owner-only rule and re-invite replacement. It has no App access, no way to register through an Invitation while sign-up is closed, and its server-side user creation checks no minimum length (#1256). Keepr Accounts adds those through the add-on's hooks (`server/utils/organisations.ts`), so the library's own accept route, which an existing User will use, copies App access too.
+- **The library does part of this.** Its organisation add-on gives Organisations, members, Invitations, the owner-only rule and re-invite replacement. It has no App access, no way to register through an Invitation while sign-up is closed, and its server-side user creation checks no minimum length (#1256). Keepr Accounts adds those through the add-on's hooks (`server/utils/organisations.ts`), so the library's own accept route, which an existing User will use, copies App access too. Invitations are made through Keepr Accounts' own route (ADR-0116).
 - **The copy link is a fallback, not the channel.** Email may fail while Cloudflare's sending domain is being set up (#1228 § Further Notes); an inviter is never blocked by it.
 
 ### Rejected alternatives

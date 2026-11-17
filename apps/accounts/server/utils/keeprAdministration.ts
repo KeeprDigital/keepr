@@ -1,16 +1,15 @@
 import type { IdentityDatabase } from '~~/server/db';
-import type { EmailSender } from '~~/server/email/sender';
 import type { Actor } from './actor';
 import type { AppRoles } from './appAccess';
 import type { AuditAction } from './auditRecord';
+import type { InvitationSending } from './invitations';
 import { asc, count, desc, eq, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import { schema } from '~~/server/db';
-import { invitationEmail } from '~~/server/email/messages';
-import { invitationLink } from '~~/shared/utils/invitationLink';
 import { offeredAppRoles } from './appAccess';
 import { recordAudit } from './auditRecord';
-import { INVITATION_EXPIRES_IN_SECONDS } from './authOptions';
+import { invitedAddress, issueInvitation } from './invitations';
+import { userIsKeeprAdministrator } from './keeprAdministrator';
 import { requireRecentSignIn } from './recentSignIn';
 import { KeeprRefusal, refusalFromAuth } from './refusal';
 
@@ -71,8 +70,6 @@ export interface FoundUser {
 /** How many Users one search answers at most. */
 export const FOUND_USERS_LIMIT = 50;
 
-/** A User holding the admin add-on's `admin` role, which marks a Keepr Administrator. */
-const isKeeprAdministrator = sql<boolean>`(',' || coalesce(${schema.user.role}, '') || ',') like '%,admin,%'`;
 
 /**
  * The Users whose name or email contains `query`, ignoring case, by name. Every
@@ -93,7 +90,7 @@ export async function findUsers(
 			name: schema.user.name,
 			email: schema.user.email,
 			banned: schema.user.banned,
-			keeprAdministrator: isKeeprAdministrator,
+			keeprAdministrator: userIsKeeprAdministrator,
 		})
 		.from(schema.user)
 		.where(
@@ -143,22 +140,14 @@ export async function createOrganisation(
 	database: IdentityDatabase,
 	actor: Actor,
 	{ name, ownerEmail, appRoles }: NewOrganisation,
-	{
-		email,
-		origin,
-		afterResponse = (work) => work,
-	}: {
-		email: EmailSender;
-		origin: string;
-		afterResponse?: (work: Promise<unknown>) => unknown;
-	},
+	sending: InvitationSending,
 ): Promise<CreatedOrganisation> {
 	requireKeeprAdministrator(actor);
 	requireRecentSignIn(actor);
 	const named = name.trim();
 	if (named.length === 0) throw new KeeprRefusal(400, 'NAME_REQUIRED', 'Name the Organisation.');
-	const address = ownerEmail.trim().toLowerCase();
-	if (!/^[^\s@]+@[^\s@]+$/.test(address))
+	const address = invitedAddress(ownerEmail);
+	if (!address)
 		throw new KeeprRefusal(400, 'INVALID_EMAIL', 'Enter the first owner’s email address.');
 	let offered: AppRoles;
 	try {
@@ -167,55 +156,32 @@ export async function createOrganisation(
 		throw refusalFromAuth(error);
 	}
 
-	const now = new Date();
 	const organisation = { id: crypto.randomUUID(), name: named };
 	// Its slug is unique, so of two made at once under one name only one is.
 	const [created] = await database
 		.insert(schema.organization)
-		.values({ ...organisation, slug: slugOf(named) || organisation.id, createdAt: now })
+		.values({ ...organisation, slug: slugOf(named) || organisation.id, createdAt: new Date() })
 		.onConflictDoNothing()
 		.returning({ id: schema.organization.id });
 	if (!created)
 		throw new KeeprRefusal(409, 'ORGANISATION_EXISTS', 'An Organisation has this name already.');
-	const invitationId = crypto.randomUUID();
-	await database.insert(schema.invitation).values({
-		id: invitationId,
-		organizationId: organisation.id,
-		email: address,
-		role: 'owner',
-		status: 'pending',
-		expiresAt: new Date(now.getTime() + INVITATION_EXPIRES_IN_SECONDS * 1000),
-		createdAt: now,
-		inviterId: actor.userId,
-		appRoles: JSON.stringify(offered),
-	});
 	await recordAudit(database, {
 		action: 'organisation.created',
 		actorUserId: actor.userId,
 		organizationId: organisation.id,
 		detail: { name: named, as: 'keepr-administrator' },
 	});
-	await recordAudit(database, {
-		action: 'invitation.created',
-		actorUserId: actor.userId,
-		organizationId: organisation.id,
-		detail: { invitationId, email: address, role: 'owner', appRoles: offered },
-	});
-
-	const link = invitationLink(origin, invitationId);
-	const [inviter] = await database
-		.select({ name: schema.user.name })
-		.from(schema.user)
-		.where(eq(schema.user.id, actor.userId));
-	await afterResponse(
-		email.send(
-			invitationEmail({
-				to: address,
-				inviterName: inviter?.name ?? 'A Keepr Administrator',
-				organisationName: named,
-				link,
-			}),
-		),
+	const { invitationId, link } = await issueInvitation(
+		database,
+		{
+			organisation,
+			email: address,
+			role: 'owner',
+			appRoles: offered,
+			inviterId: actor.userId,
+			as: 'keepr-administrator',
+		},
+		sending,
 	);
 	return { organisation, invitationId, link };
 }

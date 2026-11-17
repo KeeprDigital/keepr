@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { AuthFailure } from '~~/shared/utils/newPassword';
-import { MIN_PASSWORD_LENGTH, newPasswordRefusal } from '~~/shared/utils/newPassword';
+import { NEW_PASSWORD_REFUSALS, refusalSentence } from '~/utils/refusal';
+import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 
 /**
  * Where an emailed reset link lands. The token is in the fragment, which no
@@ -22,12 +22,6 @@ const mismatched = computed(
 	() => form.confirmation.length > 0 && form.password !== form.confirmation,
 );
 
-function refusalOf(failure: AuthFailure): string {
-	if (failure.data?.code === 'INVALID_TOKEN')
-		return 'This link has expired or has been used. Ask for a new one.';
-	return newPasswordRefusal(failure) ?? 'Setting your password failed. Try again.';
-}
-
 async function submit() {
 	// The link works once, so a second submission would only be refused.
 	if (submitting.value || !token.value || mismatched.value) return;
@@ -40,7 +34,14 @@ async function submit() {
 			body: { token: token.value, newPassword: form.password },
 		});
 	} catch (failure) {
-		refusal.value = refusalOf(failure as AuthFailure);
+		refusal.value = refusalSentence(failure, {
+			...NEW_PASSWORD_REFUSALS,
+			codes: {
+				...NEW_PASSWORD_REFUSALS.codes,
+				INVALID_TOKEN: 'This link has expired or has been used. Ask for a new one.',
+			},
+			otherwise: 'Setting your password failed. Try again.',
+		});
 		return;
 	} finally {
 		submitting.value = false;

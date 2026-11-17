@@ -2,7 +2,7 @@ import { getRequestURL, readBody } from 'h3';
 import { answerAsActor } from '~~/server/utils/actorRoute';
 import { runAfterResponse, serverEmailSender } from '~~/server/utils/email';
 import { createOrganisation } from '~~/server/utils/keeprAdministration';
-import { textField } from '~~/server/utils/refusal';
+import { textField } from '~~/server/utils/textField';
 
 /** Creates an Organisation and invites its first owner, as a Keepr Administrator. */
 export default defineEventHandler(async (event) => {

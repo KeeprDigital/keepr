@@ -1,43 +1,29 @@
 <script setup lang="ts">
-import type { AppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
 import { APP_REGISTRY, isAppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
-import { invitationLink } from '~~/shared/utils/invitationLink';
+import {
+	APP_ROLE_CHOICES,
+	chosenAppRoles,
+	noAppAccess,
+	ORGANISATION_ROLE_CHOICES,
+} from '~/utils/appRoleChoices';
+import { refusalSentence } from '~/utils/refusal';
 
 /**
- * An Organisation owner or admin invites an email address to the Organisation
- * they are working in, with an Organisation role and an App role per App from the
- * App registry. The Invitation is emailed; its link is shown to copy as well, for
- * when the email does not arrive. Below, the Organisation's pending Invitations,
- * each to cancel; inviting an address again replaces its earlier one.
+ * An Organisation's owners and admins, or a Keepr Administrator, invite an email
+ * address to it, with an Organisation role and an App role per App from the App
+ * registry: the Organisation worked in, or the one `?organisation=` names. The
+ * Invitation is emailed; its link is shown to copy as well, for when the email
+ * does not arrive. Below, the Organisation's pending Invitations, each to cancel;
+ * inviting an address again replaces its earlier one.
  */
 
-const NO_ACCESS = 'none';
-
-const organisationRoles = [
-	{ label: 'Member', value: 'member' },
-	{ label: 'Admin', value: 'admin' },
-	{ label: 'Owner', value: 'owner' },
-];
-
-const apps = (Object.keys(APP_REGISTRY) as AppId[]).map((app) => ({
-	app,
-	name: APP_REGISTRY[app].name,
-	items: [
-		{ label: 'No access', value: NO_ACCESS },
-		...APP_REGISTRY[app].roles.map((role) => ({ label: role, value: role })),
-	],
-}));
-
-const form = reactive({
-	email: '',
-	role: 'member',
-	appRoles: Object.fromEntries(apps.map(({ app }) => [app, NO_ACCESS])) as Record<AppId, string>,
-});
+const form = reactive({ email: '', role: 'member', appRoles: noAppAccess() });
 const submitting = ref(false);
 const refusal = ref<string | null>(null);
 /** The link to the Invitation last made, to copy. */
 const link = ref<string | null>(null);
 const copied = ref(false);
+const { copyToClipboard } = useCopyToClipboard();
 
 interface PendingInvitation {
 	id: string;
@@ -48,24 +34,31 @@ interface PendingInvitation {
 	expiresAt: string;
 }
 
-/** The Organisation's pending Invitations; empty for whoever may not see them. */
+/** The Organisation's pending Invitations. */
 const pending = ref<PendingInvitation[]>([]);
 const cancelling = ref<string | null>(null);
 const pendingRefusal = ref<string | null>(null);
 
+// Closed to anyone who does not manage the Organisation's members.
+const named = useRoute().query.organisation;
+const { state, managed } = useManagedOrganisation({
+	organisationId: typeof named === 'string' && named.length > 0 ? named : undefined,
+});
+
+const invitationsPath = computed(
+	() => `/api/organisations/${encodeURIComponent(managed.value!.organisation.id)}/invitations`,
+);
+
 async function loadPending() {
 	try {
-		pending.value = await $fetch<PendingInvitation[]>('/api/invitation/pending');
+		pending.value = await $fetch<PendingInvitation[]>(invitationsPath.value);
 	} catch {
 		pending.value = [];
 	}
 }
 
-// Closed to anyone who does not manage the Organisation's members.
-const { state } = useManagedOrganisation();
-
-watch(state, async (now) => {
-	if (now === 'open') await loadPending();
+watch(managed, async (now) => {
+	if (now) await loadPending();
 });
 
 async function cancel(invitationId: string) {
@@ -73,12 +66,14 @@ async function cancel(invitationId: string) {
 	cancelling.value = invitationId;
 	pendingRefusal.value = null;
 	try {
-		await $fetch('/api/auth/organization/cancel-invitation', {
-			method: 'POST',
-			body: { invitationId },
+		await $fetch(`${invitationsPath.value}/${encodeURIComponent(invitationId)}`, {
+			method: 'DELETE',
 		});
-	} catch {
-		pendingRefusal.value = 'Cancelling that invitation failed. Try again.';
+	} catch (failure) {
+		pendingRefusal.value = refusalSentence(failure, {
+			serverMessage: true,
+			otherwise: 'Cancelling that invitation failed. Try again.',
+		});
 	} finally {
 		cancelling.value = null;
 	}
@@ -96,37 +91,26 @@ function lapses(invitation: PendingInvitation): string {
 	return new Date(invitation.expiresAt).toLocaleDateString(undefined, { dateStyle: 'medium' });
 }
 
-function refusalOf(failure: { data?: { code?: string } }): string {
-	switch (failure.data?.code) {
-		case 'YOU_ARE_NOT_ALLOWED_TO_INVITE_USER_WITH_THIS_ROLE':
-			return 'Only an owner can invite another owner.';
-		case 'YOU_ARE_NOT_ALLOWED_TO_INVITE_USERS_TO_THIS_ORGANIZATION':
-			return 'Only an owner or admin of this organisation can invite.';
-		case 'USER_IS_ALREADY_A_MEMBER_OF_THIS_ORGANIZATION':
-			return 'That address is already a member.';
-		case 'INVALID_EMAIL':
-			return 'Enter an email address.';
-	}
-	return 'Inviting failed. Try again.';
-}
-
 async function invite() {
 	if (submitting.value) return;
 	submitting.value = true;
 	refusal.value = null;
 	link.value = null;
 	copied.value = false;
-	const appRoles = Object.fromEntries(
-		Object.entries(form.appRoles).filter(([, role]) => role !== NO_ACCESS),
-	);
 	try {
-		const { id } = await $fetch<{ id: string }>('/api/auth/organization/invite-member', {
+		({ link: link.value } = await $fetch<{ link: string }>(invitationsPath.value, {
 			method: 'POST',
-			body: { email: form.email, role: form.role, appRoles: JSON.stringify(appRoles) },
-		});
-		link.value = invitationLink(window.location.origin, id);
+			body: { email: form.email, role: form.role, appRoles: chosenAppRoles(form.appRoles) },
+		}));
 	} catch (failure) {
-		refusal.value = refusalOf(failure as { data?: { code?: string } });
+		refusal.value = refusalSentence(failure, {
+			codes: {
+				OWNER_REQUIRED: 'Only an owner can invite another owner.',
+				ALREADY_A_MEMBER: 'That address is already a member.',
+				INVALID_EMAIL: 'Enter an email address.',
+			},
+			otherwise: 'Inviting failed. Try again.',
+		});
 		return;
 	} finally {
 		submitting.value = false;
@@ -135,9 +119,7 @@ async function invite() {
 }
 
 async function copy() {
-	if (!link.value) return;
-	await navigator.clipboard.writeText(link.value);
-	copied.value = true;
+	if (link.value) copied.value = await copyToClipboard(link.value);
 }
 </script>
 
@@ -149,10 +131,11 @@ async function copy() {
 		<p v-else-if="state === 'failed'" class="text-muted">
 			This page could not be loaded. Reload to try again.
 		</p>
-		<UCard v-else-if="state === 'open'" class="w-full max-w-md">
+		<UCard v-else-if="state === 'open' && managed" class="w-full max-w-md">
 			<UForm :state="form" @submit="invite">
 				<div class="flex flex-col gap-4">
 					<h1 class="text-lg font-semibold">Invite someone</h1>
+					<p data-organisation class="text-sm text-muted">To {{ managed.organisation.name }}</p>
 
 					<UAlert
 						v-if="refusal"
@@ -177,13 +160,18 @@ async function copy() {
 						<USelect
 							v-model="form.role"
 							data-organisation-role
-							:items="organisationRoles"
+							:items="ORGANISATION_ROLE_CHOICES"
 							class="w-full"
 							:disabled="submitting"
 						/>
 					</UFormField>
 
-					<UFormField v-for="app in apps" :key="app.app" :name="app.app" :label="app.name">
+					<UFormField
+						v-for="app in APP_ROLE_CHOICES"
+						:key="app.app"
+						:name="app.app"
+						:label="app.name"
+					>
 						<USelect
 							v-model="form.appRoles[app.app]"
 							:data-app="app.app"

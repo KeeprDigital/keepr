@@ -17,12 +17,15 @@ Its words are the root `GLOSSARY.md`'s; `RULES.md` says what it makes true. The 
 | `server/utils/email.ts` | Which sender a running server uses, and the work it finishes after answering. |
 | `server/utils/organisations.ts` | What Keepr Accounts adds to the organisation add-on: the Invitation email, App roles checked against the App registry and copied into App access (`appAccess.ts`), and the Audit Record (`auditRecord.ts`). |
 | `server/utils/invitationAcceptance.ts` | The invitee's side: the offer they see or why it is closed, accepting with no User yet, and declining. Served by `server/api/invitation`. |
-| `server/utils/pendingInvitations.ts` | An Organisation's pending Invitations, as its owners and admins see them. Served by `server/api/invitation/pending.get.ts`. |
+| `server/utils/invitations.ts` | Inviting to an Organisation, and its pending Invitations to see and cancel, for whoever manages its members. Served by `server/api/organisations/[organisationId]/invitations`. |
 | `server/utils/profileOrganisations.ts` | A User's Organisations and App access, and the one their Session works in. Served by `server/api/profile`. |
 | `server/utils/firstAdministrator.ts` | Claiming the first Keepr Administrator. Served by `server/api/first-administrator`; the claim is written by `scripts/claim-first-administrator.mjs`. |
-| `server/utils/refusal.ts` | How Keepr Accounts' own routes refuse, in the shape Better Auth's do. |
+| `server/utils/refusal.ts` | How Keepr Accounts' own routes refuse, in the shape Better Auth's do; `textField.ts` reads a request body's text. |
 | `shared/utils/returnAddress.ts` | Where a User may be sent after signing in. |
-| `shared/utils/newPassword.ts` | The length a new password must be, and what a refused one is told. |
+| `shared/utils/newPassword.ts` | The length a new password must be. |
+| `shared/utils/keeprAdministrator.ts` | Whether a User's role marks a Keepr Administrator; `server/utils/keeprAdministrator.ts` asks it of the database. |
+| `app/utils/refusal.ts` | What a page tells its User about a refusal, a refused new password's among it. |
+| `app/utils/appRoleChoices.ts` | The Organisation roles and each App's App roles, as a form offers them. |
 | `app/pages` | Signing in (`/sign-in?returnTo=…`), the profile (`/`), resetting a password (`/forgot-password`, then the emailed link to `/reset-password`), inviting and the pending Invitations (`/invite`), accepting or declining an Invitation (`/invitation`), and claiming the first Keepr Administrator (`/first-administrator`). |
 | `test/unit` | The server, request in and response out, on SQLite with the real migrations (`test/helpers/keeprAccounts.ts`). Also the shared layer's identity function against this real minting (`requestIdentity.sqlite.test.ts`), since the layer cannot import an app. |
 | `test/nuxt` | One wiring test per page. |

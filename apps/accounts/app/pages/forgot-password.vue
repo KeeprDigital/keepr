@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { refusalSentence } from '~/utils/refusal';
+
 const form = reactive({ email: '' });
 const submitting = ref(false);
 const refusal = ref<string | null>(null);
@@ -17,10 +19,10 @@ async function submit() {
 		});
 		requested.value = form.email;
 	} catch (failure) {
-		refusal.value =
-			(failure as { statusCode?: number }).statusCode === 429
-				? 'Too many attempts. Wait a minute and try again.'
-				: 'Asking for a link failed. Try again.';
+		refusal.value = refusalSentence(failure, {
+			statuses: { 429: 'Too many attempts. Wait a minute and try again.' },
+			otherwise: 'Asking for a link failed. Try again.',
+		});
 	} finally {
 		submitting.value = false;
 	}

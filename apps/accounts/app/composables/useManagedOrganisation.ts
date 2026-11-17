@@ -1,3 +1,5 @@
+import { failureStatus } from '@keepr/nuxt-layer/app/utils/failureStatus';
+
 /** How far the signed-in User manages an Organisation's members (`managingStanding`). */
 export type ManagingStanding = 'owner' | 'admin' | 'keepr-administrator';
 
@@ -33,7 +35,7 @@ export function useManagedOrganisation({
 			);
 			state.value = 'open';
 		} catch (failure) {
-			state.value = (failure as { statusCode?: number }).statusCode === 403 ? 'closed' : 'failed';
+			state.value = failureStatus(failure) === 403 ? 'closed' : 'failed';
 		}
 	});
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { AuthFailure } from '~~/shared/utils/newPassword';
 import { APP_REGISTRY, isAppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
-import { MIN_PASSWORD_LENGTH, newPasswordRefusal } from '~~/shared/utils/newPassword';
+import { NEW_PASSWORD_REFUSALS, refusalSentence } from '~/utils/refusal';
+import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
+import { isKeeprAdministrator } from '~~/shared/utils/keeprAdministrator';
 
 /**
  * The profile: who is signed in, their Organisations and the Apps they can use in
@@ -77,9 +78,7 @@ function manages(organisation: ProfileOrganisation): boolean {
 	return organisation.role === 'owner' || organisation.role === 'admin';
 }
 
-const keeprAdministrator = computed(
-	() => signedIn.value?.user.role?.split(',').includes('admin') ?? false,
-);
+const keeprAdministrator = computed(() => isKeeprAdministrator(signedIn.value?.user.role));
 
 /** The App roles a User holds in an Organisation, by the App registry's names. */
 function appsIn(organisation: ProfileOrganisation) {
@@ -133,11 +132,6 @@ const mismatched = computed(
 	() => passwordForm.confirmation.length > 0 && passwordForm.next !== passwordForm.confirmation,
 );
 
-function passwordRefusalOf(failure: AuthFailure): string {
-	if (failure.data?.code === 'INVALID_PASSWORD') return 'Your current password is not right.';
-	return newPasswordRefusal(failure) ?? 'Changing your password failed. Try again.';
-}
-
 async function changePassword() {
 	if (password.saving || mismatched.value) return;
 	Object.assign(password, { saving: true, saved: false, refusal: null });
@@ -156,7 +150,14 @@ async function changePassword() {
 		await loadSignedIn();
 		await loadSessions();
 	} catch (failure) {
-		password.refusal = passwordRefusalOf(failure as AuthFailure);
+		password.refusal = refusalSentence(failure, {
+			...NEW_PASSWORD_REFUSALS,
+			codes: {
+				...NEW_PASSWORD_REFUSALS.codes,
+				INVALID_PASSWORD: 'Your current password is not right.',
+			},
+			otherwise: 'Changing your password failed. Try again.',
+		});
 	} finally {
 		password.saving = false;
 	}

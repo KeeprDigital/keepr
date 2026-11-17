@@ -56,11 +56,14 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - An Organisation role governs only the Organisation's membership: owners and admins invite, a member cannot, and only an owner invites an owner. A User cannot create an Organisation: Keepr Accounts creates one on purpose, the Keepr Organisation with the first Keepr Administrator, and any other at a Keepr Administrator's request. The library's `/organization/create` is refused 403 to everyone, a Keepr Administrator included. (ADR-0114, ADR-0115, ADR-0117)
 - Nothing renames or deletes an Organisation: the library's `/organization/update` and `/organization/delete` answer 404 to every request. (ADR-0117)
 - A member holds one App role, or none, in each App: App access, one row per member and App, naming an App and a role from the App registry. (ADR-0114)
-- An Organisation admits 10,000 members and 10,000 pending Invitations. (ADR-0114)
+- An Organisation admits 10,000 members and 10,000 pending Invitations: a further Invitation is refused 403 `INVITATION_LIMIT_REACHED`. (ADR-0114)
+- No two Organisations share a name: names are compared by their slug, their letters and digits hyphenated, so `The Club` and `the-club` are one. (ADR-0117)
 
 ## Invitation
 
-- An owner or admin invites an address at `/invite` to the Organisation they are working in, with an Organisation role and an App role per App. App roles the App registry does not name are refused 400 `APP_ROLE_NOT_IN_REGISTRY`, and no Invitation is made. (ADR-0114)
+- An owner or admin, or a Keepr Administrator, invites an address at `/invite` to the Organisation they are working in, or the one `?organisation=` names, with an Organisation role and an App role per App, through Keepr Accounts' own route. The member screen links to it for its Organisation. Only an owner or a Keepr Administrator invites an owner: an admin is refused 403 `OWNER_REQUIRED`; anyone who does not manage the Organisation's members 403 `NOT_A_MANAGER`. (ADR-0114, ADR-0116)
+- Refused, no Invitation is made and nothing is emailed: App roles the App registry does not name 400 `APP_ROLE_NOT_IN_REGISTRY`; an address that is none 400 `INVALID_EMAIL`; an Organisation role there is none of 400 `ORGANISATION_ROLE_NOT_KNOWN`; an address already a member 409 `ALREADY_A_MEMBER`. (ADR-0114)
+- Inviting and cancelling need no recent sign-in. (#1228 § Sessions and cookies)
 - An Invitation lasts seven days. It is emailed to the address, naming who invited them and to which Organisation, with a link to `/invitation`, its id in the fragment. The inviter is shown the same link to copy; an email that fails to send leaves the Invitation standing. (ADR-0114)
 - The invitee sees who invited them, to which Organisation, and the roles offered, before accepting. (ADR-0114)
 - An invitee with no User accepts by choosing a name and a password of 8 to 128 characters in no breach. Keepr Accounts creates exactly one User, its email verified, signs them in, makes them a member with the Organisation role offered, and gives them App access in each App the Invitation named. An address that already has a User is told to sign in to accept. (ADR-0114)
@@ -68,7 +71,8 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - An invitee who has a User signs in with the invited address, through `/sign-in` and back to the Invitation, and accepts: the Organisation and its App access are added to their User, and their Session works in it. Signed in with any other address, accepting is refused 403 and nothing changes. (ADR-0114)
 - The invitee may decline from the Invitation's link, signed in or not: the link proves the address, as it does for accepting. A decline another origin's page made the browser send is refused 403 `CROSS_SITE_REQUEST`, and the Invitation stays open. (#1228 § Invitations, ADR-0010)
 - An Invitation that is not open says why, answering 410 with `INVITATION_EXPIRED`, `INVITATION_CANCELLED`, `INVITATION_ACCEPTED` or `INVITATION_DECLINED`; an id no Invitation has answers 404 `INVITATION_NOT_FOUND`. A replaced Invitation reads as cancelled. (#1228 § Invitations)
-- Owners and admins see their Organisation's pending, unexpired Invitations at `/invite`, an owner's offer to an owner only to owners, and cancel one. A member is refused 403. Only a pending Invitation is cancelled: any other answers 400 `INVITATION_NOT_PENDING`. (ADR-0114)
+- Those who manage an Organisation's members see its pending, unexpired Invitations at `/invite`, soonest to lapse first, and cancel one. An admin is not shown an offer to an owner, and cancelling one is refused 403 `OWNER_REQUIRED`; anyone else is refused 403 `NOT_A_MANAGER`. Only a pending Invitation is cancelled: any other answers 400 `INVITATION_NOT_PENDING`, and one the Organisation does not have 404 `INVITATION_NOT_FOUND`. (ADR-0114, ADR-0116)
+- The library's `/organization/invite-member`, `/organization/list-invitations` and `/organization/cancel-invitation` answer 404 to every request. (ADR-0116)
 - Inviting an address that has a pending Invitation to the Organisation cancels it, and the new one alone stands. (ADR-0114)
 
 ## Profile
@@ -106,6 +110,6 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 ## Audit Record
 
 - Each of these is a row, with who acted and when, the Organisation and the User it touched where there is one: a First Administrator Claim made (by the command, naming the operator's login) and consumed, an Organisation created, an Invitation created and accepted. (ADR-0114, ADR-0115)
-- An Invitation cancelled is a row naming who cancelled it; one replaced by inviting the address again is a row naming the inviter and the Invitation that replaced it. An Invitation declined is a row naming the invitee's User when the address has one. (ADR-0114)
+- An Invitation created is a row with what it offers and whether an owner, an admin or a Keepr Administrator made it. Every cancellation is a row naming who cancelled it and as what; one replaced by inviting the address again names the inviter and the Invitation that replaced it. An Invitation declined is a row naming the invitee's User when the address has one. (ADR-0114, ADR-0116)
 - So is each change to a member: an App role set or removed, an Organisation role changed, a member removed; with what they had before and whether an owner, an admin or a Keepr Administrator made it. (ADR-0116)
 - So is each Keepr Administrator's action: an Organisation created, with its first owner's Invitation; a User disabled; the Sessions disabling them ended, a row of its own (`user.sessions-ended`) with how many; a User enabled. (ADR-0117)

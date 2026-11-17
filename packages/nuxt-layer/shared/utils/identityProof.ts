@@ -61,6 +61,8 @@ export interface IdentityProofClaims {
 
 /** Who a request belongs to, as one App sees it. */
 export interface Identity<App extends AppId = AppId> {
+	/** The App this Identity was read for, whose App role `appRole` is. */
+	app: App;
 	user: { id: string; email: string; name: string };
 	sessionId: string;
 	/** The active Organisation and the User's Organisation role in it, or `null`. */
@@ -85,6 +87,7 @@ export function identityFromClaims<App extends AppId>(
 		: null;
 	const role = isAppId(app) ? claims.apps?.[app] : undefined;
 	return {
+		app,
 		user: {
 			id: String(claims.sub),
 			email: String(claims.email ?? ''),

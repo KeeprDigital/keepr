@@ -4,7 +4,9 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { schema } from '~~/server/db';
 import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 import { recordAudit } from './auditRecord';
+import { KEEPR_ADMINISTRATOR_ROLE } from '~~/shared/utils/keeprAdministrator';
 import { browserHeaders } from './browserHeaders';
+import { userIsKeeprAdministrator } from './keeprAdministrator';
 import { KeeprRefusal, refusalFromAuth } from './refusal';
 
 /**
@@ -20,9 +22,7 @@ export const KEEPR_ORGANISATION = { name: 'Keepr', slug: 'keepr' } as const;
 
 const { firstAdministratorClaim: claims, user } = schema;
 
-/** A User holding the admin add-on's `admin` role, which marks a Keepr Administrator. */
-const isKeeprAdministrator = sql`(',' || ${user.role} || ',') like '%,admin,%'`;
-const noKeeprAdministrator = sql`not exists (select 1 from ${user} where ${isKeeprAdministrator})`;
+const noKeeprAdministrator = sql`not exists (select 1 from ${user} where ${userIsKeeprAdministrator})`;
 
 const notFound = () =>
 	new KeeprRefusal(
@@ -46,7 +46,7 @@ async function openClaim(database: IdentityDatabase, claimId: string) {
 	const administrators = await database
 		.select({ id: user.id })
 		.from(user)
-		.where(isKeeprAdministrator)
+		.where(userIsKeeprAdministrator)
 		.limit(1);
 	if (claim.consumedAt !== null || administrators.length > 0) throw administratorExists();
 	return claim;
@@ -104,7 +104,7 @@ export async function claimFirstAdministrator(
 	try {
 		// The breached-password check runs here.
 		const created = await auth.api.createUser({
-			body: { email, name: name.trim(), password, role: 'admin', data: { emailVerified: true } },
+			body: { email, name: name.trim(), password, role: KEEPR_ADMINISTRATOR_ROLE, data: { emailVerified: true } },
 		});
 		userId = created.user.id;
 	} catch (error) {

@@ -188,7 +188,13 @@ describe('creating an Organisation', () => {
 		expect(await audited('invitation.created')).toEqual([
 			expect.objectContaining({
 				...who,
-				detail: { invitationId, email: FIRST_OWNER, role: 'owner', appRoles: { score: 'member' } },
+				detail: {
+					invitationId,
+					email: FIRST_OWNER,
+					role: 'owner',
+					appRoles: { score: 'member' },
+					as: 'keepr-administrator',
+				},
 			}),
 		]);
 	});

@@ -15,6 +15,9 @@ export const APP_REGISTRY = {
 /** An App's id in the registry, as App access and the Identity Proof name it. */
 export type AppId = keyof typeof APP_REGISTRY;
 
+/** Every App's id, in the registry's order. */
+export const APP_IDS = Object.keys(APP_REGISTRY) as readonly AppId[];
+
 /** The App roles one App defines. */
 export type AppRole<App extends AppId = AppId> = (typeof APP_REGISTRY)[App]['roles'][number];
 

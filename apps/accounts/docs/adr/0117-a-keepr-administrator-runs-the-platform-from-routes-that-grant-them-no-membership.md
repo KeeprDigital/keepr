@@ -14,7 +14,7 @@ Accepted · 2026-11-17 · #1228, #1253
 
 **The organisation add-on's `/organization/update` and `/organization/delete` are closed.** Nothing in Keepr renames or deletes an Organisation, and they would be open to its owners and leave no row in the Audit Record.
 
-**Each action is in the Audit Record**: the Organisation created and its first owner invited, a User disabled (with how many Sessions were ended) or enabled.
+**Each action is in the Audit Record**: the Organisation created and its first owner invited, a User disabled or enabled, and the Sessions disabling ended, a row of its own (#1228 § Administration and audit).
 
 What each of these makes true is in `apps/accounts/RULES.md` under Keepr Administrator.
 

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { AppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
-import { APP_REGISTRY } from '@keepr/nuxt-layer/shared/utils/appRegistry';
+import { APP_ROLE_CHOICES, NO_ACCESS, ORGANISATION_ROLE_CHOICES } from '~/utils/appRoleChoices';
+import { readRefusal, refusalSentence } from '~/utils/refusal';
+import { RECENT_SIGN_IN_REQUIRED } from '~~/shared/utils/recentSignIn';
 
 /**
  * An Organisation's owners and admins see its members, with their Organisation
@@ -16,23 +18,6 @@ interface Member {
 	role: string;
 	apps: Partial<Record<AppId, string>>;
 }
-
-const NO_ACCESS = 'none';
-
-const organisationRoles = [
-	{ label: 'Member', value: 'member' },
-	{ label: 'Admin', value: 'admin' },
-	{ label: 'Owner', value: 'owner' },
-];
-
-const apps = (Object.keys(APP_REGISTRY) as AppId[]).map((app) => ({
-	app,
-	name: APP_REGISTRY[app].name,
-	items: [
-		{ label: 'No access', value: NO_ACCESS },
-		...APP_REGISTRY[app].roles.map((role) => ({ label: role, value: role })),
-	],
-}));
 
 // A Keepr Administrator, or a User managing more than one, names the Organisation.
 const named = useRoute().query.organisation;
@@ -62,16 +47,6 @@ watch(
 	{ immediate: true },
 );
 
-function refusalOf(failure: { data?: { code?: string; message?: string } }): string {
-	switch (failure.data?.code) {
-		case 'LAST_OWNER':
-			return 'An Organisation keeps at least one owner. Make someone else an owner first.';
-		case 'OWNER_REQUIRED':
-			return 'Only an owner can do that.';
-	}
-	return failure.data?.message ?? 'That change failed. Try again.';
-}
-
 /** Sends one change for `memberId`, then shows the members as the server now holds them. */
 async function change(memberId: string, send: (path: string) => Promise<unknown>) {
 	if (changing.value) return;
@@ -81,9 +56,16 @@ async function change(memberId: string, send: (path: string) => Promise<unknown>
 	try {
 		await send(`${membersPath.value}/${encodeURIComponent(memberId)}`);
 	} catch (failure) {
-		const answered = failure as { data?: { code?: string; message?: string } };
-		if (answered.data?.code === 'RECENT_SIGN_IN_REQUIRED') signInAgain.value = true;
-		else refusal.value = refusalOf(answered);
+		if (readRefusal(failure).code === RECENT_SIGN_IN_REQUIRED) signInAgain.value = true;
+		else
+			refusal.value = refusalSentence(failure, {
+				codes: {
+					LAST_OWNER: 'An Organisation keeps at least one owner. Make someone else an owner first.',
+					OWNER_REQUIRED: 'Only an owner can do that.',
+				},
+				serverMessage: true,
+				otherwise: 'That change failed. Try again.',
+			});
 	} finally {
 		confirmingRemoval.value = null;
 		await loadMembers();
@@ -110,6 +92,11 @@ function remove(member: Member) {
 	return change(member.memberId, async (path) => await $fetch(path, { method: 'DELETE' }));
 }
 
+/** The Invitation screen for this Organisation. */
+const inviteLink = computed(
+	() => `/invite?organisation=${encodeURIComponent(managed.value!.organisation.id)}`,
+);
+
 const signInAgainLink = computed(
 	() =>
 		`/sign-in?returnTo=${encodeURIComponent(
@@ -130,7 +117,12 @@ const signInAgainLink = computed(
 		</p>
 
 		<template v-else-if="state === 'open' && managed">
-			<p class="text-muted">{{ managed.organisation.name }}</p>
+			<div class="flex items-center justify-between gap-4">
+				<p class="text-muted">{{ managed.organisation.name }}</p>
+				<UButton data-invite color="neutral" variant="outline" size="sm" :to="inviteLink">
+					Invite
+				</UButton>
+			</div>
 
 			<UAlert
 				v-if="signInAgain"
@@ -201,13 +193,13 @@ const signInAgainLink = computed(
 							<USelect
 								data-organisation-role
 								:model-value="member.role"
-								:items="organisationRoles"
+								:items="ORGANISATION_ROLE_CHOICES"
 								class="w-full"
 								:disabled="changing !== null || managed.standing === 'admin'"
 								@update:model-value="(role: string) => setOrganisationRole(member, role)"
 							/>
 						</UFormField>
-						<UFormField v-for="app in apps" :key="app.app" :label="app.name">
+						<UFormField v-for="app in APP_ROLE_CHOICES" :key="app.app" :label="app.name">
 							<USelect
 								:data-app="app.app"
 								:model-value="member.apps[app.app] ?? NO_ACCESS"

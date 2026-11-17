@@ -5,7 +5,7 @@ import { setResponseStatus } from 'h3';
 /**
  * A request Keepr Accounts' own routes refuse, answered as Better Auth answers
  * its own: the status, and `{ code, message }`, so a page reads either the same
- * way (`newPasswordRefusal`).
+ * way (`refusalSentence`).
  */
 export class KeeprRefusal extends Error {
 	readonly statusCode: number;
@@ -41,9 +41,4 @@ export async function answerRefusals<T>(
 		setResponseStatus(event, error.statusCode);
 		return { code: error.code, message: error.message };
 	}
-}
-
-/** A field of a request body as text: anything but a string is empty. */
-export function textField(value: unknown): string {
-	return typeof value === 'string' ? value : '';
 }

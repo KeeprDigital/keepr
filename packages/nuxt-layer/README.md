@@ -63,7 +63,7 @@ and a route that needs the App:
 
 ```ts
 const identity = await resolveRequestIdentity(event, 'stream');
-requireAppRole(identity, 'stream', 'admin'); // or requireAppAccess(identity)
+requireAppRole(identity, 'admin'); // or requireAppAccess(identity)
 ```
 
 Locally its `dev` script starts the Accounts Stand-in beside it, `keepr-accounts-stand-in -- nuxt dev` (`packages/accounts-stand-in`), and its previews, smoke runs and integration and acceptance suites do the same. `NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN` points `useIdentity`'s sign-in at a local Keepr Accounts instead of `https://accounts.keepr.digital`.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { AuthFailure } from '~~/shared/utils/newPassword';
 import { APP_REGISTRY, isAppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
-import { MIN_PASSWORD_LENGTH, newPasswordRefusal } from '~~/shared/utils/newPassword';
+import { NEW_PASSWORD_REFUSALS, readRefusal, refusalSentence } from '~/utils/refusal';
+import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 
 /**
  * Where an Invitation's link lands. The invitee sees who invited them, to which
@@ -52,7 +52,7 @@ onMounted(async () => {
 			body: { invitationId: invitationId.value },
 		});
 	} catch (failure) {
-		closed.value = (failure as AuthFailure).data?.code ?? null;
+		closed.value = readRefusal(failure).code ?? null;
 		offer.value = null;
 		return;
 	}
@@ -90,21 +90,19 @@ const mismatched = computed(
 	() => form.confirmation.length > 0 && form.password !== form.confirmation,
 );
 
-function refusalOf(failure: AuthFailure): string {
-	const code = failure.data?.code;
-	if (code && CLOSED[code]) return CLOSED[code];
-	switch (code) {
-		case 'INVITATION_NOT_FOUND':
-			return 'This invitation is no longer open. Ask whoever invited you for a new one.';
-		case 'USER_ALREADY_EXISTS':
-			return 'This address already has a Keepr account. Sign in to accept.';
-		case 'YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION':
-			return 'This invitation is for another address. Sign in with that address to accept.';
-		case 'NAME_REQUIRED':
-			return 'Enter your name.';
-	}
-	return newPasswordRefusal(failure) ?? 'That did not work. Try again.';
-}
+const ANSWER_REFUSALS = {
+	...NEW_PASSWORD_REFUSALS,
+	codes: {
+		...NEW_PASSWORD_REFUSALS.codes,
+		...CLOSED,
+		INVITATION_NOT_FOUND: 'This invitation is no longer open. Ask whoever invited you for a new one.',
+		USER_ALREADY_EXISTS: 'This address already has a Keepr account. Sign in to accept.',
+		YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION:
+			'This invitation is for another address. Sign in with that address to accept.',
+		NAME_REQUIRED: 'Enter your name.',
+	},
+	otherwise: 'That did not work. Try again.',
+};
 
 /** Sends one answer at a time, and says why it was refused. */
 async function answer(send: () => Promise<unknown>): Promise<boolean> {
@@ -115,7 +113,7 @@ async function answer(send: () => Promise<unknown>): Promise<boolean> {
 		await send();
 		return true;
 	} catch (failure) {
-		refusal.value = refusalOf(failure as AuthFailure);
+		refusal.value = refusalSentence(failure, ANSWER_REFUSALS);
 		return false;
 	} finally {
 		submitting.value = false;

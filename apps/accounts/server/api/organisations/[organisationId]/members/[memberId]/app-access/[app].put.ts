@@ -1,7 +1,7 @@
 import { getRouterParam, readBody } from 'h3';
 import { answerAsActor } from '~~/server/utils/actorRoute';
 import { setAppAccess } from '~~/server/utils/memberManagement';
-import { textField } from '~~/server/utils/refusal';
+import { textField } from '~~/server/utils/textField';
 
 /** Gives a member an App role in one App, in place of any they held there. */
 export default defineEventHandler(async (event) => {

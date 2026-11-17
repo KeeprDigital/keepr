@@ -8,13 +8,15 @@ Accepted · 2026-11-17 · #1228, #1252
 
 **Who may manage, and how far, is decided in one place**, `managingStanding` in `server/utils/memberManagement.ts`. An owner or admin of the Organisation manages it; a Keepr Administrator manages any Organisation as its owner would (#1228 story 48); anyone else is refused 403, an unknown Organisation included. Only an owner, or a Keepr Administrator, changes an Organisation role or removes an owner. The last owner is never demoted or removed: the check is part of the write, so two made at once cannot both pass it.
 
+**Inviting, and an Organisation's pending Invitations, are served the same way**, under `/api/organisations/:id/invitations`, authorised by `managingStanding`, so a Keepr Administrator invites to any Organisation and sees and cancels its Invitations (#1228 story 48). The add-on's `/organization/invite-member`, `/organization/list-invitations` and `/organization/cancel-invitation` are closed. Keepr Accounts replaces an address's pending Invitation itself, and records every cancellation, a replacement included. Inviting and cancelling need no recent sign-in: neither changes anyone's access until an invitee accepts.
+
 **A change needs a sign-in no older than ten minutes**, Keepr Accounts' own check, `requireRecentSignIn`. A sign-in's age is its Session's: renewing a Session does not make it recent. Listing needs none. An older sign-in is refused 403 `RECENT_SIGN_IN_REQUIRED`, and the page asks the User to sign in again. The same check is what creating an Organisation and disabling a User will need.
 
 **Each change is in the Audit Record**, with who, when, the Organisation, the User changed, what they had before, and the standing the change was made with.
 
 **A write to these routes from another origin's page is refused** before its Session is read, by the shared layer's cross-site write check, which Stream Keepr's API boundary also uses (ADR-0010).
 
-What each of these makes true is in `apps/accounts/RULES.md` under Members.
+What each of these makes true is in `apps/accounts/RULES.md` under Members and Invitation.
 
 ### Why
 

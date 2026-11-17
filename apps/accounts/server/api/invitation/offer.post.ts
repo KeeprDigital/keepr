@@ -1,7 +1,8 @@
 import { getRequestHost, readBody } from 'h3';
 import { serverAuth } from '~~/server/utils/auth';
 import { invitationOffer } from '~~/server/utils/invitationAcceptance';
-import { answerRefusals, textField } from '~~/server/utils/refusal';
+import { answerRefusals } from '~~/server/utils/refusal';
+import { textField } from '~~/server/utils/textField';
 
 /** What an invitee is shown before accepting. A POST, so the id is in no request line. */
 export default defineEventHandler(async (event) => {
