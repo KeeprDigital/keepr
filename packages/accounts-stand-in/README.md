@@ -16,16 +16,16 @@ The Local Developer User (`local-developer`), a Keepr Administrator, owner of th
 ## Running it
 
 ```
-keepr-accounts-stand-in -- nuxt dev    # an App's dev script: the stand-in beside the App
 pnpm accounts:stand-in                 # from the root: the stand-in alone
+keepr-accounts-stand-in -- nuxt dev    # the stand-in beside a command, as an App's dev script will run it
 KEEPR_ACCOUNTS_STAND_IN=off …          # the command alone, with the real Keepr Accounts beside it (apps/accounts/README.md)
 ```
 
-An App's binding finds it through Wrangler's local dev registry, and reconnects when it restarts. With nothing registered, an App refuses with a 503 that says so.
+No App runs it yet. An App that adopts Keepr Accounts runs its `dev` script, previews, Worker smoke run and integration and acceptance suites through `keepr-accounts-stand-in` (ADR-0113). Its binding finds the stand-in through Wrangler's local dev registry, and reconnects when it restarts. With nothing registered, an App refuses with a 503 that says so.
 
 ## Never deployed
 
-There is no deploy script. `package.json` carries `keepr.undeployable`, and `keepr-deploy-guard` (`@keepr/tooling`), which every deploy runs on the configuration it uploads, refuses it. Deployed under `keepr-accounts`, it would replace Keepr Accounts and sign anyone in.
+There is no deploy script, and Wrangler does not find `stand-in.wrangler.jsonc` by itself. `package.json` carries `keepr.undeployable`, which `keepr-deploy-guard` (`@keepr/tooling`) refuses. No deploy runs the guard yet: per-app deploy (#1258) will run it on each configuration before uploading it. Deployed under `keepr-accounts`, the stand-in would replace Keepr Accounts and sign anyone in.
 
 ## Commands
 

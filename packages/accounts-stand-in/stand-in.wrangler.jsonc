@@ -2,8 +2,9 @@
 	"$schema": "../../node_modules/wrangler/config-schema.json",
 	// The Accounts Stand-in, registered locally under Keepr Accounts' service name so
 	// every App's binding reaches it unchanged (ADR-0113). Started only by
-	// `keepr-accounts-stand-in`, and never deployed: there is no deploy script, this
-	// file is not one Wrangler finds by itself, and `keepr-deploy-guard` refuses it.
+	// `keepr-accounts-stand-in`, and never deployed: there is no deploy script, and
+	// this file is not one Wrangler finds by itself. `keepr-deploy-guard` refuses its
+	// package; per-app deploy (#1258) will run the guard before every upload.
 	"name": "keepr-accounts",
 	"main": "src/worker.ts",
 	"compatibility_date": "2026-07-16",

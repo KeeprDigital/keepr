@@ -4,7 +4,7 @@
 // Starts the Accounts Stand-in under `wrangler dev`, registered locally as
 // `keepr-accounts`, so an App's KEEPR_ACCOUNTS binding reaches it (ADR-0113).
 // Given a command, runs it beside the stand-in and stops the stand-in when it
-// ends: an App's `dev` script is `keepr-accounts-stand-in -- nuxt dev`.
+// ends: an App that adopts Keepr Accounts runs `keepr-accounts-stand-in -- nuxt dev`.
 //
 // KEEPR_ACCOUNTS_STAND_IN=off runs the command alone, for when the real Keepr
 // Accounts is running beside the App instead (apps/accounts/README.md).

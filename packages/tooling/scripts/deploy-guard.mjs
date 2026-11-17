@@ -4,8 +4,8 @@
  *
  * Refuses to deploy a Worker whose package says it must never be deployed, by a
  * `keepr.undeployable` sentence in its `package.json`: the nearest one above the
- * configuration. Every deploy runs it on the configuration it is about to
- * upload, before `wrangler deploy`.
+ * configuration. A deploy runs it on the configuration it is about to upload,
+ * before `wrangler deploy`; none does yet, and per-app deploy (#1258) wires it in.
  *
  * The Accounts Stand-in carries the mark. It registers under Keepr Accounts'
  * service name, `keepr-accounts`, and signs every request in as a Keepr

@@ -28,7 +28,7 @@ export default defineNuxtConfig({
 - **No route and no middleware.** An app registers its own, in its own order, and calls the layer's code.
 - **Nothing here knows a product.** If it names an Event, a Screen or a Tournament, it belongs in that app.
 - **A named module's term is in the root `GLOSSARY.md`**, under Platform. A module that moves here brings its term in the same change.
-- **It stands alone.** `pnpm typecheck` and `pnpm test` run here, with no app around it. A rule's tests live here with the rule.
+- **It stands alone.** `pnpm typecheck` and `pnpm test` run here, with no app around it. A rule's tests live here with the rule, but for one: `resolveRequestIdentity` is tested in `apps/accounts` (`test/unit/server/requestIdentity.sqlite.test.ts`), against Keepr Accounts' real minting, which the layer cannot import (ADR-0113, in the root `docs/adr`). How a route meets it is tested here.
 - **Something two apps need moves here, in the change that moves the first app onto it.** Do not copy a file between apps.
 
 ## Server time
@@ -66,7 +66,7 @@ const identity = await resolveRequestIdentity(event, 'stream');
 requireAppRole(identity, 'admin'); // or requireAppAccess(identity)
 ```
 
-Locally its `dev` script starts the Accounts Stand-in beside it, `keepr-accounts-stand-in -- nuxt dev` (`packages/accounts-stand-in`), and its previews, smoke runs and integration and acceptance suites do the same. `NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN` points `useIdentity`'s sign-in at a local Keepr Accounts instead of `https://accounts.keepr.digital`.
+No App relies on it yet. One that adopts it runs its `dev` script through the Accounts Stand-in, `keepr-accounts-stand-in -- nuxt dev` (`packages/accounts-stand-in`), and its previews, smoke runs and integration and acceptance suites the same way (ADR-0113). `NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN` points `useIdentity`'s sign-in at a local Keepr Accounts instead of `https://accounts.keepr.digital`.
 
 ## Commands
 

@@ -6,7 +6,7 @@ The workspace's own tooling (ADR-0110, in the root `docs/adr`): what every app, 
 |---|---|---|
 | `scripts/slots.mjs` | `keepr-slots`, `pnpm slots` | Run slots: one budget of heavy work for the machine, shared by every worktree (ADR-0082). `keepr-slots <cost> -- <command>` runs a command inside them. |
 | `scripts/reap-workerd.mjs` | `keepr-reap-workerd`, `pnpm reap` | Stops orphaned `workerd` from any checkout of this repository. |
-| `scripts/deploy-guard.mjs` | `keepr-deploy-guard <wrangler config>` | Refuses to deploy a Worker whose `package.json` carries `keepr.undeployable`: the Accounts Stand-in (ADR-0113). Every deploy runs it on the configuration it uploads, before `wrangler deploy`. |
+| `scripts/deploy-guard.mjs` | `keepr-deploy-guard <wrangler config>` | Refuses a Worker whose `package.json` carries `keepr.undeployable`: the Accounts Stand-in (ADR-0113). No deploy runs it yet; per-app deploy (#1258) will run it on each configuration before `wrangler deploy`. |
 | `scripts/change-base.mjs` | imported | Where a branch's change is measured from: `origin/main`, else `main`. |
 | `scripts/ci-scope.mjs`, `scripts/ci-reuse.mjs` | CI's `scope` and `record` jobs | What a change can affect, and whether a merge group's tree was already verified (ADR-0036). |
 | `scripts/conventional-title.mjs` | `pr-title.yml` | The `Conventional Commit title` required check. |
