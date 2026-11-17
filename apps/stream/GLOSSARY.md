@@ -397,15 +397,11 @@ _Avoid_: bulk update, transaction, multi-command, command group.
 
 ### Identity and access
 
-User, Session, Organisation, App role and Keepr Administrator are defined in the root `GLOSSARY.md`.
+User, Session, Organisation, App role and Keepr Administrator are defined in the root `GLOSSARY.md`, and so are Installation and Environment. What is installation-wide in Stream Keepr is shared by all of one Installation's Events.
 
 **Operator**:
 The Stream Keepr App role of a User who runs an Event's broadcast.
 _Avoid_: Organiser (Score Keepr's App role), user, producer
-
-**Installation**:
-One deployed Stream Keepr and the data it holds. What is installation-wide is shared by all its Events.
-_Avoid_: instance, tenant, deployment
 
 **Password Reset Link**:
 The single-use, expiring credential a Graphics Administrator hands a person out of band to set their own password. Stream Keepr's own until it moves onto Keepr Accounts.

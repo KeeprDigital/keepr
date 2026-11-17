@@ -1,6 +1,6 @@
 # Keepr glossary
 
-The words every Keepr app shares: who a person is and what they may use, and the named modules of the shared layer. Each app's own words are in its own glossary; `GLOSSARY-MAP.md` says where, and how the vocabularies meet.
+The words every Keepr app shares: who a person is and what they may use, how each app is released and deployed, and the named modules of the shared layer. Each app's own words are in its own glossary; `GLOSSARY-MAP.md` says where, and how the vocabularies meet.
 
 Identity and access is written to the model of Keepr Accounts (issue #1228). Until Stream Keepr moves onto it, Stream Keepr's own sign-in follows the rules in `apps/stream/RULES.md`.
 
@@ -59,6 +59,20 @@ _Avoid_: admin (an Organisation role), superuser, Graphics Administrator (a Stre
 **Identity Proof**:
 The short-lived signed statement Keepr Accounts gives an App about one request: its User, Session, active Organisation, Organisation role, App roles, and whether the User is a Keepr Administrator. An App checks it for itself.
 _Avoid_: token alone, JWT, session token
+
+### Releasing and deploying
+
+**Release**:
+One numbered version of one app, with the changelog of what changed since its previous Release. Several apps may release together; each is deployed on its own.
+_Avoid_: version (the number alone), build, tag
+
+**Environment**:
+Where Installations run: Production, which serves Users, or Staging, which proves a Release before Production does. Staging alone always means the Staging Environment.
+_Avoid_: stage, env; staging for Stream Keepr's ingestion staging store or Graphics Staging Allowance, which are always written in full
+
+**Installation**:
+One app deployed in one Environment, and the data it holds. Stream Keepr's Staging Installation shares nothing with its Production Installation.
+_Avoid_: instance, tenant, deployment (the act of deploying)
 
 ### Platform
 
