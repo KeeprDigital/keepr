@@ -13,7 +13,8 @@
  *
  * The Accounts Stand-in never deploys (ADR-0113): a Release whose descriptor
  * would upload any Worker configuration under a package marked
- * `keepr.undeployable` is refused before anything is built.
+ * `keepr.undeployable` is refused before anything is built, and the procedure
+ * refuses it again once built or placed.
  */
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';

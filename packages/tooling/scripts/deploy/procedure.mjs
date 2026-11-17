@@ -3,7 +3,9 @@
  *
  * 1. Build once, or place a downloaded artifact of that build: the descriptor's
  *    `build` scripts (build, wrangler dry run, Worker smoke) run here, and
- *    nowhere else.
+ *    nowhere else. Then the deploy guard reads every Worker configuration it
+ *    will upload, as built or placed: none may be under a package marked
+ *    `keepr.undeployable`, the Accounts Stand-in's mark (ADR-0113).
  * 2. Decide each part against its marker by fingerprint.
  * 3. `beforeRemoteChange`: the last moment a deploy can refuse with nothing
  *    changed. Deploy order between apps (`order.mjs`, ADR-0120) refuses here,
@@ -26,6 +28,8 @@
  * the marker remote in memory.
  */
 
+import { join } from 'node:path';
+import { undeployableReason } from '../deploy-guard.mjs';
 import { LEGACY_MARKERS, formatMarker, markerName, parseMarker } from './markers.mjs';
 
 const FINGERPRINT = /^sha256:[0-9a-f]{64}$/;
@@ -250,6 +254,24 @@ function retireLegacyMarkers(store, names) {
 }
 
 /**
+ * Refuse a Release whose built or placed Worker configuration, or a part's,
+ * sits under a package marked `keepr.undeployable`. `readRelease` refuses the
+ * configurations the descriptor names before building; this reads what will
+ * actually be uploaded.
+ *
+ * @param {Release} release
+ */
+function refuseUndeployable({ app, appDir, descriptor }) {
+	for (const config of [
+		descriptor.worker.config,
+		...Object.values(descriptor.parts).map((part) => part.config),
+	]) {
+		const reason = undeployableReason(join(appDir, config));
+		if (reason) throw new Error(`Refusing to deploy ${app}: ${config} is undeployable: ${reason}`);
+	}
+}
+
+/**
  * Deploy `release` to `environment`. Any failure throws, leaving the markers
  * saying only what is confirmed.
  *
@@ -287,6 +309,7 @@ export async function deployRelease({
 
 	if (artifact === undefined) steps.build();
 	else steps.placeArtifact(artifact);
+	refuseUndeployable(release);
 
 	/** @type {Record<string, Decision & { fingerprint?: string }>} */
 	const parts = {};

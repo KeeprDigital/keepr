@@ -14,7 +14,7 @@ Accepted · 2026-11-17 · [#1262](https://github.com/KeeprDigital/keepr/issues/1
 
 **Every app serves its release identity.** The shared layer records `{ app, version, commit }` into runtime config at build time and gives `readReleaseIdentity`; each app serves it at `GET /api/release`, reachable without a sign-in, beside `/api/time`. The deploy's verify requires it to name the Release just deployed, retrying while the previous Release still answers. A Release from before the endpoint gets a liveness check at `/api/time`, and the output says so.
 
-**The Accounts Stand-in never deploys.** Reading a Release refuses any descriptor whose Worker or part configuration, or whose app, sits under a package marked `keepr.undeployable` (ADR-0113), in every Environment, before anything is built.
+**The Accounts Stand-in never deploys.** Reading a Release refuses any descriptor whose Worker or part configuration, or whose app, sits under a package marked `keepr.undeployable` (ADR-0113), in every Environment, before anything is built; and the procedure refuses the Worker and part configurations as built or placed from an artifact, before the first remote change.
 
 ### Why
 

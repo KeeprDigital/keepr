@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { MarkerStore } from '../scripts/deploy/markers.mjs';
 import { parseMarker } from '../scripts/deploy/markers.mjs';
 import type { Descriptor, Release } from '../scripts/deploy/release.mjs';
@@ -617,6 +620,65 @@ describe('deploying a Release to an Environment', () => {
 			expect(w.marker('stream/production')).toMatchObject({ state: 'deployed', ...recorded });
 			expect(w.marker('stream/production-validator')).not.toHaveProperty('needs');
 		});
+	});
+
+	// The Accounts Stand-in never deploys (ADR-0113): what a build or an artifact
+	// leaves to upload is guarded too, not only the configurations the descriptor names.
+	describe('the Accounts Stand-in never deploys', () => {
+		const MARKED = { keepr: { undeployable: 'the Accounts Stand-in admits anyone.' } };
+		const appDirs: string[] = [];
+		afterEach(() => {
+			for (const dir of appDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+		});
+
+		it.each([
+			['the Worker it built', '.output/server/package.json', {}],
+			[
+				'the Worker an artifact placed',
+				'.output/server/package.json',
+				{ artifact: '/downloads/stream-output' },
+			],
+			['a part, once built', 'workers/silent-video-validator/package.json', {}],
+		])(
+			'refuses %s under a package marked undeployable, with nothing remote touched',
+			async (_case, marked, options) => {
+				const w = world();
+				const appDir = mkdtempSync(join(tmpdir(), 'keepr-procedure-'));
+				appDirs.push(appDir);
+				const steps = w.steps(B, 'production');
+				const leaveMarked = () => {
+					mkdirSync(dirname(join(appDir, marked)), { recursive: true });
+					writeFileSync(join(appDir, marked), JSON.stringify(MARKED));
+				};
+
+				await expect(
+					deployRelease({
+						release: { ...w.release(B), appDir },
+						environment: 'production',
+						store: w.store,
+						steps: {
+							...steps,
+							build: () => {
+								steps.build();
+								leaveMarked();
+							},
+							placeArtifact: (path) => {
+								steps.placeArtifact(path);
+								leaveMarked();
+							},
+						},
+						source: 'actions',
+						log: quiet,
+						...options,
+					}),
+				).rejects.toThrow(/admits anyone/);
+
+				expect(w.ran).toEqual([
+					'artifact' in options ? 'artifact /downloads/stream-output' : 'build',
+				]);
+				expect(w.tags.size).toBe(0);
+			},
+		);
 	});
 
 	// ADR-0119 renames `production` and `production-validator`; the first deploy
