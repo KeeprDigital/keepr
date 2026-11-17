@@ -7,22 +7,14 @@ import { GATES, selectGates } from '../../../scripts/verify.mjs';
 
 /**
  * The gates and the deploy are only as good as their wiring: these read the
- * committed package.json, verify graph and workflows. Nothing runs remotely.
+ * committed package.json, verify graph and CI workflow. Nothing runs remotely.
  */
 
 interface Step {
-	name?: string;
-	uses?: string;
 	run?: string;
-	if?: string;
-	'continue-on-error'?: unknown;
-	env?: Record<string, string>;
-	with?: Record<string, unknown>;
 }
 interface Workflow {
-	on: Record<string, { inputs?: Record<string, { options?: string[] }> }>;
-	permissions?: Record<string, string>;
-	jobs: Record<string, { env?: Record<string, string>; steps?: Step[] }>;
+	jobs: Record<string, { steps?: Step[] }>;
 }
 
 function scriptsOf(manifest: string) {
@@ -184,7 +176,7 @@ describe('verify runs the server-backed suites one at a time', () => {
 });
 
 describe('the deploy runs the tooling, which advances the promotion markers only behind every check', () => {
-	// The procedure and its order are tested at their home, `@keepr/tooling`.
+	// The procedure, its order and the Deploy workflow are tested at their home, `@keepr/tooling`.
 	it("is Stream Keepr's descriptor deployed by keepr-deploy, from every deploy script", () => {
 		expect(
 			Object.fromEntries(Object.entries(scripts).filter(([name]) => /^deploy(?::|$)/.test(name))),
@@ -196,92 +188,5 @@ describe('the deploy runs the tooling, which advances the promotion markers only
 			'deploy:validator': 'keepr-deploy part validator --app stream --env production',
 		});
 		expect(workspaceScripts.deploy).toBe('keepr-deploy deploy');
-	});
-
-	describe('the Deploy workflow', () => {
-		const deploy = workflow('deploy.yml');
-		const all = steps(deploy);
-		const index = (match: (step: Step) => boolean) => all.findIndex(match);
-		const release = index((step) => step.with?.ref === '${{ steps.release.outputs.tag }}');
-		const tooling = index((step) => step.with?.path === '.deploy-tooling');
-		const install = index((step) => step.run === 'pnpm install --frozen-lockfile');
-		const CLI = 'packages/tooling/scripts/deploy/cli.mjs';
-		const promote = index(
-			(step) =>
-				step.run?.startsWith(`node .deploy-tooling/${CLI} deploy --app stream --env production`) ===
-				true,
-		);
-
-		/** Every module `entry` imports, transitively, by its path from the repository's root. */
-		function importedModules(entry: string, seen = new Set<string>()): Set<string> {
-			if (seen.has(entry)) return seen;
-			seen.add(entry);
-			const source = readFileSync(`../../${entry}`, 'utf8');
-			for (const [, specifier] of source.matchAll(/^import [^;]*?from '(\.{1,2}\/[^']+)';$/gms))
-				importedModules(new URL(specifier!, `file:///${entry}`).pathname.slice(1), seen);
-			return seen;
-		}
-
-		it('deploys through the tooling from its own commit, after installing the release', () => {
-			expect(release).toBeGreaterThanOrEqual(0);
-			expect([release, tooling, install, promote]).toEqual(
-				[release, tooling, install, promote].toSorted((a, b) => a - b),
-			);
-			expect(all[tooling]!.with).toMatchObject({
-				ref: '${{ github.sha }}',
-				'persist-credentials': false,
-			});
-			expect(all.some((step) => step.run === 'echo /.deploy-tooling/ >> .git/info/exclude')).toBe(
-				true,
-			);
-		});
-
-		// A module the sparse checkout leaves out fails on deploy day, not in review.
-		it('checks out the deploy CLI and every module it imports', () => {
-			const patterns = String(all[tooling]!.with!['sparse-checkout'])
-				.split('\n')
-				.map((line) => line.trim())
-				.filter(Boolean);
-			const modules = [...importedModules(CLI)];
-
-			expect(modules.length).toBeGreaterThan(3);
-			for (const module of modules)
-				expect(
-					patterns.some((pattern) =>
-						pattern.endsWith('/') ? module.startsWith(pattern) : module === pattern,
-					),
-					module,
-				).toBe(true);
-		});
-
-		it('cannot skip past a failed promotion, and deploys or moves a marker nowhere else', () => {
-			expect(all[promote]!.if).toBeUndefined();
-			expect(all[promote]!['continue-on-error']).toBeUndefined();
-			expect(all[promote]!.env).toHaveProperty('INPUT_VALIDATOR', '${{ inputs.validator }}');
-			for (const [position, step] of all.entries()) {
-				if (position !== promote)
-					expect(step.run ?? '').not.toMatch(/git push|git tag|wrangler|pnpm (run )?deploy/);
-			}
-		});
-
-		// Job-level env reaches every step: the install's build scripts and the setup actions too.
-		it('hands the Cloudflare credentials to the promotion step and to nothing else', () => {
-			const holders = [
-				...Object.values(deploy.jobs).map((job) => job.env ?? {}),
-				...all.filter((_, position) => position !== promote).map((step) => step.env ?? {}),
-			];
-
-			expect(all[promote]!.env).toMatchObject({
-				CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
-				CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
-			});
-			expect(
-				holders
-					.flatMap((env) => Object.entries(env))
-					.filter(
-						([name, value]) => /^CLOUDFLARE_|^WRANGLER_/.test(name) || value.includes('secrets.'),
-					),
-			).toEqual([]);
-		});
 	});
 });
