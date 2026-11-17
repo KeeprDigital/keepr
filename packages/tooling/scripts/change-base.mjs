@@ -1,15 +1,13 @@
 /**
  * Where this checkout's change is measured from.
  *
- * `pnpm verify:quick` checks a change in proportion to it (README § Testing):
+ * `pnpm verify:quick` checks a change in proportion to it (`apps/stream/README.md` § Testing):
  * it runs the tests whose imports reach a file that differs from here. CI is
  * the full gate, so the answer has to be fast rather than exhaustive.
  */
 
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-
-const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
+import process from 'node:process';
 
 /** Where a branch is measured from, in order of preference. */
 const MAIN_REFS = ['origin/main', 'main'];
@@ -30,7 +28,7 @@ function gitIn(cwd) {
  *
  * @returns {{ ref: string, commit: string } | undefined} `undefined` when there is no such ref
  */
-export function changeBase({ cwd = repositoryRoot, git = gitIn(cwd) } = {}) {
+export function changeBase({ cwd = process.cwd(), git = gitIn(cwd) } = {}) {
 	for (const ref of MAIN_REFS) {
 		try {
 			return {

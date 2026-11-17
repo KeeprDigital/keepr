@@ -1,0 +1,13 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"types": ["node"],
+		// What the Node the workspace pins runs (`devEngines`).
+		"lib": ["ES2024"],
+		// The scripts are JavaScript run by Node with no build step: a test reads
+		// their JSDoc types, as the apps' programs do, without checking their bodies.
+		"allowJs": true
+	},
+	"include": ["scripts", "test", "vitest.config.ts"]
+}

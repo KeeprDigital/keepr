@@ -186,7 +186,7 @@ and
 (migrations),
 [ADR-0035](docs/adr/0035-the-app-and-the-validator-each-carry-a-promotion-marker-and-the-validator-deploys-on-a-build.md)
 (promotion markers) and
-[ADR-0036](docs/adr/0036-the-merge-queue-verifies-the-exact-revision-that-lands-and-only-such-a-revision-is-released.md)
+[ADR-0036](../../docs/adr/0036-the-merge-queue-verifies-the-exact-revision-that-lands-and-only-such-a-revision-is-released.md)
 (merge queue and release gate).
 
 ## Setup
@@ -267,7 +267,8 @@ Stop dev servers with Ctrl-C (SIGINT) or SIGTERM. A server killed with SIGKILL
 or SIGHUP strands its `workerd` process, which then holds memory and sqlite
 locks. `pnpm dev`, `pnpm preview`, their `:bypass` variants, `pnpm
 worker:smoke`, and the integration suite reap orphans on start; `pnpm reap`
-does it on demand. It only ever kills `workerd` whose parent is gone and whose
+does it on demand (`scripts/reap.mjs`, over the workspace's workerd reaper in
+`packages/tooling`, which `pnpm reap` at the root runs alone). It only ever kills `workerd` whose parent is gone and whose
 binary lives in a checkout Git lists for this repository (`git worktree list`):
 the main checkout, worktrees nested under it, and worktrees anywhere else. A
 reap from any one checkout covers them all; other repositories are untouched.
@@ -366,7 +367,7 @@ How `pnpm verify` runs:
   server-backed suites and browser gates start only once those pass, so a lint
   or type error arrives in seconds, and run one after another: integration,
   local-auth, then the browser gates.
-- **Every heavy gate takes run slots** (`scripts/slots.mjs`). The machine has
+- **Every heavy gate takes run slots** (`keepr-slots`, from `packages/tooling`). The machine has
   one budget of them, shared by every worktree of this checkout: a slot is
   about one busy core and 1.5 GB, and a 10-core, 16 GB machine has eight. Lint,
   each typecheck program and the build take three; a test run takes one per
@@ -419,12 +420,12 @@ local-auth and browser gates, Worker build) so the longest job sets the wall tim
 the Worker build when only tests, docs or the other workflows changed. A change
 that touches only docs skips the code gates and runs `pnpm verify:docs`
 instead: the documentation link test, the one thing those gates check of a
-document (`scripts/ci-scope.mjs` decides, against a PR's
+document (`packages/tooling/scripts/ci-scope.mjs` decides, against a PR's
 base or the queue's base, and runs everything when it cannot tell). A merge
 group also skips the gates when its tree is byte-identical to one a full, green
 PR run verified: one PR, with `main` unchanged since its PR run. That PR run's
 `record` job leaves a GitHub-signed OIDC token naming the commit it ran on, and
-`scripts/ci-reuse.mjs` checks it (ADR-0036). The scope job's log and `CI passed`
+`packages/tooling/scripts/ci-reuse.mjs` checks it (ADR-0036). The scope job's log and `CI passed`
 then name the run that verified the tree. Any doubt runs everything. A newer
 push cancels the older PR run. It is the full gate: before it,
 `pnpm verify:quick`.
@@ -654,7 +655,7 @@ How a change reaches `main`, and why:
   actor.
 - **A release is cut only from a revision the queue verified.** release-please
   tags the Release PR's merge commit, which through the queue is the commit CI
-  passed on. Before it runs, `scripts/release-gate.mjs` checks every merged
+  passed on. Before it runs, `packages/tooling/scripts/release-gate.mjs` checks every merged
   Release PR still awaiting its tag (`autorelease: pending`) and fails the
   workflow, tagging nothing, if no successful `merge_group` CI run is recorded
   for that commit, waiting up to two minutes for one still finishing. A run

@@ -18,7 +18,7 @@
  *
  * What the graph does not decide is how much runs at once. Every heavy gate
  * takes run slots from the one budget this machine has
- * (`scripts/slots.mjs`), shared with every other worktree's runs, and waits
+ * (`@keepr/tooling`'s `scripts/slots.mjs`), shared with every other worktree's runs, and waits
  * its turn when there are none: the integration suite takes them all.
  *
  * Usage: node scripts/verify.mjs [--quick [--all] | --tests]
@@ -36,8 +36,8 @@ import { createWriteStream } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { changeBase } from './change-base.mjs';
-import { main as reapStrandedWorkerd } from './reap-workerd.mjs';
+import { changeBase } from '@keepr/tooling/scripts/change-base.mjs';
+import { main as reapStrandedRuns } from './reap.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const logDirectory = fileURLToPath(new URL('../node_modules/.cache/verify/', import.meta.url));
@@ -310,7 +310,7 @@ export async function main(argv = process.argv) {
 	if (failure) {
 		// Anything a killed server suite or browser gate left behind: orphaned
 		// workerd, and leaked acceptance Chrome (#687).
-		await reapStrandedWorkerd();
+		await reapStrandedRuns();
 		if (failure.logPath) {
 			const lines = (await readFile(failure.logPath, 'utf8')).trimEnd().split('\n');
 			process.stderr.write(

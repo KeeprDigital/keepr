@@ -25,11 +25,10 @@
  * that run's URL. Without that exact match, or when it cannot tell, the
  * group is scoped as above.
  *
- *   node scripts/ci-scope.mjs   (reads GITHUB_EVENT_NAME, GITHUB_EVENT_PATH,
- *                                and in a merge group GITHUB_REPOSITORY,
- *                                GITHUB_REPOSITORY_ID and GH_TOKEN; appends
- *                                code=, bundle=, docs= and, on reuse,
- *                                verified-by= to GITHUB_OUTPUT)
+ *   node packages/tooling/scripts/ci-scope.mjs
+ *     (reads GITHUB_EVENT_NAME, GITHUB_EVENT_PATH, and in a merge group
+ *     GITHUB_REPOSITORY, GITHUB_REPOSITORY_ID and GH_TOKEN; appends code=,
+ *     bundle=, docs= and, on reuse, verified-by= to GITHUB_OUTPUT)
  */
 
 import { execFileSync } from 'node:child_process';
@@ -53,7 +52,7 @@ const DOCUMENT = /\.md$/;
 /**
  * Neither a test, a workflow other than CI's own, nor anything outside the
  * code can change the uploaded Worker bundle or how CI builds it. Paths are
- * the repository's, so this app's begin `apps/stream/`.
+ * the repository's, so Stream Keepr's begin `apps/stream/`.
  */
 const OUTSIDE_BUNDLE =
 	/^apps\/stream\/test\/|^\.github\/workflows\/(?:deploy|pr-title|release-please)\.yml$/;

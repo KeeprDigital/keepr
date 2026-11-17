@@ -27,9 +27,10 @@
  * bad signature or claim, another tree (main moved, or the group holds more
  * than this PR), a skipped or failed job, an API error.
  *
- *   node scripts/ci-reuse.mjs record   (the PR run's `record` job: reads
- *       ACTIONS_ID_TOKEN_REQUEST_URL/_TOKEN; writes the token under
- *       RUNNER_TEMP and appends name= and path= to GITHUB_OUTPUT)
+ *   node packages/tooling/scripts/ci-reuse.mjs record
+ *     (the PR run's `record` job: reads ACTIONS_ID_TOKEN_REQUEST_URL/_TOKEN;
+ *     writes the token under RUNNER_TEMP and appends name= and path= to
+ *     GITHUB_OUTPUT)
  */
 
 import { Buffer } from 'node:buffer';
@@ -446,7 +447,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
 	if (process.argv[2] === 'record') {
 		await record();
 	} else {
-		console.error('usage: node scripts/ci-reuse.mjs record');
+		console.error('usage: node packages/tooling/scripts/ci-reuse.mjs record');
 		process.exitCode = 2;
 	}
 }

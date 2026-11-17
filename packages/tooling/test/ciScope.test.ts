@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { diffRange, scopeOf } from '../../../scripts/ci-scope.mjs';
+import { diffRange, scopeOf } from '../scripts/ci-scope.mjs';
 
-const repositoryRoot = join(import.meta.dirname, '../../..');
+const packageRoot = join(import.meta.dirname, '..');
 
 const EVERYTHING = { code: true, bundle: true, docs: false };
 
@@ -43,11 +43,11 @@ describe('what a change can affect', () => {
 		// The code gates lint every document and run the documentation test themselves.
 		[
 			'tests and docs',
-			['apps/stream/test/unit/scripts/ciScope.test.ts', 'README.md'],
+			['apps/stream/test/unit/scripts/repoWiring.test.ts', 'README.md'],
 			{ code: true, bundle: false, docs: false },
 		],
 		['server code', ['apps/stream/server/api/time.get.ts'], EVERYTHING],
-		['a script', ['apps/stream/scripts/ci-scope.mjs'], EVERYTHING],
+		['a script', ['packages/tooling/scripts/ci-scope.mjs'], EVERYTHING],
 		['CI itself', ['.github/workflows/ci.yml'], EVERYTHING],
 		['the shared setup action', ['.github/actions/setup/action.yml'], EVERYTHING],
 		[
@@ -236,7 +236,7 @@ describe("the scope job's command line", () => {
 		const output = join(dirname(cwd), 'output');
 		writeFileSync(eventPath, JSON.stringify(event));
 		writeFileSync(output, '');
-		const result = spawnSync(process.execPath, [join(repositoryRoot, 'scripts/ci-scope.mjs')], {
+		const result = spawnSync(process.execPath, [join(packageRoot, 'scripts/ci-scope.mjs')], {
 			cwd,
 			encoding: 'utf8',
 			env: {

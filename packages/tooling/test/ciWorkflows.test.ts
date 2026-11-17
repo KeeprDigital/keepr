@@ -94,7 +94,7 @@ describe('every required check reports in the merge queue as well as on PRs', ()
 
 		expect(job.if).toBeUndefined();
 		expect((job.steps ?? []).every((step) => step.if === undefined)).toBe(true);
-		expect(runs(job)).toBe('node apps/stream/scripts/conventional-title.mjs');
+		expect(runs(job)).toBe('node packages/tooling/scripts/conventional-title.mjs');
 		// The title is contributor-controlled, so only the script reads it, from the payload.
 		expect(JSON.stringify(prTitle)).not.toContain('github.event.pull_request.title');
 	});
@@ -105,7 +105,7 @@ describe("the CI scope decides what a merge group can affect against the queue's
 
 	it('runs for every merge group and for ready PRs, through the tested script', () => {
 		expect(scope.if).toBe("github.event_name == 'merge_group' || !github.event.pull_request.draft");
-		expect(runs(scope)).toContain('node apps/stream/scripts/ci-scope.mjs');
+		expect(runs(scope)).toContain('node packages/tooling/scripts/ci-scope.mjs');
 	});
 
 	// An output the scope job does not export reads as '', which skips the job asking for it.
@@ -190,7 +190,7 @@ describe('a merge group skips the gates only for a tree a full, green PR run ver
 			"needs.scope.outputs.code == 'true'",
 			"needs.scope.outputs.bundle == 'true'",
 		]);
-		expect(runs(record)).toContain('node apps/stream/scripts/ci-reuse.mjs record');
+		expect(runs(record)).toContain('node packages/tooling/scripts/ci-reuse.mjs record');
 	});
 
 	it('only the record job can mint an OIDC token, and nothing in CI can write', () => {
@@ -206,7 +206,9 @@ describe('a merge group skips the gates only for a tree a full, green PR run ver
 
 describe('release-please releases only what the queue verified', () => {
 	const steps = Object.values(releasePlease.jobs).flatMap((job) => job.steps ?? []);
-	const gate = steps.findIndex((step) => step.run === 'node apps/stream/scripts/release-gate.mjs');
+	const gate = steps.findIndex(
+		(step) => step.run === 'node packages/tooling/scripts/release-gate.mjs',
+	);
 	const release = steps.findIndex((step) =>
 		step.uses?.startsWith('googleapis/release-please-action@'),
 	);
@@ -221,6 +223,36 @@ describe('release-please releases only what the queue verified', () => {
 		for (const job of Object.values(releasePlease.jobs)) {
 			expect(job.if).toBeUndefined();
 			expect(job['continue-on-error']).toBeUndefined();
+		}
+	});
+});
+
+// A job that checks out only a few files fails at run time, not in review, if
+// the script it runs is not among them.
+describe('a job that checks out only some files checks out the script it runs', () => {
+	it.each([
+		{ file: 'ci.yml', workflow: ci },
+		{ file: 'pr-title.yml', workflow: prTitle },
+		{ file: 'release-please.yml', workflow: releasePlease },
+	])('$file', ({ workflow }) => {
+		const sparseJobs = Object.entries(workflow.jobs).filter(([, job]) =>
+			(job.steps ?? []).some((step) => step.with?.['sparse-checkout'] !== undefined),
+		);
+		expect(sparseJobs.length).toBeGreaterThan(0);
+		for (const [id, job] of sparseJobs) {
+			const checkedOut = String(
+				job.steps?.find((step) => step.with?.['sparse-checkout'] !== undefined)?.with?.[
+					'sparse-checkout'
+				],
+			)
+				.split('\n')
+				.map((line) => line.trim())
+				.filter(Boolean);
+			const scripts = (job.steps ?? []).flatMap(
+				(step) => step.run?.match(/(?<=^node )\S+\.mjs/gm) ?? [],
+			);
+			expect(scripts.length, id).toBeGreaterThan(0);
+			for (const script of scripts) expect(checkedOut, id).toContain(script);
 		}
 	});
 });

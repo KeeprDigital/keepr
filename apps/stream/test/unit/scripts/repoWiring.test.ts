@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { RUN_SLOT_COSTS } from '../../../scripts/slots.mjs';
+import { RUN_SLOT_COSTS } from '@keepr/tooling/scripts/slots.mjs';
 import { GATES, selectGates } from '../../../scripts/verify.mjs';
 
 /**
@@ -32,6 +32,8 @@ function scriptsOf(manifest: string) {
 const scripts = scriptsOf('package.json');
 /** The workspace's own: the lint is one run over every app and package. */
 const workspaceScripts = scriptsOf('../../package.json');
+/** Score Keepr's heavy gates draw on the same machine's slots. */
+const scoreScripts = scriptsOf('../score/package.json');
 
 function workflow(name: string): Workflow {
 	return parse(readFileSync(`../../.github/workflows/${name}`, 'utf8')) as Workflow;
@@ -135,26 +137,20 @@ describe('verify --quick checks what a checkout changes', () => {
 	});
 });
 
-// A gate outside the pool is one every other worktree's runs cannot see (scripts/slots.mjs).
+// A gate outside the pool is one every other worktree's runs cannot see (`@keepr/tooling`).
 describe('every heavy gate takes run slots', () => {
 	it.each([
-		{
-			script: 'lint',
-			cost: 'lint',
-			from: workspaceScripts,
-			slots: 'apps/stream/scripts/slots.mjs',
-		},
-		{ script: 'typecheck:app', cost: 'typecheck', from: scripts, slots: 'scripts/slots.mjs' },
-		{ script: 'typecheck:test', cost: 'typecheck', from: scripts, slots: 'scripts/slots.mjs' },
-		{ script: 'build', cost: 'build', from: scripts, slots: 'scripts/slots.mjs' },
-		{ script: 'worker:smoke', cost: 'worker-smoke', from: scripts, slots: 'scripts/slots.mjs' },
-	] as const)(
-		'pnpm $script runs inside the slots a $cost costs',
-		({ script, cost, from, slots }) => {
-			expect(RUN_SLOT_COSTS).toHaveProperty(cost);
-			expect(from[script]).toContain(`node ${slots} ${cost} -- `);
-		},
-	);
+		{ script: 'lint', cost: 'lint', from: workspaceScripts },
+		{ script: 'typecheck:app', cost: 'typecheck', from: scripts },
+		{ script: 'typecheck:test', cost: 'typecheck', from: scripts },
+		{ script: 'build', cost: 'build', from: scripts },
+		{ script: 'worker:smoke', cost: 'worker-smoke', from: scripts },
+		{ script: 'build', cost: 'build', from: scoreScripts },
+		{ script: 'typecheck', cost: 'typecheck', from: scoreScripts },
+	] as const)('pnpm $script runs inside the slots a $cost costs', ({ script, cost, from }) => {
+		expect(RUN_SLOT_COSTS).toHaveProperty(cost);
+		expect(from[script]).toContain(`keepr-slots ${cost} -- `);
+	});
 
 	it("the app's lint is the workspace's, so it takes those slots too", () => {
 		expect(scripts.lint).toBe('pnpm --workspace-root lint');

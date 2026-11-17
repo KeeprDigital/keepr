@@ -11,7 +11,8 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
 - `packages/`: what more than one app uses, each named `@keepr/<name>` and
   consumed as TypeScript source: the Pairing and Standings Engines
   (`pairing`, `standings`), what both use (`engine-core`), and their test
-  support (`testkit`, `engine-integration`). Each has a `typecheck` and a
+  support (`testkit`, `engine-integration`), and the workspace's own tooling
+  (`tooling`: run slots, the workerd reaper, CI's scripts). Each has a `typecheck` and a
   `test` script; `pnpm typecheck:packages` and `pnpm test:packages` at the
   root run them all. `nuxt-layer` is the Nuxt layer every app extends, with the
   server, client and test foundation the apps share: what a second app needs
@@ -71,7 +72,7 @@ runs only on PRs and in the merge queue. Open the PR from your branch and leave
   `pnpm install --frozen-lockfile`. Missing `.env`
   produces 503s and skipped realtime tests, not branch defects.
 - Stop dev servers with SIGINT/SIGTERM. `pnpm reap` safely removes orphaned
-  `workerd`; scope any manual kill to your worktree's path
+  `workerd` (in `apps/stream`, leaked acceptance Chrome too); scope any manual kill to your worktree's path
   (`pkill -f "<worktree path>/.*workerd"`), never bare `pkill -f workerd`.
 - Every heavy gate takes run slots from one budget for the whole machine,
   shared with every other worktree, and waits its turn when there are none. A

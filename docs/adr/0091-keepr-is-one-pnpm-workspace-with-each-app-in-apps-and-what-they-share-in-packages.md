@@ -16,7 +16,7 @@ Accepted · 2026-11-16.
 
 ### Consequences
 
-- A path git reports begins `apps/stream/` (`scripts/ci-scope.mjs`), and each CI job that runs the app's scripts runs them in its directory.
+- A path git reports begins `apps/stream/` (`packages/tooling/scripts/ci-scope.mjs`), and each CI job that runs the app's scripts runs them in its directory.
 - The Deploy workflow deploys any release with the tooling of `main`, so that tooling finds the app in either layout: `apps/stream`, or the root of a release from before the workspace (`appDirectory` in `scripts/deploy-promotion.mjs`).
 - The validator's fingerprint changed once without its code changing: the bundle names each module it inlines by a path relative to the Worker, and `@cloudflare/containers` is now two directories further up. The first deploy after the move promotes the validator unless it is dispatched with `validator: never`.
 - release-please still releases the repository as one package at its root, and bumps the version in the root's manifest and the app's. Its notes for a release are the commits that touch the package's path, and every commit from before the move touches a path outside `apps/stream`; a package at that path would have dropped them from the next release. A second app that releases makes each a component of its own, at a release boundary.

@@ -2,7 +2,7 @@
 # subjects are what release-please reads (apps/stream/README.md § Releases). A title that
 # is not a Conventional Commit drops the PR from the changelog and the version
 # bump without anyone noticing, so it is caught here instead
-# (apps/stream/scripts/conventional-title.mjs).
+# (packages/tooling/scripts/conventional-title.mjs).
 #
 # It is a required status check, so it runs wherever GitHub evaluates those:
 #
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
-            apps/stream/scripts/conventional-title.mjs
+            packages/tooling/scripts/conventional-title.mjs
             package.json
           sparse-checkout-cone-mode: false
           persist-credentials: false
@@ -50,4 +50,4 @@ jobs:
       - name: Check the title, or in the queue every commit subject it lands
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node apps/stream/scripts/conventional-title.mjs
+        run: node packages/tooling/scripts/conventional-title.mjs

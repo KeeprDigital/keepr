@@ -4,9 +4,11 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"lint": "oxfmt --check && node apps/stream/scripts/slots.mjs lint -- oxlint",
-		"lint:fix": "node apps/stream/scripts/slots.mjs lint -- oxlint --fix && oxfmt",
+		"lint": "oxfmt --check && keepr-slots lint -- oxlint",
+		"lint:fix": "keepr-slots lint -- oxlint --fix && oxfmt",
 		"format": "oxfmt",
+		"slots": "keepr-slots",
+		"reap": "keepr-reap-workerd",
 		"typecheck:packages": "pnpm --filter \"./packages/*\" typecheck",
 		"test:packages": "pnpm --filter \"./packages/*\" --workspace-concurrency=1 test",
 		"bench:packages": "pnpm --filter \"./packages/*\" --if-present bench:check",
@@ -14,6 +16,7 @@
 		"verify:quick": "pnpm typecheck:packages && pnpm test:packages && pnpm --filter @keepr/score verify && pnpm --filter @keepr/stream verify:quick"
 	},
 	"devDependencies": {
+		"@keepr/tooling": "workspace:*",
 		"oxfmt": "catalog:tooling",
 		"oxlint": "catalog:tooling",
 		"oxlint-tsgolint": "catalog:tooling"
