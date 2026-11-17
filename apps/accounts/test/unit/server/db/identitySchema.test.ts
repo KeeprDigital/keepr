@@ -1,3 +1,4 @@
+import type { IdentityProofSource } from '~~/server/utils/identityProof';
 import { getAuthTables } from 'better-auth/db';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
 import { describe, expect, it } from 'vitest';
@@ -13,7 +14,10 @@ import { authOptions } from '~~/server/utils/authOptions';
  * library's field name; the SQL name underneath is snake_case.
  */
 
-const tables = getAuthTables(authOptions({ sharedCookieDomain: undefined }));
+// The tables do not depend on what an Identity Proof reads, so nothing is read.
+const tables = getAuthTables(
+	authOptions({ sharedCookieDomain: undefined, identityProof: {} as IdentityProofSource }),
+);
 
 function snakeCase(name: string): string {
 	return name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);

@@ -1,5 +1,5 @@
 import type { TestAccounts } from '~~/test/helpers/keeprAccounts';
-import { admin, jwt } from 'better-auth/plugins';
+import { admin } from 'better-auth/plugins';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
 	createTestAccounts,
@@ -27,8 +27,6 @@ function routesOf(plugin: { endpoints: unknown }) {
 }
 
 const adminRoutes = routesOf(admin());
-// The signed-token routes stay closed until the Identity Proof is built on them.
-const signedTokenRoutes = routesOf(jwt());
 
 let accounts: TestAccounts;
 let administratorCookie: string;
@@ -58,9 +56,6 @@ describe('the library routes Keepr Accounts closes', () => {
 		expect(adminRoutes.map(([, path]) => path)).toEqual(
 			expect.arrayContaining(['/admin/impersonate-user', '/admin/remove-user', '/admin/set-role']),
 		);
-		expect(signedTokenRoutes.map(([, path]) => path)).toEqual(
-			expect.arrayContaining(['/token', '/jwks']),
-		);
 	});
 
 	it('are asked by a Session the library itself admits as an administrator', async () => {
@@ -71,7 +66,7 @@ describe('the library routes Keepr Accounts closes', () => {
 		expect(await response.json()).toMatchObject({ user: { role: 'admin' } });
 	});
 
-	it.each([...adminRoutes, ...signedTokenRoutes])('%s %s answers 404', async (method, path) => {
+	it.each(adminRoutes)('%s %s answers 404', async (method, path) => {
 		const response = await accounts.send(path, {
 			method,
 			headers: { cookie: administratorCookie },

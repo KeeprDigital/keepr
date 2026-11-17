@@ -3,6 +3,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db, schema } from '~~/server/db';
 import { authOptions, sharedCookieDomainFor } from './authOptions';
+import { identityProofSource } from './identityProof';
 import { readConfiguredSecret } from '@keepr/nuxt-layer/server/utils/configuredSecret';
 import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
 
@@ -23,7 +24,7 @@ export function createKeeprAuth({
 	sharedCookieDomain: string | undefined;
 }) {
 	return betterAuth({
-		...authOptions({ sharedCookieDomain }),
+		...authOptions({ sharedCookieDomain, identityProof: identityProofSource(database) }),
 		database: drizzleAdapter(database, {
 			provider: 'sqlite',
 			schema,

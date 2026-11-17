@@ -1,5 +1,11 @@
+import type { IdentityProofSource } from './identityProof';
 import type { BetterAuthOptions } from 'better-auth';
 import { admin, haveIBeenPwned, jwt, organization } from 'better-auth/plugins';
+import {
+	IDENTITY_PROOF_AUDIENCE,
+	IDENTITY_PROOF_LIFETIME_SECONDS,
+	KEEPR_ACCOUNTS_ORIGIN,
+} from '@keepr/nuxt-layer/shared/utils/identityProof';
 
 /**
  * Keepr Accounts' Better Auth configuration, everything but the database and the
@@ -12,14 +18,8 @@ import { admin, haveIBeenPwned, jwt, organization } from 'better-auth/plugins';
  * where the library's defaults differ from a deployed Worker's.
  */
 
-/** Where Keepr Accounts is served, and what an Identity Proof names as its issuer. */
-export const KEEPR_ACCOUNTS_ORIGIN = 'https://accounts.keepr.digital';
-
 /** The domain every Keepr host shares, on which the session cookie is set in production. */
 export const KEEPR_DOMAIN = 'keepr.digital';
-
-/** Who every Identity Proof is for: one audience for every App (#1256). */
-export const IDENTITY_PROOF_AUDIENCE = 'https://keepr.digital';
 
 /**
  * Sessions last seven days from their last renewal, and a request a day or more
@@ -60,14 +60,6 @@ export function sharedCookieDomainFor(host: string): string | undefined {
 }
 
 const adminPlugin = admin({ bannedUserMessage: DISABLED_USER_MESSAGE });
-const jwtPlugin = jwt({
-	jwt: {
-		issuer: KEEPR_ACCOUNTS_ORIGIN,
-		audience: IDENTITY_PROOF_AUDIENCE,
-		expirationTime: '5m',
-	},
-	disableSettingJwtHeader: true,
-});
 
 function httpPaths(plugin: { endpoints: Record<string, unknown> }): string[] {
 	return Object.values(plugin.endpoints as Record<string, { path?: unknown }>)
@@ -78,13 +70,18 @@ function httpPaths(plugin: { endpoints: Record<string, unknown> }): string[] {
 /**
  * Paths no request may reach. The admin add-on's routes admit any
  * Keepr Administrator to everything it can do, impersonation and hard deletion
- * included; Keepr Accounts serves its own narrower routes instead. The signed-token
- * add-on's routes stay closed until the Identity Proof is built on them (#1228).
- * Derived from the add-ons, so a bump that adds a route closes it too.
+ * included; Keepr Accounts serves its own narrower routes instead. Derived from
+ * the add-on, so a bump that adds a route closes it too.
  */
-export const CLOSED_PATHS = [...httpPaths(adminPlugin), ...httpPaths(jwtPlugin)];
+export const CLOSED_PATHS = httpPaths(adminPlugin);
 
-export function authOptions({ sharedCookieDomain }: { sharedCookieDomain: string | undefined }) {
+export function authOptions({
+	sharedCookieDomain,
+	identityProof,
+}: {
+	sharedCookieDomain: string | undefined;
+	identityProof: IdentityProofSource;
+}) {
 	return {
 		emailAndPassword: {
 			enabled: true,
@@ -117,9 +114,39 @@ export function authOptions({ sharedCookieDomain }: { sharedCookieDomain: string
 					},
 				},
 			}),
-			jwtPlugin,
+			// The Identity Proof: `GET /api/auth/token` mints it from the session cookie,
+			// and `GET /api/auth/jwks` publishes the keys it verifies against (ADR-0113).
+			jwt({
+				jwt: {
+					// Fixed, never read from the request: unstated, they are blank whenever
+					// `baseURL` is a list of hosts (#1256).
+					issuer: KEEPR_ACCOUNTS_ORIGIN,
+					audience: IDENTITY_PROOF_AUDIENCE,
+					expirationTime: `${IDENTITY_PROOF_LIFETIME_SECONDS}s`,
+					definePayload: (session) => identityProof.claims(session),
+				},
+				jwks: { keyPairConfig: { alg: 'EdDSA', crv: 'Ed25519' } },
+				// Nothing reads a token on every `get-session`; minting one there is waste.
+				disableSettingJwtHeader: true,
+			}),
 			haveIBeenPwned(),
 		],
+		databaseHooks: {
+			session: {
+				create: {
+					// The organisation add-on leaves a new Session in no Organisation, so its
+					// Identity Proof would name none until the User chose one (#1256).
+					before: async (session) => ({
+						data: {
+							...session,
+							activeOrganizationId:
+								(session as { activeOrganizationId?: string | null }).activeOrganizationId ??
+								(await identityProof.activeOrganizationAtSignIn(session.userId)),
+						},
+					}),
+				},
+			},
+		},
 		disabledPaths: CLOSED_PATHS,
 		baseURL: {
 			allowedHosts: ALLOWED_HOSTS,

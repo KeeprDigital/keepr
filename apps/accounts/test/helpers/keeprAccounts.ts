@@ -1,8 +1,9 @@
 import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import type { KeeprAuth } from '~~/server/utils/auth';
-import { createHash } from 'node:crypto';
+import { eq } from 'drizzle-orm';
+import { createHash, randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
-import { identityDatabase } from '~~/server/db';
+import { identityDatabase, schema } from '~~/server/db';
 import { createKeeprAuth } from '~~/server/utils/auth';
 import { sharedCookieDomainFor } from '~~/server/utils/authOptions';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
@@ -32,6 +33,16 @@ export interface TestAccounts {
 	createUser: (email: string, extra?: { role?: 'admin' | 'user' }) => Promise<{ id: string }>;
 	/** Signs `email` in and answers the cookie a browser would send back. */
 	signIn: (email: string, host?: string) => Promise<string>;
+	/**
+	 * Makes `userId` a member of the Organisation `slug`, creating it if new, with
+	 * an Organisation role and App access. The routes that do this are not built
+	 * yet: the same rows, written the way the library writes them.
+	 */
+	addMember: (
+		userId: string,
+		slug: string,
+		access?: { role?: 'owner' | 'admin' | 'member'; apps?: Record<string, string> },
+	) => Promise<{ organizationId: string; memberId: string }>;
 }
 
 /**
@@ -44,8 +55,9 @@ export async function createTestAccounts(
 ): Promise<TestAccounts> {
 	const host = options.host ?? LOCAL_HOST;
 	const harness = options.harness ?? (await createSqliteD1Harness());
+	const database = identityDatabase(harness.database);
 	const auth = createKeeprAuth({
-		database: identityDatabase(harness.database),
+		database,
 		secret: 'a-throwaway-secret-for-the-unit-suite-0123456789',
 		sharedCookieDomain: sharedCookieDomainFor(host),
 	});
@@ -85,6 +97,36 @@ export async function createTestAccounts(
 			});
 			if (response.status !== 200) throw new Error(`sign-in answered ${response.status}`);
 			return cookiesOf(response);
+		},
+		async addMember(userId, slug, access = {}) {
+			const now = new Date();
+			const [existing] = await database
+				.select({ id: schema.organization.id })
+				.from(schema.organization)
+				.where(eq(schema.organization.slug, slug));
+			const organizationId = existing?.id ?? randomUUID();
+			if (!existing)
+				await database
+					.insert(schema.organization)
+					.values({ id: organizationId, name: slug, slug, createdAt: now });
+			const memberId = randomUUID();
+			await database.insert(schema.member).values({
+				id: memberId,
+				organizationId,
+				userId,
+				role: access.role ?? 'member',
+				createdAt: now,
+			});
+			for (const [app, role] of Object.entries(access.apps ?? {}))
+				await database.insert(schema.appAccess).values({
+					id: randomUUID(),
+					memberId,
+					app,
+					role,
+					createdAt: now,
+					updatedAt: now,
+				});
+			return { organizationId, memberId };
 		},
 	};
 }
