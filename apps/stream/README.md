@@ -377,8 +377,9 @@ How `pnpm verify` runs:
   agents verify at once: before it, each gate was sized as if it had the
   machine, a first `verify:quick` in a fresh worktree held about 10 GB (cold
   lint 3.8, cold typecheck 3.7, the unit suite 2.4), and two of them starved
-  each other into timeouts. `STREAM_KEEPR_RUN_SLOTS` sizes the pool by hand
-  (`off` runs unqueued). A holder whose process is gone gives its slots back,
+  each other into timeouts. `KEEPR_RUN_SLOTS` sizes the pool by hand
+  (`off` runs unqueued; its former name, `STREAM_KEEPR_RUN_SLOTS`, is still
+  read). A holder whose process is gone gives its slots back,
   and so does one that has held them 30 minutes, which no gate takes.
 - **Each gate logs to `node_modules/.cache/verify/<gate>.log`.** The terminal
   shows one line per gate and the tail of the first failure.
@@ -508,7 +509,7 @@ Gotchas:
   job limit rather than spending the timeout on every test after it. A test
   that passes alone and fails under load is a defect in the test: it is racing
   a real timer or sharing state. Reproduce it by oversubscribing with the run
-  slots off (`STREAM_KEEPR_RUN_SLOTS=off pnpm exec vitest run --maxWorkers=30`
+  slots off (`KEEPR_RUN_SLOTS=off pnpm exec vitest run --maxWorkers=30`
   beside another such run), not by re-running until green.
 - **The Nuxt suite is selected by config**, not project:
   `vitest --config vitest.nuxt.config.ts`.
