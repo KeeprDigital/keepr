@@ -99,6 +99,9 @@ async function submit() {
 					</UFormField>
 
 					<UButton type="submit" color="primary" block :loading="submitting">Sign in</UButton>
+					<UButton to="/forgot-password" color="neutral" variant="link" block>
+						Forgotten your password?
+					</UButton>
 
 					<p class="text-center text-xs text-muted">
 						People join Keepr by Invitation, from an Organisation they will work in.

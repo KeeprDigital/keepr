@@ -11,5 +11,8 @@
 			"database_name": "keepr-accounts-local",
 			"migrations_dir": "server/db/migrations/sqlite"
 		}
-	]
+	],
+	// For `pnpm beside`, the built Worker on this file: Wrangler simulates the
+	// email service locally and sends nothing. `nuxt dev` records email itself.
+	"send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["accounts@keepr.digital"] }]
 }

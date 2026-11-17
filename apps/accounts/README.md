@@ -13,8 +13,11 @@ Its words are the root `GLOSSARY.md`'s; `RULES.md` says what it makes true. The 
 | `server/utils/identityProof.ts` | What an Identity Proof names, read from the identity database, and the Organisation a new Session works in. |
 | `server/api/auth/[...all].ts` | Better Auth's routes under `/api/auth`. |
 | `server/db/schema.ts` | The identity schema, by hand; `server/db/migrations/sqlite` its migrations. |
+| `server/email` | The email seam (`sender.ts`): Cloudflare's email service (`cloudflare.ts`), the recorder tests and the dev server use instead (`recorder.ts`), and what each email says (`messages.ts`). |
+| `server/utils/email.ts` | Which sender a running server uses, and the work it finishes after answering. |
 | `shared/utils/returnAddress.ts` | Where a User may be sent after signing in. |
-| `app/pages` | Signing in (`/sign-in?returnTo=…`), and who is signed in (`/`). |
+| `shared/utils/newPassword.ts` | The length a new password must be, and what a refused one is told. |
+| `app/pages` | Signing in (`/sign-in?returnTo=…`), the profile (`/`), and resetting a password (`/forgot-password`, then the emailed link to `/reset-password`). |
 | `test/unit` | The server, request in and response out, on SQLite with the real migrations (`test/helpers/keeprAccounts.ts`). Also the shared layer's identity function against this real minting (`requestIdentity.sqlite.test.ts`), since the layer cannot import an app. |
 | `test/nuxt` | One wiring test per page. |
 
@@ -31,6 +34,8 @@ pnpm verify       # the three above, as CI's `Keepr Accounts` job runs them
 pnpm db:generate  # after a change to server/db/schema.ts: the next migration
 pnpm beside       # the built Worker, registered locally as keepr-accounts: see below
 ```
+
+Nothing local sends mail. The dev server writes each email, a reset link among them, to `.data/email/` here and logs the file; a local run of the built Worker (`wrangler dev`) simulates Cloudflare's email service and logs where it wrote each one.
 
 ## Running it beside an App
 

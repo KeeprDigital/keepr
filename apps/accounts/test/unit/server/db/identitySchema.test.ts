@@ -3,6 +3,7 @@ import { getAuthTables } from 'better-auth/db';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
 import { describe, expect, it } from 'vitest';
 import * as schema from '~~/server/db/schema';
+import { createEmailRecorder } from '~~/server/email/recorder';
 import { authOptions } from '~~/server/utils/authOptions';
 
 /**
@@ -16,7 +17,11 @@ import { authOptions } from '~~/server/utils/authOptions';
 
 // The tables do not depend on what an Identity Proof reads, so nothing is read.
 const tables = getAuthTables(
-	authOptions({ sharedCookieDomain: undefined, identityProof: {} as IdentityProofSource }),
+	authOptions({
+		sharedCookieDomain: undefined,
+		email: createEmailRecorder(),
+		identityProof: {} as IdentityProofSource,
+	}),
 );
 
 function snakeCase(name: string): string {

@@ -1,45 +1,122 @@
 import { mockNuxtImport, registerEndpoint } from '@nuxt/test-utils/runtime';
-import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { flushPromises, mount } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import IndexPage from '~/pages/index.vue';
 
-// The page shows who the Session belongs to and signs it out; the rules are the server's.
+// The profile: each part sends what the User did to Better Auth's route for it and
+// shows the outcome; the rules are the server's.
 
 const { navigate } = vi.hoisted(() => ({
 	navigate: vi.fn<(to: string) => void>(),
 }));
 mockNuxtImport('navigateTo', () => navigate);
 
-let session: unknown = null;
-let signedOut = 0;
-registerEndpoint('/api/auth/get-session', { method: 'GET', handler: () => session });
-registerEndpoint('/api/auth/sign-out', {
-	method: 'POST',
-	handler: () => {
-		signedOut++;
-		return { success: true };
-	},
+const THIS_BROWSER = 'token-of-this-browser';
+const PHONE = 'token-of-the-phone';
+
+let session: unknown;
+let sessions: { token: string; userAgent: string; updatedAt: string }[];
+const received: Record<string, unknown[]> = {};
+
+function route(path: string, method: 'GET' | 'POST', answer: () => unknown) {
+	registerEndpoint(`/api/auth${path}`, {
+		method,
+		handler: async (event) => {
+			const { readBody } = await import('h3');
+			(received[path] ??= []).push(method === 'POST' ? await readBody(event) : null);
+			return answer();
+		},
+	});
+}
+
+route('/get-session', 'GET', () => session);
+route('/list-sessions', 'GET', () => sessions);
+route('/update-user', 'POST', () => ({ status: true }));
+route('/change-password', 'POST', () => ({ token: null }));
+route('/revoke-session', 'POST', () => ({ status: true }));
+route('/sign-out', 'POST', () => ({ success: true }));
+
+beforeEach(() => {
+	for (const path of Object.keys(received)) delete received[path];
+	session = {
+		user: { name: 'Ada', email: 'ada@keepr.digital' },
+		session: { token: THIS_BROWSER },
+	};
+	sessions = [
+		{ token: THIS_BROWSER, userAgent: 'Laptop browser', updatedAt: '2026-11-17T10:00:00.000Z' },
+		{ token: PHONE, userAgent: 'Phone browser', updatedAt: '2026-11-16T10:00:00.000Z' },
+	];
 });
 
-describe('the home page', () => {
-	it('names the signed-in User, and signs them out', async () => {
-		session = { user: { name: 'Ada', email: 'ada@keepr.digital' } };
-		const page = mount(IndexPage, { global: { stubs: nuxtUiStubs } });
-		await vi.waitFor(() => expect(page.find('[data-signed-in]').exists()).toBe(true));
+async function profile() {
+	const page = mount(IndexPage, { global: { stubs: nuxtUiStubs } });
+	await expect.poll(() => page.find('[data-signed-in]').exists()).toBe(true);
+	await flushPromises();
+	return page;
+}
 
-		expect(page.get('[data-signed-in] strong').text()).toBe('Ada');
+describe('the profile', () => {
+	it('shows the name and saves a new one', async () => {
+		const page = await profile();
+		const name = page.get('[data-profile="name"] input');
+		expect((name.element as HTMLInputElement).value).toBe('Ada');
 		expect(page.get('[data-signed-in]').text()).toContain('ada@keepr.digital');
 
-		await page.get('button').trigger('click');
-		await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/sign-in'));
-		expect(signedOut).toBe(1);
+		await name.setValue('Ada Lovelace');
+		await page.get('[data-profile="name"] form').trigger('submit');
+
+		await expect.poll(() => page.find('[data-profile="name"] [data-saved]').exists()).toBe(true);
+		expect(received['/update-user']).toEqual([{ name: 'Ada Lovelace' }]);
+	});
+
+	it('changes the password, signing out everywhere else', async () => {
+		const page = await profile();
+		const [current, next, confirmation] = page.findAll('[data-profile="password"] input');
+
+		await current!.setValue('the-old-password');
+		await next!.setValue('a-brand-new-password');
+		await confirmation!.setValue('a-brand-new-password');
+		await page.get('[data-profile="password"] form').trigger('submit');
+
+		await expect
+			.poll(() => page.find('[data-profile="password"] [data-saved]').exists())
+			.toBe(true);
+		expect(received['/change-password']).toEqual([
+			{
+				currentPassword: 'the-old-password',
+				newPassword: 'a-brand-new-password',
+				revokeOtherSessions: true,
+			},
+		]);
+	});
+
+	it('lists the active Sessions, and ends another one', async () => {
+		const page = await profile();
+		const rows = () => page.findAll('[data-profile="sessions"] [data-session]');
+		expect(rows().map((row) => row.attributes('data-current'))).toEqual(['true', 'false']);
+		expect(rows()[1]!.text()).toContain('Phone browser');
+
+		sessions = sessions.filter((listed) => listed.token !== PHONE);
+		await rows()[1]!.get('button').trigger('click');
+
+		await expect.poll(() => rows().length).toBe(1);
+		expect(received['/revoke-session']).toEqual([{ token: PHONE }]);
+	});
+
+	it('signs out', async () => {
+		const page = await profile();
+
+		await page.get('[data-sign-out]').trigger('click');
+
+		await expect.poll(() => navigate.mock.calls).toEqual([['/sign-in']]);
+		expect(received['/sign-out']).toHaveLength(1);
 	});
 
 	it('sends a visitor with no Session to sign in', async () => {
 		session = null;
 		mount(IndexPage, { global: { stubs: nuxtUiStubs } });
 
-		await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/sign-in'));
+		await expect.poll(() => navigate.mock.calls).toEqual([['/sign-in']]);
 	});
 });
