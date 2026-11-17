@@ -4,7 +4,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The Feature Match Session module over real SQL: what a route's command and open
 // answer, announce and ask of Broadcast Graphics. Faked: Ably, and the port that

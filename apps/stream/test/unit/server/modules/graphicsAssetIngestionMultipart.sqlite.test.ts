@@ -2,7 +2,7 @@ import type {
 	GraphicsMultipartUpload,
 	InMemoryGraphicsStagingObjectStore,
 } from '~~/server/modules/graphics-asset-library/object-store';
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
@@ -15,7 +15,7 @@ import {
 import { GRAPHICS_MULTIPART_PART_BYTES } from '~~/shared/utils/graphicsAssetCompatibility';
 import { pngOfByteLength } from '~~/test/helpers/graphicsFixtures';
 import { createTestGraphicsIngestion } from '~~/test/helpers/graphicsLibrary';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 let harness: SqliteD1Harness;
 

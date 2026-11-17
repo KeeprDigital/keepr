@@ -11,7 +11,7 @@ import { eventRealtimeChannel, screenRealtimeChannel } from '~~/shared/utils/rea
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
 import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { eventMessageSamples } from '~~/test/helpers/eventMessageSamples';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // What each Screen's own channel is sent beside the Event channel's messages:
 // its Screen's messages unchanged, and a notice of each change its mode shows.

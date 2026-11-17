@@ -23,7 +23,7 @@ import {
 	testGraphicAssetId,
 	testGraphicAssetRevisionId,
 } from '~~/test/helpers/graphicsAssetIdentities';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A playout epoch ends in the same commit as the write that ends it — a Screen
 // leaving Broadcast Graphics mode, or a live-state reset — or not at all (#305).

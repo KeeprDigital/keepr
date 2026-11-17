@@ -2,7 +2,7 @@ import type {
 	GraphicsMultipartUploadIdentity,
 	InMemoryGraphicsStagingObjectStore,
 } from '~~/server/modules/graphics-asset-library/object-store';
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 import { createInMemoryStagingGraphicsObjectStore } from '~~/server/modules/graphics-asset-library/in-memory-object-store';
@@ -27,7 +27,7 @@ import {
 } from '~~/test/helpers/graphicsLibrary';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { publicServerFailure } from '~~/test/helpers/publicServerFailure';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 let harness: SqliteD1Harness;
 

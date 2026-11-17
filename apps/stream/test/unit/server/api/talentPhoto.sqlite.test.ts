@@ -14,7 +14,7 @@ import {
 	seedGraphicAssetRevision,
 } from '~~/test/helpers/graphicsLibrary';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Talent's photo is an ordinary Graphic Asset Reference (ADR-0067): an image the
 // library can select, indexed `talent`/`photo`, holding Retire and Trash back while

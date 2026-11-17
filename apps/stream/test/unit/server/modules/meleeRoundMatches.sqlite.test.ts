@@ -11,7 +11,7 @@ import {
 	meleePlayer,
 	meleeStanding,
 } from '~~/test/helpers/meleeFixtures';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /*
  * Round Match import against real SQL: only Melee and Ably are stood in for.

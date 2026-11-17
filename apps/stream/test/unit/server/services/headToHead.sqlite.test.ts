@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { getDefaultConfigForMode } from '~~/shared/types/screenConfig';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /**
  * Two Players as the Head-to-Head Screen Mode renders them (#760), read

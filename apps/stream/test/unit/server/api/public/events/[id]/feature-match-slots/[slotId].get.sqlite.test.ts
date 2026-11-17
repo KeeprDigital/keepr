@@ -11,7 +11,7 @@ import { scryfallCardImageUrl } from '~~/shared/utils/scryfallCardImage';
 import { ATRAXA, KRAUM, TYMNA, typedSeat } from '~~/test/helpers/commanders';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { fakeOpCardBulkLookup, mockOpWriteBoundaries } from '~~/test/helpers/opCards';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The public Feature Match read answers the stored Slot and its Session as one
 // row of strings, and 404 for a Slot outside the Event. The row's own rules are

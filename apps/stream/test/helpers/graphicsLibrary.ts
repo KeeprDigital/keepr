@@ -18,7 +18,7 @@ import type {
 	GraphicsDuplicateContentPolicy,
 	GraphicsIngestionOperation,
 } from '~~/shared/types/graphicsAsset';
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { onTestFinished } from 'vitest';
 import { createGraphicsAssetLibrary } from '~~/server/modules/graphics-asset-library';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
@@ -35,7 +35,7 @@ import {
 import { createGraphicsIngestionOperationLifecycle } from '~~/server/modules/graphics-asset-library/operation-lifecycle';
 import { createUnavailableSilentVideoPlaybackValidator } from '~~/server/modules/graphics-asset-library/silent-video-playback-validator';
 import { digestOf, pixelPng } from '~~/test/helpers/graphicsFixtures';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 export const HOUR = 60 * 60 * 1000;
 export const DAY = 24 * HOUR;

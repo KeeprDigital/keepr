@@ -7,7 +7,7 @@ import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createScryfallFake } from '~~/test/helpers/scryfallFake';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The Broadcast Deck List routes over real SQL: what a read answers of its Event,
 // and what a write passes on from its path, body and origin. The write's rules are

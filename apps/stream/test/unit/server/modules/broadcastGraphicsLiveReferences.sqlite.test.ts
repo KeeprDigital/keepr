@@ -26,7 +26,7 @@ import {
 	testGraphicAssetId,
 	testGraphicAssetRevisionId,
 } from '~~/test/helpers/graphicsAssetIdentities';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /**
  * The Live Session reference index under a moving sequence. Every reconciliation write is

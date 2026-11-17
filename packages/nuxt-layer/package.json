@@ -19,6 +19,7 @@
 		"vue": "catalog:framework"
 	},
 	"devDependencies": {
+		"@libsql/client": "catalog:test",
 		"@nuxt/test-utils": "catalog:test",
 		"@types/node": "catalog:tooling",
 		"@vue/test-utils": "catalog:test",

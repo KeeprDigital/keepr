@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { getDefaultConfigForMode } from '~~/shared/types/screenConfig';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /**
  * A Manual Bracket as its Screen shows it, and kept writable when a Player it

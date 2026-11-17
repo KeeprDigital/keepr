@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The public on-air read names an Event's seated commentators in slot order and
 // its holding text as stored, and answers 404 for an Event that does not exist.

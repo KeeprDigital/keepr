@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { fakeOpCardBulkLookup, knownOpCard, mockOpWriteBoundaries } from '~~/test/helpers/opCards';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A One Piece Event's Metagame (ADR-0074): every Player's Deck List counts,
 // participation only, under OP card rules. Deck Lists go through the real OP

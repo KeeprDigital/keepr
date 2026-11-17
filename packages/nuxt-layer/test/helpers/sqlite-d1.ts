@@ -1,17 +1,16 @@
 /**
  * A `D1Database`-shaped adapter over a local libSQL file database, plus the
- * repository's real Drizzle migrations.
+ * real Drizzle migrations of the app under test.
  *
  * Anything whose correctness is in the SQL needs genuine SQLite semantics rather than
- * a hand-written double: the Graphics Asset Library's transactional reachability
- * proofs, conditional transitions and batch atomicity, and the Broadcast Graphics
- * Live Session's reference-index sequence guard. This helper gives them the same
- * statement, batch, and cascade behaviour the deployed D1 catalogue relies on.
+ * a hand-written double: transactional proofs, conditional transitions, batch
+ * atomicity, sequence guards, and a library's own queries through its adapter. This
+ * helper gives them the same statement, batch, and cascade behaviour D1 has.
  *
- * It is not scoped to any one module or suite. Module tests under the unit suite
- * consume it, and so does a Nuxt **store** test that drives a real server half — which
- * is also why the migration directory is resolved defensively below: only one of the
- * two environments gives this module a `file:` URL.
+ * It is not scoped to any one app, module or suite. Unit tests consume it, and so
+ * does a Nuxt **store** test that drives a real server half — which is also why the
+ * migration directory is resolved from the working directory: only one of the two
+ * environments gives this module a `file:` URL.
  *
  * `raw()` is the one part of it no consumer can check for itself, and it is pinned by
  * `test/unit/helpers/sqliteD1Harness.test.ts` — which records, for each mutation it was
@@ -20,12 +19,13 @@
  *
  * What it is *not* is a substitute for D1 itself. Two known differences are handled
  * elsewhere rather than here: D1's hundred-bound-parameter ceiling, which libSQL
- * does not enforce and `miniflare-d1.ts` exists to test against, and anything about
+ * does not enforce and Stream Keepr's `miniflare-d1.ts` exists to test against, and anything about
  * D1's storage or replication. `raw()` below is the seam where the two are most
  * easily confused, and it carries its own note.
  */
 
 import type { Client, InStatement, ResultSet } from '@libsql/client';
+import type { AnyD1Database } from 'drizzle-orm/d1';
 import { createHash } from 'node:crypto';
 import {
 	copyFileSync,
@@ -46,7 +46,7 @@ import { createClient } from '@libsql/client';
  * The migrations of the app under test. Every Vitest run has that app's
  * directory as its working directory, whichever package this file is in.
  */
-const migrationsDirectory = resolve(process.cwd(), 'server/db/migrations/sqlite');
+const appMigrationsDirectory = () => resolve(process.cwd(), 'server/db/migrations/sqlite');
 
 interface PreparedStatement {
 	sql: string;
@@ -139,7 +139,8 @@ function createPreparedStatement(
 }
 
 export interface SqliteD1Harness {
-	database: D1Database;
+	/** The global `D1Database` in an app with Worker types; drizzle's own D1 type elsewhere. */
+	database: AnyD1Database;
 	client: Client;
 	/**
 	 * How many round trips `database` has made: one per statement run alone and
@@ -158,16 +159,19 @@ export interface SqliteD1HarnessOptions {
 	 * to them. Matches on a filename prefix such as `0000`.
 	 */
 	throughMigration?: string;
+	/** Where the migrations are, when not the app's `server/db/migrations/sqlite`. */
+	migrationsDirectory?: string;
 }
 
 /**
- * Creates an isolated SQLite database with every repository migration applied.
+ * Creates an isolated SQLite database with every migration of the app applied.
  * Foreign keys are enabled so `ON DELETE CASCADE` and `RESTRICT` behave as they
  * do in D1.
  */
 export async function createSqliteD1Harness(
 	options: SqliteD1HarnessOptions = {},
 ): Promise<SqliteD1Harness> {
+	const migrationsDirectory = options.migrationsDirectory ?? appMigrationsDirectory();
 	const migrations = readdirSync(migrationsDirectory)
 		.filter((entry) => entry.endsWith('.sql'))
 		.toSorted();
@@ -175,15 +179,19 @@ export async function createSqliteD1Harness(
 		options.throughMigration === undefined
 			? migrations.length
 			: migrations.findIndex((migration) => migration.startsWith(options.throughMigration!)) + 1;
-	if (heldBackFrom === 0) throw new Error(`No migration matches ${options.throughMigration}`);
+	if (options.throughMigration !== undefined && heldBackFrom === 0)
+		throw new Error(`No migration matches ${options.throughMigration}`);
 
-	const directory = mkdtempSync(join(tmpdir(), 'stream-keepr-d1-'));
+	const directory = mkdtempSync(join(tmpdir(), 'keepr-d1-'));
 	const file = join(directory, 'catalogue.sqlite');
-	copyFileSync(await migratedTemplate(migrations.slice(0, heldBackFrom)), file);
+	copyFileSync(
+		await migratedTemplate(migrationsDirectory, migrations.slice(0, heldBackFrom)),
+		file,
+	);
 	const client = await openWithForeignKeys(file);
 
 	return harnessOver(client, directory, () =>
-		applyMigrations(client, migrations.slice(heldBackFrom)),
+		applyMigrations(client, migrationsDirectory, migrations.slice(heldBackFrom)),
 	);
 }
 
@@ -198,7 +206,11 @@ async function openWithForeignKeys(file: string): Promise<Client> {
 	return client;
 }
 
-async function applyMigrations(client: Client, entries: readonly string[]) {
+async function applyMigrations(
+	client: Client,
+	migrationsDirectory: string,
+	entries: readonly string[],
+) {
 	for (const migration of entries) {
 		const contents = readFileSync(join(migrationsDirectory, migration), 'utf8');
 		for (const statement of contents.split('--> statement-breakpoint')) {
@@ -221,7 +233,10 @@ const templates = new Map<string, Promise<string>>();
  * final name and renamed into place, so two processes building the same
  * template at once each leave a whole file.
  */
-function migratedTemplate(entries: readonly string[]): Promise<string> {
+function migratedTemplate(
+	migrationsDirectory: string,
+	entries: readonly string[],
+): Promise<string> {
 	const hash = createHash('sha256').update(`build ${TEMPLATE_BUILD}\n`);
 	for (const migration of entries)
 		hash
@@ -233,19 +248,25 @@ function migratedTemplate(entries: readonly string[]): Promise<string> {
 
 	let ready = templates.get(template);
 	if (!ready) {
-		ready = existsSync(template) ? Promise.resolve(template) : buildTemplate(template, entries);
+		ready = existsSync(template)
+			? Promise.resolve(template)
+			: buildTemplate(template, migrationsDirectory, entries);
 		templates.set(template, ready);
 	}
 	return ready;
 }
 
-async function buildTemplate(template: string, entries: readonly string[]): Promise<string> {
+async function buildTemplate(
+	template: string,
+	migrationsDirectory: string,
+	entries: readonly string[],
+): Promise<string> {
 	mkdirSync(templateDirectory, { recursive: true });
 	const building = mkdtempSync(join(templateDirectory, 'building-'));
 	try {
 		const file = join(building, 'template.sqlite');
 		const client = await openWithForeignKeys(file);
-		await applyMigrations(client, entries);
+		await applyMigrations(client, migrationsDirectory, entries);
 		client.close();
 		renameSync(file, template);
 	} finally {
@@ -277,7 +298,7 @@ function harnessOver(
 			for (const statement of statements) await client.execute(statement);
 			return { count: statements.length, duration: 0 };
 		},
-	} as unknown as D1Database;
+	} as unknown as AnyD1Database;
 
 	return {
 		database,

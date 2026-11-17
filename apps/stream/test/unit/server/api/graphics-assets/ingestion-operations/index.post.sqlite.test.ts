@@ -5,7 +5,7 @@ import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset
 import { createTestGraphicsLibrary } from '~~/test/helpers/graphicsLibrary';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { refusalFrom } from '~~/test/helpers/publicServerFailure';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // Initiating a Graphics Ingestion Operation over the D1 catalogue: what a client is
 // answered when the Graphics Staging Allowance admits it, and when it is full.

@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // Two Events hold colliding roster data, so a read that loses its Event predicate answers
 // with the other Event's rows (#468). A planted foreign membership row tests the join itself.

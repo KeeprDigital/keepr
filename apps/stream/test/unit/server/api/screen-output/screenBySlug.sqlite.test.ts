@@ -4,7 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import * as schema from '~~/server/db/schema';
 import { screenOutputAssetCapabilityDigest } from '~~/server/modules/screen-output-assets/capability';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The Screen lookup by slug over real SQL (ADR-0010): the route's own half of a Screen
 // Output read. Who a capability or a Session admits is `screenOutputReads.sqlite.test.ts`'s;

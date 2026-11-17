@@ -6,7 +6,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import * as authSchema from '~~/server/db/schema/auth';
 import { seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /**
  * A Broadcast Graphic on air is not edited (ADR-0081): the server refuses a stack

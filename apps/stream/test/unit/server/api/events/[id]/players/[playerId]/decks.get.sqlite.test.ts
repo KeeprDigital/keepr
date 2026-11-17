@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The Player decks read takes its selection from the query string, where every id
 // is text. Which deck a selection picks is `playerDeck.sqlite.test.ts`'s.

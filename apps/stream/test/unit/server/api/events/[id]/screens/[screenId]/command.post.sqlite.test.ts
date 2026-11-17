@@ -5,7 +5,7 @@ import * as schema from '~~/server/db/schema';
 import { screenRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // POST /api/events/:id/screens/:screenId/command over real SQL: a command goes to the
 // Screen's own channel, only for a Screen of that Event, and the 200 means it was

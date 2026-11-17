@@ -1,5 +1,5 @@
 import type { GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -11,7 +11,7 @@ import {
 	storedGraphicAssets,
 	storedRevisionContent,
 } from '~~/test/helpers/graphicsLibrary';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 let harness: SqliteD1Harness;
 

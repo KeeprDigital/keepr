@@ -1,5 +1,5 @@
 import type { GraphicAssetValidationReport } from '~~/shared/types/graphicsAsset';
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	createGraphicsAssetLibrary,
@@ -18,7 +18,7 @@ import {
 import { digestOf, pixelPng as transparentPixelPng } from '~~/test/helpers/graphicsFixtures';
 import { jpegPixel, webpPixel } from '~~/test/helpers/graphicsImageFixtures';
 import { addEvent, boundedBytes } from '~~/test/helpers/graphicsLibrary';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 let harness: SqliteD1Harness;
 

@@ -5,7 +5,7 @@ import * as schema from '~~/server/db/schema';
 import { MAX_REALTIME_MESSAGE_BYTES, realtimeMessageBytes } from '~~/shared/types/messages';
 import { eventRealtimeChannel, screenRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // What an Archetype rename or delete announces of the Players it re-projects, over
 // real SQL: one message naming them, whatever their number (ADR-0084). Faked: Ably,

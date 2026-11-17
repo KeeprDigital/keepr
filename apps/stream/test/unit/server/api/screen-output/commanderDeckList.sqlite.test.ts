@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { deckListEntryOf, MOXFIELD_CARDS } from '~~/test/helpers/magicDeckText';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Deck List Screen showing a Commander Seat reads that Seat's Deck List
 // through the Screen, as it reads its Slot (ADR-0022, ADR-0087).

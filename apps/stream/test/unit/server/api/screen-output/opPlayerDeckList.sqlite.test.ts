@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { knownOpCard } from '~~/test/helpers/opCards';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Deck List Screen showing a One Piece Card Game Player, or a Slot side a
 // Player is linked into, reads that Player and their Deck List through the

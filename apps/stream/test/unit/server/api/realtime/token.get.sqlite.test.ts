@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
 import * as schema from '~~/server/db/schema';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The realtime token (ADR-0010): never issued anonymously, a bearer's grant narrowed to its own
 // Screen with the Event taken from the capability, and the client identity pinned. The Event is

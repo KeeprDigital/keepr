@@ -8,7 +8,7 @@ import type {
 	TestGraphicsLibrary,
 	TestGraphicsLibraryOptions,
 } from '~~/test/helpers/graphicsLibrary';
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 
@@ -31,7 +31,7 @@ import {
 	ingestImage as ingestSharedImage,
 	publishedRevision,
 } from '~~/test/helpers/graphicsLibrary';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /** A validator that accepts every video and records which staged source it read. */
 function acceptEverySilentVideo(): SilentVideoPlaybackValidator & { stagedSources: string[] } {

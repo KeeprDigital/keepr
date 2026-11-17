@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Deck List Screen's Broadcast Deck List read once its saved Deck Source no longer
 // holds, read as an operator's Session so only the source decides. Admission and the

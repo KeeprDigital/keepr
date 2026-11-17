@@ -5,7 +5,7 @@ import * as schema from '~~/server/db/schema';
 import * as authSchema from '~~/server/db/schema/auth';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { refusalFrom } from '~~/test/helpers/publicServerFailure';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // Revising a Broadcast Graphic Template states the revision it was built on. A stale one
 // is the author's 409, naming the revision that exists; none at all is refused outright.

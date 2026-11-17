@@ -9,7 +9,7 @@ import {
 	fromFeatureMatchDefaults,
 } from '~~/shared/types/featureMatchDefaults';
 import { projectFeatureMatchClock, readStoredClock } from '~~/shared/utils/clock';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The Feature Match Session service over real SQL: source snapshots, command
 // admission and receipts, merges onto an advanced Session, and the open that

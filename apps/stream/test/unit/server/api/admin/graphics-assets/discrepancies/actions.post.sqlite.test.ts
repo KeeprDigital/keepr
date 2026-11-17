@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3';
 import type { GraphicsDiscrepancy } from '~~/shared/types/graphicsAsset';
 import type { TestGraphicsLibrary } from '~~/test/helpers/graphicsLibrary';
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 import { digestOf, pixelPng } from '~~/test/helpers/graphicsFixtures';
@@ -14,7 +14,7 @@ import {
 	publishedRevision,
 } from '~~/test/helpers/graphicsLibrary';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The byte-free actions a Graphics Administrator may take on one Graphics Discrepancy:
 // each name the route offers reaches its own library action over the D1 catalogue,

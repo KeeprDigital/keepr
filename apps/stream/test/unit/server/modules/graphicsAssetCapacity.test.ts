@@ -1,4 +1,4 @@
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createGraphicsAssetLibrary } from '~~/server/modules/graphics-asset-library';
@@ -13,7 +13,7 @@ import {
 } from '~~/shared/types/graphicsAsset';
 import { pixelPng as transparentPixelPng } from '~~/test/helpers/graphicsFixtures';
 import { boundedBytes } from '~~/test/helpers/graphicsLibrary';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 let harness: SqliteD1Harness;
 

@@ -15,7 +15,7 @@ import {
 	createCommandIdSequence,
 	seedBroadcastGraphicsScreen,
 } from '~~/test/helpers/broadcastGraphicsScreen';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { useRealtimeMessageGate } from '~/composables/core/useRealtimeMessageGate';
 import { createBroadcastGraphicsRealtimeHandlers } from '~/modules/realtime-event-session/broadcastGraphicsHandlers';
 

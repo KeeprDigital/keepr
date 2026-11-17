@@ -2,7 +2,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // Feature Match Slot writes over real SQL: what a new Slot takes from its Event
 // and Match, removing a Slot whose Session never opened, the Slot count, and

@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // Card upserts over real SQL: one row per name whatever its case, fields a
 // refresh leaves out survive it, and the JSON arrays it supplies replace.

@@ -1,6 +1,9 @@
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '../../helpers/sqlite-d1';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '../../helpers/sqlite-d1';
 
 /**
  * Drizzle's D1 driver reads `raw()` rows positionally. A libSQL row names only the first
@@ -11,7 +14,10 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 let harness: SqliteD1Harness;
 
 beforeAll(async () => {
-	harness = await createSqliteD1Harness();
+	// The layer has no migrations of its own: an empty database.
+	harness = await createSqliteD1Harness({
+		migrationsDirectory: mkdtempSync(join(tmpdir(), 'no-migrations-')),
+	});
 	await harness.client.execute('CREATE TABLE left_table (id INTEGER, name TEXT)');
 	await harness.client.execute('CREATE TABLE right_table (id INTEGER, name TEXT)');
 	// Two rows on the left, so every assertion below is about a set of rows rather than

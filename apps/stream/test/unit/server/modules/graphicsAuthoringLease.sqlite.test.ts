@@ -6,7 +6,7 @@ import * as schema from '~~/server/db/schema';
 import * as authSchema from '~~/server/db/schema/auth';
 import { seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Graphics Authoring Lease as its stored row: what a heartbeat keeps, when a lapsed
 // lease frees its artifact, and that it never gates a read. Only the clock, Ably and

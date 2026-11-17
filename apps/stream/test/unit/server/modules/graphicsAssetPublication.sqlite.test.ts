@@ -1,5 +1,5 @@
 import type { GraphicAssetId, GraphicAssetImageFacts } from '~~/shared/types/graphicsAsset';
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
 	graphicAssetId,
@@ -8,7 +8,7 @@ import {
 	graphicsIngestionOperationId,
 } from '~~/server/modules/graphics-asset-library';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /**
  * What one ingestion publication commits when it holds, or has lost, its claim: driven at

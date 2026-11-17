@@ -5,7 +5,7 @@ import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
 import { createScryfallFake } from '~~/test/helpers/scryfallFake';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Broadcast Deck List write over real SQL and the real import: the rows it
 // stores, what it answers and announces, and what a refusal leaves as it was.

@@ -16,7 +16,7 @@ import {
 	seedGraphicAssetRevision,
 } from '~~/test/helpers/graphicsLibrary';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Theme's and a Screen Theme Override's library content, over the real routes,
 // catalogue and capability (ADR-0050): each is an ordinary Graphic Asset Reference

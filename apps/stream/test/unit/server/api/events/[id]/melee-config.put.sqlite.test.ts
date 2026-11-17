@@ -7,7 +7,7 @@ import { encryptMeleeCredential } from '~~/server/utils/meleeCredentialCrypto';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // PUT /api/events/:id/melee-config over real SQL and the real credential keyring:
 // what it stores, resets and announces, and what it refuses before writing. Only
