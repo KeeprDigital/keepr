@@ -1,6 +1,6 @@
 # ADR-0036: The merge queue verifies the exact revision that lands, and only such a revision is released
 
-Accepted · 2026-10-21 · [#615](https://github.com/KeeprDigital/stream-keepr/issues/615) · Amended 2026-10-21: a merge group reuses a full, green PR run's verification of a byte-identical tree
+Accepted · 2026-10-21 · [#615](https://github.com/KeeprDigital/stream-keepr/issues/615) · Amended 2026-10-21: a merge group reuses a full, green PR run's verification of a byte-identical tree · Amended by ADR-0118: Changesets tags the Release, behind the same gate, and the queued title check no longer feeds a release
 
 ### Decision
 

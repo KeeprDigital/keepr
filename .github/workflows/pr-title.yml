@@ -1,8 +1,7 @@
 # PRs land as squash merges whose commit subject is the PR title, and those
-# subjects are what release-please reads (apps/stream/README.md § Releases). A title that
-# is not a Conventional Commit drops the PR from the changelog and the version
-# bump without anyone noticing, so it is caught here instead
-# (packages/tooling/scripts/conventional-title.mjs).
+# subjects are `main`'s history. Changesets, not the subjects, drive each
+# Release (ADR-0118), so the check is for a history that reads as one
+# (apps/stream/README.md § Releases; packages/tooling/scripts/conventional-title.mjs).
 #
 # It is a required status check, so it runs wherever GitHub evaluates those:
 #
@@ -11,8 +10,8 @@
 #     as passing. Skipping body-only edits let an edit after a failing run turn
 #     the check green without the title ever changing.
 #   - In the merge queue (`merge_group`), where it checks the subject of every
-#     squash commit the group would land: what release-please will actually
-#     read, whatever the title said when the PR was queued. Without a run there
+#     squash commit the group would land: what `main` will actually hold,
+#     whatever the title said when the PR was queued. Without a run there
 #     the queue would wait on this check until it timed out.
 #
 # No install: it checks out one script and reads a few strings, in seconds.

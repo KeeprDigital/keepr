@@ -47,7 +47,7 @@ What the Consumer must do around these calls is in `apps/score/RULES.md`.
 
 ## Versioning
 
-- `ENGINE_VERSION` is plain semver, changed by hand with the rules it implements. A test keeps it equal to `version` in `package.json`; release-please does not manage it (ADR-0092). The Standings Engine has its own.
+- `ENGINE_VERSION` is plain semver, changed by hand with the rules it implements. A test keeps it equal to `version` in `package.json`; Changesets ignores the package, which is never versioned (ADR-0092, ADR-0118). The Standings Engine has its own.
 - Any change that alters the output for an existing input is a major release. That includes `@keepr/engine-core`'s seeded-random routine, which both engines read.
 - Reproducing an old round means running the engine at that version. Score Keepr records the Pairings it was given, and never pairs a past round again (ADR-0105).
 

@@ -1,0 +1,91 @@
+# Releases with Changesets (ADR-0118). Each versioned app has its own
+# Releases: its own version, CHANGELOG.md, `<app>@<version>` tag and GitHub
+# Release. A change names the apps it ships in, in a changeset, and CI's
+# changeset check holds that (packages/tooling/scripts/changeset-check.mjs).
+# `.changeset/config.json` ignores an app with no deploy descriptor.
+#
+# On every push to main, `changesets/action`:
+#
+#   - while a changeset naming an app waits in `.changeset/`, opens or
+#     refreshes the one Version PR for every app (`changeset version`: each
+#     app's new version and CHANGELOG.md, the changesets consumed). Empty
+#     changesets alone open none.
+#   - once none waits, as when the Version PR has merged, runs the publish
+#     script (`pnpm release:publish`): the release gate, then
+#     `changeset git-tag`, which tags HEAD `<app>@<version>` for each app whose
+#     version has no tag yet. The action pushes each tag it reports and makes
+#     its GitHub Release from that app's CHANGELOG.md.
+#
+# Merging the Version PR, through the merge queue, is the release of every
+# app it names. Deploying stays per app.
+#
+# A Release is cut only from a revision the merge queue verified (ADR-0036).
+# The Version PR goes through the queue like any other, so the commit
+# `changeset git-tag` tags is the merge group's head, the exact tree CI passed
+# on. The gate refuses to tag a commit no merge-group CI run passed (one
+# merged around the queue), before anything is tagged. A group run that
+# reused a PR run's verification of the byte-identical tree counts (ADR-0036).
+#
+# `workflow_dispatch` refreshes the Version PR, or retries a refused or failed
+# publish, without a push to main.
+#
+# Needs the repo setting Settings → Actions → General →
+# "Allow GitHub Actions to create and approve pull requests" enabled, or
+# the action cannot open its PR. The Version PR is created and updated with
+# the default GITHUB_TOKEN, so GitHub creates its `pull_request` runs (CI, PR
+# title) in an approval-required state (`action_required`) rather than
+# starting them: that is how it stops a workflow triggering itself. A
+# maintainer selects "Approve workflows to run" on the Version PR before
+# queueing it (apps/stream/README.md § Releases), until a GitHub App's token
+# opens it (#1261).
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  # The Version PR's branch, and each tag and GitHub Release.
+  contents: write
+  pull-requests: write
+  # The gate reads the merge-group CI runs on the release commit.
+  actions: read
+
+# release-please's group, kept so that a run of it still going when this
+# workflow replaced it finished before this one started.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Version PR, or tag and release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Every tag, so `changeset git-tag` and the gate see which versions
+          # are tagged already.
+          fetch-depth: 0
+          # The action pushes with the token it is given, not this checkout's.
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+          # No cache, so the job that tags a Release never restores one
+          # another run could have written.
+          package-manager-cache: false
+      # No dependency's install script runs in a job that can push to the
+      # repository.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      # The publish script reads GITHUB_TOKEN, which the action sets to its
+      # token, for the gate's `gh`.
+      - uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          publish-script: pnpm release:publish
+          pr-title: 'chore(release): version apps'
+          commit-message: 'chore(release): version apps'

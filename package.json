@@ -1,6 +1,5 @@
 {
 	"name": "keepr",
-	"version": "1.6.0",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -9,6 +8,7 @@
 		"format": "oxfmt",
 		"slots": "keepr-slots",
 		"reap": "keepr-reap-workerd",
+		"release:publish": "node packages/tooling/scripts/release-gate.mjs && changeset git-tag",
 		"accounts:stand-in": "pnpm --filter @keepr/accounts-stand-in start",
 		"typecheck:packages": "pnpm --filter \"./packages/*\" typecheck",
 		"test:packages": "pnpm --filter \"./packages/*\" --workspace-concurrency=1 test",
@@ -17,6 +17,7 @@
 		"verify:quick": "pnpm typecheck:packages && pnpm test:packages && pnpm --filter @keepr/score verify && pnpm --filter @keepr/accounts verify && pnpm --filter @keepr/stream verify:quick"
 	},
 	"devDependencies": {
+		"@changesets/cli": "catalog:tooling",
 		"@keepr/tooling": "workspace:*",
 		"oxfmt": "catalog:tooling",
 		"oxlint": "catalog:tooling",

@@ -1,8 +1,9 @@
 {
 	"name": "@keepr/tooling",
 	"private": true,
-	"description": "The workspace's own tooling: run slots, the change base, the workerd reaper, the deploy guard, and CI's scripts.",
+	"description": "The workspace's own tooling: run slots, the change base, the workerd reaper, the deploy guard, the changeset check, and CI's and the release's scripts.",
 	"bin": {
+		"keepr-changeset-check": "./scripts/changeset-check.mjs",
 		"keepr-deploy-guard": "./scripts/deploy-guard.mjs",
 		"keepr-reap-workerd": "./scripts/reap-workerd.mjs",
 		"keepr-slots": "./scripts/slots.mjs"

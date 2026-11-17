@@ -14,10 +14,12 @@
 #     triggering this.
 #
 # Actions deploys ship released tags, never main's HEAD: the version input
-# resolves through GitHub Releases (cut by merging the Release PR), so what
-# promotes is always a formally released snapshot — since ADR-0036, a commit
-# that passed CI in the merge queue — and rollback is dispatching this workflow
-# with the previous tag. Local `pnpm run deploy` stays free-form for
+# resolves through Stream Keepr's GitHub Releases, `@keepr/stream@<version>`
+# (cut by merging the Version PR, ADR-0118), so what promotes is always a
+# formally released snapshot — since ADR-0036, a commit that passed CI in the
+# merge queue — and rollback is dispatching this workflow with the previous
+# tag. The `v*` tags release-please made are history and never deploy: none
+# survives the ADR-0083 wipe. Local `pnpm run deploy` stays free-form for
 # emergencies.
 #
 # Each component has its own promotion marker, an annotated git tag
@@ -40,8 +42,8 @@ on:
     inputs:
       version:
         description: >-
-          Release to deploy: a tag like v1.2.0, or "latest" for the most
-          recent GitHub Release.
+          Release to deploy: a tag like @keepr/stream@1.7.0, or "latest" for
+          Stream Keepr's most recent GitHub Release.
         required: true
         type: string
         default: latest
@@ -102,11 +104,26 @@ jobs:
           # Dispatch inputs cross into the shell via env, never by expression
           # interpolation inside `run:` — this job holds the Cloudflare token.
           INPUT_VERSION: ${{ inputs.version }}
+        # Only Stream Keepr's own Releases: another app's, or a v* tag, never
+        # deploys here.
         run: |
           if [ "$INPUT_VERSION" = "latest" ]; then
-            tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+            tag=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --exclude-pre-releases --limit 100 \
+              --json tagName,publishedAt \
+              --jq '[.[] | select(.tagName | startswith("@keepr/stream@"))] | sort_by(.publishedAt) | last | .tagName // empty')
+            if [ -z "$tag" ]; then
+              echo '::error::No @keepr/stream@* GitHub Release to deploy.'
+              exit 1
+            fi
           else
             tag="$INPUT_VERSION"
+            case "$tag" in
+              @keepr/stream@*) ;;
+              *)
+                echo "::error::$tag is not one of Stream Keepr's Releases: they are tagged @keepr/stream@<version>."
+                exit 1
+                ;;
+            esac
             # Fail fast on a tag that is not a published release.
             gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName > /dev/null
           fi

@@ -1,0 +1,10 @@
+{
+	"$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
+	"baseBranch": "main",
+	"access": "restricted",
+	"format": false,
+	"changelog": "@changesets/cli/changelog",
+	"commit": false,
+	"ignore": ["@keepr/accounts", "@keepr/score", "@keepr/pairing", "@keepr/standings"],
+	"privatePackages": { "version": true, "tag": true }
+}

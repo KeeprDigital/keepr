@@ -1,6 +1,6 @@
 # ADR-0091: Keepr is one pnpm workspace, with each app in `apps/` and what they share in `packages/`
 
-Accepted · 2026-11-16.
+Accepted · 2026-11-16 · Amended by ADR-0118: each versioned app has its own Releases, version and `CHANGELOG.md`, released through Changesets
 
 ### Decision
 
