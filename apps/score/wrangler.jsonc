@@ -1,10 +1,10 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	// Nitro builds .output/server/wrangler.json from this file, adding the Worker
-	// entrypoint, assets, and name. Nothing is deployed yet: no route and no binding.
+	// entrypoint, assets, and name. Nothing is deployed yet: no route.
 	"compatibility_date": "2026-07-16",
 	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"],
-	// Spike 1 (#1256): production binds the real Keepr Accounts by this name; a
-	// preview or smoke run gets whatever local Worker registers under it.
+	// PROTOTYPE, spike 1 of #1256, never merged: tests that a built Worker
+	// reaches a local Worker registered as `keepr-accounts`. Not a decision.
 	"services": [{ "binding": "ACCOUNTS", "service": "keepr-accounts" }]
 }

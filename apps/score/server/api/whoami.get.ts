@@ -1,4 +1,4 @@
-// Spike 1 (#1256): an App route that asks the accounts service who the request
+// PROTOTYPE, spike 1 of #1256, never merged: an App route that asks the accounts service who the request
 // belongs to, over the Worker-to-Worker connection, forwarding the cookie.
 export default defineEventHandler(async (event) => {
 	const accounts = (event.context.cloudflare?.env as { ACCOUNTS?: { fetch: typeof fetch } } | undefined)?.ACCOUNTS;

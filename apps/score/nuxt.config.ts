@@ -11,6 +11,7 @@ export default defineNuxtConfig({
 			wrangler: {
 				name: workerName,
 			},
+			// PROTOTYPE, spike 1 of #1256, never merged.
 			dev: {
 				configPath: 'wrangler.dev.jsonc',
 			},
