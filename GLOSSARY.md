@@ -71,3 +71,15 @@ _Avoid_: generation counter, version guard, latest-wins map
 **Flight**:
 A ticket for one unit of supersedable async work, checked for staleness after each await. Staleness is monotonic.
 _Avoid_: request id, generation
+
+**Clock Projection**:
+What a clock shows at one instant, as a pure function of its stored state and server time: the value, and how long until that value next changes on its own.
+_Avoid_: ticker, timer (nothing ticks; a projection is re-evaluated when it changes).
+
+**Interval**:
+Equal periods counted from an anchor instant: which period is current, and when the next begins, is a pure function of the anchor, the period and server time.
+_Avoid_: cycle, loop.
+
+**Frame Clock**:
+The instant motion is read at: server time, read again on every animation frame while anything read at it is in motion, and left where it stopped once all of it has settled.
+_Avoid_: animation timer, render loop.

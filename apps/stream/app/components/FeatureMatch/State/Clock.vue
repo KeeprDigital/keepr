@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import type { ClockState } from '~~/shared/types/featureMatchState';
 import { toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
-import { formatClockTime, normalizeTimeInput, parseTimeInput } from '~~/shared/utils/clock';
+import {
+	formatClockTime,
+	normalizeTimeInput,
+	parseTimeInput,
+} from '@keepr/nuxt-layer/shared/utils/clockTime';
 
 const props = defineProps<{
 	matchId: number;

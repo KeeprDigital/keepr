@@ -6,7 +6,7 @@ Every clock showed whole seconds by rounding down. A 50:00 countdown so read `49
 
 ### Decision
 
-**A countdown shows the time remaining rounded up to the whole second; elapsed time and count-up time are rounded down, as before.** This holds for a Feature Match Session Clock and a Round Clock alike. `formatCountdownTime` (`shared/utils/clock.ts`) is the rule for time remaining, and `projectFeatureMatchClock` and `projectRoundClock` apply it, so the operator's clock, every Screen Output and the public Feature Match read agree. `formatClockTime` still rounds down, for a count-up clock, count-up time, the time since a Round's end, and a length of time such as a duration.
+**A countdown shows the time remaining rounded up to the whole second; elapsed time and count-up time are rounded down, as before.** This holds for a Feature Match Session Clock and a Round Clock alike. `formatCountdownTime` (`packages/nuxt-layer/shared/utils/clockTime.ts`) is the rule for time remaining, and `projectFeatureMatchClock` and `projectRoundClock` apply it, so the operator's clock, every Screen Output and the public Feature Match read agree. `formatClockTime` still rounds down, for a count-up clock, count-up time, the time since a Round's end, and a length of time such as a duration.
 
 **A countdown's display changes as each whole second remaining is reached, its last at the end itself.** `countdownNextChangeInMs` names that moment for both clocks, so a rendering re-evaluates exactly then.
 

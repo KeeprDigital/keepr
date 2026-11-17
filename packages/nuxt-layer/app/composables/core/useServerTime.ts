@@ -1,3 +1,6 @@
+import type { ServerTimeReading } from '../../../shared/utils/serverTime';
+import { SERVER_TIME_PATH } from '../../../shared/utils/serverTime';
+
 const SYNC_INTERVAL = 60 * 1000; // Re-sync every 60 seconds
 const SAMPLE_COUNT = 3; // Samples per sync; the one with the shortest round trip is taken
 const SAMPLE_DELAY_MS = 50;
@@ -16,7 +19,6 @@ const RESYNC_MIN_GAP_MS = 5000;
 const CLOCK_CHECK_INTERVAL_MS = 1000;
 /** A device clock moved by more than this since its offset was taken is wrong on air, as a correction over it is. */
 const CLOCK_CHANGE_THRESHOLD_MS = STEP_CORRECTION_THRESHOLD_MS;
-const TIME_ENDPOINT = '/api/time';
 
 /** A correction being eased in: from the offset `from`, applied since device time `startedAt`. */
 interface EasedCorrection {
@@ -92,7 +94,7 @@ export function useServerTime() {
 	 */
 	async function fetchTimeSample(): Promise<{ offset: number; rtt: number }> {
 		const clientSendTime = Date.now();
-		const response = await $fetch<{ serverTime: number }>(TIME_ENDPOINT, {
+		const response = await $fetch<ServerTimeReading>(SERVER_TIME_PATH, {
 			// One request per sample: a retry would count the failed attempt as latency.
 			retry: 0,
 			timeout: REQUEST_TIMEOUT_MS,

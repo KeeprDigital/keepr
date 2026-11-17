@@ -1,6 +1,6 @@
 # Stream Keepr rules
 
-What each term in `GLOSSARY.md` must do. An entry states a term's rules; what the term is, is in `GLOSSARY.md` (ADR-0095). The Relationships after the entries say how the terms hold together. Name things with the glossary's terms. Decisions cited as ADR-NNNN are files in `docs/adr`, or in the root `docs/adr` for the workspace's.
+What each term in `GLOSSARY.md` must do. An entry states a term's rules; what the term is, is in `GLOSSARY.md` (ADR-0095). The Relationships after the entries say how the terms hold together. Name things with the glossary's terms. Decisions cited as ADR-NNNN are files in `docs/adr`, in `packages/nuxt-layer/docs/adr` for the shared layer's, or in the root `docs/adr` for the workspace's.
 
 ## Terms
 
@@ -207,7 +207,7 @@ Its hosts are the Feature Match Overlay Frame, a Background Layer (on the Backgr
 Before the start, or with none, it shows the full duration, not running, and with no duration it shows no clock (ADR-0066); after the end, `0:00`, or, where its Screen counts up, which is off unless the Screen turns it on, the time since the end, keeping its ended state and colour and holding at the Screen's limit, 1 to 600 whole minutes, if it sets one (ADR-0076). Like Card Timeout and Page Rotation, nothing writes as it runs or when it runs out. It shows the Current Round unless its operator picks a Round. Two-Player Magic: The Gathering only (ADR-0066, ADR-0087).
 
 **Clock Projection**:
-A Feature Match Session Clock's display, a Round Clock, Page Rotation, a Talent Screen's Social Profile Rotation and Card Timeout are each one. Every rendering computes the same answer, nothing writes as it runs, and one scheduler re-evaluates each exactly when it next changes, when its inputs change and when server time re-syncs (ADR-0088). While server time is unknown, a Page Rotation shows its first page and a Talent Screen's Social Profile Rotation its first profile, and every other Clock Projection runs on the device's own time; each is taken again the moment the first sync lands (ADR-0009, ADR-0088). Server time never stops or moves backwards: after the first sync, a correction of up to 500 ms is eased in and a larger one applied at once; it re-syncs when its page becomes visible or comes back online, and within seconds of its device's clock being changed (ADR-0088). A countdown, of a Feature Match Session Clock or a Round Clock, shows its time remaining rounded up to the whole second, so it reads its full duration as it starts and `0:00` only from its end; elapsed and count-up time round down (ADR-0078).
+A Feature Match Session Clock's display, a Round Clock, Page Rotation, a Talent Screen's Social Profile Rotation and Card Timeout are each one, and each follows the shared layer's rules for one (`packages/nuxt-layer/RULES.md`). While server time is unknown, a Page Rotation shows its first page and a Talent Screen's Social Profile Rotation its first profile, and every other Clock Projection runs on the device's own time (ADR-0009, ADR-0088).
 
 **Interval**:
 A Page Rotation counts its pages on one, and a Social Profile Rotation its steps.

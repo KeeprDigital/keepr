@@ -6,7 +6,11 @@ import type {
 	FeatureMatchStateUpdate,
 } from '~/modules/feature-match-session/client';
 import { pairSeatOf } from '~~/shared/modules/feature-match-session';
-import { formatClockTime, formatCountdownTime, parseTimeInput } from '~~/shared/utils/clock';
+import {
+	formatClockTime,
+	formatCountdownTime,
+	parseTimeInput,
+} from '@keepr/nuxt-layer/shared/utils/clockTime';
 
 const props = defineProps<{
 	open: boolean;

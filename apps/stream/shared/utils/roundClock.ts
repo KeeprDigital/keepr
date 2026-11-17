@@ -1,9 +1,9 @@
+import { countUpOvertimeMs } from './clock';
 import {
 	countdownNextChangeInMs,
-	countUpOvertimeMs,
 	formatClockTime,
 	formatCountdownTime,
-} from './clock';
+} from '@keepr/nuxt-layer/shared/utils/clockTime';
 
 /** The bounds of a Round's duration, in minutes, as an operator enters it. */
 export const ROUND_DURATION_MINUTES_MIN = 1;

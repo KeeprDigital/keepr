@@ -1,6 +1,6 @@
 import type { ScreenOutputRoundClockResponse } from '~~/shared/types/screenOutputReads';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
-import { minutesToMs } from '~~/shared/utils/clock';
+import { minutesToMs } from '@keepr/nuxt-layer/shared/utils/clockTime';
 import { projectRoundClock } from '~~/shared/utils/roundClock';
 import { useScreenModeFreshness } from '~/modules/screen-mode/freshness';
 import { useScreenModeHearing } from '~/modules/screen-mode/hearing';

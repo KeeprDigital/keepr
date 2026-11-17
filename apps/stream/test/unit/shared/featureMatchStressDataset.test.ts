@@ -6,7 +6,7 @@ import { featureMatchStressDataset } from '~~/shared/featureMatchStressDataset';
 import { featureMatchTokenCatalogue } from '~~/shared/featureMatchTokenCatalogue';
 import { SEAT_VALUES } from '~~/shared/types/enums';
 import { isOpCardImageUrl } from '~~/shared/utils/card/op';
-import { formatClockTime } from '~~/shared/utils/clock';
+import { formatClockTime } from '@keepr/nuxt-layer/shared/utils/clockTime';
 
 // The Stress Dataset exists to be wider than anything a show holds: wider than
 // the sample everywhere, and at a bound wherever the app has one.

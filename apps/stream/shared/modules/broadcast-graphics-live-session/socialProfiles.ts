@@ -12,7 +12,7 @@ import type {
 } from '../graphics';
 import type { BroadcastGraphicsLiveState } from './playout';
 import { socialProfileValues, SUPPORTED_SOCIAL_NETWORKS } from '../../socialProfiles';
-import { projectInterval } from '../../utils/interval';
+import { projectInterval } from '@keepr/nuxt-layer/shared/utils/interval';
 import { resolveGraphicSourceSelections } from '../graphics';
 
 /** The accepted Talent identity shown beside one projection in Live Control. */

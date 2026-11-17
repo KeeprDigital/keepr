@@ -1,5 +1,5 @@
 import type { SocialProfileProjectionValue } from '../../types/graphics';
-import { projectInterval } from '../../utils/interval';
+import { projectInterval } from '@keepr/nuxt-layer/shared/utils/interval';
 import { projectSocialProfileRotation } from '../broadcast-graphics-live-session/socialProfiles';
 
 /**
