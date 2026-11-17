@@ -123,11 +123,16 @@ describe('local document references', () => {
 	});
 
 	// A document that names a file a later change moved or deleted sends its reader nowhere.
-	it.each(NAVIGATED_DOCUMENTS)('%s names only repository paths that exist', (name) => {
-		const missing = namedRepositoryPaths(readDocument(name)).filter(
-			(path) => !existsSync(join(repositoryRoot, path)),
-		);
+	// Not a decision: it records what was true when it was made, and its body is
+	// not edited after (ADR-0095), so the files it names may since have gone.
+	it.each(NAVIGATED_DOCUMENTS.filter((name) => !name.startsWith('docs/adr/')))(
+		'%s names only repository paths that exist',
+		(name) => {
+			const missing = namedRepositoryPaths(readDocument(name)).filter(
+				(path) => !existsSync(join(repositoryRoot, path)),
+			);
 
-		expect(missing).toEqual([]);
-	});
+			expect(missing).toEqual([]);
+		},
+	);
 });
