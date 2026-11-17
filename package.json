@@ -8,6 +8,7 @@
 		"format": "oxfmt",
 		"slots": "keepr-slots",
 		"reap": "keepr-reap-workerd",
+		"deploy": "keepr-deploy deploy",
 		"release:publish": "node packages/tooling/scripts/release-gate.mjs && changeset git-tag",
 		"accounts:stand-in": "pnpm --filter @keepr/accounts-stand-in start",
 		"typecheck:packages": "pnpm --filter \"./packages/*\" typecheck",

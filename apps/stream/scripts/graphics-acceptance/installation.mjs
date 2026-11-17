@@ -29,7 +29,7 @@ const DEFAULT_LOCAL_ORIGIN = 'http://127.0.0.1:8787';
 export function acceptanceOrigin({ deployed, env = process.env }) {
 	if (!deployed)
 		return (env.STREAM_KEEPR_LOCAL_ACCEPTANCE_URL ?? DEFAULT_LOCAL_ORIGIN).replace(/\/$/, '');
-	const baseUrl = env.STREAM_KEEPR_BROWSER_ACCEPTANCE_URL ?? env.STREAM_KEEPR_DEPLOY_HEALTH_URL;
+	const baseUrl = env.STREAM_KEEPR_BROWSER_ACCEPTANCE_URL ?? env.KEEPR_DEPLOY_URL;
 	if (!baseUrl) {
 		throw new AcceptanceFailure('harness-precondition-unmet', {
 			reason: 'STREAM_KEEPR_BROWSER_ACCEPTANCE_URL is unset',

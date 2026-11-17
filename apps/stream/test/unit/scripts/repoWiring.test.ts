@@ -179,20 +179,19 @@ describe('verify runs the server-backed suites one at a time', () => {
 	});
 });
 
-describe('the deploy advances its promotion markers only behind every check', () => {
-	it('marks the app pending just before the first remote change, and deployed only after deploy:verify', () => {
-		const commands = scripts.deploy!.split('&&').map((command) => command.trim());
-		const pending = commands.indexOf('pnpm deploy:mark-app pending');
-
-		// Only `&&`: nothing may swallow a failed step.
-		expect(scripts.deploy).not.toMatch(/\|\||;|(^|[^&])&([^&]|$)/);
-		expect(commands.slice(0, pending)).toEqual([
-			'pnpm build',
-			'pnpm worker:dry-run',
-			'pnpm worker:smoke',
-		]);
-		expect(commands[pending + 1]).toBe('pnpm db:migrate:remote');
-		expect(commands.slice(-2)).toEqual(['pnpm deploy:verify', 'pnpm deploy:mark-app deployed']);
+describe('the deploy runs the tooling, which advances the promotion markers only behind every check', () => {
+	// The procedure and its order are tested at their home, `@keepr/tooling`.
+	it("is Stream Keepr's descriptor deployed by keepr-deploy, from every deploy script", () => {
+		expect(
+			Object.fromEntries(Object.entries(scripts).filter(([name]) => /^deploy(?::|$)/.test(name))),
+		).toEqual({
+			deploy: 'keepr-deploy deploy --app stream --env production',
+			'deploy:verify': 'keepr-deploy verify --app stream --env production',
+			'deploy:mark-app': 'keepr-deploy mark-app --app stream --env production',
+			'deploy:status': 'keepr-deploy status --app stream --env production',
+			'deploy:validator': 'keepr-deploy part validator --app stream --env production',
+		});
+		expect(workspaceScripts.deploy).toBe('keepr-deploy deploy');
 	});
 
 	describe('the Deploy workflow', () => {
@@ -202,26 +201,53 @@ describe('the deploy advances its promotion markers only behind every check', ()
 		const release = index((step) => step.with?.ref === '${{ steps.release.outputs.tag }}');
 		const tooling = index((step) => step.with?.path === '.deploy-tooling');
 		const install = index((step) => step.run === 'pnpm install --frozen-lockfile');
+		const CLI = 'packages/tooling/scripts/deploy/cli.mjs';
 		const promote = index(
 			(step) =>
-				step.run?.startsWith(
-					'node .deploy-tooling/apps/stream/scripts/deploy-promotion.mjs promote',
-				) === true,
+				step.run?.startsWith(`node .deploy-tooling/${CLI} deploy --app stream --env production`) ===
+				true,
 		);
 
-		it('promotes through tooling from its own commit, after installing the release', () => {
+		/** Every module `entry` imports, transitively, by its path from the repository's root. */
+		function importedModules(entry: string, seen = new Set<string>()): Set<string> {
+			if (seen.has(entry)) return seen;
+			seen.add(entry);
+			const source = readFileSync(`../../${entry}`, 'utf8');
+			for (const [, specifier] of source.matchAll(/^import [^;]*?from '(\.{1,2}\/[^']+)';$/gms))
+				importedModules(new URL(specifier!, `file:///${entry}`).pathname.slice(1), seen);
+			return seen;
+		}
+
+		it('deploys through the tooling from its own commit, after installing the release', () => {
 			expect(release).toBeGreaterThanOrEqual(0);
 			expect([release, tooling, install, promote]).toEqual(
 				[release, tooling, install, promote].toSorted((a, b) => a - b),
 			);
 			expect(all[tooling]!.with).toMatchObject({
 				ref: '${{ github.sha }}',
-				'sparse-checkout': 'apps/stream/scripts/deploy-promotion.mjs',
 				'persist-credentials': false,
 			});
 			expect(all.some((step) => step.run === 'echo /.deploy-tooling/ >> .git/info/exclude')).toBe(
 				true,
 			);
+		});
+
+		// A module the sparse checkout leaves out fails on deploy day, not in review.
+		it('checks out the deploy CLI and every module it imports', () => {
+			const patterns = String(all[tooling]!.with!['sparse-checkout'])
+				.split('\n')
+				.map((line) => line.trim())
+				.filter(Boolean);
+			const modules = [...importedModules(CLI)];
+
+			expect(modules.length).toBeGreaterThan(3);
+			for (const module of modules)
+				expect(
+					patterns.some((pattern) =>
+						pattern.endsWith('/') ? module.startsWith(pattern) : module === pattern,
+					),
+					module,
+				).toBe(true);
 		});
 
 		it('cannot skip past a failed promotion, and deploys or moves a marker nowhere else', () => {

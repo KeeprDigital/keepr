@@ -1,14 +1,14 @@
 # ADR-0035: The app and the validator each carry a promotion marker, and the validator deploys on a build fingerprint
 
-Accepted · 2026-10-21 · [#616](https://github.com/KeeprDigital/stream-keepr/issues/616)
+Accepted · 2026-10-21 · [#616](https://github.com/KeeprDigital/stream-keepr/issues/616) · Amended by ADR-0119: markers are named `<app>/<environment>[-<part>]` (`stream/production`, `stream/production-validator`) and gain `app`, `environment` and `version` fields; the fingerprint hashes the validator config resolved for the Environment; the procedure, with this decision's promotion, moved into `@keepr/tooling` (`packages/tooling/scripts/deploy/`) and never runs a release's own `pnpm run deploy`
 
 ### Decision
 
 **Each component has its own promotion marker**, an annotated tag on `origin`: `production` for the app and `production-validator` for the validator. Its message records the component, a state, the commit, whether that checkout was dirty, who deployed it, and the validator's fingerprint. Every deploy marks its component `pending` before it changes anything remote, and `deployed` once it succeeded. Both deploy commands write the markers themselves: `pnpm run deploy` for the app, `pnpm deploy:validator` for the validator. So an emergency local deploy keeps them accurate too. A deploy whose pending marker cannot be written does not start.
 
-**The validator deploys unless its marker records a confirmed deploy with the target's fingerprint.** The fingerprint is a sha256 of the bundle `wrangler deploy` would upload (the `validator:dry-run` bundle, source maps and README excluded), every file of the Container's Docker context, and `wrangler.jsonc`. A missing, unreadable or `pending` marker, an unknown fingerprint, and a checkout that cannot be bundled all mean deploy. The decision is the pure `decideValidatorDeploy` in `scripts/deploy-promotion.mjs`.
+**The validator deploys unless its marker records a confirmed deploy with the target's fingerprint.** The fingerprint is a sha256 of the bundle `wrangler deploy` would upload (the `validator:dry-run` bundle, source maps and README excluded), every file of the Container's Docker context, and `wrangler.jsonc`. A missing, unreadable or `pending` marker, an unknown fingerprint, and a checkout that cannot be bundled all mean deploy. The decision is the pure `decideValidatorDeploy` in `apps/stream/scripts/deploy-promotion.mjs`.
 
-**The Deploy workflow runs the promotion from its own commit.** It checks the release out, and checks `scripts/deploy-promotion.mjs` out of the workflow's commit beside it. It then runs `promote`, which decides, deploys the validator between its markers, marks the app pending, runs the release's `pnpm run deploy`, and marks the app deployed. A release from before this decision can still be rolled back to, with markers. For releases after it, `pnpm run deploy` writes the app marker a second time, to the same states in the same order.
+**The Deploy workflow runs the promotion from its own commit.** It checks the release out, and checks `apps/stream/scripts/deploy-promotion.mjs` out of the workflow's commit beside it. It then runs `promote`, which decides, deploys the validator between its markers, marks the app pending, runs the release's `pnpm run deploy`, and marks the app deployed. A release from before this decision can still be rolled back to, with markers. For releases after it, `pnpm run deploy` writes the app marker a second time, to the same states in the same order.
 
 ### Why
 

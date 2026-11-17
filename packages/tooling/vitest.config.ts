@@ -8,5 +8,7 @@ export default defineConfig({
 		testTimeout: 60_000,
 		hookTimeout: 120_000,
 		restoreMocks: true,
+		// The deploy tooling's tests must not be able to reach Cloudflare.
+		setupFiles: ['test/helpers/blockCloudflareCredentials.ts'],
 	},
 });

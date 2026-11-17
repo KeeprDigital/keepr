@@ -2,7 +2,12 @@ import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createServer } from 'node:http';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DeployVerifyFailure, main, verifyDeployment } from '../../../scripts/deploy-verify.mjs';
+import type { Release } from '../scripts/deploy/release.mjs';
+import {
+	DeployVerifyFailure,
+	verifyDeployment,
+	verifyInstallation,
+} from '../scripts/deploy/verify.mjs';
 
 type Handler = (request: IncomingMessage, response: ServerResponse) => void;
 
@@ -13,8 +18,8 @@ const READING = '{"serverTime":1760000000000}';
 /**
  * A stand-in for a deployed origin on localhost: real HTTP, no deployment, no
  * credentials, no network beyond loopback. The probe's rules are driven through
- * the script's exported probe; what the command adds to it (the target from
- * the environment, the exit code, the liveness claim) through its entry point.
+ * the exported probe; what verifying an Installation adds to it (the target,
+ * the release identity it expects, what it claims) through `verifyInstallation`.
  */
 describe('deploy:verify against a local stand-in origin', () => {
 	const servers: Server[] = [];
@@ -139,7 +144,7 @@ describe('deploy:verify against a local stand-in origin', () => {
 		}).catch((error: unknown) => error);
 
 		expect(outcome).toBeInstanceOf(DeployVerifyFailure);
-		expect((outcome as DeployVerifyFailure).message).toContain('STREAM_KEEPR_DEPLOY_HEALTH_URL');
+		expect((outcome as DeployVerifyFailure).message).toContain('KEEPR_DEPLOY_URL');
 		expect(fetchRequest).not.toHaveBeenCalled();
 	});
 
@@ -217,13 +222,101 @@ describe('deploy:verify against a local stand-in origin', () => {
 		});
 	});
 
-	describe('run as the command, its target in STREAM_KEEPR_DEPLOY_HEALTH_URL', () => {
-		const loopbackFetch = fetch;
+	// A deploy that "succeeded" while the previous Worker still answers has not
+	// promoted anything: `/api/release` names which Release serves (#525 f).
+	describe('requiring the release identity', () => {
+		const IDENTITY = { app: 'stream', version: '1.8.0', commit: 'c'.repeat(40) };
 
-		// The command's default target is production. Every fetch it could make is this
-		// stand-in, which sends on only what is for the local origin and refuses the rest
-		// with an answer the probe fails on at once: a target read wrongly is never asked.
-		async function runCommand(healthUrl: string, standIn: string) {
+		it('passes when /api/release names the Release just deployed', async () => {
+			const requested: string[] = [];
+			const url = await origin((request, response) => {
+				requested.push(request.url ?? '');
+				json(IDENTITY)(request, response);
+			});
+
+			await expect(
+				verifyDeployment({ baseUrl: url, expected: IDENTITY, ...fast }),
+			).resolves.toMatchObject({ url: `${url}/api/release` });
+			expect(requested).toEqual(['/api/release']);
+		});
+
+		it('fails while the previous Release still answers, naming both, after every attempt', async () => {
+			let requests = 0;
+			const url = await origin((request, response) => {
+				requests += 1;
+				json({ ...IDENTITY, version: '1.7.0', commit: 'b'.repeat(40) })(request, response);
+			});
+
+			const failure = verifyDeployment({ baseUrl: url, expected: IDENTITY, ...fast });
+
+			await expect(failure).rejects.toThrow(/stream@1\.7\.0.*stream@1\.8\.0/);
+			expect(requests).toBe(3);
+		});
+
+		it('passes once the new Release takes over from the previous one', async () => {
+			let requests = 0;
+			const url = await origin((request, response) => {
+				requests += 1;
+				json(requests === 1 ? { ...IDENTITY, version: '1.7.0' } : IDENTITY)(request, response);
+			});
+
+			await expect(
+				verifyDeployment({ baseUrl: url, expected: IDENTITY, ...fast }),
+			).resolves.toBeDefined();
+			expect(requests).toBe(2);
+		});
+
+		it.each([
+			['another app', { ...IDENTITY, app: 'accounts' }],
+			['another commit of the same version', { ...IDENTITY, commit: 'd'.repeat(40) }],
+		])('fails when it names %s', async (_case, answer) => {
+			const url = await origin(json(answer));
+
+			await expect(
+				verifyDeployment({ baseUrl: url, expected: IDENTITY, ...fast }),
+			).rejects.toBeInstanceOf(DeployVerifyFailure);
+		});
+
+		it('fails at once on an answer that is not a release identity', async () => {
+			let requests = 0;
+			const url = await origin((request, response) => {
+				requests += 1;
+				json({ serverTime: Date.now() })(request, response);
+			});
+
+			await expect(verifyDeployment({ baseUrl: url, expected: IDENTITY, ...fast })).rejects.toThrow(
+				/app, version, commit/,
+			);
+			expect(requests).toBe(1);
+		});
+	});
+
+	describe("verifying an Installation: the Environment's URL, or KEEPR_DEPLOY_URL", () => {
+		const loopbackFetch = fetch;
+		const COMMIT = 'c'.repeat(40);
+
+		function release(verifies: Release['verifies']): Release {
+			return {
+				app: 'stream',
+				appDir: '/release/apps/stream',
+				version: '1.8.0',
+				verifies,
+				descriptor: {
+					app: 'stream',
+					build: [],
+					output: '.output',
+					worker: { config: '.output/server/wrangler.json' },
+					databases: [],
+					environments: { production: { url: 'https://stream.keepr.digital' } },
+					parts: {},
+				},
+			};
+		}
+
+		// The Environment's URL is production. Every fetch it could make is this
+		// stand-in, which sends on only what is for the local origin and refuses the
+		// rest with an answer the probe fails on at once: a target read wrongly is never asked.
+		async function verify(target: string, standIn: string, verifies: Release['verifies']) {
 			const asked: string[] = [];
 			const printed: string[] = [];
 			const fetchRequest = (async (...request: Parameters<typeof fetch>) => {
@@ -234,51 +327,54 @@ describe('deploy:verify against a local stand-in origin', () => {
 					: new Response('not the stand-in origin', { status: 421 });
 			}) as typeof fetch;
 			vi.stubGlobal('fetch', fetchRequest);
-			vi.spyOn(console, 'log').mockImplementation((line) => void printed.push(String(line)));
-			vi.spyOn(console, 'error').mockImplementation((line) => void printed.push(String(line)));
 
-			const code = await main({
-				env: { STREAM_KEEPR_DEPLOY_HEALTH_URL: healthUrl },
+			const outcome = await verifyInstallation({
+				release: release(verifies),
+				environment: 'production',
+				commit: COMMIT,
+				env: { KEEPR_DEPLOY_URL: target },
 				fetchRequest,
-			});
+				log: (line: string) => void printed.push(line),
+				...fast,
+			}).catch((error: unknown) => error);
 
-			return {
-				code,
-				asked,
-				output: printed.join('\n'),
-			};
+			return { outcome, asked, output: printed.join('\n') };
 		}
 
-		it('exits 0 on the clock reading, and claims liveness only', async () => {
-			const requested: string[] = [];
-			const url = await origin((request, response) => {
-				requested.push(request.url ?? '');
-				json({
-					serverTime: Date.now(),
-				})(request, response);
-			});
+		it('requires a Release with a descriptor to name itself', async () => {
+			const url = await origin(json({ app: 'stream', version: '1.8.0', commit: COMMIT }));
 
-			const { code, asked, output } = await runCommand(`${url}/`, url);
+			const { outcome, asked, output } = await verify(`${url}/`, url, 'release');
 
-			expect(code).toBe(0);
-			expect(asked).toEqual([`${url}/api/time`]);
-			expect(requested).toEqual(['/api/time']);
-			expect(output).toContain('liveness only');
-			expect(output).not.toMatch(/new release is serving/i);
+			expect(outcome).toBe('release');
+			expect(asked).toEqual([`${url}/api/release`]);
+			expect(output).toContain(`stream@1.8.0 (${COMMIT})`);
+			expect(output).not.toContain('liveness only');
 		});
 
-		it('exits non-zero on a wrong answer, naming it and claiming nothing', async () => {
+		it('checks a Release from before /api/release for liveness only, and says so', async () => {
+			const url = await origin(json({ serverTime: Date.now() }));
+
+			const { outcome, asked, output } = await verify(url, url, 'liveness');
+
+			expect(outcome).toBe('liveness');
+			expect(asked).toEqual([`${url}/api/time`]);
+			expect(output).toContain('liveness only');
+			expect(output).toContain('predates /api/release');
+		});
+
+		it('fails on a wrong answer, naming it and claiming nothing', async () => {
 			const url = await origin((_request, response) => {
 				response.writeHead(200, { 'content-type': HTML });
 				response.end(SPA_FALLBACK);
 			});
 
-			const { code, asked, output } = await runCommand(url, url);
+			const { outcome, asked, output } = await verify(url, url, 'release');
 
-			expect(code).toBe(1);
-			expect(asked).toEqual([`${url}/api/time`]);
-			expect(output).toContain('text/html');
-			expect(output).not.toContain('liveness only');
+			expect(outcome).toBeInstanceOf(DeployVerifyFailure);
+			expect((outcome as Error).message).toContain('text/html');
+			expect(asked).toEqual([`${url}/api/release`]);
+			expect(output).toBe('');
 		});
 	});
 });

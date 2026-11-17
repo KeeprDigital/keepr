@@ -1,0 +1,23 @@
+// Stream Keepr's deploy descriptor: what is deployed. `@keepr/tooling` does the
+// deploying (`pnpm run deploy --app stream --env production`; README.md § Deploy),
+// reading this file from the Release being deployed. Paths are from this directory.
+// What each field means: packages/tooling/scripts/deploy/release.mjs.
+{
+	"app": "stream",
+	// Run once; every Environment deploys what they built.
+	"build": ["build", "worker:dry-run", "worker:smoke"],
+	"output": ".output",
+	"worker": { "config": ".output/server/wrangler.json" },
+	"databases": [{ "binding": "DB" }],
+	"environments": {
+		"production": { "url": "https://stream.keepr.digital" }
+	},
+	"parts": {
+		// The app binds it (SILENT_VIDEO_PLAYBACK_VALIDATOR), so it deploys first,
+		// and only when its fingerprint changed.
+		"validator": {
+			"config": "workers/silent-video-validator/wrangler.jsonc",
+			"container": "workers/silent-video-validator/container"
+		}
+	}
+}

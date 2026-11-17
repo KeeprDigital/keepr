@@ -320,7 +320,7 @@ describe('a harness printing evidence it cannot format', () => {
 	 */
 	it('answers a --deployed run with no URL with its stable code, not a stack trace', async () => {
 		vi.stubEnv('STREAM_KEEPR_BROWSER_ACCEPTANCE_URL', undefined);
-		vi.stubEnv('STREAM_KEEPR_DEPLOY_HEALTH_URL', undefined);
+		vi.stubEnv('KEEPR_DEPLOY_URL', undefined);
 
 		const observed = await observeHarness(() =>
 			runAcceptanceHarness({

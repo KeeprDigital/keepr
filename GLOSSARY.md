@@ -90,6 +90,22 @@ _Avoid_: stage, env; staging for Stream Keepr's ingestion staging store or Graph
 One app deployed in one Environment, and the data it holds. Stream Keepr's Staging Installation shares nothing with its Production Installation.
 _Avoid_: instance, tenant, deployment (the act of deploying)
 
+**Deploy descriptor**:
+An app's statement of what is deployed, `apps/<app>/deploy.jsonc`, read from the Release being deployed: its build, its Worker, its D1 databases, its Installation per Environment, and its parts. An app with one is deployable.
+_Avoid_: deploy config, manifest, wrangler config (the Worker's own)
+
+**Part**:
+A Worker an app deploys from source beside its own, with its own promotion marker and fingerprint, such as Stream Keepr's silent-video validator.
+_Avoid_: component (a marker's field, which also names the app), sidecar
+
+**Promotion marker**:
+The annotated tag on `origin` recording one app's, or one part's, latest deploy to one Environment, `pending` or `deployed`, named `<app>/<environment>[-<part>]`.
+_Avoid_: deploy tag, production tag
+
+**Release identity**:
+The app, version and commit an Installation's Worker was built from, which it serves at `/api/release` and a deploy's verify requires to name the Release just deployed.
+_Avoid_: build info, version endpoint
+
 ### Platform
 
 Named modules of `packages/nuxt-layer`. A module's term lives beside its code: one that moves into the layer brings its term here in the same change.

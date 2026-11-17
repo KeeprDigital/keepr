@@ -1,10 +1,10 @@
-# Manually triggered production deploy — the Actions counterpart of running
-# `pnpm deploy:validator` (when needed) and `pnpm run deploy` locally. It exists
+# Manually triggered production deploy of Stream Keepr — the Actions
+# counterpart of `pnpm run deploy --app stream --env production`. It exists
 # as an *option*, not a replacement: deploys are never merge-triggered, because
 # deploy day is a human procedure (apps/stream/README.md § Deploy day). This workflow
-# covers only what those cover — validator promotion, build, Wasm dry run,
-# Worker smoke against the production-env build, D1 migration, Worker
-# promotion, liveness verify. Everything after promotion stays with the
+# covers only what that covers — build, Wasm dry run, Worker smoke against the
+# production-env build, validator promotion, D1 migration, Worker promotion,
+# release-identity verify. Everything after promotion stays with the
 # operator:
 #
 #   - The six deployed acceptance gates run locally, in order, stopping at
@@ -23,12 +23,15 @@
 # emergencies.
 #
 # Each component has its own promotion marker, an annotated git tag
-# (ADR-0035): `production` for the app and `production-validator` for the
-# validator, each `pending` while its deploy runs and `deployed` once it is
-# confirmed, so a run that fails between the two records exactly that. The
-# promotion runs `apps/stream/scripts/deploy-promotion.mjs` from this workflow's own
-# commit (main), not from the release, so rolling back to a release older
-# than the markers still reads and writes them.
+# (ADR-0035, ADR-0119): `stream/production` for the app and
+# `stream/production-validator` for the validator, each `pending` while its
+# deploy runs and `deployed` once it is confirmed, so a run that fails between
+# the two records exactly that. The deploy runs `@keepr/tooling`'s
+# `packages/tooling/scripts/deploy/cli.mjs` from this workflow's own commit
+# (main), not from the release, and reads what to deploy from the release's
+# deploy descriptor, so rolling back to a release older than the markers or
+# the descriptor still deploys it the same way. It never runs a release's own
+# `pnpm run deploy`.
 #
 # Required `production` environment secrets (the environment deploys only
 # from main): CLOUDFLARE_API_TOKEN (Workers Scripts:Edit,
@@ -57,7 +60,7 @@ on:
       validator:
         description: >-
           Silent-video validator promotion. auto: deploy it first unless the
-          production-validator marker records a confirmed deploy with the
+          stream/production-validator marker records a confirmed deploy with the
           target release's validator fingerprint (its bundle, Container
           context and configuration). always/never override the detection.
         required: false
@@ -73,8 +76,9 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  # write: the run force-pushes the `production` and `production-validator`
-  # promotion-marker tags.
+  # write: the run force-pushes the `stream/production` and
+  # `stream/production-validator` promotion-marker tags, and removes the
+  # `production` and `production-validator` tags they replace.
   contents: write
 
 jobs:
@@ -138,12 +142,16 @@ jobs:
           # The promotion pushes the marker tags with this checkout's
           # credential. Nothing in this job uploads an artifact.
           persist-credentials: true
-      - name: Check out the promotion tooling from this workflow's commit
+      - name: Check out the deploy tooling from this workflow's commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           path: .deploy-tooling
-          sparse-checkout: apps/stream/scripts/deploy-promotion.mjs
+          # The deploy CLI and every module it imports.
+          sparse-checkout: |
+            packages/tooling/scripts/deploy/
+            packages/tooling/scripts/deploy-guard.mjs
+            packages/tooling/scripts/jsonc.mjs
           sparse-checkout-cone-mode: false
           persist-credentials: false
       # Untracked files mark a checkout `dirty` in the markers; this one is
@@ -155,24 +163,26 @@ jobs:
           node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Decides the validator against its marker, deploys it first when that
-      # says so, then runs `pnpm run deploy`, each between its markers. The
-      # step summary records the decision, and on failure what each marker
-      # now says (apps/stream/README.md § Recovering from a partial promotion).
-      - name: Promote (validator when decided, then build, dry run, smoke, migrate D1, promote, verify)
+      # Builds once (build, dry run, Worker smoke), decides the validator
+      # against its marker and deploys it first when that says so, then
+      # migrates D1, deploys the Worker and verifies its release identity, each
+      # between its markers. The step summary records the decision, and on
+      # failure what each marker now says (apps/stream/README.md § Recovering
+      # from a partial promotion).
+      - name: Deploy (build, dry run, smoke, validator when decided, migrate D1, promote, verify)
         env:
           # On this step alone: job-level env would also reach the install's
           # build scripts and the setup actions, which deploy nothing.
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           INPUT_VALIDATOR: ${{ inputs.validator }}
-        run: node .deploy-tooling/apps/stream/scripts/deploy-promotion.mjs promote "$INPUT_VALIDATOR"
+        run: node .deploy-tooling/packages/tooling/scripts/deploy/cli.mjs deploy --app stream --env production --parts "$INPUT_VALIDATOR"
       - name: Remind the operator what is still owed
         env:
           # Step outputs derive from dispatch inputs; same env discipline as above.
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
-          echo "Release $RELEASE_TAG promoted; https://stream.keepr.digital answered deploy:verify (liveness only, not release identity or dependency health)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Release $RELEASE_TAG promoted; https://stream.keepr.digital answered deploy:verify (its release identity, or liveness only for a release from before /api/release; not dependency health)." >> "$GITHUB_STEP_SUMMARY"
           # The backticks are Markdown, not a command to expand.
           # shellcheck disable=SC2016
           echo 'Run the six `:deployed` gates locally (`pnpm accept deployed`), in README order, stopping at the first failure.' >> "$GITHUB_STEP_SUMMARY"
