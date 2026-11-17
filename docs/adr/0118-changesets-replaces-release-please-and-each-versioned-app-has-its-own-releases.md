@@ -30,7 +30,7 @@ Accepted · 2026-11-17 · [#1260](https://github.com/KeeprDigital/keepr/issues/1
 - Empty changesets wait in `.changeset/` until a Version PR consumes them; alone, they open none.
 - The Version PR lands alone. In one push with a PR that carries a changeset, the action finds a changeset waiting and refreshes the Version PR instead of tagging, and that version is never tagged (`apps/stream/README.md` § Releases).
 - The Version PR's runs still need a maintainer's "Approve workflows to run" until a GitHub App's token opens it (#1261).
-- The `release tags` ruleset, which makes `v*` immutable, needs `@keepr/*` added to keep the new tags immutable.
+- The `release tags` ruleset makes `@keepr/*` immutable as well as `v*`.
 
 ### Rejected alternatives
 

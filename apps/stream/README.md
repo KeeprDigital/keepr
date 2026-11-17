@@ -654,8 +654,7 @@ How a change reaches `main`, and why:
   Nothing routine uses it: the Version PR goes through the queue like any
   other, and a bypass merge that lands unverified is refused a tag by the
   release gate below. The **release tags** ruleset makes release tags
-  immutable (`v*`, and `@keepr/*` once added to it), and repository admins can
-  bypass it. `CI passed` is one summary job that always reports, so CI can
+  immutable (`v*` and `@keepr/*`), and repository admins can bypass it. `CI passed` is one summary job that always reports, so CI can
   skip what a change cannot affect without leaving a required check waiting.
   The `production` and `production-validator` promotion-marker tags
   ([Promotion markers](#promotion-markers)) are unprotected: every deploy
