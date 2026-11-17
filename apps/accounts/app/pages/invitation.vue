@@ -95,7 +95,8 @@ const ANSWER_REFUSALS = {
 	codes: {
 		...NEW_PASSWORD_REFUSALS.codes,
 		...CLOSED,
-		INVITATION_NOT_FOUND: 'This invitation is no longer open. Ask whoever invited you for a new one.',
+		INVITATION_NOT_FOUND:
+			'This invitation is no longer open. Ask whoever invited you for a new one.',
 		USER_ALREADY_EXISTS: 'This address already has a Keepr account. Sign in to accept.',
 		YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION:
 			'This invitation is for another address. Sign in with that address to accept.',

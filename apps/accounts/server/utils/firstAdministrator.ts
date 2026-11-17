@@ -104,7 +104,13 @@ export async function claimFirstAdministrator(
 	try {
 		// The breached-password check runs here.
 		const created = await auth.api.createUser({
-			body: { email, name: name.trim(), password, role: KEEPR_ADMINISTRATOR_ROLE, data: { emailVerified: true } },
+			body: {
+				email,
+				name: name.trim(),
+				password,
+				role: KEEPR_ADMINISTRATOR_ROLE,
+				data: { emailVerified: true },
+			},
 		});
 		userId = created.user.id;
 	} catch (error) {

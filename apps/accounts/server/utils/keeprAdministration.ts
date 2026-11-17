@@ -70,7 +70,6 @@ export interface FoundUser {
 /** How many Users one search answers at most. */
 export const FOUND_USERS_LIMIT = 50;
 
-
 /**
  * The Users whose name or email contains `query`, ignoring case, by name. Every
  * character of the query is matched as itself, a wildcard included.

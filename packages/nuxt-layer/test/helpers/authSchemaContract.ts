@@ -53,7 +53,10 @@ interface ModelTable {
 }
 
 /** Each model whose table the schema exports, with its columns by property key. */
-function tablesOf(contract: readonly AuthContractModel[], schema: Readonly<Record<string, unknown>>) {
+function tablesOf(
+	contract: readonly AuthContractModel[],
+	schema: Readonly<Record<string, unknown>>,
+) {
 	return contract.flatMap((model): ModelTable[] => {
 		const table = schema[model.modelName] as SQLiteTable | undefined;
 		if (!table) return [];
@@ -69,7 +72,10 @@ function tablesOf(contract: readonly AuthContractModel[], schema: Readonly<Recor
 }
 
 /** Each contract field with its column, where the table has one. */
-function fieldsOf(contract: readonly AuthContractModel[], schema: Readonly<Record<string, unknown>>) {
+function fieldsOf(
+	contract: readonly AuthContractModel[],
+	schema: Readonly<Record<string, unknown>>,
+) {
 	return tablesOf(contract, schema).flatMap(({ model, config, columnsByKey }) =>
 		Object.entries(model.fields).flatMap(([key, field]) => {
 			const name = field.fieldName ?? key;
@@ -101,7 +107,9 @@ export const AUTH_SCHEMA_CONTRACT: readonly (readonly [rule: string, check: Auth
 				]);
 				return [
 					...[...expected].filter((key) => !columnsByKey.has(key)).map((key) => `missing ${key}`),
-					...[...columnsByKey.keys()].filter((key) => !expected.has(key)).map((key) => `extra ${key}`),
+					...[...columnsByKey.keys()]
+						.filter((key) => !expected.has(key))
+						.map((key) => `extra ${key}`),
 				].map((problem) => `${model.modelName}: ${problem}`);
 			}),
 	],
@@ -124,7 +132,9 @@ export const AUTH_SCHEMA_CONTRACT: readonly (readonly [rule: string, check: Auth
 		'a column has its field’s SQL type',
 		(contract, schema) =>
 			fieldsOf(contract, schema)
-				.filter(({ field, column }) => column.getSQLType() !== SQL_TYPE_BY_FIELD_TYPE[String(field.type)])
+				.filter(
+					({ field, column }) => column.getSQLType() !== SQL_TYPE_BY_FIELD_TYPE[String(field.type)],
+				)
 				.map(({ at, column }) => `${at}: ${column.getSQLType()}`),
 	],
 	[

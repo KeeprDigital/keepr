@@ -35,13 +35,18 @@ type SessionColumns = {
 };
 
 /** The `session` table, as the contract asks unless `drift` says otherwise. */
-function session(drift: { columns?: SessionColumns; indexed?: boolean; referenced?: boolean } = {}) {
+function session(
+	drift: { columns?: SessionColumns; indexed?: boolean; referenced?: boolean } = {},
+) {
 	const userId = text('user_id').notNull();
 	return sqliteTable(
 		'session',
 		{
 			id: text('id').primaryKey(),
-			userId: drift.referenced === false ? userId : userId.references(() => user.id, { onDelete: 'cascade' }),
+			userId:
+				drift.referenced === false
+					? userId
+					: userId.references(() => user.id, { onDelete: 'cascade' }),
 			expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
 			...(drift.columns as object),
 		} as never,
@@ -64,13 +69,51 @@ describe('the auth schema contract', () => {
 
 	it.each<[string, Record<string, unknown>]>([
 		['every model is a table exported under its name', { user }],
-		['a table carries exactly its model’s fields and id', { user, session: session({ columns: { extra: text('extra') } }) }],
-		['id is the text primary key', { user, session: session({ columns: { id: integer('id').primaryKey() } }) }],
-		['a column’s SQL name is its field’s in snake_case', { user, session: session({ columns: { expiresAt: integer('expiresAt', { mode: 'timestamp_ms' }).notNull() } }) }],
-		['a column has its field’s SQL type', { user, session: session({ columns: { expiresAt: text('expires_at').notNull() } }) }],
-		['a column is NOT NULL exactly when its field is required', { user, session: session({ columns: { expiresAt: integer('expires_at', { mode: 'timestamp_ms' }) } }) }],
-		['a column is unique exactly when its field is', { user, session: session({ columns: { expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull().unique() } }) }],
-		['a column references what its field does, with its delete rule, or nothing', { user, session: session({ referenced: false }) }],
+		[
+			'a table carries exactly its model’s fields and id',
+			{ user, session: session({ columns: { extra: text('extra') } }) },
+		],
+		[
+			'id is the text primary key',
+			{ user, session: session({ columns: { id: integer('id').primaryKey() } }) },
+		],
+		[
+			'a column’s SQL name is its field’s in snake_case',
+			{
+				user,
+				session: session({
+					columns: { expiresAt: integer('expiresAt', { mode: 'timestamp_ms' }).notNull() },
+				}),
+			},
+		],
+		[
+			'a column has its field’s SQL type',
+			{ user, session: session({ columns: { expiresAt: text('expires_at').notNull() } }) },
+		],
+		[
+			'a column is NOT NULL exactly when its field is required',
+			{
+				user,
+				session: session({
+					columns: { expiresAt: integer('expires_at', { mode: 'timestamp_ms' }) },
+				}),
+			},
+		],
+		[
+			'a column is unique exactly when its field is',
+			{
+				user,
+				session: session({
+					columns: {
+						expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull().unique(),
+					},
+				}),
+			},
+		],
+		[
+			'a column references what its field does, with its delete rule, or nothing',
+			{ user, session: session({ referenced: false }) },
+		],
 		['a column is indexed wherever its field asks', { user, session: session({ indexed: false }) }],
 	])('breaks only “%s” where that drifts', (rule, schema) => {
 		expect(broken(schema)).toEqual([rule]);

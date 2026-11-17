@@ -10,7 +10,6 @@ import { KeeprRefusal } from './refusal';
  */
 export const RECENT_SIGN_IN_MS = 10 * 60 * 1000;
 
-
 /** Refuses 403 an Actor whose sign-in is more than ten minutes old at `now`. */
 export function requireRecentSignIn(
 	actor: Pick<Actor, 'signedInAt'>,

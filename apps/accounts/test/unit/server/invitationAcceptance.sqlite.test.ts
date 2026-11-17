@@ -342,7 +342,9 @@ describe('declining an Invitation', () => {
 		const id = await invite();
 		await closeBy('cancelling', id);
 
-		await expect(declineInvitation(accounts.auth, database(), id, declineRequest())).rejects.toMatchObject({
+		await expect(
+			declineInvitation(accounts.auth, database(), id, declineRequest()),
+		).rejects.toMatchObject({
 			statusCode: 410,
 			code: 'INVITATION_CANCELLED',
 		});

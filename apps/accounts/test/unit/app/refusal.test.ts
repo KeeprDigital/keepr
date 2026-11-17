@@ -19,11 +19,36 @@ const sentences: RefusalSentences = {
 describe('the sentence a refusal is told in', () => {
 	it.each<[string, unknown, RefusalSentences, string]>([
 		["is its code's", refused(429, 'LAST_OWNER', 'from the server'), sentences, 'Keep an owner.'],
-		["is the server's message for a code it is allowed for", refused(403, 'BANNED_USER', 'Disabled.'), sentences, 'Disabled.'],
-		["is the server's message for any code, where every one is allowed", refused(409, 'ORGANISATION_EXISTS', 'Taken.'), { ...sentences, serverMessage: true }, 'Taken.'],
-		["is not the server's message for a code it is not allowed for", refused(409, 'ORGANISATION_EXISTS', 'Taken.'), sentences, 'That failed.'],
-		["is its status's, when its code says nothing", refused(429, 'TOO_MANY'), sentences, 'Wait a moment.'],
-		['is the fallback for anything else, a request that never answered included', new Error('offline'), sentences, 'That failed.'],
+		[
+			"is the server's message for a code it is allowed for",
+			refused(403, 'BANNED_USER', 'Disabled.'),
+			sentences,
+			'Disabled.',
+		],
+		[
+			"is the server's message for any code, where every one is allowed",
+			refused(409, 'ORGANISATION_EXISTS', 'Taken.'),
+			{ ...sentences, serverMessage: true },
+			'Taken.',
+		],
+		[
+			"is not the server's message for a code it is not allowed for",
+			refused(409, 'ORGANISATION_EXISTS', 'Taken.'),
+			sentences,
+			'That failed.',
+		],
+		[
+			"is its status's, when its code says nothing",
+			refused(429, 'TOO_MANY'),
+			sentences,
+			'Wait a moment.',
+		],
+		[
+			'is the fallback for anything else, a request that never answered included',
+			new Error('offline'),
+			sentences,
+			'That failed.',
+		],
 	])('%s', (_case, failure, told, sentence) => {
 		expect(refusalSentence(failure, told)).toBe(sentence);
 	});

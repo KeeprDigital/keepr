@@ -157,8 +157,7 @@ export async function inviteMember(
 		.from(schema.member)
 		.innerJoin(schema.user, eq(schema.user.id, schema.member.userId))
 		.where(and(eq(schema.member.organizationId, organizationId), eq(schema.user.email, address)));
-	if (member)
-		throw new KeeprRefusal(409, 'ALREADY_A_MEMBER', 'That address is already a member.');
+	if (member) throw new KeeprRefusal(409, 'ALREADY_A_MEMBER', 'That address is already a member.');
 	const [{ pending } = { pending: 0 }] = await database
 		.select({ pending: count() })
 		.from(schema.invitation)

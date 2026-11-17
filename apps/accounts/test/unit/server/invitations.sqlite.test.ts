@@ -185,11 +185,31 @@ describe('an Invitation', () => {
 
 describe('an Invitation is refused, and nothing is invited or emailed', () => {
 	it.each<[string, Partial<NewInvitation>, string, number]>([
-		['for an App the registry does not name', { appRoles: { chess: 'member' } }, 'APP_ROLE_NOT_IN_REGISTRY', 400],
-		['for a role the App does not define', { appRoles: { stream: 'owner' } }, 'APP_ROLE_NOT_IN_REGISTRY', 400],
-		['for anything but an App-to-role map', { appRoles: ['stream'] }, 'APP_ROLE_NOT_IN_REGISTRY', 400],
+		[
+			'for an App the registry does not name',
+			{ appRoles: { chess: 'member' } },
+			'APP_ROLE_NOT_IN_REGISTRY',
+			400,
+		],
+		[
+			'for a role the App does not define',
+			{ appRoles: { stream: 'owner' } },
+			'APP_ROLE_NOT_IN_REGISTRY',
+			400,
+		],
+		[
+			'for anything but an App-to-role map',
+			{ appRoles: ['stream'] },
+			'APP_ROLE_NOT_IN_REGISTRY',
+			400,
+		],
 		['to an address that is none', { email: 'nobody' }, 'INVALID_EMAIL', 400],
-		['as an Organisation role there is none of', { role: 'chair' }, 'ORGANISATION_ROLE_NOT_KNOWN', 400],
+		[
+			'as an Organisation role there is none of',
+			{ role: 'chair' },
+			'ORGANISATION_ROLE_NOT_KNOWN',
+			400,
+		],
 		['to an address already a member', { email: OWNER }, 'ALREADY_A_MEMBER', 409],
 	])('%s', async (_case, invitation, refused, statusCode) => {
 		expect(await outcome(invite(OWNER, invitation))).toEqual({ refused, statusCode });
@@ -235,9 +255,8 @@ describe('who may invite', () => {
 	])('%s inviting an %s is refused: %s', async (_who, inviter, role, refused) => {
 		const answered = await outcome(invite(await inviter(), { role }));
 
-		expect(answered).toMatchObject(
-			refused === null ? { invitationId: expect.any(String) } : { refused, statusCode: 403 },
-		);
+		expect((answered as { refused?: string }).refused ?? null).toBe(refused);
+		expect(await invitations()).toBe(refused === null ? 1 : 0);
 	});
 });
 
@@ -272,7 +291,11 @@ describe('the pending Invitations', () => {
 
 	it.each<[string, () => Promise<string>, string[]]>([
 		['to an admin, but not an owner’s offer to an owner', () => holding('admin'), [INVITEE]],
-		['to a Keepr Administrator, every one', keeprAdministrator, ['next-owner@example.com', INVITEE]],
+		[
+			'to a Keepr Administrator, every one',
+			keeprAdministrator,
+			['next-owner@example.com', INVITEE],
+		],
 	])('are listed %s', async (_case, viewer, emails) => {
 		await invite(OWNER, { email: 'next-owner@example.com', role: 'owner' });
 		await invite(OWNER);

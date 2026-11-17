@@ -8,6 +8,10 @@ export default defineEventHandler(
 		await answerAsActor(
 			event,
 			async (database, actor) =>
-				await listPendingInvitations(database, actor, getRouterParam(event, 'organisationId') ?? ''),
+				await listPendingInvitations(
+					database,
+					actor,
+					getRouterParam(event, 'organisationId') ?? '',
+				),
 		),
 );
