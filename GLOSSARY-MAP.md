@@ -4,7 +4,7 @@ Keepr has four vocabularies. Use each in its own code, and the shared one everyw
 
 ## Contexts
 
-- [Keepr](./GLOSSARY.md): what every app shares. Identity and access, and the shared layer's named modules.
+- [Keepr](./GLOSSARY.md): what every app shares. Identity and access, releasing and deploying, and the shared layer's named modules.
 - [Keepr Accounts](./apps/accounts/GLOSSARY.md): holding every User and vouching for them to each App. It speaks the shared vocabulary of identity and access, and adds only the words for its own records: the Audit Record and the First Administrator Claim. Its rules are in `apps/accounts/RULES.md`.
 - [Stream Keepr](./apps/stream/GLOSSARY.md): producing the broadcast of a tournament. Its rules are in `apps/stream/RULES.md`.
 - [Score Keepr](./apps/score/GLOSSARY.md): running a tournament. The engine packages (`packages/pairing`, `packages/standings`, `packages/engine-core`) speak it too. Its rules are in `apps/score/RULES.md` and each engine package's `RULES.md`.
