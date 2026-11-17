@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+import { configBindsKeeprAccounts } from '../scripts/ci-scope.mjs';
+import { deployableApps } from '../scripts/deploy/release.mjs';
+import { parseJsonc } from '../scripts/jsonc.mjs';
 
 /**
  * The Deploy workflow is only as good as its wiring: these read the committed
@@ -297,4 +300,16 @@ describe('a job that checks out only the tooling checks out every module it runs
 				module,
 			).toBe(true);
 	});
+});
+
+// The deploy's build runs the app's `worker:smoke` with no Accounts Stand-in,
+// which CI's Worker leg starts around `keepr-deploy check` instead. The first
+// App to bind Keepr Accounts moves that wrapping into the tooling's build step.
+it('no deployable app binds Keepr Accounts while the deploy builds without the stand-in', () => {
+	const apps = deployableApps('../..');
+	const config = (app: string) =>
+		parseJsonc(readFileSync(`../../apps/${app}/wrangler.jsonc`, 'utf8'));
+
+	expect(apps).toContain('stream');
+	expect(apps.filter((app) => configBindsKeeprAccounts(config(app)))).toEqual([]);
 });

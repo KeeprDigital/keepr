@@ -800,7 +800,12 @@ the commits that change `apps/accounts`.
   nothing is not recorded.
 
 The check reads the repository's full history, so a shallow clone is refused.
-No App binds Keepr Accounts yet, so today it refuses nothing.
+No App binds Keepr Accounts yet, so today it refuses nothing. Nor does a
+deploy's build start the Accounts Stand-in that a binding App's
+`worker:smoke` needs: CI's Worker leg starts it around `keepr-deploy check`.
+The change that first binds `keepr-accounts` moves that into the tooling's
+build step, for the deploy and CI alike, and a tooling test
+(`deployWorkflow.test.ts`) fails until it does.
 
 ### Promotion markers
 
@@ -854,32 +859,50 @@ the checkout you want.
 
 ### Deploy from GitHub Actions
 
-The **Deploy** workflow (`.github/workflows/deploy.yml`) is manual-only and runs
-what `pnpm run deploy` runs, but ships a **released tag**, never `main`'s HEAD:
+The **Deploy** workflow (`.github/workflows/deploy.yml`) is manual-only. It
+deploys one or more apps to an Environment, each as `pnpm run deploy` would,
+but ships **released tags**, never `main`'s HEAD. Dispatch it from `main`
+(Actions → Deploy → Run workflow) with:
 
-- `version`: `latest` (default), Stream Keepr's most recent GitHub Release, or
-  a tag like `@keepr/stream@1.7.0`. Another app's tag, or a `v*` tag, is
-  refused. Rollback is dispatching it with the previous tag.
-- `d1_recovery_point`: must be typed `confirmed`.
-- `validator`: `auto` (default) deploys the validator first unless
-  `stream/production-validator` records a confirmed deploy with the release's
-  fingerprint. A missing, unreadable or `pending` marker, or a release that
-  cannot be bundled, deploys it. `always` and `never` override; `never` leaves
-  the marker alone.
+- `releases`: the apps and the Release of each, separated by spaces. `stream`
+  (the default) is Stream Keepr's most recent GitHub Release; a tag such as
+  `@keepr/stream@1.7.0` is that one. Only published Releases resolve: a `v*`
+  tag, a draft, an unknown app or an app named twice refuses the whole run.
+  Rollback is dispatching it with the previous tag.
+- `environment`: `production`, the only Environment yet.
+- `d1_recovery_point`: must be typed `confirmed`, for every app deployed.
+- `validator`: each app's parts (Stream Keepr's validator). `auto` (default)
+  deploys a part first unless its marker (`stream/production-validator`)
+  records a confirmed deploy with the release's fingerprint. A missing,
+  unreadable or `pending` marker, or a release that cannot be bundled, deploys
+  it. `always` and `never` override; `never` leaves the marker alone.
+- `override`: empty, or the one-line reason to deploy out of
+  [deploy order](#deploy-order). It is refused for a run of more than one app:
+  dispatch the app it is for alone.
 
-The run is one step, `keepr-deploy deploy --app stream --env production`, run
-from the workflow's own commit (`packages/tooling/scripts/deploy/cli.mjs`), not
-from the release, against the release's checkout and its installed
-dependencies. It reads the release's deploy descriptor; a release from before
-descriptors (`@keepr/stream@1.6.0`, `1.7.0`) deploys as Stream Keepr was
-deployed then, so a rollback keeps the markers and the procedure. It never runs
-a release's own `pnpm run deploy`. The step summary records the validator
-decision, and on failure what each marker now says.
+The `plan` job resolves the Releases and deploys nothing. Then each app deploys
+as its own job (`.github/workflows/deploy-installation.yml`): Keepr Accounts'
+first, when the run names it, and every App's only once it succeeded. The Apps
+deploy side by side, and one's failure does not stop another. Each job is
+one step, `keepr-deploy deploy --app <app> --env <environment>`, run from the
+workflow's own commit (`packages/tooling/scripts/deploy/cli.mjs`), not from
+the release, against the release's checkout, with its full history, and its
+installed dependencies. It reads the release's deploy descriptor; a release
+from before descriptors (`@keepr/stream@1.6.0`, `1.7.0`) deploys as Stream
+Keepr was deployed then, so a rollback keeps the markers and the procedure. It
+never runs a release's own `pnpm run deploy`. The step summary records the
+part decisions, and on failure what each marker now says.
 
-It needs the `CLOUDFLARE_API_TOKEN` (Workers Scripts:Edit, D1:Edit, plus
-Containers when deploying the validator) and `CLOUDFLARE_ACCOUNT_ID` secrets on
-the `production` environment, which deploys only from `main`: a workflow on any
-other branch cannot read them. The acceptance gates and the "nothing on air" check stay with the
+Each app × Environment has a **GitHub environment** of its own,
+`<app>-<environment>`: Stream Keepr's is `stream-production`. It deploys only
+from `main`, so a workflow on any other branch cannot read its secrets, and it
+holds that app's `CLOUDFLARE_API_TOKEN`, scoped to that app's Workers (for
+Stream Keepr: Workers Scripts:Edit on `stream` and
+`stream-silent-video-validator`, D1:Edit, plus Containers when deploying the
+validator), and `CLOUDFLARE_ACCOUNT_ID`. One deploy per app × Environment runs
+at a time (concurrency group `deploy-<app>-<environment>`); two apps deploy at
+once. An app joins the workflow with its deploy descriptor and its GitHub
+environment. The acceptance gates and the "nothing on air" check stay with the
 operator.
 
 ### Deploy day
@@ -936,6 +959,15 @@ mid-run names the Event it left behind; delete it before rerunning.
    pnpm run deploy
    ```
 
+   Or dispatch the Deploy workflow with `releases: stream` (or the tag), which
+   deploys Stream Keepr's Release through `stream-production`
+   ([Deploy from GitHub Actions](#deploy-from-github-actions)). When Keepr
+   Accounts ships in the same Version PR, name both (`releases: accounts
+   stream`): its job runs first, and Stream Keepr's waits for it. Deploying
+   them in two runs works too, Keepr Accounts' first; the other order is
+   refused when Stream Keepr's Release needs a Keepr Accounts change not yet
+   deployed ([Deploy order](#deploy-order)).
+
    If `deploy:verify` fails, stop and roll back: redeploy the previous Worker
    version (dashboard → Workers & Pages → Deployments, or
    `wrangler rollback`), then restore any applied migration from the recovery
@@ -958,7 +990,7 @@ fails after its validator leaves:
 
 Pick the release production should run, then deploy it whole:
 
-- **Back to A**: dispatch Deploy with `version` A. Its fingerprint differs from
+- **Back to A**: dispatch Deploy with `releases` A. Its fingerprint differs from
   B's, so `auto` redeploys A's validator before A's app. As in step 3, restore
   any migration B applied from the recovery point. Releases whose validators are
   identical have identical fingerprints, so no validator redeploy happens
