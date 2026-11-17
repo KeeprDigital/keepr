@@ -88,6 +88,17 @@ function httpPaths(plugin: { endpoints: Record<string, unknown> }): string[] {
  */
 export const CLOSED_PATHS = httpPaths(adminPlugin);
 
+/**
+ * The organisation add-on's routes that change a member, closed because Keepr
+ * Accounts serves its own (`memberManagement.ts`): these would ask for no recent
+ * sign-in, admit no Keepr Administrator, and leave App access out of the Audit
+ * Record.
+ */
+export const MEMBER_PATHS_KEEPR_SERVES = [
+	'/organization/update-member-role',
+	'/organization/remove-member',
+];
+
 export interface AuthOptionsInput {
 	sharedCookieDomain: string | undefined;
 	/** Where the email a request causes is sent. */
@@ -197,7 +208,7 @@ export function authOptions({
 				},
 			},
 		},
-		disabledPaths: CLOSED_PATHS,
+		disabledPaths: [...CLOSED_PATHS, ...MEMBER_PATHS_KEEPR_SERVES],
 		baseURL: {
 			allowedHosts: ALLOWED_HOSTS,
 			fallback: KEEPR_ACCOUNTS_ORIGIN,

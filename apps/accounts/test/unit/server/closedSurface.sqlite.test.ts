@@ -76,3 +76,23 @@ describe('the library routes Keepr Accounts closes', () => {
 		expect(response.status).toBe(404);
 	});
 });
+
+// Keepr Accounts' own member routes ask for a recent sign-in and keep App access
+// with the member; the library's would do neither.
+describe('the library’s member routes', () => {
+	it.each([
+		['/organization/update-member-role', 'roles'],
+		['/organization/remove-member', 'removals'],
+	])('%s answers 404 to the Organisation’s owner', async (path, slug) => {
+		const organisation = await accounts.createOrganisation(slug, 'administrator@keepr.digital');
+		const { id } = await accounts.createUser(`member-of-${slug}@keepr.digital`);
+		const { memberId } = await accounts.addMember(id, slug);
+
+		const response = await accounts.send(path, {
+			body: { organizationId: organisation.id, memberId, memberIdOrEmail: memberId, role: 'admin' },
+			headers: { cookie: administratorCookie },
+		});
+
+		expect(response.status).toBe(404);
+	});
+});

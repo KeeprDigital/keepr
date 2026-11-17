@@ -10,7 +10,11 @@ export type AuditAction =
 	| 'first-administrator-claim.consumed'
 	| 'organisation.created'
 	| 'invitation.created'
-	| 'invitation.accepted';
+	| 'invitation.accepted'
+	| 'member.role-changed'
+	| 'member.removed'
+	| 'app-access.set'
+	| 'app-access.removed';
 
 export interface AuditEntry {
 	action: AuditAction;

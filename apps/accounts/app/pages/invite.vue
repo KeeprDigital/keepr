@@ -38,9 +38,8 @@ const refusal = ref<string | null>(null);
 const link = ref<string | null>(null);
 const copied = ref(false);
 
-onMounted(async () => {
-	if (!(await $fetch('/api/auth/get-session'))) await navigateTo('/sign-in');
-});
+// Closed to anyone who does not manage the Organisation's members.
+const { state } = useManagedOrganisation();
 
 function refusalOf(failure: { data?: { code?: string } }): string {
 	switch (failure.data?.code) {
@@ -87,7 +86,13 @@ async function copy() {
 
 <template>
 	<div class="flex min-h-screen items-center justify-center p-4">
-		<UCard class="w-full max-w-md">
+		<p v-if="state === 'closed'" data-closed class="text-muted">
+			Only an owner or admin of an Organisation can invite people to it.
+		</p>
+		<p v-else-if="state === 'failed'" class="text-muted">
+			This page could not be loaded. Reload to try again.
+		</p>
+		<UCard v-else-if="state === 'open'" class="w-full max-w-md">
 			<UForm :state="form" @submit="invite">
 				<div class="flex flex-col gap-4">
 					<h1 class="text-lg font-semibold">Invite someone</h1>

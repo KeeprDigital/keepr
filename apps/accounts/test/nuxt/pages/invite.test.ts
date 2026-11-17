@@ -14,9 +14,22 @@ mockNuxtImport('navigateTo', () => navigate);
 const invited: unknown[] = [];
 let answer: { status: number; body: unknown };
 
+let standing: { status: number; body: unknown };
+
 registerEndpoint('/api/auth/get-session', {
 	method: 'GET',
-	handler: () => ({ user: { name: 'Ada' }, session: { token: 'token' } }),
+	handler: () => ({
+		user: { name: 'Ada' },
+		session: { token: 'token', activeOrganizationId: 'keepr' },
+	}),
+});
+registerEndpoint('/api/organisations/keepr/standing', {
+	method: 'GET',
+	handler: async (event) => {
+		const { setResponseStatus } = await import('h3');
+		setResponseStatus(event, standing.status);
+		return standing.body;
+	},
 });
 registerEndpoint('/api/auth/organization/invite-member', {
 	method: 'POST',
@@ -31,6 +44,7 @@ registerEndpoint('/api/auth/organization/invite-member', {
 async function invite(choose: (page: ReturnType<typeof mount>) => Promise<void>) {
 	const page = mount(InvitePage, { global: { stubs: nuxtUiStubs } });
 	await flushPromises();
+	await expect.poll(() => page.find('input[type="email"]').exists()).toBe(true);
 	await page.find('input[type="email"]').setValue('newcomer@example.com');
 	await choose(page);
 	await page.find('form').trigger('submit');
@@ -43,6 +57,10 @@ async function invite(choose: (page: ReturnType<typeof mount>) => Promise<void>)
 beforeEach(() => {
 	invited.length = 0;
 	answer = { status: 200, body: { id: 'the-invitation' } };
+	standing = {
+		status: 200,
+		body: { organisation: { id: 'keepr', name: 'Keepr' }, standing: 'owner' },
+	};
 });
 
 describe('the invite page', () => {
@@ -74,5 +92,14 @@ describe('the invite page', () => {
 
 		expect(page.get('[data-refusal]').text()).toContain('Only an owner can invite another owner');
 		expect(page.find('[data-invited]').exists()).toBe(false);
+	});
+
+	it('is closed to a User who does not manage the Organisation', async () => {
+		standing = { status: 403, body: { code: 'NOT_A_MANAGER', message: 'no' } };
+
+		const page = mount(InvitePage, { global: { stubs: nuxtUiStubs } });
+
+		await expect.poll(() => page.find('[data-closed]').exists()).toBe(true);
+		expect(page.find('form').exists()).toBe(false);
 	});
 });

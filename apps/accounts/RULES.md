@@ -1,6 +1,6 @@
 # Keepr Accounts rules
 
-What Keepr Accounts makes true for a User, an operator and every App. Its words are the root `GLOSSARY.md`'s, under Identity and access; the reasons are in the decisions cited: ADR-0114 and ADR-0115 in this app's `docs/adr`, ADR-0012 in `apps/stream/docs/adr`, and the rest in the root `docs/adr`.
+What Keepr Accounts makes true for a User, an operator and every App. Its words are the root `GLOSSARY.md`'s, under Identity and access; the reasons are in the decisions cited: ADR-0114, ADR-0115 and ADR-0116 in this app's `docs/adr`, ADR-0010 and ADR-0012 in `apps/stream/docs/adr`, and the rest in the root `docs/adr`.
 
 ## Identity
 
@@ -65,6 +65,15 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - An invitee with no User accepts by choosing a name and a password of 8 to 128 characters in no breach. Keepr Accounts creates exactly one User, its email verified, signs them in, makes them a member with the Organisation role offered, and gives them App access in each App the Invitation named. An address that already has a User is told to sign in to accept. (ADR-0114)
 - Accepting copies the Invitation's App roles into App access, whoever accepts. (ADR-0114)
 
+## Members
+
+- An owner or admin of an Organisation lists its members at `/members`, each with their Organisation role and App roles, for the Organisation they are working in; a Keepr Administrator manages any Organisation as its owner would. Anyone else is refused 403 `NOT_A_MANAGER`, and finds the member and Invitation screens closed. (ADR-0116)
+- They give a member an App role in one App, or take that App's access away while the member stays; an App or role the App registry does not name is refused 400 `APP_ROLE_NOT_IN_REGISTRY`. They remove a member, with all their App access. (ADR-0114, ADR-0116)
+- Only an owner, or a Keepr Administrator, changes a member's Organisation role or removes an owner: an admin is refused 403 `OWNER_REQUIRED`. The last owner is never demoted or removed: 409 `LAST_OWNER`. (ADR-0116)
+- Each change needs a sign-in no older than ten minutes, counted from the Session's sign-in, which renewing it does not move. An older one is refused 403 `RECENT_SIGN_IN_REQUIRED` and asked to sign in again. Listing needs none. (ADR-0116)
+- The library's `/organization/update-member-role` and `/organization/remove-member` answer 404 to every request. (ADR-0116)
+- A write to Keepr Accounts' own routes that needs a Session is refused 403 when another origin's page made the browser send it, as Stream Keepr's API boundary refuses one (ADR-0010, ADR-0116).
+
 ## First Administrator Claim
 
 - No request creates a Keepr Administrator. `pnpm claim-first-administrator <email>` writes a First Administrator Claim, and prints the link that claims it, only while no Keepr Administrator exists. (ADR-0115)
@@ -73,3 +82,4 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 ## Audit Record
 
 - Each of these is a row, with who acted and when, the Organisation and the User it touched where there is one: a First Administrator Claim made (by the command, naming the operator's login) and consumed, an Organisation created, an Invitation created and accepted. (ADR-0114, ADR-0115)
+- So is each change to a member: an App role set or removed, an Organisation role changed, a member removed; with what they had before and whether an owner, an admin or a Keepr Administrator made it. (ADR-0116)
