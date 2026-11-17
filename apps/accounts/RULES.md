@@ -83,6 +83,8 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - Only an owner, or a Keepr Administrator, changes a member's Organisation role or removes an owner: an admin is refused 403 `OWNER_REQUIRED`. The last owner is never demoted or removed: 409 `LAST_OWNER`. (ADR-0116)
 - Each change needs a sign-in no older than ten minutes, counted from the Session's sign-in, which renewing it does not move. An older one is refused 403 `RECENT_SIGN_IN_REQUIRED` and asked to sign in again. Listing needs none. (ADR-0116)
 - The library's `/organization/update-member-role` and `/organization/remove-member` answer 404 to every request. (ADR-0116)
+- A member without administrative rights sees nobody else's access: the library's `/organization/list-members` and `/organization/get-full-organization`, which would answer every member's email and roles, answer 404 to every request. (#1228 story 40)
+- Nobody leaves an Organisation of their own accord: the library's `/organization/leave` answers 404 to every request, and a member goes only by being removed, which is audited and never takes the last owner. (#1228 § Administration and audit)
 - A write to Keepr Accounts' own routes that needs a Session is refused 403 when another origin's page made the browser send it, as Stream Keepr's API boundary refuses one (ADR-0010, ADR-0116).
 
 ## Keepr Administrator

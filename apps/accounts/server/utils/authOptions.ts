@@ -109,6 +109,18 @@ export const MEMBER_PATHS_KEEPR_SERVES = [
  */
 export const ORGANISATION_PATHS_CLOSED = ['/organization/update', '/organization/delete'];
 
+/**
+ * The organisation add-on's routes a member reaches with no administrative
+ * right, closed: the two reads answer every member's email and roles, which only
+ * those who manage the members see (`listMembers`); leaving would take the
+ * member's App access unaudited, and Keepr has only removal.
+ */
+export const MEMBERSHIP_PATHS_CLOSED = [
+	'/organization/list-members',
+	'/organization/get-full-organization',
+	'/organization/leave',
+];
+
 export interface AuthOptionsInput {
 	sharedCookieDomain: string | undefined;
 	/** Where the email a request causes is sent. */
@@ -218,7 +230,12 @@ export function authOptions({
 				},
 			},
 		},
-		disabledPaths: [...CLOSED_PATHS, ...MEMBER_PATHS_KEEPR_SERVES, ...ORGANISATION_PATHS_CLOSED],
+		disabledPaths: [
+			...CLOSED_PATHS,
+			...MEMBER_PATHS_KEEPR_SERVES,
+			...ORGANISATION_PATHS_CLOSED,
+			...MEMBERSHIP_PATHS_CLOSED,
+		],
 		baseURL: {
 			allowedHosts: ALLOWED_HOSTS,
 			fallback: KEEPR_ACCOUNTS_ORIGIN,

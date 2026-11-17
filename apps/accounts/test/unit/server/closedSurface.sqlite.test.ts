@@ -128,3 +128,39 @@ describe('the library’s member routes', () => {
 		expect(response.status).toBe(404);
 	});
 });
+
+// A member without administrative rights sees nobody else's access, and leaves
+// only by being removed, which is audited and keeps the last owner.
+describe('the library’s membership reads and leaving', () => {
+	let members: TestAccounts;
+	let organizationId: string;
+	let memberCookie: string;
+
+	beforeAll(async () => {
+		members = await createTestAccounts();
+		await members.createUser('owner@keepr.digital');
+		organizationId = (await members.createOrganisation('reads', 'owner@keepr.digital')).id;
+		const { id } = await members.createUser('member@keepr.digital');
+		await members.addMember(id, 'reads');
+		memberCookie = await members.signIn('member@keepr.digital');
+	});
+
+	afterAll(async () => await members.harness.close());
+
+	it.each([
+		['GET', '/organization/list-members'],
+		['GET', '/organization/get-full-organization'],
+		['POST', '/organization/leave'],
+	])('%s %s answers 404 to a member', async (method, path) => {
+		const response = await members.send(
+			method === 'GET' ? `${path}?organizationId=${organizationId}` : path,
+			{
+				method,
+				headers: { cookie: memberCookie },
+				...(method === 'GET' ? {} : { body: { organizationId } }),
+			},
+		);
+
+		expect(response.status).toBe(404);
+	});
+});
