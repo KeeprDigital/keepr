@@ -32,8 +32,9 @@ function scriptsOf(manifest: string) {
 const scripts = scriptsOf('package.json');
 /** The workspace's own: the lint is one run over every app and package. */
 const workspaceScripts = scriptsOf('../../package.json');
-/** Score Keepr's heavy gates draw on the same machine's slots. */
+/** Score Keepr's and Keepr Accounts' heavy gates draw on the same machine's slots. */
 const scoreScripts = scriptsOf('../score/package.json');
+const accountsScripts = scriptsOf('../accounts/package.json');
 
 function workflow(name: string): Workflow {
 	return parse(readFileSync(`../../.github/workflows/${name}`, 'utf8')) as Workflow;
@@ -147,6 +148,8 @@ describe('every heavy gate takes run slots', () => {
 		{ script: 'worker:smoke', cost: 'worker-smoke', from: scripts },
 		{ script: 'build', cost: 'build', from: scoreScripts },
 		{ script: 'typecheck', cost: 'typecheck', from: scoreScripts },
+		{ script: 'build', cost: 'build', from: accountsScripts },
+		{ script: 'typecheck', cost: 'typecheck', from: accountsScripts },
 	] as const)('pnpm $script runs inside the slots a $cost costs', ({ script, cost, from }) => {
 		expect(RUN_SLOT_COSTS).toHaveProperty(cost);
 		expect(from[script]).toContain(`keepr-slots ${cost} -- `);

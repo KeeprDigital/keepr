@@ -5,7 +5,7 @@ import * as schema from '~~/server/db/schema';
 import { updateFeatureMatchSchema } from '~~/server/schemas/api/featureMatch';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // Phase, Round, Talent, Match, Feature Match Slot and Player List writes over real SQL:
 // a committed one is stored and announced under the writer's origin, a refused one

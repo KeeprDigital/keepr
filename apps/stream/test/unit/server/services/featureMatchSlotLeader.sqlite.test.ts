@@ -14,7 +14,7 @@ import {
 	NAMI,
 	ZORO,
 } from '~~/test/helpers/opCards';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /**
  * A Slot side's Leader is picked on a One Piece Event and references the card

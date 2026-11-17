@@ -11,12 +11,18 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
 - `packages/`: what more than one app uses, each named `@keepr/<name>` and
   consumed as TypeScript source: the Pairing and Standings Engines
   (`pairing`, `standings`), what both use (`engine-core`), and their test
-  support (`testkit`, `engine-integration`), and the workspace's own tooling
-  (`tooling`: run slots, the workerd reaper, CI's scripts). Each has a `typecheck` and a
+  support (`testkit`, `engine-integration`), the workspace's own tooling
+  (`tooling`: run slots, the workerd reaper, the deploy guard, CI's scripts),
+  and the Accounts Stand-in (`accounts-stand-in`), which answers locally as
+  Keepr Accounts and is never deployed (ADR-0113). Each has a `typecheck` and a
   `test` script; `pnpm typecheck:packages` and `pnpm test:packages` at the
   root run them all. `nuxt-layer` is the Nuxt layer every app extends, with the
   server, client and test foundation the apps share: what a second app needs
   moves there, never into a second copy. Its `README.md` has its rules.
+- `apps/accounts`: Keepr Accounts (`@keepr/accounts`), the one Keepr identity,
+  with its own database and the only Better Auth (ADR-0112). It speaks the
+  root `GLOSSARY.md` and adds its own `GLOSSARY.md`; `RULES.md` and
+  `README.md` there say the rest.
 - `apps/score`: Score Keepr (`@keepr/score`), scaffolded and not built, with
   the Tournament Engine's spec and `GLOSSARY.md`: use its words in the packages. Each
   engine's decisions are in its package's `docs/adr`. `apps/score/AGENTS.md` adds its own rules.

@@ -1,0 +1,113 @@
+<script setup lang="ts">
+import type { RefusalSentences } from '~/utils/refusal';
+import { refusalSentence } from '~/utils/refusal';
+import { acceptedReturnAddress } from '~~/shared/utils/returnAddress';
+
+const route = useRoute();
+
+/** Where the page that sent the User here asked them to be returned (`?returnTo=`). */
+const requested = computed(() =>
+	typeof route.query.returnTo === 'string' ? route.query.returnTo : undefined,
+);
+const returnAddress = computed(() =>
+	acceptedReturnAddress(requested.value, window.location.origin),
+);
+const returnAddressRefused = computed(
+	() => requested.value !== undefined && returnAddress.value === null,
+);
+
+const credentials = reactive({ email: '', password: '' });
+const submitting = ref(false);
+const refusal = ref<string | null>(null);
+
+const SIGN_IN_REFUSALS: RefusalSentences = {
+	// A disabled User is told so, in the server's words.
+	serverMessage: ['BANNED_USER'],
+	statuses: {
+		401: 'That email and password do not match an account.',
+		429: 'Too many attempts. Wait a few seconds and try again.',
+	},
+	otherwise: 'Signing in failed. Try again.',
+};
+
+async function submit() {
+	// One attempt at a time: a second would spend the rate limit the first is using.
+	if (submitting.value) return;
+	submitting.value = true;
+	refusal.value = null;
+
+	try {
+		await $fetch('/api/auth/sign-in/email', {
+			method: 'POST',
+			body: { email: credentials.email, password: credentials.password },
+		});
+	} catch (failure) {
+		refusal.value = refusalSentence(failure, SIGN_IN_REFUSALS);
+		return;
+	} finally {
+		submitting.value = false;
+	}
+
+	const destination = returnAddress.value ?? '/';
+	await navigateTo(destination, { external: !destination.startsWith('/') });
+}
+</script>
+
+<template>
+	<div class="flex min-h-screen items-center justify-center p-4">
+		<UCard class="w-full max-w-sm">
+			<UForm :state="credentials" @submit="submit">
+				<div class="flex flex-col gap-4">
+					<h1 class="text-lg font-semibold">Sign in to Keepr</h1>
+
+					<UAlert
+						v-if="returnAddressRefused"
+						data-return-address="refused"
+						color="warning"
+						variant="subtle"
+						description="The link that brought you here pointed outside Keepr, so you will stay on Keepr Accounts after signing in."
+					/>
+
+					<UAlert
+						v-if="refusal"
+						data-refusal
+						color="error"
+						variant="subtle"
+						icon="i-lucide-triangle-alert"
+						:description="refusal"
+					/>
+
+					<UFormField name="email" label="Email">
+						<UInput
+							v-model="credentials.email"
+							type="email"
+							autofocus
+							autocomplete="username"
+							class="w-full"
+							:disabled="submitting"
+						/>
+					</UFormField>
+
+					<UFormField name="password" label="Password">
+						<UInput
+							v-model="credentials.password"
+							type="password"
+							autocomplete="current-password"
+							class="w-full"
+							:disabled="submitting"
+						/>
+					</UFormField>
+
+					<UButton type="submit" color="primary" block :loading="submitting">Sign in</UButton>
+					<UButton to="/forgot-password" color="neutral" variant="link" block>
+						Forgotten your password?
+					</UButton>
+
+					<p class="text-center text-xs text-muted">
+						People join Keepr by Invitation, from an Organisation they will work in.
+					</p>
+				</div>
+			</UForm>
+		</UCard>
+	</div>
+</template>

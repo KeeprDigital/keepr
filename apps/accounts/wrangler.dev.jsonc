@@ -1,0 +1,18 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "keepr-accounts-local",
+	"compatibility_date": "2026-07-16",
+	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"],
+	// A binding-only entry creates a local database. It has no remote ID, so
+	// local development cannot reach a deployed one.
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "keepr-accounts-local",
+			"migrations_dir": "server/db/migrations/sqlite"
+		}
+	],
+	// For `pnpm beside`, the built Worker on this file: Wrangler simulates the
+	// email service locally and sends nothing. `nuxt dev` records email itself.
+	"send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["accounts@keepr.digital"] }]
+}

@@ -13,11 +13,11 @@ export default defineNuxtConfig({
 | Path | Holds |
 |---|---|
 | `nuxt.config.ts` | The shell: client rendering, Nuxt UI, VueUse, the colour mode, strict TypeScript, the Cloudflare Workers target. |
-| `server/utils` | Errors a route reports, D1 parameter helpers, the request-body ceiling, shared-secret checks, error-log fields, the server time reading. Auto-imported by Nitro. |
-| `shared/` | What the server and the client both read: the state-conflict code, the body-limit route rule's types, the server time path, clock time formatting and parsing, Intervals. |
-| `app/composables`, `app/utils` | Request feedback, forms, unsaved changes, async actions, store helpers, server time, the Clock Projection scheduler and the Frame Clock, failure sentences. Auto-imported. |
+| `server/utils` | Errors a route reports, D1 parameter helpers, the request-body ceiling, shared-secret checks, error-log fields, the server time reading, who a request belongs to (`requestIdentity.ts`), the refusal of a cross-site write (`crossSiteMutation.ts`). Auto-imported by Nitro. |
+| `shared/` | What the server and the client both read: the state-conflict code, the body-limit route rule's types, the server time path, clock time formatting and parsing, Intervals, the App registry, the Identity Proof's shape. |
+| `app/composables`, `app/utils` | Request feedback, forms, unsaved changes, async actions, store helpers, who am I (`useIdentity`), server time, the Clock Projection scheduler and the Frame Clock, failure sentences. Auto-imported. |
 | `app/components/UI` | Confirm, empty, loading, search and tab components, as `<UI…>`. |
-| `test/` | Test kits an app's tests import, and this layer's own tests. |
+| `test/` | Test kits an app's tests import, the SQLite D1 harness over an app's real migrations and the auth schema contract (`authSchemaContract.ts`) among them, and this layer's own tests. |
 | `RULES.md`, `docs/adr` | What the layer's named modules must do, and the decisions behind them (ADR-0095). Their terms are in the root `GLOSSARY.md`. |
 | `vitest.shared.ts` | What an app's Vitest configurations name: the h3 Nitro runs on, the setup files, the load-tolerant bounds. |
 
@@ -28,7 +28,7 @@ export default defineNuxtConfig({
 - **No route and no middleware.** An app registers its own, in its own order, and calls the layer's code.
 - **Nothing here knows a product.** If it names an Event, a Screen or a Tournament, it belongs in that app.
 - **A named module's term is in the root `GLOSSARY.md`**, under Platform. A module that moves here brings its term in the same change.
-- **It stands alone.** `pnpm typecheck` and `pnpm test` run here, with no app around it. A rule's tests live here with the rule.
+- **It stands alone.** `pnpm typecheck` and `pnpm test` run here, with no app around it. A rule's tests live here with the rule, but for one: `resolveRequestIdentity` is tested in `apps/accounts` (`test/unit/server/requestIdentity.sqlite.test.ts`), against Keepr Accounts' real minting, which the layer cannot import (ADR-0113, in the root `docs/adr`). How a route meets it is tested here.
 - **Something two apps need moves here, in the change that moves the first app onto it.** Do not copy a file between apps.
 
 ## Server time
@@ -41,6 +41,32 @@ import { readServerTime } from '@keepr/nuxt-layer/server/utils/serverTime';
 
 export default defineEventHandler(readServerTime);
 ```
+
+## Who a request belongs to
+
+An App relies on Keepr Accounts (ADR-0112, ADR-0113). It binds the service in both `wrangler.jsonc` and `wrangler.dev.jsonc`, by the production name, so the Accounts Stand-in, a local Keepr Accounts and production are the same to it:
+
+```jsonc
+"services": [{ "binding": "KEEPR_ACCOUNTS", "service": "keepr-accounts" }]
+```
+
+The layer registers no route and no middleware, so the App calls it from its own. Its "who am I", which `useIdentity` reads:
+
+```ts
+// server/api/identity.get.ts
+import { resolveRequestIdentity } from '@keepr/nuxt-layer/server/utils/requestIdentity';
+
+export default defineEventHandler((event) => resolveRequestIdentity(event, 'stream'));
+```
+
+and a route that needs the App:
+
+```ts
+const identity = await resolveRequestIdentity(event, 'stream');
+requireAppRole(identity, 'admin'); // or requireAppAccess(identity)
+```
+
+No App relies on it yet. One that adopts it runs its `dev` script through the Accounts Stand-in, `keepr-accounts-stand-in -- nuxt dev` (`packages/accounts-stand-in`), and its previews, smoke runs and integration and acceptance suites the same way (ADR-0113). `NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN` points `useIdentity`'s sign-in at a local Keepr Accounts instead of `https://accounts.keepr.digital`.
 
 ## Commands
 

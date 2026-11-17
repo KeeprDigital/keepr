@@ -15,7 +15,7 @@ import {
 } from '~~/test/helpers/magicDeckText';
 import { fakeOpCardBulkLookup, mockOpWriteBoundaries } from '~~/test/helpers/opCards';
 import { createScryfallFake } from '~~/test/helpers/scryfallFake';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Commander Seat's Feature Match Deck List (ADR-0087): a pasted Moxfield copy, each card
 // the printing its line names, saved with the Commanders its operator confirmed.

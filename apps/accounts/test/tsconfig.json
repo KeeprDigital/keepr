@@ -1,0 +1,7 @@
+{
+	// The tests are a second program, and with them the server they drive: the
+	// generated program covers the app and `test/nuxt` only.
+	"extends": "../.nuxt/tsconfig.json",
+	"include": ["../.nuxt/nuxt.d.ts", ".", "../server/**/*", "../shared/**/*"],
+	"exclude": ["./nuxt/**/*"]
+}

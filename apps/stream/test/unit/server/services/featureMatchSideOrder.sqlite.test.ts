@@ -5,7 +5,7 @@ import * as schema from '~~/server/db/schema';
 import { mapFeatureMatchToResponse } from '~~/server/mappers/featureMatch';
 import { featureMatchTokenValues } from '~~/shared/featureMatchOverlayValues';
 import { LAW, NAMI, opLeaderCatalogueRow, ZORO } from '~~/test/helpers/opCards';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /**
  * The Feature Match Session owns which side each player sits on; the Slot keeps

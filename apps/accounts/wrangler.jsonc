@@ -1,0 +1,11 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	// Nitro builds .output/server/wrangler.json from this file, adding the Worker
+	// entrypoint, assets, and name. Nothing is deployed yet: the route, the
+	// production database and the secret are the deploy's to add.
+	"compatibility_date": "2026-07-16",
+	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"],
+	// Cloudflare's email service (`server/utils/email.ts`), which may send only as
+	// Keepr. `wrangler dev` simulates it, so a local run of the Worker mails nobody.
+	"send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["accounts@keepr.digital"] }]
+}

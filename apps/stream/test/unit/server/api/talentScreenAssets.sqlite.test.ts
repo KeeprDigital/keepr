@@ -13,7 +13,7 @@ import {
 	publishedRevision,
 } from '~~/test/helpers/graphicsLibrary';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Talent Screen's Screen Output resolves the photos of the Talents it shows, and
 // only while it shows them with their photos (ADR-0070).

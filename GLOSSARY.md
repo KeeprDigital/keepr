@@ -25,8 +25,12 @@ Anyone who can sign in: one per person across every App. A User is not a Player;
 _Avoid_: account (acceptable when the subject is the credential), member (a User in one Organisation), author
 
 **Local Developer User**:
-The stand-in User a development setup answers with, so local work needs no sign-in. No production build knows it.
+The User the Accounts Stand-in answers with, so local work needs no sign-in: a Keepr Administrator who owns the Keepr Organisation and holds the highest App role in every App. No production build knows it.
 _Avoid_: bypass user, test user
+
+**Accounts Stand-in**:
+The Worker a development setup runs under Keepr Accounts' service name, which answers every App's request with an Identity Proof for the Local Developer User, signed by a key of its own. It is never deployed.
+_Avoid_: mock accounts, fake auth, auth bypass, stub
 
 **Session**:
 One signed-in browser, recognised by every App. It carries the Organisation its User is working in, and never owns work. "Session" alone always means this: any other session is written in full.
@@ -59,6 +63,10 @@ _Avoid_: admin (an Organisation role), superuser, Graphics Administrator (a Stre
 **Identity Proof**:
 The short-lived signed statement Keepr Accounts gives an App about one request: its User, Session, active Organisation, Organisation role, App roles, and whether the User is a Keepr Administrator. An App checks it for itself.
 _Avoid_: token alone, JWT, session token
+
+**Return Address**:
+Where Keepr Accounts sends a User once they have signed in: the page of the App that sent them to sign in.
+_Avoid_: redirect, callback URL
 
 ### Releasing and deploying
 
@@ -93,6 +101,10 @@ _Avoid_: ticker, timer (nothing ticks; a projection is re-evaluated when it chan
 **Interval**:
 Equal periods counted from an anchor instant: which period is current, and when the next begins, is a pure function of the anchor, the period and server time.
 _Avoid_: cycle, loop.
+
+**Cross-site write check**:
+Whether a state-changing request was made by a browser on behalf of another origin, read from what the browser says about where the request came from. Every app's Session-authenticated writes refuse what it flags.
+_Avoid_: CSRF token, origin check (Better Auth's own, which trusts a list of hosts)
 
 **Frame Clock**:
 The instant motion is read at: server time, read again on every animation frame while anything read at it is in motion, and left where it stopped once all of it has settled.

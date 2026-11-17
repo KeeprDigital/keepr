@@ -12,7 +12,7 @@ import {
 	graphicAssets,
 } from '~~/server/db/schema/graphicsAsset';
 import { testGraphicAssetReference } from '~~/test/helpers/graphicsAssetIdentities';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A template write commits only references to existing revisions of active assets that fit
 // their slots; a refused write leaves the template and its index as they were (#614).

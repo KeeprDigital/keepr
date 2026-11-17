@@ -13,7 +13,7 @@ import {
 	createCommandIdSequence,
 	seedBroadcastGraphicsScreen,
 } from '~~/test/helpers/broadcastGraphicsScreen';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Talent or Event write reaching the Broadcast Graphics Live Session: the refresh
 // re-reads Event Data from real rows, stores what a live Social Profile Projection on

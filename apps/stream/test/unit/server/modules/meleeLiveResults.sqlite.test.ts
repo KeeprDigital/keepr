@@ -11,7 +11,7 @@ import {
 	meleePlayer,
 	meleeStanding,
 } from '~~/test/helpers/meleeFixtures';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /*
  * A Live Results tick against real SQL: only Melee, Ably and the clock are stood in

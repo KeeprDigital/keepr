@@ -17,7 +17,7 @@ import {
 } from '~~/shared/builtInFeatureMatchLayoutTemplates';
 import { seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
 import { testGraphicAssetReference } from '~~/test/helpers/graphicsAssetIdentities';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /**
  * A Graphics Authoring Lease holds at the commit, not only at the door (#607).

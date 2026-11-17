@@ -4,7 +4,7 @@ import type {
 } from '~~/server/modules/graphics-asset-library/delivery';
 import type { InMemoryGraphicsCanonicalObjectStore } from '~~/server/modules/graphics-asset-library/object-store';
 import type { GraphicAssetId, GraphicAssetRevisionId } from '~~/shared/types/graphicsAsset';
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 import { createGraphicsAssetDelivery } from '~~/server/modules/graphics-asset-library/delivery';
@@ -16,7 +16,7 @@ import {
 	ingestImage,
 	publishedRevision,
 } from '~~/test/helpers/graphicsLibrary';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 let harness: SqliteD1Harness;
 

@@ -1,12 +1,12 @@
 import type { GraphicsDiscrepancy } from '~~/shared/types/graphicsAsset';
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 import { processStillImage } from '~~/server/modules/graphics-asset-library/still-image';
 import { digestOf } from '~~/test/helpers/graphicsFixtures';
 import { jpegDeclaring } from '~~/test/helpers/graphicsImageFixtures';
 import { boundedBytes, createTestGraphicsLibrary } from '~~/test/helpers/graphicsLibrary';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 const codecs = vi.hoisted(() => ({
 	decodeJpeg: vi.fn(),

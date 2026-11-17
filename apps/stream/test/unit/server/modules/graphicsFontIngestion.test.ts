@@ -1,10 +1,10 @@
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 import { consumeBoundedByteStream } from '~~/server/modules/graphics-asset-library/object-store';
 import { createTestGraphicsLibrary } from '~~/test/helpers/graphicsLibrary';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { ingestPackageStaticFont } from '~~/test/helpers/templatePackageLibrary';
 
 let harness: SqliteD1Harness;

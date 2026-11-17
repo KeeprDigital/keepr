@@ -8,7 +8,7 @@ import { mapFeatureMatchToResponse } from '~~/server/mappers/featureMatch';
 import { SEAT_VALUES } from '~~/shared/types/enums';
 import { ATRAXA, KRAUM, typedSeat as seat, TYMNA } from '~~/test/helpers/commanders';
 import { fakeOpCardBulkLookup, mockOpWriteBoundaries } from '~~/test/helpers/opCards';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /**
  * A Commander Slot's Session plays one game across its four Seats, and follows

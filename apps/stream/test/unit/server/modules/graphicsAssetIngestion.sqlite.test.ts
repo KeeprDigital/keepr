@@ -2,7 +2,7 @@ import type {
 	GraphicAssetValidationReport,
 	GraphicsIngestionOperation,
 } from '~~/shared/types/graphicsAsset';
-import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 import {
@@ -36,7 +36,7 @@ import {
 	storedRevisionContent,
 } from '~~/test/helpers/graphicsLibrary';
 import { callsTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 let harness: SqliteD1Harness;
 

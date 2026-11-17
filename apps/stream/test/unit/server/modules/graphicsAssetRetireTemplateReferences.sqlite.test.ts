@@ -10,7 +10,7 @@ import {
 	ingestImage,
 	publishedRevision,
 } from '~~/test/helpers/graphicsLibrary';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /**
  * Retire is refused while a saved template references any revision of the asset, in the

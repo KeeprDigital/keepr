@@ -48,7 +48,7 @@
 		},
 		{
 			// A focused or skipped test is not committed.
-			"files": ["packages/**/*.test.ts", "apps/score/**/*.test.ts"],
+			"files": ["packages/**/*.test.ts", "apps/score/**/*.test.ts", "apps/accounts/**/*.test.ts"],
 			// The layer's and the tooling's tests came from Stream Keepr's, which the plugin's
 			// other rules do not hold.
 			"excludeFiles": ["packages/nuxt-layer/**", "packages/tooling/**"],

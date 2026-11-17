@@ -2,7 +2,7 @@ import type { UpdateFeatureMatchInput } from '~~/shared/api';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // Two operators editing one Slot: the write is compare-and-swap on everything its decision
 // read, so the loser matches no row and gets a state conflict (#462). The winner's update is

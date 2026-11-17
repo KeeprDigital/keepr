@@ -11,7 +11,7 @@ import {
 	publishedRevision,
 } from '~~/test/helpers/graphicsLibrary';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The Evidence Ledger as a Graphics Administrator queries it: the address names one
 // subject as a kind and an identity, and the route reads that pair as one filter or

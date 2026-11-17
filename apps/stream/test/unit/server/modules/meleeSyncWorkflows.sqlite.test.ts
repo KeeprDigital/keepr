@@ -7,7 +7,7 @@ import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 import { meleeCompetitor, meleeMatch, meleePlayer } from '~~/test/helpers/meleeFixtures';
 import { providerRefusal } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
-import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
+import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /*
  * The Melee Sync commands that run several stages, against real SQL: what each
