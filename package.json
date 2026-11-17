@@ -12,8 +12,8 @@
 		"typecheck:packages": "pnpm --filter \"./packages/*\" typecheck",
 		"test:packages": "pnpm --filter \"./packages/*\" --workspace-concurrency=1 test",
 		"bench:packages": "pnpm --filter \"./packages/*\" --if-present bench:check",
-		"verify": "pnpm typecheck:packages && pnpm test:packages && pnpm --filter @keepr/score verify && pnpm --filter @keepr/stream verify",
-		"verify:quick": "pnpm typecheck:packages && pnpm test:packages && pnpm --filter @keepr/score verify && pnpm --filter @keepr/stream verify:quick"
+		"verify": "pnpm typecheck:packages && pnpm test:packages && pnpm --filter @keepr/score verify && pnpm --filter @keepr/accounts verify && pnpm --filter @keepr/stream verify",
+		"verify:quick": "pnpm typecheck:packages && pnpm test:packages && pnpm --filter @keepr/score verify && pnpm --filter @keepr/accounts verify && pnpm --filter @keepr/stream verify:quick"
 	},
 	"devDependencies": {
 		"@keepr/tooling": "workspace:*",

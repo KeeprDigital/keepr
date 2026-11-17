@@ -17,6 +17,9 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
   root run them all. `nuxt-layer` is the Nuxt layer every app extends, with the
   server, client and test foundation the apps share: what a second app needs
   moves there, never into a second copy. Its `README.md` has its rules.
+- `apps/accounts`: Keepr Accounts (`@keepr/accounts`), the one Keepr identity,
+  with its own database and the only Better Auth (ADR-0112). It speaks the
+  root `GLOSSARY.md`; `RULES.md` and `README.md` there say the rest.
 - `apps/score`: Score Keepr (`@keepr/score`), scaffolded and not built, with
   the Tournament Engine's spec and `GLOSSARY.md`: use its words in the packages. Each
   engine's decisions are in its package's `docs/adr`. `apps/score/AGENTS.md` adds its own rules.

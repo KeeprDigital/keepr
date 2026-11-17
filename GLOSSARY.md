@@ -60,6 +60,18 @@ _Avoid_: admin (an Organisation role), superuser, Graphics Administrator (a Stre
 The short-lived signed statement Keepr Accounts gives an App about one request: its User, Session, active Organisation, Organisation role, App roles, and whether the User is a Keepr Administrator. An App checks it for itself.
 _Avoid_: token alone, JWT, session token
 
+**Return Address**:
+Where Keepr Accounts sends a User once they have signed in: the page of the App that sent them to sign in.
+_Avoid_: redirect, callback URL
+
+**Audit Record**:
+Keepr Accounts' record of administrative actions: who did what, when, in which Organisation and to which User. Rows are only added.
+_Avoid_: audit log, history, Evidence Ledger (a Stream Keepr record)
+
+**First Administrator Claim**:
+The one-time offer of the first Keepr Administrator role to an email address, written by whoever deploys Keepr and claimed by setting up that User's sign-in.
+_Avoid_: bootstrap, seed admin
+
 ### Platform
 
 Named modules of `packages/nuxt-layer`. A module's term lives beside its code: one that moves into the layer brings its term here in the same change.

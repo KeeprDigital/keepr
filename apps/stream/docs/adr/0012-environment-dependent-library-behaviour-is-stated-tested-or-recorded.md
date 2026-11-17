@@ -1,6 +1,6 @@
 # ADR-0012: Environment-dependent library behaviour is stated, tested, or recorded
 
-Accepted · 2026-08-20, census refreshed for 1.7.7 under #621 · [#438](https://github.com/KeeprDigital/stream-keepr/issues/438); secure-cookie prefix amended under [#451](https://github.com/KeeprDigital/stream-keepr/issues/451); rate limiter amended under [#697](https://github.com/KeeprDigital/stream-keepr/issues/697) · Amended by ADR-0083: the `rateLimit` table is in `0000_baseline_2.sql`, which replaced `0001_since_v1_5_0` · Amended by ADR-0090: a version is pinned in the pnpm catalog, not in `package.json`
+Accepted · 2026-08-20, census refreshed for 1.7.7 under #621 · [#438](https://github.com/KeeprDigital/stream-keepr/issues/438); secure-cookie prefix amended under [#451](https://github.com/KeeprDigital/stream-keepr/issues/451); rate limiter amended under [#697](https://github.com/KeeprDigital/stream-keepr/issues/697) · Amended by ADR-0083: the `rateLimit` table is in `0000_baseline_2.sql`, which replaced `0001_since_v1_5_0` · Amended by ADR-0090: a version is pinned in the pnpm catalog, not in `package.json` · Amended by ADR-0112: Keepr Accounts states and pins the same sites for its own Better Auth
 
 ### Decision
 

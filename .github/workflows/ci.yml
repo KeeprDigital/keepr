@@ -36,10 +36,10 @@
 # waiting on a check that cannot arrive; a workflow-level `paths-ignore` would
 # do exactly that, and in the queue would hold the group until it timed out.
 #
-# Stream Keepr is `apps/stream` and Score Keepr `apps/score` (ADR-0091). Each
-# job that runs an app's scripts runs them in its directory
-# (`defaults.run.working-directory`); a `uses:` step, the setup action's
-# install among them, runs at the repository's root.
+# Stream Keepr is `apps/stream`, Score Keepr `apps/score` and Keepr Accounts
+# `apps/accounts` (ADR-0091). Each job that runs an app's scripts runs them in
+# its directory (`defaults.run.working-directory`); a `uses:` step, the setup
+# action's install among them, runs at the repository's root.
 
 name: CI
 
@@ -254,6 +254,26 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  # Keepr Accounts (ADR-0112): its typecheck, its server and page tests, and the
+  # build a Worker would be deployed from. Nothing deploys it yet.
+  accounts:
+    name: Keepr Accounts
+    needs: scope
+    if: needs.scope.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/accounts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
   integration:
     name: Integration suite (${{ matrix.shard }}/2)
     needs: scope
@@ -348,6 +368,7 @@ jobs:
         nuxt,
         packages,
         score,
+        accounts,
         integration,
         server-and-browser,
         worker-guard,
@@ -395,6 +416,7 @@ jobs:
         nuxt,
         packages,
         score,
+        accounts,
         integration,
         server-and-browser,
         worker-guard,

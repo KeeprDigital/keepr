@@ -17,6 +17,7 @@
 		// Generated: pnpm's, Drizzle's, Wrangler's (`pnpm types:app --check` compares it byte for byte), release-please's.
 		"pnpm-lock.yaml",
 		"apps/stream/server/db/migrations/**",
+		"apps/accounts/server/db/migrations/**",
 		"**/worker-configuration.d.ts",
 		".release-please-manifest.json",
 		// Served as they are: the acceptance pages and their fixtures.

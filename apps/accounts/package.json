@@ -1,0 +1,39 @@
+{
+	"name": "@keepr/accounts",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "pnpm db:migrate && nuxt dev",
+		"build": "keepr-slots build -- nuxt build",
+		"typecheck": "nuxt prepare && keepr-slots typecheck -- vue-tsc --noEmit && keepr-slots typecheck -- vue-tsc --noEmit -p test/tsconfig.json",
+		"test": "vitest run && vitest run --config vitest.nuxt.config.ts",
+		"verify": "pnpm typecheck && pnpm test && pnpm build",
+		"postinstall": "nuxt prepare",
+		"lint": "pnpm --workspace-root lint",
+		"lint:fix": "pnpm --workspace-root lint:fix",
+		"format": "pnpm --workspace-root format",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "wrangler d1 migrations apply DB --local --config wrangler.dev.jsonc < /dev/null"
+	},
+	"dependencies": {
+		"@keepr/nuxt-layer": "workspace:*",
+		"better-auth": "catalog:server",
+		"drizzle-orm": "catalog:server",
+		"nuxt": "catalog:framework",
+		"vue": "catalog:framework",
+		"vue-router": "catalog:framework"
+	},
+	"devDependencies": {
+		"@keepr/tooling": "workspace:*",
+		"@libsql/client": "catalog:test",
+		"@nuxt/test-utils": "catalog:test",
+		"@types/node": "catalog:tooling",
+		"@vue/test-utils": "catalog:test",
+		"drizzle-kit": "catalog:server",
+		"happy-dom": "catalog:test",
+		"typescript": "catalog:tooling",
+		"vitest": "catalog:test",
+		"vue-tsc": "catalog:tooling",
+		"wrangler": "catalog:cloudflare"
+	}
+}
