@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkPendingReleases } from '../../../scripts/release-gate.mjs';
+import { checkPendingReleases } from '../scripts/release-gate.mjs';
 
 const RELEASE_COMMIT = 'c'.repeat(40);
 

@@ -22,7 +22,7 @@ import {
 } from './graphics-acceptance/deployed-target.mjs';
 import { AcceptanceFailure, createAcceptanceEvidence } from './graphics-acceptance/evidence.mjs';
 import { reportFailures } from './graphics-acceptance/harness.mjs';
-import { runHoldingSlots } from './slots.mjs';
+import { runHoldingSlots } from '@keepr/tooling/scripts/slots.mjs';
 
 /**
  * Name → runner script (and its leading arguments), what it proves, what a

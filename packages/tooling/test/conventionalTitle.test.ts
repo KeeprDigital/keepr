@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkTitles, isConventionalTitle } from '../../../scripts/conventional-title.mjs';
+import { checkTitles, isConventionalTitle } from '../scripts/conventional-title.mjs';
 
 const BASE = 'a'.repeat(40);
 const HEAD = 'b'.repeat(40);

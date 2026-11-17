@@ -18,7 +18,8 @@
  * It refuses only while such a release is pending. With none pending,
  * release-please just refreshes the Release PR.
  *
- *   node scripts/release-gate.mjs   (reads GITHUB_REPOSITORY, GITHUB_REF_NAME; uses `gh`)
+ *   node packages/tooling/scripts/release-gate.mjs
+ *     (reads GITHUB_REPOSITORY, GITHUB_REF_NAME; uses `gh`)
  */
 
 import { execFileSync } from 'node:child_process';
@@ -131,7 +132,7 @@ async function main() {
 	}
 	for (const problem of problems)
 		console.log(
-			`::error title=Release refused::${problem} Releases are cut only from a revision the merge queue verified (README.md § Releases).`,
+			`::error title=Release refused::${problem} Releases are cut only from a revision the merge queue verified (apps/stream/README.md § Releases).`,
 		);
 	process.exitCode = 1;
 }

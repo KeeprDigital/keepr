@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * Run slots: one budget of heavy work for this machine, shared by every
  * checkout of this repository.
@@ -7,7 +8,8 @@
  * machine: a suite took every core, and a first `pnpm verify:quick` in a fresh
  * worktree held about 10 GB (cold lint, cold typecheck and the unit suite
  * together). Two of those is more memory than a 16 GB machine has, and the
- * suites then failed on timing or stopped answering (README § Testing).
+ * suites then failed on timing or stopped answering (`apps/stream/README.md`
+ * § Testing).
  *
  * A slot stands for about one busy core and 1.5 GB. A gate takes the slots its
  * cost names before it starts and gives them back when it ends; with none free
@@ -22,8 +24,8 @@
  * A broken ledger never blocks work: any failure to read or write it lets the
  * gate run unqueued, with one line saying so.
  *
- *   node scripts/slots.mjs                       who holds slots, who waits
- *   node scripts/slots.mjs <cost> -- <command>   run a command inside slots
+ *   keepr-slots                       who holds slots, who waits
+ *   keepr-slots <cost> -- <command>   run a command inside slots
  */
 
 import { spawn } from 'node:child_process';
@@ -235,12 +237,13 @@ function age(since, now) {
 }
 
 /**
- * What a checkout is called in a status line. Each records its app's directory,
- * `…/<checkout>/apps/stream` in the workspace, and it is the checkout that
- * tells one worktree's run from another's.
+ * What a checkout is called in a status line. Each records the directory its
+ * gate ran from: the checkout's root, or an app or package below it
+ * (`…/<checkout>/apps/stream`). It is the checkout that tells one worktree's
+ * run from another's.
  */
 function checkoutName(directory) {
-	const inWorkspace = /([^/]+)\/apps\/[^/]+$/.exec(directory);
+	const inWorkspace = /([^/]+)\/(?:apps|packages)\/[^/]+$/.exec(directory);
 	return inWorkspace ? inWorkspace[1] : basename(directory);
 }
 
@@ -256,8 +259,6 @@ export function describeRunSlots({ total, holders, waiters }, now = Date.now()) 
 		...(waiters.length ? [`waiting, in order: ${waiters.map(line).join(', ')}`] : []),
 	].join('\n');
 }
-
-const checkoutRoot = fileURLToPath(new URL('../', import.meta.url)).replace(/\/$/, '');
 
 /**
  * Take slots, waiting in line while there are too few.
@@ -281,7 +282,7 @@ export async function acquireRunSlots({
 	total = runSlotCount(),
 	env = process.env,
 	pid = process.pid,
-	checkout = checkoutRoot,
+	checkout = process.cwd(),
 	isAlive = processIsAlive,
 	sleep = (ms) => new Promise((done) => setTimeout(done, ms)),
 	say = (line) => process.stderr.write(`${line}\n`),

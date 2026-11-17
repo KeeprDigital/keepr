@@ -1,6 +1,6 @@
+#!/usr/bin/env node
 /**
- * Reap orphaned local workerd processes, and leaked acceptance Chrome, before
- * spawning a new one.
+ * Reap orphaned local workerd processes before spawning a new one.
  *
  * Miniflare only kills its workerd child from exit hooks covering SIGINT,
  * SIGTERM, and normal exit. A dev server or test runner ending by SIGKILL or
@@ -10,22 +10,17 @@
  * checkout of this repository — a live session's workerd always has a live
  * node parent.
  *
- * An acceptance Chrome whose runner died is the same kind of orphan, and worse
- * company: #687 found one spinning at 100% CPU for an hour and a half, slowing
- * every run beside it. It is told apart by its profile, which only an
- * acceptance run in a checkout of this repository uses
- * (`graphics-acceptance/chromium-profile.mjs`).
+ * An app reaps what else its own runs strand beside this, through
+ * `discoverCheckoutRoots` and `terminateAll` (Stream Keepr's acceptance
+ * Chrome: `apps/stream/scripts/reap.mjs`).
+ *
+ *   keepr-reap-workerd   (from any directory of a checkout)
  */
 
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
-import {
-	acceptanceProfilePrefix,
-	checkoutProfileMarker,
-} from './graphics-acceptance/chromium-profile.mjs';
 
 // `ps` cannot quote the executable out of the command line, so a checkout path
 // with spaces is matched by prefix: below a checkout root, the path to the
@@ -36,7 +31,7 @@ function runsWorkerdFrom(command, root) {
 	return command.startsWith(`${root}/`) && WORKERD_BELOW_ROOT.test(command.slice(root.length + 1));
 }
 
-function processTable(psOutput) {
+export function processTable(psOutput) {
 	return psOutput
 		.split('\n')
 		.map((line) => {
@@ -63,46 +58,8 @@ export function selectOrphanedWorkerd(psOutput, checkoutRoots) {
 
 const TERMINATION_GRACE_MS = 2000;
 
-/**
- * The pids of every leaked acceptance Chrome: a headless browser whose parent
- * is gone and whose `--user-data-dir` is a profile one of `checkoutRoots`
- * names, and every helper process it spawned. A helper carries the same
- * profile but not always `--headless`, so it is reached through its browser.
- * A person's own Chrome never runs under one of these profiles, and a browser
- * whose runner is still alive is that run's to stop.
- */
-export function selectLeakedAcceptanceChrome(psOutput, checkoutRoots) {
-	const prefixes = [
-		...new Set(checkoutRoots.map((root) => acceptanceProfilePrefix(checkoutProfileMarker(root)))),
-	];
-	const marked = (command) =>
-		prefixes.some((prefix) => new RegExp(`--user-data-dir=\\S*/${prefix}`).test(command));
-	const table = processTable(psOutput);
-	const selected = new Set(
-		table
-			.filter(
-				(entry) =>
-					entry.parentPid === 1 &&
-					/\s--headless(?:=\S*)?(?:\s|$)/.test(entry.command) &&
-					marked(entry.command),
-			)
-			.map((entry) => entry.pid),
-	);
-	let grew = selected.size > 0;
-	while (grew) {
-		grew = false;
-		for (const entry of table) {
-			if (!selected.has(entry.pid) && selected.has(entry.parentPid) && marked(entry.command)) {
-				selected.add(entry.pid);
-				grew = true;
-			}
-		}
-	}
-	return table.map((entry) => entry.pid).filter((pid) => selected.has(pid));
-}
-
 /** SIGTERM each pid, then SIGKILL whichever survive the grace; returns those signalled. */
-async function terminateAll(pids, { kill, sleep }) {
+export async function terminateAll(pids, { kill, sleep }) {
 	if (pids.length === 0) {
 		return [];
 	}
@@ -132,10 +89,6 @@ export async function reapOrphanedWorkerd({ psOutput, checkoutRoots, kill, sleep
 	return await terminateAll(selectOrphanedWorkerd(psOutput, checkoutRoots), { kill, sleep });
 }
 
-export async function reapLeakedAcceptanceChrome({ psOutput, checkoutRoots, kill, sleep }) {
-	return await terminateAll(selectLeakedAcceptanceChrome(psOutput, checkoutRoots), { kill, sleep });
-}
-
 /**
  * Every checkout of this repository is in scope, wherever Git registered it:
  * a worktree may sit under the main checkout (`.claude/worktrees/`) or in a
@@ -143,10 +96,10 @@ export async function reapLeakedAcceptanceChrome({ psOutput, checkoutRoots, kill
  * orphans the others left behind. Each root is also kept as its real path,
  * because the executable path workerd runs under has its symlinks resolved.
  *
- * `cwd` is the app's directory, which is not the checkout's root in a
- * workspace (`apps/stream`). workerd runs from the workspace's
- * `node_modules`, under the checkout's root; an acceptance browser's profile
- * is named after the app's directory. So each checkout answers with both.
+ * `cwd` may be below the checkout's root, as an app's directory is
+ * (`apps/stream`). workerd runs from the workspace's `node_modules`, under the
+ * checkout's root, while what an app names after its own directory (an
+ * acceptance browser's profile) is below it. So each checkout answers with both.
  */
 export function discoverCheckoutRoots(cwd) {
 	const git = (...args) =>
@@ -183,25 +136,23 @@ export function discoverCheckoutRoots(cwd) {
 	return [...new Set(roots.flatMap((root) => [root, realPathOrSame(root)]))];
 }
 
-export async function main() {
+/** Reap from the checkout holding `cwd`; answers the pids reaped. */
+export async function main({ cwd = process.cwd() } = {}) {
 	const psOutput = execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' });
-	const scriptCheckout = fileURLToPath(new URL('../', import.meta.url)).replace(/\/$/, '');
-	const reaping = {
+	const reaped = await reapOrphanedWorkerd({
 		psOutput,
-		checkoutRoots: discoverCheckoutRoots(scriptCheckout),
+		checkoutRoots: discoverCheckoutRoots(cwd),
 		kill: process.kill,
 		sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-	};
-	const reaped = await reapOrphanedWorkerd(reaping);
+	});
 	if (reaped.length > 0) {
 		process.stdout.write(`reap-workerd: reaped orphaned workerd ${reaped.join(', ')}\n`);
 	}
-	const chrome = await reapLeakedAcceptanceChrome(reaping);
-	if (chrome.length > 0) {
-		process.stdout.write(`reap-workerd: reaped leaked acceptance Chrome ${chrome.join(', ')}\n`);
-	}
+	return reaped;
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
+// `import.meta.main`, not a comparison with `argv[1]`: run as a workspace bin,
+// `argv[1]` names the linked path and this module its real one.
+if (import.meta.main) {
 	await main();
 }

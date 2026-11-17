@@ -2,7 +2,7 @@
  * The `Conventional Commit title` required check (.github/workflows/pr-title.yml).
  *
  * release-please versions from the subjects of main's commits, and a PR lands
- * as one squash commit whose subject is its title (README.md § Releases). A
+ * as one squash commit whose subject is its title (`apps/stream/README.md` § Releases). A
  * subject that is not a Conventional Commit drops the change from the
  * changelog and the version bump without anyone noticing, so:
  *
@@ -16,8 +16,9 @@
  *
  * Anything it cannot read fails rather than passes.
  *
- *   node scripts/conventional-title.mjs   (reads GITHUB_EVENT_NAME, GITHUB_EVENT_PATH,
- *                                          GITHUB_REPOSITORY; `gh` for a merge group)
+ *   node packages/tooling/scripts/conventional-title.mjs
+ *     (reads GITHUB_EVENT_NAME, GITHUB_EVENT_PATH, GITHUB_REPOSITORY; `gh` for
+ *     a merge group)
  */
 
 import { execFileSync } from 'node:child_process';

@@ -49,8 +49,9 @@
 		{
 			// A focused or skipped test is not committed.
 			"files": ["packages/**/*.test.ts", "apps/score/**/*.test.ts"],
-			// The layer's tests came from Stream Keepr's, which the plugin's other rules do not hold.
-			"excludeFiles": ["packages/nuxt-layer/**"],
+			// The layer's and the tooling's tests came from Stream Keepr's, which the plugin's
+			// other rules do not hold.
+			"excludeFiles": ["packages/nuxt-layer/**", "packages/tooling/**"],
 			"plugins": ["vitest"],
 			"rules": {
 				"vitest/no-focused-tests": "error",
@@ -62,8 +63,9 @@
 			// `tsconfig.test.json`), so a rule that reads types sees `any` there and reports noise.
 			// These are the type-aware rules of the `correctness` category. The one that matters is
 			// `typescript/no-floating-promises`, and it guards the code a Worker runs, where a lost
-			// promise loses a write.
-			"files": ["apps/stream/test/**", "apps/stream/scripts/**"],
+			// promise loses a write. The tooling's scripts are JavaScript whose bodies no
+			// program checks, so the same holds there.
+			"files": ["apps/stream/test/**", "apps/stream/scripts/**", "packages/tooling/**"],
 			"rules": {
 				"typescript/await-thenable": "off",
 				"typescript/no-array-delete": "off",

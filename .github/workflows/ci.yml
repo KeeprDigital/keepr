@@ -11,7 +11,7 @@
 #     tests the group's head, the exact combined tree main moves to, so two
 #     PRs that each passed against an old main cannot land an untested
 #     combination. main then fast-forwards to that commit, and release-please
-#     tags only a commit that passed here (apps/stream/scripts/release-gate.mjs).
+#     tags only a commit that passed here (packages/tooling/scripts/release-gate.mjs).
 #   - On PRs, for feedback and because the queue admits only a PR whose
 #     required checks passed. Not on push to main: what main moves to already
 #     passed in the queue.
@@ -22,11 +22,11 @@
 #     (`pnpm verify:docs`, in the `checks` job); no Worker build for tests or
 #     the other workflows alone. The `scope` job decides, measuring a PR
 #     against its base and a merge group against the queue's base
-#     (apps/stream/scripts/ci-scope.mjs); anything it cannot measure runs everything.
+#     (packages/tooling/scripts/ci-scope.mjs); anything it cannot measure runs everything.
 #   - Not twice on the same tree. A merge group whose tree is byte-identical
 #     to one a full, green PR run verified (one PR, main unchanged since that
 #     run) skips every gate: the `record` job of that PR run left GitHub's
-#     signed word for which commit it ran (apps/stream/scripts/ci-reuse.mjs). Any doubt
+#     signed word for which commit it ran (packages/tooling/scripts/ci-reuse.mjs). Any doubt
 #     runs everything.
 #   - A newer push cancels the PR run it supersedes. Every merge-group entry
 #     has its own ref, so the queue's runs never cancel each other.
@@ -73,7 +73,7 @@ jobs:
     permissions:
       contents: read
       # In a merge group: the PR runs' records, their jobs, and the commits
-      # they name (apps/stream/scripts/ci-reuse.mjs).
+      # they name (packages/tooling/scripts/ci-reuse.mjs).
       actions: read
     outputs:
       code: ${{ steps.scope.outputs.code }}
@@ -94,7 +94,7 @@ jobs:
       - id: scope
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node apps/stream/scripts/ci-scope.mjs
+        run: node packages/tooling/scripts/ci-scope.mjs
 
   # Every gate `pnpm test` runs (verify.mjs --tests) appears below as its own step
   # (apps/stream/test/unit/scripts/repoWiring.test.ts holds that), split across parallel
@@ -149,7 +149,7 @@ jobs:
       # so this one pin is both and Dependabot moves it. Offline, so the result
       # depends on this tree alone; without `advanced-security`, which would
       # upload the findings rather than fail on them. Not dependabot.yml: a
-      # change to it alone is outside the code (apps/stream/scripts/ci-scope.mjs), so a
+      # change to it alone is outside the code (packages/tooling/scripts/ci-scope.mjs), so a
       # finding there would fail the next change instead.
       - if: needs.scope.outputs.code == 'true'
         uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
@@ -161,7 +161,7 @@ jobs:
       # follows every document's links: unchecked, a broken one would fail the
       # next code change instead (#1028). A step of
       # this job, not a job of its own, so that a full run still has no skipped
-      # job: a merge group reuses only such a run (apps/stream/scripts/ci-reuse.mjs).
+      # job: a merge group reuses only such a run (packages/tooling/scripts/ci-reuse.mjs).
       - if: needs.scope.outputs.docs == 'true'
         run: pnpm verify:docs
 
@@ -332,7 +332,7 @@ jobs:
 
   # A PR run that ran every gate and passed leaves a record of the tree it
   # verified, so its merge group can skip running them again on exactly that
-  # tree (apps/stream/scripts/ci-reuse.mjs). The record is an OIDC token GitHub signs for
+  # tree (packages/tooling/scripts/ci-reuse.mjs). The record is an OIDC token GitHub signs for
   # this job, naming the commit the run executed; the job's own code chooses
   # only the artifact's name, which nothing trusts. A fork's PR gets no token:
   # its group runs everything. Recording never fails `CI passed`; without a
@@ -366,7 +366,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
-            apps/stream/scripts/ci-reuse.mjs
+            packages/tooling/scripts/ci-reuse.mjs
             package.json
           sparse-checkout-cone-mode: false
           persist-credentials: false
@@ -374,7 +374,7 @@ jobs:
         with:
           node-version-file: package.json
       - id: record
-        run: node apps/stream/scripts/ci-reuse.mjs record
+        run: node packages/tooling/scripts/ci-reuse.mjs record
       - if: steps.record.outputs.name != ''
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

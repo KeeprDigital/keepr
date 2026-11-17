@@ -8,9 +8,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { findVerifiedRun, recordName } from '../../../scripts/ci-reuse.mjs';
+import { findVerifiedRun, recordName } from '../scripts/ci-reuse.mjs';
 
-const repositoryRoot = join(import.meta.dirname, '../../..');
+const packageRoot = join(import.meta.dirname, '..');
 
 const REPOSITORY = 'KeeprDigital/stream-keepr';
 const REPOSITORY_ID = '1040000001';
@@ -512,23 +512,19 @@ describe("the record job's command line", () => {
 		mkdirSync(runnerTemp);
 		writeFileSync(output, '');
 		return new Promise<{ status: number | null; stdout: string; output: string }>((resolve) => {
-			const child = spawn(
-				process.execPath,
-				[join(repositoryRoot, 'scripts/ci-reuse.mjs'), 'record'],
-				{
-					cwd: checkout.directory,
-					env: {
-						...process.env,
-						ACTIONS_ID_TOKEN_REQUEST_URL: '',
-						ACTIONS_ID_TOKEN_REQUEST_TOKEN: '',
-						...env,
-						GITHUB_OUTPUT: output,
-						RUNNER_TEMP: runnerTemp,
-						GIT_CONFIG_GLOBAL: '/dev/null',
-						GIT_CONFIG_NOSYSTEM: '1',
-					},
+			const child = spawn(process.execPath, [join(packageRoot, 'scripts/ci-reuse.mjs'), 'record'], {
+				cwd: checkout.directory,
+				env: {
+					...process.env,
+					ACTIONS_ID_TOKEN_REQUEST_URL: '',
+					ACTIONS_ID_TOKEN_REQUEST_TOKEN: '',
+					...env,
+					GITHUB_OUTPUT: output,
+					RUNNER_TEMP: runnerTemp,
+					GIT_CONFIG_GLOBAL: '/dev/null',
+					GIT_CONFIG_NOSYSTEM: '1',
 				},
-			);
+			});
 			let stdout = '';
 			child.stdout.on('data', (chunk) => {
 				stdout += chunk;
@@ -544,7 +540,7 @@ describe("the record job's command line", () => {
 	}
 
 	it("records the token GitHub mints for this job, under the checked-out tree's name", async () => {
-		const requests: { url: string; authorization?: string }[] = [];
+		const requests: { url: string; authorization: string | undefined }[] = [];
 		const server = createServer((request, response) => {
 			requests.push({ url: request.url ?? '', authorization: request.headers.authorization });
 			response.end(JSON.stringify({ value: 'header.payload.signature' }));

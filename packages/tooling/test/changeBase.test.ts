@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { changeBase } from '../../../scripts/change-base.mjs';
+import { changeBase } from '../scripts/change-base.mjs';
 
 /** Against real git: a local "origin" and a clone of it on a branch. Nothing remote. */
 describe("where a checkout's change is measured from", () => {

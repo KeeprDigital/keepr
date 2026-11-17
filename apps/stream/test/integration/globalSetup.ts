@@ -1,7 +1,7 @@
 import type { IntegrationServer, IntegrationServerAddress } from './servers';
 import process from 'node:process';
-import { main as reapStrandedWorkerd } from '../../scripts/reap-workerd.mjs';
-import { acquireRunSlots, RUN_SLOT_COSTS } from '../../scripts/slots.mjs';
+import { main as reapStrandedRuns } from '../../scripts/reap.mjs';
+import { acquireRunSlots, RUN_SLOT_COSTS } from '@keepr/tooling/scripts/slots.mjs';
 import { signInAsOperator } from './client';
 import {
 	INTEGRATION_REALTIME_SKIP_NOTICE,
@@ -130,7 +130,7 @@ export async function setup() {
 
 	// A workerd stranded by a killed session still holds sqlite locks on the
 	// persist directories; sweep them before touching that state.
-	await reapStrandedWorkerd();
+	await reapStrandedRuns();
 
 	const { servers, realtime } = await startIntegrationServers().catch((error) => {
 		slots.release();

@@ -1,7 +1,7 @@
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { warmChromium } from '../../scripts/graphics-acceptance/chromium.mjs';
-import { acquireRunSlots, RUN_SLOT_COSTS } from '../../scripts/slots.mjs';
+import { acquireRunSlots, RUN_SLOT_COSTS } from '@keepr/tooling/scripts/slots.mjs';
 import { prepareIntegrationD1 } from '../integration/integrationD1';
 import { freePorts, startIntegrationServer, testContextFor } from '../integration/servers';
 import { integrationEventIdBlocks, resetIntegrationWranglerState } from '../integration/state';

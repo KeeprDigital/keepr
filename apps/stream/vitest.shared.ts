@@ -8,7 +8,7 @@ import {
 	RUN_SLOTS_HELD_ENV,
 	runSlotCount,
 	suiteSlotCeiling,
-} from './scripts/slots.mjs';
+} from '@keepr/tooling/scripts/slots.mjs';
 
 export const rootDir = fileURLToPath(new URL('.', import.meta.url));
 
@@ -29,7 +29,7 @@ export function hideLoadTolerantWaitFrame(_error: unknown, frame: { file: string
 const RUN_SLOT_REPORTER = Symbol.for('stream-keepr.runSlotReporter');
 
 /**
- * Holds a test run to this machine's run slots (`scripts/slots.mjs`): one
+ * Holds a test run to this machine's run slots (`@keepr/tooling/scripts/slots.mjs`): one
  * per worker, taken when the run knows its files and given back when it ends.
  *
  * A run of three files takes three; a whole suite takes the ceiling, which is
