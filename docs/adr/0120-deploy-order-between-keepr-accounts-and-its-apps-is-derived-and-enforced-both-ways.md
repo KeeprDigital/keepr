@@ -17,11 +17,17 @@ Accepted · 2026-11-17 · [#1263](https://github.com/KeeprDigital/keepr/issues/1
 
 **An override with a written reason bypasses either refusal**: `--override <reason>` to `keepr-deploy deploy`, one line of text. The deploy logs each refusal it bypassed, and the app marker records `override: <reason>`, pending and deployed. An override that bypassed nothing is not recorded.
 
+**In the Deploy workflow, every App's job waits for Keepr Accounts' job**, not only the jobs of Apps that bind it. When a run names Keepr Accounts, its job runs first, and each App's job runs only once it has succeeded or was not part of the run. A failed Keepr Accounts deploy therefore stops every App in that run.
+
+**A run with an override names exactly one app.** The plan refuses an override in a run that names more than one; the operator dispatches the app it is for alone.
+
 ### Why
 
 - **Keepr Accounts is every App's sign-in** (ADR-0112). An App deployed ahead of the Keepr Accounts it was built against, or Keepr Accounts rolled back beneath an App, breaks sign-in for that App's Users, and nothing about either deploy would say so until a User tried.
 - **A declared dependency drifts; a binding does not.** The binding is what makes an App reach Keepr Accounts, so it is the dependency.
 - **Commits, not versions.** Each app is versioned on its own (ADR-0118): an App's Release names no Keepr Accounts version, and Keepr Accounts' version says when it was released, not which of its changes an App was built beside. Containment of `apps/accounts` commits is exactly "the App's own view of Keepr Accounts".
+- **Every App waits, because the workflow cannot tell which bind it.** Whether an App binds Keepr Accounts is known only once its Worker is built, inside its own job, so ordering only the dependents would need a build before the plan. Waiting for every App is one `needs` line. It costs only a wait, and a run whose Keepr Accounts deploy failed is one an operator stops to look at anyway. An App deployed regardless would only meet the order check.
+- **An override is for one app.** Each job deploys with the run's inputs, so an override given to a run of several apps would reach every one of their checks and bypass refusals nobody wrote a reason for. Naming one app keeps the written reason about the one refusal it answers.
 - **Recorded, because the deploy that needs it cannot rebuild it.** Keepr Accounts' deploy cannot read an App's built Worker for a commit it does not hold built. The App's deploy derives the dependency once, and its marker carries it to every later Keepr Accounts deploy.
 
 ### Consequences
