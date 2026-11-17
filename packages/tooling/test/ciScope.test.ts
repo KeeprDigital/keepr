@@ -122,6 +122,12 @@ describe("which deployable apps' Worker legs a change runs", () => {
 		['CI itself: every app', ['.github/workflows/ci.yml'], [STREAM, ACCOUNTS]],
 		['the setup action: every app', ['.github/actions/setup/action.yml'], [STREAM, ACCOUNTS]],
 		['the tooling: every app', ['packages/tooling/scripts/deploy/cli.mjs'], [STREAM, ACCOUNTS]],
+		["the tooling's manifest: every app", ['packages/tooling/package.json'], [STREAM, ACCOUNTS]],
+		[
+			"the tooling's tests or documents: none",
+			['packages/tooling/test/ciScope.test.ts', 'packages/tooling/README.md'],
+			[],
+		],
 		['the root manifest: every app', ['package.json'], [STREAM, ACCOUNTS]],
 		['the compiler options: every app', ['tsconfig.base.json'], [STREAM, ACCOUNTS]],
 		[

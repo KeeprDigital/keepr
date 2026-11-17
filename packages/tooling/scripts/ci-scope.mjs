@@ -57,11 +57,13 @@ const OUTSIDE_CODE = /\.md$|^\.vscode\/|^\.github\/dependabot\.yml$/;
 const DOCUMENT = /\.md$/;
 /**
  * What builds every app's Worker leg, though no app ships it: CI's own
- * workflow and setup, the tooling the leg runs, the Node and pnpm the root
- * manifest pins, and the packages' compiler options.
+ * workflow and setup, the tooling's scripts the leg runs and the manifest
+ * naming them, the Node and pnpm the root manifest pins, and the packages'
+ * compiler options. Not the tooling's tests or documents: the leg runs
+ * neither.
  */
 const BUILDS_EVERY_LEG =
-	/^(?:\.github\/workflows\/ci\.yml|\.github\/actions\/setup\/.+|packages\/tooling\/.+|package\.json|tsconfig\.base\.json)$/;
+	/^(?:\.github\/workflows\/ci\.yml|\.github\/actions\/setup\/.+|packages\/tooling\/(?:scripts\/.+|package\.json)|package\.json|tsconfig\.base\.json)$/;
 /** What an app binding Keepr Accounts runs its leg against (ADR-0113). */
 const STAND_IN = '@keepr/accounts-stand-in';
 
