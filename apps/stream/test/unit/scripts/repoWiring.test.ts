@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+import { parseJsonc } from '@keepr/tooling/scripts/jsonc.mjs';
 import { RUN_SLOT_COSTS } from '@keepr/tooling/scripts/slots.mjs';
 import { GATES, selectGates } from '../../../scripts/verify.mjs';
 
@@ -52,24 +53,27 @@ const ciCommands = steps(ci)
 	.map((line) => line.trim())
 	.filter((line) => line.startsWith('pnpm '));
 
+/** What deploys, and what CI's Worker leg checks, through `keepr-deploy check` (ADR-0119). */
+const descriptor = parseJsonc(readFileSync('deploy.jsonc', 'utf8')) as {
+	build: string[];
+	parts: Record<string, { config: string }>;
+};
+
 describe('verify and CI run the same gates', () => {
-	it('builds once, then runs the Worker dry run and smoke, in verify and in CI', () => {
+	it("builds once, then runs the Worker dry run and smoke, in verify and in the descriptor's build, which CI and the deploy run", () => {
 		expect(scripts['worker:smoke']).not.toContain('build');
 		expect(Object.values(GATES).filter((gate) => gate.command.includes('build'))).toHaveLength(1);
-
-		const workerGuard = steps(ci, 'worker-guard').map((step) => step.run ?? '');
-		const at = (command: string) => workerGuard.findIndex((run) => run.includes(command));
-		expect(workerGuard.filter((run) => run.includes('pnpm build'))).toHaveLength(1);
-		expect(at('pnpm build')).toBeLessThan(at('pnpm worker:dry-run'));
-		expect(at('pnpm worker:dry-run')).toBeLessThan(at('pnpm worker:smoke'));
+		expect(descriptor.build).toEqual(['build', 'worker:dry-run', 'worker:smoke']);
 	});
 
 	it('typechecks and bundles the silent-video validator Worker, in verify and CI', () => {
 		expect(scripts.typecheck).toMatch(/&& pnpm typecheck:validator(?: |$)/u);
 		expect(Object.keys(selectGates(['--quick']))).toContain('typecheck:validator');
 		expect(Object.keys(selectGates([]))).toContain('validator:dry-run');
-		expect(ciCommands).toEqual(
-			expect.arrayContaining(['pnpm typecheck', 'pnpm validator:dry-run']),
+		expect(ciCommands).toContain('pnpm typecheck');
+		// CI bundles each part of the descriptor, as `validator:dry-run` does.
+		expect(scripts['validator:dry-run']).toContain(
+			`--config ${descriptor.parts.validator?.config}`,
 		);
 	});
 

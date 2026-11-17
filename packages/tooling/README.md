@@ -6,13 +6,14 @@ The workspace's own tooling (ADR-0110, in the root `docs/adr`): what every app, 
 |---|---|---|
 | `scripts/slots.mjs` | `keepr-slots`, `pnpm slots` | Run slots: one budget of heavy work for the machine, shared by every worktree (ADR-0082). `keepr-slots <cost> -- <command>` runs a command inside them. |
 | `scripts/reap-workerd.mjs` | `keepr-reap-workerd`, `pnpm reap` | Stops orphaned `workerd` from any checkout of this repository. |
-| `scripts/deploy/cli.mjs` | `keepr-deploy`, `pnpm run deploy --app <app> --env <env>`, an app's `deploy:*` scripts, `deploy.yml` | The deploy procedure (ADR-0119): one Release of one app to one Environment, from its deploy descriptor (`deploy/release.mjs`): build once or place an artifact, parts by fingerprint (`deploy/fingerprint.mjs`), the checks before the first remote change, D1, Worker, verify of the release identity (`deploy/verify.mjs`), each between its promotion markers (`deploy/markers.mjs`, `deploy/procedure.mjs`). |
+| `scripts/deploy/cli.mjs` | `keepr-deploy`, `pnpm run deploy --app <app> --env <env>`, an app's `deploy:*` scripts, `deploy.yml`, CI's `worker-guard` legs (`check`) | The deploy procedure (ADR-0119): one Release of one app to one Environment, from its deploy descriptor (`deploy/release.mjs`): build once or place an artifact, parts by fingerprint (`deploy/fingerprint.mjs`), the checks before the first remote change, D1, Worker, verify of the release identity (`deploy/verify.mjs`), each between its promotion markers (`deploy/markers.mjs`, `deploy/procedure.mjs`). `check` is CI's Worker leg: each part bundled, then the build. |
 | `scripts/deploy-guard.mjs` | `keepr-deploy-guard <wrangler config>`, and every deploy | Refuses a Worker whose `package.json` carries `keepr.undeployable`: the Accounts Stand-in (ADR-0113). Reading a Release runs it on every configuration its descriptor would upload. |
 | `scripts/jsonc.mjs` | imported | JSON with comments, as Wrangler configs and deploy descriptors are written. |
 | `scripts/change-base.mjs` | imported | Where a branch's change is measured from: `origin/main`, else `main`. |
-| `scripts/ci-scope.mjs`, `scripts/ci-reuse.mjs` | CI's `scope` and `record` jobs | What a change can affect, and whether a merge group's tree was already verified (ADR-0036). |
+| `scripts/ci-scope.mjs`, `scripts/ci-reuse.mjs` | CI's `scope` and `record` jobs | What a change can affect, which deployable apps' Worker legs it runs, and whether a merge group's tree was already verified (ADR-0036). |
 | `scripts/conventional-title.mjs` | `pr-title.yml` | The `Conventional Commit title` required check. |
 | `scripts/changeset-check.mjs` | `keepr-changeset-check`, CI's `checks` job, Stream Keepr's `verify --quick` | A change names each versioned app whose shipped code it touches in a changeset, or carries an empty one (ADR-0118). |
+| `scripts/shipped-code.mjs` | imported | An app's shipped code, which the changeset check and CI's Worker legs both read (ADR-0118). |
 | `scripts/versioned-apps.mjs` | imported | The workspace's packages, and the apps Changesets versions: each in `apps/` that `.changeset/config.json` does not ignore. |
 | `scripts/release-gate.mjs` | `pnpm release:publish`, in `release.yml` | Refuses to tag a Release on a commit the merge queue did not verify (ADR-0036, ADR-0118). |
 
