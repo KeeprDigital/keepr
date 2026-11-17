@@ -102,6 +102,7 @@ const PACKAGES: Package[] = [
 ];
 const STREAM = { app: 'stream', accounts: true };
 const ACCOUNTS = { app: 'accounts', accounts: false };
+const ORPHAN = { app: 'orphan', accounts: false };
 
 describe("which deployable apps' Worker legs a change runs", () => {
 	const legs = (files: string[], apps = [STREAM, ACCOUNTS]) =>
@@ -133,11 +134,12 @@ describe("which deployable apps' Worker legs a change runs", () => {
 		expect(legs(files)).toEqual(expected);
 	});
 
-	it('runs the leg of a deployable app whose package it cannot read for any change to the code', () => {
-		const orphan = { app: 'orphan', accounts: false };
-
-		expect(legs(['packages/pairing/src/x.ts'], [STREAM, orphan])).toEqual([orphan]);
-		expect(legs(['docs/notes.md'], [STREAM, orphan])).toEqual([]);
+	// A deployable app whose package it cannot read runs its leg for any change to the code.
+	it.each([
+		['a change to the code: its leg', ['packages/pairing/src/x.ts'], [ORPHAN]],
+		['a change to a document only: none', ['docs/notes.md'], []],
+	])('an app whose package it cannot read, on %s', (_case, files, expected) => {
+		expect(legs(files, [STREAM, ORPHAN])).toEqual(expected);
 	});
 });
 

@@ -316,6 +316,8 @@ describe('the history', () => {
 describe('an override', () => {
 	const REASON = 'Keepr Accounts 0.2.0 is broken in production; #1300';
 
+	type Apart = ReturnType<typeof apart>;
+
 	/** Keepr Accounts' change `ahead` is in Stream Keepr's Release and not in `behind`. */
 	function apart() {
 		const repo = repository();
@@ -324,27 +326,35 @@ describe('an override', () => {
 		return { repo, behind, ahead };
 	}
 
-	it('deploys an App ahead of Keepr Accounts, and the marker records its reason', () => {
-		const { repo, behind, ahead } = apart();
-		const store = markers(ahead, {
-			'accounts/production': appMarker({ app: 'accounts', commit: behind }),
-		});
+	it.each([
+		{
+			deploying: 'an App ahead of Keepr Accounts',
+			app: 'stream',
+			worker: BINDS_ACCOUNTS,
+			store: ({ behind, ahead }: Apart) =>
+				markers(ahead, { 'accounts/production': appMarker({ app: 'accounts', commit: behind }) }),
+			expected: { needs: 'accounts', override: REASON },
+		},
+		{
+			deploying: 'Keepr Accounts below a dependent',
+			app: 'accounts',
+			worker: {},
+			store: ({ behind, ahead }: Apart) =>
+				markers(behind, {
+					'stream/production': appMarker({ app: 'stream', commit: ahead, needs: 'accounts' }),
+				}),
+			expected: { override: REASON },
+		},
+	])(
+		'deploys $deploying, and the marker records its reason',
+		({ app, worker, store, expected }) => {
+			const commits = apart();
 
-		expect(check(repo, built(repo, 'stream', BINDS_ACCOUNTS), store, { override: REASON })).toEqual(
-			{ needs: 'accounts', override: REASON },
-		);
-	});
-
-	it('deploys Keepr Accounts below a dependent, and the marker records its reason', () => {
-		const { repo, behind, ahead } = apart();
-		const store = markers(behind, {
-			'stream/production': appMarker({ app: 'stream', commit: ahead, needs: 'accounts' }),
-		});
-
-		expect(check(repo, built(repo, 'accounts'), store, { override: REASON })).toEqual({
-			override: REASON,
-		});
-	});
+			expect(
+				check(commits.repo, built(commits.repo, app, worker), store(commits), { override: REASON }),
+			).toEqual(expected);
+		},
+	);
 
 	it('is not recorded when nothing was refused', () => {
 		const repo = repository();

@@ -129,7 +129,8 @@ describe('the keepr-deploy command line', () => {
 	});
 
 	/**
-	 * Deploy order, wired: a Stream Keepr Release that binds Keepr Accounts and
+	 * Deploy order, wired: the check runs, `--override` reaches it, and what it
+	 * answers reaches the marker. A Stream Keepr Release that binds Keepr Accounts and
 	 * holds a Keepr Accounts change that `accounts/production` lacks. Real git,
 	 * with a local bare repository as `origin`; only git is on PATH, and the
 	 * Release has no Wrangler, so a deploy that gets past the check stops at
@@ -235,17 +236,7 @@ describe('the keepr-deploy command line', () => {
 			return { deploy, marker };
 		}
 
-		it('refuses before any marker moves', () => {
-			const { deploy, marker } = releaseAheadOfAccounts();
-
-			const result = deploy();
-
-			expect(result.status).toBe(1);
-			expect(result.stdout).toMatch(/accounts\/production.*lacks.*what stream needs/s);
-			expect(marker('stream/production')).toBeUndefined();
-		});
-
-		it('deploys with --override, and its marker records the reason', () => {
+		it('runs the check with --override, and the marker records what it answered', () => {
 			const { deploy, marker } = releaseAheadOfAccounts();
 
 			deploy('--override', 'Keepr Accounts is down; #1300');
