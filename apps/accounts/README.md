@@ -15,9 +15,13 @@ Its words are the root `GLOSSARY.md`'s; `RULES.md` says what it makes true. The 
 | `server/db/schema.ts` | The identity schema, by hand; `server/db/migrations/sqlite` its migrations. |
 | `server/email` | The email seam (`sender.ts`): Cloudflare's email service (`cloudflare.ts`), the recorder tests and the dev server use instead (`recorder.ts`), and what each email says (`messages.ts`). |
 | `server/utils/email.ts` | Which sender a running server uses, and the work it finishes after answering. |
+| `server/utils/organisations.ts` | What Keepr Accounts adds to the organisation add-on: the Invitation email, App roles checked against the App registry and copied into App access (`appAccess.ts`), and the Audit Record (`auditRecord.ts`). |
+| `server/utils/invitationAcceptance.ts` | An invitee with no User accepting: the offer they see, and creating their User. Served by `server/api/invitation`. |
+| `server/utils/firstAdministrator.ts` | Claiming the first Keepr Administrator. Served by `server/api/first-administrator`; the claim is written by `scripts/claim-first-administrator.mjs`. |
+| `server/utils/refusal.ts` | How Keepr Accounts' own routes refuse, in the shape Better Auth's do. |
 | `shared/utils/returnAddress.ts` | Where a User may be sent after signing in. |
 | `shared/utils/newPassword.ts` | The length a new password must be, and what a refused one is told. |
-| `app/pages` | Signing in (`/sign-in?returnTo=…`), the profile (`/`), and resetting a password (`/forgot-password`, then the emailed link to `/reset-password`). |
+| `app/pages` | Signing in (`/sign-in?returnTo=…`), the profile (`/`), resetting a password (`/forgot-password`, then the emailed link to `/reset-password`), inviting (`/invite`), accepting an Invitation (`/invitation`), and claiming the first Keepr Administrator (`/first-administrator`). |
 | `test/unit` | The server, request in and response out, on SQLite with the real migrations (`test/helpers/keeprAccounts.ts`). Also the shared layer's identity function against this real minting (`requestIdentity.sqlite.test.ts`), since the layer cannot import an app. |
 | `test/nuxt` | One wiring test per page. |
 
@@ -47,6 +51,15 @@ An App binds `keepr-accounts` (`packages/nuxt-layer/README.md`), and locally the
 
 Only the built Worker registers in Wrangler's local dev registry; `pnpm dev` here does not, so an App cannot reach it.
 
-Nobody can sign up, so a local User is made the way Keepr Accounts makes one; until the first-administrator claim exists, that is a test's `createUser`.
+## The first Keepr Administrator
+
+Nobody can sign up, and no request makes a Keepr Administrator (ADR-0115). Once the migrations are applied, in this directory:
+
+```
+pnpm claim-first-administrator you@example.com                       # the local database
+pnpm claim-first-administrator you@example.com --remote <database>   # a deployed one, with your Cloudflare access
+```
+
+It writes a one-time claim for the address and prints the link that claims it: open it, choose a name and password, and you are the Keepr Administrator and owner of the Keepr Organisation. The local link is the dev server's (`http://localhost:3000`); under `pnpm beside`, use port 8790. Once a Keepr Administrator exists, the command writes nothing. Everyone else joins by Invitation, from `/invite`.
 
 After a Better Auth bump, `test/unit/server/db/identitySchema.test.ts` fails if a table changed, and `authTripwires.sqlite.test.ts` if behaviour that depends on the environment did.
