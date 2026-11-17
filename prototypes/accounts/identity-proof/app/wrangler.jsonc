@@ -1,0 +1,8 @@
+{
+	// Spike 2 (#1256): an App that verifies the Identity Proof itself.
+	"name": "spike-app",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-16",
+	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"],
+	"services": [{ "binding": "ACCOUNTS", "service": "keepr-accounts" }]
+}

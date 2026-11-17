@@ -1,0 +1,7 @@
+{
+	// Spike 2 (#1256): Keepr Accounts, reduced to Better Auth and its jwt plugin.
+	"name": "keepr-accounts",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-16",
+	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"]
+}
