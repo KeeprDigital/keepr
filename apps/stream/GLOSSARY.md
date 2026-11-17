@@ -264,17 +264,7 @@ _Avoid_: Vanta effect, frame animation, shader background, background effect
 A Screen Mode showing a Round's name and the time left in it, projected from the Round's Operator-entered start and duration and server time, so every rendering of the same Round shows the same time.
 _Avoid_: round timer (the Feature Match Session Clock is a Match's, not a Round's).
 
-**Clock Projection**:
-What a clock shows at one instant, as a pure function of its stored state and server time: the value, and how long until that value next changes on its own.
-_Avoid_: ticker, timer (nothing ticks; a projection is re-evaluated when it changes).
-
-**Interval**:
-Equal periods counted from an anchor instant: which period is current, and when the next begins, is a pure function of the anchor, the period and server time.
-_Avoid_: cycle, loop (a Graphic Animation loops).
-
-**Frame Clock**:
-The instant motion is read at: server time, read again on every animation frame while anything read at it is in motion, and left where it stopped once all of it has settled.
-_Avoid_: animation timer, render loop.
+Clock Projection, Interval and Frame Clock live in the shared layer, so they are defined in the root `GLOSSARY.md`.
 
 **Page Rotation**:
 The deterministic projection of a paginated Screen Mode's current page from its Rotation Anchor and server time, computed identically by every rendering.

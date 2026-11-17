@@ -6,7 +6,7 @@ A Feature Match Session Clock's display, a Round Clock, Page Rotation, a Talent 
 
 ### Decision
 
-**One scheduler re-evaluates every clock projection.** `useClockProjection` (`app/composables/core/useClockProjection.ts`) takes a pure function of server time that answers a value and how long until that value next changes, or that it will not change on its own, and returns the value reactively. It answers anew:
+**One scheduler re-evaluates every clock projection.** `useClockProjection` (`packages/nuxt-layer/app/composables/core/useClockProjection.ts`) takes a pure function of server time that answers a value and how long until that value next changes, or that it will not change on its own, and returns the value reactively. It answers anew:
 
 - exactly when the value next changes;
 - when a reactive input the function reads changes;
@@ -28,7 +28,7 @@ A change further off than one timer can hold (2^31 − 1 ms) is waited for in st
 
 A projection on the device's own time is taken again the moment the first sync lands.
 
-**No clock projection holds a timer of its own.** The rule of each stays where it was (`shared/modules/page-rotation`, `shared/modules/talent-screen`, `shared/utils/card/timeout.ts`, `shared/utils/roundClock.ts`, `shared/utils/clock.ts`); only what calls it, and when, moved. A Page Rotation's pages and a Social Profile Rotation's steps are counted on one interval rule (`shared/utils/interval.ts`); what a step means stays with each.
+**No clock projection holds a timer of its own.** The rule of each stays where it was (`apps/stream/shared/modules/page-rotation`, `apps/stream/shared/modules/talent-screen`, `apps/stream/shared/utils/card/timeout.ts`, `apps/stream/shared/utils/roundClock.ts`, `apps/stream/shared/utils/clock.ts`); only what calls it, and when, moved. A Page Rotation's pages and a Social Profile Rotation's steps are counted on one interval rule (`packages/nuxt-layer/shared/utils/interval.ts`); what a step means stays with each.
 
 **A sync trusts its tightest sample, and eases a small correction in.** `useServerTime` (`packages/nuxt-layer/app/composables/core/useServerTime.ts`) takes the offset of the sample with the shortest round trip, since a round trip bounds its sample's error to half of itself and an average only adds the looser samples' error. A sample over the round trip ceiling still counts only while no offset is held.
 
@@ -55,14 +55,14 @@ A correction applied as a step moves server time by its whole size between two r
 - A Feature Match Session Clock display and a held Screen Card now re-time when server time re-syncs, so a Card hides by the shared clock after a re-sync as every other holder does. A Round Clock now also re-evaluates on a first sync that leaves the offset at zero. Nothing else on air changes.
 - Card Timeout is a projection of the held Card: whichever Card is held is timed, and none is timed while none is held. Nothing arms or cancels a timer by hand.
 - A projection is answered again when its wait runs out, so a test that fakes server time must let it run with the timers it fakes. One frozen at an instant never reaches the change it waits for.
-- The Broadcast Graphics playout clock and Graphic Animation timing are not clock projections of this kind and keep their own timing. Playout changes on every frame, so it is read on a frame clock (`useFrameClock`, `app/composables/core/useFrameClock.ts`): server time read again each animation frame while anything is in motion, and no frame once all of it has settled. Every Broadcast Graphics surface's playout clock is one.
+- The Broadcast Graphics playout clock and Graphic Animation timing are not clock projections of this kind and keep their own timing. Playout changes on every frame, so it is read on a frame clock (`useFrameClock`, `packages/nuxt-layer/app/composables/core/useFrameClock.ts`): server time read again each animation frame while anything is in motion, and no frame once all of it has settled. Every Broadcast Graphics surface's playout clock is one.
 - A Feature Match Session Clock running out, which starts overtime, and the Edit Match State clock field read the clock's projection on server time, so neither disagrees with the clock display beside it on a device whose clock is off.
 - While a correction is eased in, two outputs of one clock can differ by up to what is left of it, at most the threshold and for at most five seconds. Before, they differed by the whole correction until each next synced.
 - A wait timed while a correction is eased in is as long on the device as server time takes to reach the change (`deviceDelayFor`), rounded up to the millisecond, so a change lands on its server instant during a correction as it does outside one. A fake of `useServerTime` that the scheduler runs on answers `deviceDelayFor` too; `packages/nuxt-layer/test/nuxt/helpers/serverTime.ts` is the one such fake.
 - "Synced" still means an offset is held. A missed re-sync keeps the offset held, and a correction under way runs to its end.
 - A device whose clock is changed by more than half a second is put right within a few seconds, or once the server answers; by less, at the next sync, eased in like any small correction ([#1203](https://github.com/KeeprDigital/stream-keepr/issues/1203)).
 - The thresholds are starting values chosen so an eased correction completes within five seconds; tune them if an artefact shows on air.
-- Tests: `packages/nuxt-layer/test/nuxt/composables/core/useServerTime.test.ts` holds the sync's rules. `test/nuxt/composables/core/useClockProjection.test.ts` holds the scheduler's rules. Each consumer keeps one case that it passes its projection and shows the answer: `useClockDisplay.test.ts`, `useRoundClockModeData.test.ts`, `screenModePagination.test.ts`, `useTalentModeData.test.ts` and `stores/card.test.ts`.
+- Tests: `packages/nuxt-layer/test/nuxt/composables/core/useServerTime.test.ts` holds the sync's rules. `packages/nuxt-layer/test/nuxt/composables/core/useClockProjection.test.ts` holds the scheduler's rules. Each consumer keeps one case that it passes its projection and shows the answer, in `apps/stream/test`: `useClockDisplay.test.ts`, `useRoundClockModeData.test.ts`, `screenModePagination.test.ts`, `useTalentModeData.test.ts` and `stores/card.test.ts`.
 
 ### Rejected alternatives
 

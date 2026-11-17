@@ -1,5 +1,5 @@
 import type { FeatureMatchClockProjection, FeatureMatchClockState } from '~~/shared/utils/clock';
-import { minutesToMs } from '~~/shared/utils/clock';
+import { minutesToMs } from '@keepr/nuxt-layer/shared/utils/clockTime';
 
 /** Decrement and increment options for clock adjustment buttons. */
 export const CLOCK_DECREMENT_OPTIONS = [

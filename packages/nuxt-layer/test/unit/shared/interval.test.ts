@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { intervalAnchorForStep, projectInterval } from '~~/shared/utils/interval';
+import { intervalAnchorForStep, projectInterval } from '../../../shared/utils/interval';
 
 // An interval is equal periods counted from an anchor: every reader at one
 // instant answers the same step, and when the next begins.

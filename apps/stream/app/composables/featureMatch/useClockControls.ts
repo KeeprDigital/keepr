@@ -1,6 +1,6 @@
 import type { MaybeRefOrGetter } from 'vue';
 import { toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
-import { minutesToMs } from '~~/shared/utils/clock';
+import { minutesToMs } from '@keepr/nuxt-layer/shared/utils/clockTime';
 
 export function useClockControls(matchId: MaybeRefOrGetter<number>) {
 	const eventStore = useEventStore();

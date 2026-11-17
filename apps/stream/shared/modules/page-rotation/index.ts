@@ -8,11 +8,11 @@
  * function of persisted state and the synchronized server instant, so
  * renderings agree by construction and nothing writes as the rotation runs.
  *
- * Its pages are the steps of an interval (`shared/utils/interval.ts`): this
+ * Its pages are the steps of an Interval (`@keepr/nuxt-layer/shared/utils/interval`): this
  * module owns what a step means here, a page among a count of them.
  */
 
-import { intervalAnchorForStep, projectInterval } from '../../utils/interval';
+import { intervalAnchorForStep, projectInterval } from '@keepr/nuxt-layer/shared/utils/interval';
 
 export interface PageRotationInputs {
 	/**
