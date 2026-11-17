@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.0](https://github.com/KeeprDigital/keepr/compare/v1.6.0...v1.7.0) (2026-11-17)
+
+
+### Features
+
+* **accounts:** Keepr Accounts, one Keepr identity for every App ([#1259](https://github.com/KeeprDigital/keepr/issues/1259)) ([df0551d](https://github.com/KeeprDigital/keepr/commit/df0551db405db7bf95718cd7a86c28bbc844359a))
+
+
+### Documentation
+
+* **glossary:** Release, Environment and Installation are shared terms ([#1266](https://github.com/KeeprDigital/keepr/issues/1266)) ([dc98dc5](https://github.com/KeeprDigital/keepr/commit/dc98dc52b48853db6f323f557d1e234c67c32588))
+
 ## [1.6.0](https://github.com/KeeprDigital/keepr/compare/v1.5.0...v1.6.0) (2026-11-17)
 
 
