@@ -1,49 +1,31 @@
 import type { IdentityProofSource } from '~~/server/utils/identityProof';
 import type { OrganisationRecords } from '~~/server/utils/organisations';
 import { getAuthTables } from 'better-auth/db';
-import { getTableConfig } from 'drizzle-orm/sqlite-core';
 import { describe, expect, it } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { createEmailRecorder } from '~~/server/email/recorder';
 import { authOptions } from '~~/server/utils/authOptions';
+import { AUTH_SCHEMA_CONTRACT } from '@keepr/nuxt-layer/test/helpers/authSchemaContract';
 
-/**
- * The hand-written identity schema, held to the table contract Better Auth derives
- * from Keepr Accounts' own options. A library bump that adds, renames or retypes a
- * field fails here, which is the signal that a migration is owed.
- *
- * The Drizzle adapter resolves a column by its property key, which must equal the
- * library's field name; the SQL name underneath is snake_case.
- */
+// The hand-written identity schema, held to the table contract Better Auth derives
+// from Keepr Accounts' own options: a bump that breaks it owes a migration.
 
 // The tables do not depend on what an Identity Proof reads or the Audit Record
 // writes, so nothing is read or written.
-const tables = getAuthTables(
-	authOptions({
-		sharedCookieDomain: undefined,
-		email: createEmailRecorder(),
-		identityProof: {} as IdentityProofSource,
-		organisations: {} as OrganisationRecords,
-	}),
+const contract = Object.values(
+	getAuthTables(
+		authOptions({
+			sharedCookieDomain: undefined,
+			email: createEmailRecorder(),
+			identityProof: {} as IdentityProofSource,
+			organisations: {} as OrganisationRecords,
+		}),
+	),
 );
 
-function snakeCase(name: string): string {
-	return name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-}
-
-const sqlTypeByFieldType: Record<string, string> = {
-	string: 'text',
-	boolean: 'integer',
-	date: 'integer',
-	number: 'integer',
-};
-
 describe('the identity schema', () => {
-	it('exports one table per model of the chosen add-ons, under the model name', () => {
-		const modelNames = Object.values(tables)
-			.map((table) => table.modelName)
-			.toSorted();
-		expect(modelNames).toEqual([
+	it('is the contract of the chosen add-ons’ models', () => {
+		expect(contract.map(({ modelName }) => modelName).toSorted()).toEqual([
 			'account',
 			'invitation',
 			'jwks',
@@ -54,88 +36,9 @@ describe('the identity schema', () => {
 			'user',
 			'verification',
 		]);
-
-		for (const { modelName } of Object.values(tables)) {
-			const table = schema[modelName as keyof typeof schema];
-			expect(table, `missing export for model "${modelName}"`).toBeDefined();
-			expect(getTableConfig(table).name).toBe(modelName);
-		}
 	});
 
-	describe.each(Object.values(tables).map((table) => [table.modelName, table] as const))(
-		'model %s',
-		(modelName, model) => {
-			const table = schema[modelName as keyof typeof schema];
-			const config = getTableConfig(table);
-			const columnsByKey = new Map(
-				Object.entries(table).filter(([, value]) => config.columns.includes(value as never)),
-			);
-
-			it('carries exactly the contract fields plus id', () => {
-				const expectedKeys = [
-					'id',
-					...Object.entries(model.fields).map(([key, field]) => field.fieldName ?? key),
-				].toSorted();
-				expect([...columnsByKey.keys()].toSorted()).toEqual(expectedKeys);
-			});
-
-			it('names id as the text primary key', () => {
-				const id = columnsByKey.get('id')!;
-				expect(id.primary).toBe(true);
-				expect(id.getSQLType()).toBe('text');
-			});
-
-			describe.each(
-				Object.entries(model.fields).map(
-					([key, field]) => [field.fieldName ?? key, field] as const,
-				),
-			)('field %s', (fieldName, field) => {
-				const column = columnsByKey.get(fieldName)!;
-
-				it('exists with the snake_case SQL name and contract type', () => {
-					expect(column).toBeDefined();
-					expect(column.name).toBe(snakeCase(fieldName));
-					expect(column.getSQLType()).toBe(sqlTypeByFieldType[field.type as string]);
-				});
-
-				it('matches the contract on required', () => {
-					expect(column.notNull).toBe(field.required === true);
-				});
-
-				it('matches the contract on unique', () => {
-					expect(column.isUnique).toBe(field.unique === true);
-				});
-
-				it('references what the contract names, with its delete rule, or nothing', () => {
-					const foreignKey = config.foreignKeys.find((candidate) =>
-						candidate.reference().columns.some((referencing) => referencing.name === column.name),
-					);
-					const reference = foreignKey?.reference();
-
-					expect(
-						reference && {
-							model: getTableConfig(reference.foreignTable).name,
-							field: reference.foreignColumns.map((target) => target.name).join(),
-							onDelete: foreignKey!.onDelete,
-						},
-					).toEqual(
-						field.references && {
-							model: field.references.model,
-							field: field.references.field,
-							onDelete: field.references.onDelete,
-						},
-					);
-				});
-
-				it('is covered by an index wherever the contract asks for one', () => {
-					const indexed = config.indexes.some((entry) =>
-						entry.config.columns.some(
-							(indexColumn) => 'name' in indexColumn && indexColumn.name === column.name,
-						),
-					);
-					expect(indexed || field.index !== true).toBe(true);
-				});
-			});
-		},
-	);
+	it.each(AUTH_SCHEMA_CONTRACT)('keeps the rule: %s', (_rule, check) => {
+		expect(check(contract, schema)).toEqual([]);
+	});
 });
