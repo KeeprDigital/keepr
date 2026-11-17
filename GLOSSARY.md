@@ -68,14 +68,6 @@ _Avoid_: token alone, JWT, session token
 Where Keepr Accounts sends a User once they have signed in: the page of the App that sent them to sign in.
 _Avoid_: redirect, callback URL
 
-**Audit Record**:
-Keepr Accounts' record of administrative actions: who did what, when, in which Organisation and to which User. Rows are only added.
-_Avoid_: audit log, history, Evidence Ledger (a Stream Keepr record)
-
-**First Administrator Claim**:
-The one-time offer of the first Keepr Administrator role to an email address, written by whoever deploys Keepr and claimed by setting up that User's sign-in.
-_Avoid_: bootstrap, seed admin
-
 ### Platform
 
 Named modules of `packages/nuxt-layer`. A module's term lives beside its code: one that moves into the layer brings its term here in the same change.
@@ -95,6 +87,10 @@ _Avoid_: ticker, timer (nothing ticks; a projection is re-evaluated when it chan
 **Interval**:
 Equal periods counted from an anchor instant: which period is current, and when the next begins, is a pure function of the anchor, the period and server time.
 _Avoid_: cycle, loop.
+
+**Cross-site write check**:
+Whether a state-changing request was made by a browser on behalf of another origin, read from what the browser says about where the request came from. Every app's Session-authenticated writes refuse what it flags.
+_Avoid_: CSRF token, origin check (Better Auth's own, which trusts a list of hosts)
 
 **Frame Clock**:
 The instant motion is read at: server time, read again on every animation frame while anything read at it is in motion, and left where it stopped once all of it has settled.

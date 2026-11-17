@@ -1,6 +1,6 @@
 # Keepr Accounts rules
 
-What Keepr Accounts makes true for a User, an operator and every App. Its words are the root `GLOSSARY.md`'s, under Identity and access; the reasons are in the decisions cited: ADR-0114 to ADR-0117 in this app's `docs/adr`, ADR-0010 and ADR-0012 in `apps/stream/docs/adr`, and the rest in the root `docs/adr`.
+What Keepr Accounts makes true for a User, an operator and every App. Its words are the root `GLOSSARY.md`'s, under Identity and access, and its own `GLOSSARY.md`'s; the reasons are in the decisions cited: ADR-0114 to ADR-0117 in this app's `docs/adr`, ADR-0010 and ADR-0012 in `apps/stream/docs/adr`, and the rest in the root `docs/adr`.
 
 ## Identity
 

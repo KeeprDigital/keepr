@@ -2,7 +2,7 @@
 
 One Keepr identity: every User, Session, Organisation and App access, and the service that vouches for them to each App (ADR-0112, in the root `docs/adr`). A Nuxt app (`@keepr/accounts`) on the workspace's shared layer, built as the Worker `keepr-accounts` for `accounts.keepr.digital`. Nothing deploys it yet.
 
-Its words are the root `GLOSSARY.md`'s; `RULES.md` says what it makes true. The work that builds it is #1228.
+Its words are the root `GLOSSARY.md`'s and its own `GLOSSARY.md`'s; `RULES.md` says what it makes true. The work that builds it is #1228.
 
 ## Layout
 

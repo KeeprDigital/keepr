@@ -1,7 +1,7 @@
 /**
- * The cross-site write refusal every app's Session-authenticated routes share
- * (ADR-0010, in `apps/stream/docs/adr`). An app calls it from its own
- * middleware or route: the layer registers neither.
+ * The cross-site write check every app's Session-authenticated routes share
+ * (ADR-0010, in `apps/stream/docs/adr`; `RULES.md`). An app calls it from its
+ * own middleware or route: the layer registers neither.
  */
 
 /**
@@ -25,14 +25,15 @@ export interface CrossSiteMutationCheck {
 
 /**
  * Whether a state-changing request was made by a browser on behalf of some
- * other origin, which the boundary refuses on a Session-authenticated path.
+ * other origin, which an app refuses on a Session-authenticated path.
  *
- * A Session cookie is host-only and `SameSite=Lax`, which keeps it off a
- * cross-*site* POST and sends it on a cross-origin *same-site* one: a page on
- * any sibling subdomain of this installation's registrable domain could make a
- * signed-in operator's browser POST here, with no preflight, and h3 reads a
- * body with no content type as JSON. So the cookie alone is not evidence of
- * intent; where the request came from is.
+ * A Session cookie is `SameSite=Lax`, which keeps it off a cross-*site* POST and
+ * sends it on a cross-origin *same-site* one. Where the cookie is shared across
+ * an installation's hosts (ADR-0112, in the root `docs/adr`), and even where it
+ * is host-only, a page on a sibling host of the same registrable domain could
+ * make a signed-in browser POST here, with no preflight, and h3 reads a body
+ * with no content type as JSON. So the cookie alone is not evidence of intent;
+ * where the request came from is.
  *
  * In order:
  *
@@ -47,13 +48,12 @@ export interface CrossSiteMutationCheck {
  *    on a cross-origin POST, so this is a script, a test or a harness, which
  *    holds a cookie because it signed in and not because a user did.
  *
- * **The scheme is not compared in 3**, for the reason `authOptions.ts` gives
- * for `protocol: 'auto'`. The Worker does not reliably know its own: it reads
- * `https` from `x-forwarded-proto` alone, and `wrangler dev` rewrites an
- * `Origin` matching its bind address to `http://` plus the production host.
- * A false refusal is every write from that browser failing mid-show. What the
- * concession admits is a page served over plain http from this very host, to
- * a browser old enough to send no `Sec-Fetch-Site`.
+ * **The scheme is not compared in 3.** A Worker does not reliably know its
+ * own: it reads `https` from `x-forwarded-proto` alone, and `wrangler dev`
+ * rewrites an `Origin` matching its bind address to `http://` plus the
+ * production host, so comparing it would refuse every write from such a
+ * browser. What the concession admits is a page served over plain http from
+ * this very host, to a browser old enough to send no `Sec-Fetch-Site`.
  */
 export function requestIsCrossSiteMutation(request: CrossSiteMutationCheck): boolean {
 	if (SAFE_METHODS.has(request.method.toUpperCase())) return false;

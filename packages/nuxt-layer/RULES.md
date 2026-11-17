@@ -1,6 +1,6 @@
 # Shared layer rules
 
-What each of the layer's named modules must do. What each term is, is in the root `GLOSSARY.md` (ADR-0095). Decisions cited as ADR-NNNN are files in `docs/adr` here; ADR-0078 is in `apps/stream/docs/adr`, and ADR-0112 and ADR-0113 in the root `docs/adr`, from the repository's root.
+What each of the layer's named modules must do. What each term is, is in the root `GLOSSARY.md` (ADR-0095). Decisions cited as ADR-NNNN are files in `docs/adr` here; ADR-0010 and ADR-0078 are in `apps/stream/docs/adr`, and ADR-0112 and ADR-0113 in the root `docs/adr`, from the repository's root.
 
 ## Terms
 
@@ -24,3 +24,8 @@ An App reads who a request belongs to only from an Identity Proof, through `reso
 A verified proof answers until it expires; once half its life has passed it is refreshed in the background, and it keeps answering while Keepr Accounts is unreachable. Past expiry only a fresh answer admits the request: a signed-out visitor is refused 401, and an unreachable Keepr Accounts or an unverifiable proof 503, naming why, and naming the Accounts Stand-in when nothing is registered locally as `keepr-accounts`. A refresh that hears 401 drops the proof at once. Every cookie Keepr Accounts sets is passed on to the browser (ADR-0113).
 
 `requireAppAccess` refuses an Identity with no App access, and `requireAppRole` one below the role required, each 403 with a code, in every App alike; a Keepr Administrator is held to them like anyone else. `useIdentity` sends a signed-out visitor to Keepr Accounts' sign-in with the page they were on as the Return Address, and leaves any other refusal to its caller (ADR-0113).
+
+## Server
+
+**Cross-site write check** (`requestIsCrossSiteMutation`):
+A safe method, `GET`, `HEAD` or `OPTIONS`, is never flagged. Otherwise `Sec-Fetch-Site`, where sent, decides alone: `same-origin` and `none` pass and anything else is flagged. Without it, an `Origin` must name the host the request was addressed to, its scheme not compared; `null`, or one that does not parse, is flagged. A request with neither header passes. An app refuses a flagged request 403 on every Session-authenticated write, from its own route or middleware (ADR-0010).
