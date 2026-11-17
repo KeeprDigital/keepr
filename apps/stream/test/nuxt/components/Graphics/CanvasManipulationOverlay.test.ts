@@ -360,7 +360,10 @@ describe('graphicsCanvasManipulationOverlay', () => {
 		['it goes away mid-drag', (wrapper) => wrapper.unmount()],
 		['its selection may no longer be moved', (wrapper) => wrapper.setProps({ rect: null })],
 	])('says when a drag starts, and that it ended once %s', async (_case, finish) => {
-		const wrapper = mountOverlay();
+		// Listened to, not read from `wrapper.emitted()`: unmounting clears that record.
+		const started = vi.fn();
+		const ended = vi.fn();
+		const wrapper = mountOverlay({ onGestureStart: started, onGestureEnd: ended } as never);
 		const box = wrapper.get('[data-testid="canvas-manipulation-box"]');
 
 		await box.trigger('pointerdown', {
@@ -370,12 +373,12 @@ describe('graphicsCanvasManipulationOverlay', () => {
 			clientY: 0,
 		});
 		await box.trigger('pointermove', { pointerId: 1, clientX: 10, clientY: 0 });
-		expect(wrapper.emitted('gestureStart')).toHaveLength(1);
-		expect(wrapper.emitted('gestureEnd')).toBeUndefined();
+		expect(started).toHaveBeenCalledOnce();
+		expect(ended).not.toHaveBeenCalled();
 
 		await finish(wrapper);
 
-		expect(wrapper.emitted('gestureEnd')).toHaveLength(1);
+		expect(ended).toHaveBeenCalledOnce();
 	});
 
 	it('ends no drag when it goes away at rest', async () => {

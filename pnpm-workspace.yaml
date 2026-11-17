@@ -9,15 +9,6 @@ packages:
 minimumReleaseAge: 1440
 minimumReleaseAgeExcludePrune: true
 minimumReleaseAgeExclude:
-  - '@better-auth/core@1.7.22'
-  - '@better-auth/drizzle-adapter@1.7.22'
-  - '@better-auth/kysely-adapter@1.7.22'
-  - '@better-auth/memory-adapter@1.7.22'
-  - '@better-auth/mongo-adapter@1.7.22'
-  - '@better-auth/prisma-adapter@1.7.22'
-  - '@better-auth/telemetry@1.7.22'
-  - '@iconify-json/lucide@1.2.154'
-  - better-auth@1.7.22
   - miniflare@5.20261110.2-beta
   - wrangler@4.161.0
 trustPolicy: off
@@ -43,7 +34,7 @@ catalogs:
   framework:
     nuxt: 4.6.4
     vue: 3.5.45
-    vue-router: 5.5.0
+    vue-router: 5.5.1
     pinia: 4.1.0
     '@pinia/nuxt': 1.0.3
     '@vueuse/core': 15.0.0
@@ -79,7 +70,7 @@ catalogs:
     '@fontsource/source-serif-4': 5.3.1
     fontkitten: 1.0.3
     mana-font: 1.18.0
-    '@iconify-json/lucide': 1.2.154
+    '@iconify-json/lucide': 1.2.155
     '@iconify-json/simple-icons': 1.2.102
 
   # Image encoding
@@ -89,7 +80,7 @@ catalogs:
 
   # Server: auth, data, validation, realtime
   server:
-    better-auth: 1.7.22
+    better-auth: 1.7.25
     drizzle-orm: 0.45.4
     drizzle-zod: 0.8.3
     drizzle-kit: 0.31.11
@@ -108,7 +99,7 @@ catalogs:
     '@vitest/coverage-v8': 5.1.0
     '@vitest/ui': 5.1.0
     '@nuxt/test-utils': 4.4.0
-    '@vue/test-utils': 2.5.1
+    '@vue/test-utils': 2.6.0
     happy-dom: 21.0.4
     fast-check: 4.10.2
     '@libsql/client': 0.18.0
