@@ -17,6 +17,10 @@ The workspace's own tooling (ADR-0110, in the root `docs/adr`): what every app, 
 - **Nothing here knows an app.** What only one app runs (Stream Keepr's `verify.mjs`, its deploy and acceptance scripts) stays in that app. An app that strands more than `workerd` reaps it itself with `discoverCheckoutRoots` and `terminateAll` (`apps/stream/scripts/reap.mjs`).
 - **A workflow names a script by its path from the repository's root**, and a job that checks out only some files lists it (`test/ciWorkflows.test.ts` holds both).
 
+## Run slots by hand
+
+`KEEPR_RUN_SLOTS` sizes the pool (`KEEPR_RUN_SLOTS=4`), or `off` runs every gate unqueued. Its former name, `STREAM_KEEPR_RUN_SLOTS`, is still read while it is unset. The ledger keeps its file, `stream-keepr-run-slots.sqlite` in the Git common directory, so a worktree on an older revision shares the pool.
+
 ## Commands
 
 ```

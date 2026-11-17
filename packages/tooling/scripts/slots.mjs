@@ -42,13 +42,18 @@ const SLOT_BYTES = 1.5 * 1024 ** 3;
 const SLOTS_LEFT_FOR_THE_MACHINE = 2;
 
 /** Set to a number to size the pool by hand, or to `off` to run unqueued. */
-export const RUN_SLOTS_ENV = 'STREAM_KEEPR_RUN_SLOTS';
+export const RUN_SLOTS_ENV = 'KEEPR_RUN_SLOTS';
+/**
+ * What `RUN_SLOTS_ENV` was called while the pool was Stream Keepr's. A shell
+ * or a note may still set it, so it is read while the new name is unset.
+ */
+export const FORMER_RUN_SLOTS_ENV = 'STREAM_KEEPR_RUN_SLOTS';
 /**
  * Set for the children of a command that already holds slots, to the number
  * it holds. A gate started inside one takes nothing more: it would wait on
  * its own parent.
  */
-export const RUN_SLOTS_HELD_ENV = 'STREAM_KEEPR_RUN_SLOTS_HELD';
+export const RUN_SLOTS_HELD_ENV = 'KEEPR_RUN_SLOTS_HELD';
 
 /**
  * What each gate holds while it runs, measured on the 10-core, 16 GB machine
@@ -74,14 +79,14 @@ export const RUN_SLOT_COSTS = /** @type {const} */ ({
  * a small machine), and no more than its memory holds at 1.5 GB a slot after
  * leaving room for everything else. Never fewer than two.
  *
- * @returns {number} the pool's size, or 0 when `STREAM_KEEPR_RUN_SLOTS=off`
+ * @returns {number} the pool's size, or 0 when `KEEPR_RUN_SLOTS=off`
  */
 export function runSlotCount({
 	cores = availableParallelism(),
 	memoryBytes = totalmem(),
 	env = process.env,
 } = {}) {
-	const stated = env[RUN_SLOTS_ENV];
+	const stated = env[RUN_SLOTS_ENV] ?? env[FORMER_RUN_SLOTS_ENV];
 	if (stated === 'off') return 0;
 	const requested = Number.parseInt(stated ?? '', 10);
 	if (Number.isInteger(requested) && requested > 0) return requested;
@@ -129,7 +134,11 @@ export function gitCommonDirectory(from = fileURLToPath(new URL('../', import.me
 	}
 }
 
-/** Where the ledger lives for the checkout this script is in. */
+/**
+ * Where the ledger lives for the checkout this script is in. It keeps the name
+ * it had while the pool was Stream Keepr's: a worktree on an older revision
+ * names the same file, so the two still share one pool.
+ */
 export function runSlotLedgerPath(from) {
 	const common = gitCommonDirectory(from);
 	return common && join(common, 'stream-keepr-run-slots.sqlite');

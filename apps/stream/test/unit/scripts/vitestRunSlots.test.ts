@@ -52,7 +52,7 @@ describe('a Vitest run held to its run slots', () => {
 				import { writeFileSync } from 'node:fs';
 				import { it } from 'vitest';
 				it('records its worker', async () => {
-					writeFileSync(${JSON.stringify(poolIds)} + '/${file}', (process.env.VITEST_POOL_ID ?? '') + ' of ' + process.env.STREAM_KEEPR_RUN_SLOTS_HELD);
+					writeFileSync(${JSON.stringify(poolIds)} + '/${file}', (process.env.VITEST_POOL_ID ?? '') + ' of ' + process.env.KEEPR_RUN_SLOTS_HELD);
 					await new Promise(done => setTimeout(done, 150));
 				});
 			`,
@@ -84,7 +84,10 @@ describe('a Vitest run held to its run slots', () => {
 				stdio: ['ignore', 'ignore', 'pipe'],
 				env: Object.fromEntries(
 					Object.entries(process.env).filter(
-						([name]) => !name.startsWith('VITEST') && !name.startsWith('STREAM_KEEPR_RUN_SLOTS'),
+						([name]) =>
+							!name.startsWith('VITEST') &&
+							!name.startsWith('KEEPR_RUN_SLOTS') &&
+							!name.startsWith('STREAM_KEEPR_RUN_SLOTS'),
 					),
 				),
 			}),

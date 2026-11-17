@@ -89,17 +89,17 @@ describe('how many run slots a machine has', () => {
 	});
 
 	it.each([
-		{ stated: '5', slots: 5 },
-		{ stated: 'off', slots: 0 },
-		{ stated: 'plenty', slots: 8 },
-	])('sTREAM_KEEPR_RUN_SLOTS=$stated: $slots', ({ stated, slots }) => {
-		expect(
-			runSlotCount({
-				cores: 10,
-				memoryBytes: 16 * GIB,
-				env: { STREAM_KEEPR_RUN_SLOTS: stated },
-			}),
-		).toBe(slots);
+		{ stated: 'a size', env: { KEEPR_RUN_SLOTS: '5' }, slots: 5 },
+		{ stated: 'off', env: { KEEPR_RUN_SLOTS: 'off' }, slots: 0 },
+		{ stated: 'nothing it can read', env: { KEEPR_RUN_SLOTS: 'plenty' }, slots: 8 },
+		{ stated: 'off under the former name', env: { STREAM_KEEPR_RUN_SLOTS: 'off' }, slots: 0 },
+		{
+			stated: 'a size under each name',
+			env: { KEEPR_RUN_SLOTS: '5', STREAM_KEEPR_RUN_SLOTS: 'off' },
+			slots: 5,
+		},
+	])('stated as $stated: $slots', ({ env, slots }) => {
+		expect(runSlotCount({ cores: 10, memoryBytes: 16 * GIB, env })).toBe(slots);
 	});
 
 	// Two stay free on a machine with room, so one test file never waits behind a suite.
@@ -220,7 +220,7 @@ describe('taking run slots', () => {
 
 		const nested = await acquireRunSlots({
 			...seams,
-			env: { STREAM_KEEPR_RUN_SLOTS_HELD: '3' },
+			env: { KEEPR_RUN_SLOTS_HELD: '3' },
 			pid: 1,
 			want: 6,
 			label: 'nested suite',
@@ -310,7 +310,7 @@ describe('running a command inside run slots', () => {
 	it('tells the command how many slots it runs inside', async () => {
 		const held = await runHoldingSlots(
 			'3',
-			[process.execPath, '-e', 'process.exit(Number(process.env.STREAM_KEEPR_RUN_SLOTS_HELD))'],
+			[process.execPath, '-e', 'process.exit(Number(process.env.KEEPR_RUN_SLOTS_HELD))'],
 			ledger(),
 		);
 
