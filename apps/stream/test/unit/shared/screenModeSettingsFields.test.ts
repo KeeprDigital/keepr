@@ -277,6 +277,20 @@ describe('when a settings field shows', () => {
 		],
 		[
 			'deck',
+			'sideboard.stackReveal',
+			'for a stack below the mainboard, drawn as a grid',
+			context({ sideboardPlacement: 'below' }, { game: 'mtg' }, { block: { view: 'stack' } }),
+			false,
+		],
+		[
+			'deck',
+			'sideboard.stackReveal',
+			'for a stack shown alone, drawn as a grid',
+			context({ board: 'sideboard' }, { game: 'mtg' }, { block: { view: 'stack' } }),
+			false,
+		],
+		[
+			'deck',
 			'showHighlanderTotal',
 			'for a Broadcast Deck List',
 			context(

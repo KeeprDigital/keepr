@@ -288,6 +288,7 @@ export {
 	DEFAULT_HIGHLANDER_POINTS_POSITION,
 	DEFAULT_QUANTITY_POSITION,
 	resolveDeckBoards,
+	sideboardStacks,
 } from '../screenModeConfigs/deck';
 export type { FeatureMatchModeConfig } from '../screenModeConfigs/featureMatch';
 export type {

@@ -218,10 +218,11 @@ export function fieldOptions(
 	});
 }
 
-/** The value a field holds: a nested block's field read from its block. */
+/** The value a field's control shows: what it holds, a nested block's field read from its block, as the Screen draws it. */
 export function fieldValue(entry: SettingsPageField): unknown {
 	const [key, inner] = entry.path;
-	return inner === undefined ? entry.context.config[key!] : entry.context.block?.[inner];
+	const stored = inner === undefined ? entry.context.config[key!] : entry.context.block?.[inner];
+	return entry.field.shownValue ? entry.field.shownValue(stored, entry.context) : stored;
 }
 
 /**
