@@ -1,6 +1,6 @@
 # Keepr Accounts rules
 
-What Keepr Accounts makes true for a User, an operator and every App. Its words are the root `GLOSSARY.md`'s, under Identity and access; the reasons are in the decisions cited: ADR-0114, ADR-0115 and ADR-0116 in this app's `docs/adr`, ADR-0010 and ADR-0012 in `apps/stream/docs/adr`, and the rest in the root `docs/adr`.
+What Keepr Accounts makes true for a User, an operator and every App. Its words are the root `GLOSSARY.md`'s, under Identity and access; the reasons are in the decisions cited: ADR-0114 to ADR-0117 in this app's `docs/adr`, ADR-0010 and ADR-0012 in `apps/stream/docs/adr`, and the rest in the root `docs/adr`.
 
 ## Identity
 
@@ -53,7 +53,8 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 
 ## Organisation
 
-- An Organisation role governs only the Organisation's membership: owners and admins invite, a member cannot, and only an owner invites an owner. A User cannot create an Organisation: Keepr Accounts creates one on purpose, the Keepr Organisation with the first Keepr Administrator. (ADR-0114, ADR-0115)
+- An Organisation role governs only the Organisation's membership: owners and admins invite, a member cannot, and only an owner invites an owner. A User cannot create an Organisation: Keepr Accounts creates one on purpose, the Keepr Organisation with the first Keepr Administrator, and any other at a Keepr Administrator's request. The library's `/organization/create` is refused 403 to everyone, a Keepr Administrator included. (ADR-0114, ADR-0115, ADR-0117)
+- Nothing renames or deletes an Organisation: the library's `/organization/update` and `/organization/delete` answer 404 to every request. (ADR-0117)
 - A member holds one App role, or none, in each App: App access, one row per member and App, naming an App and a role from the App registry. (ADR-0114)
 - An Organisation admits 10,000 members and 10,000 pending Invitations. (ADR-0114)
 
@@ -77,12 +78,23 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 
 ## Members
 
-- An owner or admin of an Organisation lists its members at `/members`, each with their Organisation role and App roles, for the Organisation they are working in; a Keepr Administrator manages any Organisation as its owner would. Anyone else is refused 403 `NOT_A_MANAGER`, and finds the member and Invitation screens closed. (ADR-0116)
+- An owner or admin of an Organisation lists its members at `/members`, each with their Organisation role and App roles, for the Organisation they are working in, or the one `?organisation=` names; a Keepr Administrator manages any Organisation as its owner would. The profile links each Organisation a User manages to its member screen, and the one they work in to `/invite`. Anyone else is refused 403 `NOT_A_MANAGER`, and finds the member and Invitation screens closed. (ADR-0116)
 - They give a member an App role in one App, or take that App's access away while the member stays; an App or role the App registry does not name is refused 400 `APP_ROLE_NOT_IN_REGISTRY`. They remove a member, with all their App access. (ADR-0114, ADR-0116)
 - Only an owner, or a Keepr Administrator, changes a member's Organisation role or removes an owner: an admin is refused 403 `OWNER_REQUIRED`. The last owner is never demoted or removed: 409 `LAST_OWNER`. (ADR-0116)
 - Each change needs a sign-in no older than ten minutes, counted from the Session's sign-in, which renewing it does not move. An older one is refused 403 `RECENT_SIGN_IN_REQUIRED` and asked to sign in again. Listing needs none. (ADR-0116)
 - The library's `/organization/update-member-role` and `/organization/remove-member` answer 404 to every request. (ADR-0116)
 - A write to Keepr Accounts' own routes that needs a Session is refused 403 when another origin's page made the browser send it, as Stream Keepr's API boundary refuses one (ADR-0010, ADR-0116).
+
+## Keepr Administrator
+
+- A Keepr Administrator runs the platform at `/platform`, linked from their profile, through Keepr Accounts' own routes under `/api/platform`. Anyone else is refused 403 `NOT_A_KEEPR_ADMINISTRATOR`, and finds the screen closed. (ADR-0117)
+- They list every Organisation, with how many members each has, and open any one's member screen. (ADR-0116, ADR-0117)
+- They create an Organisation by naming it and its first owner's address, with an App role per App for them. Keepr Accounts invites that address as the Organisation's owner, emailed and shown to copy as any Invitation is; the Keepr Administrator becomes no member of it, and it has none until the invitee accepts. A name another Organisation has is refused 409 `ORGANISATION_EXISTS`; a blank name 400 `NAME_REQUIRED`; an address that is none 400 `INVALID_EMAIL`; an App role the App registry does not name 400 `APP_ROLE_NOT_IN_REGISTRY`. Refused, nothing is created, invited or emailed. (ADR-0114, ADR-0117)
+- They find any User whose name or email contains what they type, ignoring case, each shown with whether they are disabled or a Keepr Administrator; at most 50 at once. (ADR-0117)
+- They disable a User, which ends every Session that User has at once, and enable them again. A Keepr Administrator cannot disable themselves: 409 `CANNOT_DISABLE_SELF`. An id no User has answers 404 `USER_NOT_FOUND`. (ADR-0113, ADR-0117)
+- Creating an Organisation, disabling a User and enabling one need a sign-in no older than ten minutes, as a change to a member does: older, it is refused 403 `RECENT_SIGN_IN_REQUIRED` and changes nothing. Listing, finding and reading need none. (ADR-0116, ADR-0117)
+- They read the Audit Record's latest 200 rows, newest first, each naming who acted, on whom and in which Organisation. (ADR-0117)
+- Being a Keepr Administrator grants no App access, and no Organisation role, by itself: their Identity Proof names only the Organisations they joined. (ADR-0117)
 
 ## First Administrator Claim
 
@@ -94,3 +106,4 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - Each of these is a row, with who acted and when, the Organisation and the User it touched where there is one: a First Administrator Claim made (by the command, naming the operator's login) and consumed, an Organisation created, an Invitation created and accepted. (ADR-0114, ADR-0115)
 - An Invitation cancelled is a row naming who cancelled it; one replaced by inviting the address again is a row naming the inviter and the Invitation that replaced it. An Invitation declined is a row naming the invitee's User when the address has one. (ADR-0114)
 - So is each change to a member: an App role set or removed, an Organisation role changed, a member removed; with what they had before and whether an owner, an admin or a Keepr Administrator made it. (ADR-0116)
+- So is each Keepr Administrator's action: an Organisation created, with its first owner's Invitation; a User disabled, with how many Sessions that ended; a User enabled. (ADR-0117)

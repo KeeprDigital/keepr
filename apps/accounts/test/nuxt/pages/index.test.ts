@@ -149,6 +149,23 @@ describe('the profile', () => {
 		expect(received['/organization/set-active']).toEqual([{ organizationId: 'club' }]);
 	});
 
+	// The screens a User may use are linked; the server still decides each.
+	it.each<[string, string | undefined, string[]]>([
+		[
+			'an owner of the Organisation worked in, and a member of another',
+			undefined,
+			['/members?organisation=keepr', '/invite'],
+		],
+		['a Keepr Administrator', 'admin', ['/members?organisation=keepr', '/invite', '/platform']],
+	])('links %s to the screens they may use', async (_who, role, links) => {
+		organisations = { active: 'keepr', organisations: [KEEPR, CLUB] };
+		session = { ...(session as object), user: { name: 'Ada', email: 'ada@keepr.digital', role } };
+
+		const page = await profile();
+
+		expect(page.findAll('a[data-manage]').map((link) => link.attributes('href'))).toEqual(links);
+	});
+
 	it('signs out', async () => {
 		const page = await profile();
 

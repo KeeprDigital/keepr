@@ -16,7 +16,9 @@ export type AuditAction =
 	| 'member.role-changed'
 	| 'member.removed'
 	| 'app-access.set'
-	| 'app-access.removed';
+	| 'app-access.removed'
+	| 'user.disabled'
+	| 'user.enabled';
 
 export interface AuditEntry {
 	action: AuditAction;

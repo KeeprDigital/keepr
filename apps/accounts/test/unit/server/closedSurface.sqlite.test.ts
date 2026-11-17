@@ -77,6 +77,38 @@ describe('the library routes Keepr Accounts closes', () => {
 	});
 });
 
+// Nothing renames or deletes an Organisation; the library's routes would, unaudited.
+// One is created only through Keepr Accounts' own route, by a Keepr Administrator.
+describe('the library’s Organisation routes', () => {
+	it.each([
+		['an ordinary User', 'walk-in@keepr.digital'],
+		['a Keepr Administrator', 'administrator@keepr.digital'],
+	])('/organization/create is refused to %s', async (_who, email) => {
+		if (email !== 'administrator@keepr.digital') await accounts.createUser(email);
+
+		const response = await accounts.send('/organization/create', {
+			body: { name: 'Self Made', slug: `self-made-${email.length}` },
+			headers: { cookie: await accounts.signIn(email) },
+		});
+
+		expect(response.status).toBe(403);
+	});
+
+	it.each([
+		['/organization/update', 'renamed', { data: { name: 'Renamed' } }],
+		['/organization/delete', 'deleted', {}],
+	])('%s answers 404 to the Organisation’s owner', async (path, slug, body) => {
+		const organisation = await accounts.createOrganisation(slug, 'administrator@keepr.digital');
+
+		const response = await accounts.send(path, {
+			body: { organizationId: organisation.id, ...body },
+			headers: { cookie: administratorCookie },
+		});
+
+		expect(response.status).toBe(404);
+	});
+});
+
 // Keepr Accounts' own member routes ask for a recent sign-in and keep App access
 // with the member; the library's would do neither.
 describe('the library’s member routes', () => {

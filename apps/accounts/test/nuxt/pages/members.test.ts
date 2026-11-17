@@ -59,6 +59,30 @@ registerEndpoint(MEMBERS, {
 		],
 	}),
 });
+registerEndpoint('/api/organisations/club/standing', {
+	method: 'GET',
+	handler: () => ({
+		organisation: { id: 'club', name: 'The Club' },
+		standing: 'keepr-administrator',
+	}),
+});
+registerEndpoint('/api/organisations/club/members', {
+	method: 'GET',
+	handler: () => ({
+		organisation: { id: 'club', name: 'The Club' },
+		standing: 'keepr-administrator',
+		members: [
+			{
+				memberId: 'member-grace',
+				userId: 'grace',
+				name: 'Grace',
+				email: 'grace@club.example',
+				role: 'owner',
+				apps: {},
+			},
+		],
+	}),
+});
 changeRoute('PUT', `${MEMBERS}/${ADA}/role`);
 changeRoute('DELETE', `${MEMBERS}/${ADA}/app-access/stream`);
 changeRoute('PUT', `${MEMBERS}/${ADA}/app-access/score`);
@@ -163,6 +187,17 @@ describe('the members page', () => {
 
 		await expect.poll(() => page.find('[data-refusal]').exists()).toBe(true);
 		expect(page.get('[data-refusal]').text()).toContain('at least one owner');
+	});
+
+	// How a Keepr Administrator, or a User managing more than one, reaches another.
+	it('manages the Organisation the address names, rather than the one worked in', async () => {
+		await useRouter().push('/members?organisation=club');
+
+		const page = await opened();
+
+		expect(page.text()).toContain('The Club');
+		expect(page.get('[data-member]').text()).toContain('grace@club.example');
+		await useRouter().push('/members');
 	});
 
 	it('is closed to a User who does not manage the Organisation', async () => {

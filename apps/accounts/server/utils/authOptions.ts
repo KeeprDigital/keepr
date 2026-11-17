@@ -33,6 +33,9 @@ export const KEEPR_DOMAIN = 'keepr.digital';
 export const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7;
 export const SESSION_UPDATE_AGE_SECONDS = 60 * 60 * 24;
 
+/** How long an Invitation stays open: seven days. */
+export const INVITATION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7;
+
 /** How long an emailed reset link works: one hour, and once. */
 export const RESET_LINK_EXPIRES_IN_SECONDS = 60 * 60;
 
@@ -99,6 +102,13 @@ export const MEMBER_PATHS_KEEPR_SERVES = [
 	'/organization/remove-member',
 ];
 
+/**
+ * The organisation add-on's routes that rename or delete an Organisation, closed
+ * because nothing in Keepr does either: they would be open to its owners, and
+ * leave no row in the Audit Record.
+ */
+export const ORGANISATION_PATHS_CLOSED = ['/organization/update', '/organization/delete'];
+
 export interface AuthOptionsInput {
 	sharedCookieDomain: string | undefined;
 	/** Where the email a request causes is sent. */
@@ -157,7 +167,7 @@ export function authOptions({
 			organization({
 				// Organisations are created on purpose, by a Keepr Administrator.
 				allowUserToCreateOrganization: false,
-				invitationExpiresIn: 60 * 60 * 24 * 7,
+				invitationExpiresIn: INVITATION_EXPIRES_IN_SECONDS,
 				cancelPendingInvitationsOnReInvite: true,
 				membershipLimit: 10_000,
 				invitationLimit: 10_000,
@@ -208,7 +218,7 @@ export function authOptions({
 				},
 			},
 		},
-		disabledPaths: [...CLOSED_PATHS, ...MEMBER_PATHS_KEEPR_SERVES],
+		disabledPaths: [...CLOSED_PATHS, ...MEMBER_PATHS_KEEPR_SERVES, ...ORGANISATION_PATHS_CLOSED],
 		baseURL: {
 			allowedHosts: ALLOWED_HOSTS,
 			fallback: KEEPR_ACCOUNTS_ORIGIN,

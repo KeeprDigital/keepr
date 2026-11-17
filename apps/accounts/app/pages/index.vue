@@ -9,7 +9,8 @@ import { MIN_PASSWORD_LENGTH, newPasswordRefusal } from '~~/shared/utils/newPass
  */
 
 interface SignedIn {
-	user: { name: string; email: string };
+	/** `role` is the admin add-on's: `admin` among it marks a Keepr Administrator. */
+	user: { name: string; email: string; role?: string | null };
 	session: { token: string };
 }
 
@@ -69,6 +70,15 @@ async function loadOrganisations() {
 
 const switchable = computed(() =>
 	organisations.value.organisations.map(({ id, name }) => ({ label: name, value: id })),
+);
+
+/** Whether the User manages an Organisation's members, which opens its member screen. */
+function manages(organisation: ProfileOrganisation): boolean {
+	return organisation.role === 'owner' || organisation.role === 'admin';
+}
+
+const keeprAdministrator = computed(
+	() => signedIn.value?.user.role?.split(',').includes('admin') ?? false,
 );
 
 /** The App roles a User holds in an Organisation, by the App registry's names. */
@@ -257,8 +267,44 @@ async function signOut() {
 								</li>
 							</ul>
 							<p v-else class="text-sm text-muted">No access to any App.</p>
+							<div v-if="manages(organisation)" class="flex flex-wrap gap-2 pt-1">
+								<UButton
+									data-manage
+									color="neutral"
+									variant="outline"
+									size="sm"
+									:to="`/members?organisation=${encodeURIComponent(organisation.id)}`"
+								>
+									Members
+								</UButton>
+								<!-- An Invitation is to the Organisation worked in. -->
+								<UButton
+									v-if="organisation.id === organisations.active"
+									data-manage
+									color="neutral"
+									variant="outline"
+									size="sm"
+									to="/invite"
+								>
+									Invite someone
+								</UButton>
+							</div>
 						</li>
 					</ul>
+				</div>
+			</UCard>
+
+			<UCard v-if="keeprAdministrator" data-profile="platform">
+				<div class="flex flex-wrap items-center justify-between gap-4">
+					<div>
+						<h2 class="text-lg font-semibold">Platform</h2>
+						<p class="text-sm text-muted">
+							You are a Keepr Administrator: every organisation, every user, and the audit record.
+						</p>
+					</div>
+					<UButton data-manage color="neutral" variant="outline" to="/platform">
+						Open the platform screen
+					</UButton>
 				</div>
 			</UCard>
 

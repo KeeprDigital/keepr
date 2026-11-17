@@ -7,11 +7,14 @@ export interface ManagedOrganisation {
 }
 
 /**
- * The Organisation the signed-in User is working in, when they manage its
- * members: what opens the member and Invitation screens. `closed` for anyone
- * else, the server deciding; a signed-out visitor is sent to sign in.
+ * The Organisation the signed-in User is working in, or `organisationId` when
+ * named, when they manage its members: what opens the member and Invitation
+ * screens. `closed` for anyone else, the server deciding; a signed-out visitor is
+ * sent to sign in.
  */
-export function useManagedOrganisation() {
+export function useManagedOrganisation({
+	organisationId: named,
+}: { organisationId?: string } = {}) {
 	const route = useRoute();
 	const state = ref<'loading' | 'open' | 'closed' | 'failed'>('loading');
 	const managed = ref<ManagedOrganisation | null>(null);
@@ -22,7 +25,7 @@ export function useManagedOrganisation() {
 		);
 		if (!signedIn)
 			return await navigateTo(`/sign-in?returnTo=${encodeURIComponent(route.fullPath)}`);
-		const organisationId = signedIn.session.activeOrganizationId;
+		const organisationId = named || signedIn.session.activeOrganizationId;
 		if (!organisationId) return (state.value = 'closed');
 		try {
 			managed.value = await $fetch<ManagedOrganisation>(

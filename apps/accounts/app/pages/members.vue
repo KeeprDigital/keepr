@@ -34,7 +34,10 @@ const apps = (Object.keys(APP_REGISTRY) as AppId[]).map((app) => ({
 	],
 }));
 
-const { state, managed } = useManagedOrganisation();
+// A Keepr Administrator, or a User managing more than one, names the Organisation.
+const named = useRoute().query.organisation;
+const organisationId = typeof named === 'string' && named.length > 0 ? named : undefined;
+const { state, managed } = useManagedOrganisation({ organisationId });
 const members = ref<Member[]>([]);
 /** The member a change is being sent for. */
 const changing = ref<string | null>(null);
@@ -107,7 +110,12 @@ function remove(member: Member) {
 	return change(member.memberId, async (path) => await $fetch(path, { method: 'DELETE' }));
 }
 
-const signInAgainLink = computed(() => `/sign-in?returnTo=${encodeURIComponent('/members')}`);
+const signInAgainLink = computed(
+	() =>
+		`/sign-in?returnTo=${encodeURIComponent(
+			organisationId ? `/members?organisation=${encodeURIComponent(organisationId)}` : '/members',
+		)}`,
+);
 </script>
 
 <template>
