@@ -1,4 +1,5 @@
-import { apiPathRequiresSession, requestIsCrossSiteMutation } from '~~/server/utils/apiBoundary';
+import { requestIsCrossSiteMutation } from '@keepr/nuxt-layer/server/utils/crossSiteMutation';
+import { apiPathRequiresSession } from '~~/server/utils/apiBoundary';
 import { requestUserSession } from '~~/server/utils/auth';
 
 /**

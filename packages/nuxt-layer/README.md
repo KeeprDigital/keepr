@@ -13,7 +13,7 @@ export default defineNuxtConfig({
 | Path | Holds |
 |---|---|
 | `nuxt.config.ts` | The shell: client rendering, Nuxt UI, VueUse, the colour mode, strict TypeScript, the Cloudflare Workers target. |
-| `server/utils` | Errors a route reports, D1 parameter helpers, the request-body ceiling, shared-secret checks, error-log fields, the server time reading, who a request belongs to (`requestIdentity.ts`). Auto-imported by Nitro. |
+| `server/utils` | Errors a route reports, D1 parameter helpers, the request-body ceiling, shared-secret checks, error-log fields, the server time reading, who a request belongs to (`requestIdentity.ts`), the refusal of a cross-site write (`crossSiteMutation.ts`). Auto-imported by Nitro. |
 | `shared/` | What the server and the client both read: the state-conflict code, the body-limit route rule's types, the server time path, clock time formatting and parsing, Intervals, the App registry, the Identity Proof's shape. |
 | `app/composables`, `app/utils` | Request feedback, forms, unsaved changes, async actions, store helpers, who am I (`useIdentity`), server time, the Clock Projection scheduler and the Frame Clock, failure sentences. Auto-imported. |
 | `app/components/UI` | Confirm, empty, loading, search and tab components, as `<UI…>`. |
