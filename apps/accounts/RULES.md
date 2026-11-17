@@ -64,6 +64,16 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - The invitee sees who invited them, to which Organisation, and the roles offered, before accepting. (ADR-0114)
 - An invitee with no User accepts by choosing a name and a password of 8 to 128 characters in no breach. Keepr Accounts creates exactly one User, its email verified, signs them in, makes them a member with the Organisation role offered, and gives them App access in each App the Invitation named. An address that already has a User is told to sign in to accept. (ADR-0114)
 - Accepting copies the Invitation's App roles into App access, whoever accepts. (ADR-0114)
+- An invitee who has a User signs in with the invited address, through `/sign-in` and back to the Invitation, and accepts: the Organisation and its App access are added to their User, and their Session works in it. Signed in with any other address, accepting is refused 403 and nothing changes. (ADR-0114)
+- The invitee may decline from the Invitation's link, signed in or not: the link proves the address, as it does for accepting. (#1228 § Invitations)
+- An Invitation that is not open says why, answering 410 with `INVITATION_EXPIRED`, `INVITATION_CANCELLED`, `INVITATION_ACCEPTED` or `INVITATION_DECLINED`; an id no Invitation has answers 404 `INVITATION_NOT_FOUND`. A replaced Invitation reads as cancelled. (#1228 § Invitations)
+- Owners and admins see their Organisation's pending, unexpired Invitations at `/invite`, an owner's offer to an owner only to owners, and cancel one. A member is refused 403. Only a pending Invitation is cancelled: any other answers 400 `INVITATION_NOT_PENDING`. (ADR-0114)
+- Inviting an address that has a pending Invitation to the Organisation cancels it, and the new one alone stands. (ADR-0114)
+
+## Profile
+
+- The profile lists the User's Organisations, in the order they joined, with their Organisation role and their App role in each App they can use there. (#1228 § The model)
+- A User in more than one Organisation switches the one they work in on the profile. It is carried on the Session, so every App's next Identity Proof names it, with their roles there. Switching to an Organisation they do not belong to is refused 403. A User in exactly one is shown no switcher. (ADR-0113)
 
 ## Members
 
@@ -82,4 +92,5 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 ## Audit Record
 
 - Each of these is a row, with who acted and when, the Organisation and the User it touched where there is one: a First Administrator Claim made (by the command, naming the operator's login) and consumed, an Organisation created, an Invitation created and accepted. (ADR-0114, ADR-0115)
+- An Invitation cancelled is a row naming who cancelled it; one replaced by inviting the address again is a row naming the inviter and the Invitation that replaced it. An Invitation declined is a row naming the invitee's User when the address has one. (ADR-0114)
 - So is each change to a member: an App role set or removed, an Organisation role changed, a member removed; with what they had before and whether an owner, an admin or a Keepr Administrator made it. (ADR-0116)

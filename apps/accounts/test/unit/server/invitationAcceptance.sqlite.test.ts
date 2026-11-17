@@ -1,8 +1,12 @@
 import type { TestAccounts } from '~~/test/helpers/keeprAccounts';
-import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { and, eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { identityDatabase, schema } from '~~/server/db';
-import { acceptInvitationAsNewUser, invitationOffer } from '~~/server/utils/invitationAcceptance';
+import {
+	acceptInvitationAsNewUser,
+	declineInvitation,
+	invitationOffer,
+} from '~~/server/utils/invitationAcceptance';
 import {
 	createTestAccounts,
 	fakeBreachedPasswordService,
@@ -206,8 +210,8 @@ describe('accepting as a new User is refused', () => {
 		await acceptInvitationAsNewUser(accounts.auth, input);
 
 		await expect(acceptInvitationAsNewUser(accounts.auth, input)).rejects.toMatchObject({
-			statusCode: 404,
-			code: 'INVITATION_NOT_FOUND',
+			statusCode: 410,
+			code: 'INVITATION_ACCEPTED',
 		});
 		expect(await usersCalled(INVITEE)).toHaveLength(1);
 	});
@@ -223,5 +227,166 @@ describe('accepting as a new User is refused', () => {
 				password: PASSWORD,
 			}),
 		).rejects.toMatchObject({ statusCode: 409, code: 'USER_ALREADY_EXISTS' });
+	});
+});
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+async function closeBy(how: 'expiring' | 'cancelling' | 'accepting' | 'declining', id: string) {
+	switch (how) {
+		case 'expiring':
+			vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 8 * DAY_MS });
+			return;
+		case 'cancelling':
+			await accounts.send('/organization/cancel-invitation', {
+				body: { invitationId: id },
+				headers: { cookie: await accounts.signIn(OWNER) },
+			});
+			return;
+		case 'accepting':
+			await acceptInvitationAsNewUser(accounts.auth, {
+				invitationId: id,
+				name: 'Newcomer',
+				password: PASSWORD,
+			});
+			return;
+		case 'declining':
+			await declineInvitation(accounts.auth, database(), id);
+	}
+}
+
+function database() {
+	return identityDatabase(accounts.harness.database);
+}
+
+async function memberOf(email: string) {
+	const [user] = await usersCalled(email);
+	const [member] = await database()
+		.select()
+		.from(schema.member)
+		.where(and(eq(schema.member.userId, user!.id), eq(schema.member.organizationId, keepr.id)));
+	return member;
+}
+
+describe('a closed Invitation', () => {
+	afterEach(() => vi.useRealTimers());
+
+	it.each([
+		['expiring', 'INVITATION_EXPIRED'],
+		['cancelling', 'INVITATION_CANCELLED'],
+		['accepting', 'INVITATION_ACCEPTED'],
+		['declining', 'INVITATION_DECLINED'],
+	] as const)('says, after %s, that it is closed and why', async (how, code) => {
+		const id = await invite();
+
+		await closeBy(how, id);
+
+		await expect(invitationOffer(accounts.auth, id)).rejects.toMatchObject({
+			statusCode: 410,
+			code,
+		});
+	});
+});
+
+describe('declining an Invitation', () => {
+	it.each([
+		['an address with no User', false],
+		['an address that has a User', true],
+	])('from its link, for %s, closes it and is in the Audit Record', async (_case, hasUser) => {
+		const user = hasUser ? await accounts.createUser(INVITEE) : null;
+		const id = await invite();
+
+		await declineInvitation(accounts.auth, database(), id);
+
+		await expect(invitationOffer(accounts.auth, id)).rejects.toMatchObject({
+			code: 'INVITATION_DECLINED',
+		});
+		const declined = (await accounts.auditRecord()).filter(
+			(row) => row.action === 'invitation.declined',
+		);
+		expect(declined).toEqual([
+			expect.objectContaining({
+				actorUserId: user?.id ?? null,
+				subjectUserId: user?.id ?? null,
+				organizationId: keepr.id,
+			}),
+		]);
+		expect(JSON.parse(declined[0]!.detail!)).toEqual({ invitationId: id, email: INVITEE });
+	});
+
+	it('signed in, through the library’s route, is in the Audit Record', async () => {
+		const { id: userId } = await accounts.createUser(INVITEE);
+		const id = await invite();
+
+		const response = await accounts.send('/organization/reject-invitation', {
+			body: { invitationId: id },
+			headers: { cookie: await accounts.signIn(INVITEE) },
+		});
+
+		expect(response.status).toBe(200);
+		const declined = (await accounts.auditRecord()).filter(
+			(row) => row.action === 'invitation.declined',
+		);
+		expect(declined).toEqual([expect.objectContaining({ actorUserId: userId })]);
+	});
+
+	it('is refused once it has closed, leaving it as it was', async () => {
+		const id = await invite();
+		await closeBy('cancelling', id);
+
+		await expect(declineInvitation(accounts.auth, database(), id)).rejects.toMatchObject({
+			statusCode: 410,
+			code: 'INVITATION_CANCELLED',
+		});
+		expect(
+			(await accounts.auditRecord()).filter((row) => row.action === 'invitation.declined'),
+		).toEqual([]);
+	});
+});
+
+describe('accepting as an existing User', () => {
+	it('adds the Organisation and its App access to their User, and works in it', async () => {
+		const { id: userId } = await accounts.createUser(INVITEE);
+		// Signed in, they work in the Organisation they already belong to.
+		await accounts.addMember(userId, 'elsewhere');
+		const id = await invite({ stream: 'admin' });
+		const cookie = await accounts.signIn(INVITEE);
+
+		const response = await accounts.send('/organization/accept-invitation', {
+			body: { invitationId: id },
+			headers: { cookie },
+		});
+
+		expect(response.status).toBe(200);
+		expect(await usersCalled(INVITEE)).toHaveLength(1);
+		const member = await memberOf(INVITEE);
+		expect(member).toMatchObject({ role: 'admin' });
+		expect(
+			await database()
+				.select({ app: schema.appAccess.app, role: schema.appAccess.role })
+				.from(schema.appAccess)
+				.where(eq(schema.appAccess.memberId, member!.id)),
+		).toEqual([{ app: 'stream', role: 'admin' }]);
+		expect(await signedInAs([cookie])).toMatchObject({
+			session: { activeOrganizationId: keepr.id },
+		});
+	});
+
+	it('is refused for a User signed in with another address, changing nothing', async () => {
+		await accounts.createUser(INVITEE);
+		await accounts.createUser('someone-else@example.com');
+		const id = await invite();
+
+		const response = await accounts.send('/organization/accept-invitation', {
+			body: { invitationId: id },
+			headers: { cookie: await accounts.signIn('someone-else@example.com') },
+		});
+
+		expect(response.status).toBe(403);
+		expect(await response.json()).toMatchObject({
+			code: 'YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION',
+		});
+		expect(await memberOf('someone-else@example.com')).toBeUndefined();
+		expect((await invitationOffer(accounts.auth, id)).email).toBe(INVITEE);
 	});
 });

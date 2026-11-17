@@ -11,6 +11,8 @@ export type AuditAction =
 	| 'organisation.created'
 	| 'invitation.created'
 	| 'invitation.accepted'
+	| 'invitation.cancelled'
+	| 'invitation.declined'
 	| 'member.role-changed'
 	| 'member.removed'
 	| 'app-access.set'
