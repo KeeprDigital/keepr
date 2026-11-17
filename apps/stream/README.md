@@ -813,20 +813,20 @@ The app and the validator are deployed separately and can fail separately.
 Each has its own marker per Environment, an annotated git tag on `origin` named
 `<app>/<environment>[-<part>]` (ADR-0035, ADR-0119):
 
-| Tag                           | Component | Moved by                                                   |
-| ----------------------------- | --------- | ---------------------------------------------------------- |
-| `stream/production`           | App       | `pnpm run deploy` (steps 3 and 7), or the Deploy workflow  |
-| `stream/production-validator` | Validator | `pnpm run deploy` (step 2), `pnpm deploy:validator`, or the Deploy workflow |
+| Tag                           | Marks              | Moved by                                                   |
+| ----------------------------- | ------------------ | ---------------------------------------------------------- |
+| `stream/production`           | The app            | `pnpm run deploy` (steps 3 and 7), or the Deploy workflow  |
+| `stream/production-validator` | The validator part | `pnpm run deploy` (step 2), `pnpm deploy:validator`, or the Deploy workflow |
 
-A marker records the component, its state, the commit it was deployed from,
-whether that checkout had uncommitted or untracked changes (`worktree: dirty`),
-who deployed it (a workflow run or `local`), for the validator its
-**fingerprint**, and the app, Environment and Release version. An app marker
-also records `needs: accounts` when the Installation depends on Keepr
-Accounts, and `override` with its reason when a deploy bypassed
-[deploy order](#deploy-order). Every deploy
-marks its component `pending` before it changes anything, and `deployed` once
-it succeeded. A deploy that died part-way leaves `pending`, which means
+A marker records what it marks (its `component` field: `app`, or the part's
+name), its state, the commit it was deployed from, whether that checkout had
+uncommitted or untracked changes (`worktree: dirty`), who deployed it (a
+workflow run or `local`), for the validator its **fingerprint**, and the app,
+Environment and Release version. An app marker also records `needs: accounts`
+when the Installation depends on Keepr Accounts, and `override` with its reason
+when a deploy bypassed [deploy order](#deploy-order). Every deploy marks the
+app or part `pending` before it changes anything, and `deployed` once it
+succeeded. A deploy that died part-way leaves `pending`, which means
 "unconfirmed: either version may be serving". A deploy that cannot write its
 pending marker does not start. `pnpm deploy:status` prints both markers and
 says whether this checkout's validator would deploy. It reads `origin` and
@@ -942,7 +942,7 @@ mid-run names the Event it left behind; delete it before rerunning.
    Then `pnpm db:migrations:list:remote` lists `0000_baseline_2.sql` and
    nothing else. If a table is left, step 3 stops at `db:migrate:remote` on
    "table … already exists": nothing was applied, the v1.5.0 Worker keeps
-   serving, and the `production` marker reads `pending`.
+   serving, and the `stream/production` marker reads `pending`.
 
    The new database has no accounts, so bootstrap the first admin again
    ([First admin account](#first-admin-account)). The R2 buckets are not
@@ -977,8 +977,8 @@ mid-run names the Event it left behind; delete it before rerunning.
 
 #### Recovering from a partial promotion
 
-A deploy that fails after the validator succeeded leaves the components on
-different releases. Read the markers first (`pnpm deploy:status`, or the failed
+A deploy that fails after the validator succeeded leaves the app and its validator on
+different Releases. Read the markers first (`pnpm deploy:status`, or the failed
 run's step summary). For example, with A in production, a deploy of B that
 fails after its validator leaves:
 

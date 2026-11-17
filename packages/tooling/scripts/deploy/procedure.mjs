@@ -75,7 +75,7 @@ export const MODES = ['auto', 'always', 'never'];
  *   marker: string,
  *   targetFingerprint: string | undefined,
  *   markerText: string | undefined,
- * }} input `part` is the component its marker records and `marker` the marker's
+ * }} input `part` is the part its marker's `component` field names and `marker` the marker's
  *   name; `targetFingerprint` is undefined when the target could not be
  *   fingerprinted; `markerText` is the marker tag's message, undefined when no
  *   marker exists.

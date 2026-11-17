@@ -1,10 +1,10 @@
 /**
  * Promotion markers (ADR-0035, ADR-0119): one annotated tag on `origin` per app,
  * Environment and part, named `<app>/<environment>[-<part>]` (`stream/production`,
- * `stream/production-validator`). Its message records the component, its state,
- * the commit it was deployed from, whether that checkout was dirty, a part's
- * fingerprint, who deployed it, the app, the Environment and the Release's
- * version.
+ * `stream/production-validator`). Its message records what it marks
+ * (`component`: `app` or the part), its state, the commit it was deployed
+ * from, whether that checkout was dirty, a part's fingerprint, who deployed
+ * it, the app, the Environment and the Release's version.
  *
  * The format is append-only: a field keeps its meaning, a new one is added at
  * the end, and the header line is the one ADR-0035 wrote, so a reader of any
