@@ -1,6 +1,6 @@
 # Shared layer rules
 
-What each of the layer's named modules must do. What each term is, is in the root `GLOSSARY.md` (ADR-0095). Decisions cited as ADR-NNNN are files in `docs/adr` here; ADR-0078 is in `apps/stream/docs/adr`, from the repository's root.
+What each of the layer's named modules must do. What each term is, is in the root `GLOSSARY.md` (ADR-0095). Decisions cited as ADR-NNNN are files in `docs/adr` here; ADR-0078 is in `apps/stream/docs/adr`, and ADR-0112 and ADR-0113 in the root `docs/adr`, from the repository's root.
 
 ## Terms
 
@@ -16,4 +16,11 @@ Before its anchor it stands at its first period, which ends one period after the
 It reads its instant again on every animation frame only while anything read at it is in motion, and schedules no frame once all of it has settled; its owner starts it again when what it reads changes. It runs on the client only, and stops with the scope that owns it (ADR-0088).
 
 **App registry**:
-App access is assigned only as an App the registry names and an App role that App defines in it. Adding an App or an App role changes the registry, never the identity schema (ADR-0112, in the root `docs/adr`).
+App access is assigned only as an App the registry names and an App role that App defines in it. Adding an App or an App role changes the registry, never the identity schema (ADR-0112, in the root `docs/adr`). Each App lists its roles from lowest to highest, and a role admits what every role before it does (ADR-0113).
+
+**Identity Proof**:
+An App reads who a request belongs to only from an Identity Proof, through `resolveRequestIdentity`: asked of Keepr Accounts over the `KEEPR_ACCOUNTS` binding, with the request's cookie, and verified against Keepr Accounts' published keys, for issuer `https://accounts.keepr.digital`, audience `https://keepr.digital` and EdDSA only. A proof signed by a key not yet read has the keys fetched again once. An App role the registry does not define for the App is no App access (ADR-0113).
+
+A verified proof answers until it expires; once half its life has passed it is refreshed in the background, and it keeps answering while Keepr Accounts is unreachable. Past expiry only a fresh answer admits the request: a signed-out visitor is refused 401, and an unreachable Keepr Accounts or an unverifiable proof 503, naming why, and naming the Accounts Stand-in when nothing is registered locally as `keepr-accounts`. A refresh that hears 401 drops the proof at once. Every cookie Keepr Accounts sets is passed on to the browser (ADR-0113).
+
+`requireAppAccess` refuses an Identity with no App access, and `requireAppRole` one below the role required, each 403 with a code, in every App alike; a Keepr Administrator is held to them like anyone else. `useIdentity` sends a signed-out visitor to Keepr Accounts' sign-in with the page they were on as the Return Address, and leaves any other refusal to its caller (ADR-0113).

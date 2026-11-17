@@ -9,6 +9,7 @@
 		"format": "oxfmt",
 		"slots": "keepr-slots",
 		"reap": "keepr-reap-workerd",
+		"accounts:stand-in": "pnpm --filter @keepr/accounts-stand-in start",
 		"typecheck:packages": "pnpm --filter \"./packages/*\" typecheck",
 		"test:packages": "pnpm --filter \"./packages/*\" --workspace-concurrency=1 test",
 		"bench:packages": "pnpm --filter \"./packages/*\" --if-present bench:check",

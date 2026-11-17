@@ -187,9 +187,9 @@ export function createIdentityResolver<App extends AppId>(
 		accounts,
 		waitUntil,
 	}: {
-		cookie?: string;
+		cookie?: string | undefined;
 		accounts: AccountsConnection;
-		waitUntil?: (promise: Promise<unknown>) => void;
+		waitUntil?: ((promise: Promise<unknown>) => void) | undefined;
 	}): Promise<IdentityAnswer<App>> {
 		const now = Date.now();
 		const proof = proofs.get(cookie);

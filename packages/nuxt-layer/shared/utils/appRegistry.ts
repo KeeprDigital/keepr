@@ -4,7 +4,8 @@
  * is a change to this list, never to the identity schema.
  *
  * Every App starts with `member` and `admin`, placeholders nothing yet tells
- * apart (#1228).
+ * apart (#1228). Each App lists its roles from lowest to highest: a role admits
+ * what every role before it does (`requireAppRole`).
  */
 export const APP_REGISTRY = {
 	stream: { name: 'Stream Keepr', roles: ['member', 'admin'] },
@@ -25,4 +26,10 @@ export function isAppId(app: string): app is AppId {
 /** Whether `role` is one `app` defines: what an assignment of App access must be. */
 export function isAppRole<App extends AppId>(app: App, role: string): role is AppRole<App> {
 	return (APP_REGISTRY[app].roles as readonly string[]).includes(role);
+}
+
+/** The highest App role `app` defines: the last it lists. */
+export function highestAppRole<App extends AppId>(app: App): AppRole<App> {
+	const roles = APP_REGISTRY[app].roles;
+	return roles[roles.length - 1] as AppRole<App>;
 }

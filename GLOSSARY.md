@@ -25,8 +25,12 @@ Anyone who can sign in: one per person across every App. A User is not a Player;
 _Avoid_: account (acceptable when the subject is the credential), member (a User in one Organisation), author
 
 **Local Developer User**:
-The stand-in User a development setup answers with, so local work needs no sign-in. No production build knows it.
+The User the Accounts Stand-in answers with, so local work needs no sign-in: a Keepr Administrator who owns the Keepr Organisation and holds the highest App role in every App. No production build knows it.
 _Avoid_: bypass user, test user
+
+**Accounts Stand-in**:
+The Worker a development setup runs under Keepr Accounts' service name, which answers every App's request with an Identity Proof for the Local Developer User, signed by a key of its own. It is never deployed.
+_Avoid_: mock accounts, fake auth, auth bypass, stub
 
 **Session**:
 One signed-in browser, recognised by every App. It carries the Organisation its User is working in, and never owns work. "Session" alone always means this: any other session is written in full.

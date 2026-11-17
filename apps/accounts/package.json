@@ -4,6 +4,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "pnpm db:migrate && nuxt dev",
+		"beside": "pnpm build && pnpm db:migrate && wrangler dev --config wrangler.dev.jsonc --name keepr-accounts --assets .output/public --port 8790 .output/server/index.mjs",
 		"build": "keepr-slots build -- nuxt build",
 		"typecheck": "nuxt prepare && keepr-slots typecheck -- vue-tsc --noEmit && keepr-slots typecheck -- vue-tsc --noEmit -p test/tsconfig.json",
 		"test": "vitest run && vitest run --config vitest.nuxt.config.ts",

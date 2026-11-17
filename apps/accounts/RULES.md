@@ -30,4 +30,8 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 
 ## Identity Proof
 
-- The signed-token routes answer 404 until the Identity Proof is built on them. Its issuer is `https://accounts.keepr.digital` and its audience `https://keepr.digital`, fixed and never read from a request. (ADR-0112)
+- `GET /api/auth/token` answers an Identity Proof for the Session whose cookie it is sent, and 401 with none, an ended Session or a disabled User's. `GET /api/auth/jwks` publishes the keys it verifies against, to anyone. (ADR-0113)
+- It is signed EdDSA and good for five minutes. Its issuer is `https://accounts.keepr.digital` and its audience `https://keepr.digital`, fixed and never read from a request. (ADR-0112, ADR-0113)
+- It names the User (`sub`, `email`, `name`), the Session (`sid`), the active Organisation (`org`) and the User's Organisation role in it (`orgRole`), their App role in each App they have access to in that Organisation (`apps`), and whether they are a Keepr Administrator (`keeprAdmin`). (ADR-0113)
+- A new Session works in the Organisation its User joined first, or in none. (ADR-0113)
+- A disabled User's Session mints no Identity Proof, even while it is open. (ADR-0113)

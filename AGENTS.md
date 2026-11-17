@@ -11,8 +11,10 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
 - `packages/`: what more than one app uses, each named `@keepr/<name>` and
   consumed as TypeScript source: the Pairing and Standings Engines
   (`pairing`, `standings`), what both use (`engine-core`), and their test
-  support (`testkit`, `engine-integration`), and the workspace's own tooling
-  (`tooling`: run slots, the workerd reaper, CI's scripts). Each has a `typecheck` and a
+  support (`testkit`, `engine-integration`), the workspace's own tooling
+  (`tooling`: run slots, the workerd reaper, the deploy guard, CI's scripts),
+  and the Accounts Stand-in (`accounts-stand-in`), which answers locally as
+  Keepr Accounts and is never deployed (ADR-0113). Each has a `typecheck` and a
   `test` script; `pnpm typecheck:packages` and `pnpm test:packages` at the
   root run them all. `nuxt-layer` is the Nuxt layer every app extends, with the
   server, client and test foundation the apps share: what a second app needs
