@@ -1,4 +1,5 @@
 import type { IdentityProofSource } from '~~/server/utils/identityProof';
+import type { OrganisationRecords } from '~~/server/utils/organisations';
 import { getAuthTables } from 'better-auth/db';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
 import { describe, expect, it } from 'vitest';
@@ -15,12 +16,14 @@ import { authOptions } from '~~/server/utils/authOptions';
  * library's field name; the SQL name underneath is snake_case.
  */
 
-// The tables do not depend on what an Identity Proof reads, so nothing is read.
+// The tables do not depend on what an Identity Proof reads or the Audit Record
+// writes, so nothing is read or written.
 const tables = getAuthTables(
 	authOptions({
 		sharedCookieDomain: undefined,
 		email: createEmailRecorder(),
 		identityProof: {} as IdentityProofSource,
+		organisations: {} as OrganisationRecords,
 	}),
 );
 

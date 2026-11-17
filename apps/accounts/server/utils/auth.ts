@@ -5,6 +5,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db, schema } from '~~/server/db';
 import { authOptions, sharedCookieDomainFor } from './authOptions';
 import { runAfterResponse, serverEmailSender } from './email';
+import { organisationRecords } from './organisations';
 import { identityProofSource } from './identityProof';
 import { readConfiguredSecret } from '@keepr/nuxt-layer/server/utils/configuredSecret';
 import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
@@ -20,12 +21,16 @@ export function createKeeprAuth({
 	database,
 	secret,
 	...options
-}: Omit<AuthOptionsInput, 'identityProof'> & {
+}: Omit<AuthOptionsInput, 'identityProof' | 'organisations'> & {
 	database: IdentityDatabase;
 	secret: string;
 }) {
 	return betterAuth({
-		...authOptions({ ...options, identityProof: identityProofSource(database) }),
+		...authOptions({
+			...options,
+			identityProof: identityProofSource(database),
+			organisations: organisationRecords(database),
+		}),
 		database: drizzleAdapter(database, {
 			provider: 'sqlite',
 			schema,

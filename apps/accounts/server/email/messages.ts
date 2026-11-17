@@ -63,3 +63,27 @@ export function passwordResetEmail({
 		],
 	});
 }
+
+/** An Invitation: who sent it, to which Organisation, and the link that accepts it. */
+export function invitationEmail({
+	to,
+	inviterName,
+	organisationName,
+	link,
+}: {
+	to: string;
+	inviterName: string;
+	organisationName: string;
+	link: string;
+}): Email {
+	return message(to, `${inviterName} invited you to ${organisationName} on Keepr`, {
+		greeting: 'Hello,',
+		before: [`${inviterName} has invited you to join ${organisationName} on Keepr. To accept:`],
+		link,
+		linkLabel: 'Accept the invitation',
+		after: [
+			'The invitation lasts seven days.',
+			'If you were not expecting it, you can ignore this email: nothing happens unless you accept.',
+		],
+	});
+}

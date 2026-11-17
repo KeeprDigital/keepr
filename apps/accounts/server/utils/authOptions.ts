@@ -1,6 +1,7 @@
 import type { IdentityProofSource } from './identityProof';
 import type { BetterAuthOptions } from 'better-auth';
 import type { EmailSender } from '~~/server/email/sender';
+import type { OrganisationRecords } from './organisations';
 import { admin, haveIBeenPwned, jwt, organization } from 'better-auth/plugins';
 import {
 	IDENTITY_PROOF_AUDIENCE,
@@ -9,6 +10,7 @@ import {
 } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { passwordResetEmail } from '~~/server/email/messages';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
+import { organisationOptions } from './organisations';
 
 /**
  * Keepr Accounts' Better Auth configuration, everything but the database and the
@@ -95,6 +97,8 @@ export interface AuthOptionsInput {
 	 * it running after the answer. Without one, the response waits for it.
 	 */
 	afterResponse?: (work: Promise<unknown>) => void;
+	/** Where App access and the Audit Record are written as Organisations change. */
+	organisations: OrganisationRecords;
 	/** What an Identity Proof names, and the Organisation a new Session works in. */
 	identityProof: IdentityProofSource;
 }
@@ -103,6 +107,7 @@ export function authOptions({
 	sharedCookieDomain,
 	email,
 	afterResponse,
+	organisations,
 	identityProof,
 }: AuthOptionsInput) {
 	return {
@@ -153,6 +158,11 @@ export function authOptions({
 						},
 					},
 				},
+				...organisationOptions({
+					email,
+					records: organisations,
+					fallbackOrigin: KEEPR_ACCOUNTS_ORIGIN,
+				}),
 			}),
 			// The Identity Proof: `GET /api/auth/token` mints it from the session cookie,
 			// and `GET /api/auth/jwks` publishes the keys it verifies against (ADR-0113).

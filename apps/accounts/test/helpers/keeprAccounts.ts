@@ -2,7 +2,7 @@ import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import type { EmailRecorder } from '~~/server/email/recorder';
 import type { EmailSender } from '~~/server/email/sender';
 import type { KeeprAuth } from '~~/server/utils/auth';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
 import { identityDatabase, schema } from '~~/server/db';
@@ -40,6 +40,10 @@ export interface TestAccounts {
 	createUser: (email: string, extra?: { role?: 'admin' | 'user' }) => Promise<{ id: string }>;
 	/** Signs `email` in and answers the cookie a browser would send back. */
 	signIn: (email: string, host?: string) => Promise<string>;
+	/** An Organisation with `ownerEmail`'s User as its owner, made through the library. */
+	createOrganisation: (name: string, ownerEmail: string) => Promise<{ id: string }>;
+	/** The Audit Record, in the order it was written. */
+	auditRecord: () => Promise<(typeof schema.auditRecord.$inferSelect)[]>;
 	/**
 	 * Makes `userId` a member of the Organisation `slug`, creating it if new, with
 	 * an Organisation role and App access. The routes that do this are not built
@@ -48,9 +52,11 @@ export interface TestAccounts {
 	addMember: (
 		userId: string,
 		slug: string,
-		access?: { role?: 'owner' | 'admin' | 'member'; apps?: Record<string, string> },
+		access?: { role?: OrganisationRole; apps?: Record<string, string> },
 	) => Promise<{ organizationId: string; memberId: string }>;
 }
+
+export type OrganisationRole = 'owner' | 'admin' | 'member';
 
 /**
  * Keepr Accounts' Better Auth, configured as the server configures it, over a
@@ -72,6 +78,12 @@ export async function createTestAccounts(
 		email: options.email ?? email,
 		afterResponse: (work) => running.push(work),
 	});
+
+	const userIdOf = async (address: string) => {
+		const user = await (await auth.$context).internalAdapter.findUserByEmail(address);
+		if (!user) throw new Error(`no User for ${address}`);
+		return user.user.id;
+	};
 
 	const send: TestAccounts['send'] = async (path, init = {}) => {
 		const requestHost = init.host ?? host;
@@ -112,6 +124,23 @@ export async function createTestAccounts(
 			});
 			if (response.status !== 200) throw new Error(`sign-in answered ${response.status}`);
 			return cookiesOf(response);
+		},
+		async createOrganisation(name, ownerEmail) {
+			const organisation = await auth.api.createOrganization({
+				body: {
+					name,
+					slug: name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-'),
+					userId: await userIdOf(ownerEmail),
+				},
+			});
+			if (!organisation) throw new Error(`no Organisation ${name}`);
+			return organisation;
+		},
+		async auditRecord() {
+			return await database
+				.select()
+				.from(schema.auditRecord)
+				.orderBy(sql`rowid`);
 		},
 		async addMember(userId, slug, access = {}) {
 			const now = new Date();
