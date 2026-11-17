@@ -25,6 +25,22 @@ const auth = betterAuth({
 	// updateAge is 2s so a /token call after 2s measures whether a renewed cookie comes back.
 	session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 2 },
 	advanced: { disableOriginCheck: false },
+	// The organization plugin leaves a new Session with no active Organisation,
+	// which would make the Identity Proof's org, orgRole and apps empty. Keepr
+	// Accounts sets it at sign-in: here, the User's first membership.
+	databaseHooks: {
+		session: {
+			create: {
+				before: async (session) => {
+					const ctx = await auth.$context;
+					const member = await ctx.adapter.findOne<{ organizationId: string }>({
+						model: 'member', where: [{ field: 'userId', value: session.userId }],
+					});
+					return { data: { ...session, activeOrganizationId: member?.organizationId ?? null } };
+				},
+			},
+		},
+	},
 	plugins: [
 		admin(),
 		organization(),
@@ -58,7 +74,7 @@ const auth = betterAuth({
 						org: orgId,
 						orgRole: member?.role ?? null,
 						apps,
-						keeprAdmin: (user as { role?: string }).role === 'admin',
+						keeprAdmin: ((user as { role?: string }).role ?? '').split(',').includes('admin'),
 					};
 				},
 			},

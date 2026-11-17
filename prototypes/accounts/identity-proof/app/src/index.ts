@@ -9,22 +9,27 @@ const ACCOUNTS_ORIGIN = 'https://accounts.keepr.digital';
 interface Env { ACCOUNTS: Fetcher }
 
 let jwks: ReturnType<typeof createLocalJWKSet> | null = null;
-async function publicKeys(env: Env) {
-	if (!jwks) {
+let jwksFetches = 0;
+async function publicKeys(env: Env, refresh = false) {
+	if (!jwks || refresh) {
+		jwksFetches += 1;
 		const res = await env.ACCOUNTS.fetch(`${ACCOUNTS_ORIGIN}/api/auth/jwks`);
 		jwks = createLocalJWKSet((await res.json()) as JSONWebKeySet);
 	}
 	return jwks;
 }
 
-async function verify(env: Env, token: string) {
+async function verify(env: Env, token: string, refreshed = false): Promise<Record<string, unknown>> {
 	try {
-		const { payload, protectedHeader } = await jwtVerify(token, await publicKeys(env), {
+		const { payload, protectedHeader } = await jwtVerify(token, await publicKeys(env, refreshed), {
 			issuer: ISSUER, audience: AUDIENCE, algorithms: ['EdDSA'],
 		});
-		return { ok: true, protectedHeader, payload };
+		return { ok: true, jwksFetches, protectedHeader, payload };
 	} catch (error) {
-		return { ok: false, code: (error as { code?: string }).code, message: (error as Error).message };
+		const code = (error as { code?: string }).code;
+		// An unknown kid may be a rotated key: refetch the published keys once.
+		if (code === 'ERR_JWKS_NO_MATCHING_KEY' && !refreshed) return verify(env, token, true);
+		return { ok: false, jwksFetches, code, message: (error as Error).message };
 	}
 }
 
