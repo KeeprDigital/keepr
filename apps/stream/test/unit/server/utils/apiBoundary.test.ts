@@ -93,8 +93,9 @@ describe('which API paths require a session', () => {
 			expect(apiPathRequiresSession(path)).toBe(false);
 	});
 
-	it('exempts the clock, the realtime token and the bootstrap route', () => {
+	it('exempts the clock, the release identity, the realtime token and the bootstrap route', () => {
 		expect(apiPathRequiresSession('/api/time')).toBe(false);
+		expect(apiPathRequiresSession('/api/release')).toBe(false);
 		expect(apiPathRequiresSession('/api/realtime/token')).toBe(false);
 		expect(apiPathRequiresSession('/api/bootstrap/ensure-admin')).toBe(false);
 	});
@@ -192,6 +193,8 @@ describe('the public surface, counted against the routes on disk', () => {
 			// An Ably token request. #397 narrows what an unauthenticated caller is
 			// granted; that is a change to what this issues, not to its reachability.
 			'server/api/realtime/token.get.ts',
+			// Which Release serves: the deploy's verify reads it with no session (ADR-0119).
+			'server/api/release.get.ts',
 			// The Screen Output Asset Capability surface: authorised by the bearer
 			// token the output page holds in its URL hash, refusing 404 rather than
 			// 401/403 so it cannot be used to enumerate.

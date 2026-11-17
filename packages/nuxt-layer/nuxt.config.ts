@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { buildReleaseIdentity } from './build/releaseIdentity';
 
 // A layer's own files are named from where they are: a relative path in its
 // configuration, and `~` in its code, belong to the app that extends it.
@@ -15,7 +16,17 @@ const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 export default defineNuxtConfig({
 	ssr: false,
 
-	modules: ['@nuxt/ui', '@vueuse/nuxt'],
+	modules: [
+		'@nuxt/ui',
+		'@vueuse/nuxt',
+		// The Release this build is of, which the app serves at `/api/release`
+		// (`readReleaseIdentity`), recorded at build time from the extending app.
+		(_options, nuxt) => {
+			nuxt.options.runtimeConfig.release = buildReleaseIdentity({
+				rootDir: nuxt.options.rootDir,
+			});
+		},
+	],
 
 	// `@nuxtjs/color-mode` reads these from Nuxt config and only from here: the
 	// same block in an `app.config.ts` is inert. `fallback` is what the

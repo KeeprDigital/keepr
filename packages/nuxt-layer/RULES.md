@@ -9,6 +9,9 @@ Every rendering of one computes the same answer, and nothing writes as it runs. 
 
 Server time is read from `GET /api/time`, which every app that shows it serves with `readServerTime`, reachable without a sign-in: the layer registers no route (ADR-0093). It never stops or moves backwards: a sync takes its sample with the shortest round trip, the first sync and a correction over 500 ms apply at once, and a smaller one is eased in at no more than a tenth of elapsed time. It re-syncs every minute, when its page becomes visible or comes back online, and within seconds of its device's clock being changed (ADR-0088).
 
+**Release identity**:
+Every app serves it at `GET /api/release` with `readReleaseIdentity`, reachable without a sign-in, as `{ app, version, commit }`: the app's package name without `@keepr/`, its version (`unversioned` when Changesets does not version it), and the commit built, `unknown` where git cannot read it. The build records it in runtime config; a Worker without one refuses rather than answering part of one (ADR-0119, in the root `docs/adr`).
+
 **Interval**:
 Before its anchor it stands at its first period, which ends one period after the anchor. One with no period never steps.
 

@@ -113,6 +113,7 @@ describe('the API boundary middleware', () => {
 
 		for (const path of [
 			'/api/time',
+			'/api/release',
 			'/api/auth/sign-in/email',
 			'/api/screen-output/screens/7/asset-capability-session',
 			'/api/admin/graphics-assets/health',
