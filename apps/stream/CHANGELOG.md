@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.0
+
+### Minor Changes
+
+- 2047928: Stream Keepr ships the shared layer's Keepr Accounts support (#1259): an Identity Proof can be resolved and checked against an App's access and roles, and a signed-out visitor sent to Keepr Accounts and back. Stream Keepr's own sign-in is unchanged; nothing in it uses Keepr Accounts yet.
+
 ## [1.6.0](https://github.com/KeeprDigital/keepr/compare/v1.5.0...v1.6.0) (2026-11-17)
 
 
