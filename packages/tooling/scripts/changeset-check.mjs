@@ -4,12 +4,7 @@
  * names, in a changeset, each versioned app whose shipped code it touches, or
  * carries an empty changeset (ADR-0118).
  *
- * An app's shipped code is
- *
- * - its directory, and the directory of each workspace package its
- *   `dependencies` reach, one through another, each without `test/`, `docs/`
- *   and Markdown (the tooling and the test kits are dev dependencies);
- * - `pnpm-lock.yaml` and `pnpm-workspace.yaml`, for every app.
+ * What an app's shipped code is: `scripts/shipped-code.mjs`.
  *
  * A changeset counts when the change adds, edits or consumes it, so the Version
  * PR, which bumps each app and deletes the changesets it released, passes. A
@@ -36,6 +31,7 @@ import { join } from 'node:path';
 import process from 'node:process';
 import { changeBase } from './change-base.mjs';
 import { diffRange } from './ci-scope.mjs';
+import { shippedDirectories, ships } from './shipped-code.mjs';
 import {
 	ignoredPackages,
 	taggedPackages,
@@ -43,10 +39,6 @@ import {
 	workspacePackages,
 } from './versioned-apps.mjs';
 
-/** What every app ships: the versions it is built with. */
-const SHIPPED_BY_EVERY_APP = new Set(['pnpm-lock.yaml', 'pnpm-workspace.yaml']);
-/** Inside a shipped directory, what no app ships. */
-const NOT_SHIPPED = /^(?:test|docs)\/|\.md$/;
 const CHANGESET = /^\.changeset\/(?!README\.md$)[^/]+\.md$/;
 const BUMPS = new Set(['major', 'minor', 'patch']);
 /** How many of an app's files a refusal lists before it stops. */
@@ -56,38 +48,6 @@ const MAX_LISTED_FILES = 5;
  * @typedef {import('./versioned-apps.mjs').WorkspacePackage} WorkspacePackage
  * @typedef {{ file: string, text: string }} ChangesetFile
  */
-
-/**
- * The directories an app ships: its own and each workspace package its
- * `dependencies` reach.
- *
- * @param {WorkspacePackage} app
- * @param {Map<string, WorkspacePackage>} packages the workspace's packages, by name
- * @returns {string[]} the directories, from the repository's root
- */
-function shippedDirectories(app, packages) {
-	const reached = new Set([app.name]);
-	const queue = [app];
-	for (const pkg of queue)
-		for (const [name, spec] of Object.entries(pkg.dependencies)) {
-			const dependency = packages.get(name);
-			if (!spec.startsWith('workspace:') || !dependency || reached.has(name)) continue;
-			reached.add(name);
-			queue.push(dependency);
-		}
-	return queue.map((pkg) => pkg.dir);
-}
-
-/**
- * @param {string} file a path from the repository's root
- * @param {readonly string[]} directories what the app ships
- */
-function ships(file, directories) {
-	if (SHIPPED_BY_EVERY_APP.has(file)) return true;
-	return directories.some(
-		(dir) => file.startsWith(`${dir}/`) && !NOT_SHIPPED.test(file.slice(dir.length + 1)),
-	);
-}
 
 /**
  * The apps a changeset names, from its front matter; `undefined` when it has none.

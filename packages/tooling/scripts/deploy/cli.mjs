@@ -17,6 +17,8 @@
  *   deploy, verify, mark deployed (`procedure.mjs`).
  * - `build`: the descriptor's build scripts only, into its output directory, for
  *   a build job whose output every Environment deploys.
+ * - `check`: what CI checks of each deployable app's Worker: each part bundled
+ *   as a deploy would upload it (no Docker, no credentials), then `build`.
  * - `verify`: check the Installation serves this checkout's Release.
  * - `part <name>`: deploy one part between its markers, whatever its fingerprint.
  * - `mark-app <pending|deployed>`: write the app's marker by hand, recording
@@ -26,11 +28,12 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, cpSync, existsSync, rmSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { parseArgs } from 'node:util';
-import { fingerprintPart } from './fingerprint.mjs';
+import { bundlePart, fingerprintPart } from './fingerprint.mjs';
 import { LEGACY_MARKERS, describeMarker, gitMarkerStore, markerName } from './markers.mjs';
 import { checkDeployOrder, gitHistory, neededBy } from './order.mjs';
 import { MODES, decidePartDeploy, deployRelease, markApp, promotePart } from './procedure.mjs';
@@ -42,6 +45,7 @@ const USAGE = `usage: keepr-deploy <command> --app <app> [--env <environment>]
                                build once (or place the artifact), then deploy order, parts, D1, Worker, verify,
                                each between markers; --override deploys out of order, its reason recorded
   build                        the descriptor's build scripts only
+  check                        each part bundled as a deploy would, then build: CI's Worker leg
   verify --env <env>           check the Installation serves this checkout's Release
   part <name> --env <env>      deploy one part between its markers, whatever its fingerprint
   mark-app <pending|deployed> --env <env>
@@ -191,7 +195,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 	const { values, positionals } = parsed;
 	const [command, argument, ...rest] = positionals;
 	const environment = values.env;
-	const needsEnv = command !== 'build';
+	const needsEnv = command !== 'build' && command !== 'check';
 	const override = values.override;
 	// A marker field is one line of text, and an override says why.
 	const overrideReadable =
@@ -203,6 +207,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 	const shapes = {
 		deploy: argument === undefined && MODES.includes(values.parts ?? ''),
 		build: argument === undefined,
+		check: argument === undefined,
 		verify: argument === undefined,
 		part: argument !== undefined,
 		'mark-app': argument === 'pending' || argument === 'deployed',
@@ -245,6 +250,30 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 			env,
 			log,
 		}).build();
+		return 0;
+	}
+	if (command === 'check') {
+		try {
+			for (const [name, part] of Object.entries(release.descriptor.parts)) {
+				const outDir = mkdtempSync(join(tmpdir(), 'keepr-part-check-'));
+				try {
+					bundlePart({ appDir: release.appDir, config: part.config, outDir });
+				} finally {
+					rmSync(outDir, { recursive: true, force: true });
+				}
+				log(`keepr-deploy: ${release.app}'s ${name} bundles.`);
+			}
+			realSteps({
+				release,
+				environment: '',
+				store: gitMarkerStore({ cwd: release.appDir }),
+				env,
+				log,
+			}).build();
+		} catch (error) {
+			console.error(`keepr-deploy: ${/** @type {Error} */ (error).message}`);
+			return 1;
+		}
 		return 0;
 	}
 	const target = /** @type {string} */ (environment);
