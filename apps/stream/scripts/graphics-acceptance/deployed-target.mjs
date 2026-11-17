@@ -22,6 +22,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { parseJsonc } from '@keepr/tooling/scripts/jsonc.mjs';
 import { AcceptanceFailure } from './evidence.mjs';
 import { acceptanceOrigin } from './installation.mjs';
 import { newOperatorPassword, operatorCredentialPlan } from './operator.mjs';
@@ -39,34 +40,6 @@ const VALIDATOR_CONFIG = new URL(
 	'../../workers/silent-video-validator/wrangler.jsonc',
 	import.meta.url,
 );
-
-/**
- * JSON with comments and trailing commas, as Wrangler configs are written.
- * String-aware, so a `//` inside a value survives.
- */
-export function parseJsonc(text) {
-	let out = '';
-	for (let index = 0; index < text.length; index += 1) {
-		const char = text[index];
-		if (char === '"') {
-			const start = index;
-			for (index += 1; index < text.length && text[index] !== '"'; index += 1) {
-				if (text[index] === '\\') index += 1;
-			}
-			out += text.slice(start, index + 1);
-		} else if (char === '/' && text[index + 1] === '/') {
-			while (index < text.length && text[index] !== '\n') index += 1;
-			out += '\n';
-		} else if (char === '/' && text[index + 1] === '*') {
-			index = text.indexOf('*/', index + 2);
-			if (index < 0) break;
-			index += 1;
-		} else if (char !== ',' || !/^\s*[\]}]/.test(text.slice(index + 1))) {
-			out += char;
-		}
-	}
-	return JSON.parse(out);
-}
 
 /** The committed production installation: the app's and the validator's configs. */
 export async function loadCommittedInstallation() {

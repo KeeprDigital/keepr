@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRAPHICS_CRON, LIVE_RESULTS_CRON } from '~~/server/utils/cronSchedules';
 import { createFakeNitroApp, installNitroPlugin } from '@keepr/nuxt-layer/test/helpers/nitroApp';
-import { parseJsonc } from '../../../../scripts/graphics-acceptance/deployed-target.mjs';
+import { parseJsonc } from '@keepr/tooling/scripts/jsonc.mjs';
 
 /*
  * Every `cloudflare:scheduled` handler runs on every cron trigger, so each must
