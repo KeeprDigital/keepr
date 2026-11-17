@@ -1,8 +1,8 @@
 /**
  * CI's `scope` job ("Decide what the change can affect"): which of CI's jobs
  * a change can affect, so a docs-only change skips the code gates, running
- * only what they check of a document, and a tests-only change skips the
- * Worker build (.github/workflows/ci.yml).
+ * only what they check of a document, and CI builds the Worker of only each
+ * deployable app the change ships in (.github/workflows/ci.yml, ADR-0121).
  *
  * A skipped gate is only safe when what it would have checked is unchanged
  * from a revision that already passed it, so the change is always measured
@@ -28,7 +28,7 @@
  *   node packages/tooling/scripts/ci-scope.mjs
  *     (reads GITHUB_EVENT_NAME, GITHUB_EVENT_PATH, and in a merge group
  *     GITHUB_REPOSITORY, GITHUB_REPOSITORY_ID and GH_TOKEN; appends code=,
- *     bundle=, docs= and, on reuse, verified-by= to GITHUB_OUTPUT)
+ *     docs=, apps= and, on reuse, verified-by= to GITHUB_OUTPUT)
  */
 
 import { execFileSync } from 'node:child_process';
@@ -36,6 +36,11 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { verifiedRunOnGitHub } from './ci-reuse.mjs';
+import { servicesBindKeeprAccounts } from './deploy/order.mjs';
+import { deployableApps, workerSourceConfig } from './deploy/release.mjs';
+import { parseJsonc } from './jsonc.mjs';
+import { shippedDirectories, ships } from './shipped-code.mjs';
+import { workspacePackages } from './versioned-apps.mjs';
 
 /**
  * Docs, editor settings and Dependabot's config. Every workflow is code: each
@@ -50,28 +55,120 @@ const OUTSIDE_CODE = /\.md$|^\.vscode\/|^\.github\/dependabot\.yml$/;
  */
 const DOCUMENT = /\.md$/;
 /**
- * Neither a test, a workflow other than CI's own, nor anything outside the
- * code can change the uploaded Worker bundle or how CI builds it. Paths are
- * the repository's, so Stream Keepr's begin `apps/stream/`.
+ * What builds every app's Worker leg, though no app ships it: CI's own
+ * workflow and setup, the tooling's scripts the leg runs and the manifest
+ * naming them, the Node and pnpm the root manifest pins, and the packages'
+ * compiler options. Not the tooling's tests or documents: the leg runs
+ * neither.
  */
-const OUTSIDE_BUNDLE =
-	/^apps\/stream\/test\/|^\.github\/workflows\/(?:deploy|pr-title|release)\.yml$/;
+const BUILDS_EVERY_LEG =
+	/^(?:\.github\/workflows\/ci\.yml|\.github\/actions\/setup\/.+|packages\/tooling\/(?:scripts\/.+|package\.json)|package\.json|tsconfig\.base\.json)$/;
+/** What an app binding Keepr Accounts runs its leg against (ADR-0113). */
+const STAND_IN = '@keepr/accounts-stand-in';
 
 const COMMIT_ID = /^[0-9a-f]{40}$/;
 
 /**
  * @param {readonly string[]} changedFiles repository-relative paths
- * @returns {{ code: boolean, bundle: boolean, docs: boolean }} whether any file can affect the code gates, and the Worker bundle; and whether a change that skips the code gates touches a document
+ * @returns {{ code: boolean, docs: boolean }} whether any file can affect the code gates; and whether a change that skips them touches a document
  */
 export function scopeOf(changedFiles) {
-	if (changedFiles.length === 0) return { code: true, bundle: true, docs: false };
+	if (changedFiles.length === 0) return { code: true, docs: false };
 	const code = changedFiles.some((file) => !OUTSIDE_CODE.test(file));
-	const bundle = changedFiles.some(
-		(file) => !OUTSIDE_CODE.test(file) && !OUTSIDE_BUNDLE.test(file),
-	);
 	// The code gates cover every document themselves.
 	const docs = !code && changedFiles.some((file) => DOCUMENT.test(file));
-	return { code, bundle, docs };
+	return { code, docs };
+}
+
+/**
+ * @typedef {{ app: string, accounts: boolean }} WorkerLeg
+ *   a deployable app, and whether it binds Keepr Accounts, so its leg runs
+ *   against the Accounts Stand-in
+ * @typedef {{
+ *   apps: readonly WorkerLeg[],
+ *   packages: Map<string, import('./versioned-apps.mjs').WorkspacePackage>,
+ * }} DeployableWorkspace
+ */
+
+/**
+ * The deployable apps whose Worker leg a change runs: each it ships in
+ * (`shipped-code.mjs`), each the stand-in it runs against changes for, and
+ * every one for what builds every leg. An app whose package it cannot read
+ * runs for any change to the code; nothing it can tell runs every one.
+ *
+ * @param {readonly string[]} changedFiles repository-relative paths
+ * @param {DeployableWorkspace} workspace
+ * @returns {WorkerLeg[]} the legs, in the workspace's order
+ */
+export function workerLegsOf(changedFiles, { apps, packages }) {
+	if (changedFiles.length === 0) return [...apps];
+	const code = changedFiles.filter((file) => !OUTSIDE_CODE.test(file));
+	if (code.some((file) => BUILDS_EVERY_LEG.test(file))) return [...apps];
+	const byDirectory = new Map([...packages.values()].map((pkg) => [pkg.dir, pkg]));
+	const standIn = packages.get(STAND_IN);
+	return apps.filter(({ app, accounts }) => {
+		const pkg = byDirectory.get(`apps/${app}`);
+		if (!pkg) return code.length > 0;
+		const directories = [
+			...shippedDirectories(pkg, packages),
+			...(accounts && standIn ? shippedDirectories(standIn, packages) : []),
+		];
+		return code.some((file) => ships(file, directories));
+	});
+}
+
+/**
+ * Whether an app's source Wrangler configuration binds Keepr Accounts, at its
+ * top level or in any Environment's block: the scope runs before any build,
+ * so it cannot read the built one a deploy's order check does
+ * (`deploy/order.mjs`).
+ *
+ * @param {{ services?: unknown, env?: Record<string, { services?: unknown }> }} config a parsed `wrangler.jsonc`
+ */
+export function configBindsKeeprAccounts(config) {
+	return [config, ...Object.values(config.env ?? {})].some((block) =>
+		servicesBindKeeprAccounts(block?.services),
+	);
+}
+
+/**
+ * What `read` answers, or `fallback` when what it reads does not exist.
+ *
+ * @template T
+ * @param {() => T} read
+ * @param {T} fallback
+ * @returns {T}
+ */
+function unlessMissing(read, fallback) {
+	try {
+		return read();
+	} catch (error) {
+		if (/** @type {NodeJS.ErrnoException} */ (error).code !== 'ENOENT') throw error;
+		return fallback;
+	}
+}
+
+/**
+ * The checkout's deployable apps (those with a deploy descriptor), each with
+ * whether its Worker's source configuration (the descriptor's `worker.source`)
+ * binds Keepr Accounts, and its packages. A checkout with no `apps/` has none;
+ * an app whose source configuration is missing binds nothing. Not the
+ * descriptor's `worker.config`: that is the built Worker's, and the scope runs
+ * before anything is built.
+ *
+ * @param {string} root the repository's root
+ * @returns {DeployableWorkspace}
+ */
+function deployableWorkspace(root) {
+	const apps = unlessMissing(() => deployableApps(root), /** @type {string[]} */ ([])).map(
+		(app) => ({
+			app,
+			accounts: configBindsKeeprAccounts(
+				unlessMissing(() => parseJsonc(readFileSync(workerSourceConfig(root, app), 'utf8')), {}),
+			),
+		}),
+	);
+	return { apps, packages: workspacePackages(root) };
 }
 
 /**
@@ -117,11 +214,11 @@ async function main() {
 	const verified =
 		eventName === 'merge_group' && range ? await verifiedRunOnGitHub(range.head) : undefined;
 	if (verified) {
-		console.log('code=false bundle=false docs=false');
+		console.log('code=false docs=false apps=[]');
 		if (process.env.GITHUB_OUTPUT)
 			appendFileSync(
 				process.env.GITHUB_OUTPUT,
-				`code=false\nbundle=false\ndocs=false\nverified-by=${verified.url}\n`,
+				`code=false\ndocs=false\napps=[]\nverified-by=${verified.url}\n`,
 			);
 		return;
 	}
@@ -147,10 +244,13 @@ async function main() {
 			changed = [];
 		}
 	}
-	const { code, bundle, docs } = scopeOf(changed);
-	console.log(`code=${code} bundle=${bundle} docs=${docs}`);
+	const { code, docs } = scopeOf(changed);
+	const apps = JSON.stringify(
+		workerLegsOf(changed, deployableWorkspace(git(['rev-parse', '--show-toplevel']).trim())),
+	);
+	console.log(`code=${code} docs=${docs} apps=${apps}`);
 	if (process.env.GITHUB_OUTPUT)
-		appendFileSync(process.env.GITHUB_OUTPUT, `code=${code}\nbundle=${bundle}\ndocs=${docs}\n`);
+		appendFileSync(process.env.GITHUB_OUTPUT, `code=${code}\ndocs=${docs}\napps=${apps}\n`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await main();

@@ -1,0 +1,128 @@
+# One app's Release to one Environment: an Installation's deploy, called by
+# the Deploy workflow (deploy.yml, which says why and when) once per app it
+# deploys. It runs `@keepr/tooling`'s `packages/tooling/scripts/deploy/cli.mjs`
+# from the calling run's own commit (main), not from the Release, and reads
+# what to deploy from the Release's deploy descriptor, so rolling back to a
+# Release older than the markers or the descriptor still deploys it the same
+# way. It never runs a Release's own `pnpm run deploy`.
+#
+# Each app × Environment has its own GitHub environment, `<app>-<environment>`
+# (`stream-production`), which deploys only from main and holds that app's
+# CLOUDFLARE_API_TOKEN, scoped to its Workers (for Stream Keepr: Workers
+# Scripts:Edit, D1:Edit, plus Containers whenever a run deploys the
+# validator), and CLOUDFLARE_ACCOUNT_ID. The job reads them as the
+# environment's own secrets; the caller passes none. One deploy of an
+# Installation runs at a time.
+
+name: Deploy an Installation
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: The app, as its deploy descriptor names it (stream).
+        required: true
+        type: string
+      release:
+        description: Its Release's tag, resolved by the plan (@keepr/stream@1.8.0).
+        required: true
+        type: string
+      environment:
+        description: The Environment its descriptor deploys to (production).
+        required: true
+        type: string
+      parts:
+        description: auto, always or never (keepr-deploy deploy --parts).
+        required: true
+        type: string
+      override:
+        description: The deploy order override's reason, or empty.
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.release }} to ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: ${{ inputs.app }}-${{ inputs.environment }}
+    # One run per Installation; another app's deploy is not held behind it.
+    concurrency:
+      group: deploy-${{ inputs.app }}-${{ inputs.environment }}
+      cancel-in-progress: false
+    permissions:
+      # write: the run force-pushes the app's promotion-marker tags
+      # (`<app>/<environment>[-<part>]`), and removes the pre-ADR-0119 tags
+      # they replace.
+      contents: write
+    env:
+      # The tagger identity of the annotated marker tags.
+      GIT_COMMITTER_NAME: github-actions[bot]
+      GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+      # nuxt build OOMs Node's default ~2GB heap on hosted runners.
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.release }}
+          # Full history: fetching a marker tag brings the commit it points
+          # at, and deploy order reads what each commit contains (ADR-0120);
+          # a shallow clone is refused.
+          fetch-depth: 0
+          # The deploy pushes the marker tags with this checkout's
+          # credential. Nothing in this job uploads an artifact.
+          persist-credentials: true
+      - name: Check out the deploy tooling from the calling run's commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .deploy-tooling
+          # The deploy CLI and every module it imports.
+          sparse-checkout: |
+            packages/tooling/scripts/deploy/
+            packages/tooling/scripts/deploy-guard.mjs
+            packages/tooling/scripts/jsonc.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      # Untracked files mark a checkout `dirty` in the markers; this one is
+      # not part of the Release.
+      - run: echo /.deploy-tooling/ >> .git/info/exclude
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Builds once (the descriptor's build scripts), decides each part
+      # against its marker and deploys it first when that says so, checks
+      # deploy order, then migrates D1, deploys the Worker and verifies its
+      # Release identity, each between its markers. The step summary records
+      # the decisions, and on failure what each marker now says
+      # (apps/stream/README.md § Recovering from a partial promotion).
+      - name: Deploy (build, parts when decided, deploy order, migrate D1, promote, verify)
+        env:
+          # On this step alone: job-level env would also reach the install's
+          # build scripts and the setup actions, which deploy nothing.
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Inputs cross into the shell via env, never by expression
+          # interpolation inside `run:`: this step holds the Cloudflare token.
+          INPUT_APP: ${{ inputs.app }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          INPUT_PARTS: ${{ inputs.parts }}
+          INPUT_OVERRIDE: ${{ inputs.override }}
+        run: node .deploy-tooling/packages/tooling/scripts/deploy/cli.mjs deploy --app "$INPUT_APP" --env "$INPUT_ENVIRONMENT" --parts "$INPUT_PARTS" ${INPUT_OVERRIDE:+--override "$INPUT_OVERRIDE"}
+      - name: Remind the operator what is still owed
+        env:
+          RELEASE_TAG: ${{ inputs.release }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          echo "Release $RELEASE_TAG promoted to $INPUT_ENVIRONMENT; its Installation answered deploy:verify (its release identity, or liveness only for a Release from before /api/release; not dependency health)." >> "$GITHUB_STEP_SUMMARY"
+          # The backticks are Markdown, not a command to expand.
+          # shellcheck disable=SC2016
+          echo 'Run its deployed acceptance gates locally (Stream Keepr: `pnpm accept deployed`), in README order, stopping at the first failure.' >> "$GITHUB_STEP_SUMMARY"

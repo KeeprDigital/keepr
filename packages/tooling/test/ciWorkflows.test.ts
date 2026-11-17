@@ -25,6 +25,8 @@ interface Job {
 	if?: string;
 	permissions?: Record<string, string>;
 	outputs?: Record<string, string>;
+	strategy?: { matrix?: Record<string, unknown> };
+	defaults?: unknown;
 	steps?: Step[];
 	'continue-on-error'?: unknown;
 }
@@ -50,6 +52,8 @@ const rootScripts = (
 const gates = Object.keys(ci.jobs).filter((id) => !['scope', 'record', 'passed'].includes(id));
 const FOR_CODE = "needs.scope.outputs.code == 'true'";
 const FOR_DOCS = "needs.scope.outputs.docs == 'true'";
+/** The Worker legs: one per deployable app the change ships in, none skipped. */
+const FOR_WORKERS = "needs.scope.outputs.apps != '[]'";
 
 function needs(job: Job) {
 	return [job.needs ?? []].flat().toSorted();
@@ -140,10 +144,8 @@ describe("the CI scope decides what a merge group can affect against the queue's
 			const job = ci.jobs[id]!;
 
 			expect(job.needs).toBe('scope');
-			expect(job.if).toMatch(
-				id === 'checks'
-					? /^needs\.scope\.outputs\.code == 'true' \|\| needs\.scope\.outputs\.docs == 'true'$/
-					: /^needs\.scope\.outputs\.(?:code|bundle) == 'true'$/,
+			expect(job.if).toBe(
+				{ checks: `${FOR_CODE} || ${FOR_DOCS}`, 'worker-guard': FOR_WORKERS }[id] ?? FOR_CODE,
 			);
 			expect(JSON.stringify(job)).not.toContain('github.event.pull_request');
 		},
@@ -183,6 +185,35 @@ describe("the CI scope decides what a merge group can affect against the queue's
 	});
 });
 
+// ADR-0119: CI builds each deployable app's Worker as its deploy does. An
+// app the change does not ship in has no leg, rather than a skipped one, so a
+// merge group can still reuse the run (packages/tooling/scripts/ci-reuse.mjs).
+describe("CI builds, dry runs and smokes each deployable app's Worker the way its deploy does", () => {
+	const worker = ci.jobs['worker-guard']!;
+
+	it('runs one leg per app the scope names, and none when it names none', () => {
+		expect(worker.strategy?.matrix).toEqual({
+			include: '${{ fromJSON(needs.scope.outputs.apps) }}',
+		});
+		expect(worker.if).toBe(FOR_WORKERS);
+	});
+
+	it("runs the deploy tooling's check at the root, against the Accounts Stand-in when the app binds Keepr Accounts", () => {
+		const leg = (worker.steps ?? []).filter((step) => step.run);
+
+		expect(worker.defaults).toBeUndefined();
+		expect(leg.map((step) => [step.run, step.env])).toEqual([
+			[
+				'node packages/accounts-stand-in/scripts/stand-in.mjs -- pnpm exec keepr-deploy check --app "$APP"',
+				{
+					APP: '${{ matrix.app }}',
+					KEEPR_ACCOUNTS_STAND_IN: "${{ matrix.accounts && 'on' || 'off' }}",
+				},
+			],
+		]);
+	});
+});
+
 describe('a merge group skips the gates only for a tree a full, green PR run verified', () => {
 	const record = ci.jobs.record!;
 
@@ -192,8 +223,8 @@ describe('a merge group skips the gates only for a tree a full, green PR run ver
 		expect(record.if?.split('&&').map((clause) => clause.trim())).toEqual([
 			"github.event_name == 'pull_request'",
 			'github.event.pull_request.head.repo.full_name == github.repository',
-			"needs.scope.outputs.code == 'true'",
-			"needs.scope.outputs.bundle == 'true'",
+			FOR_CODE,
+			FOR_WORKERS,
 		]);
 		expect(runs(record)).toContain('node packages/tooling/scripts/ci-reuse.mjs record');
 	});

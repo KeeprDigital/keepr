@@ -1,6 +1,6 @@
 # ADR-0110: The workspace's own tooling is a package
 
-Accepted · 2026-11-17
+Accepted · 2026-11-17 · Amended by ADR-0119: the deploy procedure is the package's (`keepr-deploy`), for every app and Environment, and an app keeps only its deploy descriptor and thin scripts
 
 ### Decision
 

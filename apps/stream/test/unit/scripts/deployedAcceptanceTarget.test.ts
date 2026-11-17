@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	ACCOUNT_ID_ENV,
 	loadCommittedInstallation,
-	parseJsonc,
 	resolveDeployedTarget,
 } from '../../../scripts/graphics-acceptance/deployed-target.mjs';
 import {
@@ -178,15 +177,6 @@ describe('the deployed acceptance target', () => {
 		expect(resolveDeployedTarget({ env: COMPLETE_ENV, installation })).toMatchObject({
 			stagingBucket: 'stream-graphics-asset-staging',
 			workflow: 'silent-video-validation',
-		});
-	});
-});
-
-describe('reading a Wrangler config', () => {
-	it('drops comments and trailing commas, and leaves strings alone', () => {
-		expect(parseJsonc('{\n\t// a comment\n\t"a": "x // y", /* b */ "b": [1, 2,],\n}')).toEqual({
-			a: 'x // y',
-			b: [1, 2],
 		});
 	});
 });

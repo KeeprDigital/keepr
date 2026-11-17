@@ -26,7 +26,7 @@
 		// The design tool's own files.
 		"apps/stream/.impeccable/**",
 		// The validator Worker is redeployed when its fingerprint changes, and the fingerprint hashes its
-		// bundle, Docker context and configuration byte for byte (apps/stream/scripts/deploy-promotion.mjs). Format
+		// bundle and Docker context byte for byte (packages/tooling/scripts/deploy/fingerprint.mjs). Format
 		// it with a change that redeploys it anyway.
 		"apps/stream/workers/silent-video-validator/**",
 		// A tsconfig that cannot load, on purpose.

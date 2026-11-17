@@ -1,27 +1,20 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+import { parseJsonc } from '@keepr/tooling/scripts/jsonc.mjs';
 import { RUN_SLOT_COSTS } from '@keepr/tooling/scripts/slots.mjs';
 import { GATES, selectGates } from '../../../scripts/verify.mjs';
 
 /**
  * The gates and the deploy are only as good as their wiring: these read the
- * committed package.json, verify graph and workflows. Nothing runs remotely.
+ * committed package.json, verify graph and CI workflow. Nothing runs remotely.
  */
 
 interface Step {
-	name?: string;
-	uses?: string;
 	run?: string;
-	if?: string;
-	'continue-on-error'?: unknown;
-	env?: Record<string, string>;
-	with?: Record<string, unknown>;
 }
 interface Workflow {
-	on: Record<string, { inputs?: Record<string, { options?: string[] }> }>;
-	permissions?: Record<string, string>;
-	jobs: Record<string, { env?: Record<string, string>; steps?: Step[] }>;
+	jobs: Record<string, { steps?: Step[] }>;
 }
 
 function scriptsOf(manifest: string) {
@@ -52,24 +45,27 @@ const ciCommands = steps(ci)
 	.map((line) => line.trim())
 	.filter((line) => line.startsWith('pnpm '));
 
+/** What deploys, and what CI's Worker leg checks, through `keepr-deploy check` (ADR-0119). */
+const descriptor = parseJsonc(readFileSync('deploy.jsonc', 'utf8')) as {
+	build: string[];
+	parts: Record<string, { config: string }>;
+};
+
 describe('verify and CI run the same gates', () => {
-	it('builds once, then runs the Worker dry run and smoke, in verify and in CI', () => {
+	it("builds once, then runs the Worker dry run and smoke, in verify and in the descriptor's build, which CI and the deploy run", () => {
 		expect(scripts['worker:smoke']).not.toContain('build');
 		expect(Object.values(GATES).filter((gate) => gate.command.includes('build'))).toHaveLength(1);
-
-		const workerGuard = steps(ci, 'worker-guard').map((step) => step.run ?? '');
-		const at = (command: string) => workerGuard.findIndex((run) => run.includes(command));
-		expect(workerGuard.filter((run) => run.includes('pnpm build'))).toHaveLength(1);
-		expect(at('pnpm build')).toBeLessThan(at('pnpm worker:dry-run'));
-		expect(at('pnpm worker:dry-run')).toBeLessThan(at('pnpm worker:smoke'));
+		expect(descriptor.build).toEqual(['build', 'worker:dry-run', 'worker:smoke']);
 	});
 
 	it('typechecks and bundles the silent-video validator Worker, in verify and CI', () => {
 		expect(scripts.typecheck).toMatch(/&& pnpm typecheck:validator(?: |$)/u);
 		expect(Object.keys(selectGates(['--quick']))).toContain('typecheck:validator');
 		expect(Object.keys(selectGates([]))).toContain('validator:dry-run');
-		expect(ciCommands).toEqual(
-			expect.arrayContaining(['pnpm typecheck', 'pnpm validator:dry-run']),
+		expect(ciCommands).toContain('pnpm typecheck');
+		// CI bundles each part of the descriptor, as `validator:dry-run` does.
+		expect(scripts['validator:dry-run']).toContain(
+			`--config ${descriptor.parts.validator?.config}`,
 		);
 	});
 
@@ -179,79 +175,18 @@ describe('verify runs the server-backed suites one at a time', () => {
 	});
 });
 
-describe('the deploy advances its promotion markers only behind every check', () => {
-	it('marks the app pending just before the first remote change, and deployed only after deploy:verify', () => {
-		const commands = scripts.deploy!.split('&&').map((command) => command.trim());
-		const pending = commands.indexOf('pnpm deploy:mark-app pending');
-
-		// Only `&&`: nothing may swallow a failed step.
-		expect(scripts.deploy).not.toMatch(/\|\||;|(^|[^&])&([^&]|$)/);
-		expect(commands.slice(0, pending)).toEqual([
-			'pnpm build',
-			'pnpm worker:dry-run',
-			'pnpm worker:smoke',
-		]);
-		expect(commands[pending + 1]).toBe('pnpm db:migrate:remote');
-		expect(commands.slice(-2)).toEqual(['pnpm deploy:verify', 'pnpm deploy:mark-app deployed']);
-	});
-
-	describe('the Deploy workflow', () => {
-		const deploy = workflow('deploy.yml');
-		const all = steps(deploy);
-		const index = (match: (step: Step) => boolean) => all.findIndex(match);
-		const release = index((step) => step.with?.ref === '${{ steps.release.outputs.tag }}');
-		const tooling = index((step) => step.with?.path === '.deploy-tooling');
-		const install = index((step) => step.run === 'pnpm install --frozen-lockfile');
-		const promote = index(
-			(step) =>
-				step.run?.startsWith(
-					'node .deploy-tooling/apps/stream/scripts/deploy-promotion.mjs promote',
-				) === true,
-		);
-
-		it('promotes through tooling from its own commit, after installing the release', () => {
-			expect(release).toBeGreaterThanOrEqual(0);
-			expect([release, tooling, install, promote]).toEqual(
-				[release, tooling, install, promote].toSorted((a, b) => a - b),
-			);
-			expect(all[tooling]!.with).toMatchObject({
-				ref: '${{ github.sha }}',
-				'sparse-checkout': 'apps/stream/scripts/deploy-promotion.mjs',
-				'persist-credentials': false,
-			});
-			expect(all.some((step) => step.run === 'echo /.deploy-tooling/ >> .git/info/exclude')).toBe(
-				true,
-			);
+describe('the deploy runs the tooling, which advances the promotion markers only behind every check', () => {
+	// The procedure, its order and the Deploy workflow are tested at their home, `@keepr/tooling`.
+	it("is Stream Keepr's descriptor deployed by keepr-deploy, from every deploy script", () => {
+		expect(
+			Object.fromEntries(Object.entries(scripts).filter(([name]) => /^deploy(?::|$)/.test(name))),
+		).toEqual({
+			deploy: 'keepr-deploy deploy --app stream --env production',
+			'deploy:verify': 'keepr-deploy verify --app stream --env production',
+			'deploy:mark-app': 'keepr-deploy mark-app --app stream --env production',
+			'deploy:status': 'keepr-deploy status --app stream --env production',
+			'deploy:validator': 'keepr-deploy part validator --app stream --env production',
 		});
-
-		it('cannot skip past a failed promotion, and deploys or moves a marker nowhere else', () => {
-			expect(all[promote]!.if).toBeUndefined();
-			expect(all[promote]!['continue-on-error']).toBeUndefined();
-			expect(all[promote]!.env).toHaveProperty('INPUT_VALIDATOR', '${{ inputs.validator }}');
-			for (const [position, step] of all.entries()) {
-				if (position !== promote)
-					expect(step.run ?? '').not.toMatch(/git push|git tag|wrangler|pnpm (run )?deploy/);
-			}
-		});
-
-		// Job-level env reaches every step: the install's build scripts and the setup actions too.
-		it('hands the Cloudflare credentials to the promotion step and to nothing else', () => {
-			const holders = [
-				...Object.values(deploy.jobs).map((job) => job.env ?? {}),
-				...all.filter((_, position) => position !== promote).map((step) => step.env ?? {}),
-			];
-
-			expect(all[promote]!.env).toMatchObject({
-				CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
-				CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
-			});
-			expect(
-				holders
-					.flatMap((env) => Object.entries(env))
-					.filter(
-						([name, value]) => /^CLOUDFLARE_|^WRANGLER_/.test(name) || value.includes('secrets.'),
-					),
-			).toEqual([]);
-		});
+		expect(workspaceScripts.deploy).toBe('keepr-deploy deploy');
 	});
 });

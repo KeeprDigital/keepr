@@ -19,8 +19,8 @@
 #     progress; marking the PR ready for review runs CI, the full gate, so
 #     nobody runs `pnpm verify` locally just to repeat it.
 #   - Only the jobs a change can affect: for docs alone, only the docs checks
-#     (`pnpm verify:docs`, in the `checks` job); no Worker build for tests or
-#     the other workflows alone. The `scope` job decides, measuring a PR
+#     (`pnpm verify:docs`, in the `checks` job); a Worker build only for each
+#     deployable app the change ships in. The `scope` job decides, measuring a PR
 #     against its base and a merge group against the queue's base
 #     (packages/tooling/scripts/ci-scope.mjs); anything it cannot measure runs everything.
 #   - Not twice on the same tree. A merge group whose tree is byte-identical
@@ -77,8 +77,8 @@ jobs:
       actions: read
     outputs:
       code: ${{ steps.scope.outputs.code }}
-      bundle: ${{ steps.scope.outputs.bundle }}
       docs: ${{ steps.scope.outputs.docs }}
+      apps: ${{ steps.scope.outputs.apps }}
       verified-by: ${{ steps.scope.outputs.verified-by }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -328,37 +328,37 @@ jobs:
       - run: pnpm accept animation-effects
       - run: pnpm accept key-matte
 
+  # Each deployable app's Worker (an app with a deploy descriptor, ADR-0119),
+  # built and checked by the deploy tooling as its deploy builds it: each part
+  # bundled as a deploy would upload it (no Docker, no credentials), then the
+  # descriptor's build (for Stream Keepr: the build, the wrangler dry run, and
+  # the Worker smoke under production-shaped local workerd, the #302 class of
+  # failure). An app binding Keepr Accounts runs it beside the Accounts
+  # Stand-in (ADR-0113); any other with the stand-in off.
+  #
+  # One leg per app the change ships in (`apps`, from the scope), so an app it
+  # does not touch has no leg rather than a skipped one: a merge group reuses
+  # only a run none of whose jobs was skipped (packages/tooling/scripts/ci-reuse.mjs).
+  # An app's tests, docs or another workflow alone run no leg.
   worker-guard:
-    name: Build, wrangler dry runs, and Worker smoke
+    name: Build, wrangler dry runs, and Worker smoke (${{ matrix.app }})
     needs: scope
-    # A change touching only tests, docs or the other workflows cannot change
-    # the uploaded bundle, so building it again would prove what main already
-    # proved.
-    if: needs.scope.outputs.bundle == 'true'
+    if: needs.scope.outputs.apps != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: apps/stream
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.scope.outputs.apps) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-      # The silent-video validator is a second deployed Worker (#618), bundled
-      # by wrangler exactly as `pnpm deploy:validator` would. About a second,
-      # and first so a broken import fails before the app build starts.
-      # `--containers-rollout=none` keeps it to the bundle: no Docker build, no
-      # credentials.
-      - run: pnpm validator:dry-run
-      # The #302 class of failure: green on Node, broken on workerd. The dry
-      # run asserts the bundle wrangler would upload compiles no Wasm from
-      # bytes, so it belongs on every PR — not just deploy day.
-      - run: pnpm build
-      - run: pnpm worker:dry-run
-      # Starts that same artifact under production-shaped local workerd and
-      # sends the small runtime/bindings/auth/streaming probe set through it.
-      - run: pnpm worker:smoke
+      - env:
+          APP: ${{ matrix.app }}
+          KEEPR_ACCOUNTS_STAND_IN: ${{ matrix.accounts && 'on' || 'off' }}
+        run: node packages/accounts-stand-in/scripts/stand-in.mjs -- pnpm exec keepr-deploy check --app "$APP"
 
   # A PR run that ran every gate and passed leaves a record of the tree it
   # verified, so its merge group can skip running them again on exactly that
@@ -387,7 +387,7 @@ jobs:
       github.event_name == 'pull_request'
       && github.event.pull_request.head.repo.full_name == github.repository
       && needs.scope.outputs.code == 'true'
-      && needs.scope.outputs.bundle == 'true'
+      && needs.scope.outputs.apps != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

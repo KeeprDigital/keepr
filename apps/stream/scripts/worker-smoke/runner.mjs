@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -15,7 +15,7 @@ import {
 	LOCAL_DEVELOPER_SESSION_ID_PREFIX,
 	LOCAL_DEVELOPER_USER_ID,
 } from '../../shared/utils/localDeveloperAuth.ts';
-import { DeployVerifyFailure, verifyDeployment } from '../deploy-verify.mjs';
+import { DeployVerifyFailure, verifyDeployment } from '@keepr/tooling/scripts/deploy/verify.mjs';
 
 const PIXEL_PNG = Uint8Array.from(
 	Buffer.from(
@@ -785,23 +785,47 @@ function documentationAddress(network) {
 }
 
 /**
- * The production bundle must pass the probe `pnpm run deploy` gates on, so a
- * stricter `deploy:verify` can never first fail on deploy day (#617).
+ * The Release this checkout is, as the deploy's verify expects `/api/release`
+ * to name it. The bundle was built from here, so its build recorded the same.
+ */
+function checkoutIdentity() {
+	const { version } = JSON.parse(
+		readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+	);
+	let commit;
+	try {
+		commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+	} catch {
+		commit = 'unknown';
+	}
+	return { app: 'stream', version, commit };
+}
+
+/**
+ * The production bundle must pass the probes `pnpm run deploy` gates on, so a
+ * stricter `deploy:verify` can never first fail on deploy day (#617): its
+ * liveness, and its release identity, each reached without a session (ADR-0119).
  */
 async function expectDeployVerifyPasses({ origin, fetchRequest, signal }) {
-	try {
-		await verifyDeployment({
-			baseUrl: origin,
-			fetchRequest,
-			attempts: 1,
-			signal,
-		});
-	} catch (error) {
-		if (!(error instanceof DeployVerifyFailure)) throw error;
-		throw new WorkerSmokeFailure('deploy-verify', 'probe-rejected', {
-			expected: 'GET /api/time accepted by scripts/deploy-verify.mjs',
-			actual: redactSmokeText(error.message),
-		});
+	for (const [expected, probe] of [
+		[undefined, 'GET /api/time'],
+		[checkoutIdentity(), 'GET /api/release naming this checkout'],
+	]) {
+		try {
+			await verifyDeployment({
+				baseUrl: origin,
+				...(expected ? { expected } : {}),
+				fetchRequest,
+				attempts: 1,
+				signal,
+			});
+		} catch (error) {
+			if (!(error instanceof DeployVerifyFailure)) throw error;
+			throw new WorkerSmokeFailure('deploy-verify', 'probe-rejected', {
+				expected: `${probe} accepted by the deploy's verify (@keepr/tooling)`,
+				actual: redactSmokeText(error.message),
+			});
+		}
 	}
 }
 

@@ -12,9 +12,9 @@ export default defineNuxtConfig({
 
 | Path | Holds |
 |---|---|
-| `nuxt.config.ts` | The shell: client rendering, Nuxt UI, VueUse, the colour mode, strict TypeScript, the Cloudflare Workers target. |
-| `server/utils` | Errors a route reports, D1 parameter helpers, the request-body ceiling, shared-secret checks, error-log fields, the server time reading, who a request belongs to (`requestIdentity.ts`), the refusal of a cross-site write (`crossSiteMutation.ts`). Auto-imported by Nitro. |
-| `shared/` | What the server and the client both read: the state-conflict code, the body-limit route rule's types, the server time path, clock time formatting and parsing, Intervals, the App registry, the Identity Proof's shape. |
+| `nuxt.config.ts` | The shell: client rendering, Nuxt UI, VueUse, the colour mode, strict TypeScript, the Cloudflare Workers target, and the release identity each build records (`build/releaseIdentity.ts`). |
+| `server/utils` | Errors a route reports, D1 parameter helpers, the request-body ceiling, shared-secret checks, error-log fields, the server time reading, the release identity (`release.ts`), who a request belongs to (`requestIdentity.ts`), the refusal of a cross-site write (`crossSiteMutation.ts`). Auto-imported by Nitro. |
+| `shared/` | What the server and the client both read: the state-conflict code, the body-limit route rule's types, the server time and release paths, clock time formatting and parsing, Intervals, the App registry, the Identity Proof's shape. |
 | `app/composables`, `app/utils` | Request feedback, forms, unsaved changes, async actions, store helpers, who am I (`useIdentity`), server time, the Clock Projection scheduler and the Frame Clock, failure sentences. Auto-imported. |
 | `app/components/UI` | Confirm, empty, loading, search and tab components, as `<UI…>`. |
 | `test/` | Test kits an app's tests import, the SQLite D1 harness over an app's real migrations and the auth schema contract (`authSchemaContract.ts`) among them, and this layer's own tests. |
@@ -40,6 +40,17 @@ export default defineNuxtConfig({
 import { readServerTime } from '@keepr/nuxt-layer/server/utils/serverTime';
 
 export default defineEventHandler(readServerTime);
+```
+
+## Release identity
+
+The deploy's verify requires `GET /api/release` (`RELEASE_PATH`) to name the Release just deployed (ADR-0119). Every build records `{ app, version, commit }` in runtime config; the layer registers no route, so every app serves it, reachable without a sign-in:
+
+```ts
+// server/api/release.get.ts
+import { readReleaseIdentity } from '@keepr/nuxt-layer/server/utils/release';
+
+export default defineEventHandler((event) => readReleaseIdentity(useRuntimeConfig(event)));
 ```
 
 ## Who a request belongs to

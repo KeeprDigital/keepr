@@ -1,65 +1,78 @@
-# Manually triggered production deploy — the Actions counterpart of running
-# `pnpm deploy:validator` (when needed) and `pnpm run deploy` locally. It exists
-# as an *option*, not a replacement: deploys are never merge-triggered, because
-# deploy day is a human procedure (apps/stream/README.md § Deploy day). This workflow
-# covers only what those cover — validator promotion, build, Wasm dry run,
-# Worker smoke against the production-env build, D1 migration, Worker
-# promotion, liveness verify. Everything after promotion stays with the
-# operator:
+# Manually triggered deploy of one or more apps' Releases to an Environment —
+# the Actions counterpart of `pnpm run deploy --app <app> --env <env>`, once
+# per app. It exists as an *option*, not a replacement: deploys are never
+# merge- or release-triggered, because deploy day is a human procedure
+# (apps/stream/README.md § Deploy day). This workflow covers only what that
+# covers — per app: build, the descriptor's checks (for Stream Keepr the Wasm
+# dry run and the Worker smoke), parts by fingerprint, deploy order, D1
+# migration, Worker promotion, release-identity verify. Everything after
+# promotion stays with the operator:
 #
-#   - The six deployed acceptance gates run locally, in order, stopping at
-#     the first failure (`pnpm accept deployed`). The validator pre-flight
-#     needs your Docker, so they cannot run on a hosted runner.
+#   - Each app's deployed acceptance gates run locally (Stream Keepr's six:
+#     `pnpm accept deployed`), in order, stopping at the first failure. The
+#     validator pre-flight needs your Docker, so they cannot run on a hosted
+#     runner.
 #   - "Nothing on air" is a condition only a person can verify before
 #     triggering this.
 #
-# Actions deploys ship released tags, never main's HEAD: the version input
-# resolves through Stream Keepr's GitHub Releases, `@keepr/stream@<version>`
-# (cut by merging the Version PR, ADR-0118), so what promotes is always a
-# formally released snapshot — since ADR-0036, a commit that passed CI in the
-# merge queue — and rollback is dispatching this workflow with the previous
-# tag. The `v*` tags release-please made are history and never deploy: none
-# survives the ADR-0083 wipe. Local `pnpm run deploy` stays free-form for
-# emergencies.
+# Actions deploys ship released tags, never main's HEAD: each app's Release
+# resolves through its GitHub Releases, `@keepr/<app>@<version>` (cut by
+# merging the Version PR, ADR-0118), so what promotes is always a formally
+# released snapshot — since ADR-0036, a commit that passed CI in the merge
+# queue — and rollback is dispatching this workflow with the previous tag.
+# The `v*` tags release-please made are history and never deploy. Local
+# `pnpm run deploy` stays free-form for emergencies.
 #
-# Each component has its own promotion marker, an annotated git tag
-# (ADR-0035): `production` for the app and `production-validator` for the
-# validator, each `pending` while its deploy runs and `deployed` once it is
-# confirmed, so a run that fails between the two records exactly that. The
-# promotion runs `apps/stream/scripts/deploy-promotion.mjs` from this workflow's own
-# commit (main), not from the release, so rolling back to a release older
-# than the markers still reads and writes them.
+# The `plan` job resolves the Releases (packages/tooling/scripts/deploy/plan.mjs)
+# and deploys nothing. Each app then deploys as its own job, through
+# deploy-installation.yml, in its own GitHub environment `<app>-<environment>`
+# with its own token and concurrency group (that file says what each holds).
+# Keepr Accounts' job runs first, and every App's job waits for it to
+# succeed, because deploy order refuses an App that Keepr Accounts'
+# Installation does not allow (ADR-0120); the Apps deploy side by side. An app
+# joins with its deploy descriptor and its GitHub environment: nothing here
+# names it.
 #
-# Required `production` environment secrets (the environment deploys only
-# from main): CLOUDFLARE_API_TOKEN (Workers Scripts:Edit,
-# D1:Edit — plus the Containers scope whenever a run deploys the validator,
-# which is a Container), CLOUDFLARE_ACCOUNT_ID.
+# The app and each of its parts have their own promotion marker, an annotated
+# git tag (ADR-0035, ADR-0119): `stream/production` for Stream Keepr's app and
+# `stream/production-validator` for its validator, each `pending` while its
+# deploy runs and `deployed` once it is confirmed, so a run that fails between
+# the two records exactly that.
 
 name: Deploy
 
 on:
   workflow_dispatch:
     inputs:
-      version:
+      releases:
         description: >-
-          Release to deploy: a tag like @keepr/stream@1.7.0, or "latest" for
-          Stream Keepr's most recent GitHub Release.
+          Apps and Releases to deploy, separated by spaces: an app for its most
+          recent GitHub Release (stream), or a tag (@keepr/stream@1.7.0).
+          Keepr Accounts deploys first, whatever the order.
         required: true
         type: string
-        default: latest
+        default: stream
+      environment:
+        description: The Environment every app here deploys to.
+        required: true
+        type: choice
+        default: production
+        options:
+          - production
       d1_recovery_point:
         description: >-
           Type "confirmed" once a recent D1 Time Travel recovery point or
-          export exists (README § Deploy day). D1 migration and Worker promotion
-          are not one atomic transaction; this is the rollback anchor.
+          export exists for every app deployed (README § Deploy day). D1
+          migration and Worker promotion are not one atomic transaction; this
+          is the rollback anchor.
         required: true
         type: string
       validator:
         description: >-
-          Silent-video validator promotion. auto: deploy it first unless the
-          production-validator marker records a confirmed deploy with the
-          target release's validator fingerprint (its bundle, Container
-          context and configuration). always/never override the detection.
+          Parts (Stream Keepr's silent-video validator). auto: deploy each first
+          unless its marker records a confirmed deploy with the target
+          Release's fingerprint (its bundle, Container context and
+          configuration). always/never override the detection.
         required: false
         type: choice
         default: auto
@@ -67,112 +80,90 @@ on:
           - auto
           - always
           - never
-
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
+      override:
+        description: >-
+          Deploy out of order: one line saying why (README § Deploy order).
+          Recorded in the app's marker. Only for a run of one app; leave
+          empty otherwise.
+        required: false
+        type: string
+        default: ''
 
 permissions:
-  # write: the run force-pushes the `production` and `production-validator`
-  # promotion-marker tags.
-  contents: write
+  contents: read
 
 jobs:
-  deploy:
-    name: Promote the validator and the app, verify
+  plan:
+    name: Plan the deploy
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    environment:
-      name: production
-      url: https://stream.keepr.digital
-    env:
-      # The tagger identity of the annotated marker tags.
-      GIT_COMMITTER_NAME: github-actions[bot]
-      GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-      # nuxt build OOMs Node's default ~2GB heap on hosted runners.
-      NODE_OPTIONS: --max-old-space-size=6144
+    timeout-minutes: 5
+    outputs:
+      accounts: ${{ steps.plan.outputs.accounts }}
+      apps: ${{ steps.plan.outputs.apps }}
     steps:
       - name: Require the D1 recovery-point confirmation
         if: inputs.d1_recovery_point != 'confirmed'
         run: |
           echo '::error::Refusing to deploy: the d1_recovery_point input must be the word "confirmed".'
           exit 1
-      - name: Resolve the release tag
-        id: release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          # Dispatch inputs cross into the shell via env, never by expression
-          # interpolation inside `run:` — this job holds the Cloudflare token.
-          INPUT_VERSION: ${{ inputs.version }}
-        # Only Stream Keepr's own Releases: another app's, or a v* tag, never
-        # deploys here.
-        run: |
-          if [ "$INPUT_VERSION" = "latest" ]; then
-            tag=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --exclude-pre-releases --limit 100 \
-              --json tagName,publishedAt \
-              --jq '[.[] | select(.tagName | startswith("@keepr/stream@"))] | sort_by(.publishedAt) | last | .tagName // empty')
-            if [ -z "$tag" ]; then
-              echo '::error::No @keepr/stream@* GitHub Release to deploy.'
-              exit 1
-            fi
-          else
-            tag="$INPUT_VERSION"
-            case "$tag" in
-              @keepr/stream@*) ;;
-              *)
-                echo "::error::$tag is not one of Stream Keepr's Releases: they are tagged @keepr/stream@<version>."
-                exit 1
-                ;;
-            esac
-            # Fail fast on a tag that is not a published release.
-            gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName > /dev/null
-          fi
-          echo "Deploying release $tag"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ steps.release.outputs.tag }}
-          # Full history: fetching a marker tag brings the commit it points
-          # at, which a shallow clone would have to deepen to.
-          fetch-depth: 0
-          # The promotion pushes the marker tags with this checkout's
-          # credential. Nothing in this job uploads an artifact.
-          persist-credentials: true
-      - name: Check out the promotion tooling from this workflow's commit
+      - name: Check out the deploy tooling from this workflow's commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           path: .deploy-tooling
-          sparse-checkout: apps/stream/scripts/deploy-promotion.mjs
+          # The plan and every module it imports.
+          sparse-checkout: |
+            packages/tooling/scripts/deploy/
+            packages/tooling/scripts/jsonc.mjs
           sparse-checkout-cone-mode: false
           persist-credentials: false
-      # Untracked files mark a checkout `dirty` in the markers; this one is
-      # not part of the release.
-      - run: echo /.deploy-tooling/ >> .git/info/exclude
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: package.json
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # Decides the validator against its marker, deploys it first when that
-      # says so, then runs `pnpm run deploy`, each between its markers. The
-      # step summary records the decision, and on failure what each marker
-      # now says (apps/stream/README.md § Recovering from a partial promotion).
-      - name: Promote (validator when decided, then build, dry run, smoke, migrate D1, promote, verify)
+      # Only published GitHub Releases resolve; a v* tag, a draft or an
+      # unknown app refuses the whole run before any job deploys.
+      - name: Resolve each app's Release
+        id: plan
         env:
-          # On this step alone: job-level env would also reach the install's
-          # build scripts and the setup actions, which deploy nothing.
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          INPUT_VALIDATOR: ${{ inputs.validator }}
-        run: node .deploy-tooling/apps/stream/scripts/deploy-promotion.mjs promote "$INPUT_VALIDATOR"
-      - name: Remind the operator what is still owed
-        env:
-          # Step outputs derive from dispatch inputs; same env discipline as above.
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
-        run: |
-          echo "Release $RELEASE_TAG promoted; https://stream.keepr.digital answered deploy:verify (liveness only, not release identity or dependency health)." >> "$GITHUB_STEP_SUMMARY"
-          # The backticks are Markdown, not a command to expand.
-          # shellcheck disable=SC2016
-          echo 'Run the six `:deployed` gates locally (`pnpm accept deployed`), in README order, stopping at the first failure.' >> "$GITHUB_STEP_SUMMARY"
+          GH_TOKEN: ${{ github.token }}
+          # Dispatch inputs cross into the shell via env, never by expression
+          # interpolation inside `run:`.
+          INPUT_RELEASES: ${{ inputs.releases }}
+          INPUT_OVERRIDE: ${{ inputs.override }}
+        run: node .deploy-tooling/packages/tooling/scripts/deploy/plan.mjs
+
+  accounts:
+    name: Keepr Accounts
+    needs: plan
+    if: needs.plan.outputs.accounts != ''
+    permissions:
+      contents: write
+    uses: ./.github/workflows/deploy-installation.yml
+    with:
+      app: accounts
+      release: ${{ needs.plan.outputs.accounts }}
+      environment: ${{ inputs.environment }}
+      parts: ${{ inputs.validator }}
+      override: ${{ inputs.override }}
+
+  apps:
+    name: ${{ matrix.app }}
+    needs: [plan, accounts]
+    # After Keepr Accounts deployed, or when this run does not deploy it;
+    # never after it failed or the run was cancelled.
+    if: >-
+      !cancelled()
+      && needs.plan.result == 'success'
+      && needs.plan.outputs.apps != '[]'
+      && (needs.accounts.result == 'success' || needs.accounts.result == 'skipped')
+    strategy:
+      # One App's failure does not cancel another's deploy part-way.
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.apps) }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/deploy-installation.yml
+    with:
+      app: ${{ matrix.app }}
+      release: ${{ matrix.release }}
+      environment: ${{ inputs.environment }}
+      parts: ${{ inputs.validator }}
+      override: ${{ inputs.override }}

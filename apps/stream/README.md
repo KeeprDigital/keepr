@@ -36,7 +36,8 @@ Changesets; never edit it by hand.
 - **Test**: [Testing](#testing) (what to run when, `pnpm verify`, CI),
   [Database](#database) (migrations).
 - **Release**: [Releases](#releases).
-- **Deploy**: [Deploy](#deploy), [Promotion markers](#promotion-markers),
+- **Deploy**: [Deploy](#deploy), [Deploy order](#deploy-order),
+  [Promotion markers](#promotion-markers),
   [Deploy from GitHub Actions](#deploy-from-github-actions),
   [Deploy day](#deploy-day), [Worker secrets](#worker-secrets).
 - **Recover**: rollback in [Deploy day](#deploy-day) step 3,
@@ -417,9 +418,12 @@ How `pnpm verify` runs:
 CI (`.github/workflows/ci.yml`) runs the same gates as `pnpm verify` on PRs
 and in the merge queue, split across parallel jobs (lint, typecheck, the unit
 suite, the Nuxt suite, the workspace's packages, two integration shards,
-local-auth and browser gates, Worker build) so the longest job sets the wall time. The queue's run tests the exact tree that lands
-([Releases](#releases)). It skips draft PRs (marking one ready runs it) and
-the Worker build when only tests, docs or the other workflows changed. A change
+local-auth and browser gates, and a Worker leg per deployable app) so the longest job sets the wall time. The queue's run tests the exact tree that lands
+([Releases](#releases)). It skips draft PRs (marking one ready runs it). Each
+deployable app's Worker leg runs `keepr-deploy check`, the parts bundled and the
+descriptor's build (here `build`, `worker:dry-run`, `worker:smoke`), only when
+the change touches that app's shipped code or what builds the legs, so none
+runs when only tests, docs or the other workflows changed (ADR-0121). A change
 that touches only docs skips the code gates and runs `pnpm verify:docs`
 instead: the documentation link test, the one thing those gates check of a
 document (`packages/tooling/scripts/ci-scope.mjs` decides, against a PR's
@@ -656,8 +660,8 @@ How a change reaches `main`, and why:
   release gate below. The **release tags** ruleset makes release tags
   immutable (`v*` and `@keepr/*`), and repository admins can bypass it. `CI passed` is one summary job that always reports, so CI can
   skip what a change cannot affect without leaving a required check waiting.
-  The `production` and `production-validator` promotion-marker tags
-  ([Promotion markers](#promotion-markers)) are unprotected: every deploy
+  The promotion-marker tags (`stream/production` and the rest,
+  [Promotion markers](#promotion-markers)) are unprotected: every deploy
   force-moves them, and GitHub refuses the Actions app as a ruleset bypass
   actor.
 - **A release is cut only from a revision the queue verified.** With no
@@ -709,79 +713,144 @@ There is no separate staging environment: **production is the staging gate.**
 The production hostname is `https://stream.keepr.digital`, attached as a
 `custom_domain` route in `wrangler.jsonc`.
 
-`pnpm run deploy` runs, in order and stopping at the first failure:
+What is deployed is stated in this app's **deploy descriptor**, `deploy.jsonc`:
+its build scripts, its Worker's configuration, its D1 binding, its
+Installation's URL per Environment, and its one part, the silent-video
+validator. The deploying is done by `@keepr/tooling`
+(`packages/tooling/scripts/deploy/`, ADR-0119), for every app and Environment
+alike: `pnpm run deploy --app stream --env production` from the workspace root,
+or `pnpm run deploy` here, which fills in the app and Environment. (`pnpm deploy`
+without `run` is pnpm's own command and deploys nothing.) Locally it runs with
+your `wrangler login`. In order, stopping at the first failure:
 
-1. `pnpm build`.
-2. `pnpm worker:dry-run`: bundles what Wrangler would upload into
-   `.output/wrangler-dry-run/` and fails if it contains
-   `new WebAssembly.Module(`, which a deployed Worker refuses (every JPEG/WebP
-   ingestion would fail, #302). It also fails if the bypass name appears in
-   generated config, or if `.output/public`'s CSS lacks a declared application
-   font face, loads or imports one from a remote URL, or gives one a `local()`
-   source, or if the build ships a forbidden family (MPlantin) as a face or as
-   a file named for it (`scripts/assert-built-fonts.mjs`).
-3. `pnpm worker:smoke` against that production build.
-4. `pnpm deploy:mark-app pending`: moves the `production` marker to this
-   checkout as `pending` before anything remote changes
-   ([Promotion markers](#promotion-markers)). If it cannot, nothing deploys.
-5. `pnpm db:migrate:remote`.
-6. `wrangler deploy`.
-7. `pnpm deploy:verify` (`scripts/deploy-verify.mjs`): reads `GET /api/time`
-   and passes only on status 200, `application/json`, and a
-   `{ serverTime: <epoch ms> }` body. A redirect fails and is never followed,
-   so an Access or login page cannot pass, and neither can an HTML fallback.
-   Only unreachable, 5xx and 429 answers are retried. Set
-   `STREAM_KEEPR_DEPLOY_HEALTH_URL` only to verify a different origin.
+1. **Build once**: the descriptor's `build` scripts.
+   1. `pnpm build`.
+   2. `pnpm worker:dry-run`: bundles what Wrangler would upload into
+      `.output/wrangler-dry-run/` and fails if it contains
+      `new WebAssembly.Module(`, which a deployed Worker refuses (every
+      JPEG/WebP ingestion would fail, #302). It also fails if the bypass name
+      appears in generated config, or if `.output/public`'s CSS lacks a
+      declared application font face, loads or imports one from a remote URL,
+      or gives one a `local()` source, or if the build ships a forbidden family
+      (MPlantin) as a face or as a file named for it
+      (`scripts/assert-built-fonts.mjs`).
+   3. `pnpm worker:smoke` against that production build.
 
-   It proves **liveness only**: some Worker on that origin answers with this
-   app's handler. `/api/time` carries no build identity, so the previous
-   release passes too, and it reads no binding, so it says nothing about D1,
-   auth, R2, KV, Ably or the validator. The deployed gates (Deploy day, step 5)
-   cover those. `worker:smoke` runs the same probe against the built Worker.
+   `--artifact <dir>` deploys a downloaded `.output/` of the same Release
+   instead of building it: one build is what every Environment deploys.
 
-8. `pnpm deploy:mark-app deployed`: marks the app deployed, only once
+   Then **deploy order** ([Deploy order](#deploy-order)), before anything
+   remote changes: a deploy that Keepr Accounts' Installation does not allow
+   stops here.
+
+2. **The validator**, when its fingerprint changed since the confirmed deploy
+   its `stream/production-validator` marker records
+   ([Promotion markers](#promotion-markers)): marked `pending`, `wrangler deploy`
+   on `workers/silent-video-validator/wrangler.jsonc`, marked `deployed`. The
+   app binds it, so it goes first. `--parts always` or `--parts never`
+   overrides the decision.
+3. The `stream/production` marker moves to this checkout as `pending` before
+   the app changes anything remote. If it cannot, the app does not deploy.
+4. `wrangler d1 migrations apply DB --remote`.
+5. `wrangler deploy` of the built Worker.
+6. `pnpm deploy:verify`: reads `GET /api/release` and passes only on status
+   200, `application/json`, and `{ app, version, commit }` naming the Release
+   just deployed. A redirect fails and is never followed, so an Access or login
+   page cannot pass, and neither can an HTML fallback. Unreachable, 5xx and 429
+   answers, and another Release's identity, are retried; anything else fails at
+   once. Set `KEEPR_DEPLOY_URL` only to verify a different origin.
+
+   A Release from before `/api/release` (`@keepr/stream@1.7.0` and earlier) is
+   checked for **liveness only**, at `GET /api/time`, and the output says so.
+   Neither probe reads a binding, so a pass says nothing about D1, auth, R2,
+   KV, Ably or the validator. The deployed gates (Deploy day, step 5) cover
+   those. `worker:smoke` runs both probes against the built Worker.
+
+7. The `stream/production` marker is marked `deployed`, only once
    `deploy:verify` has passed.
 
 Migration and promotion are separate Cloudflare operations, not one
 transaction. Schedule incompatible schema changes for a maintenance window.
 
-`pnpm deploy:validator` deploys the validator the same way: it marks
-`production-validator` `pending` with this checkout's fingerprint, runs
-`wrangler deploy` on `workers/silent-video-validator/wrangler.jsonc`, and then
-marks it `deployed`.
+`pnpm deploy:validator` deploys the validator alone, whatever its fingerprint,
+between its markers, and `pnpm deploy:mark-app <pending|deployed>` writes the
+app's marker by hand.
+
+### Deploy order
+
+Keepr Accounts deploys before any App that depends on it, and never falls
+below one, and the deploy tooling enforces it (ADR-0120) rather than the
+operator remembering it. An App **depends on Keepr Accounts** in an Environment
+when its built Worker configuration, as that Environment deploys it, binds the
+`keepr-accounts` service; nothing else declares it. Keepr Accounts' changes are
+the commits that change `apps/accounts`.
+
+- **An App waits for Keepr Accounts.** Its deploy to an Environment refuses
+  unless `accounts/<environment>` records a confirmed deploy whose commit
+  contains every Keepr Accounts change the App's Release contains. Deploy
+  Keepr Accounts first.
+- **Keepr Accounts cannot fall below its Apps.** Its deploy to an Environment
+  refuses a commit lacking a Keepr Accounts change that a dependent
+  Installation there, deployed or pending, contains. Each dependent's app
+  marker says it depends, as `needs: accounts`; `pnpm deploy:mark-app` records
+  it too, from the built Worker, so build before marking by hand.
+- **Override**: `pnpm run deploy --app <app> --env <env> --override "<reason>"`
+  deploys whatever the order. The reason is one line, and the app's marker
+  records it as `override`, pending and deployed. An override that bypassed
+  nothing is not recorded.
+
+The check reads the repository's full history, so a shallow clone is refused.
+No App binds Keepr Accounts yet, so today it refuses nothing. Nor does a
+deploy's build start the Accounts Stand-in that a binding App's
+`worker:smoke` needs: CI's Worker leg starts it around `keepr-deploy check`.
+The change that first binds `keepr-accounts` moves that into the tooling's
+build step, for the deploy and CI alike, and a tooling test
+(`deployWorkflow.test.ts`) fails until it does.
 
 ### Promotion markers
 
 The app and the validator are deployed separately and can fail separately.
-Each has its own marker, an annotated git tag on `origin` (ADR-0035):
+Each has its own marker per Environment, an annotated git tag on `origin` named
+`<app>/<environment>[-<part>]` (ADR-0035, ADR-0119):
 
-| Tag                    | Component | Moved by                                                  |
-| ---------------------- | --------- | --------------------------------------------------------- |
-| `production`           | App       | `pnpm run deploy` (steps 4 and 8), or the Deploy workflow |
-| `production-validator` | Validator | `pnpm deploy:validator`, or the Deploy workflow           |
+| Tag                           | Marks              | Moved by                                                   |
+| ----------------------------- | ------------------ | ---------------------------------------------------------- |
+| `stream/production`           | The app            | `pnpm run deploy` (steps 3 and 7), or the Deploy workflow  |
+| `stream/production-validator` | The validator part | `pnpm run deploy` (step 2), `pnpm deploy:validator`, or the Deploy workflow |
 
-A marker records the component, its state, the commit it was deployed from,
-whether that checkout had uncommitted or untracked changes (`worktree: dirty`),
-who deployed it (a workflow run or `local`), and for the validator its
-**fingerprint**. Every deploy marks its component `pending` before it changes
-anything, and `deployed` once it succeeded. A deploy that died part-way leaves
-`pending`, which means "unconfirmed: either version may be serving". A deploy
-that cannot write its pending marker does not start. `pnpm deploy:status`
-prints both markers and says whether this checkout's validator would deploy.
-It reads `origin` and bundles the validator (`pnpm validator:dry-run`), so it
-needs network access and installed dependencies, but no Docker or Cloudflare
-credentials.
+A marker records what it marks (its `component` field: `app`, or the part's
+name), its state, the commit it was deployed from, whether that checkout had
+uncommitted or untracked changes (`worktree: dirty`), who deployed it (a
+workflow run or `local`), for the validator its **fingerprint**, and the app,
+Environment and Release version. An app marker also records `needs: accounts`
+when the Installation depends on Keepr Accounts, and `override` with its reason
+when a deploy bypassed [deploy order](#deploy-order). Every deploy marks the
+app or part `pending` before it changes anything, and `deployed` once it
+succeeded. A deploy that died part-way leaves `pending`, which means
+"unconfirmed: either version may be serving". A deploy that cannot write its
+pending marker does not start. `pnpm deploy:status` prints both markers and
+says whether this checkout's validator would deploy. It reads `origin` and
+bundles the validator (`pnpm validator:dry-run`), so it needs network access
+and installed dependencies, but no Docker or Cloudflare credentials.
+
+Until ADR-0119 the markers were `production` and `production-validator`. They
+are no longer read: the first deploy under the new names redeploys the
+validator once, and removes each old tag once its replacement records a
+confirmed deploy. Until then `pnpm deploy:status` lists them too.
 
 Markers are force-pushed, and the last writer wins. Deploy runs are serialised,
 but nothing stops a local deploy during one, so don't start one. A local deploy
 from unpushed commits pushes them to `origin` along with its marker tag.
 
 The validator fingerprint is a sha256 of what `wrangler deploy` would upload
-and build: the bundle `pnpm validator:dry-run` produces (every import it
-resolves, so a root dependency such as `@cloudflare/containers` or a
-`shared/` module counts), every file in the Container's Docker context
-(`container/`), and its `wrangler.jsonc`. A release's version bump changes none
-of them, so it does not redeploy the validator.
+and build in that Environment: the bundle `pnpm validator:dry-run` produces
+(every import it resolves, so a root dependency such as
+`@cloudflare/containers` or a `shared/` module counts), every file in the
+Container's Docker context (`container/`), and its `wrangler.jsonc` **as
+resolved for the Environment** (the top level with that Environment's `env`
+block over it), so another Environment's edit, a comment or a reformat does not
+count. A release's version bump changes none of them, so it does not redeploy
+the validator.
 
 Deploying the validator with bare `wrangler deploy`, or rolling it back from the
 dashboard or with `wrangler rollback`, bypasses its marker. If that happened,
@@ -790,31 +859,50 @@ the checkout you want.
 
 ### Deploy from GitHub Actions
 
-The **Deploy** workflow (`.github/workflows/deploy.yml`) is manual-only and runs
-what `pnpm run deploy` runs, but ships a **released tag**, never `main`'s HEAD:
+The **Deploy** workflow (`.github/workflows/deploy.yml`) is manual-only. It
+deploys one or more apps to an Environment, each as `pnpm run deploy` would,
+but ships **released tags**, never `main`'s HEAD. Dispatch it from `main`
+(Actions → Deploy → Run workflow) with:
 
-- `version`: `latest` (default), Stream Keepr's most recent GitHub Release, or
-  a tag like `@keepr/stream@1.7.0`. Another app's tag, or a `v*` tag, is
-  refused. Rollback is dispatching it with the previous tag.
-- `d1_recovery_point`: must be typed `confirmed`.
-- `validator`: `auto` (default) deploys the validator first unless
-  `production-validator` records a confirmed deploy with the release's
-  fingerprint. A missing, unreadable or `pending` marker, or a release that
-  cannot be bundled, deploys it. `always` and `never` override; `never` leaves
-  the marker alone.
+- `releases`: the apps and the Release of each, separated by spaces. `stream`
+  (the default) is Stream Keepr's most recent GitHub Release; a tag such as
+  `@keepr/stream@1.7.0` is that one. Only published Releases resolve: a `v*`
+  tag, a draft, an unknown app or an app named twice refuses the whole run.
+  Rollback is dispatching it with the previous tag.
+- `environment`: `production`, the only Environment yet.
+- `d1_recovery_point`: must be typed `confirmed`, for every app deployed.
+- `validator`: each app's parts (Stream Keepr's validator). `auto` (default)
+  deploys a part first unless its marker (`stream/production-validator`)
+  records a confirmed deploy with the release's fingerprint. A missing,
+  unreadable or `pending` marker, or a release that cannot be bundled, deploys
+  it. `always` and `never` override; `never` leaves the marker alone.
+- `override`: empty, or the one-line reason to deploy out of
+  [deploy order](#deploy-order). It is refused for a run of more than one app:
+  dispatch the app it is for alone.
 
-The run is one step, `scripts/deploy-promotion.mjs promote`: validator first
-when decided, then `pnpm run deploy`, each between its markers. It runs that
-script from the workflow's own commit, not from the release, so rolling back
-to a release from before the markers still keeps them, and it finds the app
-where that release keeps it: `apps/stream`, or the root in a release from
-before the workspace. The step summary
-records the validator decision, and on failure what each marker now says.
+The `plan` job resolves the Releases and deploys nothing. Then each app deploys
+as its own job (`.github/workflows/deploy-installation.yml`): Keepr Accounts'
+first, when the run names it, and every App's only once it succeeded. The Apps
+deploy side by side, and one's failure does not stop another. Each job is
+one step, `keepr-deploy deploy --app <app> --env <environment>`, run from the
+workflow's own commit (`packages/tooling/scripts/deploy/cli.mjs`), not from
+the release, against the release's checkout, with its full history, and its
+installed dependencies. It reads the release's deploy descriptor; a release
+from before descriptors (`@keepr/stream@1.6.0`, `1.7.0`) deploys as Stream
+Keepr was deployed then, so a rollback keeps the markers and the procedure. It
+never runs a release's own `pnpm run deploy`. The step summary records the
+part decisions, and on failure what each marker now says.
 
-It needs the `CLOUDFLARE_API_TOKEN` (Workers Scripts:Edit, D1:Edit, plus
-Containers when deploying the validator) and `CLOUDFLARE_ACCOUNT_ID` secrets on
-the `production` environment, which deploys only from `main`: a workflow on any
-other branch cannot read them. The acceptance gates and the "nothing on air" check stay with the
+Each app × Environment has a **GitHub environment** of its own,
+`<app>-<environment>`: Stream Keepr's is `stream-production`. It deploys only
+from `main`, so a workflow on any other branch cannot read its secrets, and it
+holds that app's `CLOUDFLARE_API_TOKEN`, scoped to that app's Workers (for
+Stream Keepr: Workers Scripts:Edit on `stream` and
+`stream-silent-video-validator`, D1:Edit, plus Containers when deploying the
+validator), and `CLOUDFLARE_ACCOUNT_ID`. One deploy per app × Environment runs
+at a time (concurrency group `deploy-<app>-<environment>`); two apps deploy at
+once. An app joins the workflow with its deploy descriptor and its GitHub
+environment. The acceptance gates and the "nothing on air" check stay with the
 operator.
 
 ### Deploy day
@@ -854,7 +942,7 @@ mid-run names the Event it left behind; delete it before rerunning.
    Then `pnpm db:migrations:list:remote` lists `0000_baseline_2.sql` and
    nothing else. If a table is left, step 3 stops at `db:migrate:remote` on
    "table … already exists": nothing was applied, the v1.5.0 Worker keeps
-   serving, and the `production` marker reads `pending`.
+   serving, and the `stream/production` marker reads `pending`.
 
    The new database has no accounts, so bootstrap the first admin again
    ([First admin account](#first-admin-account)). The R2 buckets are not
@@ -862,49 +950,57 @@ mid-run names the Event it left behind; delete it before rerunning.
    [Reconciliation](#reconciliation) reports them as unexpected unless the
    buckets are emptied with the database.
 
-3. **Deploy.** Deploy the validator first when `pnpm deploy:status` says it
-   would deploy (it always does on a first deploy), so the service binding
-   resolves:
+3. **Deploy.** One command deploys the validator first when its fingerprint
+   changed (always on a first deploy, and once after ADR-0119 renamed the
+   markers), so the service binding resolves, and then the app:
 
    ```bash
    pnpm deploy:status      # both markers; whether this validator would deploy
-   pnpm deploy:validator   # when it would
    pnpm run deploy
    ```
+
+   Or dispatch the Deploy workflow with `releases: stream` (or the tag), which
+   deploys Stream Keepr's Release through `stream-production`
+   ([Deploy from GitHub Actions](#deploy-from-github-actions)). When Keepr
+   Accounts ships in the same Version PR, name both (`releases: accounts
+   stream`): its job runs first, and Stream Keepr's waits for it. Deploying
+   them in two runs works too, Keepr Accounts' first; the other order is
+   refused when Stream Keepr's Release needs a Keepr Accounts change not yet
+   deployed ([Deploy order](#deploy-order)).
 
    If `deploy:verify` fails, stop and roll back: redeploy the previous Worker
    version (dashboard → Workers & Pages → Deployments, or
    `wrangler rollback`), then restore any applied migration from the recovery
-   point. The `production` marker stays `pending` until the next deploy
+   point. The `stream/production` marker stays `pending` until the next deploy
    confirms one, which is accurate: the rollback is not recorded. Then
    follow [Recovering from a partial promotion](#recovering-from-a-partial-promotion).
 
 #### Recovering from a partial promotion
 
-A deploy that fails after the validator succeeded leaves the components on
-different releases. Read the markers first (`pnpm deploy:status`, or the failed
-run's step summary). For example, with A in production, a Deploy of B that
-fails in `pnpm run deploy` leaves:
+A deploy that fails after the validator succeeded leaves the app and its validator on
+different Releases. Read the markers first (`pnpm deploy:status`, or the failed
+run's step summary). For example, with A in production, a deploy of B that
+fails after its validator leaves:
 
-- `production-validator`: `deployed` B: B's validator is serving.
-- `production`: `pending` B, so A or B may be serving. A Deploy run marks it
-  pending before `pnpm run deploy` starts, so this holds whether the failure
-  came in the build or at the verify. A local `pnpm run deploy` that fails in
-  its build, dry run or smoke test leaves it `deployed` A, because that run
-  marks pending only right before the D1 migration.
+- `stream/production-validator`: `deployed` B: B's validator is serving.
+- `stream/production`: `pending` B, when it failed at the migration, the Worker
+  deploy or the verify, so A or B may be serving. A failure in the build, dry
+  run or smoke test comes before the validator and before any marker moves, so
+  it leaves both as they were.
 
 Pick the release production should run, then deploy it whole:
 
-- **Back to A**: dispatch Deploy with `version` A. Its fingerprint differs from
+- **Back to A**: dispatch Deploy with `releases` A. Its fingerprint differs from
   B's, so `auto` redeploys A's validator before A's app. As in step 3, restore
   any migration B applied from the recovery point. Releases whose validators are
   identical have identical fingerprints, so no validator redeploy happens
   there, and none is needed.
 - **Forward to B**, once fixed: dispatch B again. Its validator is already
   confirmed, so only the app deploys.
-- **Locally**, when Actions is not an option: check out that release, then
-  `pnpm deploy:validator` (when `pnpm deploy:status` says it would deploy) and
-  `pnpm run deploy`. Both record their markers, `worktree: dirty` included.
+- **Locally**, when Actions is not an option: check out that release, install
+  it, then run `node <a main checkout>/packages/tooling/scripts/deploy/cli.mjs
+  deploy --app stream --env production` from the release's root, as the Deploy
+  workflow does. It records its markers, `worktree: dirty` included.
 
 A `pending` validator marker means its deploy died part-way, so the next
 `auto` run always redeploys it, even at the same fingerprint.
@@ -913,7 +1009,7 @@ A `pending` validator marker means its deploy died part-way, so the next
 
    | Variable                                    | Value                                                                             |
    | ------------------------------------------- | --------------------------------------------------------------------------------- |
-   | `STREAM_KEEPR_BROWSER_ACCEPTANCE_URL`       | The installation to test. Falls back to `STREAM_KEEPR_DEPLOY_HEALTH_URL`.         |
+   | `STREAM_KEEPR_BROWSER_ACCEPTANCE_URL`       | The installation to test. Falls back to `KEEPR_DEPLOY_URL`.                       |
    | `STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL`    | An existing operator account. `/api/**` denies by default, so gates must sign in. |
    | `STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD` | That account's password.                                                          |
    | `CLOUDFLARE_ACCOUNT_ID`                     | The installation's account. The validator gate writes with Wrangler on it alone.  |
@@ -1357,7 +1453,7 @@ only through the `SILENT_VIDEO_PLAYBACK_VALIDATOR` service binding (no
   Like the app's root file (`pnpm types:app`), it is checked fresh:
   `pnpm typecheck:validator` (inside `pnpm typecheck`) fails when that file is
   stale or the Worker does not compile, and
-  `pnpm validator:dry-run` bundles it as `pnpm deploy:validator` would without
+  `pnpm validator:dry-run` bundles it as a deploy would without
   building the Container image (#618).
 - Deploying needs Docker plus Workflows and Containers enabled on the account.
   Fixtures live in `scripts/silent-video-validator-fixtures.json`.

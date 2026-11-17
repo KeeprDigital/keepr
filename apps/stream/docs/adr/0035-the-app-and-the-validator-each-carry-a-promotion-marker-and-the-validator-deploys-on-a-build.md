@@ -1,6 +1,6 @@
 # ADR-0035: The app and the validator each carry a promotion marker, and the validator deploys on a build fingerprint
 
-Accepted · 2026-10-21 · [#616](https://github.com/KeeprDigital/stream-keepr/issues/616)
+Accepted · 2026-10-21 · [#616](https://github.com/KeeprDigital/stream-keepr/issues/616) · Amended by ADR-0119: markers are named `<app>/<environment>[-<part>]` (`stream/production`, `stream/production-validator`) and gain `app`, `environment` and `version` fields; the fingerprint hashes the validator config resolved for the Environment; the procedure, with this decision's promotion, moved into `@keepr/tooling` (`packages/tooling/scripts/deploy/`) and never runs a release's own `pnpm run deploy`
 
 ### Decision
 

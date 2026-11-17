@@ -37,6 +37,9 @@ const API_PREFIX = '/api/';
  * - `/api/time` — the Screen Output page's drift correction. A clock reading,
  *   no Event or Screen identity in it, and the one thing an output machine
  *   needs before anything has authorised it.
+ * - `/api/release` — which Release this Worker serves (ADR-0119). The deploy's
+ *   verify reads it with no session, and it names only the app, its version
+ *   and the commit, all public in the repository.
  * - `/api/realtime/token` — an Ably token request. Public today because the
  *   Screen Output page needs one and has no session; #397 narrows what an
  *   unauthenticated caller is granted (ADR-0010's dual-grant), which is a
@@ -55,6 +58,7 @@ const API_PREFIX = '/api/';
  */
 export const SESSION_EXEMPT_API_PATHS: readonly string[] = [
 	'/api/time',
+	'/api/release',
 	'/api/realtime/token',
 	'/api/bootstrap/ensure-admin',
 ];
