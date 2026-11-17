@@ -11,6 +11,9 @@ export default defineNuxtConfig({
 			wrangler: {
 				name: workerName,
 			},
+			dev: {
+				configPath: 'wrangler.dev.jsonc',
+			},
 		},
 	},
 });

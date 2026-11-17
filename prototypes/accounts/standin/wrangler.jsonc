@@ -1,0 +1,7 @@
+{
+	// Spike 1 (#1256): the stand-in accounts service, run on its own by `wrangler dev`.
+	"name": "keepr-accounts",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-16",
+	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"]
+}

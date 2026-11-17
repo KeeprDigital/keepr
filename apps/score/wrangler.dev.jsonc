@@ -1,0 +1,8 @@
+{
+	// Spike 1 (#1256): the dev server's bindings. ACCOUNTS is the stand-in, run
+	// separately by `wrangler dev` in prototypes/accounts/standin.
+	"name": "score-local",
+	"compatibility_date": "2026-07-16",
+	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"],
+	"services": [{ "binding": "ACCOUNTS", "service": "keepr-accounts" }]
+}
