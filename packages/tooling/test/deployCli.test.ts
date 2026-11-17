@@ -226,7 +226,14 @@ describe('the keepr-deploy command line', () => {
 					],
 					{
 						cwd: checkout,
-						env: { ...gitEnv, PATH: bin, CLOUDFLARE_API_TOKEN: 'blocked-by-test-guard' },
+						// The marker's tagger, as deploy.yml names it; CI's git cannot guess one.
+						env: {
+							...gitEnv,
+							GIT_COMMITTER_NAME: 'test',
+							GIT_COMMITTER_EMAIL: 'test@example.invalid',
+							PATH: bin,
+							CLOUDFLARE_API_TOKEN: 'blocked-by-test-guard',
+						},
 						encoding: 'utf8',
 					},
 				);
