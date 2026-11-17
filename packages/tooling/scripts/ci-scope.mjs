@@ -2,7 +2,7 @@
  * CI's `scope` job ("Decide what the change can affect"): which of CI's jobs
  * a change can affect, so a docs-only change skips the code gates, running
  * only what they check of a document, and CI builds the Worker of only each
- * deployable app the change ships in (.github/workflows/ci.yml).
+ * deployable app the change ships in (.github/workflows/ci.yml, ADR-0121).
  *
  * A skipped gate is only safe when what it would have checked is unchanged
  * from a revision that already passed it, so the change is always measured

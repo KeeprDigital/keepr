@@ -423,7 +423,7 @@ local-auth and browser gates, and a Worker leg per deployable app) so the longes
 deployable app's Worker leg runs `keepr-deploy check`, the parts bundled and the
 descriptor's build (here `build`, `worker:dry-run`, `worker:smoke`), only when
 the change touches that app's shipped code or what builds the legs, so none
-runs when only tests, docs or the other workflows changed. A change
+runs when only tests, docs or the other workflows changed (ADR-0121). A change
 that touches only docs skips the code gates and runs `pnpm verify:docs`
 instead: the documentation link test, the one thing those gates check of a
 document (`packages/tooling/scripts/ci-scope.mjs` decides, against a PR's

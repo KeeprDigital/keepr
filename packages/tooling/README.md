@@ -11,7 +11,7 @@ The workspace's own tooling (ADR-0110, in the root `docs/adr`): what every app, 
 | `scripts/deploy-guard.mjs` | `keepr-deploy-guard <wrangler config>`, and every deploy | Refuses a Worker whose `package.json` carries `keepr.undeployable`: the Accounts Stand-in (ADR-0113). Reading a Release runs it on every configuration its descriptor names, and a deploy again on what the build or a placed artifact left to upload, before the first remote change. |
 | `scripts/jsonc.mjs` | imported | JSON with comments, as Wrangler configs and deploy descriptors are written. |
 | `scripts/change-base.mjs` | imported | Where a branch's change is measured from: `origin/main`, else `main`. |
-| `scripts/ci-scope.mjs`, `scripts/ci-reuse.mjs` | CI's `scope` and `record` jobs | What a change can affect, which deployable apps' Worker legs it runs, and whether a merge group's tree was already verified (ADR-0036). |
+| `scripts/ci-scope.mjs`, `scripts/ci-reuse.mjs` | CI's `scope` and `record` jobs | What a change can affect, which deployable apps' Worker legs it runs, and whether a merge group's tree was already verified (ADR-0036, ADR-0121). |
 | `scripts/conventional-title.mjs` | `pr-title.yml` | The `Conventional Commit title` required check. |
 | `scripts/changeset-check.mjs` | `keepr-changeset-check`, CI's `checks` job, Stream Keepr's `verify --quick` | A change names each versioned app whose shipped code it touches in a changeset, or carries an empty one (ADR-0118). |
 | `scripts/shipped-code.mjs` | imported | An app's shipped code, which the changeset check and CI's Worker legs both read (ADR-0118). |
