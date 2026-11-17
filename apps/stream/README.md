@@ -36,7 +36,8 @@ Changesets; never edit it by hand.
 - **Test**: [Testing](#testing) (what to run when, `pnpm verify`, CI),
   [Database](#database) (migrations).
 - **Release**: [Releases](#releases).
-- **Deploy**: [Deploy](#deploy), [Promotion markers](#promotion-markers),
+- **Deploy**: [Deploy](#deploy), [Deploy order](#deploy-order),
+  [Promotion markers](#promotion-markers),
   [Deploy from GitHub Actions](#deploy-from-github-actions),
   [Deploy day](#deploy-day), [Worker secrets](#worker-secrets).
 - **Recover**: rollback in [Deploy day](#deploy-day) step 3,
@@ -738,6 +739,10 @@ your `wrangler login`. In order, stopping at the first failure:
    `--artifact <dir>` deploys a downloaded `.output/` of the same Release
    instead of building it: one build is what every Environment deploys.
 
+   Then **deploy order** ([Deploy order](#deploy-order)), before anything
+   remote changes: a deploy that Keepr Accounts' Installation does not allow
+   stops here.
+
 2. **The validator**, when its fingerprint changed since the confirmed deploy
    its `stream/production-validator` marker records
    ([Promotion markers](#promotion-markers)): marked `pending`, `wrangler deploy`
@@ -771,6 +776,32 @@ transaction. Schedule incompatible schema changes for a maintenance window.
 between its markers, and `pnpm deploy:mark-app <pending|deployed>` writes the
 app's marker by hand.
 
+### Deploy order
+
+Keepr Accounts deploys before any App that depends on it, and never falls
+below one, and the deploy tooling enforces it (ADR-0120) rather than the
+operator remembering it. An App **depends on Keepr Accounts** in an Environment
+when its built Worker configuration, as that Environment deploys it, binds the
+`keepr-accounts` service; nothing else declares it. Keepr Accounts' changes are
+the commits that change `apps/accounts`.
+
+- **An App waits for Keepr Accounts.** Its deploy to an Environment refuses
+  unless `accounts/<environment>` records a confirmed deploy whose commit
+  contains every Keepr Accounts change the App's Release contains. Deploy
+  Keepr Accounts first.
+- **Keepr Accounts cannot fall below its Apps.** Its deploy to an Environment
+  refuses a commit lacking a Keepr Accounts change that a dependent
+  Installation there, deployed or pending, contains. Each dependent's app
+  marker says it depends, as `needs: accounts`; `pnpm deploy:mark-app` records
+  it too, from the built Worker, so build before marking by hand.
+- **Override**: `pnpm run deploy --app <app> --env <env> --override "<reason>"`
+  deploys whatever the order. The reason is one line, and the app's marker
+  records it as `override`, pending and deployed. An override that bypassed
+  nothing is not recorded.
+
+The check reads the repository's full history, so a shallow clone is refused.
+No App binds Keepr Accounts yet, so today it refuses nothing.
+
 ### Promotion markers
 
 The app and the validator are deployed separately and can fail separately.
@@ -785,7 +816,10 @@ Each has its own marker per Environment, an annotated git tag on `origin` named
 A marker records the component, its state, the commit it was deployed from,
 whether that checkout had uncommitted or untracked changes (`worktree: dirty`),
 who deployed it (a workflow run or `local`), for the validator its
-**fingerprint**, and the app, Environment and Release version. Every deploy
+**fingerprint**, and the app, Environment and Release version. An app marker
+also records `needs: accounts` when the Installation depends on Keepr
+Accounts, and `override` with its reason when a deploy bypassed
+[deploy order](#deploy-order). Every deploy
 marks its component `pending` before it changes anything, and `deployed` once
 it succeeded. A deploy that died part-way leaves `pending`, which means
 "unconfirmed: either version may be serving". A deploy that cannot write its

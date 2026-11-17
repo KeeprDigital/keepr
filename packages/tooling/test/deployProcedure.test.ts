@@ -208,6 +208,7 @@ function world() {
 		remove: (name) => {
 			tags.delete(name);
 		},
+		names: () => [...tags.keys()],
 	};
 
 	function release(snapshot: Snapshot): Release {
@@ -588,6 +589,33 @@ describe('deploying a Release to an Environment', () => {
 
 			expect(production(w)).toEqual({ worker: A.commit, validator: A.validator });
 			expect(w.tags).toEqual(tags);
+		});
+
+		it("records what it answers in the app's markers, pending and deployed, and not the parts'", async () => {
+			const w = world();
+			const pending: unknown[] = [];
+			const steps = w.steps(A, 'production');
+			const recorded = { needs: 'accounts', override: 'Keepr Accounts is down; #1300' };
+
+			await deployRelease({
+				release: w.release(A),
+				environment: 'production',
+				store: w.store,
+				steps: {
+					...steps,
+					deployWorker: () => {
+						pending.push(w.marker('stream/production'));
+						steps.deployWorker();
+					},
+				},
+				source: 'actions',
+				log: quiet,
+				beforeRemoteChange: () => recorded,
+			});
+
+			expect(pending).toEqual([expect.objectContaining({ state: 'pending', ...recorded })]);
+			expect(w.marker('stream/production')).toMatchObject({ state: 'deployed', ...recorded });
+			expect(w.marker('stream/production-validator')).not.toHaveProperty('needs');
 		});
 	});
 

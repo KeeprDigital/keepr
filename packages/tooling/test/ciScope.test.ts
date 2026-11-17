@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { bindsKeeprAccounts, diffRange, scopeOf, workerLegsOf } from '../scripts/ci-scope.mjs';
+import {
+	configBindsKeeprAccounts,
+	diffRange,
+	scopeOf,
+	workerLegsOf,
+} from '../scripts/ci-scope.mjs';
 
 const packageRoot = join(import.meta.dirname, '..');
 
@@ -145,7 +150,7 @@ describe('whether an app binds Keepr Accounts', () => {
 		['another service only', { services: [{ binding: 'OTHER', service: 'other' }] }, false],
 		['no service', { name: 'stream-keepr' }, false],
 	])('%s', (_case, config, expected) => {
-		expect(bindsKeeprAccounts(config)).toBe(expected);
+		expect(configBindsKeeprAccounts(config)).toBe(expected);
 	});
 });
 

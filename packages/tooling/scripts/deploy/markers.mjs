@@ -55,9 +55,14 @@ export function markerName(app, environment, part) {
  * @param {Record<string, string>} fields
  */
 export function formatMarker(fields) {
-	for (const name of Object.keys(fields))
+	for (const [name, value] of Object.entries(fields)) {
 		if (!FIELD_NAME.test(name))
 			throw new Error(`marker field ${JSON.stringify(name)} would not read back: use [a-z]+.`);
+		if (value === '' || value.trim() !== value || /[\r\n]/.test(value))
+			throw new Error(
+				`marker field ${name}'s value ${JSON.stringify(value)} would not read back: use one line of text, not blank, without surrounding spaces.`,
+			);
+	}
 	return [
 		MARKER_HEADER,
 		'',
@@ -93,7 +98,8 @@ export function parseMarker(text) {
  * Where the markers live. `head` and `dirty` describe the checkout being
  * deployed; `read` answers a marker tag's message on the remote (undefined
  * when the tag does not exist); `write` points the tag at a commit with that
- * message on the remote; `remove` deletes it there.
+ * message on the remote; `remove` deletes it there; `names` lists every tag on
+ * the remote, markers among them.
  *
  * @typedef {{
  *   head: () => string,
@@ -101,6 +107,7 @@ export function parseMarker(text) {
  *   read: (name: string) => string | undefined,
  *   write: (name: string, commit: string, message: string) => void,
  *   remove: (name: string) => void,
+ *   names: () => string[],
  * }} MarkerStore
  */
 
@@ -150,6 +157,14 @@ export function gitMarkerStore({ cwd = process.cwd(), remote = 'origin', git = r
 		},
 		remove(name) {
 			if (onRemote(name)) git(['push', remote, `:${ref(name)}`]);
+		},
+		names() {
+			const names = git(['ls-remote', '--tags', remote])
+				.split('\n')
+				.map((line) => line.split('\t')[1])
+				.filter((name) => name?.startsWith('refs/tags/') && !name.endsWith('^{}'))
+				.map((name) => name.slice('refs/tags/'.length));
+			return [...new Set(names)];
 		},
 	};
 }

@@ -82,6 +82,15 @@ describe("a marker's message", () => {
 	it('refuses a field name a reader could not read back', () => {
 		expect(() => formatMarker({ deployed_by: 'local' })).toThrow(/deployed_by/);
 	});
+
+	// An override's reason is written by hand; a reader takes one line per field.
+	it.each([
+		['spans lines', 'Keepr Accounts is down\nsee #1300'],
+		['is empty', ''],
+		['is only spaces', '   '],
+	])('refuses a value that %s', (_case, override) => {
+		expect(() => formatMarker({ component: 'app', override })).toThrow(/override/);
+	});
 });
 
 /**
@@ -168,6 +177,25 @@ describe('the git marker store', () => {
 			':refs/tags/production',
 		]);
 		expect(absent.calls.map((call) => call.args[0])).not.toContain('push');
+	});
+
+	it("names every tag on the remote once, whether or not it is a marker, from the remote's own list", () => {
+		const sha = 'f'.repeat(40);
+		const { git } = fakeGit({
+			'ls-remote --tags origin': [
+				`${sha}\trefs/tags/@keepr/stream@1.7.0`,
+				`${sha}\trefs/tags/stream/production`,
+				`${sha}\trefs/tags/stream/production^{}`,
+				`${sha}\trefs/tags/accounts/production`,
+				'',
+			].join('\n'),
+		});
+
+		expect(gitMarkerStore({ git }).names()).toEqual([
+			'@keepr/stream@1.7.0',
+			'stream/production',
+			'accounts/production',
+		]);
 	});
 
 	it('describes the checkout: its HEAD commit, and dirty when anything is uncommitted or untracked', () => {

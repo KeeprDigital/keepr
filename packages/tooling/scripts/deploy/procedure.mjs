@@ -6,7 +6,8 @@
  *    nowhere else.
  * 2. Decide each part against its marker by fingerprint.
  * 3. `beforeRemoteChange`: the last moment a deploy can refuse with nothing
- *    changed. Deploy order between apps (#1263) refuses here.
+ *    changed. Deploy order between apps (`order.mjs`, ADR-0120) refuses here,
+ *    and what it answers the app's markers record.
  * 4. Each part that the decision deploys, between its `pending` and `deployed`
  *    markers.
  * 5. The app: mark pending, migrate D1, deploy the Worker, verify, mark deployed.
@@ -53,9 +54,12 @@ export const MODES = ['auto', 'always', 'never'];
  */
 
 /**
- * What the check before the first remote change is told.
+ * What the check before the first remote change is told. It throws to refuse,
+ * or answers fields for the app's markers to record (`[a-z]+` names, one-line
+ * values), appended after every field the procedure writes.
  *
  * @typedef {{ release: Release, environment: string, store: MarkerStore, log: (line: string) => void }} RemoteChangeContext
+ * @typedef {(context: RemoteChangeContext) => void | Record<string, string> | Promise<void | Record<string, string>>} BeforeRemoteChange
  */
 
 /**
@@ -123,25 +127,31 @@ export function decidePartDeploy({ mode, part, marker, targetFingerprint, marker
  *   source: string,
  *   release: Release,
  *   environment: string,
- * }} fields
+ *   recorded?: Record<string, string>,
+ * }} fields `recorded`: what the check before the first remote change answered.
  */
-function writeMarker(store, name, { component, state, fingerprint, source, release, environment }) {
+function writeMarker(
+	store,
+	name,
+	{ component, state, fingerprint, source, release, environment, recorded = {} },
+) {
 	const commit = store.head();
-	store.write(
-		name,
+	/** @type {Record<string, string>} */
+	const fields = {
+		component,
+		state,
 		commit,
-		formatMarker({
-			component,
-			state,
-			commit,
-			worktree: store.dirty() ? 'dirty' : 'clean',
-			...(fingerprint ? { fingerprint } : {}),
-			source,
-			app: release.app,
-			environment,
-			version: release.version,
-		}),
-	);
+		worktree: store.dirty() ? 'dirty' : 'clean',
+		...(fingerprint ? { fingerprint } : {}),
+		source,
+		app: release.app,
+		environment,
+		version: release.version,
+	};
+	for (const field of Object.keys(recorded))
+		if (field in fields || field === 'fingerprint')
+			throw new Error(`the ${field} field is the procedure's own; a check cannot record it.`);
+	store.write(name, commit, formatMarker({ ...fields, ...recorded }));
 }
 
 /**
@@ -167,15 +177,17 @@ function tryFingerprint(fingerprint, log) {
  *   environment: string,
  *   state: 'pending' | 'deployed',
  *   source: string,
- * }} options
+ *   recorded?: Record<string, string>,
+ * }} options `recorded`: fields the marker records after the procedure's own.
  */
-export function markApp({ store, release, environment, state, source }) {
+export function markApp({ store, release, environment, state, source, recorded }) {
 	writeMarker(store, markerName(release.app, environment), {
 		component: 'app',
 		state,
 		source,
 		release,
 		environment,
+		...(recorded ? { recorded } : {}),
 	});
 }
 
@@ -249,10 +261,11 @@ function retireLegacyMarkers(store, names) {
  *   artifact?: string,
  *   mode?: Mode,
  *   source: string,
- *   beforeRemoteChange?: (context: RemoteChangeContext) => void | Promise<void>,
+ *   beforeRemoteChange?: BeforeRemoteChange,
  *   log?: (line: string) => void,
  * }} options `artifact`: a downloaded build of this Release, deployed instead
- *   of building it; `beforeRemoteChange` throws to refuse the deploy.
+ *   of building it; `beforeRemoteChange` throws to refuse the deploy, or
+ *   answers fields the app's markers record.
  * @returns {Promise<{ parts: Record<string, Decision>, verified: unknown, retired: string[] }>}
  */
 export async function deployRelease({
@@ -294,7 +307,7 @@ export async function deployRelease({
 		log(`${marker}: deploy ${parts[part].deploy} (${parts[part].reason})`);
 	}
 
-	await beforeRemoteChange({ release, environment, store, log });
+	const recorded = (await beforeRemoteChange({ release, environment, store, log })) ?? {};
 
 	for (const [part, decision] of Object.entries(parts)) {
 		if (!decision.deploy) continue;
@@ -310,11 +323,11 @@ export async function deployRelease({
 		});
 	}
 
-	markApp({ store, release, environment, state: 'pending', source });
+	markApp({ store, release, environment, state: 'pending', source, recorded });
 	for (const { binding } of descriptor.databases) steps.migrate(binding);
 	steps.deployWorker();
 	const verified = await steps.verify();
-	markApp({ store, release, environment, state: 'deployed', source });
+	markApp({ store, release, environment, state: 'deployed', source, recorded });
 
 	const retired = retireLegacyMarkers(store, [
 		markerName(app, environment),

@@ -11,7 +11,9 @@
  * Commands:
  *
  * - `deploy`: build once (or place `--artifact`), then for the Environment:
- *   parts by fingerprint (`--parts auto|always|never`), mark pending, migrate D1,
+ *   parts by fingerprint (`--parts auto|always|never`), deploy order between
+ *   Keepr Accounts and its Apps (`order.mjs`; `--override <reason>` bypasses
+ *   it, and the app's marker records the reason), mark pending, migrate D1,
  *   deploy, verify, mark deployed (`procedure.mjs`).
  * - `build`: the descriptor's build scripts only, into its output directory, for
  *   a build job whose output every Environment deploys.
@@ -19,7 +21,8 @@
  *   as a deploy would upload it (no Docker, no credentials), then `build`.
  * - `verify`: check the Installation serves this checkout's Release.
  * - `part <name>`: deploy one part between its markers, whatever its fingerprint.
- * - `mark-app <pending|deployed>`: write the app's marker by hand.
+ * - `mark-app <pending|deployed>`: write the app's marker by hand, recording
+ *   whether its built Worker needs Keepr Accounts, as a deploy would.
  * - `status`: every marker of the app in the Environment, and what a deploy of
  *   this checkout would do with each part.
  */
@@ -32,13 +35,15 @@ import process from 'node:process';
 import { parseArgs } from 'node:util';
 import { bundlePart, fingerprintPart } from './fingerprint.mjs';
 import { LEGACY_MARKERS, describeMarker, gitMarkerStore, markerName } from './markers.mjs';
+import { checkDeployOrder, gitHistory, neededBy } from './order.mjs';
 import { MODES, decidePartDeploy, deployRelease, markApp, promotePart } from './procedure.mjs';
 import { readRelease } from './release.mjs';
 import { DeployVerifyFailure, verifyInstallation } from './verify.mjs';
 
 const USAGE = `usage: keepr-deploy <command> --app <app> [--env <environment>]
-  deploy --env <env> [--parts auto|always|never] [--artifact <dir>]
-                               build once (or place the artifact), then parts, D1, Worker, verify, each between markers
+  deploy --env <env> [--parts auto|always|never] [--artifact <dir>] [--override <reason>]
+                               build once (or place the artifact), then deploy order, parts, D1, Worker, verify,
+                               each between markers; --override deploys out of order, its reason recorded
   build                        the descriptor's build scripts only
   check                        each part bundled as a deploy would, then build: CI's Worker leg
   verify --env <env>           check the Installation serves this checkout's Release
@@ -46,14 +51,6 @@ const USAGE = `usage: keepr-deploy <command> --app <app> [--env <environment>]
   mark-app <pending|deployed> --env <env>
                                write the app's marker by hand
   status --env <env>           the app's markers, and what a deploy of this checkout would do`;
-
-/**
- * The deploys that refuse before the first remote change, in order. Deploy
- * order between Keepr Accounts and its Apps (#1263) adds its check here.
- *
- * @type {((context: import('./procedure.mjs').RemoteChangeContext) => void | Promise<void>)[]}
- */
-export const BEFORE_REMOTE_CHANGE = [];
 
 /**
  * The checkout's root: the nearest directory above `cwd` with a `pnpm-workspace.yaml`.
@@ -188,6 +185,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 				env: { type: 'string' },
 				parts: { type: 'string', default: 'auto' },
 				artifact: { type: 'string' },
+				override: { type: 'string' },
 			},
 		});
 	} catch (error) {
@@ -198,6 +196,14 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 	const [command, argument, ...rest] = positionals;
 	const environment = values.env;
 	const needsEnv = command !== 'build' && command !== 'check';
+	const override = values.override;
+	// A marker field is one line of text, and an override says why.
+	const overrideReadable =
+		override === undefined ||
+		(command === 'deploy' &&
+			override.trim() === override &&
+			override !== '' &&
+			!/[\r\n]/.test(override));
 	const shapes = {
 		deploy: argument === undefined && MODES.includes(values.parts ?? ''),
 		build: argument === undefined,
@@ -211,6 +217,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 		!(command in shapes) ||
 		!shapes[/** @type {keyof typeof shapes} */ (command)] ||
 		rest.length > 0 ||
+		!overrideReadable ||
 		values.app === undefined ||
 		(needsEnv && environment === undefined)
 	) {
@@ -282,9 +289,12 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 				...(values.artifact === undefined ? {} : { artifact: values.artifact }),
 				mode: /** @type {import('./procedure.mjs').Mode} */ (values.parts),
 				source,
-				beforeRemoteChange: async (context) => {
-					for (const check of BEFORE_REMOTE_CHANGE) await check(context);
-				},
+				beforeRemoteChange: (context) =>
+					checkDeployOrder({
+						...context,
+						history: gitHistory({ cwd: release.appDir }),
+						...(override === undefined ? {} : { override }),
+					}),
 				log,
 			});
 		} catch (error) {
@@ -334,7 +344,16 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 	}
 	if (command === 'mark-app') {
 		const state = /** @type {'pending' | 'deployed'} */ (argument);
-		markApp({ store, release, environment: target, state, source });
+		let recorded;
+		try {
+			recorded = neededBy(release, target);
+		} catch (error) {
+			console.error(
+				`keepr-deploy: mark-app records what the built Worker needs, and cannot read it (${/** @type {Error} */ (error).message}): build this checkout first (keepr-deploy build).`,
+			);
+			return 1;
+		}
+		markApp({ store, release, environment: target, state, source, recorded });
 		console.log(
 			`keepr-deploy: ${markerName(release.app, target)} marker is ${state} at ${store.head()}.`,
 		);

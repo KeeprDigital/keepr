@@ -37,6 +37,7 @@ import { join } from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { verifiedRunOnGitHub } from './ci-reuse.mjs';
+import { KEEPR_ACCOUNTS } from './deploy/order.mjs';
 import { deployableApps } from './deploy/release.mjs';
 import { parseJsonc } from './jsonc.mjs';
 import { shippedDirectories, ships } from './shipped-code.mjs';
@@ -63,8 +64,6 @@ const BUILDS_EVERY_LEG =
 	/^(?:\.github\/workflows\/ci\.yml|\.github\/actions\/setup\/.+|packages\/tooling\/.+|package\.json|tsconfig\.base\.json)$/;
 /** What an app binding Keepr Accounts runs its leg against (ADR-0113). */
 const STAND_IN = '@keepr/accounts-stand-in';
-/** The service Keepr Accounts is bound as, and the stand-in registers under. */
-const KEEPR_ACCOUNTS_SERVICE = 'keepr-accounts';
 
 const COMMIT_ID = /^[0-9a-f]{40}$/;
 
@@ -118,14 +117,16 @@ export function workerLegsOf(changedFiles, { apps, packages }) {
 }
 
 /**
- * Whether a Wrangler configuration binds Keepr Accounts, at its top level or
- * in any Environment's block.
+ * Whether an app's source Wrangler configuration binds Keepr Accounts, at its
+ * top level or in any Environment's block: the scope runs before any build,
+ * so it cannot read the built one a deploy's order check does
+ * (`deploy/order.mjs`).
  *
  * @param {Record<string, unknown> & { services?: { service?: string }[], env?: Record<string, { services?: { service?: string }[] }> }} config a parsed `wrangler.jsonc`
  */
-export function bindsKeeprAccounts(config) {
+export function configBindsKeeprAccounts(config) {
 	return [config, ...Object.values(config.env ?? {})].some((block) =>
-		(block.services ?? []).some((binding) => binding?.service === KEEPR_ACCOUNTS_SERVICE),
+		(block.services ?? []).some((binding) => binding?.service === KEEPR_ACCOUNTS.service),
 	);
 }
 
@@ -152,7 +153,7 @@ function deployableWorkspace(root) {
 		} catch (error) {
 			if (/** @type {NodeJS.ErrnoException} */ (error).code !== 'ENOENT') throw error;
 		}
-		return { app, accounts: bindsKeeprAccounts(config) };
+		return { app, accounts: configBindsKeeprAccounts(config) };
 	});
 	return { apps, packages: workspacePackages(root) };
 }
