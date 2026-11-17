@@ -47,6 +47,39 @@ describe('the keepr-deploy command line', () => {
 		expect(result.stderr).toContain('usage: keepr-deploy');
 	});
 
+	function workspace(files: Record<string, string>) {
+		const root = mkdtempSync(join(tmpdir(), 'keepr-cli-'));
+		roots.push(root);
+		for (const [path, content] of Object.entries(files)) {
+			mkdirSync(dirname(join(root, path)), { recursive: true });
+			writeFileSync(join(root, path), content);
+		}
+		return root;
+	}
+
+	// CI's Worker leg: a part that would not bundle fails it before the app's build starts.
+	it('checks an app by bundling each part before its build, needing no Environment', () => {
+		const root = workspace({
+			'pnpm-workspace.yaml': 'packages: []\n',
+			'apps/stream/package.json': JSON.stringify({ name: '@keepr/stream', version: '1.8.0' }),
+			'apps/stream/deploy.jsonc': JSON.stringify({
+				app: 'stream',
+				build: ['build'],
+				output: '.output',
+				worker: { config: '.output/server/wrangler.json' },
+				databases: [],
+				environments: { production: { url: 'https://stream.keepr.digital' } },
+				parts: { validator: { config: 'workers/validator/wrangler.jsonc' } },
+			}),
+		});
+
+		const result = run(['check', '--app', 'stream'], root);
+
+		expect(result.status).toBe(1);
+		expect(result.stderr).toContain('could not bundle workers/validator/wrangler.jsonc');
+		expect(result.stderr).not.toContain('pnpm run build');
+	});
+
 	it('refuses a descriptor that would deploy the Accounts Stand-in before building anything', () => {
 		const root = mkdtempSync(join(tmpdir(), 'keepr-cli-'));
 		roots.push(root);
