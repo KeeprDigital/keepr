@@ -131,30 +131,44 @@ export function configBindsKeeprAccounts(config) {
 }
 
 /**
+ * What `read` answers, or `fallback` when what it reads does not exist.
+ *
+ * @template T
+ * @param {() => T} read
+ * @param {T} fallback
+ * @returns {T}
+ */
+function unlessMissing(read, fallback) {
+	try {
+		return read();
+	} catch (error) {
+		if (/** @type {NodeJS.ErrnoException} */ (error).code !== 'ENOENT') throw error;
+		return fallback;
+	}
+}
+
+/**
  * The checkout's deployable apps (those with a deploy descriptor), each with
- * whether its `wrangler.jsonc` binds Keepr Accounts, and its packages. A
- * checkout with no `apps/` has none.
+ * whether its source `wrangler.jsonc` binds Keepr Accounts, and its packages.
+ * A checkout with no `apps/` has none; an app with no `wrangler.jsonc` binds
+ * nothing. Not the descriptor's `worker.config`: that is the built Worker's,
+ * and the scope runs before anything is built.
  *
  * @param {string} root the repository's root
  * @returns {DeployableWorkspace}
  */
 function deployableWorkspace(root) {
-	/** @type {string[]} */
-	let names = [];
-	try {
-		names = deployableApps(root);
-	} catch (error) {
-		if (/** @type {NodeJS.ErrnoException} */ (error).code !== 'ENOENT') throw error;
-	}
-	const apps = names.map((app) => {
-		let config = {};
-		try {
-			config = parseJsonc(readFileSync(join(root, 'apps', app, 'wrangler.jsonc'), 'utf8'));
-		} catch (error) {
-			if (/** @type {NodeJS.ErrnoException} */ (error).code !== 'ENOENT') throw error;
-		}
-		return { app, accounts: configBindsKeeprAccounts(config) };
-	});
+	const apps = unlessMissing(() => deployableApps(root), /** @type {string[]} */ ([])).map(
+		(app) => ({
+			app,
+			accounts: configBindsKeeprAccounts(
+				unlessMissing(
+					() => parseJsonc(readFileSync(join(root, 'apps', app, 'wrangler.jsonc'), 'utf8')),
+					{},
+				),
+			),
+		}),
+	);
 	return { apps, packages: workspacePackages(root) };
 }
 
