@@ -14,3 +14,6 @@ Before its anchor it stands at its first period, which ends one period after the
 
 **Frame Clock**:
 It reads its instant again on every animation frame only while anything read at it is in motion, and schedules no frame once all of it has settled; its owner starts it again when what it reads changes. It runs on the client only, and stops with the scope that owns it (ADR-0088).
+
+**App registry**:
+App access is assigned only as an App the registry names and an App role that App defines in it. Adding an App or an App role changes the registry, never the identity schema (ADR-0112, in the root `docs/adr`).
