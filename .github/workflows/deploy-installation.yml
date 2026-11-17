@@ -6,12 +6,12 @@
 # Release older than the markers or the descriptor still deploys it the same
 # way. It never runs a Release's own `pnpm run deploy`.
 #
-# Each app × Environment has its own GitHub environment, `<app>-<environment>`
-# (`stream-production`), which deploys only from main and holds that app's
-# CLOUDFLARE_API_TOKEN, scoped to its Workers (for Stream Keepr: Workers
-# Scripts:Edit, D1:Edit, plus Containers whenever a run deploys the
-# validator), and CLOUDFLARE_ACCOUNT_ID. The job reads them as the
-# environment's own secrets; the caller passes none. One deploy of an
+# Each Environment is one Cloudflare account and one GitHub environment of the
+# same name (`production`), shared by every app (ADR-0122). It deploys only
+# from main and holds that account's CLOUDFLARE_ACCOUNT_ID and a
+# CLOUDFLARE_API_TOKEN that can deploy every app in it (Workers Scripts:Edit,
+# D1:Edit, Containers:Edit). The job reads them
+# as the environment's own secrets; the caller passes none. One deploy of an
 # Installation runs at a time.
 
 name: Deploy an Installation
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment:
-      name: ${{ inputs.app }}-${{ inputs.environment }}
+      name: ${{ inputs.environment }}
     # One run per Installation; another app's deploy is not held behind it.
     concurrency:
       group: deploy-${{ inputs.app }}-${{ inputs.environment }}

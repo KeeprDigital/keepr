@@ -25,13 +25,12 @@
 #
 # The `plan` job resolves the Releases (packages/tooling/scripts/deploy/plan.mjs)
 # and deploys nothing. Each app then deploys as its own job, through
-# deploy-installation.yml, in its own GitHub environment `<app>-<environment>`
-# with its own token and concurrency group (that file says what each holds).
+# deploy-installation.yml, in the Environment's GitHub environment (ADR-0122)
+# with a concurrency group of its own (that file says what each holds).
 # Keepr Accounts' job runs first, and every App's job waits for it to
 # succeed, because deploy order refuses an App that Keepr Accounts'
 # Installation does not allow (ADR-0120); the Apps deploy side by side. An app
-# joins with its deploy descriptor and its GitHub environment: nothing here
-# names it.
+# joins with its deploy descriptor: nothing here names it.
 #
 # The app and each of its parts have their own promotion marker, an annotated
 # git tag (ADR-0035, ADR-0119): `stream/production` for Stream Keepr's app and

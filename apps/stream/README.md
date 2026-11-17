@@ -893,16 +893,17 @@ Keepr was deployed then, so a rollback keeps the markers and the procedure. It
 never runs a release's own `pnpm run deploy`. The step summary records the
 part decisions, and on failure what each marker now says.
 
-Each app × Environment has a **GitHub environment** of its own,
-`<app>-<environment>`: Stream Keepr's is `stream-production`. It deploys only
-from `main`, so a workflow on any other branch cannot read its secrets, and it
-holds that app's `CLOUDFLARE_API_TOKEN`, scoped to that app's Workers (for
-Stream Keepr: Workers Scripts:Edit on `stream` and
-`stream-silent-video-validator`, D1:Edit, plus Containers when deploying the
-validator), and `CLOUDFLARE_ACCOUNT_ID`. One deploy per app × Environment runs
-at a time (concurrency group `deploy-<app>-<environment>`); two apps deploy at
-once. An app joins the workflow with its deploy descriptor and its GitHub
-environment. The acceptance gates and the "nothing on air" check stay with the
+Each Environment is one **Cloudflare account** and one **GitHub environment**
+of the same name, `production`, shared by every app (ADR-0122). The GitHub
+environment deploys only from `main`, so a workflow on any other branch cannot
+read its secrets, and it holds that account's `CLOUDFLARE_ACCOUNT_ID` and a
+`CLOUDFLARE_API_TOKEN` that can deploy every app in it (Workers Scripts:Edit,
+D1:Edit, Containers:Edit). Cloudflare grants D1 and Containers only across an
+account, so a token per app would isolate nothing; the account is the
+boundary. One deploy per
+Installation runs at a time (concurrency group `deploy-<app>-<environment>`);
+two apps deploy at once. An app joins the workflow with its deploy descriptor
+alone. The acceptance gates and the "nothing on air" check stay with the
 operator.
 
 ### Deploy day
@@ -960,7 +961,7 @@ mid-run names the Event it left behind; delete it before rerunning.
    ```
 
    Or dispatch the Deploy workflow with `releases: stream` (or the tag), which
-   deploys Stream Keepr's Release through `stream-production`
+   deploys Stream Keepr's Release through the `production` GitHub environment
    ([Deploy from GitHub Actions](#deploy-from-github-actions)). When Keepr
    Accounts ships in the same Version PR, name both (`releases: accounts
    stream`): its job runs first, and Stream Keepr's waits for it. Deploying

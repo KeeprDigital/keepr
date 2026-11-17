@@ -170,10 +170,12 @@ describe('Keepr Accounts deploys before the Apps, each app as its own job', () =
 	});
 });
 
-describe('each app × Environment deploys in its own GitHub environment, one run at a time', () => {
+// The GitHub environment is the Environment's, shared by every app (ADR-0122);
+// the concurrency group is the Installation's.
+describe("each Installation deploys in its Environment's GitHub environment, one run at a time", () => {
 	it.each([
-		['stream', 'production', 'stream-production', 'deploy-stream-production'],
-		['accounts', 'production', 'accounts-production', 'deploy-accounts-production'],
+		['stream', 'production', 'production', 'deploy-stream-production'],
+		['accounts', 'production', 'production', 'deploy-accounts-production'],
 	])('%s to %s', (app, environment, githubEnvironment, group) => {
 		const values = { 'inputs.app': app, 'inputs.environment': environment };
 		const target = deployJob.environment;
