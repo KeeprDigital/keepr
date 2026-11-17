@@ -3,6 +3,7 @@ import type { KeeprAuth } from './auth';
 import type { AppRoles } from './appAccess';
 import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 import { offeredAppRoles } from './appAccess';
+import { refuseCrossSiteWrite } from './actor';
 import { browserHeaders } from './browserHeaders';
 import { organisationRecords } from './organisations';
 import { KeeprRefusal, refusalFromAuth } from './refusal';
@@ -70,13 +71,16 @@ async function pendingInvitation(auth: KeeprAuth, invitationId: string): Promise
 /**
  * The invitee declines from the Invitation's link, signed in or not: the link
  * is the proof, as it is for accepting. Closes it and writes it in the Audit
- * Record, naming the address's User when it has one.
+ * Record, naming the address's User when it has one. A decline another origin's
+ * page sent is refused 403 (`refuseCrossSiteWrite`).
  */
 export async function declineInvitation(
 	auth: KeeprAuth,
 	database: IdentityDatabase,
 	invitationId: string,
+	request: Request,
 ): Promise<void> {
+	refuseCrossSiteWrite(request);
 	const invitation = await pendingInvitation(auth, invitationId);
 	const { adapter, internalAdapter } = await auth.$context;
 	const declined = await adapter.update<InvitationRow>({

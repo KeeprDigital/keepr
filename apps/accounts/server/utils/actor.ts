@@ -15,11 +15,11 @@ export interface Actor {
 }
 
 /**
- * The Actor `request` is made by. A write another origin's page made a
- * signed-in browser send is refused 403 before its Session is read, as Stream
- * Keepr's boundary refuses one (ADR-0010); a request with no open Session 401.
+ * Refuses 403 a write another origin's page made the browser send, as the
+ * layer's `requestIsCrossSiteMutation` reads it (ADR-0010). Every one of Keepr
+ * Accounts' own write routes runs it first, signed in or not.
  */
-export async function requestActor(auth: KeeprAuth, request: Request): Promise<Actor> {
+export function refuseCrossSiteWrite(request: Request): void {
 	if (
 		requestIsCrossSiteMutation({
 			method: request.method,
@@ -29,6 +29,14 @@ export async function requestActor(auth: KeeprAuth, request: Request): Promise<A
 		})
 	)
 		throw new KeeprRefusal(403, 'CROSS_SITE_REQUEST', 'Cross-site request refused.');
+}
+
+/**
+ * The Actor `request` is made by. A cross-site write is refused 403 before its
+ * Session is read (`refuseCrossSiteWrite`); a request with no open Session 401.
+ */
+export async function requestActor(auth: KeeprAuth, request: Request): Promise<Actor> {
+	refuseCrossSiteWrite(request);
 	const signedIn = await auth.api.getSession({ headers: request.headers });
 	if (!signedIn) throw new KeeprRefusal(401, 'SIGNED_OUT', 'Sign in to do this.');
 	return {

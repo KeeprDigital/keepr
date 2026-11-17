@@ -251,12 +251,17 @@ async function closeBy(how: 'expiring' | 'cancelling' | 'accepting' | 'declining
 			});
 			return;
 		case 'declining':
-			await declineInvitation(accounts.auth, database(), id);
+			await declineInvitation(accounts.auth, database(), id, declineRequest());
 	}
 }
 
 function database() {
 	return identityDatabase(accounts.harness.database);
+}
+
+/** A decline the invitee's browser sends, from Keepr Accounts' own page unless `headers` say otherwise. */
+function declineRequest(headers: Record<string, string> = { 'sec-fetch-site': 'same-origin' }) {
+	return new Request('http://localhost:3000/api/invitation/decline', { method: 'POST', headers });
 }
 
 async function memberOf(email: string) {
@@ -296,7 +301,7 @@ describe('declining an Invitation', () => {
 		const user = hasUser ? await accounts.createUser(INVITEE) : null;
 		const id = await invite();
 
-		await declineInvitation(accounts.auth, database(), id);
+		await declineInvitation(accounts.auth, database(), id, declineRequest());
 
 		await expect(invitationOffer(accounts.auth, id)).rejects.toMatchObject({
 			code: 'INVITATION_DECLINED',
@@ -334,13 +339,27 @@ describe('declining an Invitation', () => {
 		const id = await invite();
 		await closeBy('cancelling', id);
 
-		await expect(declineInvitation(accounts.auth, database(), id)).rejects.toMatchObject({
+		await expect(declineInvitation(accounts.auth, database(), id, declineRequest())).rejects.toMatchObject({
 			statusCode: 410,
 			code: 'INVITATION_CANCELLED',
 		});
 		expect(
 			(await accounts.auditRecord()).filter((row) => row.action === 'invitation.declined'),
 		).toEqual([]);
+	});
+
+	it('sent by another origin’s page is refused 403, leaving it open', async () => {
+		const id = await invite();
+
+		await expect(
+			declineInvitation(
+				accounts.auth,
+				database(),
+				id,
+				declineRequest({ 'sec-fetch-site': 'same-site', origin: 'https://stream.keepr.digital' }),
+			),
+		).rejects.toMatchObject({ statusCode: 403, code: 'CROSS_SITE_REQUEST' });
+		await expect(invitationOffer(accounts.auth, id)).resolves.toMatchObject({ email: INVITEE });
 	});
 });
 
