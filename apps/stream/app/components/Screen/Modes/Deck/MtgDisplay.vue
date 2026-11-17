@@ -15,6 +15,7 @@ import {
 	DEFAULT_HIGHLANDER_POINTS_POSITION,
 	DEFAULT_QUANTITY_POSITION,
 	resolveDeckBoards,
+	sideboardStacks,
 } from '~~/shared/types/screenConfig';
 import { cardBadgeTextSize, DECK_AUTO_BADGE_RATIOS } from '~~/shared/utils/cardBadgeSize';
 import { solveDeckLayout } from '~~/shared/utils/deckLayout';
@@ -137,8 +138,10 @@ const showSideboard = computed(() => board.value !== 'mainboard' && sideboard.va
 // moves back beside.
 const sideboardBeside = computed(
 	() =>
-		board.value === 'full' &&
-		resolvedBoards.value.sideboardPlacement === 'beside' &&
+		sideboardStacks({
+			board: board.value,
+			sideboardPlacement: resolvedBoards.value.sideboardPlacement,
+		}) &&
 		showMainboard.value &&
 		showSideboard.value,
 );

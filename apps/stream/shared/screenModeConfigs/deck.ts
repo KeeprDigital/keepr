@@ -47,8 +47,15 @@ const BOARD_VIEW_LABELS = { grid: 'Grid', stack: 'Stack', list: 'List' } as cons
 function deckBoardLayoutShape<const Views extends readonly [string, ...string[]]>(
 	views: Views,
 	group: 'mainboard' | 'sideboard',
-	/** Whether the board's layout values are its own to edit: a sideboard following the mainboard's are not (#1091). */
-	ownLayout: (context: ScreenSettingsContext) => boolean = () => true,
+	{
+		ownLayout = () => true,
+		drawnView = (view) => view,
+	}: {
+		/** Whether the board's layout values are its own to edit: a sideboard following the mainboard's are not (#1091). */
+		ownLayout?: (context: ScreenSettingsContext) => boolean;
+		/** The view the Screen draws for a stored one: a sideboard stack it cannot draw is a grid (ADR-0054). */
+		drawnView?: (view: Views[number], context: ScreenSettingsContext) => Views[number];
+	} = {},
 ) {
 	const place = { card: 'content', group } as const;
 	return {
@@ -56,9 +63,15 @@ function deckBoardLayoutShape<const Views extends readonly [string, ...string[]]
 			...place,
 			label: 'View',
 			description: `How the ${group}'s cards are shown.`,
-			options: Object.fromEntries(
-				views.map((view) => [view, BOARD_VIEW_LABELS[view as keyof typeof BOARD_VIEW_LABELS]]),
-			) as Record<Views[number], string>,
+			// Only the views the Screen draws as themselves.
+			options: (context) =>
+				Object.fromEntries(
+					views
+						.filter((view) => drawnView(view, context) === view)
+						.map((view) => [view, BOARD_VIEW_LABELS[view as keyof typeof BOARD_VIEW_LABELS]]),
+				) as Partial<Record<Views[number], string>>,
+			shownValue: (view, context) =>
+				view === undefined ? view : drawnView(view as Views[number], context),
 		}),
 		...cardLayoutShape(DECK_BOARD_MAX_CARDS, group, ownLayout, mostBoardColumns(group)),
 		listColumns: editorField(z.number().int().min(1).max(4).optional(), {
@@ -79,16 +92,17 @@ function deckBoardLayoutShape<const Views extends readonly [string, ...string[]]
 
 const mainboardLayoutShape = deckBoardLayoutShape(MAINBOARD_VIEW_VALUES, 'mainboard');
 const sideboardLayoutShape = {
-	...deckBoardLayoutShape(SIDEBOARD_VIEW_VALUES, 'sideboard', ({ block }) =>
-		sideboardStoresOwnLayout(block),
-	),
+	...deckBoardLayoutShape(SIDEBOARD_VIEW_VALUES, 'sideboard', {
+		ownLayout: ({ block }) => sideboardStoresOwnLayout(block),
+		drawnView: (view, { config }) => (view === 'stack' && !sideboardStacks(config) ? 'grid' : view),
+	}),
 	/** How much of each stacked card but the last shows, in px. */
 	stackReveal: editorField(z.number().int().min(4).max(240).optional(), {
 		label: 'Stack reveal',
 		card: 'content',
 		group: 'sideboard',
 		description: 'How much of each stacked card but the last shows, in px.',
-		showWhen: ({ block }) => block?.view === 'stack',
+		showWhen: ({ block, config }) => block?.view === 'stack' && sideboardStacks(config),
 	}),
 };
 
@@ -178,6 +192,21 @@ export const DEFAULT_QUANTITY_POSITION: QuantityPosition = 'top-right';
 export const DEFAULT_HIGHLANDER_POINTS_POSITION: QuantityPosition = 'top-left';
 /** Top centre: clear of the corner badges, and shown by a stacked card's top slice. */
 export const DEFAULT_COMPANION_TAG_POSITION: QuantityPosition = 'top';
+
+/**
+ * Whether a Deck's boards are placed so its sideboard stacks: at a Board
+ * Selection of Full, beside the mainboard. Anywhere else a stack is drawn as a
+ * grid and its stored view kept, so moving it back beside restores the strip
+ * (ADR-0054). The Screen also needs both boards to have cards.
+ */
+export function sideboardStacks(
+	config: Readonly<{ board?: unknown; sideboardPlacement?: unknown }>,
+): boolean {
+	return (
+		(config.board ?? DEFAULT_BOARD) === 'full' &&
+		(config.sideboardPlacement ?? DEFAULT_SIDEBOARD_PLACEMENT) === 'beside'
+	);
+}
 
 /** A Magic Deck List's page; a One Piece Card Game Deck List has no sideboard, companion or card points (ADR-0057). */
 function isMagic({ event }: ScreenSettingsContext): boolean {

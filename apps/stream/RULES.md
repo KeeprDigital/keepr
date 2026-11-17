@@ -46,7 +46,7 @@ It sets the Deck List's colours and is how the community names the deck. A Playe
 Together they set the deck's colours, by colour identity, and are how the community names the deck. A Feature Match Slot Seat holds the Commanders its operator picked, which its Feature Match Deck List shares.
 
 **Sideboard**:
-A Commander Event's Deck List has none. On a Deck List Screen only a Sideboard stacks, as a strip beside the Mainboard, which shows as a grid or a list; a stacked Sideboard placed below the Mainboard, or shown alone, shows as a grid and returns to the strip when moved back beside. A companion shows as the Sideboard's first card, tagged Companion, or in a column of its own with no Sideboard shown (ADR-0054).
+A Commander Event's Deck List has none. On a Deck List Screen only a Sideboard stacks, as a strip beside the Mainboard, which shows as a grid or a list; a stacked Sideboard placed below the Mainboard, or shown alone, shows as a grid and returns to the strip when moved back beside. Its settings offer Stack only at a Board Selection of Full with the Sideboard beside the Mainboard, and show a stack stored elsewhere as the grid drawn there (ADR-0111). A companion shows as the Sideboard's first card, tagged Companion, or in a column of its own with no Sideboard shown (ADR-0054).
 
 **Board Selection**:
 Shared by every deck-rendering surface, including Metagame card filtering. A Deck List Screen always shows a board: hiding the last board shown leaves it on (ADR-0054).

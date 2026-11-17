@@ -118,6 +118,12 @@ export interface ConfigFieldMeta<Value extends string = string> {
 	reference?: EventReferenceKind;
 	/** The named slot of the bespoke widget that edits it, for a field no plain control can. */
 	slot?: string;
+	/**
+	 * The value its control shows where the Screen draws the stored one as
+	 * another, such as a sideboard stack drawn as a grid below the mainboard.
+	 * The stored value stays until the control is edited.
+	 */
+	shownValue?: (value: unknown, context: ScreenSettingsContext) => unknown;
 	/** What else an edit writing `value` to it writes, such as entering a view starting that view over. */
 	writesWith?: (
 		value: unknown,
@@ -210,6 +216,8 @@ export interface ScreenModeConfigField {
 	placeholder?: string;
 	reference?: EventReferenceKind;
 	slot?: string;
+	/** The value its control shows, where it differs from the stored one. */
+	shownValue?: (value: unknown, context: ScreenSettingsContext) => unknown;
 	writesWith?: (
 		value: unknown,
 		context: ScreenSettingsContext,
@@ -309,6 +317,7 @@ function editorFieldView(
 		placeholder: meta.placeholder,
 		reference: meta.reference,
 		slot: meta.slot,
+		shownValue: meta.shownValue,
 		writesWith: meta.writesWith,
 		clearable: inner !== field,
 		displayScale,
