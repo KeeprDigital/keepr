@@ -326,6 +326,11 @@ export async function disableUser(
 		action: 'user.disabled',
 		actorUserId: actor.userId,
 		subjectUserId: target.id,
+	});
+	await recordAudit(database, {
+		action: 'user.sessions-ended',
+		actorUserId: actor.userId,
+		subjectUserId: target.id,
 		detail: { sessionsEnded: ended.length },
 	});
 }

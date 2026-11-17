@@ -18,6 +18,8 @@ export type AuditAction =
 	| 'app-access.set'
 	| 'app-access.removed'
 	| 'user.disabled'
+	/** A Keepr Administrator ended a User's Sessions, as disabling them does. */
+	| 'user.sessions-ended'
 	| 'user.enabled';
 
 export interface AuditEntry {

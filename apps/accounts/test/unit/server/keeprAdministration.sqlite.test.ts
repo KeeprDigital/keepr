@@ -290,7 +290,7 @@ describe('disabling a User', () => {
 		]);
 	});
 
-	it('and re-enabling them are in the Audit Record, with the Sessions ended', async () => {
+	it('and re-enabling them are in the Audit Record, the Sessions ended a row of its own', async () => {
 		await accounts.signIn(ADA);
 		await accounts.signIn(ADA);
 		const actor = await administrator();
@@ -299,7 +299,8 @@ describe('disabling a User', () => {
 		await enableUser(database, actor, ada.id);
 
 		const who = { actorUserId: actor.userId, subjectUserId: ada.id, at: expect.any(Date) };
-		expect(await audited('user.disabled')).toEqual([
+		expect(await audited('user.disabled')).toEqual([expect.objectContaining(who)]);
+		expect(await audited('user.sessions-ended')).toEqual([
 			expect.objectContaining({ ...who, detail: { sessionsEnded: 2 } }),
 		]);
 		expect(await audited('user.enabled')).toEqual([expect.objectContaining(who)]);
@@ -363,12 +364,13 @@ describe('the Audit Record a Keepr Administrator sees', () => {
 			{
 				id: expect.any(String),
 				at: expect.any(String),
-				action: 'user.disabled',
+				action: 'user.sessions-ended',
 				actor: administratorNamed,
 				subject: { id: ada.id, name: 'ada', email: 'ada@keepr.digital' },
 				organisation: null,
 				detail: { sessionsEnded: 0 },
 			},
+			expect.objectContaining({ action: 'user.disabled', detail: null }),
 			expect.objectContaining({
 				action: 'invitation.created',
 				organisation: club,
