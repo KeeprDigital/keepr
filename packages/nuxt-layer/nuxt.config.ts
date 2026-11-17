@@ -25,6 +25,14 @@ export default defineNuxtConfig({
 		fallback: 'dark',
 	},
 
+	runtimeConfig: {
+		public: {
+			// Where `useIdentity` sends a signed-out visitor. Set
+			// `NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN` to a local Keepr Accounts run beside an App.
+			keeprAccountsOrigin: 'https://accounts.keepr.digital',
+		},
+	},
+
 	imports: {
 		dirs: [here('./app/composables/core'), here('./app/composables/ui')],
 	},
