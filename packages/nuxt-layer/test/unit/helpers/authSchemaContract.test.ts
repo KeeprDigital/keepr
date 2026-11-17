@@ -1,4 +1,5 @@
 import type { AuthContractModel } from '../../helpers/authSchemaContract';
+import type { AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { describe, expect, it } from 'vitest';
 import { AUTH_SCHEMA_CONTRACT } from '../../helpers/authSchemaContract';
@@ -50,7 +51,7 @@ function session(
 			expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
 			...(drift.columns as object),
 		} as never,
-		(table: Record<string, never>) =>
+		(table: { userId: AnySQLiteColumn }) =>
 			drift.indexed === false ? [] : [index('session_user_id_idx').on(table.userId)],
 	);
 }
