@@ -1,20 +1,14 @@
-import { getRequestHost, readBody } from 'h3';
-import { db } from '~~/server/db';
-import { serverAuth } from '~~/server/utils/auth';
+import { readBody } from 'h3';
+import { answerRoute } from '~~/server/utils/actorRoute';
 import { firstAdministratorClaimOffer } from '~~/server/utils/firstAdministrator';
-import { answerRefusals } from '~~/server/utils/refusal';
 import { textField } from '~~/server/utils/textField';
 
 /** What the claim page shows before claiming. A POST, so the claim is in no request line. */
 export default defineEventHandler(async (event) => {
 	const body = await readBody<{ claimId?: unknown }>(event);
-	return await answerRefusals(
+	return await answerRoute(
 		event,
-		async () =>
-			await firstAdministratorClaimOffer(
-				serverAuth(getRequestHost(event)),
-				db(),
-				textField(body?.claimId),
-			),
+		async ({ auth, database }) =>
+			await firstAdministratorClaimOffer(auth, database, textField(body?.claimId)),
 	);
 });

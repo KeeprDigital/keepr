@@ -1,7 +1,6 @@
-import { appendResponseHeader, getRequestHost, readBody, toWebRequest } from 'h3';
-import { serverAuth } from '~~/server/utils/auth';
+import { appendResponseHeader, readBody } from 'h3';
+import { answerRoute } from '~~/server/utils/actorRoute';
 import { acceptInvitationAsNewUser } from '~~/server/utils/invitationAcceptance';
-import { answerRefusals } from '~~/server/utils/refusal';
 import { textField } from '~~/server/utils/textField';
 
 /** An invitee with no User accepts, choosing a name and a password, and is signed in. */
@@ -9,15 +8,15 @@ export default defineEventHandler(async (event) => {
 	const body = await readBody<{ invitationId?: unknown; name?: unknown; password?: unknown }>(
 		event,
 	);
-	return await answerRefusals(event, async () => {
+	return await answerRoute(event, async ({ auth, request }) => {
 		const { setCookie } = await acceptInvitationAsNewUser(
-			serverAuth(getRequestHost(event)),
+			auth,
 			{
 				invitationId: textField(body?.invitationId),
 				name: textField(body?.name),
 				password: textField(body?.password),
 			},
-			toWebRequest(event).headers,
+			request.headers,
 		);
 		for (const cookie of setCookie) appendResponseHeader(event, 'set-cookie', cookie);
 		return { accepted: true };

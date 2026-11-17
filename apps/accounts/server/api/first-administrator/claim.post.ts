@@ -1,8 +1,6 @@
-import { appendResponseHeader, getRequestHost, readBody, toWebRequest } from 'h3';
-import { db } from '~~/server/db';
-import { serverAuth } from '~~/server/utils/auth';
+import { appendResponseHeader, readBody } from 'h3';
+import { answerRoute } from '~~/server/utils/actorRoute';
 import { claimFirstAdministrator } from '~~/server/utils/firstAdministrator';
-import { answerRefusals } from '~~/server/utils/refusal';
 import { textField } from '~~/server/utils/textField';
 
 /**
@@ -11,16 +9,16 @@ import { textField } from '~~/server/utils/textField';
  */
 export default defineEventHandler(async (event) => {
 	const body = await readBody<{ claimId?: unknown; name?: unknown; password?: unknown }>(event);
-	return await answerRefusals(event, async () => {
+	return await answerRoute(event, async ({ auth, database, request }) => {
 		const { setCookie } = await claimFirstAdministrator(
-			serverAuth(getRequestHost(event)),
-			db(),
+			auth,
+			database,
 			{
 				claimId: textField(body?.claimId),
 				name: textField(body?.name),
 				password: textField(body?.password),
 			},
-			toWebRequest(event).headers,
+			request.headers,
 		);
 		for (const cookie of setCookie) appendResponseHeader(event, 'set-cookie', cookie);
 		return { claimed: true };
