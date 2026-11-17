@@ -10,12 +10,14 @@ The workspace's own tooling (ADR-0110, in the root `docs/adr`): what every app, 
 | `scripts/change-base.mjs` | imported | Where a branch's change is measured from: `origin/main`, else `main`. |
 | `scripts/ci-scope.mjs`, `scripts/ci-reuse.mjs` | CI's `scope` and `record` jobs | What a change can affect, and whether a merge group's tree was already verified (ADR-0036). |
 | `scripts/conventional-title.mjs` | `pr-title.yml` | The `Conventional Commit title` required check. |
-| `scripts/release-gate.mjs` | `release-please.yml` | Refuses a release the merge queue did not verify (ADR-0036). |
+| `scripts/changeset-check.mjs` | `keepr-changeset-check`, CI's `checks` job, Stream Keepr's `verify --quick` | A change names each versioned app whose shipped code it touches in a changeset, or carries an empty one (ADR-0118). |
+| `scripts/versioned-apps.mjs` | imported | The workspace's packages, and the apps Changesets versions: each in `apps/` that `.changeset/config.json` does not ignore. |
+| `scripts/release-gate.mjs` | `pnpm release:publish`, in `release.yml` | Refuses to tag a Release on a commit the merge queue did not verify (ADR-0036, ADR-0118). |
 
 ## Rules
 
 - **A script imports only Node.** CI runs the CI scripts from a sparse checkout with no install, and `slots` and `reap-workerd` run before anything is built.
-- **Nothing here knows an app.** What only one app runs (Stream Keepr's `verify.mjs`, its deploy and acceptance scripts) stays in that app. An app that strands more than `workerd` reaps it itself with `discoverCheckoutRoots` and `terminateAll` (`apps/stream/scripts/reap.mjs`).
+- **Nothing here knows an app.** What it learns of one, it reads from the workspace (`versioned-apps.mjs`). What only one app runs (Stream Keepr's `verify.mjs`, its deploy and acceptance scripts) stays in that app. An app that strands more than `workerd` reaps it itself with `discoverCheckoutRoots` and `terminateAll` (`apps/stream/scripts/reap.mjs`).
 - **A workflow names a script by its path from the repository's root**, and a job that checks out only some files lists it (`test/ciWorkflows.test.ts` holds both).
 
 ## Run slots by hand

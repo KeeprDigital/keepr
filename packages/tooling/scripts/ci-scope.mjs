@@ -55,7 +55,7 @@ const DOCUMENT = /\.md$/;
  * the repository's, so Stream Keepr's begin `apps/stream/`.
  */
 const OUTSIDE_BUNDLE =
-	/^apps\/stream\/test\/|^\.github\/workflows\/(?:deploy|pr-title|release-please)\.yml$/;
+	/^apps\/stream\/test\/|^\.github\/workflows\/(?:deploy|pr-title|release)\.yml$/;
 
 const COMMIT_ID = /^[0-9a-f]{40}$/;
 

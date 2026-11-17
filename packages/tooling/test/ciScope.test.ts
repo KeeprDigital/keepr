@@ -36,7 +36,7 @@ describe('what a change can affect', () => {
 			[
 				'.github/workflows/deploy.yml',
 				'.github/workflows/pr-title.yml',
-				'.github/workflows/release-please.yml',
+				'.github/workflows/release.yml',
 			],
 			{ code: true, bundle: false, docs: false },
 		],
@@ -51,8 +51,8 @@ describe('what a change can affect', () => {
 		['CI itself', ['.github/workflows/ci.yml'], EVERYTHING],
 		['the shared setup action', ['.github/actions/setup/action.yml'], EVERYTHING],
 		[
-			'the version bump of a Release PR',
-			['CHANGELOG.md', 'package.json', '.release-please-manifest.json'],
+			'the version bump of a Version PR',
+			['apps/stream/CHANGELOG.md', 'apps/stream/package.json', '.changeset/brave-owls.md'],
 			EVERYTHING,
 		],
 	])('%s', (_case, files, expected) => {

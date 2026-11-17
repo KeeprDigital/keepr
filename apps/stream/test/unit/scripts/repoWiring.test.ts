@@ -102,10 +102,11 @@ describe('verify --quick checks what a checkout changes', () => {
 		'test:nuxt:coverage',
 	];
 
-	it('lints, typechecks, and runs the unit and Nuxt tests the change reaches', () => {
+	it('checks its changesets, lints, typechecks, and runs the unit and Nuxt tests the change reaches', () => {
 		const gates = selectGates(['--quick'], () => 'origin/main');
 
 		expect(Object.keys(gates)).toEqual([
+			'changesets',
 			'prepare',
 			'lint',
 			'typecheck:app',
@@ -114,6 +115,7 @@ describe('verify --quick checks what a checkout changes', () => {
 			'test:unit:changed',
 			'test:nuxt:changed',
 		]);
+		expect(gates.changesets!.command.join(' ')).toBe('exec keepr-changeset-check');
 		expect(gates['test:unit:changed']!.command.join(' ')).toBe(
 			'exec vitest run --changed origin/main --passWithNoTests',
 		);

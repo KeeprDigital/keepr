@@ -1,16 +1,16 @@
 /**
  * The `Conventional Commit title` required check (.github/workflows/pr-title.yml).
  *
- * release-please versions from the subjects of main's commits, and a PR lands
- * as one squash commit whose subject is its title (`apps/stream/README.md` § Releases). A
- * subject that is not a Conventional Commit drops the change from the
- * changelog and the version bump without anyone noticing, so:
+ * A PR lands as one squash commit whose subject is its title, so the subjects
+ * are `main`'s history (`apps/stream/README.md` § Releases). Changesets, not
+ * the subjects, drive each Release (ADR-0118); the check keeps the history
+ * reading as one, so:
  *
  * - **On a PR** (`pull_request`) it checks the PR's title: the feedback, and
  *   what a PR must pass before it can be queued.
  * - **In the merge queue** (`merge_group`) it checks the subject of every
  *   commit between the queue's base and the group's head: the squash commits
- *   the group would land, exactly what release-please will read. A required
+ *   the group would land, exactly what `main` will hold. A required
  *   check must report on the group's commit too, or the queue would wait on it
  *   until it timed out.
  *

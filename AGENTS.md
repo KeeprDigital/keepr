@@ -49,9 +49,9 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
 ## Before pushing
 
 Push once `pnpm verify:quick` passes. It checks what your checkout changes
-since `main`: lint (which fails on unformatted code; `pnpm lint:fix` formats),
-typecheck, and the unit and Nuxt tests whose imports reach the files it
-changed. CI is the full gate, and runs everything. Open the PR
+since `main`: its changesets (below), lint (which fails on unformatted code;
+`pnpm lint:fix` formats), typecheck, and the unit and Nuxt tests whose imports
+reach the files it changed. CI is the full gate, and runs everything. Open the PR
 as a draft, which CI skips, and mark it ready when the branch is done: that
 runs every gate `pnpm verify` runs, Worker build and workerd smoke included.
 Realtime integration tests are the exception: CI has no Ably key, so they run
@@ -64,12 +64,27 @@ dependency's version lives in the named catalog of its group in
 it, writes both. Commit `pnpm-lock.yaml` with any change to either
 that affects dependency resolution.
 
+A change that touches a versioned app's shipped code carries a changeset
+naming that app (`pnpm changeset`), or an empty one (`pnpm changeset --empty`)
+for a change no Release should mention (ADR-0118). Shipped code is the app's
+directory and every workspace package its `dependencies` reach, without
+`test/`, `docs/` and Markdown, plus `pnpm-lock.yaml` and `pnpm-workspace.yaml`;
+`.changeset/config.json` ignores the apps that are not versioned. The bump
+says what the operator deploying it must know:
+
+- **major**: the deploy needs an operator step beyond running Deploy (a new
+  secret, a data wipe, a manual migration). The changeset states the step, so
+  the Release notes do.
+- **minor**: something a User or operator can newly do.
+- **patch**: everything else that ships.
+
 ## Landing on main
 
 Every change reaches `main` as a squash-merged PR whose title is a Conventional
-Commit (`fix(scope): summary`); release-please reads that one commit, and CI
-runs only on PRs and in the merge queue. Open the PR from your branch and leave
-`main` itself to the merge queue. Why: `apps/stream/README.md` § Releases.
+Commit (`fix(scope): summary`), checked for a readable history; CI runs only on
+PRs and in the merge queue. Its changesets wait on `main` for the Version PR,
+whose merge releases every app they name. Open the PR from your branch and
+leave `main` itself to the merge queue. Why: `apps/stream/README.md` § Releases.
 
 ## Worktrees and processes
 

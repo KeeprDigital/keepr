@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+import { isConventionalTitle } from '../scripts/conventional-title.mjs';
 
 /**
  * The merge queue (ADR-0036) is only as good as the workflows' wiring: these read
@@ -42,7 +43,10 @@ const REQUIRED_CHECKS = ['CI passed', 'Conventional Commit title'];
 
 const ci = workflow('ci.yml');
 const prTitle = workflow('pr-title.yml');
-const releasePlease = workflow('release-please.yml');
+const release = workflow('release.yml');
+const rootScripts = (
+	JSON.parse(readFileSync('../../package.json', 'utf8')) as { scripts: Record<string, string> }
+).scripts;
 const gates = Object.keys(ci.jobs).filter((id) => !['scope', 'record', 'passed'].includes(id));
 const FOR_CODE = "needs.scope.outputs.code == 'true'";
 const FOR_DOCS = "needs.scope.outputs.docs == 'true'";
@@ -147,8 +151,8 @@ describe("the CI scope decides what a merge group can affect against the queue's
 
 	// A docs-only change skips the code gates, so `checks` runs what they check of a document instead.
 	// The workflows are code, so their two linters run with the lint. Every step
-	// past the setup runs for exactly one of the two: one with no condition is missing here.
-	it('the checks job lints the code and the workflows only for code, and runs the docs checks only for a docs-only change', () => {
+	// past the changeset check runs for exactly one of the two: one with no condition is missing here.
+	it('the checks job checks the changesets always, lints the code and the workflows only for code, and runs the docs checks only for a docs-only change', () => {
 		const [checkout, setup, ...checks] = ci.jobs.checks!.steps ?? [];
 
 		expect([checkout?.uses?.replace(/@.*/, ''), setup?.uses]).toEqual([
@@ -158,6 +162,7 @@ describe("the CI scope decides what a merge group can affect against the queue's
 		expect(
 			checks.map((step) => [step.name ?? step.run ?? step.uses?.replace(/@.*/, ''), step.if]),
 		).toEqual([
+			['Changeset check', undefined],
 			['pnpm lint', FOR_CODE],
 			['actionlint', FOR_CODE],
 			['zizmorcore/zizmor-action', FOR_CODE],
@@ -204,26 +209,30 @@ describe('a merge group skips the gates only for a tree a full, green PR run ver
 	});
 });
 
-describe('release-please releases only what the queue verified', () => {
-	const steps = Object.values(releasePlease.jobs).flatMap((job) => job.steps ?? []);
-	const gate = steps.findIndex(
-		(step) => step.run === 'node packages/tooling/scripts/release-gate.mjs',
-	);
-	const release = steps.findIndex((step) =>
-		step.uses?.startsWith('googleapis/release-please-action@'),
-	);
+describe('the Release workflow tags only what the queue verified', () => {
+	const steps = Object.values(release.jobs).flatMap((job) => job.steps ?? []);
+	const changesets = steps.find((step) => step.uses?.startsWith('changesets/action@'));
 
-	it('the gate runs before release-please, and nothing lets release-please run past a refusal', () => {
-		expect(gate).toBeGreaterThanOrEqual(0);
-		expect(release).toBeGreaterThan(gate);
+	it('publishes through the gate, then tags, and nothing lets a tag past a refusal', () => {
+		expect(changesets?.with?.['publish-script']).toBe('pnpm release:publish');
+		// Only `&&`: a refused gate stops the tagging.
+		expect(rootScripts['release:publish']?.split(' && ')).toEqual([
+			'node packages/tooling/scripts/release-gate.mjs',
+			'changeset git-tag',
+		]);
 		for (const step of steps) {
 			expect(step.if).toBeUndefined();
 			expect(step['continue-on-error']).toBeUndefined();
 		}
-		for (const job of Object.values(releasePlease.jobs)) {
+		for (const job of Object.values(release.jobs)) {
 			expect(job.if).toBeUndefined();
 			expect(job['continue-on-error']).toBeUndefined();
 		}
+	});
+
+	// The Version PR lands as a squash commit like any other, so its title is checked too.
+	it('titles the Version PR as a Conventional Commit', () => {
+		expect(isConventionalTitle(String(changesets?.with?.['pr-title']))).toBe(true);
 	});
 });
 
@@ -233,7 +242,6 @@ describe('a job that checks out only some files checks out the script it runs', 
 	it.each([
 		{ file: 'ci.yml', workflow: ci },
 		{ file: 'pr-title.yml', workflow: prTitle },
-		{ file: 'release-please.yml', workflow: releasePlease },
 	])('$file', ({ workflow }) => {
 		const sparseJobs = Object.entries(workflow.jobs).filter(([, job]) =>
 			(job.steps ?? []).some((step) => step.with?.['sparse-checkout'] !== undefined),

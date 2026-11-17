@@ -74,6 +74,14 @@ _Avoid_: redirect, callback URL
 One numbered version of one app, with the changelog of what changed since its previous Release. Several apps may release together; each is deployed on its own.
 _Avoid_: version (the number alone), build, tag
 
+**Changeset**:
+A file in `.changeset/` naming the apps a change ships in, each with its bump, and the line each one's next Release gets in its changelog. An empty changeset names none.
+_Avoid_: release note, change file
+
+**Version PR**:
+The one pull request that turns the changesets waiting on `main` into each app's next version and changelog. Merging it releases every app it names.
+_Avoid_: Release PR (release-please's, gone)
+
 **Environment**:
 Where Installations run: Production, which serves Users, or Staging, which proves a Release before Production does. Staging alone always means the Staging Environment.
 _Avoid_: stage, env; staging for Stream Keepr's ingestion staging store or Graphics Staging Allowance, which are always written in full

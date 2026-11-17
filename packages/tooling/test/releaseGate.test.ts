@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkPendingReleases } from '../scripts/release-gate.mjs';
+import { checkRelease, pendingTags } from '../scripts/release-gate.mjs';
 
 const RELEASE_COMMIT = 'c'.repeat(40);
 
@@ -24,17 +24,50 @@ function runsFor(runs: Run[]) {
 	return async (sha: string) => runs.filter((run) => run.head_sha === sha);
 }
 
-const pending = [{ number: 573, mergeCommit: RELEASE_COMMIT }];
+const release = { tags: ['@keepr/stream@1.7.0'], commit: RELEASE_COMMIT };
+const REFUSED = `@keepr/stream@1.7.0 would tag ${RELEASE_COMMIT}, which no successful merge-queue CI run verified.`;
+
+const stream = { name: '@keepr/stream', dir: 'apps/stream', version: '1.7.0', dependencies: {} };
+const accounts = {
+	name: '@keepr/accounts',
+	dir: 'apps/accounts',
+	version: '0.1.0',
+	dependencies: {},
+};
+
+describe('what a release would tag', () => {
+	it.each<[string, string[], string[]]>([
+		[
+			'every app already tagged at its version: nothing',
+			['@keepr/stream@1.7.0', '@keepr/accounts@0.1.0'],
+			[],
+		],
+		[
+			'an app whose version has no tag yet',
+			['@keepr/stream@1.6.0', '@keepr/accounts@0.1.0'],
+			['@keepr/stream@1.7.0'],
+		],
+		[
+			'a v* tag of the same version is not its tag',
+			['v1.7.0', '@keepr/accounts@0.1.0'],
+			['@keepr/stream@1.7.0'],
+		],
+	])('%s', (_case, tags, pending) => {
+		expect(pendingTags([accounts, stream], new Set(tags))).toEqual(pending);
+	});
+});
 
 describe('a release is cut only from a revision the merge queue verified', () => {
-	it('no merged Release PR waiting for its tag: nothing to release, nothing to refuse', async () => {
-		await expect(checkPendingReleases([], runsFor([]))).resolves.toEqual([]);
+	it('no tag to create: nothing to release, nothing to refuse', async () => {
+		await expect(checkRelease({ tags: [], commit: RELEASE_COMMIT }, runsFor([]))).resolves.toEqual(
+			[],
+		);
 	});
 
-	it('releases a Release PR whose merge commit passed CI as a merge group', async () => {
+	it('tags a commit that passed CI as a merge group', async () => {
 		await expect(
-			checkPendingReleases(
-				pending,
+			checkRelease(
+				release,
 				runsFor([ciRun({ event: 'pull_request', conclusion: 'failure' }), ciRun()]),
 			),
 		).resolves.toEqual([]);
@@ -58,9 +91,7 @@ describe('a release is cut only from a revision the merge queue verified', () =>
 			],
 		],
 	])('refuses when %s', async (_case, runs) => {
-		await expect(checkPendingReleases(pending, runsFor(runs))).resolves.toEqual([
-			`Release PR #573 landed as ${RELEASE_COMMIT}, which no successful merge-queue CI run verified.`,
-		]);
+		await expect(checkRelease(release, runsFor(runs))).resolves.toEqual([REFUSED]);
 	});
 
 	it('waits for a merge-group run still finishing: the queue merges on the check, a moment before the run concludes', async () => {
@@ -71,7 +102,7 @@ describe('a release is cut only from a revision the merge queue verified', () =>
 		};
 
 		await expect(
-			checkPendingReleases(pending, async () => answers.shift()!, { attempts: 5, wait }),
+			checkRelease(release, async () => answers.shift()!, { attempts: 5, wait }),
 		).resolves.toEqual([]);
 		expect(waits).toHaveLength(2);
 	});
@@ -84,13 +115,11 @@ describe('a release is cut only from a revision the merge queue verified', () =>
 		};
 
 		await expect(
-			checkPendingReleases(pending, unfinished, {
+			checkRelease(release, unfinished, {
 				attempts: 3,
 				wait: async () => {},
 			}),
-		).resolves.toEqual([
-			`Release PR #573 landed as ${RELEASE_COMMIT}, which no successful merge-queue CI run verified.`,
-		]);
+		).resolves.toEqual([REFUSED]);
 		expect(asked).toBe(3);
 	});
 
@@ -101,26 +130,21 @@ describe('a release is cut only from a revision the merge queue verified', () =>
 			return [ciRun({ conclusion: 'failure' })];
 		};
 
-		await checkPendingReleases(pending, failed, {
+		await checkRelease(release, failed, {
 			attempts: 3,
 			wait: async () => {},
 		});
 		expect(asked).toBe(1);
 	});
 
-	it('refuses a Release PR it cannot find the merge commit of', async () => {
+	it('names every tag it refuses', async () => {
 		await expect(
-			checkPendingReleases([{ number: 573, mergeCommit: null }], runsFor([ciRun()])),
-		).resolves.toEqual(['Release PR #573 has no merge commit to verify.']);
-	});
-
-	it('names each unverified one when several wait', async () => {
-		const other = 'e'.repeat(40);
-
-		await expect(
-			checkPendingReleases([...pending, { number: 580, mergeCommit: other }], runsFor([ciRun()])),
+			checkRelease(
+				{ tags: ['@keepr/accounts@0.1.0', '@keepr/stream@1.7.0'], commit: RELEASE_COMMIT },
+				runsFor([]),
+			),
 		).resolves.toEqual([
-			`Release PR #580 landed as ${other}, which no successful merge-queue CI run verified.`,
+			`@keepr/accounts@0.1.0, @keepr/stream@1.7.0 would tag ${RELEASE_COMMIT}, which no successful merge-queue CI run verified.`,
 		]);
 	});
 });

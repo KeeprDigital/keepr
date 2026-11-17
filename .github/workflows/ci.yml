@@ -10,8 +10,8 @@
 #   - In the merge queue (`merge_group`): the run that decides what lands. It
 #     tests the group's head, the exact combined tree main moves to, so two
 #     PRs that each passed against an old main cannot land an untested
-#     combination. main then fast-forwards to that commit, and release-please
-#     tags only a commit that passed here (packages/tooling/scripts/release-gate.mjs).
+#     combination. main then fast-forwards to that commit, and the Release
+#     workflow tags only a commit that passed here (packages/tooling/scripts/release-gate.mjs).
 #   - On PRs, for feedback and because the queue admits only a PR whose
 #     required checks passed. Not on push to main: what main moves to already
 #     passed in the queue.
@@ -104,8 +104,9 @@ jobs:
   checks:
     name: Lint
     needs: scope
-    # Every step below runs for exactly one of the two: the lint for a change
-    # that can affect the code, the docs checks for one that cannot.
+    # Past the changeset check, every step below runs for exactly one of the
+    # two: the lint for a change that can affect the code, the docs checks for
+    # one that cannot.
     if: needs.scope.outputs.code == 'true' || needs.scope.outputs.docs == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -115,8 +116,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Full history, so the changeset check can measure a merge group
+          # from the queue's base as well as a PR from its own.
+          fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/setup
+      # Every app the change ships in is named in a changeset (ADR-0118). For
+      # a docs-only change too: a changeset is Markdown, and one naming an app
+      # Changesets does not version would break the next Version PR.
+      - name: Changeset check
+        working-directory: ${{ github.workspace }}
+        run: node packages/tooling/scripts/changeset-check.mjs
       - if: needs.scope.outputs.code == 'true'
         run: pnpm lint
       # The workflows are code nothing else reads before it runs. actionlint

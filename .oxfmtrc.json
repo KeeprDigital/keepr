@@ -12,14 +12,13 @@
 		}
 	],
 	"ignorePatterns": [
-		// Prose is wrapped by hand, and CHANGELOG.md is release-please's.
+		// Prose is wrapped by hand, and each CHANGELOG.md is Changesets'.
 		"**/*.md",
-		// Generated: pnpm's, Drizzle's, Wrangler's (`pnpm types:app --check` compares it byte for byte), release-please's.
+		// Generated: pnpm's, Drizzle's, Wrangler's (`pnpm types:app --check` compares it byte for byte).
 		"pnpm-lock.yaml",
 		"apps/stream/server/db/migrations/**",
 		"apps/accounts/server/db/migrations/**",
 		"**/worker-configuration.d.ts",
-		".release-please-manifest.json",
 		// Served as they are: the acceptance pages and their fixtures.
 		"apps/stream/public/**",
 		// A throwaway prototype, kept as it was written.

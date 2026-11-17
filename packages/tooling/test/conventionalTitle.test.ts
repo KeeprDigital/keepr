@@ -57,7 +57,7 @@ describe('what the check reads for each event', () => {
 		).resolves.toEqual(['PR title "Hold the slug" is not a Conventional Commit.']);
 	});
 
-	it('a merge group: the subject of every commit the group lands, which is what release-please reads', async () => {
+	it('a merge group: the subject of every commit the group lands, which is what main will hold', async () => {
 		const asked: string[][] = [];
 		const compare = async (base: string, head: string) => {
 			asked.push([base, head]);

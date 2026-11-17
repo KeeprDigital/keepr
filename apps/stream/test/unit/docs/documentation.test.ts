@@ -8,7 +8,7 @@ function readDocument(name: string): string {
 	return readFileSync(join(repositoryRoot, name), 'utf8');
 }
 
-/** The documents agents and maintainers navigate between. CHANGELOG.md is generated. */
+/** The documents agents and maintainers navigate between. Each app's CHANGELOG.md is generated. */
 const NAVIGATED_DOCUMENTS = [
 	'README.md',
 	'GLOSSARY.md',

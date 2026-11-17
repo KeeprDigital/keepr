@@ -1,6 +1,6 @@
 # ADR-0092: The Pairing and Standings Engines are packages of the workspace, consumed as source
 
-Accepted · 2026-11-16.
+Accepted · 2026-11-16 · Amended by ADR-0118: the packages are never versioned, and Changesets ignores the two that carry a version of their own
 
 ### Decision
 

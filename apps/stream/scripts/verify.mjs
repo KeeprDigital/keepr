@@ -22,8 +22,9 @@
  * its turn when there are none: the integration suite takes them all.
  *
  * Usage: node scripts/verify.mjs [--quick [--all] | --tests]
- *   --quick  what this checkout's change can break: lint, typecheck, and the
- *            unit and Nuxt tests whose imports reach the files it changes.
+ *   --quick  what this checkout's change can break: its changesets, lint,
+ *            typecheck, and the unit and Nuxt tests whose imports reach the
+ *            files it changes.
  *            Before a push; CI is the full gate.
  *   --quick --all
  *            the whole cheap stage: lint, typecheck, unit and Nuxt suites.
@@ -153,8 +154,8 @@ const NOT_TESTS = new Set([
 ]);
 
 /**
- * `--quick`: the first stage, with both suites narrowed to what this checkout
- * changes. Vitest reads the change itself (`--changed`), following
+ * `--quick`: the changeset check and the first stage, with both suites
+ * narrowed to what this checkout changes. Vitest reads the change itself (`--changed`), following
  * each test file's imports, and runs every test when the change reaches a
  * file every test depends on and none imports (`unitRerunTriggers`,
  * `vitest.shared.ts`).
@@ -164,6 +165,11 @@ const NOT_TESTS = new Set([
 function changedGates(baseRef) {
 	const changed = ['--changed', baseRef, '--passWithNoTests'];
 	return {
+		// The workspace's: each app the change ships in is named in a changeset (ADR-0118).
+		changesets: {
+			command: ['exec', 'keepr-changeset-check'],
+			after: [],
+		},
 		prepare: GATES.prepare,
 		lint: GATES.lint,
 		'typecheck:app': GATES['typecheck:app'],
