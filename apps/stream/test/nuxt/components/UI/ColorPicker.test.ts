@@ -1,6 +1,6 @@
 import type { VueWrapper } from '@vue/test-utils';
 import { enableAutoUnmount, mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import ColorPicker from '~/components/UI/ColorPicker.vue';
 
@@ -245,13 +245,20 @@ describe('uiColorPicker', () => {
 	});
 
 	it('commits an open edit when it unmounts, with commit="close"', async () => {
-		const wrapper = mountPicker({ modelValue: '#ffffff', alpha: true, commit: 'close' });
+		// Listened to, not read from `wrapper.emitted()`: unmounting clears that record.
+		const update = vi.fn();
+		const wrapper = mountPicker({
+			modelValue: '#ffffff',
+			alpha: true,
+			commit: 'close',
+			'onUpdate:modelValue': update,
+		});
 		await open(wrapper);
 		await pick('#112233')(wrapper);
 
 		wrapper.unmount();
 
-		expect(emitted(wrapper)).toEqual(['#112233']);
+		expect(update.mock.calls.map(([value]) => value)).toEqual(['#112233']);
 	});
 
 	it('emits nothing when the colour area echoes the hue it was given', async () => {
