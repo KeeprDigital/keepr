@@ -10,7 +10,7 @@ Accepted · 2026-11-17 · [#1265](https://github.com/KeeprDigital/keepr/issues/1
 
 **Some changes run every leg, though no app ships them** (`BUILDS_EVERY_LEG`): CI's own workflow (`ci.yml`), its setup action (`.github/actions/setup/`), the tooling's scripts that a leg runs and the tooling's manifest that names them, the root `package.json`, which pins Node and pnpm, and `tsconfig.base.json`. The tooling's tests and documents run no leg, and neither do the other workflows. When the scope cannot tell what changed, every leg runs.
 
-**An app that binds Keepr Accounts runs its leg against the Accounts Stand-in.** That is an app whose source `wrangler.jsonc` binds the `keepr-accounts` service in any block, top level or any Environment's. A change to the stand-in, or to anything it ships, runs that app's leg too. The stand-in is never deployed (ADR-0113).
+**An app that binds Keepr Accounts runs its leg against the Accounts Stand-in.** That is an app whose source Wrangler configuration (its descriptor's `worker.source`) binds the `keepr-accounts` service in any block, top level or any Environment's. A change to the stand-in, or to anything it ships, runs that app's leg too. The stand-in is never deployed (ADR-0113).
 
 **A merge group may reuse a PR run whose matrix left apps out.** ADR-0036 reuses "a full, green PR run": a run in which every job ran and passed and none was skipped by its scope. An app with no leg is not a skipped job, so a PR run with legs for only the apps it touches can still be that run. The group reuses it only for a byte-identical tree, so the same change against the same base gives the same legs.
 
@@ -25,7 +25,7 @@ Accepted · 2026-11-17 · [#1265](https://github.com/KeeprDigital/keepr/issues/1
 
 - A new deployable app joins the matrix by gaining a deploy descriptor; no workflow edit names it.
 - A PR run that touches no deployable app's shipped code runs no leg and leaves no reuse record, so its merge group runs in full, as for a tests-only change before.
-- The scope reads the source `wrangler.jsonc` and not the descriptor's `worker.config`: that is the built Worker's configuration, and the scope runs before anything is built. Deploy order reads the built configuration for one Environment (ADR-0120); both use one definition of what binding Keepr Accounts is (`servicesBindKeeprAccounts` in `deploy/order.mjs`).
+- The scope reads the Worker's source configuration the descriptor names (`worker.source`), not its `worker.config`: that is the built Worker's configuration, and the scope runs before anything is built. Deploy order reads the built configuration for one Environment (ADR-0120); both use one definition of what binding Keepr Accounts is (`servicesBindKeeprAccounts` in `deploy/order.mjs`).
 - `pnpm validator:dry-run` is no longer its own CI step: the leg bundles the validator as a descriptor part.
 - Unit-tested without GitHub: the legs at their home (`packages/tooling/test/ciScope.test.ts`) and the matrix's wiring (`ciWorkflows.test.ts`).
 

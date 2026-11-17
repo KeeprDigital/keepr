@@ -110,7 +110,7 @@ function built(repo: Repository, app: string, worker: Record<string, unknown> = 
 			app,
 			build: ['build'],
 			output: '.output',
-			worker: { config: '.output/server/wrangler.json' },
+			worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
 			databases: [],
 			environments: {
 				production: { url: `https://${app}.keepr.digital` },

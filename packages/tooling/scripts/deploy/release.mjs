@@ -32,6 +32,8 @@ export const DESCRIPTOR_FILE = 'deploy.jsonc';
  *   wrangler dry run, a Worker smoke), in order. They run once; every
  *   Environment deploys what they built.
  * - `output`: the directory they build into, which a downloaded artifact replaces.
+ * - `worker.source`: the Worker's source Wrangler configuration, which the build
+ *   turns into `worker.config`; what a check that runs before the build reads.
  * - `worker.config`: the built Worker's Wrangler configuration.
  * - `databases`: the D1 bindings whose migrations apply before the Worker deploys.
  * - `environments`: each Environment the app has an Installation in, with the
@@ -46,7 +48,7 @@ export const DESCRIPTOR_FILE = 'deploy.jsonc';
  *   app: string,
  *   build: string[],
  *   output: string,
- *   worker: { config: string },
+ *   worker: { source: string, config: string },
  *   databases: { binding: string }[],
  *   environments: Record<string, { url: string, wranglerEnv?: string }>,
  *   parts: Record<string, import('./fingerprint.mjs').Part>,
@@ -70,7 +72,7 @@ const STREAM_BEFORE_DESCRIPTORS = Object.freeze({
 	app: 'stream',
 	build: ['build', 'worker:dry-run', 'worker:smoke'],
 	output: '.output',
-	worker: { config: '.output/server/wrangler.json' },
+	worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
 	databases: [{ binding: 'DB' }],
 	environments: { production: { url: 'https://stream.keepr.digital' } },
 	parts: {
@@ -117,6 +119,7 @@ function descriptorProblems(descriptor, app) {
 	if (!Array.isArray(descriptor.build) || !descriptor.build.every((step) => SCRIPT.test(step)))
 		problems.push('build is not a list of package script names');
 	if (!isText(descriptor.output)) problems.push('output is not a directory');
+	if (!isText(descriptor.worker?.source)) problems.push('worker.source is not a path');
 	if (!isText(descriptor.worker?.config)) problems.push('worker.config is not a path');
 	if (
 		!Array.isArray(descriptor.databases) ||
@@ -180,6 +183,7 @@ export function readRelease({ root, app }) {
 
 	for (const config of [
 		'package.json',
+		descriptor.worker.source,
 		descriptor.worker.config,
 		...Object.values(descriptor.parts).map((/** @type {{ config: string }} */ part) => part.config),
 	]) {
@@ -194,6 +198,22 @@ export function readRelease({ root, app }) {
 		descriptor,
 		verifies: hasDescriptor ? 'release' : 'liveness',
 	};
+}
+
+/**
+ * The source Wrangler configuration of `app`'s Worker in the checkout at
+ * `root`, as its deploy descriptor names it, for a check that runs before
+ * anything is built.
+ *
+ * @param {string} root
+ * @param {string} app
+ * @returns {string} its path
+ */
+export function workerSourceConfig(root, app) {
+	const descriptorPath = join(root, 'apps', app, DESCRIPTOR_FILE);
+	const source = parseJsonc(readFileSync(descriptorPath, 'utf8'))?.worker?.source;
+	if (!isText(source)) throw new Error(`apps/${app}/${DESCRIPTOR_FILE} names no worker.source.`);
+	return join(root, 'apps', app, source);
 }
 
 /**

@@ -291,13 +291,18 @@ describe("the scope job's command line", () => {
 			cwd: origin,
 			env: gitEnv,
 			input: [
-				// Stream Keepr, deployable: what its Worker leg is scoped by.
+				// Stream Keepr, deployable: what its Worker leg is scoped by. Its
+				// descriptor names a source configuration other than wrangler.jsonc,
+				// binding Keepr Accounts: the scope reads the one the descriptor names.
 				commit(
 					'main',
 					{
 						'README.md': 'chore: the base',
 						'apps/stream/package.json': JSON.stringify({ name: '@keepr/stream' }),
-						'apps/stream/deploy.jsonc': '{}',
+						'apps/stream/deploy.jsonc': JSON.stringify({ worker: { source: 'worker.jsonc' } }),
+						'apps/stream/worker.jsonc': JSON.stringify({
+							services: [{ binding: 'KEEPR_ACCOUNTS', service: 'keepr-accounts' }],
+						}),
 					},
 					'chore: the base',
 				),
@@ -396,7 +401,7 @@ describe("the scope job's command line", () => {
 			},
 		);
 
-		expect(output).toBe('code=true\ndocs=false\napps=[{"app":"stream","accounts":false}]\n');
+		expect(output).toBe('code=true\ndocs=false\napps=[{"app":"stream","accounts":true}]\n');
 		expect(log).toMatch(/Could not list the records.*HTTP 502/);
 		expect(log).toMatch(/running the gates/);
 	});
@@ -408,7 +413,7 @@ describe("the scope job's command line", () => {
 			scope(checkout, 'merge_group', {
 				merge_group: { base_sha: base, head_sha: head },
 			}).output,
-		).toBe('code=true\ndocs=false\napps=[{"app":"stream","accounts":false}]\n');
+		).toBe('code=true\ndocs=false\napps=[{"app":"stream","accounts":true}]\n');
 	});
 
 	it('a merge group of docs-only PRs skips the code gates and checks the docs', () => {
@@ -431,6 +436,6 @@ describe("the scope job's command line", () => {
 					head_sha: head,
 				},
 			}).output,
-		).toBe('code=true\ndocs=false\napps=[{"app":"stream","accounts":false}]\n');
+		).toBe('code=true\ndocs=false\napps=[{"app":"stream","accounts":true}]\n');
 	});
 });

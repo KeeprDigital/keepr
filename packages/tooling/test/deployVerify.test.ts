@@ -305,7 +305,7 @@ describe('deploy:verify against a local stand-in origin', () => {
 					app: 'stream',
 					build: [],
 					output: '.output',
-					worker: { config: '.output/server/wrangler.json' },
+					worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
 					databases: [],
 					environments: { production: { url: 'https://stream.keepr.digital' } },
 					parts: {},

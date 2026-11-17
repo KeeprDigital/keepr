@@ -33,12 +33,11 @@
 
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { verifiedRunOnGitHub } from './ci-reuse.mjs';
 import { servicesBindKeeprAccounts } from './deploy/order.mjs';
-import { deployableApps } from './deploy/release.mjs';
+import { deployableApps, workerSourceConfig } from './deploy/release.mjs';
 import { parseJsonc } from './jsonc.mjs';
 import { shippedDirectories, ships } from './shipped-code.mjs';
 import { workspacePackages } from './versioned-apps.mjs';
@@ -151,10 +150,11 @@ function unlessMissing(read, fallback) {
 
 /**
  * The checkout's deployable apps (those with a deploy descriptor), each with
- * whether its source `wrangler.jsonc` binds Keepr Accounts, and its packages.
- * A checkout with no `apps/` has none; an app with no `wrangler.jsonc` binds
- * nothing. Not the descriptor's `worker.config`: that is the built Worker's,
- * and the scope runs before anything is built.
+ * whether its Worker's source configuration (the descriptor's `worker.source`)
+ * binds Keepr Accounts, and its packages. A checkout with no `apps/` has none;
+ * an app whose source configuration is missing binds nothing. Not the
+ * descriptor's `worker.config`: that is the built Worker's, and the scope runs
+ * before anything is built.
  *
  * @param {string} root the repository's root
  * @returns {DeployableWorkspace}
@@ -164,10 +164,7 @@ function deployableWorkspace(root) {
 		(app) => ({
 			app,
 			accounts: configBindsKeeprAccounts(
-				unlessMissing(
-					() => parseJsonc(readFileSync(join(root, 'apps', app, 'wrangler.jsonc'), 'utf8')),
-					{},
-				),
+				unlessMissing(() => parseJsonc(readFileSync(workerSourceConfig(root, app), 'utf8')), {}),
 			),
 		}),
 	);

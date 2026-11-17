@@ -2,14 +2,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { deployableApps, readRelease } from '../scripts/deploy/release.mjs';
+import { deployableApps, readRelease, workerSourceConfig } from '../scripts/deploy/release.mjs';
 import { ignoredPackages, versionedApps, workspacePackages } from '../scripts/versioned-apps.mjs';
 
 const STREAM_DESCRIPTOR = {
 	app: 'stream',
 	build: ['build', 'worker:dry-run', 'worker:smoke'],
 	output: '.output',
-	worker: { config: '.output/server/wrangler.json' },
+	worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
 	databases: [{ binding: 'DB' }],
 	environments: { production: { url: 'https://stream.keepr.digital' } },
 	parts: {
@@ -109,7 +109,16 @@ describe("reading the Release's deploy descriptor", () => {
 			/production.*url/,
 		],
 		['no Environment', { ...STREAM_DESCRIPTOR, environments: {} }, /environments/],
-		['a Worker without a configuration', { ...STREAM_DESCRIPTOR, worker: {} }, /worker\.config/],
+		[
+			'a Worker without a built configuration',
+			{ ...STREAM_DESCRIPTOR, worker: { source: 'wrangler.jsonc' } },
+			/worker\.config/,
+		],
+		[
+			'a Worker without a source configuration',
+			{ ...STREAM_DESCRIPTOR, worker: { config: '.output/server/wrangler.json' } },
+			/worker\.source/,
+		],
 		['a D1 database without a binding', { ...STREAM_DESCRIPTOR, databases: [{}] }, /databases/],
 		[
 			'a part name a marker cannot carry',
@@ -149,7 +158,17 @@ describe('the Accounts Stand-in never deploys', () => {
 	const intoStandIn = '../../packages/accounts-stand-in/stand-in.wrangler.jsonc';
 
 	it.each([
-		['as the Worker', { ...STREAM_DESCRIPTOR, worker: { config: intoStandIn } }],
+		[
+			'as the Worker',
+			{ ...STREAM_DESCRIPTOR, worker: { source: 'wrangler.jsonc', config: intoStandIn } },
+		],
+		[
+			"as the Worker's source",
+			{
+				...STREAM_DESCRIPTOR,
+				worker: { source: intoStandIn, config: '.output/server/wrangler.json' },
+			},
+		],
 		['as a part', { ...STREAM_DESCRIPTOR, parts: { validator: { config: intoStandIn } } }],
 	])('refuses a descriptor that would deploy it %s, in any Environment', (_case, descriptor) => {
 		const root = checkout({ ...STAND_IN, ...stream(descriptor) });
@@ -168,6 +187,21 @@ describe('the Accounts Stand-in never deploys', () => {
 		});
 
 		expect(() => readRelease({ root, app: 'accounts' })).toThrow(/admits anyone/);
+	});
+});
+
+// What CI's scope reads before anything is built (ADR-0121).
+describe("an app's Worker source configuration", () => {
+	it('is the one its descriptor names', () => {
+		const root = checkout({ 'apps/stream/deploy.jsonc': { worker: { source: 'worker.jsonc' } } });
+
+		expect(workerSourceConfig(root, 'stream')).toBe(join(root, 'apps/stream/worker.jsonc'));
+	});
+
+	it('is refused when its descriptor names none', () => {
+		const root = checkout({ 'apps/stream/deploy.jsonc': { worker: {} } });
+
+		expect(() => workerSourceConfig(root, 'stream')).toThrow(/worker\.source/);
 	});
 });
 
