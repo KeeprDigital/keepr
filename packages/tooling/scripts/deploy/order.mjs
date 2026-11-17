@@ -72,6 +72,20 @@ export function gitHistory({ cwd }) {
 }
 
 /**
+ * Whether one block of a Wrangler configuration, by its `services`, binds
+ * Keepr Accounts. The deploy reads one Environment's block
+ * (`bindsKeeprAccounts`), CI's scope every block (`ci-scope.mjs`).
+ *
+ * @param {unknown} services a block's `services`, whatever it holds
+ */
+export function servicesBindKeeprAccounts(services) {
+	return (
+		Array.isArray(services) &&
+		services.some((/** @type {any} */ binding) => binding?.service === KEEPR_ACCOUNTS.service)
+	);
+}
+
+/**
  * Whether the Release's built Worker binds Keepr Accounts in `environment`.
  * Service bindings are not inherited into a Wrangler `env` block, so an
  * Environment deployed from one reads that block's alone.
@@ -83,11 +97,8 @@ export function bindsKeeprAccounts(release, environment) {
 	const { appDir, descriptor } = release;
 	const config = parseJsonc(readFileSync(join(appDir, descriptor.worker.config), 'utf8'));
 	const wranglerEnv = descriptor.environments[environment]?.wranglerEnv;
-	const services =
-		wranglerEnv === undefined ? config.services : config.env?.[wranglerEnv]?.services;
-	return (
-		Array.isArray(services) &&
-		services.some((/** @type {any} */ binding) => binding?.service === KEEPR_ACCOUNTS.service)
+	return servicesBindKeeprAccounts(
+		wranglerEnv === undefined ? config.services : config.env?.[wranglerEnv]?.services,
 	);
 }
 

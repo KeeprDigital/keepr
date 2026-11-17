@@ -37,7 +37,7 @@ import { join } from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { verifiedRunOnGitHub } from './ci-reuse.mjs';
-import { KEEPR_ACCOUNTS } from './deploy/order.mjs';
+import { servicesBindKeeprAccounts } from './deploy/order.mjs';
 import { deployableApps } from './deploy/release.mjs';
 import { parseJsonc } from './jsonc.mjs';
 import { shippedDirectories, ships } from './shipped-code.mjs';
@@ -122,11 +122,11 @@ export function workerLegsOf(changedFiles, { apps, packages }) {
  * so it cannot read the built one a deploy's order check does
  * (`deploy/order.mjs`).
  *
- * @param {Record<string, unknown> & { services?: { service?: string }[], env?: Record<string, { services?: { service?: string }[] }> }} config a parsed `wrangler.jsonc`
+ * @param {{ services?: unknown, env?: Record<string, { services?: unknown }> }} config a parsed `wrangler.jsonc`
  */
 export function configBindsKeeprAccounts(config) {
 	return [config, ...Object.values(config.env ?? {})].some((block) =>
-		(block.services ?? []).some((binding) => binding?.service === KEEPR_ACCOUNTS.service),
+		servicesBindKeeprAccounts(block?.services),
 	);
 }
 

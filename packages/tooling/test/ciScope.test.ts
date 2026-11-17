@@ -141,14 +141,14 @@ describe("which deployable apps' Worker legs a change runs", () => {
 	});
 });
 
-describe('whether an app binds Keepr Accounts', () => {
+// What a binding is has its home in deploy/order.mjs; the scope, before any
+// build, reads every block of the source configuration, not one Environment's.
+describe('whether an app binds Keepr Accounts, in any Environment', () => {
 	const binding = { binding: 'KEEPR_ACCOUNTS', service: 'keepr-accounts' };
 
 	it.each([
 		['at the top level', { services: [binding] }, true],
 		['in one Environment only', { env: { staging: { services: [binding] } } }, true],
-		['another service only', { services: [{ binding: 'OTHER', service: 'other' }] }, false],
-		['no service', { name: 'stream-keepr' }, false],
 	])('%s', (_case, config, expected) => {
 		expect(configBindsKeeprAccounts(config)).toBe(expected);
 	});

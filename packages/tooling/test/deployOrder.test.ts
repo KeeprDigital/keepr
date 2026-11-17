@@ -5,7 +5,11 @@ import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { MarkerStore } from '../scripts/deploy/markers.mjs';
-import { checkDeployOrder, gitHistory } from '../scripts/deploy/order.mjs';
+import {
+	checkDeployOrder,
+	gitHistory,
+	servicesBindKeeprAccounts,
+} from '../scripts/deploy/order.mjs';
 import type { Release } from '../scripts/deploy/release.mjs';
 
 const directories: string[] = [];
@@ -139,6 +143,18 @@ function check(
 		...(options.override === undefined ? {} : { override: options.override }),
 	});
 }
+
+// The one home of what binding Keepr Accounts means; the deploy and CI's scope
+// differ only in which blocks of a configuration they read.
+describe("whether a block's service bindings bind Keepr Accounts", () => {
+	it.each([
+		['no services', undefined, false],
+		['another service only', [{ binding: 'OTHER', service: 'other' }], false],
+		['Keepr Accounts among others', [{ service: 'other' }, BINDS_ACCOUNTS.services[0]], true],
+	])('%s', (_case, services, expected) => {
+		expect(servicesBindKeeprAccounts(services)).toBe(expected);
+	});
+});
 
 describe('an App that binds Keepr Accounts', () => {
 	it('is refused when its Release holds a Keepr Accounts change the deployed Keepr Accounts lacks', () => {
