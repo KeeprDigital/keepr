@@ -5,8 +5,11 @@ import { MIN_PASSWORD_LENGTH, newPasswordRefusal } from '~~/shared/utils/newPass
 
 /**
  * Where an Invitation's link lands. The invitee sees who invited them, to which
- * Organisation and with what, then accepts by choosing a name and a password. The
- * id is in the fragment, so no request line carries it.
+ * Organisation and with what, or why the Invitation is closed. They decline, or
+ * accept: with no User, by choosing a name and a password; with one, signed in
+ * with the invited address. The id is in the fragment, so no request line
+ * carries it; the way to sign in and back is a navigation inside the page, so no
+ * request line carries it either.
  */
 
 interface Offer {
@@ -18,9 +21,27 @@ interface Offer {
 	hasUser: boolean;
 }
 
+interface SignedIn {
+	user: { email: string };
+}
+
+/** Why an Invitation is closed, as the server answers it. */
+const CLOSED: Record<string, string> = {
+	INVITATION_EXPIRED: 'This invitation has expired. Ask whoever invited you for a new one.',
+	INVITATION_CANCELLED:
+		'This invitation has been cancelled, or replaced by a newer one. Check your email for the latest, or ask whoever invited you.',
+	INVITATION_ACCEPTED: 'This invitation has already been accepted. Sign in to use Keepr.',
+	INVITATION_DECLINED: 'This invitation has been declined.',
+};
+const NOT_FOUND = 'There is no such invitation. Check the link, or ask whoever invited you.';
+
 const invitationId = ref<string | null>();
 /** The offer, `null` once the server said there is none open. */
 const offer = ref<Offer | null>();
+/** Why there is no offer, as the server's code. */
+const closed = ref<string | null>(null);
+/** Who is signed in, `null` once known that nobody is; read only for an address with a User. */
+const signedIn = ref<SignedIn | null>();
 
 onMounted(async () => {
 	invitationId.value = new URLSearchParams(window.location.hash.slice(1)).get('id') || null;
@@ -30,10 +51,16 @@ onMounted(async () => {
 			method: 'POST',
 			body: { invitationId: invitationId.value },
 		});
-	} catch {
+	} catch (failure) {
+		closed.value = (failure as AuthFailure).data?.code ?? null;
 		offer.value = null;
+		return;
 	}
+	if (offer.value.hasUser)
+		signedIn.value = (await $fetch<SignedIn | null>('/api/auth/get-session')) || null;
 });
+
+const closedReason = computed(() => (closed.value && CLOSED[closed.value]) || NOT_FOUND);
 
 const apps = computed(() =>
 	Object.entries(offer.value?.appRoles ?? {}).map(([app, role]) => ({
@@ -43,53 +70,115 @@ const apps = computed(() =>
 	})),
 );
 
+/** Signs in and comes back here, the id still in the fragment. */
+const signInLink = computed(
+	() => `/sign-in?returnTo=${encodeURIComponent(`/invitation#id=${invitationId.value ?? ''}`)}`,
+);
+const signedInAsInvitee = computed(
+	() =>
+		!!signedIn.value &&
+		!!offer.value &&
+		signedIn.value.user.email.toLowerCase() === offer.value.email.toLowerCase(),
+);
+
 const form = reactive({ name: '', password: '', confirmation: '' });
 const submitting = ref(false);
 const refusal = ref<string | null>(null);
+const declined = ref(false);
 
 const mismatched = computed(
 	() => form.confirmation.length > 0 && form.password !== form.confirmation,
 );
 
 function refusalOf(failure: AuthFailure): string {
-	switch (failure.data?.code) {
+	const code = failure.data?.code;
+	if (code && CLOSED[code]) return CLOSED[code];
+	switch (code) {
 		case 'INVITATION_NOT_FOUND':
 			return 'This invitation is no longer open. Ask whoever invited you for a new one.';
 		case 'USER_ALREADY_EXISTS':
 			return 'This address already has a Keepr account. Sign in to accept.';
+		case 'YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION':
+			return 'This invitation is for another address. Sign in with that address to accept.';
 		case 'NAME_REQUIRED':
 			return 'Enter your name.';
 	}
-	return newPasswordRefusal(failure) ?? 'Accepting failed. Try again.';
+	return newPasswordRefusal(failure) ?? 'That did not work. Try again.';
 }
 
-async function accept() {
-	if (submitting.value || !invitationId.value || mismatched.value) return;
+/** Sends one answer at a time, and says why it was refused. */
+async function answer(send: () => Promise<unknown>): Promise<boolean> {
+	if (submitting.value || !invitationId.value) return false;
 	submitting.value = true;
 	refusal.value = null;
 	try {
-		await $fetch('/api/invitation/accept', {
-			method: 'POST',
-			body: { invitationId: invitationId.value, name: form.name, password: form.password },
-		});
+		await send();
+		return true;
 	} catch (failure) {
 		refusal.value = refusalOf(failure as AuthFailure);
-		return;
+		return false;
 	} finally {
 		submitting.value = false;
 	}
-	await navigateTo('/');
+}
+
+async function acceptAsNewUser() {
+	if (mismatched.value) return;
+	const accepted = await answer(
+		async () =>
+			await $fetch('/api/invitation/accept', {
+				method: 'POST',
+				body: { invitationId: invitationId.value, name: form.name, password: form.password },
+			}),
+	);
+	if (accepted) await navigateTo('/');
+}
+
+async function acceptSignedIn() {
+	const accepted = await answer(
+		async () =>
+			await $fetch('/api/auth/organization/accept-invitation', {
+				method: 'POST',
+				body: { invitationId: invitationId.value },
+			}),
+	);
+	if (accepted) await navigateTo('/');
+}
+
+async function decline() {
+	declined.value = await answer(
+		async () =>
+			await $fetch('/api/invitation/decline', {
+				method: 'POST',
+				body: { invitationId: invitationId.value },
+			}),
+	);
+}
+
+async function signOut() {
+	await answer(async () => await $fetch('/api/auth/sign-out', { method: 'POST', body: {} }));
+	signedIn.value = null;
 }
 </script>
 
 <template>
 	<div class="flex min-h-screen items-center justify-center p-4">
 		<UCard class="w-full max-w-sm">
-			<div v-if="invitationId === null || offer === null" data-no-offer class="flex flex-col gap-4">
+			<div
+				v-if="invitationId === null || offer === null"
+				data-no-offer
+				:data-closed="closed ?? undefined"
+				class="flex flex-col gap-4"
+			>
 				<h1 class="text-lg font-semibold">This invitation is not open</h1>
+				<p class="text-sm text-muted">{{ closedReason }}</p>
+			</div>
+
+			<div v-else-if="declined" data-declined class="flex flex-col gap-4">
+				<h1 class="text-lg font-semibold">Invitation declined</h1>
 				<p class="text-sm text-muted">
-					It may have expired, been cancelled or been accepted already. Ask whoever invited you for
-					a new one.
+					You will not join {{ offer?.organisationName }}. If that was a mistake, ask whoever
+					invited you for a new invitation.
 				</p>
 			</div>
 
@@ -107,22 +196,45 @@ async function accept() {
 					</ul>
 				</div>
 
-				<div v-if="offer.hasUser" data-has-user class="flex flex-col gap-4">
-					<p class="text-sm">This address already has a Keepr account. Sign in to accept.</p>
-					<UButton to="/sign-in" color="primary" block>Sign in</UButton>
-				</div>
+				<UAlert
+					v-if="refusal"
+					data-refusal
+					color="error"
+					variant="subtle"
+					icon="i-lucide-triangle-alert"
+					:description="refusal"
+				/>
 
-				<UForm v-else :state="form" @submit="accept">
+				<template v-if="offer.hasUser">
+					<div v-if="signedIn === null" data-has-user class="flex flex-col gap-4">
+						<p class="text-sm">
+							This address already has a Keepr account. Sign in with it to accept.
+						</p>
+						<UButton data-sign-in :to="signInLink" color="primary" block>Sign in</UButton>
+					</div>
+
+					<UButton
+						v-else-if="signedInAsInvitee"
+						data-accept
+						color="primary"
+						block
+						:loading="submitting"
+						@click="acceptSignedIn"
+					>
+						Accept and join
+					</UButton>
+
+					<div v-else-if="signedIn" data-other-user class="flex flex-col gap-4">
+						<p class="text-sm">
+							You are signed in as {{ signedIn.user.email }}, but this invitation is for
+							{{ offer.email }}. Sign out, then sign in with that address to accept.
+						</p>
+						<UButton color="neutral" variant="outline" block @click="signOut">Sign out</UButton>
+					</div>
+				</template>
+
+				<UForm v-else :state="form" @submit="acceptAsNewUser">
 					<div class="flex flex-col gap-4">
-						<UAlert
-							v-if="refusal"
-							data-refusal
-							color="error"
-							variant="subtle"
-							icon="i-lucide-triangle-alert"
-							:description="refusal"
-						/>
-
 						<UFormField name="name" label="Your name">
 							<UInput
 								v-model="form.name"
@@ -171,6 +283,17 @@ async function accept() {
 						</UButton>
 					</div>
 				</UForm>
+
+				<UButton
+					data-decline
+					color="neutral"
+					variant="ghost"
+					block
+					:disabled="submitting"
+					@click="decline"
+				>
+					Decline
+				</UButton>
 			</div>
 		</UCard>
 	</div>

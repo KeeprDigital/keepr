@@ -1,8 +1,10 @@
+import type { IdentityDatabase } from '~~/server/db';
 import type { KeeprAuth } from './auth';
 import type { AppRoles } from './appAccess';
 import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 import { offeredAppRoles } from './appAccess';
 import { browserHeaders } from './browserHeaders';
+import { organisationRecords } from './organisations';
 import { KeeprRefusal, refusalFromAuth } from './refusal';
 
 /**
@@ -35,11 +37,19 @@ export interface InvitationOffer {
 }
 
 const notFound = () =>
-	new KeeprRefusal(404, 'INVITATION_NOT_FOUND', 'This invitation is not open to accept.');
+	new KeeprRefusal(404, 'INVITATION_NOT_FOUND', 'There is no such invitation.');
+
+/** Why an Invitation that was once open no longer is, by the library's status. */
+const CLOSED: Record<string, [code: string, message: string]> = {
+	canceled: ['INVITATION_CANCELLED', 'This invitation has been cancelled.'],
+	accepted: ['INVITATION_ACCEPTED', 'This invitation has already been accepted.'],
+	rejected: ['INVITATION_DECLINED', 'This invitation has been declined.'],
+};
 
 /**
- * The pending, unexpired Invitation `invitationId` names. Read directly: the
- * library's own read needs a Session, which an invitee has not got.
+ * The pending, unexpired Invitation `invitationId` names, or a refusal saying
+ * why it is closed: 410 with the reason, or 404 for no such Invitation. Read
+ * directly: the library's own read needs a Session, which an invitee has not got.
  */
 async function pendingInvitation(auth: KeeprAuth, invitationId: string): Promise<InvitationRow> {
 	const { adapter } = await auth.$context;
@@ -47,9 +57,48 @@ async function pendingInvitation(auth: KeeprAuth, invitationId: string): Promise
 		model: 'invitation',
 		where: [{ field: 'id', value: invitationId }],
 	});
-	if (!invitation || invitation.status !== 'pending' || invitation.expiresAt < new Date())
-		throw notFound();
+	if (!invitation) throw notFound();
+	if (invitation.status !== 'pending') {
+		const closed = CLOSED[invitation.status];
+		throw closed ? new KeeprRefusal(410, ...closed) : notFound();
+	}
+	if (invitation.expiresAt < new Date())
+		throw new KeeprRefusal(410, 'INVITATION_EXPIRED', 'This invitation has expired.');
 	return invitation;
+}
+
+/**
+ * The invitee declines from the Invitation's link, signed in or not: the link
+ * is the proof, as it is for accepting. Closes it and writes it in the Audit
+ * Record, naming the address's User when it has one.
+ */
+export async function declineInvitation(
+	auth: KeeprAuth,
+	database: IdentityDatabase,
+	invitationId: string,
+): Promise<void> {
+	const invitation = await pendingInvitation(auth, invitationId);
+	const { adapter, internalAdapter } = await auth.$context;
+	const declined = await adapter.update<InvitationRow>({
+		model: 'invitation',
+		where: [
+			{ field: 'id', value: invitationId },
+			{ field: 'status', value: 'pending' },
+		],
+		update: { status: 'rejected' },
+	});
+	if (!declined) {
+		// Answered or cancelled in between: say which.
+		await pendingInvitation(auth, invitationId);
+		throw notFound();
+	}
+	const user = await internalAdapter.findUserByEmail(invitation.email);
+	await organisationRecords(database).invitationDeclined({
+		invitationId,
+		organizationId: invitation.organizationId,
+		email: invitation.email,
+		userId: user?.user.id ?? null,
+	});
 }
 
 export async function invitationOffer(

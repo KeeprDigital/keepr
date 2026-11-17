@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import type { AuthFailure } from '~~/shared/utils/newPassword';
+import { APP_REGISTRY, isAppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
 import { MIN_PASSWORD_LENGTH, newPasswordRefusal } from '~~/shared/utils/newPassword';
 
-/** The profile: who is signed in, their name, their password and their Sessions. */
+/**
+ * The profile: who is signed in, their Organisations and the Apps they can use in
+ * each, the one they work in, their name, their password and their Sessions.
+ */
 
 interface SignedIn {
 	user: { name: string; email: string };
@@ -39,8 +43,60 @@ async function loadSessions() {
 onMounted(async () => {
 	await loadSignedIn();
 	if (!signedIn.value) return await navigateTo('/sign-in');
-	await loadSessions();
+	await Promise.all([loadSessions(), loadOrganisations()]);
 });
+
+// The Organisations, and the one worked in.
+interface ProfileOrganisation {
+	id: string;
+	name: string;
+	role: string;
+	apps: Record<string, string>;
+}
+
+interface ProfileOrganisations {
+	active: string | null;
+	organisations: ProfileOrganisation[];
+}
+
+const organisations = ref<ProfileOrganisations>({ active: null, organisations: [] });
+const switching = ref(false);
+const organisationsRefusal = ref<string | null>(null);
+
+async function loadOrganisations() {
+	organisations.value = await $fetch<ProfileOrganisations>('/api/profile/organisations');
+}
+
+const switchable = computed(() =>
+	organisations.value.organisations.map(({ id, name }) => ({ label: name, value: id })),
+);
+
+/** The App roles a User holds in an Organisation, by the App registry's names. */
+function appsIn(organisation: ProfileOrganisation) {
+	return Object.entries(organisation.apps).map(([app, role]) => ({
+		app,
+		name: isAppId(app) ? APP_REGISTRY[app].name : app,
+		role,
+	}));
+}
+
+async function workIn(organizationId: string) {
+	if (switching.value || organizationId === organisations.value.active) return;
+	switching.value = true;
+	organisationsRefusal.value = null;
+	try {
+		// Carried on the Session, so every App's next Identity Proof names it.
+		await $fetch('/api/auth/organization/set-active', {
+			method: 'POST',
+			body: { organizationId },
+		});
+	} catch {
+		organisationsRefusal.value = 'Switching organisation failed. Try again.';
+	} finally {
+		switching.value = false;
+	}
+	await loadOrganisations();
+}
 
 // The name.
 const nameForm = reactive({ name: '' });
@@ -155,6 +211,56 @@ async function signOut() {
 					Sign out
 				</UButton>
 			</div>
+
+			<UCard data-profile="organisations">
+				<div class="flex flex-col gap-4">
+					<h2 class="text-lg font-semibold">Your organisations</h2>
+					<UAlert
+						v-if="organisationsRefusal"
+						color="error"
+						variant="subtle"
+						:description="organisationsRefusal"
+					/>
+					<p v-if="organisations.organisations.length === 0" class="text-sm text-muted">
+						You do not belong to an organisation yet.
+					</p>
+					<UFormField
+						v-if="organisations.organisations.length > 1"
+						name="active"
+						label="Working in"
+						help="The organisation every Keepr App works in for you."
+					>
+						<USelect
+							data-organisation-switcher
+							:model-value="organisations.active ?? undefined"
+							:items="switchable"
+							class="w-full"
+							:disabled="switching"
+							@update:model-value="workIn($event as string)"
+						/>
+					</UFormField>
+					<ul class="flex flex-col divide-y divide-default">
+						<li
+							v-for="organisation in organisations.organisations"
+							:key="organisation.id"
+							:data-organisation="organisation.id"
+							:data-active="String(organisation.id === organisations.active)"
+							class="flex flex-col gap-1 py-3"
+						>
+							<p>
+								<strong>{{ organisation.name }}</strong>
+								<span class="text-muted"> · {{ organisation.role }}</span>
+							</p>
+							<ul v-if="appsIn(organisation).length > 0" class="text-sm text-muted">
+								<li v-for="app in appsIn(organisation)" :key="app.app" :data-app="app.app">
+									{{ app.name }}: {{ app.role }}
+								</li>
+							</ul>
+							<p v-else class="text-sm text-muted">No access to any App.</p>
+						</li>
+					</ul>
+				</div>
+			</UCard>
 
 			<UCard data-profile="name">
 				<UForm :state="nameForm" @submit="saveName">

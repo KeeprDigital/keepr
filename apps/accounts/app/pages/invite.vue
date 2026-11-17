@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { AppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
-import { APP_REGISTRY } from '@keepr/nuxt-layer/shared/utils/appRegistry';
+import { APP_REGISTRY, isAppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
 import { invitationLink } from '~~/shared/utils/invitationLink';
 
 /**
  * An Organisation owner or admin invites an email address to the Organisation
  * they are working in, with an Organisation role and an App role per App from the
  * App registry. The Invitation is emailed; its link is shown to copy as well, for
- * when the email does not arrive.
+ * when the email does not arrive. Below, the Organisation's pending Invitations,
+ * each to cancel; inviting an address again replaces its earlier one.
  */
 
 const NO_ACCESS = 'none';
@@ -38,9 +39,60 @@ const refusal = ref<string | null>(null);
 const link = ref<string | null>(null);
 const copied = ref(false);
 
+interface PendingInvitation {
+	id: string;
+	email: string;
+	role: string;
+	appRoles: Record<string, string>;
+	inviterName: string;
+	expiresAt: string;
+}
+
+/** The Organisation's pending Invitations; empty for whoever may not see them. */
+const pending = ref<PendingInvitation[]>([]);
+const cancelling = ref<string | null>(null);
+const pendingRefusal = ref<string | null>(null);
+
+async function loadPending() {
+	try {
+		pending.value = await $fetch<PendingInvitation[]>('/api/invitation/pending');
+	} catch {
+		pending.value = [];
+	}
+}
+
 onMounted(async () => {
-	if (!(await $fetch('/api/auth/get-session'))) await navigateTo('/sign-in');
+	if (!(await $fetch('/api/auth/get-session'))) return await navigateTo('/sign-in');
+	await loadPending();
 });
+
+async function cancel(invitationId: string) {
+	if (cancelling.value) return;
+	cancelling.value = invitationId;
+	pendingRefusal.value = null;
+	try {
+		await $fetch('/api/auth/organization/cancel-invitation', {
+			method: 'POST',
+			body: { invitationId },
+		});
+	} catch {
+		pendingRefusal.value = 'Cancelling that invitation failed. Try again.';
+	} finally {
+		cancelling.value = null;
+	}
+	await loadPending();
+}
+
+function offered(invitation: PendingInvitation): string {
+	const apps = Object.entries(invitation.appRoles).map(
+		([app, role]) => `${isAppId(app) ? APP_REGISTRY[app].name : app}: ${role}`,
+	);
+	return [invitation.role, ...apps].join(' · ');
+}
+
+function lapses(invitation: PendingInvitation): string {
+	return new Date(invitation.expiresAt).toLocaleDateString(undefined, { dateStyle: 'medium' });
+}
 
 function refusalOf(failure: { data?: { code?: string } }): string {
 	switch (failure.data?.code) {
@@ -73,9 +125,11 @@ async function invite() {
 		link.value = invitationLink(window.location.origin, id);
 	} catch (failure) {
 		refusal.value = refusalOf(failure as { data?: { code?: string } });
+		return;
 	} finally {
 		submitting.value = false;
 	}
+	await loadPending();
 }
 
 async function copy() {
@@ -86,7 +140,7 @@ async function copy() {
 </script>
 
 <template>
-	<div class="flex min-h-screen items-center justify-center p-4">
+	<div class="flex min-h-screen flex-col items-center justify-center gap-6 p-4">
 		<UCard class="w-full max-w-md">
 			<UForm :state="form" @submit="invite">
 				<div class="flex flex-col gap-4">
@@ -146,6 +200,43 @@ async function copy() {
 					</div>
 				</div>
 			</UForm>
+		</UCard>
+
+		<UCard v-if="pending.length > 0" data-pending class="w-full max-w-md">
+			<div class="flex flex-col gap-4">
+				<h2 class="text-lg font-semibold">Pending invitations</h2>
+				<UAlert
+					v-if="pendingRefusal"
+					color="error"
+					variant="subtle"
+					:description="pendingRefusal"
+				/>
+				<ul class="flex flex-col divide-y divide-default">
+					<li
+						v-for="invitation in pending"
+						:key="invitation.id"
+						:data-pending-invitation="invitation.id"
+						class="flex items-center justify-between gap-4 py-3"
+					>
+						<div class="min-w-0">
+							<p class="truncate">{{ invitation.email }}</p>
+							<p class="text-sm text-muted">{{ offered(invitation) }}</p>
+							<p class="text-sm text-muted">
+								Invited by {{ invitation.inviterName }} · open until {{ lapses(invitation) }}
+							</p>
+						</div>
+						<UButton
+							data-cancel
+							color="neutral"
+							variant="outline"
+							:loading="cancelling === invitation.id"
+							@click="cancel(invitation.id)"
+						>
+							Cancel
+						</UButton>
+					</li>
+				</ul>
+			</div>
 		</UCard>
 	</div>
 </template>

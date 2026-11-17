@@ -1,5 +1,6 @@
 import type { OrganisationRole, TestAccounts } from '~~/test/helpers/keeprAccounts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { pendingInvitations } from '~~/server/utils/pendingInvitations';
 import { createTestAccounts, fakeBreachedPasswordService } from '~~/test/helpers/keeprAccounts';
 
 // An owner or admin invites an email address to their Organisation with an
@@ -36,7 +37,12 @@ async function invite(
 
 async function invitationRow(id: string) {
 	const ctx = await accounts.auth.$context;
-	return await ctx.adapter.findOne<{ role: string; appRoles: string | null; expiresAt: Date }>({
+	return await ctx.adapter.findOne<{
+		role: string;
+		status: string;
+		appRoles: string | null;
+		expiresAt: Date;
+	}>({
 		model: 'invitation',
 		where: [{ field: 'id', value: id }],
 	});
@@ -165,5 +171,139 @@ describe('the limits on an Organisation', () => {
 			});
 
 		expect((await invite(cookie, { email: 'invitee-100@example.com' })).status).toBe(200);
+	});
+});
+
+async function cookieOf(role: OrganisationRole) {
+	if (role === 'owner') return await accounts.signIn(OWNER);
+	const email = `${role}@keepr.digital`;
+	const { id } = await accounts.createUser(email);
+	await accounts.addMember(id, 'keepr', { role });
+	return await accounts.signIn(email);
+}
+
+async function invitationIdOf(response: Response) {
+	return ((await response.json()) as { id: string }).id;
+}
+
+async function cancel(cookie: string, invitationId: string) {
+	return await accounts.send('/organization/cancel-invitation', {
+		body: { invitationId },
+		headers: { cookie },
+	});
+}
+
+async function pending(cookie: string) {
+	return await pendingInvitations(accounts.auth, new Headers({ cookie }));
+}
+
+async function ownerId() {
+	return (await (await accounts.auth.$context).internalAdapter.findUserByEmail(OWNER))!.user.id;
+}
+
+async function cancellations() {
+	return (await accounts.auditRecord()).filter((row) => row.action === 'invitation.cancelled');
+}
+
+describe('the pending Invitations', () => {
+	it('are listed with who and what each offers, and none that has closed', async () => {
+		vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-17T10:00:00Z') });
+		await invite(await accounts.signIn(OWNER), { email: 'lapsed@example.com' });
+		vi.setSystemTime(new Date('2026-11-25T10:00:00Z'));
+		const cookie = await accounts.signIn(OWNER);
+		await cancel(cookie, await invitationIdOf(await invite(cookie, { email: 'gone@example.com' })));
+		const id = await invitationIdOf(
+			await invite(cookie, { role: 'admin', appRoles: JSON.stringify({ stream: 'member' }) }),
+		);
+
+		expect(await pending(cookie)).toEqual([
+			{
+				id,
+				email: INVITEE,
+				role: 'admin',
+				appRoles: { stream: 'member' },
+				inviterName: 'owner',
+				expiresAt: '2026-12-02T10:00:00.000Z',
+			},
+		]);
+	});
+
+	it('are listed to an admin, but not an owner’s offer to an owner', async () => {
+		const cookie = await cookieOf('admin');
+		const owners = await accounts.signIn(OWNER);
+		await invite(owners, { email: 'next-owner@example.com', role: 'owner' });
+		await invite(owners, {});
+
+		expect((await pending(cookie)).map(({ email }) => email)).toEqual([INVITEE]);
+	});
+
+	it('are refused to a member', async () => {
+		const cookie = await cookieOf('member');
+
+		await expect(pending(cookie)).rejects.toMatchObject({ statusCode: 403 });
+	});
+});
+
+describe('cancelling an Invitation', () => {
+	it.each<[OrganisationRole, number]>([
+		['admin', 200],
+		['member', 403],
+	])('by an %s answers %i', async (role, status) => {
+		const cookie = await cookieOf(role);
+		const id = await invitationIdOf(await invite(await accounts.signIn(OWNER), {}));
+
+		const response = await cancel(cookie, id);
+
+		expect(response.status).toBe(status);
+		expect((await invitationRow(id))!.status).toBe(status === 200 ? 'canceled' : 'pending');
+	});
+
+	it('is in the Audit Record, with who cancelled which', async () => {
+		const cookie = await accounts.signIn(OWNER);
+		const id = await invitationIdOf(await invite(cookie, {}));
+
+		await cancel(cookie, id);
+
+		const cancelled = await cancellations();
+		expect(cancelled).toEqual([
+			expect.objectContaining({ actorUserId: await ownerId(), organizationId: keepr.id }),
+		]);
+		expect(JSON.parse(cancelled[0]!.detail!)).toEqual({ invitationId: id, email: INVITEE });
+	});
+
+	it('is refused once it has been accepted, leaving it accepted', async () => {
+		const cookie = await accounts.signIn(OWNER);
+		await accounts.createUser(INVITEE);
+		const id = await invitationIdOf(await invite(cookie, {}));
+		await accounts.send('/organization/accept-invitation', {
+			body: { invitationId: id },
+			headers: { cookie: await accounts.signIn(INVITEE) },
+		});
+
+		const response = await cancel(cookie, id);
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({ code: 'INVITATION_NOT_PENDING' });
+		expect((await invitationRow(id))!.status).toBe('accepted');
+		expect(await cancellations()).toEqual([]);
+	});
+});
+
+describe('inviting an address again', () => {
+	it('replaces the earlier Invitation, recorded as cancelled by the newer', async () => {
+		const cookie = await accounts.signIn(OWNER);
+		const earlier = await invitationIdOf(await invite(cookie, { role: 'member' }));
+
+		const later = await invitationIdOf(await invite(cookie, { role: 'admin' }));
+
+		expect((await invitationRow(earlier))!.status).toBe('canceled');
+		expect((await pending(cookie)).map(({ id }) => id)).toEqual([later]);
+		const cancelled = await cancellations();
+		expect(cancelled).toEqual([expect.objectContaining({ actorUserId: await ownerId() })]);
+		expect(JSON.parse(cancelled[0]!.detail!)).toEqual({
+			invitationId: earlier,
+			email: INVITEE,
+			replacedBy: later,
+		});
 	});
 });

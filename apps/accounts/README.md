@@ -16,12 +16,14 @@ Its words are the root `GLOSSARY.md`'s; `RULES.md` says what it makes true. The 
 | `server/email` | The email seam (`sender.ts`): Cloudflare's email service (`cloudflare.ts`), the recorder tests and the dev server use instead (`recorder.ts`), and what each email says (`messages.ts`). |
 | `server/utils/email.ts` | Which sender a running server uses, and the work it finishes after answering. |
 | `server/utils/organisations.ts` | What Keepr Accounts adds to the organisation add-on: the Invitation email, App roles checked against the App registry and copied into App access (`appAccess.ts`), and the Audit Record (`auditRecord.ts`). |
-| `server/utils/invitationAcceptance.ts` | An invitee with no User accepting: the offer they see, and creating their User. Served by `server/api/invitation`. |
+| `server/utils/invitationAcceptance.ts` | The invitee's side: the offer they see or why it is closed, accepting with no User yet, and declining. Served by `server/api/invitation`. |
+| `server/utils/pendingInvitations.ts` | An Organisation's pending Invitations, as its owners and admins see them. Served by `server/api/invitation/pending.get.ts`. |
+| `server/utils/profileOrganisations.ts` | A User's Organisations and App access, and the one their Session works in. Served by `server/api/profile`. |
 | `server/utils/firstAdministrator.ts` | Claiming the first Keepr Administrator. Served by `server/api/first-administrator`; the claim is written by `scripts/claim-first-administrator.mjs`. |
 | `server/utils/refusal.ts` | How Keepr Accounts' own routes refuse, in the shape Better Auth's do. |
 | `shared/utils/returnAddress.ts` | Where a User may be sent after signing in. |
 | `shared/utils/newPassword.ts` | The length a new password must be, and what a refused one is told. |
-| `app/pages` | Signing in (`/sign-in?returnTo=…`), the profile (`/`), resetting a password (`/forgot-password`, then the emailed link to `/reset-password`), inviting (`/invite`), accepting an Invitation (`/invitation`), and claiming the first Keepr Administrator (`/first-administrator`). |
+| `app/pages` | Signing in (`/sign-in?returnTo=…`), the profile (`/`), resetting a password (`/forgot-password`, then the emailed link to `/reset-password`), inviting and the pending Invitations (`/invite`), accepting or declining an Invitation (`/invitation`), and claiming the first Keepr Administrator (`/first-administrator`). |
 | `test/unit` | The server, request in and response out, on SQLite with the real migrations (`test/helpers/keeprAccounts.ts`). Also the shared layer's identity function against this real minting (`requestIdentity.sqlite.test.ts`), since the layer cannot import an app. |
 | `test/nuxt` | One wiring test per page. |
 

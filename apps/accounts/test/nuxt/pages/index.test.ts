@@ -36,8 +36,26 @@ route('/update-user', 'POST', () => ({ status: true }));
 route('/change-password', 'POST', () => ({ token: null }));
 route('/revoke-session', 'POST', () => ({ status: true }));
 route('/sign-out', 'POST', () => ({ success: true }));
+route('/organization/set-active', 'POST', () => {
+	const { organizationId } = received['/organization/set-active']!.at(-1) as {
+		organizationId: string;
+	};
+	organisations = { ...organisations, active: organizationId };
+	return { id: organizationId };
+});
+registerEndpoint('/api/profile/organisations', { method: 'GET', handler: () => organisations });
+
+const KEEPR = {
+	id: 'keepr',
+	name: 'Keepr',
+	role: 'owner',
+	apps: { stream: 'admin', score: 'member' },
+};
+const CLUB = { id: 'club', name: 'The Club', role: 'member', apps: {} };
+let organisations: { active: string | null; organisations: unknown[] };
 
 beforeEach(() => {
+	organisations = { active: 'keepr', organisations: [KEEPR] };
 	for (const path of Object.keys(received)) delete received[path];
 	session = {
 		user: { name: 'Ada', email: 'ada@keepr.digital' },
@@ -102,6 +120,33 @@ describe('the profile', () => {
 
 		await expect.poll(() => rows().length).toBe(1);
 		expect(received['/revoke-session']).toEqual([{ token: PHONE }]);
+	});
+
+	it('lists the Organisations with the Apps usable in each, and no switcher for one', async () => {
+		const page = await profile();
+		const rows = page.findAll('[data-profile="organisations"] [data-organisation]');
+
+		expect(rows.map((row) => row.attributes('data-organisation'))).toEqual(['keepr']);
+		expect(rows[0]!.text()).toContain('owner');
+		expect(rows[0]!.text()).toContain('Stream Keepr: admin');
+		expect(rows[0]!.text()).toContain('Score Keepr: member');
+		expect(page.find('[data-organisation-switcher]').exists()).toBe(false);
+	});
+
+	it('switches the Organisation worked in, for a User in several', async () => {
+		organisations = { active: 'keepr', organisations: [KEEPR, CLUB] };
+		const page = await profile();
+		const active = () =>
+			page
+				.findAll('[data-organisation]')
+				.filter((row) => row.attributes('data-active') === 'true')
+				.map((row) => row.attributes('data-organisation'));
+		expect(active()).toEqual(['keepr']);
+
+		await page.get('select[data-organisation-switcher]').setValue('club');
+
+		await expect.poll(active).toEqual(['club']);
+		expect(received['/organization/set-active']).toEqual([{ organizationId: 'club' }]);
 	});
 
 	it('signs out', async () => {
