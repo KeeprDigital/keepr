@@ -108,7 +108,7 @@ catalogs:
   # Build, types, lint and format
   tooling:
     typescript: 6.0.3
-    vue-tsc: 3.3.14
+    vue-tsc: 3.3.13
     '@types/node': 26.6.6
     esbuild: 0.28.2
     oxlint: 1.93.0
