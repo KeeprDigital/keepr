@@ -1,8 +1,10 @@
 import type { IdentityDatabase } from '~~/server/db';
+import type { AuthOptionsInput } from './authOptions';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db, schema } from '~~/server/db';
 import { authOptions, sharedCookieDomainFor } from './authOptions';
+import { runAfterResponse, serverEmailSender } from './email';
 import { readConfiguredSecret } from '@keepr/nuxt-layer/server/utils/configuredSecret';
 import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
 
@@ -16,14 +18,13 @@ const SECRET_SETTING = 'NUXT_BETTER_AUTH_SECRET';
 export function createKeeprAuth({
 	database,
 	secret,
-	sharedCookieDomain,
-}: {
+	...options
+}: AuthOptionsInput & {
 	database: IdentityDatabase;
 	secret: string;
-	sharedCookieDomain: string | undefined;
 }) {
 	return betterAuth({
-		...authOptions({ sharedCookieDomain }),
+		...authOptions(options),
 		database: drizzleAdapter(database, {
 			provider: 'sqlite',
 			schema,
@@ -55,7 +56,13 @@ export function serverAuth(host: string): KeeprAuth {
 				SECRET_SETTING,
 				'is not configured, so nobody can sign in to Keepr Accounts',
 			);
-		auth = createKeeprAuth({ database: db(), secret, sharedCookieDomain });
+		auth = createKeeprAuth({
+			database: db(),
+			secret,
+			sharedCookieDomain,
+			email: serverEmailSender(),
+			afterResponse: runAfterResponse,
+		});
 		instances.set(sharedCookieDomain, auth);
 	}
 	return auth;

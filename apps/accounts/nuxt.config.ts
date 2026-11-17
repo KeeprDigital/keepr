@@ -14,6 +14,11 @@ export default defineNuxtConfig({
 	},
 
 	nitro: {
+		experimental: {
+			// `useEvent()` names the request email is sent from, so the Worker keeps
+			// sending after the answer (`server/utils/email.ts`).
+			asyncContext: true,
+		},
 		cloudflare: {
 			wrangler: {
 				name: workerName,

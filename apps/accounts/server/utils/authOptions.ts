@@ -1,5 +1,8 @@
 import type { BetterAuthOptions } from 'better-auth';
+import type { EmailSender } from '~~/server/email/sender';
 import { admin, haveIBeenPwned, jwt, organization } from 'better-auth/plugins';
+import { passwordResetEmail } from '~~/server/email/messages';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 
 /**
  * Keepr Accounts' Better Auth configuration, everything but the database and the
@@ -27,6 +30,14 @@ export const IDENTITY_PROOF_AUDIENCE = 'https://keepr.digital';
  */
 export const SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7;
 export const SESSION_UPDATE_AGE_SECONDS = 60 * 60 * 24;
+
+/** How long an emailed reset link works: one hour, and once. */
+export const RESET_LINK_EXPIRES_IN_SECONDS = 60 * 60;
+
+/** Keepr Accounts' page a reset link opens, its token in the fragment so no server logs it. */
+export function resetPasswordLink(origin: string, token: string): string {
+	return `${origin}/reset-password#token=${encodeURIComponent(token)}`;
+}
 
 /** What a disabled User is told when they try to sign in. */
 export const DISABLED_USER_MESSAGE =
@@ -84,13 +95,37 @@ function httpPaths(plugin: { endpoints: Record<string, unknown> }): string[] {
  */
 export const CLOSED_PATHS = [...httpPaths(adminPlugin), ...httpPaths(jwtPlugin)];
 
-export function authOptions({ sharedCookieDomain }: { sharedCookieDomain: string | undefined }) {
+export interface AuthOptionsInput {
+	sharedCookieDomain: string | undefined;
+	/** Where the email a request causes is sent. */
+	email: EmailSender;
+	/**
+	 * Takes work a response must not wait for, sending email above all, and keeps
+	 * it running after the answer. Without one, the response waits for it.
+	 */
+	afterResponse?: (work: Promise<unknown>) => void;
+}
+
+export function authOptions({ sharedCookieDomain, email, afterResponse }: AuthOptionsInput) {
 	return {
 		emailAndPassword: {
 			enabled: true,
 			// A User arrives by Invitation or by the first-administrator claim only.
 			disableSignUp: true,
+			minPasswordLength: MIN_PASSWORD_LENGTH,
+			maxPasswordLength: MAX_PASSWORD_LENGTH,
+			resetPasswordTokenExpiresIn: RESET_LINK_EXPIRES_IN_SECONDS,
 			revokeSessionsOnPasswordReset: true,
+			// Handed to `afterResponse`, so how long sending takes cannot tell a caller
+			// whether the address has a User.
+			sendResetPassword: async ({ user, url, token }) =>
+				await email.send(
+					passwordResetEmail({
+						to: user.email,
+						name: user.name,
+						link: resetPasswordLink(new URL(url).origin, token),
+					}),
+				),
 		},
 		session: {
 			expiresIn: SESSION_EXPIRES_IN_SECONDS,
@@ -98,6 +133,10 @@ export function authOptions({ sharedCookieDomain }: { sharedCookieDomain: string
 			// Off, so signing out or disabling a User takes effect here at once: every
 			// read of a Session goes to the database.
 			cookieCache: { enabled: false },
+			// Off. The library's own freshness check would close a User's list of their
+			// Sessions a day after they signed in; how recent a sign-in a sensitive action
+			// needs is Keepr Accounts' own check (#1228 § Sessions and cookies).
+			freshAge: 0,
 		},
 		plugins: [
 			adminPlugin,
@@ -128,6 +167,7 @@ export function authOptions({ sharedCookieDomain }: { sharedCookieDomain: string
 			protocol: 'auto',
 		},
 		advanced: {
+			...(afterResponse && { backgroundTasks: { handler: afterResponse } }),
 			// Unstated, the check is off whenever `NODE_ENV` is `test` (ADR-0012).
 			disableOriginCheck: false,
 			// Written by Cloudflare on every request, after anything the caller sent

@@ -1,8 +1,11 @@
 import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
+import type { EmailRecorder } from '~~/server/email/recorder';
+import type { EmailSender } from '~~/server/email/sender';
 import type { KeeprAuth } from '~~/server/utils/auth';
 import { createHash } from 'node:crypto';
 import { vi } from 'vitest';
 import { identityDatabase } from '~~/server/db';
+import { createEmailRecorder } from '~~/server/email/recorder';
 import { createKeeprAuth } from '~~/server/utils/auth';
 import { sharedCookieDomainFor } from '~~/server/utils/authOptions';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
@@ -18,6 +21,10 @@ export const PASSWORD = 'a-long-enough-password';
 export interface TestAccounts {
 	auth: KeeprAuth;
 	harness: SqliteD1Harness;
+	/** Every email Keepr Accounts has sent, unless the test handed it a sender of its own. */
+	email: EmailRecorder;
+	/** Settles the work requests left running after their responses, sending email among it. */
+	afterResponses: () => Promise<void>;
 	/** Sends a request to Keepr Accounts' `/api/auth` routes, as a browser on `host` would. */
 	send: (
 		path: string,
@@ -40,14 +47,18 @@ export interface TestAccounts {
  * unless handed one: two instances over one stand for two Worker isolates.
  */
 export async function createTestAccounts(
-	options: { host?: string; harness?: SqliteD1Harness } = {},
+	options: { host?: string; harness?: SqliteD1Harness; email?: EmailSender } = {},
 ): Promise<TestAccounts> {
 	const host = options.host ?? LOCAL_HOST;
 	const harness = options.harness ?? (await createSqliteD1Harness());
+	const email = createEmailRecorder();
+	const running: Promise<unknown>[] = [];
 	const auth = createKeeprAuth({
 		database: identityDatabase(harness.database),
 		secret: 'a-throwaway-secret-for-the-unit-suite-0123456789',
 		sharedCookieDomain: sharedCookieDomainFor(host),
+		email: options.email ?? email,
+		afterResponse: (work) => running.push(work),
 	});
 
 	const send: TestAccounts['send'] = async (path, init = {}) => {
@@ -71,6 +82,10 @@ export async function createTestAccounts(
 	return {
 		auth,
 		harness,
+		email,
+		async afterResponses() {
+			await Promise.all(running.splice(0));
+		},
 		send,
 		async createUser(email, extra = {}) {
 			const { user } = await auth.api.createUser({
@@ -128,5 +143,15 @@ export function fakeBreachedPasswordService(breached: readonly string[] = []) {
 			.filter((hash) => hash.startsWith(prefix))
 			.map((hash) => `${hash.slice(5)}:42`);
 		return new Response(`${lines.join('\r\n')}\r\n`, { status: 200 });
+	});
+}
+
+/** The breached-password service, unreachable: it answers every check with a 503. */
+export function fakeBreachedPasswordServiceDown() {
+	vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
+		const url = String(input instanceof Request ? input.url : input);
+		if (!url.startsWith('https://api.pwnedpasswords.com/'))
+			throw new Error(`No request leaves the unit suite: ${url}`);
+		return new Response('Service Unavailable', { status: 503 });
 	});
 }

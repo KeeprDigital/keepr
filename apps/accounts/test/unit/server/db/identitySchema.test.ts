@@ -2,6 +2,7 @@ import { getAuthTables } from 'better-auth/db';
 import { getTableConfig } from 'drizzle-orm/sqlite-core';
 import { describe, expect, it } from 'vitest';
 import * as schema from '~~/server/db/schema';
+import { createEmailRecorder } from '~~/server/email/recorder';
 import { authOptions } from '~~/server/utils/authOptions';
 
 /**
@@ -13,7 +14,9 @@ import { authOptions } from '~~/server/utils/authOptions';
  * library's field name; the SQL name underneath is snake_case.
  */
 
-const tables = getAuthTables(authOptions({ sharedCookieDomain: undefined }));
+const tables = getAuthTables(
+	authOptions({ sharedCookieDomain: undefined, email: createEmailRecorder() }),
+);
 
 function snakeCase(name: string): string {
 	return name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);

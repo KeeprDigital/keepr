@@ -23,6 +23,21 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - A write to Better Auth's routes is admitted only from a page of Keepr Accounts itself: another origin, an App's included, is refused 403. (ADR-0112)
 - A Session records the client address Cloudflare vouches for, never a forwarded one the caller wrote. (ADR-0012)
 
+- A User's own Sessions are listed on the profile with no recent sign-in asked: the library's freshness check is off, and how recent a sign-in a sensitive action needs is Keepr Accounts' own check. A User ends any of their Sessions there; another User's they cannot. (#1228 § Sessions and cookies)
+
+## Password
+
+- A new password has 8 to 128 characters and is not known from a breach, on every path that sets one: a password reset and a change on the profile. While the breach check cannot be made, no new password is set: the request answers 500. (#1228 § Passwords)
+- A User asks for a password reset at `/forgot-password`. A request for an address with no User answers exactly as one for a real User's, and emails nobody. (#1228 § Email)
+- The reset link emailed opens `/reset-password`, its token in the fragment so no request carries it. It works once, for an hour, and setting a password with it ends every Session the User has. (#1228 § Passwords)
+- Changing the password on the profile asks for the current one, and ends the User's other Sessions. (#1228 § Passwords)
+
+## Email
+
+- Every email is from `Keepr <accounts@keepr.digital>`, sent through Cloudflare's email service bound as `EMAIL`, which may send as no other address. Without the binding a send fails, naming it. (#1228 § Email)
+- Nothing local sends mail. The dev server writes each message to `apps/accounts/.data/email` and logs where; `wrangler dev` simulates the binding; tests record it. (#1228 § Email)
+- No response waits for an email: the Worker sends it after answering, so how long a request takes does not tell whether an address has a User. (#1228 § Email)
+
 ## Return Address
 
 - A User signs in at `/sign-in`, and is sent afterwards to the Return Address named by `?returnTo=` when it is accepted, and to Keepr Accounts' home otherwise, told that the address was outside Keepr. (ADR-0112)
