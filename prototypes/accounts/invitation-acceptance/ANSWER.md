@@ -1,6 +1,7 @@
 # Spike 3: Invitation acceptance with sign-up closed (#1256)
 
-Throwaway. Kept as a primary source; not linted, run by CI, or merged.
+Throwaway. Kept on this branch as a primary source; never merged, not part of
+any gate. Findings, not decisions: the build's decisions are its ADRs.
 
 ## Answer: it works
 
@@ -9,7 +10,7 @@ itself (email verified), signs them in, and accepts the Invitation through the
 organization plugin, end to end, using only Better Auth 1.7.25's own server
 calls. Run it: `node prototypes/accounts/invitation-acceptance/spike.ts` from
 the repository root (memory adapter; only the breached-password service is
-faked). 26 checks, all pass.
+faked). 26 checks, all pass, each an assertion.
 
 ## The server calls, in order (new invitee: name + password)
 
@@ -32,11 +33,11 @@ faked). 26 checks, all pass.
    the Session's active Organisation to it.
 7. **Copy the per-App roles** from the Invitation into App access, keyed by the
    new `member.id` from step 6's response.
-8. **Return step 5's `set-cookie`** to the browser (step 6 sets none: no cookie cache).
+8. **Return step 5's `set-cookie`** to the browser (asserted: step 6 sets none, as there is no cookie cache).
 
 **An existing User** signs in normally, then step 6 with their cookie, then step 7.
 
-## Configuration used
+## Configuration found to work
 
 ```ts
 emailAndPassword: { enabled: true, disableSignUp: true, minPasswordLength: 12 },
@@ -73,7 +74,7 @@ string, e.g. `{"stream":"admin","score":"member"}`).
 | Behaviour | Result |
 |---|---|
 | sign-up closed | 400 `EMAIL_PASSWORD_SIGN_UP_DISABLED` |
-| `allowUserToCreateOrganization: false` | `FORBIDDEN YOU_ARE_NOT_ALLOWED_TO_CREATE_A_NEW_ORGANIZATION`; server call with `userId` still creates |
+| `allowUserToCreateOrganization: false` | a signed-in User, an owner even, gets `FORBIDDEN YOU_ARE_NOT_ALLOWED_TO_CREATE_A_NEW_ORGANIZATION`; a server call with `userId` and no headers still creates (how a Keepr Administrator's route would) |
 | re-invite same address (`cancelPendingInvitationsOnReInvite`) | earlier Invitation → `canceled`, new one pending |
 | Invitation life | 7 days |
 | `sendInvitationEmail` | called with the Invitation's id |
@@ -84,4 +85,4 @@ string, e.g. `{"stream":"admin","score":"member"}`).
 | admin invites an owner | `YOU_ARE_NOT_ALLOWED_TO_INVITE_USER_WITH_THIS_ROLE` (only an owner may) |
 | admin invites a member | allowed |
 | accepted Session | `activeOrganizationId` = the Invitation's Organisation |
-| email verification before accepting | not required by default (`requireEmailVerificationOnInvitation` unset); ours is verified anyway |
+| email verification before accepting | not required with `requireEmailVerificationOnInvitation` unset and default id generation; a custom `advanced.generateId` or `database.generateId` turns it on (`shouldRequireVerifiedEmailForInvitationIdAction`). Ours is verified anyway |

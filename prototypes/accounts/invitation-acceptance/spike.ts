@@ -133,7 +133,7 @@ check('sign-up over HTTP refused', (await auth.handler(new Request('http://local
 }))).status === 400, 'EMAIL_PASSWORD_SIGN_UP_DISABLED');
 
 const orgCreate = await code(auth.api.createOrganization({ body: { name: 'Mine', slug: 'mine' }, headers: ownerCookie }));
-check('ordinary User cannot create an Organisation', orgCreate !== 'ok', orgCreate);
+check('a signed-in User (an owner, even) cannot create an Organisation', orgCreate !== 'ok', orgCreate);
 
 // Invite with an Organisation role and per-App roles.
 const invite = (email: string, role: 'member' | 'admin' | 'owner', headers = ownerCookie) =>
@@ -178,7 +178,7 @@ if (!('refused' in result)) {
 	const session = await auth.api.getSession({ headers: browser });
 	check('browser cookie is a live Session', session?.user.id === result.userId);
 	check('Session active Organisation set by accept', (session?.session as { activeOrganizationId?: string }).activeOrganizationId === org!.id);
-	check('set-cookie count', true, `${result.setCookie.length}: ${result.setCookie.map((c) => c.split('=')[0]).join(', ')}`);
+	check('only sign-in sets a cookie; accept sets none', result.setCookie.length === 1 && result.setCookie[0]!.startsWith('better-auth.session_token='), result.setCookie.map((c) => c.split('=')[0]).join(', '));
 	check('replaying the accepted Invitation refused', (await acceptAsNewUser({ invitationId: inv2.id, name: 'N', password: 'a-long-enough-password' }) as Refusal).refused === 'INVITATION_NOT_FOUND');
 }
 
