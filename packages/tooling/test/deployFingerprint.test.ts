@@ -115,6 +115,13 @@ describe("fingerprinting a part (Stream Keepr's silent-video validator)", () => 
 
 		it.each([
 			[
+				'adding a staging block leaves production unchanged',
+				BASE,
+				WITH_STAGING('2'),
+				undefined,
+				'same',
+			],
+			[
 				'a staging-only edit leaves production unchanged',
 				WITH_STAGING('2'),
 				WITH_STAGING('3'),
