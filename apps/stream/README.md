@@ -623,18 +623,19 @@ released, which deploys each to staging and then, once a person approves, to
 production ([Deploy](#deploy)).
 
 Each Release's section of an app's `CHANGELOG.md`, and so its GitHub Release,
-groups its entries (ADR-0126): **Operator steps** (every major changeset: what
-the deploy needs beyond running Deploy), **Features** (`feat`), **Fixes**
-(`fix`) and **Other changes** (every other type), leaving out a heading with no
-entry. An entry is `- **<scope>:** <the changeset's summary> (#<PR>)`: the
-type, scope and PR come from the title of the PR that added the changeset,
+groups its entries by bump (ADR-0126, ADR-0127): **Operator steps** (every
+major changeset: what the deploy needs beyond running Deploy), **Features**
+(every minor), **Fixes** (a patch whose PR is a `fix`) and **Other changes**
+(every other patch), leaving out a heading with no entry. An entry is
+`- **<scope>:** <the changeset's summary> (#<PR>)`: the type, scope and PR
+come from the title of the PR that added the changeset,
 read from its squash commit by the changelog formatter
 (`packages/tooling/scripts/changelog.mjs`). Changesets core groups by bump, so
 the Version PR runs `pnpm release:version`: `changeset version`, then the same
 script, which regroups the newest section of each app's `CHANGELOG.md`. A
 changeset not yet committed, or a commit whose subject is not Conventional,
-lands in Other changes with no scope and no PR. `1.8.0` and older keep the
-format they were written in. The `v*` tags release-please made up to `v1.6.0`
+has no type, scope or PR. `1.9.0` and older keep the format they were
+written in. The `v*` tags release-please made up to `v1.6.0`
 are history; `@keepr/stream@1.6.0` names `v1.6.0`'s commit, and only
 `@keepr/stream@*` deploys. `main` is trunk; there is no `develop` branch.
 
