@@ -300,18 +300,18 @@ export function syncSecrets({ root, target, check = false, generate = [], env = 
 		title = `${target.app} in ${target.environment}`;
 	}
 
-	/** @type {Secret[]} */
+	/** @type {{ secret: Secret, warn: string }[]} */
 	const generated = [];
 	if (generate.length > 0) {
 		if (check) throw new Error('--check writes nothing, so it generates nothing.');
-		const app = /** @type {{ app: string }} */ (target).app;
+		const { app } = /** @type {{ app: string }} */ (target);
 		const refusals = [];
 		for (const name of generate) {
 			const secret = secrets.find((candidate) => candidate.name === name);
 			const plan = generation(map, app, name);
 			if (!secret) refusals.push(`${name} is not one of ${title}'s secrets`);
 			else if ('refuse' in plan) refusals.push(`${name}: ${plan.refuse}`);
-			else generated.push(secret);
+			else generated.push({ secret, warn: plan.warn });
 		}
 		if (refusals.length > 0)
 			throw new Error(`Refusing to generate: ${refusals.join('; ')}. Nothing was changed.`);
@@ -319,11 +319,8 @@ export function syncSecrets({ root, target, check = false, generate = [], env = 
 
 	log(`${title}: ${destination.label}.`);
 	const vault = onePassword({ root, env: childEnv, redactor });
-	for (const secret of generated) {
-		const plan = /** @type {{ warn: string }} */ (
-			generation(map, /** @type {any} */ (target).app, secret.name)
-		);
-		log(`Warning: ${plan.warn}.`);
+	for (const { secret, warn } of generated) {
+		log(`Warning: ${warn}.`);
 		vault.write(secret.ref, randomBytes(32).toString('base64'));
 		log(`Generated ${secret.name} into ${formatReference(secret.ref)}.`);
 	}
