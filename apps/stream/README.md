@@ -709,12 +709,23 @@ nor the Deploy workflow gives it a write.
 
 Nitro generates the deployable config at `.output/server/wrangler.json` from
 `wrangler.jsonc`, which declares every binding (D1, KV, R2, service) with its
-production ID, plus routes, cron and observability. Deploys use the
+production ID, plus routes, cron and observability, and restates each binding
+with the staging account's ID in its `env.staging` block. Deploys use the
 repo-pinned Wrangler.
 
 There is no separate staging environment: **production is the staging gate.**
 The production hostname is `https://stream.keepr.digital`, attached as a
 `custom_domain` route in `wrangler.jsonc`.
+
+A Staging Installation is configured, not yet deployed or part of a Release
+(#525). It is the same build deployed with `--env staging` to the staging
+Cloudflare account (ADR-0122): Workers `stream` and
+`stream-silent-video-validator`, as in production, on
+`https://stream.keepr-staging.digital`, attached in `env.staging`. Wrangler
+does not inherit bindings or vars into an `env` block, so a binding added at
+the top level of `wrangler.jsonc` or the validator's config is added to its
+`env.staging` too, with the staging resource's ID;
+`test/unit/build/wranglerEnvironments.test.ts` fails until it is.
 
 What is deployed is stated in this app's **deploy descriptor**, `deploy.jsonc`:
 its build scripts, its Worker's configuration, its D1 binding, its
@@ -872,7 +883,8 @@ but ships **released tags**, never `main`'s HEAD. Dispatch it from `main`
   `@keepr/stream@1.7.0` is that one. Only published Releases resolve: a `v*`
   tag, a draft, an unknown app or an app named twice refuses the whole run.
   Rollback is dispatching it with the previous tag.
-- `environment`: `production`, the only Environment yet.
+- `environment`: `production` or `staging` (Stream Keepr only, until Keepr
+  Accounts has a Staging Installation).
 - `d1_recovery_point`: must be typed `confirmed`, for every app deployed.
 - `validator`: each app's parts (Stream Keepr's validator). `auto` (default)
   deploys a part first unless its marker (`stream/production-validator`)
@@ -897,7 +909,7 @@ never runs a release's own `pnpm run deploy`. The step summary records the
 part decisions, and on failure what each marker now says.
 
 Each Environment is one **Cloudflare account** and one **GitHub environment**
-of the same name, `production`, shared by every app (ADR-0122). The GitHub
+of the same name, `production` or `staging`, shared by every app (ADR-0122). The GitHub
 environment deploys only from `main`, so a workflow on any other branch cannot
 read its secrets, and it holds that account's `CLOUDFLARE_ACCOUNT_ID` and a
 `CLOUDFLARE_API_TOKEN` that can deploy every app in it (Workers Scripts:Edit,
@@ -1145,8 +1157,9 @@ them in `wrangler.jsonc`, source control, or public runtime config.
 ### Allowed hostnames
 
 `AUTH_ALLOWED_HOSTS` in `server/utils/authOptions.ts` lists the origins Better
-Auth accepts for state-changing requests: the custom domain plus loopback on any
-port. Any other host gets 403 at sign-in. `*.workers.dev` is deliberately absent
+Auth accepts for state-changing requests: each Environment's custom domain
+(`stream.keepr.digital`, `stream.keepr-staging.digital`), since every
+Environment deploys the one build, plus loopback on any port. Any other host gets 403 at sign-in. `*.workers.dev` is deliberately absent
 (#410), because admitting the whole subdomain trusts hosts nobody here controls.
 To sign in on one, add that exact hostname and rebuild.
 
