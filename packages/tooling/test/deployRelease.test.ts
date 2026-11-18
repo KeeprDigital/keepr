@@ -9,7 +9,18 @@ const STREAM_DESCRIPTOR = {
 	app: 'stream',
 	build: ['build', 'worker:dry-run', 'worker:smoke'],
 	output: '.output',
-	worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
+	worker: {
+		source: 'wrangler.jsonc',
+		config: '.output/server/wrangler.json',
+		secrets: [
+			'NUXT_BETTER_AUTH_SECRET',
+			'NUXT_GRAPHICS_ADMIN_TOKEN',
+			'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY',
+			'NUXT_ABLY_API_KEY',
+			'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY',
+			'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION',
+		],
+	},
 	databases: [{ binding: 'DB' }],
 	environments: { production: { url: 'https://stream.keepr.digital' } },
 	parts: {
@@ -134,6 +145,24 @@ describe("reading the Release's deploy descriptor", () => {
 			'an unattended gate that is not a script name',
 			{ ...STREAM_DESCRIPTOR, gates: ['accept still-images --deployed'] },
 			/gates/,
+		],
+		[
+			'Worker secrets that are not a list',
+			{ ...STREAM_DESCRIPTOR, worker: { ...STREAM_DESCRIPTOR.worker, secrets: 'NUXT_KEY' } },
+			/worker\.secrets/,
+		],
+		[
+			'a Worker secret that is not a name',
+			{ ...STREAM_DESCRIPTOR, worker: { ...STREAM_DESCRIPTOR.worker, secrets: ['NUXT KEY'] } },
+			/worker\.secrets/,
+		],
+		[
+			"a part's secret that is not a name",
+			{
+				...STREAM_DESCRIPTOR,
+				parts: { validator: { ...STREAM_DESCRIPTOR.parts.validator, secrets: [''] } },
+			},
+			/parts\.validator\.secrets/,
 		],
 	])('refuses a descriptor with %s', (_case, descriptor, message) => {
 		expect(() => readRelease({ root: checkout(stream(descriptor)), app: 'stream' })).toThrow(

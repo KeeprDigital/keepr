@@ -105,7 +105,7 @@ export function bundlePart({ appDir, config, wranglerEnv, outDir }) {
 }
 
 /**
- * @typedef {{ config: string, container?: string }} Part
+ * @typedef {{ config: string, container?: string, secrets?: string[] }} Part
  *   paths relative to the app's directory: the part's Wrangler configuration,
  *   and its Container's Docker context when it has one
  */

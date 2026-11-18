@@ -138,14 +138,15 @@ jobs:
         with:
           name: build-${{ inputs.app }}
           path: ${{ runner.temp }}/build
-      # Places the downloaded build, decides each part against its marker,
+      # Places the downloaded build, refuses an Installation missing a required
+      # Worker secret (ADR-0128), decides each part against its marker,
       # checks deploy order, reads each D1 database's Time Travel bookmark
       # (refusing without one), deploys each part the decision deploys, then
       # migrates D1, deploys the Worker and verifies its Release identity, each
       # between its markers. The step summary records the decisions and the
       # recovery points, and on failure what each marker now says
       # (apps/stream/README.md § Recovering from a partial promotion).
-      - name: Deploy (the build, parts when decided, deploy order, D1 recovery point, migrate D1, promote, verify)
+      - name: Deploy (the build, required secrets, parts when decided, deploy order, D1 recovery point, migrate D1, promote, verify)
         env:
           # On this step alone: job-level env would also reach the install's
           # build scripts and the setup actions, which deploy nothing.

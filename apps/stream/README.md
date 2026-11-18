@@ -788,7 +788,13 @@ your `wrangler login`. In order, stopping at the first failure:
    `--artifact <dir>` deploys a downloaded `.output/` of the same Release
    instead of building it: one build is what every Environment deploys.
 
-   Then, before anything remote changes, **deploy order**
+   Then, before anything remote changes, **Worker secrets**
+   ([Worker secrets](#worker-secrets)): the deploy reads the secret names set
+   on the target Worker (`wrangler secret list`, against the built
+   configuration and the Environment's block) and stops, naming each one
+   missing and the command that sets it, unless every secret `deploy.jsonc`
+   requires is set (ADR-0128). A Worker without them passes `deploy:verify`
+   and every unattended gate while sign-in answers 503. Then **deploy order**
    ([Deploy order](#deploy-order)): a deploy that Keepr Accounts'
    Installation does not allow stops here. And the **D1 recovery point**: the
    deploy reads D1 Time Travel's current bookmark for `DB`
@@ -1019,9 +1025,10 @@ deletes them afterwards. A harness that dies mid-run names the Event it left
 behind; delete it before rerunning.
 
 1. **Pre-flight.** Nothing on air in production. Docker running. Secrets
-   present in each Installation
-   (`pnpm exec wrangler secret list --name stream`, and with `--env staging`
-   against the staging account). No leftover `workerd` (`pnpm reap`).
+   present in each Installation: each deploy refuses an Installation without
+   them, and `pnpm exec keepr-deploy check --app stream --env <environment>`
+   from the workspace root says so ahead of it, after a build, against that
+   Environment's account. No leftover `workerd` (`pnpm reap`).
 2. **Recovery point.** Each deploy reads D1 Time Travel's current bookmark
    before it changes anything, refuses without one, and records it in its
    step summary and its app marker ([Deploy](#deploy)); nothing is typed. To
@@ -1268,12 +1275,22 @@ Set these against the generated config after building:
 pnpm exec wrangler secret put <NAME> --config .output/server/wrangler.json
 ```
 
+For the Staging Installation, add `--env staging`, against the staging account.
+
 Required: `NUXT_BETTER_AUTH_SECRET`, `NUXT_GRAPHICS_ADMIN_TOKEN`,
 `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`, `NUXT_ABLY_API_KEY`,
 `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`,
 `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION`. `NUXT_ADMIN_BOOTSTRAP_TOKEN` is
 set only briefly (see [First admin](#first-admin-account)). Never put any of
 them in `wrangler.jsonc`, source control, or public runtime config.
+
+`deploy.jsonc` lists the required ones as `worker.secrets`, and a deploy
+refuses an Installation whose Worker lacks any, before it changes anything
+(ADR-0128); a required secret added here is added there. The validator
+requires none. A new Installation's Worker does not exist until something
+creates it, and one that does not exist has no secrets, so its first deploy
+refuses too: set every required secret first, which creates the Worker, then
+deploy.
 
 - **`NUXT_BETTER_AUTH_SECRET`**: without it the installation is unusable.
   `/api/**` denies by default and every check goes through Better Auth, so

@@ -137,7 +137,11 @@ const DESCRIPTOR: Descriptor = {
 	app: 'stream',
 	build: ['build', 'worker:dry-run', 'worker:smoke'],
 	output: '.output',
-	worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
+	worker: {
+		source: 'wrangler.jsonc',
+		config: '.output/server/wrangler.json',
+		secrets: ['NUXT_BETTER_AUTH_SECRET'],
+	},
 	databases: [{ binding: 'DB' }],
 	environments: {
 		production: { url: 'https://stream.keepr.digital' },
@@ -193,8 +197,11 @@ function world() {
 	const tags = new Map<string, { commit: string; message: string }>();
 	const installations: Record<
 		Environment,
-		{ worker?: Snapshot; validator?: string; migrated?: string }
-	> = { production: {}, staging: {} };
+		{ worker?: Snapshot; validator?: string; migrated?: string; secrets: string[] }
+	> = {
+		production: { secrets: ['NUXT_BETTER_AUTH_SECRET'] },
+		staging: { secrets: ['NUXT_BETTER_AUTH_SECRET'] },
+	};
 	const artifacts = new Map<string, Snapshot>();
 	const ran: string[] = [];
 	let checkout: Snapshot = A;
@@ -250,6 +257,7 @@ function world() {
 				output = artifacts.get(path);
 			},
 			fingerprint: () => snapshot.validator,
+			secretNames: () => installation.secrets,
 			deployPart: (part: string) => {
 				ran.push(`deploy ${part}`);
 				if (fail === 'validator') throw new Error('wrangler deploy failed');
@@ -620,6 +628,22 @@ describe('deploying a Release to an Environment', () => {
 			expect(w.marker('stream/production')).toMatchObject({ state: 'deployed', ...recorded });
 			expect(w.marker('stream/production-validator')).not.toHaveProperty('needs');
 		});
+	});
+
+	// A Worker with no secrets passes every gate and still answers sign-in 503.
+	it('refuses an Installation missing a required Worker secret before migrating D1 or deploying a part', async () => {
+		const w = world();
+		await w.deploy(A, { environment: 'staging' });
+		const tags = new Map(w.tags);
+		w.installations.staging.secrets = [];
+
+		await expect(w.deploy(B, { environment: 'staging' })).rejects.toThrow(
+			/stream's Worker lacks NUXT_BETTER_AUTH_SECRET/,
+		);
+
+		expect(w.ran).toEqual(['build']);
+		expect(w.installations.staging).toMatchObject({ worker: A, validator: A.validator });
+		expect(w.tags).toEqual(tags);
 	});
 
 	// The Accounts Stand-in never deploys (ADR-0113): what a build or an artifact
