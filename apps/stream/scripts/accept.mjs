@@ -12,6 +12,9 @@
  *   pnpm accept deployed              the deploy-day sequence (README § Deploy
  *                                     day), each with --deployed, stopping at
  *                                     the first failure
+ *
+ * A deployed run targets production unless STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT
+ * names another Environment; each harness inherits it with the rest of the env.
  */
 
 import process from 'node:process';
@@ -128,12 +131,13 @@ function list() {
  * Each gate also checks its own prerequisites, but the first gate writes to the
  * installation, so a later gate refusing a missing setting used to leave the
  * first one's writes behind for nothing. Pure: nothing is opened or written.
+ * Answers the Environment the target was resolved for, or undefined.
  */
 async function preflightDeployDay(env) {
 	const evidence = createAcceptanceEvidence({ harness: 'accept-deployed' });
 	try {
-		resolveDeployedTarget({ env, installation: await loadCommittedInstallation() });
-		return true;
+		return resolveDeployedTarget({ env, installation: await loadCommittedInstallation() })
+			.environment;
 	} catch (error) {
 		const failure =
 			error instanceof AcceptanceFailure
@@ -143,7 +147,7 @@ async function preflightDeployDay(env) {
 		process.stderr.write(
 			`${line}\n\n✗ the deployed target is incomplete; no deploy-day harness ran\n`,
 		);
-		return false;
+		return undefined;
 	}
 }
 
@@ -176,10 +180,12 @@ export async function main(
 	}
 
 	if (name === 'deployed') {
-		if (!(await preflightDeployDay(env))) {
+		const environment = await preflightDeployDay(env);
+		if (!environment) {
 			process.exitCode = 1;
 			return;
 		}
+		process.stdout.write(`deploy-day acceptance against the ${environment} Environment\n`);
 		for (const harness of DEPLOY_DAY) {
 			process.stdout.write(`\n▶ accept ${harness} --deployed\n`);
 			const code = await runHarness(harness, ['--deployed']);

@@ -39,48 +39,50 @@ describe('the validator command adapter', () => {
 	type Commands = ReturnType<typeof adapter>['commands'];
 
 	/** Each command as the gate calls it on a deployed target, and what its arguments must name: the target's bucket or Workflow, and for an object the remote store. */
-	const REMOTE: Record<string, { run: (commands: Commands, target?: Target) => Promise<unknown>; names: string[] }> =
-		{
-			probeBucket: {
-				run: (commands, target = TARGET) => commands.probeBucket({ target }),
-				names: [TARGET.stagingBucket],
-			},
-			probeWorkflow: {
-				run: (commands, target = TARGET) => commands.probeWorkflow({ target }),
-				names: [TARGET.workflow],
-			},
-			putObject: {
-				run: (commands, target = TARGET) =>
-					commands.putObject({
-						target,
-						key: 'some/key',
-						bytes: new Uint8Array([1]),
-						contentType: 'video/mp4',
-					}),
-				names: [`${TARGET.stagingBucket}/some/key`, '--remote'],
-			},
-			getObject: {
-				run: (commands, target = TARGET) => commands.getObject({ target, key: 'some/key' }),
-				names: [`${TARGET.stagingBucket}/some/key`, '--remote'],
-			},
-			deleteObject: {
-				run: (commands, target = TARGET) => commands.deleteObject({ target, key: 'some/key' }),
-				names: [`${TARGET.stagingBucket}/some/key`, '--remote'],
-			},
-			triggerWorkflow: {
-				run: (commands, target = TARGET) =>
-					commands.triggerWorkflow({
-						target,
-						id: 'an-id',
-						params: { a: 1 },
-					}),
-				names: [TARGET.workflow],
-			},
-			describeInstance: {
-				run: (commands, target = TARGET) => commands.describeInstance({ target, id: 'an-id' }),
-				names: [TARGET.workflow],
-			},
-		};
+	const REMOTE: Record<
+		string,
+		{ run: (commands: Commands, target?: Target) => Promise<unknown>; names: string[] }
+	> = {
+		probeBucket: {
+			run: (commands, target = TARGET) => commands.probeBucket({ target }),
+			names: [TARGET.stagingBucket],
+		},
+		probeWorkflow: {
+			run: (commands, target = TARGET) => commands.probeWorkflow({ target }),
+			names: [TARGET.workflow],
+		},
+		putObject: {
+			run: (commands, target = TARGET) =>
+				commands.putObject({
+					target,
+					key: 'some/key',
+					bytes: new Uint8Array([1]),
+					contentType: 'video/mp4',
+				}),
+			names: [`${TARGET.stagingBucket}/some/key`, '--remote'],
+		},
+		getObject: {
+			run: (commands, target = TARGET) => commands.getObject({ target, key: 'some/key' }),
+			names: [`${TARGET.stagingBucket}/some/key`, '--remote'],
+		},
+		deleteObject: {
+			run: (commands, target = TARGET) => commands.deleteObject({ target, key: 'some/key' }),
+			names: [`${TARGET.stagingBucket}/some/key`, '--remote'],
+		},
+		triggerWorkflow: {
+			run: (commands, target = TARGET) =>
+				commands.triggerWorkflow({
+					target,
+					id: 'an-id',
+					params: { a: 1 },
+				}),
+			names: [TARGET.workflow],
+		},
+		describeInstance: {
+			run: (commands, target = TARGET) => commands.describeInstance({ target, id: 'an-id' }),
+			names: [TARGET.workflow],
+		},
+	};
 
 	// Every command the adapter has, so one added without a row here fails.
 	it.each(Object.keys(adapter().commands))(

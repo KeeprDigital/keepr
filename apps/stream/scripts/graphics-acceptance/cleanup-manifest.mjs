@@ -30,9 +30,7 @@ import { fileURLToPath } from 'node:url';
 import { AcceptanceFailure } from './evidence.mjs';
 
 /** Where acceptance keeps its private state, one directory per Environment. */
-export const ACCEPTANCE_CACHE = fileURLToPath(
-	new URL('../../.cache/acceptance/', import.meta.url),
-);
+export const ACCEPTANCE_CACHE = fileURLToPath(new URL('../../.cache/acceptance/', import.meta.url));
 
 const MANIFEST_FILE = 'silent-video-validator-cleanup.json';
 
@@ -43,10 +41,7 @@ const MANIFEST_FILE = 'silent-video-validator-cleanup.json';
  *
  * @param {{ environment: string, cacheDirectory?: string }} options
  */
-export function openEnvironmentCleanupManifest({
-	environment,
-	cacheDirectory = ACCEPTANCE_CACHE,
-}) {
+export function openEnvironmentCleanupManifest({ environment, cacheDirectory = ACCEPTANCE_CACHE }) {
 	return openCleanupManifest(join(cacheDirectory, environment, MANIFEST_FILE), {
 		unscoped: environment === 'production' ? join(cacheDirectory, MANIFEST_FILE) : undefined,
 	});

@@ -464,9 +464,9 @@ describe('deployed validator acceptance: one cleanup manifest per Environment', 
 		['production', 'staging'],
 		['staging', 'production'],
 	] as const)('a cleanup pending in %s does not block %s', async (left, next) => {
-		expect((await run(fakeCommands({ failDeletes: 1 }), { env: environments[left] })).exitCode).toBe(
-			1,
-		);
+		expect(
+			(await run(fakeCommands({ failDeletes: 1 }), { env: environments[left] })).exitCode,
+		).toBe(1);
 		output = '';
 
 		expect((await run(fakeCommands(), { env: environments[next] })).exitCode).toBeUndefined();

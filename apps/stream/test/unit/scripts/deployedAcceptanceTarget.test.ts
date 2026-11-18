@@ -65,9 +65,7 @@ const VALIDATOR = {
 			r2_buckets: [
 				{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: 'stream-graphics-asset-staging' },
 			],
-			workflows: [
-				{ name: 'silent-video-validation', binding: 'SILENT_VIDEO_VALIDATION_WORKFLOW' },
-			],
+			workflows: [{ name: 'silent-video-validation', binding: 'SILENT_VIDEO_VALIDATION_WORKFLOW' }],
 		},
 	},
 };

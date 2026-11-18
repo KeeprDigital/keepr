@@ -446,10 +446,7 @@ async function runDeployedAcceptance(context, dependencies) {
 	return { fixtures: FIXTURE_NAMES.length, cleaned };
 }
 
-async function runDeployedCleanup(
-	context,
-	{ env, environment, installation, manifest, commands },
-) {
+async function runDeployedCleanup(context, { env, environment, installation, manifest, commands }) {
 	const target = resolveDeployedTarget({
 		env,
 		environment,
