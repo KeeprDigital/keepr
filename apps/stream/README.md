@@ -236,7 +236,7 @@ failure on `main`.
 | `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`      | 32-byte base64 HMAC key for Screen Output asset capabilities.                                                              |
 | `NUXT_ABLY_API_KEY`                              | Ably key. Optional for tests: leave it empty rather than fake. A fake key makes one realtime test pass and the other fail. |
 | `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`           | 32-byte base64 key encrypting Melee client secrets (AES-256-GCM).                                                          |
-| `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION`   | Non-empty version label for the active key. Deployed, a var in `wrangler.jsonc`, not a secret.                             |
+| `NUXT_MELEE_CREDENTIAL_KEY_VERSION`   | Non-empty version label for the active key. Deployed, a var in `wrangler.jsonc`, not a secret.                             |
 | `NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS` | Optional JSON `{"<version>":"<key>"}` of retired keys still needed to decrypt during rotation.                             |
 | `NUXT_BANDAI_KEEPR_API_KEY`                      | Optional Bearer key for bandai-keepr, the One Piece card API. Blank: OP card features show "card data unavailable".        |
 | `NUXT_BANDAI_KEEPR_API_URL`                      | bandai-keepr's base URL (`https://op-api.keepr.digital`). Blank: OP card data is unavailable, as above.                    |
@@ -1329,15 +1329,14 @@ deploy.
   "card data unavailable" rather than failing. bandai-keepr serves no CORS, so
   only the Worker calls it, through `/api/events/:id/op-cards`.
 - **Melee key rotation**: the active key's version label is the
-  `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION` var in `wrangler.jsonc` (top
+  `NUXT_MELEE_CREDENTIAL_KEY_VERSION` var in `wrangler.jsonc` (top
   level for production, `env.staging` for staging), not a secret (ADR-0132),
   so a rotation is a Release that changes the var with the key. Put the old
   version and key in `NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS`, set the
   new key, deploy the Release carrying the new version (save no Melee
   integration in between: it would encrypt with the new key under the old
   label), re-save each enabled Melee integration, and remove the old key only
-  once nothing uses it. A deploy refuses a Worker secret named like a var,
-  and a var left empty.
+  once nothing uses it. A deploy refuses a Worker secret named like a var.
 
 ### Allowed hostnames
 

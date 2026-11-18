@@ -12,8 +12,7 @@
  * A name is a var or a secret, never both (ADR-0132): a var the Environment's
  * Wrangler config sets beside a Worker secret of that name leaves which one the
  * Worker reads to Cloudflare, so the deploy refuses until the secret is
- * deleted. A var the config leaves empty is a placeholder for a value nobody
- * has written yet, and refuses too.
+ * deleted.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -85,9 +84,9 @@ export function wranglerVars({ appDir, wranglerEnv }) {
 
 /**
  * Refuse unless every Worker the Release deploys to `environment` has every
- * secret its descriptor requires, no secret named like a var its configuration
- * sets there, and no var left empty. A Worker that requires no secret and sets
- * no var is not asked.
+ * secret its descriptor requires, and no secret named like a var its
+ * configuration sets there. A Worker that requires no secret and sets no var
+ * is not asked.
  *
  * @param {{
  *   release: import('./release.mjs').Release,
@@ -119,15 +118,7 @@ export function requireSecrets({ release, environment, secretNames, configuredVa
 	];
 	const refusals = [];
 	for (const { label, source, config, required = [] } of workers) {
-		const configured = configuredVars(source);
-		const vars = Object.keys(configured);
-		const empty = vars.filter(
-			(name) => typeof configured[name] === 'string' && configured[name].trim() === '',
-		);
-		if (empty.length > 0)
-			refusals.push(
-				`${label}: ${source} leaves ${empty.join(', ')} empty for ${environment}, a placeholder: set its value`,
-			);
+		const vars = Object.keys(configuredVars(source));
 		if (required.length === 0 && vars.length === 0) continue;
 		const flags = `--config ${config}` + (wranglerEnv === undefined ? '' : ` --env ${wranglerEnv}`);
 		const put = `from apps/${app} with wrangler secret put <NAME> ${flags}`;

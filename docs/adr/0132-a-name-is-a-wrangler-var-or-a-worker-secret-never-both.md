@@ -4,25 +4,24 @@ Accepted · 2026-11-18 · [#1292](https://github.com/KeeprDigital/keepr/issues/1
 
 ### Decision
 
-**Stream Keepr's Melee key version is a var, not a Worker secret.** `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION` labels the active Melee key and is not secret, so each Environment's `wrangler.jsonc` sets it: production's at the top level, staging's (`1`) in `env.staging`. `worker.secrets` no longer lists it. The runtime reads it as before and still refuses an empty label (`MELEE_CREDENTIAL_KEY_VERSION_MISSING`). A Melee key rotation changes the var in a Release together with the key.
+**Stream Keepr's Melee key version is a var, under a new name.** The label of the active Melee key is not secret, so each Environment's `wrangler.jsonc` sets it as `NUXT_MELEE_CREDENTIAL_KEY_VERSION` (runtimeConfig `meleeCredentialKeyVersion`): production's at the top level and staging's in `env.staging`, both `1`. It replaces the Worker secret `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION`, which `worker.secrets` no longer lists and the runtime no longer reads. The runtime still refuses an empty label (`MELEE_CREDENTIAL_KEY_VERSION_MISSING`). A Melee key rotation changes the var in a Release together with the key.
 
-**Neither wins when a var and a Worker secret share a name: the deploy refuses.** Before its first remote change, the deploy reads each Worker's vars for the Environment from the Release's source config, beside the secret names it already reads (ADR-0128), and refuses a Worker carrying a secret named like one of its vars, with the `wrangler secret delete` command that removes it. Which of the two a Worker would read is Cloudflare's to decide, not the Release's, so the Release does not let it come to that.
+**The var takes a new name so the move needs no outage.** Cloudflare will not deploy a var under a name a Worker secret already holds. Under the old name, an Installation would have to delete the secret and then deploy, with Melee broken in between. Under the new name, the Release deploys beside the old secret, which stays set and unused, and the operator deletes it once the Release is live.
 
-**A var left empty is a placeholder, and the deploy refuses it.** An empty or blank string var in the config deployed to an Environment stops the deploy, naming it. Production's key version is such a placeholder until its operator writes the label production's key runs under: it could not be read from the code or docs, and guessing it would encrypt new credentials under a label the stored ones do not carry.
+**A deploy refuses a Worker secret named like a var.** Before its first remote change, the deploy reads each Worker's vars for the Environment from the Release's source config, beside the secret names it already reads (ADR-0128). It refuses a Worker carrying a secret named like one of its vars and gives the `wrangler secret delete` command that removes it. Cloudflare would otherwise refuse the upload itself, after migrations have applied.
 
 ### Why
 
 - A label set as a secret was one more value per Installation to set, store (#1290) and check (#1282), and hid from the config which key version an Installation runs.
-- A secret left behind once its name became a var would leave the Worker's value to Cloudflare, with the config claiming another.
+- A refusal before any remote change costs nothing. Cloudflare's refusal comes mid-deploy.
 
 ### Consequences
 
-- Moving the label off a secret is an operator step per Installation: delete the `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION` Worker secret. Until then the deploy refuses that Installation.
-- Production deploys refuse until a Release sets production's label. The operator reads it without the key, from a stored credential's envelope (its `keyVersion`; `apps/stream/server/utils/meleeCredentialCrypto.ts`), or from where the value was recorded.
-- A rollback to a Release from before this decision requires the secret again (its descriptor lists it), and with it set, deploys as it did.
-- Any app's var follows the same two rules, the validator's included.
+- Once this Release is live in an Installation, its operator deletes the old `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION` Worker secret there. Nothing reads it, and nothing refuses while it remains.
+- A local `.env` renames the setting to `NUXT_MELEE_CREDENTIAL_KEY_VERSION`.
+- A rollback to a Release from before this decision requires the old secret (its descriptor lists it).
+- Any app's var follows the same rule, the validator's included.
 
 ### Rejected alternatives
 
-- **Let the var win, or the secret:** neither is the Release's to choose, and a silent choice is how a rotation's label diverges from the key.
-- **A guessed production label (`1`, as staging):** a wrong label encrypts new credentials under it, and every stored one then asks for a key version the keyring lacks, so Melee syncs fail until the label is corrected.
+- **Keep the name, and delete the secret before deploying:** Melee syncs fail in each Installation from the deletion until the deploy, timed by hand.

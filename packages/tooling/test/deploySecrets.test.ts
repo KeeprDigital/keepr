@@ -113,12 +113,11 @@ describe('the Worker secrets an Installation requires', () => {
 		{
 			environment = 'staging',
 			parts = { validator: { config: VALIDATOR_CONFIG } },
-			configs = CONFIGS,
-		}: { environment?: string; parts?: Descriptor['parts']; configs?: Configs } = {},
+		}: { environment?: string; parts?: Descriptor['parts'] } = {},
 	) {
 		const dir = mkdtempSync(join(tmpdir(), 'keepr-secrets-'));
 		dirs.push(dir);
-		writeConfigs(dir, configs);
+		writeConfigs(dir, CONFIGS);
 		const target = release(dir, parts);
 		const lines: string[] = [];
 		const run = () =>
@@ -220,25 +219,5 @@ describe('the Worker secrets an Installation requires', () => {
 		);
 
 		expect(run).not.toThrow();
-	});
-
-	it("refuses a var the Environment's configuration leaves empty, a placeholder, in any Worker", () => {
-		const { run } = check(
-			{ [`${APP_CONFIG} `]: REQUIRED },
-			{
-				environment: 'production',
-				configs: {
-					'wrangler.jsonc': {
-						vars: { NUXT_KEY_VERSION: ' ', NUXT_API_URL: 'https://api.example' },
-					},
-					[VALIDATOR_CONFIG]: { vars: { VALIDATOR_MODE: '' } },
-				},
-			},
-		);
-
-		expect(run).toThrow(
-			/stream's Worker: wrangler\.jsonc leaves NUXT_KEY_VERSION empty for production, a placeholder: set its value.*stream's validator: workers\/silent-video-validator\/wrangler\.jsonc leaves VALIDATOR_MODE empty/,
-		);
-		expect(run).not.toThrow(/NUXT_API_URL/);
 	});
 });

@@ -12,7 +12,7 @@ const {
 	revealMeleeClientSecret,
 } = await import('~~/server/services/meleeCredentials');
 
-const KEY_VERSION_VAR = 'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION';
+const KEY_VERSION_VAR = 'NUXT_MELEE_CREDENTIAL_KEY_VERSION';
 
 type Vars = { vars?: Record<string, unknown> };
 const wrangler = parseJsonc(readFileSync('wrangler.jsonc', 'utf8')) as Vars & {
@@ -38,7 +38,7 @@ describe('melee credential runtime service', () => {
 	beforeEach(() => {
 		mockRuntimeConfig.mockReset().mockReturnValue({
 			meleeCredentialEncryptionKey: base64Key(2),
-			meleeCredentialEncryptionKeyVersion: 'v2',
+			meleeCredentialKeyVersion: 'v2',
 			meleeCredentialEncryptionPreviousKeys: JSON.stringify({
 				v1: base64Key(1),
 			}),
@@ -66,7 +66,7 @@ describe('melee credential runtime service', () => {
 
 	/**
 	 * The trap #412's verification walked into: `.env.example` assigns
-	 * `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION=1`, and runtimeConfig applies
+	 * `NUXT_MELEE_CREDENTIAL_KEY_VERSION=1`, and runtimeConfig applies
 	 * environment overrides through `destr` — so what arrives here is the **number**
 	 * 1, not the string a reader who typed it would swear they set. Read as "not a
 	 * string, therefore not configured", a checkout that followed the example file
@@ -79,8 +79,8 @@ describe('melee credential runtime service', () => {
 	it('reads a key version the environment handed over as a number', async () => {
 		mockRuntimeConfig.mockReturnValue({
 			meleeCredentialEncryptionKey: base64Key(2),
-			// `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION=1`, after destr.
-			meleeCredentialEncryptionKeyVersion: 1,
+			// `NUXT_MELEE_CREDENTIAL_KEY_VERSION=1`, after destr.
+			meleeCredentialKeyVersion: 1,
 			meleeCredentialEncryptionPreviousKeys: '',
 		});
 
@@ -107,7 +107,7 @@ describe('melee credential runtime service', () => {
 	it('reads retired keys the environment handed over already parsed', () => {
 		mockRuntimeConfig.mockReturnValue({
 			meleeCredentialEncryptionKey: base64Key(2),
-			meleeCredentialEncryptionKeyVersion: 'v2',
+			meleeCredentialKeyVersion: 'v2',
 			// The JSON in `.env.example`, after destr.
 			meleeCredentialEncryptionPreviousKeys: {
 				1: base64Key(1),
@@ -134,7 +134,7 @@ describe('melee credential runtime service', () => {
 	])('still refuses previous keys handed over as %s', (_shape, configuredValue) => {
 		mockRuntimeConfig.mockReturnValue({
 			meleeCredentialEncryptionKey: base64Key(2),
-			meleeCredentialEncryptionKeyVersion: 'v2',
+			meleeCredentialKeyVersion: 'v2',
 			meleeCredentialEncryptionPreviousKeys: configuredValue,
 		});
 
@@ -149,7 +149,7 @@ describe('melee credential runtime service', () => {
 		const configuredValue = '{not-json-secret-material}';
 		mockRuntimeConfig.mockReturnValue({
 			meleeCredentialEncryptionKey: base64Key(2),
-			meleeCredentialEncryptionKeyVersion: 'v2',
+			meleeCredentialKeyVersion: 'v2',
 			meleeCredentialEncryptionPreviousKeys: configuredValue,
 		});
 
@@ -167,7 +167,7 @@ describe('melee credential runtime service', () => {
 		async (_environment, version) => {
 			mockRuntimeConfig.mockReturnValue({
 				meleeCredentialEncryptionKey: base64Key(2),
-				meleeCredentialEncryptionKeyVersion: version,
+				meleeCredentialKeyVersion: version,
 			});
 
 			const revealed = await revealMeleeClientSecret(
@@ -186,7 +186,7 @@ describe('melee credential runtime service', () => {
 		async (_case, version) => {
 			mockRuntimeConfig.mockReturnValue({
 				meleeCredentialEncryptionKey: base64Key(2),
-				meleeCredentialEncryptionKeyVersion: version,
+				meleeCredentialKeyVersion: version,
 			});
 
 			const refusal = await protectMeleeClientSecret('client-secret').catch((error) => error);

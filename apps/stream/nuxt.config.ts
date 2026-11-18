@@ -59,7 +59,7 @@ export default defineNuxtConfig({
 		graphicsAdminToken: '',
 		screenOutputCapabilitySigningKey: '',
 		meleeCredentialEncryptionKey: '',
-		meleeCredentialEncryptionKeyVersion: '',
+		meleeCredentialKeyVersion: '',
 		meleeCredentialEncryptionPreviousKeys: '',
 	},
 

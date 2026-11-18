@@ -343,12 +343,12 @@ function generatedConfiguration() {
 		NUXT_GRAPHICS_ADMIN_TOKEN: randomSecret(),
 		NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY: base64Key(),
 		NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY: base64Key(),
-		NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION: '1',
+		NUXT_MELEE_CREDENTIAL_KEY_VERSION: '1',
 	};
 	return {
 		entries,
 		secrets: Object.entries(entries)
-			.filter(([name]) => name !== 'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION')
+			.filter(([name]) => name !== 'NUXT_MELEE_CREDENTIAL_KEY_VERSION')
 			.map(([, entry]) => entry),
 		body: `${Object.entries(entries)
 			.map(([name, entry]) => `${name}=${entry}`)

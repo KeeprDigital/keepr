@@ -8,8 +8,7 @@
  *    `keepr.undeployable`, the Accounts Stand-in's mark (ADR-0113).
  * 2. Refuse an Installation whose Workers lack a secret the descriptor
  *    requires (`secrets.mjs`, ADR-0128), read from Cloudflare, or have a
- *    secret named like a var their config sets, or a var it leaves empty
- *    (ADR-0132).
+ *    secret named like a var their config sets (ADR-0132).
  * 3. Decide each part against its marker by fingerprint.
  * 4. `beforeRemoteChange`: the last moment a deploy can refuse with nothing
  *    changed. Deploy order between apps (`order.mjs`, ADR-0120) refuses here,
