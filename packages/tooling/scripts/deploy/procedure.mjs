@@ -6,14 +6,16 @@
  *    nowhere else. Then the deploy guard reads every Worker configuration it
  *    will upload, as built or placed: none may be under a package marked
  *    `keepr.undeployable`, the Accounts Stand-in's mark (ADR-0113).
- * 2. Decide each part against its marker by fingerprint.
- * 3. `beforeRemoteChange`: the last moment a deploy can refuse with nothing
+ * 2. Refuse an Installation whose Workers lack a secret the descriptor
+ *    requires (`secrets.mjs`, ADR-0128), read from Cloudflare.
+ * 3. Decide each part against its marker by fingerprint.
+ * 4. `beforeRemoteChange`: the last moment a deploy can refuse with nothing
  *    changed. Deploy order between apps (`order.mjs`, ADR-0120) refuses here,
  *    and what it answers the app's markers record.
- * 4. Each part that the decision deploys, between its `pending` and `deployed`
+ * 5. Each part that the decision deploys, between its `pending` and `deployed`
  *    markers.
- * 5. The app: mark pending, migrate D1, deploy the Worker, verify, mark deployed.
- * 6. Retire the markers from before per-app names whose replacement now
+ * 6. The app: mark pending, migrate D1, deploy the Worker, verify, mark deployed.
+ * 7. Retire the markers from before per-app names whose replacement now
  *    records a confirmed deploy.
  *
  * A pending marker is the state a deploy leaves when it dies part-way: it
@@ -31,6 +33,7 @@
 import { join } from 'node:path';
 import { undeployableReason } from '../deploy-guard.mjs';
 import { LEGACY_MARKERS, formatMarker, markerName, parseMarker } from './markers.mjs';
+import { requireSecrets } from './secrets.mjs';
 
 const FINGERPRINT = /^sha256:[0-9a-f]{64}$/;
 /** How a deploy treats its parts: decide by fingerprint, or force either way. */
@@ -45,11 +48,14 @@ export const MODES = ['auto', 'always', 'never'];
 
 /**
  * What a deploy does to the world, each a step the procedure orders.
+ * `secretNames` reads, and changes nothing: the secret names set on the Worker
+ * deployed from a configuration, null when it does not exist.
  *
  * @typedef {{
  *   build: () => void,
  *   placeArtifact: (path: string) => void,
  *   fingerprint: (part: string) => string,
+ *   secretNames: (config: string) => string[] | null,
  *   deployPart: (part: string) => void,
  *   migrate: (binding: string) => void,
  *   deployWorker: () => void,
@@ -310,6 +316,7 @@ export async function deployRelease({
 	if (artifact === undefined) steps.build();
 	else steps.placeArtifact(artifact);
 	refuseUndeployable(release);
+	requireSecrets({ release, environment, secretNames: steps.secretNames, log });
 
 	/** @type {Record<string, Decision & { fingerprint?: string }>} */
 	const parts = {};

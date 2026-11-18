@@ -20,10 +20,10 @@
 #   1. **Build once** (deploy-build.yml): the descriptor's build, dry run and
 #      Worker smoke, uploaded as the artifact every Environment deploys, so
 #      production runs the bytes staging ran.
-#   2. **Staging** (GitHub environment `staging`, no approval): deploy order,
-#      the D1 recovery point, parts by fingerprint, D1 migrations, the Worker,
-#      deploy:verify with the Release's identity, each between its promotion
-#      markers; then the app's unattended acceptance gates, which read the
+#   2. **Staging** (GitHub environment `staging`, no approval): the
+#      Installation's required Worker secrets, deploy order, the D1 recovery
+#      point, parts by fingerprint, D1 migrations, the Worker, deploy:verify
+#      with the Release's identity, each between its promotion markers; then the app's unattended acceptance gates, which read the
 #      Installation and write nothing.
 #   3. **Production** (GitHub environment `production`): waits for its
 #      required reviewer, then the same steps on the same artifact, without the

@@ -22,6 +22,10 @@
  *   one build every Environment deploys (`deploy --artifact`).
  * - `check`: what CI checks of each deployable app's Worker: each part bundled
  *   as a deploy would upload it (no Docker, no credentials), then `build`.
+ *   With `--env`, instead, what a deploy to that Environment would refuse its
+ *   Installation for, building nothing: each Worker's required secrets
+ *   (`secrets.mjs`), read from Cloudflare. The app's is read through its built
+ *   configuration, so it needs a build (or a placed artifact) first.
  * - `verify`: check the Installation serves this checkout's Release.
  * - `gates`: the descriptor's unattended acceptance gates, each against the
  *   Environment's Installation (`KEEPR_DEPLOY_URL`), stopping at the first
@@ -45,6 +49,7 @@ import { checkDeployOrder, gitHistory, neededBy } from './order.mjs';
 import { MODES, decidePartDeploy, deployRelease, markApp, promotePart } from './procedure.mjs';
 import { recordRecoveryPoints } from './recovery.mjs';
 import { readRelease } from './release.mjs';
+import { requireSecrets, wranglerSecretNames } from './secrets.mjs';
 import { DeployVerifyFailure, verifyInstallation } from './verify.mjs';
 
 const USAGE = `usage: keepr-deploy <command> --app <app> [--env <environment>]
@@ -53,6 +58,7 @@ const USAGE = `usage: keepr-deploy <command> --app <app> [--env <environment>]
                                each between markers; --override deploys out of order, its reason recorded
   build [--artifact <dir>]     the descriptor's build scripts only, the output copied to <dir>
   check                        each part bundled as a deploy would, then build: CI's Worker leg
+  check --env <env>            the Installation's required Worker secrets, read from Cloudflare; builds nothing
   verify --env <env>           check the Installation serves this checkout's Release
   gates --env <env>            the app's unattended acceptance gates, against the Installation
   part <name> --env <env>      deploy one part between its markers, whatever its fingerprint
@@ -152,6 +158,7 @@ function realSteps({ release, environment, store, env, log }) {
 				throw new Error(`the artifact at ${path} has no ${descriptor.worker.config}.`);
 		},
 		fingerprint: (part) => fingerprintPart({ appDir, part: descriptor.parts[part], wranglerEnv }),
+		secretNames: wranglerSecretNames({ wrangler, appDir, wranglerEnv }),
 		// A remote read: the database's current Time Travel bookmark, as JSON.
 		bookmark: (binding) => {
 			const output = read(
@@ -316,6 +323,27 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 				log,
 			}).build();
 			if (values.artifact !== undefined) exportArtifact(release, values.artifact);
+		} catch (error) {
+			console.error(`keepr-deploy: ${/** @type {Error} */ (error).message}`);
+			return 1;
+		}
+		return 0;
+	}
+	if (command === 'check' && environment !== undefined) {
+		const { appDir, descriptor } = release;
+		try {
+			if (!descriptor.environments[environment])
+				throw new Error(`${release.app} has no Installation in ${environment}.`);
+			if (!existsSync(join(appDir, descriptor.worker.config)))
+				throw new Error(
+					`the app's Worker secrets are read through ${descriptor.worker.config}: build this checkout first (keepr-deploy build).`,
+				);
+			const secretNames = wranglerSecretNames({
+				wrangler: join(appDir, 'node_modules/.bin/wrangler'),
+				appDir,
+				wranglerEnv: descriptor.environments[environment].wranglerEnv,
+			});
+			requireSecrets({ release, environment, secretNames, log });
 		} catch (error) {
 			console.error(`keepr-deploy: ${/** @type {Error} */ (error).message}`);
 			return 1;

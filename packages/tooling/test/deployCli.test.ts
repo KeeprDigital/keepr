@@ -102,6 +102,41 @@ describe('the keepr-deploy command line', () => {
 		expect(result.stderr).not.toContain('pnpm run build');
 	});
 
+	// An operator's check of an Environment, before any deploy: Wrangler is the
+	// Release's own, faked here to list one secret the Worker lacks another beside.
+	it("checks an Environment's Installation for the Worker secrets its descriptor requires, building nothing", () => {
+		const root = workspace({
+			'pnpm-workspace.yaml': 'packages: []\n',
+			'apps/stream/package.json': JSON.stringify({ name: '@keepr/stream', version: '1.9.0' }),
+			'apps/stream/deploy.jsonc': JSON.stringify({
+				app: 'stream',
+				build: ['build'],
+				output: '.output',
+				worker: {
+					source: 'wrangler.jsonc',
+					config: '.output/server/wrangler.json',
+					secrets: ['NUXT_BETTER_AUTH_SECRET', 'NUXT_ABLY_API_KEY'],
+				},
+				databases: [],
+				environments: {
+					staging: { url: 'https://stream.keepr-staging.digital', wranglerEnv: 'staging' },
+				},
+				parts: {},
+			}),
+			'apps/stream/.output/server/wrangler.json': '{"name":"stream"}',
+			'apps/stream/node_modules/.bin/wrangler': `#!${process.execPath}\nconsole.log(JSON.stringify([{ name: 'NUXT_ABLY_API_KEY', type: 'secret_text' }]));\n`,
+		});
+		chmodSync(join(root, 'apps/stream/node_modules/.bin/wrangler'), 0o755);
+
+		const result = run(['check', '--app', 'stream', '--env', 'staging'], root);
+
+		expect(result.status).toBe(1);
+		expect(result.stderr).toContain(
+			"stream's Worker lacks NUXT_BETTER_AUTH_SECRET: set each from apps/stream with wrangler secret put <NAME> --config .output/server/wrangler.json --env staging",
+		);
+		expect(result.stderr).not.toContain('pnpm run build');
+	});
+
 	// The Deploy workflow's build job: what it uploads is what every Environment deploys.
 	describe('a build for an artifact', () => {
 		const release = {
