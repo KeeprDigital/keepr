@@ -1,6 +1,6 @@
 # ADR-0126: Each Release groups its entries by Conventional Commit type
 
-Accepted · 2026-11-18 · Amends ADR-0118
+Accepted · 2026-11-18 · Amends ADR-0118 · Amended by ADR-0127: sections come from each changeset's bump, and the PR's title only labels the entry
 
 ### Decision
 

@@ -107,19 +107,19 @@ const regrouped = (entries: Entry[], extra?: string[]) => {
 describe("a changeset's entry, from the squash commit that added it", () => {
 	it.each<[string, Entry, string]>([
 		[
-			'a feat: Features, with its scope and PR',
-			{ bump: 'minor', summary: 'Gates target one Environment.', subject: FEAT },
-			'### Features\n\n- **stream:** Gates target one Environment. (#1276)',
+			'a minor, whatever its type: Features, with its scope and PR',
+			{ bump: 'minor', summary: 'Staging is configured.', subject: BUILD },
+			'### Features\n\n- **stream:** Staging is configured. (#1277)',
 		],
 		[
-			'a fix: Fixes',
+			'a patch fix: Fixes',
 			{ bump: 'patch', summary: 'A resolved card is kept.', subject: FIX },
 			'### Fixes\n\n- **cards:** A resolved card is kept. (#1300)',
 		],
 		[
-			'any other type: Other changes',
-			{ bump: 'minor', summary: 'Staging is configured.', subject: BUILD },
-			'### Other changes\n\n- **stream:** Staging is configured. (#1277)',
+			'a patch of any other type, feat included: Other changes',
+			{ bump: 'patch', summary: 'Gates target one Environment.', subject: FEAT },
+			'### Other changes\n\n- **stream:** Gates target one Environment. (#1276)',
 		],
 		[
 			'a major, whatever its type: Operator steps',
@@ -138,17 +138,17 @@ describe("a changeset's entry, from the squash commit that added it", () => {
 		],
 		[
 			'a subject that is not Conventional: Other changes, no scope, no PR',
-			{ bump: 'minor', summary: 'Merged.', subject: NOT_CONVENTIONAL },
+			{ bump: 'patch', summary: 'Merged.', subject: NOT_CONVENTIONAL },
 			'### Other changes\n\n- Merged.',
 		],
 		[
 			'not yet committed: Other changes, no scope, no PR',
-			{ bump: 'minor', summary: 'Uncommitted.' },
+			{ bump: 'patch', summary: 'Uncommitted.' },
 			'### Other changes\n\n- Uncommitted.',
 		],
 		[
 			'a commit git cannot read: Other changes, no scope, no PR',
-			{ bump: 'minor', summary: 'Unreadable.', commit: 'f'.repeat(40) },
+			{ bump: 'patch', summary: 'Unreadable.', commit: 'f'.repeat(40) },
 			'### Other changes\n\n- Unreadable.',
 		],
 		[
@@ -196,6 +196,7 @@ describe("a Release's section", () => {
 
 ### Features
 
+- **stream:** Staging is configured. (#1277)
 - **stream:** Gates target one Environment. (#1276)
 
 ### Fixes
@@ -204,7 +205,6 @@ describe("a Release's section", () => {
 
 ### Other changes
 
-- **stream:** Staging is configured. (#1277)
 - Runs are reused. (#1274)`);
 	});
 
@@ -275,7 +275,7 @@ describe('pnpm release:version', () => {
 		git(workspace, 'commit', '-q', '-m', 'chore: the workspace');
 		write(
 			'.changeset/gates.md',
-			"---\n'@keepr/stream': minor\n---\n\nGates target one Environment.\n",
+			"---\n'@keepr/stream': patch\n---\n\nGates target one Environment.\n",
 		);
 		git(workspace, 'add', '-A');
 		git(workspace, 'commit', '-q', '-m', FEAT);
@@ -289,18 +289,18 @@ describe('pnpm release:version', () => {
 
 	afterAll(() => rmSync(workspace, { recursive: true, force: true }));
 
-	it("writes each versioned app's new Release grouped by type, above its older ones", () => {
+	it("writes each versioned app's new Release grouped by bump, above its older ones", () => {
 		expect(readFileSync(join(workspace, 'apps/stream/CHANGELOG.md'), 'utf8')).toBe(`# Changelog
 
 ## 1.9.0
 
 ### Features
 
-- **stream:** Gates target one Environment. (#1276)
+- **stream:** Staging is configured. (#1277)
 
 ### Other changes
 
-- **stream:** Staging is configured. (#1277)
+- **stream:** Gates target one Environment. (#1276)
 
 ${OLDER}`);
 	});

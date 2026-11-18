@@ -1,12 +1,13 @@
 /**
  * Each versioned app's CHANGELOG, and so its GitHub Release notes, grouped by
- * what the operator and the reader need (ADR-0126, amending ADR-0118):
+ * each changeset's bump, which already says what the operator and the reader
+ * need (ADR-0127, amending ADR-0126):
  *
  *   ## <version>
- *   ### Operator steps   every major changeset: Deploy alone is not enough
- *   ### Features         feat
- *   ### Fixes            fix
- *   ### Other changes    everything else
+ *   ### Operator steps   major: Deploy alone is not enough
+ *   ### Features         minor: something a User or operator can newly do
+ *   ### Fixes            patch whose PR is a fix
+ *   ### Other changes    every other patch
  *
  * each entry `- **<scope>:** <the changeset's summary> (#<PR>)`. A heading
  * with no entry is left out.
@@ -17,10 +18,9 @@
  * - **The changelog formatter** (`.changeset/config.json` `changelog`):
  *   Changesets calls `getReleaseLine` for each changeset with the commit that
  *   added it, on `main` the squash commit whose subject is the PR's
- *   Conventional Commit title. Its type, scope and PR number shape the line,
- *   and a marker carries the bump and the type to the second half. A changeset
- *   with no commit, or a subject that is not Conventional, is Other changes,
- *   with no scope and no PR.
+ *   Conventional Commit title. Its scope and PR number label the line, and a
+ *   marker carries the bump and the type to the second half. A changeset with
+ *   no commit, or a subject that is not Conventional, has no type, scope or PR.
  * - **The regroup** (`pnpm release:version`, after `changeset version`):
  *   rewrites the newest section of each versioned app's CHANGELOG.md into the
  *   sections above, leaving no marker and none of Changesets' headings. A
@@ -118,7 +118,7 @@ export function getDependencyReleaseLine(_changesets, dependencies) {
 
 const SECTIONS = /** @type {const} */ ([
 	['Operator steps', (/** @type {string} */ bump) => bump === 'major'],
-	['Features', (/** @type {string} */ _bump, /** @type {string} */ type) => type === 'feat'],
+	['Features', (/** @type {string} */ bump) => bump === 'minor'],
 	['Fixes', (/** @type {string} */ _bump, /** @type {string} */ type) => type === 'fix'],
 	['Other changes', () => true],
 ]);
