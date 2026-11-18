@@ -2,6 +2,9 @@
 	// Throwaway prototype for #1295. Never merged, never bound to the app.
 	"$schema": "../../node_modules/wrangler/config-schema.json",
 	"name": "stream-realtime-prototype",
+	// The staging Cloudflare account (apps/stream/wrangler.jsonc `env.staging`), so
+	// a deploy cannot land in production's whoever is signed in (ADR-0130).
+	"account_id": "98e3d208fbb975ce573938b72ed9e7b8",
 	"main": "worker.ts",
 	"compatibility_date": "2026-07-16",
 	"workers_dev": true,

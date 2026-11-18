@@ -23,6 +23,8 @@ PROBE_ORIGIN=http://127.0.0.1:8911 PROBE_SECRET=local-probe \
 
 A separate Worker named `stream-realtime-prototype` on `workers.dev`, with its
 own Durable Object namespace; it touches no binding the app uses.
+`wrangler.jsonc` names the staging account, so the deploy lands there or fails.
+Never through the Deploy workflow, never on `stream.keepr-staging.digital`.
 
 ```sh
 SECRET=$(openssl rand -hex 24)
