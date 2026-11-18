@@ -29,15 +29,14 @@
 # `workflow_dispatch` refreshes the Version PR, or retries a refused or failed
 # publish, without a push to main.
 #
-# Needs the repo setting Settings → Actions → General →
-# "Allow GitHub Actions to create and approve pull requests" enabled, or
-# the action cannot open its PR. The Version PR is created and updated with
-# the default GITHUB_TOKEN, so GitHub creates its `pull_request` runs (CI, PR
-# title) in an approval-required state (`action_required`) rather than
-# starting them: that is how it stops a workflow triggering itself. A
-# maintainer selects "Approve workflows to run" on the Version PR before
-# queueing it (apps/stream/README.md § Releases), until a GitHub App's token
-# opens it (#1261).
+# The action writes with a token of the release GitHub App (ADR-0124), minted
+# in the GitHub environment `release`, which deploys only from main and holds
+# the App's KEEPR_RELEASE_APP_ID and KEEPR_RELEASE_APP_PRIVATE_KEY. A Version
+# PR opened with GITHUB_TOKEN would start no `pull_request` run (CI, PR title)
+# until a maintainer approved it, and GITHUB_TOKEN can never hold `workflows`,
+# which the Version PR's branch needs once main's workflows change. The App's
+# Version PR starts its runs like anyone's. GITHUB_TOKEN only reads: the
+# checkout, and the gate's merge-group runs, which the App cannot read.
 
 name: Release
 
@@ -46,10 +45,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# GITHUB_TOKEN's: every write is the App token's.
 permissions:
-  # The Version PR's branch, and each tag and GitHub Release.
-  contents: write
-  pull-requests: write
+  contents: read
   # The gate reads the merge-group CI runs on the release commit.
   actions: read
 
@@ -64,13 +62,28 @@ jobs:
     name: Version PR, or tag and release
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # Holds the App's key; deploys only from main.
+    environment: release
     steps:
+      # The Version PR's branch and PR, and each tag and GitHub Release.
+      # `workflows`: the Version PR's branch is reset to main, whose workflows
+      # change. Revoked when the job ends.
+      - name: Mint the release GitHub App's token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.KEEPR_RELEASE_APP_ID }}
+          private-key: ${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Every tag, so `changeset git-tag` and the gate see which versions
           # are tagged already.
           fetch-depth: 0
-          # The action pushes with the token it is given, not this checkout's.
+          # The action pushes through the GitHub API with the token it is
+          # given, not with this checkout's.
           persist-credentials: false
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -82,10 +95,14 @@ jobs:
       # No dependency's install script runs in a job that can push to the
       # repository.
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      # The publish script reads GITHUB_TOKEN, which the action sets to its
-      # token, for the gate's `gh`.
+      # The action sets the publish script's GITHUB_TOKEN to the App's token;
+      # `gh` prefers GH_TOKEN, so the gate reads the merge-group runs with
+      # GITHUB_TOKEN's `actions: read`, which the App does not have.
       - uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        env:
+          GH_TOKEN: ${{ github.token }}
         with:
+          github-token: ${{ steps.app-token.outputs.token }}
           publish-script: pnpm release:publish
           pr-title: 'chore(release): version apps'
           commit-message: 'chore(release): version apps'
