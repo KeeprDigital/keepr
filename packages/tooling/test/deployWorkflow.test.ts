@@ -69,6 +69,11 @@ const index = (match: (step: Step) => boolean) => steps.findIndex(match);
 const promote = index(
 	(step) => step.run?.startsWith(`node .deploy-tooling/${CLI} deploy `) === true,
 );
+const releaseCheckout = index((step) => step.with?.ref === '${{ inputs.release }}');
+const mint = index((step) => step.uses?.startsWith('actions/create-github-app-token@') === true);
+/** The Environment's Cloudflare credentials, and the release GitHub App's (ADR-0124). */
+const CLOUDFLARE = ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN'];
+const RELEASE_APP = ['KEEPR_RELEASE_APP_ID', 'KEEPR_RELEASE_APP_PRIVATE_KEY'];
 
 /** `${{ name }}` in `template`, each replaced by its value; an unknown name stays. */
 function expand(template: unknown, values: Record<string, string>) {
@@ -244,49 +249,71 @@ describe('an Installation deploys through the tooling, which advances its marker
 	});
 
 	// Job-level env reaches every step: the install's build scripts and the setup actions too.
-	it('hands the Cloudflare credentials to the promotion step and to nothing else', () => {
-		const holders = [
+	it.each([
+		[
+			'the Cloudflare credentials',
+			'the promotion step',
+			promote,
+			CLOUDFLARE,
+			/^CLOUDFLARE_|^WRANGLER_/,
+		],
+		["the release GitHub App's key", 'the token step', mint, RELEASE_APP, /^KEEPR_RELEASE_APP_/],
+	])('hands %s to %s and to nothing else', (_, _step, holder, secrets, names) => {
+		const elsewhere = [
 			...[...Object.values(deploy.jobs), deployJob].map((job) => job.env ?? {}),
-			...[...(plan.steps ?? []), ...steps.filter((_, position) => position !== promote)].map(
-				(step) => step.env ?? {},
+			...[...(plan.steps ?? []), ...steps.filter((_, position) => position !== holder)].flatMap(
+				(step) => [step.env ?? {}, step.with ?? {}],
 			),
 			...deploying.map(([, job]) => (job.with ?? {}) as Record<string, string>),
-		];
+		].flatMap((values) => Object.entries(values));
+		const held = Object.values({ ...steps[holder]?.env, ...steps[holder]?.with });
 
-		expect(steps[promote]!.env).toMatchObject({
-			CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
-			CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
-		});
+		for (const name of secrets) expect(held).toContain(`\${{ secrets.${name} }}`);
 		expect(
-			holders
-				.flatMap((env) => Object.entries(env))
-				.filter(
-					([name, value]) =>
-						/^CLOUDFLARE_|^WRANGLER_/.test(name) || String(value).includes('secrets.'),
-				),
+			elsewhere.filter(
+				([name, value]) =>
+					names.test(name) || secrets.some((secret) => String(value).includes(`secrets.${secret}`)),
+			),
 		).toEqual([]);
 	});
 
 	// A called workflow sees an environment secret only when its caller passes it
 	// by name; `secrets: inherit` would hand it every other secret too.
-	it('each call passes the Cloudflare credentials by name, which the Installation requires', () => {
-		const credentials = ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN'];
+	it('each call passes the Cloudflare credentials and the App key by name, which the Installation requires', () => {
+		const passed = [...CLOUDFLARE, ...RELEASE_APP];
 
 		for (const [, job] of deploying)
 			expect(job.secrets).toEqual(
-				Object.fromEntries(credentials.map((name) => [name, `\${{ secrets.${name} }}`])),
+				Object.fromEntries(passed.map((name) => [name, `\${{ secrets.${name} }}`])),
 			);
 		expect(installation.on.workflow_call?.secrets).toEqual(
-			Object.fromEntries(credentials.map((name) => [name, { required: true }])),
+			Object.fromEntries(passed.map((name) => [name, { required: true }])),
 		);
 	});
 
-	it('only the Installation job can write, and only the repository contents (its marker tags)', () => {
+	// GITHUB_TOKEN can never hold `workflows`, so it cannot push a marker onto a
+	// Release whose workflows differ from main's (ADR-0124).
+	it("pushes the markers with the release GitHub App's token, narrowed to contents and workflows", () => {
+		expect(mint).toBeGreaterThanOrEqual(0);
+		expect(mint).toBeLessThan(releaseCheckout);
+		expect(steps[mint]!.with).toEqual({
+			'client-id': '${{ secrets.KEEPR_RELEASE_APP_ID }}',
+			'private-key': '${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}',
+			'permission-contents': 'write',
+			'permission-workflows': 'write',
+		});
+		expect(steps[releaseCheckout]!.with).toMatchObject({
+			token: `\${{ steps.${steps[mint]!.id}.outputs.token }}`,
+			'persist-credentials': true,
+		});
+	});
+
+	// Every write goes through the App's token.
+	it('gives GITHUB_TOKEN no more than read access to the repository contents', () => {
 		expect(deploy.permissions).toEqual({ contents: 'read' });
-		expect(plan.permissions).toBeUndefined();
-		for (const [, job] of deploying) expect(job.permissions).toEqual({ contents: 'write' });
 		expect(installation.permissions).toEqual({ contents: 'read' });
-		expect(deployJob.permissions).toEqual({ contents: 'write' });
+		for (const job of [...Object.values(deploy.jobs), deployJob])
+			expect(job.permissions ?? deploy.permissions).toEqual({ contents: 'read' });
 	});
 });
 

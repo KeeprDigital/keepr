@@ -24,6 +24,7 @@ interface Job {
 	name?: string;
 	needs?: string | string[];
 	if?: string;
+	environment?: { name: string } | string;
 	permissions?: Record<string, string>;
 	outputs?: Record<string, string>;
 	strategy?: { matrix?: Record<string, unknown> };
@@ -273,6 +274,49 @@ describe('the Release workflow tags only what the queue verified', () => {
 	// The Version PR lands as a squash commit like any other, so its title is checked too.
 	it('titles the Version PR as a Conventional Commit', () => {
 		expect(isConventionalTitle(String(changesets?.with?.['pr-title']))).toBe(true);
+	});
+});
+
+// A PR opened with GITHUB_TOKEN starts no workflow, and GITHUB_TOKEN can never
+// hold `workflows` (ADR-0124).
+describe("the Release workflow writes with the release GitHub App's token", () => {
+	const [job] = Object.values(release.jobs);
+	const steps = job?.steps ?? [];
+	const mint = steps.findIndex((step) => step.uses?.startsWith('actions/create-github-app-token@'));
+	const changesets = steps.findIndex((step) => step.uses?.startsWith('changesets/action@'));
+
+	// The App's key is an environment secret, which only a job in it reads.
+	it('runs in the release environment, and its key reaches only the token step', () => {
+		expect(Object.keys(release.jobs)).toHaveLength(1);
+		expect(job?.environment).toBe('release');
+		for (const [position, step] of steps.entries())
+			if (position !== mint)
+				expect(JSON.stringify([step.env, step.with]), step.name ?? step.uses).not.toContain(
+					'secrets.',
+				);
+	});
+
+	it('mints a token narrowed to contents, pull requests and workflows, and opens and tags with it', () => {
+		expect(mint).toBeGreaterThanOrEqual(0);
+		expect(mint).toBeLessThan(changesets);
+		expect(steps[mint]!.with).toEqual({
+			'client-id': '${{ secrets.KEEPR_RELEASE_APP_ID }}',
+			'private-key': '${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}',
+			'permission-contents': 'write',
+			'permission-pull-requests': 'write',
+			'permission-workflows': 'write',
+		});
+		expect(steps[changesets]!.with?.['github-token']).toBe(
+			`\${{ steps.${steps[mint]!.id}.outputs.token }}`,
+		);
+	});
+
+	// The App cannot read Actions runs; the gate reads the merge-group runs with
+	// GITHUB_TOKEN, which is all that token may do beyond checking out.
+	it('leaves GITHUB_TOKEN reading the contents and the merge-group runs, and the gate using it', () => {
+		expect(release.permissions).toEqual({ contents: 'read', actions: 'read' });
+		expect(job?.permissions).toBeUndefined();
+		expect(steps[changesets]!.env).toEqual({ GH_TOKEN: '${{ github.token }}' });
 	});
 });
 
