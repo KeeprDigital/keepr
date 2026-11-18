@@ -12,13 +12,14 @@ Keepr alone. [Section 6](#6-built-for-every-app) says what that changes.
 
 ## Recommendation
 
-**Move, all of it, in stages behind the two ports that already exist, once the
-Staging run holds. Nothing forces a date.**
+**Move, all of it, in stages behind the two ports that already exist. Nothing
+forces a date.** The Staging run this waited on held.
 
 - **It can.** Everything Stream Keepr uses Ably for fits one Durable Object per
   Event with hibernating WebSockets. A throwaway prototype carried the rig #189
   measured (3 Screen Outputs, 2 operator pages) with fan-out, reconnect
-  catch-up and presence, every count asserted, under local `workerd`.
+  catch-up and presence, every count asserted, under local `workerd` and then
+  deployed in the Staging account.
 - **Money barely decides it.** Both are free at today's load. At 10× Durable
   Objects cost at most $0.15 a month, and Ably's Free package is 1.1× to 1.6×
   from its monthly allowance, with $29 to $35 a month as the next step.
@@ -30,14 +31,15 @@ Staging run holds. Nothing forces a date.**
   presence, never an Event or a Screen; each app supplies who may hear what.
 - **Not "move part".** Keeping one channel kind on Ably keeps the key, the SDK
   and the quota, and adds a second transport to reason about.
-- **Not yet shown:** anything a network does. The prototype has not run on
-  Staging, which needs a human's go-ahead (see [What is not measured](#what-is-not-measured)).
-  Two results there could change this recommendation: delivery latency with the
-  object far from its clients, and how long a vanished Screen Output stays in
-  presence.
+- **Not yet shown:** a venue's network, a client far from the object, OBS, and
+  a machine that vanishes (see [What is not measured](#what-is-not-measured)).
+  The Staging run was one machine near one Cloudflare location. Two results
+  could still change this recommendation: delivery latency with the object far
+  from its clients, and how long a vanished Screen Output stays in presence.
 
 How each statement below is known: **READ** in this repository at `a92811ac`,
-**MEASURED** by the prototype locally, **DOCS** fetched 2026-11-18, **CARRIED**
+**MEASURED** by the prototype, locally or on Staging as stated, **DOCS** fetched
+2026-11-18, **CARRIED**
 from #189's measurement, or **NOT MEASURED**.
 
 ## 1. What Stream Keepr uses Ably for
@@ -108,8 +110,8 @@ hears; the server publishes by RPC.
 
 ## 3. The prototype
 
-Branch `spike/1295-realtime-do-prototype`, commit `fc1e4a84` (a local branch
-until someone pushes it),
+Branch `spike/1295-realtime-do-prototype`, commits `4b8c8972` and `6d633b36` (a
+local branch until someone pushes it),
 `apps/stream/prototypes/realtime-do/`: a 246-line Worker and a probe. Not
 merged; not bound to the app. It is the server half only: the probe reconnects
 by hand with the sequence it held, so the client's reconnection, backoff and
@@ -132,6 +134,34 @@ realistic Set Input:
 **These are loopback figures.** They show the semantics hold and the object adds
 about a millisecond. They say nothing about a network, a venue, or OBS. The
 run's output is in the [appendix](#appendix-the-local-run).
+
+### On Staging
+
+MEASURED 2026-11-18, after Stream Keepr 3.0.0 shipped: the same Worker deployed
+by hand as `stream-realtime-prototype` on `workers.dev` in the Staging account,
+its config naming that account (ADR-0130), then deleted. The probe ran twice
+from one development machine that Cloudflare served from Melbourne; where the
+object ran was not observed. Each run used a new Event, so a new object. Every
+count was asserted as it was locally.
+
+| What | First run | Second run |
+| --- | --- | --- |
+| Fan-out | 400 published, 1,200 delivered, no gap or reorder | the same |
+| Connect, 5 sockets to a new object | 2.6 s, the first requests after the deploy | 0.49 s |
+| Publish, HTTP round trip | p50 52 ms, p95 72, max 109 (the RPC inside it: p50 33) | p50 46 ms, p95 65, max 492 (RPC p50 26) |
+| Delivery, publish to receipt | Event channel p50 51 ms, p95 69, p99 80, max 108; Screen channel the same within 2 ms | p50 45 ms, p95 63, p99 370, max 494 |
+| Catch-up | 50 missed, exactly 50 replayed in order, 101 ms | 50 of 50, 99 ms |
+| Continuity lost | A sequence from another epoch attaches `resumed: false`. The gap older than the log was not run here | the same |
+| Presence | 3 entered; a closed output left the count in 25 ms | 15 ms |
+| After idle | 90 s: the next publish took 124 ms and reached every socket; presence intact | 1 s: 45 ms |
+
+Delivery is one publish going up to Cloudflare and back down to sockets on the
+same machine: about 50 ms, against about 2 ms on loopback, so nearly all of it is
+the network. The second run had one stall of about 0.4 s across a few
+consecutive publishes; its cause was not found. The 124 ms publish after 90 s
+idle is what a woken object would cost, but hibernation itself was not observed.
+The billed requests and duration were not read before the Worker was deleted.
+Both runs are in the [appendix](#appendix-the-staging-runs).
 
 ### The Nuxt Worker and the object
 
@@ -317,7 +347,7 @@ included.
    token to wait on, the token-wait clauses of ADR-0028 and of `RULES.md`
    (Event Data Resync, Screen Mode Data Freshness, the 30 s re-attempt) change.
 7. **Ghosts in presence**: accept until the socket closes, or sweep by alarm.
-   Waits on the Staging measurement.
+   Waits on timing a machine that vanishes.
 8. **No polling fallback**: accept, on the strength of the degraded re-read.
 9. **The 64 KiB bound** (ADR-0004): keep it as a design rule, or raise it.
 10. **Cutover order and the Release.** Whether anything is an operator step
@@ -328,16 +358,17 @@ included.
 
 ## What is not measured
 
-- **Anything on Staging.** The prototype's README has the three commands: a
-  separate `stream-realtime-prototype` Worker on `workers.dev` that touches no
-  binding the app uses, the probe, and its deletion. Deploying is a human's call,
-  by hand into the Staging account (ADR-0130): never through the Deploy
-  workflow, which deploys only Releases and runs Staging's acceptance gates
-  (ADR-0129), and never on Stream Keepr's Staging hostname. It is held until
-  the Release carrying #1292, #1293 and #1296 has shipped.
-  Wanted from it: delivery latency from a venue's network and from another
-  continent, a publish waking a hibernated object (`PROBE_IDLE_MS=90000`), and
-  the billed requests and duration for one probe run.
+- **A venue's network, and another continent.** Staging was probed from one
+  machine near one Cloudflare location. The prototype's README has the three
+  commands to run it again: a separate `stream-realtime-prototype` Worker on
+  `workers.dev` that touches no binding the app uses, the probe, and its
+  deletion. Deploying is a human's call, by hand into the Staging account
+  (ADR-0130): never through the Deploy workflow, which deploys only Releases and
+  runs Staging's acceptance gates (ADR-0129), and never on Stream Keepr's
+  Staging hostname.
+- **What a run bills**: the requests and duration of one probe run.
+- **Hibernation itself**, and the cause of the second run's 0.4 s stall.
+- **A gap older than the log, on Staging.** Shown locally only.
 - **A machine that vanishes.** Pull the network from a connected probe and time
   its presence leave.
 - **OBS.** A browser source reconnecting, and whether a hidden source throttles a
@@ -369,6 +400,43 @@ included.
 	"presence": { "entered": 3, "leaveNoticedMs": 0.7 },
 	"afterIdle": { "idleMs": 20000, "publishHttpMs": 10.5, "presence": "intact" },
 	"stats": { "sockets": 5, "logRows": 2 }
+}
+```
+
+## Appendix: the Staging runs
+
+`PROBE_IDLE_MS=90000 node probe.mjs`, then `PROBE_IDLE_MS=1000`, against the
+Worker on `workers.dev` in the Staging account, 2026-11-18, milliseconds:
+
+```json
+{
+	"cycles": 200,
+	"connectMs": { "n": 5, "p50": 2630.3, "p95": 2646.5, "max": 2646.5 },
+	"fanOut": { "eventChannel": 5, "screenChannel": 1, "published": 400, "delivered": 1200 },
+	"publishHttpMs": { "n": 200, "p50": 52.4, "p95": 72.2, "p99": 82.2, "max": 108.8 },
+	"publishRpcMs": { "n": 200, "p50": 33, "p95": 37, "p99": 42, "max": 90 },
+	"eventDeliveryMs": { "n": 1000, "p50": 51, "p95": 68.7, "p99": 80.3, "max": 107.5 },
+	"screenDeliveryMs": { "n": 200, "p50": 51.3, "p95": 69.1, "p99": 82.8, "max": 106.2 },
+	"catchUp": { "missed": 50, "replayed": 50, "ms": 100.9 },
+	"continuityLost": { "staleEpoch": "resumed=false", "prunedGap": "not run" },
+	"presence": { "entered": 3, "leaveNoticedMs": 25.2 },
+	"afterIdle": { "idleMs": 90000, "publishHttpMs": 124, "presence": "intact" },
+	"stats": { "sockets": 5, "logRows": 454 }
+}
+```
+
+```json
+{
+	"cycles": 200,
+	"connectMs": { "n": 5, "p50": 485.9, "p95": 500.2, "max": 500.2 },
+	"fanOut": { "eventChannel": 5, "screenChannel": 1, "published": 400, "delivered": 1200 },
+	"publishHttpMs": { "n": 200, "p50": 46.2, "p95": 64.7, "p99": 373.3, "max": 491.6 },
+	"publishRpcMs": { "n": 200, "p50": 26, "p95": 40, "p99": 296, "max": 474 },
+	"eventDeliveryMs": { "n": 1000, "p50": 44.5, "p95": 62.7, "p99": 370, "max": 493.5 },
+	"screenDeliveryMs": { "n": 200, "p50": 44.8, "p95": 63.4, "p99": 370.9, "max": 493.7 },
+	"catchUp": { "missed": 50, "replayed": 50, "ms": 98.8 },
+	"presence": { "entered": 3, "leaveNoticedMs": 14.7 },
+	"afterIdle": { "idleMs": 1000, "publishHttpMs": 44.8, "presence": "intact" }
 }
 ```
 
