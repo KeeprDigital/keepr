@@ -64,12 +64,15 @@ const INSTALLATION = {
 
 const MUTATIONS = new Set(['put', 'trigger', 'delete']);
 
+const REASON = 'Failed to fetch <path> - 429: Too Many Requests [code: 10058]';
+
 /**
  * A command failure whose message carries everything the evidence contract
- * withholds, so a runner that printed a message would fail `expectSafe`.
+ * withholds, so a runner that printed a message would fail `expectSafe`. Its
+ * reason is the adapter's already-redacted one, which the evidence carries.
  */
 function rawFailure(step: string, key: string) {
-	return Object.assign(new RemoteCommandFailure(step, 1), {
+	return Object.assign(new RemoteCommandFailure(step, 1, REASON), {
 		message: `wrangler r2 object ${step} ${BUCKET}/${key} --remote: ✘ [ERROR] ${'a'.repeat(64)}`,
 	});
 }
@@ -188,6 +191,10 @@ beforeEach(async () => {
 	};
 	vi.spyOn(process.stdout, 'write').mockImplementation(capture);
 	vi.spyOn(process.stderr, 'write').mockImplementation(capture);
+	// A run names its keys after the time it started; two real runs never share
+	// a millisecond, but two faked ones can, and would then share keys.
+	let clock = Date.now();
+	vi.spyOn(Date, 'now').mockImplementation(() => (clock += 1000));
 });
 
 afterEach(async () => {
@@ -329,7 +336,7 @@ describe('deployed validator acceptance: redacted failures', () => {
 
 		expect(exitCode).toBe(1);
 		expect(output).toContain(
-			'silent-video-validator-v1 validator-command-failed fixture=h264Mp4 step=put exit=1',
+			`silent-video-validator-v1 validator-command-failed fixture=h264Mp4 step=put exit=1 reason=${REASON}`,
 		);
 		expectSafe(output);
 		// The source was recorded before its put, so cleanup tries it even though
@@ -346,7 +353,7 @@ describe('deployed validator acceptance: redacted failures', () => {
 
 		expect(exitCode).toBe(1);
 		expect(output).toContain(
-			'silent-video-validator-v1 validator-command-failed step=manifest exit=1',
+			`silent-video-validator-v1 validator-command-failed step=manifest exit=1 reason=${REASON}`,
 		);
 		expect(staged(commands)).toEqual([]);
 		expectSafe(output);

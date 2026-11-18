@@ -24,6 +24,7 @@ import { openOperatorSession } from './graphics-acceptance/operator.mjs';
 import {
 	createWranglerCommands,
 	RemoteCommandFailure,
+	remoteFailureDetail,
 } from './graphics-acceptance/validator-commands.mjs';
 
 /**
@@ -51,8 +52,8 @@ import {
  *    leaves its key listed and fails the run, and the next run, wherever it
  *    runs, deletes it before it stages anything (ADR-0129).
  * 3. **Output is evidence only.** Pass and failure lines go through the shared
- *    formatter; a failure names its fixture, step and exit code, never a key,
- *    digest, validation id, Wrangler argument or remote diagnostic.
+ *    formatter; a failure names its fixture, step, exit code and Wrangler's
+ *    redacted reason, never a key, digest, validation id or Wrangler argument.
  *
  * `--deployed --cleanup` retries a left manifest's deletes against the same
  * target, and is safe to repeat.
@@ -92,15 +93,16 @@ const sourceKey = (operationId) => `ingestion/${operationId}/source`;
 const posterKey = (validationId) => `validation/silent-video/${validationId}/poster`;
 
 /**
- * Run one adapter command, turning its failure into `code` with `detail` and
- * the exit code. The failure's own message is never read: it is the adapter's.
+ * Run one adapter command, turning its failure into `code` with `detail`, the
+ * exit code and the adapter's redacted reason. The failure's own message is
+ * never read: it is the adapter's.
  */
 async function remote(code, detail, action) {
 	try {
 		return await action();
 	} catch (error) {
 		if (error instanceof RemoteCommandFailure)
-			throw new AcceptanceFailure(code, { ...detail, exit: error.exit ?? 'signal' });
+			throw new AcceptanceFailure(code, { ...detail, ...remoteFailureDetail(error) });
 		throw error;
 	}
 }

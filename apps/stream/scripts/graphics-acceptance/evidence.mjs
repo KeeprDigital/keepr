@@ -162,8 +162,9 @@ export const ACCEPTANCE_FAILURE_CODES = Object.freeze([
 	// either, so it stages nothing more until they are gone (#619, ADR-0129).
 	'harness-cleanup-pending',
 	// Silent-video validator acceptance (#619). The fixture name, the command's
-	// one-word step and a status word travel; the staged key, validation id,
-	// digests, Wrangler's arguments and anything it printed do not.
+	// one-word step, a status word and Wrangler's error with its paths and names
+	// withheld travel; the staged key, validation id, digests and Wrangler's
+	// arguments do not.
 	'validator-runtime-unavailable',
 	'validator-command-failed',
 	'validator-did-not-settle',
