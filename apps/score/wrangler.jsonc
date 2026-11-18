@@ -3,5 +3,9 @@
 	// Nitro builds .output/server/wrangler.json from this file, adding the Worker
 	// entrypoint, assets, and name. Nothing is deployed yet: no route and no binding.
 	"compatibility_date": "2026-07-16",
-	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"]
+	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"],
+	// Throwaway for #1295. Under `nuxt dev` the class is not in this Worker: bind it
+	// with "script_name" to a Worker running it beside, and drop the migration.
+	"durable_objects": { "bindings": [{ "name": "EVENT_REALTIME", "class_name": "EventRealtime" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["EventRealtime"] }]
 }
