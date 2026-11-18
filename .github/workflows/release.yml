@@ -103,6 +103,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         with:
           github-token: ${{ steps.app-token.outputs.token }}
+          version: pnpm release:version
           publish-script: pnpm release:publish
           pr-title: 'chore(release): version apps'
           commit-message: 'chore(release): version apps'

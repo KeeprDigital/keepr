@@ -39,12 +39,25 @@ const TYPES = [
 	'revert',
 	'style',
 ];
-const CONVENTIONAL = new RegExp(`^(?:${TYPES.join('|')})(?:\\([^)]+\\))?!?: \\S`);
+const CONVENTIONAL = new RegExp(`^(${TYPES.join('|')})(?:\\(([^)]+)\\))?!?: (\\S.*)$`);
 const COMMIT_ID = /^[0-9a-f]{40}$/;
 
 /** @param {string} title */
 export function isConventionalTitle(title) {
 	return CONVENTIONAL.test(title);
+}
+
+/**
+ * A Conventional Commit title's parts; null when it is not one.
+ *
+ * @param {string} title
+ * @returns {{ type: string, scope?: string, summary: string } | null}
+ */
+export function parseConventionalTitle(title) {
+	const match = CONVENTIONAL.exec(title);
+	if (!match) return null;
+	const [, type = '', scope, summary = ''] = match;
+	return scope === undefined ? { type, summary } : { type, scope, summary };
 }
 
 /**
