@@ -7,7 +7,8 @@
  * rules live here so no call site can forget them:
  *
  * - **Routing is explicit.** Every remote command names the resolved target's
- *   bucket, Workflow and config, and runs with `CLOUDFLARE_ACCOUNT_ID` set to
+ *   bucket, Workflow, config and, outside production, the config's `env`
+ *   block (#525), and runs with `CLOUDFLARE_ACCOUNT_ID` set to
  *   the target's account, so Wrangler never falls back to whichever account the
  *   shell happens to be logged into.
  * - **Failures say nothing.** A failed command becomes a `RemoteCommandFailure`
@@ -110,7 +111,12 @@ export function createWranglerCommands({
 		const env = { ...baseEnv };
 		if (!target.local) env[ACCOUNT_ID_ENV] = target.accountId;
 		const { code, stdout } = await execute(
-			[...argumentList, '--config', target.validatorConfigPath],
+			[
+				...argumentList,
+				'--config',
+				target.validatorConfigPath,
+				...(target.wranglerEnv === undefined ? [] : ['--env', target.wranglerEnv]),
+			],
 			{ cwd: repoRoot, env },
 		);
 		if (code !== 0) throw new RemoteCommandFailure(step, code);
