@@ -1,6 +1,6 @@
 # ADR-0122: Each Environment is one Cloudflare account and one GitHub environment, shared by every app
 
-Accepted · 2026-11-18 · [#1264](https://github.com/KeeprDigital/keepr/issues/1264), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amended by ADR-0124: each Environment's GitHub environment also holds the release GitHub App's ID and private key, for the marker pushes · Amended by ADR-0125: a Release deploys to `staging`, then to `production`, whose required reviewer is the approval
+Accepted · 2026-11-18 · [#1264](https://github.com/KeeprDigital/keepr/issues/1264), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amended by ADR-0124: each Environment's GitHub environment also holds the release GitHub App's ID and private key, for the marker pushes · Amended by ADR-0125: a Release deploys to `staging`, then to `production`, whose required reviewer is the approval · Amended by ADR-0130: each Environment's Wrangler config names its account, and its GitHub environment holds no account ID
 
 ### Decision
 

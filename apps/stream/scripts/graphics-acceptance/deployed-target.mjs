@@ -124,9 +124,10 @@ function servedHosts(app) {
 /**
  * Everything a deployed run needs, or the first thing it lacks.
  *
- * Checked in the order a reader fixes them: the URL, the operator, the account,
- * then whether the Installation's configs, resolved for the Environment, agree
- * with each other and with the URL. Every refusal is an `AcceptanceFailure`
+ * Checked in the order a reader fixes them: the URL, the operator, the account
+ * (the one the configs, resolved for the Environment, name, unless
+ * `CLOUDFLARE_ACCOUNT_ID` is exported), then whether those configs agree with
+ * each other, with the account and with the URL. Every refusal is an `AcceptanceFailure`
  * whose detail is a reason word or a configuration name, never a value.
  *
  * @param {{
@@ -153,16 +154,19 @@ export function resolveDeployedTarget({
 		});
 	}
 
-	const accountId = env[ACCOUNT_ID_ENV]?.trim();
-	if (!accountId)
-		throw new AcceptanceFailure('harness-precondition-unmet', {
-			reason: `${ACCOUNT_ID_ENV} is unset`,
-		});
-	if (!ACCOUNT_ID_PATTERN.test(accountId)) throw inconsistent('account-malformed');
-
 	const { validatorConfigPath } = installation;
 	const app = configFor(installation.app, environment);
 	const validator = configFor(installation.validator, environment);
+
+	// The configs name the account (ADR-0130); an export, when there is one, must agree.
+	const named = [app.account_id, validator.account_id].filter((id) => id !== undefined);
+	const accountId = env[ACCOUNT_ID_ENV]?.trim() || named[0];
+	if (!accountId)
+		throw new AcceptanceFailure('harness-precondition-unmet', {
+			reason: `${ACCOUNT_ID_ENV} is unset and the configs name no account`,
+		});
+	if (!ACCOUNT_ID_PATTERN.test(accountId)) throw inconsistent('account-malformed');
+
 	let host;
 	try {
 		host = new URL(origin).host.toLowerCase();
@@ -171,10 +175,7 @@ export function resolveDeployedTarget({
 	}
 	if (!servedHosts(app).includes(host)) throw inconsistent('origin-not-installation');
 
-	for (const config of [app, validator]) {
-		if (config.account_id !== undefined && config.account_id !== accountId)
-			throw inconsistent('account-mismatch');
-	}
+	if (named.some((id) => id !== accountId)) throw inconsistent('account-mismatch');
 
 	const stagingBucket = bucketBound(validator, STAGING_BINDING);
 	if (!stagingBucket || stagingBucket !== bucketBound(app, STAGING_BINDING))
