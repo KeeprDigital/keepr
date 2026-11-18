@@ -1,0 +1,10 @@
+{
+	// Throwaway for #1295: runs beside `nuxt dev` only, never deployed.
+	"$schema": "../node_modules/wrangler/config-schema.json",
+	"name": "score-realtime-dev",
+	"main": "worker.ts",
+	"compatibility_date": "2026-07-16",
+	"vars": { "APP_ORIGIN": "http://127.0.0.1:3912" },
+	"durable_objects": { "bindings": [{ "name": "EVENT_REALTIME", "class_name": "EventRealtime" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["EventRealtime"] }]
+}
