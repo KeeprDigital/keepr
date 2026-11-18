@@ -61,6 +61,7 @@ on:
         default: production
         options:
           - production
+          - staging
       d1_recovery_point:
         description: >-
           Type "confirmed" once a recent D1 Time Travel recovery point or

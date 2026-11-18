@@ -1,6 +1,8 @@
 import type { ThrowawayAuth } from '~~/test/helpers/throwawayAuth';
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { LOCAL_HOST, LOCAL_ORIGIN, throwawayAuth } from '~~/test/helpers/throwawayAuth';
+import { parseJsonc } from '@keepr/tooling/scripts/jsonc.mjs';
 
 /**
  * Better Auth's CSRF defence, against a real instance configured exactly as the
@@ -26,6 +28,12 @@ import { LOCAL_HOST, LOCAL_ORIGIN, throwawayAuth } from '~~/test/helpers/throwaw
  * being used against its user; and a request naming a host this installation does
  * not answer on is neither.
  */
+
+const DEPLOYED_ENVIRONMENTS = (
+	parseJsonc(readFileSync('deploy.jsonc', 'utf8')) as {
+		environments: Record<string, { url: string }>;
+	}
+).environments;
 
 const EMAIL = 'origin-check@keepr.digital';
 const PASSWORD = 'a-long-enough-password';
@@ -63,6 +71,23 @@ describe('the origin check, under the environment the tests themselves run in', 
 	it('admits a sign-in from a hostname this installation answers on', async () => {
 		expect(await signIn({ origin: LOCAL_ORIGIN })).toMatchObject({ status: 200 });
 	});
+
+	// The one build deploys to every Environment, so each one's host is admitted.
+	it.each(Object.entries(DEPLOYED_ENVIRONMENTS))(
+		"admits a sign-in on the %s Environment's host",
+		async (_environment, { url }) => {
+			const { host, origin } = new URL(url);
+			const response = await auth.handler(
+				new Request(`${origin}/api/auth/sign-in/email`, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json', host, origin },
+					body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+				}),
+			);
+
+			expect(response.status).toBe(200);
+		},
+	);
 
 	it('refuses a session-carrying request that says nothing about where it came from', async () => {
 		// The shape that cost #397 a day: a browser always sends `Origin` on a

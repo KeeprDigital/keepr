@@ -120,6 +120,23 @@ describe('a Deploy is dispatched by hand, for the apps it names', () => {
 		]);
 	});
 
+	// An Environment an app's descriptor names, and nothing the dispatch could not deploy.
+	it('offers every Environment some deploy descriptor names', () => {
+		const environments = deployableApps('../..').flatMap((app) =>
+			Object.keys(
+				(
+					parseJsonc(readFileSync(`../../apps/${app}/deploy.jsonc`, 'utf8')) as {
+						environments: Record<string, unknown>;
+					}
+				).environments,
+			),
+		);
+
+		expect(deploy.on.workflow_dispatch?.inputs?.environment?.options?.toSorted()).toEqual([
+			...new Set(environments.toSorted()),
+		]);
+	});
+
 	// A refused plan leaves every deploying job without the outputs it runs on.
 	it('plans nothing until the D1 recovery point is confirmed, then plans through the tested script', () => {
 		const planSteps = plan.steps ?? [];

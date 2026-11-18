@@ -7,7 +7,7 @@
 # way. It never runs a Release's own `pnpm run deploy`.
 #
 # Each Environment is one Cloudflare account and one GitHub environment of the
-# same name (`production`), shared by every app (ADR-0122). It deploys only
+# same name (`production`, `staging`), shared by every app (ADR-0122). It deploys only
 # from main and holds that account's CLOUDFLARE_ACCOUNT_ID and a
 # CLOUDFLARE_API_TOKEN that can deploy every app in it (Workers Scripts:Edit,
 # D1:Edit, Containers:Edit), and the release GitHub App's KEEPR_RELEASE_APP_ID
@@ -34,7 +34,7 @@ on:
         required: true
         type: string
       environment:
-        description: The Environment its descriptor deploys to (production).
+        description: The Environment its descriptor deploys to (production, staging).
         required: true
         type: string
       parts:

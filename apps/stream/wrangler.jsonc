@@ -67,5 +67,47 @@
 			"head_sampling_rate": 0.05,
 			"persist": true
 		}
+	},
+	// The Staging Installation (deploy.jsonc's `staging`), in the staging Cloudflare
+	// account (ADR-0122): the same build, deployed with `--env staging`. Wrangler
+	// does not inherit vars or bindings into an env block, so each is restated
+	// with the staging account's ids; it inherits the rest (compatibility,
+	// triggers, observability), and `routes`, which would carry production's
+	// custom domain, is restated. `name` is set, or Wrangler deploys
+	// `stream-staging`. test/unit/build/wranglerEnvironments.test.ts holds the
+	// two to the same bindings.
+	"env": {
+		"staging": {
+			"name": "stream",
+			"routes": [{ "pattern": "stream.keepr-staging.digital", "custom_domain": true }],
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_id": "08191aa3-de28-4114-a2d6-81a907a68c41",
+					"migrations_table": "_hub_migrations",
+					"migrations_dir": "../../server/db/migrations/sqlite"
+				}
+			],
+			"vars": {
+				"NUXT_BANDAI_KEEPR_API_URL": "https://op-api.keepr.digital"
+			},
+			"kv_namespaces": [{ "binding": "KV", "id": "f38e3b36f6e5463794d5208ee373bef8" }],
+			"r2_buckets": [
+				{
+					"binding": "GRAPHICS_ASSET_STAGING",
+					"bucket_name": "stream-graphics-asset-staging"
+				},
+				{
+					"binding": "GRAPHICS_ASSET_CANONICAL",
+					"bucket_name": "stream-graphics-asset-canonical"
+				}
+			],
+			"services": [
+				{
+					"binding": "SILENT_VIDEO_PLAYBACK_VALIDATOR",
+					"service": "stream-silent-video-validator"
+				}
+			]
+		}
 	}
 }
