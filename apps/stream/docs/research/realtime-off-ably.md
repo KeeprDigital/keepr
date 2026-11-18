@@ -152,8 +152,15 @@ and under `nuxt dev`:
 
 So the built Worker can hold the object, and `nuxt dev` cannot: it needs a
 Worker running beside it for the object, and some other path for the socket.
-Not tried on Stream Keepr's own build, whose Nitro configuration has more in it
-(Wasm, async context, its integration handlers).
+The same entry then went onto Stream Keepr's own build (commit `8e7dc15f` on
+that branch), whose Nitro configuration has more in it (Wasm, async context, two
+crons). MEASURED: `pnpm build` passes and the built entry exports the class
+beside `default`; `pnpm worker:dry-run` passes with all three of its scans and
+lists the object among the bindings, the Staging environment's included; under
+local `workerd` the upgrade is refused without the stand-in credential and
+handed over with it, a route's RPC publish reaches the socket, the hourly cron
+still reaches its handler, and an ordinary route still answers. Not run: the
+unit, Nuxt and integration suites against that build.
 
 ## 4. Cost
 
@@ -337,8 +344,8 @@ included.
   heartbeat timer.
 - **Ably's own delivery latency** on the same rig, for comparison.
   `scripts/measure-realtime-fanout.mjs` counts messages and does not time them.
-- **The custom entry on Stream Keepr's own build**, and a deploy dry run of a
-  Worker that exports the class. Only Score Keepr's build was tried.
+- **Stream Keepr's suites on a build with the custom entry.** The build, the
+  dry run and the socket probe pass; no suite was run against it.
 - **A socket under `nuxt dev`**, decision 2.
 - **Score Keepr's needs beyond its spec.** It is scaffolded, not built; section 6
   reads the spec and nothing else.
