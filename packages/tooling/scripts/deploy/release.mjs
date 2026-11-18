@@ -41,6 +41,10 @@ export const DESCRIPTOR_FILE = 'deploy.jsonc';
  *   Wrangler `env` block it deploys.
  * - `parts`: Workers deployed from source beside the app, each with its own
  *   marker and fingerprint, deployed first when their fingerprint changed.
+ * - `gates`, optional: the app's package scripts that are its unattended
+ *   acceptance gates. Each reads a deployed Installation, at `KEEPR_DEPLOY_URL`,
+ *   and writes nothing to it and signs in to nothing, so the Deploy workflow
+ *   runs them in the staging job with no person present (ADR-0125).
  *
  * Paths are relative to the app's directory.
  *
@@ -52,6 +56,7 @@ export const DESCRIPTOR_FILE = 'deploy.jsonc';
  *   databases: { binding: string }[],
  *   environments: Record<string, { url: string, wranglerEnv?: string }>,
  *   parts: Record<string, import('./fingerprint.mjs').Part>,
+ *   gates?: string[],
  * }} Descriptor
  */
 
@@ -118,6 +123,11 @@ function descriptorProblems(descriptor, app) {
 		problems.push(`it names app ${JSON.stringify(descriptor.app)}, not ${JSON.stringify(app)}`);
 	if (!Array.isArray(descriptor.build) || !descriptor.build.every((step) => SCRIPT.test(step)))
 		problems.push('build is not a list of package script names');
+	if (
+		descriptor.gates !== undefined &&
+		!(Array.isArray(descriptor.gates) && descriptor.gates.every((gate) => SCRIPT.test(gate)))
+	)
+		problems.push('gates is not a list of package script names');
 	if (!isText(descriptor.output)) problems.push('output is not a directory');
 	if (!isText(descriptor.worker?.source)) problems.push('worker.source is not a path');
 	if (!isText(descriptor.worker?.config)) problems.push('worker.config is not a path');

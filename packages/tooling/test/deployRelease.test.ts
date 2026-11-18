@@ -130,6 +130,11 @@ describe("reading the Release's deploy descriptor", () => {
 			{ ...STREAM_DESCRIPTOR, build: ['pnpm build'] },
 			/build/,
 		],
+		[
+			'an unattended gate that is not a script name',
+			{ ...STREAM_DESCRIPTOR, gates: ['accept still-images --deployed'] },
+			/gates/,
+		],
 	])('refuses a descriptor with %s', (_case, descriptor, message) => {
 		expect(() => readRelease({ root: checkout(stream(descriptor)), app: 'stream' })).toThrow(
 			message,
