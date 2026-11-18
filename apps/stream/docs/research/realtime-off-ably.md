@@ -178,10 +178,15 @@ and under `nuxt dev`:
 | Can a route publish by RPC on the Worker's own binding? | Yes; the socket heard it |
 | `nuxt dev`, with the custom entry set | The dev server never comes up: the entry replaces Nitro's dev entry. It must be set for production builds only |
 | `nuxt dev`, class in the app's own Worker | Does not work. Wrangler says so at startup, and a call to the object hangs |
-| `nuxt dev`, class in a Worker running beside it, bound by `script_name` | A route's RPC publish works. The upgrade cannot pass through the Nuxt dev server, which runs no Worker entry |
+| `nuxt dev`, class in a Worker running beside it, bound by `script_name` | A route's RPC publish works. An ordinary route still cannot hand back the `101`, and `nuxt dev` runs no Worker entry |
+| `nuxt dev`, the socket through Nitro's `devProxy` with `ws: true` to that Worker | **Works** (commit `9f1e9574`). The Worker beside asks the dev server's authorize route who the caller is, the cookie forwarded: `401` without the stand-in credential, `101` with it, and a route's publish reaches the socket. The page uses the same path as against the built Worker |
 
 So the built Worker can hold the object, and `nuxt dev` cannot: it needs a
-Worker running beside it for the object, and some other path for the socket.
+Worker running beside it for the object, which Nitro's dev proxy reaches on the
+path production uses. What differs in development is who hands the socket over
+(that Worker, not the custom entry) and the binding (`script_name`, in a Wrangler
+environment `nitro.cloudflare.dev.environment` names). The authorize route, the
+class, the publish and the client's URL are the same code in both.
 The same entry then went onto Stream Keepr's own build (commit `8e7dc15f` on
 that branch), whose Nitro configuration has more in it (Wasm, async context, two
 crons). MEASURED: `pnpm build` passes and the built entry exports the class
@@ -317,17 +322,24 @@ included.
      own Worker is proven for the built Worker (section 3): one deployable, no
      deploy order, the caller authorized in process, and a deferred code update
      keeps sockets connected across the app's deploys. It costs a custom Worker
-     entry, and `nuxt dev` still needs a Worker beside it, so development and
-     production differ in shape. A Part that owns the socket route is the same
-     shape everywhere, at the cost of a second deployable per app and a call
-     back to the app to ask who the caller is, which is untested. Still
-     preferred: the app's own Worker, now on production's account alone.
-2. **How a socket reaches the object under `nuxt dev`.** An ordinary route
-   cannot hand back the `101` (section 3), and `nuxt dev` runs no Worker entry.
-   The client connects to the Worker beside it, which asks the dev server who
-   the caller is; or a dev-only WebSocket route pipes to the object. Neither is
-   tried. The integration suites and the preview run the built Worker, so they
-   take production's path.
+     entry, and `nuxt dev` needs a Worker beside it, reached through Nitro's dev
+     proxy (section 3), so only the hand-off and the binding differ in
+     development. A Part that owns the socket route is the same shape
+     everywhere, at the cost of a second deployable per app and a call back to
+     the app to ask who the caller is: shown over HTTP beside `nuxt dev`, not
+     over a service binding between deployed Workers. Preferred: the app's own
+     Worker.
+2. **How development runs the object.** Shown to work (section 3): a Worker
+   beside `nuxt dev` holds the class, and Nitro's dev proxy forwards the socket
+   to it. Left to decide:
+   - **Who starts it.** `pnpm dev` becomes two processes, in every app with
+     realtime; the shared layer should own that Worker and its start.
+   - **Where the dev binding lives.** A Wrangler environment restates every
+     binding the app has, since environments inherit none; a separate dev
+     config (`nitro.cloudflare.dev.configPath`) is the alternative. Only the
+     environment was tried, on an app with no other binding.
+   - The integration suites and the preview run the built Worker, so they take
+     production's path.
 3. **How a Screen Output presents its capability.** A browser cannot set
    `Authorization` on a WebSocket. A subprotocol value, or a short-lived ticket
    from an HTTP route. Amends ADR-0010's token grant, and the rule that only a
@@ -377,7 +389,10 @@ included.
   `scripts/measure-realtime-fanout.mjs` counts messages and does not time them.
 - **Stream Keepr's suites on a build with the custom entry.** The build, the
   dry run and the socket probe pass; no suite was run against it.
-- **A socket under `nuxt dev`**, decision 2.
+- **Development on Stream Keepr itself.** The dev proxy and the Worker beside
+  were tried on Score Keepr, which has no other binding. Whether Vite's own
+  socket and hot reload are undisturbed was not checked.
+- **A Part asking the app who the caller is** over a service binding.
 - **Score Keepr's needs beyond its spec.** It is scaffolded, not built; section 6
   reads the spec and nothing else.
 
