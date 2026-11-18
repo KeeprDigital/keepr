@@ -10,7 +10,9 @@
 	"worker": { "source": "wrangler.jsonc", "config": ".output/server/wrangler.json" },
 	"databases": [{ "binding": "DB" }],
 	"environments": {
-		"production": { "url": "https://stream.keepr.digital" }
+		"production": { "url": "https://stream.keepr.digital" },
+		// wrangler.jsonc's and the validator's `env.staging` blocks, in the staging account.
+		"staging": { "url": "https://stream.keepr-staging.digital", "wranglerEnv": "staging" }
 	},
 	"parts": {
 		// The app binds it (SILENT_VIDEO_PLAYBACK_VALIDATOR), so it deploys first,

@@ -51,5 +51,48 @@
 			"invocation_logs": true,
 			"persist": true
 		}
+	},
+	// The Staging Installation's validator, in the staging Cloudflare account
+	// (ADR-0122), deployed with `--env staging`. Wrangler does not inherit
+	// bindings, the Workflow, the Container or the Durable Object into an env
+	// block, so each is restated; it inherits the Durable Object `migrations`,
+	// which stay one list. `name` is set, or Wrangler deploys
+	// `stream-silent-video-validator-staging`. Production's fingerprint resolves
+	// without this block, so editing it never redeploys production's validator.
+	"env": {
+		"staging": {
+			"name": "stream-silent-video-validator",
+			"r2_buckets": [
+				{
+					"binding": "GRAPHICS_ASSET_STAGING",
+					"bucket_name": "stream-graphics-asset-staging"
+				}
+			],
+			"workflows": [
+				{
+					"name": "silent-video-validation",
+					"binding": "SILENT_VIDEO_VALIDATION_WORKFLOW",
+					"class_name": "SilentVideoValidationWorkflow"
+				}
+			],
+			"containers": [
+				{
+					// The name Wrangler gives production's, which it would otherwise suffix `-staging`.
+					"name": "stream-silent-video-validator-silentvideovalidationcontainer",
+					"class_name": "SilentVideoValidationContainer",
+					"image": "./container/Dockerfile",
+					"instance_type": "standard-3",
+					"max_instances": 4
+				}
+			],
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "SILENT_VIDEO_VALIDATION_CONTAINER",
+						"class_name": "SilentVideoValidationContainer"
+					}
+				]
+			}
+		}
 	}
 }
