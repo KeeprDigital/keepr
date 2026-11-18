@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
 	configBindsKeeprAccounts,
 	diffRange,
+	scope as scopeIn,
 	scopeOf,
 	workerLegsOf,
 } from '../scripts/ci-scope.mjs';
@@ -233,6 +234,7 @@ describe("the scope job's command line", () => {
 	const QUEUED = {
 		codeThenDocs: ['apps/stream/server/api/time.get.ts', 'docs/second.md'],
 		docsOnly: ['docs/first.md', 'docs/second.md'],
+		testsOnly: ['apps/stream/test/time.test.ts', 'docs/second.md'],
 	} as const;
 
 	let workspace: string;
@@ -313,13 +315,14 @@ describe("the scope job's command line", () => {
 				]),
 			].join('\n'),
 		});
-		const [base, codeThenDocs, docsOnly] = git(
+		const [base, codeThenDocs, docsOnly, testsOnly] = git(
 			origin,
 			'rev-parse',
 			'main',
 			'queue/codeThenDocs',
 			'queue/docsOnly',
-		).split('\n') as [string, string, string];
+			'queue/testsOnly',
+		).split('\n') as [string, string, string, string];
 		groups = {
 			codeThenDocs: {
 				base,
@@ -330,6 +333,11 @@ describe("the scope job's command line", () => {
 				base,
 				head: docsOnly,
 				pristine: shallowCheckout(origin, docsOnly, join(workspace, 'docsOnly')),
+			},
+			testsOnly: {
+				base,
+				head: testsOnly,
+				pristine: shallowCheckout(origin, testsOnly, join(workspace, 'testsOnly')),
 			},
 		};
 	});
@@ -424,6 +432,33 @@ describe("the scope job's command line", () => {
 				merge_group: { base_sha: base, head_sha: head },
 			}).output,
 		).toBe('code=false\ndocs=true\napps=[]\n');
+	});
+
+	// GitHub holds a PR run of the group's tree whose scope chose no Worker leg
+	// (ci-reuse.mjs decides whether that verifies it): the group may reuse it only when its own scope chose none.
+	it.each<[string, keyof typeof QUEUED, object]>([
+		[
+			'tests-only, so no leg, reuses it',
+			'testsOnly',
+			{ code: false, docs: false, apps: [], verifiedBy: 'https://ci.example/runs/1' },
+		],
+		[
+			'shipping in an app, so with a leg, runs its gates',
+			'codeThenDocs',
+			{ code: true, docs: false, apps: [{ app: 'stream', accounts: true }], verifiedBy: undefined },
+		],
+	])('a merge group %s', async (_case, group, expected) => {
+		const { checkout, base, head } = mergeGroup(group);
+
+		await expect(
+			scopeIn({
+				eventName: 'merge_group',
+				event: { merge_group: { base_sha: base, head_sha: head } },
+				cwd: checkout,
+				verifiedRun: async (_head: string, { runsWorkerLegs }: { runsWorkerLegs: boolean }) =>
+					runsWorkerLegs ? undefined : { id: 1, url: 'https://ci.example/runs/1' },
+			}),
+		).resolves.toEqual(expected);
 	});
 
 	it('a base it cannot fetch runs everything', () => {
