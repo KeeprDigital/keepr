@@ -64,21 +64,17 @@ function selectionFromRoute() {
 const selection = ref(selectionFromRoute());
 
 const {
-	administratorToken,
 	reading: queues,
 	loadPending,
 	loadError,
 	hasReading,
-	administratorHeaders,
 	describeFailure,
 	statusOf,
 	isAuthorizationFailure,
 	load: loadQueues,
 } = useGraphicsAdminReading<GraphicsOperationalQueuesOverview>({
-	read: async (headers) =>
-		await $fetch<GraphicsOperationalQueuesOverview>('/api/admin/graphics-assets/queues', {
-			headers,
-		}),
+	read: async () =>
+		await $fetch<GraphicsOperationalQueuesOverview>('/api/admin/graphics-assets/queues', {}),
 	failureMessage: 'The operational queues could not be read.',
 	onAuthorizationLost: () => {
 		inspection.value = null;
@@ -107,7 +103,6 @@ async function loadInspection() {
 		inspection.value = await $fetch<GraphicsQueueInspectionReading>(
 			'/api/admin/graphics-assets/queues/inspection',
 			{
-				headers: administratorHeaders(),
 				query: { queue: selected.queue, subjectId: selected.subjectId },
 			},
 		);
@@ -276,10 +271,10 @@ async function run(
 	try {
 		report(await perform());
 	} catch (caught) {
-		// A token that stopped being accepted is not a domain outcome. Reporting
-		// one would tell an administrator the library considered their action and
-		// answered, when in fact it never looked at it. The re-read below is the
-		// one that puts the token form back, so nothing extra is needed here.
+		// A User no longer admitted is not a domain outcome. Reporting one would
+		// tell an administrator the library considered their action and answered,
+		// when in fact it never looked at it. The re-read below is the one that
+		// takes the reading off the screen, so nothing extra is needed here.
 		if (isAuthorizationFailure(caught)) return;
 		const status = statusOf(caught);
 		report(
@@ -303,7 +298,6 @@ async function runDiscrepancyAction(action: GraphicsQueueAction) {
 				`/api/admin/graphics-assets/discrepancies/${subjectId}/actions`,
 				{
 					method: 'POST',
-					headers: administratorHeaders(),
 					body: { action },
 				},
 			),
@@ -321,7 +315,6 @@ async function repairWithExactBytes(fileEvent: Event) {
 				`/api/admin/graphics-assets/discrepancies/${subjectId}/repair`,
 				{
 					method: 'PUT',
-					headers: administratorHeaders(),
 					body: file,
 				},
 			),
@@ -341,7 +334,6 @@ async function restoreGraphicAsset() {
 					outcome: GraphicsQueueActionOutcome;
 				}>(`/api/admin/graphics-assets/${subjectId}/lifecycle-actions`, {
 					method: 'POST',
-					headers: administratorHeaders(),
 					body: { action: 'restore' },
 				})
 			).outcome,
@@ -359,7 +351,6 @@ async function retryIngestion() {
 					outcome: GraphicsQueueActionOutcome;
 				}>(`/api/admin/graphics-assets/ingestion-operations/${operation.operationId}/retry`, {
 					method: 'POST',
-					headers: administratorHeaders(),
 				})
 			).outcome,
 	);
@@ -378,7 +369,6 @@ async function retryRelease() {
 					`/api/admin/graphics-assets/ingestion-operations/${strand.operationId}/release-staged-input`,
 					{
 						method: 'POST',
-						headers: administratorHeaders(),
 					},
 				)
 			).outcome,
@@ -397,7 +387,6 @@ async function confirmEarlyPurge() {
 		graphicsPurgeQueueOutcome(
 			await $fetch<GraphicAssetPurgeOutcome>(`/api/admin/graphics-assets/${subjectId}/purge`, {
 				method: 'POST',
-				headers: administratorHeaders(),
 				body: { confirmation: 'purge-now' },
 			}),
 		),
@@ -452,12 +441,9 @@ function actionHandler(action: GraphicsQueueAction) {
 					<h2 class="font-semibold text-highlighted">Graphics Administrator access</h2>
 				</template>
 				<div class="flex flex-col gap-4">
-					<UFormField
-						label="Graphics Administrator token"
-						description="The queues are administrator-only. The token is held for this session only and never stored."
-					>
-						<UInput v-model="administratorToken" type="password" autocomplete="current-password" />
-					</UFormField>
+					<p class="text-sm text-muted">
+						The queues are for a Graphics Administrator: sign in as a User who holds the role.
+					</p>
 					<div>
 						<UButton
 							label="Open queues"

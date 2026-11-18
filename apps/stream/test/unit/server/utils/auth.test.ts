@@ -225,12 +225,10 @@ describe('the identities a request carries', () => {
 		});
 	});
 
-	it('leaves the optional identities empty rather than refusing', async () => {
-		const { optionalUserId, optionalBrowserSessionId } = await freshAuth(null);
-		const event = requestEvent();
+	it('leaves the optional browser identity empty rather than refusing', async () => {
+		const { optionalBrowserSessionId } = await freshAuth(null);
 
-		await expect(optionalUserId(event)).resolves.toBeUndefined();
-		await expect(optionalBrowserSessionId(event)).resolves.toBeUndefined();
+		await expect(optionalBrowserSessionId(requestEvent())).resolves.toBeUndefined();
 	});
 
 	it("resolves one request's session once, however many identities it asks for", async () => {

@@ -10,7 +10,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { GRAPHICS_OPERATIONAL_QUEUES } from '../../shared/utils/graphicsOperationalQueues';
 import { $fetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
-import { INTEGRATION_GRAPHICS_ADMIN_TOKEN } from './helpers';
+import { aUserWithoutTheRole } from './identities';
 import { expectOperationResult, expectResponseStatus } from './responseStatus';
 
 const transparentPixelPng = Uint8Array.from(
@@ -51,9 +51,6 @@ interface QueueActionResult {
 }
 
 describe('the Graphics Asset Library operational queues API', () => {
-	const administratorHeaders = {
-		'x-graphics-admin-token': INTEGRATION_GRAPHICS_ADMIN_TOKEN,
-	};
 	let authorHeaders: Record<string, string>;
 
 	beforeAll(async () => {
@@ -89,7 +86,6 @@ describe('the Graphics Asset Library operational queues API', () => {
 			`/api/admin/graphics-assets/${assetId}/lifecycle-actions`,
 			{
 				method: 'POST',
-				headers: administratorHeaders,
 				body: { action: 'restore' },
 			},
 		);
@@ -108,21 +104,23 @@ describe('the Graphics Asset Library operational queues API', () => {
 	}
 
 	it('keeps every queue surface administrator-only', async () => {
-		const overview = await fetch('/api/admin/graphics-assets/queues');
+		const cookie = await aUserWithoutTheRole('queues-1293-no-role');
+		const overview = await fetch('/api/admin/graphics-assets/queues', { headers: { cookie } });
 		expect(overview.status).toBe(403);
 		const inspection = await fetch(
 			'/api/admin/graphics-assets/queues/inspection?queue=retired-asset&subjectId=x',
+			{ headers: { cookie } },
 		);
 		expect(inspection.status).toBe(403);
 		const lifecycle = await fetch('/api/admin/graphics-assets/x/lifecycle-actions', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 			body: JSON.stringify({ action: 'restore' }),
 		});
 		expect(lifecycle.status).toBe(403);
 		const retry = await fetch('/api/admin/graphics-assets/ingestion-operations/x/retry', {
 			method: 'POST',
-			headers: { 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json', cookie },
 		});
 		expect(retry.status).toBe(403);
 	});
@@ -130,7 +128,7 @@ describe('the Graphics Asset Library operational queues API', () => {
 	it('offers restoration alone, not every lifecycle transition', async () => {
 		const refused = await fetch('/api/admin/graphics-assets/anything/lifecycle-actions', {
 			method: 'POST',
-			headers: { ...administratorHeaders, 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ action: 'trash' }),
 		});
 		// Retiring and Trashing are the Library Workspace's decisions about a live
@@ -142,7 +140,6 @@ describe('the Graphics Asset Library operational queues API', () => {
 	it('answers a Graphics Administrator the reading of every queue', async () => {
 		const overview = await $fetch<GraphicsOperationalQueuesOverview>(
 			'/api/admin/graphics-assets/queues',
-			{ headers: administratorHeaders },
 		);
 
 		expect(overview.queues.map((queue) => queue.id)).toEqual([...GRAPHICS_OPERATIONAL_QUEUES]);
@@ -156,7 +153,6 @@ describe('the Graphics Asset Library operational queues API', () => {
 		const inspection = await $fetch<GraphicsQueueInspection>(
 			'/api/admin/graphics-assets/queues/inspection',
 			{
-				headers: administratorHeaders,
 				query: { queue: 'retired-asset', subjectId: assetId },
 			},
 		);
@@ -182,7 +178,6 @@ describe('the Graphics Asset Library operational queues API', () => {
 		// The asset left the queue it was in, so it can no longer be inspected there.
 		const gone = await fetch(
 			`/api/admin/graphics-assets/queues/inspection?queue=retired-asset&subjectId=${assetId}`,
-			{ headers: administratorHeaders },
 		);
 		expect(gone.status).toBe(404);
 	});
@@ -193,7 +188,7 @@ describe('the Graphics Asset Library operational queues API', () => {
 		// A completed operation is terminal: retrying it is the idempotent no-op.
 		const retried = await $fetch<QueueActionResult>(
 			`/api/admin/graphics-assets/ingestion-operations/${operation.id}/retry`,
-			{ method: 'POST', headers: administratorHeaders },
+			{ method: 'POST' },
 		);
 		expect(retried).toEqual({ outcome: 'already-in-state' });
 	});

@@ -1,15 +1,13 @@
 import type { GraphicsOperationsCockpit } from '~~/shared/types/graphicsAsset';
 import { describe, expect, it } from 'vitest';
 import { $fetch, fetch } from './client';
-import { INTEGRATION_GRAPHICS_ADMIN_TOKEN } from './helpers';
-
-const administratorHeaders = {
-	'x-graphics-admin-token': INTEGRATION_GRAPHICS_ADMIN_TOKEN,
-};
+import { aUserWithoutTheRole } from './identities';
 
 describe('the Operations Cockpit API', () => {
 	it('keeps the cockpit behind Graphics Administrator authorization', async () => {
-		const response = await fetch('/api/admin/graphics-assets/operations-cockpit');
+		const response = await fetch('/api/admin/graphics-assets/operations-cockpit', {
+			headers: { cookie: await aUserWithoutTheRole('cockpit-1293-no-role') },
+		});
 
 		expect(response.status).toBe(403);
 	});
@@ -17,7 +15,6 @@ describe('the Operations Cockpit API', () => {
 	it('answers with one composed, domain-shaped reading of the whole library', async () => {
 		const cockpit = await $fetch<GraphicsOperationsCockpit>(
 			'/api/admin/graphics-assets/operations-cockpit',
-			{ headers: administratorHeaders },
 		);
 
 		expect(cockpit.outcome).toBe('complete');
@@ -60,6 +57,5 @@ describe('the Operations Cockpit API', () => {
 		const serialised = JSON.stringify(cockpit);
 		expect(serialised).not.toContain('sha256');
 		expect(serialised).not.toContain('bucket');
-		expect(serialised).not.toContain(INTEGRATION_GRAPHICS_ADMIN_TOKEN);
 	});
 });

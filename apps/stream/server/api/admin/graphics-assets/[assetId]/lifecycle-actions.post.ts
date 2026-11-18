@@ -3,10 +3,7 @@ import { z } from 'zod';
 import { requireGraphicsAdministrator } from '~~/server/modules/graphics-administrator';
 import { graphicAssetId } from '~~/server/modules/graphics-asset-library';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
-import {
-	graphicsAdministratorActor,
-	rethrowGraphicsAssetApiError,
-} from '~~/server/utils/graphicsAssetApi';
+import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 import { graphicsQueueActionErrorOutcome } from '~~/server/utils/graphicsQueueActions';
 import { graphicsLifecycleQueueOutcome } from '~~/shared/utils/graphicsOperationalQueues';
 
@@ -39,13 +36,13 @@ export default defineEventHandler(
 		outcome: GraphicsQueueActionOutcome;
 	}> => {
 		try {
-			await requireGraphicsAdministrator(event);
+			const actor = await requireGraphicsAdministrator(event);
 			await readValidatedBody(event, actionSchema.parse);
 			return {
 				outcome: graphicsLifecycleQueueOutcome(
 					await graphicsAssetLibraryForEvent(event).restoreGraphicAsset({
 						assetId: graphicAssetId(getRouterParam(event, 'assetId') ?? ''),
-						actor: await graphicsAdministratorActor(event),
+						actor,
 					}),
 				),
 			};

@@ -1,65 +1,83 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
-import { refusalFrom } from '~~/test/helpers/publicServerFailure';
+import { IncomingMessage, ServerResponse } from 'node:http';
+import { Socket } from 'node:net';
+import { createEvent } from 'h3';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+	LOCAL_AUTH_BYPASS_ENABLED_VALUE,
+	LOCAL_AUTH_BYPASS_NAME,
+	LOCAL_DEVELOPER_USER_ID,
+} from '~~/shared/utils/localDeveloperAuth';
 
-const { mockRuntimeConfig, mockRequestHeader } = vi.hoisted(() => ({
-	mockRuntimeConfig: vi.fn(),
-	mockRequestHeader: vi.fn(),
-}));
+vi.mock('~~/server/db', () => ({ db: {}, schema: {} }));
 
-vi.stubGlobal('useRuntimeConfig', mockRuntimeConfig);
-vi.stubGlobal('getRequestHeader', mockRequestHeader);
-vi.stubGlobal(
-	'createError',
-	(input: { statusCode: number; statusMessage?: string; message: string; cause?: unknown }) =>
-		Object.assign(new Error(input.message), input),
+const mockUseRuntimeConfig = vi.fn();
+vi.stubGlobal('useRuntimeConfig', mockUseRuntimeConfig);
+vi.stubGlobal('createError', (input: { statusCode: number; message: string }) =>
+	Object.assign(new Error(input.message), input),
 );
 
-async function requireAdministrator() {
+/** The guard over a real auth module whose only fake is Better Auth's session read. */
+async function guardReading(session: unknown) {
+	vi.resetModules();
+	mockUseRuntimeConfig.mockReturnValue({ betterAuthSecret: 'a-configured-secret-0000000000' });
+	const auth = await import('~~/server/utils/auth');
+	vi.spyOn(auth.serverAuth().api, 'getSession').mockResolvedValue({
+		headers: new Headers(),
+		response: session,
+	} as never);
 	return (await import('~~/server/modules/graphics-administrator')).requireGraphicsAdministrator;
 }
 
-const CONFIGURED_TOKEN = 'a-configured-admin-token-of-32ch';
+function requestEvent() {
+	const request = new IncomingMessage(new Socket());
+	return createEvent(request, new ServerResponse(request));
+}
+
+function signedInAs(role: string | null) {
+	return { session: { id: 'a-browser-session' }, user: { id: 'a-user', role } };
+}
+
+afterEach(() => {
+	vi.unstubAllEnvs();
+});
 
 describe('the Graphics Administrator guard', () => {
-	beforeEach(() => {
-		vi.resetModules();
-		mockRuntimeConfig.mockReset().mockReturnValue({ graphicsAdminToken: CONFIGURED_TOKEN });
-		mockRequestHeader.mockReset().mockReturnValue(CONFIGURED_TOKEN);
+	// Better Auth stores a User's roles as one comma-separated column.
+	it.each([
+		['holds only the role', 'admin'],
+		['holds it among others', 'user, admin'],
+	])('admits a signed-in User who %s, answering who they are', async (_label, role) => {
+		const guard = await guardReading(signedInAs(role));
+
+		await expect(guard(requestEvent())).resolves.toBe('a-user');
 	});
 
-	it('admits a caller presenting the installation token', async () => {
-		await expect((await requireAdministrator())(stubH3Event())).resolves.toBeUndefined();
-	});
+	it.each([
+		['holds no role', null],
+		['holds another role', 'user'],
+		['holds a role that only contains its name', 'admins'],
+	])('refuses a signed-in User who %s with 403', async (_label, role) => {
+		const guard = await guardReading(signedInAs(role));
 
-	it('refuses a caller presenting the wrong token with 403', async () => {
-		mockRequestHeader.mockReturnValue('not-the-token');
-
-		await expect((await requireAdministrator())(stubH3Event())).rejects.toMatchObject({
+		await expect(guard(requestEvent())).rejects.toMatchObject({
 			statusCode: 403,
 			message: 'Graphics Administrator authorization is required',
 		});
 	});
 
-	// Refused 503 naming the setting, classified so the public mapper keeps the sentence (#321),
-	// and never echoing a token. Unset, blank, or read by `destr` as another type.
-	it.each([
-		['unset', ''],
-		['blank', '   '],
-		['all digits', 482915736104],
-		['true', true],
-		['shorter than the floor', 'a-supplied-token'],
-	])('names the setting when the administrator token is %s', async (_label, configured) => {
-		mockRuntimeConfig.mockReturnValue({ graphicsAdminToken: configured });
-		mockRequestHeader.mockReturnValue('a-supplied-token');
+	it('refuses a request with no Session with 401', async () => {
+		const guard = await guardReading(null);
 
-		const failure = await refusalFrom((await requireAdministrator())(stubH3Event()));
-		// Imported after `vi.resetModules()`, so `instanceof` compares the guard's own class.
-		const { ServiceConfigurationError } = await import('@keepr/nuxt-layer/server/utils/errors');
+		await expect(guard(requestEvent())).rejects.toMatchObject({
+			statusCode: 401,
+			message: 'Authentication is required',
+		});
+	});
 
-		expect(failure).toMatchObject({ statusCode: 503, statusMessage: 'Service Unavailable' });
-		expect(failure.message).toContain('NUXT_GRAPHICS_ADMIN_TOKEN');
-		expect(failure.message).not.toContain('a-supplied-token');
-		expect(failure.cause).toBeInstanceOf(ServiceConfigurationError);
+	it('admits the Local Developer User, who holds the highest App role', async () => {
+		vi.stubEnv(LOCAL_AUTH_BYPASS_NAME, LOCAL_AUTH_BYPASS_ENABLED_VALUE);
+		const guard = await guardReading(null);
+
+		await expect(guard(requestEvent())).resolves.toBe(LOCAL_DEVELOPER_USER_ID);
 	});
 });

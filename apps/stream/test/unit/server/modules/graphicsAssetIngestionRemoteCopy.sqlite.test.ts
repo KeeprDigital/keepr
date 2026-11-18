@@ -42,10 +42,6 @@ afterEach(async () => {
 // The API boundary imports the asking user for its actor resolution, which builds
 // the Better Auth instance over `~~/server/db` — a binding no unit run has. Nothing here
 // asks it anything.
-vi.mock('~~/server/utils/auth', () => ({
-	optionalUserId: vi.fn(),
-}));
-
 // `rethrowGraphicsAssetApiError` reaches Nitro's auto-imported `createError`
 // and, on its 503 branch, `setResponseHeader` — neither of which a unit run
 // has. Nothing in the ingestion module calls either.

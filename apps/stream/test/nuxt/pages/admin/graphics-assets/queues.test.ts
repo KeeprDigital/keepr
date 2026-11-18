@@ -347,17 +347,9 @@ async function settle() {
 	await nextTick();
 }
 
-/** Enters the administrator token and takes the first reading, as an administrator does. */
+/** Opens the page as a signed-in Graphics Administrator, which takes the first reading. */
 async function openQueues() {
 	const wrapper = await mountPage();
-	const token = wrapper.find('input');
-	if (token.exists()) {
-		await token.setValue('admin-token');
-		await wrapper
-			.findAll('button')
-			.find((button) => button.text() === 'Open queues')!
-			.trigger('click');
-	}
 	await settle();
 	return wrapper;
 }
@@ -424,7 +416,6 @@ describe('the Graphics Asset Library operational queues page', () => {
 		await settle();
 
 		expect(mockApiFetch).toHaveBeenCalledWith('/api/admin/graphics-assets/queues/inspection', {
-			headers: { 'x-graphics-admin-token': 'admin-token' },
 			query: { queue: 'unavailable-content', subjectId: 'discrepancy-unavailable' },
 		});
 

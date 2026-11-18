@@ -3,9 +3,10 @@ import type { Ref } from 'vue';
 /**
  * One administrator-only reading of durable Graphics Asset Library state.
  *
- * Every administrator surface works the same way: hold a token for the session
- * only, take a reading, poll it, and drop the reading the moment the token
- * stops being accepted. Sharing that here keeps the two surfaces agreeing on
+ * Every administrator surface works the same way: take a reading as the page
+ * opens, poll it, and drop the reading the moment the signed-in User stops
+ * being admitted as the Graphics Administrator (ADR-0131). Sharing that here
+ * keeps the surfaces agreeing on
  * the parts that are easy to get subtly wrong — what counts as an authorization
  * failure, whether a stale reading may stay on screen, and how hard a library
  * that is down gets asked again.
@@ -23,13 +24,11 @@ const POLL_INTERVAL_MILLISECONDS = 5000;
 const MAXIMUM_BACKOFF_TICKS = 12;
 
 export interface GraphicsAdminReading<Reading> {
-	administratorToken: Ref<string>;
 	reading: Ref<Reading | null>;
 	loadPending: Ref<boolean>;
 	loadError: Ref<string | null>;
-	/** Whether a reading is currently being shown, not whether the token is valid. */
+	/** Whether a reading is currently being shown, not whether the User is admitted. */
 	hasReading: Ref<boolean>;
-	administratorHeaders: () => { 'x-graphics-admin-token': string };
 	describeFailure: (caught: unknown, fallback: string) => string;
 	statusOf: (caught: unknown) => number | undefined;
 	isAuthorizationFailure: (caught: unknown) => boolean;
@@ -37,11 +36,11 @@ export interface GraphicsAdminReading<Reading> {
 }
 
 export function useGraphicsAdminReading<Reading>(options: {
-	/** Takes one reading with the headers the caller was given. */
-	read: (headers: { 'x-graphics-admin-token': string }) => Promise<Reading>;
+	/** Takes one reading. */
+	read: () => Promise<Reading>;
 	/** What to say when the failure carries no message of its own. */
 	failureMessage: string;
-	/** Cleared alongside the reading when a token stops being accepted. */
+	/** Cleared alongside the reading when the User stops being admitted. */
 	onAuthorizationLost?: () => void;
 	/** Run after each successful reading, for state derived from it. */
 	onReading?: () => Promise<void> | void;
@@ -52,7 +51,6 @@ export function useGraphicsAdminReading<Reading>(options: {
 	 */
 	paused?: () => boolean;
 }): GraphicsAdminReading<Reading> {
-	const administratorToken = ref('');
 	const reading = ref<Reading | null>(null) as Ref<Reading | null>;
 	const loadPending = ref(false);
 	const loadError = ref<string | null>(null);
@@ -60,17 +58,13 @@ export function useGraphicsAdminReading<Reading>(options: {
 
 	const hasReading = computed(() => reading.value !== null);
 
-	function administratorHeaders() {
-		return { 'x-graphics-admin-token': administratorToken.value };
-	}
-
 	/**
 	 * What a failed reading says to the administrator who was watching it.
 	 *
 	 * The sentence the server wrote comes first, because on these surfaces the failure
 	 * met most often is the 403 whose body says 'Graphics Administrator authorization is
 	 * required' — and a `$fetch` failure's own `message` is the transport's line, which
-	 * names the route and not the missing token (#271, #286). `failureSentence` owns which
+	 * names the route and not the missing role (#271, #286). `failureSentence` owns which
 	 * bodies may be quoted; a sanitized 5xx writes none, and falls back to that line.
 	 */
 	function describeFailure(caught: unknown, fallback: string) {
@@ -90,14 +84,14 @@ export function useGraphicsAdminReading<Reading>(options: {
 		loadPending.value = true;
 		loadError.value = null;
 		try {
-			reading.value = await options.read(administratorHeaders());
+			reading.value = await options.read();
 			consecutiveFailures.value = 0;
 			await options.onReading?.();
 		} catch (caught) {
 			consecutiveFailures.value += 1;
 			loadError.value = describeFailure(caught, options.failureMessage);
-			// A rotated or revoked token must put the token form back rather than
-			// leaving a stale reading on screen forever. Keeping the last reading
+			// A Session that ended, or a role taken away, must take the reading off
+			// the screen rather than leave it there forever. Keeping the last reading
 			// would show an administrator a library state nobody is still checking.
 			if (isAuthorizationFailure(caught)) {
 				reading.value = null;
@@ -118,6 +112,7 @@ export function useGraphicsAdminReading<Reading>(options: {
 	}
 
 	onMounted(() => {
+		void load();
 		pollHandle = window.setInterval(() => {
 			if (!hasReading.value || loadPending.value || options.paused?.()) return;
 			if (ticksSinceAttempt < backoffTicks()) {
@@ -134,12 +129,10 @@ export function useGraphicsAdminReading<Reading>(options: {
 	});
 
 	return {
-		administratorToken,
 		reading,
 		loadPending,
 		loadError,
 		hasReading,
-		administratorHeaders,
 		describeFailure,
 		statusOf,
 		isAuthorizationFailure,

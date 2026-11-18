@@ -31,10 +31,7 @@ vi.doMock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	graphicsAssetLibraryForEvent: () => context.library,
 }));
 vi.doMock('~~/server/modules/graphics-administrator', () => ({
-	requireGraphicsAdministrator: async () => {},
-}));
-vi.doMock('~~/server/utils/auth', () => ({
-	optionalUserId: async () => undefined,
+	requireGraphicsAdministrator: async () => 'a-graphics-administrator',
 }));
 
 interface StubEvent {

@@ -21,7 +21,6 @@ vi.doMock('~~/server/modules/graphics-asset-library/runtime', () => ({
 }));
 vi.doMock('~~/server/utils/auth', () => ({
 	requireUserId: async () => 'author-1',
-	optionalUserId: async () => 'author-1',
 }));
 
 interface StubEvent {

@@ -140,11 +140,9 @@ function buttonNamed(wrapper: Awaited<ReturnType<typeof mountPage>>, label: stri
 	return wrapper.findAll('button').find((button) => button.text() === label);
 }
 
-/** Enters the administrator token and takes the first reading, as an administrator does. */
+/** Opens the page as a signed-in Graphics Administrator, which takes the first reading. */
 async function openLedger() {
 	const wrapper = await mountPage();
-	await wrapper.find('input').setValue('admin-token');
-	await buttonNamed(wrapper, 'Open the ledger')!.trigger('click');
 	await settle();
 	return wrapper;
 }
@@ -189,27 +187,12 @@ describe('the Graphics Asset Library Evidence ledger page', () => {
 		vi.useRealTimers();
 	});
 
-	it('refuses to read anything before an administrator token is given', async () => {
-		const wrapper = await mountPage();
-
-		expect(wrapper.text()).toContain('Graphics Administrator access');
-		expect(wrapper.text()).not.toContain('graphic-asset-trashed');
-		// Nuxt itself reaches for $fetch while the app sets up, so what matters is
-		// that the ledger was not among the things asked for.
-		expect(mockApiFetch).not.toHaveBeenCalledWith(
-			'/api/admin/graphics-assets/evidence',
-			expect.anything(),
-		);
-	});
-
 	it('shows the ledger chronologically with the deadline each entry established', async () => {
 		const wrapper = await openLedger();
 
 		expect(mockApiFetch).toHaveBeenCalledWith(
 			'/api/admin/graphics-assets/evidence',
-			expect.objectContaining({
-				headers: { 'x-graphics-admin-token': 'admin-token' },
-			}),
+			expect.objectContaining({ query: expect.anything() }),
 		);
 		const text = wrapper.text();
 		// Newest first: the Trash transition was recorded after the byte deletion.
@@ -395,7 +378,7 @@ describe('the Graphics Asset Library Evidence ledger page', () => {
 		expect(text).toContain('satisfies no Graphic Asset Reference');
 	});
 
-	it('drops the reading when the token stops being accepted', async () => {
+	it('drops the reading when the User stops being admitted', async () => {
 		const wrapper = await openLedger();
 		expect(wrapper.text()).toContain('graphic-asset-trashed');
 

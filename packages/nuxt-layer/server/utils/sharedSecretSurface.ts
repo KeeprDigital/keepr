@@ -7,12 +7,10 @@ import { secretTokensMatch } from './secretTokenComparison';
  * A route surface guarded by one shared secret an operator sets and a caller
  * presents in a header.
  *
- * Two of them exist: Graphics Administrator operations, and the first-admin
- * bootstrap (#394). They were written out twice — same trim, same
- * `ServiceConfigurationError`-as-cause 503, same 403 — and the second copy was
- * a transcription of the first, comments included. What actually differs
- * between them is the four values below, which is a description of a type
- * rather than of two functions.
+ * Stream Keepr's first-admin bootstrap (#394) is the one there is. Graphics
+ * Administrator operations were the other until they became an App role on a
+ * signed-in User (ADR-0131). What differs between such surfaces is the four
+ * values below, which is a description of a type rather than of a function.
  *
  * The refusal *shape* is the thing worth having in one place. Both of its
  * halves are decisions this repo made painfully and could lose silently in a
@@ -22,9 +20,9 @@ import { secretTokensMatch } from './secretTokenComparison';
  * about an unset name resolves by waiting.
  *
  * The *words* stay with each caller, because they are not interchangeable:
- * `build/localConfiguration.ts` quotes the Graphics Administrator clause verbatim in
- * the notice a dev server prints, and a shared sentence would make that quotation
- * a lie about whichever surface it was not written for.
+ * `build/localConfiguration.ts` quotes each surface verbatim in the notice a dev
+ * server prints, and a shared sentence would make that quotation a lie about
+ * whichever surface it was not written for.
  */
 export interface SharedSecretSurface {
 	/**

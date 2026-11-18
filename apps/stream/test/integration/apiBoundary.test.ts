@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { $fetch, anonymousFetch, fetch, url } from './client';
-import { INTEGRATION_GRAPHICS_ADMIN_TOKEN } from './helpers';
+import { aUserWithoutTheRole } from './identities';
 
 /**
  * The deny-by-default API boundary as a request meets it (#396, ADR-0010).
@@ -232,26 +232,25 @@ describe('the surfaces the boundary exempts', () => {
 		expect(message).not.toBe(REFUSAL);
 	});
 
-	it('lets the admin token alone satisfy the boundary', async () => {
-		// ADR-0010 leaves the Graphics Administrator shared token untouched until a
-		// roles effort redraws that seam, so these eighteen routes answer to it and
-		// to no session. A 401 here would mean an operator's curl stopped working
-		// on the day the boundary landed.
-		const { status } = await anonymous('/api/admin/graphics-assets/health', {
-			headers: { 'x-graphics-admin-token': INTEGRATION_GRAPHICS_ADMIN_TOKEN },
-		});
-
-		expect(status).toBe(200);
-	});
-
-	it("still refuses an admin route that presents no token, on the route's own terms", async () => {
-		// The exemption is from the *session* requirement, not from authorisation:
-		// each admin route calls `requireGraphicsAdministrator` itself, and its 403
-		// is what a caller with neither credential meets.
+	// The Graphics Administrator is a signed-in User holding the App role (ADR-0131):
+	// no Session is the boundary's 401, a Session without the role the guard's 403.
+	it('refuses an admin route with no Session, as it refuses every private route', async () => {
 		const { status, message } = await anonymous('/api/admin/graphics-assets/health');
 
-		expect(status).toBe(403);
-		expect(message).not.toBe(REFUSAL);
+		expect(status).toBe(401);
+		expect(message).toBe(REFUSAL);
+	});
+
+	it('refuses an admin route to a signed-in User without the Graphics Administrator role', async () => {
+		const response = await fetch('/api/admin/graphics-assets/health', {
+			headers: { cookie: await aUserWithoutTheRole('api-boundary-no-role') },
+		});
+
+		expect(response.status).toBe(403);
+	});
+
+	it('admits the Graphics Administrator to an admin route', async () => {
+		expect((await fetch('/api/admin/graphics-assets/health')).status).toBe(200);
 	});
 
 	it('answers the first-admin bootstrap, which exists for installations with no account', async () => {

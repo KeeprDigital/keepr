@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
 	// valid one is not worth a database read to find out. The rule, and why a
 	// request naming no origin at all is admitted, is `requestIsCrossSiteMutation`.
 	// The exempt surfaces need none of it: each carries a credential a
-	// cross-site page cannot attach (a header token, a bearer, a
+	// cross-site page cannot attach (a bootstrap header token, a bearer, a
 	// `SameSite=Strict` cookie, or a Screen Output Link in the body, which a
 	// page can send only if it already holds it), and Better Auth checks its own
 	// router's origin.

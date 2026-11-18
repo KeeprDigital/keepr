@@ -13,10 +13,10 @@ import { formatInstant } from '~~/shared/utils/formatInstant';
  * The user administration surface (#399, ADR-0010): who has an account here,
  * and the four things an administrator does about it.
  *
- * Gated exactly as the other administrator surfaces are — a Graphics
- * Administrator token held for this browser session and never stored, through
- * `useGraphicsAdminReading`, which also owns the polling and the rule that a
- * token which stops being accepted takes the reading off the screen with it.
+ * Gated exactly as the other administrator surfaces are — for a signed-in
+ * Graphics Administrator (ADR-0131), through `useGraphicsAdminReading`, which
+ * also owns the polling and the rule that a User who stops being admitted
+ * takes the reading off the screen with it.
  *
  * **The reset link is the deliverable, not a side effect.** There is no email
  * sender in this installation, so creating an account produces a link that the
@@ -67,23 +67,21 @@ const actionError = ref<string | null>(null);
 const actionSummary = ref<string | null>(null);
 
 const {
-	administratorToken,
 	reading: accounts,
 	loadPending,
 	loadError,
 	hasReading,
-	administratorHeaders,
 	describeFailure,
 	load: loadAccounts,
 } = useGraphicsAdminReading<AdministeredUserList>({
-	read: async (headers) => await $fetch<AdministeredUserList>('/api/admin/users', { headers }),
+	read: async () => await $fetch<AdministeredUserList>('/api/admin/users'),
 	failureMessage: 'The account list could not be read.',
 	// A poll landing mid-action would re-read the list from before the action
 	// settled, which is what the composable's `paused` exists for.
 	paused: () => actionPending.value !== null,
 	onAuthorizationLost: () => {
 		// A minted link on screen belongs to the reading that produced it. Leaving
-		// it visible after the token stopped being accepted would leave a live
+		// it visible after the User stopped being admitted would leave a live
 		// credential on a surface nobody is authorised to be looking at.
 		issuedLink.value = null;
 	},
@@ -158,7 +156,6 @@ async function invite() {
 		async () => {
 			const created = await $fetch<CreatedUserAccount>('/api/admin/users', {
 				method: 'POST',
-				headers: administratorHeaders(),
 				body: {
 					email: invitation.email.trim(),
 					name: invitation.name.trim(),
@@ -184,7 +181,6 @@ async function issueResetLink(user: AdministeredUser) {
 				`/api/admin/users/${user.id}/password-reset-link`,
 				{
 					method: 'POST',
-					headers: administratorHeaders(),
 				},
 			);
 			showIssuedLink(user.email, issued.passwordResetLink);
@@ -205,7 +201,6 @@ async function setPassword(user: AdministeredUser) {
 		async () => {
 			await $fetch(`/api/admin/users/${user.id}/password`, {
 				method: 'PUT',
-				headers: administratorHeaders(),
 				body: { password },
 			});
 			openAction.value = null;
@@ -227,7 +222,6 @@ async function ban(user: AdministeredUser) {
 		async () => {
 			const outcome = await $fetch<RevokedUserSessions>(`/api/admin/users/${user.id}/ban`, {
 				method: 'POST',
-				headers: administratorHeaders(),
 				body: reason ? { reason } : {},
 			});
 			openAction.value = null;
@@ -245,7 +239,6 @@ async function unban(user: AdministeredUser) {
 		async () => {
 			await $fetch(`/api/admin/users/${user.id}/ban`, {
 				method: 'DELETE',
-				headers: administratorHeaders(),
 			});
 			return `${user.email} can sign in again with the password they already had.`;
 		},
@@ -260,7 +253,6 @@ async function revokeSessions(user: AdministeredUser) {
 		async () => {
 			const outcome = await $fetch<RevokedUserSessions>(`/api/admin/users/${user.id}/sessions`, {
 				method: 'DELETE',
-				headers: administratorHeaders(),
 			});
 			// "0 sessions ended" is the useful answer as often as any other: the
 			// compromise being chased is not a live session.
@@ -308,12 +300,9 @@ const hiddenAccountCount = computed(() =>
 					<h2 class="font-semibold text-highlighted">Graphics Administrator access</h2>
 				</template>
 				<div class="flex flex-col gap-4">
-					<UFormField
-						label="Graphics Administrator token"
-						description="This surface is administrator-only. The token is held for this session only and never stored."
-					>
-						<UInput v-model="administratorToken" type="password" autocomplete="current-password" />
-					</UFormField>
+					<p class="text-sm text-muted">
+						This surface is for a Graphics Administrator: sign in as a User who holds the role.
+					</p>
 					<div>
 						<UButton
 							label="Open user administration"

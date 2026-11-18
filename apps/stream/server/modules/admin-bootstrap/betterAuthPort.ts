@@ -2,7 +2,11 @@ import type { ServerAuth } from '~~/server/utils/auth';
 import type { AdminBootstrapPort } from '.';
 import { serverAuth } from '~~/server/utils/auth';
 import { setCredentialPassword } from '~~/server/utils/betterAuthCredentials';
-import { ADMIN_ROLE } from '.';
+import {
+	decodeRoles,
+	encodeRoles,
+	GRAPHICS_ADMINISTRATOR_ROLE,
+} from '~~/server/utils/betterAuthRoles';
 
 /**
  * The bootstrap's `AdminBootstrapPort`, in terms of Better Auth.
@@ -71,7 +75,7 @@ export async function betterAuthBootstrapPort(
 					email,
 					password,
 					name,
-					role: ADMIN_ROLE,
+					role: GRAPHICS_ADMINISTRATOR_ROLE,
 				},
 			});
 			// The role is what was asked for rather than what came back: this
@@ -80,7 +84,7 @@ export async function betterAuthBootstrapPort(
 			// it can be — against the stored account, in the tests.
 			return {
 				id: user.id,
-				roles: [ADMIN_ROLE],
+				roles: [GRAPHICS_ADMINISTRATOR_ROLE],
 			};
 		},
 
@@ -96,26 +100,4 @@ export async function betterAuthBootstrapPort(
 			});
 		},
 	};
-}
-
-/**
- * Better Auth packs an account's roles into one comma-separated column, and
- * this pair of functions is the whole of where that is known. Its own
- * `parseRoles` joins an array the same way (`plugins/admin/routes.mjs`); these
- * are the reading half it has no export for.
- *
- * Below the port rather than above it: put here first, they stood between
- * `betterAuthBootstrapPort` and its own docblock, which then described
- * `decodeRoles` to every tool that attaches the nearest block — including the
- * sentence about an instance parameter `decodeRoles` does not have.
- */
-function decodeRoles(role: string | null | undefined): string[] {
-	return (role ?? '')
-		.split(',')
-		.map((entry) => entry.trim())
-		.filter((entry) => entry.length > 0);
-}
-
-function encodeRoles(roles: readonly string[]): string {
-	return roles.join(',');
 }

@@ -85,7 +85,7 @@ Where each subsystem is operated here, named in `GLOSSARY.md`, and decided in
 points at them.
 
 - **Authentication**: Users, their Sessions, the Graphics Administrator
-  credential, and the Local Developer User under a bypass.
+  role, and the Local Developer User under a bypass.
   - Operate: [Local auth bypass](#local-auth-bypass),
     [Allowed hostnames](#allowed-hostnames),
     [Session cookies](#session-cookies),
@@ -224,7 +224,7 @@ when you create one (a worktree also needs its own `pnpm install`):
 cp .env ../../.claude/worktrees/<name>/apps/stream/
 ```
 
-Without it, dev answers 503 from the admin and Screen Output surfaces, and the
+Without it, dev answers 503 from the signed-in and Screen Output surfaces, and the
 realtime integration tests skip. That is a configuration gap, not a
 failure on `main`.
 
@@ -232,7 +232,6 @@ failure on `main`.
 | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
 | `NUXT_BETTER_AUTH_SECRET`                        | Signs sessions. Unset: sign-in and every authenticated route answer 503.                                                   |
 | `NUXT_ADMIN_BOOTSTRAP_TOKEN`                     | Arms the first-admin route. Locally, leave it set; it is how a fresh checkout and the local harnesses get an account.      |
-| `NUXT_GRAPHICS_ADMIN_TOKEN`                      | Graphics Administrator token for `/admin/**` pages and `/api/admin/**` routes.                                             |
 | `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`      | 32-byte base64 HMAC key for Screen Output asset capabilities.                                                              |
 | `NUXT_ABLY_API_KEY`                              | Ably key. Optional for tests: leave it empty rather than fake. A fake key makes one realtime test pass and the other fail. |
 | `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`           | 32-byte base64 key encrypting Melee client secrets (AES-256-GCM).                                                          |
@@ -242,9 +241,8 @@ failure on `main`.
 | `NUXT_BANDAI_KEEPR_API_URL`                      | bandai-keepr's base URL (`https://op-api.keepr.digital`). Blank: OP card data is unavailable, as above.                    |
 
 Generate keys and secrets with `openssl rand -base64 32`.
-`NUXT_GRAPHICS_ADMIN_TOKEN` and `NUXT_ADMIN_BOOTSTRAP_TOKEN` shorter than 32
-characters are treated as unset (their routes answer 503, and the server log
-says why). A deployed Worker reads no file; there these are Worker secrets (see
+A `NUXT_ADMIN_BOOTSTRAP_TOKEN` shorter than 32 characters is treated as unset
+(its route answers 503, and the server log says why). A deployed Worker reads no file; there these are Worker secrets (see
 [Worker secrets](#worker-secrets)).
 
 ## Development
@@ -311,8 +309,9 @@ Under a bypass:
   gets its own Session, so Graphics Authoring Leases tell concurrent editors
   apart. The shell shows that identity and has no sign-out.
 - Startup warns that authentication is bypassed.
-- It does **not** cover the Graphics Administrator token, Screen Output
-  capabilities, or any other configuration.
+- The Local Developer User holds the Graphics Administrator role, so `/admin/**`
+  opens too.
+- It does **not** cover Screen Output capabilities or any other configuration.
 
 **`pnpm dev:local:bypass` gives every machine that can reach yours
 unauthenticated access.** It exists for testing from a phone, tablet, or the
@@ -1303,7 +1302,7 @@ pnpm exec wrangler secret put <NAME> --config .output/server/wrangler.json
 
 For the Staging Installation, add `--env staging`, against the staging account.
 
-Required: `NUXT_BETTER_AUTH_SECRET`, `NUXT_GRAPHICS_ADMIN_TOKEN`,
+Required: `NUXT_BETTER_AUTH_SECRET`,
 `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`, `NUXT_ABLY_API_KEY`,
 `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`,
 `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION`. `NUXT_ADMIN_BOOTSTRAP_TOKEN` is
@@ -1392,15 +1391,18 @@ pnpm exec wrangler secret delete NUXT_ADMIN_BOOTSTRAP_TOKEN --config .output/ser
 ```
 
 The response is `{"outcome":"created"}` or `{"outcome":"updated"}` (an existing
-email gets the new password and the admin role). Repeating the call is safe.
+email gets the new password and the admin role). The `admin` role is the
+Graphics Administrator: it opens `/admin/**` (ADR-0131). This is also the only
+way to grant it to someone else: run it with their email and let them set
+their own password afterwards with a reset link from `/admin/users`. Repeating the call is safe.
 It neither lifts a ban nor renames. **Delete the secret afterwards**: nothing
 records that bootstrap happened, so the route stays armed while the secret
 exists. Unset, the route answers 503.
 
 ### Other accounts
 
-Admins manage everyone else at **`/admin/users`**, which asks for the Graphics
-Administrator token.
+Admins manage everyone else at **`/admin/users`**, signed in as a Graphics
+Administrator. Accounts made here hold no role.
 
 - **Create**: makes a password-less account and returns a single-use invite
   link valid for 24 hours. Send it yourself; it is not stored or shown again.
@@ -1423,11 +1425,12 @@ them.
   list is `server/utils/apiBoundary.ts`). Exempt: `/api/time`,
   `/api/realtime/token` (Screen Outputs have no session), Better Auth's own
   routes, the capability-authorized `/api/screen-output/**`, the secret-armed
-  bootstrap route, and `/api/admin/**`.
-- **`/api/admin/**` requires `x-graphics-admin-token`**, checked per route by
-  `requireGraphicsAdministrator`. `test/unit/server/utils/apiBoundary.test.ts`
-  proves every admin route reaches that guard. The admin pages hold the token
-  in memory only.
+  bootstrap route, and `/api/public/**`.
+- **`/api/admin/**` requires the Graphics Administrator**: a Session whose User
+  holds the `admin` role, checked per route by `requireGraphicsAdministrator`
+  (401 without a Session, 403 without the role; ADR-0131).
+  `test/unit/server/utils/apiBoundary.test.ts` proves every admin route
+  reaches that guard.
 - **Authentication, not authorization.** Every signed-in user sees every Graphic
   Asset; the library is installation-wide. Identity records who started work
   (for example a Graphics Ingestion Operation's `initiatedBy`), and an operation
@@ -1479,7 +1482,7 @@ Melee reporting a result. ADR-0052 has the rules.
 
 Admin surfaces live under `/admin/graphics-assets`: the operations cockpit
 (index), `health` (capacity limits), `queues`, and `evidence`. All `/api/admin/graphics-assets/**` routes need
-`x-graphics-admin-token`.
+a signed-in Graphics Administrator.
 
 ### Scheduled work
 

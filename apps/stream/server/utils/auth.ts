@@ -24,7 +24,7 @@ const BETTER_AUTH_SECRET_SETTING = 'NUXT_BETTER_AUTH_SECRET';
  * What is unavailable without the secret, completing "<name> is not configured, so …".
  *
  * `build/localConfiguration.ts` quotes this surface verbatim in the notice a dev server
- * prints when the name is missing, the way it quotes `requireGraphicsAdministrator`'s
+ * prints when the name is missing, the way it quotes `requireAdminBootstrapToken`'s
  * clause — which is why the wording lives here, beside the refusal, rather than being
  * invented there.
  *
@@ -72,7 +72,7 @@ function createAuth(secret: string) {
  * **Blank means whitespace as well as empty**, which it did not until #396. The
  * local-configuration notice in `build/localConfiguration.ts` counts a name as
  * missing when it trims to nothing, and says it does so "because that is how the readers
- * count it" — true of `requireGraphicsAdministrator` and of the capability
+ * count it" — true of `requireAdminBootstrapToken` and of the capability
  * signing key, and false here while this test was `!config.betterAuthSecret`. A
  * name set to a space is the likeliest way to hold one at all (`cp
  * .env.example .env` and a stray keystroke), and the old reading answered it by
@@ -126,10 +126,9 @@ export function serverAuth() {
  * not on this function: only a route with a credential-free arm may use it.** Every
  * caller has one. The capability admits the Screen lookup and the realtime token on
  * its own, and for them a blank secret costs an operator's *convenience* arm while
- * the output keeps working; the two optional identities below are read on surfaces
- * that are already admitted — by the shared administrator token, or by the session
- * middleware itself — where the fail-open costs a recorded name or a lease holder on
- * a deployment that has no sessions to hold one. A route where the session is the only way in must
+ * the output keeps working; the optional browser identity below is read on surfaces
+ * the session middleware has already admitted, where the fail-open costs a lease
+ * holder on a deployment that has no sessions to hold one. A route where the session is the only way in must
  * use the middleware, or demand `serverAuth()` itself and let the 503 out; asking
  * this instead would turn an unconfigured deployment into a plain refusal, which is
  * the diagnosis #233 spent three tickets learning to give. Pinned in
@@ -328,20 +327,6 @@ async function requireUserSession(event: H3Event): Promise<NonNullable<UserSessi
 		statusMessage: 'Unauthorized',
 		message: 'Authentication is required',
 	});
-}
-
-/**
- * The person this request is acting as, where there may not be one.
- *
- * For the surfaces outside the session boundary that record who acted when they
- * can: the Graphics Administrator routes are admitted by a shared token that
- * names nobody, and an operator working the cockpit in a browser is also signed
- * in. Inherits `optionalUserSession`'s fail-open on an unconfigured secret, which
- * is right here for the same reason — the admin token is the credential, and the
- * ledger losing a name is not worth refusing the action over.
- */
-export async function optionalUserId(event: H3Event): Promise<string | undefined> {
-	return (await optionalUserSession(event))?.user.id;
 }
 
 /**

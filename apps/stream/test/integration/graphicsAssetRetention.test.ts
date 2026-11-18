@@ -17,7 +17,7 @@ import {
 import { GRAPHICS_RETENTION_GUARANTEES } from '../../shared/utils/graphicsAssetRetention';
 import { $fetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
-import { INTEGRATION_GRAPHICS_ADMIN_TOKEN } from './helpers';
+import { aUserWithoutTheRole } from './identities';
 import { expectOperationResult } from './responseStatus';
 
 const transparentPixelPng = Uint8Array.from(
@@ -56,9 +56,6 @@ function decodeEvidence(bytes: Uint8Array) {
 }
 
 describe('the Graphics Asset Library retention API', () => {
-	const administratorHeaders = {
-		'x-graphics-admin-token': INTEGRATION_GRAPHICS_ADMIN_TOKEN,
-	};
 	let authorHeaders: Record<string, string>;
 
 	beforeAll(async () => {
@@ -111,11 +108,15 @@ describe('the Graphics Asset Library retention API', () => {
 	}
 
 	it('keeps retention deadlines on the administrator surface', async () => {
-		const overview = await fetch('/api/admin/graphics-assets/retention');
+		const cookie = await aUserWithoutTheRole('retention-1293-no-role');
+		const overview = await fetch('/api/admin/graphics-assets/retention', { headers: { cookie } });
 		expect(overview.status).toBe(403);
-		const sweep = await fetch('/api/admin/graphics-assets/retention', { method: 'POST' });
+		const sweep = await fetch('/api/admin/graphics-assets/retention', {
+			method: 'POST',
+			headers: { cookie },
+		});
 		expect(sweep.status).toBe(403);
-		const evidence = await fetch('/api/admin/graphics-assets/evidence');
+		const evidence = await fetch('/api/admin/graphics-assets/evidence', { headers: { cookie } });
 		expect(evidence.status).toBe(403);
 	});
 
@@ -174,7 +175,6 @@ describe('the Graphics Asset Library retention API', () => {
 
 		const overview = await $fetch<GraphicsRetentionOverview>(
 			'/api/admin/graphics-assets/retention',
-			{ headers: administratorHeaders },
 		);
 		expect(overview.guarantees).toEqual({ ...GRAPHICS_RETENTION_GUARANTEES });
 		expect(overview.guaranteesShortenedUnderPressure).toBe(false);
@@ -191,7 +191,7 @@ describe('the Graphics Asset Library retention API', () => {
 		// A sweep at ordinary time reclaims nothing whose window is still open.
 		const swept = await $fetch<GraphicsRetentionSweepResult>(
 			'/api/admin/graphics-assets/retention',
-			{ method: 'POST', headers: administratorHeaders },
+			{ method: 'POST' },
 		);
 		expect(swept.trash.purged).toBe(0);
 		expect(swept.revisions.pruned).toBe(0);
@@ -221,14 +221,14 @@ describe('the Graphics Asset Library retention API', () => {
 
 		const unconfirmed = await fetch(`/api/admin/graphics-assets/${assetId}/purge`, {
 			method: 'POST',
-			headers: { ...administratorHeaders, 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ confirmation: 'yes' }),
 		});
 		expect(unconfirmed.status).toBe(400);
 
 		const active = await fetch(`/api/admin/graphics-assets/${assetId}/purge`, {
 			method: 'POST',
-			headers: { ...administratorHeaders, 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ confirmation: 'purge-now' }),
 		});
 		expect(active.status).toBe(409);
@@ -242,7 +242,6 @@ describe('the Graphics Asset Library retention API', () => {
 			`/api/admin/graphics-assets/${assetId}/purge`,
 			{
 				method: 'POST',
-				headers: administratorHeaders,
 				body: { confirmation: 'purge-now' },
 			},
 		);
@@ -270,7 +269,6 @@ describe('the Graphics Asset Library retention API', () => {
 		const evidence = await $fetch<GraphicsAssetEvidencePage>(
 			'/api/admin/graphics-assets/evidence',
 			{
-				headers: administratorHeaders,
 				query: { category: 'graphic-asset-purged' },
 			},
 		);
@@ -288,7 +286,6 @@ describe('the Graphics Asset Library retention API', () => {
 
 	it('reads the ledger by group, actor, correlation, and cursor', async () => {
 		const page = await $fetch<GraphicsAssetEvidencePage>('/api/admin/graphics-assets/evidence', {
-			headers: administratorHeaders,
 			query: { group: 'lifecycle', limit: 1 },
 		});
 		expect(page.entries).toHaveLength(1);
@@ -304,7 +301,6 @@ describe('the Graphics Asset Library retention API', () => {
 		// Turning one page and coming back lands on the entry it started from,
 		// which an offset that shifted under a concurrent sweep would not.
 		const older = await $fetch<GraphicsAssetEvidencePage>('/api/admin/graphics-assets/evidence', {
-			headers: administratorHeaders,
 			query: {
 				group: 'lifecycle',
 				limit: 1,
@@ -314,7 +310,6 @@ describe('the Graphics Asset Library retention API', () => {
 		});
 		expect(older.entries[0]!.id).not.toBe(entry.id);
 		const back = await $fetch<GraphicsAssetEvidencePage>('/api/admin/graphics-assets/evidence', {
-			headers: administratorHeaders,
 			query: {
 				group: 'lifecycle',
 				limit: 1,
@@ -327,7 +322,6 @@ describe('the Graphics Asset Library retention API', () => {
 
 		await expect(
 			$fetch<GraphicsAssetEvidencePage>('/api/admin/graphics-assets/evidence', {
-				headers: administratorHeaders,
 				query: { actor: entry.actor, limit: 5 },
 			}),
 		).resolves.toMatchObject({
@@ -336,7 +330,6 @@ describe('the Graphics Asset Library retention API', () => {
 		const correlated = await $fetch<GraphicsAssetEvidencePage>(
 			'/api/admin/graphics-assets/evidence',
 			{
-				headers: administratorHeaders,
 				query: { correlationId: entry.correlationId, limit: 50 },
 			},
 		);
@@ -347,26 +340,14 @@ describe('the Graphics Asset Library retention API', () => {
 		// Half a subject filter and half a cursor are both refused, because each
 		// would answer a different question from the one that was asked.
 		expect(
-			(
-				await fetch('/api/admin/graphics-assets/evidence?subjectKind=graphic-asset', {
-					headers: administratorHeaders,
-				})
-			).status,
+			(await fetch('/api/admin/graphics-assets/evidence?subjectKind=graphic-asset', {})).status,
 		).toBe(400);
-		expect(
-			(
-				await fetch('/api/admin/graphics-assets/evidence?cursorId=entry', {
-					headers: administratorHeaders,
-				})
-			).status,
-		).toBe(400);
-		expect(
-			(
-				await fetch('/api/admin/graphics-assets/evidence?group=not-a-group', {
-					headers: administratorHeaders,
-				})
-			).status,
-		).toBe(400);
+		expect((await fetch('/api/admin/graphics-assets/evidence?cursorId=entry', {})).status).toBe(
+			400,
+		);
+		expect((await fetch('/api/admin/graphics-assets/evidence?group=not-a-group', {})).status).toBe(
+			400,
+		);
 	});
 
 	it('never stores or displays anything the ledger promised to keep out', async () => {
@@ -378,7 +359,6 @@ describe('the Graphics Asset Library retention API', () => {
 		// Quarantine and ingestion expiry are absent on purpose: both need days
 		// to elapse, which only the controlled-clock module tests can offer.
 		const page = await $fetch<GraphicsAssetEvidencePage>('/api/admin/graphics-assets/evidence', {
-			headers: administratorHeaders,
 			query: { limit: 500 },
 		});
 		expect(page.entries.length).toBeGreaterThan(0);
@@ -405,7 +385,6 @@ describe('the Graphics Asset Library retention API', () => {
 			'http://',
 			'https://',
 			'X-Amz-Signature',
-			'x-graphics-admin-token',
 		])
 			expect(serialised, `leaked ${forbidden}`).not.toContain(forbidden);
 

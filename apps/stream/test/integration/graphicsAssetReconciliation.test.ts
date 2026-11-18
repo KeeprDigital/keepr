@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { $fetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
-import { INTEGRATION_GRAPHICS_ADMIN_TOKEN } from './helpers';
+import { aUserWithoutTheRole } from './identities';
 import { expectOperationResult } from './responseStatus';
 
 const transparentPixelPng = Uint8Array.from(
@@ -34,9 +34,6 @@ const reconciliationPixelPng = Uint8Array.from(
 );
 
 describe('the Graphics Asset Library reconciliation API', () => {
-	const administratorHeaders = {
-		'x-graphics-admin-token': INTEGRATION_GRAPHICS_ADMIN_TOKEN,
-	};
 	let authorHeaders: Record<string, string>;
 
 	beforeAll(async () => {
@@ -72,16 +69,27 @@ describe('the Graphics Asset Library reconciliation API', () => {
 	}
 
 	it('keeps every reconciliation surface behind administrator authorization', async () => {
-		expect((await fetch('/api/admin/graphics-assets/reconciliation')).status).toBe(403);
+		const cookie = await aUserWithoutTheRole('reconciliation-1293-no-role');
 		expect(
-			(await fetch('/api/admin/graphics-assets/reconciliation', { method: 'POST' })).status,
+			(await fetch('/api/admin/graphics-assets/reconciliation', { headers: { cookie } })).status,
 		).toBe(403);
-		expect((await fetch('/api/admin/graphics-assets/discrepancies/anything')).status).toBe(403);
+		expect(
+			(
+				await fetch('/api/admin/graphics-assets/reconciliation', {
+					method: 'POST',
+					headers: { cookie },
+				})
+			).status,
+		).toBe(403);
+		expect(
+			(await fetch('/api/admin/graphics-assets/discrepancies/anything', { headers: { cookie } }))
+				.status,
+		).toBe(403);
 		expect(
 			(
 				await fetch('/api/admin/graphics-assets/discrepancies/anything/actions', {
 					method: 'POST',
-					headers: { 'content-type': 'application/json' },
+					headers: { 'content-type': 'application/json', cookie },
 					body: JSON.stringify({ action: 'recheck' }),
 				})
 			).status,
@@ -90,6 +98,7 @@ describe('the Graphics Asset Library reconciliation API', () => {
 			(
 				await fetch('/api/admin/graphics-assets/discrepancies/anything/repair', {
 					method: 'PUT',
+					headers: { cookie },
 					body: reconciliationPixelPng,
 				})
 			).status,
@@ -144,7 +153,7 @@ describe('the Graphics Asset Library reconciliation API', () => {
 
 		const sweep = await $fetch<GraphicsReconciliationSweepResult>(
 			'/api/admin/graphics-assets/reconciliation',
-			{ method: 'POST', headers: administratorHeaders },
+			{ method: 'POST' },
 		);
 		expect(sweep.content.checked).toBeGreaterThan(0);
 
@@ -152,7 +161,6 @@ describe('the Graphics Asset Library reconciliation API', () => {
 		// reconciliation sweep opens names this asset.
 		const overview = await $fetch<GraphicsReconciliationOverview>(
 			'/api/admin/graphics-assets/reconciliation',
-			{ headers: administratorHeaders },
 		);
 		expect(
 			overview.discrepancies.filter((discrepancy) =>
@@ -175,18 +183,12 @@ describe('the Graphics Asset Library reconciliation API', () => {
 	});
 
 	it('reports an unknown discrepancy identity as not found on every action', async () => {
-		expect(
-			(
-				await fetch('/api/admin/graphics-assets/discrepancies/unknown', {
-					headers: administratorHeaders,
-				})
-			).status,
-		).toBe(404);
+		expect((await fetch('/api/admin/graphics-assets/discrepancies/unknown', {})).status).toBe(404);
 		expect(
 			(
 				await fetch('/api/admin/graphics-assets/discrepancies/unknown/actions', {
 					method: 'POST',
-					headers: { ...administratorHeaders, 'content-type': 'application/json' },
+					headers: { 'content-type': 'application/json' },
 					body: JSON.stringify({ action: 'recheck' }),
 				})
 			).status,
@@ -195,7 +197,7 @@ describe('the Graphics Asset Library reconciliation API', () => {
 			(
 				await fetch('/api/admin/graphics-assets/discrepancies/unknown/repair', {
 					method: 'PUT',
-					headers: { ...administratorHeaders, 'content-type': 'image/png' },
+					headers: { 'content-type': 'image/png' },
 					body: reconciliationPixelPng,
 				})
 			).status,
@@ -205,19 +207,17 @@ describe('the Graphics Asset Library reconciliation API', () => {
 	it('rejects an action the domain does not offer', async () => {
 		const response = await fetch('/api/admin/graphics-assets/discrepancies/unknown/actions', {
 			method: 'POST',
-			headers: { ...administratorHeaders, 'content-type': 'application/json' },
+			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ action: 'adopt-unexpected-object' }),
 		});
 		expect(response.status).toBe(400);
 	});
 });
 
-// Its refusal without the token is the API boundary's own case (apiBoundary.test.ts).
+// Its refusals are the API boundary's own cases (apiBoundary.test.ts).
 describe('the Graphics Asset Library health API', () => {
 	it('reports the migrated D1 catalogue and both private local byte stores separately', async () => {
-		const health = await $fetch<GraphicsAssetLibraryHealth>('/api/admin/graphics-assets/health', {
-			headers: { 'x-graphics-admin-token': INTEGRATION_GRAPHICS_ADMIN_TOKEN },
-		});
+		const health = await $fetch<GraphicsAssetLibraryHealth>('/api/admin/graphics-assets/health');
 
 		expect(health.status).toBe('healthy');
 		expect(health.catalogue).toEqual({ status: 'healthy' });

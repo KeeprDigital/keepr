@@ -25,18 +25,17 @@ import { passwordResetLinkPath } from '~~/shared/utils/passwordResetLink';
  * - **No self-signup and no email sender.** An invite is an account created
  *   here plus a single-use, expiring reset link the administrator hands over
  *   out of band. Nothing is sent anywhere; the link is the deliverable.
- * - **Gated as the other administrator surfaces are.** `x-graphics-admin-token`
- *   alone admits a caller, exactly today's posture, and roles stay out of
- *   scope. The token's name is a leftover from the surface it first guarded —
- *   the roles-and-permissions effort ADR-0010 names as successor work is where
- *   that gets redrawn, not here.
+ * - **Gated as the other administrator surfaces are**: by
+ *   `requireGraphicsAdministrator`, which admits a signed-in User holding the
+ *   Graphics Administrator App role (ADR-0131).
  *
  * The Better Auth half is `./betterAuthPort`, kept apart for the reason the
- * first-admin bootstrap keeps its own apart: the admin plugin's endpoints all
- * sit behind an admin **session**, which this surface does not have and by
- * ADR-0010's posture is not going to acquire. What that costs is recorded
- * beside each operation there and proved in the port's tests, so a version bump
- * that changes it fails a test instead of a production reset.
+ * first-admin bootstrap keeps its own apart: the admin plugin's HTTP endpoints
+ * are closed (`disabledPaths`, `server/utils/authOptions.ts`), and its
+ * server-side calls demand an admin session this module is not handed. What
+ * that costs is recorded beside each operation there and proved in the port's
+ * tests, so a version bump that changes it fails a test instead of a
+ * production reset.
  */
 
 /**

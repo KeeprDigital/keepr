@@ -56,7 +56,6 @@ export default defineNuxtConfig({
 		bandaiKeeprApiKey: '',
 		bandaiKeeprApiUrl: '',
 		betterAuthSecret: '',
-		graphicsAdminToken: '',
 		screenOutputCapabilitySigningKey: '',
 		meleeCredentialEncryptionKey: '',
 		meleeCredentialEncryptionKeyVersion: '',

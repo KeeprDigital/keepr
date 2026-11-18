@@ -34,7 +34,7 @@ const authorizationRefusal = transportFailure({
 
 describe('useGraphicsAdminReading', () => {
 	beforeEach(() => {
-		mockRead.mockReset();
+		mockRead.mockReset().mockResolvedValue({ count: 0 });
 		onAuthorizationLost.mockReset();
 		onReading.mockReset();
 		paused = false;
@@ -44,14 +44,13 @@ describe('useGraphicsAdminReading', () => {
 		vi.useRealTimers();
 	});
 
-	it('takes a reading with the administrator token in its headers', async () => {
+	it('takes a reading as the surface opens', async () => {
 		mockRead.mockResolvedValue({ count: 3 });
 
 		const reading = mountReading();
-		reading.administratorToken.value = 'secret-token';
-		await reading.load();
+		await flushPromises();
 
-		expect(mockRead).toHaveBeenCalledWith({ 'x-graphics-admin-token': 'secret-token' });
+		expect(mockRead).toHaveBeenCalledTimes(1);
 		expect(reading.reading.value).toEqual({ count: 3 });
 		expect(reading.hasReading.value).toBe(true);
 		expect(reading.loadError.value).toBeNull();
@@ -62,15 +61,15 @@ describe('useGraphicsAdminReading', () => {
 		mockRead.mockRejectedValue(authorizationRefusal);
 
 		const reading = mountReading();
-		await reading.load();
+		await flushPromises();
 
 		expect(reading.loadError.value).toBe('Graphics Administrator authorization is required');
 	});
 
-	it('drops the reading and reports the loss when the token stops being accepted', async () => {
+	it('drops the reading and reports the loss when the User stops being admitted', async () => {
 		mockRead.mockResolvedValueOnce({ count: 3 });
 		const reading = mountReading();
-		await reading.load();
+		await flushPromises();
 
 		mockRead.mockRejectedValueOnce(authorizationRefusal);
 		await reading.load();
@@ -83,7 +82,7 @@ describe('useGraphicsAdminReading', () => {
 	it('keeps a stale reading on screen through a non-authorization failure', async () => {
 		mockRead.mockResolvedValueOnce({ count: 3 });
 		const reading = mountReading();
-		await reading.load();
+		await flushPromises();
 
 		mockRead.mockRejectedValueOnce(
 			transportFailure({
@@ -102,7 +101,7 @@ describe('useGraphicsAdminReading', () => {
 		mockRead.mockRejectedValue({ some: 'object' });
 
 		const reading = mountReading();
-		await reading.load();
+		await flushPromises();
 
 		expect(reading.loadError.value).toBe('The reading failed.');
 	});
@@ -112,7 +111,7 @@ describe('useGraphicsAdminReading', () => {
 		onReading.mockRejectedValue(new Error('derived state failed'));
 
 		const reading = mountReading();
-		await reading.load();
+		await flushPromises();
 
 		expect(reading.loadError.value).toBe('derived state failed');
 	});
@@ -133,18 +132,20 @@ describe('useGraphicsAdminReading', () => {
 			vi.useFakeTimers({ shouldAdvanceTime: true });
 		});
 
-		it('does not poll until a reading is being shown', async () => {
+		it('does not poll while no reading is being shown', async () => {
+			mockRead.mockRejectedValue(authorizationRefusal);
 			mountReading();
+			await flushPromises();
 
 			await vi.advanceTimersByTimeAsync(15_000);
 
-			expect(mockRead).not.toHaveBeenCalled();
+			expect(mockRead).toHaveBeenCalledTimes(1);
 		});
 
 		it('refreshes a healthy reading every five seconds', async () => {
 			mockRead.mockResolvedValue({ count: 3 });
-			const reading = mountReading();
-			await reading.load();
+			mountReading();
+			await flushPromises();
 
 			await vi.advanceTimersByTimeAsync(5000);
 			await flushPromises();
@@ -154,8 +155,8 @@ describe('useGraphicsAdminReading', () => {
 
 		it('holds off while the caller reports an action in flight', async () => {
 			mockRead.mockResolvedValue({ count: 3 });
-			const reading = mountReading();
-			await reading.load();
+			mountReading();
+			await flushPromises();
 
 			paused = true;
 			await vi.advanceTimersByTimeAsync(15_000);
@@ -171,8 +172,8 @@ describe('useGraphicsAdminReading', () => {
 
 		it('skips ticks after failures, doubling the wait, and resets on success', async () => {
 			mockRead.mockResolvedValueOnce({ count: 3 });
-			const reading = mountReading();
-			await reading.load();
+			mountReading();
+			await flushPromises();
 			expect(mockRead).toHaveBeenCalledTimes(1);
 
 			// First polled reading fails (non-authorization, so the stale reading
@@ -218,7 +219,7 @@ describe('useGraphicsAdminReading', () => {
 		it('stops polling on unmount', async () => {
 			mockRead.mockResolvedValue({ count: 3 });
 			const reading = mountReading();
-			await reading.load();
+			await flushPromises();
 
 			reading.wrapper.unmount();
 			await vi.advanceTimersByTimeAsync(15_000);
