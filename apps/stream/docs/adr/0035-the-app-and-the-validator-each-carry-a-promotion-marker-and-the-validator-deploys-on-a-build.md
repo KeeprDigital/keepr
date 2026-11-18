@@ -1,6 +1,6 @@
 # ADR-0035: The app and the validator each carry a promotion marker, and the validator deploys on a build fingerprint
 
-Accepted · 2026-10-21 · [#616](https://github.com/KeeprDigital/stream-keepr/issues/616) · Amended by ADR-0119: markers are named `<app>/<environment>[-<part>]` (`stream/production`, `stream/production-validator`) and gain `app`, `environment` and `version` fields; the fingerprint hashes the validator config resolved for the Environment; the procedure, with this decision's promotion, moved into `@keepr/tooling` (`packages/tooling/scripts/deploy/`) and never runs a release's own `pnpm run deploy` · Amended by ADR-0124: the Deploy workflow pushes the markers with the release GitHub App's token, not `GITHUB_TOKEN`
+Accepted · 2026-10-21 · [#616](https://github.com/KeeprDigital/stream-keepr/issues/616) · Amended by ADR-0119: markers are named `<app>/<environment>[-<part>]` (`stream/production`, `stream/production-validator`) and gain `app`, `environment` and `version` fields; the fingerprint hashes the validator config resolved for the Environment; the procedure, with this decision's promotion, moved into `@keepr/tooling` (`packages/tooling/scripts/deploy/`) and never runs a release's own `pnpm run deploy` · Amended by ADR-0124: the Deploy workflow pushes the markers with the release GitHub App's token, not `GITHUB_TOKEN` · Amended by ADR-0125: the app's marker also records each D1 database's Time Travel bookmark (`recovery`), read before the deploy's first remote change
 
 ### Decision
 
