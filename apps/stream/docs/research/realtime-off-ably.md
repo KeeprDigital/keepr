@@ -1,0 +1,266 @@
+# Can Stream Keepr's realtime move off Ably onto Cloudflare?
+
+Research note for #1295 · 2026-11-18 · no production change
+
+This note is evidence for a decision, like a spec in flight (ADR-0095): once
+#1295 is settled, what it decides becomes decisions and rules, and this file is
+deleted.
+
+## Recommendation
+
+**Move, all of it, in stages behind the two ports that already exist, once the
+Staging run and decision 2 below hold. Nothing forces a date.**
+
+- **It can.** Everything Stream Keepr uses Ably for fits one Durable Object per
+  Event with hibernating WebSockets. A throwaway prototype carried the rig #189
+  measured (3 Screen Outputs, 2 operator pages) with fan-out, reconnect
+  catch-up and presence, every count asserted, under local `workerd`.
+- **Money barely decides it.** Both are free at today's load. At 10× Durable
+  Objects cost at most $0.15 a month, and Ably's Free package is 1.1× to 1.6×
+  from its monthly allowance, with $29 to $35 a month as the next step.
+- **What decides it** is what Ably costs besides money: a key and an Ably app
+  per Environment, realtime tests CI cannot run, and a Free package whose limits
+  end a show rather than raise a bill. Against that, a move makes Stream Keepr
+  the owner of reconnection, heartbeat and presence, which Ably's SDK does now.
+- **Not "move part".** Keeping one channel kind on Ably keeps the key, the SDK
+  and the quota, and adds a second transport to reason about.
+- **Not yet shown:** anything a network does. The prototype has not run on
+  Staging, which needs a human's go-ahead (see [What is not measured](#what-is-not-measured)).
+  Two results there could change this recommendation: delivery latency with the
+  object far from its clients, and how long a vanished Screen Output stays in
+  presence.
+
+How each statement below is known: **READ** in this repository at `a92811ac`,
+**MEASURED** by the prototype locally, **DOCS** fetched 2026-11-18, **CARRIED**
+from #189's measurement, or **NOT MEASURED**.
+
+## 1. What Stream Keepr uses Ably for
+
+### Channels (READ: `shared/utils/realtimeChannels.ts`)
+
+| Channel | Carries | Who subscribes |
+| --- | --- | --- |
+| `event:<eventId>` | Every Event message, of the 63 types in `shared/types/messages.ts` | Operator pages and previews (the Realtime Event Session) |
+| `screen:<eventId>:<screenId>` | The Screen's own messages forwarded unchanged (Card, Broadcast Graphics Live Session, Feature Match Session), `output:*` notices, `screen:command:*` | That Screen's Screen Outputs and Program Monitors, which hear no other channel (ADR-0022); control surfaces for presence |
+
+### Per capability
+
+| Capability | Use | Where |
+| --- | --- | --- |
+| Publish | Server only, over REST. 24 call sites in 7 files, all through three functions: `publishMessage` (logs and swallows), `publishMessageStrict` (throws), `publishScreenCommand` (throws `RealtimePublishError`). Screen channels go out as one `batchPublish` of up to 100 channels. No client publishes. | `server/utils/ably.ts` |
+| Subscribe | By message name, on the Event channel ("room") and on named channels | `app/plugins/realtime.client.ts` |
+| Presence | Only a Screen Output enters, on its Screen's channel, with `ScreenPresenceData`; it updates that data in place. Control surfaces watch and count members. Nothing reads `clientId`. | `useScreenRealtimeSession.ts`, `app/modules/screen/runtime.ts` |
+| History | **Granted to a Session and never called.** No `history()`, no rewind, no `untilAttach` anywhere. | `server/api/realtime/token.get.ts` |
+| Token auth | `GET /api/realtime/token` signs a token request for one Event. A Session gets the Event channel and `screen:<eventId>:*`; a Screen Output Asset Capability gets the Event channel and its one Screen's, for 10 minutes, so a regenerated capability stops hearing within that. An output following its Screen's channel (presence `protocol: 2`) no longer hears the Event channel it is granted. `clientId` is pinned: the user id, or `screen-output:<screenId>`. | ADR-0010 |
+| Ordering | Ably's, per channel. Nothing orders an Event message against the Screen notice it caused. Sequenced state (the Live Session) carries its own sequence and reloads when behind. | ADR-0004 |
+| Size | 64 KiB per message, the Free package's ceiling. An oversized publish is logged, not refused. Design rule since #95: a message announces, a read is authority. | `MAX_REALTIME_MESSAGE_BYTES` |
+| Recovery | Ably resumes a connection within 2 minutes and replays what it missed. The transport reads the channel's `resumed` flag: not resumed means continuity was lost, and the consumer re-reads (Reconnect Resync). A first attach on an unbroken connection is not a loss; a consumer that read before it re-reads off a second signal, `onceAttached`. The notices on a Screen's channel carry no sequence number, so this is their only recovery. | ADR-0023 |
+| Echo | A write sends `x-realtime-connection-id`; the message carries it back as `originConnectionId`; the client drops its own. Filtered after delivery, so it is still billed. | `useRealtimeMessageGate.ts` |
+
+### The seams that exist
+
+- **Client:** `RealtimeTransport` (`app/types/realtime.ts`) is a port with one
+  implementation, the 914-line plugin. Its consumers, a dozen files, import only
+  the port.
+  About half the plugin exists because an Ably token covers one Event at a time
+  (`coveredEventId`, `recoverEvent`, pending subscriptions).
+- **Server:** `server/utils/ably.ts` is the only server file that imports the
+  SDK; the token route reaches it through `getAblyClient`.
+  `PublishToScreenChannels` is already a port. `scripts/measure-realtime-fanout.mjs`
+  imports the SDK too.
+- **Tests:** 19 test files mock the `ably` module, 15 through
+  `test/helpers/ablyRestFake.ts`. Nine `*.realtime.test.ts` integration files
+  need a real key, so CI skips them.
+- **Ably's shape leaks in three places:** the `connectionState` union, the
+  connection-id regex in `getOriginConnectionId`, and `publishFailureFields`
+  (Ably's `ErrorInfo`).
+
+## 2. What Durable Objects give, what we would build, what we cannot match
+
+The shape tested: one SQLite-backed object per Event, named `event:<eventId>`,
+holding every socket of that Event. A socket is tagged with the channels it
+hears; the server publishes by RPC.
+
+| Need | Durable Objects | Verdict |
+| --- | --- | --- |
+| Fan-out to an Event's clients | `getWebSockets(tag)` and `send`. 32,768 sockets per object; a soft 1,000 requests/s per object, against a measured need of 5 to 60. (DOCS) | Free |
+| Idle connections cost nothing | Hibernation: sockets stay open while the object is out of memory; no duration is billed. (DOCS) | Free |
+| Ordering | One single-threaded object orders every message of an Event, across its Event and Screen channels. | Free, and stronger than today |
+| Message size | 32 MiB per WebSocket message. (DOCS) | Free; the 64 KiB rule becomes a choice |
+| A deploy leaves shows connected | Since 2026-10-30 a code update is deferred until the object hibernates, and hibernating sockets stay connected across it. A runtime restart still closes them. (DOCS) | Free for deploys; reconnect must be solid for the rest |
+| Publish from the server | An RPC on a binding in the same account, where today it is an HTTPS call to another company. No key, no secret per Environment. | Free |
+| Realtime tests in CI | The object runs in local `workerd` with no credential. | Free; ends the exception in the root `AGENTS.md` |
+| Auth and capabilities | None built in. Authenticate the upgrade request with the Session or capability, and tag the socket with what it may hear. Revocation becomes closing the Screen's sockets at once, instead of waiting out a 10-minute token. | Build; small. One open decision below |
+| Catch-up after a reconnect | A per-channel sequence, a log in the object's SQLite, and `resumed` on attach, which is `onContinuityLost`; the attach frame itself is `onceAttached`. | Build; prototyped |
+| Presence | Each socket's attachment holds its presence data (16 KiB limit; `ScreenPresenceData` is a few fields) and survives hibernation (DOCS; the local run does not show the object hibernating). `webSocketClose` is the leave. | Build; prototyped |
+| Reconnection, backoff, heartbeat | Nothing. `setWebSocketAutoResponse` answers a client's `ping` without waking the object, so the heartbeat is free, but the client loop is ours. | Build. The largest piece, and where ADR-0023's fixes must be kept |
+| A vanished client leaves presence | Ably drops a member about 15 s after its connection dies. Here it leaves when Cloudflare reports the socket closed, which for a machine that lost power is NOT MEASURED. | Build a sweep if Staging shows ghosts |
+| History | Not used. | Nothing to do |
+| Global edge fan-out | An object lives in one place, near its first request, and does not move. Clients connect at their nearest Cloudflare edge and are carried to it. (DOCS) | **Cannot match.** Fits an Event at one venue; a remote operator pays the distance. NOT MEASURED |
+| Fallback when WebSockets are blocked | Ably's SDK falls back to HTTP polling. | **Cannot match** without building it. The slow re-read while realtime is degraded (RULES, Screen Mode Data Freshness) is the fallback that already exists |
+| Multi-region failover, a vendor's dashboard | One object, one location; Workers observability instead of Ably's channel inspector. | **Cannot match** |
+
+## 3. The prototype
+
+Branch `spike/1295-realtime-do-prototype`, commit `fc1e4a84` (a local branch
+until someone pushes it),
+`apps/stream/prototypes/realtime-do/`: a 246-line Worker and a probe. Not
+merged; not bound to the app. It is the server half only: the probe reconnects
+by hand with the sequence it held, so the client's reconnection, backoff and
+heartbeat, the largest piece to build, are not prototyped.
+
+MEASURED under local `workerd` (wrangler 4.161.0), 200 Takes, each published to
+the Event channel and one Screen's channel, 1.3 KB payloads as ADR-0004's
+realistic Set Input:
+
+| What | Result |
+| --- | --- |
+| Fan-out | Event channel 5 of 5 on every publish, Screen channel 1 of 1; 400 published, 1,200 delivered, no gap or reorder on any socket |
+| Publish, HTTP round trip | p50 2.8 ms, p95 5.0, max 8.1 (the RPC inside it: 1 to 2 ms) |
+| Delivery, publish to receipt | Event channel p50 1.6 ms, p95 3.2, max 5.4; Screen channel p50 1.7, p95 3.4, max 5.8 |
+| Catch-up | An output dropped across 50 messages reconnected `resumed`, was replayed exactly 50 in order in 4.3 ms, then received live with no duplicate |
+| Continuity lost | A sequence from another epoch, and a gap older than the log, both attach `resumed: false`; the gap is asserted to replay nothing. The log's retention was set to 3 s for this, not its 2-minute default |
+| Presence | 3 outputs entered and counted; a closed output left the count in 0.7 ms |
+| After 20 s idle | Publish reached all 4 remaining sockets (10.5 ms); presence intact for a watcher that connected afterwards. Whether the object hibernated in that time was not observed |
+
+**These are loopback figures.** They show the semantics hold and the object adds
+about a millisecond. They say nothing about a network, a venue, or OBS. The
+run's output is in the [appendix](#appendix-the-local-run).
+
+## 4. Cost
+
+Load is #189's "ADR realistic show": 4,000 playouts a month at 19 commands each,
+76,000 commands. 10× is 760,000.
+
+| | Today | 10× | Where it stops being free |
+| --- | --- | --- | --- |
+| **Ably Free** | $0. 380,000 to 532,000 messages of 6,000,000 (×5 to ×7, below) | $0. 3.8M to 5.3M of 6,000,000: 1.1× to 1.6× headroom, and #189 called its figures a floor | Past 6M in a month it is throttled to 1,600 messages an hour until the month ends. 250,000 an hour is already 1.16× from a large rig operated hard (CARRIED). Then Pro: $29 a month billed yearly, $35 monthly (DOCS) |
+| **Durable Objects** | $0. About 152,000 requests of 1,000,000 included | $0 to $0.15. About 1.52M requests, $0.15 per million over | Never a cliff: each dimension bills its overage |
+
+- **Ably now bills paid packages per monthly active user**, a unique `clientId`,
+  not per message (DOCS). For Stream Keepr that is each operator and each Screen
+  that connected that month. Free allows 500. Its page says Free is "intended for
+  developers to try out Ably". The limits page reads 500 connections and 500
+  channels where #189 recorded 200 and 200: the terms the repository records
+  have moved since August.
+- **Durable Objects arithmetic** (DOCS for rates): a command is two RPCs as the
+  code stands (the Event publish, then its Screens). Outgoing WebSocket messages
+  are not billed; incoming ones bill at 20 to 1 and only presence sends any.
+  Duration at a generous 10 ms per RPC is under 2,000 GB-s of 400,000 included.
+  The log writes about 3 rows per delivery: 4.6M of 50M included at 10×. The
+  Workers Paid plan is already paid for: the silent-video validator's container
+  needs it.
+- **Ably's fan-out is READ, not re-measured.** #189 measured ×6 on the Event
+  channel when every output heard it. An output now hears only its Screen's
+  channel, so on the same rig a command is 1 publish and 2 operator-page deliveries
+  on the Event channel, plus 1 publish and 1 output delivery on the Screen's:
+  ×5. It is ×7 if each operator page watching that Screen's presence is also delivered
+  its messages, which attaching a channel implies. Measuring again spends the
+  quota in question.
+
+## 5. Migration shape
+
+**Both can run side by side behind the ports.**
+
+1. **Server publishes to both.** The three publish functions and
+   `PublishToScreenChannels` gain a second destination. A write already finishes
+   its Screen notices after it answers.
+2. **The client picks one transport at page load** from public runtime config: a
+   second implementation of `RealtimeTransport`. No consumer changes. It is
+   simpler than the first: one socket per Event with the credential on the
+   upgrade, so no token coverage, no mint retries, no pending-until-covered.
+3. **Flip per Installation; Staging first.** Rollback is the flag and a reload.
+4. **Stop publishing to Ably**, then remove the SDK, the token route and
+   `NUXT_ABLY_API_KEY`.
+
+**Screens on air.** A loaded Screen Output keeps the transport it loaded with
+until it reloads, and holds its last accepted rendering meanwhile, so nothing
+changes under a show by itself. While the server publishes to both, an output on
+either hears everything. Moving one is `screen:command:refresh`, sent on the
+transport it is on, Screen by Screen, between segments. Its presence entry
+already reports the realtime protocol it follows (RULES), which is where a
+control surface would say "still on Ably". Presence is the one thing dual
+publishing does not cover: a control surface must watch both transports during
+the window, or outputs and control surfaces move together.
+
+**Tests.** The Ably fake gives way to a fake at the publish port, a mechanical
+change across 19 files. The nine realtime integration files stop needing a key.
+
+## 6. Decisions a move would need
+
+1. **Where the object lives.** A Part, as the validator is (its own deploys and
+   promotion marker, ADR-0119), or the app's own Worker. Nitro
+   2.13 exporting a Durable Object class from the Nuxt Worker is unverified.
+2. **Whether the Nuxt Worker can hand back the object's `101`.** The upgrade must
+   pass where the Session and capability are checked. If Nitro will not return a
+   WebSocket response untouched, the realtime Part takes the route and must
+   authenticate by itself. **Prove this first; the prototype did not.**
+3. **How a Screen Output presents its capability.** A browser cannot set
+   `Authorization` on a WebSocket. A subprotocol value, or a short-lived ticket
+   from an HTTP route. Amends ADR-0010's token grant, and the rule that only a
+   Session's grant reads channel history goes with it.
+4. **One object per Event**, as prototyped, or one per channel. Per Event gives
+   cross-channel order and one RPC per write.
+5. **Keep the catch-up log, and for how long.** The application already survives
+   a missed message by re-reading; the log saves the re-read after a blip or a
+   runtime restart. The prototype defaults to Ably's 2 minutes. Amends ADR-0023.
+6. **Client reconnection and heartbeat**, and whether ADR-0023's rules carry over
+   as they are: held until disposed, no attempt limit, 30 s ceiling. With no
+   token to wait on, the token-wait clauses of ADR-0028 and of `RULES.md`
+   (Event Data Resync, Screen Mode Data Freshness, the 30 s re-attempt) change.
+7. **Ghosts in presence**: accept until the socket closes, or sweep by alarm.
+   Waits on the Staging measurement.
+8. **No polling fallback**: accept, on the strength of the degraded re-read.
+9. **The 64 KiB bound** (ADR-0004): keep it as a design rule, or raise it.
+10. **Cutover order and the Release.** Whether anything is an operator step
+    beyond Deploy, and so a major changeset: ADR-0119 deploys a changed Part
+    itself, which leaves removing `NUXT_ABLY_API_KEY`. #189's "stay on the Free
+    plan" decision is superseded, and `README.md`, `PRODUCT.md` and the root
+    `AGENTS.md` name Ably.
+
+## What is not measured
+
+- **Anything on Staging.** The prototype's README has the three commands: a
+  separate `stream-realtime-prototype` Worker on `workers.dev` that touches no
+  binding the app uses, the probe, and its deletion. Deploying is a human's call.
+  Wanted from it: delivery latency from a venue's network and from another
+  continent, a publish waking a hibernated object (`PROBE_IDLE_MS=90000`), and
+  the billed requests and duration for one probe run.
+- **A machine that vanishes.** Pull the network from a connected probe and time
+  its presence leave.
+- **OBS.** A browser source reconnecting, and whether a hidden source throttles a
+  heartbeat timer.
+- **Ably's own delivery latency** on the same rig, for comparison.
+  `scripts/measure-realtime-fanout.mjs` counts messages and does not time them.
+- **Nitro passing a `101` through**, decision 2.
+
+## Appendix: the local run
+
+`PROBE_RETENTION_MS=3000 PROBE_IDLE_MS=20000 node probe.mjs` against
+`wrangler dev` on loopback, 2026-11-18, milliseconds:
+
+```json
+{
+	"cycles": 200,
+	"connectMs": { "n": 5, "p50": 12.5, "p95": 26.1, "max": 26.1 },
+	"fanOut": { "eventChannel": 5, "screenChannel": 1, "published": 400, "delivered": 1200 },
+	"publishHttpMs": { "n": 200, "p50": 2.8, "p95": 5, "p99": 7.5, "max": 8.1 },
+	"publishRpcMs": { "n": 200, "p50": 1, "p95": 1, "p99": 2, "max": 2 },
+	"eventDeliveryMs": { "n": 1000, "p50": 1.6, "p95": 3.2, "p99": 4.7, "max": 5.4 },
+	"screenDeliveryMs": { "n": 200, "p50": 1.7, "p95": 3.4, "p99": 4.9, "max": 5.8 },
+	"catchUp": { "missed": 50, "replayed": 50, "ms": 4.3 },
+	"continuityLost": { "staleEpoch": "resumed=false", "prunedGap": "resumed=false, nothing replayed" },
+	"presence": { "entered": 3, "leaveNoticedMs": 0.7 },
+	"afterIdle": { "idleMs": 20000, "publishHttpMs": 10.5, "presence": "intact" },
+	"stats": { "sockets": 5, "logRows": 2 }
+}
+```
+
+## Sources
+
+- Cloudflare: Durable Objects pricing, limits, WebSockets, lifecycle, code
+  updates, data location (`developers.cloudflare.com/durable-objects/`).
+- Ably: `ably.com/pricing`, `ably.com/docs/platform/pricing`,
+  `/platform/pricing/free`, `/platform/pricing/limits`.
+- #189 for the fan-out and volume figures; ADR-0004, ADR-0010, ADR-0022,
+  ADR-0023.
