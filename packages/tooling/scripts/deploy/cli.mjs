@@ -17,8 +17,9 @@
  *   Travel bookmark (`recovery.mjs`; refused without one, and recorded in the
  *   app's marker), mark pending, migrate D1, deploy, verify, mark deployed
  *   (`procedure.mjs`).
- * - `build`: the descriptor's build scripts only, into its output directory, for
- *   a build job whose output every Environment deploys.
+ * - `build [--artifact <dir>]`: the descriptor's build scripts only, into its
+ *   output directory, copied to `--artifact` for a build job to upload: the
+ *   one build every Environment deploys (`deploy --artifact`).
  * - `check`: what CI checks of each deployable app's Worker: each part bundled
  *   as a deploy would upload it (no Docker, no credentials), then `build`.
  * - `verify`: check the Installation serves this checkout's Release.
@@ -45,9 +46,9 @@ import { DeployVerifyFailure, verifyInstallation } from './verify.mjs';
 
 const USAGE = `usage: keepr-deploy <command> --app <app> [--env <environment>]
   deploy --env <env> [--parts auto|always|never] [--artifact <dir>] [--override <reason>]
-                               build once (or place the artifact), then deploy order, parts, D1, Worker, verify,
+                               build once (or place the artifact), then deploy order, D1 recovery point, parts, D1, Worker, verify,
                                each between markers; --override deploys out of order, its reason recorded
-  build                        the descriptor's build scripts only
+  build [--artifact <dir>]     the descriptor's build scripts only, the output copied to <dir>
   check                        each part bundled as a deploy would, then build: CI's Worker leg
   verify --env <env>           check the Installation serves this checkout's Release
   part <name> --env <env>      deploy one part between its markers, whatever its fingerprint
@@ -189,6 +190,20 @@ function realSteps({ release, environment, store, env, log }) {
 }
 
 /**
+ * The build's output, copied to `path` for the Deploy workflow to upload: what
+ * `deploy --artifact` places back, in every Environment.
+ *
+ * @param {import('./release.mjs').Release} release
+ * @param {string} path
+ */
+function exportArtifact({ appDir, descriptor }, path) {
+	if (!existsSync(join(appDir, descriptor.worker.config)))
+		throw new Error(`the build left no ${descriptor.worker.config} to deploy.`);
+	rmSync(resolve(path), { recursive: true, force: true });
+	cpSync(join(appDir, descriptor.output), resolve(path), { recursive: true });
+}
+
+/**
  * @param {import('./release.mjs').Release} release
  * @param {string} environment
  * @param {import('./markers.mjs').MarkerStore} store
@@ -287,13 +302,19 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 	const source = deployer(env);
 
 	if (command === 'build') {
-		realSteps({
-			release,
-			environment: '',
-			store: gitMarkerStore({ cwd: release.appDir }),
-			env,
-			log,
-		}).build();
+		try {
+			realSteps({
+				release,
+				environment: '',
+				store: gitMarkerStore({ cwd: release.appDir }),
+				env,
+				log,
+			}).build();
+			if (values.artifact !== undefined) exportArtifact(release, values.artifact);
+		} catch (error) {
+			console.error(`keepr-deploy: ${/** @type {Error} */ (error).message}`);
+			return 1;
+		}
 		return 0;
 	}
 	if (command === 'check') {

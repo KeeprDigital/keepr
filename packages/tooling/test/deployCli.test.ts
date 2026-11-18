@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
@@ -91,6 +91,47 @@ describe('the keepr-deploy command line', () => {
 		expect(result.status).toBe(1);
 		expect(result.stderr).toContain('could not bundle workers/validator/wrangler.jsonc');
 		expect(result.stderr).not.toContain('pnpm run build');
+	});
+
+	// The Deploy workflow's build job: what it uploads is what every Environment deploys.
+	describe('a build for an artifact', () => {
+		const release = {
+			'pnpm-workspace.yaml': 'packages: []\n',
+			'apps/stream/package.json': JSON.stringify({ name: '@keepr/stream', version: '1.9.0' }),
+			'apps/stream/deploy.jsonc': JSON.stringify({
+				app: 'stream',
+				build: [],
+				output: '.output',
+				worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
+				databases: [],
+				environments: { production: { url: 'https://stream.keepr.digital' } },
+				parts: {},
+			}),
+		};
+
+		it("copies the descriptor's output, as built, to the artifact directory", () => {
+			const root = workspace({
+				...release,
+				'apps/stream/.output/server/wrangler.json': '{"name":"stream"}',
+			});
+			const artifact = join(root, 'artifact');
+
+			const result = run(['build', '--app', 'stream', '--artifact', artifact], root);
+
+			expect(result.status, result.stderr).toBe(0);
+			expect(readFileSync(join(artifact, 'server/wrangler.json'), 'utf8')).toBe(
+				'{"name":"stream"}',
+			);
+		});
+
+		it('fails when the build left no Worker configuration to deploy', () => {
+			const root = workspace(release);
+
+			const result = run(['build', '--app', 'stream', '--artifact', join(root, 'artifact')], root);
+
+			expect(result.status).toBe(1);
+			expect(result.stderr).toContain('.output/server/wrangler.json');
+		});
 	});
 
 	it('refuses a descriptor that would deploy the Accounts Stand-in before building anything', () => {
