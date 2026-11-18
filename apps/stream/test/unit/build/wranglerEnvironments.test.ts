@@ -63,8 +63,9 @@ function bound(value: unknown): unknown {
 	return value;
 }
 
-/** Each Environment names its Worker and its host; the rest is where it was read from. */
+/** Each Environment names its account, Worker and host; the rest is where it was read from. */
 const ENVIRONMENT_OWN = new Set([
+	'account_id',
 	'name',
 	'routes',
 	'configPath',
@@ -96,9 +97,25 @@ describe.each(NAMED_ENVIRONMENTS)('the %s Environment', (_environment, { url, wr
 		expect(resolve(config, wranglerEnv).name).toBe(name);
 	});
 
+	// The configs name the account, so every Wrangler command reaches it with no export (ADR-0130).
+	it("deploys both Workers to one account of its own, not production's", () => {
+		const accounts = WORKERS.map(({ config }) => resolve(config, wranglerEnv).account_id);
+
+		expect(new Set(accounts).size).toBe(1);
+		expect(accounts[0]).toMatch(/^[0-9a-f]{32}$/);
+		expect(accounts[0]).not.toBe(resolve('wrangler.jsonc').account_id);
+	});
+
 	it("attaches its descriptor's host to the app's Worker, and not production's", () => {
 		expect(customDomains(resolve('wrangler.jsonc', wranglerEnv))).toEqual([new URL(url).host]);
 	});
+});
+
+it("deploys both of production's Workers to the one account their configs name", () => {
+	const accounts = WORKERS.map(({ config }) => resolve(config).account_id);
+
+	expect(new Set(accounts).size).toBe(1);
+	expect(accounts[0]).toMatch(/^[0-9a-f]{32}$/);
 });
 
 it("attaches production's descriptor host to production's Worker", () => {

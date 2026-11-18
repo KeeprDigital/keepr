@@ -8,6 +8,9 @@
  * Release; locally it is `pnpm run deploy --app <app> --env <env>`, with
  * `wrangler login`, and an app's `deploy:*` scripts are thin calls to it.
  *
+ * The Wrangler configs name each Environment's account; `deploy` and `part`
+ * refuse an exported `CLOUDFLARE_ACCOUNT_ID` they contradict (`account.mjs`).
+ *
  * Commands:
  *
  * - `deploy`: build once (or place `--artifact`), then for the Environment:
@@ -39,6 +42,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { parseArgs } from 'node:util';
+import { refuseAccountMismatch } from './account.mjs';
 import { bundlePart, fingerprintPart } from './fingerprint.mjs';
 import { LEGACY_MARKERS, describeMarker, gitMarkerStore, markerName } from './markers.mjs';
 import { checkDeployOrder, gitHistory, neededBy } from './order.mjs';
@@ -347,6 +351,14 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 		return 0;
 	}
 	const target = /** @type {string} */ (environment);
+	if (command === 'deploy' || command === 'part') {
+		try {
+			refuseAccountMismatch({ release, environment: target, env });
+		} catch (error) {
+			console.error(`keepr-deploy: ${/** @type {Error} */ (error).message}`);
+			return 1;
+		}
+	}
 	const store = gitMarkerStore({ cwd: release.appDir });
 
 	if (command === 'deploy') {

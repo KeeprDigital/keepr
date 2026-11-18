@@ -17,12 +17,13 @@
 #
 # Each Environment is one Cloudflare account and one GitHub environment of the
 # same name (`production`, `staging`), shared by every app (ADR-0122). It deploys only
-# from main, `production` behind a required reviewer, and holds that account's CLOUDFLARE_ACCOUNT_ID and a
-# CLOUDFLARE_API_TOKEN that can deploy every app in it (Workers Scripts:Edit,
+# from main, `production` behind a required reviewer, and holds a
+# CLOUDFLARE_API_TOKEN that can deploy every app in that account (Workers Scripts:Edit,
 # D1:Edit, Containers:Edit), and the release GitHub App's KEEPR_RELEASE_APP_ID
 # and KEEPR_RELEASE_APP_PRIVATE_KEY (ADR-0124). The job reads them as the
-# environment's own secrets, which the caller passes by name. One deploy of an
-# Installation runs at a time.
+# environment's own secrets, which the caller passes by name. The account
+# itself is no secret: each Environment's Wrangler configs name it (ADR-0130).
+# One deploy of an Installation runs at a time.
 #
 # The marker tags are pushed with a token of that App, narrowed to contents and
 # workflows: GITHUB_TOKEN can never hold `workflows`, and GitHub refuses it a
@@ -59,8 +60,6 @@ on:
       # The Environment's own, read from its GitHub environment: a called
       # workflow sees an environment secret only when the caller passes it by
       # name (deploy.yml does).
-      CLOUDFLARE_ACCOUNT_ID:
-        required: true
       CLOUDFLARE_API_TOKEN:
         required: true
       KEEPR_RELEASE_APP_ID:
@@ -150,7 +149,6 @@ jobs:
           # On this step alone: job-level env would also reach the install's
           # build scripts and the setup actions, which deploy nothing.
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # Inputs cross into the shell via env, never by expression
           # interpolation inside `run:`: this step holds the Cloudflare token.
           INPUT_APP: ${{ inputs.app }}
