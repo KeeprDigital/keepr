@@ -5,7 +5,7 @@ import {
 	SHARED_SECRET_MIN_LENGTH,
 } from '../../../../server/utils/configuredSecret';
 
-const SETTING = 'NUXT_GRAPHICS_ADMIN_TOKEN';
+const SETTING = 'NUXT_ADMIN_BOOTSTRAP_TOKEN';
 
 // A shared secret shorter than the floor is guessable, so it reads as not
 // configured and its surface stays unarmed; the log names the setting, never

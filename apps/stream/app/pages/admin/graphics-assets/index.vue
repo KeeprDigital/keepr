@@ -35,20 +35,15 @@ const sweepSummary = ref<string | null>(null);
 const sweepError = ref<string | null>(null);
 
 const {
-	administratorToken,
 	reading: cockpit,
 	loadPending,
 	loadError,
 	hasReading,
-	administratorHeaders,
 	describeFailure,
 	load: loadCockpit,
 } = useGraphicsAdminReading<GraphicsOperationsCockpitReading>({
-	read: async (headers) =>
-		await $fetch<GraphicsOperationsCockpitReading>(
-			'/api/admin/graphics-assets/operations-cockpit',
-			{ headers },
-		),
+	read: async () =>
+		await $fetch<GraphicsOperationsCockpitReading>('/api/admin/graphics-assets/operations-cockpit'),
 	failureMessage: 'The Operations Cockpit could not be read.',
 });
 
@@ -66,7 +61,6 @@ async function runSweep(sweep: 'reconciliation' | 'retention') {
 				'/api/admin/graphics-assets/reconciliation',
 				{
 					method: 'POST',
-					headers: administratorHeaders(),
 				},
 			);
 			sweepSummary.value =
@@ -78,7 +72,6 @@ async function runSweep(sweep: 'reconciliation' | 'retention') {
 				'/api/admin/graphics-assets/retention',
 				{
 					method: 'POST',
-					headers: administratorHeaders(),
 				},
 			);
 			sweepSummary.value =
@@ -249,12 +242,9 @@ function boundaryMarkerStyle(fraction: number) {
 					<h2 class="font-semibold text-highlighted">Graphics Administrator access</h2>
 				</template>
 				<div class="flex flex-col gap-4">
-					<UFormField
-						label="Graphics Administrator token"
-						description="The cockpit is administrator-only. The token is held for this session only and never stored."
-					>
-						<UInput v-model="administratorToken" type="password" autocomplete="current-password" />
-					</UFormField>
+					<p class="text-sm text-muted">
+						The cockpit is for a Graphics Administrator: sign in as a User who holds the role.
+					</p>
 					<div>
 						<UButton
 							label="Open cockpit"

@@ -74,8 +74,8 @@ describe('which names a local checkout has to be given', () => {
 		const env = configuredEnv();
 		expect(missingLocalNuxtNames(env)).toEqual([]);
 
-		delete env.NUXT_GRAPHICS_ADMIN_TOKEN;
-		expect(missingLocalNuxtNames(env)).toEqual(['NUXT_GRAPHICS_ADMIN_TOKEN']);
+		delete env.NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY;
+		expect(missingLocalNuxtNames(env)).toEqual(['NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY']);
 	});
 
 	it('partitions exactly the names `.env.example` assigns', () => {
@@ -96,7 +96,6 @@ describe('which names a local checkout has to be given', () => {
 
 	it('does not require the Better Auth setup names while the local bypass is enabled', () => {
 		expect(missingLocalNuxtNames({}, { localAuthBypassActive: true })).toEqual([
-			'NUXT_GRAPHICS_ADMIN_TOKEN',
 			'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY',
 		]);
 		expect(missingLocalNuxtNames({})).toEqual([...LOCALLY_REQUIRED_NUXT_NAMES]);

@@ -7,10 +7,6 @@ import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 // Every graphics route answers library failures through this one mapping, so
 // the per-route tests no longer repeat it.
 
-vi.mock('~~/server/utils/auth', () => ({
-	optionalUserId: vi.fn(),
-}));
-
 const setResponseHeader = vi.fn();
 vi.stubGlobal('setResponseHeader', setResponseHeader);
 vi.stubGlobal('createError', (input: Record<string, unknown>) =>

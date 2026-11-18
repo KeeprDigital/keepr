@@ -13,11 +13,9 @@ const RESET_IDENTIFIER_PREFIX = 'reset-password:';
  * **Why almost none of this goes through `auth.api`.** ADR-0010 keeps the admin
  * plugin for exactly these operations, and the plugin does expose every one of
  * them — behind `adminMiddleware`, which requires an admin **session**
- * unconditionally. This surface is gated by the shared
- * `x-graphics-admin-token`, which ADR-0010 leaves untouched until a
- * roles-and-permissions effort redraws that seam, so there is no session to
- * present and no way to acquire one that would not be an administrator signing
- * in as somebody. `auth.api.createUser` is the single exception: it admits a
+ * unconditionally. This surface's guard has already admitted the Graphics
+ * Administrator (ADR-0131), and the port is not handed their session, so it
+ * goes beneath that check rather than through it. `auth.api.createUser` is the single exception: it admits a
  * sessionless server-side call by design, refusing only when a request or
  * headers arrive without a session. `userAdministrationPort.test.ts` calls all
  * seven and records what each answers, so this paragraph is a fact a test
@@ -72,8 +70,8 @@ export async function betterAuthUserAdministrationPort(
 		createUser: async ({ email, name }) => {
 			// No `headers`, deliberately: passing the administrator's request headers
 			// through would put this call on the "a browser asked" side of
-			// `createUser`'s own check and it would refuse with 401. The shared token
-			// on the route is this call's authorization.
+			// `createUser`'s own check. The route's Graphics Administrator guard is
+			// this call's authorization.
 			//
 			// No `password` and no `role` either. Without a password Better Auth
 			// creates no `credential` account at all, which is the invite shape

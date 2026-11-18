@@ -69,7 +69,6 @@ const EXPORT_PREFIX = /^export\s+/;
  * notice becomes both true and useful.
  */
 export const LOCALLY_REQUIRED_NUXT_NAMES = [
-	'NUXT_GRAPHICS_ADMIN_TOKEN',
 	'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY',
 	'NUXT_BETTER_AUTH_SECRET',
 	'NUXT_ADMIN_BOOTSTRAP_TOKEN',
@@ -118,19 +117,14 @@ export const LOCALLY_OPTIONAL_NUXT_NAMES = [
  *
  * One entry per required name, so the notice can name the surfaces belonging to the
  * names that are *actually* missing. Naming all of them unconditionally is the cell-H
- * defect #130's verification found: a checkout that filled in
- * `NUXT_GRAPHICS_ADMIN_TOKEN` and not the signing key — the ordinary result of
- * working through `.env.example` one name at a time, since the signing key needs an
- * `openssl` command — was told Graphics Administrator operations answer 503 when they
- * demonstrably do not. `requireGraphicsAdministrator` refuses only on an empty token
- * and otherwise falls through to its 403 branch.
+ * defect #130's verification found: a checkout that filled in one name and not the
+ * signing key — the ordinary result of working through `.env.example` one name at a
+ * time, since the signing key needs an `openssl` command — was told a surface answers
+ * 503 when it demonstrably did not.
  *
- * The strings are the refusals' own, so a reader can match notice to response:
- * "…so Graphics Administrator operations are unavailable" and "…so Screen Output asset
- * capabilities are unavailable". Both now begin with the environment name itself, because
- * #321 gave the first one a `ServiceConfigurationError` — before that it read "Graphics
- * Administrator access is not configured" and reached the client as 'Internal Server
- * Error', so the notice quoted a sentence nobody could see. `satisfies` makes a new
+ * The strings are the refusals' own, so a reader can match notice to response: "…so
+ * Screen Output asset capabilities are unavailable" begins with the environment name
+ * itself, as a `ServiceConfigurationError` does (#321). `satisfies` makes a new
  * required name a type error here rather than a name whose surface the notice silently
  * omits.
  *
@@ -139,13 +133,12 @@ export const LOCALLY_OPTIONAL_NUXT_NAMES = [
  * (`server/modules/admin-bootstrap`), and the secret's is `serverAuth`'s
  * (`server/utils/auth.ts`) — reworded on that ticket, because "is not configured" named
  * no surface at all and there was none to name until the boundary existed. The secret's
- * surface is the widest of the four by a distance: with a boundary over `/api/**`, a blank
+ * surface is the widest by a distance: with a boundary over `/api/**`, a blank
  * secret is every authenticated route answering 503 as well as sign-in itself, and a notice
  * that said only "signing in" would leave a developer to discover the rest one route at a
  * time.
  */
 export const LOCAL_NUXT_NAME_SURFACES = {
-	NUXT_GRAPHICS_ADMIN_TOKEN: 'Graphics Administrator operations',
 	NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY: 'Screen Output asset capabilities',
 	NUXT_BETTER_AUTH_SECRET: 'signing in and every authenticated API route',
 	NUXT_ADMIN_BOOTSTRAP_TOKEN: 'first-admin bootstrap',
@@ -155,7 +148,7 @@ export const LOCAL_NUXT_NAME_SURFACES = {
  * Which required names the environment cannot supply.
  *
  * Blank counts as missing, because that is how the readers count it —
- * `requireGraphicsAdministrator` trims before testing, and `signingKey` rejects the
+ * `requireAdminBootstrapToken` trims before testing, and `signingKey` rejects the
  * empty string — and because the likeliest way to hold a populated `.env` full of
  * blanks is `cp .env.example .env`, which is advice this very notice gives.
  */
@@ -176,8 +169,8 @@ export function missingLocalNuxtNames(
  * A list of names or surfaces, as a sentence rather than as a join.
  *
  * `join(' and ')` was right while two was the most this could ever be, and #396 made it
- * four: "Graphics Administrator operations and Screen Output asset capabilities and
- * signing in and every authenticated API route and first-admin bootstrap" is not a list
+ * more: "Screen Output asset capabilities and signing in and every authenticated API
+ * route and first-admin bootstrap" is not a list
  * a reader can parse, and the reason is that one of the surfaces contains an `and` of
  * its own. The serial comma is what separates the items from the conjunction inside one
  * of them, so it is load-bearing here rather than a house style.
@@ -200,9 +193,8 @@ export function sentenceList(items: readonly string[], conjunction: 'and' | 'or'
  * #223's skip notice for the one secret it cannot invent — but a plain `pnpm dev` in
  * the same worktree had none, and the shape of what goes wrong is the reason this
  * file exists: the names keep their empty defaults, and the surfaces that need them
- * answer 503 individually. `requireGraphicsAdministrator` says "not configured";
- * `screen-output-assets/runtime.ts` names the variable. None of them says the
- * checkout has no local configuration, which is the one fact that turns four
+ * answer 503 individually, each naming its own variable. None of them says the
+ * checkout has no local configuration, which is the one fact that turns several
  * unrelated-looking 503s into one copy step.
  *
  * **Keyed on the names, not on the file**, which is the correction #130's review

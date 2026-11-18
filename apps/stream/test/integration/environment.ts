@@ -8,7 +8,6 @@
  * other. `helpers.ts` re-exports every name here, so nothing else had to move.
  */
 
-export const INTEGRATION_GRAPHICS_ADMIN_TOKEN = 'integration-graphics-admin-token';
 export const INTEGRATION_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY =
 	'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 export const INTEGRATION_BETTER_AUTH_SECRET = 'integration-better-auth-secret-0000000000';

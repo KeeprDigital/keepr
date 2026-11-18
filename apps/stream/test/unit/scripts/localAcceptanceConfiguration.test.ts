@@ -9,7 +9,6 @@ import {
 import { createAcceptanceEvidence } from '../../../scripts/graphics-acceptance/evidence.mjs';
 import {
 	LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES,
-	LOCAL_ACCEPTANCE_UNREACHED_NUXT_NAMES,
 	localAcceptanceConfiguration,
 	localConfigurationNotice,
 	missingLocalAcceptanceNames,
@@ -25,7 +24,6 @@ import {
 } from '../../../shared/utils/localDeveloperAuth';
 
 const SIGNING_KEY = 'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY';
-const ADMIN_TOKEN = 'NUXT_GRAPHICS_ADMIN_TOKEN';
 const AUTH_SECRET = 'NUXT_BETTER_AUTH_SECRET';
 const BOOTSTRAP_TOKEN = 'NUXT_ADMIN_BOOTSTRAP_TOKEN';
 /** A real one is 32 bytes base64; nothing here decodes it, only measures emptiness. */
@@ -46,35 +44,16 @@ function configuredBody() {
 const noFiles = () => [null, null];
 
 function blankFiles() {
-	const blanks = [...LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES, ADMIN_TOKEN]
-		.map((name) => `${name}=""`)
-		.join('\n');
+	const blanks = LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES.map((name) => `${name}=""`).join('\n');
 	return [`${blanks}\n`, null];
 }
 
 describe('which required names a local acceptance run needs', () => {
-	/**
-	 * The drift pin the shared import exists for. `build/localConfiguration.ts` owns the
-	 * list; this file owns only the partition of it, and a third required name
-	 * added there has to be classified before it can reach a harness. Without
-	 * this, a new name would simply never be checked by the preflight and
-	 * nothing would say so.
-	 */
-	it('classifies every required name as either needed here or unreached', () => {
-		expect(
-			[...LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES, ...LOCAL_ACCEPTANCE_UNREACHED_NUXT_NAMES].sort(),
-		).toEqual([...LOCALLY_REQUIRED_NUXT_NAMES].sort());
-	});
-
-	/**
-	 * `requireGraphicsAdministrator` is mounted only under the `server/api/admin`
-	 * tree and no acceptance route is an admin route, so a run blocked on the admin
-	 * token would be refused for a surface it never touches — #130's cell-H
-	 * defect wearing this ticket's clothes.
-	 */
-	it('does not need the admin token, which no acceptance route can reach', () => {
-		expect(LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES).not.toContain(ADMIN_TOKEN);
-		expect(missingLocalAcceptanceNames({})).not.toContain(ADMIN_TOKEN);
+	// `build/localConfiguration.ts` owns the list; a name added there must reach a harness.
+	it('needs every name a checkout requires', () => {
+		expect([...LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES].sort()).toEqual(
+			[...LOCALLY_REQUIRED_NUXT_NAMES].sort(),
+		);
 	});
 
 	// A local run signs in with both; a deployed run, which has neither, is not checked (#396).
@@ -258,11 +237,6 @@ describe('the notice', () => {
 
 	it.each([
 		[
-			'only the name no harness reaches is blank',
-			() => [`${ADMIN_TOKEN}=""\n${configuredBody()}`, null],
-			{},
-		],
-		[
 			'the shell alone carries the names',
 			noFiles,
 			Object.fromEntries(LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES.map((name) => [name, A_KEY])),
@@ -277,8 +251,8 @@ describe('the notice', () => {
 		const cause = notice.slice(0, notice.indexOf('and this run would never reach'));
 
 		expect(cause).toContain(`so ${LOCAL_NUXT_NAME_SURFACES[SIGNING_KEY]} answer 503`);
-		expect(cause).not.toContain(ADMIN_TOKEN);
-		expect(cause).not.toContain(LOCAL_NUXT_NAME_SURFACES[ADMIN_TOKEN]);
+		expect(cause).not.toContain(AUTH_SECRET);
+		expect(cause).not.toContain(LOCAL_NUXT_NAME_SURFACES[AUTH_SECRET]);
 	});
 });
 

@@ -6,18 +6,18 @@ import type {
 } from '~~/shared/types/userAdministration';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { fetch, url } from './client';
-import { INTEGRATION_GRAPHICS_ADMIN_TOKEN } from './helpers';
+import { aUserWithoutTheRole } from './identities';
 import { executeIntegrationD1 } from './integrationD1';
 
 /**
  * The user administration surface as an administrator meets it (#399): a
- * Graphics Administrator token, an account created, a link handed over, and a
+ * Graphics Administrator signed in, an account created, a link handed over, and a
  * colleague who can then sign in — or who can no longer.
  *
  * What this file owns over the unit suite is the wiring and the whole round
  * trip. The unit suite proves the decisions and the library contract against a
  * throwaway Better Auth; only this proves that the seven routes are mounted
- * where the page calls them, that `x-graphics-admin-token` reaches them, that a
+ * where the page calls them, that the Graphics Administrator reaches them, that a
  * link minted by one route is redeemable at Better Auth's own `/reset-password`
  * on the other side of a real HTTP boundary, and that what all of it writes
  * lands in the D1 the sign-in path then reads.
@@ -33,8 +33,6 @@ const FIRST_PASSWORD = 'user-admin-399-first-password';
 const SECOND_PASSWORD = 'user-admin-399-second-password';
 const THIRD_PASSWORD = 'user-admin-399-third-password';
 
-const ADMIN_HEADERS = { 'x-graphics-admin-token': INTEGRATION_GRAPHICS_ADMIN_TOKEN };
-
 function administer(
 	path: string,
 	options: {
@@ -47,7 +45,7 @@ function administer(
 		method: options.method ?? 'GET',
 		headers: {
 			'content-type': 'application/json',
-			...(options.headers ?? ADMIN_HEADERS),
+			...options.headers,
 		},
 		...(options.body === undefined
 			? {}
@@ -136,10 +134,8 @@ describe('user administration', () => {
 	});
 
 	describe('who is admitted', () => {
-		it('refuses a caller with no Graphics Administrator token every route on the surface, not only the listing', async () => {
-			// Each request carries the suite's operator session, which is the point:
-			// `/api/admin/**` is exempt from the session boundary, so a session is
-			// not what admits a caller here and must not be mistaken for it.
+		it('refuses a signed-in User without the Graphics Administrator role every route on the surface, not only the listing', async () => {
+			const cookie = await aUserWithoutTheRole('user-admin-1293-no-role');
 			for (const [path, method] of [
 				['', 'GET'],
 				['', 'POST'],
@@ -151,7 +147,7 @@ describe('user administration', () => {
 			] as const) {
 				const response = await administer(path, {
 					method,
-					headers: {},
+					headers: { cookie },
 					...(method === 'GET' ? {} : { body: {} }),
 				});
 				expect(response.status, `${method} ${path} was not refused`).toBe(403);

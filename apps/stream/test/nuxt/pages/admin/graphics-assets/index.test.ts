@@ -1,6 +1,6 @@
 import type { GraphicsOperationsCockpitReading } from '~~/shared/types/graphicsAsset';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent } from 'vue';
 
@@ -241,15 +241,10 @@ async function mountPage() {
 	});
 }
 
-/** Enters the administrator token and takes the first reading, as an administrator does. */
+/** Opens the page as a signed-in Graphics Administrator, which takes the first reading. */
 async function openCockpit() {
 	const wrapper = await mountPage();
-	await wrapper.find('input').setValue('admin-token');
-	await wrapper
-		.findAll('button')
-		.find((button) => button.text() === 'Open cockpit')!
-		.trigger('click');
-	await nextTick();
+	await flushPromises();
 	return wrapper;
 }
 
@@ -274,9 +269,7 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 	it('answers whether the library is safe, with catalogue and byte health kept separate', async () => {
 		const wrapper = await openCockpit();
 
-		expect(mockApiFetch).toHaveBeenCalledWith('/api/admin/graphics-assets/operations-cockpit', {
-			headers: { 'x-graphics-admin-token': 'admin-token' },
-		});
+		expect(mockApiFetch).toHaveBeenCalledWith('/api/admin/graphics-assets/operations-cockpit');
 
 		expect(wrapper.text()).toContain('D1 catalogue');
 		expect(wrapper.text()).toContain('Canonical byte store');
@@ -368,11 +361,11 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 		expect(returned.text()).toContain('1 critical');
 	});
 
-	it('returns to the token form when the token stops being accepted', async () => {
+	it('takes the reading off the screen when the User stops being admitted', async () => {
 		const wrapper = await openCockpit();
 		expect(wrapper.text()).toContain('Library condition');
 
-		// The token is rotated underneath a page that is already polling.
+		// The role is taken away underneath a page that is already polling.
 		mockApiFetch.mockRejectedValue(
 			Object.assign(new Error('Graphics Administrator authorization is required'), {
 				statusCode: 403,
@@ -385,9 +378,9 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 		await nextTick();
 
 		// The stale reading is dropped rather than left on screen as a library
-		// state nobody is still checking, and re-authorising is possible again.
+		// state nobody is still checking, and trying again is possible.
 		expect(wrapper.text()).not.toContain('Library condition');
-		expect(wrapper.text()).toContain('Graphics Administrator token');
+		expect(wrapper.text()).toContain('sign in as a User who holds the role');
 		expect(wrapper.text()).toContain('Graphics Administrator authorization is required');
 		expect(wrapper.findAll('button').some((button) => button.text() === 'Open cockpit')).toBe(true);
 	});
@@ -445,12 +438,9 @@ describe('the Graphics Asset Library Operations cockpit page', () => {
 
 		expect(mockApiFetch).toHaveBeenCalledWith('/api/admin/graphics-assets/reconciliation', {
 			method: 'POST',
-			headers: { 'x-graphics-admin-token': 'admin-token' },
 		});
 		// The reading is taken again from the server rather than patched locally.
-		expect(mockApiFetch).toHaveBeenCalledWith('/api/admin/graphics-assets/operations-cockpit', {
-			headers: { 'x-graphics-admin-token': 'admin-token' },
-		});
+		expect(mockApiFetch).toHaveBeenCalledWith('/api/admin/graphics-assets/operations-cockpit');
 	});
 
 	it('still answers the safety question when the catalogue cannot answer', async () => {

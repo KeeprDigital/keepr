@@ -7,13 +7,10 @@ import { createHash } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { $fetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
-import { INTEGRATION_GRAPHICS_ADMIN_TOKEN } from './helpers';
+import { aUserWithoutTheRole } from './identities';
 import { expectResponseStatus } from './responseStatus';
 
 describe('the Graphics Asset Library Capacity API', () => {
-	const administratorHeaders = {
-		'x-graphics-admin-token': INTEGRATION_GRAPHICS_ADMIN_TOKEN,
-	};
 	// Each test that used to label itself with a distinct author identity now
 	// holds a distinct graphics author session, which is the only identity the
 	// ingestion routes accept.
@@ -45,7 +42,9 @@ describe('the Graphics Asset Library Capacity API', () => {
 	});
 
 	it('keeps the administrator occupancy reading behind Graphics Administrator authorization', async () => {
-		const response = await fetch('/api/admin/graphics-assets/capacity');
+		const response = await fetch('/api/admin/graphics-assets/capacity', {
+			headers: { cookie: await aUserWithoutTheRole('capacity-1293-no-role') },
+		});
 
 		expect(response.status).toBe(403);
 	});
@@ -67,7 +66,10 @@ describe('the Graphics Asset Library Capacity API', () => {
 		expect(publicMutation.status).toBe(403);
 		const unauthorizedAdminMutation = await fetch('/api/admin/graphics-assets/capacity', {
 			method: 'PUT',
-			headers: { 'content-type': 'application/json' },
+			headers: {
+				'content-type': 'application/json',
+				cookie: await aUserWithoutTheRole('capacity-1293-no-role'),
+			},
 			body: JSON.stringify(updatedLimits),
 		});
 		expect(unauthorizedAdminMutation.status).toBe(403);
@@ -75,7 +77,7 @@ describe('the Graphics Asset Library Capacity API', () => {
 		try {
 			const updated = await $fetch<GraphicsAssetLibraryCapacity>(
 				'/api/admin/graphics-assets/capacity',
-				{ method: 'PUT', headers: administratorHeaders, body: updatedLimits },
+				{ method: 'PUT', body: updatedLimits },
 			);
 			expect(updated).toMatchObject({
 				canonical: { limitBytes: updatedLimits.canonicalLimitBytes },
@@ -88,14 +90,11 @@ describe('the Graphics Asset Library Capacity API', () => {
 				}),
 			).resolves.toEqual(updated);
 			await expect(
-				$fetch<GraphicsAssetLibraryCapacity>('/api/admin/graphics-assets/capacity', {
-					headers: administratorHeaders,
-				}),
+				$fetch<GraphicsAssetLibraryCapacity>('/api/admin/graphics-assets/capacity'),
 			).resolves.toEqual(updated);
 		} finally {
 			await $fetch('/api/admin/graphics-assets/capacity', {
 				method: 'PUT',
-				headers: administratorHeaders,
 				body: {
 					canonicalLimitBytes: original.canonical.limitBytes,
 					stagingLimitBytes: original.staging.limitBytes,
@@ -139,7 +138,6 @@ describe('the Graphics Asset Library Capacity API', () => {
 			});
 			await $fetch('/api/admin/graphics-assets/capacity', {
 				method: 'PUT',
-				headers: administratorHeaders,
 				body: {
 					canonicalLimitBytes: occupied.canonical.usedBytes,
 					stagingLimitBytes: occupied.staging.limitBytes,
@@ -159,7 +157,6 @@ describe('the Graphics Asset Library Capacity API', () => {
 		} finally {
 			await $fetch('/api/admin/graphics-assets/capacity', {
 				method: 'PUT',
-				headers: administratorHeaders,
 				body: {
 					canonicalLimitBytes: original.canonical.limitBytes,
 					stagingLimitBytes: original.staging.limitBytes,
@@ -216,7 +213,6 @@ describe('the Graphics Asset Library Capacity API', () => {
 			]);
 			await $fetch('/api/admin/graphics-assets/capacity', {
 				method: 'PUT',
-				headers: administratorHeaders,
 				body: {
 					canonicalLimitBytes: hardLimit,
 					stagingLimitBytes: before.staging.limitBytes,
@@ -237,7 +233,6 @@ describe('the Graphics Asset Library Capacity API', () => {
 		} finally {
 			await $fetch('/api/admin/graphics-assets/capacity', {
 				method: 'PUT',
-				headers: administratorHeaders,
 				body: {
 					canonicalLimitBytes: original.canonical.limitBytes,
 					stagingLimitBytes: original.staging.limitBytes,

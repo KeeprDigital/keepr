@@ -109,10 +109,10 @@ export const authStaticOptions = {
 	plugins: [adminPlugin],
 	/**
 	 * Every admin-plugin route answers 404 over HTTP. The plugin admits any
-	 * `admin`-role Session to them, the bootstrap account's included, which
-	 * would let a Session stand in for the Graphics Administrator credential
-	 * (ADR-0010): `remove-user` hard-deletes a User that `initiatedBy` and the
-	 * Evidence Ledger name, and `impersonate-user` mints a Session as another.
+	 * `admin`-role Session, the Graphics Administrator's (ADR-0131), to more
+	 * than Stream Keepr's own user administration grants it (ADR-0010):
+	 * `remove-user` hard-deletes a User that `initiatedBy` and the Evidence
+	 * Ledger name, and `impersonate-user` mints a Session as another.
 	 *
 	 * The plugin stays for its schema, its ban check at sign-in, and the
 	 * server-side `auth.api.createUser` that user administration and the

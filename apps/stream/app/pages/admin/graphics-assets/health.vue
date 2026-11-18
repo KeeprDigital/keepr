@@ -20,30 +20,25 @@ const capacitySaveError = ref<string | null>(null);
 const capacitySaveSucceeded = ref(false);
 
 /**
- * Both reads are guarded by the installation's administrator token, so neither can be
- * taken before an administrator supplies one. Taking them bare is what made this page
- * answer nothing but 403 once the guard reached the two routes, and holding the token
- * the way the cockpit and the queues do is what keeps the three surfaces agreeing on
- * what an authorization failure means.
+ * Both reads are the Graphics Administrator's. Taking them through the reading the
+ * cockpit and the queues use keeps the surfaces agreeing on what an authorization
+ * failure means.
  */
 const {
-	administratorToken,
 	reading: health,
 	loadPending,
 	loadError: healthFailureMessage,
 	hasReading,
-	administratorHeaders,
 	describeFailure,
 	load: loadHealth,
 } = useGraphicsAdminReading<GraphicsAssetLibraryHealth>({
-	read: async (headers) =>
-		await $fetch<GraphicsAssetLibraryHealth>('/api/admin/graphics-assets/health', { headers }),
+	read: async () => await $fetch<GraphicsAssetLibraryHealth>('/api/admin/graphics-assets/health'),
 	failureMessage: 'The library health check could not be read.',
 	onAuthorizationLost: () => {
 		capacity.value = null;
 		capacityFailureMessage.value = null;
 	},
-	// Capacity is a second reading of the same library taken with the same token. It is
+	// Capacity is a second reading of the same library. It is
 	// kept separate rather than folded into the health read so that a capacity failure
 	// still leaves the component health an administrator came here for on screen.
 	onReading: async () => {
@@ -59,9 +54,6 @@ async function loadCapacity() {
 	try {
 		capacity.value = await $fetch<GraphicsAssetLibraryCapacity>(
 			'/api/admin/graphics-assets/capacity',
-			{
-				headers: administratorHeaders(),
-			},
 		);
 	} catch (caught) {
 		capacity.value = null;
@@ -121,7 +113,6 @@ async function saveCapacityLimits() {
 			'/api/admin/graphics-assets/capacity',
 			{
 				method: 'PUT',
-				headers: administratorHeaders(),
 				body: {
 					canonicalLimitBytes: Math.round(canonicalLimitGiB.value * bytesPerGiB),
 					stagingLimitBytes: Math.round(stagingLimitGiB.value * bytesPerGiB),
@@ -165,12 +156,9 @@ async function saveCapacityLimits() {
 					<h2 class="font-semibold text-highlighted">Graphics Administrator access</h2>
 				</template>
 				<div class="flex flex-col gap-4">
-					<UFormField
-						label="Graphics Administrator token"
-						description="Library health is administrator-only. The token is held for this session only and never stored."
-					>
-						<UInput v-model="administratorToken" type="password" autocomplete="current-password" />
-					</UFormField>
+					<p class="text-sm text-muted">
+						Library health is for a Graphics Administrator: sign in as a User who holds the role.
+					</p>
 					<div>
 						<UButton
 							label="Open health"

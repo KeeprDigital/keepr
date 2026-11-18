@@ -5,8 +5,9 @@ import { LOCAL_HOST, LOCAL_ORIGIN, throwawayAuth } from '~~/test/helpers/throwaw
 
 /*
  * No admin-plugin endpoint answers over HTTP, whatever Session asks (ADR-0010):
- * user administration is the Graphics Administrator's, and an `admin`-role
- * Session is not that credential.
+ * user administration is Stream Keepr's own routes under `/api/admin/users`,
+ * whose guard admits the Graphics Administrator (ADR-0131), and the plugin's
+ * would add hard deletion, impersonation and role setting beside them.
  */
 
 const EMAIL = 'bootstrap-admin@keepr.digital';

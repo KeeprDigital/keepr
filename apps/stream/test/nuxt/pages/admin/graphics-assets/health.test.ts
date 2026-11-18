@@ -96,14 +96,9 @@ async function mountPage() {
 	});
 }
 
-/** Enters the administrator token and takes the first reading, as an administrator does. */
+/** Opens the page as a signed-in Graphics Administrator, which takes the first reading. */
 async function openHealth() {
 	const wrapper = await mountPage();
-	await wrapper.find('input').setValue('admin-token');
-	await wrapper
-		.findAll('button')
-		.find((button) => button.text() === 'Open health')!
-		.trigger('click');
 	await flushPromises();
 	return wrapper;
 }
@@ -114,23 +109,11 @@ describe('the Graphics Asset Library health page', () => {
 		serve();
 	});
 
-	// Both reads are guarded by `requireGraphicsAdministrator`; without the token they are 403s.
-	it('sends the administrator token with both of its reads', async () => {
+	it('takes both of its readings as it opens', async () => {
 		await openHealth();
 
-		expect(mockApiFetch).toHaveBeenCalledWith(HEALTH_ROUTE, {
-			headers: { 'x-graphics-admin-token': 'admin-token' },
-		});
-		expect(mockApiFetch).toHaveBeenCalledWith(CAPACITY_ROUTE, {
-			headers: { 'x-graphics-admin-token': 'admin-token' },
-		});
-	});
-
-	it('reads nothing until an administrator supplies a token', async () => {
-		const wrapper = await mountPage();
-
-		expect(mockApiFetch).not.toHaveBeenCalled();
-		expect(wrapper.text()).toContain('Graphics Administrator token');
+		expect(mockApiFetch).toHaveBeenCalledWith(HEALTH_ROUTE);
+		expect(mockApiFetch).toHaveBeenCalledWith(CAPACITY_ROUTE);
 	});
 
 	it('says what the server refused the health read for, not which route it was', async () => {
@@ -165,9 +148,7 @@ describe('the Graphics Asset Library health page', () => {
 			.trigger('click');
 		await flushPromises();
 
-		expect(mockApiFetch).toHaveBeenCalledWith(HEALTH_ROUTE, {
-			headers: { 'x-graphics-admin-token': 'admin-token' },
-		});
+		expect(mockApiFetch).toHaveBeenCalledWith(HEALTH_ROUTE);
 	});
 
 	it('shows capacity categories and lets an administrator change both limits', async () => {
@@ -205,11 +186,8 @@ describe('the Graphics Asset Library health page', () => {
 			.trigger('click');
 		await flushPromises();
 
-		// The token already held for this session is what authorises the write; the page
-		// never asks for it a second time.
 		expect(mockApiFetch).toHaveBeenCalledWith(CAPACITY_ROUTE, {
 			method: 'PUT',
-			headers: { 'x-graphics-admin-token': 'admin-token' },
 			body: {
 				canonicalLimitBytes: 120 * GIB,
 				stagingLimitBytes: 12 * GIB,
@@ -217,11 +195,11 @@ describe('the Graphics Asset Library health page', () => {
 		});
 	});
 
-	it('returns to the token form when the token stops being accepted', async () => {
+	it('takes the reading off the screen when the User stops being admitted', async () => {
 		const wrapper = await openHealth();
 		expect(wrapper.text()).toContain('D1 catalogue');
 
-		// The token is rotated underneath a page that is already polling.
+		// The role is taken away underneath a page that is already polling.
 		serve({
 			health: transportFailure({
 				status: 403,
@@ -236,10 +214,10 @@ describe('the Graphics Asset Library health page', () => {
 		await flushPromises();
 
 		// The stale reading is dropped rather than left on screen as a library state
-		// nobody is still checking, and re-authorising is possible again.
+		// nobody is still checking, and trying again is possible.
 		expect(wrapper.text()).not.toContain('D1 catalogue');
 		expect(wrapper.text()).not.toContain('Canonical Graphics Quota');
-		expect(wrapper.text()).toContain('Graphics Administrator token');
+		expect(wrapper.text()).toContain('sign in as a User who holds the role');
 		expect(wrapper.findAll('button').some((button) => button.text() === 'Open health')).toBe(true);
 	});
 });

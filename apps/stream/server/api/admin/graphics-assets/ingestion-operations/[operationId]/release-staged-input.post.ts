@@ -2,10 +2,7 @@ import type { GraphicsQueueActionOutcome } from '~~/shared/utils/graphicsOperati
 import { requireGraphicsAdministrator } from '~~/server/modules/graphics-administrator';
 import { graphicsIngestionOperationId } from '~~/server/modules/graphics-asset-library';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
-import {
-	graphicsAdministratorActor,
-	rethrowGraphicsAssetApiError,
-} from '~~/server/utils/graphicsAssetApi';
+import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 import { graphicsQueueActionErrorOutcome } from '~~/server/utils/graphicsQueueActions';
 
 /**
@@ -26,12 +23,12 @@ export default defineEventHandler(
 		outcome: GraphicsQueueActionOutcome;
 	}> => {
 		try {
-			await requireGraphicsAdministrator(event);
+			const actor = await requireGraphicsAdministrator(event);
 			const operationId = graphicsIngestionOperationId(getRouterParam(event, 'operationId') ?? '');
 			const library = graphicsAssetLibraryForEvent(event);
 			const released = await library.releaseStrandedStagedInput({
 				operationId,
-				actor: await graphicsAdministratorActor(event),
+				actor,
 			});
 			return { outcome: released.outcome };
 		} catch (error) {

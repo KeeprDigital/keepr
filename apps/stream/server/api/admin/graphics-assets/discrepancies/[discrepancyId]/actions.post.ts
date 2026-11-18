@@ -2,10 +2,7 @@ import { z } from 'zod';
 import { requireGraphicsAdministrator } from '~~/server/modules/graphics-administrator';
 import { graphicsDiscrepancyId } from '~~/server/modules/graphics-asset-library';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
-import {
-	graphicsAdministratorActor,
-	rethrowGraphicsAssetApiError,
-} from '~~/server/utils/graphicsAssetApi';
+import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 
 /**
  * The actions that need no bytes. Exact-byte repair has its own raw transfer
@@ -20,12 +17,12 @@ const actionSchema = z
 
 export default defineEventHandler(async (event) => {
 	try {
-		await requireGraphicsAdministrator(event);
+		const actor = await requireGraphicsAdministrator(event);
 		const { action } = await readValidatedBody(event, actionSchema.parse);
 		const library = graphicsAssetLibraryForEvent(event);
 		const request = {
 			discrepancyId: graphicsDiscrepancyId(getRouterParam(event, 'discrepancyId') ?? ''),
-			actor: await graphicsAdministratorActor(event),
+			actor,
 		};
 		switch (action) {
 			case 'recheck':

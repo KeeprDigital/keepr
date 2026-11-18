@@ -116,7 +116,6 @@ describe('the API boundary middleware', () => {
 			'/api/release',
 			'/api/auth/sign-in/email',
 			'/api/screen-output/screens/7/asset-capability-session',
-			'/api/admin/graphics-assets/health',
 			'/api/bootstrap/ensure-admin',
 			'/login',
 		])
@@ -213,7 +212,6 @@ describe('the API boundary middleware', () => {
 			'/api/screen-output/screens/7/asset-capability-session',
 			'POST',
 		],
-		['a cross-site POST to the Graphics Administrator surface', '/api/admin/users', 'POST'],
 		['a cross-site POST to the first-admin bootstrap', '/api/bootstrap/ensure-admin', 'POST'],
 	])('leaves %s to its own guard', async (_case, path, method) => {
 		mockRequestUserSession.mockResolvedValue(SESSION);

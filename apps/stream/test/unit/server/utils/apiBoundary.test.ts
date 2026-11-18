@@ -100,14 +100,18 @@ describe('which API paths require a session', () => {
 		expect(apiPathRequiresSession('/api/bootstrap/ensure-admin')).toBe(false);
 	});
 
-	it('exempts the auth router, the capability surface and the admin surface', () => {
+	it('exempts the auth router, the capability surface and the public reads', () => {
 		expect(apiPathRequiresSession('/api/auth/sign-in/email')).toBe(false);
 		expect(apiPathRequiresSession('/api/screen-output/screens/7/asset-capability-session')).toBe(
 			false,
 		);
 		expect(apiPathRequiresSession('/api/screen-output/link')).toBe(false);
-		expect(apiPathRequiresSession('/api/admin/graphics-assets/health')).toBe(false);
 		expect(apiPathRequiresSession('/api/public/events/1/on-air')).toBe(false);
+	});
+
+	it('requires one for the admin surface, whose Graphics Administrator is a signed-in User', () => {
+		expect(apiPathRequiresSession('/api/admin/graphics-assets/health')).toBe(true);
+		expect(apiPathRequiresSession('/api/admin/users')).toBe(true);
 	});
 
 	it('ignores the one trailing slash Nitro ignores', () => {
@@ -171,13 +175,11 @@ describe('which API paths require a session', () => {
 describe('the public surface, counted against the routes on disk', () => {
 	it('is found at all, so this cannot pass by scanning nothing', () => {
 		expect(routeFiles.length).toBeGreaterThan(150);
-		// Eighteen until #399 added the seven user administration routes, which
-		// join the surface `x-graphics-admin-token` alone admits.
 		expect(adminRouteFiles.length).toBe(25);
 	});
 
 	it('is exactly these routes, and every one of them is a decision ADR-0010 records', () => {
-		expect(publicRouteFiles.filter((file) => !file.startsWith('server/api/admin/'))).toEqual([
+		expect(publicRouteFiles).toEqual([
 			// Better Auth's own router. Sign-in must be reachable or nothing ever
 			// acquires a session.
 			'server/api/auth/[...all].ts',
@@ -238,15 +240,6 @@ describe('the public surface, counted against the routes on disk', () => {
 		]);
 	});
 
-	it('exempts the whole admin surface and nothing else by that clause', () => {
-		// Stated as "all of them" rather than as a list, because the clause
-		// ADR-0010 records is about the surface: `x-graphics-admin-token` alone
-		// satisfies the boundary there, which is exactly today's posture.
-		expect(publicRouteFiles.filter((file) => file.startsWith('server/api/admin/'))).toEqual(
-			adminRouteFiles,
-		);
-	});
-
 	it('has the Screen lookup by slug on the capability surface, where #397 put it', () => {
 		// #396 left this route private, which was the fail-closed direction and cost
 		// the output page its lookup. #397 moved it under `/api/screen-output/`
@@ -283,19 +276,13 @@ describe('the public surface, counted against the routes on disk', () => {
 });
 
 /**
- * The residual the admin exemption creates, closed where it is created.
+ * The App role, which the boundary does not check (ADR-0131).
  *
- * `/api/admin/**` is exempt from the session boundary, so each route under it
- * is protected by its own `requireGraphicsAdministrator` call and by nothing
- * else. An admin route added without one would be **fully public** — the exact
- * failure mode deny-by-default exists to remove, surviving in the one subtree
- * that opts out of it.
- *
- * Read from the import graph rather than from the file's text, because the
- * guard is allowed to arrive through a helper: what has to be true is that the
- * route reaches it, not that it spells it out.
+ * The boundary requires a Session under `/api/admin/`; the Graphics
+ * Administrator role is each route's own `requireGraphicsAdministrator` call.
+ * Read from the import graph, because the guard may arrive through a helper.
  */
-describe('the admin surface, which answers to its own credential', () => {
+describe('the admin surface, which requires the Graphics Administrator role', () => {
 	const reached = new Map<string, readonly string[]>();
 
 	// Walking every admin route's import graph parses most of `server/`, and the

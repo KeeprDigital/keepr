@@ -38,22 +38,13 @@ import {
 import { AcceptanceFailure } from './evidence.mjs';
 
 /**
- * The required names a **local acceptance run** cannot proceed without.
+ * The required names a **local acceptance run** cannot proceed without: every
+ * name a checkout requires (`build/localConfiguration.ts`).
  *
- * Not all of them, and the distinction is #130's cell-H lesson applied to a
- * different caller: a notice that fires where its words are false is worse than
- * no notice. `NUXT_GRAPHICS_ADMIN_TOKEN` guards `requireGraphicsAdministrator`,
- * which is mounted only under the `server/api/admin` tree — and no path in
- * `routes.mjs` is an admin path, so no harness can reach it. Blocking a run on
- * that name would refuse a checkout that would have passed.
- *
- * `.env.example` and the README both
- * already say the signing key is load-bearing; this is that sentence made
- * executable.
- *
- * The two auth names joined it on #396, when `/api/**` began denying by default
- * and every route in `routes.mjs` became a route that needs a signed-in
- * operator (`./operator.mjs`):
+ * `.env.example` and the README both already say the signing key is
+ * load-bearing; this is that sentence made executable. The two auth names joined
+ * it on #396, when `/api/**` began denying by default and every route in
+ * `routes.mjs` became a route that needs a signed-in operator (`./operator.mjs`):
  *
  * - `NUXT_BETTER_AUTH_SECRET`, because an installation without it cannot admit
  *   anybody at all — sign-in itself answers 503 naming the setting — however the
@@ -71,15 +62,6 @@ export const LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES = [
 	'NUXT_BETTER_AUTH_SECRET',
 	'NUXT_ADMIN_BOOTSTRAP_TOKEN',
 ];
-
-/**
- * Required of a checkout, but not of an acceptance run — named here so the
- * partition is total and legible, exactly as `LOCALLY_OPTIONAL_NUXT_NAMES` is
- * in `build/localConfiguration.ts`.
- *
- * @type {import('../../build/localConfiguration.ts').LocallyRequiredNuxtName[]}
- */
-export const LOCAL_ACCEPTANCE_UNREACHED_NUXT_NAMES = ['NUXT_GRAPHICS_ADMIN_TOKEN'];
 
 /**
  * Where a previewed Worker's secrets are actually opened from.
@@ -224,31 +206,10 @@ export function localConfigurationNotice(missing) {
 	const surfaces = missing.map((name) => LOCAL_NUXT_NAME_SURFACES[name]);
 	const consequence = `${sentenceList(surfaces, 'and')} answer 503`;
 
-	// Why the other required names are absent from this sentence, said rather
-	// than left to be rediscovered. Derived from the partition instead of
-	// spelled out, so it cannot describe a list it no longer matches, and
-	// phrased on reachability alone — the one thing membership of that list
-	// guarantees.
-	//
-	// Filtered against `missing` because the first draft was not true in every
-	// state it can reach: told that both names were missing it named the admin
-	// token as a cause and then, one sentence later, said the admin token was
-	// not checked. Unreachable today, and the prose probe that reads the plural
-	// case is exactly the reachable state where a reader would have met it.
-	const unnamed = LOCAL_ACCEPTANCE_UNREACHED_NUXT_NAMES.filter((name) => !missing.includes(name));
-	const unreached =
-		unnamed.length === 0
-			? ''
-			: `${sentenceList(unnamed, 'and')} ${
-					unnamed.length === 1 ? 'is' : 'are'
-				} not checked here and a blank one ` +
-				'is not what stopped this: no route an acceptance run calls reads it. ';
-
 	return (
 		`Nothing this checkout can give a local installation sets ${names}, so ${consequence} ` +
-		`and this run would never reach anything to assert. Nothing was proved and nothing was disproved. ${
-			unreached
-		}A fresh git worktree is the usual way to arrive here — .env is gitignored, so a new checkout does not ` +
+		`and this run would never reach anything to assert. Nothing was proved and nothing was disproved. ` +
+		`A fresh git worktree is the usual way to arrive here — .env is gitignored, so a new checkout does not ` +
 		`inherit it from the one it was branched from, and a copied .env.example carries the names with empty ` +
 		`values. Fix: copy .env in from the checkout you branched from, or fill in .env.example — ` +
 		`\`pnpm preview\` stages .env into .output/server/, which is where wrangler resolves it from the config. ` +

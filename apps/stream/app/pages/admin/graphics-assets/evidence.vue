@@ -145,16 +145,14 @@ function evidenceQuery() {
 }
 
 const {
-	administratorToken,
 	reading: ledger,
 	loadPending,
 	loadError,
 	hasReading,
 	load: loadLedger,
 } = useGraphicsAdminReading<GraphicsAssetEvidenceReading>({
-	read: async (headers) =>
+	read: async () =>
 		await $fetch<GraphicsAssetEvidenceReading>('/api/admin/graphics-assets/evidence', {
-			headers,
 			query: evidenceQuery(),
 		}),
 	failureMessage: 'The Evidence ledger could not be read.',
@@ -336,12 +334,10 @@ const filtered = computed(
 					<h2 class="font-semibold text-highlighted">Graphics Administrator access</h2>
 				</template>
 				<div class="flex flex-col gap-4">
-					<UFormField
-						label="Graphics Administrator token"
-						description="The Evidence ledger is administrator-only. The token is held for this session only and never stored."
-					>
-						<UInput v-model="administratorToken" type="password" autocomplete="current-password" />
-					</UFormField>
+					<p class="text-sm text-muted">
+						The Evidence ledger is for a Graphics Administrator: sign in as a User who holds the
+						role.
+					</p>
 					<div>
 						<UButton
 							label="Open the ledger"

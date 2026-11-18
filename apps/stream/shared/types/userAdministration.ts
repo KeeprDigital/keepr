@@ -18,13 +18,9 @@ export interface AdministeredUser {
 	readonly email: string;
 	readonly name: string;
 	/**
-	 * Better Auth's role column, shown but never acted on.
-	 *
-	 * ADR-0010 puts roles out of scope: this surface is gated by the shared
-	 * `x-graphics-admin-token`, and no route in this application asks what role
-	 * an account holds. It is here because the first-admin bootstrap writes
-	 * `admin` and an administrator reading the list should see the same word the
-	 * database holds rather than wonder where it went.
+	 * Better Auth's role column, as the database holds it. `admin` is the
+	 * Graphics Administrator App role (ADR-0131), which the first-admin
+	 * bootstrap grants.
 	 */
 	readonly role: string | null;
 	readonly banned: boolean;

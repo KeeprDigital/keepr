@@ -1,4 +1,4 @@
-import { anonymousFetch, url } from './client';
+import { anonymousFetch, fetch, url } from './client';
 import {
 	INTEGRATION_ADMIN_BOOTSTRAP_TOKEN,
 	INTEGRATION_OPERATOR_EMAIL,
@@ -33,9 +33,8 @@ import {
  * Made through the first-admin bootstrap because it is the only account-creating
  * route this installation has (#394) — the invite surface is a later ticket — and
  * because it is armed for the whole run anyway. The side effect is that every
- * invented person is an administrator, which buys them nothing here: the Graphics
- * Administrator surface is gated by the shared token rather than by a role, and no
- * assertion in these suites turns on one.
+ * invented person is a Graphics Administrator; `aUserWithoutTheRole` is the
+ * person who is not.
  *
  * `label` is per-caller because two people who share an address are one person.
  * Suites that want a *stable* second person across a run should hold the returned
@@ -57,6 +56,64 @@ export async function anotherUser(label: string): Promise<string> {
 	if (!ensured.ok)
 		throw new Error(
 			`The integration suite could not create '${label}': ${ensured.status} from the first-admin bootstrap.`,
+		);
+
+	return await signIn(email, password);
+}
+
+/**
+ * A signed-in person who does not hold the Graphics Administrator role, as a
+ * cookie header: what an admin route refuses 403 (ADR-0131).
+ *
+ * Invited the way an administrator invites anybody, through the user
+ * administration surface the operator holds the role for: created with no role,
+ * its link redeemed, then signed in. On a rerun against a persisted D1 the
+ * account already exists, and a fresh link sets its password instead. One
+ * sign-in per label per process.
+ */
+export function aUserWithoutTheRole(label: string): Promise<string> {
+	let cookie = signedInWithoutTheRole.get(label);
+	if (!cookie) {
+		cookie = signInWithoutTheRole(label);
+		signedInWithoutTheRole.set(label, cookie);
+	}
+	return cookie;
+}
+
+const signedInWithoutTheRole = new Map<string, Promise<string>>();
+
+async function signInWithoutTheRole(label: string): Promise<string> {
+	const email = `${label}@keepr.digital`;
+	const password = `${label}-password-1293`;
+	const json = { 'content-type': 'application/json' };
+
+	const listing = (await (await fetch('/api/admin/users')).json()) as {
+		users: { id: string; email: string }[];
+	};
+	const existing = listing.users.find((user) => user.email === email);
+	const issued = existing
+		? await fetch(`/api/admin/users/${existing.id}/password-reset-link`, {
+				method: 'POST',
+				headers: json,
+			})
+		: await fetch('/api/admin/users', {
+				method: 'POST',
+				headers: json,
+				body: JSON.stringify({ email, name: `Integration ${label}` }),
+			});
+	if (!issued.ok)
+		throw new Error(`The integration suite could not invite '${label}': ${issued.status}.`);
+
+	const { passwordResetLink } = (await issued.json()) as { passwordResetLink: { url: string } };
+	const token = new URLSearchParams(new URL(passwordResetLink.url).hash.slice(1)).get('token');
+	const redeemed = await anonymousFetch('/api/auth/reset-password', {
+		method: 'POST',
+		headers: { ...json, origin: url('/') },
+		body: JSON.stringify({ token, newPassword: password }),
+	});
+	if (!redeemed.ok)
+		throw new Error(
+			`The integration suite could not set '${label}''s password: ${redeemed.status}.`,
 		);
 
 	return await signIn(email, password);

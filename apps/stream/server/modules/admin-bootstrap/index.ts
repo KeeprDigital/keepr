@@ -3,11 +3,13 @@ import {
 	assertPasswordWithinBounds,
 	normalizeAccountEmail,
 } from '~~/server/utils/betterAuthCredentials';
+import { GRAPHICS_ADMINISTRATOR_ROLE } from '~~/server/utils/betterAuthRoles';
 import { requireSharedSecret } from '@keepr/nuxt-layer/server/utils/sharedSecretSurface';
 
 /**
  * The first-admin bootstrap (#394, ADR-0010): the one way an installation with
- * no administrator acquires one.
+ * no Graphics Administrator acquires one, by granting a User the role
+ * (ADR-0131).
  *
  * Every other route that can create a user is Better Auth's admin API, which
  * requires an admin session to call — so a fresh installation, and an
@@ -18,8 +20,7 @@ import { requireSharedSecret } from '@keepr/nuxt-layer/server/utils/sharedSecret
  *
  * The route this guards is therefore armed by a dedicated Worker secret and
  * disarmed by deleting it: while `NUXT_ADMIN_BOOTSTRAP_TOKEN` is blank the
- * route answers 503 naming the setting, exactly the `NUXT_GRAPHICS_ADMIN_TOKEN`
- * posture in `graphics-administrator.ts`. No stored self-limiting state — the
+ * route answers 503 naming the setting. No stored self-limiting state — the
  * disarm is an operator step, documented in the README beside the ceremony that
  * needs it, because state that says "already used" is state that has to be
  * cleared by the same locked-out person who cannot sign in to clear it.
@@ -37,18 +38,8 @@ export const ADMIN_BOOTSTRAP_TOKEN_ENV_NAME = 'NUXT_ADMIN_BOOTSTRAP_TOKEN';
 /** The header the operator's curl presents the armed secret in. */
 export const ADMIN_BOOTSTRAP_TOKEN_HEADER = 'x-admin-bootstrap-token';
 
-/** The role Better Auth's admin plugin grants its user-management endpoints to. */
-export const ADMIN_ROLE = 'admin';
-
 /**
- * The bootstrap route's own credential, checked the way the Graphics
- * Administrator token is.
- *
- * A separate secret rather than a reuse of the Graphics Administrator token,
- * deliberately: that one is a standing installation credential which lives set,
- * and this one is armed for a minute and deleted. Sharing them would mean an
- * installation could not disarm account creation without also turning off
- * Graphics Administrator operations.
+ * The bootstrap route's own credential: a secret armed for a minute and deleted.
  */
 export async function requireAdminBootstrapToken(event: H3Event) {
 	await requireSharedSecret(event, {
@@ -172,11 +163,11 @@ export async function ensureAdminAccount(
 
 	await port.setPassword(existing.id, request.password);
 
-	const grantedAdminRole = !existing.roles.includes(ADMIN_ROLE);
+	const grantedAdminRole = !existing.roles.includes(GRAPHICS_ADMINISTRATOR_ROLE);
 	if (grantedAdminRole) {
 		// Appended rather than replaced: whatever else this account is, it stays
 		// that as well as an admin.
-		await port.setRoles(existing.id, [...existing.roles, ADMIN_ROLE]);
+		await port.setRoles(existing.id, [...existing.roles, GRAPHICS_ADMINISTRATOR_ROLE]);
 	}
 
 	return {

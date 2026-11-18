@@ -1,25 +1,34 @@
 import type { H3Event } from 'h3';
-import { requireSharedSecret } from '@keepr/nuxt-layer/server/utils/sharedSecretSurface';
+import { requestUserSession } from '~~/server/utils/auth';
+import { decodeRoles, GRAPHICS_ADMINISTRATOR_ROLE } from '~~/server/utils/betterAuthRoles';
 
 /**
- * The environment name, not the runtimeConfig one, because the only reader who can
- * act on this is the one who has to go and set it. `build/localConfiguration.ts`
- * quotes this refusal in the notice a dev server prints when the name is missing.
+ * Admit a signed-in User who holds the Graphics Administrator App role, and
+ * answer who they are (ADR-0131).
+ *
+ * Every route under `/api/admin/` calls this. The session boundary in front of
+ * them already refuses a request with no Session; the 401 is spelled again here,
+ * in the boundary's own words, so a caller that stops being behind it fails
+ * closed. The 401 and 403 are literals for `test/helpers/routeRefusalScan.ts`,
+ * which reads a `const` only within the file it is reading.
  */
-const ADMIN_TOKEN_ENV_NAME = 'NUXT_GRAPHICS_ADMIN_TOKEN';
+export async function requireGraphicsAdministrator(event: H3Event): Promise<string> {
+	const session = await requestUserSession(event);
+	if (!session) {
+		throw createError({
+			statusCode: 401,
+			statusMessage: 'Unauthorized',
+			message: 'Authentication is required',
+		});
+	}
 
-/**
- * The refusal shape — the 503's cause, the absent `retry-after`, the 403 — lives
- * in `requireSharedSecret`, which #394 extracted when the first-admin bootstrap
- * became this guard's second copy. The sentences stay here:
- * `build/localConfiguration.ts` quotes the clause below verbatim.
- */
-export async function requireGraphicsAdministrator(event: H3Event) {
-	await requireSharedSecret(event, {
-		configuredToken: useRuntimeConfig(event).graphicsAdminToken,
-		settingName: ADMIN_TOKEN_ENV_NAME,
-		unavailableClause: 'is not configured, so Graphics Administrator operations are unavailable',
-		headerName: 'x-graphics-admin-token',
-		forbiddenMessage: 'Graphics Administrator authorization is required',
-	});
+	if (!decodeRoles(session.user.role).includes(GRAPHICS_ADMINISTRATOR_ROLE)) {
+		throw createError({
+			statusCode: 403,
+			statusMessage: 'Forbidden',
+			message: 'Graphics Administrator authorization is required',
+		});
+	}
+
+	return session.user.id;
 }
