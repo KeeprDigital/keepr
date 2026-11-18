@@ -266,7 +266,9 @@ included.
 3. **How a Screen Output presents its capability.** A browser cannot set
    `Authorization` on a WebSocket. A subprotocol value, or a short-lived ticket
    from an HTTP route. Amends ADR-0010's token grant, and the rule that only a
-   Session's grant reads channel history goes with it.
+   Session's grant reads channel history goes with it. Build on #1293, which
+   makes the Graphics Administrator an App role on a signed-in User: connection
+   auth should follow how admin auth works after it, not before.
 4. **What names an object.** The app's scope: an Event for Stream Keepr, as
    prototyped, presumably a Tournament for Score Keepr. One object per scope
    gives order across its channels and one RPC per write; one per channel gives
@@ -293,7 +295,11 @@ included.
 
 - **Anything on Staging.** The prototype's README has the three commands: a
   separate `stream-realtime-prototype` Worker on `workers.dev` that touches no
-  binding the app uses, the probe, and its deletion. Deploying is a human's call.
+  binding the app uses, the probe, and its deletion. Deploying is a human's call,
+  by hand into the Staging account (ADR-0130): never through the Deploy
+  workflow, which deploys only Releases and runs Staging's acceptance gates
+  (ADR-0129), and never on Stream Keepr's Staging hostname. It is held until
+  the Release carrying #1292, #1293 and #1296 has shipped.
   Wanted from it: delivery latency from a venue's network and from another
   continent, a publish waking a hibernated object (`PROBE_IDLE_MS=90000`), and
   the billed requests and duration for one probe run.
