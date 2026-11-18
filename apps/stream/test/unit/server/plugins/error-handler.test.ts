@@ -521,7 +521,7 @@ describe('error-handler mapping logic', () => {
 			expect(error).toMatchObject({
 				statusCode: 503,
 				statusMessage: 'Service Unavailable',
-				message: 'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION is not configured',
+				message: 'NUXT_MELEE_CREDENTIAL_KEY_VERSION is not configured',
 				unhandled: false,
 			});
 			// The classified 503 keeps the crypto error where the failure log reads

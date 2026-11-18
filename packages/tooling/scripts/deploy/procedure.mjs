@@ -7,7 +7,8 @@
  *    will upload, as built or placed: none may be under a package marked
  *    `keepr.undeployable`, the Accounts Stand-in's mark (ADR-0113).
  * 2. Refuse an Installation whose Workers lack a secret the descriptor
- *    requires (`secrets.mjs`, ADR-0128), read from Cloudflare.
+ *    requires (`secrets.mjs`, ADR-0128), read from Cloudflare, or have a
+ *    secret named like a var their config sets (ADR-0132).
  * 3. Decide each part against its marker by fingerprint.
  * 4. `beforeRemoteChange`: the last moment a deploy can refuse with nothing
  *    changed. Deploy order between apps (`order.mjs`, ADR-0120) refuses here,
@@ -50,12 +51,15 @@ export const MODES = ['auto', 'always', 'never'];
  * What a deploy does to the world, each a step the procedure orders.
  * `secretNames` reads, and changes nothing: the secret names set on the Worker
  * deployed from a configuration, null when it does not exist.
+ * `configuredVars` reads the vars a source configuration sets for the
+ * Environment, from the Release's checkout.
  *
  * @typedef {{
  *   build: () => void,
  *   placeArtifact: (path: string) => void,
  *   fingerprint: (part: string) => string,
  *   secretNames: (config: string) => string[] | null,
+ *   configuredVars: (source: string) => Record<string, unknown>,
  *   deployPart: (part: string) => void,
  *   migrate: (binding: string) => void,
  *   deployWorker: () => void,
@@ -316,7 +320,13 @@ export async function deployRelease({
 	if (artifact === undefined) steps.build();
 	else steps.placeArtifact(artifact);
 	refuseUndeployable(release);
-	requireSecrets({ release, environment, secretNames: steps.secretNames, log });
+	requireSecrets({
+		release,
+		environment,
+		secretNames: steps.secretNames,
+		configuredVars: steps.configuredVars,
+		log,
+	});
 
 	/** @type {Record<string, Decision & { fingerprint?: string }>} */
 	const parts = {};

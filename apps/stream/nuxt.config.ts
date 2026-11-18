@@ -58,7 +58,7 @@ export default defineNuxtConfig({
 		betterAuthSecret: '',
 		screenOutputCapabilitySigningKey: '',
 		meleeCredentialEncryptionKey: '',
-		meleeCredentialEncryptionKeyVersion: '',
+		meleeCredentialKeyVersion: '',
 		meleeCredentialEncryptionPreviousKeys: '',
 	},
 

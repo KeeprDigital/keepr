@@ -123,6 +123,7 @@ describe('the keepr-deploy command line', () => {
 				},
 				parts: {},
 			}),
+			'apps/stream/wrangler.jsonc': JSON.stringify({ env: { staging: {} } }),
 			'apps/stream/.output/server/wrangler.json': '{"name":"stream"}',
 			'apps/stream/node_modules/.bin/wrangler': `#!${process.execPath}\nconsole.log(JSON.stringify([{ name: 'NUXT_ABLY_API_KEY', type: 'secret_text' }]));\n`,
 		});
@@ -385,6 +386,7 @@ describe('the keepr-deploy command line', () => {
 					environments: { production: { url: 'https://stream.keepr.digital' } },
 					parts: {},
 				}),
+				'apps/stream/wrangler.jsonc': '{}',
 				'.gitignore': '.output/\n',
 			});
 			git(checkout, 'add', '.');

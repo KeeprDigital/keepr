@@ -29,8 +29,12 @@
 	],
 	// Non-secret configuration. bandai-keepr's API key is the Worker secret
 	// NUXT_BANDAI_KEEPR_API_KEY; without it OP card data is unavailable (ADR-0057).
+	// NUXT_MELEE_CREDENTIAL_KEY_VERSION labels the active
+	// NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY; a rotation changes both (README.md §
+	// Worker secrets, ADR-0132).
 	"vars": {
-		"NUXT_BANDAI_KEEPR_API_URL": "https://op-api.keepr.digital"
+		"NUXT_BANDAI_KEEPR_API_URL": "https://op-api.keepr.digital",
+		"NUXT_MELEE_CREDENTIAL_KEY_VERSION": "1"
 	},
 	"kv_namespaces": [{ "binding": "KV", "id": "a15cf281b12d43e4b5479baf8b69b587" }],
 	"r2_buckets": [
@@ -94,7 +98,8 @@
 				}
 			],
 			"vars": {
-				"NUXT_BANDAI_KEEPR_API_URL": "https://op-api.keepr.digital"
+				"NUXT_BANDAI_KEEPR_API_URL": "https://op-api.keepr.digital",
+				"NUXT_MELEE_CREDENTIAL_KEY_VERSION": "1"
 			},
 			"kv_namespaces": [{ "binding": "KV", "id": "f38e3b36f6e5463794d5208ee373bef8" }],
 			"r2_buckets": [

@@ -7,7 +7,7 @@ import {
 
 interface MeleeCredentialRuntimeConfig {
 	meleeCredentialEncryptionKey?: unknown;
-	meleeCredentialEncryptionKeyVersion?: unknown;
+	meleeCredentialKeyVersion?: unknown;
 	meleeCredentialEncryptionPreviousKeys?: unknown;
 }
 
@@ -20,8 +20,9 @@ const PREVIOUS_KEYS_INVALID =
  * A configured value as the operator wrote it, whatever runtimeConfig made of it.
  *
  * **A number is a value, not an absence**, which is the whole of this function.
- * Nuxt applies environment overrides through `destr`, so `NUXT_MELEE_CREDENTIAL_
- * ENCRYPTION_KEY_VERSION=1` — the assignment `.env.example` ships — arrives here
+ * Nuxt applies environment overrides through `destr`, so
+ * `NUXT_MELEE_CREDENTIAL_KEY_VERSION=1` — the assignment `.env.example` ships,
+ * and staging's var in `wrangler.jsonc` — arrives here
  * as the number 1. Reading only strings made that read as unset, and the surface
  * answered 503 naming the setting the operator had just set: the worst shape a
  * refusal can take, because the one thing it tells you to do is the thing you did.
@@ -108,7 +109,7 @@ function parsePreviousKeys(value: unknown): Map<string, string> {
 export function getMeleeCredentialKeyring(
 	config: MeleeCredentialRuntimeConfig = useRuntimeConfig(),
 ): MeleeCredentialKeyring {
-	const activeKeyVersion = optionalConfigString(config.meleeCredentialEncryptionKeyVersion);
+	const activeKeyVersion = optionalConfigString(config.meleeCredentialKeyVersion);
 	const activeKey = optionalConfigString(config.meleeCredentialEncryptionKey);
 	const keys = parsePreviousKeys(config.meleeCredentialEncryptionPreviousKeys);
 
@@ -124,7 +125,7 @@ export function getMeleeCredentialKeyring(
  * one that reads them.
  */
 const KEY_SETTING = 'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY';
-const KEY_VERSION_SETTING = 'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION';
+const KEY_VERSION_SETTING = 'NUXT_MELEE_CREDENTIAL_KEY_VERSION';
 const PREVIOUS_KEYS_SETTING = 'NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS';
 
 /**

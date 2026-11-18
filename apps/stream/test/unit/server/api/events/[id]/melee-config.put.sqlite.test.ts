@@ -37,7 +37,7 @@ function base64Key(fill: number): string {
 vi.stubGlobal('useRuntimeConfig', () => ({
 	ablyApiKey: 'test-key',
 	meleeCredentialEncryptionKey: base64Key(2),
-	meleeCredentialEncryptionKeyVersion: 'v2',
+	meleeCredentialKeyVersion: 'v2',
 	meleeCredentialEncryptionPreviousKeys: {
 		v1: base64Key(1),
 	},

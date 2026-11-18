@@ -1,14 +1,38 @@
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Descriptor, Release } from '../scripts/deploy/release.mjs';
-import { requireSecrets, wranglerSecretNames } from '../scripts/deploy/secrets.mjs';
+import { requireSecrets, wranglerSecretNames, wranglerVars } from '../scripts/deploy/secrets.mjs';
 
 const APP_CONFIG = '.output/server/wrangler.json';
 const VALIDATOR_CONFIG = 'workers/silent-video-validator/wrangler.jsonc';
 const REQUIRED = ['NUXT_BETTER_AUTH_SECRET', 'NUXT_ABLY_API_KEY'];
+
+/** The source Wrangler configs, by path: production's vars at the top level, staging's in its block. */
+type Configs = Record<
+	string,
+	{ vars?: Record<string, unknown>; staging?: Record<string, unknown> }
+>;
+
+const CONFIGS: Configs = {
+	'wrangler.jsonc': {
+		vars: { NUXT_KEY_VERSION: 'v2', NUXT_API_URL: 'https://api.example' },
+		staging: { NUXT_KEY_VERSION: '1' },
+	},
+	[VALIDATOR_CONFIG]: {},
+};
+
+function writeConfigs(dir: string, configs: Configs) {
+	for (const [path, { vars, staging }] of Object.entries(configs)) {
+		mkdirSync(dirname(join(dir, path)), { recursive: true });
+		writeFileSync(
+			join(dir, path),
+			JSON.stringify({ ...(vars && { vars }), env: { staging: staging ? { vars: staging } : {} } }),
+		);
+	}
+}
 
 function release(appDir: string, parts: Descriptor['parts']): Release {
 	return {
@@ -93,6 +117,7 @@ describe('the Worker secrets an Installation requires', () => {
 	) {
 		const dir = mkdtempSync(join(tmpdir(), 'keepr-secrets-'));
 		dirs.push(dir);
+		writeConfigs(dir, CONFIGS);
 		const target = release(dir, parts);
 		const lines: string[] = [];
 		const run = () =>
@@ -101,6 +126,10 @@ describe('the Worker secrets an Installation requires', () => {
 				environment,
 				secretNames: wranglerSecretNames({
 					wrangler: fakeWrangler(dir, answers),
+					appDir: dir,
+					wranglerEnv: target.descriptor.environments[environment]?.wranglerEnv,
+				}),
+				configuredVars: wranglerVars({
 					appDir: dir,
 					wranglerEnv: target.descriptor.environments[environment]?.wranglerEnv,
 				}),
@@ -162,5 +191,33 @@ describe('the Worker secrets an Installation requires', () => {
 		});
 
 		expect(run).toThrow(/could not read stream's Worker's secrets in staging: .*code: 10000/);
+	});
+
+	/*
+	 * A var and a Worker secret of one name leave which the Worker reads to
+	 * Cloudflare, not the Release: neither wins, and the deploy refuses until the
+	 * secret is deleted (ADR-0132).
+	 */
+	it.each([
+		['the top-level configuration', 'production', `${APP_CONFIG} `, ''],
+		["the Environment's Wrangler block", 'staging', `${APP_CONFIG} staging`, ' --env staging'],
+	])(
+		'refuses a Worker secret named like a var %s sets, naming the command that deletes it',
+		(_case, environment, key, envFlag) => {
+			const { run } = check({ [key]: [...REQUIRED, 'NUXT_KEY_VERSION'] }, { environment });
+
+			expect(run).toThrow(
+				`stream's Worker has a secret and a var both named NUXT_KEY_VERSION: delete each secret from apps/stream with wrangler secret delete <NAME> --config ${APP_CONFIG}${envFlag}`,
+			);
+		},
+	);
+
+	it("passes a secret named like a var only another Environment's configuration sets", () => {
+		const { run } = check(
+			{ [`${APP_CONFIG} staging`]: [...REQUIRED, 'NUXT_API_URL'] },
+			{ environment: 'staging' },
+		);
+
+		expect(run).not.toThrow();
 	});
 });
