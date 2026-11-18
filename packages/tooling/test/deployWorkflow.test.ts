@@ -2,13 +2,15 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { configBindsKeeprAccounts } from '../scripts/ci-scope.mjs';
+import { STAGING_THEN_PRODUCTION } from '../scripts/deploy/plan.mjs';
 import { deployableApps } from '../scripts/deploy/release.mjs';
 import { parseJsonc } from '../scripts/jsonc.mjs';
 
 /**
  * The Deploy workflow is only as good as its wiring: these read the committed
- * workflows. Nothing runs against GitHub; the procedure and the plan are tested
- * at their homes (`deploy{Procedure,Cli,Plan}.test.ts`).
+ * workflows. Nothing runs against GitHub; the procedure, the plan, the
+ * recovery point and the dispatch are tested at their homes
+ * (`deploy{Procedure,Cli,Plan,Recovery,Dispatch}.test.ts`).
  */
 
 interface Step {
@@ -41,7 +43,7 @@ interface Workflow {
 	on: Record<
 		string,
 		{
-			inputs?: Record<string, { type?: string; options?: string[] }>;
+			inputs?: Record<string, { type?: string; options?: string[]; default?: string }>;
 			secrets?: Record<string, { required?: boolean }>;
 		} | null
 	>;
@@ -56,24 +58,36 @@ function workflow(name: string): Workflow {
 
 const deploy = workflow('deploy.yml');
 const installation = workflow('deploy-installation.yml');
+const building = workflow('deploy-build.yml');
+const release = workflow('release.yml');
 const INSTALLATION = './.github/workflows/deploy-installation.yml';
+const BUILD = './.github/workflows/deploy-build.yml';
 const CLI = 'packages/tooling/scripts/deploy/cli.mjs';
 const PLAN = 'packages/tooling/scripts/deploy/plan.mjs';
+const DISPATCH = 'packages/tooling/scripts/deploy/dispatch.mjs';
+/** Where the build job sets its output aside, and where each deploy places it from. */
+const ARTIFACT_DIR = '$RUNNER_TEMP/build';
 
 const plan = deploy.jobs.plan!;
 /** The jobs that deploy an Installation, by id. */
 const deploying = Object.entries(deploy.jobs).filter(([, job]) => job.uses === INSTALLATION);
 const deployJob = installation.jobs.deploy!;
+const buildJob = building.jobs.build!;
 const steps = deployJob.steps ?? [];
+const buildSteps = buildJob.steps ?? [];
 const index = (match: (step: Step) => boolean) => steps.findIndex(match);
 const promote = index(
 	(step) => step.run?.startsWith(`node .deploy-tooling/${CLI} deploy `) === true,
 );
+const gates = index((step) => step.run?.startsWith(`node .deploy-tooling/${CLI} gates `) === true);
+const download = index((step) => step.uses?.startsWith('actions/download-artifact@') === true);
 const releaseCheckout = index((step) => step.with?.ref === '${{ inputs.release }}');
 const mint = index((step) => step.uses?.startsWith('actions/create-github-app-token@') === true);
 /** The Environment's Cloudflare credentials, and the release GitHub App's (ADR-0124). */
 const CLOUDFLARE = ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN'];
 const RELEASE_APP = ['KEEPR_RELEASE_APP_ID', 'KEEPR_RELEASE_APP_PRIVATE_KEY'];
+const ENVIRONMENTS = "contains(fromJSON(needs.plan.outputs.environments), '%s')";
+const runs = (environment: string) => ENVIRONMENTS.replace('%s', environment);
 
 /** `${{ name }}` in `template`, each replaced by its value; an unknown name stays. */
 function expand(template: unknown, values: Record<string, string>) {
@@ -82,6 +96,10 @@ function expand(template: unknown, values: Record<string, string>) {
 		(whole, name: string) => values[name] ?? whole,
 	);
 }
+
+/** An `if:` written over several lines, as its `&&` clauses. */
+const clauses = (condition: string | undefined) =>
+	(condition ?? '').split('&&').map((clause) => clause.trim());
 
 /** Every module `entry` imports, transitively, by its path from the repository's root. */
 function importedModules(entry: string, seen = new Set<string>()): Set<string> {
@@ -104,15 +122,16 @@ function sparseCheckout(job: Job) {
 	};
 }
 
-describe('a Deploy is dispatched by hand, for the apps it names', () => {
-	it('has no trigger but a dispatch, and its Installation workflow none but a call', () => {
+describe('a Deploy is dispatched by a Release or by hand, for the apps it names', () => {
+	it('has no trigger but a dispatch, and its build and Installation workflows none but a call', () => {
 		expect(Object.keys(deploy.on)).toEqual(['workflow_dispatch']);
 		expect(Object.keys(installation.on)).toEqual(['workflow_call']);
+		expect(Object.keys(building.on)).toEqual(['workflow_call']);
 	});
 
-	it('takes the Releases, the Environment, the recovery point, the parts mode and the override', () => {
+	// The approval replaced the typed recovery word (ADR-0125).
+	it('takes the Releases, the Environments, the parts mode and the override', () => {
 		expect(Object.keys(deploy.on.workflow_dispatch?.inputs ?? {}).toSorted()).toEqual([
-			'd1_recovery_point',
 			'environment',
 			'override',
 			'releases',
@@ -120,8 +139,9 @@ describe('a Deploy is dispatched by hand, for the apps it names', () => {
 		]);
 	});
 
-	// An Environment an app's descriptor names, and nothing the dispatch could not deploy.
-	it('offers every Environment some deploy descriptor names', () => {
+	// An Environment an app's descriptor names, a Release's staging then
+	// production, and nothing the dispatch could not deploy; by hand, production alone.
+	it('offers every Environment some deploy descriptor names, and staging then production', () => {
 		const environments = deployableApps('../..').flatMap((app) =>
 			Object.keys(
 				(
@@ -131,68 +151,164 @@ describe('a Deploy is dispatched by hand, for the apps it names', () => {
 				).environments,
 			),
 		);
+		const input = deploy.on.workflow_dispatch?.inputs?.environment;
 
-		expect(deploy.on.workflow_dispatch?.inputs?.environment?.options?.toSorted()).toEqual([
-			...new Set(environments.toSorted()),
-		]);
+		expect(input?.options?.toSorted()).toEqual(
+			[...new Set(environments), STAGING_THEN_PRODUCTION].toSorted(),
+		);
+		expect(input?.default).toBe('production');
 	});
 
-	// A refused plan leaves every deploying job without the outputs it runs on.
-	it('plans nothing until the D1 recovery point is confirmed, then plans through the tested script', () => {
+	it('plans through the tested script, from what was dispatched', () => {
 		const planSteps = plan.steps ?? [];
-		const refuse = planSteps.findIndex(
-			(step) => step.if === "inputs.d1_recovery_point != 'confirmed'",
-		);
 		const planning = planSteps.findIndex((step) => step.run === `node .deploy-tooling/${PLAN}`);
 
-		expect(refuse).toBeGreaterThanOrEqual(0);
-		expect(planSteps[refuse]!.run).toContain('exit 1');
-		expect(planning).toBeGreaterThan(refuse);
+		expect(planning).toBeGreaterThanOrEqual(0);
 		expect(planSteps[planning]!.env).toMatchObject({
 			INPUT_RELEASES: '${{ inputs.releases }}',
+			INPUT_ENVIRONMENT: '${{ inputs.environment }}',
 			INPUT_OVERRIDE: '${{ inputs.override }}',
 		});
-		expect(plan.outputs).toEqual({
-			accounts: `\${{ steps.${planSteps[planning]!.id}.outputs.accounts }}`,
-			apps: `\${{ steps.${planSteps[planning]!.id}.outputs.apps }}`,
-		});
+		expect(plan.outputs).toEqual(
+			Object.fromEntries(
+				['accounts', 'apps', 'builds', 'environments'].map((output) => [
+					output,
+					`\${{ steps.${planSteps[planning]!.id}.outputs.${output} }}`,
+				]),
+			),
+		);
 	});
 });
 
-describe('Keepr Accounts deploys before the Apps, each app as its own job', () => {
-	const [[accountsId, accounts], [appsId, apps]] = deploying as [[string, Job], [string, Job]];
+describe('each app builds once, and every Environment deploys that build', () => {
+	const build = deploy.jobs.build!;
+	const buildStep = buildSteps.findIndex(
+		(step) => step.run?.startsWith(`node .deploy-tooling/${CLI} build `) === true,
+	);
+	const upload = buildSteps.findIndex(
+		(step) => step.uses?.startsWith('actions/upload-artifact@') === true,
+	);
 
-	it('has two deploying jobs, for Keepr Accounts and for the Apps, each after the plan', () => {
-		expect(deploying.map(([id]) => id)).toEqual([accountsId, appsId]);
-		expect(accounts.needs).toBe('plan');
-		expect(accounts.if).toBe("needs.plan.outputs.accounts != ''");
-		expect(accounts.with).toMatchObject({
-			app: 'accounts',
-			release: '${{ needs.plan.outputs.accounts }}',
+	it('builds every app the plan names, Keepr Accounts too, before any deploy', () => {
+		expect(build.needs).toBe('plan');
+		expect(build.uses).toBe(BUILD);
+		expect(build.strategy?.matrix).toEqual({
+			include: '${{ fromJSON(needs.plan.outputs.builds) }}',
 		});
-		expect(apps.strategy?.matrix).toEqual({
+		expect(build.with).toEqual({ app: '${{ matrix.app }}', release: '${{ matrix.release }}' });
+		for (const [id, job] of deploying) expect([job.needs].flat(), id).toContain('build');
+	});
+
+	it('builds the Release with the tooling, then uploads what it built, once', () => {
+		expect(buildSteps[buildStep]!.run).toBe(
+			`node .deploy-tooling/${CLI} build --app "$INPUT_APP" --artifact "${ARTIFACT_DIR}"`,
+		);
+		expect(upload).toBeGreaterThan(buildStep);
+		expect(buildSteps[upload]!.with).toMatchObject({
+			name: 'build-${{ inputs.app }}',
+			path: '${{ runner.temp }}/build',
+			'if-no-files-found': 'error',
+		});
+		expect(
+			buildSteps.filter((step) => step.uses?.startsWith('actions/upload-artifact@')),
+		).toHaveLength(1);
+		expect(steps.some((step) => step.uses?.startsWith('actions/upload-artifact@'))).toBe(false);
+	});
+
+	it('downloads that artifact into each deploy, which places it rather than building', () => {
+		expect(download).toBeGreaterThanOrEqual(0);
+		expect(download).toBeLessThan(promote);
+		expect(steps[download]!.with).toEqual({
+			name: 'build-${{ inputs.app }}',
+			path: '${{ runner.temp }}/build',
+		});
+		expect(steps[promote]!.run).toContain(`--artifact "${ARTIFACT_DIR}"`);
+	});
+
+	it('builds with no secret and no GitHub environment', () => {
+		expect(build.secrets).toBeUndefined();
+		expect(building.on.workflow_call?.secrets).toBeUndefined();
+		expect(buildJob.environment).toBeUndefined();
+		expect(JSON.stringify(building)).not.toContain('secrets.');
+	});
+});
+
+describe('Keepr Accounts reaches each Environment before the Apps, and production comes after staging', () => {
+	const job = (id: string) => deploy.jobs[id]!;
+
+	it.each([
+		['accounts-staging', 'staging', 'accounts'],
+		['apps-staging', 'staging', '${{ matrix.app }}'],
+		['accounts-production', 'production', 'accounts'],
+		['apps-production', 'production', '${{ matrix.app }}'],
+	])('%s deploys to %s', (id, environment, app) => {
+		expect(job(id).uses).toBe(INSTALLATION);
+		expect(job(id).with).toMatchObject({ app, environment });
+	});
+
+	it('has those four deploying jobs and no other', () => {
+		expect(deploying.map(([id]) => id)).toEqual([
+			'accounts-staging',
+			'apps-staging',
+			'accounts-production',
+			'apps-production',
+		]);
+	});
+
+	// Each `if` names every way its job may run, and nothing after a failure or a cancel.
+	it.each([
+		['accounts-staging', ['build', 'plan'], ["needs.plan.outputs.accounts != ''", runs('staging')]],
+		[
+			'apps-staging',
+			['accounts-staging', 'build', 'plan'],
+			[
+				'!cancelled()',
+				"needs.build.result == 'success'",
+				"needs.plan.outputs.apps != '[]'",
+				runs('staging'),
+				"(needs.plan.outputs.accounts == '' || needs.accounts-staging.result == 'success')",
+			],
+		],
+		[
+			'accounts-production',
+			['accounts-staging', 'build', 'plan'],
+			[
+				'!cancelled()',
+				"needs.build.result == 'success'",
+				"needs.plan.outputs.accounts != ''",
+				runs('production'),
+				`(!${runs('staging')} || needs.accounts-staging.result == 'success')`,
+			],
+		],
+		[
+			'apps-production',
+			['accounts-production', 'apps-staging', 'build', 'plan'],
+			[
+				'!cancelled()',
+				"needs.build.result == 'success'",
+				"needs.plan.outputs.apps != '[]'",
+				runs('production'),
+				`(!${runs('staging')} || needs.apps-staging.result == 'success')`,
+				"(needs.plan.outputs.accounts == '' || needs.accounts-production.result == 'success')",
+			],
+		],
+	])('%s runs after %j, only when %j', (id, needs, condition) => {
+		expect([job(id).needs].flat().toSorted()).toEqual(needs);
+		expect(clauses(job(id).if)).toEqual(condition);
+	});
+
+	// One App's failure does not cancel another's deploy part-way.
+	it.each(['apps-staging', 'apps-production'])('%s deploys each App as its own job', (id) => {
+		expect(job(id).strategy?.matrix).toEqual({
 			include: '${{ fromJSON(needs.plan.outputs.apps) }}',
 		});
-		expect(apps.with).toMatchObject({ app: '${{ matrix.app }}', release: '${{ matrix.release }}' });
+		expect(job(id).with).toMatchObject({ release: '${{ matrix.release }}' });
+		expect(job(id).strategy?.['fail-fast']).toBe(false);
 	});
 
-	// Skipped when the run names no Keepr Accounts; never run after it failed or was cancelled.
-	it('runs the Apps after Keepr Accounts deployed, or when the run does not deploy it', () => {
-		expect([apps.needs].flat().toSorted()).toEqual([accountsId, 'plan'].toSorted());
-		expect(apps.if?.split('&&').map((clause) => clause.trim())).toEqual([
-			'!cancelled()',
-			"needs.plan.result == 'success'",
-			"needs.plan.outputs.apps != '[]'",
-			`(needs.${accountsId}.result == 'success' || needs.${accountsId}.result == 'skipped')`,
-		]);
-		// One App's failure does not cancel another's deploy part-way.
-		expect(apps.strategy?.['fail-fast']).toBe(false);
-	});
-
-	it('passes every job the same Environment, parts mode and override', () => {
+	it('passes every job the same parts mode and override', () => {
 		for (const [, job] of deploying)
 			expect(job.with).toMatchObject({
-				environment: '${{ inputs.environment }}',
 				parts: '${{ inputs.validator }}',
 				override: '${{ inputs.override }}',
 			});
@@ -200,9 +316,11 @@ describe('Keepr Accounts deploys before the Apps, each app as its own job', () =
 });
 
 // The GitHub environment is the Environment's, shared by every app (ADR-0122);
-// the concurrency group is the Installation's.
+// `production`'s required reviewer is the approval. The concurrency group is
+// the Installation's.
 describe("each Installation deploys in its Environment's GitHub environment, one run at a time", () => {
 	it.each([
+		['stream', 'staging', 'staging', 'deploy-stream-staging'],
 		['stream', 'production', 'production', 'deploy-stream-production'],
 		['accounts', 'production', 'production', 'deploy-accounts-production'],
 	])('%s to %s', (app, environment, githubEnvironment, group) => {
@@ -226,15 +344,14 @@ describe("each Installation deploys in its Environment's GitHub environment, one
 
 describe('an Installation deploys through the tooling, which advances its markers only behind every check', () => {
 	it('checks out the Release with its full history, the tooling from its own commit, then installs the Release', () => {
-		const release = index((step) => step.with?.ref === '${{ inputs.release }}');
 		const tooling = index((step) => step.with?.path === '.deploy-tooling');
 		const install = index((step) => step.run === 'pnpm install --frozen-lockfile');
 
-		expect(release).toBeGreaterThanOrEqual(0);
+		expect(releaseCheckout).toBeGreaterThanOrEqual(0);
 		// Marker tags and deploy order need the commits a shallow clone lacks.
-		expect(steps[release]!.with?.['fetch-depth']).toBe(0);
-		expect([release, tooling, install, promote]).toEqual(
-			[release, tooling, install, promote].toSorted((a, b) => a - b),
+		expect(steps[releaseCheckout]!.with?.['fetch-depth']).toBe(0);
+		expect([releaseCheckout, tooling, install, promote]).toEqual(
+			[releaseCheckout, tooling, install, promote].toSorted((a, b) => a - b),
 		);
 		expect(steps[tooling]!.with).toMatchObject({
 			ref: '${{ github.sha }}',
@@ -245,9 +362,11 @@ describe('an Installation deploys through the tooling, which advances its marker
 		);
 	});
 
+	// The D1 recovery point is the tooling's, before its first remote change
+	// (deployCli.test.ts); nothing here reaches Cloudflare before the deploy.
 	it('deploys the app it was called for, with the override only when one was given', () => {
 		expect(steps[promote]!.run).toBe(
-			`node .deploy-tooling/${CLI} deploy --app "$INPUT_APP" --env "$INPUT_ENVIRONMENT" --parts "$INPUT_PARTS" \${INPUT_OVERRIDE:+--override "$INPUT_OVERRIDE"}`,
+			`node .deploy-tooling/${CLI} deploy --app "$INPUT_APP" --env "$INPUT_ENVIRONMENT" --artifact "${ARTIFACT_DIR}" --parts "$INPUT_PARTS" \${INPUT_OVERRIDE:+--override "$INPUT_OVERRIDE"}`,
 		);
 		expect(steps[promote]!.env).toMatchObject({
 			INPUT_APP: '${{ inputs.app }}',
@@ -260,9 +379,22 @@ describe('an Installation deploys through the tooling, which advances its marker
 	it('cannot skip past a failed promotion, and deploys or moves a marker nowhere else', () => {
 		expect(steps[promote]!.if).toBeUndefined();
 		expect(steps[promote]!['continue-on-error']).toBeUndefined();
-		for (const [position, step] of steps.entries())
-			if (position !== promote)
-				expect(step.run ?? '').not.toMatch(/git push|git tag|wrangler|pnpm (run )?deploy/);
+		for (const [position, step] of [...steps.entries(), ...buildSteps.entries()])
+			if (step !== steps[promote])
+				expect(step.run ?? '', String(position)).not.toMatch(
+					/git push|git tag|wrangler|pnpm (run )?deploy|cli\.mjs deploy/,
+				);
+	});
+
+	// Only after the deploy verified, and only in staging: a failure fails the
+	// staging job, so production does not deploy.
+	it('runs the unattended acceptance gates in staging alone, after the deploy', () => {
+		expect(gates).toBeGreaterThan(promote);
+		expect(steps[gates]!.if).toBe("inputs.environment == 'staging'");
+		expect(steps[gates]!.run).toBe(
+			`node .deploy-tooling/${CLI} gates --app "$INPUT_APP" --env "$INPUT_ENVIRONMENT"`,
+		);
+		expect(steps[gates]!['continue-on-error']).toBeUndefined();
 	});
 
 	// Job-level env reaches every step: the install's build scripts and the setup actions too.
@@ -277,11 +409,13 @@ describe('an Installation deploys through the tooling, which advances its marker
 		["the release GitHub App's key", 'the token step', mint, RELEASE_APP, /^KEEPR_RELEASE_APP_/],
 	])('hands %s to %s and to nothing else', (_, _step, holder, secrets, names) => {
 		const elsewhere = [
-			...[...Object.values(deploy.jobs), deployJob].map((job) => job.env ?? {}),
-			...[...(plan.steps ?? []), ...steps.filter((_, position) => position !== holder)].flatMap(
-				(step) => [step.env ?? {}, step.with ?? {}],
-			),
-			...deploying.map(([, job]) => (job.with ?? {}) as Record<string, string>),
+			...[...Object.values(deploy.jobs), deployJob, buildJob].map((job) => job.env ?? {}),
+			...[
+				...(plan.steps ?? []),
+				...buildSteps,
+				...steps.filter((_, position) => position !== holder),
+			].flatMap((step) => [step.env ?? {}, step.with ?? {}]),
+			...Object.values(deploy.jobs).map((job) => (job.with ?? {}) as Record<string, string>),
 		].flatMap((values) => Object.entries(values));
 		const held = Object.values({ ...steps[holder]?.env, ...steps[holder]?.with });
 
@@ -296,7 +430,7 @@ describe('an Installation deploys through the tooling, which advances its marker
 
 	// A called workflow sees an environment secret only when its caller passes it
 	// by name; `secrets: inherit` would hand it every other secret too.
-	it('each call passes the Cloudflare credentials and the App key by name, which the Installation requires', () => {
+	it('each deploying call passes the Cloudflare credentials and the App key by name, which the Installation requires', () => {
 		const passed = [...CLOUDFLARE, ...RELEASE_APP];
 
 		for (const [, job] of deploying)
@@ -327,9 +461,9 @@ describe('an Installation deploys through the tooling, which advances its marker
 
 	// Every write goes through the App's token.
 	it('gives GITHUB_TOKEN no more than read access to the repository contents', () => {
-		expect(deploy.permissions).toEqual({ contents: 'read' });
-		expect(installation.permissions).toEqual({ contents: 'read' });
-		for (const job of [...Object.values(deploy.jobs), deployJob])
+		for (const file of [deploy, installation, building])
+			expect(file.permissions).toEqual({ contents: 'read' });
+		for (const job of [...Object.values(deploy.jobs), deployJob, buildJob])
 			expect(job.permissions ?? deploy.permissions).toEqual({ contents: 'read' });
 	});
 });
@@ -339,6 +473,8 @@ describe('what a dispatch types reaches a shell only through env', () => {
 	it.each([
 		['deploy.yml', deploy],
 		['deploy-installation.yml', installation],
+		['deploy-build.yml', building],
+		['release.yml', release],
 	])('%s interpolates nothing into a run: script', (_, file) => {
 		for (const [id, job] of Object.entries(file.jobs))
 			for (const step of job.steps ?? []) expect(step.run ?? '', id).not.toContain('${{');
@@ -349,15 +485,15 @@ describe('what a dispatch types reaches a shell only through env', () => {
 describe('a job that checks out only the tooling checks out every module it runs', () => {
 	it.each([
 		['plan', plan, PLAN],
+		['build', buildJob, CLI],
 		['deploy', deployJob, CLI],
+		['dispatch', release.jobs.deploy!, DISPATCH],
 	])('%s', (_, job, entry) => {
 		const { checkout, patterns } = sparseCheckout(job);
 		const modules = [...importedModules(entry)];
 
-		expect(checkout?.with).toMatchObject({
-			ref: '${{ github.sha }}',
-			'persist-credentials': false,
-		});
+		expect(checkout?.with).toMatchObject({ 'persist-credentials': false });
+		expect(checkout?.with?.ref ?? '${{ github.sha }}').toBe('${{ github.sha }}');
 		expect(modules.length).toBeGreaterThan(2);
 		for (const module of modules)
 			expect(
@@ -366,6 +502,9 @@ describe('a job that checks out only the tooling checks out every module it runs
 				),
 				module,
 			).toBe(true);
+		expect(
+			(job.steps ?? []).some((step) => step.run?.startsWith(`node .deploy-tooling/${entry}`)),
+		).toBe(true);
 	});
 });
 

@@ -615,10 +615,12 @@ apps it ships in, in a changeset (the root `AGENTS.md` § Before pushing says
 when, and what each bump means), and the changeset check in CI and
 `pnpm verify:quick` refuses one that touches an app's shipped code without
 naming it. While changesets wait on `main`, the action keeps one Version PR
-for every app. **Merging that PR (through the merge queue) is the release**:
-the action tags the merged commit for each app whose version it bumped and
-publishes each GitHub Release from that app's `CHANGELOG.md`. Deploying stays
-per app ([Deploy](#deploy)).
+for every app, as a **draft** (ADR-0125). **Marking it ready, then merging it
+through the merge queue, is the release**: the action tags the merged commit
+for each app whose version it bumped, publishes each GitHub Release from that
+app's `CHANGELOG.md`, and dispatches one Deploy run with every app it
+released, which deploys each to staging and then, once a person approves, to
+production ([Deploy](#deploy)).
 
 Each Release's section of an app's `CHANGELOG.md`, and so its GitHub Release,
 groups its entries (ADR-0126): **Operator steps** (every major changeset: what
@@ -697,17 +699,28 @@ How a change reaches `main`, and why:
   @keepr/<app>@<version> <commit>`, push the tag, and
   `gh release create @keepr/<app>@<version> --verify-tag` with that version's
   section of the app's `CHANGELOG.md`).
-- **The Version PR lands alone.** The action opens and updates it, and tags,
-  with the release GitHub App's token (ADR-0124), so its CI and title check
-  start like any PR's. To release, wait until the queue is empty and the
-  action has refreshed the Version PR from the last push, wait for its checks,
-  then **Merge when ready**, and queue nothing else until it lands. Landing in
+- **The Version PR is a draft until you mark it ready, and lands alone.** The
+  action opens and updates it, and tags, with the release GitHub App's token
+  (ADR-0124), so its CI and title check start like any PR's. It opens it as a
+  draft and makes it one again on every update (`pr-draft: always`), and CI
+  skips a draft, so "ready" means "release exactly this content" (ADR-0125).
+  To release, wait until the queue is empty and the action has refreshed the
+  Version PR from the last push, select **Ready for review**, wait for
+  `CI passed`, then **Merge when ready**, and queue nothing else until it
+  lands. Landing in
   one push with a PR that carries a changeset, even an empty one, it would
   leave that changeset waiting on `main`, so the action would refresh the
   Version PR instead of tagging: that version would never be tagged, and the
   next release would skip it. A push to `main` while it waits rewrites the
-  Version PR, which drops it from the queue. Run the workflow by hand
-  (`gh workflow run release.yml`) to refresh the Version PR without a push.
+  Version PR, which drops it from the queue and makes it a draft again. Run
+  the workflow by hand (`gh workflow run release.yml`) to refresh the Version
+  PR without a push.
+- **A Release deploys itself** (ADR-0125). Once the GitHub Releases exist, the
+  workflow's `deploy` job dispatches the Deploy workflow with every app
+  released, to staging then production
+  ([Deploy from GitHub Actions](#deploy-from-github-actions)). Nothing is
+  dispatched when nothing was released, and a merge that releases nothing
+  deploys nothing.
 
 The release workflow's job runs in the GitHub environment **`release`**, which
 deploys only from `main` and holds the release GitHub App's
@@ -717,8 +730,10 @@ Workflows read and write (and Metadata read). `GITHUB_TOKEN` cannot do its
 job: a PR it opens starts no workflow without a maintainer's approval, and it
 can never hold `workflows`, which the Version PR's branch and the marker tags
 need once `main`'s workflows have changed. The default workflow token is
-read-only; each workflow declares the scopes it needs, and neither the release
-nor the Deploy workflow gives it a write.
+read-only; each workflow declares the scopes it needs. Its one write is the
+release workflow's `deploy` job's `actions: write`, which dispatches the
+Deploy run (a `workflow_dispatch` sent with `GITHUB_TOKEN` starts a run, as
+its other events never do); the Deploy workflow gives it none.
 
 ## Deploy
 
@@ -728,18 +743,23 @@ production ID, plus routes, cron and observability, and restates each binding
 with the staging account's ID in its `env.staging` block. Deploys use the
 repo-pinned Wrangler.
 
-There is no separate staging environment: **production is the staging gate.**
-The production hostname is `https://stream.keepr.digital`, attached as a
-`custom_domain` route in `wrangler.jsonc`.
+Stream Keepr has two Installations, one per Environment, each in its
+Environment's Cloudflare account (ADR-0122), and every Release reaches the
+Staging Installation before the Production Installation (ADR-0125):
 
-A Staging Installation is configured, not yet deployed or part of a Release
-(#525). It is the same build deployed with `--env staging` to the staging
-Cloudflare account (ADR-0122): Workers `stream` and
-`stream-silent-video-validator`, as in production, on
-`https://stream.keepr-staging.digital`, attached in `env.staging`. Wrangler
-does not inherit bindings or vars into an `env` block, so a binding added at
-the top level of `wrangler.jsonc` or the validator's config is added to its
-`env.staging` too, with the staging resource's ID;
+| Environment | URL                                    | Wrangler block   |
+| ----------- | -------------------------------------- | ---------------- |
+| Staging     | `https://stream.keepr-staging.digital` | `env.staging`    |
+| Production  | `https://stream.keepr.digital`         | the top level    |
+
+Both deploy the same build, staging with `--env staging`: Workers `stream`
+and `stream-silent-video-validator` in each account, each host attached as a
+`custom_domain` route. Staging shares nothing with production: its own D1,
+KV, R2, secrets and Ably key, and a domain of its own, so neither's session
+cookie reaches the other. Wrangler does not inherit bindings or vars into an
+`env` block, so a binding added at the top level of `wrangler.jsonc` or the
+validator's config is added to its `env.staging` too, with the staging
+resource's ID;
 `test/unit/build/wranglerEnvironments.test.ts` fails until it is.
 
 What is deployed is stated in this app's **deploy descriptor**, `deploy.jsonc`:
@@ -768,18 +788,25 @@ your `wrangler login`. In order, stopping at the first failure:
    `--artifact <dir>` deploys a downloaded `.output/` of the same Release
    instead of building it: one build is what every Environment deploys.
 
-   Then **deploy order** ([Deploy order](#deploy-order)), before anything
-   remote changes: a deploy that Keepr Accounts' Installation does not allow
-   stops here.
+   Then, before anything remote changes, **deploy order**
+   ([Deploy order](#deploy-order)): a deploy that Keepr Accounts'
+   Installation does not allow stops here. And the **D1 recovery point**: the
+   deploy reads D1 Time Travel's current bookmark for `DB`
+   (`wrangler d1 time-travel info DB --json`, against the built configuration
+   and the Environment's block) and stops if there is none (ADR-0125). It
+   logs how to restore that bookmark, and the app's marker records it as
+   `recovery`, so a failed migration has its restore point in the run that
+   failed.
 
 2. **The validator**, when its fingerprint changed since the confirmed deploy
-   its `stream/production-validator` marker records
+   its `stream/<environment>-validator` marker records
    ([Promotion markers](#promotion-markers)): marked `pending`, `wrangler deploy`
    on `workers/silent-video-validator/wrangler.jsonc`, marked `deployed`. The
    app binds it, so it goes first. `--parts always` or `--parts never`
    overrides the decision.
-3. The `stream/production` marker moves to this checkout as `pending` before
-   the app changes anything remote. If it cannot, the app does not deploy.
+3. The `stream/<environment>` marker moves to this checkout as `pending`
+   before the app changes anything remote. If it cannot, the app does not
+   deploy.
 4. `wrangler d1 migrations apply DB --remote`.
 5. `wrangler deploy` of the built Worker.
 6. `pnpm deploy:verify`: reads `GET /api/release` and passes only on status
@@ -795,7 +822,7 @@ your `wrangler login`. In order, stopping at the first failure:
    KV, Ably or the validator. The deployed gates (Deploy day, step 5) cover
    those. `worker:smoke` runs both probes against the built Worker.
 
-7. The `stream/production` marker is marked `deployed`, only once
+7. The `stream/<environment>` marker is marked `deployed`, only once
    `deploy:verify` has passed.
 
 Migration and promotion are separate Cloudflare operations, not one
@@ -842,18 +869,26 @@ The app and the validator are deployed separately and can fail separately.
 Each has its own marker per Environment, an annotated git tag on `origin` named
 `<app>/<environment>[-<part>]` (ADR-0035, ADR-0119):
 
-| Tag                           | Marks              | Moved by                                                   |
-| ----------------------------- | ------------------ | ---------------------------------------------------------- |
-| `stream/production`           | The app            | `pnpm run deploy` (steps 3 and 7), or the Deploy workflow  |
-| `stream/production-validator` | The validator part | `pnpm run deploy` (step 2), `pnpm deploy:validator`, or the Deploy workflow |
+| Tag                           | Marks                                | Moved by                                                   |
+| ----------------------------- | ------------------------------------ | ---------------------------------------------------------- |
+| `stream/staging`              | The Staging Installation's app       | `pnpm run deploy --env staging` (steps 3 and 7), or the Deploy workflow |
+| `stream/staging-validator`    | The Staging Installation's validator | `pnpm run deploy --env staging` (step 2), or the Deploy workflow |
+| `stream/production`           | The Production Installation's app    | `pnpm run deploy` (steps 3 and 7), or the Deploy workflow  |
+| `stream/production-validator` | The Production Installation's validator | `pnpm run deploy` (step 2), `pnpm deploy:validator`, or the Deploy workflow |
+
+Each Installation's markers are its own: a deploy to staging never moves a
+production marker, and a failure in one Environment leaves the other's as
+they were.
 
 A marker records what it marks (its `component` field: `app`, or the part's
 name), its state, the commit it was deployed from, whether that checkout had
 uncommitted or untracked changes (`worktree: dirty`), who deployed it (a
 workflow run or `local`), for the validator its **fingerprint**, and the app,
 Environment and Release version. An app marker also records `needs: accounts`
-when the Installation depends on Keepr Accounts, and `override` with its reason
-when a deploy bypassed [deploy order](#deploy-order). Every deploy marks the
+when the Installation depends on Keepr Accounts, `override` with its reason
+when a deploy bypassed [deploy order](#deploy-order), and `recovery`, the D1
+Time Travel bookmark read before the deploy changed anything
+(`DB=<bookmark>`). Every deploy marks the
 app or part `pending` before it changes anything, and `deployed` once it
 succeeded. A deploy that died part-way leaves `pending`, which means
 "unconfirmed: either version may be serving". A deploy that cannot write its
@@ -888,72 +923,109 @@ the checkout you want.
 
 ### Deploy from GitHub Actions
 
-The **Deploy** workflow (`.github/workflows/deploy.yml`) is manual-only. It
-deploys one or more apps to an Environment, each as `pnpm run deploy` would,
-but ships **released tags**, never `main`'s HEAD. Dispatch it from `main`
-(Actions → Deploy → Run workflow) with:
+The **Deploy** workflow (`.github/workflows/deploy.yml`) deploys one or more
+apps' Releases, each as `pnpm run deploy` would, and ships **released tags**,
+never `main`'s HEAD. Deploys are never merge-triggered (ADR-0125):
 
-- `releases`: the apps and the Release of each, separated by spaces. `stream`
-  (the default) is Stream Keepr's most recent GitHub Release; a tag such as
-  `@keepr/stream@1.7.0` is that one. Only published Releases resolve: a `v*`
-  tag, a draft, an unknown app or an app named twice refuses the whole run.
-  Rollback is dispatching it with the previous tag.
-- `environment`: `production` or `staging` (Stream Keepr only, until Keepr
-  Accounts has a Staging Installation).
-- `d1_recovery_point`: must be typed `confirmed`, for every app deployed.
-- `validator`: each app's parts (Stream Keepr's validator). `auto` (default)
-  deploys a part first unless its marker (`stream/production-validator`)
-  records a confirmed deploy with the release's fingerprint. A missing,
-  unreadable or `pending` marker, or a release that cannot be bundled, deploys
-  it. `always` and `never` override; `never` leaves the marker alone.
-- `override`: empty, or the one-line reason to deploy out of
-  [deploy order](#deploy-order). It is refused for a run of more than one app:
-  dispatch the app it is for alone.
+- **A Release dispatches it.** Once the release workflow has tagged and
+  published the GitHub Releases ([Releases](#releases)), it starts one run
+  with every app released, to **staging then production**. A Release reaches
+  staging with no human action, and production with one approval.
+- **By hand**, for a rollback or a redeploy: Actions → Deploy → Run workflow,
+  from `main`, with
+  - `releases`: the apps and the Release of each, separated by spaces.
+    `stream` (the default) is Stream Keepr's most recent GitHub Release; a
+    tag such as `@keepr/stream@1.7.0` is that one. Only published Releases
+    resolve: a `v*` tag, a draft, an unknown app or an app named twice
+    refuses the whole run. Rollback is dispatching the previous tag.
+  - `environment`: `production` (the default, for a rollback), `staging`, or
+    `staging then production`, as a Release does. `staging` is Stream Keepr's
+    alone until Keepr Accounts has a Staging Installation.
+  - `validator`: each app's parts (Stream Keepr's validator). `auto`
+    (default) deploys a part first unless its marker
+    (`stream/<environment>-validator`) records a confirmed deploy with the
+    release's fingerprint. A missing, unreadable or `pending` marker, or a
+    release that cannot be bundled, deploys it. `always` and `never`
+    override; `never` leaves the marker alone.
+  - `override`: empty, or the one-line reason to deploy out of
+    [deploy order](#deploy-order). It is refused for a run of more than one
+    app: dispatch the app it is for alone.
 
-The `plan` job resolves the Releases and deploys nothing. Then each app deploys
-as its own job (`.github/workflows/deploy-installation.yml`): Keepr Accounts'
-first, when the run names it, and every App's only once it succeeded. The Apps
-deploy side by side, and one's failure does not stop another. Each job is
-one step, `keepr-deploy deploy --app <app> --env <environment>`, run from the
-workflow's own commit (`packages/tooling/scripts/deploy/cli.mjs`), not from
-the release, against the release's checkout, with its full history, and its
-installed dependencies. It reads the release's deploy descriptor; a release
-from before descriptors (`@keepr/stream@1.6.0`, `1.7.0`) deploys as Stream
-Keepr was deployed then, so a rollback keeps the markers and the procedure. It
-never runs a release's own `pnpm run deploy`. The step summary records the
-part decisions, and on failure what each marker now says.
+A run's jobs, per app:
+
+1. **`plan`** resolves the Releases and the Environments, and deploys nothing.
+   Its summary, on the run's page, lists what to confirm before approving
+   production.
+2. **Build**, once per app (`.github/workflows/deploy-build.yml`):
+   `keepr-deploy build --artifact`, the descriptor's build, dry run and Worker
+   smoke, uploaded as the run's artifact `build-<app>`. No secret, no
+   Environment.
+3. **Staging**, in the GitHub environment `staging`, with no approval
+   (`.github/workflows/deploy-installation.yml`): downloads the artifact and
+   runs `keepr-deploy deploy --artifact --env staging` (deploy order, the D1
+   recovery point, parts, migrations, the Worker, `deploy:verify`, each between
+   its markers), then the app's **unattended acceptance gates**
+   (`keepr-deploy gates`): the deploy descriptor's `gates`, Stream Keepr's
+   `pnpm accept:unattended`, which loads the still-image and silent-video
+   fixture pages from the Staging Installation in Chrome. They sign in to
+   nothing and write nothing. A failure fails the job, and production does
+   not deploy.
+4. **Production**, in the GitHub environment `production`, once every App's
+   staging job passed: it waits for the environment's required reviewer.
+   **Review deployments** approves every App's production job at once. Then
+   the same deploy, of the same artifact, with `--env production`, and no
+   gates.
+
+Every job runs `keepr-deploy` from the workflow's own commit
+(`packages/tooling/scripts/deploy/cli.mjs`), not from the release, against the
+release's checkout, with its full history and its installed dependencies. It
+reads the release's deploy descriptor; a release from before descriptors
+(`@keepr/stream@1.6.0`, `1.7.0`) deploys as Stream Keepr was deployed then,
+so a rollback keeps the markers and the procedure. It never runs a release's
+own `pnpm run deploy`. The step summary records the part decisions and the D1
+recovery point, and on failure what each marker now says. Keepr Accounts
+deploys to an Environment before any App, and every App's job there waits for
+it ([Deploy order](#deploy-order)), so a run that deploys Keepr Accounts
+waits for two approvals, its own first. The Apps deploy side by side, and one's
+failure does not stop another's staging; it does hold every App's production.
 
 Each Environment is one **Cloudflare account** and one **GitHub environment**
-of the same name, `production` or `staging`, shared by every app (ADR-0122). The GitHub
-environment deploys only from `main`, so a workflow on any other branch cannot
-read its secrets, and it holds that account's `CLOUDFLARE_ACCOUNT_ID` and a
-`CLOUDFLARE_API_TOKEN` that can deploy every app in it (Workers Scripts:Edit,
-D1:Edit, Containers:Edit). Cloudflare grants D1 and Containers only across an
-account, so a token per app would isolate nothing; the account is the
-boundary. It also holds the release GitHub App's `KEEPR_RELEASE_APP_ID` and
+of the same name, `production` or `staging`, shared by every app (ADR-0122).
+The GitHub environment deploys only from `main`, so a workflow on any other
+branch cannot read its secrets; `production` also has a required reviewer. It
+holds that account's `CLOUDFLARE_ACCOUNT_ID` and a `CLOUDFLARE_API_TOKEN` that
+can deploy every app in it (Workers Scripts:Edit, D1:Edit, Containers:Edit).
+Cloudflare grants D1 and Containers only across an account, so a token per
+app would isolate nothing; the account is the boundary. It also holds the
+release GitHub App's `KEEPR_RELEASE_APP_ID` and
 `KEEPR_RELEASE_APP_PRIVATE_KEY` ([Releases](#releases), ADR-0124), never as
 repository secrets: each job pushes its app's
 [promotion markers](#promotion-markers) with a token of that App, narrowed to
 Contents and Workflows, because `GITHUB_TOKEN` can never hold `workflows` and
 GitHub refuses it a tag on a Release whose workflows differ from `main`'s.
-The caller passes all four secrets by name. One deploy per
-Installation runs at a time (concurrency group `deploy-<app>-<environment>`);
-two apps deploy at once. An app joins the workflow with its deploy descriptor
-alone. The acceptance gates and the "nothing on air" check stay with the
-operator.
+The caller passes all four secrets by name, and only the deploy step sees the
+Cloudflare ones. One deploy per Installation runs at a time (concurrency group
+`deploy-<app>-<environment>`); two apps deploy at once. An app joins the
+workflow with its deploy descriptor alone.
 
 ### Deploy day
 
-Run these in order from a working checkout. Every gate provisions real Events
-and assets in production and deletes them afterwards. A harness that dies
-mid-run names the Event it left behind; delete it before rerunning.
+A Release deploys itself to staging and waits at production
+([Deploy from GitHub Actions](#deploy-from-github-actions)). Deploy day is
+what a person does while it waits, in order, from a working checkout, and
+then the approval. The gates that write (steps 4 and 5) run against staging:
+each provisions real Events and assets in the Installation it targets and
+deletes them afterwards. A harness that dies mid-run names the Event it left
+behind; delete it before rerunning.
 
-1. **Pre-flight.** Nothing on air. Docker running. Secrets present
-   (`pnpm exec wrangler secret list --name stream`). No leftover `workerd`
-   (`pnpm reap`).
-2. **Recovery point.** Build the production config, inspect pending
-   migrations, and confirm a recent D1 Time Travel recovery point or export
-   exists:
+1. **Pre-flight.** Nothing on air in production. Docker running. Secrets
+   present in each Installation
+   (`pnpm exec wrangler secret list --name stream`, and with `--env staging`
+   against the staging account). No leftover `workerd` (`pnpm reap`).
+2. **Recovery point.** Each deploy reads D1 Time Travel's current bookmark
+   before it changes anything, refuses without one, and records it in its
+   step summary and its app marker ([Deploy](#deploy)); nothing is typed. To
+   see what will migrate, build and list the pending migrations:
 
    ```bash
    pnpm build
@@ -987,37 +1059,42 @@ mid-run names the Event it left behind; delete it before rerunning.
    [Reconciliation](#reconciliation) reports them as unexpected unless the
    buckets are emptied with the database.
 
-3. **Deploy.** One command deploys the validator first when its fingerprint
-   changed (always on a first deploy, and once after ADR-0119 renamed the
-   markers), so the service binding resolves, and then the app:
+3. **Deploy.** The Release's Deploy run deploys each app to staging, runs
+   its unattended gates there, and waits at production. When this Release
+   needs the gates that write, run steps 4 and 5 against staging now. Then,
+   with the plan's checklist on the run's page confirmed, nothing on air
+   among it, approve `production` in **Review deployments**: every App's
+   production job deploys the build staging ran. When Keepr Accounts ships in
+   the same Version PR, its jobs run first in each Environment, and its
+   production job waits for an approval of its own.
+
+   A dispatch by hand does the same for a rollback or a redeploy
+   ([Deploy from GitHub Actions](#deploy-from-github-actions)). Locally, in an
+   emergency, one command deploys the validator first when its fingerprint
+   changed, so the service binding resolves, and then the app:
 
    ```bash
    pnpm deploy:status      # both markers; whether this validator would deploy
-   pnpm run deploy
+   pnpm run deploy         # production; --env staging for staging
    ```
 
-   Or dispatch the Deploy workflow with `releases: stream` (or the tag), which
-   deploys Stream Keepr's Release through the `production` GitHub environment
-   ([Deploy from GitHub Actions](#deploy-from-github-actions)). When Keepr
-   Accounts ships in the same Version PR, name both (`releases: accounts
-   stream`): its job runs first, and Stream Keepr's waits for it. Deploying
-   them in two runs works too, Keepr Accounts' first; the other order is
-   refused when Stream Keepr's Release needs a Keepr Accounts change not yet
-   deployed ([Deploy order](#deploy-order)).
-
-   If `deploy:verify` fails, stop and roll back: redeploy the previous Worker
-   version (dashboard → Workers & Pages → Deployments, or
-   `wrangler rollback`), then restore any applied migration from the recovery
-   point. The `stream/production` marker stays `pending` until the next deploy
-   confirms one, which is accurate: the rollback is not recorded. Then
-   follow [Recovering from a partial promotion](#recovering-from-a-partial-promotion).
+   If `deploy:verify` fails, stop and roll back that Installation: redeploy
+   the previous Worker version (dashboard → Workers & Pages → Deployments, or
+   `wrangler rollback`), then restore any applied migration to the bookmark
+   the run recorded
+   (`wrangler d1 time-travel restore DB --bookmark=<bookmark>`, as its step
+   summary says). The `stream/<environment>` marker stays `pending` until the
+   next deploy confirms one, which is accurate: the rollback is not recorded.
+   Then follow
+   [Recovering from a partial promotion](#recovering-from-a-partial-promotion).
 
 #### Recovering from a partial promotion
 
 A deploy that fails after the validator succeeded leaves the app and its validator on
-different Releases. Read the markers first (`pnpm deploy:status`, or the failed
-run's step summary). For example, with A in production, a deploy of B that
-fails after its validator leaves:
+different Releases, in that Installation only: each Environment's markers are
+its own. Read the markers first (`pnpm deploy:status --env <environment>`, or
+the failed run's step summary). For example, with A in production, a deploy of
+B that fails after its validator leaves:
 
 - `stream/production-validator`: `deployed` B: B's validator is serving.
 - `stream/production`: `pending` B, when it failed at the migration, the Worker
@@ -1025,15 +1102,17 @@ fails after its validator leaves:
   run or smoke test comes before the validator and before any marker moves, so
   it leaves both as they were.
 
-Pick the release production should run, then deploy it whole:
+Pick the release that Installation should run, then deploy it whole, to the
+same Environment (the same applies to staging, with `stream/staging` and
+`stream/staging-validator`):
 
 - **Back to A**: dispatch Deploy with `releases` A. Its fingerprint differs from
   B's, so `auto` redeploys A's validator before A's app. As in step 3, restore
-  any migration B applied from the recovery point. Releases whose validators are
+  any migration B applied to the bookmark B's run recorded. Releases whose validators are
   identical have identical fingerprints, so no validator redeploy happens
   there, and none is needed.
-- **Forward to B**, once fixed: dispatch B again. Its validator is already
-  confirmed, so only the app deploys.
+- **Forward to B**, once fixed: dispatch B again, or a later Release. Its
+  validator is already confirmed, so only the app deploys.
 - **Locally**, when Actions is not an option: check out that release, install
   it, then run `node <a main checkout>/packages/tooling/scripts/deploy/cli.mjs
   deploy --app stream --env production` from the release's root, as the Deploy
@@ -1108,6 +1187,11 @@ A `pending` validator marker means its deploy died part-way, so the next
    | 5   | `fonts`                             | A library font revision is delivered, loads, and renders its glyphs.                                      |
    | 6   | `graphics-package`                  | Template Package publication is atomic and its retry is idempotent.                                       |
    | 7   | [Fault injection](#fault-injection) | Unavailable content, integrity failure, D1 outage, R2 outage with a warm cache.                           |
+
+   Gates 3 and 4 read fixture pages and write nothing, so they also run
+   unattended in the Deploy workflow's staging job, against the Staging
+   Installation (`pnpm accept:unattended`, the deploy descriptor's `gates`).
+   The others write, sign in or need Docker, so only a person starts them.
 
 **Validator gate cleanup.** The validator gate stages fixtures directly in the
 ingestion staging store, with no Graphics Ingestion Operation that retention

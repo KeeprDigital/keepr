@@ -1,6 +1,6 @@
 # ADR-0124: The release GitHub App pushes the Version PR, the Release tags and the promotion markers
 
-Accepted · 2026-11-18 · [#1261](https://github.com/KeeprDigital/keepr/issues/1261), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amends ADR-0035, ADR-0036, ADR-0118 and ADR-0122
+Accepted · 2026-11-18 · [#1261](https://github.com/KeeprDigital/keepr/issues/1261), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amends ADR-0035, ADR-0036, ADR-0118 and ADR-0122 · Amended by ADR-0125: the release workflow's `deploy` job dispatches the Deploy with `GITHUB_TOKEN`, given `actions: write` in that job alone
 
 ### Decision
 

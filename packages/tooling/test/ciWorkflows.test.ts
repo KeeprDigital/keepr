@@ -253,8 +253,12 @@ describe('a merge group skips the gates only for a tree a full, green PR run ver
 	});
 });
 
+/** The job that versions, gates and tags, and the job that dispatches the Deploy after it. */
+const releasing = release.jobs.release!;
+const dispatching = release.jobs.deploy!;
+
 describe('the Release workflow tags only what the queue verified', () => {
-	const steps = Object.values(release.jobs).flatMap((job) => job.steps ?? []);
+	const steps = releasing.steps ?? [];
 	const changesets = steps.find((step) => step.uses?.startsWith('changesets/action@'));
 
 	it('publishes through the gate, then tags, and nothing lets a tag past a refusal', () => {
@@ -268,10 +272,8 @@ describe('the Release workflow tags only what the queue verified', () => {
 			expect(step.if).toBeUndefined();
 			expect(step['continue-on-error']).toBeUndefined();
 		}
-		for (const job of Object.values(release.jobs)) {
-			expect(job.if).toBeUndefined();
-			expect(job['continue-on-error']).toBeUndefined();
-		}
+		expect(releasing.if).toBeUndefined();
+		expect(releasing['continue-on-error']).toBeUndefined();
 	});
 
 	// Changesets core groups a Release by bump; the regroup step after it groups
@@ -289,20 +291,64 @@ describe('the Release workflow tags only what the queue verified', () => {
 	it('titles the Version PR as a Conventional Commit', () => {
 		expect(isConventionalTitle(String(changesets?.with?.['pr-title']))).toBe(true);
 	});
+
+	// CI skips a draft, so "ready" means "release exactly this content": every
+	// update of the Version PR, a push to main's included, makes it a draft again.
+	it('keeps the Version PR a draft, from its opening and after every update, until a person marks it ready', () => {
+		expect(changesets?.with?.['pr-draft']).toBe('always');
+		expect(ci.on.pull_request?.types).toContain('ready_for_review');
+	});
+});
+
+// A Release deploys itself: staging, then production behind its approval (ADR-0125).
+describe('a Release dispatches one Deploy run, only after tagging, with the apps it released', () => {
+	const changesets = (releasing.steps ?? []).find((step) =>
+		step.uses?.startsWith('changesets/action@'),
+	);
+	const steps = dispatching.steps ?? [];
+	const dispatch = steps.find((step) => step.run?.includes('scripts/deploy/dispatch.mjs'));
+
+	it('runs after the release job, and only when it published', () => {
+		expect(dispatching.needs).toBe('release');
+		expect(dispatching.if).toBe("needs.release.outputs.published == 'true'");
+		expect(releasing.outputs).toEqual({
+			published: `\${{ steps.${changesets?.id}.outputs.published }}`,
+			'published-packages': `\${{ steps.${changesets?.id}.outputs.published-packages }}`,
+		});
+	});
+
+	it('hands the published apps to the tested dispatch script through env, with a token that may only start runs', () => {
+		expect(dispatch?.run).toBe('node .deploy-tooling/packages/tooling/scripts/deploy/dispatch.mjs');
+		expect(dispatch?.env).toEqual({
+			GH_TOKEN: '${{ github.token }}',
+			PUBLISHED_PACKAGES: '${{ needs.release.outputs.published-packages }}',
+		});
+		for (const step of [...steps, ...(releasing.steps ?? [])])
+			expect(step.run ?? '').not.toContain('${{');
+	});
+
+	// GITHUB_TOKEN's workflow_dispatch starts a run; nothing else in the run may write with it.
+	it("gives GITHUB_TOKEN no write but the dispatch job's actions: write", () => {
+		expect(release.permissions).toEqual({ contents: 'read', actions: 'read' });
+		expect(releasing.permissions).toBeUndefined();
+		expect(dispatching.permissions).toEqual({ contents: 'read', actions: 'write' });
+		expect(dispatching.environment).toBeUndefined();
+	});
 });
 
 // A PR opened with GITHUB_TOKEN starts no workflow, and GITHUB_TOKEN can never
 // hold `workflows` (ADR-0124).
 describe("the Release workflow writes with the release GitHub App's token", () => {
-	const [job] = Object.values(release.jobs);
-	const steps = job?.steps ?? [];
+	const job = releasing;
+	const steps = job.steps ?? [];
 	const mint = steps.findIndex((step) => step.uses?.startsWith('actions/create-github-app-token@'));
 	const changesets = steps.findIndex((step) => step.uses?.startsWith('changesets/action@'));
 
 	// The App's key is an environment secret, which only a job in it reads.
 	it('runs in the release environment, and its key reaches only the token step', () => {
-		expect(Object.keys(release.jobs)).toHaveLength(1);
-		expect(job?.environment).toBe('release');
+		expect(Object.keys(release.jobs)).toEqual(['release', 'deploy']);
+		expect(job.environment).toBe('release');
+		expect(JSON.stringify(dispatching)).not.toContain('secrets.');
 		for (const [position, step] of steps.entries())
 			if (position !== mint)
 				expect(JSON.stringify([step.env, step.with]), step.name ?? step.uses).not.toContain(
@@ -329,7 +375,7 @@ describe("the Release workflow writes with the release GitHub App's token", () =
 	// GITHUB_TOKEN, which is all that token may do beyond checking out.
 	it('leaves GITHUB_TOKEN reading the contents and the merge-group runs, and the gate using it', () => {
 		expect(release.permissions).toEqual({ contents: 'read', actions: 'read' });
-		expect(job?.permissions).toBeUndefined();
+		expect(job.permissions).toBeUndefined();
 		expect(steps[changesets]!.env).toEqual({ GH_TOKEN: '${{ github.token }}' });
 	});
 });
