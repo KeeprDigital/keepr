@@ -741,10 +741,10 @@ Both deploy the same build, staging with `--env staging`: Workers `stream`
 and `stream-silent-video-validator` in each account, each host attached as a
 `custom_domain` route. Staging shares nothing with production: its own D1,
 KV, R2, secrets and Ably key, and a domain of its own, so neither's session
-cookie reaches the other. Wrangler
-does not inherit bindings or vars into an `env` block, so a binding added at
-the top level of `wrangler.jsonc` or the validator's config is added to its
-`env.staging` too, with the staging resource's ID;
+cookie reaches the other. Wrangler does not inherit bindings or vars into an
+`env` block, so a binding added at the top level of `wrangler.jsonc` or the
+validator's config is added to its `env.staging` too, with the staging
+resource's ID;
 `test/unit/build/wranglerEnvironments.test.ts` fails until it is.
 
 What is deployed is stated in this app's **deploy descriptor**, `deploy.jsonc`:
@@ -1110,27 +1110,58 @@ A `pending` validator marker means its deploy died part-way, so the next
 
    | Variable                                    | Value                                                                             |
    | ------------------------------------------- | --------------------------------------------------------------------------------- |
-   | `STREAM_KEEPR_BROWSER_ACCEPTANCE_URL`       | The installation to test. Falls back to `KEEPR_DEPLOY_URL`.                       |
+   | `STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT`       | The Environment to test: `production` (when unset) or `staging`.                  |
+   | `STREAM_KEEPR_BROWSER_ACCEPTANCE_URL`       | That Environment's Installation. Falls back to `KEEPR_DEPLOY_URL`.                |
    | `STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL`    | An existing operator account. `/api/**` denies by default, so gates must sign in. |
    | `STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD` | That account's password.                                                          |
-   | `CLOUDFLARE_ACCOUNT_ID`                     | The installation's account. The validator gate writes with Wrangler on it alone.  |
+   | `CLOUDFLARE_ACCOUNT_ID`                     | That Environment's account. The validator gate writes with Wrangler on it alone.  |
 
    A `--deployed` harness refuses to start without a URL rather than guessing.
    Without the operator pair it stops with `harness-operator-unavailable`.
    Setting `NUXT_ADMIN_BOOTSTRAP_TOKEN` in the shell also works if that secret is
    armed on the installation for the run.
 
-   The URL must be a host the committed `wrangler.jsonc` serves. The validator
-   gate stages in the bucket and triggers the Workflow that the committed app
-   and validator configs bind, so any other URL stops with
-   `harness-target-inconsistent reason=origin-not-installation` before anything
-   is written (`scripts/graphics-acceptance/deployed-target.mjs`, #619).
+   The URL must be a host the committed `wrangler.jsonc` serves in that
+   Environment: its top level for production, its `env.staging` block for
+   staging. The validator gate stages in the ingestion staging store and
+   triggers the Workflow that the app and validator configs bind in that
+   Environment, and its Wrangler commands select the same block
+   (`--env staging`). Anything that does not agree stops with
+   `harness-target-inconsistent` before anything is written
+   (`scripts/graphics-acceptance/deployed-target.mjs`, #619, #525):
+
+   - a URL the Environment's configs do not serve, such as the Staging
+     Installation's URL with production named, or the reverse:
+     `reason=origin-not-installation`;
+   - an account the Environment's configs name otherwise:
+     `reason=account-mismatch`;
+   - `staging` named when the configs have no `env.staging` block:
+     `reason=environment-unconfigured`.
+
+   An Environment other than `production` or `staging` stops with
+   `harness-precondition-unmet reason=environment-unknown`.
+
+   **Against staging.** Point every variable at the Staging Installation, in
+   the staging account, with an operator account that exists there:
+
+   ```bash
+   STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT=staging \
+   STREAM_KEEPR_BROWSER_ACCEPTANCE_URL=https://stream.keepr-staging.digital \
+   CLOUDFLARE_ACCOUNT_ID=<the staging account> \
+   STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL=… STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD=… \
+   pnpm accept deployed
+   ```
+
+   `pnpm accept deployed` prints the Environment it resolved before its first
+   gate. Every harness inherits the variable, so a single gate or a cleanup
+   retry (`pnpm accept silent-video-validator --deployed --cleanup`) targets
+   the same Environment when it is set the same way.
 
 5. **Run the gates.** `pnpm accept deployed` runs steps 1–6 in order and
    stops at the first failure; run one alone with `pnpm accept <name> --deployed`.
-   It checks the whole target first (URL, operator, account, config agreement)
-   and runs no gate if any of it is missing, so the first gate cannot write
-   before a later one refuses.
+   It checks the whole target first (Environment, URL, operator, account,
+   config agreement) and runs no gate if any of it is missing, so the first
+   gate cannot write before a later one refuses.
 
    | #   | Harness                             | Proves                                                                                                    |
    | --- | ----------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -1142,15 +1173,27 @@ A `pending` validator marker means its deploy died part-way, so the next
    | 6   | `graphics-package`                  | Template Package publication is atomic and its retry is idempotent.                                       |
    | 7   | [Fault injection](#fault-injection) | Unavailable content, integrity failure, D1 outage, R2 outage with a warm cache.                           |
 
-**Validator gate cleanup.** The validator gate stages fixtures directly, with
-no Graphics Ingestion Operation that retention could find, so it records every
-key in `.cache/acceptance/silent-video-validator-cleanup.json` (private,
-gitignored) before writing it, and deletes them all at the end. A delete that
-fails leaves the file, fails the run with `harness-cleanup-incomplete`, and
-makes the next run stop with `harness-cleanup-pending`. A poster stays listed
-until its Workflow instance is seen to settle, since the instance may still
-write it. Retry with `pnpm accept silent-video-validator --deployed --cleanup`
-with the same URL and account (no operator needed); it is safe to repeat. The
+   Gates 3 and 4 read fixture pages and write nothing, so they also run
+   unattended in the Deploy workflow's staging job, against the Staging
+   Installation (`pnpm accept:unattended`, the deploy descriptor's `gates`).
+   The others write, sign in or need Docker, so only a person starts them.
+
+**Validator gate cleanup.** The validator gate stages fixtures directly in the
+ingestion staging store, with no Graphics Ingestion Operation that retention
+could find, so it records every key in
+`.cache/acceptance/<environment>/silent-video-validator-cleanup.json`
+(private, gitignored) before writing it, and deletes them all at the end. A
+delete that fails leaves the file, fails the run with
+`harness-cleanup-incomplete`, and makes the next run in the same Environment
+stop with `harness-cleanup-pending`. Each Environment has its own file, so a
+cleanup pending in staging does not stop production, or the reverse. A
+production manifest left at the old path,
+`.cache/acceptance/silent-video-validator-cleanup.json`, moves to
+production's on production's next run, so its cleanup stays pending. A poster
+stays listed until its Workflow instance is seen to settle, since the instance
+may still write it. Retry with
+`pnpm accept silent-video-validator --deployed --cleanup` with the same
+Environment, URL and account (no operator needed); it is safe to repeat. The
 Workflow instances stay, holding facts only.
 
 Each harness prints one line on success and stable failure codes on failure.

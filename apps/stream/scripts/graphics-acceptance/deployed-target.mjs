@@ -10,11 +10,12 @@
  * together: one URL, one explicit account, and the bucket and Workflow the
  * installation that URL names actually binds.
  *
- * "The installation" is a pair of Wrangler configs, the app's and the
- * validator's. The committed pair is production's; #525's staging will be
- * another pair passed to the same resolver. Every consistency rule is checked
- * against the pair, so an alternate URL with production's configs is refused
- * rather than quietly sending the validator's writes to production.
+ * "The Installation" is a pair of Wrangler configs, the app's and the
+ * validator's, resolved for one Environment (#525): production is their top
+ * level, any other Environment their `env.<name>` block. Every consistency
+ * rule is checked against the resolved pair, so a staging URL with
+ * production's configs, or the reverse, is refused rather than quietly sending
+ * the validator's writes to the other Environment.
  *
  * Resolution is pure. Nothing here opens a connection, which is what lets
  * `pnpm accept deployed` run it for the whole sequence before its first gate.
@@ -30,6 +31,13 @@ import { newOperatorPassword, operatorCredentialPlan } from './operator.mjs';
 /** Wrangler's own name for the account, so the value it is given is the value it uses. */
 export const ACCOUNT_ID_ENV = 'CLOUDFLARE_ACCOUNT_ID';
 
+/** Names the Environment a deployed run targets; unset is production, so today's runs keep their target. */
+export const ENVIRONMENT_ENV = 'STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT';
+
+/** The Environments a deployed run may target. Production's configs are the top level. */
+export const ENVIRONMENTS = ['production', 'staging'];
+const PRODUCTION = 'production';
+
 const ACCOUNT_ID_PATTERN = /^[0-9a-f]{32}$/;
 const STAGING_BINDING = 'GRAPHICS_ASSET_STAGING';
 const VALIDATOR_SERVICE_BINDING = 'SILENT_VIDEO_PLAYBACK_VALIDATOR';
@@ -41,7 +49,46 @@ const VALIDATOR_CONFIG = new URL(
 	import.meta.url,
 );
 
-/** The committed production installation: the app's and the validator's configs. */
+/**
+ * The Environment a deployed run targets. An unknown name is refused rather
+ * than read as production, since a typo would otherwise write to production.
+ *
+ * @param {Record<string, string | undefined>} env
+ */
+export function acceptanceEnvironment(env) {
+	const named = env[ENVIRONMENT_ENV]?.trim() || PRODUCTION;
+	if (!ENVIRONMENTS.includes(named))
+		throw new AcceptanceFailure('harness-precondition-unmet', { reason: 'environment-unknown' });
+	return named;
+}
+
+/**
+ * Keys Wrangler carries from the top level into an `env` block. Bindings are
+ * not among them, so a block that does not restate one has none.
+ */
+const INHERITED_KEYS = ['account_id', 'route', 'routes'];
+
+/**
+ * A Wrangler config as Wrangler resolves it for one Environment: the top level
+ * for production, else its `env.<name>` block over the keys Wrangler inherits.
+ * A Worker the block does not name is `<name>-<env>`, as Wrangler names it.
+ */
+function configFor(config, environment) {
+	const { env: blocks, ...topLevel } = config;
+	if (environment === PRODUCTION) return topLevel;
+	const block = blocks?.[environment];
+	if (!block) throw inconsistent('environment-unconfigured');
+	const inherited = Object.fromEntries(
+		INHERITED_KEYS.filter((key) => key in topLevel).map((key) => [key, topLevel[key]]),
+	);
+	return {
+		...inherited,
+		name: topLevel.name === undefined ? undefined : `${topLevel.name}-${environment}`,
+		...block,
+	};
+}
+
+/** The committed Installation's configs, every Environment's block included. */
 export async function loadCommittedInstallation() {
 	const [app, validator] = await Promise.all(
 		[APP_CONFIG, VALIDATOR_CONFIG].map(async (url) => parseJsonc(await readFile(url, 'utf8'))),
@@ -78,17 +125,23 @@ function servedHosts(app) {
  * Everything a deployed run needs, or the first thing it lacks.
  *
  * Checked in the order a reader fixes them: the URL, the operator, the account,
- * then whether the installation's configs agree with each other and with the
- * URL. Every refusal is an `AcceptanceFailure` whose detail is a reason word or
- * a configuration name, never a value.
+ * then whether the Installation's configs, resolved for the Environment, agree
+ * with each other and with the URL. Every refusal is an `AcceptanceFailure`
+ * whose detail is a reason word or a configuration name, never a value.
  *
  * @param {{
  *   env: Record<string, string | undefined>,
  *   installation: { app: any, validator: any, validatorConfigPath: string },
+ *   environment?: string,
  *   requireOperator?: boolean,
  * }} options
  */
-export function resolveDeployedTarget({ env, installation, requireOperator = true }) {
+export function resolveDeployedTarget({
+	env,
+	installation,
+	environment = acceptanceEnvironment(env),
+	requireOperator = true,
+}) {
 	const origin = acceptanceOrigin({ deployed: true, env });
 	// Called for its refusal: it throws, with its notice, when no operator is
 	// available. A cleanup retry signs in as nobody, so it does not ask.
@@ -107,7 +160,9 @@ export function resolveDeployedTarget({ env, installation, requireOperator = tru
 		});
 	if (!ACCOUNT_ID_PATTERN.test(accountId)) throw inconsistent('account-malformed');
 
-	const { app, validator, validatorConfigPath } = installation;
+	const { validatorConfigPath } = installation;
+	const app = configFor(installation.app, environment);
+	const validator = configFor(installation.validator, environment);
 	let host;
 	try {
 		host = new URL(origin).host.toLowerCase();
@@ -139,5 +194,8 @@ export function resolveDeployedTarget({ env, installation, requireOperator = tru
 		stagingBucket,
 		workflow,
 		validatorConfigPath,
+		environment,
+		// The validator's Wrangler commands select the same block the target was resolved from.
+		...(environment === PRODUCTION ? {} : { wranglerEnv: environment }),
 	};
 }

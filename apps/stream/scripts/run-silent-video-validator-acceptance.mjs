@@ -8,12 +8,12 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import {
 	assertManifestTarget,
-	DEFAULT_CLEANUP_MANIFEST,
 	drainCleanupManifest,
 	isSettledStatus,
-	openCleanupManifest,
+	openEnvironmentCleanupManifest,
 } from './graphics-acceptance/cleanup-manifest.mjs';
 import {
+	acceptanceEnvironment,
 	loadCommittedInstallation,
 	resolveDeployedTarget,
 	stagingBucketOf,
@@ -336,9 +336,9 @@ async function runLocalAcceptance(
 /** Everything a deployed run checks before its first write. */
 async function preflightDeployed(
 	{ evidence },
-	{ env, installation, manifest, commands, openSession },
+	{ env, environment, installation, manifest, commands, openSession },
 ) {
-	const target = resolveDeployedTarget({ env, installation });
+	const target = resolveDeployedTarget({ env, environment, installation });
 	evidence.addSecret(target.accountId);
 	const left = await manifest.read();
 	if (left) {
@@ -446,8 +446,13 @@ async function runDeployedAcceptance(context, dependencies) {
 	return { fixtures: FIXTURE_NAMES.length, cleaned };
 }
 
-async function runDeployedCleanup(context, { env, installation, manifest, commands }) {
-	const target = resolveDeployedTarget({ env, installation, requireOperator: false });
+async function runDeployedCleanup(context, { env, environment, installation, manifest, commands }) {
+	const target = resolveDeployedTarget({
+		env,
+		environment,
+		installation,
+		requireOperator: false,
+	});
 	context.evidence.addSecret(target.accountId);
 	const left = await manifest.read();
 	if (!left) {
@@ -486,7 +491,7 @@ const NOT_INJECTED = new Proxy(
  *   commands?: ReturnType<typeof createWranglerCommands>,
  *   env?: Record<string, string | undefined>,
  *   installation?: Awaited<ReturnType<typeof loadCommittedInstallation>>,
- *   manifestPath?: string,
+ *   cacheDirectory?: string,
  *   openSession?: (origin: string) => Promise<string[]>,
  *   startValidator?: typeof startLocalValidator,
  *   pollIntervalMs?: number,
@@ -504,11 +509,20 @@ export async function main(argv = process.argv, options = {}) {
 				throw new AcceptanceFailure('harness-precondition-unmet', {
 					reason: 'cleanup-needs-deployed',
 				});
+			const env = options.env ?? process.env;
+			// Only a deployed run has an Environment, and its own cleanup manifest.
+			const environment = deployed ? acceptanceEnvironment(env) : undefined;
 			const dependencies = {
 				commands: options.commands ?? NOT_INJECTED,
-				env: options.env ?? process.env,
+				env,
+				environment,
 				installation: options.installation ?? (await loadCommittedInstallation()),
-				manifest: openCleanupManifest(options.manifestPath ?? DEFAULT_CLEANUP_MANIFEST),
+				manifest:
+					environment &&
+					openEnvironmentCleanupManifest({
+						environment,
+						cacheDirectory: options.cacheDirectory,
+					}),
 				openSession: options.openSession ?? NOT_INJECTED.openSession,
 				startValidator: options.startValidator ?? NOT_INJECTED.startValidator,
 				pollIntervalMs: options.pollIntervalMs ?? 5000,
