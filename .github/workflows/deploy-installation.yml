@@ -10,9 +10,9 @@
 # same name (`production`), shared by every app (ADR-0122). It deploys only
 # from main and holds that account's CLOUDFLARE_ACCOUNT_ID and a
 # CLOUDFLARE_API_TOKEN that can deploy every app in it (Workers Scripts:Edit,
-# D1:Edit, Containers:Edit). The job reads them
-# as the environment's own secrets; the caller passes none. One deploy of an
-# Installation runs at a time.
+# D1:Edit, Containers:Edit). The job reads them as the environment's own
+# secrets, which the caller passes by name. One deploy of an Installation runs
+# at a time.
 
 name: Deploy an Installation
 
@@ -40,6 +40,14 @@ on:
         required: false
         type: string
         default: ''
+    secrets:
+      # The Environment's own, read from its GitHub environment: a called
+      # workflow sees an environment secret only when the caller passes it by
+      # name (deploy.yml does).
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+      CLOUDFLARE_API_TOKEN:
+        required: true
 
 permissions:
   contents: read
