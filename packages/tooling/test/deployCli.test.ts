@@ -133,7 +133,7 @@ describe('the keepr-deploy command line', () => {
 
 		expect(result.status).toBe(1);
 		expect(result.stderr).toContain(
-			"stream's Worker lacks NUXT_BETTER_AUTH_SECRET: set each from apps/stream with wrangler secret put <NAME> --config .output/server/wrangler.json --env staging",
+			"stream's Worker lacks NUXT_BETTER_AUTH_SECRET: set each with pnpm secrets:sync --app stream --env staging, or from apps/stream with wrangler secret put <NAME> --config .output/server/wrangler.json --env staging",
 		);
 		expect(result.stderr).not.toContain('pnpm run build');
 	});

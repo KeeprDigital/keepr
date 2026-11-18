@@ -1,6 +1,6 @@
 # ADR-0128: A deploy refuses an Installation missing a required Worker secret
 
-Accepted · 2026-11-18 · [#1282](https://github.com/KeeprDigital/keepr/issues/1282), part of [#525](https://github.com/KeeprDigital/keepr/issues/525) · Amends ADR-0119 · Amended by ADR-0132: a Worker secret named like a var its config sets refuses the deploy too; Stream Keepr's Melee key version is a var, not a required secret
+Accepted · 2026-11-18 · [#1282](https://github.com/KeeprDigital/keepr/issues/1282), part of [#525](https://github.com/KeeprDigital/keepr/issues/525) · Amends ADR-0119 · Amended by ADR-0132: a Worker secret named like a var its config sets refuses the deploy too; Stream Keepr's Melee key version is a var, not a required secret · Amended by ADR-0134: the refusal names `pnpm secrets:sync`, which sets each secret from 1Password; `worker.name` names a Worker its source config leaves to the build
 
 ### Decision
 

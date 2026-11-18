@@ -9,6 +9,7 @@
 		"slots": "keepr-slots",
 		"reap": "keepr-reap-workerd",
 		"deploy": "keepr-deploy deploy",
+		"secrets:sync": "keepr-secrets-sync",
 		"release:version": "changeset version && node packages/tooling/scripts/changelog.mjs",
 		"release:publish": "node packages/tooling/scripts/release-gate.mjs && changeset git-tag",
 		"accounts:stand-in": "pnpm --filter @keepr/accounts-stand-in start",
