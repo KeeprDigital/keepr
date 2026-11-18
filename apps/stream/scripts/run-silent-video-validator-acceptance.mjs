@@ -10,7 +10,7 @@ import {
 	assertManifestTarget,
 	drainCleanupManifest,
 	isSettledStatus,
-	openEnvironmentCleanupManifest,
+	openInstallationCleanupManifest,
 } from './graphics-acceptance/cleanup-manifest.mjs';
 import {
 	acceptanceEnvironment,
@@ -42,12 +42,14 @@ import {
  * 1. **Preflight, before anything is written.** The shared deployed target
  *    (`deployed-target.mjs`) resolves the URL, the operator, an explicit
  *    account, and the bucket and Workflow the installation that URL names
- *    binds. A cleanup manifest left by an earlier run stops it. The operator
- *    signs in, and the account is asked read-only whether it holds the bucket
- *    and the Workflow.
+ *    binds. The account is asked read-only whether it holds the bucket and the
+ *    Workflow. What an earlier run's cleanup manifest still lists is deleted,
+ *    and a run stops if any of it remains. Then the operator signs in.
  * 2. **Every write is recorded first** in the cleanup manifest
- *    (`cleanup-manifest.mjs`), and deleted at the end whatever the verdict. A
- *    delete that fails leaves its key listed and fails the run.
+ *    (`cleanup-manifest.mjs`), an object in the Installation's own staging
+ *    bucket, and deleted at the end whatever the verdict. A delete that fails
+ *    leaves its key listed and fails the run, and the next run, wherever it
+ *    runs, deletes it before it stages anything (ADR-0129).
  * 3. **Output is evidence only.** Pass and failure lines go through the shared
  *    formatter; a failure names its fixture, step and exit code, never a key,
  *    digest, validation id, Wrangler argument or remote diagnostic.
@@ -333,23 +335,13 @@ async function runLocalAcceptance(
 	}
 }
 
-/** Everything a deployed run checks before its first write. */
+/** Everything a deployed run checks before its first write, and what an earlier run left. */
 async function preflightDeployed(
 	{ evidence },
-	{ env, environment, installation, manifest, commands, openSession },
+	{ env, environment, installation, openManifest, commands, openSession },
 ) {
 	const target = resolveDeployedTarget({ env, environment, installation });
 	evidence.addSecret(target.accountId);
-	const left = await manifest.read();
-	if (left) {
-		process.stderr.write(
-			'An earlier deployed run could not delete everything it staged. Run ' +
-				'`pnpm accept silent-video-validator --deployed --cleanup` with the same target first.\n',
-		);
-		throw new AcceptanceFailure('harness-cleanup-pending', {
-			remaining: left.objects?.length ?? 0,
-		});
-	}
 	// Read-only probes before the sign-in, because a bootstrapping sign-in
 	// creates or resets an account and is itself a write.
 	await remote('harness-target-unverified', { step: 'bucket' }, () =>
@@ -358,8 +350,31 @@ async function preflightDeployed(
 	await remote('harness-target-unverified', { step: 'workflow' }, () =>
 		commands.probeWorkflow({ target }),
 	);
+	const manifest = openManifest(target);
+	const earlier = await cleanEarlierRun({ manifest, commands, target });
 	for (const cookie of await openSession(target.origin)) evidence.addSecret(cookie);
-	return target;
+	return { target, manifest, earlier };
+}
+
+/**
+ * Delete what an earlier run's manifest still lists, before this run stages
+ * anything: a run no person watched, in CI, leaves its leftovers to the next.
+ * Answers how many were deleted; refuses to go on while any remain.
+ */
+async function cleanEarlierRun({ manifest, commands, target }) {
+	const left = await manifest.read();
+	if (!left) return 0;
+	assertManifestTarget(left, target);
+	manifest.resume(left);
+	const { cleaned, remaining } = await drainCleanupManifest({ manifest, commands, target });
+	if (remaining > 0) {
+		process.stderr.write(
+			'An earlier deployed run left objects this run could not delete either. Retry with ' +
+				'`pnpm accept silent-video-validator --deployed --cleanup` against the same target.\n',
+		);
+		throw new AcceptanceFailure('harness-cleanup-pending', { remaining });
+	}
+	return cleaned;
 }
 
 async function runDeployedFixture({ commands, manifest, target, pollIntervalMs }, name, suffix) {
@@ -416,15 +431,15 @@ async function runDeployedFixture({ commands, manifest, target, pollIntervalMs }
 }
 
 async function runDeployedAcceptance(context, dependencies) {
-	const target = await preflightDeployed(context, dependencies);
-	const { manifest, commands } = dependencies;
+	const { target, manifest, earlier } = await preflightDeployed(context, dependencies);
+	const { commands } = dependencies;
 	const suffix = Date.now().toString(36);
 
-	manifest.begin(target);
+	manifest.begin();
 	let cleaned = 0;
 	try {
 		for (const name of FIXTURE_NAMES) {
-			await runDeployedFixture({ ...dependencies, target }, name, suffix);
+			await runDeployedFixture({ ...dependencies, manifest, target }, name, suffix);
 			context.record([]);
 		}
 	} finally {
@@ -443,10 +458,13 @@ async function runDeployedAcceptance(context, dependencies) {
 			]);
 		}
 	}
-	return { fixtures: FIXTURE_NAMES.length, cleaned };
+	return { fixtures: FIXTURE_NAMES.length, cleaned, ...(earlier > 0 ? { earlier } : {}) };
 }
 
-async function runDeployedCleanup(context, { env, environment, installation, manifest, commands }) {
+async function runDeployedCleanup(
+	context,
+	{ env, environment, installation, openManifest, commands },
+) {
 	const target = resolveDeployedTarget({
 		env,
 		environment,
@@ -454,6 +472,7 @@ async function runDeployedCleanup(context, { env, environment, installation, man
 		requireOperator: false,
 	});
 	context.evidence.addSecret(target.accountId);
+	const manifest = openManifest(target);
 	const left = await manifest.read();
 	if (!left) {
 		context.record([]);
@@ -510,17 +529,18 @@ export async function main(argv = process.argv, options = {}) {
 					reason: 'cleanup-needs-deployed',
 				});
 			const env = options.env ?? process.env;
-			// Only a deployed run has an Environment, and its own cleanup manifest.
+			// Only a deployed run has an Environment, and its Installation's cleanup manifest.
 			const environment = deployed ? acceptanceEnvironment(env) : undefined;
+			const commands = options.commands ?? NOT_INJECTED;
 			const dependencies = {
-				commands: options.commands ?? NOT_INJECTED,
+				commands,
 				env,
 				environment,
 				installation: options.installation ?? (await loadCommittedInstallation()),
-				manifest:
-					environment &&
-					openEnvironmentCleanupManifest({
-						environment,
+				openManifest: (target) =>
+					openInstallationCleanupManifest({
+						target,
+						commands,
 						cacheDirectory: options.cacheDirectory,
 					}),
 				openSession: options.openSession ?? NOT_INJECTED.openSession,

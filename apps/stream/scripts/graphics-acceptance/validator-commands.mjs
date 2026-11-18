@@ -27,6 +27,9 @@ import { join } from 'node:path';
 import process from 'node:process';
 import { ACCOUNT_ID_ENV } from './deployed-target.mjs';
 
+/** What `wrangler r2 object get` says, local or remote, of a key the bucket does not hold. */
+const ABSENT_OBJECT = 'The specified key does not exist.';
+
 export class RemoteCommandFailure extends Error {
 	/**
 	 * @param {string} step One word naming the command, e.g. `put`.
@@ -52,8 +55,8 @@ function stripAnsi(text) {
 }
 
 /**
- * Run `wrangler` and answer with its exit code and stdout. Stderr is drained
- * and dropped: it is never evidence.
+ * Run `wrangler` and answer with its exit code, stdout and stderr. Stderr is
+ * never evidence: the adapter reads it only for Wrangler's own fixed words.
  *
  * @param {string[]} argumentList
  * @param {{ cwd: string, env: Record<string, string | undefined> }} options
@@ -66,10 +69,11 @@ export function executeWrangler(argumentList, { cwd, env }) {
 			stdio: ['ignore', 'pipe', 'pipe'],
 		});
 		let stdout = '';
+		let stderr = '';
 		child.stdout.setEncoding('utf8').on('data', (chunk) => (stdout += chunk));
-		child.stderr.resume();
+		child.stderr.setEncoding('utf8').on('data', (chunk) => (stderr += chunk));
 		child.once('error', reject);
-		child.once('close', (code) => resolve({ code, stdout }));
+		child.once('close', (code) => resolve({ code, stdout, stderr }));
 	});
 }
 
@@ -107,10 +111,14 @@ export function createWranglerCommands({
 	 * `target.local` is a local run's persistence directory. Anything else is a
 	 * deployed target, and runs on its own account and nowhere else.
 	 */
-	async function wrangler(step, target, argumentList) {
+	async function wrangler(step, target, argumentList, { absentAnswers } = {}) {
 		const env = { ...baseEnv };
 		if (!target.local) env[ACCOUNT_ID_ENV] = target.accountId;
-		const { code, stdout } = await execute(
+		const {
+			code,
+			stdout,
+			stderr = '',
+		} = await execute(
 			[
 				...argumentList,
 				'--config',
@@ -119,6 +127,8 @@ export function createWranglerCommands({
 			],
 			{ cwd: repoRoot, env },
 		);
+		if (code !== 0 && absentAnswers !== undefined && stripAnsi(stderr).includes(ABSENT_OBJECT))
+			return absentAnswers;
 		if (code !== 0) throw new RemoteCommandFailure(step, code);
 		return stripAnsi(stdout);
 	}
@@ -159,18 +169,17 @@ export function createWranglerCommands({
 				]);
 			});
 		},
+		/** The object's bytes, or undefined when the bucket holds no such key. */
 		async getObject({ target, key }) {
 			return await withWorkspace(async (file) => {
-				await wrangler('get', target, [
-					'r2',
-					'object',
+				const absent = Symbol('absent');
+				const read = await wrangler(
 					'get',
-					objectPath(target, key),
-					'--file',
-					file,
-					...storage(target),
-				]);
-				return await readFile(file);
+					target,
+					['r2', 'object', 'get', objectPath(target, key), '--file', file, ...storage(target)],
+					{ absentAnswers: absent },
+				);
+				return read === absent ? undefined : await readFile(file);
 			});
 		},
 		/** R2 deletes are idempotent: an absent key deletes successfully, which is what makes a retry safe. */

@@ -133,8 +133,8 @@ function approvalChecklist(environments) {
 		'- Nothing is on air on any production Installation this run deploys.',
 		...(environments.includes('staging')
 			? [
-					'- Every staging job passed: deployed, verified, and its unattended acceptance gates green.',
-					'- The acceptance gates that write ran against staging and passed, when this Release needs them (apps/stream/README.md § Deploy day).',
+					'- Every staging job passed: deployed, verified, and its acceptance gates green on this build. Its summary lists them (Stream Keepr: every deployed gate, 1–6 of apps/stream/README.md § Deploy day).',
+					'- Fault injection ran against staging and passed, when this Release needs it (apps/stream/README.md § Fault injection).',
 				]
 			: [
 					'- This is a rollback or a redeploy: the Release already passed staging, or production must have it now.',

@@ -20,7 +20,9 @@ const TARGET = {
 type Target = typeof TARGET & { wranglerEnv?: string };
 
 /** A stand-in Wrangler: it downloads an empty object to a `get`'s `--file`, and exits with `result`. */
-function adapter(result = { code: 0, stdout: '' }) {
+function adapter(
+	result: { code: number; stdout: string; stderr?: string } = { code: 0, stdout: '' },
+) {
 	const execute = vi.fn(
 		async (argv: string[], _options: { cwd: string; env: Record<string, string | undefined> }) => {
 			if (argv.includes('get')) await writeFile(argv[argv.indexOf('--file') + 1]!, '');
@@ -131,6 +133,23 @@ describe('the validator command adapter', () => {
 		expect(argv).toEqual(expect.arrayContaining(['--local', '--persist-to', '/tmp/state']));
 		expect(argv).not.toContain('--remote');
 		expect(options.env.CLOUDFLARE_ACCOUNT_ID).toBe('the-shell-account');
+	});
+
+	// The cleanup manifest is an object that is absent whenever nothing is pending.
+	it.each([
+		['answers no object for a key the bucket does not hold', 'The specified key does not exist.'],
+		['fails on any other error', 'Authentication error [code: 10000]'],
+	])('get %s', async (title, stderr) => {
+		const { commands } = adapter({
+			code: 1,
+			stdout: '',
+			stderr: `\u001B[31m✘ [ERROR]\u001B[0m ${stderr}\n`,
+		});
+
+		const read = commands.getObject({ target: TARGET, key: 'some/key' });
+
+		if (title.startsWith('answers')) await expect(read).resolves.toBeUndefined();
+		else await expect(read).rejects.toMatchObject({ step: 'get', exit: 1 });
 	});
 
 	it('fails with the step and exit code only, never the arguments or what Wrangler printed', async () => {

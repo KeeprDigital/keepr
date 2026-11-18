@@ -144,11 +144,11 @@ describe('the keepr-deploy command line', () => {
 	});
 
 	/**
-	 * The staging job's unattended gates: each runs as the app's package script
+	 * The staging job's acceptance gates: each runs as the app's package script
 	 * against the Environment's Installation. A fake `pnpm`, alone on PATH,
 	 * records what it ran and where, and exits with the gate's status.
 	 */
-	describe('the unattended gates', () => {
+	describe('the acceptance gates', () => {
 		function gates(app: Record<string, unknown>, status = 0) {
 			const root = workspace({
 				'pnpm-workspace.yaml': 'packages: []\n',
@@ -191,17 +191,17 @@ describe('the keepr-deploy command line', () => {
 		}
 
 		it("runs each of the app's gates in its directory, against the Environment's Installation", () => {
-			const { result, ran } = gates({ gates: ['accept:unattended', 'accept:other'] });
+			const { result, ran } = gates({ gates: ['accept:deployed', 'accept:other'] });
 
 			expect(result.status, result.stderr).toBe(0);
 			expect(ran).toBe(
-				'stream run accept:unattended https://stream.keepr-staging.digital\n' +
+				'stream run accept:deployed https://stream.keepr-staging.digital\n' +
 					'stream run accept:other https://stream.keepr-staging.digital\n',
 			);
 		});
 
 		it('fails on the first gate that fails, and runs none after it', () => {
-			const { result, ran } = gates({ gates: ['accept:unattended', 'accept:other'] }, 1);
+			const { result, ran } = gates({ gates: ['accept:deployed', 'accept:other'] }, 1);
 
 			expect(result.status).toBe(1);
 			expect(ran.split('\n').filter(Boolean)).toHaveLength(1);
@@ -212,7 +212,7 @@ describe('the keepr-deploy command line', () => {
 			const { result, ran } = gates({});
 
 			expect(result.status).toBe(0);
-			expect(result.stdout).toContain('no unattended gates');
+			expect(result.stdout).toContain('no acceptance gates');
 			expect(ran).toBe('');
 		});
 	});

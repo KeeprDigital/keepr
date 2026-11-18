@@ -131,7 +131,7 @@ describe("reading the Release's deploy descriptor", () => {
 			/build/,
 		],
 		[
-			'an unattended gate that is not a script name',
+			'a gate that is not a script name',
 			{ ...STREAM_DESCRIPTOR, gates: ['accept still-images --deployed'] },
 			/gates/,
 		],

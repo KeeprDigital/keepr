@@ -1,10 +1,11 @@
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MANIFEST_KEY } from '../../../scripts/graphics-acceptance/cleanup-manifest.mjs';
 import { RemoteCommandFailure } from '../../../scripts/graphics-acceptance/validator-commands.mjs';
 import { main } from '../../../scripts/run-silent-video-validator-acceptance.mjs';
 
@@ -75,13 +76,17 @@ function rawFailure(step: string, key: string) {
 
 interface FakeOptions {
 	failPut?: boolean;
+	failManifestWrite?: boolean;
 	failDeletes?: number;
 	failProbe?: 'bucket' | 'workflow';
 	outcome?: string;
 	neverSettle?: boolean;
 }
 
-function fakeCommands(options: FakeOptions = {}) {
+/** Each account's staging bucket, outliving any one run and any one machine. */
+type Cloudflare = Map<string, Map<string, Uint8Array>>;
+
+function fakeCommands(options: FakeOptions = {}, cloudflare: Cloudflare = new Map()) {
 	const calls: {
 		op: string;
 		accountId: string;
@@ -89,9 +94,12 @@ function fakeCommands(options: FakeOptions = {}) {
 		workflow?: string;
 		key?: string;
 	}[] = [];
-	const objects = new Map<string, Uint8Array>();
 	const instances = new Map<string, object>();
 	let deleteFailures = options.failDeletes ?? 0;
+	const bucketOf = (accountId = ACCOUNT) => {
+		if (!cloudflare.has(accountId)) cloudflare.set(accountId, new Map());
+		return cloudflare.get(accountId)!;
+	};
 	const log = (
 		op: string,
 		target: { accountId: string; stagingBucket: string; workflow: string },
@@ -107,7 +115,7 @@ function fakeCommands(options: FakeOptions = {}) {
 
 	return {
 		calls,
-		objects,
+		bucket: bucketOf,
 		async probeBucket({ target }: any) {
 			log('probe-bucket', target);
 			if (options.failProbe === 'bucket') throw rawFailure('info', '');
@@ -118,27 +126,28 @@ function fakeCommands(options: FakeOptions = {}) {
 		},
 		async putObject({ target, key, bytes }: any) {
 			log('put', target, key);
-			if (options.failPut) throw rawFailure('put', key);
-			objects.set(key, bytes);
+			if (key === MANIFEST_KEY ? options.failManifestWrite : options.failPut)
+				throw rawFailure('put', key);
+			bucketOf(target.accountId).set(key, bytes);
 		},
 		async getObject({ target, key }: any) {
 			log('get', target, key);
-			return objects.get(key);
+			return bucketOf(target.accountId).get(key);
 		},
 		async deleteObject({ target, key }: any) {
 			log('delete', target, key);
-			if (deleteFailures > 0) {
+			if (key !== MANIFEST_KEY && deleteFailures > 0) {
 				deleteFailures -= 1;
 				throw rawFailure('delete', key);
 			}
-			objects.delete(key);
+			bucketOf(target.accountId).delete(key);
 		},
 		/** Plays the deployed Workflow: renders a poster and settles with its output. */
 		async triggerWorkflow({ target, id, params }: any) {
 			log('trigger', target);
 			const posterKey = `validation/silent-video/${id}/poster`;
 			const poster = Buffer.from(`poster for ${id}`);
-			objects.set(posterKey, poster);
+			bucketOf(target.accountId).set(posterKey, poster);
 			instances.set(id, {
 				outcome: options.outcome ?? 'accepted',
 				idempotencyKey: params.idempotencyKey,
@@ -161,14 +170,17 @@ function fakeCommands(options: FakeOptions = {}) {
 	};
 }
 
+/** The cleanup manifest an account's staging bucket holds, or undefined. */
+function manifestIn(commands: ReturnType<typeof fakeCommands>, accountId = ACCOUNT) {
+	const bytes = commands.bucket(accountId).get(MANIFEST_KEY);
+	return bytes && JSON.parse(Buffer.from(bytes).toString('utf8'));
+}
+
 let workspace: string;
-/** Production's cleanup manifest under the run's acceptance cache. */
-let manifestPath: string;
 let output: string;
 
 beforeEach(async () => {
 	workspace = await mkdtemp(join(tmpdir(), 'validator-acceptance-test-'));
-	manifestPath = join(workspace, 'production', 'silent-video-validator-cleanup.json');
 	output = '';
 	const capture = (chunk: unknown) => {
 		output += String(chunk);
@@ -186,7 +198,11 @@ afterEach(async () => {
 
 async function run(
 	commands: ReturnType<typeof fakeCommands>,
-	{ env = ENV as Record<string, string | undefined>, flags = ['--deployed'] } = {},
+	{
+		env = ENV as Record<string, string | undefined>,
+		flags = ['--deployed'],
+		cacheDirectory = workspace,
+	} = {},
 ) {
 	const openSession = vi.fn(async () => ['session=a-session-cookie-value']);
 	process.exitCode = undefined;
@@ -194,7 +210,7 @@ async function run(
 		commands,
 		env,
 		installation: INSTALLATION,
-		cacheDirectory: workspace,
+		cacheDirectory,
 		openSession,
 		pollIntervalMs: 0,
 	});
@@ -205,10 +221,17 @@ function mutations(commands: ReturnType<typeof fakeCommands>) {
 	return commands.calls.filter((call) => MUTATIONS.has(call.op));
 }
 
+/** What the run staged and triggered: the fixtures' writes, not the manifest's. */
+function staged(commands: ReturnType<typeof fakeCommands>) {
+	return commands.calls.filter(
+		(call) => (call.op === 'put' && call.key !== MANIFEST_KEY) || call.op === 'trigger',
+	);
+}
+
 /** Nothing the evidence contract withholds: keys, digests, ids, filenames, Wrangler arguments, raw stderr. */
 function expectSafe(text: string) {
 	expect(text).not.toMatch(
-		/ingestion\/|validation\/silent-video|acceptance-[a-z0-9]+-|[0-9a-f]{32}|--remote|\[ERROR\]|\.mp4|\.webm/u,
+		/ingestion\/|validation\/silent-video|acceptance-[a-z0-9]+-|[0-9a-f]{32}|--remote|\[ERROR\]|\.mp4|\.webm|\.json/u,
 	);
 }
 
@@ -238,7 +261,6 @@ describe('deployed validator acceptance: preflight', () => {
 		expect(commands.calls).toEqual([]);
 		expect(openSession).not.toHaveBeenCalled();
 		expect(output).toContain(`silent-video-validator-v1 ${code}`);
-		expect(existsSync(manifestPath)).toBe(false);
 		expectSafe(output);
 	});
 
@@ -274,7 +296,6 @@ describe('deployed validator acceptance: preflight', () => {
 
 		expect(process.exitCode).toBe(1);
 		expect(output).toContain('silent-video-validator-v1 harness-precondition-unmet reason=Error');
-		expect(existsSync(manifestPath)).toBe(false);
 	});
 });
 
@@ -291,10 +312,10 @@ describe('deployed validator acceptance: routing', () => {
 				),
 			),
 		).toEqual(new Set([`${ACCOUNT} ${BUCKET} ${WORKFLOW}`]));
-		expect(commands.calls.filter((call) => call.op === 'put')).toHaveLength(3);
-		expect(commands.calls.filter((call) => call.op === 'trigger')).toHaveLength(3);
-		expect(commands.objects.size).toBe(0);
-		expect(existsSync(manifestPath)).toBe(false);
+		expect(staged(commands).filter((call) => call.op === 'put')).toHaveLength(3);
+		expect(staged(commands).filter((call) => call.op === 'trigger')).toHaveLength(3);
+		// The manifest went with the last object it listed.
+		expect(commands.bucket().size).toBe(0);
 		expect(output.trim()).toBe(
 			'silent-video-validator-v1 acceptance passed checks=3 fixtures=3 cleaned=6',
 		);
@@ -313,8 +334,22 @@ describe('deployed validator acceptance: redacted failures', () => {
 		expectSafe(output);
 		// The source was recorded before its put, so cleanup tries it even though
 		// the put's own outcome is unknown.
-		expect(commands.calls.filter((call) => call.op === 'delete')).toHaveLength(1);
-		expect(existsSync(manifestPath)).toBe(false);
+		expect(
+			commands.calls.filter((call) => call.op === 'delete' && call.key !== MANIFEST_KEY),
+		).toHaveLength(1);
+		expect(manifestIn(commands)).toBeUndefined();
+	});
+
+	it('stages nothing it could not first record in the manifest', async () => {
+		const commands = fakeCommands({ failManifestWrite: true });
+		const { exitCode } = await run(commands);
+
+		expect(exitCode).toBe(1);
+		expect(output).toContain(
+			'silent-video-validator-v1 validator-command-failed step=manifest exit=1',
+		);
+		expect(staged(commands)).toEqual([]);
+		expectSafe(output);
 	});
 
 	it('reports an inexact acceptance by field, never by dumping the Workflow output', async () => {
@@ -329,66 +364,88 @@ describe('deployed validator acceptance: redacted failures', () => {
 });
 
 describe('deployed validator acceptance: cleanup', () => {
-	it('fails a run whose deletion failed, keeps the manifest, and refuses the next run until a retry', async () => {
-		const failing = fakeCommands({ failDeletes: 2 });
-		const first = await run(failing);
+	// The manifest is an object in the Installation's own staging bucket, so a
+	// run on a CI runner that is gone leaves it to the next run, wherever it runs.
+	it('fails a run whose deletion failed, and the next run, on another machine, removes what it left before staging more', async () => {
+		const cloudflare: Cloudflare = new Map();
+		const first = await run(fakeCommands({ failDeletes: 2 }, cloudflare));
 
 		expect(first.exitCode).toBe(1);
 		expect(output).toContain('silent-video-validator-v1 harness-cleanup-incomplete remaining=2');
 		expect(output).not.toContain('acceptance passed');
 		expectSafe(output);
-		const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-		expect(manifest.target).toEqual({
-			accountId: ACCOUNT,
-			stagingBucket: BUCKET,
-			workflow: WORKFLOW,
-		});
-		expect(manifest.objects).toHaveLength(2);
+		const left = manifestIn(fakeCommands({}, cloudflare));
+		expect(left.target).toEqual({ accountId: ACCOUNT, stagingBucket: BUCKET, workflow: WORKFLOW });
+		expect(left.objects).toHaveLength(2);
 
 		output = '';
-		const blocked = fakeCommands();
-		const second = await run(blocked);
-		expect(second.exitCode).toBe(1);
+		const elsewhere = await mkdtemp(join(tmpdir(), 'validator-acceptance-elsewhere-'));
+		const next = fakeCommands({}, cloudflare);
+		try {
+			expect((await run(next, { cacheDirectory: elsewhere })).exitCode).toBeUndefined();
+		} finally {
+			await rm(elsewhere, { recursive: true, force: true });
+		}
+
+		const leftKeys: string[] = left.objects.map(({ key }: { key: string }) => key);
+		const deletesOfLeft = next.calls.filter(
+			(call) => call.op === 'delete' && leftKeys.includes(call.key!),
+		);
+		expect(deletesOfLeft).toHaveLength(2);
+		expect(next.calls.indexOf(deletesOfLeft.at(-1)!)).toBeLessThan(
+			next.calls.indexOf(staged(next)[0]!),
+		);
+		expect(next.bucket().size).toBe(0);
+		expect(output.trim()).toBe(
+			'silent-video-validator-v1 acceptance passed checks=3 fixtures=3 cleaned=6 earlier=2',
+		);
+	});
+
+	it('stages nothing while what an earlier run left cannot be deleted', async () => {
+		const cloudflare: Cloudflare = new Map();
+		await run(fakeCommands({ failDeletes: 2 }, cloudflare));
+		output = '';
+
+		const blocked = fakeCommands({ failDeletes: 2 }, cloudflare);
+		expect((await run(blocked)).exitCode).toBe(1);
 		expect(output).toContain('silent-video-validator-v1 harness-cleanup-pending remaining=2');
-		expect(mutations(blocked)).toEqual([]);
+		expect(staged(blocked)).toEqual([]);
+		expect(manifestIn(blocked).objects).toHaveLength(2);
+		expectSafe(output);
+	});
 
+	it('retries the deletes alone, with no operator, and a second retry finds nothing', async () => {
+		const cloudflare: Cloudflare = new Map();
+		await run(fakeCommands({ failDeletes: 2 }, cloudflare));
 		output = '';
-		const retry = fakeCommands();
-		for (const { key } of manifest.objects) retry.objects.set(key, new Uint8Array(1));
+
+		const retry = fakeCommands({}, cloudflare);
 		// A retry signs in as nobody, so it does not need the operator.
 		const retried = await run(retry, {
 			env: { ...ENV, STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD: undefined },
 			flags: ['--deployed', '--cleanup'],
 		});
 		expect(retried.exitCode).toBeUndefined();
-		expect(retry.objects.size).toBe(0);
+		expect(retry.bucket().size).toBe(0);
 		expect(output.trim()).toBe('silent-video-validator-v1 acceptance passed checks=1 cleaned=2');
-		expect(existsSync(manifestPath)).toBe(false);
 
-		// Idempotent: a second retry finds nothing and deletes nothing.
 		output = '';
-		const again = fakeCommands();
-		expect(
-			(
-				await run(again, {
-					flags: ['--deployed', '--cleanup'],
-				})
-			).exitCode,
-		).toBeUndefined();
+		const again = fakeCommands({}, cloudflare);
+		expect((await run(again, { flags: ['--deployed', '--cleanup'] })).exitCode).toBeUndefined();
 		expect(mutations(again)).toEqual([]);
 		expect(output.trim()).toBe('silent-video-validator-v1 acceptance passed checks=1 cleaned=0');
 	});
 
 	it('keeps a poster listed while its Workflow has not settled, and a later retry clears it', async () => {
-		const unsettled = fakeCommands({ neverSettle: true });
+		const cloudflare: Cloudflare = new Map();
+		const unsettled = fakeCommands({ neverSettle: true }, cloudflare);
 		const first = await run(unsettled);
 
 		expect(first.exitCode).toBe(1);
 		expect(output).toContain('silent-video-validator-v1 validator-did-not-settle fixture=h264Mp4');
 		// The source is gone; the poster the instance may still write is not forgotten.
 		expect(output).toContain('silent-video-validator-v1 harness-cleanup-incomplete remaining=1');
-		const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-		expect(manifest.objects).toEqual([
+		expect(manifestIn(unsettled).objects).toEqual([
 			{
 				key: expect.stringMatching(/^validation\/silent-video\//u),
 				instance: expect.any(String),
@@ -397,119 +454,120 @@ describe('deployed validator acceptance: cleanup', () => {
 		expectSafe(output);
 
 		output = '';
-		const settled = fakeCommands();
-		expect(
-			(
-				await run(settled, {
-					flags: ['--deployed', '--cleanup'],
-				})
-			).exitCode,
-		).toBeUndefined();
+		const settled = fakeCommands({}, cloudflare);
+		expect((await run(settled, { flags: ['--deployed', '--cleanup'] })).exitCode).toBeUndefined();
 		expect(output.trim()).toBe('silent-video-validator-v1 acceptance passed checks=1 cleaned=1');
-		expect(existsSync(manifestPath)).toBe(false);
+		expect(manifestIn(settled)).toBeUndefined();
 	});
 
 	it('treats a manifest that lists nothing as no manifest, so a run killed before its first write blocks nothing', async () => {
-		await mkdir(dirname(manifestPath), { recursive: true });
-		await writeFile(
-			manifestPath,
-			JSON.stringify({
-				version: 1,
-				target: { accountId: ACCOUNT, stagingBucket: BUCKET, workflow: WORKFLOW },
-				objects: [],
-			}),
+		const commands = fakeCommands();
+		commands.bucket().set(
+			MANIFEST_KEY,
+			Buffer.from(
+				JSON.stringify({
+					version: 1,
+					target: { accountId: ACCOUNT, stagingBucket: BUCKET, workflow: WORKFLOW },
+					objects: [],
+				}),
+			),
 		);
 
-		expect((await run(fakeCommands())).exitCode).toBeUndefined();
-		expect(existsSync(manifestPath)).toBe(false);
+		expect((await run(commands)).exitCode).toBeUndefined();
+		expect(manifestIn(commands)).toBeUndefined();
 	});
 
 	it('keeps what a retry could not delete, and deletes the rest', async () => {
-		await run(fakeCommands({ failDeletes: 2 }));
+		const cloudflare: Cloudflare = new Map();
+		await run(fakeCommands({ failDeletes: 2 }, cloudflare));
 		output = '';
 
-		const retried = await run(fakeCommands({ failDeletes: 1 }), {
-			flags: ['--deployed', '--cleanup'],
-		});
+		const retry = fakeCommands({ failDeletes: 1 }, cloudflare);
+		const retried = await run(retry, { flags: ['--deployed', '--cleanup'] });
 
 		expect(retried.exitCode).toBe(1);
 		expect(output).toContain('harness-cleanup-incomplete remaining=1');
-		expect(JSON.parse(await readFile(manifestPath, 'utf8')).objects).toHaveLength(1);
+		expect(manifestIn(retry).objects).toHaveLength(1);
 	});
 
-	it('refuses to retry a manifest written for another account', async () => {
-		await run(fakeCommands({ failDeletes: 1 }));
-		output = '';
+	it('refuses to retry a manifest written for another Workflow', async () => {
+		const commands = fakeCommands();
+		commands.bucket().set(
+			MANIFEST_KEY,
+			Buffer.from(
+				JSON.stringify({
+					version: 1,
+					target: { accountId: ACCOUNT, stagingBucket: BUCKET, workflow: 'another-workflow' },
+					objects: [{ key: 'ingestion/left-behind/source' }],
+				}),
+			),
+		);
 
-		const other = fakeCommands();
-		const retried = await run(other, {
-			env: {
-				...ENV,
-				CLOUDFLARE_ACCOUNT_ID: 'f'.repeat(32),
-			},
-			flags: ['--deployed', '--cleanup'],
-		});
-
-		expect(retried.exitCode).toBe(1);
+		expect((await run(commands, { flags: ['--deployed', '--cleanup'] })).exitCode).toBe(1);
 		expect(output).toContain('harness-target-inconsistent reason=manifest-target-mismatch');
-		expect(mutations(other)).toEqual([]);
+		expect(mutations(commands)).toEqual([]);
 		expectSafe(output);
 	});
 });
 
-describe('deployed validator acceptance: one cleanup manifest per Environment', () => {
+describe('deployed validator acceptance: one cleanup manifest per Installation', () => {
 	const environments = { production: ENV, staging: STAGING_ENV };
+	const accounts = { production: ACCOUNT, staging: STAGING_ACCOUNT };
 
 	it.each([
 		['production', 'staging'],
 		['staging', 'production'],
 	] as const)('a cleanup pending in %s does not block %s', async (left, next) => {
+		const cloudflare: Cloudflare = new Map();
 		expect(
-			(await run(fakeCommands({ failDeletes: 1 }), { env: environments[left] })).exitCode,
+			(await run(fakeCommands({ failDeletes: 1 }, cloudflare), { env: environments[left] }))
+				.exitCode,
 		).toBe(1);
 		output = '';
 
-		expect((await run(fakeCommands(), { env: environments[next] })).exitCode).toBeUndefined();
-		expect(
-			JSON.parse(
-				await readFile(join(workspace, left, 'silent-video-validator-cleanup.json'), 'utf8'),
-			).objects,
-		).toHaveLength(1);
+		const commands = fakeCommands({}, cloudflare);
+		expect((await run(commands, { env: environments[next] })).exitCode).toBeUndefined();
+		expect(manifestIn(commands, accounts[left]).objects).toHaveLength(1);
 	});
 
-	/** Where the one manifest, production's, was kept before there were Environments. */
-	async function leaveUnscopedManifest() {
-		const path = join(workspace, 'silent-video-validator-cleanup.json');
+	/** A manifest a run kept on this machine, before the manifest moved into the Installation. */
+	async function leaveLocalManifest(path: string, accountId = ACCOUNT) {
+		await mkdir(dirname(path), { recursive: true });
 		await writeFile(
 			path,
 			JSON.stringify({
 				version: 1,
-				target: { accountId: ACCOUNT, stagingBucket: BUCKET, workflow: WORKFLOW },
+				target: { accountId, stagingBucket: BUCKET, workflow: WORKFLOW },
 				objects: [{ key: 'ingestion/left-behind/source' }],
 			}),
 		);
 		return path;
 	}
 
-	it("keeps production's pending cleanup from before Environments, and a retry clears it", async () => {
-		const unscoped = await leaveUnscopedManifest();
+	it.each([
+		['staging', 'its Environment', 'staging/silent-video-validator-cleanup.json'],
+		['production', 'the time before Environments', 'silent-video-validator-cleanup.json'],
+	] as const)(
+		'cleans what a %s run left listed on this machine in %s',
+		async (environment, _, path) => {
+			const local = await leaveLocalManifest(join(workspace, path), accounts[environment]);
+			const commands = fakeCommands();
 
-		const blocked = fakeCommands();
-		expect((await run(blocked)).exitCode).toBe(1);
-		expect(output).toContain('silent-video-validator-v1 harness-cleanup-pending remaining=1');
-		expect(mutations(blocked)).toEqual([]);
-		output = '';
-
-		expect((await run(fakeCommands(), { flags: ['--deployed', '--cleanup'] })).exitCode).toBe(
-			undefined,
-		);
-		expect(output.trim()).toBe('silent-video-validator-v1 acceptance passed checks=1 cleaned=1');
-		expect(existsSync(unscoped)).toBe(false);
-		expect(existsSync(manifestPath)).toBe(false);
-	});
+			expect((await run(commands, { env: environments[environment] })).exitCode).toBeUndefined();
+			expect(
+				commands.calls.some(
+					(call) => call.op === 'delete' && call.key === 'ingestion/left-behind/source',
+				),
+			).toBe(true);
+			expect(output.trim()).toContain('earlier=1');
+			expect(existsSync(local)).toBe(false);
+		},
+	);
 
 	it("leaves production's pending cleanup from before Environments to production", async () => {
-		const unscoped = await leaveUnscopedManifest();
+		const unscoped = await leaveLocalManifest(
+			join(workspace, 'silent-video-validator-cleanup.json'),
+		);
 
 		expect((await run(fakeCommands(), { env: STAGING_ENV })).exitCode).toBeUndefined();
 		expect(existsSync(unscoped)).toBe(true);

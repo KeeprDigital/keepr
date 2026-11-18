@@ -964,17 +964,18 @@ A run's jobs, per app:
    (`.github/workflows/deploy-installation.yml`): downloads the artifact and
    runs `keepr-deploy deploy --artifact --env staging` (deploy order, the D1
    recovery point, parts, migrations, the Worker, `deploy:verify`, each between
-   its markers), then the app's **unattended acceptance gates**
-   (`keepr-deploy gates`): the deploy descriptor's `gates`, Stream Keepr's
-   `pnpm accept:unattended`, which loads the still-image and silent-video
-   fixture pages from the Staging Installation in Chrome. They sign in to
-   nothing and write nothing. A failure fails the job, and production does
-   not deploy.
+   its markers), then the app's **acceptance gates** (`keepr-deploy gates`),
+   with no person present: the deploy descriptor's `gates`, Stream Keepr's
+   `pnpm accept:deployed`, every deployed gate of [Deploy day](#deploy-day)
+   step 5, 1–6. They sign in as the staging operator and write to staging
+   (ADR-0129). The job summary lists each gate's outcome. A failure fails the
+   job, and production does not deploy.
 4. **Production**, in the GitHub environment `production`, once every App's
    staging job passed: it waits for the environment's required reviewer.
    **Review deployments** approves every App's production job at once. Then
    the same deploy, of the same artifact, with `--env production`, and no
-   gates.
+   gates: a deployed gate refuses production when no person started it
+   (`harness-precondition-unmet reason=production-unattended`).
 
 Every job runs `keepr-deploy` from the workflow's own commit
 (`packages/tooling/scripts/deploy/cli.mjs`), not from the release, against the
@@ -1003,8 +1004,13 @@ repository secrets: each job pushes its app's
 [promotion markers](#promotion-markers) with a token of that App, narrowed to
 Contents and Workflows, because `GITHUB_TOKEN` can never hold `workflows` and
 GitHub refuses it a tag on a Release whose workflows differ from `main`'s.
-The caller passes all four secrets by name, and only the deploy step sees the
-Cloudflare ones. One deploy per Installation runs at a time (concurrency group
+The caller passes all four secrets by name, and only the deploy and gates
+steps see the Cloudflare ones. `staging` also holds
+`STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL` and
+`STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD`, an operator account on the
+Staging Installation, which the Apps' staging call alone passes and the gates
+step alone reads; its token also reads and writes the staging bucket's
+objects and triggers the validator's Workflow, for the validator gate. One deploy per Installation runs at a time (concurrency group
 `deploy-<app>-<environment>`); two apps deploy at once. An app joins the
 workflow with its deploy descriptor alone.
 
@@ -1013,10 +1019,11 @@ workflow with its deploy descriptor alone.
 A Release deploys itself to staging and waits at production
 ([Deploy from GitHub Actions](#deploy-from-github-actions)). Deploy day is
 what a person does while it waits, in order, from a working checkout, and
-then the approval. The gates that write (steps 4 and 5) run against staging:
-each provisions real Events and assets in the Installation it targets and
-deletes them afterwards. A harness that dies mid-run names the Event it left
-behind; delete it before rerunning.
+then the approval. The staging job has already run the deployed gates of step
+5 against staging, unattended (ADR-0129); steps 4 and 5 are how a person runs
+one again, or fault injection. Each gate provisions real Events and assets in
+the Installation it targets and deletes them afterwards. A harness that dies
+mid-run names the Event it left behind; delete it before rerunning.
 
 1. **Pre-flight.** Nothing on air in production. Docker running. Secrets
    present in each Installation
@@ -1060,8 +1067,8 @@ behind; delete it before rerunning.
    buckets are emptied with the database.
 
 3. **Deploy.** The Release's Deploy run deploys each app to staging, runs
-   its unattended gates there, and waits at production. When this Release
-   needs the gates that write, run steps 4 and 5 against staging now. Then,
+   every deployed gate there, and waits at production. When this Release
+   needs fault injection, run it against staging now. Then,
    with the plan's checklist on the run's page confirmed, nothing on air
    among it, approve `production` in **Review deployments**: every App's
    production job deploys the build staging ran. When Keepr Accounts ships in
@@ -1188,28 +1195,34 @@ A `pending` validator marker means its deploy died part-way, so the next
    | 6   | `graphics-package`                  | Template Package publication is atomic and its retry is idempotent.                                       |
    | 7   | [Fault injection](#fault-injection) | Unavailable content, integrity failure, D1 outage, R2 outage with a warm cache.                           |
 
-   Gates 3 and 4 read fixture pages and write nothing, so they also run
-   unattended in the Deploy workflow's staging job, against the Staging
-   Installation (`pnpm accept:unattended`, the deploy descriptor's `gates`).
-   The others write, sign in or need Docker, so only a person starts them.
+   Gates 1–6 also run unattended in the Deploy workflow's staging job,
+   against the Staging Installation (`pnpm accept:deployed`, the deploy
+   descriptor's `gates`), and production's approval waits for them (ADR-0129).
+   In CI (`CI` set) a deployed gate refuses production. Gate 7 stays a
+   person's.
 
 **Validator gate cleanup.** The validator gate stages fixtures directly in the
 ingestion staging store, with no Graphics Ingestion Operation that retention
-could find, so it records every key in
-`.cache/acceptance/<environment>/silent-video-validator-cleanup.json`
-(private, gitignored) before writing it, and deletes them all at the end. A
-delete that fails leaves the file, fails the run with
-`harness-cleanup-incomplete`, and makes the next run in the same Environment
-stop with `harness-cleanup-pending`. Each Environment has its own file, so a
-cleanup pending in staging does not stop production, or the reverse. A
-production manifest left at the old path,
-`.cache/acceptance/silent-video-validator-cleanup.json`, moves to
-production's on production's next run, so its cleanup stays pending. A poster
+could find, so it records every key in a cleanup manifest before writing it,
+and deletes them all at the end. The manifest is an object in the
+Installation's own staging bucket,
+`acceptance/silent-video-validator-cleanup.json`, so it outlives the CI
+runner or the checkout that wrote it (ADR-0129). A delete that fails leaves
+it there and fails the run with `harness-cleanup-incomplete`; the next
+deployed run in that Environment, wherever it runs, deletes what it lists
+before staging anything (its pass line says `earlier=<n>`), and stops with
+`harness-cleanup-pending` only when some of it still cannot be deleted. Each
+Environment's bucket is in its own account, so a cleanup pending in staging
+does not stop production, or the reverse. A manifest a run kept on its machine
+before, at `.cache/acceptance/<environment>/silent-video-validator-cleanup.json`
+or, for production, `.cache/acceptance/silent-video-validator-cleanup.json`,
+is read there when the bucket holds none, and moves into the bucket. A poster
 stays listed until its Workflow instance is seen to settle, since the instance
-may still write it. Retry with
+may still write it. Retry the deletes alone with
 `pnpm accept silent-video-validator --deployed --cleanup` with the same
-Environment, URL and account (no operator needed); it is safe to repeat. The
-Workflow instances stay, holding facts only.
+Environment, URL and account (no operator needed); it is safe to repeat. Run
+one deployed validator gate per Installation at a time: two share its
+manifest. The Workflow instances stay, holding facts only.
 
 Each harness prints one line on success and stable failure codes on failure.
 The codes, defined in `scripts/graphics-acceptance/evidence.mjs`, are the

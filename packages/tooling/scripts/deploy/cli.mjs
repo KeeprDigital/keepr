@@ -23,9 +23,10 @@
  * - `check`: what CI checks of each deployable app's Worker: each part bundled
  *   as a deploy would upload it (no Docker, no credentials), then `build`.
  * - `verify`: check the Installation serves this checkout's Release.
- * - `gates`: the descriptor's unattended acceptance gates, each against the
+ * - `gates`: the descriptor's acceptance gates, each against the
  *   Environment's Installation (`KEEPR_DEPLOY_URL`), stopping at the first
- *   that fails: the staging job's, after its deploy (ADR-0125).
+ *   that fails: the staging job's, after its deploy, with no person present
+ *   (ADR-0125, ADR-0129).
  * - `part <name>`: deploy one part between its markers, whatever its fingerprint.
  * - `mark-app <pending|deployed>`: write the app's marker by hand, recording
  *   whether its built Worker needs Keepr Accounts, as a deploy would.
@@ -54,7 +55,7 @@ const USAGE = `usage: keepr-deploy <command> --app <app> [--env <environment>]
   build [--artifact <dir>]     the descriptor's build scripts only, the output copied to <dir>
   check                        each part bundled as a deploy would, then build: CI's Worker leg
   verify --env <env>           check the Installation serves this checkout's Release
-  gates --env <env>            the app's unattended acceptance gates, against the Installation
+  gates --env <env>            the app's acceptance gates, against the Installation
   part <name> --env <env>      deploy one part between its markers, whatever its fingerprint
   mark-app <pending|deployed> --env <env>
                                write the app's marker by hand
@@ -402,7 +403,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 			console.error(`keepr-deploy: ${release.app} has no Installation in ${target}.`);
 			return 1;
 		}
-		if (gates.length === 0) log(`${release.app}@${release.version} names no unattended gates.`);
+		if (gates.length === 0) log(`${release.app}@${release.version} names no acceptance gates.`);
 		for (const gate of gates) {
 			const result = spawnSync('pnpm', ['run', gate], {
 				cwd: release.appDir,
@@ -411,11 +412,11 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 			});
 			if (result.status !== 0) {
 				log(
-					`Unattended gate ${gate} failed against ${installation.url}${result.error ? `: ${result.error.message}` : ''}.`,
+					`Acceptance gate ${gate} failed against ${installation.url}${result.error ? `: ${result.error.message}` : ''}.`,
 				);
 				return 1;
 			}
-			log(`Unattended gate ${gate} passed against ${installation.url}.`);
+			log(`Acceptance gate ${gate} passed against ${installation.url}.`);
 		}
 		return 0;
 	}

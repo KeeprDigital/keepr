@@ -17,6 +17,7 @@
  * names another Environment; each harness inherits it with the rest of the env.
  */
 
+import { appendFileSync } from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import {
@@ -152,6 +153,24 @@ async function preflightDeployDay(env) {
 }
 
 /**
+ * Which deploy-day gates passed, failed or did not run, in a GitHub Actions
+ * step summary when there is one: the staging job's, which the person
+ * approving production reads (ADR-0129).
+ */
+function summarise(env, environment, outcomes) {
+	if (!env.GITHUB_STEP_SUMMARY) return;
+	appendFileSync(
+		env.GITHUB_STEP_SUMMARY,
+		[
+			`Deployed acceptance gates against the ${environment} Environment:`,
+			'',
+			...Object.entries(outcomes).map(([harness, outcome]) => `- ${harness}: ${outcome}`),
+			'',
+		].join('\n'),
+	);
+}
+
+/**
  * What `main` runs a harness with unless it is told otherwise: nothing.
  *
  * Only the CLI entry point below passes the real spawner. A deployed runner
@@ -186,14 +205,21 @@ export async function main(
 			return;
 		}
 		process.stdout.write(`deploy-day acceptance against the ${environment} Environment\n`);
-		for (const harness of DEPLOY_DAY) {
-			process.stdout.write(`\n▶ accept ${harness} --deployed\n`);
-			const code = await runHarness(harness, ['--deployed']);
-			if (code !== 0) {
-				process.stderr.write(`\n✗ ${harness} failed; later deploy-day harnesses did not run\n`);
-				process.exitCode = code;
-				return;
+		/** @type {Record<string, 'passed' | 'failed' | 'not run'>} */
+		const outcomes = Object.fromEntries(DEPLOY_DAY.map((harness) => [harness, 'not run']));
+		try {
+			for (const harness of DEPLOY_DAY) {
+				process.stdout.write(`\n▶ accept ${harness} --deployed\n`);
+				const code = await runHarness(harness, ['--deployed']);
+				outcomes[harness] = code === 0 ? 'passed' : 'failed';
+				if (code !== 0) {
+					process.stderr.write(`\n✗ ${harness} failed; later deploy-day harnesses did not run\n`);
+					process.exitCode = code;
+					return;
+				}
 			}
+		} finally {
+			summarise(env, environment, outcomes);
 		}
 		return;
 	}

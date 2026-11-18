@@ -158,8 +158,8 @@ export const ACCEPTANCE_FAILURE_CODES = Object.freeze([
 	// settled may still write. They stay listed in the cleanup manifest, and the
 	// run is not a pass while any remain (#619).
 	'harness-cleanup-incomplete',
-	// An earlier run's cleanup manifest still lists objects, so this run refuses
-	// to stage more until a cleanup retry has removed them (#619).
+	// An earlier run's cleanup manifest lists objects this run could not delete
+	// either, so it stages nothing more until they are gone (#619, ADR-0129).
 	'harness-cleanup-pending',
 	// Silent-video validator acceptance (#619). The fixture name, the command's
 	// one-word step and a status word travel; the staged key, validation id,
