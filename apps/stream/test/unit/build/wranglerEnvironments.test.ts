@@ -83,10 +83,8 @@ function bindings(config: Resolved) {
 }
 
 const customDomains = (config: Resolved) =>
-	(config.routes ?? []).flatMap((route) =>
-		typeof route === 'object' && 'custom_domain' in route && route.custom_domain
-			? [route.pattern]
-			: [],
+	((config.routes ?? []) as (string | { pattern: string; custom_domain?: boolean })[]).flatMap(
+		(route) => (typeof route === 'object' && route.custom_domain ? [route.pattern] : []),
 	);
 
 describe.each(NAMED_ENVIRONMENTS)('the %s Environment', (_environment, { url, wranglerEnv }) => {
