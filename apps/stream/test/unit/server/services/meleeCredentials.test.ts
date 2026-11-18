@@ -1,10 +1,34 @@
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { parseJsonc } from '@keepr/tooling/scripts/jsonc.mjs';
 
 const mockRuntimeConfig = vi.fn();
 vi.stubGlobal('useRuntimeConfig', mockRuntimeConfig);
 
-const { getMeleeCredentialKeyring, protectMeleeClientSecret, revealMeleeClientSecret } =
-	await import('~~/server/services/meleeCredentials');
+const {
+	getMeleeCredentialKeyring,
+	meleeKeyringConfigurationFaultSentence,
+	protectMeleeClientSecret,
+	revealMeleeClientSecret,
+} = await import('~~/server/services/meleeCredentials');
+
+const KEY_VERSION_VAR = 'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION';
+
+type Vars = { vars?: Record<string, unknown> };
+const wrangler = parseJsonc(readFileSync('wrangler.jsonc', 'utf8')) as Vars & {
+	env: Record<string, Vars>;
+};
+
+/** Each Environment's key version as its Wrangler config sets it, where it sets one (ADR-0132). */
+const CONFIGURED_KEY_VERSIONS = (
+	[
+		['production', wrangler.vars],
+		...Object.entries(wrangler.env).map(([name, block]) => [name, block.vars]),
+	] as [string, Vars['vars']][]
+).flatMap(([environment, vars]) => {
+	const version = vars?.[KEY_VERSION_VAR];
+	return typeof version === 'string' && version.trim() ? [[environment, version] as const] : [];
+});
 
 function base64Key(fill: number): string {
 	return btoa(String.fromCharCode(...new Uint8Array(32).fill(fill)));
@@ -136,4 +160,41 @@ describe('melee credential runtime service', () => {
 			}),
 		);
 	});
+
+	// The key version is a var in each Environment's config, not a Worker secret (ADR-0132).
+	it.each(CONFIGURED_KEY_VERSIONS)(
+		'encrypts under the key version the %s config sets',
+		async (_environment, version) => {
+			mockRuntimeConfig.mockReturnValue({
+				meleeCredentialEncryptionKey: base64Key(2),
+				meleeCredentialEncryptionKeyVersion: version,
+			});
+
+			const revealed = await revealMeleeClientSecret(
+				await protectMeleeClientSecret('client-secret'),
+			);
+
+			expect(revealed).toMatchObject({ plaintext: 'client-secret', keyVersion: version });
+		},
+	);
+
+	it.each([
+		['a var left empty', ' '],
+		['no setting at all', undefined],
+	])(
+		'refuses to encrypt with %s for the key version, naming the setting',
+		async (_case, version) => {
+			mockRuntimeConfig.mockReturnValue({
+				meleeCredentialEncryptionKey: base64Key(2),
+				meleeCredentialEncryptionKeyVersion: version,
+			});
+
+			const refusal = await protectMeleeClientSecret('client-secret').catch((error) => error);
+
+			expect(refusal).toMatchObject({ code: 'MELEE_CREDENTIAL_KEY_VERSION_MISSING' });
+			expect(meleeKeyringConfigurationFaultSentence(refusal)).toBe(
+				`${KEY_VERSION_VAR} is not configured`,
+			);
+		},
+	);
 });
