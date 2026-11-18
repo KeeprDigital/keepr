@@ -32,7 +32,7 @@ import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AcceptanceFailure } from './evidence.mjs';
-import { RemoteCommandFailure } from './validator-commands.mjs';
+import { RemoteCommandFailure, remoteFailureDetail } from './validator-commands.mjs';
 
 /** Where the manifest lives in the target's staging bucket, apart from every key the app writes. */
 export const MANIFEST_KEY = 'acceptance/silent-video-validator-cleanup.json';
@@ -70,7 +70,7 @@ async function manifestCommand(action) {
 		if (error instanceof RemoteCommandFailure)
 			throw new AcceptanceFailure('validator-command-failed', {
 				step: 'manifest',
-				exit: error.exit ?? 'signal',
+				...remoteFailureDetail(error),
 			});
 		throw error;
 	}

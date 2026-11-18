@@ -19,23 +19,41 @@ const TARGET = {
 };
 type Target = typeof TARGET & { wranglerEnv?: string };
 
-/** A stand-in Wrangler: it downloads an empty object to a `get`'s `--file`, and exits with `result`. */
-function adapter(
-	result: { code: number; stdout: string; stderr?: string } = { code: 0, stdout: '' },
-) {
+type Result = { code: number; stdout: string; stderr?: string };
+
+/**
+ * A stand-in Wrangler: it downloads an empty object to a `get`'s `--file`, and
+ * exits with each of `results` in turn, the last for every call after.
+ */
+function adapter(...results: Result[]) {
+	const answers = results.length > 0 ? results : [{ code: 0, stdout: '' }];
 	const execute = vi.fn(
 		async (argv: string[], _options: { cwd: string; env: Record<string, string | undefined> }) => {
 			if (argv.includes('get')) await writeFile(argv[argv.indexOf('--file') + 1]!, '');
-			return result;
+			return answers[Math.min(execute.mock.calls.length, answers.length) - 1]!;
 		},
 	);
+	const sleep = vi.fn(async (_ms: number) => {});
 	const commands = createWranglerCommands({
 		repoRoot: '/repo',
 		execute,
+		sleep,
 		baseEnv: { PATH: '/bin', CLOUDFLARE_ACCOUNT_ID: 'the-shell-account' },
 	});
-	return { execute, commands };
+	return { execute, sleep, commands };
 }
+
+/** What Wrangler 4 prints when R2 refuses a second write to one key within a second. */
+const RATE_LIMITED: Result = {
+	code: 1,
+	stdout: '',
+	stderr: [
+		`\u001B[31m✘ \u001B[41;31m[\u001B[41;97mERROR\u001B[41;31m]\u001B[0m \u001B[1mFailed to fetch /accounts/${TARGET.accountId}/r2/buckets/${TARGET.stagingBucket}/objects/acceptance/silent-video-validator-cleanup.json - 429: Too Many Requests;\u001B[0m`,
+		'',
+		'  {"success":false,"errors":[{"code":10058,"message":"Rate limit exceeded"}],"messages":[],"result":null}',
+		'',
+	].join('\n'),
+};
 
 describe('the validator command adapter', () => {
 	type Commands = ReturnType<typeof adapter>['commands'];
@@ -140,7 +158,7 @@ describe('the validator command adapter', () => {
 		['answers no object for a key the bucket does not hold', 'The specified key does not exist.'],
 		['fails on any other error', 'Authentication error [code: 10000]'],
 	])('get %s', async (title, stderr) => {
-		const { commands } = adapter({
+		const { execute, commands } = adapter({
 			code: 1,
 			stdout: '',
 			stderr: `\u001B[31m✘ [ERROR]\u001B[0m ${stderr}\n`,
@@ -148,11 +166,50 @@ describe('the validator command adapter', () => {
 
 		const read = commands.getObject({ target: TARGET, key: 'some/key' });
 
-		if (title.startsWith('answers')) await expect(read).resolves.toBeUndefined();
-		else await expect(read).rejects.toMatchObject({ step: 'get', exit: 1 });
+		if (title.startsWith('answers')) {
+			await expect(read).resolves.toBeUndefined();
+			// Absence is an answer, not a refusal, so it is not asked again.
+			expect(execute).toHaveBeenCalledTimes(1);
+		} else await expect(read).rejects.toMatchObject({ step: 'get', exit: 1 });
 	});
 
-	it('fails with the step and exit code only, never the arguments or what Wrangler printed', async () => {
+	// R2 takes one write a second to a key (Cloudflare's R2 limits), and the
+	// cleanup manifest is rewritten faster than that; object commands are idempotent.
+	it.each([
+		['putObject', 'put'],
+		['getObject', 'get'],
+		['deleteObject', 'delete'],
+	] as const)('%s waits and retries a refused attempt', async (command, step) => {
+		const { execute, sleep, commands } = adapter(RATE_LIMITED, { code: 0, stdout: '' });
+
+		await REMOTE[command]!.run(commands);
+
+		expect(execute.mock.calls.map(([argv]) => argv[2])).toEqual([step, step]);
+		expect(sleep.mock.calls[0]![0]).toBeGreaterThanOrEqual(1000);
+	});
+
+	it('gives up on an object command after four attempts, each wait longer than the last', async () => {
+		const { execute, sleep, commands } = adapter(RATE_LIMITED);
+
+		await expect(REMOTE.putObject!.run(commands)).rejects.toBeInstanceOf(RemoteCommandFailure);
+
+		expect(execute).toHaveBeenCalledTimes(4);
+		expect(sleep.mock.calls.map(([ms]) => ms)).toEqual([1000, 2000, 4000]);
+	});
+
+	// A trigger that failed may still have started an instance.
+	it('never repeats a Workflow trigger', async () => {
+		const { execute, sleep, commands } = adapter(RATE_LIMITED);
+
+		await expect(REMOTE.triggerWorkflow!.run(commands)).rejects.toBeInstanceOf(
+			RemoteCommandFailure,
+		);
+
+		expect(execute).toHaveBeenCalledTimes(1);
+		expect(sleep).not.toHaveBeenCalled();
+	});
+
+	it('fails with the step and exit code, never the arguments or what Wrangler printed', async () => {
 		const { commands } = adapter({
 			code: 1,
 			stdout: 'a-staging-bucket/ingestion/acceptance-x-mp4/source not found',
@@ -167,6 +224,37 @@ describe('the validator command adapter', () => {
 		expect(JSON.stringify(error, Object.getOwnPropertyNames(error))).not.toMatch(
 			/ingestion|acceptance-x|a-staging-bucket/u,
 		);
+	});
+
+	// The reason is Wrangler's error line with every path and target name withheld.
+	it.each([
+		[
+			'an R2 refusal, with the Cloudflare code from its JSON body',
+			RATE_LIMITED.stderr!,
+			'Failed to fetch <path> - 429: Too Many Requests [code: 10058]',
+		],
+		[
+			'an API refusal, with the code Wrangler notes under it',
+			[
+				`✘ [ERROR] A request to the Cloudflare API (/accounts/${TARGET.accountId}/workflows/${TARGET.workflow}) failed.`,
+				'',
+				'  Authentication error [code: 10000]',
+			].join('\n'),
+			'A request to the Cloudflare API (<path>) failed. [code: 10000]',
+		],
+		[
+			'a target named bare',
+			`✘ [ERROR] Bucket ${TARGET.stagingBucket} not found on ${TARGET.accountId}\n`,
+			'Bucket <bucket> not found on <account>',
+		],
+		['nothing printed', '', undefined],
+	])('carries the reason Wrangler gave for %s', async (_title, stderr, reason) => {
+		const { commands } = adapter({ code: 1, stdout: '', stderr });
+
+		const error = await REMOTE.probeBucket!.run(commands).catch((caught: unknown) => caught);
+
+		expect(error).toBeInstanceOf(RemoteCommandFailure);
+		expect((error as RemoteCommandFailure).reason).toBe(reason);
 	});
 });
 
