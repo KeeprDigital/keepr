@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.0
+
+### Operator steps
+
+- **deploy:** The Deploy workflow's staging job runs every deployed acceptance gate (`pnpm accept:deployed`, gates 1–6 of README § Deploy day) against the Staging Installation before production's approval, and a deployed gate refuses production when it runs in CI. The validator gate keeps its cleanup manifest in the Installation's staging bucket, so the next run, wherever it runs, deletes what a failed run left. (#1289)
+
+  **Operator step, before this Release's Deploy run:** add `STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL` and `STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD`, an operator account on the Staging Installation, as secrets of the `staging` GitHub environment, and give its `CLOUDFLARE_API_TOKEN` Workers R2 Storage:Edit. Without them the staging job fails and production does not deploy.
+
+### Other changes
+
+- **deploy:** Each Environment's Wrangler configs name its Cloudflare account, so local Wrangler commands reach it with no `CLOUDFLARE_ACCOUNT_ID`, and a deploy refuses an exported one they contradict. The validator's fingerprint leaves the account out, so naming it redeploys nothing. Once it has deployed, `CLOUDFLARE_ACCOUNT_ID` can be deleted from the `staging` and `production` GitHub environments. (#1287)
+- **deploy:** A deploy refuses an Installation whose Worker lacks a required secret, naming each one missing and the command that sets it, before it changes anything (ADR-0128). A new Installation's secrets are set before its first deploy. (#1288)
+
 ## 1.9.0
 
 ### Features
