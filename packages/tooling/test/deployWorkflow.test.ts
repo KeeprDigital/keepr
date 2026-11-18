@@ -27,6 +27,7 @@ interface Job {
 	if?: string;
 	uses?: string;
 	with?: Record<string, unknown>;
+	secrets?: Record<string, string> | string;
 	strategy?: { matrix?: Record<string, unknown>; 'fail-fast'?: boolean };
 	environment?: { name: string; url?: string } | string;
 	concurrency?: { group: string; 'cancel-in-progress'?: boolean } | string;
@@ -37,7 +38,13 @@ interface Job {
 	'continue-on-error'?: unknown;
 }
 interface Workflow {
-	on: Record<string, { inputs?: Record<string, { type?: string; options?: string[] }> } | null>;
+	on: Record<
+		string,
+		{
+			inputs?: Record<string, { type?: string; options?: string[] }>;
+			secrets?: Record<string, { required?: boolean }>;
+		} | null
+	>;
 	permissions?: Record<string, string>;
 	concurrency?: unknown;
 	jobs: Record<string, Job>;
@@ -258,6 +265,20 @@ describe('an Installation deploys through the tooling, which advances its marker
 						/^CLOUDFLARE_|^WRANGLER_/.test(name) || String(value).includes('secrets.'),
 				),
 		).toEqual([]);
+	});
+
+	// A called workflow sees an environment secret only when its caller passes it
+	// by name; `secrets: inherit` would hand it every other secret too.
+	it('each call passes the Cloudflare credentials by name, which the Installation requires', () => {
+		const credentials = ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN'];
+
+		for (const [, job] of deploying)
+			expect(job.secrets).toEqual(
+				Object.fromEntries(credentials.map((name) => [name, `\${{ secrets.${name} }}`])),
+			);
+		expect(installation.on.workflow_call?.secrets).toEqual(
+			Object.fromEntries(credentials.map((name) => [name, { required: true }])),
+		);
 	});
 
 	it('only the Installation job can write, and only the repository contents (its marker tags)', () => {
