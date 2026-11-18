@@ -1044,6 +1044,13 @@ objects and triggers the validator's Workflow, for the validator gate. One deplo
 `deploy-<app>-<environment>`); two apps deploy at once. An app joins the
 workflow with its deploy descriptor alone.
 
+Every GitHub environment secret's value is recorded in 1Password (vault
+`Keepr`: items `github-staging`, `github-production`, and `keepr-release` for
+the `release` environment's App credentials), mapped in `secrets.jsonc`, and
+set from there with `pnpm secrets:sync --github <environment>` (`--check`
+names what is missing and sets nothing; ADR-0134). A rolled token is recorded
+in 1Password first, then synced. No workflow reads 1Password.
+
 ### Deploy day
 
 A Release deploys itself to staging and waits at production
@@ -1059,7 +1066,9 @@ mid-run names the Event it left behind; delete it before rerunning.
    present in each Installation: each deploy refuses an Installation without
    them, and `pnpm exec keepr-deploy check --app stream --env <environment>`
    from the workspace root says so ahead of it, after a build, against that
-   Environment's account. No leftover `workerd` (`pnpm reap`).
+   Environment's account; `pnpm secrets:sync --app stream --env <environment>
+   --check` says so with no build, and what 1Password does not record
+   ([Worker secrets](#worker-secrets)). No leftover `workerd` (`pnpm reap`).
 2. **Recovery point.** Each deploy reads D1 Time Travel's current bookmark
    before it changes anything, refuses without one, and records it in its
    step summary and its app marker ([Deploy](#deploy)); nothing is typed. To
@@ -1312,13 +1321,25 @@ and 4 prove the transparency on Chromium.
 
 ### Worker secrets
 
-Set these against the generated config after building:
+Every value is recorded in 1Password, vault `Keepr`, item
+`stream-<environment>`, a concealed field named after the secret (ADR-0134).
+`secrets.jsonc` at the workspace root maps each secret to its
+`op://Keepr/<item>/<field>` reference, and holds no value. From the workspace
+root, with `op` signed in and `wrangler login`, nothing built:
 
 ```bash
-pnpm exec wrangler secret put <NAME> --config .output/server/wrangler.json
+pnpm secrets:sync --app stream --env staging --check   # what the Worker or 1Password lacks; sets nothing
+pnpm secrets:sync --app stream --env staging           # set every value 1Password records
 ```
 
-For the Staging Installation, add `--env staging`, against the staging account.
+It sets them on the Environment's Worker through `wrangler.jsonc`, whose
+blocks name each account. An empty field is not recorded yet: the sync names
+it and sets nothing for it. A value a provider issues (the Ably key, the
+bandai-keepr key) is recorded in 1Password first, then synced. One that is
+random by nature is generated straight into 1Password with
+`--generate <NAME>`, once per secret, then synced; it prints what the new value
+does, below, before writing it, and refuses the Melee key. Never set a value
+only on a Worker: it can never be read back.
 
 Required: `NUXT_BETTER_AUTH_SECRET`,
 `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`, `NUXT_ABLY_API_KEY`,
@@ -1331,12 +1352,14 @@ refuses an Installation whose Worker lacks any, before it changes anything
 (ADR-0128); a required secret added here is added there. The validator
 requires none. A new Installation's Worker does not exist until something
 creates it, and one that does not exist has no secrets, so its first deploy
-refuses too: set every required secret first, which creates the Worker, then
-deploy.
+refuses too: sync its secrets first, which creates the Worker, then deploy.
+`secrets.jsonc` lists the same names, plus the optional
+`NUXT_BANDAI_KEEPR_API_KEY`; the tooling's tests fail until the two agree.
 
 - **`NUXT_BETTER_AUTH_SECRET`**: without it the installation is unusable.
   `/api/**` denies by default and every check goes through Better Auth, so
-  sign-in and every authenticated route answer 503.
+  sign-in and every authenticated route answer 503. Changing it signs every
+  User out: each Session cookie is signed with it.
 - **`NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`**: changing it revokes every
   Screen Output asset capability. Rotate each Screen's asset access afterwards
   before using its output URL.
@@ -1349,8 +1372,9 @@ deploy.
   `NUXT_MELEE_CREDENTIAL_KEY_VERSION` var in `wrangler.jsonc` (top
   level for production, `env.staging` for staging), not a secret (ADR-0132),
   so a rotation is a Release that changes the var with the key. Put the old
-  version and key in `NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS`, set the
-  new key, deploy the Release carrying the new version (save no Melee
+  version and key in `NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS`, record
+  the new key in 1Password and sync it (`pnpm secrets:sync` will not generate
+  it), deploy the Release carrying the new version (save no Melee
   integration in between: it would encrypt with the new key under the old
   label), re-save each enabled Melee integration, and remove the old key only
   once nothing uses it. A deploy refuses a Worker secret named like a var.
