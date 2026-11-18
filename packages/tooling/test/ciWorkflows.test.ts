@@ -279,12 +279,35 @@ describe('the Release workflow tags only what the queue verified', () => {
 	// Changesets core groups a Release by bump; the regroup step after it groups
 	// by type, and `.changeset/config.json` names the formatter it reads.
 	it('versions through the changelog regroup, with its formatter', () => {
-		expect(changesets?.with?.version).toBe('pnpm release:version');
+		expect(changesets?.with?.['version-script']).toBe('pnpm release:version');
 		expect(rootScripts['release:version']?.split(' && ')).toEqual([
 			'changeset version',
 			'node packages/tooling/scripts/changelog.mjs',
 		]);
 		expect(changesetConfig.changelog).toBe('../packages/tooling/scripts/changelog.mjs');
+	});
+
+	// The pinned action fails on an input it doesn't declare (v2.1.2 renamed
+	// `version` to `version-script`); these are its action.yml inputs at that pin.
+	it('passes changesets/action only inputs its pinned version declares', () => {
+		const declared = [
+			'github-token',
+			'publish-script',
+			'version-script',
+			'commit-message',
+			'pr-title',
+			'pr-draft',
+			'pr-base-branch',
+			'create-github-releases',
+			'push-git-tags',
+			'push-with-git-cli',
+			'cwd',
+		];
+
+		expect(changesets?.uses).toBe('changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51');
+		expect(
+			Object.keys(changesets?.with ?? {}).filter((input) => !declared.includes(input)),
+		).toEqual([]);
 	});
 
 	// The Version PR lands as a squash commit like any other, so its title is checked too.
