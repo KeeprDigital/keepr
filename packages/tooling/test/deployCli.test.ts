@@ -152,7 +152,7 @@ describe('the keepr-deploy command line', () => {
 				},
 			).trim();
 
-		function releaseAheadOfAccounts() {
+		function releaseAheadOfAccounts({ databases = [] as { binding: string }[] } = {}) {
 			const root = mkdtempSync(join(tmpdir(), 'keepr-cli-order-'));
 			roots.push(root);
 			const [origin, checkout, artifact, bin] = ['origin', 'checkout', 'artifact', 'bin'].map(
@@ -190,7 +190,7 @@ describe('the keepr-deploy command line', () => {
 					build: ['build'],
 					output: '.output',
 					worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
-					databases: [],
+					databases,
 					environments: { production: { url: 'https://stream.keepr.digital' } },
 					parts: {},
 				}),
@@ -256,6 +256,17 @@ describe('the keepr-deploy command line', () => {
 				needs: 'accounts',
 				override: 'Keepr Accounts is down; #1300',
 			});
+		});
+
+		// The Release has no Wrangler to read Time Travel with, as when Cloudflare cannot answer.
+		it('refuses without a D1 recovery point, after deploy order and before any marker moves', () => {
+			const { deploy, marker } = releaseAheadOfAccounts({ databases: [{ binding: 'DB' }] });
+
+			const result = deploy('--override', 'Keepr Accounts is down; #1300');
+
+			expect(result.status).toBe(1);
+			expect(result.stdout).toContain("no D1 recovery point for stream's DB in production");
+			expect(marker('stream/production')).toBeUndefined();
 		});
 	});
 });

@@ -13,8 +13,10 @@
  * - `deploy`: build once (or place `--artifact`), then for the Environment:
  *   parts by fingerprint (`--parts auto|always|never`), deploy order between
  *   Keepr Accounts and its Apps (`order.mjs`; `--override <reason>` bypasses
- *   it, and the app's marker records the reason), mark pending, migrate D1,
- *   deploy, verify, mark deployed (`procedure.mjs`).
+ *   it, and the app's marker records the reason), each D1 database's Time
+ *   Travel bookmark (`recovery.mjs`; refused without one, and recorded in the
+ *   app's marker), mark pending, migrate D1, deploy, verify, mark deployed
+ *   (`procedure.mjs`).
  * - `build`: the descriptor's build scripts only, into its output directory, for
  *   a build job whose output every Environment deploys.
  * - `check`: what CI checks of each deployable app's Worker: each part bundled
@@ -37,6 +39,7 @@ import { bundlePart, fingerprintPart } from './fingerprint.mjs';
 import { LEGACY_MARKERS, describeMarker, gitMarkerStore, markerName } from './markers.mjs';
 import { checkDeployOrder, gitHistory, neededBy } from './order.mjs';
 import { MODES, decidePartDeploy, deployRelease, markApp, promotePart } from './procedure.mjs';
+import { recordRecoveryPoints } from './recovery.mjs';
 import { readRelease } from './release.mjs';
 import { DeployVerifyFailure, verifyInstallation } from './verify.mjs';
 
@@ -74,14 +77,37 @@ function workspaceRoot(cwd) {
  */
 function run(command, args, cwd) {
 	const result = spawnSync(command, args, { cwd, stdio: 'inherit' });
-	if (result.status !== 0)
-		throw new Error(
-			`${command} ${args.join(' ')} failed${
-				result.error
-					? `: ${result.error.message}`
-					: ` with status ${result.status ?? result.signal}`
-			}`,
-		);
+	if (result.status !== 0) throw failed(command, args, result);
+}
+
+/**
+ * @param {string} command
+ * @param {string[]} args
+ * @param {import('node:child_process').SpawnSyncReturns<unknown>} result
+ */
+function failed(command, args, result) {
+	return new Error(
+		`${command} ${args.join(' ')} failed${
+			result.error ? `: ${result.error.message}` : ` with status ${result.status ?? result.signal}`
+		}`,
+	);
+}
+
+/**
+ * What `command` printed to stdout, its stderr passed through.
+ *
+ * @param {string} command
+ * @param {string[]} args
+ * @param {string} cwd
+ */
+function read(command, args, cwd) {
+	const result = spawnSync(command, args, {
+		cwd,
+		encoding: 'utf8',
+		stdio: ['ignore', 'pipe', 'inherit'],
+	});
+	if (result.status !== 0) throw failed(command, args, result);
+	return result.stdout;
 }
 
 /** @param {Record<string, string | undefined>} env */
@@ -102,7 +128,7 @@ function deployer(env) {
  *   env: Record<string, string | undefined>,
  *   log: (line: string) => void,
  * }} options
- * @returns {import('./procedure.mjs').DeploySteps}
+ * @returns {import('./procedure.mjs').DeploySteps & { bookmark: (binding: string) => string }}
  */
 function realSteps({ release, environment, store, env, log }) {
 	const { appDir, descriptor } = release;
@@ -121,6 +147,24 @@ function realSteps({ release, environment, store, env, log }) {
 				throw new Error(`the artifact at ${path} has no ${descriptor.worker.config}.`);
 		},
 		fingerprint: (part) => fingerprintPart({ appDir, part: descriptor.parts[part], wranglerEnv }),
+		// A remote read: the database's current Time Travel bookmark, as JSON.
+		bookmark: (binding) => {
+			const output = read(
+				wrangler,
+				[
+					'd1',
+					'time-travel',
+					'info',
+					binding,
+					'--json',
+					'--config',
+					descriptor.worker.config,
+					...envArgs,
+				],
+				appDir,
+			);
+			return JSON.parse(output.slice(output.indexOf('{'))).bookmark;
+		},
 		deployPart: (part) =>
 			run(wrangler, ['deploy', '--config', descriptor.parts[part].config, ...envArgs], appDir),
 		migrate: (binding) =>
@@ -280,21 +324,25 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 	const store = gitMarkerStore({ cwd: release.appDir });
 
 	if (command === 'deploy') {
+		const steps = realSteps({ release, environment: target, store, env, log });
 		try {
 			await deployRelease({
 				release,
 				environment: target,
 				store,
-				steps: realSteps({ release, environment: target, store, env, log }),
+				steps,
 				...(values.artifact === undefined ? {} : { artifact: values.artifact }),
 				mode: /** @type {import('./procedure.mjs').Mode} */ (values.parts),
 				source,
-				beforeRemoteChange: (context) =>
-					checkDeployOrder({
+				// Deploy order, then the D1 recovery point: both before anything remote changes.
+				beforeRemoteChange: (context) => ({
+					...checkDeployOrder({
 						...context,
 						history: gitHistory({ cwd: release.appDir }),
 						...(override === undefined ? {} : { override }),
 					}),
+					...recordRecoveryPoints({ ...context, bookmark: steps.bookmark }),
+				}),
 				log,
 			});
 		} catch (error) {
