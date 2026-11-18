@@ -106,7 +106,7 @@ describe('pnpm accept', () => {
 			STREAM_KEEPR_BROWSER_ACCEPTANCE_URL: 'https://stream.keepr.digital',
 			STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL: 'ops@keepr.digital',
 			STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD: 'their-password',
-			CLOUDFLARE_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
+			// No CLOUDFLARE_ACCOUNT_ID: the committed configs name the account.
 		};
 
 		async function deployDay(

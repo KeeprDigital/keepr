@@ -762,6 +762,15 @@ validator's config is added to its `env.staging` too, with the staging
 resource's ID;
 `test/unit/build/wranglerEnvironments.test.ts` fails until it is.
 
+Each Environment's configs name its **Cloudflare account** (ADR-0130):
+production's `account_id` at the top level of `wrangler.jsonc` and the
+validator's config, staging's in each `env.staging` block. Wrangler prefers it
+to `CLOUDFLARE_ACCOUNT_ID`, so a local `wrangler secret put --env staging`,
+`wrangler d1 …` or `wrangler tail` reaches the right account with no export,
+and a staging command cannot reach production by a stale variable. Leave
+`CLOUDFLARE_ACCOUNT_ID` unset: `deploy` and `deploy:validator` refuse an
+exported one the configs contradict, before building anything.
+
 What is deployed is stated in this app's **deploy descriptor**, `deploy.jsonc`:
 its build scripts, its Worker's configuration, its D1 binding, its
 Installation's URL per Environment, and its one part, the silent-video
@@ -788,7 +797,13 @@ your `wrangler login`. In order, stopping at the first failure:
    `--artifact <dir>` deploys a downloaded `.output/` of the same Release
    instead of building it: one build is what every Environment deploys.
 
-   Then, before anything remote changes, **deploy order**
+   Then, before anything remote changes, **Worker secrets**
+   ([Worker secrets](#worker-secrets)): the deploy reads the secret names set
+   on the target Worker (`wrangler secret list`, against the built
+   configuration and the Environment's block) and stops, naming each one
+   missing and the command that sets it, unless every secret `deploy.jsonc`
+   requires is set (ADR-0128). A Worker without them passes `deploy:verify`
+   and every unattended gate while sign-in answers 503. Then **deploy order**
    ([Deploy order](#deploy-order)): a deploy that Keepr Accounts'
    Installation does not allow stops here. And the **D1 recovery point**: the
    deploy reads D1 Time Travel's current bookmark for `DB`
@@ -994,8 +1009,11 @@ Each Environment is one **Cloudflare account** and one **GitHub environment**
 of the same name, `production` or `staging`, shared by every app (ADR-0122).
 The GitHub environment deploys only from `main`, so a workflow on any other
 branch cannot read its secrets; `production` also has a required reviewer. It
-holds that account's `CLOUDFLARE_ACCOUNT_ID` and a `CLOUDFLARE_API_TOKEN` that
-can deploy every app in it (Workers Scripts:Edit, D1:Edit, Containers:Edit).
+holds a `CLOUDFLARE_API_TOKEN` that can deploy every app in that account
+(Workers Scripts:Edit, D1:Edit, Containers:Edit). The account itself is no
+secret: the Wrangler configs name it ([Deploy](#deploy), ADR-0130), and no
+workflow passes `CLOUDFLARE_ACCOUNT_ID`. A Release from before that names no
+account, and deploys to the one account the token reaches.
 Cloudflare grants D1 and Containers only across an account, so a token per
 app would isolate nothing; the account is the boundary. It also holds the
 release GitHub App's `KEEPR_RELEASE_APP_ID` and
@@ -1026,9 +1044,10 @@ the Installation it targets and deletes them afterwards. A harness that dies
 mid-run names the Event it left behind; delete it before rerunning.
 
 1. **Pre-flight.** Nothing on air in production. Docker running. Secrets
-   present in each Installation
-   (`pnpm exec wrangler secret list --name stream`, and with `--env staging`
-   against the staging account). No leftover `workerd` (`pnpm reap`).
+   present in each Installation: each deploy refuses an Installation without
+   them, and `pnpm exec keepr-deploy check --app stream --env <environment>`
+   from the workspace root says so ahead of it, after a build, against that
+   Environment's account. No leftover `workerd` (`pnpm reap`).
 2. **Recovery point.** Each deploy reads D1 Time Travel's current bookmark
    before it changes anything, refuses without one, and records it in its
    step summary and its app marker ([Deploy](#deploy)); nothing is typed. To
@@ -1136,7 +1155,7 @@ A `pending` validator marker means its deploy died part-way, so the next
    | `STREAM_KEEPR_BROWSER_ACCEPTANCE_URL`       | That Environment's Installation. Falls back to `KEEPR_DEPLOY_URL`.                |
    | `STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL`    | An existing operator account. `/api/**` denies by default, so gates must sign in. |
    | `STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD` | That account's password.                                                          |
-   | `CLOUDFLARE_ACCOUNT_ID`                     | That Environment's account. The validator gate writes with Wrangler on it alone.  |
+   | `CLOUDFLARE_ACCOUNT_ID`                     | Leave unset: the Environment's configs name its account, and the validator gate writes with Wrangler on it alone. Set, it must agree. |
 
    A `--deployed` harness refuses to start without a URL rather than guessing.
    Without the operator pair it stops with `harness-operator-unavailable`.
@@ -1155,21 +1174,21 @@ A `pending` validator marker means its deploy died part-way, so the next
    - a URL the Environment's configs do not serve, such as the Staging
      Installation's URL with production named, or the reverse:
      `reason=origin-not-installation`;
-   - an account the Environment's configs name otherwise:
-     `reason=account-mismatch`;
+   - an exported account the Environment's configs name otherwise, or an app
+     and validator config that name two: `reason=account-mismatch`;
    - `staging` named when the configs have no `env.staging` block:
      `reason=environment-unconfigured`.
 
    An Environment other than `production` or `staging` stops with
    `harness-precondition-unmet reason=environment-unknown`.
 
-   **Against staging.** Point every variable at the Staging Installation, in
-   the staging account, with an operator account that exists there:
+   **Against staging.** Point every variable at the Staging Installation, with
+   an operator account that exists there; the `env.staging` blocks name the
+   staging account:
 
    ```bash
    STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT=staging \
    STREAM_KEEPR_BROWSER_ACCEPTANCE_URL=https://stream.keepr-staging.digital \
-   CLOUDFLARE_ACCOUNT_ID=<the staging account> \
    STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL=… STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD=… \
    pnpm accept deployed
    ```
@@ -1281,12 +1300,22 @@ Set these against the generated config after building:
 pnpm exec wrangler secret put <NAME> --config .output/server/wrangler.json
 ```
 
+For the Staging Installation, add `--env staging`, against the staging account.
+
 Required: `NUXT_BETTER_AUTH_SECRET`, `NUXT_GRAPHICS_ADMIN_TOKEN`,
 `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`, `NUXT_ABLY_API_KEY`,
 `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`,
 `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION`. `NUXT_ADMIN_BOOTSTRAP_TOKEN` is
 set only briefly (see [First admin](#first-admin-account)). Never put any of
 them in `wrangler.jsonc`, source control, or public runtime config.
+
+`deploy.jsonc` lists the required ones as `worker.secrets`, and a deploy
+refuses an Installation whose Worker lacks any, before it changes anything
+(ADR-0128); a required secret added here is added there. The validator
+requires none. A new Installation's Worker does not exist until something
+creates it, and one that does not exist has no secrets, so its first deploy
+refuses too: set every required secret first, which creates the Worker, then
+deploy.
 
 - **`NUXT_BETTER_AUTH_SECRET`**: without it the installation is unusable.
   `/api/**` denies by default and every check goes through Better Auth, so

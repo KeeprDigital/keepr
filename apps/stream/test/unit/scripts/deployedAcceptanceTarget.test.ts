@@ -129,7 +129,7 @@ describe('the deployed acceptance target', () => {
 		expect(() => resolve({ ...COMPLETE_ENV, [ACCOUNT_ID_ENV]: undefined })).toThrow(
 			expect.objectContaining({
 				code: 'harness-precondition-unmet',
-				detail: { reason: 'CLOUDFLARE_ACCOUNT_ID is unset' },
+				detail: { reason: 'CLOUDFLARE_ACCOUNT_ID is unset and the configs name no account' },
 			}),
 		);
 		expect(() => resolve({ ...COMPLETE_ENV, [ACCOUNT_ID_ENV]: 'not-an-account' })).toThrow(
@@ -207,6 +207,19 @@ describe('the deployed acceptance target', () => {
 		).toBe(ACCOUNT);
 	});
 
+	it.each([
+		[
+			'production',
+			COMPLETE_ENV,
+			{ app: { ...APP, account_id: ACCOUNT }, validator: { ...VALIDATOR, account_id: ACCOUNT } },
+			ACCOUNT,
+		],
+		// Only the app's block names it; the validator's Wrangler commands are handed it.
+		['staging', STAGING_ENV, {}, STAGING_ACCOUNT],
+	])("takes the account %s's configs name when none is exported", (_, env, overrides, account) => {
+		expect(resolve({ ...env, [ACCOUNT_ID_ENV]: undefined }, overrides).accountId).toBe(account);
+	});
+
 	it('resolves a staging URL against the configs resolved for staging, and names its Wrangler env', () => {
 		expect(resolve(STAGING_ENV)).toEqual({
 			origin: 'https://stream.keepr-staging.digital',
@@ -237,6 +250,15 @@ describe('the deployed acceptance target', () => {
 			"production's account with staging's configs",
 			{ ...STAGING_ENV, [ACCOUNT_ID_ENV]: ACCOUNT },
 			{},
+			'account-mismatch',
+		],
+		[
+			'an app and validator config that name two accounts, with none exported',
+			{ ...COMPLETE_ENV, [ACCOUNT_ID_ENV]: undefined },
+			{
+				app: { ...APP, account_id: ACCOUNT },
+				validator: { ...VALIDATOR, account_id: STAGING_ACCOUNT },
+			},
 			'account-mismatch',
 		],
 		[
@@ -287,7 +309,13 @@ describe('the deployed acceptance target', () => {
 		expect(installation.validatorConfigPath).toBe(
 			join(import.meta.dirname, '../../../workers/silent-video-validator/wrangler.jsonc'),
 		);
-		expect(resolveDeployedTarget({ env: COMPLETE_ENV, installation })).toMatchObject({
+		expect(
+			resolveDeployedTarget({
+				env: { ...COMPLETE_ENV, [ACCOUNT_ID_ENV]: undefined },
+				installation,
+			}),
+		).toMatchObject({
+			accountId: '3ec389380c7b82e6a172e6f351d4aad9',
 			stagingBucket: 'stream-graphics-asset-staging',
 			workflow: 'silent-video-validation',
 		});

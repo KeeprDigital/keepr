@@ -14,7 +14,9 @@
  * - the Worker configuration **resolved for the Environment**: the top level
  *   with that Environment's `env` block over it, as canonical JSON. Another
  *   Environment's block, comments and layout are not part of it, so a
- *   staging-only edit never redeploys production's part.
+ *   staging-only edit never redeploys production's part. Its `account_id` is
+ *   left out: it names where the Worker goes, not what it is (ADR-0130), and
+ *   the fingerprint is already one Environment's.
  *
  * A Release's version bump touches none of them.
  */
@@ -105,7 +107,7 @@ export function bundlePart({ appDir, config, wranglerEnv, outDir }) {
 }
 
 /**
- * @typedef {{ config: string, container?: string }} Part
+ * @typedef {{ config: string, container?: string, secrets?: string[] }} Part
  *   paths relative to the app's directory: the part's Wrangler configuration,
  *   and its Container's Docker context when it has one
  */
@@ -120,7 +122,7 @@ export function bundlePart({ appDir, config, wranglerEnv, outDir }) {
  * @returns {string} `sha256:<hex>`
  */
 export function fingerprintPart({ appDir, part, wranglerEnv, bundle = bundlePart }) {
-	const config = resolveWranglerConfig(
+	const { account_id: _account, ...config } = resolveWranglerConfig(
 		parseJsonc(readFileSync(join(appDir, part.config), 'utf8')),
 		wranglerEnv,
 	);

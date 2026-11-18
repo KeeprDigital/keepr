@@ -7,7 +7,21 @@
 	// Run once; every Environment deploys what they built.
 	"build": ["build", "worker:dry-run", "worker:smoke"],
 	"output": ".output",
-	"worker": { "source": "wrangler.jsonc", "config": ".output/server/wrangler.json" },
+	"worker": {
+		"source": "wrangler.jsonc",
+		"config": ".output/server/wrangler.json",
+		// The Worker secrets every Installation requires (README.md § Worker secrets): a
+		// deploy refuses one that lacks any. NUXT_BANDAI_KEEPR_API_KEY is optional,
+		// and NUXT_ADMIN_BOOTSTRAP_TOKEN is set only briefly.
+		"secrets": [
+			"NUXT_BETTER_AUTH_SECRET",
+			"NUXT_GRAPHICS_ADMIN_TOKEN",
+			"NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY",
+			"NUXT_ABLY_API_KEY",
+			"NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY",
+			"NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION"
+		]
+	},
 	"databases": [{ "binding": "DB" }],
 	"environments": {
 		"production": { "url": "https://stream.keepr.digital" },

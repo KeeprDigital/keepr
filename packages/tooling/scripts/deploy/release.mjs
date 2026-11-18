@@ -35,12 +35,16 @@ export const DESCRIPTOR_FILE = 'deploy.jsonc';
  * - `worker.source`: the Worker's source Wrangler configuration, which the build
  *   turns into `worker.config`; what a check that runs before the build reads.
  * - `worker.config`: the built Worker's Wrangler configuration.
+ * - `worker.secrets`, optional: the Worker secrets every Installation of the
+ *   app requires, by name; a deploy refuses an Installation that lacks one
+ *   (`secrets.mjs`, ADR-0128). Absent in a Release cut before it.
  * - `databases`: the D1 bindings whose migrations apply before the Worker deploys.
  * - `environments`: each Environment the app has an Installation in, with the
  *   Installation's URL and, when it is not the configuration's top level, the
  *   Wrangler `env` block it deploys.
  * - `parts`: Workers deployed from source beside the app, each with its own
- *   marker and fingerprint, deployed first when their fingerprint changed.
+ *   marker and fingerprint, deployed first when their fingerprint changed,
+ *   and, optionally, the `secrets` it requires, as `worker.secrets`.
  * - `gates`, optional: the app's package scripts that are its acceptance
  *   gates against a deployed Installation, at `KEEPR_DEPLOY_URL`. The Deploy
  *   workflow runs them in the staging job with no person present, and never
@@ -52,7 +56,7 @@ export const DESCRIPTOR_FILE = 'deploy.jsonc';
  *   app: string,
  *   build: string[],
  *   output: string,
- *   worker: { source: string, config: string },
+ *   worker: { source: string, config: string, secrets?: string[] },
  *   databases: { binding: string }[],
  *   environments: Record<string, { url: string, wranglerEnv?: string }>,
  *   parts: Record<string, import('./fingerprint.mjs').Part>,
@@ -77,7 +81,19 @@ const STREAM_BEFORE_DESCRIPTORS = Object.freeze({
 	app: 'stream',
 	build: ['build', 'worker:dry-run', 'worker:smoke'],
 	output: '.output',
-	worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
+	worker: {
+		source: 'wrangler.jsonc',
+		config: '.output/server/wrangler.json',
+		// Its README's required Worker secrets then, as now.
+		secrets: [
+			'NUXT_BETTER_AUTH_SECRET',
+			'NUXT_GRAPHICS_ADMIN_TOKEN',
+			'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY',
+			'NUXT_ABLY_API_KEY',
+			'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY',
+			'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION',
+		],
+	},
 	databases: [{ binding: 'DB' }],
 	environments: { production: { url: 'https://stream.keepr.digital' } },
 	parts: {
@@ -94,11 +110,18 @@ export const PRE_DESCRIPTOR_RELEASES = new Map([['stream', STREAM_BEFORE_DESCRIP
 const NAME = /^[a-z]+$/;
 const APP_NAME = /^[a-z]+(?:-[a-z]+)*$/;
 const SCRIPT = /^[a-z][a-z0-9:-]*$/;
+const SECRET = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /** @param {unknown} value */
 const isText = (value) => typeof value === 'string' && value !== '';
 /** @param {unknown} value @returns {value is Record<string, any>} */
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+
+/** @param {unknown} secrets absent, or a list of secret names */
+const isSecretList = (secrets) =>
+	secrets === undefined ||
+	(Array.isArray(secrets) &&
+		secrets.every((name) => typeof name === 'string' && SECRET.test(name)));
 
 /** @param {string} url */
 function isHttpUrl(url) {
@@ -131,6 +154,8 @@ function descriptorProblems(descriptor, app) {
 	if (!isText(descriptor.output)) problems.push('output is not a directory');
 	if (!isText(descriptor.worker?.source)) problems.push('worker.source is not a path');
 	if (!isText(descriptor.worker?.config)) problems.push('worker.config is not a path');
+	if (!isSecretList(descriptor.worker?.secrets))
+		problems.push('worker.secrets is not a list of secret names');
 	if (
 		!Array.isArray(descriptor.databases) ||
 		!descriptor.databases.every((/** @type {any} */ db) => isText(db?.binding))
@@ -153,6 +178,8 @@ function descriptorProblems(descriptor, app) {
 			if (!isText(part?.config)) problems.push(`parts.${name}.config is not a path`);
 			if (part?.container !== undefined && !isText(part.container))
 				problems.push(`parts.${name}.container is not a path`);
+			if (!isSecretList(part?.secrets))
+				problems.push(`parts.${name}.secrets is not a list of secret names`);
 		}
 	return problems;
 }

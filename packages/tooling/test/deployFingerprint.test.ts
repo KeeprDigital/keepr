@@ -149,6 +149,14 @@ describe("fingerprinting a part (Stream Keepr's silent-video validator)", () => 
 				undefined,
 				'same',
 			],
+			// The account says where the Worker goes, not what it is (ADR-0130).
+			[
+				'naming the account changes nothing',
+				BASE,
+				BASE.replace('{', `{ "account_id": "${'a'.repeat(32)}",`),
+				undefined,
+				'same',
+			],
 		] as const)('%s', (_case, before, after, wranglerEnv, expected) => {
 			const options = wranglerEnv === undefined ? {} : { wranglerEnv };
 			const first = fingerprint(checkout(before), options);

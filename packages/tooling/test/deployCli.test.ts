@@ -29,10 +29,10 @@ describe('the keepr-deploy command line', () => {
 		for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 	});
 
-	function run(args: string[], cwd = process.cwd()) {
+	function run(args: string[], cwd = process.cwd(), env: Record<string, string> = {}) {
 		return spawnSync(process.execPath, [CLI, ...args], {
 			cwd,
-			env: { ...process.env, PATH: '', CLOUDFLARE_API_TOKEN: 'blocked-by-test-guard' },
+			env: { ...process.env, PATH: '', CLOUDFLARE_API_TOKEN: 'blocked-by-test-guard', ...env },
 			encoding: 'utf8',
 		});
 	}
@@ -99,6 +99,41 @@ describe('the keepr-deploy command line', () => {
 
 		expect(result.status).toBe(1);
 		expect(result.stderr).toContain('could not bundle workers/validator/wrangler.jsonc');
+		expect(result.stderr).not.toContain('pnpm run build');
+	});
+
+	// An operator's check of an Environment, before any deploy: Wrangler is the
+	// Release's own, faked here to list one secret the Worker lacks another beside.
+	it("checks an Environment's Installation for the Worker secrets its descriptor requires, building nothing", () => {
+		const root = workspace({
+			'pnpm-workspace.yaml': 'packages: []\n',
+			'apps/stream/package.json': JSON.stringify({ name: '@keepr/stream', version: '1.9.0' }),
+			'apps/stream/deploy.jsonc': JSON.stringify({
+				app: 'stream',
+				build: ['build'],
+				output: '.output',
+				worker: {
+					source: 'wrangler.jsonc',
+					config: '.output/server/wrangler.json',
+					secrets: ['NUXT_BETTER_AUTH_SECRET', 'NUXT_ABLY_API_KEY'],
+				},
+				databases: [],
+				environments: {
+					staging: { url: 'https://stream.keepr-staging.digital', wranglerEnv: 'staging' },
+				},
+				parts: {},
+			}),
+			'apps/stream/.output/server/wrangler.json': '{"name":"stream"}',
+			'apps/stream/node_modules/.bin/wrangler': `#!${process.execPath}\nconsole.log(JSON.stringify([{ name: 'NUXT_ABLY_API_KEY', type: 'secret_text' }]));\n`,
+		});
+		chmodSync(join(root, 'apps/stream/node_modules/.bin/wrangler'), 0o755);
+
+		const result = run(['check', '--app', 'stream', '--env', 'staging'], root);
+
+		expect(result.status).toBe(1);
+		expect(result.stderr).toContain(
+			"stream's Worker lacks NUXT_BETTER_AUTH_SECRET: set each from apps/stream with wrangler secret put <NAME> --config .output/server/wrangler.json --env staging",
+		);
 		expect(result.stderr).not.toContain('pnpm run build');
 	});
 
@@ -254,6 +289,38 @@ describe('the keepr-deploy command line', () => {
 		expect(result.stderr).toContain('admits anyone');
 		expect(result.stderr).not.toMatch(/spawn|ENOENT/);
 	});
+
+	// The configs name the account (ADR-0130); each command that deploys checks an export against them first.
+	it.each([[['deploy']], [['part', 'validator']]])(
+		'refuses %j with an exported account its configs contradict, before running anything',
+		(command) => {
+			const root = workspace({
+				'pnpm-workspace.yaml': 'packages: []\n',
+				'apps/stream/package.json': JSON.stringify({ name: '@keepr/stream', version: '1.9.0' }),
+				'apps/stream/deploy.jsonc': JSON.stringify({
+					app: 'stream',
+					build: ['build'],
+					output: '.output',
+					worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
+					databases: [],
+					environments: { production: { url: 'https://stream.keepr.digital' } },
+					parts: { validator: { config: 'workers/validator/wrangler.jsonc' } },
+				}),
+				'apps/stream/wrangler.jsonc': JSON.stringify({ account_id: 'a'.repeat(32) }),
+				'apps/stream/workers/validator/wrangler.jsonc': JSON.stringify({}),
+			});
+
+			const result = run(
+				[...command, '--app', 'stream', '--env', 'production'],
+				join(root, 'apps/stream'),
+				{ CLOUDFLARE_ACCOUNT_ID: 'b'.repeat(32) },
+			);
+
+			expect(result.status).toBe(1);
+			expect(result.stderr).toContain('wrangler.jsonc names another account for production');
+			expect(result.stderr).not.toMatch(/spawn|ENOENT/);
+		},
+	);
 
 	/**
 	 * Deploy order, wired: the check runs, `--override` reaches it, and what it

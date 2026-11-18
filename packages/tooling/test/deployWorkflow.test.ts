@@ -83,8 +83,11 @@ const gates = index((step) => step.run?.startsWith(`node .deploy-tooling/${CLI} 
 const download = index((step) => step.uses?.startsWith('actions/download-artifact@') === true);
 const releaseCheckout = index((step) => step.with?.ref === '${{ inputs.release }}');
 const mint = index((step) => step.uses?.startsWith('actions/create-github-app-token@') === true);
-/** The Environment's Cloudflare credentials, and the release GitHub App's (ADR-0124). */
-const CLOUDFLARE = ['CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_API_TOKEN'];
+/**
+ * The Environment's Cloudflare credential, and the release GitHub App's (ADR-0124).
+ * Its account is no credential: the Wrangler configs name it (ADR-0130).
+ */
+const CLOUDFLARE = ['CLOUDFLARE_API_TOKEN'];
 const RELEASE_APP = ['KEEPR_RELEASE_APP_ID', 'KEEPR_RELEASE_APP_PRIVATE_KEY'];
 /** The staging operator Stream Keepr's acceptance gates sign in as (ADR-0129). */
 const OPERATOR = [
@@ -445,6 +448,12 @@ describe('an Installation deploys through the tooling, which advances its marker
 					names.test(name) || secrets.some((secret) => String(value).includes(`secrets.${secret}`)),
 			),
 		).toEqual([]);
+	});
+
+	// Wrangler prefers the config's account to an export, so one could only disagree with it.
+	it('hands no deploy a Cloudflare account: the Wrangler configs name each Environment its own', () => {
+		for (const workflow of [deploy, installation, building])
+			expect(JSON.stringify(workflow)).not.toContain('CLOUDFLARE_ACCOUNT_ID');
 	});
 
 	// A called workflow sees an environment secret only when its caller passes it

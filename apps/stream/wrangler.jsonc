@@ -5,6 +5,10 @@
 	// is declared here and nowhere else. Wrangler resolves path fields
 	// relative to the generated file, so `migrations_dir` climbs back out of
 	// .output/server.
+	// The production Cloudflare account. Each Environment's config names its
+	// account (ADR-0130): Wrangler prefers it to CLOUDFLARE_ACCOUNT_ID, and an
+	// `env` block inherits it unless it names its own, as `env.staging` does.
+	"account_id": "3ec389380c7b82e6a172e6f351d4aad9",
 	"compatibility_date": "2026-07-16",
 	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"],
 	// The production hostname. The keepr.digital zone lives on the same
@@ -79,6 +83,7 @@
 	"env": {
 		"staging": {
 			"name": "stream",
+			"account_id": "98e3d208fbb975ce573938b72ed9e7b8",
 			"routes": [{ "pattern": "stream.keepr-staging.digital", "custom_domain": true }],
 			"d1_databases": [
 				{
