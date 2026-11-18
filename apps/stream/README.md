@@ -682,25 +682,28 @@ How a change reaches `main`, and why:
   @keepr/<app>@<version> <commit>`, push the tag, and
   `gh release create @keepr/<app>@<version> --verify-tag` with that version's
   section of the app's `CHANGELOG.md`).
-- **The Version PR needs its CI approved.** The action opens and updates the
-  Version PR with the default workflow token, and GitHub creates the
-  `pull_request` runs such a token triggers as **approval-required**
-  (`action_required`) rather than starting them, so a workflow cannot trigger
-  itself. To release, wait until the queue is empty and the action has
-  refreshed the Version PR from the last push, select **Approve workflows to
-  run**, wait for the checks, then **Merge when ready**, and queue nothing else
-  until it lands. Landing in one push with a PR that carries a changeset, even
-  an empty one, it would leave that changeset waiting on `main`, so the action
-  would refresh the Version PR instead of tagging: that version would never be
-  tagged, and the next release would skip it. A push to `main` while it waits
-  rewrites the Version PR, which drops it from the queue and needs a fresh
-  approval. Run the workflow by hand (`gh workflow run release.yml`) to
-  refresh the Version PR without a push. A GitHub App's token would start its
-  runs without the approval (#1261).
+- **The Version PR lands alone.** The action opens and updates it, and tags,
+  with the release GitHub App's token (ADR-0124), so its CI and title check
+  start like any PR's. To release, wait until the queue is empty and the
+  action has refreshed the Version PR from the last push, wait for its checks,
+  then **Merge when ready**, and queue nothing else until it lands. Landing in
+  one push with a PR that carries a changeset, even an empty one, it would
+  leave that changeset waiting on `main`, so the action would refresh the
+  Version PR instead of tagging: that version would never be tagged, and the
+  next release would skip it. A push to `main` while it waits rewrites the
+  Version PR, which drops it from the queue. Run the workflow by hand
+  (`gh workflow run release.yml`) to refresh the Version PR without a push.
 
-Requires Settings → Actions → General → **Allow GitHub Actions to create and
-approve pull requests**. The default workflow token is read-only; each workflow
-declares the scopes it needs.
+The release workflow's job runs in the GitHub environment **`release`**, which
+deploys only from `main` and holds the release GitHub App's
+`KEEPR_RELEASE_APP_ID` and `KEEPR_RELEASE_APP_PRIVATE_KEY` (ADR-0124). The App
+is installed on this repository only, with Contents, Pull requests and
+Workflows read and write (and Metadata read). `GITHUB_TOKEN` cannot do its
+job: a PR it opens starts no workflow without a maintainer's approval, and it
+can never hold `workflows`, which the Version PR's branch and the marker tags
+need once `main`'s workflows have changed. The default workflow token is
+read-only; each workflow declares the scopes it needs, and neither the release
+nor the Deploy workflow gives it a write.
 
 ## Deploy
 
@@ -900,7 +903,13 @@ read its secrets, and it holds that account's `CLOUDFLARE_ACCOUNT_ID` and a
 `CLOUDFLARE_API_TOKEN` that can deploy every app in it (Workers Scripts:Edit,
 D1:Edit, Containers:Edit). Cloudflare grants D1 and Containers only across an
 account, so a token per app would isolate nothing; the account is the
-boundary. One deploy per
+boundary. It also holds the release GitHub App's `KEEPR_RELEASE_APP_ID` and
+`KEEPR_RELEASE_APP_PRIVATE_KEY` ([Releases](#releases), ADR-0124), never as
+repository secrets: each job pushes its app's
+[promotion markers](#promotion-markers) with a token of that App, narrowed to
+Contents and Workflows, because `GITHUB_TOKEN` can never hold `workflows` and
+GitHub refuses it a tag on a Release whose workflows differ from `main`'s.
+The caller passes all four secrets by name. One deploy per
 Installation runs at a time (concurrency group `deploy-<app>-<environment>`);
 two apps deploy at once. An app joins the workflow with its deploy descriptor
 alone. The acceptance gates and the "nothing on air" check stay with the

@@ -10,9 +10,15 @@
 # same name (`production`), shared by every app (ADR-0122). It deploys only
 # from main and holds that account's CLOUDFLARE_ACCOUNT_ID and a
 # CLOUDFLARE_API_TOKEN that can deploy every app in it (Workers Scripts:Edit,
-# D1:Edit, Containers:Edit). The job reads them as the environment's own
-# secrets, which the caller passes by name. One deploy of an Installation runs
-# at a time.
+# D1:Edit, Containers:Edit), and the release GitHub App's KEEPR_RELEASE_APP_ID
+# and KEEPR_RELEASE_APP_PRIVATE_KEY (ADR-0124). The job reads them as the
+# environment's own secrets, which the caller passes by name. One deploy of an
+# Installation runs at a time.
+#
+# The marker tags are pushed with a token of that App, narrowed to contents and
+# workflows: GITHUB_TOKEN can never hold `workflows`, and GitHub refuses it a
+# tag on a commit whose workflows differ from main's, as every Release older
+# than a workflow change is (ADR-0124).
 
 name: Deploy an Installation
 
@@ -48,6 +54,10 @@ on:
         required: true
       CLOUDFLARE_API_TOKEN:
         required: true
+      KEEPR_RELEASE_APP_ID:
+        required: true
+      KEEPR_RELEASE_APP_PRIVATE_KEY:
+        required: true
 
 permissions:
   contents: read
@@ -63,11 +73,8 @@ jobs:
     concurrency:
       group: deploy-${{ inputs.app }}-${{ inputs.environment }}
       cancel-in-progress: false
-    permissions:
-      # write: the run force-pushes the app's promotion-marker tags
-      # (`<app>/<environment>[-<part>]`), and removes the pre-ADR-0119 tags
-      # they replace.
-      contents: write
+    # No `permissions:` of its own: GITHUB_TOKEN reads, and the App's token
+    # pushes the marker tags.
     env:
       # The tagger identity of the annotated marker tags.
       GIT_COMMITTER_NAME: github-actions[bot]
@@ -75,15 +82,28 @@ jobs:
       # nuxt build OOMs Node's default ~2GB heap on hosted runners.
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
+      # The token the marker pushes use: it force-pushes the app's
+      # promotion-marker tags (`<app>/<environment>[-<part>]`) and removes the
+      # pre-ADR-0119 tags they replace. Revoked when the job ends.
+      - name: Mint the release GitHub App's token for the marker tags
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.KEEPR_RELEASE_APP_ID }}
+          private-key: ${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.release }}
+          token: ${{ steps.app-token.outputs.token }}
           # Full history: fetching a marker tag brings the commit it points
           # at, and deploy order reads what each commit contains (ADR-0120);
           # a shallow clone is refused.
           fetch-depth: 0
           # The deploy pushes the marker tags with this checkout's
-          # credential. Nothing in this job uploads an artifact.
+          # credential, the App's token. Nothing in this job uploads an
+          # artifact.
           persist-credentials: true
       - name: Check out the deploy tooling from the calling run's commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

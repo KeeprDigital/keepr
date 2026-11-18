@@ -1,6 +1,6 @@
 # ADR-0036: The merge queue verifies the exact revision that lands, and only such a revision is released
 
-Accepted · 2026-10-21 · [#615](https://github.com/KeeprDigital/stream-keepr/issues/615) · Amended 2026-10-21: a merge group reuses a full, green PR run's verification of a byte-identical tree · Amended by ADR-0118: Changesets tags the Release, behind the same gate, and the queued title check no longer feeds a release · Amended by ADR-0121: CI's Worker check is a leg per deployable app a change ships in, and an untouched app has no leg, so a merge group may reuse such a run
+Accepted · 2026-10-21 · [#615](https://github.com/KeeprDigital/stream-keepr/issues/615) · Amended 2026-10-21: a merge group reuses a full, green PR run's verification of a byte-identical tree · Amended by ADR-0118: Changesets tags the Release, behind the same gate, and the queued title check no longer feeds a release · Amended by ADR-0121: CI's Worker check is a leg per deployable app a change ships in, and an untouched app has no leg, so a merge group may reuse such a run · Amended by ADR-0124: the release GitHub App opens the Version PR, so its CI runs without a maintainer's approval
 
 ### Decision
 

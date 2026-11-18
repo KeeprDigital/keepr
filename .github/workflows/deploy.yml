@@ -36,7 +36,10 @@
 # git tag (ADR-0035, ADR-0119): `stream/production` for Stream Keepr's app and
 # `stream/production-validator` for its validator, each `pending` while its
 # deploy runs and `deployed` once it is confirmed, so a run that fails between
-# the two records exactly that.
+# the two records exactly that. The markers are pushed with the release GitHub
+# App's token, not GITHUB_TOKEN, which can never hold `workflows` and so cannot
+# put a marker on a Release whose workflows differ from main's (ADR-0124). No
+# GITHUB_TOKEN in this run can write.
 
 name: Deploy
 
@@ -132,8 +135,6 @@ jobs:
     name: Keepr Accounts
     needs: plan
     if: needs.plan.outputs.accounts != ''
-    permissions:
-      contents: write
     uses: ./.github/workflows/deploy-installation.yml
     with:
       app: accounts
@@ -146,6 +147,8 @@ jobs:
     secrets:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      KEEPR_RELEASE_APP_ID: ${{ secrets.KEEPR_RELEASE_APP_ID }}
+      KEEPR_RELEASE_APP_PRIVATE_KEY: ${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}
 
   apps:
     name: ${{ matrix.app }}
@@ -162,8 +165,6 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.plan.outputs.apps) }}
-    permissions:
-      contents: write
     uses: ./.github/workflows/deploy-installation.yml
     with:
       app: ${{ matrix.app }}
@@ -176,3 +177,5 @@ jobs:
     secrets:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      KEEPR_RELEASE_APP_ID: ${{ secrets.KEEPR_RELEASE_APP_ID }}
+      KEEPR_RELEASE_APP_PRIVATE_KEY: ${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}
