@@ -2,6 +2,8 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	ACCOUNT_ID_ENV,
+	acceptanceEnvironment,
+	ENVIRONMENT_ENV,
 	loadCommittedInstallation,
 	resolveDeployedTarget,
 } from '../../../scripts/graphics-acceptance/deployed-target.mjs';
@@ -20,6 +22,7 @@ import {
  */
 
 const ACCOUNT = '0123456789abcdef0123456789abcdef';
+const STAGING_ACCOUNT = 'fedcba9876543210fedcba9876543210';
 
 const COMPLETE_ENV = {
 	STREAM_KEEPR_BROWSER_ACCEPTANCE_URL: 'https://stream.keepr.digital/',
@@ -37,13 +40,49 @@ const APP = {
 	services: [
 		{ binding: 'SILENT_VIDEO_PLAYBACK_VALIDATOR', service: 'stream-silent-video-validator' },
 	],
+	env: {
+		staging: {
+			name: 'stream',
+			account_id: STAGING_ACCOUNT,
+			routes: [{ pattern: 'stream.keepr-staging.digital', custom_domain: true }],
+			r2_buckets: [
+				{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: 'stream-graphics-asset-staging' },
+			],
+			services: [
+				{ binding: 'SILENT_VIDEO_PLAYBACK_VALIDATOR', service: 'stream-silent-video-validator' },
+			],
+		},
+	},
 };
 
 const VALIDATOR = {
 	name: 'stream-silent-video-validator',
 	r2_buckets: [{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: 'stream-graphics-asset-staging' }],
 	workflows: [{ name: 'silent-video-validation', binding: 'SILENT_VIDEO_VALIDATION_WORKFLOW' }],
+	env: {
+		staging: {
+			name: 'stream-silent-video-validator',
+			r2_buckets: [
+				{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: 'stream-graphics-asset-staging' },
+			],
+			workflows: [
+				{ name: 'silent-video-validation', binding: 'SILENT_VIDEO_VALIDATION_WORKFLOW' },
+			],
+		},
+	},
 };
+
+const STAGING_ENV = {
+	...COMPLETE_ENV,
+	STREAM_KEEPR_BROWSER_ACCEPTANCE_URL: 'https://stream.keepr-staging.digital',
+	[ACCOUNT_ID_ENV]: STAGING_ACCOUNT,
+	[ENVIRONMENT_ENV]: 'staging',
+};
+
+/** The staging block with `change` applied, the rest of each config as the fixture has it. */
+function withStaging(config: typeof APP | typeof VALIDATOR, change: (block: any) => object) {
+	return { ...config, env: { staging: change(config.env.staging) } };
+}
 
 function resolve(
 	env: Record<string, string | undefined>,
@@ -69,6 +108,7 @@ describe('the deployed acceptance target', () => {
 			stagingBucket: 'stream-graphics-asset-staging',
 			workflow: 'silent-video-validation',
 			validatorConfigPath: '/repo/workers/silent-video-validator/wrangler.jsonc',
+			environment: 'production',
 		});
 	});
 
@@ -166,6 +206,80 @@ describe('the deployed acceptance target', () => {
 				validator: { ...VALIDATOR, account_id: ACCOUNT },
 			}).accountId,
 		).toBe(ACCOUNT);
+	});
+
+	it('resolves a staging URL against the configs resolved for staging, and names its Wrangler env', () => {
+		expect(resolve(STAGING_ENV)).toEqual({
+			origin: 'https://stream.keepr-staging.digital',
+			accountId: STAGING_ACCOUNT,
+			stagingBucket: 'stream-graphics-asset-staging',
+			workflow: 'silent-video-validation',
+			validatorConfigPath: '/repo/workers/silent-video-validator/wrangler.jsonc',
+			environment: 'staging',
+			wranglerEnv: 'staging',
+		});
+	});
+
+	// Each row reaches a refusal no other row does; the reason word is the contract.
+	it.each([
+		[
+			"a staging URL with production's configs",
+			{ ...STAGING_ENV, [ENVIRONMENT_ENV]: undefined },
+			{},
+			'origin-not-installation',
+		],
+		[
+			"a production URL with staging's configs",
+			{ ...COMPLETE_ENV, [ENVIRONMENT_ENV]: 'staging' },
+			{},
+			'origin-not-installation',
+		],
+		[
+			"production's account with staging's configs",
+			{ ...STAGING_ENV, [ACCOUNT_ID_ENV]: ACCOUNT },
+			{},
+			'account-mismatch',
+		],
+		[
+			'staging, when the configs have no staging block',
+			STAGING_ENV,
+			{ app: { ...APP, env: undefined } },
+			'environment-unconfigured',
+		],
+		// Wrangler does not inherit bindings into an env block, so neither does the resolver.
+		[
+			'a staging block that does not restate its bucket',
+			STAGING_ENV,
+			{ validator: withStaging(VALIDATOR, ({ r2_buckets: _, ...block }) => block) },
+			'staging-bucket-mismatch',
+		],
+		// Wrangler names an env's Worker `<name>-<env>` unless the block names it.
+		[
+			'a staging validator block that does not name its Worker',
+			STAGING_ENV,
+			{ validator: withStaging(VALIDATOR, ({ name: _, ...block }) => block) },
+			'validator-service-mismatch',
+		],
+	])('refuses %s', (_, env, overrides, reason) => {
+		expect(() => resolve(env, overrides)).toThrow(
+			expect.objectContaining({ code: 'harness-target-inconsistent', detail: { reason } }),
+		);
+	});
+
+	it.each([
+		['production when none is named', undefined, 'production'],
+		['staging when it is named', 'staging', 'staging'],
+	])('targets %s', (_, named, environment) => {
+		expect(acceptanceEnvironment({ [ENVIRONMENT_ENV]: named })).toBe(environment);
+	});
+
+	it('refuses an Environment it does not know, rather than guessing one', () => {
+		expect(() => acceptanceEnvironment({ [ENVIRONMENT_ENV]: 'prod' })).toThrow(
+			expect.objectContaining({
+				code: 'harness-precondition-unmet',
+				detail: { reason: 'environment-unknown' },
+			}),
+		);
 	});
 
 	it('resolves the committed production installation', async () => {
