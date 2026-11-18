@@ -48,7 +48,7 @@
 		"test:local-auth": "vitest run --config vitest.local-auth.config.ts",
 		"test:integration": "vitest --config vitest.integration.config.ts",
 		"accept": "node scripts/accept.mjs",
-		"accept:unattended": "node scripts/accept.mjs still-images --deployed && node scripts/accept.mjs silent-video --deployed"
+		"accept:deployed": "node scripts/accept.mjs deployed"
 	},
 	"dependencies": {
 		"@fontsource/arimo": "catalog:fonts",

@@ -1,6 +1,8 @@
-import { access, readdir, readFile } from 'node:fs/promises';
+import { access, mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { parseJsonc } from '@keepr/tooling/scripts/jsonc.mjs';
 import { DEPLOY_DAY, HARNESSES, main } from '../../../scripts/accept.mjs';
 import { PAGES, main as runBrowserPage } from '../../../scripts/run-browser-page-acceptance.mjs';
 import { GATES } from '../../../scripts/verify.mjs';
@@ -70,6 +72,19 @@ describe('pnpm accept', () => {
 		).toEqual([]);
 	});
 
+	// The Deploy workflow's staging job runs the descriptor's gates (ADR-0129).
+	it('gives the staging job every deploy-day gate, through the deploy descriptor', async () => {
+		const [descriptor, packageJson] = await Promise.all(
+			['deploy.jsonc', 'package.json'].map(async (file) =>
+				parseJsonc(await readFile(join(repositoryRoot, file), 'utf8')),
+			),
+		);
+
+		expect(descriptor.gates.map((gate: string) => packageJson.scripts[gate])).toEqual([
+			'node scripts/accept.mjs deployed',
+		]);
+	});
+
 	it('refuses an unknown harness and a deployed run of a local-only one', async () => {
 		const exitCode = process.exitCode;
 		vi.spyOn(process.stdout, 'write').mockReturnValue(true);
@@ -94,9 +109,12 @@ describe('pnpm accept', () => {
 			// No CLOUDFLARE_ACCOUNT_ID: the committed configs name the account.
 		};
 
-		async function deployDay(env: Record<string, string | undefined>) {
+		async function deployDay(
+			env: Record<string, string | undefined>,
+			exitOf: (name: string) => number = () => 0,
+		) {
 			const exitCode = process.exitCode;
-			const runHarness = vi.fn(async () => 0);
+			const runHarness = vi.fn(async (name: string) => exitOf(name));
 			const written: string[] = [];
 			const printed: string[] = [];
 			vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
@@ -160,6 +178,16 @@ describe('pnpm accept', () => {
 			expect(stderr).toMatch(/^accept-deployed harness-target-inconsistent reason=/mu);
 		});
 
+		it('runs no gate against production in CI, where no person started it', async () => {
+			const { exitCode, runHarness, stderr } = await deployDay({ ...complete, CI: 'true' });
+
+			expect(runHarness).not.toHaveBeenCalled();
+			expect(exitCode).toBe(1);
+			expect(stderr).toContain(
+				'accept-deployed harness-precondition-unmet reason=production-unattended',
+			);
+		});
+
 		it('cannot start a real runner from an imported main, even for a complete target', async () => {
 			// The regression #619's development hit: an imported `main` with no
 			// injected runner spawned the real deployed gates on the shell's login.
@@ -196,6 +224,33 @@ describe('pnpm accept', () => {
 			expect(exitCode).toBeUndefined();
 			expect(stdout).toContain('against the production Environment');
 			expect(runHarness.mock.calls).toEqual(DEPLOY_DAY.map((name) => [name, ['--deployed']]));
+		});
+
+		// The staging job's summary says which gates ran, beside the production approval.
+		it('says in the step summary which gates passed, which failed and which did not run', async () => {
+			const directory = await mkdtemp(join(tmpdir(), 'accept-summary-'));
+			const summary = join(directory, 'summary.md');
+			try {
+				await deployDay({ ...complete, GITHUB_STEP_SUMMARY: summary }, (name) =>
+					name === 'still-images' ? 1 : 0,
+				);
+
+				expect(await readFile(summary, 'utf8')).toBe(
+					[
+						'Deployed acceptance gates against the production Environment:',
+						'',
+						'- silent-video-validator: passed',
+						'- graphics-delivery: passed',
+						'- still-images: failed',
+						'- silent-video: not run',
+						'- fonts: not run',
+						'- graphics-package: not run',
+						'',
+					].join('\n'),
+				);
+			} finally {
+				await rm(directory, { recursive: true, force: true });
+			}
 		});
 	});
 });

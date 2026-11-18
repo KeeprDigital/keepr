@@ -13,7 +13,8 @@
 # Before its first remote change the deploy reads each D1 database's Time
 # Travel bookmark and refuses without one, in every Environment
 # (packages/tooling/scripts/deploy/recovery.mjs). In staging, the app's
-# unattended acceptance gates then run against the Installation.
+# acceptance gates then run against the Installation, with no person present;
+# in production, never (ADR-0129).
 #
 # Each Environment is one Cloudflare account and one GitHub environment of the
 # same name (`production`, `staging`), shared by every app (ADR-0122). It deploys only
@@ -66,6 +67,13 @@ on:
         required: true
       KEEPR_RELEASE_APP_PRIVATE_KEY:
         required: true
+      # The staging operator Stream Keepr's acceptance gates sign in as, from
+      # the `staging` GitHub environment; only the Apps' staging call passes
+      # them (ADR-0129).
+      STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL:
+        required: false
+      STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD:
+        required: false
 
 permissions:
   contents: read
@@ -157,12 +165,19 @@ jobs:
           INPUT_PARTS: ${{ inputs.parts }}
           INPUT_OVERRIDE: ${{ inputs.override }}
         run: node .deploy-tooling/packages/tooling/scripts/deploy/cli.mjs deploy --app "$INPUT_APP" --env "$INPUT_ENVIRONMENT" --artifact "$RUNNER_TEMP/build" --parts "$INPUT_PARTS" ${INPUT_OVERRIDE:+--override "$INPUT_OVERRIDE"}
-      # Staging only: the gates that read the Installation and write nothing,
-      # with no person present (the deploy descriptor's `gates`). A failure
-      # fails this job, and production does not deploy.
-      - name: Run the unattended acceptance gates against the Staging Installation
+      # Staging only: the deploy descriptor's acceptance gates, with no person
+      # present (Stream Keepr's: every deployed gate, which signs in and
+      # writes). The harness itself refuses production when no person started
+      # it (ADR-0129). A failure fails this job, and production does not deploy.
+      # It runs the Release's own scripts, which need the Cloudflare
+      # credentials: the validator gate writes to staging with Wrangler.
+      - name: Run the acceptance gates against the Staging Installation
         if: inputs.environment == 'staging'
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL: ${{ secrets.STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL }}
+          STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD: ${{ secrets.STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD }}
+          STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT: ${{ inputs.environment }}
           INPUT_APP: ${{ inputs.app }}
           INPUT_ENVIRONMENT: ${{ inputs.environment }}
         run: node .deploy-tooling/packages/tooling/scripts/deploy/cli.mjs gates --app "$INPUT_APP" --env "$INPUT_ENVIRONMENT"
@@ -172,6 +187,8 @@ jobs:
           INPUT_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           echo "Release $RELEASE_TAG deployed to $INPUT_ENVIRONMENT; its Installation answered deploy:verify (its release identity, or liveness only for a Release from before /api/release; not dependency health)." >> "$GITHUB_STEP_SUMMARY"
-          # The backticks are Markdown, not a command to expand.
-          # shellcheck disable=SC2016
-          echo 'Acceptance gates that write run only when a person starts them, against staging (Stream Keepr: `pnpm accept deployed`, apps/stream/README.md § Deploy day).' >> "$GITHUB_STEP_SUMMARY"
+          if [ "$INPUT_ENVIRONMENT" = staging ]; then
+            echo 'The acceptance gates above ran against this Installation. Fault injection stays manual, against staging (Stream Keepr: apps/stream/README.md § Fault injection).' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No acceptance gate runs here: they ran in staging, on this build, before the approval (ADR-0129).' >> "$GITHUB_STEP_SUMMARY"
+          fi

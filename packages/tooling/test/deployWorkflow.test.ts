@@ -89,6 +89,11 @@ const mint = index((step) => step.uses?.startsWith('actions/create-github-app-to
  */
 const CLOUDFLARE = ['CLOUDFLARE_API_TOKEN'];
 const RELEASE_APP = ['KEEPR_RELEASE_APP_ID', 'KEEPR_RELEASE_APP_PRIVATE_KEY'];
+/** The staging operator Stream Keepr's acceptance gates sign in as (ADR-0129). */
+const OPERATOR = [
+	'STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL',
+	'STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD',
+];
 const ENVIRONMENTS = "contains(fromJSON(needs.plan.outputs.environments), '%s')";
 const runs = (environment: string) => ENVIRONMENTS.replace('%s', environment);
 
@@ -390,39 +395,53 @@ describe('an Installation deploys through the tooling, which advances its marker
 	});
 
 	// Only after the deploy verified, and only in staging: a failure fails the
-	// staging job, so production does not deploy.
-	it('runs the unattended acceptance gates in staging alone, after the deploy', () => {
+	// staging job, so production does not deploy. The gates write, so production
+	// never runs them (ADR-0129).
+	it('runs the acceptance gates in staging alone, after the deploy, against staging', () => {
 		expect(gates).toBeGreaterThan(promote);
 		expect(steps[gates]!.if).toBe("inputs.environment == 'staging'");
 		expect(steps[gates]!.run).toBe(
 			`node .deploy-tooling/${CLI} gates --app "$INPUT_APP" --env "$INPUT_ENVIRONMENT"`,
 		);
+		expect(steps[gates]!.env).toMatchObject({
+			STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT: '${{ inputs.environment }}',
+		});
 		expect(steps[gates]!['continue-on-error']).toBeUndefined();
 	});
 
 	// Job-level env reaches every step: the install's build scripts and the setup actions too.
+	// The validator gate writes with Wrangler, so the gates hold the Cloudflare credentials too.
 	it.each([
 		[
 			'the Cloudflare credentials',
-			'the promotion step',
-			promote,
+			'the promotion and gates steps',
+			[promote, gates],
 			CLOUDFLARE,
 			/^CLOUDFLARE_|^WRANGLER_/,
 		],
-		["the release GitHub App's key", 'the token step', mint, RELEASE_APP, /^KEEPR_RELEASE_APP_/],
-	])('hands %s to %s and to nothing else', (_, _step, holder, secrets, names) => {
+		["the release GitHub App's key", 'the token step', [mint], RELEASE_APP, /^KEEPR_RELEASE_APP_/],
+		[
+			'the staging operator',
+			'the gates step',
+			[gates],
+			OPERATOR,
+			/^STREAM_KEEPR_ACCEPTANCE_OPERATOR_/,
+		],
+	])('hands %s to %s and to nothing else', (_, _step, holders, secrets, names) => {
 		const elsewhere = [
 			...[...Object.values(deploy.jobs), deployJob, buildJob].map((job) => job.env ?? {}),
 			...[
 				...(plan.steps ?? []),
 				...buildSteps,
-				...steps.filter((_, position) => position !== holder),
+				...steps.filter((_, position) => !holders.includes(position)),
 			].flatMap((step) => [step.env ?? {}, step.with ?? {}]),
 			...Object.values(deploy.jobs).map((job) => (job.with ?? {}) as Record<string, string>),
 		].flatMap((values) => Object.entries(values));
-		const held = Object.values({ ...steps[holder]?.env, ...steps[holder]?.with });
 
-		for (const name of secrets) expect(held).toContain(`\${{ secrets.${name} }}`);
+		for (const holder of holders) {
+			const held = Object.values({ ...steps[holder]?.env, ...steps[holder]?.with });
+			for (const name of secrets) expect(held).toContain(`\${{ secrets.${name} }}`);
+		}
 		expect(
 			elsewhere.filter(
 				([name, value]) =>
@@ -441,14 +460,17 @@ describe('an Installation deploys through the tooling, which advances its marker
 	// by name; `secrets: inherit` would hand it every other secret too.
 	it('each deploying call passes the Cloudflare credentials and the App key by name, which the Installation requires', () => {
 		const passed = [...CLOUDFLARE, ...RELEASE_APP];
+		const byName = (names: string[]) =>
+			Object.fromEntries(names.map((name) => [name, `\${{ secrets.${name} }}`]));
 
-		for (const [, job] of deploying)
-			expect(job.secrets).toEqual(
-				Object.fromEntries(passed.map((name) => [name, `\${{ secrets.${name} }}`])),
+		for (const [id, job] of deploying)
+			expect(job.secrets, id).toEqual(
+				byName(id === 'apps-staging' ? [...passed, ...OPERATOR] : passed),
 			);
-		expect(installation.on.workflow_call?.secrets).toEqual(
-			Object.fromEntries(passed.map((name) => [name, { required: true }])),
-		);
+		expect(installation.on.workflow_call?.secrets).toEqual({
+			...Object.fromEntries(passed.map((name) => [name, { required: true }])),
+			...Object.fromEntries(OPERATOR.map((name) => [name, { required: false }])),
+		});
 	});
 
 	// GITHUB_TOKEN can never hold `workflows`, so it cannot push a marker onto a

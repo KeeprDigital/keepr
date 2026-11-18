@@ -45,10 +45,10 @@ export const DESCRIPTOR_FILE = 'deploy.jsonc';
  * - `parts`: Workers deployed from source beside the app, each with its own
  *   marker and fingerprint, deployed first when their fingerprint changed,
  *   and, optionally, the `secrets` it requires, as `worker.secrets`.
- * - `gates`, optional: the app's package scripts that are its unattended
- *   acceptance gates. Each reads a deployed Installation, at `KEEPR_DEPLOY_URL`,
- *   and writes nothing to it and signs in to nothing, so the Deploy workflow
- *   runs them in the staging job with no person present (ADR-0125).
+ * - `gates`, optional: the app's package scripts that are its acceptance
+ *   gates against a deployed Installation, at `KEEPR_DEPLOY_URL`. The Deploy
+ *   workflow runs them in the staging job with no person present, and never
+ *   in production, so a gate may sign in and write (ADR-0125, ADR-0129).
  *
  * Paths are relative to the app's directory.
  *

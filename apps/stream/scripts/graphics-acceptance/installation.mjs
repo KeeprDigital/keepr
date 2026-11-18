@@ -13,6 +13,7 @@ import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import process from 'node:process';
 import { crc32 } from 'node:zlib';
+import { acceptanceEnvironment } from './deployed-target.mjs';
 import { AcceptanceFailure, deliveryRouteLabel } from './evidence.mjs';
 import { readLocalConfigurationFiles, suppliedNames } from './local-configuration.mjs';
 import { openOperatorSession } from './operator.mjs';
@@ -35,7 +36,18 @@ export function acceptanceOrigin({ deployed, env = process.env }) {
 			reason: 'STREAM_KEEPR_BROWSER_ACCEPTANCE_URL is unset',
 		});
 	}
+	// Gates that write run unattended against staging, never production (ADR-0129).
+	if (unattended(env) && acceptanceEnvironment(env) === 'production') {
+		throw new AcceptanceFailure('harness-precondition-unmet', {
+			reason: 'production-unattended',
+		});
+	}
 	return baseUrl.replace(/\/$/, '');
+}
+
+/** A run no person started: CI sets `CI`, GitHub Actions among them. */
+function unattended(env) {
+	return Boolean(env.CI) && env.CI !== 'false';
 }
 
 export function digestOf(bytes) {

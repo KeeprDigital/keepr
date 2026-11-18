@@ -7,6 +7,7 @@ import {
 	loadCommittedInstallation,
 	resolveDeployedTarget,
 } from '../../../scripts/graphics-acceptance/deployed-target.mjs';
+import { acceptanceOrigin } from '../../../scripts/graphics-acceptance/installation.mjs';
 import {
 	OPERATOR_EMAIL_ENV,
 	OPERATOR_PASSWORD_ENV,
@@ -318,5 +319,30 @@ describe('the deployed acceptance target', () => {
 			stagingBucket: 'stream-graphics-asset-staging',
 			workflow: 'silent-video-validation',
 		});
+	});
+});
+
+/**
+ * Gates that write never run against production with no person present: in
+ * CI, every deployed run names an Environment other than production.
+ */
+describe('a deployed run in CI', () => {
+	const URL_ENV = { STREAM_KEEPR_BROWSER_ACCEPTANCE_URL: 'https://stream.keepr.digital' };
+
+	it.each([
+		['refuses production, named by default, in CI', { ...URL_ENV, CI: 'true' }, false],
+		['allows staging in CI', { ...URL_ENV, CI: 'true', [ENVIRONMENT_ENV]: 'staging' }, true],
+		['allows production a person started', URL_ENV, true],
+	])('%s', (_, env, allowed) => {
+		const resolved = () => acceptanceOrigin({ deployed: true, env });
+
+		if (allowed) expect(resolved()).toBe('https://stream.keepr.digital');
+		else
+			expect(resolved).toThrow(
+				expect.objectContaining({
+					code: 'harness-precondition-unmet',
+					detail: { reason: 'production-unattended' },
+				}),
+			);
 	});
 });
