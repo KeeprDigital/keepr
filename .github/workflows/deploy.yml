@@ -51,15 +51,14 @@
 # side by side, and production waits for every App's staging. An app joins
 # with its deploy descriptor: nothing here names it.
 #
-# Each Installation's app and parts have their own promotion marker, an
-# annotated git tag (ADR-0035, ADR-0119): `stream/staging`, `stream/production`
-# and `stream/production-validator`, among others, each `pending` while its
-# deploy runs and `deployed` once it is confirmed, so a run that fails between
-# the two records exactly that, and redeploying the whole Release repairs
-# either Environment. The markers are pushed with the release GitHub App's
-# token, not GITHUB_TOKEN, which can never hold `workflows` and so cannot put a
-# marker on a Release whose workflows differ from main's (ADR-0124). No
-# GITHUB_TOKEN in this run can write.
+# Each Installation's app and parts have their own promotion marker, a GitHub
+# Deployments environment (ADR-0035, ADR-0119, ADR-0133): `stream/staging`,
+# `stream/production` and `stream/production-validator`, among others, each
+# `pending` while its deploy runs and `deployed` once it is confirmed, so a run
+# that fails between the two records exactly that, and redeploying the whole
+# Release repairs either Environment. GITHUB_TOKEN writes them: the deploying
+# jobs grant it `deployments: write`, and nothing in this run can write
+# anything else. The release GitHub App is the release workflow's alone.
 
 name: Deploy
 
@@ -165,6 +164,11 @@ jobs:
     if: >-
       needs.plan.outputs.accounts != ''
       && contains(fromJSON(needs.plan.outputs.environments), 'staging')
+    # The Installation writes its markers, GitHub Deployments, with GITHUB_TOKEN
+    # (ADR-0133): a called workflow holds no more than this job grants.
+    permissions:
+      contents: read
+      deployments: write
     uses: ./.github/workflows/deploy-installation.yml
     with:
       app: accounts
@@ -176,8 +180,6 @@ jobs:
     # environment, which a called workflow can only when they are passed.
     secrets:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      KEEPR_RELEASE_APP_ID: ${{ secrets.KEEPR_RELEASE_APP_ID }}
-      KEEPR_RELEASE_APP_PRIVATE_KEY: ${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}
 
   apps-staging:
     name: ${{ matrix.app }} to staging
@@ -195,6 +197,11 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.plan.outputs.apps) }}
+    # The Installation writes its markers, GitHub Deployments, with GITHUB_TOKEN
+    # (ADR-0133): a called workflow holds no more than this job grants.
+    permissions:
+      contents: read
+      deployments: write
     uses: ./.github/workflows/deploy-installation.yml
     with:
       app: ${{ matrix.app }}
@@ -208,8 +215,6 @@ jobs:
     # staging alone (ADR-0129).
     secrets:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      KEEPR_RELEASE_APP_ID: ${{ secrets.KEEPR_RELEASE_APP_ID }}
-      KEEPR_RELEASE_APP_PRIVATE_KEY: ${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}
       STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL: ${{ secrets.STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL }}
       STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD: ${{ secrets.STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD }}
 
@@ -223,6 +228,11 @@ jobs:
       && needs.plan.outputs.accounts != ''
       && contains(fromJSON(needs.plan.outputs.environments), 'production')
       && (!contains(fromJSON(needs.plan.outputs.environments), 'staging') || needs.accounts-staging.result == 'success')
+    # The Installation writes its markers, GitHub Deployments, with GITHUB_TOKEN
+    # (ADR-0133): a called workflow holds no more than this job grants.
+    permissions:
+      contents: read
+      deployments: write
     uses: ./.github/workflows/deploy-installation.yml
     with:
       app: accounts
@@ -234,8 +244,6 @@ jobs:
     # environment, which a called workflow can only when they are passed.
     secrets:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      KEEPR_RELEASE_APP_ID: ${{ secrets.KEEPR_RELEASE_APP_ID }}
-      KEEPR_RELEASE_APP_PRIVATE_KEY: ${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}
 
   apps-production:
     name: ${{ matrix.app }} to production
@@ -255,6 +263,11 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.plan.outputs.apps) }}
+    # The Installation writes its markers, GitHub Deployments, with GITHUB_TOKEN
+    # (ADR-0133): a called workflow holds no more than this job grants.
+    permissions:
+      contents: read
+      deployments: write
     uses: ./.github/workflows/deploy-installation.yml
     with:
       app: ${{ matrix.app }}
@@ -266,5 +279,3 @@ jobs:
     # environment, which a called workflow can only when they are passed.
     secrets:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      KEEPR_RELEASE_APP_ID: ${{ secrets.KEEPR_RELEASE_APP_ID }}
-      KEEPR_RELEASE_APP_PRIVATE_KEY: ${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}

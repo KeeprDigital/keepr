@@ -82,13 +82,11 @@ const promote = index(
 const gates = index((step) => step.run?.startsWith(`node .deploy-tooling/${CLI} gates `) === true);
 const download = index((step) => step.uses?.startsWith('actions/download-artifact@') === true);
 const releaseCheckout = index((step) => step.with?.ref === '${{ inputs.release }}');
-const mint = index((step) => step.uses?.startsWith('actions/create-github-app-token@') === true);
 /**
- * The Environment's Cloudflare credential, and the release GitHub App's (ADR-0124).
- * Its account is no credential: the Wrangler configs name it (ADR-0130).
+ * The Environment's Cloudflare credential. Its account is no credential: the
+ * Wrangler configs name it (ADR-0130).
  */
 const CLOUDFLARE = ['CLOUDFLARE_API_TOKEN'];
-const RELEASE_APP = ['KEEPR_RELEASE_APP_ID', 'KEEPR_RELEASE_APP_PRIVATE_KEY'];
 /** The staging operator Stream Keepr's acceptance gates sign in as (ADR-0129). */
 const OPERATOR = [
 	'STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL',
@@ -356,7 +354,7 @@ describe('an Installation deploys through the tooling, which advances its marker
 		const install = index((step) => step.run === 'pnpm install --frozen-lockfile');
 
 		expect(releaseCheckout).toBeGreaterThanOrEqual(0);
-		// Marker tags and deploy order need the commits a shallow clone lacks.
+		// Deploy order needs the commits a shallow clone lacks.
 		expect(steps[releaseCheckout]!.with?.['fetch-depth']).toBe(0);
 		expect([releaseCheckout, tooling, install, promote]).toEqual(
 			[releaseCheckout, tooling, install, promote].toSorted((a, b) => a - b),
@@ -390,7 +388,7 @@ describe('an Installation deploys through the tooling, which advances its marker
 		for (const [position, step] of [...steps.entries(), ...buildSteps.entries()])
 			if (step !== steps[promote])
 				expect(step.run ?? '', String(position)).not.toMatch(
-					/git push|git tag|wrangler|pnpm (run )?deploy|cli\.mjs deploy/,
+					/git push|git tag|gh api|wrangler|pnpm (run )?deploy|cli\.mjs deploy/,
 				);
 	});
 
@@ -419,7 +417,6 @@ describe('an Installation deploys through the tooling, which advances its marker
 			CLOUDFLARE,
 			/^CLOUDFLARE_|^WRANGLER_/,
 		],
-		["the release GitHub App's key", 'the token step', [mint], RELEASE_APP, /^KEEPR_RELEASE_APP_/],
 		[
 			'the staging operator',
 			'the gates step',
@@ -458,8 +455,8 @@ describe('an Installation deploys through the tooling, which advances its marker
 
 	// A called workflow sees an environment secret only when its caller passes it
 	// by name; `secrets: inherit` would hand it every other secret too.
-	it('each deploying call passes the Cloudflare credentials and the App key by name, which the Installation requires', () => {
-		const passed = [...CLOUDFLARE, ...RELEASE_APP];
+	it('each deploying call passes the Cloudflare credentials by name, which the Installation requires', () => {
+		const passed = CLOUDFLARE;
 		const byName = (names: string[]) =>
 			Object.fromEntries(names.map((name) => [name, `\${{ secrets.${name} }}`]));
 
@@ -473,29 +470,31 @@ describe('an Installation deploys through the tooling, which advances its marker
 		});
 	});
 
-	// GITHUB_TOKEN can never hold `workflows`, so it cannot push a marker onto a
-	// Release whose workflows differ from main's (ADR-0124).
-	it("pushes the markers with the release GitHub App's token, narrowed to contents and workflows", () => {
-		expect(mint).toBeGreaterThanOrEqual(0);
-		expect(mint).toBeLessThan(releaseCheckout);
-		expect(steps[mint]!.with).toEqual({
-			'client-id': '${{ secrets.KEEPR_RELEASE_APP_ID }}',
-			'private-key': '${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}',
-			'permission-contents': 'write',
-			'permission-workflows': 'write',
+	// The markers are GitHub Deployments, which GITHUB_TOKEN writes at any
+	// commit (ADR-0133); the release GitHub App stays the release workflow's.
+	it('records the markers with GITHUB_TOKEN, in the promotion step alone, and mints no App token', () => {
+		const holders = steps.filter((step) => step.env?.GH_TOKEN !== undefined);
+
+		expect(holders).toEqual([steps[promote]]);
+		expect(steps[promote]!.env).toMatchObject({
+			GH_TOKEN: '${{ github.token }}',
+			GH_REPO: '${{ github.repository }}',
 		});
-		expect(steps[releaseCheckout]!.with).toMatchObject({
-			token: `\${{ steps.${steps[mint]!.id}.outputs.token }}`,
-			'persist-credentials': true,
-		});
+		expect(steps[releaseCheckout]!.with).toMatchObject({ 'persist-credentials': false });
+		expect(steps[releaseCheckout]!.with?.token).toBeUndefined();
+		for (const file of [deploy, installation]) {
+			expect(JSON.stringify(file)).not.toContain('create-github-app-token');
+			expect(JSON.stringify(file)).not.toContain('KEEPR_RELEASE_APP_');
+		}
 	});
 
-	// Every write goes through the App's token.
-	it('gives GITHUB_TOKEN no more than read access to the repository contents', () => {
+	// A called workflow's token holds no more than its calling job grants.
+	it('lets GITHUB_TOKEN write deployments in the deploying jobs, and read the repository everywhere else', () => {
 		for (const file of [deploy, installation, building])
 			expect(file.permissions).toEqual({ contents: 'read' });
-		for (const job of [...Object.values(deploy.jobs), deployJob, buildJob])
-			expect(job.permissions ?? deploy.permissions).toEqual({ contents: 'read' });
+		for (const job of [...deploying.map(([, job]) => job), deployJob])
+			expect(job.permissions).toEqual({ contents: 'read', deployments: 'write' });
+		for (const job of [plan, deploy.jobs.build!, buildJob]) expect(job.permissions).toBeUndefined();
 	});
 });
 

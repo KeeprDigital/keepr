@@ -17,7 +17,7 @@ const FINGERPRINT_A = `sha256:${'a'.repeat(64)}`;
 const FINGERPRINT_B = `sha256:${'b'.repeat(64)}`;
 const COMMIT_A = '1'.repeat(40);
 
-/** A part's marker as an annotated tag's message carries it, written out by hand. */
+/** A part's marker as it reads, written out by hand. */
 function deployedMarker(fingerprint: string, commit = COMMIT_A) {
 	return [
 		'stream-keepr promotion marker',
@@ -214,9 +214,6 @@ function world() {
 		write: (name, commit, message) => {
 			ran.push(`marker ${name}`);
 			tags.set(name, { commit, message });
-		},
-		remove: (name) => {
-			tags.delete(name);
 		},
 		names: () => [...tags.keys()],
 	};
@@ -704,60 +701,6 @@ describe('deploying a Release to an Environment', () => {
 				expect(w.tags.size).toBe(0);
 			},
 		);
-	});
-
-	// ADR-0119 renames `production` and `production-validator`; the first deploy
-	// under the new names redeploys the validator once and retires the old tags.
-	describe('the markers from before per-app names', () => {
-		function withLegacyMarkers() {
-			const w = world();
-			w.tags.set('production', {
-				commit: A.commit,
-				message: deployedMarker(A.validator, A.commit).replace(
-					'component: validator',
-					'component: app',
-				),
-			});
-			w.tags.set('production-validator', {
-				commit: A.commit,
-				message: deployedMarker(A.validator),
-			});
-			return w;
-		}
-
-		it('are not read: the first deploy under the new names redeploys the validator once', async () => {
-			const w = withLegacyMarkers();
-
-			expect((await w.deploy(A)).parts.validator!.deploy).toBe(true);
-			expect((await w.deploy(A_PATCH)).parts.validator!.deploy).toBe(false);
-		});
-
-		it('are removed once their replacements record a confirmed deploy', async () => {
-			const w = withLegacyMarkers();
-
-			const result = await w.deploy(A);
-
-			expect(result.retired).toEqual(['production', 'production-validator']);
-			expect([...w.tags.keys()].toSorted()).toEqual([
-				'stream/production',
-				'stream/production-validator',
-			]);
-		});
-
-		it.each([
-			['a failed deploy', { fail: 'worker' as const }, ['production', 'production-validator']],
-			[
-				'a deploy that left the validator alone',
-				{ mode: 'never' as const },
-				['production-validator'],
-			],
-		])('outlive %s whose replacement is unconfirmed', async (_case, options, kept) => {
-			const w = withLegacyMarkers();
-
-			await w.deploy(A, options).catch(() => {});
-
-			expect(kept.every((name) => w.tags.has(name))).toBe(true);
-		});
 	});
 });
 
