@@ -33,6 +33,11 @@ const supportedSocialNetworkIcons = SUPPORTED_SOCIAL_NETWORKS.map((network) =>
 const workerName = 'stream';
 
 export default defineNuxtConfig({
+	// Throwaway for #1295: the built Worker only (see apps/score's spike).
+	$production: {
+		nitro: { entry: fileURLToPath(new URL('./server/worker-entry.ts', import.meta.url)) },
+	},
+
 	// What every app of the workspace starts from: client rendering, Nuxt UI, the
 	// colour mode, strict TypeScript and the Cloudflare Workers target (ADR-0093).
 	extends: ['@keepr/nuxt-layer'],

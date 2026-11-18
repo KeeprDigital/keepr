@@ -12,6 +12,9 @@
 	// every deploy; it was previously attached only in the dashboard, which
 	// left the repo unable to name its own installation (#189).
 	"routes": [{ "pattern": "stream.keepr.digital", "custom_domain": true }],
+	// Throwaway for #1295.
+	"durable_objects": { "bindings": [{ "name": "EVENT_REALTIME", "class_name": "EventRealtime" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["EventRealtime"] }],
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -80,6 +83,7 @@
 		"staging": {
 			"name": "stream",
 			"routes": [{ "pattern": "stream.keepr-staging.digital", "custom_domain": true }],
+			"durable_objects": { "bindings": [{ "name": "EVENT_REALTIME", "class_name": "EventRealtime" }] },
 			"d1_databases": [
 				{
 					"binding": "DB",
