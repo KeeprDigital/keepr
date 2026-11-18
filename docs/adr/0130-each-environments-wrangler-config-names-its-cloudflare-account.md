@@ -8,7 +8,7 @@ Accepted · 2026-11-18 · [#1285](https://github.com/KeeprDigital/keepr/issues/1
 
 **No Deploy workflow passes `CLOUDFLARE_ACCOUNT_ID`.** A GitHub environment holds that Environment's `CLOUDFLARE_API_TOKEN` and the release GitHub App's credentials, and no account ID.
 
-**The deploy tooling refuses an exported `CLOUDFLARE_ACCOUNT_ID` the configs contradict.** `keepr-deploy deploy` and `part` read the app's source config and each part's, resolved for the Environment, and stop before building anything when one names another account than the export (`packages/tooling/scripts/deploy/account.mjs`). The deployed acceptance harness takes the account from the configs when nothing is exported, and refuses an export, or an app and validator config, that disagree (`apps/stream/scripts/graphics-acceptance/deployed-target.mjs`).
+**The deploy tooling refuses an exported `CLOUDFLARE_ACCOUNT_ID` the configs contradict.** `keepr-deploy deploy` and `part` read the app's source config and each part's, resolved for the Environment, and stop before building anything when one names another account than the export (`packages/tooling/scripts/deploy/account.mjs`). A part's fingerprint leaves `account_id` out (`fingerprint.mjs`). The deployed acceptance harness takes the account from the configs when nothing is exported, and refuses an export, or an app and validator config, that disagree (`apps/stream/scripts/graphics-acceptance/deployed-target.mjs`).
 
 ### Why
 
@@ -19,6 +19,6 @@ Accepted · 2026-11-18 · [#1285](https://github.com/KeeprDigital/keepr/issues/1
 ### Consequences
 
 - **A Release from before this names no account.** Deployed by the workflow, Wrangler takes the one account the Environment's token reaches; locally, an export or `wrangler login`'s choice. Neither is refused.
-- **Production's validator redeploys once.** A part's fingerprint (ADR-0119) hashes its config resolved for the Environment, and the new `account_id` changes it, so the first production deploy of a Release with this change redeploys the validator. Moving an Environment to another account would change it again, which is what that move needs.
+- **A part's fingerprint leaves the account out.** It hashes the part's config resolved for one Environment (ADR-0119), and `account_id` says where the Worker goes, not what it is, so naming the account redeploys no validator: production's and staging's fingerprints are unchanged by it. The markers are git tags and record no account either, so moving an Environment to another account deploys its parts with `--parts always`.
 - **An app that joins the Deploy workflow names its accounts the same way**, in its own Wrangler config.
 - **Once a Release has deployed without it**, a person deletes `CLOUDFLARE_ACCOUNT_ID` from the `staging` and `production` GitHub environments.
