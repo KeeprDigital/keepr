@@ -57,7 +57,7 @@ function repository() {
 
 type Repository = ReturnType<typeof repository>;
 
-/** A marker as an annotated tag's message carries it, written out by hand. */
+/** A marker as it reads, written out by hand. */
 function appMarker(fields: { app: string; state?: string; commit: string; needs?: string }) {
 	return [
 		'stream-keepr promotion marker',
@@ -83,9 +83,6 @@ function markers(head: string, tags: Record<string, string> = {}): MarkerStore {
 		read: (name) => tags[name],
 		write: () => {
 			throw new Error('the order check writes no marker');
-		},
-		remove: () => {
-			throw new Error('the order check removes no marker');
 		},
 		names: () => Object.keys(tags),
 	};

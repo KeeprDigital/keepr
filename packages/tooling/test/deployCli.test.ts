@@ -13,7 +13,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { formatMarker, parseMarker } from '../scripts/deploy/markers.mjs';
+import { formatMarker } from '../scripts/deploy/markers.mjs';
+import {
+	emptyGitHub,
+	fakeGhScript,
+	fakeGitHub,
+	readGitHubState,
+	writeGitHubState,
+} from './helpers/fakeGitHub.ts';
 
 const CLI = join(import.meta.dirname, '../scripts/deploy/cli.mjs');
 
@@ -326,10 +333,11 @@ describe('the keepr-deploy command line', () => {
 	/**
 	 * Deploy order, wired: the check runs, `--override` reaches it, and what it
 	 * answers reaches the marker. A Stream Keepr Release that binds Keepr Accounts and
-	 * holds a Keepr Accounts change that `accounts/production` lacks. Real git,
-	 * with a local bare repository as `origin`; only git is on PATH, and the
-	 * Release has no Wrangler, so a deploy that gets past the check stops at
-	 * its first Cloudflare step.
+	 * holds a Keepr Accounts change that `accounts/production` lacks, still the
+	 * tag marker that GitHub Deployments replace (ADR-0133). Real git, with a
+	 * local bare repository as `origin`; only git and a `gh` answering from the
+	 * fake GitHub are on PATH, and the Release has no Wrangler, so a deploy that
+	 * gets past the check stops at its first Cloudflare step.
 	 */
 	describe('deploy order', () => {
 		const gitEnv = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
@@ -403,6 +411,10 @@ describe('the keepr-deploy command line', () => {
 				execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim(),
 				join(bin, 'git'),
 			);
+			const github = join(root, 'github.json');
+			writeGitHubState(github, emptyGitHub([git(checkout, 'rev-parse', 'HEAD')]));
+			writeFileSync(join(bin, 'gh'), fakeGhScript(github));
+			chmodSync(join(bin, 'gh'), 0o755);
 			const deploy = (...extra: string[]) =>
 				spawnSync(
 					process.execPath,
@@ -419,11 +431,8 @@ describe('the keepr-deploy command line', () => {
 					],
 					{
 						cwd: checkout,
-						// The marker's tagger, as deploy.yml names it; CI's git cannot guess one.
 						env: {
 							...gitEnv,
-							GIT_COMMITTER_NAME: 'test',
-							GIT_COMMITTER_EMAIL: 'test@example.invalid',
 							PATH: bin,
 							CLOUDFLARE_API_TOKEN: 'blocked-by-test-guard',
 						},
@@ -431,10 +440,8 @@ describe('the keepr-deploy command line', () => {
 					},
 				);
 			const marker = (name: string) => {
-				if (!git(origin, 'tag', '--list', name)) return undefined;
-				return parseMarker(
-					git(origin, 'for-each-ref', '--format=%(contents)', `refs/tags/${name}`),
-				);
+				const [latest] = fakeGitHub(readGitHubState(github)).history(name);
+				return latest && { ...(latest.payload as object), statuses: latest.statuses };
 			};
 			return { deploy, marker };
 		}
@@ -445,7 +452,7 @@ describe('the keepr-deploy command line', () => {
 			deploy('--override', 'Keepr Accounts is down; #1300');
 
 			expect(marker('stream/production')).toMatchObject({
-				state: 'pending',
+				statuses: ['in_progress'],
 				needs: 'accounts',
 				override: 'Keepr Accounts is down; #1300',
 			});
