@@ -12,7 +12,11 @@
  * accepts the record only if the signature is GitHub's, the claims are a
  * `pull_request` run of this repository's `ci.yml` on a GitHub-hosted runner,
  * that commit's tree is exactly the group's, and GitHub's own record of the
- * run shows every job of it ran and passed (`findVerifiedRun`).
+ * run shows every job of it ran and passed (`findVerifiedRun`). One job may
+ * instead be skipped: the Worker job, when the PR run's scope chose no leg
+ * for it and the group's own scope, measured as ever, chose none either
+ * (ADR-0123). The group's own run would then skip that job too, so the PR
+ * run left out nothing the group's run would check.
  *
  * Why a PR cannot forge one: a PR run executes the PR's workflow code, so it
  * can upload any artifact, but it cannot get a token signed for a commit it
@@ -25,7 +29,8 @@
  *
  * Anything else runs everything: no record, an expired or unreadable one, a
  * bad signature or claim, another tree (main moved, or the group holds more
- * than this PR), a skipped or failed job, an API error.
+ * than this PR), a failed job, a skipped one but that Worker job, an API
+ * error.
  *
  *   node packages/tooling/scripts/ci-reuse.mjs record
  *     (the PR run's `record` job: reads ACTIONS_ID_TOKEN_REQUEST_URL/_TOKEN;
@@ -49,6 +54,13 @@ const RECORD_FILE = 'record.jwt';
 const AUDIENCE = 'stream-keepr:ci-verified-tree';
 const CI_WORKFLOW = '.github/workflows/ci.yml';
 const COMMIT_ID = /^[0-9a-f]{40}$/;
+/**
+ * CI's Worker job (`worker-guard`) as GitHub names it when its scope chose no
+ * leg: skipped before its matrix expanded, so with the name's template
+ * unexpanded. A leg that ran or was skipped names its app instead.
+ * ciWorkflows.test.ts holds it to ci.yml.
+ */
+export const NO_LEG_WORKER_JOB = 'Build, wrangler dry runs, and Worker smoke (${{ matrix.app }})';
 /** A minute of 10s reads for a run whose last job passed a moment ago. */
 const ATTEMPTS = 6;
 const RETRY_DELAY_MS = 10_000;
@@ -168,14 +180,16 @@ function claimsProblem(claims, { repository, repositoryId, runId }) {
 
 /**
  * Why GitHub's record of the run does not show a full, green PR run of CI:
- * every job of it ran and passed, none skipped by its scope decision.
+ * every job of it ran and passed, none skipped by its scope decision. The
+ * one exception is the Worker job its scope chose no leg for, and only when
+ * the group's own scope chose none either (ADR-0123).
  *
  * @param {any} run GET /repos/{repository}/actions/runs/{id}
  * @param {readonly any[]} jobs its jobs, the latest attempt of each
- * @param {{ repository: string, runId: number }} expected
+ * @param {{ repository: string, runId: number, runsWorkerLegs: boolean }} expected
  * @returns {string | undefined} the problem, if any
  */
-function runProblem(run, jobs, { repository, runId }) {
+function runProblem(run, jobs, { repository, runId, runsWorkerLegs }) {
 	if (
 		run?.id !== runId ||
 		run?.repository?.full_name !== repository ||
@@ -189,9 +203,12 @@ function runProblem(run, jobs, { repository, runId }) {
 		}, not a completed success`;
 	}
 	if (!Array.isArray(jobs) || jobs.length === 0) return `GitHub lists no jobs for run ${runId}`;
-	const notPassed = jobs.filter(
-		(job) => job?.status !== 'completed' || job?.conclusion !== 'success',
-	);
+	/** @param {any} job */
+	const passed = (job) =>
+		job?.status === 'completed' &&
+		(job.conclusion === 'success' ||
+			(!runsWorkerLegs && job.conclusion === 'skipped' && job.name === NO_LEG_WORKER_JOB));
+	const notPassed = jobs.filter((job) => !passed(job));
 	if (notPassed.length > 0)
 		return `run ${runId} did not run and pass every job: ${notPassed.map((job) => `${job?.name} ${job?.conclusion ?? job?.status}`).join(', ')}`;
 	return undefined;
@@ -207,7 +224,13 @@ function runProblem(run, jobs, { repository, runId }) {
  *   commitTree: (sha: string) => Promise<string>,
  *   wait: (ms: number) => Promise<void>,
  * }} ReuseIo what it reads from GitHub
- * @typedef {{ tree: string, repository: string, repositoryId: string, io: ReuseIo }} FindOptions
+ * @typedef {{
+ *   tree: string,
+ *   repository: string,
+ *   repositoryId: string,
+ *   runsWorkerLegs: boolean,
+ *   io: ReuseIo,
+ * }} FindOptions the group's tree, this repository, whether the group's own scope runs any Worker leg, and GitHub
  */
 
 /**
@@ -217,7 +240,10 @@ function runProblem(run, jobs, { repository, runId }) {
  * @param {FindOptions} options
  * @returns {Promise<string | { id: number, url: string }>} the problem, or the run
  */
-async function checkRecord({ runId, name }, { tree, repository, repositoryId, io }) {
+async function checkRecord(
+	{ runId, name },
+	{ tree, repository, repositoryId, runsWorkerLegs, io },
+) {
 	const verified = verifiedClaims(await io.record(runId, name), await io.jwks());
 	if ('problem' in verified) return verified.problem;
 	const claimsWrong = claimsProblem(verified.claims, { repository, repositoryId, runId });
@@ -234,7 +260,7 @@ async function checkRecord({ runId, name }, { tree, repository, repositoryId, io
 		run = await io.run(runId);
 	}
 	return (
-		runProblem(run, await io.jobs(runId), { repository, runId }) ?? {
+		runProblem(run, await io.jobs(runId), { repository, runId, runsWorkerLegs }) ?? {
 			id: run.id,
 			url: run.html_url,
 		}
@@ -246,7 +272,7 @@ async function checkRecord({ runId, name }, { tree, repository, repositoryId, io
  * otherwise `run` is `undefined` and the group runs everything. Every
  * problem, a thrown read included, rejects only the record it concerns.
  *
- * @param {FindOptions} options the group's tree (`git rev-parse HEAD^{tree}`), this repository, and GitHub
+ * @param {FindOptions} options the group's tree (`git rev-parse HEAD^{tree}`) and the rest
  * @returns {Promise<{ run: { id: number, url: string } | undefined, rejected: string[] }>} the run, and why each record was not one
  */
 export async function findVerifiedRun(options) {
@@ -372,9 +398,10 @@ function githubIo(repository) {
  * why each record was rejected, logged. `undefined` runs the gates.
  *
  * @param {string} head the merge group's head commit
+ * @param {{ runsWorkerLegs: boolean }} group whether the group's own scope runs any Worker leg
  * @returns {Promise<{ id: number, url: string } | undefined>} the run, if one verified the tree
  */
-export async function verifiedRunOnGitHub(head) {
+export async function verifiedRunOnGitHub(head, { runsWorkerLegs }) {
 	const repository = process.env.GITHUB_REPOSITORY;
 	const repositoryId = process.env.GITHUB_REPOSITORY_ID;
 	if (!repository || !repositoryId || !process.env.GH_TOKEN) return undefined;
@@ -384,6 +411,7 @@ export async function verifiedRunOnGitHub(head) {
 			tree,
 			repository,
 			repositoryId,
+			runsWorkerLegs,
 			io: githubIo(repository),
 		});
 		for (const reason of rejected) console.log(reason);
