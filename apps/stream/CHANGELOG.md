@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.0.0
+
+### Operator steps
+
+- **stream:** The Graphics Administrator is a signed-in User holding the `admin` role, not whoever holds the shared `NUXT_GRAPHICS_ADMIN_TOKEN` (ADR-0131). `/admin/**` opens for that User's Session and no longer asks for a token; a User without the role is refused 403. The Evidence Ledger records which Graphics Administrator acted. (#1299)
+
+  Operator steps, on each Installation (staging and production):
+
+  1. **Before deploying**, give each person who used the token an `admin` User. Every account the first-admin bootstrap made already holds it. For anyone else, run the bootstrap ceremony with their email (README § First admin account): it grants the role and sets the password you send, so have them change it with a reset link from `/admin/users`. Accounts made at `/admin/users` hold no role.
+  2. **After deploying**, delete the token: `pnpm exec wrangler secret delete NUXT_GRAPHICS_ADMIN_TOKEN --config .output/server/wrangler.json` (add `--env staging` for staging).
+- **deploy:** The Melee key version is the var `NUXT_MELEE_CREDENTIAL_KEY_VERSION` in `wrangler.jsonc`, replacing the Worker secret `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION`, which nothing reads any more. Both Installations' label is `1`. A deploy refuses a Worker secret named like a var its config sets (ADR-0132). A local `.env` renames the setting. (#1298)
+
+  **Operator step, once this Release is live in an Installation:** delete the old secret there (`wrangler secret delete NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY_VERSION --config .output/server/wrangler.json`, adding `--env staging` for staging). It is unused, so nothing breaks while it remains.
+
+### Fixes
+
+- **stream:** The silent-video validator gate repeats a refused R2 object get, put or delete after a growing wait (1s, 2s, 4s), so its cleanup manifest, rewritten to one key faster than R2's one write a second to a key, no longer fails the staging job with `validator-command-failed step=manifest`. A command that still fails names Wrangler's reason, its HTTP status and Cloudflare error code, with every path and target name withheld. (#1296)
+
 ## 2.0.0
 
 ### Operator steps
