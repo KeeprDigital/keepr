@@ -16,8 +16,17 @@
 #     version has no tag yet. The action pushes each tag it reports and makes
 #     its GitHub Release from that app's CHANGELOG.md.
 #
-# Merging the Version PR, through the merge queue, is the release of every
-# app it names. Deploying stays per app.
+# The Version PR is a draft from its opening, and every update makes it one
+# again (`pr-draft: always`). CI skips a draft, so a person marking it ready
+# for review is what starts its CI, and "ready" means "release exactly this
+# content". Merging it, through the merge queue, is the release of every app
+# it names.
+#
+# Each Release then deploys itself (ADR-0125): once the action has published
+# the GitHub Releases, the `deploy` job dispatches one Deploy run
+# (deploy.yml) with every app released, to staging and then, behind the
+# `production` environment's required reviewer, to production. Nothing deploys
+# per merge to main, and nothing is dispatched when nothing was released.
 #
 # A Release is cut only from a revision the merge queue verified (ADR-0036).
 # The Version PR goes through the queue like any other, so the commit
@@ -35,8 +44,9 @@
 # PR opened with GITHUB_TOKEN would start no `pull_request` run (CI, PR title)
 # until a maintainer approved it, and GITHUB_TOKEN can never hold `workflows`,
 # which the Version PR's branch needs once main's workflows change. The App's
-# Version PR starts its runs like anyone's. GITHUB_TOKEN only reads: the
-# checkout, and the gate's merge-group runs, which the App cannot read.
+# Version PR starts its runs like anyone's. GITHUB_TOKEN reads the checkout
+# and the gate's merge-group runs, which the App cannot read, and writes only
+# the `deploy` job's dispatch, with `actions: write` in that job alone.
 
 name: Release
 
@@ -45,7 +55,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# GITHUB_TOKEN's: every write is the App token's.
+# GITHUB_TOKEN's: every write is the App token's, but the `deploy` job's
+# dispatch.
 permissions:
   contents: read
   # The gate reads the merge-group CI runs on the release commit.
@@ -64,6 +75,10 @@ jobs:
     timeout-minutes: 15
     # Holds the App's key; deploys only from main.
     environment: release
+    # What the `deploy` job dispatches: set only once the GitHub Releases exist.
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      published-packages: ${{ steps.changesets.outputs.published-packages }}
     steps:
       # The Version PR's branch and PR, and each tag and GitHub Release.
       # `workflows`: the Version PR's branch is reset to main, whose workflows
@@ -98,7 +113,8 @@ jobs:
       # The action sets the publish script's GITHUB_TOKEN to the App's token;
       # `gh` prefers GH_TOKEN, so the gate reads the merge-group runs with
       # GITHUB_TOKEN's `actions: read`, which the App does not have.
-      - uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+      - id: changesets
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         env:
           GH_TOKEN: ${{ github.token }}
         with:
@@ -106,3 +122,40 @@ jobs:
           publish-script: pnpm release:publish
           pr-title: 'chore(release): version apps'
           commit-message: 'chore(release): version apps'
+          # Opened as a draft, and made one again by every update: a person
+          # marks it ready to release exactly what it holds.
+          pr-draft: always
+
+  deploy:
+    name: Dispatch the Deploy of the released apps
+    needs: release
+    # Only after the gate passed, the tags were pushed and the GitHub Releases
+    # made, which the plan resolves.
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    # GITHUB_TOKEN's workflow_dispatch starts a run, which its other events
+    # never do. No environment: it holds no secret.
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Check out the dispatch script from this workflow's commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: .deploy-tooling
+          # The script and every module it imports.
+          sparse-checkout: |
+            packages/tooling/scripts/deploy/
+            packages/tooling/scripts/jsonc.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      # One run for every app released, to staging and then production
+      # (packages/tooling/scripts/deploy/dispatch.mjs).
+      - name: Dispatch Deploy to staging, then production
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # The action's output crosses into the shell via env, never by
+          # expression interpolation inside `run:`.
+          PUBLISHED_PACKAGES: ${{ needs.release.outputs.published-packages }}
+        run: node .deploy-tooling/packages/tooling/scripts/deploy/dispatch.mjs

@@ -1,14 +1,23 @@
 # One app's Release to one Environment: an Installation's deploy, called by
-# the Deploy workflow (deploy.yml, which says why and when) once per app it
-# deploys. It runs `@keepr/tooling`'s `packages/tooling/scripts/deploy/cli.mjs`
-# from the calling run's own commit (main), not from the Release, and reads
-# what to deploy from the Release's deploy descriptor, so rolling back to a
-# Release older than the markers or the descriptor still deploys it the same
-# way. It never runs a Release's own `pnpm run deploy`.
+# the Deploy workflow (deploy.yml, which says why and when) once per app and
+# Environment it deploys. It runs `@keepr/tooling`'s
+# `packages/tooling/scripts/deploy/cli.mjs` from the calling run's own commit
+# (main), not from the Release, and reads what to deploy from the Release's
+# deploy descriptor, so rolling back to a Release older than the markers or the
+# descriptor still deploys it the same way. It never runs a Release's own
+# `pnpm run deploy`.
+#
+# It builds nothing: it deploys the run's artifact `build-<app>`, which
+# deploy-build.yml built once for every Environment (ADR-0125). The Release
+# checkout is still needed, for its D1 migrations, its parts and its Wrangler.
+# Before its first remote change the deploy reads each D1 database's Time
+# Travel bookmark and refuses without one, in every Environment
+# (packages/tooling/scripts/deploy/recovery.mjs). In staging, the app's
+# unattended acceptance gates then run against the Installation.
 #
 # Each Environment is one Cloudflare account and one GitHub environment of the
 # same name (`production`, `staging`), shared by every app (ADR-0122). It deploys only
-# from main and holds that account's CLOUDFLARE_ACCOUNT_ID and a
+# from main, `production` behind a required reviewer, and holds that account's CLOUDFLARE_ACCOUNT_ID and a
 # CLOUDFLARE_API_TOKEN that can deploy every app in it (Workers Scripts:Edit,
 # D1:Edit, Containers:Edit), and the release GitHub App's KEEPR_RELEASE_APP_ID
 # and KEEPR_RELEASE_APP_PRIVATE_KEY (ADR-0124). The job reads them as the
@@ -34,7 +43,7 @@ on:
         required: true
         type: string
       environment:
-        description: The Environment its descriptor deploys to (production, staging).
+        description: The Environment its descriptor deploys to (staging, production).
         required: true
         type: string
       parts:
@@ -79,8 +88,6 @@ jobs:
       # The tagger identity of the annotated marker tags.
       GIT_COMMITTER_NAME: github-actions[bot]
       GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-      # nuxt build OOMs Node's default ~2GB heap on hosted runners.
-      NODE_OPTIONS: --max-old-space-size=6144
     steps:
       # The token the marker pushes use: it force-pushes the app's
       # promotion-marker tags (`<app>/<environment>[-<part>]`) and removes the
@@ -103,7 +110,7 @@ jobs:
           fetch-depth: 0
           # The deploy pushes the marker tags with this checkout's
           # credential, the App's token. Nothing in this job uploads an
-          # artifact.
+          # artifact; it only downloads one, outside this checkout.
           persist-credentials: true
       - name: Check out the deploy tooling from the calling run's commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -126,13 +133,19 @@ jobs:
           node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Builds once (the descriptor's build scripts), decides each part
-      # against its marker and deploys it first when that says so, checks
-      # deploy order, then migrates D1, deploys the Worker and verifies its
-      # Release identity, each between its markers. The step summary records
-      # the decisions, and on failure what each marker now says
+      - name: Download the build every Environment deploys
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: build-${{ inputs.app }}
+          path: ${{ runner.temp }}/build
+      # Places the downloaded build, decides each part against its marker,
+      # checks deploy order, reads each D1 database's Time Travel bookmark
+      # (refusing without one), deploys each part the decision deploys, then
+      # migrates D1, deploys the Worker and verifies its Release identity, each
+      # between its markers. The step summary records the decisions and the
+      # recovery points, and on failure what each marker now says
       # (apps/stream/README.md § Recovering from a partial promotion).
-      - name: Deploy (build, parts when decided, deploy order, migrate D1, promote, verify)
+      - name: Deploy (the build, parts when decided, deploy order, D1 recovery point, migrate D1, promote, verify)
         env:
           # On this step alone: job-level env would also reach the install's
           # build scripts and the setup actions, which deploy nothing.
@@ -144,13 +157,22 @@ jobs:
           INPUT_ENVIRONMENT: ${{ inputs.environment }}
           INPUT_PARTS: ${{ inputs.parts }}
           INPUT_OVERRIDE: ${{ inputs.override }}
-        run: node .deploy-tooling/packages/tooling/scripts/deploy/cli.mjs deploy --app "$INPUT_APP" --env "$INPUT_ENVIRONMENT" --parts "$INPUT_PARTS" ${INPUT_OVERRIDE:+--override "$INPUT_OVERRIDE"}
+        run: node .deploy-tooling/packages/tooling/scripts/deploy/cli.mjs deploy --app "$INPUT_APP" --env "$INPUT_ENVIRONMENT" --artifact "$RUNNER_TEMP/build" --parts "$INPUT_PARTS" ${INPUT_OVERRIDE:+--override "$INPUT_OVERRIDE"}
+      # Staging only: the gates that read the Installation and write nothing,
+      # with no person present (the deploy descriptor's `gates`). A failure
+      # fails this job, and production does not deploy.
+      - name: Run the unattended acceptance gates against the Staging Installation
+        if: inputs.environment == 'staging'
+        env:
+          INPUT_APP: ${{ inputs.app }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: node .deploy-tooling/packages/tooling/scripts/deploy/cli.mjs gates --app "$INPUT_APP" --env "$INPUT_ENVIRONMENT"
       - name: Remind the operator what is still owed
         env:
           RELEASE_TAG: ${{ inputs.release }}
           INPUT_ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          echo "Release $RELEASE_TAG promoted to $INPUT_ENVIRONMENT; its Installation answered deploy:verify (its release identity, or liveness only for a Release from before /api/release; not dependency health)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Release $RELEASE_TAG deployed to $INPUT_ENVIRONMENT; its Installation answered deploy:verify (its release identity, or liveness only for a Release from before /api/release; not dependency health)." >> "$GITHUB_STEP_SUMMARY"
           # The backticks are Markdown, not a command to expand.
           # shellcheck disable=SC2016
-          echo 'Run its deployed acceptance gates locally (Stream Keepr: `pnpm accept deployed`), in README order, stopping at the first failure.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Acceptance gates that write run only when a person starts them, against staging (Stream Keepr: `pnpm accept deployed`, apps/stream/README.md § Deploy day).' >> "$GITHUB_STEP_SUMMARY"

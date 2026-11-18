@@ -14,6 +14,10 @@
 		// wrangler.jsonc's and the validator's `env.staging` blocks, in the staging account.
 		"staging": { "url": "https://stream.keepr-staging.digital", "wranglerEnv": "staging" }
 	},
+	// The unattended acceptance gates: the Deploy workflow's staging job runs them
+	// against the Staging Installation once it is verified. They read fixture
+	// pages in Chrome, sign in to nothing and write nothing (README.md § Deploy day).
+	"gates": ["accept:unattended"],
 	"parts": {
 		// The app binds it (SILENT_VIDEO_PLAYBACK_VALIDATOR), so it deploys first,
 		// and only when its fingerprint changed.

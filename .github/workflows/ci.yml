@@ -2,8 +2,11 @@
 # Chrome, and workerd. The suites that stay local — and why — are tabled in
 # apps/stream/README.md § Testing (ingestion needs a running preview worker, the validator
 # needs Docker pre-flight, fonts:library needs a real library store). The six
-# `pnpm accept deployed` gates run on deploy day only: they provision real
-# Events in production and spend Ably free-plan quota (#189).
+# `pnpm accept deployed` gates run on deploy day only, started by a person:
+# they provision real Events in the Installation they target, staging, and
+# spend Ably free-plan quota (#189). The still-image and silent-video gates'
+# deployed modes, which write nothing, run in the Deploy workflow's staging
+# job (ADR-0125).
 #
 # When it runs, and why no more often (ADR-0036):
 #

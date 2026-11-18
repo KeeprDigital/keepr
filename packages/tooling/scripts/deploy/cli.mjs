@@ -13,13 +13,19 @@
  * - `deploy`: build once (or place `--artifact`), then for the Environment:
  *   parts by fingerprint (`--parts auto|always|never`), deploy order between
  *   Keepr Accounts and its Apps (`order.mjs`; `--override <reason>` bypasses
- *   it, and the app's marker records the reason), mark pending, migrate D1,
- *   deploy, verify, mark deployed (`procedure.mjs`).
- * - `build`: the descriptor's build scripts only, into its output directory, for
- *   a build job whose output every Environment deploys.
+ *   it, and the app's marker records the reason), each D1 database's Time
+ *   Travel bookmark (`recovery.mjs`; refused without one, and recorded in the
+ *   app's marker), mark pending, migrate D1, deploy, verify, mark deployed
+ *   (`procedure.mjs`).
+ * - `build [--artifact <dir>]`: the descriptor's build scripts only, into its
+ *   output directory, copied to `--artifact` for a build job to upload: the
+ *   one build every Environment deploys (`deploy --artifact`).
  * - `check`: what CI checks of each deployable app's Worker: each part bundled
  *   as a deploy would upload it (no Docker, no credentials), then `build`.
  * - `verify`: check the Installation serves this checkout's Release.
+ * - `gates`: the descriptor's unattended acceptance gates, each against the
+ *   Environment's Installation (`KEEPR_DEPLOY_URL`), stopping at the first
+ *   that fails: the staging job's, after its deploy (ADR-0125).
  * - `part <name>`: deploy one part between its markers, whatever its fingerprint.
  * - `mark-app <pending|deployed>`: write the app's marker by hand, recording
  *   whether its built Worker needs Keepr Accounts, as a deploy would.
@@ -37,16 +43,18 @@ import { bundlePart, fingerprintPart } from './fingerprint.mjs';
 import { LEGACY_MARKERS, describeMarker, gitMarkerStore, markerName } from './markers.mjs';
 import { checkDeployOrder, gitHistory, neededBy } from './order.mjs';
 import { MODES, decidePartDeploy, deployRelease, markApp, promotePart } from './procedure.mjs';
+import { recordRecoveryPoints } from './recovery.mjs';
 import { readRelease } from './release.mjs';
 import { DeployVerifyFailure, verifyInstallation } from './verify.mjs';
 
 const USAGE = `usage: keepr-deploy <command> --app <app> [--env <environment>]
   deploy --env <env> [--parts auto|always|never] [--artifact <dir>] [--override <reason>]
-                               build once (or place the artifact), then deploy order, parts, D1, Worker, verify,
+                               build once (or place the artifact), then deploy order, D1 recovery point, parts, D1, Worker, verify,
                                each between markers; --override deploys out of order, its reason recorded
-  build                        the descriptor's build scripts only
+  build [--artifact <dir>]     the descriptor's build scripts only, the output copied to <dir>
   check                        each part bundled as a deploy would, then build: CI's Worker leg
   verify --env <env>           check the Installation serves this checkout's Release
+  gates --env <env>            the app's unattended acceptance gates, against the Installation
   part <name> --env <env>      deploy one part between its markers, whatever its fingerprint
   mark-app <pending|deployed> --env <env>
                                write the app's marker by hand
@@ -74,14 +82,37 @@ function workspaceRoot(cwd) {
  */
 function run(command, args, cwd) {
 	const result = spawnSync(command, args, { cwd, stdio: 'inherit' });
-	if (result.status !== 0)
-		throw new Error(
-			`${command} ${args.join(' ')} failed${
-				result.error
-					? `: ${result.error.message}`
-					: ` with status ${result.status ?? result.signal}`
-			}`,
-		);
+	if (result.status !== 0) throw failed(command, args, result);
+}
+
+/**
+ * @param {string} command
+ * @param {string[]} args
+ * @param {import('node:child_process').SpawnSyncReturns<unknown>} result
+ */
+function failed(command, args, result) {
+	return new Error(
+		`${command} ${args.join(' ')} failed${
+			result.error ? `: ${result.error.message}` : ` with status ${result.status ?? result.signal}`
+		}`,
+	);
+}
+
+/**
+ * What `command` printed to stdout, its stderr passed through.
+ *
+ * @param {string} command
+ * @param {string[]} args
+ * @param {string} cwd
+ */
+function read(command, args, cwd) {
+	const result = spawnSync(command, args, {
+		cwd,
+		encoding: 'utf8',
+		stdio: ['ignore', 'pipe', 'inherit'],
+	});
+	if (result.status !== 0) throw failed(command, args, result);
+	return result.stdout;
 }
 
 /** @param {Record<string, string | undefined>} env */
@@ -102,7 +133,7 @@ function deployer(env) {
  *   env: Record<string, string | undefined>,
  *   log: (line: string) => void,
  * }} options
- * @returns {import('./procedure.mjs').DeploySteps}
+ * @returns {import('./procedure.mjs').DeploySteps & { bookmark: (binding: string) => string }}
  */
 function realSteps({ release, environment, store, env, log }) {
 	const { appDir, descriptor } = release;
@@ -121,6 +152,24 @@ function realSteps({ release, environment, store, env, log }) {
 				throw new Error(`the artifact at ${path} has no ${descriptor.worker.config}.`);
 		},
 		fingerprint: (part) => fingerprintPart({ appDir, part: descriptor.parts[part], wranglerEnv }),
+		// A remote read: the database's current Time Travel bookmark, as JSON.
+		bookmark: (binding) => {
+			const output = read(
+				wrangler,
+				[
+					'd1',
+					'time-travel',
+					'info',
+					binding,
+					'--json',
+					'--config',
+					descriptor.worker.config,
+					...envArgs,
+				],
+				appDir,
+			);
+			return JSON.parse(output.slice(output.indexOf('{'))).bookmark;
+		},
 		deployPart: (part) =>
 			run(wrangler, ['deploy', '--config', descriptor.parts[part].config, ...envArgs], appDir),
 		migrate: (binding) =>
@@ -142,6 +191,20 @@ function realSteps({ release, environment, store, env, log }) {
 			run(wrangler, ['deploy', '--config', descriptor.worker.config, ...envArgs], appDir),
 		verify: () => verifyInstallation({ release, environment, commit: store.head(), env, log }),
 	};
+}
+
+/**
+ * The build's output, copied to `path` for the Deploy workflow to upload: what
+ * `deploy --artifact` places back, in every Environment.
+ *
+ * @param {import('./release.mjs').Release} release
+ * @param {string} path
+ */
+function exportArtifact({ appDir, descriptor }, path) {
+	if (!existsSync(join(appDir, descriptor.worker.config)))
+		throw new Error(`the build left no ${descriptor.worker.config} to deploy.`);
+	rmSync(resolve(path), { recursive: true, force: true });
+	cpSync(join(appDir, descriptor.output), resolve(path), { recursive: true });
 }
 
 /**
@@ -209,6 +272,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 		build: argument === undefined,
 		check: argument === undefined,
 		verify: argument === undefined,
+		gates: argument === undefined,
 		part: argument !== undefined,
 		'mark-app': argument === 'pending' || argument === 'deployed',
 		status: argument === undefined,
@@ -243,13 +307,19 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 	const source = deployer(env);
 
 	if (command === 'build') {
-		realSteps({
-			release,
-			environment: '',
-			store: gitMarkerStore({ cwd: release.appDir }),
-			env,
-			log,
-		}).build();
+		try {
+			realSteps({
+				release,
+				environment: '',
+				store: gitMarkerStore({ cwd: release.appDir }),
+				env,
+				log,
+			}).build();
+			if (values.artifact !== undefined) exportArtifact(release, values.artifact);
+		} catch (error) {
+			console.error(`keepr-deploy: ${/** @type {Error} */ (error).message}`);
+			return 1;
+		}
 		return 0;
 	}
 	if (command === 'check') {
@@ -280,21 +350,25 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 	const store = gitMarkerStore({ cwd: release.appDir });
 
 	if (command === 'deploy') {
+		const steps = realSteps({ release, environment: target, store, env, log });
 		try {
 			await deployRelease({
 				release,
 				environment: target,
 				store,
-				steps: realSteps({ release, environment: target, store, env, log }),
+				steps,
 				...(values.artifact === undefined ? {} : { artifact: values.artifact }),
 				mode: /** @type {import('./procedure.mjs').Mode} */ (values.parts),
 				source,
-				beforeRemoteChange: (context) =>
-					checkDeployOrder({
+				// Deploy order, then the D1 recovery point: both before anything remote changes.
+				beforeRemoteChange: (context) => ({
+					...checkDeployOrder({
 						...context,
 						history: gitHistory({ cwd: release.appDir }),
 						...(override === undefined ? {} : { override }),
 					}),
+					...recordRecoveryPoints({ ...context, bookmark: steps.bookmark }),
+				}),
 				log,
 			});
 		} catch (error) {
@@ -320,6 +394,30 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 			console.error(`deploy:verify: FAILED: ${error.message}`);
 			return 1;
 		}
+	}
+	if (command === 'gates') {
+		const installation = release.descriptor.environments[target];
+		const gates = release.descriptor.gates ?? [];
+		if (!installation) {
+			console.error(`keepr-deploy: ${release.app} has no Installation in ${target}.`);
+			return 1;
+		}
+		if (gates.length === 0) log(`${release.app}@${release.version} names no unattended gates.`);
+		for (const gate of gates) {
+			const result = spawnSync('pnpm', ['run', gate], {
+				cwd: release.appDir,
+				env: { ...env, KEEPR_DEPLOY_URL: installation.url },
+				stdio: 'inherit',
+			});
+			if (result.status !== 0) {
+				log(
+					`Unattended gate ${gate} failed against ${installation.url}${result.error ? `: ${result.error.message}` : ''}.`,
+				);
+				return 1;
+			}
+			log(`Unattended gate ${gate} passed against ${installation.url}.`);
+		}
+		return 0;
 	}
 	if (command === 'part') {
 		const part = /** @type {string} */ (argument);

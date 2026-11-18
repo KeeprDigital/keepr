@@ -1,6 +1,6 @@
 # ADR-0119: The workspace tooling deploys each app to each Environment from one build, and verifies its Release
 
-Accepted · 2026-11-17 · [#1262](https://github.com/KeeprDigital/keepr/issues/1262), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amends ADR-0035 and ADR-0110 · Amended by ADR-0120: deploy order between Keepr Accounts and its Apps is the check before the first remote change, and the app marker gains `needs` and `override`
+Accepted · 2026-11-17 · [#1262](https://github.com/KeeprDigital/keepr/issues/1262), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amends ADR-0035 and ADR-0110 · Amended by ADR-0120: deploy order between Keepr Accounts and its Apps is the check before the first remote change, and the app marker gains `needs` and `override` · Amended by ADR-0125: the Deploy workflow builds each app once in a job of its own and every Environment deploys that artifact; before the first remote change a deploy also reads each D1 database's Time Travel bookmark
 
 ### Decision
 

@@ -1,44 +1,63 @@
-# Manually triggered deploy of one or more apps' Releases to an Environment —
-# the Actions counterpart of `pnpm run deploy --app <app> --env <env>`, once
-# per app. It exists as an *option*, not a replacement: deploys are never
-# merge- or release-triggered, because deploy day is a human procedure
-# (apps/stream/README.md § Deploy day). This workflow covers only what that
-# covers — per app: build, the descriptor's checks (for Stream Keepr the Wasm
-# dry run and the Worker smoke), parts by fingerprint, deploy order, D1
-# migration, Worker promotion, release-identity verify. Everything after
-# promotion stays with the operator:
+# Deploys one or more apps' Releases: each Release to staging and then, once a
+# person approves, to production; or, dispatched by hand, to one Environment.
+# The Actions counterpart of `pnpm run deploy --app <app> --env <env>`, once
+# per app and Environment.
 #
-#   - Each app's deployed acceptance gates run locally (Stream Keepr's six:
-#     `pnpm accept deployed`), in order, stopping at the first failure. The
-#     validator pre-flight needs your Docker, so they cannot run on a hosted
-#     runner.
-#   - "Nothing on air" is a condition only a person can verify before
-#     triggering this.
+# When it runs (ADR-0125, amending the policy this header stated before):
 #
-# Actions deploys ship released tags, never main's HEAD: each app's Release
-# resolves through its GitHub Releases, `@keepr/<app>@<version>` (cut by
-# merging the Version PR, ADR-0118), so what promotes is always a formally
-# released snapshot — since ADR-0036, a commit that passed CI in the merge
-# queue — and rollback is dispatching this workflow with the previous tag.
-# The `v*` tags release-please made are history and never deploy. Local
-# `pnpm run deploy` stays free-form for emergencies.
+#   - **A Release dispatches it.** Once the release workflow (release.yml) has
+#     passed the release gate (ADR-0036), tagged and published the GitHub
+#     Releases, it dispatches one run with every app it released, to staging
+#     then production. Deploys are never merge-triggered: a merge to main
+#     that releases nothing deploys nothing, and what deploys is always a
+#     released tag, never main's HEAD.
+#   - **By hand**, for a rollback or a redeploy: one Environment, or staging
+#     then production, any published Release. Production stays behind its
+#     approval either way. Local `pnpm run deploy` stays for emergencies.
 #
-# The `plan` job resolves the Releases (packages/tooling/scripts/deploy/plan.mjs)
-# and deploys nothing. Each app then deploys as its own job, through
-# deploy-installation.yml, in the Environment's GitHub environment (ADR-0122)
-# with a concurrency group of its own (that file says what each holds).
-# Keepr Accounts' job runs first, and every App's job waits for it to
-# succeed, because deploy order refuses an App that Keepr Accounts'
-# Installation does not allow (ADR-0120); the Apps deploy side by side. An app
-# joins with its deploy descriptor: nothing here names it.
+# What a run does, per app:
 #
-# The app and each of its parts have their own promotion marker, an annotated
-# git tag (ADR-0035, ADR-0119): `stream/production` for Stream Keepr's app and
-# `stream/production-validator` for its validator, each `pending` while its
+#   1. **Build once** (deploy-build.yml): the descriptor's build, dry run and
+#      Worker smoke, uploaded as the artifact every Environment deploys, so
+#      production runs the bytes staging ran.
+#   2. **Staging** (GitHub environment `staging`, no approval): deploy order,
+#      the D1 recovery point, parts by fingerprint, D1 migrations, the Worker,
+#      deploy:verify with the Release's identity, each between its promotion
+#      markers; then the app's unattended acceptance gates, which read the
+#      Installation and write nothing.
+#   3. **Production** (GitHub environment `production`): waits for its
+#      required reviewer, then the same steps on the same artifact, without the
+#      gates. One "Review deployments" approves every App's production job at
+#      once; the plan's summary on the run's page lists what to confirm first,
+#      "nothing on air" among it, since GitHub's review dialog shows no text of
+#      ours.
+#
+# The approval replaces the word an operator typed: before its first remote
+# change each deploy reads every D1 database's Time Travel bookmark, refuses
+# without one, and records it in its summary and the app's marker
+# (packages/tooling/scripts/deploy/recovery.mjs). Acceptance gates that write
+# run only when a person starts them, against staging (apps/stream/README.md
+# § Deploy day).
+#
+# The `plan` job resolves the Releases and the Environments
+# (packages/tooling/scripts/deploy/plan.mjs) and deploys nothing. Each app
+# then builds, and deploys to each Environment as its own job, through
+# deploy-installation.yml, in that Environment's GitHub environment (ADR-0122)
+# with a concurrency group per Installation (that file says what each holds).
+# Keepr Accounts deploys to an Environment before any App does, and every
+# App's job there waits for it to succeed, because deploy order refuses an App
+# that Keepr Accounts' Installation does not allow (ADR-0120); the Apps deploy
+# side by side, and production waits for every App's staging. An app joins
+# with its deploy descriptor: nothing here names it.
+#
+# Each Installation's app and parts have their own promotion marker, an
+# annotated git tag (ADR-0035, ADR-0119): `stream/staging`, `stream/production`
+# and `stream/production-validator`, among others, each `pending` while its
 # deploy runs and `deployed` once it is confirmed, so a run that fails between
-# the two records exactly that. The markers are pushed with the release GitHub
-# App's token, not GITHUB_TOKEN, which can never hold `workflows` and so cannot
-# put a marker on a Release whose workflows differ from main's (ADR-0124). No
+# the two records exactly that, and redeploying the whole Release repairs
+# either Environment. The markers are pushed with the release GitHub App's
+# token, not GITHUB_TOKEN, which can never hold `workflows` and so cannot put a
+# marker on a Release whose workflows differ from main's (ADR-0124). No
 # GITHUB_TOKEN in this run can write.
 
 name: Deploy
@@ -55,21 +74,17 @@ on:
         type: string
         default: stream
       environment:
-        description: The Environment every app here deploys to.
+        description: >-
+          Where every app here deploys: one Environment (a rollback goes to
+          production alone), or staging then production, as a Release does.
+          Production waits for its approval.
         required: true
         type: choice
         default: production
         options:
           - production
           - staging
-      d1_recovery_point:
-        description: >-
-          Type "confirmed" once a recent D1 Time Travel recovery point or
-          export exists for every app deployed (README § Deploy day). D1
-          migration and Worker promotion are not one atomic transaction; this
-          is the rollback anchor.
-        required: true
-        type: string
+          - staging then production
       validator:
         description: >-
           Parts (Stream Keepr's silent-video validator). auto: deploy each first
@@ -103,12 +118,9 @@ jobs:
     outputs:
       accounts: ${{ steps.plan.outputs.accounts }}
       apps: ${{ steps.plan.outputs.apps }}
+      builds: ${{ steps.plan.outputs.builds }}
+      environments: ${{ steps.plan.outputs.environments }}
     steps:
-      - name: Require the D1 recovery-point confirmation
-        if: inputs.d1_recovery_point != 'confirmed'
-        run: |
-          echo '::error::Refusing to deploy: the d1_recovery_point input must be the word "confirmed".'
-          exit 1
       - name: Check out the deploy tooling from this workflow's commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -121,26 +133,42 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
       # Only published GitHub Releases resolve; a v* tag, a draft or an
-      # unknown app refuses the whole run before any job deploys.
-      - name: Resolve each app's Release
+      # unknown app refuses the whole run before any job builds. Its summary
+      # holds the checklist to confirm before approving production.
+      - name: Resolve each app's Release and the Environments
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}
           # Dispatch inputs cross into the shell via env, never by expression
           # interpolation inside `run:`.
           INPUT_RELEASES: ${{ inputs.releases }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
           INPUT_OVERRIDE: ${{ inputs.override }}
         run: node .deploy-tooling/packages/tooling/scripts/deploy/plan.mjs
 
-  accounts:
-    name: Keepr Accounts
+  build:
+    name: Build ${{ matrix.release }}
     needs: plan
-    if: needs.plan.outputs.accounts != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.builds) }}
+    uses: ./.github/workflows/deploy-build.yml
+    with:
+      app: ${{ matrix.app }}
+      release: ${{ matrix.release }}
+
+  accounts-staging:
+    name: Keepr Accounts to staging
+    needs: [plan, build]
+    if: >-
+      needs.plan.outputs.accounts != ''
+      && contains(fromJSON(needs.plan.outputs.environments), 'staging')
     uses: ./.github/workflows/deploy-installation.yml
     with:
       app: accounts
       release: ${{ needs.plan.outputs.accounts }}
-      environment: ${{ inputs.environment }}
+      environment: staging
       parts: ${{ inputs.validator }}
       override: ${{ inputs.override }}
     # By name, never `inherit`: the job reads them from its GitHub
@@ -151,16 +179,17 @@ jobs:
       KEEPR_RELEASE_APP_ID: ${{ secrets.KEEPR_RELEASE_APP_ID }}
       KEEPR_RELEASE_APP_PRIVATE_KEY: ${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}
 
-  apps:
-    name: ${{ matrix.app }}
-    needs: [plan, accounts]
-    # After Keepr Accounts deployed, or when this run does not deploy it;
-    # never after it failed or the run was cancelled.
+  apps-staging:
+    name: ${{ matrix.app }} to staging
+    needs: [plan, build, accounts-staging]
+    # Every build succeeded, and Keepr Accounts reached staging first when the
+    # run deploys it; never after a failure or a cancel.
     if: >-
       !cancelled()
-      && needs.plan.result == 'success'
+      && needs.build.result == 'success'
       && needs.plan.outputs.apps != '[]'
-      && (needs.accounts.result == 'success' || needs.accounts.result == 'skipped')
+      && contains(fromJSON(needs.plan.outputs.environments), 'staging')
+      && (needs.plan.outputs.accounts == '' || needs.accounts-staging.result == 'success')
     strategy:
       # One App's failure does not cancel another's deploy part-way.
       fail-fast: false
@@ -170,7 +199,65 @@ jobs:
     with:
       app: ${{ matrix.app }}
       release: ${{ matrix.release }}
-      environment: ${{ inputs.environment }}
+      environment: staging
+      parts: ${{ inputs.validator }}
+      override: ${{ inputs.override }}
+    # By name, never `inherit`: the job reads them from its GitHub
+    # environment, which a called workflow can only when they are passed.
+    secrets:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      KEEPR_RELEASE_APP_ID: ${{ secrets.KEEPR_RELEASE_APP_ID }}
+      KEEPR_RELEASE_APP_PRIVATE_KEY: ${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}
+
+  accounts-production:
+    name: Keepr Accounts to production
+    needs: [plan, build, accounts-staging]
+    # After Keepr Accounts' staging passed, when the run deploys to staging.
+    if: >-
+      !cancelled()
+      && needs.build.result == 'success'
+      && needs.plan.outputs.accounts != ''
+      && contains(fromJSON(needs.plan.outputs.environments), 'production')
+      && (!contains(fromJSON(needs.plan.outputs.environments), 'staging') || needs.accounts-staging.result == 'success')
+    uses: ./.github/workflows/deploy-installation.yml
+    with:
+      app: accounts
+      release: ${{ needs.plan.outputs.accounts }}
+      environment: production
+      parts: ${{ inputs.validator }}
+      override: ${{ inputs.override }}
+    # By name, never `inherit`: the job reads them from its GitHub
+    # environment, which a called workflow can only when they are passed.
+    secrets:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      KEEPR_RELEASE_APP_ID: ${{ secrets.KEEPR_RELEASE_APP_ID }}
+      KEEPR_RELEASE_APP_PRIVATE_KEY: ${{ secrets.KEEPR_RELEASE_APP_PRIVATE_KEY }}
+
+  apps-production:
+    name: ${{ matrix.app }} to production
+    needs: [plan, build, apps-staging, accounts-production]
+    # After every App's staging passed, when the run deploys to staging, so
+    # their production jobs wait for one approval together; and after Keepr
+    # Accounts reached production, when the run deploys it.
+    if: >-
+      !cancelled()
+      && needs.build.result == 'success'
+      && needs.plan.outputs.apps != '[]'
+      && contains(fromJSON(needs.plan.outputs.environments), 'production')
+      && (!contains(fromJSON(needs.plan.outputs.environments), 'staging') || needs.apps-staging.result == 'success')
+      && (needs.plan.outputs.accounts == '' || needs.accounts-production.result == 'success')
+    strategy:
+      # One App's failure does not cancel another's deploy part-way.
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.apps) }}
+    uses: ./.github/workflows/deploy-installation.yml
+    with:
+      app: ${{ matrix.app }}
+      release: ${{ matrix.release }}
+      environment: production
       parts: ${{ inputs.validator }}
       override: ${{ inputs.override }}
     # By name, never `inherit`: the job reads them from its GitHub

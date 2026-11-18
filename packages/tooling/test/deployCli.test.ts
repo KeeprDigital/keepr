@@ -1,5 +1,14 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
@@ -93,6 +102,121 @@ describe('the keepr-deploy command line', () => {
 		expect(result.stderr).not.toContain('pnpm run build');
 	});
 
+	// The Deploy workflow's build job: what it uploads is what every Environment deploys.
+	describe('a build for an artifact', () => {
+		const release = {
+			'pnpm-workspace.yaml': 'packages: []\n',
+			'apps/stream/package.json': JSON.stringify({ name: '@keepr/stream', version: '1.9.0' }),
+			'apps/stream/deploy.jsonc': JSON.stringify({
+				app: 'stream',
+				build: [],
+				output: '.output',
+				worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
+				databases: [],
+				environments: { production: { url: 'https://stream.keepr.digital' } },
+				parts: {},
+			}),
+		};
+
+		it("copies the descriptor's output, as built, to the artifact directory", () => {
+			const root = workspace({
+				...release,
+				'apps/stream/.output/server/wrangler.json': '{"name":"stream"}',
+			});
+			const artifact = join(root, 'artifact');
+
+			const result = run(['build', '--app', 'stream', '--artifact', artifact], root);
+
+			expect(result.status, result.stderr).toBe(0);
+			expect(readFileSync(join(artifact, 'server/wrangler.json'), 'utf8')).toBe(
+				'{"name":"stream"}',
+			);
+		});
+
+		it('fails when the build left no Worker configuration to deploy', () => {
+			const root = workspace(release);
+
+			const result = run(['build', '--app', 'stream', '--artifact', join(root, 'artifact')], root);
+
+			expect(result.status).toBe(1);
+			expect(result.stderr).toContain('.output/server/wrangler.json');
+		});
+	});
+
+	/**
+	 * The staging job's unattended gates: each runs as the app's package script
+	 * against the Environment's Installation. A fake `pnpm`, alone on PATH,
+	 * records what it ran and where, and exits with the gate's status.
+	 */
+	describe('the unattended gates', () => {
+		function gates(app: Record<string, unknown>, status = 0) {
+			const root = workspace({
+				'pnpm-workspace.yaml': 'packages: []\n',
+				'apps/stream/package.json': JSON.stringify({ name: '@keepr/stream', version: '1.9.0' }),
+				'apps/stream/deploy.jsonc': JSON.stringify({
+					app: 'stream',
+					build: ['build'],
+					output: '.output',
+					worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
+					databases: [],
+					environments: {
+						production: { url: 'https://stream.keepr.digital' },
+						staging: { url: 'https://stream.keepr-staging.digital', wranglerEnv: 'staging' },
+					},
+					parts: {},
+					...app,
+				}),
+			});
+			const ran = join(root, 'ran');
+			mkdirSync(join(root, 'bin'));
+			writeFileSync(
+				join(root, 'bin/pnpm'),
+				`#!/bin/sh\necho "\${PWD##*/} $* $KEEPR_DEPLOY_URL" >> '${ran}'\nexit ${status}\n`,
+			);
+			chmodSync(join(root, 'bin/pnpm'), 0o755);
+			const result = spawnSync(
+				process.execPath,
+				[CLI, 'gates', '--app', 'stream', '--env', 'staging'],
+				{
+					cwd: root,
+					env: {
+						...process.env,
+						PATH: join(root, 'bin'),
+						CLOUDFLARE_API_TOKEN: 'blocked-by-test-guard',
+					},
+					encoding: 'utf8',
+				},
+			);
+			return { result, ran: existsSync(ran) ? readFileSync(ran, 'utf8') : '' };
+		}
+
+		it("runs each of the app's gates in its directory, against the Environment's Installation", () => {
+			const { result, ran } = gates({ gates: ['accept:unattended', 'accept:other'] });
+
+			expect(result.status, result.stderr).toBe(0);
+			expect(ran).toBe(
+				'stream run accept:unattended https://stream.keepr-staging.digital\n' +
+					'stream run accept:other https://stream.keepr-staging.digital\n',
+			);
+		});
+
+		it('fails on the first gate that fails, and runs none after it', () => {
+			const { result, ran } = gates({ gates: ['accept:unattended', 'accept:other'] }, 1);
+
+			expect(result.status).toBe(1);
+			expect(ran.split('\n').filter(Boolean)).toHaveLength(1);
+		});
+
+		// A Release from before gates, or an app with none, passes and says so.
+		it('passes, saying so, when the Release names no gate', () => {
+			const { result, ran } = gates({});
+
+			expect(result.status).toBe(0);
+			expect(result.stdout).toContain('no unattended gates');
+			expect(ran).toBe('');
+		});
+	});
+
 	it('refuses a descriptor that would deploy the Accounts Stand-in before building anything', () => {
 		const root = mkdtempSync(join(tmpdir(), 'keepr-cli-'));
 		roots.push(root);
@@ -152,7 +276,7 @@ describe('the keepr-deploy command line', () => {
 				},
 			).trim();
 
-		function releaseAheadOfAccounts() {
+		function releaseAheadOfAccounts({ databases = [] as { binding: string }[] } = {}) {
 			const root = mkdtempSync(join(tmpdir(), 'keepr-cli-order-'));
 			roots.push(root);
 			const [origin, checkout, artifact, bin] = ['origin', 'checkout', 'artifact', 'bin'].map(
@@ -190,7 +314,7 @@ describe('the keepr-deploy command line', () => {
 					build: ['build'],
 					output: '.output',
 					worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
-					databases: [],
+					databases,
 					environments: { production: { url: 'https://stream.keepr.digital' } },
 					parts: {},
 				}),
@@ -256,6 +380,17 @@ describe('the keepr-deploy command line', () => {
 				needs: 'accounts',
 				override: 'Keepr Accounts is down; #1300',
 			});
+		});
+
+		// The Release has no Wrangler to read Time Travel with, as when Cloudflare cannot answer.
+		it('refuses without a D1 recovery point, after deploy order and before any marker moves', () => {
+			const { deploy, marker } = releaseAheadOfAccounts({ databases: [{ binding: 'DB' }] });
+
+			const result = deploy('--override', 'Keepr Accounts is down; #1300');
+
+			expect(result.status).toBe(1);
+			expect(result.stdout).toContain("no D1 recovery point for stream's DB in production");
+			expect(marker('stream/production')).toBeUndefined();
 		});
 	});
 });
