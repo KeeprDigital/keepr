@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -236,5 +236,23 @@ describe('which apps are deployable', () => {
 
 		for (const app of deployableApps(root))
 			expect(readRelease({ root, app }), app).toMatchObject({ app, verifies: 'release' });
+	});
+
+	// A missing script fails the build job, or the staging job's gates, not review.
+	it("names, in each of this workspace's descriptors, only scripts its app has", () => {
+		const root = join(import.meta.dirname, '../../..');
+
+		for (const app of deployableApps(root)) {
+			const { appDir, descriptor } = readRelease({ root, app });
+			const scripts = Object.keys(
+				(
+					JSON.parse(readFileSync(join(appDir, 'package.json'), 'utf8')) as {
+						scripts: Record<string, string>;
+					}
+				).scripts,
+			);
+			for (const script of [...descriptor.build, ...(descriptor.gates ?? [])])
+				expect(scripts, `${app}: ${script}`).toContain(script);
+		}
 	});
 });
