@@ -13,7 +13,7 @@ Keepr alone. [Section 6](#6-built-for-every-app) says what that changes.
 ## Recommendation
 
 **Move, all of it, in stages behind the two ports that already exist, once the
-Staging run and decision 2 of [section 7](#7-decisions-a-move-would-need) hold. Nothing forces a date.**
+Staging run holds. Nothing forces a date.**
 
 - **It can.** Everything Stream Keepr uses Ably for fits one Durable Object per
   Event with hibernating WebSockets. A throwaway prototype carried the rig #189
@@ -132,6 +132,28 @@ realistic Set Input:
 **These are loopback figures.** They show the semantics hold and the object adds
 about a millisecond. They say nothing about a network, a venue, or OBS. The
 run's output is in the [appendix](#appendix-the-local-run).
+
+### The Nuxt Worker and the object
+
+A second throwaway, branch `spike/1295-nitro-durable-object`, commit `4db98465`
+(local until pushed): Score Keepr's Worker, built by Nitro 2.13.6 on the shared
+layer's preset, exporting the prototype's class. MEASURED under local `workerd`
+and under `nuxt dev`:
+
+| Question | Result |
+| --- | --- |
+| Can a Nuxt Worker export the class? | Not with Nitro's own entry, which exports only `default`. Yes with a custom `nitro.entry` that wraps it and adds the export: the build emits the class and merges the binding and migration into the generated Wrangler config |
+| Can an ordinary route hand back the object's `101`? | **No.** Nitro rebuilds every route's response: `RangeError: Responses may only be constructed with status codes in the range 200 to 599` |
+| Can the custom entry hand the upgrade over, with the app deciding who may? | Yes. It asks an ordinary route who the caller is through Nitro's own handler, then passes the upgrade to the object: `401` without the stand-in credential, `101` with it, and the attach frame arrives |
+| Can a route publish by RPC on the Worker's own binding? | Yes; the socket heard it |
+| `nuxt dev`, with the custom entry set | The dev server never comes up: the entry replaces Nitro's dev entry. It must be set for production builds only |
+| `nuxt dev`, class in the app's own Worker | Does not work. Wrangler says so at startup, and a call to the object hangs |
+| `nuxt dev`, class in a Worker running beside it, bound by `script_name` | A route's RPC publish works. The upgrade cannot pass through the Nuxt dev server, which runs no Worker entry |
+
+So the built Worker can hold the object, and `nuxt dev` cannot: it needs a
+Worker running beside it for the object, and some other path for the socket.
+Not tried on Stream Keepr's own build, whose Nitro configuration has more in it
+(Wasm, async context, its integration handlers).
 
 ## 4. Cost
 
@@ -254,15 +276,21 @@ included.
      service binding into Score Keepr's namespace first. Moving from per app to
      one service later is a hosting change, since the class and protocol are
      shared source either way.
-   - **Within per app, prefer the app's own Worker to a Part** (ADR-0119): one
-     deployable per app and no deploy order, and a deferred code update keeps
-     sockets connected across the app's deploys. Fall back to a Part only if
-     Nitro 2.13 cannot export a Durable Object class from a Nuxt Worker, which
-     is unverified. Prove it with decision 2.
-2. **Whether the Nuxt Worker can hand back the object's `101`.** The upgrade must
-   pass where the Session and capability are checked. If Nitro will not return a
-   WebSocket response untouched, the realtime Part takes the route and must
-   authenticate by itself. **Prove this first; the prototype did not.**
+   - **Within per app, the app's own Worker or a Part** (ADR-0119). The app's
+     own Worker is proven for the built Worker (section 3): one deployable, no
+     deploy order, the caller authorized in process, and a deferred code update
+     keeps sockets connected across the app's deploys. It costs a custom Worker
+     entry, and `nuxt dev` still needs a Worker beside it, so development and
+     production differ in shape. A Part that owns the socket route is the same
+     shape everywhere, at the cost of a second deployable per app and a call
+     back to the app to ask who the caller is, which is untested. Still
+     preferred: the app's own Worker, now on production's account alone.
+2. **How a socket reaches the object under `nuxt dev`.** An ordinary route
+   cannot hand back the `101` (section 3), and `nuxt dev` runs no Worker entry.
+   The client connects to the Worker beside it, which asks the dev server who
+   the caller is; or a dev-only WebSocket route pipes to the object. Neither is
+   tried. The integration suites and the preview run the built Worker, so they
+   take production's path.
 3. **How a Screen Output presents its capability.** A browser cannot set
    `Authorization` on a WebSocket. A subprotocol value, or a short-lived ticket
    from an HTTP route. Amends ADR-0010's token grant, and the rule that only a
@@ -309,8 +337,9 @@ included.
   heartbeat timer.
 - **Ably's own delivery latency** on the same rig, for comparison.
   `scripts/measure-realtime-fanout.mjs` counts messages and does not time them.
-- **Nitro exporting a Durable Object class** from a Nuxt Worker, decision 1, and
-  **passing its `101` through**, decision 2.
+- **The custom entry on Stream Keepr's own build**, and a deploy dry run of a
+  Worker that exports the class. Only Score Keepr's build was tried.
+- **A socket under `nuxt dev`**, decision 2.
 - **Score Keepr's needs beyond its spec.** It is scaffolded, not built; section 6
   reads the spec and nothing else.
 
