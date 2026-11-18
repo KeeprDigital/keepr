@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { planDeploy } from '../scripts/deploy/plan.mjs';
+import { STAGING_THEN_PRODUCTION, planDeploy } from '../scripts/deploy/plan.mjs';
 
 const PLAN = join(import.meta.dirname, '../scripts/deploy/plan.mjs');
 
@@ -31,10 +31,27 @@ describe('a Deploy run resolves the Release of each app it names, Keepr Accounts
 		],
 		['Keepr Accounts alone', '@keepr/accounts@0.1.0', '@keepr/accounts@0.1.0', []],
 	])('%s', (_, requested, accounts, apps) => {
-		expect(planDeploy({ requested, override: '', published: PUBLISHED })).toEqual({
+		expect(
+			planDeploy({ requested, environment: 'production', override: '', published: PUBLISHED }),
+		).toMatchObject({
 			accounts,
 			apps: apps.map(([app, release]) => ({ app, release })),
 		});
+	});
+
+	// One build per app is what every Environment deploys, Keepr Accounts' too.
+	it('builds every app the run deploys, Keepr Accounts with the Apps', () => {
+		expect(
+			planDeploy({
+				requested: 'stream accounts',
+				environment: 'production',
+				override: '',
+				published: PUBLISHED,
+			}).builds,
+		).toEqual([
+			{ app: 'stream', release: '@keepr/stream@1.8.0' },
+			{ app: 'accounts', release: '@keepr/accounts@0.2.0' },
+		]);
 	});
 
 	it.each([
@@ -44,7 +61,9 @@ describe('a Deploy run resolves the Release of each app it names, Keepr Accounts
 		['a v* tag', 'v1.6.0', /not an app or a Release/],
 		['an app named twice', 'stream @keepr/stream@1.7.0', /names stream twice/],
 	])('refuses %s', (_, requested, refusal) => {
-		expect(() => planDeploy({ requested, override: '', published: PUBLISHED })).toThrow(refusal);
+		expect(() =>
+			planDeploy({ requested, environment: 'production', override: '', published: PUBLISHED }),
+		).toThrow(refusal);
 	});
 
 	// An override bypasses one app's order check; it must not reach another's unread.
@@ -53,10 +72,39 @@ describe('a Deploy run resolves the Release of each app it names, Keepr Accounts
 		['several apps', 'accounts stream', false],
 	])('takes an override for %s only', (_, requested, accepted) => {
 		const plan = () =>
-			planDeploy({ requested, override: 'accounts is down', published: PUBLISHED });
+			planDeploy({
+				requested,
+				environment: 'production',
+				override: 'accounts is down',
+				published: PUBLISHED,
+			});
 
 		if (accepted) expect(plan).not.toThrow();
 		else expect(plan).toThrow(/dispatch the app it is for alone/);
+	});
+});
+
+// A Release's run deploys staging, then production; a dispatch by hand, one Environment.
+describe('a Deploy run deploys to one Environment, or to staging and then production', () => {
+	it.each([
+		['production alone', 'production', ['production']],
+		['staging alone', 'staging', ['staging']],
+		['staging, then production', STAGING_THEN_PRODUCTION, ['staging', 'production']],
+	])('%s', (_, environment, environments) => {
+		expect(
+			planDeploy({ requested: 'stream', environment, override: '', published: PUBLISHED })
+				.environments,
+		).toEqual(environments);
+	});
+
+	it.each([
+		['no Environment', ''],
+		['an Environment no job deploys', 'preview'],
+		['production before staging', 'production then staging'],
+	])('refuses %s', (_, environment) => {
+		expect(() =>
+			planDeploy({ requested: 'stream', environment, override: '', published: PUBLISHED }),
+		).toThrow(/Environment/);
 	});
 });
 
@@ -94,6 +142,7 @@ describe("the plan job's command line", () => {
 				GITHUB_OUTPUT: output,
 				GITHUB_STEP_SUMMARY: summary,
 				INPUT_OVERRIDE: '',
+				INPUT_ENVIRONMENT: 'production',
 				...env,
 			},
 			encoding: 'utf8',
@@ -112,7 +161,13 @@ describe("the plan job's command line", () => {
 
 		expect(result.status, result.stderr).toBe(0);
 		expect(output).toBe(
-			'accounts=@keepr/accounts@0.2.0\napps=[{"app":"stream","release":"@keepr/stream@1.8.0"}]\n',
+			[
+				'accounts=@keepr/accounts@0.2.0',
+				'apps=[{"app":"stream","release":"@keepr/stream@1.8.0"}]',
+				'builds=[{"app":"stream","release":"@keepr/stream@1.8.0"},{"app":"accounts","release":"@keepr/accounts@0.2.0"}]',
+				'environments=["production"]',
+				'',
+			].join('\n'),
 		);
 		expect(asked).toEqual(
 			expect.arrayContaining([
@@ -126,6 +181,21 @@ describe("the plan job's command line", () => {
 		);
 		expect(summary).toContain('@keepr/stream@1.8.0');
 	});
+
+	// The run's page, where "Review deployments" waits, shows every job's summary.
+	it.each([
+		['production', STAGING_THEN_PRODUCTION, true],
+		['production alone', 'production', true],
+		['staging alone', 'staging', false],
+	])(
+		'puts the checklist before approving production in its summary for %s',
+		(_, environment, shown) => {
+			const { summary } = run({ INPUT_RELEASES: 'stream', INPUT_ENVIRONMENT: environment });
+
+			expect(summary.includes('Before approving production')).toBe(shown);
+			expect(summary.includes('Nothing is on air')).toBe(shown);
+		},
+	);
 
 	it('refuses as a workflow error, and writes no output a job could run on', () => {
 		const { result, output } = run({ INPUT_RELEASES: 'score' });

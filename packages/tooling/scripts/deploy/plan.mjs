@@ -9,10 +9,16 @@
  * comes out apart from the Apps, so its job runs before theirs (ADR-0120); the
  * Apps deploy side by side, each as its own job.
  *
+ * It deploys to one Environment, or, for a Release (ADR-0125), to staging and
+ * then production: `environment` is an Environment's name or
+ * `STAGING_THEN_PRODUCTION`.
+ *
  * Run by the workflow from its own commit, with `INPUT_RELEASES`,
- * `INPUT_OVERRIDE`, `GITHUB_REPOSITORY` and `GH_TOKEN`; it writes `accounts`
- * (a tag, or empty) and `apps` (JSON, `[{ app, release }]`) to
- * `GITHUB_OUTPUT`, and the plan to the step summary.
+ * `INPUT_ENVIRONMENT`, `INPUT_OVERRIDE`, `GITHUB_REPOSITORY` and `GH_TOKEN`; it
+ * writes `accounts` (a tag, or empty), `apps` and `builds` (JSON,
+ * `[{ app, release }]`; `builds` is every app, Keepr Accounts too) and
+ * `environments` (JSON, in deploy order) to `GITHUB_OUTPUT`, and the plan to
+ * the step summary, with what to confirm before approving production.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -23,6 +29,11 @@ import { KEEPR_ACCOUNTS } from './order.mjs';
 
 /** @typedef {{ tagName: string, publishedAt: string }} PublishedRelease */
 /** @typedef {{ app: string, release: string }} PlannedDeploy */
+
+/** The Environments the Deploy workflow has jobs for, in the order a Release reaches them. */
+export const ENVIRONMENTS = ['staging', 'production'];
+/** The Environment input of a Release's run: staging, and then, once approved, production. */
+export const STAGING_THEN_PRODUCTION = 'staging then production';
 
 const APP = /^[a-z]+$/;
 const RELEASE = /^@keepr\/([a-z]+)@([^@\s]+)$/;
@@ -61,15 +72,29 @@ function resolveEntry(entry, published) {
 }
 
 /**
+ * @param {string} environment
+ * @returns {string[]}
+ */
+function resolveEnvironments(environment) {
+	if (environment === STAGING_THEN_PRODUCTION) return [...ENVIRONMENTS];
+	if (ENVIRONMENTS.includes(environment)) return [environment];
+	throw new Error(
+		`${JSON.stringify(environment)} is no Environment this workflow deploys: name one of ${ENVIRONMENTS.join(', ')}, or "${STAGING_THEN_PRODUCTION}".`,
+	);
+}
+
+/**
  * The run's deploys, or why it deploys nothing.
  *
- * @param {{ requested: string, override: string, published: PublishedRelease[] }} options
+ * @param {{ requested: string, environment: string, override: string, published: PublishedRelease[] }} options
  *   `override`: the order override's reason, or empty. It bypasses one app's
  *   order check, so it is refused for a run of several apps.
- * @returns {{ accounts: string, apps: PlannedDeploy[] }} `accounts`: Keepr
- *   Accounts' Release, or empty when the run does not deploy it.
+ * @returns {{ accounts: string, apps: PlannedDeploy[], builds: PlannedDeploy[], environments: string[] }}
+ *   `accounts`: Keepr Accounts' Release, or empty when the run does not deploy
+ *   it; `builds`: every app's, built once for every Environment.
  */
-export function planDeploy({ requested, override, published }) {
+export function planDeploy({ requested, environment, override, published }) {
+	const environments = resolveEnvironments(environment);
 	const deploys = requested
 		.split(/[\s,]+/)
 		.filter(Boolean)
@@ -86,7 +111,37 @@ export function planDeploy({ requested, override, published }) {
 	return {
 		accounts: deploys.find(({ app }) => app === KEEPR_ACCOUNTS.app)?.release ?? '',
 		apps: deploys.filter(({ app }) => app !== KEEPR_ACCOUNTS.app),
+		builds: deploys,
+		environments,
 	};
+}
+
+/**
+ * What the reviewer confirms before approving production: the run's page
+ * shows this summary beside "Review deployments". GitHub's review dialog
+ * itself shows no text of the repository's.
+ *
+ * @param {string[]} environments
+ */
+function approvalChecklist(environments) {
+	if (!environments.includes('production')) return [];
+	return [
+		'### Before approving production',
+		'',
+		'Approve the `production` environment in "Review deployments" only when:',
+		'',
+		'- Nothing is on air on any production Installation this run deploys.',
+		...(environments.includes('staging')
+			? [
+					'- Every staging job passed: deployed, verified, and its unattended acceptance gates green.',
+					'- The acceptance gates that write ran against staging and passed, when this Release needs them (apps/stream/README.md § Deploy day).',
+				]
+			: [
+					'- This is a rollback or a redeploy: the Release already passed staging, or production must have it now.',
+				]),
+		'',
+		"Each production job reads its D1 databases' Time Travel bookmarks before it changes anything, refuses without one, and records them in its summary and marker.",
+	];
 }
 
 /**
@@ -122,6 +177,7 @@ function main() {
 	try {
 		const plan = planDeploy({
 			requested: env.INPUT_RELEASES ?? '',
+			environment: env.INPUT_ENVIRONMENT ?? '',
 			override: env.INPUT_OVERRIDE ?? '',
 			published: publishedReleases(env.GITHUB_REPOSITORY ?? ''),
 		});
@@ -129,13 +185,25 @@ function main() {
 			...(plan.accounts === '' ? [] : [`- ${plan.accounts}, before the Apps`]),
 			...plan.apps.map(({ release }) => `- ${release}`),
 		];
-		console.log(`Deploying:\n${lines.join('\n')}`);
+		const to = `to ${plan.environments.join(', then ')}`;
+		console.log(`Deploying ${to}:\n${lines.join('\n')}`);
 		if (env.GITHUB_STEP_SUMMARY)
-			appendFileSync(env.GITHUB_STEP_SUMMARY, `### Deploying\n\n${lines.join('\n')}\n`);
+			appendFileSync(
+				env.GITHUB_STEP_SUMMARY,
+				[`### Deploying ${to}`, '', ...lines, '', ...approvalChecklist(plan.environments), ''].join(
+					'\n',
+				),
+			);
 		if (env.GITHUB_OUTPUT)
 			appendFileSync(
 				env.GITHUB_OUTPUT,
-				`accounts=${plan.accounts}\napps=${JSON.stringify(plan.apps)}\n`,
+				[
+					`accounts=${plan.accounts}`,
+					`apps=${JSON.stringify(plan.apps)}`,
+					`builds=${JSON.stringify(plan.builds)}`,
+					`environments=${JSON.stringify(plan.environments)}`,
+					'',
+				].join('\n'),
 			);
 	} catch (error) {
 		console.log(`::error::${error instanceof Error ? error.message : error}`);
