@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.9.0
+
+### Features
+
+- **stream:** The deployed acceptance gates target one Environment, named by `STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT` (production when unset): `pnpm accept deployed` checks the URL and account against that Environment's Wrangler configs, and the validator gate keeps one cleanup manifest per Environment. A production cleanup manifest left at the old path moves to production's on its next run. (#1276)
+- **deploy:** Stream Keepr names its unattended acceptance gates (`pnpm accept:unattended`: still images and silent video, in Chrome, against a deployed Installation, writing nothing), which the Deploy workflow's staging job runs once the Staging Installation is verified. (#1279)
+
+### Other changes
+
+- **stream:** Stream Keepr has a Staging Installation configuration: Deploy offers the `staging` Environment, which deploys the same build with `--env staging` to the staging Cloudflare account, on `https://stream.keepr-staging.digital`, and sign-in admits that host. Deploying production needs nothing new, and leaves the silent-video validator's fingerprint as it was. (#1277)
+
 ## 1.8.0
 
 ### Minor Changes
