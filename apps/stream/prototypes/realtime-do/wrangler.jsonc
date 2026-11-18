@@ -1,0 +1,14 @@
+{
+	// Throwaway prototype for #1295. Never merged, never bound to the app.
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "stream-realtime-prototype",
+	"main": "worker.ts",
+	"compatibility_date": "2026-07-16",
+	"workers_dev": true,
+	"preview_urls": false,
+	"durable_objects": {
+		"bindings": [{ "name": "EVENT_REALTIME", "class_name": "EventRealtime" }]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["EventRealtime"] }],
+	"observability": { "enabled": true }
+}
