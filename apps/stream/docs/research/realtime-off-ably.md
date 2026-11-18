@@ -6,10 +6,14 @@ This note is evidence for a decision, like a spec in flight (ADR-0095): once
 #1295 is settled, what it decides becomes decisions and rules, and this file is
 deleted.
 
+**Constraint, set by the owner on 2026-11-18:** if this path is taken, what is
+built must serve every app in the workspace that needs realtime, not Stream
+Keepr alone. [Section 6](#6-built-for-every-app) says what that changes.
+
 ## Recommendation
 
 **Move, all of it, in stages behind the two ports that already exist, once the
-Staging run and decision 2 below hold. Nothing forces a date.**
+Staging run and decision 2 of [section 7](#7-decisions-a-move-would-need) hold. Nothing forces a date.**
 
 - **It can.** Everything Stream Keepr uses Ably for fits one Durable Object per
   Event with hibernating WebSockets. A throwaway prototype carried the rig #189
@@ -22,6 +26,8 @@ Staging run and decision 2 below hold. Nothing forces a date.**
   per Environment, realtime tests CI cannot run, and a Free package whose limits
   end a show rather than raise a bill. Against that, a move makes Stream Keepr
   the owner of reconnection, heartbeat and presence, which Ably's SDK does now.
+- **Build it once, for every app.** The transport knows channels, sockets and
+  presence, never an Event or a Screen; each app supplies who may hear what.
 - **Not "move part".** Keeping one channel kind on Ably keeps the key, the SDK
   and the quota, and adds a second transport to reason about.
 - **Not yet shown:** anything a network does. The prototype has not run on
@@ -186,11 +192,61 @@ the window, or outputs and control surfaces move together.
 **Tests.** The Ably fake gives way to a fake at the publish port, a mechanical
 change across 19 files. The nine realtime integration files stop needing a key.
 
-## 6. Decisions a move would need
+## 6. Built for every app
 
-1. **Where the object lives.** A Part, as the validator is (its own deploys and
-   promotion marker, ADR-0119), or the app's own Worker. Nitro
-   2.13 exporting a Durable Object class from the Nuxt Worker is unverified.
+**Who needs it.** Stream Keepr today. Score Keepr's spec (READ:
+`apps/score/docs/tournament-spec.md`) has the Consumer "move Actions between
+Devices and the server", for "any number of Devices, online or offline", and
+warn "when someone pairs while out of contact with the others". Keepr Accounts
+states no need.
+
+**The same shape fits Score Keepr.** Its Log is the authority and tolerates any
+order and any duplicate, as Stream Keepr's reads are the authority here. So
+realtime stays what it is in Stream Keepr: the server publishes after a write,
+a message announces, and a Device that lost continuity syncs from the Log. A
+Device offline for hours is that sync's to serve, not the transport's log.
+"Out of contact with the others" is presence. Nothing in the spec needs a
+client to publish, history, or a larger message.
+
+**What in the prototype knows Stream Keepr:** only the object's name,
+`event:<eventId>`, and the route that derives it. The object treats a channel
+as an opaque string. A shared build keeps it so.
+
+**Where each piece lives**, by the workspace's own rules:
+
+| Piece | Home | Rule |
+| --- | --- | --- |
+| The Durable Object class and the wire protocol | A package, `@keepr/realtime`, consumed as source by the Worker that exports it | `packages/` holds what more than one app uses |
+| The client transport, the `RealtimeTransport` port, Reconnect Resync, the echo gate, the server's publish port | `packages/nuxt-layer` | "Something two apps need moves here, in the change that moves the first app onto it" |
+| The upgrade route, the scope that names an object, channel names, who may hear what | Each app | "No route and no middleware"; "Nothing here knows a product" |
+| Realtime Subscription, Reconnect Resync and the terms that move with them | Root `GLOSSARY.md`, under Platform | "A shared term is defined once, at the root" |
+
+**What the app supplies** is one port: given a request, answer the identity, the
+scope, and the channels it may hear and enter. Stream Keepr answers from a
+Session or a Screen Output Asset Capability; Score Keepr would answer from a
+Session (ADR-0112) and whatever identifies a Device. The transport enforces the
+answer and knows neither.
+
+**It changes the build order.** Stream Keepr's new transport is written in the
+shared homes from its first line, with Stream Keepr as the first app on it,
+not written in `apps/stream` and moved later. Section 5's stages stand.
+
+**Shared allowances.** An Environment is one Cloudflare account for every app
+(ADR-0122), so section 4's included requests and duration are shared between
+the apps. Stream Keepr at 10× alone uses about 1.5M requests against the 1M
+included.
+
+## 7. Decisions a move would need
+
+1. **One namespace per app, or one realtime service for all.** Shared code
+   either way. Per app: each app exports the class (in its own Worker or a
+   Part, ADR-0119) and owns its objects, as each app owns its database; no
+   deploy order between apps, no shared failure. One service: a deployable of
+   its own that every app binds, with a deploy order as Keepr Accounts has
+   (ADR-0120), and one place for an app to hear another's channel. Recommended:
+   per app, until Stream Keepr needs to hear Score Keepr's tournament live
+   (`GLOSSARY-MAP.md`: "neither reads the other today"). Nitro 2.13 exporting a
+   Durable Object class from a Nuxt Worker is unverified.
 2. **Whether the Nuxt Worker can hand back the object's `101`.** The upgrade must
    pass where the Session and capability are checked. If Nitro will not return a
    WebSocket response untouched, the realtime Part takes the route and must
@@ -199,8 +255,11 @@ change across 19 files. The nine realtime integration files stop needing a key.
    `Authorization` on a WebSocket. A subprotocol value, or a short-lived ticket
    from an HTTP route. Amends ADR-0010's token grant, and the rule that only a
    Session's grant reads channel history goes with it.
-4. **One object per Event**, as prototyped, or one per channel. Per Event gives
-   cross-channel order and one RPC per write.
+4. **What names an object.** The app's scope: an Event for Stream Keepr, as
+   prototyped, presumably a Tournament for Score Keepr. One object per scope
+   gives order across its channels and one RPC per write; one per channel gives
+   neither. A socket carries at most 10 tags, so an app whose client hears many
+   channels of one scope needs a prefix tag, as `screen:<eventId>:*` would be.
 5. **Keep the catch-up log, and for how long.** The application already survives
    a missed message by re-reading; the log saves the re-read after a blip or a
    runtime restart. The prototype defaults to Ably's 2 minutes. Amends ADR-0023.
@@ -233,6 +292,8 @@ change across 19 files. The nine realtime integration files stop needing a key.
 - **Ably's own delivery latency** on the same rig, for comparison.
   `scripts/measure-realtime-fanout.mjs` counts messages and does not time them.
 - **Nitro passing a `101` through**, decision 2.
+- **Score Keepr's needs beyond its spec.** It is scaffolded, not built; section 6
+  reads the spec and nothing else.
 
 ## Appendix: the local run
 
