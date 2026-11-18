@@ -339,7 +339,9 @@ jobs:
   # One leg per app the change ships in (`apps`, from the scope), so an app it
   # does not touch has no leg rather than a skipped one: a merge group reuses
   # only a run none of whose jobs was skipped (packages/tooling/scripts/ci-reuse.mjs).
-  # An app's tests, docs or another workflow alone run no leg.
+  # An app's tests, docs or another workflow alone run no leg, so the whole job
+  # is skipped. That one skip a group accepts, when its own scope runs no leg
+  # either (ADR-0123); it knows the job by this name, which ci-reuse.mjs holds.
   worker-guard:
     name: Build, wrangler dry runs, and Worker smoke (${{ matrix.app }})
     needs: scope
@@ -366,7 +368,9 @@ jobs:
   # this job, naming the commit the run executed; the job's own code chooses
   # only the artifact's name, which nothing trusts. A fork's PR gets no token:
   # its group runs everything. Recording never fails `CI passed`; without a
-  # record the group runs everything.
+  # record the group runs everything. A run of code with no Worker leg records
+  # too (ADR-0123): the status functions let a skipped `worker-guard` through,
+  # and still stop the record when any job failed or was cancelled.
   record:
     name: Record the verified tree
     needs:
@@ -384,10 +388,12 @@ jobs:
         worker-guard,
       ]
     if: >-
-      github.event_name == 'pull_request'
+      !cancelled()
+      && github.event_name == 'pull_request'
       && github.event.pull_request.head.repo.full_name == github.repository
       && needs.scope.outputs.code == 'true'
-      && needs.scope.outputs.apps != '[]'
+      && !contains(needs.*.result, 'failure')
+      && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
