@@ -3,7 +3,7 @@
 	"baseBranch": "main",
 	"access": "restricted",
 	"format": false,
-	"changelog": "@changesets/cli/changelog",
+	"changelog": "../packages/tooling/scripts/changelog.mjs",
 	"commit": false,
 	"ignore": ["@keepr/accounts", "@keepr/score", "@keepr/pairing", "@keepr/standings"],
 	"privatePackages": { "version": true, "tag": true }

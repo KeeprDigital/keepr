@@ -51,6 +51,9 @@ const release = workflow('release.yml');
 const rootScripts = (
 	JSON.parse(readFileSync('../../package.json', 'utf8')) as { scripts: Record<string, string> }
 ).scripts;
+const changesetConfig = JSON.parse(readFileSync('../../.changeset/config.json', 'utf8')) as {
+	changelog: unknown;
+};
 const gates = Object.keys(ci.jobs).filter((id) => !['scope', 'record', 'passed'].includes(id));
 const FOR_CODE = "needs.scope.outputs.code == 'true'";
 const FOR_DOCS = "needs.scope.outputs.docs == 'true'";
@@ -271,6 +274,17 @@ describe('the Release workflow tags only what the queue verified', () => {
 		}
 		expect(releasing.if).toBeUndefined();
 		expect(releasing['continue-on-error']).toBeUndefined();
+	});
+
+	// Changesets core groups a Release by bump; the regroup step after it groups
+	// by type, and `.changeset/config.json` names the formatter it reads.
+	it('versions through the changelog regroup, with its formatter', () => {
+		expect(changesets?.with?.version).toBe('pnpm release:version');
+		expect(rootScripts['release:version']?.split(' && ')).toEqual([
+			'changeset version',
+			'node packages/tooling/scripts/changelog.mjs',
+		]);
+		expect(changesetConfig.changelog).toBe('../packages/tooling/scripts/changelog.mjs');
 	});
 
 	// The Version PR lands as a squash commit like any other, so its title is checked too.
