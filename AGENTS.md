@@ -74,7 +74,7 @@ says what the operator deploying it must know:
 
 - **major**: the deploy needs an operator step beyond running Deploy (a new
   secret, a data wipe, a manual migration). The changeset states the step, so
-  the Release notes do.
+  the Release notes do, under Operator steps.
 - **minor**: something a User or operator can newly do.
 - **patch**: everything else that ships.
 

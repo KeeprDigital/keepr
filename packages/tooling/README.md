@@ -16,6 +16,7 @@ The workspace's own tooling (ADR-0110, in the root `docs/adr`): what every app, 
 | `scripts/changeset-check.mjs` | `keepr-changeset-check`, CI's `checks` job, Stream Keepr's `verify --quick` | A change names each versioned app whose shipped code it touches in a changeset, or carries an empty one (ADR-0118). |
 | `scripts/shipped-code.mjs` | imported | An app's shipped code, which the changeset check and CI's Worker legs both read (ADR-0118). |
 | `scripts/versioned-apps.mjs` | imported | The workspace's packages, and the apps Changesets versions: each in `apps/` that `.changeset/config.json` does not ignore. |
+| `scripts/changelog.mjs` | `.changeset/config.json`'s `changelog`, and `pnpm release:version` after `changeset version` | Each Release's CHANGELOG section grouped as Operator steps, Features, Fixes and Other changes, by each changeset's bump and its PR's Conventional Commit title (ADR-0126). |
 | `scripts/release-gate.mjs` | `pnpm release:publish`, in `release.yml` | Refuses to tag a Release on a commit the merge queue did not verify (ADR-0036, ADR-0118). |
 
 ## Rules

@@ -3,8 +3,9 @@
  *
  * A PR lands as one squash commit whose subject is its title, so the subjects
  * are `main`'s history (`apps/stream/README.md` § Releases). Changesets, not
- * the subjects, drive each Release (ADR-0118); the check keeps the history
- * reading as one, so:
+ * the subjects, drive each Release (ADR-0118), though a subject's type and
+ * scope group its changeset in the Release's notes (`changelog.mjs`,
+ * ADR-0126); the check keeps the history reading as one, so:
  *
  * - **On a PR** (`pull_request`) it checks the PR's title: the feedback, and
  *   what a PR must pass before it can be queued.

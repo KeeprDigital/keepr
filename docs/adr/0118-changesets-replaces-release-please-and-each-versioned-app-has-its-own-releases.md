@@ -1,6 +1,6 @@
 # ADR-0118: Changesets replaces release-please, and each versioned app has its own Releases
 
-Accepted · 2026-11-17 · [#1260](https://github.com/KeeprDigital/keepr/issues/1260), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amended by ADR-0124: `changesets/action` writes with the release GitHub App's token, in the `release` environment, so the Version PR's runs need no approval
+Accepted · 2026-11-17 · [#1260](https://github.com/KeeprDigital/keepr/issues/1260), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amended by ADR-0124: `changesets/action` writes with the release GitHub App's token, in the `release` environment, so the Version PR's runs need no approval · Amended by ADR-0126: each Release groups its entries by Conventional Commit type, majors as Operator steps
 
 ### Decision
 
