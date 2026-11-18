@@ -267,8 +267,8 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
-  # Keepr Accounts (ADR-0112): its typecheck, its server and page tests, and the
-  # build a Worker would be deployed from. Nothing deploys it yet.
+  # Keepr Accounts (ADR-0112): its typecheck, its server and page tests, and its
+  # build. Its Worker's dry run and smoke are its `worker-guard` leg (#1255).
   accounts:
     name: Keepr Accounts
     needs: scope

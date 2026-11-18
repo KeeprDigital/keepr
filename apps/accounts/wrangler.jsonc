@@ -1,11 +1,64 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	// Nitro builds .output/server/wrangler.json from this file, adding the Worker
-	// entrypoint, assets, and name. Nothing is deployed yet: the route, the
-	// production database and the secret are the deploy's to add.
+	// entrypoint, assets, and name (`keepr-accounts`, nuxt.config.ts). Every
+	// deployed binding and its ID is declared here and nowhere else. Wrangler
+	// resolves path fields relative to the generated file, so `migrations_dir`
+	// climbs back out of .output/server.
+	// The production Cloudflare account. Each Environment's config names its
+	// account (ADR-0130); `env.staging` names its own.
+	"account_id": "3ec389380c7b82e6a172e6f351d4aad9",
 	"compatibility_date": "2026-07-16",
 	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"],
+	// The keepr.digital zone is on the same account, so Wrangler attaches the
+	// custom domain on every deploy.
+	"routes": [{ "pattern": "accounts.keepr.digital", "custom_domain": true }],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "accounts-identity",
+			// The identity database does not exist yet. Its operator creates it and
+			// writes its ID here in a PR before the first deploy (README.md § Deploying).
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "../../server/db/migrations/sqlite"
+		}
+	],
 	// Cloudflare's email service (`server/utils/email.ts`), which may send only as
 	// Keepr. `wrangler dev` simulates it, so a local run of the Worker mails nobody.
-	"send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["accounts@keepr.digital"] }]
+	"send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["accounts@keepr.digital"] }],
+	"observability": {
+		"enabled": true,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"invocation_logs": true,
+			"persist": true
+		}
+	},
+	// The Staging Installation (deploy.jsonc's `staging`), in the staging Cloudflare
+	// account (ADR-0122): the same build, deployed with `--env staging`. Wrangler
+	// does not inherit bindings into an env block, so each is restated with the
+	// staging account's; `routes` and `name` are restated too, or Wrangler would
+	// attach production's host and deploy `keepr-accounts-staging`.
+	// test/unit/build/wranglerEnvironments.test.ts holds the two to the same bindings.
+	"env": {
+		"staging": {
+			"name": "keepr-accounts",
+			"account_id": "98e3d208fbb975ce573938b72ed9e7b8",
+			"routes": [{ "pattern": "accounts.keepr-staging.digital", "custom_domain": true }],
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "accounts-identity",
+					// Not created yet either: README.md § Deploying.
+					"database_id": "00000000-0000-0000-0000-000000000000",
+					"migrations_dir": "../../server/db/migrations/sqlite"
+				}
+			],
+			// keepr.digital is production's zone, so staging sends from its own domain.
+			"send_email": [
+				{ "name": "EMAIL", "allowed_sender_addresses": ["accounts@keepr-staging.digital"] }
+			]
+		}
+	}
 }

@@ -11,7 +11,10 @@ import {
 	fakeBreachedPasswordService,
 	PASSWORD,
 } from '~~/test/helpers/keeprAccounts';
-import { firstAdministratorClaimSql } from '../../../scripts/claim-first-administrator.mjs';
+import {
+	firstAdministratorClaimSql,
+	firstAdministratorClaimTarget,
+} from '../../../scripts/claim-first-administrator.mjs';
 
 // The first Keepr Administrator: a command writes a one-time claim for an address,
 // and the claim page makes that address's User a Keepr Administrator and owner of
@@ -82,6 +85,38 @@ describe('the command', () => {
 
 		expect(await database.select().from(schema.firstAdministratorClaim)).toEqual([]);
 		expect(await accounts.auditRecord()).toEqual([]);
+	});
+
+	// Each Installation's database is reached in its own account, and its claim page is its own.
+	it.each([
+		[
+			'the local database',
+			[],
+			['DB', '--local', '--config', 'wrangler.dev.jsonc'],
+			'http://localhost:3000',
+		],
+		[
+			"production's",
+			['--remote', 'accounts-identity'],
+			['accounts-identity', '--remote', '--config', 'wrangler.jsonc'],
+			'https://accounts.keepr.digital',
+		],
+		[
+			"staging's",
+			['--remote', 'accounts-identity', '--env', 'staging'],
+			['accounts-identity', '--remote', '--config', 'wrangler.jsonc', '--env', 'staging'],
+			'https://accounts.keepr-staging.digital',
+		],
+	])('writes to %s', (_case, flags, database, origin) => {
+		expect(firstAdministratorClaimTarget(flags)).toEqual({ database, origin });
+	});
+
+	it.each([
+		['--remote with no database', ['--remote']],
+		['an Environment with no Installation', ['--remote', 'accounts-identity', '--env', 'dev']],
+		['an Environment for the local database', ['--env', 'staging']],
+	])('refuses %s', (_case, flags) => {
+		expect(() => firstAdministratorClaimTarget(flags)).toThrow(/Usage|Installation/);
 	});
 
 	it.each([['not an address'], ["o'brien@keepr.digital'); DROP TABLE user; --"]])(

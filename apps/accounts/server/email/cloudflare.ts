@@ -1,4 +1,4 @@
-import type { EmailSender } from './sender';
+import type { EmailSender, KeeprSender } from './sender';
 import { KEEPR_SENDER } from './sender';
 
 /**
@@ -15,11 +15,14 @@ export interface SendEmailBinding {
 	}) => Promise<{ messageId: string }>;
 }
 
-/** Sends through Cloudflare's email service, as `KEEPR_SENDER`. */
-export function cloudflareEmailSender(binding: SendEmailBinding): EmailSender {
+/** Sends through Cloudflare's email service, as `from`: production's sender unless named. */
+export function cloudflareEmailSender(
+	binding: SendEmailBinding,
+	from: KeeprSender = KEEPR_SENDER,
+): EmailSender {
 	return {
 		async send({ to, subject, text, html }) {
-			await binding.send({ to, from: { ...KEEPR_SENDER }, subject, text, html });
+			await binding.send({ to, from: { ...from }, subject, text, html });
 		},
 	};
 }

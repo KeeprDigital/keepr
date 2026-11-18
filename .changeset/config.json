@@ -5,6 +5,6 @@
 	"format": false,
 	"changelog": "../packages/tooling/scripts/changelog.mjs",
 	"commit": false,
-	"ignore": ["@keepr/accounts", "@keepr/score", "@keepr/pairing", "@keepr/standings"],
+	"ignore": ["@keepr/score", "@keepr/pairing", "@keepr/standings"],
 	"privatePackages": { "version": true, "tag": true }
 }

@@ -1,4 +1,4 @@
-import { getRequestURL, readBody } from 'h3';
+import { getRequestHost, getRequestURL, readBody } from 'h3';
 import { answerAsActor } from '~~/server/utils/actorRoute';
 import { runAfterResponse, serverEmailSender } from '~~/server/utils/email';
 import { createOrganisation } from '~~/server/utils/keeprAdministration';
@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
 					appRoles: body?.appRoles,
 				},
 				{
-					email: serverEmailSender(),
+					email: serverEmailSender(getRequestHost(event)),
 					origin: getRequestURL(event).origin,
 					afterResponse: runAfterResponse,
 				},

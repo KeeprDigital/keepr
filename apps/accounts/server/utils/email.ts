@@ -2,6 +2,7 @@ import type { EmailSender } from '~~/server/email/sender';
 import process from 'node:process';
 import { cloudflareEmailSender } from '~~/server/email/cloudflare';
 import { createEmailRecorder } from '~~/server/email/recorder';
+import { keeprSenderFor } from '~~/server/email/sender';
 import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
 
 /** The Worker binding Cloudflare's email service is reached through. */
@@ -22,9 +23,10 @@ function binding(name: string): unknown {
  * each message to the local email record. A built Worker sends through its
  * `EMAIL` binding, which `wrangler dev` simulates rather than sends, so a local
  * run of the built Worker mails nobody either. Without the binding, a send fails
- * naming it.
+ * naming it. A message is from Keepr at the Keepr domain of `host`, the host the
+ * request was served on (`keeprSenderFor`).
  */
-export function serverEmailSender(): EmailSender {
+export function serverEmailSender(host: string): EmailSender {
 	if (import.meta.dev) return createEmailRecorder({ directory: LOCAL_EMAIL_RECORD });
 	return {
 		async send(email) {
@@ -34,9 +36,10 @@ export function serverEmailSender(): EmailSender {
 					EMAIL_BINDING,
 					'is not bound, so Keepr Accounts cannot send email',
 				);
-			await cloudflareEmailSender(emailBinding as Parameters<typeof cloudflareEmailSender>[0]).send(
-				email,
-			);
+			await cloudflareEmailSender(
+				emailBinding as Parameters<typeof cloudflareEmailSender>[0],
+				keeprSenderFor(host),
+			).send(email);
 		},
 	};
 }

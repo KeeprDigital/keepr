@@ -1,6 +1,6 @@
 # Keepr Accounts
 
-One Keepr identity: every User, Session, Organisation and App access, and the service that vouches for them to each App (ADR-0112, in the root `docs/adr`). A Nuxt app (`@keepr/accounts`) on the workspace's shared layer, built as the Worker `keepr-accounts` for `accounts.keepr.digital`. Nothing deploys it yet.
+One Keepr identity: every User, Session, Organisation and App access, and the service that vouches for them to each App (ADR-0112, in the root `docs/adr`). A Nuxt app (`@keepr/accounts`) on the workspace's shared layer, built as the Worker `keepr-accounts` for `accounts.keepr.digital`, and for `accounts.keepr-staging.digital` in Staging. It is released and deployed on its own ([Deploying](#deploying)).
 
 Its words are the root `GLOSSARY.md`'s and its own `GLOSSARY.md`'s; `RULES.md` says what it makes true. The work that builds it is #1228.
 
@@ -22,6 +22,9 @@ Its words are the root `GLOSSARY.md`'s and its own `GLOSSARY.md`'s; `RULES.md` s
 | `server/utils/firstAdministrator.ts` | Claiming the first Keepr Administrator. Served by `server/api/first-administrator`; the claim is written by `scripts/claim-first-administrator.mjs`. |
 | `server/utils/refusal.ts` | How Keepr Accounts' own routes refuse, in the shape Better Auth's do; `textField.ts` reads a request body's text. |
 | `shared/utils/returnAddress.ts` | Where a User may be sent after signing in. |
+| `shared/utils/keeprDomain.ts` | The Keepr domain of each Installation, `keepr.digital` or `keepr-staging.digital`, which its cookie, Return Addresses and sender keep to. |
+| `deploy.jsonc`, `wrangler.jsonc` | The deploy descriptor (ADR-0119) and the Worker's configuration for each Environment: account, host, database, email. `wrangler.dev.jsonc` is the local one. |
+| `scripts/worker-dry-run.mjs`, `scripts/worker-smoke.mjs` | The checks a deploy and CI's Worker leg run on the build: Wrangler's bundle for each Environment, then the built Worker on local workerd. |
 | `shared/utils/newPassword.ts` | The length a new password must be. |
 | `shared/utils/keeprAdministrator.ts` | Whether a User's role marks a Keepr Administrator; `server/utils/keeprAdministrator.ts` asks it of the database. |
 | `app/utils/refusal.ts` | What a page tells its User about a refusal, a refused new password's among it. |
@@ -40,6 +43,7 @@ pnpm typecheck
 pnpm test         # the server's tests, then the pages'
 pnpm build        # the Worker bundle
 pnpm verify       # the three above, as CI's `Keepr Accounts` job runs them
+pnpm worker:dry-run && pnpm worker:smoke   # after a build: the checks a deploy and CI's Worker leg run
 pnpm db:generate  # after a change to server/db/schema.ts: the next migration
 pnpm beside       # the built Worker, registered locally as keepr-accounts: see below
 ```
@@ -61,10 +65,50 @@ Only the built Worker registers in Wrangler's local dev registry; `pnpm dev` her
 Nobody can sign up, and no request makes a Keepr Administrator (ADR-0115). Once the migrations are applied, in this directory:
 
 ```
-pnpm claim-first-administrator you@example.com                       # the local database
-pnpm claim-first-administrator you@example.com --remote <database>   # a deployed one, with your Cloudflare access
+pnpm claim-first-administrator you@example.com                                           # the local database
+pnpm claim-first-administrator you@example.com --remote accounts-identity                # Production's, with your Cloudflare access
+pnpm claim-first-administrator you@example.com --remote accounts-identity --env staging  # Staging's
 ```
 
-It writes a one-time claim for the address and prints the link that claims it: open it, choose a name and password, and you are the Keepr Administrator and owner of the Keepr Organisation. The local link is the dev server's (`http://localhost:3000`); under `pnpm beside`, use port 8790. Once a Keepr Administrator exists, the command writes nothing. Everyone else joins by Invitation, from `/invite`.
+It writes a one-time claim for the address and prints the link that claims it: open it, choose a name and password, and you are the Keepr Administrator and owner of the Keepr Organisation. The local link is the dev server's (`http://localhost:3000`); under `pnpm beside`, use port 8790. A deployed database's link is its Installation's, from `deploy.jsonc`. Once a Keepr Administrator exists, the command writes nothing. Everyone else joins by Invitation, from `/invite`.
+
+## Deploying
+
+Keepr Accounts is a versioned, deployable app like Stream Keepr: Changesets releases it as `@keepr/accounts@<version>` (from `0.1.0`), with its own `CHANGELOG.md` here, and the deploy tooling deploys a Release from its descriptor, `deploy.jsonc` (ADR-0118, ADR-0119). How a Release reaches Staging and then Production, and how to deploy by hand, is `apps/stream/README.md` § Releases and § Deploy; every command there takes `--app accounts`. Here, `pnpm run deploy`, `pnpm deploy:verify` and `pnpm deploy:status` are Production's.
+
+| Environment | Installation | Cloudflare account (`wrangler.jsonc`) | Database | Sender |
+|---|---|---|---|---|
+| Production | `https://accounts.keepr.digital` | `3ec389380c7b82e6a172e6f351d4aad9`, top level | `accounts-identity` | `accounts@keepr.digital` |
+| Staging | `https://accounts.keepr-staging.digital` | `98e3d208fbb975ce573938b72ed9e7b8`, `env.staging` | `accounts-identity` | `accounts@keepr-staging.digital` |
+
+Keepr Accounts deploys before any App that depends on it, and never falls below one; the tooling enforces it (ADR-0120, `apps/stream/README.md` § Deploy order). Its Identity Proof names the issuer `https://accounts.keepr.digital` in both Environments: it is fixed, and each Environment's Apps verify it against their own Keepr Accounts' keys.
+
+### Standing up an Installation
+
+A new Installation is provisioned in this order: its resources, its Worker's secret, then its first deploy (ADR-0128). Do each step once per Environment, Staging first, from this directory, signed in with `wrangler login` to an account holding both. Every command names its account through `wrangler.jsonc` (ADR-0130): add `--env staging` for Staging, and nothing for Production.
+
+1. **Create the identity database.**
+
+   ```
+   pnpm exec wrangler d1 create accounts-identity --config wrangler.jsonc [--env staging]
+   ```
+
+   `wrangler.jsonc` holds a placeholder ID, `00000000-0000-0000-0000-000000000000`, in each Environment's `d1_databases` until then. Write the printed `database_id` in its place, at the top level for Production and in `env.staging` for Staging, and land it in a PR with a patch changeset for `@keepr/accounts`. A deploy reads the configuration of the Release it deploys, so land it before marking the Version PR that releases `0.1.0` ready, or the first Release carries the placeholder. A deploy of a Release with the placeholder stops before its first remote change, when it reads the database's recovery point. The deploy applies the migrations itself (`databases` in `deploy.jsonc`); none is applied by hand.
+
+2. **Set the sign-in secret**, `NUXT_BETTER_AUTH_SECRET`, the one Worker secret `deploy.jsonc` requires: a deploy refuses an Installation without it, and a blank one answers 503. Give each Environment its own value (`openssl rand -base64 32`), and keep it where Keepr's secrets are kept; the secrets sync command (#1290) sets it from there once it exists. By hand, after `pnpm build`:
+
+   ```
+   pnpm exec wrangler secret put NUXT_BETTER_AUTH_SECRET --config .output/server/wrangler.json [--env staging]
+   ```
+
+   The Worker `keepr-accounts` does not exist before this: setting its secret creates it. Changing the value later signs every User out and makes the Identity Proof's stored keys unreadable, so it is never rotated casually.
+
+3. **Set up the sending domain**, `keepr.digital` in the production account and `keepr-staging.digital` in the staging account. In the dashboard: **Compute** > **Email Service** > **Email Sending** > **Onboard Domain**, and choose the domain. Cloudflare adds its records to the `cf-bounce` subdomain (MX, SPF, DKIM) and a DMARC record only if the domain has none, so the domain's own mail is untouched. Sending to anyone but verified addresses needs the Workers Paid plan. Until the domain is onboarded, a send is refused and the Invitation stands: its inviter copies the link instead (`RULES.md` § Email).
+
+   **Leave Email Routing off.** Never onboard the domain under **Email Routing**: it replaces the root MX records, and `keepr.digital`'s mail is on Google Workspace. Keepr Accounts sends and never receives.
+
+4. **Deploy.** Merging the Version PR deploys every app it released to Staging, then to Production once approved (ADR-0125). To deploy one Release yourself, run the Deploy workflow with `releases` `accounts` (or `@keepr/accounts@<version>`), or locally `pnpm run deploy --app accounts --env staging`. Wrangler attaches the custom domain on that first deploy, since each domain's zone is in its Installation's account (ADR-0122). The deploy verifies that `/api/release` names the Release.
+
+5. **Claim the first Keepr Administrator**, with the deployed database's command in [The first Keepr Administrator](#the-first-keepr-administrator), and open the link it prints. Then invite everyone else from `/invite`.
 
 After a Better Auth bump, `test/unit/server/db/identitySchema.test.ts` fails if a table changed, and `authTripwires.sqlite.test.ts` if behaviour that depends on the environment did.
