@@ -22,10 +22,12 @@ export const AUTH_SESSION_UPDATE_AGE_SECONDS = 60 * 60 * 24;
  * to "`Origin` must equal `Host`" and the installation had no say in which
  * hostnames it admits.
  *
- * The production name is the one `wrangler.jsonc` attaches as a custom domain.
- * It is spelled twice on purpose — a deploy target and an auth allowlist are
- * different facts that happen to agree, and the second is not derivable from
- * the first inside a running Worker.
+ * Each Environment's name is the one `wrangler.jsonc` attaches as its custom
+ * domain: production's at the top level, staging's in `env.staging` (#525). The
+ * one build deploys to both, so it lists both. Each is spelled twice on
+ * purpose — a deploy target and an auth allowlist are different facts that
+ * happen to agree, and the second is not derivable from the first inside a
+ * running Worker.
  *
  * Loopback is listed with and without a port because the port is part of the
  * `Host` header and no local caller has a fixed one: `pnpm preview` defaults to
@@ -42,6 +44,7 @@ export const AUTH_SESSION_UPDATE_AGE_SECONDS = 60 * 60 * 24;
  */
 export const AUTH_ALLOWED_HOSTS = [
 	'stream.keepr.digital',
+	'stream.keepr-staging.digital',
 	'localhost',
 	'localhost:*',
 	'127.0.0.1',
