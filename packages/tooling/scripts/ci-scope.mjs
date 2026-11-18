@@ -23,7 +23,9 @@
  * CI verified skips every gate: what they would check passed already, on
  * exactly this tree (scripts/ci-reuse.mjs). It then appends `verified-by=`,
  * that run's URL. Without that exact match, or when it cannot tell, the
- * group is scoped as above.
+ * group is scoped as above. The group is measured first, so the reuse check
+ * knows whether it runs any Worker leg: a PR run that ran none verifies only
+ * a group that runs none (ADR-0123).
  *
  *   node packages/tooling/scripts/ci-scope.mjs
  *     (reads GITHUB_EVENT_NAME, GITHUB_EVENT_PATH, and in a merge group
@@ -197,31 +199,34 @@ export function diffRange(eventName, event) {
 	return undefined;
 }
 
-/** @param {string[]} args */
-function git(args) {
+/**
+ * @param {string} cwd
+ * @param {string[]} args
+ */
+function git(cwd, args) {
 	return execFileSync('git', args, {
+		cwd,
 		encoding: 'utf8',
 		stdio: ['ignore', 'pipe', 'inherit'],
 	});
 }
 
-async function main() {
-	const eventName = process.env.GITHUB_EVENT_NAME ?? '';
-	const event = process.env.GITHUB_EVENT_PATH
-		? JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'))
-		: {};
+/**
+ * @typedef {(head: string, group: { runsWorkerLegs: boolean }) => Promise<{ id: number, url: string } | undefined>} VerifiedRun
+ *   the PR run that already verified the tree of `head`, if one did (`verifiedRunOnGitHub`)
+ */
+
+/**
+ * The scope job's decision for this event in the checkout at `cwd`. A merge
+ * group is measured first, so the reuse check knows whether the group's own
+ * scope runs any Worker leg: a PR run that skipped its Worker job for having
+ * none verifies only a group that has none either (ADR-0123).
+ *
+ * @param {{ eventName: string, event: any, cwd: string, verifiedRun: VerifiedRun }} options
+ * @returns {Promise<{ code: boolean, docs: boolean, apps: WorkerLeg[], verifiedBy: string | undefined }>}
+ */
+export async function scope({ eventName, event, cwd, verifiedRun }) {
 	const range = diffRange(eventName, event);
-	const verified =
-		eventName === 'merge_group' && range ? await verifiedRunOnGitHub(range.head) : undefined;
-	if (verified) {
-		console.log('code=false docs=false apps=[]');
-		if (process.env.GITHUB_OUTPUT)
-			appendFileSync(
-				process.env.GITHUB_OUTPUT,
-				`code=false\ndocs=false\napps=[]\nverified-by=${verified.url}\n`,
-			);
-		return;
-	}
 	/** @type {string[]} */
 	let changed = [];
 	if (range === undefined) {
@@ -231,9 +236,11 @@ async function main() {
 	} else {
 		try {
 			if (range.fetch) {
-				git(['fetch', '--no-tags', '--depth=1', 'origin', range.fetch]);
+				git(cwd, ['fetch', '--no-tags', '--depth=1', 'origin', range.fetch]);
 			}
-			changed = git(['diff', '--name-only', range.base, range.head]).split('\n').filter(Boolean);
+			changed = git(cwd, ['diff', '--name-only', range.base, range.head])
+				.split('\n')
+				.filter(Boolean);
 			console.log(`Changed between ${range.base} and ${range.head}:\n${changed.join('\n')}`);
 		} catch (error) {
 			console.log(
@@ -245,12 +252,32 @@ async function main() {
 		}
 	}
 	const { code, docs } = scopeOf(changed);
-	const apps = JSON.stringify(
-		workerLegsOf(changed, deployableWorkspace(git(['rev-parse', '--show-toplevel']).trim())),
+	const apps = workerLegsOf(
+		changed,
+		deployableWorkspace(git(cwd, ['rev-parse', '--show-toplevel']).trim()),
 	);
-	console.log(`code=${code} docs=${docs} apps=${apps}`);
-	if (process.env.GITHUB_OUTPUT)
-		appendFileSync(process.env.GITHUB_OUTPUT, `code=${code}\ndocs=${docs}\napps=${apps}\n`);
+	const verified =
+		eventName === 'merge_group' && range
+			? await verifiedRun(range.head, { runsWorkerLegs: apps.length > 0 })
+			: undefined;
+	if (verified) return { code: false, docs: false, apps: [], verifiedBy: verified.url };
+	return { code, docs, apps, verifiedBy: undefined };
+}
+
+async function main() {
+	const { code, docs, apps, verifiedBy } = await scope({
+		eventName: process.env.GITHUB_EVENT_NAME ?? '',
+		event: process.env.GITHUB_EVENT_PATH
+			? JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'))
+			: {},
+		cwd: process.cwd(),
+		verifiedRun: verifiedRunOnGitHub,
+	});
+	const outputs = `code=${code}\ndocs=${docs}\napps=${JSON.stringify(apps)}\n${
+		verifiedBy ? `verified-by=${verifiedBy}\n` : ''
+	}`;
+	console.log(outputs.trim().replaceAll('\n', ' '));
+	if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, outputs);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await main();

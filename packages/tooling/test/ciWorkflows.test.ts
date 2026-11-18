@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+import { NO_LEG_WORKER_JOB } from '../scripts/ci-reuse.mjs';
 import { isConventionalTitle } from '../scripts/conventional-title.mjs';
 
 /**
@@ -53,7 +54,7 @@ const rootScripts = (
 const gates = Object.keys(ci.jobs).filter((id) => !['scope', 'record', 'passed'].includes(id));
 const FOR_CODE = "needs.scope.outputs.code == 'true'";
 const FOR_DOCS = "needs.scope.outputs.docs == 'true'";
-/** The Worker legs: one per deployable app the change ships in, none skipped. */
+/** The Worker legs: one per deployable app the change ships in; none when it ships in none. */
 const FOR_WORKERS = "needs.scope.outputs.apps != '[]'";
 
 function needs(job: Job) {
@@ -199,6 +200,11 @@ describe("CI builds, dry runs and smokes each deployable app's Worker the way it
 		expect(worker.if).toBe(FOR_WORKERS);
 	});
 
+	// A skipped matrix job keeps its name's template: the reuse check knows it by that name alone.
+	it('is named as the reuse check knows it when the scope names no app', () => {
+		expect(worker.name).toBe(NO_LEG_WORKER_JOB);
+	});
+
 	it("runs the deploy tooling's check at the root, against the Accounts Stand-in when the app binds Keepr Accounts", () => {
 		const leg = (worker.steps ?? []).filter((step) => step.run);
 
@@ -218,14 +224,17 @@ describe("CI builds, dry runs and smokes each deployable app's Worker the way it
 describe('a merge group skips the gates only for a tree a full, green PR run verified', () => {
 	const record = ci.jobs.record!;
 
-	it('a PR run records its tree only after every gate passed, never in the queue or for a fork', () => {
+	// For code every gate runs but the Worker job, which the scope may give no leg (ADR-0123):
+	// skipped is no failure, so the implicit success() would not record that run.
+	it('a PR run records its tree only after every gate that ran passed, never in the queue or for a fork', () => {
 		expect(needs(record)).toEqual(['scope', ...gates].toSorted());
-		// No status function: the implicit success() needs every gate to have passed.
 		expect(record.if?.split('&&').map((clause) => clause.trim())).toEqual([
+			'!cancelled()',
 			"github.event_name == 'pull_request'",
 			'github.event.pull_request.head.repo.full_name == github.repository',
 			FOR_CODE,
-			FOR_WORKERS,
+			"!contains(needs.*.result, 'failure')",
+			"!contains(needs.*.result, 'cancelled')",
 		]);
 		expect(runs(record)).toContain('node packages/tooling/scripts/ci-reuse.mjs record');
 	});

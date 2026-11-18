@@ -1,6 +1,6 @@
 # ADR-0121: CI builds a Worker leg per deployable app a change ships in
 
-Accepted · 2026-11-17 · [#1265](https://github.com/KeeprDigital/keepr/issues/1265), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amends ADR-0036
+Accepted · 2026-11-17 · [#1265](https://github.com/KeeprDigital/keepr/issues/1265), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amends ADR-0036 · Amended by ADR-0123: a PR run with no Worker leg records its tree, and a merge group with no leg of its own reuses it
 
 ### Decision
 

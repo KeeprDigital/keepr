@@ -83,7 +83,7 @@ const JOBS = [
 	'Integration suite (1/2)',
 	'Integration suite (2/2)',
 	'Local-auth suite and browser gates',
-	'Build, wrangler dry runs, and Worker smoke',
+	'Build, wrangler dry runs, and Worker smoke (stream)',
 	'Record the verified tree',
 	'CI passed',
 ];
@@ -152,11 +152,16 @@ function io(state: World) {
 	};
 }
 
-function find(state: World, overrides: Partial<ReturnType<typeof io>> = {}) {
+function find(
+	state: World,
+	overrides: Partial<ReturnType<typeof io>> = {},
+	{ runsWorkerLegs = true } = {},
+) {
 	return findVerifiedRun({
 		tree: GROUP_TREE,
 		repository: REPOSITORY,
 		repositoryId: REPOSITORY_ID,
+		runsWorkerLegs,
 		io: {
 			...io(state),
 			...overrides,
@@ -410,12 +415,6 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 			},
 		],
 		[
-			'the scope skipped the Worker build, as for a tests-only change',
-			{
-				jobs: jobs('Build, wrangler dry runs, and Worker smoke', 'skipped'),
-			},
-		],
-		[
 			'the scope skipped the gates, as for a docs-only change',
 			{
 				jobs: JOBS.map((name) => ({
@@ -434,6 +433,58 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 		['GitHub lists no jobs', { jobs: [] }],
 	])('not when %s', async (_case, overrides) => {
 		await expectFullRun(world(overrides), /run|job/i);
+	});
+
+	/** As GitHub names the Worker job when its scope chose no leg: the matrix never expanded. */
+	const NO_LEG = 'Build, wrangler dry runs, and Worker smoke (${{ matrix.app }})';
+	const withJob = (name: string, conclusion: string) => [
+		...JOBS.filter((job) => !job.startsWith('Build')).map((job) => ({
+			name: job,
+			status: 'completed',
+			conclusion: 'success',
+		})),
+		{ name, status: 'completed', conclusion },
+	];
+
+	// A tests-only change runs no Worker leg; the group's identical tree then runs none either.
+	it.each<[string, boolean, { runsWorkerLegs: boolean }, ReturnType<typeof withJob>]>([
+		[
+			'its Worker job skipped, and the group runs no leg',
+			true,
+			{ runsWorkerLegs: false },
+			withJob(NO_LEG, 'skipped'),
+		],
+		[
+			'its Worker job skipped, but the group runs a leg',
+			false,
+			{ runsWorkerLegs: true },
+			withJob(NO_LEG, 'skipped'),
+		],
+		[
+			'its Worker job failed, and the group runs no leg',
+			false,
+			{ runsWorkerLegs: false },
+			withJob(NO_LEG, 'failure'),
+		],
+		[
+			"one app's Worker leg skipped, and the group runs no leg",
+			false,
+			{ runsWorkerLegs: false },
+			withJob('Build, wrangler dry runs, and Worker smoke (stream)', 'skipped'),
+		],
+		[
+			'another job skipped, and the group runs no leg',
+			false,
+			{ runsWorkerLegs: false },
+			[
+				...withJob(NO_LEG, 'skipped'),
+				{ name: 'Typecheck', status: 'completed', conclusion: 'skipped' },
+			],
+		],
+	])('a PR run with %s: reused %s', async (_case, reused, group, jobs) => {
+		const result = await find(world({ jobs }), {}, group);
+
+		expect(result.run !== undefined, result.rejected.join('\n')).toBe(reused);
 	});
 
 	it('waits for a run whose last job passed a moment ago to conclude', async () => {
