@@ -239,14 +239,26 @@ included.
 ## 7. Decisions a move would need
 
 1. **One namespace per app, or one realtime service for all.** Shared code
-   either way. Per app: each app exports the class (in its own Worker or a
-   Part, ADR-0119) and owns its objects, as each app owns its database; no
-   deploy order between apps, no shared failure. One service: a deployable of
-   its own that every app binds, with a deploy order as Keepr Accounts has
-   (ADR-0120), and one place for an app to hear another's channel. Recommended:
-   per app, until Stream Keepr needs to hear Score Keepr's tournament live
-   (`GLOSSARY-MAP.md`: "neither reads the other today"). Nitro 2.13 exporting a
-   Durable Object class from a Nuxt Worker is unverified.
+   either way.
+   - **Per app (recommended):** each app exports the class and owns its
+     objects, as each app owns its database. No deploy order between apps, no
+     shared failure, and who may hear a channel stays the app's own rule. There
+     is no realtime service: shared source, and each app's own binding, upgrade
+     route and channel names.
+   - **One service:** a deployable of its own that every app binds, with a
+     deploy order as Keepr Accounts has (ADR-0120), and one place for an app to
+     hear another's channel. It must ask each app who may hear what, or trust
+     tokens the apps mint.
+   - **What would flip it:** a plan for Stream Keepr to show Score Keepr's
+     tournament live (`GLOSSARY-MAP.md`: "neither reads the other today"). Try a
+     service binding into Score Keepr's namespace first. Moving from per app to
+     one service later is a hosting change, since the class and protocol are
+     shared source either way.
+   - **Within per app, prefer the app's own Worker to a Part** (ADR-0119): one
+     deployable per app and no deploy order, and a deferred code update keeps
+     sockets connected across the app's deploys. Fall back to a Part only if
+     Nitro 2.13 cannot export a Durable Object class from a Nuxt Worker, which
+     is unverified. Prove it with decision 2.
 2. **Whether the Nuxt Worker can hand back the object's `101`.** The upgrade must
    pass where the Session and capability are checked. If Nitro will not return a
    WebSocket response untouched, the realtime Part takes the route and must
@@ -291,7 +303,8 @@ included.
   heartbeat timer.
 - **Ably's own delivery latency** on the same rig, for comparison.
   `scripts/measure-realtime-fanout.mjs` counts messages and does not time them.
-- **Nitro passing a `101` through**, decision 2.
+- **Nitro exporting a Durable Object class** from a Nuxt Worker, decision 1, and
+  **passing its `101` through**, decision 2.
 - **Score Keepr's needs beyond its spec.** It is scaffolded, not built; section 6
   reads the spec and nothing else.
 
