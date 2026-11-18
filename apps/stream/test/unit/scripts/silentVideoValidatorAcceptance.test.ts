@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RemoteCommandFailure } from '../../../scripts/graphics-acceptance/validator-commands.mjs';
 import { main } from '../../../scripts/run-silent-video-validator-acceptance.mjs';
@@ -15,6 +15,7 @@ import { main } from '../../../scripts/run-silent-video-validator-acceptance.mjs
  */
 
 const ACCOUNT = '0123456789abcdef0123456789abcdef';
+const STAGING_ACCOUNT = 'fedcba9876543210fedcba9876543210';
 const BUCKET = 'stream-graphics-asset-staging';
 const WORKFLOW = 'silent-video-validation';
 
@@ -25,19 +26,38 @@ const ENV = {
 	CLOUDFLARE_ACCOUNT_ID: ACCOUNT,
 };
 
+const STAGING_ENV = {
+	...ENV,
+	STREAM_KEEPR_BROWSER_ACCEPTANCE_URL: 'https://stream.keepr-staging.digital',
+	CLOUDFLARE_ACCOUNT_ID: STAGING_ACCOUNT,
+	STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT: 'staging',
+};
+
+const APP_BINDINGS = {
+	r2_buckets: [{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: BUCKET }],
+	services: [
+		{ binding: 'SILENT_VIDEO_PLAYBACK_VALIDATOR', service: 'stream-silent-video-validator' },
+	],
+};
+const VALIDATOR_BINDINGS = {
+	name: 'stream-silent-video-validator',
+	r2_buckets: [{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: BUCKET }],
+	workflows: [{ name: WORKFLOW, binding: 'SILENT_VIDEO_VALIDATION_WORKFLOW' }],
+};
+
+/** Production at the top level, staging in `env.staging`: same names, another account. */
 const INSTALLATION = {
 	app: {
 		routes: [{ pattern: 'stream.keepr.digital', custom_domain: true }],
-		r2_buckets: [{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: BUCKET }],
-		services: [
-			{ binding: 'SILENT_VIDEO_PLAYBACK_VALIDATOR', service: 'stream-silent-video-validator' },
-		],
+		...APP_BINDINGS,
+		env: {
+			staging: {
+				routes: [{ pattern: 'stream.keepr-staging.digital', custom_domain: true }],
+				...APP_BINDINGS,
+			},
+		},
 	},
-	validator: {
-		name: 'stream-silent-video-validator',
-		r2_buckets: [{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: BUCKET }],
-		workflows: [{ name: WORKFLOW, binding: 'SILENT_VIDEO_VALIDATION_WORKFLOW' }],
-	},
+	validator: { ...VALIDATOR_BINDINGS, env: { staging: VALIDATOR_BINDINGS } },
 	validatorConfigPath: '/repo/workers/silent-video-validator/wrangler.jsonc',
 };
 
@@ -142,12 +162,13 @@ function fakeCommands(options: FakeOptions = {}) {
 }
 
 let workspace: string;
+/** Production's cleanup manifest under the run's acceptance cache. */
 let manifestPath: string;
 let output: string;
 
 beforeEach(async () => {
 	workspace = await mkdtemp(join(tmpdir(), 'validator-acceptance-test-'));
-	manifestPath = join(workspace, 'cleanup.json');
+	manifestPath = join(workspace, 'production', 'silent-video-validator-cleanup.json');
 	output = '';
 	const capture = (chunk: unknown) => {
 		output += String(chunk);
@@ -173,7 +194,7 @@ async function run(
 		commands,
 		env,
 		installation: INSTALLATION,
-		manifestPath,
+		cacheDirectory: workspace,
 		openSession,
 		pollIntervalMs: 0,
 	});
@@ -248,7 +269,7 @@ describe('deployed validator acceptance: preflight', () => {
 		await main(['node', 'run-silent-video-validator-acceptance.mjs', '--deployed'], {
 			env: ENV,
 			installation: INSTALLATION,
-			manifestPath,
+			cacheDirectory: workspace,
 		});
 
 		expect(process.exitCode).toBe(1);
@@ -389,7 +410,7 @@ describe('deployed validator acceptance: cleanup', () => {
 	});
 
 	it('treats a manifest that lists nothing as no manifest, so a run killed before its first write blocks nothing', async () => {
-		await mkdir(workspace, { recursive: true });
+		await mkdir(dirname(manifestPath), { recursive: true });
 		await writeFile(
 			manifestPath,
 			JSON.stringify({
@@ -433,5 +454,64 @@ describe('deployed validator acceptance: cleanup', () => {
 		expect(output).toContain('harness-target-inconsistent reason=manifest-target-mismatch');
 		expect(mutations(other)).toEqual([]);
 		expectSafe(output);
+	});
+});
+
+describe('deployed validator acceptance: one cleanup manifest per Environment', () => {
+	const environments = { production: ENV, staging: STAGING_ENV };
+
+	it.each([
+		['production', 'staging'],
+		['staging', 'production'],
+	] as const)('a cleanup pending in %s does not block %s', async (left, next) => {
+		expect((await run(fakeCommands({ failDeletes: 1 }), { env: environments[left] })).exitCode).toBe(
+			1,
+		);
+		output = '';
+
+		expect((await run(fakeCommands(), { env: environments[next] })).exitCode).toBeUndefined();
+		expect(
+			JSON.parse(
+				await readFile(join(workspace, left, 'silent-video-validator-cleanup.json'), 'utf8'),
+			).objects,
+		).toHaveLength(1);
+	});
+
+	/** Where the one manifest, production's, was kept before there were Environments. */
+	async function leaveUnscopedManifest() {
+		const path = join(workspace, 'silent-video-validator-cleanup.json');
+		await writeFile(
+			path,
+			JSON.stringify({
+				version: 1,
+				target: { accountId: ACCOUNT, stagingBucket: BUCKET, workflow: WORKFLOW },
+				objects: [{ key: 'ingestion/left-behind/source' }],
+			}),
+		);
+		return path;
+	}
+
+	it("keeps production's pending cleanup from before Environments, and a retry clears it", async () => {
+		const unscoped = await leaveUnscopedManifest();
+
+		const blocked = fakeCommands();
+		expect((await run(blocked)).exitCode).toBe(1);
+		expect(output).toContain('silent-video-validator-v1 harness-cleanup-pending remaining=1');
+		expect(mutations(blocked)).toEqual([]);
+		output = '';
+
+		expect((await run(fakeCommands(), { flags: ['--deployed', '--cleanup'] })).exitCode).toBe(
+			undefined,
+		);
+		expect(output.trim()).toBe('silent-video-validator-v1 acceptance passed checks=1 cleaned=1');
+		expect(existsSync(unscoped)).toBe(false);
+		expect(existsSync(manifestPath)).toBe(false);
+	});
+
+	it("leaves production's pending cleanup from before Environments to production", async () => {
+		const unscoped = await leaveUnscopedManifest();
+
+		expect((await run(fakeCommands(), { env: STAGING_ENV })).exitCode).toBeUndefined();
+		expect(existsSync(unscoped)).toBe(true);
 	});
 });
