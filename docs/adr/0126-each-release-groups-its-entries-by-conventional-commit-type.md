@@ -15,7 +15,7 @@ A heading with no entry is left out. Each entry is `- **<scope>:** <the changese
 
 **The PR's title says the type, scope and PR; the changeset says the rest.** A changelog formatter (`packages/tooling/scripts/changelog.mjs`, named by `.changeset/config.json`'s `changelog`) reads, with git, the subject of the commit that added each changeset: on `main`, the PR's squash commit, whose subject is its checked Conventional Commit title. No GitHub API is read.
 
-**`pnpm release:version` regroups after Changesets.** Changesets core groups a Release's lines under `### Major/Minor/Patch Changes` and cannot be configured otherwise, so the formatter marks each line with its bump and type, and the same module, run after `changeset version`, rewrites only the newest section of each versioned app's CHANGELOG into the groups above, leaving no marker and none of Changesets' headings. A section with no marker is left alone, so the step is idempotent and older sections, in any format, are never touched. `changesets/action` versions with `version: pnpm release:version`.
+**`pnpm release:version` regroups after Changesets.** Changesets core groups a Release's lines under `### Major/Minor/Patch Changes` and cannot be configured otherwise, so the formatter marks each line with its bump and type, and the same module, run after `changeset version`, rewrites only the newest section of each versioned app's CHANGELOG into the groups above, leaving no marker and none of Changesets' headings. A section with no marker is left alone, so the step is idempotent and older sections, in any format, are never touched. `changesets/action` versions with `version-script: pnpm release:version`.
 
 ### Why
 
