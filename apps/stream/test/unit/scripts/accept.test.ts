@@ -98,7 +98,11 @@ describe('pnpm accept', () => {
 			const exitCode = process.exitCode;
 			const runHarness = vi.fn(async () => 0);
 			const written: string[] = [];
-			vi.spyOn(process.stdout, 'write').mockReturnValue(true);
+			const printed: string[] = [];
+			vi.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+				printed.push(String(chunk));
+				return true;
+			});
 			vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => {
 				written.push(String(chunk));
 				return true;
@@ -109,6 +113,7 @@ describe('pnpm accept', () => {
 					exitCode: process.exitCode,
 					runHarness,
 					stderr: written.join(''),
+					stdout: printed.join(''),
 				};
 			} finally {
 				process.exitCode = exitCode;
@@ -145,6 +150,16 @@ describe('pnpm accept', () => {
 			);
 		});
 
+		it('checks the target against the Environment it is told, before any gate', async () => {
+			const { runHarness, stderr } = await deployDay({
+				...complete,
+				STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT: 'staging',
+			});
+
+			expect(runHarness).not.toHaveBeenCalled();
+			expect(stderr).toMatch(/^accept-deployed harness-target-inconsistent reason=/mu);
+		});
+
 		it('cannot start a real runner from an imported main, even for a complete target', async () => {
 			// The regression #619's development hit: an imported `main` with no
 			// injected runner spawned the real deployed gates on the shell's login.
@@ -176,9 +191,10 @@ describe('pnpm accept', () => {
 		});
 
 		it('runs every gate in order once the target is complete', async () => {
-			const { exitCode, runHarness } = await deployDay(complete);
+			const { exitCode, runHarness, stdout } = await deployDay(complete);
 
 			expect(exitCode).toBeUndefined();
+			expect(stdout).toContain('against the production Environment');
 			expect(runHarness.mock.calls).toEqual(DEPLOY_DAY.map((name) => [name, ['--deployed']]));
 		});
 	});

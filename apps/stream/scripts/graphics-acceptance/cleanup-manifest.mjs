@@ -16,19 +16,36 @@
  * the delete went: a run that gave up on an instance does not pass, and a later
  * retry asks the instance again.
  *
+ * There is one manifest per Environment (#525), so a cleanup pending in
+ * staging does not stop a run in production, or the reverse.
+ *
  * The file holds object keys, so it is private (0600), lives under the
  * gitignored `.cache/`, and is never printed: evidence carries only counts.
  */
 
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { AcceptanceFailure } from './evidence.mjs';
 
-export const DEFAULT_CLEANUP_MANIFEST = fileURLToPath(
-	new URL('../../.cache/acceptance/silent-video-validator-cleanup.json', import.meta.url),
-);
+/** Where acceptance keeps its private state, one directory per Environment. */
+export const ACCEPTANCE_CACHE = fileURLToPath(new URL('../../.cache/acceptance/', import.meta.url));
+
+const MANIFEST_FILE = 'silent-video-validator-cleanup.json';
+
+/**
+ * The manifest of one Environment's deployed runs. Before there were
+ * Environments the one manifest, production's, sat directly in the cache: a
+ * production run adopts it there, so a cleanup it lists is still pending.
+ *
+ * @param {{ environment: string, cacheDirectory?: string }} options
+ */
+export function openEnvironmentCleanupManifest({ environment, cacheDirectory = ACCEPTANCE_CACHE }) {
+	return openCleanupManifest(join(cacheDirectory, environment, MANIFEST_FILE), {
+		unscoped: environment === 'production' ? join(cacheDirectory, MANIFEST_FILE) : undefined,
+	});
+}
 
 /** Instance statuses after which a Workflow writes nothing more. */
 const SETTLED_STATUS = /Complete|Errored|Terminated/;
@@ -50,8 +67,12 @@ function sameTarget(left, right) {
 	);
 }
 
-/** @param {string} path */
-export function openCleanupManifest(path) {
+/**
+ * @param {string} path
+ * @param {{ unscoped?: string }} [options] a manifest from before Environments,
+ *   moved to `path` when `path` has none
+ */
+function openCleanupManifest(path, { unscoped } = {}) {
 	let state;
 
 	async function persist() {
@@ -65,6 +86,18 @@ export function openCleanupManifest(path) {
 		await rename(temporary, path);
 	}
 
+	/** The text at `path`, else an unscoped manifest moved there first; ENOENT when neither exists. */
+	async function readLeft() {
+		try {
+			return await readFile(path, 'utf8');
+		} catch (error) {
+			if (error?.code !== 'ENOENT' || !unscoped) throw error;
+		}
+		await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+		await rename(unscoped, path);
+		return await readFile(path, 'utf8');
+	}
+
 	return {
 		/**
 		 * The manifest a previous run left, or undefined. One that lists nothing
@@ -73,7 +106,7 @@ export function openCleanupManifest(path) {
 		async read() {
 			let left;
 			try {
-				left = JSON.parse(await readFile(path, 'utf8'));
+				left = JSON.parse(await readLeft());
 			} catch (error) {
 				if (error?.code === 'ENOENT') return undefined;
 				throw new AcceptanceFailure('harness-precondition-unmet', {
