@@ -20,6 +20,9 @@ const integrationWranglerPersistDir =
 const integrationMutationDrainHandler = fileURLToPath(
 	new URL('./test/integration/fixtures/drain-request-body.ts', import.meta.url),
 );
+const integrationRealtimeSequenceHandler = fileURLToPath(
+	new URL('./test/integration/fixtures/realtime-sequence.ts', import.meta.url),
+);
 
 /**
  * Semantic Social Network Icon configurations resolve entirely from bytes shipped
@@ -152,6 +155,11 @@ export default defineNuxtConfig({
 						method: method.toLowerCase() as Lowercase<MutationBodyMethod>,
 						handler: integrationMutationDrainHandler,
 					})),
+					{
+						route: '/api/_test/realtime-sequence',
+						method: 'post',
+						handler: integrationRealtimeSequenceHandler,
+					},
 				]
 			: [],
 		routeRules: {

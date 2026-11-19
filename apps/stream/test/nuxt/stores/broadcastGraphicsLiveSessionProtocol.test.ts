@@ -15,6 +15,8 @@ import {
 	createCommandIdSequence,
 	seedBroadcastGraphicsScreen,
 } from '~~/test/helpers/broadcastGraphicsScreen';
+import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { useRealtimeMessageGate } from '~/composables/core/useRealtimeMessageGate';
 import { createBroadcastGraphicsRealtimeHandlers } from '~/modules/realtime-event-session/broadcastGraphicsHandlers';
@@ -40,9 +42,9 @@ import { createBroadcastGraphicsRealtimeHandlers } from '~/modules/realtime-even
  *
  * ## What is real here, and what is not
  *
- * Everything between the HTTP handler and `channel.publish` is real, including the
- * database, the reducer, the sequenced live-state module, the payload builder, and
- * `publishMessage` itself. **The only seam faked is the Ably client**, and that is
+ * Everything between the HTTP handler and the publish to the Event's object is real,
+ * including the database, the reducer, the sequenced live-state module, the payload
+ * builder, and `publishMessage` itself. **The only seam faked is the object**, and that is
  * deliberate: a payload written by the test would prove nothing, because the thing
  * under test is precisely whether what the server hands the transport is what the
  * store can apply. What the fake records is handed to the store exactly as it was
@@ -79,26 +81,7 @@ import { createBroadcastGraphicsRealtimeHandlers } from '~/modules/realtime-even
 
 // ──────────────── the transport, and nothing else, faked ────────────────
 
-interface PublishedMessage {
-	name: string;
-	data: unknown;
-}
-
-const published: PublishedMessage[] = [];
-
-vi.mock('ably', () => ({
-	default: {
-		Rest: class {
-			channels = {
-				get: () => ({
-					publish: async (name: string, data: unknown) => {
-						published.push({ name, data });
-					},
-				}),
-			};
-		},
-	},
-}));
+const realtime = await installRealtimeObjectFake();
 
 // ──────────────── the client half ────────────────
 
@@ -275,7 +258,7 @@ async function issue(
 	type: BroadcastGraphicsCommand['type'],
 	payload: Record<string, unknown>,
 ): Promise<MessageData<'broadcastGraphicsLiveSession:commandApplied'>> {
-	published.length = 0;
+	realtime.reset();
 
 	await commandRoute({
 		context: {
@@ -293,6 +276,10 @@ async function issue(
 		},
 	} as unknown as H3Event);
 
+	// The Event channel's: the Screen's own channel is sent the same message.
+	const published = realtime.calls
+		.flatMap(({ deliveries }) => deliveries)
+		.filter(({ channel }) => channel === eventRealtimeChannel(eventId));
 	expect(published).toHaveLength(1);
 	expect(published[0]!.name).toBe('broadcastGraphicsLiveSession:commandApplied');
 
@@ -302,11 +289,6 @@ async function issue(
 }
 
 beforeAll(async () => {
-	// `publishMessage` builds its client from runtime configuration, and a Nuxt test
-	// app carries no server secrets. Set on the real configuration object rather than
-	// by replacing `useRuntimeConfig`, which the Nuxt test app itself needs.
-	(useRuntimeConfig() as unknown as { ablyApiKey: string }).ablyApiKey = 'test.key:secret';
-
 	({ eventId, screenId } = await seedBroadcastGraphicsScreen(db, {
 		stack: STACK,
 		eventName: 'Protocol',

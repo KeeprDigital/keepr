@@ -249,3 +249,17 @@ describe('screen list item — handing out this Screen’s output', () => {
 		expect(wrapper.text()).not.toContain('asset-capability=');
 	});
 });
+
+describe('screen list item — the debug panel', () => {
+	// The card cannot read an output's debug panel, so each item names the state it asks for.
+	it.each([
+		{ item: 'Show debug panel', shown: true },
+		{ item: 'Hide debug panel', shown: false },
+	])('asks for the panel shown: $shown when $item is chosen', async ({ item, shown }) => {
+		const wrapper = await mountItem();
+
+		await choose(wrapper, item);
+
+		expect(wrapper.emitted('sendCommand')).toEqual([[{ command: 'debug', shown }]]);
+	});
+});

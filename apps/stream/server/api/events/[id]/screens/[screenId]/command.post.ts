@@ -21,7 +21,7 @@ async function assertTrustedScreenCommandBoundary(
 
 export default defineEventHandler(async (event) => {
 	const { id: eventId, screenId } = await getValidatedRouterParams(event, screenParamsSchema.parse);
-	const { command } = await readValidatedBody(event, screenCommandSchema.parse);
+	const command = await readValidatedBody(event, screenCommandSchema.parse);
 
 	const screen = await screenService().findById(screenId, eventId);
 	if (!screen) {

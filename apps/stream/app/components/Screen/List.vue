@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { Screen, ScreenCommand, ScreenMode } from '~/types';
+import type { Screen, ScreenCommandRequest, ScreenMode } from '~/types';
 
 const props = defineProps<{
 	loading: boolean;
@@ -14,7 +14,7 @@ const emit = defineEmits<{
 	editScreen: [screen: Screen];
 	deleteScreen: [screen: Screen];
 	setMode: [screen: Screen, mode: ScreenMode];
-	sendCommand: [screen: Screen, command: ScreenCommand];
+	sendCommand: [screen: Screen, command: ScreenCommandRequest];
 }>();
 
 function getConnectedCount(screenId: number): number {

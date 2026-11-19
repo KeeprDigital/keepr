@@ -3,11 +3,11 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // An Event write over real SQL: what it refuses, what it stores on the Event and
-// its Feature Match Slots, and what it announces. Only Ably and the Screen Card's
+// its Feature Match Slots, and what it announces. Only the realtime object and the Screen Card's
 // key-value store are faked. A Slot count change is `featureMatchSlotCountD1.test.ts`'s,
 // and a refused Broadcast Deck List disable `deckSourceInvariants.sqlite.test.ts`'s.
 
@@ -19,9 +19,7 @@ const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
+const realtime = await installRealtimeObjectFake();
 
 /** Each Screen Card the write cleaned out of the key-value store, as `[eventId, screenId]`. */
 const cleanedCards: [number, number][] = [];
@@ -65,13 +63,13 @@ async function slotsOf(eventId: number) {
 
 /** What the Event's channel was sent, as `[type, payload]`. */
 function announced(eventId: number) {
-	return ably
+	return realtime
 		.on(eventRealtimeChannel(eventId))
 		.map(({ type, payload }) => [type, payload] as const);
 }
 
 beforeEach(() => {
-	ably.reset();
+	realtime.reset();
 	cleanedCards.length = 0;
 });
 afterAll(async () => await harness.close());
@@ -107,7 +105,7 @@ describe('an Event update', () => {
 			}),
 		).rejects.toMatchObject({ statusCode: 404, message: 'Event not found' });
 
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 	});
 
 	// Which Events hold Broadcast Deck Lists is `holdsBroadcastDeckLists`'s; the write stores or refuses by it.
@@ -194,7 +192,7 @@ describe('an Event update', () => {
 		});
 
 		expect((await stored(eventId))?.broadcastDeckListsEnabled).toBe(true);
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 	});
 
 	it("takes a commentator from the Event's own Talent, and refuses another Event's before storing anything", async () => {
@@ -232,7 +230,7 @@ describe('an Event update and its Feature Match Slots', () => {
 	async function stageEventWithSlots() {
 		const eventId = await stageEvent({ featureMatchDefaultBestOf: 3 });
 		await featureMatchService().syncFeatureMatches(eventId, 2);
-		ably.reset();
+		realtime.reset();
 		return eventId;
 	}
 
@@ -342,6 +340,6 @@ describe('an Event delete', () => {
 		});
 
 		expect(cleanedCards).toEqual([]);
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 	});
 });

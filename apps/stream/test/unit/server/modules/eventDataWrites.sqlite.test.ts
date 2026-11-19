@@ -4,12 +4,12 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { updateFeatureMatchSchema } from '~~/server/schemas/api/featureMatch';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // Phase, Round, Talent, Match, Feature Match Slot and Player List writes over real SQL:
 // a committed one is stored and announced under the writer's origin, a refused one
-// stores and announces nothing. Only Ably is faked; rows owned elsewhere are named below.
+// stores and announces nothing. Only the realtime object is faked; rows owned elsewhere are named below.
 
 vi.stubGlobal(
 	'createError',
@@ -21,9 +21,7 @@ const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
+const realtime = await installRealtimeObjectFake();
 
 const { phaseWriteModule } = await import('~~/server/modules/phase-write');
 const { roundWriteModule } = await import('~~/server/modules/round-write');
@@ -32,7 +30,7 @@ const { matchWriteModule } = await import('~~/server/modules/match-write');
 const { featureMatchSlotWriteModule } = await import('~~/server/modules/feature-match-slot-write');
 const { playerListWriteModule } = await import('~~/server/modules/player-list-write');
 
-beforeEach(() => ably.reset());
+beforeEach(() => realtime.reset());
 afterAll(async () => await harness.close());
 
 const ORIGIN = 'origin-1';
@@ -166,7 +164,7 @@ async function everythingIn({ eventId, playerList }: Staged) {
 
 /** What the Event's channel was sent, as `[type, payload]`. */
 function announced(eventId: number) {
-	return ably
+	return realtime
 		.on(eventRealtimeChannel(eventId))
 		.map(({ type, payload }) => [type, payload] as const);
 }
@@ -181,7 +179,7 @@ async function expectRefused(write: Write) {
 	await expect(write(held, other)).rejects.toMatchObject({ statusCode: 404 });
 
 	expect([await everythingIn(held), await everythingIn(other)]).toEqual(before);
-	expect(ably.published).toEqual([]);
+	expect(realtime.published).toEqual([]);
 }
 
 describe('a committed write', () => {

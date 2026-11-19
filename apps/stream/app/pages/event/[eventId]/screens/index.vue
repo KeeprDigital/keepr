@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Screen, ScreenCommand, ScreenMode } from '~/types';
+import type { Screen, ScreenCommandRequest, ScreenMode } from '~/types';
 import { LazyScreenCreateModal, LazyUIConfirmDeleteModal } from '#components';
 import { getScreenModeLabel } from '~/modules/screen-mode';
 
@@ -127,19 +127,18 @@ async function handleSetMode(screen: Screen, mode: ScreenMode) {
 	updatingScreenId.value = null;
 }
 
-async function handleSendCommand(screen: Screen, command: ScreenCommand) {
-	const labels: Record<ScreenCommand, string> = {
-		refresh: 'Refresh command sent',
-		identify: 'Identify command sent',
-		debug: 'Debug toggle sent',
-	};
+async function handleSendCommand(screen: Screen, command: ScreenCommandRequest) {
 	await runRequest(
 		async () => {
 			await screenStore.sendScreenCommand(screen.id, command);
 			return true;
 		},
 		{
-			success: { title: 'Command Sent', description: labels[command], color: 'success' },
+			success: {
+				title: 'Command Sent',
+				description: screenCommandSentLabel(command),
+				color: 'success',
+			},
 			error: {
 				title: 'Command Failed',
 				description: 'Failed to send screen command',

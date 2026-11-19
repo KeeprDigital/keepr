@@ -63,20 +63,14 @@ export interface BaseMessage {
 }
 
 /**
- * The most bytes one published realtime message may carry.
+ * The most bytes one published realtime message may carry: 64 KiB.
  *
- * Ably enforces a maximum size per published message and the figure is a property
- * of the account's package: its published limits table gives **64 KiB** for Free
- * and Standard and 256 KiB for Pro and Enterprise
- * (https://ably.com/docs/pricing/limits).
+ * A design rule (ADR-0004, as ADR-0137 amends it). It was the limit of the Ably
+ * account's Free package, which refused a larger message; an Event's object
+ * would deliver one. The bound stays because every message was designed to it:
+ * what scales with a show is announced and re-read, or carried as a difference,
+ * never shipped whole.
  *
- * **This deployment's account is on the Free package** — confirmed by its owner on
- * 2026-08-05, recorded here because the repository holds only an API key and cannot
- * observe the package itself. So 64 KiB is this account's actual ceiling and not
- * merely the documented floor, and every bound measured against it is exact.
- *
- * Designing against the larger number would make every bound here true only while
- * the account stays on a paid package, which is not a property any code can check.
  * A message that exceeds this is logged rather than refused: the write it announces
  * has already committed, and realtime delivery is best-effort by design.
  */
@@ -438,8 +432,13 @@ export interface MessageDefinitions {
 		screenId: number;
 	};
 
+	/**
+	 * It names the state the debug panel is to be left in, where it once turned
+	 * the panel over: heard twice, it leaves an output where hearing it once does.
+	 */
 	'screen:command:debug': {
 		screenId: number;
+		shown: boolean;
 	};
 
 	/*
@@ -466,6 +465,14 @@ export const screenCommandMessageTypes = {
 	identify: 'screen:command:identify',
 	debug: 'screen:command:debug',
 } as const satisfies Record<ScreenCommand, MessageType>;
+
+/**
+ * A Screen command as it is asked for: its name, and what its message carries
+ * beside the Screen. An operator's page sends it and the command route accepts it.
+ */
+export type ScreenCommandRequest =
+	| { command: Exclude<ScreenCommand, 'debug'> }
+	| { command: 'debug'; shown: boolean };
 
 /** The messages only a Screen's own channel carries, which tell its outputs to re-read. */
 export const screenOutputMessageTypes = [
