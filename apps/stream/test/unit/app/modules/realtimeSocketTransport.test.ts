@@ -269,13 +269,11 @@ describe("the realtime transport over an Event's object", () => {
 			await connects(rig);
 			rig.realtime.onChannel('event:2', 'player:updated', vi.fn());
 			expect(rig.realtime.connectionState).toBe('connecting');
-			expect(rig.realtime.connectionId).toBeUndefined();
-			(await rig.open(2)).attach('event:2', { connectionId: 'connection-2' });
+			(await rig.open(2)).attach('event:2');
 			(await rig.socket(1)).drop();
 
 			// Event 2's, which the cut socket of Event 1 says nothing about.
 			expect(states).toEqual(['connecting', 'connected', 'connecting', 'connected']);
-			expect(rig.realtime.connectionId).toBe('connection-2');
 		});
 	});
 
@@ -373,25 +371,42 @@ describe("the realtime transport over an Event's object", () => {
 
 	// The echo filter: a write names this id, the server puts it on the message,
 	// and the page that wrote it ignores the message (`useRealtimeMessageGate`).
-	it("reports the object's id for its socket, by which a page ignores the message its own write caused", async () => {
-		const rig = socketRealtimeRig();
-		const { accept, isSelfOrigin } = useRealtimeMessageGate(
-			computed(() => rig.realtime.connectionId),
-		);
-		const heard = vi.fn();
-		rig.realtime.onChannel(EVENT, 'player:updated', accept('player:updated', heard));
-		expect(isSelfOrigin({ originConnectionId: 'connection-9' })).toBe(false);
+	describe("the page's own id", () => {
+		it('is one a write can name before any socket, and the same through a reconnect and on another Event', async () => {
+			const rig = socketRealtimeRig();
+			const own = rig.realtime.connectionId;
+			// What the server takes for an origin connection id (`server/utils/ably.ts`).
+			expect(own).toMatch(/^[\w!-]{1,64}$/);
 
-		const socket = (await rig.open(1)).attach(EVENT, { connectionId: 'connection-9' });
-		socket.publish(EVENT, 'player:updated', { eventId: 1, originConnectionId: 'connection-9' });
-		socket.publish(EVENT, 'player:updated', { eventId: 1, originConnectionId: 'connection-4' });
-		socket.publish(EVENT, 'player:updated', { eventId: 1 });
+			rig.realtime.onChannel(EVENT, 'player:updated', vi.fn());
+			(await rig.open(1)).attach(EVENT, { connectionId: 'connection-1' });
+			(await rig.socket(1)).drop();
+			await rig.clock.advance(250);
+			(await rig.open(1)).attach(EVENT, { connectionId: 'connection-2' });
+			rig.realtime.onChannel('event:2', 'player:updated', vi.fn());
+			(await rig.open(2)).attach('event:2', { connectionId: 'connection-3' });
 
-		expect(rig.realtime.connectionId).toBe('connection-9');
-		expect(heard.mock.calls.map(([message]) => message.originConnectionId)).toEqual([
-			'connection-4',
-			undefined,
-		]);
+			expect(rig.realtime.connectionId).toBe(own);
+			expect(socketRealtimeRig().realtime.connectionId).not.toBe(own);
+		});
+
+		it('is how a page ignores the message its own write caused, whatever the object calls its socket', async () => {
+			const rig = socketRealtimeRig();
+			const own = rig.realtime.connectionId;
+			const { accept } = useRealtimeMessageGate(computed(() => rig.realtime.connectionId));
+			const heard = vi.fn();
+			rig.realtime.onChannel(EVENT, 'player:updated', accept('player:updated', heard));
+
+			const socket = (await rig.open(1)).attach(EVENT, { connectionId: 'connection-9' });
+			socket.publish(EVENT, 'player:updated', { eventId: 1, originConnectionId: own });
+			socket.publish(EVENT, 'player:updated', { eventId: 1, originConnectionId: 'connection-9' });
+			socket.publish(EVENT, 'player:updated', { eventId: 1 });
+
+			expect(heard.mock.calls.map(([message]) => message.originConnectionId)).toEqual([
+				'connection-9',
+				undefined,
+			]);
+		});
 	});
 
 	describe("the client transport's own rules, wired", () => {

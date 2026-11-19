@@ -43,6 +43,15 @@ interface EventSocket {
 }
 
 /**
+ * An id no other page will have. `crypto.randomUUID` is missing on a page served
+ * over plain HTTP, where `getRandomValues` is not.
+ */
+function randomId(): string {
+	const bytes = crypto.getRandomValues(new Uint8Array(16));
+	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
  * The realtime transport over a Durable Object per Event (ADR-0137): the
  * `RealtimeTransport` port, answered by one client transport of
  * `@keepr/realtime` per Event.
@@ -60,12 +69,15 @@ interface EventSocket {
  *   it has had no connection for 8 s.
  * - **`tokenError` is the refusal**: of the socket itself, or of a channel by
  *   the object. A network that does not answer is never one.
- * - **`connectionId` is the object's id for this socket**, which a write names
- *   and the echo filter compares (`useRealtimeMessageGate`).
+ * - **`connectionId` is this page's own id**, made once: a write names it and
+ *   the echo filter compares (`useRealtimeMessageGate`). Not the object's id for
+ *   a socket, which a reconnect replaces and no socket has before it attaches:
+ *   by that, a page would take its own write made around a blip for another's.
  */
 export function createSocketRealtimeTransport(
 	options: SocketRealtimeTransportOptions,
 ): SocketRealtimeTransport {
+	const pageId = randomId();
 	const sockets = new Map<number, EventSocket>();
 	/** The Event last asked for, whose socket the port reports. */
 	let current: EventSocket | null = null;
@@ -176,10 +188,7 @@ export function createSocketRealtimeTransport(
 	}
 
 	return {
-		get connectionId() {
-			void reported.value;
-			return current?.transport.connectionId;
-		},
+		connectionId: pageId,
 		get connectionState() {
 			return connectionState();
 		},
