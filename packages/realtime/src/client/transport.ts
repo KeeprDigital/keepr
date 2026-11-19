@@ -35,8 +35,6 @@ import type {
  * - `disconnected`: it has no connection and is retrying.
  * - `suspended`: the fault. It has been without a connection for
  *   `faultAfterMs`, whatever the count of retries, and is still retrying.
- * - `superseded`: a newer socket of this same client replaced its socket. It
- *   does not retry by itself; `checkNow()` connects again.
  * - `closed`: disposed, or nothing is asked of it any more.
  */
 export type ConnectionState =
@@ -45,8 +43,17 @@ export type ConnectionState =
 	| 'connected'
 	| 'disconnected'
 	| 'suspended'
-	| 'superseded'
 	| 'closed';
+
+/**
+ * What a caller's `address` rejects with to say it was refused, not that it
+ * could not be reached: the route that gives a socket's ticket turned it away.
+ * The transport reads that attempt as it reads a socket closed with
+ * `CLOSE_REFUSED`. It is known by `instanceof`.
+ */
+export class RefusedError extends Error {
+	override name = 'RefusedError';
+}
 
 /** What the transport reads of a socket's events. */
 export interface SocketEvent {
@@ -78,8 +85,9 @@ export interface SocketTransportOptions {
 	/**
 	 * The socket's address, asked for on every connect and waited for, so a caller
 	 * can fetch a single-use ticket for each socket. One that throws, rejects or
-	 * outlasts the connect timeout is a failed attempt like any other. The transport
-	 * adds its client id (`CLIENT_ID_PARAM`) to the query, so it must carry none.
+	 * outlasts the connect timeout is a failed attempt like any other, and one that
+	 * rejects with a `RefusedError` is a refusal. The transport adds its client id
+	 * (`CLIENT_ID_PARAM`) to the query, so it must carry none.
 	 */
 	address: () => string | PromiseLike<string>;
 	/** How often an open socket is pinged. 15 s. */
@@ -112,9 +120,10 @@ export interface SocketTransport {
 	/** Why there is no connection, when there is none and one is wanted. */
 	readonly error: Error | null;
 	/**
-	 * The object refused this client (`CLOSE_REFUSED`), as distinct from a network
-	 * that does not answer. It stands, while retries go on at the slow rhythm, until
-	 * a connect succeeds.
+	 * This client was refused, as distinct from a network that does not answer: its
+	 * socket was closed with `CLOSE_REFUSED`, or its `address` rejected with a
+	 * `RefusedError`, which is then this error's `cause`. It stands, while retries go
+	 * on at the slow rhythm, until a connect succeeds.
 	 */
 	readonly refusal: Error | null;
 	/**
@@ -126,9 +135,9 @@ export interface SocketTransport {
 	/** Call `listener` whenever any of the above changes. */
 	onChange(listener: () => void): () => void;
 	/**
-	 * Find out now: ask an open socket whether it is still there, connect at once
-	 * when waiting to retry, and connect again when superseded. For a page's
-	 * `online` and `visibilitychange` (`checkOnPageEvents`).
+	 * Find out now: ask an open socket whether it is still there, and connect at
+	 * once when waiting to retry. For a page's `online` and `visibilitychange`
+	 * (`checkOnPageEvents`).
 	 */
 	checkNow(): void;
 	/** Hear `channel`'s messages named `name`, from now until disposed. */
@@ -156,7 +165,7 @@ export interface SocketTransport {
 /** The waits before each retry in turn; after the last, one every `RETRY_CEILING_MS`. */
 const RETRY_MS = [250, 500, 1000, 2000, 4000, 5000, 10_000, 20_000];
 const RETRY_CEILING_MS = 30_000;
-/** How many of `RETRY_MS` are the quick ones. A refusal skips them. */
+/** How many of `RETRY_MS` are the quick ones. A refused or replaced socket skips them. */
 const QUICK_RETRIES = 5;
 /** `WebSocket.OPEN`. */
 const OPEN = 1;
@@ -189,6 +198,10 @@ function randomId(): string {
 	if (runtime.crypto?.getRandomValues) runtime.crypto.getRandomValues(bytes);
 	else for (const index of bytes.keys()) bytes[index] = Math.floor(Math.random() * 256);
 	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function refusedAs(why: string | undefined, cause?: RefusedError): Error {
+	return new Error(`The realtime connection was refused${why ? `: ${why}` : ''}`, { cause });
 }
 
 function withClientId(address: string, clientId: string): string {
@@ -295,8 +308,7 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 		for (const handle of handles) if (handle !== undefined) timers.clearTimeout(handle);
 	}
 
-	const isOutOfTouch = () =>
-		state === 'disconnected' || state === 'suspended' || state === 'superseded';
+	const isOutOfTouch = () => state === 'disconnected' || state === 'suspended';
 	const wantsAnything = () => channels.size > 0 || watches.size > 0;
 
 	function send(frame: ClientFrame) {
@@ -373,7 +385,7 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 	}
 
 	function connect() {
-		if (disposed || live || state === 'superseded' || !wantsAnything()) return;
+		if (disposed || live || !wantsAnything()) return;
 		clearTimers(retryTimer);
 		retryTimer = undefined;
 		if (state === 'initialized' || state === 'closed') {
@@ -391,8 +403,12 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 			.then(() => options.address())
 			.then(
 				(address) => open(attempt, address),
-				(cause: unknown) =>
-					fail(attempt, new Error('The realtime address could not be had', { cause })),
+				(cause: unknown) => {
+					// Refused where the address is given is refused all the same.
+					if (cause instanceof RefusedError)
+						fail(attempt, refusedAs(cause.message, cause), CLOSE_REFUSED);
+					else fail(attempt, new Error('The realtime address could not be had', { cause }));
+				},
 			);
 	}
 
@@ -436,13 +452,13 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 			if (live === attempt) receive(String(event.data));
 		});
 		socket.addEventListener('close', (event) => {
-			const closedAs =
+			const reason =
 				event.code === CLOSE_REFUSED
-					? `was refused${event.reason ? `: ${event.reason}` : ''}`
+					? refusedAs(event.reason)
 					: event.code === CLOSE_SUPERSEDED
-						? 'was replaced by a newer socket of this client'
-						: `closed${event.code === undefined ? '' : ` (${event.code})`}`;
-			fail(attempt, new Error(`The realtime connection ${closedAs}`), event.code ?? 1006);
+						? new Error('The realtime connection was replaced by a newer socket of this client')
+						: new Error(`The realtime connection closed (${event.code ?? 'no code'})`);
+			fail(attempt, reason, event.code ?? 1006);
 		});
 		// An error is always followed by a close, and the close does the work.
 		socket.addEventListener('error', () => {});
@@ -463,17 +479,14 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 			held.attached = false;
 		}
 
-		// Its own newer socket has its place: retrying would only take it back.
-		if (closeCode === CLOSE_SUPERSEDED) {
-			clearTimers(faultTimer);
-			faultTimer = undefined;
-			set({ state: 'superseded', connectionId: undefined, error: reason });
-			return;
-		}
-
-		// A refusal is not a blip: it goes straight to the slow rhythm. A socket the
-		// object swept for silence was only slow to ping, and comes straight back.
-		if (closeCode === CLOSE_REFUSED) failures = Math.max(failures, QUICK_RETRIES);
+		// A refusal is not a blip: it goes straight to the slow rhythm. So does a
+		// socket a newer one of this client replaced. The client id is this
+		// transport's alone, so the newer one is an attempt it gave up that the object
+		// accepted late: it must come back by itself, and slowly, so that if two ever
+		// did hold one id they would change places once a step and no faster. A socket
+		// the object swept for silence was only slow to ping, and comes straight back.
+		if (closeCode === CLOSE_REFUSED || closeCode === CLOSE_SUPERSEDED)
+			failures = Math.max(failures, QUICK_RETRIES);
 		const wait = closeCode === CLOSE_STALE ? 0 : (RETRY_MS[failures] ?? RETRY_CEILING_MS);
 		failures += 1;
 		if (state === 'connected') startFaultTimer();
@@ -506,10 +519,6 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 		if (live) {
 			ping(live);
 			return;
-		}
-		if (state === 'superseded') {
-			set({ state: 'disconnected' });
-			startFaultTimer();
 		}
 		connect();
 	}

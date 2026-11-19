@@ -46,10 +46,10 @@ transport.onContinuityLost('some-channel', () => {
 | Heartbeat | A `ping` as the socket opens and every 15 s (`heartbeatMs`). A socket that sends nothing in the 5 s after one (`pongTimeoutMs`) is given up, and a late close or frame from it is not heard. |
 | Connected | Once a frame is heard, not once the socket opens: a refused socket opens too. |
 | The fault | `connectionState` is `suspended` once there has been no connection for 8 s (`faultAfterMs`), counted from the cut or from the first connect, whatever the count of retries. It clears on connect. `error` says why there is no connection. |
-| A refusal | A socket closed with `CLOSE_REFUSED` sets `refusal`, which a dead network never does. Retries go on from the 5 s step, and it clears on connect. |
+| A refusal | A socket closed with `CLOSE_REFUSED` sets `refusal`, which a dead network never does. So does an `address` that rejects with a `RefusedError`, for a caller refused where its ticket is given; the error it rejected with is the refusal's `cause`. Any other rejection is a failed attempt. Retries go on from the 5 s step, and the refusal clears on connect. |
 | A refused channel | A `refused` frame is in `channelRefusals` until the next socket asks again or the consumer ends what it asked. What was asked stays wanted, and is in every `hello`. |
 | `CLOSE_STALE` | Reconnects at once. |
-| `CLOSE_SUPERSEDED` | `connectionState` is `superseded` and nothing retries, so two holders of one client id do not take the place from each other in turn. `checkNow()` connects again. |
+| `CLOSE_SUPERSEDED` | A cut like any other, retried from the 5 s step and no refusal. A client id is one transport's alone, so the newer socket is an attempt it gave up that the object accepted late, and it must come back by itself. From the 5 s step, two holders of one id could change places only once a step. |
 | Continuity | A reattach the object resumes delivers what was missed once and in order, and tells nobody. One it cannot, a first attach the connection dropped before, and a sequence skipped while attached each tell the channel's `onContinuityLost` listeners once. `onceAttached` tells of a channel's next attach. |
 | Presence | An entry also attaches its channel. A watcher is told its channel's members whole; one that comes later is told the members last heard. |
 | `checkNow()` | Pings an open socket, or cuts the wait before the next retry. `checkOnPageEvents` calls it on a page's `online` and on its `visibilitychange` to visible, and does nothing where there is no page. |

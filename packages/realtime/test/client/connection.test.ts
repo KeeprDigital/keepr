@@ -371,29 +371,43 @@ describe('the times', () => {
 	});
 });
 
-describe('a socket its own client replaced', () => {
-	it('is not retried, keeps what was asked for, and connects again when asked to check', async () => {
+describe('a socket a newer one of its own client replaced', () => {
+	it('is retried by itself from the slow rhythm, as a cut and not as a refusal', async () => {
 		const { transport, clock, sockets, letIn } = rig();
 		transport.onMessage('a', 'note', () => {});
 		const first = await letIn();
 		first.hear(attached('a', { seq: 3 }));
 
 		first.drop(CLOSE_SUPERSEDED);
-		transport.watchPresence('b', () => {});
-		await clock.advance(120_000);
-		expect(sockets).toHaveLength(1);
-		expect(transport.connectionState).toBe('superseded');
+
+		expect([transport.connectionState, transport.refusal]).toEqual(['disconnected', null]);
 		expect(transport.error).toBeInstanceOf(Error);
-
-		transport.checkNow();
+		await clock.advance(4999);
+		expect(sockets).toHaveLength(1);
+		await clock.advance(1);
 		const second = await letIn();
-
-		expect(second.frames[0]).toMatchObject({
-			t: 'hello',
-			attach: [{ channel: 'a', since: 3 }],
-			watch: ['b'],
-		});
+		expect(second.frames[0]).toMatchObject({ t: 'hello', attach: [{ channel: 'a', since: 3 }] });
 		expect(transport.connectionState).toBe('connected');
+
+		// Replaced again as soon as it is back: the two change places once a step, no faster.
+		second.hear(attached('a', { resumed: true, seq: 3 }));
+		second.drop(CLOSE_SUPERSEDED);
+		await clock.advance(4999);
+		expect(sockets).toHaveLength(2);
+		await clock.advance(1);
+		expect(sockets).toHaveLength(3);
+	});
+
+	it('shows the fault once there has been no connection for 8 s, as any cut does', async () => {
+		const { transport, clock, letIn } = rig();
+		transport.onMessage('a', 'note', () => {});
+
+		(await letIn()).drop(CLOSE_SUPERSEDED);
+		await clock.advance(7999);
+		expect(transport.connectionState).toBe('disconnected');
+		await clock.advance(1);
+
+		expect(transport.connectionState).toBe('suspended');
 	});
 });
 

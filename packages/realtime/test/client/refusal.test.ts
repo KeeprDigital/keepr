@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { RefusedError } from '../../src/client/index.ts';
 import type { SocketTransport } from '../../src/client/index.ts';
 import { CLOSE_REFUSED } from '../../src/protocol.ts';
 import type { HelloFrame } from '../../src/protocol.ts';
@@ -64,6 +65,52 @@ describe('a socket closed as refused', () => {
 			{ t: 'hello', attach: [{ channel: 'a' }], watch: [], presence: { a: { version: 1 } } },
 		]);
 	});
+});
+
+describe('an address that rejects', () => {
+	it.each([
+		{
+			rejects: 'a RefusedError',
+			rejection: () => new RefusedError('ticket revoked'),
+			refusal: 'The realtime connection was refused: ticket revoked',
+			refused: true,
+			firstRetry: 5000,
+		},
+		{
+			rejects: 'any other error',
+			rejection: () => new Error('ticket revoked'),
+			refusal: null,
+			refused: false,
+			firstRetry: 250,
+		},
+	])(
+		'with $rejects reads as refused: $refused, is retried after $firstRetry ms, and recovers',
+		async (row) => {
+			const rejection = row.rejection();
+			const { transport, clock, asks, letIn } = rig({
+				answer: (ask) => (ask === 1 ? Promise.reject(rejection) : 'wss://object.test/socket'),
+			});
+			transport.onMessage('a', 'note', () => {});
+			await clock.advance(0);
+
+			expect(transport.refusal?.message ?? null).toBe(row.refusal);
+			// What the caller rejected with is kept, for whoever shows the refusal.
+			expect(transport.refusal?.cause === rejection).toBe(row.refused);
+			expect(transport.error).toBeInstanceOf(Error);
+			expect(transport.connectionState).toBe('disconnected');
+			await clock.advance(row.firstRetry - 1);
+			expect(asks()).toBe(1);
+			await clock.advance(1);
+			expect(asks()).toBe(2);
+			await letIn();
+
+			expect([transport.refusal, transport.error, transport.connectionState]).toEqual([
+				null,
+				null,
+				'connected',
+			]);
+		},
+	);
 });
 
 describe('a refused frame', () => {

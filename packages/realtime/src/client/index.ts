@@ -1,6 +1,6 @@
 export { checkOnPageEvents } from './page-events.ts';
 export type { PageLike } from './page-events.ts';
-export { createSocketTransport } from './transport.ts';
+export { createSocketTransport, RefusedError } from './transport.ts';
 export type {
 	ChannelRefusal,
 	ConnectionState,
