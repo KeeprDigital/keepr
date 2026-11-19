@@ -320,8 +320,10 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 		}, 2000);
 	}
 
-	function handleDebug() {
-		showDebug.value = !showDebug.value;
+	// The command names the state, so one delivered twice leaves the panel as one
+	// delivery does, and every Screen Output of a Screen ends in the state asked for.
+	function handleDebug(shown: boolean) {
+		showDebug.value = shown;
 	}
 
 	const screenRealtimeSession = (options.createRealtimeSession ?? useScreenRealtimeSession)({

@@ -649,16 +649,25 @@ describe('useScreenDisplaySession', () => {
 		expect(harness.session.showIdentify.value).toBe(false);
 	});
 
-	it('debug command toggles showDebug', async () => {
-		const harness = createHarness();
-		await flushPromises();
+	// Heard twice, the panel ends as the command asked, where one that turned it
+	// over would undo it.
+	it.each([
+		{ asked: 'shown', from: 'hidden, as an output loads', heardBefore: [], shown: true },
+		{ asked: 'hidden', from: 'shown', heardBefore: [true], shown: false },
+	])(
+		'a debug command delivered twice leaves the panel $asked, from $from',
+		async ({ heardBefore, shown }) => {
+			const harness = createHarness();
+			await flushPromises();
+			const { onDebug } = harness.realtimeCallbacks[0];
+			heardBefore.forEach((earlier) => onDebug(earlier));
 
-		harness.realtimeCallbacks[0].onDebug();
-		expect(harness.session.showDebug.value).toBe(true);
+			onDebug(shown);
+			onDebug(shown);
 
-		harness.realtimeCallbacks[0].onDebug();
-		expect(harness.session.showDebug.value).toBe(false);
-	});
+			expect(harness.session.showDebug.value).toBe(shown);
+		},
+	);
 
 	it('download=1 exports at the Event Canvas, with the output filename and background', async () => {
 		const screen = createMockScreen({ id: 12, slug: 'main' });

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { DropdownMenuItem } from '@nuxt/ui';
-import type { Screen, ScreenCommand, ScreenMode } from '~/types';
+import type { Screen, ScreenCommandRequest, ScreenMode } from '~/types';
 import {
 	getScreenModeDisplayType,
 	getScreenModeIcon,
@@ -19,7 +19,7 @@ const emit = defineEmits<{
 	edit: [];
 	delete: [];
 	setMode: [mode: ScreenMode];
-	sendCommand: [command: ScreenCommand];
+	sendCommand: [command: ScreenCommandRequest];
 }>();
 
 const toast = useToast();
@@ -155,17 +155,25 @@ const actionItems: DropdownMenuItem[][] = [
 		{
 			label: 'Refresh Clients',
 			icon: 'i-lucide-refresh-cw',
-			onSelect: () => emit('sendCommand', 'refresh'),
+			onSelect: () => emit('sendCommand', { command: 'refresh' }),
 		},
 		{
 			label: 'Identify',
 			icon: 'i-lucide-scan-eye',
-			onSelect: () => emit('sendCommand', 'identify'),
+			onSelect: () => emit('sendCommand', { command: 'identify' }),
+		},
+		// Two actions, each naming the state it asks for, and no switch: nothing here
+		// can read a Screen Output's debug panel, which an output's reload hides and
+		// another Session may have shown.
+		{
+			label: 'Show debug panel',
+			icon: 'i-lucide-bug',
+			onSelect: () => emit('sendCommand', { command: 'debug', shown: true }),
 		},
 		{
-			label: 'Debug Overlay',
-			icon: 'i-lucide-bug',
-			onSelect: () => emit('sendCommand', 'debug'),
+			label: 'Hide debug panel',
+			icon: 'i-lucide-bug-off',
+			onSelect: () => emit('sendCommand', { command: 'debug', shown: false }),
 		},
 	],
 	[

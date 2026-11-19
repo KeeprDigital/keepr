@@ -557,7 +557,7 @@ describe('publishScreenCommand', () => {
 	it("publishes a Screen command on the Screen's channel of its Event's object", async () => {
 		const { publishScreenCommand } = await import('~~/server/utils/ably');
 
-		await publishScreenCommand(1, 10, 'identify');
+		await publishScreenCommand(1, 10, { command: 'identify' });
 
 		expect(realtime.calls).toEqual([
 			{
@@ -573,6 +573,24 @@ describe('publishScreenCommand', () => {
 		]);
 	});
 
+	// `false` as well as `true`: a state dropped on the way would read as hidden.
+	it.each([true, false])(
+		'tells the outputs the state a debug command asks for: shown %s',
+		async (shown) => {
+			const { publishScreenCommand } = await import('~~/server/utils/ably');
+
+			await publishScreenCommand(1, 10, { command: 'debug', shown });
+
+			expect(realtime.on('screen:1:10')).toEqual([
+				{
+					channel: 'screen:1:10',
+					type: 'screen:command:debug',
+					payload: { screenId: 10, shown },
+				},
+			]);
+		},
+	);
+
 	// A failed publish leaves as this server's failure, not with a status of its
 	// own that h3 would adopt as the route's answer (#264).
 	describe('when the publish fails', () => {
@@ -583,7 +601,7 @@ describe('publishScreenCommand', () => {
 			const { REALTIME_PUBLISH_FAILED_MESSAGE, RealtimePublishError } =
 				await import('~~/server/utils/realtimePublishFailure');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(
+			const failure = await publishScreenCommand(1, 10, { command: 'identify' }).then(
 				() => null,
 				(error) => error,
 			);
@@ -599,7 +617,7 @@ describe('publishScreenCommand', () => {
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(
+			const failure = await publishScreenCommand(1, 10, { command: 'identify' }).then(
 				() => null,
 				(error) => error,
 			);
@@ -616,7 +634,7 @@ describe('publishScreenCommand', () => {
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 
-			await publishScreenCommand(1, 10, 'identify').catch(() => {});
+			await publishScreenCommand(1, 10, { command: 'identify' }).catch(() => {});
 
 			expect(loggedFields(errorSpy)).toEqual({
 				message: 'realtime_publish_failed',
@@ -637,7 +655,7 @@ describe('publishScreenCommand', () => {
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(
+			const failure = await publishScreenCommand(1, 10, { command: 'identify' }).then(
 				() => null,
 				(error) => error,
 			);
@@ -646,17 +664,15 @@ describe('publishScreenCommand', () => {
 			errorSpy.mockRestore();
 		});
 
-		// A command is done each time it is heard, and `debug` turns a panel on or
-		// off: sent again, one the first call did deliver would be undone.
 		it('is not sent a second time, where an Event message would be', async () => {
 			realtime.refuse('screen:1:10', 1);
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 			const { RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
 
-			await expect(publishScreenCommand(1, 10, 'debug')).rejects.toBeInstanceOf(
-				RealtimePublishError,
-			);
+			await expect(
+				publishScreenCommand(1, 10, { command: 'debug', shown: true }),
+			).rejects.toBeInstanceOf(RealtimePublishError);
 
 			expect(realtime.calls).toHaveLength(1);
 			expect(realtime.published).toEqual([]);
@@ -671,7 +687,7 @@ describe('publishScreenCommand', () => {
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 			const { RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(
+			const failure = await publishScreenCommand(1, 10, { command: 'identify' }).then(
 				() => null,
 				(error) => error,
 			);

@@ -5,7 +5,7 @@ import type {
 	EventMessage,
 	ScreenChannelDelivery,
 } from '~~/server/modules/screen-output-publication';
-import type { MessagePayload, MessageType } from '../types/messages';
+import type { MessagePayload, MessageType, ScreenCommandRequest } from '../types/messages';
 import Ably from 'ably';
 import { publishToScreenOutputs } from '~~/server/modules/screen-output-publication';
 import {
@@ -334,29 +334,32 @@ export async function publishMessageStrict<T extends MessageType>(
  * A Worker with no binding for the object fails the same way: nothing an
  * operator sets leaves one out, and the log line names the binding.
  *
- * Published once, and never again on a failure. A command is not an
- * announcement: an output does it each time it hears it, and `debug` turns its
- * panel on or off, so a repeat of one the first call did deliver would undo
- * it. The caller hears the failure, and the person who sent it sends it again.
+ * Published once, and never again on a failure: the caller hears the failure,
+ * and the person who sent it sends it again.
  */
 export async function publishScreenCommand(
 	eventId: number,
 	screenId: number,
-	command: ScreenCommand,
+	command: ScreenCommandRequest,
 ): Promise<void> {
-	const messageType = screenCommandMessageTypes[command];
+	const channel = screenRealtimeChannel(eventId, screenId);
+	const message =
+		command.command === 'debug'
+			? delivery(channel, eventId, screenCommandMessageTypes.debug, {
+					screenId,
+					shown: command.shown,
+				})
+			: delivery(channel, eventId, screenCommandMessageTypes[command.command], { screenId });
 
 	try {
-		await publishToEvent(eventId, [
-			delivery(screenRealtimeChannel(eventId, screenId), eventId, messageType, { screenId }),
-		]);
+		await publishToEvent(eventId, [message]);
 	} catch (error) {
 		console.error(
 			JSON.stringify({
 				message: 'realtime_publish_failed',
 				eventId,
 				screenId,
-				messageType,
+				messageType: message.name,
 				...publishFailureFields(error),
 			}),
 		);

@@ -94,6 +94,30 @@ describe('commanding a Screen', () => {
 		]);
 	});
 
+	it("carries the state a debug command asks for to the Screen's outputs", async () => {
+		await expect(post(screenId, { command: 'debug', shown: false })).resolves.toEqual({ ok: true });
+
+		expect(realtime.published).toEqual([
+			{
+				channel: screenRealtimeChannel(eventId, screenId),
+				type: 'screen:command:debug',
+				payload: { screenId, shown: false },
+			},
+		]);
+	});
+
+	// A debug command naming no state could only turn the panel over. The error plugin
+	// answers a ZodError as the 400.
+	it.each([
+		['a debug command naming no state', { command: 'debug' }],
+		['a debug command whose state is no boolean', { command: 'debug', shown: 'true' }],
+		['a state on a command that takes none', { command: 'refresh', shown: true }],
+	])('refuses %s, sending nothing', async (_body, body) => {
+		await expect(post(screenId, body)).rejects.toMatchObject({ name: 'ZodError' });
+
+		expect(realtime.published).toEqual([]);
+	});
+
 	it.each([
 		['a Screen that does not exist', () => 999_999],
 		['a Screen of another Event', () => foreignScreenId],

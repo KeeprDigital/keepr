@@ -3,7 +3,7 @@ import type { useAsyncAction } from '@keepr/nuxt-layer/app/composables/core/useA
 import type {
 	CreateScreenInput,
 	Screen,
-	ScreenCommand,
+	ScreenCommandRequest,
 	ScreenMode,
 	UpdateScreenInput,
 } from '~/types';
@@ -732,12 +732,12 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 		presenceWatches.clear();
 	}
 
-	async function sendScreenCommand(screenId: number, command: ScreenCommand): Promise<void> {
+	async function sendScreenCommand(screenId: number, command: ScreenCommandRequest): Promise<void> {
 		if (!state.currentEventId.value) return;
 
 		await $fetch(`/api/events/${state.currentEventId.value}/screens/${screenId}/command`, {
 			method: 'POST',
-			body: { command },
+			body: command,
 		});
 	}
 

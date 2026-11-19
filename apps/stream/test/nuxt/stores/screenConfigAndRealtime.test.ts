@@ -509,14 +509,15 @@ describe('useScreenStore config and realtime', () => {
 			expect(store.getConnectedCount(10)).toBe(0);
 		});
 
-		it('sends a Screen command through the server endpoint', async () => {
+		// A debug command, so what a command carries beside its name is seen to be sent.
+		it('sends a Screen command, with what it carries, through the server endpoint', async () => {
 			store.currentEventId = 1;
 
-			await store.sendScreenCommand(10, 'refresh');
+			await store.sendScreenCommand(10, { command: 'debug', shown: true });
 
 			expect(mockFetch).toHaveBeenCalledWith('/api/events/1/screens/10/command', {
 				method: 'POST',
-				body: { command: 'refresh' },
+				body: { command: 'debug', shown: true },
 			});
 		});
 	});

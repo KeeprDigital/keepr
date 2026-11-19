@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { BackgroundLayersCapableMode } from '~~/shared/screenModes';
-import type { Screen, ScreenCommand, ScreenMode } from '~/types';
+import type { Screen, ScreenCommandRequest, ScreenMode } from '~/types';
 import { screenModeSupportsBackgroundLayers } from '~~/shared/screenModes';
 import { useEditorFocusMode } from '~/modules/graphics/editorFocusMode';
 import {
@@ -245,12 +245,20 @@ const moreActionItems = computed(() => [
 		{
 			label: 'Identify',
 			icon: 'i-lucide-scan-eye',
-			onSelect: () => void sendCommand('identify'),
+			onSelect: () => void sendCommand({ command: 'identify' }),
+		},
+		// Two actions, each naming the state it asks for, and no switch: nothing here
+		// can read a Screen Output's debug panel, which an output's reload hides and
+		// another Session may have shown.
+		{
+			label: 'Show debug panel',
+			icon: 'i-lucide-bug',
+			onSelect: () => void sendCommand({ command: 'debug', shown: true }),
 		},
 		{
-			label: 'Debug',
-			icon: 'i-lucide-bug',
-			onSelect: () => void sendCommand('debug'),
+			label: 'Hide debug panel',
+			icon: 'i-lucide-bug-off',
+			onSelect: () => void sendCommand({ command: 'debug', shown: false }),
 		},
 	],
 	[
@@ -275,13 +283,8 @@ const moreActionItems = computed(() => [
 	],
 ]);
 
-async function sendCommand(command: ScreenCommand) {
+async function sendCommand(command: ScreenCommandRequest) {
 	if (!screen.value) return;
-	const labels: Record<ScreenCommand, string> = {
-		refresh: 'Refresh command sent',
-		identify: 'Identify command sent',
-		debug: 'Debug toggle sent',
-	};
 	await runRequest(
 		async () => {
 			await screenStore.sendScreenCommand(screen.value!.id, command);
@@ -290,7 +293,7 @@ async function sendCommand(command: ScreenCommand) {
 		{
 			success: {
 				title: 'Command Sent',
-				description: labels[command],
+				description: screenCommandSentLabel(command),
 				color: 'success',
 			},
 			error: {
@@ -381,7 +384,7 @@ async function sendCommand(command: ScreenCommand) {
 										icon="i-lucide-refresh-cw"
 										label="Refresh"
 										data-header-action="refresh"
-										@click="sendCommand('refresh')"
+										@click="sendCommand({ command: 'refresh' })"
 									/>
 								</UTooltip>
 								<UDropdownMenu :items="moreActionItems">
