@@ -36,27 +36,31 @@ beforeEach(() => {
 
 describe('useAccess', () => {
 	it.each([
-		['a User with App access', () => mockFetch.mockResolvedValueOnce(ADA), 'signed-in'],
-		['a signed-out visitor', () => mockFetch.mockRejectedValueOnce(refusal(401)), 'signed-out'],
-		['a User with no App access', () => mockFetch.mockRejectedValueOnce(refusal(403)), 'no-access'],
+		['a User with App access', 'signed-in', () => mockFetch.mockResolvedValueOnce(ADA)],
+		['a signed-out visitor', 'signed-out', () => mockFetch.mockRejectedValueOnce(refusal(401))],
+		[
+			'a User with no App access',
+			'no-access',
+			() => mockFetch.mockRejectedValueOnce(refusal(403)),
+		],
 		// The server did not say: never grounds for taking an operator off a page.
 		[
 			'Keepr Accounts unreachable',
-			() => mockFetch.mockRejectedValueOnce(refusal(503)),
 			'unavailable',
+			() => mockFetch.mockRejectedValueOnce(refusal(503)),
 		],
 		[
 			'a request that never arrived',
-			() => mockFetch.mockRejectedValueOnce(new Error('offline')),
 			'unavailable',
+			() => mockFetch.mockRejectedValueOnce(new Error('offline')),
 		],
 		// Only the server calls a browser signed out: an answer that names nobody does not.
 		[
 			'an answer that is no Identity',
-			() => mockFetch.mockResolvedValueOnce(undefined),
 			'unavailable',
+			() => mockFetch.mockResolvedValueOnce(undefined),
 		],
-	])('reads %s as %s', async (_case, answer, status) => {
+	])('reads %s as %s', async (_case, status, answer) => {
 		answer();
 
 		expect(await useAccess().ensure()).toBe(status);
