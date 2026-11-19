@@ -2,7 +2,7 @@ import type { H3Event } from 'h3';
 import { mapRoundToResponse } from '~~/server/mappers/round';
 import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
 import { roundService } from '~~/server/services/round';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 import { isManualOverrideRound } from '~~/shared/utils/roundControl';
 
 async function publishRoundUpdated(

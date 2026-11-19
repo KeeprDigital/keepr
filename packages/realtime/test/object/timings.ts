@@ -12,3 +12,5 @@ export const BRIEF_SWEEP_MS = 1500;
  */
 export const BRIEF_ASK_MS = 1000;
 export const ASKED_SWEEP_MS = 3000;
+/** `BriefWithdrawal`: a disconnect's hold on what it withdrew. */
+export const BRIEF_WITHDRAWAL_MS = 1500;

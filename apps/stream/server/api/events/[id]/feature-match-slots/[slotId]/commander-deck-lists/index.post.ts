@@ -1,7 +1,7 @@
 import { commanderDeckListModule } from '~~/server/modules/feature-match-deck-list';
 import { featureMatchSlotParamsSchema } from '~~/server/schemas/api/featureMatch';
 import { saveCommanderDeckListSchema } from '~~/server/schemas/api/featureMatchDeckList';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 /** Saves a pasted Deck List to a Commander Seat with the Commanders confirmed, replacing the one it held (ADR-0087). */
 export default defineEventHandler(async (event) => {

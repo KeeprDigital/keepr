@@ -16,11 +16,7 @@
 		// The Worker secrets every Installation requires (README.md § Worker secrets): a
 		// deploy refuses one that lacks any. NUXT_BANDAI_KEEPR_API_KEY is optional.
 		// None is for sign-in: Keepr Accounts holds that secret (ADR-0112).
-		"secrets": [
-			"NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY",
-			"NUXT_ABLY_API_KEY",
-			"NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY"
-		]
+		"secrets": ["NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY", "NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY"]
 	},
 	"databases": [{ "binding": "DB" }],
 	"environments": {

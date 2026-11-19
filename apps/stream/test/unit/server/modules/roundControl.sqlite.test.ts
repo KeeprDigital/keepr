@@ -23,7 +23,7 @@ const publishMessage = vi.fn(async (..._message: unknown[]) => {});
 const request = stubH3Event({ connectionId: 'origin-1' });
 
 vi.doMock('~~/server/db', () => ({ db }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage,
 	publishMessageStrict: publishMessage,
 	publishScreenCommand: async () => {},

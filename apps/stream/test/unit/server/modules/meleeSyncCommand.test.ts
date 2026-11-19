@@ -36,7 +36,7 @@ vi.mock('~~/server/modules/melee-sync/workflows', () => ({
 	createMeleeSyncWorkflows: () => mockWorkflows,
 }));
 
-vi.mock('~~/server/utils/ably', () => ({
+vi.mock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => 'origin-1',
 }));
 

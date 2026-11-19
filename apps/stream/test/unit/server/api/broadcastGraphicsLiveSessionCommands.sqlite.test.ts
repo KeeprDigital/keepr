@@ -17,7 +17,7 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 
 // A Broadcast Graphics Live Session command through its route, over real SQL: what the
 // Screen's authored configuration and its Event Data contribute to an acceptance, and
-// that a reload answers it. Only the clock, Ably and the Graphics Asset Library are faked.
+// that a reload answers it. Only the clock, the realtime publish and the Graphics Asset Library are faked.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
 	Object.assign(new Error(input.message ?? 'error'), input),
@@ -38,7 +38,7 @@ vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unkno
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: async () => {},
 	publishMessageStrict: async () => {},
 	publishScreenCommand: async () => {},

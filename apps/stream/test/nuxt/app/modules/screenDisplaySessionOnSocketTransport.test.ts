@@ -15,6 +15,9 @@ import { useScreenDisplaySession } from '~/modules/screen/displaySession';
  * fetched (ADR-0137).
  */
 
+// The client transport itself, on the rig's socket: the shared setup's never connects.
+vi.unmock('@keepr/realtime/client');
+
 const transport = vi.hoisted(() => ({ rig: null as SocketRealtimeRig | null }));
 
 // The Screen's realtime session, which enters presence and hears commands, takes the app's transport.

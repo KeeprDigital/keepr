@@ -649,16 +649,25 @@ describe('useScreenDisplaySession', () => {
 		expect(harness.session.showIdentify.value).toBe(false);
 	});
 
-	it('debug command toggles showDebug', async () => {
-		const harness = createHarness();
-		await flushPromises();
+	// A failed command is sent once more, so an output can hear one twice: the
+	// panel ends as the command asked, where one that turned it over would undo it.
+	it.each([
+		{ asked: 'shown', from: 'hidden, as an output loads', heardBefore: [], shown: true },
+		{ asked: 'hidden', from: 'shown', heardBefore: [true], shown: false },
+	])(
+		'a debug command delivered twice leaves the panel $asked, from $from',
+		async ({ heardBefore, shown }) => {
+			const harness = createHarness();
+			await flushPromises();
+			const { onDebug } = harness.realtimeCallbacks[0];
+			heardBefore.forEach((earlier) => onDebug(earlier));
 
-		harness.realtimeCallbacks[0].onDebug();
-		expect(harness.session.showDebug.value).toBe(true);
+			onDebug(shown);
+			onDebug(shown);
 
-		harness.realtimeCallbacks[0].onDebug();
-		expect(harness.session.showDebug.value).toBe(false);
-	});
+			expect(harness.session.showDebug.value).toBe(shown);
+		},
+	);
 
 	it('download=1 exports at the Event Canvas, with the output filename and background', async () => {
 		const screen = createMockScreen({ id: 12, slug: 'main' });
@@ -726,7 +735,7 @@ describe('useScreenDisplaySession', () => {
 	});
 
 	/**
-	 * Ably drops message continuity after a couple of minutes suspended, and a
+	 * An Event's object keeps what it published for two minutes (ADR-0137), and a
 	 * Screen announcement carries no sequence number — so unlike a Broadcast
 	 * Graphics notification, nothing about it can tell a client it fell behind. An
 	 * output that missed a mode change while away rendered the old mode

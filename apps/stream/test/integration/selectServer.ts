@@ -1,12 +1,7 @@
 import type { IntegrationServerAddress } from './servers';
 import process from 'node:process';
 import { INTEGRATION_SERVER_LIST_ENV, testContextFor } from './servers';
-import {
-	INTEGRATION_KEYLESS_WORKER_ENV,
-	INTEGRATION_REALTIME_PROJECT_ENV,
-	INTEGRATION_REALTIME_SERVER_ENV,
-	INTEGRATION_WRANGLER_PERSIST_DIR_ENV,
-} from './state';
+import { INTEGRATION_WRANGLER_PERSIST_DIR_ENV } from './state';
 
 /**
  * Point this test worker at its own integration server.
@@ -16,11 +11,9 @@ import {
  * no two files ever share a database at once. This runs before the test file's
  * own imports, so everything downstream reads the chosen server:
  * `@nuxt/test-utils` recovers its context (and so `url()`) from
- * `NUXT_TEST_CONTEXT`, and `integrationD1.ts` opens the persist directory.
- *
- * A `*.realtime.test.ts` file takes the realtime server instead, whatever its
- * pool id: its project runs one file at a time, before every other file
- * (`./state.ts` § realtime server).
+ * `NUXT_TEST_CONTEXT`, and `integrationD1.ts` opens the persist directory. A
+ * file that hears realtime hears its own server's: each server's Events have
+ * their objects in the realtime dev Worker that server started beside itself.
  */
 
 function poolServer(): IntegrationServerAddress {
@@ -38,20 +31,7 @@ function poolServer(): IntegrationServerAddress {
 	return server;
 }
 
-function realtimeServer(): IntegrationServerAddress {
-	const server = JSON.parse(
-		process.env[INTEGRATION_REALTIME_SERVER_ENV] ?? 'null',
-	) as IntegrationServerAddress | null;
-	if (!server)
-		throw new Error(
-			'The realtime integration project has no server: globalSetup did not name one.',
-		);
-	return server;
-}
-
-const realtime = process.env[INTEGRATION_REALTIME_PROJECT_ENV] === 'true';
-const server = realtime ? realtimeServer() : poolServer();
-if (!realtime) process.env[INTEGRATION_KEYLESS_WORKER_ENV] = 'true';
+const server = poolServer();
 
 process.env.NUXT_TEST_CONTEXT = testContextFor(server);
 process.env[INTEGRATION_WRANGLER_PERSIST_DIR_ENV] = server.persistDir;

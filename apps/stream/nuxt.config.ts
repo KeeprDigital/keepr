@@ -11,6 +11,7 @@ import {
 	MAX_SILENT_VIDEO_INGESTION_BYTES,
 	MAX_STILL_IMAGE_INGESTION_BYTES,
 } from './shared/utils/graphicsAssetCompatibility';
+import { REALTIME_SOCKET_PATH } from './shared/utils/realtimeChannels';
 import { MUTATION_BODY_METHODS } from '@keepr/nuxt-layer/shared/utils/requestBodyLimits';
 import { TCGPLUS_IMPORT_MAX_BODY_BYTES } from './shared/utils/tcgPlusImportLimits';
 
@@ -40,6 +41,10 @@ export default defineNuxtConfig({
 	// `nuxt dev`. Who may hear what is `server/routes/realtime/port.ts`.
 	extends: ['@keepr/nuxt-layer', '@keepr/realtime/nuxt'],
 
+	// Where a page opens an Event's socket: the path the Worker's entry and the
+	// dev proxy take, and the one `app/plugins/realtime.client.ts` asks for.
+	realtime: { socketPath: REALTIME_SOCKET_PATH },
+
 	// Nothing but `nuxt prepare` may rewrite `.nuxt` while other gates run:
 	// the root tsconfig extends it, so every Vite and TypeScript consumer reads it.
 	// An integration server keeps its build directory inside its own Wrangler
@@ -53,7 +58,6 @@ export default defineNuxtConfig({
 			: {}),
 
 	runtimeConfig: {
-		ablyApiKey: '',
 		// One Piece card data (ADR-0057). Either blank leaves it unavailable.
 		bandaiKeeprApiKey: '',
 		bandaiKeeprApiUrl: '',
@@ -137,7 +141,7 @@ export default defineNuxtConfig({
 		experimental: {
 			wasm: true,
 			// `useEvent()` names the request a publish is made in, so its Screen
-			// notices finish after the answer (`server/utils/ably.ts`).
+			// notices finish after the answer (`server/utils/realtimePublish.ts`).
 			asyncContext: true,
 		},
 		handlers: isIntegration
@@ -259,7 +263,7 @@ export default defineNuxtConfig({
 				}
 			: {}),
 		optimizeDeps: {
-			include: ['ably', 'three', '@tanstack/vue-table', 'vue-draggable-plus', 'vue-echarts'],
+			include: ['three', '@tanstack/vue-table', 'vue-draggable-plus', 'vue-echarts'],
 		},
 	},
 

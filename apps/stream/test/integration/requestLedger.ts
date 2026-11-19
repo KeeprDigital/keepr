@@ -11,7 +11,7 @@
  *
  * A stalled request never settles, so it is the entry still `never returned`.
  * What it names is the route, not the stall inside it: a route stalled on its
- * Ably publish and one stalled on D1 read the same here. And `fetch` settles
+ * realtime publish and one stalled on D1 read the same here. And `fetch` settles
  * when the headers arrive, so a stall reading a body afterwards shows every
  * request as returned.
  *

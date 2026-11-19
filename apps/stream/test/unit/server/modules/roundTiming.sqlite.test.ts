@@ -22,7 +22,7 @@ const publishMessage = vi.fn();
 const publishMessageStrict = vi.fn();
 
 vi.doMock('~~/server/db', () => ({ db }));
-vi.doMock('~~/server/utils/ably', () => ({ publishMessage, publishMessageStrict }));
+vi.doMock('~~/server/utils/realtimePublish', () => ({ publishMessage, publishMessageStrict }));
 vi.doMock('~~/server/modules/broadcast-graphics-live-session', () => ({
 	refreshBroadcastGraphicsBindings: vi.fn(),
 }));

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { meleeSyncModule } from '~~/server/modules/melee-sync';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 const liveResultsBodySchema = z
 	.object({

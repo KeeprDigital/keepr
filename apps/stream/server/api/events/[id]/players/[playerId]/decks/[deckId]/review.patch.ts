@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { playerUpdateModule } from '~~/server/modules/player-update';
 import { eventIdParamSchema } from '~~/server/schemas/api/eventId';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 const reviewParamsSchema = z.object({
 	id: eventIdParamSchema,

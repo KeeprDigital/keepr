@@ -19,7 +19,7 @@ const published: Array<{ eventId: number; type: string; data: Record<string, any
 async function publishMessage(eventId: number, type: string, data: Record<string, any>) {
 	published.push({ eventId, type, data });
 }
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage,
 	publishMessageStrict: publishMessage,
 	getOriginConnectionId: () => undefined,

@@ -7,7 +7,7 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 
 // OP Unresolved Deck Cards (ADR-0074): listed Event-wide by card number, retried
 // through the bulk lookup, or resolved to a picked card in every Deck List holding
-// them. bandai-keepr is faked at its bulk lookup port, Ably at publish.
+// them. bandai-keepr is faked at its bulk lookup port, realtime at its publish.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
 	Object.assign(new Error(input.message ?? 'error'), input),

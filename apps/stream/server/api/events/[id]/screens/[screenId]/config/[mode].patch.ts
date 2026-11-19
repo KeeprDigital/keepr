@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
 import { screenWriteModule } from '~~/server/modules/screen-write';
 import { modeConfigParamsSchema, modeConfigPatchSchemaMap } from '~~/server/schemas/api/screen';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 import { optionalBrowserSessionId } from '~~/server/utils/session';
 import { readJsonPayloadLimited } from '@keepr/nuxt-layer/server/utils/payloadLimits';
 

@@ -320,8 +320,10 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 		}, 2000);
 	}
 
-	function handleDebug() {
-		showDebug.value = !showDebug.value;
+	// The command names the state, so one delivered twice leaves the panel as one
+	// delivery does, and every Screen Output of a Screen ends in the state asked for.
+	function handleDebug(shown: boolean) {
+		showDebug.value = shown;
 	}
 
 	const screenRealtimeSession = (options.createRealtimeSession ?? useScreenRealtimeSession)({
@@ -715,8 +717,8 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	 * Re-read authoritative state after this rendering has been out of touch.
 	 *
 	 * A Screen announcement carries no sequence number, so unlike a Broadcast
-	 * Graphics notification it cannot tell a client it fell behind — and Ably drops
-	 * message continuity after a couple of minutes suspended. An output that missed
+	 * Graphics notification it cannot tell a client it fell behind — and an Event's
+	 * object keeps what it published for two minutes (ADR-0137). An output that missed
 	 * a mode change while away therefore renders the old mode indefinitely, on
 	 * program, with nothing anywhere reporting it (#307). The same holds for an
 	 * `event:updated` it missed: orientation, formatting, defaults and feature

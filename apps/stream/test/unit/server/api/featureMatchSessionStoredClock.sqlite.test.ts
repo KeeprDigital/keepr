@@ -39,7 +39,7 @@ vi.stubGlobal(
 
 vi.doMock('~~/server/db', () => ({ db }));
 const published: Array<{ type: string; data: { currentState: { clock: ClockState } } }> = [];
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: async (
 		_eventId: number,
 		type: string,

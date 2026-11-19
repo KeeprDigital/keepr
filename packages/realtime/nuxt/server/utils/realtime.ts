@@ -1,5 +1,5 @@
 import type { EventHandler, H3Event } from 'h3';
-import type { Delivery, PublishAnswer } from '../../../src/object/index.ts';
+import type { Delivery, DisconnectOptions, PublishAnswer } from '../../../src/object/index.ts';
 import type { Admission } from '../worker/handOff.ts';
 import { createError, defineEventHandler, getRequestHeader, isEvent, setResponseHeader } from 'h3';
 import { useRuntimeConfig } from 'nitropack/runtime';
@@ -22,8 +22,11 @@ export type RealtimePort = (
 export interface RealtimeScope {
 	/** Publish each delivery in order. Answers each one's sequence, and the sockets it reached. */
 	publish(deliveries: readonly Delivery[]): Promise<PublishAnswer[]>;
-	/** Close every socket a grant tagged `tag`. Answers how many. */
-	disconnect(tag: string): Promise<number>;
+	/**
+	 * Close every socket a grant tagged `tag`, and for a minute let none in.
+	 * One whose grant also carries `except` is spared. Answers how many closed.
+	 */
+	disconnect(tag: string, options?: DisconnectOptions): Promise<number>;
 }
 
 interface ScopeNamespace {

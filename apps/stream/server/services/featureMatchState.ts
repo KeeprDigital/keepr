@@ -32,7 +32,7 @@ import {
 	linkedOpSideGameData,
 	withCatalogueLeaders,
 } from '~~/server/services/featureMatchSlotLeader';
-import { publishMessage } from '~~/server/utils/ably';
+import { publishMessage } from '~~/server/utils/realtimePublish';
 import { chunkJsonRows, inJsonArray, selectForInsert } from '@keepr/nuxt-layer/server/utils/db';
 import { eventKind } from '~~/shared/config/games';
 import {

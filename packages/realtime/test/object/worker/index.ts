@@ -12,6 +12,7 @@ import {
 	BRIEF_GRACE_MS,
 	BRIEF_RETENTION_MS,
 	BRIEF_SWEEP_MS,
+	BRIEF_WITHDRAWAL_MS,
 } from '../timings.ts';
 
 export { RealtimeObject };
@@ -62,6 +63,12 @@ export class BriefSweep extends Observed {
 export class BriefAsk extends Observed {
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env, { askMs: BRIEF_ASK_MS, sweepMs: ASKED_SWEEP_MS });
+	}
+}
+
+export class BriefWithdrawal extends Observed {
+	constructor(ctx: DurableObjectState, env: Env) {
+		super(ctx, env, { withdrawalMs: BRIEF_WITHDRAWAL_MS });
 	}
 }
 

@@ -21,7 +21,7 @@ import {
 } from '~~/server/mappers/broadcastGraphicsLiveSession';
 import { createSequencedLiveEpochs, createSequencedLiveState } from '~~/server/modules/live-state';
 import { clearBroadcastGraphicsLiveSessionGraphicAssetReferencesStatement } from '~~/server/modules/screen-graphic-asset-references';
-import { publishMessage } from '~~/server/utils/ably';
+import { publishMessage } from '~~/server/utils/realtimePublish';
 import {
 	applyBroadcastGraphicsCommand,
 	BroadcastGraphicsCommandRejection,

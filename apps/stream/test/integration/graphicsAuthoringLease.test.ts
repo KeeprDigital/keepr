@@ -26,9 +26,8 @@ function graphic(id: string): BroadcastGraphicConfig {
 }
 
 /**
- * The lease itself, which no part of depends on Ably: this file runs against a
- * keyless server. The one claim that is a realtime publish (a Screen command under
- * a lease) is `graphicsAuthoringLease.realtime.test.ts`.
+ * The lease itself. The one claim that is a realtime publish (a Screen command
+ * under a lease) is `graphicsAuthoringLease.realtime.test.ts`.
  */
 describe('graphics Authoring Leases', () => {
 	let eventId: number;

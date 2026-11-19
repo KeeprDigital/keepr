@@ -1,6 +1,6 @@
 # ADR-0023: A Realtime Subscription is held until disposed, and its Event's recovery re-attempts while one waits
 
-Accepted · 2026-10-18 · #609 · Amended by ADR-0137: reconnection, backoff and heartbeat become the transport's own, with no token to mint; the token recovery holds while an Installation is on Ably
+Accepted · 2026-10-18 · #609 · Amended by ADR-0137: reconnection, backoff and heartbeat become the transport's own, with no token to mint; the token recovery holds while an Installation is on Ably · Amended by ADR-0143: the token wait is the refusal, reported when it is heard; a refused socket's fault stands while the page is on that Event, whatever it disposes; a refused channel is asked again on the next socket, not every 30 s
 
 ### Decision
 

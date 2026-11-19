@@ -25,8 +25,25 @@ interface ScreenOutputAssetCapabilityManagerDependencies {
 			expectedVersion: number,
 		) => Promise<CapabilityScreen | undefined>;
 	};
+	/**
+	 * Close the realtime sockets the Screen's outputs hold, but for the ones the
+	 * capability of `capabilityVersion` let in (ADR-0137, ADR-0142). `rotate`
+	 * calls it once the regenerated capability is stored, and never before,
+	 * with that capability's version.
+	 */
+	disconnectOutputs: (screen: FormerOutputs) => Promise<unknown>;
 	generateSeed?: () => string;
 }
+
+/** A Screen whose outputs are to be closed, and the version of the capability that replaced theirs. */
+interface FormerOutputs {
+	eventId: number;
+	screenId: number;
+	capabilityVersion: number;
+}
+
+/** How often `rotate` asks for the Screen's sockets to be closed before it gives up. */
+const DISCONNECT_ATTEMPTS = 2;
 
 type ScreenOutputAssetCapabilityOutcome =
 	| { outcome: 'available'; capability: string; link: string }
@@ -104,6 +121,42 @@ export function createScreenOutputAssetCapabilityManager(
 		};
 	}
 
+	/**
+	 * Close the sockets the former capability admitted. The capability is
+	 * already regenerated, and nothing here can undo that, so a failure is not
+	 * the regeneration's: it is tried again, and then written where an operator
+	 * reads it, because those sockets go on hearing their Screen's channel until
+	 * they drop. They cannot return: the former capability is given no ticket.
+	 */
+	async function disconnectOutputs(screen: FormerOutputs) {
+		let failure: unknown;
+		for (let attempt = 0; attempt < DISCONNECT_ATTEMPTS; attempt++) {
+			try {
+				await dependencies.disconnectOutputs(screen);
+				return;
+			} catch (error) {
+				failure = error;
+			}
+		}
+		console.error(
+			JSON.stringify({
+				message: 'screen_output_disconnect_failed',
+				detail:
+					"The Screen Output Asset Capability was regenerated, but the Screen's realtime sockets could not be closed. Outputs opened under the former capability may still hear the Screen's channel until they disconnect. Regenerate the capability again to close them.",
+				eventId: screen.eventId,
+				screenId: screen.screenId,
+				errorName: failure instanceof Error ? failure.name : null,
+				errorMessage: failure instanceof Error ? failure.message : String(failure),
+			}),
+		);
+	}
+
+	/**
+	 * Regenerate the Screen's capability. Once the write has committed, the
+	 * realtime sockets its outputs hold are closed (ADR-0137): the former
+	 * capability reads nothing from then on, is given no Realtime Ticket, and
+	 * the tickets it was given admit nobody (`server/modules/realtime-ticket`).
+	 */
 	async function rotate(input: {
 		eventId: number;
 		screenId: number;
@@ -121,6 +174,11 @@ export function createScreenOutputAssetCapabilityManager(
 			screen.assetCapabilityVersion,
 		);
 		if (!updated) return { outcome: 'missing' };
+		await disconnectOutputs({
+			eventId: updated.eventId,
+			screenId: updated.id,
+			capabilityVersion: prepared.persisted.assetCapabilityVersion,
+		});
 		return {
 			outcome: 'available',
 			capability: prepared.capability,

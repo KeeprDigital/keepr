@@ -135,7 +135,7 @@ describe('the built Worker smoke runner', () => {
 		const stagedEnv = join(repositoryRoot, '.output/server/.env');
 		const stagedDevVars = join(repositoryRoot, '.output/server/.dev.vars');
 		const originalEnv = Buffer.from('NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY=developer-value\n');
-		const originalDevVars = Buffer.from('NUXT_ABLY_API_KEY=older-preview\n');
+		const originalDevVars = Buffer.from('NUXT_BANDAI_KEEPR_API_KEY=older-preview\n');
 		vi.stubEnv('NUXT_DEVELOPER_CREDENTIAL', 'must-not-reach-wrangler');
 		// Where the Worker's binding finds the Accounts Stand-in this command runs beside.
 		vi.stubEnv('WRANGLER_REGISTRY_PATH', '/the/stand-in/registry');
@@ -373,18 +373,6 @@ describe('the built Worker smoke runner', () => {
 			({ crossSite }) => crossSite,
 			admitted,
 			'cross-site-refusal',
-		],
-		[
-			'grants a signed-out visitor a realtime token',
-			({ who, path }) => who === 'nobody' && path === '/api/realtime/token',
-			admitted,
-			'realtime-grant-signed-out',
-		],
-		[
-			'grants a User with no App access a realtime token',
-			({ who, path }) => who === 'outsider' && path === '/api/realtime/token',
-			admitted,
-			'realtime-grant-no-app-access',
 		],
 		[
 			"serves a page that does not name its Environment's Keepr Accounts",

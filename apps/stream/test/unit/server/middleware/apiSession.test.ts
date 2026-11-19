@@ -63,8 +63,7 @@ describe('the Session boundary', () => {
 		expect(await answered(as)).toBe('admitted');
 	});
 
-	// One message for every route, so the refusal lists that have to stay
-	// exhaustive (`SCREEN_COMMAND_ROUTE_REFUSALS`) carry one entry.
+	// One message for every route.
 	it.each([
 		['/api/events/1/screens/2/command'],
 		['/api/graphics-assets'],
@@ -118,7 +117,6 @@ describe('the Session boundary', () => {
 	it.each([
 		['/api/time', 'GET'],
 		['/api/release', 'GET'],
-		['/api/realtime/token', 'GET'],
 		['/api/public/events/1/on-air', 'GET'],
 		['/api/screen-output/screens/7/asset-capability-session', 'POST'],
 		['/event/1/screens/2', 'GET'],

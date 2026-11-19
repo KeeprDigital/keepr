@@ -11,7 +11,7 @@ import {
 	ThemeInUseError,
 	themeService,
 } from '~~/server/services/theme';
-import { publishMessage } from '~~/server/utils/ably';
+import { publishMessage } from '~~/server/utils/realtimePublish';
 import { assertGraphicsTemplateReferencesSelectable } from '~~/server/utils/graphicsTemplateReferences';
 import { themeTokenValueGraphicAssetReferences } from '~~/shared/themeAssetReferences';
 import { parseThemeTokenWrite, themeTokenDefinition } from '~~/shared/themeTokens';

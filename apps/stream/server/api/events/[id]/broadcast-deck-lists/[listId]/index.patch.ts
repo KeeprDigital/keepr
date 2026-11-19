@@ -3,7 +3,7 @@ import {
 	broadcastDeckListParamsSchema,
 	updateBroadcastDeckListSchema,
 } from '~~/server/schemas/api/broadcastDeckList';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id, listId } = await getValidatedRouterParams(event, broadcastDeckListParamsSchema.parse);

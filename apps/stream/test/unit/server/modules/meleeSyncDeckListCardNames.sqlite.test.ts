@@ -9,7 +9,7 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 
 /*
  * Melee Sync's Deck List import against real SQL and the real card resolution:
- * only Melee, Scryfall's HTTP API and Ably are stood in for.
+ * only Melee, Scryfall's HTTP API and the realtime publish are stood in for.
  */
 
 const harness = await createSqliteD1Harness();
@@ -25,7 +25,7 @@ vi.doMock('~~/server/db', () => ({ db }));
 vi.doMock('~~/server/services/meleeIntegration', () => ({
 	requireMeleeService: () => melee,
 }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => 'origin-1',
 	publishMessage: vi.fn(),
 	publishMessageStrict: vi.fn(),

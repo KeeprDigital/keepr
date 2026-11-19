@@ -7,7 +7,7 @@ import * as schema from '~~/server/db/schema';
 import { addGraphicItem } from '~~/shared/modules/graphics';
 import { MAX_SOCIAL_PROFILE_HANDLE_LENGTH } from '~~/shared/socialProfiles';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { profileDeclaration } from '~~/test/helpers/broadcastGraphicsLiveState';
 import {
 	createCommandIdSequence,
@@ -17,7 +17,7 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 
 // A Talent or Event write reaching the Broadcast Graphics Live Session: the refresh
 // re-reads Event Data from real rows, stores what a live Social Profile Projection on
-// air now shows, and announces it. Only Ably and the clock are faked; the rotation
+// air now shows, and announces it. Only the realtime object and the clock are faked; the rotation
 // rules themselves are the reducers' (`test/unit/shared/socialProfile*.test.ts`).
 
 const NOW = Date.parse('2026-11-04T12:00:00.000Z');
@@ -34,9 +34,7 @@ const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
+const realtime = await installRealtimeObjectFake();
 
 const { broadcastGraphicsLiveSessionModule, refreshBroadcastGraphicsBindings } =
 	await import('~~/server/modules/broadcast-graphics-live-session');
@@ -136,7 +134,7 @@ async function storedProjection(on: Stage, graphicId = LOWER) {
 
 /** The commands the Event's channel was told were applied. */
 function applied({ eventId }: Stage) {
-	return ably
+	return realtime
 		.on(eventRealtimeChannel(eventId))
 		.filter((message) => message.type === 'broadcastGraphicsLiveSession:commandApplied')
 		.map((message) => message.payload);
@@ -162,7 +160,7 @@ async function writeProfiles(on: Stage, talentId: number, socialProfiles: Record
 
 beforeEach(() => {
 	vi.setSystemTime(NOW);
-	ably.reset();
+	realtime.reset();
 });
 
 afterAll(async () => {
@@ -175,7 +173,7 @@ describe('a Talent write under a live Social Profile Projection on air', () => {
 		const { on, talent } = await onAirWithTalent('live', { twitch: 'BeforeLive', x: 'OnAirX' });
 		await send(on, 'Select Social Profile', { projectionKey: 'profile', network: 'x' });
 		const before = await stored(on);
-		ably.reset();
+		realtime.reset();
 		advance(1_000);
 
 		await writeProfiles(on, talent.id, {
@@ -225,7 +223,7 @@ describe('a Talent write under a live Social Profile Projection on air', () => {
 	it('commits and announces nothing for a write program does not show', async () => {
 		const { on, talent } = await onAirWithTalent('live', { twitch: 'OnAir' });
 		const before = await stored(on);
-		ably.reset();
+		realtime.reset();
 
 		await talentService().update(talent.id, on.eventId, { role: 'Host' });
 		await refreshBroadcastGraphicsBindings(on.eventId);
@@ -286,7 +284,7 @@ describe('a change of Talent the Live Session does not apply by itself', () => {
 			});
 			await send(on, 'Select Social Profile', { projectionKey: 'profile', network: 'x' });
 			const before = await storedProjection(on);
-			ably.reset();
+			realtime.reset();
 
 			await run(on, talent.id);
 
@@ -321,7 +319,7 @@ describe('a change of Talent the Live Session does not apply by itself', () => {
 		await send(on, 'Select Social Profile', { projectionKey: 'profile', network: 'x' });
 		await send(on, 'Out', { cut: true });
 		const before = await stored(on);
-		ably.reset();
+		realtime.reset();
 
 		await writeProfiles(on, talent.id, { youtube: 'LatestTake' });
 
@@ -372,7 +370,7 @@ describe('an Event write naming its Talents', () => {
 			acceptedProfiles: [],
 			automatic: true,
 		});
-		ably.reset();
+		realtime.reset();
 		advance(1_000);
 
 		await eventService().update(on.eventId, { commentator1TalentId: replacement.id });
@@ -412,7 +410,7 @@ describe("a Social Profile command against the Talent's stored row", () => {
 		async ({ type, payload, statusCode, code }) => {
 			const { on } = await onAirWithTalent(undefined, { twitch: 'DrewLive' });
 			const before = await stored(on);
-			ably.reset();
+			realtime.reset();
 
 			await expect(send(on, type, payload)).rejects.toMatchObject({
 				statusCode,

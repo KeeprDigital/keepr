@@ -19,7 +19,7 @@ vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: async () => {},
 	publishMessageStrict: async () => {},
 	publishScreenCommand: async () => {},

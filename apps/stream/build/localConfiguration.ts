@@ -38,21 +38,14 @@ export type LocallyRequiredNuxtName = (typeof LOCALLY_REQUIRED_NUXT_NAMES)[numbe
 /**
  * Deliberately optional, and named here so the partition above is legible.
  *
- * The Ably key is the only one here that reaches a third party. An empty one is
- * the expected state of a checkout that never claimed to have realtime, and #223
- * already owns saying so: the integration suite skips the tests that reach the
- * service and announces the reason once. Requiring it would warn every such
- * checkout about a secret it does not need.
- *
- * The three Melee names are optional in a different key: nothing refuses at boot
- * without them, so a notice naming them would be telling a developer to go and find
- * a secret they do not need yet.
+ * The three Melee names are optional because nothing refuses at boot without
+ * them, so a notice naming them would be telling a developer to go and find a
+ * secret they do not need yet.
  *
  * The two bandai-keepr names are optional because nothing refuses without them:
  * a One Piece Event's card features say "card data unavailable" instead (ADR-0057).
  */
 export const LOCALLY_OPTIONAL_NUXT_NAMES = [
-	'NUXT_ABLY_API_KEY',
 	'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY',
 	'NUXT_MELEE_CREDENTIAL_KEY_VERSION',
 	'NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS',

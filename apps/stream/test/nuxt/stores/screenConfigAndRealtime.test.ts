@@ -31,13 +31,13 @@ const mockRepo = {
 	remove: vi.fn(),
 };
 
-const mockAbly = createMockRealtime();
+const mockRealtime = createMockRealtime();
 const { mockFetch } = vi.hoisted(() => ({
 	mockFetch: vi.fn(),
 }));
 
 mockNuxtImport('useScreenRepository', () => () => mockRepo);
-mockNuxtImport('useRealtime', () => () => mockAbly);
+mockNuxtImport('useRealtime', () => () => mockRealtime);
 mockNuxtImport('$fetch', () => mockFetch);
 mockNuxtImport('useToast', () => () => ({
 	add: vi.fn(),
@@ -477,7 +477,7 @@ describe('useScreenStore config and realtime', () => {
 
 			store.subscribeToScreenPresence(10);
 
-			expect(mockAbly.watchPresence).toHaveBeenCalledWith('screen:1:10', expect.any(Function));
+			expect(mockRealtime.watchPresence).toHaveBeenCalledWith('screen:1:10', expect.any(Function));
 
 			store.screenPresence = new Map([[1, { count: 2, members: [] }]]);
 			store.$reset();
@@ -489,12 +489,12 @@ describe('useScreenStore config and realtime', () => {
 		// surfaces hold one Screen's watch for a moment: it ends with the last holder.
 		it("keeps a Screen's presence watched until every surface that asked for it has let go", () => {
 			const stopWatching = vi.fn();
-			mockAbly.watchPresence.mockReturnValueOnce(stopWatching);
+			mockRealtime.watchPresence.mockReturnValueOnce(stopWatching);
 			store.currentEventId = 1;
 
 			store.subscribeToScreenPresence(10);
 			store.subscribeToScreenPresence(10);
-			const report = lastCallTo(mockAbly.watchPresence, 'screen:1:10')[1] as (
+			const report = lastCallTo(mockRealtime.watchPresence, 'screen:1:10')[1] as (
 				members: unknown[],
 			) => void;
 			report([{ clientId: 'output-a' }]);
@@ -509,14 +509,15 @@ describe('useScreenStore config and realtime', () => {
 			expect(store.getConnectedCount(10)).toBe(0);
 		});
 
-		it('sends a Screen command through the server endpoint', async () => {
+		// A debug command, so what a command carries beside its name is seen to be sent.
+		it('sends a Screen command, with what it carries, through the server endpoint', async () => {
 			store.currentEventId = 1;
 
-			await store.sendScreenCommand(10, 'refresh');
+			await store.sendScreenCommand(10, { command: 'debug', shown: true });
 
 			expect(mockFetch).toHaveBeenCalledWith('/api/events/1/screens/10/command', {
 				method: 'POST',
-				body: { command: 'refresh' },
+				body: { command: 'debug', shown: true },
 			});
 		});
 	});

@@ -1,6 +1,6 @@
 import { broadcastGraphicsLiveSessionModule } from '~~/server/modules/broadcast-graphics-live-session';
 import { screenParamsSchema } from '~~/server/schemas/api/screen';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 /**
  * Reset a Broadcast Graphics Screen's live state.

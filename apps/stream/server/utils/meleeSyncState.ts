@@ -2,7 +2,7 @@ import type { DbEvent, DbEventTalent } from '~~/server/db/schema';
 import type { MeleeSyncContext } from '~~/server/modules/melee-sync/context';
 import { mapEventToResponse } from '~~/server/mappers/event';
 import { eventService } from '~~/server/services/event';
-import { publishMessage } from '~~/server/utils/ably';
+import { publishMessage } from '~~/server/utils/realtimePublish';
 import { toPublicOperationalError } from '@keepr/nuxt-layer/server/utils/errors';
 
 export const MELEE_SYNC_LEASE_DURATION_MS = 15 * 60 * 1000;

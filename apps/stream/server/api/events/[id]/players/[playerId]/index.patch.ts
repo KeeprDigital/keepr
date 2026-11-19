@@ -1,6 +1,6 @@
 import { playerUpdateModule } from '~~/server/modules/player-update';
 import { playerParamsSchema, updatePlayerSchema } from '~~/server/schemas/api/player';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id, playerId } = await getValidatedRouterParams(event, playerParamsSchema.parse);

@@ -14,7 +14,7 @@ import {
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /*
- * A Live Results tick against real SQL: only Melee, Ably and the clock are stood in
+ * A Live Results tick against real SQL: only Melee, the realtime publish and the clock are stood in
  * for. It polls the Current Round, announces only what changed, and writes the
  * Event row only for poll state; the runner keeps one Event's failure from the rest.
  */
@@ -67,7 +67,7 @@ vi.doMock('~~/server/db', () => ({ db }));
 vi.doMock('~~/server/services/meleeIntegration', () => ({
 	requireMeleeService: (eventData: { meleeEventId: string }) => fakeMelee(eventData.meleeEventId),
 }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => 'origin-1',
 	publishMessage,
 	publishMessageStrict,

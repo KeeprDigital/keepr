@@ -1,11 +1,8 @@
-import type { InboundMessage } from 'ably';
-import Ably from 'ably';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eventRealtimeChannel } from '../../shared/utils/realtimeChannels';
-import { LOAD_TOLERANT_WAIT_MS } from '@keepr/nuxt-layer/test/helpers/loadTolerantBounds';
 import { LAW, NAMI, ZORO } from '../helpers/opCards';
 import { $fetch } from './client';
-import { INTEGRATION_ABLY_API_KEY, integrationRealtimeConfigured } from './realtimeKey';
+import { followAsOperator } from './realtimeFollower';
 
 // A Slot side's Leader on a One Piece Event (ADR-0057): a change during a
 // Feature Match Session reaches its snapshot and its followers.
@@ -64,51 +61,32 @@ describe("a Feature Match Slot side's Leader", () => {
 	}
 
 	// The Slot's own announcement carries its corrected Session; the correction announces nothing itself.
-	it.skipIf(!integrationRealtimeConfigured)(
-		'announces the change with the Slot and its corrected Session',
-		async () => {
-			const realtime = new Ably.Realtime(INTEGRATION_ABLY_API_KEY);
-			const channel = realtime.channels.get(eventRealtimeChannel(eventId));
-			let resolveMessage!: (message: InboundMessage) => void;
-			const announced = new Promise<InboundMessage>((resolve) => {
-				resolveMessage = resolve;
-			});
-			const listener = (message: InboundMessage) => {
-				if (JSON.stringify(message.data).includes('Roronoa Zoro')) resolveMessage(message);
-			};
-			let timeout: ReturnType<typeof setTimeout> | undefined;
+	it('announces the change with the Slot and its corrected Session', async () => {
+		const follower = await followAsOperator(eventId, eventRealtimeChannel(eventId), [
+			'featureMatch:updated',
+		]);
 
-			try {
-				await channel.subscribe('featureMatch:updated', listener);
-				await changeLeader(ZORO);
+		try {
+			await changeLeader(ZORO);
 
-				const message = await Promise.race([
-					announced,
-					new Promise<never>((_resolve, reject) => {
-						timeout = setTimeout(
-							() => reject(new Error('Timed out waiting for the Leader announcement')),
-							LOAD_TOLERANT_WAIT_MS,
-						);
-					}),
-				]);
+			const message = await follower.hear('featureMatch:updated', (data) =>
+				JSON.stringify(data).includes('Roronoa Zoro'),
+			);
 
-				const { featureMatch } = message.data;
-				expect(featureMatch.player1Data.gameData).toEqual({ type: 'op', leader: ZORO });
-				expect(featureMatch.activeSession).toMatchObject({
-					id: sessionId,
-					sourceSnapshot: {
-						player1: {
-							data: {
-								gameData: { type: 'op', leader: ZORO },
-							},
+			const { featureMatch } = message;
+			expect(featureMatch.player1Data.gameData).toEqual({ type: 'op', leader: ZORO });
+			expect(featureMatch.activeSession).toMatchObject({
+				id: sessionId,
+				sourceSnapshot: {
+					player1: {
+						data: {
+							gameData: { type: 'op', leader: ZORO },
 						},
 					},
-				});
-			} finally {
-				if (timeout) clearTimeout(timeout);
-				channel.unsubscribe(listener);
-				realtime.close();
-			}
-		},
-	);
+				},
+			});
+		} finally {
+			follower.stop();
+		}
+	});
 });

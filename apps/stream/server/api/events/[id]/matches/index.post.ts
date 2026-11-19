@@ -1,7 +1,7 @@
 import { matchWriteModule } from '~~/server/modules/match-write';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
 import { createMatchSchema } from '~~/server/schemas/api/match';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id } = await getValidatedRouterParams(event, eventParamsSchema.parse);

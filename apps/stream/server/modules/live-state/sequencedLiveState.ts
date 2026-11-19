@@ -183,22 +183,13 @@ export function createSequencedLiveState<
 	 * The 404 for an aggregate that is not there, in the words of whichever feature
 	 * supplied the port.
 	 *
-	 * **The message is deliberately not readable from source, and the refusal scan will
-	 * say so the day a route reaches this file.** `test/helpers/routeRefusalScan.ts`
-	 * reads a `createError`'s halves out of the syntax; a template with a substitution
-	 * in it has no value there, so this surfaces as `statusCode: 404, message: undefined`
-	 * — inside the credential band, matching no listed refusal, and failing the
-	 * exhaustiveness check in `test/unit/integration/realtimeDiagnosis.test.ts` naming
-	 * this line. That is the scan working: #277's whole point is that a half it cannot
-	 * read becomes `undefined` rather than a plausible default, and the shape is pinned
-	 * there under 'reports a message it cannot read rather than reading it as empty'.
-	 *
-	 * Invisible today only because no route's own import graph reaches this file and a
-	 * middleware's graph stops at the domain layer. **When it does surface, the fix is
-	 * not to add the message to `SCREEN_COMMAND_ROUTE_REFUSALS`** — the scan cannot read
-	 * it, so there is no message to add, and inventing one would teach the realtime
-	 * diagnosis to excuse a 404 it should be reading. Give the reaching route a
-	 * literal-messaged refusal of its own, or narrow the scan, per that file's policy.
+	 * **The message is deliberately not readable from source.**
+	 * `test/helpers/routeRefusalScan.ts` reads a `createError`'s halves out of the
+	 * syntax; a template with a substitution in it has no value there, so a scan that
+	 * reaches this file reports `statusCode: 404, message: undefined`: a half it cannot
+	 * read becomes `undefined` rather than a plausible default (#277). A test that
+	 * counts a route's refusals by that scan gives the route a literal-messaged refusal
+	 * of its own, or narrows the scan.
 	 *
 	 * Filed as #330(1). The alternative considered and rejected was a per-aggregate
 	 * literal: the label is what makes this sentence worth showing an operator, and

@@ -20,7 +20,7 @@ vi.doMock('~~/server/db', () => ({ db }));
 vi.doMock('~~/server/modules/event-data-publication', () => ({
 	eventDataPublicationModule: () => publication,
 }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: vi.fn(),
 	publishMessageStrict: vi.fn(),
 }));

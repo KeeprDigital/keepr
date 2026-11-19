@@ -4,11 +4,11 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { MAX_REALTIME_MESSAGE_BYTES, realtimeMessageBytes } from '~~/shared/types/messages';
 import { eventRealtimeChannel, screenRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // What an Archetype rename or delete announces of the Players it re-projects, over
-// real SQL: one message naming them, whatever their number (ADR-0084). Faked: Ably,
+// real SQL: one message naming them, whatever their number (ADR-0084). Faked: the realtime object,
 // and the Broadcast Graphics Live Session port.
 
 vi.stubGlobal(
@@ -21,9 +21,7 @@ const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
+const realtime = await installRealtimeObjectFake();
 
 /** Each Event whose Graphic Input Bindings were re-resolved, in order. */
 const reResolved: number[] = [];
@@ -38,7 +36,7 @@ const { playerUpdateModule } = await import('~~/server/modules/player-update');
 const { eventDataPublicationModule } = await import('~~/server/modules/event-data-publication');
 
 beforeEach(() => {
-	ably.reset();
+	realtime.reset();
 	reResolved.length = 0;
 });
 afterAll(async () => await harness.close());
@@ -116,14 +114,14 @@ async function stageDeckListScreen(eventId: number, playerId: number) {
 
 /** What the Event's channel was sent, as `[type, payload]`. */
 function announced(eventId: number) {
-	return ably
+	return realtime
 		.on(eventRealtimeChannel(eventId))
 		.map(({ type, payload }) => [type, payload] as const);
 }
 
 /** The kinds of Output Change each notice on a Screen's channel named. */
 function toldScreen(eventId: number, screenId: number) {
-	return ably.on(screenRealtimeChannel(eventId, screenId)).map(({ payload }) => payload.causes);
+	return realtime.on(screenRealtimeChannel(eventId, screenId)).map(({ payload }) => payload.causes);
 }
 
 /** The deck name each Player shows, in the order asked. */
@@ -183,7 +181,7 @@ describe('re-projecting the Players an Archetype change touched', () => {
 			}),
 		).resolves.toEqual([]);
 
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 		expect(reResolved).toEqual([]);
 	});
 

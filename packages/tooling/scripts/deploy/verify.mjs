@@ -32,7 +32,7 @@
  * first NXDOMAIN for the zone's negative TTL (ADR-0136).
  *
  * What a pass does not establish: **dependency readiness**. Neither handler
- * reads a binding, so a pass says nothing about D1, auth, R2, KV, Ably or the
+ * reads a binding, so a pass says nothing about D1, auth, R2, KV, realtime or the
  * silent-video validator. The deployed acceptance gates (`pnpm accept deployed`)
  * are what exercise those.
  *
@@ -59,7 +59,7 @@ const DEFAULT_DNS_WAIT_MS = 120_000;
 const DNS_RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 16_000, 30_000];
 
 const NOT_PROVEN =
-	'D1, auth, R2, KV, Ably and validator readiness (the deployed acceptance gates cover those)';
+	'D1, auth, R2, KV, realtime and validator readiness (the deployed acceptance gates cover those)';
 
 export class DeployVerifyFailure extends Error {
 	/**

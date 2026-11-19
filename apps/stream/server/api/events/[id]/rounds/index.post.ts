@@ -1,7 +1,7 @@
 import { roundWriteModule } from '~~/server/modules/round-write';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
 import { createRoundSchema } from '~~/server/schemas/api/round';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id } = await getValidatedRouterParams(event, eventParamsSchema.parse);

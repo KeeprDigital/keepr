@@ -4,8 +4,15 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
 /**
- * Reading a route's own refusals out of its source, for the guard that keeps a refusal
- * list exhaustive against the realtime diagnosis (`test/unit/integration/realtimeDiagnosis.test.ts`).
+ * Reading a route's own refusals out of its source: for the Session boundary's tests,
+ * which count the public surface and each middleware's refusals
+ * (`test/unit/server/utils/apiBoundary.test.ts`, `test/unit/server/middleware/apiSession.test.ts`).
+ *
+ * It was built for a guard that is gone: the realtime integration tests once told a
+ * rejected Ably key from a route's own refusal by a list of that route's refusals
+ * (`SCREEN_COMMAND_ROUTE_REFUSALS`), which this scan kept exhaustive. Realtime needs
+ * no key now (ADR-0143), so the list and its diagnosis went. What follows still says
+ * why the scan reads as it does, in that guard's terms.
  *
  * The guarantee this owes its caller is narrow and worth stating exactly: **every
  * `createError` call it finds produces exactly one entry, whether or not it could read

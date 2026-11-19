@@ -55,17 +55,15 @@ export interface ScreenChannelDelivery {
 	messages: ScreenChannelMessage[];
 }
 
-/** A Screen whose channel refused its messages, and the provider's account of why. */
-export interface ScreenChannelFailure {
-	screenId: number;
-	error: unknown;
-}
-
-/** The port to the Screen channels: publishes each delivery, and answers the ones refused. */
+/**
+ * The port to the Screen channels: publishes every delivery in one call to the
+ * Event's object, in order. The call answers or fails as one, so a rejection
+ * is every Screen's failure.
+ */
 export type PublishToScreenChannels = (
 	eventId: number,
 	deliveries: readonly ScreenChannelDelivery[],
-) => Promise<ScreenChannelFailure[]>;
+) => Promise<void>;
 
 /**
  * The request a write was made in, where it can finish work after answering:
@@ -327,24 +325,13 @@ async function decideDeliveries(
 	}));
 }
 
-async function attempt(
-	eventId: number,
-	deliveries: readonly ScreenChannelDelivery[],
-	publish: PublishToScreenChannels,
-): Promise<ScreenChannelFailure[]> {
-	try {
-		return await publish(eventId, deliveries);
-	} catch (error) {
-		return deliveries.map(({ screenId }) => ({ screenId, error }));
-	}
-}
-
 /**
- * Publish to the Screen channels, retrying the refused ones once.
+ * Publish to the Screen channels, retrying a failed call once.
  *
- * A second refusal is logged and left: the forwarded messages are sequenced or
- * revisioned and the notices idempotent, so a duplicate is safe and a loss is
- * what an output's Reconnect Resync and slow re-read already recover from.
+ * A second failure is logged for each Screen and left: the forwarded messages
+ * are sequenced or revisioned and the notices idempotent, so a duplicate is
+ * safe and a loss is what an output's Reconnect Resync and slow re-read
+ * already recover from.
  */
 async function deliver(
 	eventId: number,
@@ -352,28 +339,21 @@ async function deliver(
 	publish: PublishToScreenChannels,
 ): Promise<void> {
 	if (deliveries.length === 0) return;
-	let failures = await attempt(eventId, deliveries, publish);
-	if (failures.length > 0) {
-		const refused = new Set(failures.map((failure) => failure.screenId));
-		failures = await attempt(
-			eventId,
-			deliveries.filter((delivery) => refused.has(delivery.screenId)),
-			publish,
-		);
-	}
-	for (const { screenId, error } of failures) {
-		console.error(
-			JSON.stringify({
-				message: 'realtime_publish_failed',
-				eventId,
-				screenId,
-				messageTypes:
-					deliveries
-						.find((delivery) => delivery.screenId === screenId)
-						?.messages.map((message) => message.type) ?? [],
-				...publishFailureFields(error),
-			}),
-		);
+	const attempt = async () => await publish(eventId, deliveries);
+	try {
+		await attempt().catch(attempt);
+	} catch (error) {
+		for (const { screenId, messages } of deliveries) {
+			console.error(
+				JSON.stringify({
+					message: 'realtime_publish_failed',
+					eventId,
+					screenId,
+					messageTypes: messages.map((message) => message.type),
+					...publishFailureFields(error),
+				}),
+			);
+		}
 	}
 }
 

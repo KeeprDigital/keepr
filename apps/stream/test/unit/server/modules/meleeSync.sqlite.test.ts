@@ -8,7 +8,7 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 
 /*
  * Melee Sync commands against real SQL: only the upstream boundaries are stood in
- * for — Melee itself, the card provider, Ably — and Round Match import, which
+ * for — Melee itself, the card provider, the realtime publish — and Round Match import, which
  * meleeRoundMatches.sqlite owns. Lease and sync metadata are the real Event columns.
  */
 
@@ -31,7 +31,7 @@ vi.doMock('~~/server/services/meleeIntegration', () => ({
 vi.doMock('~~/server/services/importedMtgCardResolver', () => ({
 	importedMtgCardResolverService: () => ({ resolveBatch }),
 }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => 'origin-1',
 	publishMessage,
 	publishMessageStrict: publishMessage,
@@ -220,7 +220,7 @@ describe('syncing Players', () => {
 		const eventId = await createEvent();
 		melee.fetchMergedPlayers.mockResolvedValue([meleePlayer('player-1', 'Alice')]);
 		publishMessage.mockImplementation(async (_eventId: number, type: string) => {
-			if (type === 'melee:playersSynced') throw new Error('Ably unavailable');
+			if (type === 'melee:playersSynced') throw new Error('realtime unavailable');
 		});
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -620,7 +620,7 @@ describe("syncing a Round's Matches", () => {
 			standingsChanged: false,
 		});
 		publishMessage.mockImplementation(async (_eventId: number, type: string) => {
-			if (type === 'melee:pairingsSynced') throw new Error('Ably unavailable');
+			if (type === 'melee:pairingsSynced') throw new Error('realtime unavailable');
 		});
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 

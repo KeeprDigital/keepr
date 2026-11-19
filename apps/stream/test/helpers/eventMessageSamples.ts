@@ -169,7 +169,7 @@ export function eventMessageSamples(ids: EventMessageSampleIds): {
 		'screen:deleted': { screenId: ids.screenId },
 		'screen:command:refresh': { screenId: ids.screenId },
 		'screen:command:identify': { screenId: ids.screenId },
-		'screen:command:debug': { screenId: ids.screenId },
+		'screen:command:debug': { screenId: ids.screenId, shown: true },
 		'output:eventContextChanged': {},
 		'output:modeDataChanged': {
 			screenId: ids.screenId,

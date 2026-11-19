@@ -30,7 +30,7 @@ import { mapTalentToResponse } from '~~/server/mappers/talent';
 import { refreshBroadcastGraphicsBindings } from '~~/server/modules/broadcast-graphics-live-session';
 import { asOneOutputChange } from '~~/server/modules/screen-output-publication';
 import { featureMatchService } from '~~/server/services/featureMatch';
-import { publishMessage, publishMessageStrict } from '~~/server/utils/ably';
+import { publishMessage, publishMessageStrict } from '~~/server/utils/realtimePublish';
 import { publishFailureFields } from '~~/server/utils/realtimePublishFailure';
 import { MAX_REALTIME_MESSAGE_BYTES, realtimeMessageBytes } from '~~/shared/types/messages';
 import { featureMatchMessages } from './messages';

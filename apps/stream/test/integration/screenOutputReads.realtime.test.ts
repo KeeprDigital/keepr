@@ -1,16 +1,14 @@
-import type { InboundMessage } from 'ably';
 import type { ScreenResponse } from '~~/shared/api';
-import Ably from 'ably';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { screenRealtimeChannel } from '../../shared/utils/realtimeChannels';
-import { LOAD_TOLERANT_WAIT_MS } from '@keepr/nuxt-layer/test/helpers/loadTolerantBounds';
-import { $fetch, anonymousFetch } from './client';
-import { integrationRealtimeConfigured } from './realtimeKey';
+import { $fetch } from './client';
+import { followAsScreenOutput } from './realtimeFollower';
 
 /**
  * A Screen Output hears on its own Screen channel, holding only its Screen
- * Output Asset Capability, that what its mode shows changed (#604). The reads it
- * then makes are in `screenOutputReads.test.ts`, which needs no Ably key.
+ * Output Asset Capability, that what its mode shows changed (#604): a Realtime
+ * Ticket for the capability lets its socket in, with no Session (ADR-0142). The
+ * reads it then makes are in `screenOutputReads.test.ts`.
  */
 describe('a capability-only Screen Output on its Screen channel', () => {
 	let eventId: number;
@@ -50,52 +48,27 @@ describe('a capability-only Screen Output on its Screen channel', () => {
 	});
 
 	// The Screen's own channel names what its mode shows changed; the output re-reads it through its Screen.
-	it.skipIf(!integrationRealtimeConfigured)(
-		"is told on its own channel that its mode's data changed",
-		async () => {
-			const realtime = new Ably.Realtime({
-				authCallback: (_params, callback) => {
-					anonymousFetch(`/api/realtime/token?eventId=${eventId}`, {
-						headers: { authorization: `Bearer ${capability}` },
-					}).then(
-						async (response) => callback(null, await response.json()),
-						(error) => callback(error, null),
-					);
-				},
+	it("is told on its own channel that its mode's data changed", async () => {
+		const output = await followAsScreenOutput(
+			eventId,
+			capability,
+			screenRealtimeChannel(eventId, screen.id),
+			['output:modeDataChanged'],
+		);
+
+		try {
+			await $fetch(`/api/events/${eventId}/players`, {
+				method: 'POST',
+				body: { name: 'Heard On The Screen Channel' },
 			});
-			const channel = realtime.channels.get(screenRealtimeChannel(eventId, screen.id));
-			let timeout: ReturnType<typeof setTimeout> | undefined;
 
-			try {
-				let told!: (message: InboundMessage) => void;
-				const heard = new Promise<InboundMessage>((resolve) => {
-					told = resolve;
-				});
-				await channel.subscribe('output:modeDataChanged', told);
-
-				await $fetch(`/api/events/${eventId}/players`, {
-					method: 'POST',
-					body: { name: 'Heard On The Screen Channel' },
-				});
-
-				const message = await Promise.race([
-					heard,
-					new Promise<never>((_resolve, reject) => {
-						timeout = setTimeout(
-							() => reject(new Error('Timed out waiting for output:modeDataChanged')),
-							LOAD_TOLERANT_WAIT_MS,
-						);
-					}),
-				]);
-				expect(message.data).toMatchObject({
-					eventId,
-					screenId: screen.id,
-					causes: ['player'],
-				});
-			} finally {
-				if (timeout) clearTimeout(timeout);
-				realtime.close();
-			}
-		},
-	);
+			expect(await output.hear('output:modeDataChanged')).toMatchObject({
+				eventId,
+				screenId: screen.id,
+				causes: ['player'],
+			});
+		} finally {
+			output.stop();
+		}
+	});
 });

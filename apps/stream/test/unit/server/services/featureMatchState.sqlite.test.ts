@@ -47,7 +47,7 @@ const racingDb = new Proxy(db, {
 const publishMessage = vi.fn(async (..._args: unknown[]) => {});
 
 vi.doMock('~~/server/db', () => ({ db: racingDb }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage,
 	publishMessageStrict: publishMessage,
 	getOriginConnectionId: () => undefined,

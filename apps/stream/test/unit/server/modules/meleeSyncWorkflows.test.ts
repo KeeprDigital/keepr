@@ -79,7 +79,7 @@ vi.mock('~~/server/services/mtgCard', () => ({
 	}),
 }));
 
-vi.mock('~~/server/utils/ably', () => ({
+vi.mock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: vi.fn(),
 	publishMessageStrict: vi.fn(),
 }));

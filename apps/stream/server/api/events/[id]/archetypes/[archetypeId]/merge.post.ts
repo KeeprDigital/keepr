@@ -1,6 +1,6 @@
 import { archetypeWriteModule } from '~~/server/modules/archetype-write';
 import { archetypeParamsSchema, mergeArchetypeSchema } from '~~/server/schemas/api/archetype';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 /** Merges the Archetype in the path into another of its Event, which keeps its own name, colours, key cards and pin. */
 export default defineEventHandler(async (event) => {

@@ -2,7 +2,7 @@ import { screenOutputAssetCapabilityManagerForEvent } from '~~/server/modules/sc
 import { screenWriteModule } from '~~/server/modules/screen-write';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
 import { createScreenSchema } from '~~/server/schemas/api/screen';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id: eventId } = await getValidatedRouterParams(event, eventParamsSchema.parse);

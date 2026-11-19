@@ -1,8 +1,9 @@
 import type { ScreenCommand, ScreenMode } from '~~/shared/types/enums';
+import type { ScreenCommandRequest } from '~~/shared/types/messages';
 
 // Re-export ScreenMode for use in components
 export type { ScreenMode };
-export type { ScreenCommand };
+export type { ScreenCommand, ScreenCommandRequest };
 
 /**
  * Whether a Screen Output's rendering resolved all the card data it asked for.

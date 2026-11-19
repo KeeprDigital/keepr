@@ -1,7 +1,7 @@
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
 import { screenWriteModule } from '~~/server/modules/screen-write';
 import { screenParamsSchema, screenThemeOverridesPatchSchema } from '~~/server/schemas/api/screen';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 /** Set or clear (`null`) Screen Theme Overrides, announced as `screen:updated`. */
 export default defineEventHandler(async (event) => {

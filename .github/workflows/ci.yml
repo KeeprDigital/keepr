@@ -3,8 +3,8 @@
 # apps/stream/README.md § Testing (ingestion needs a running preview worker, the validator
 # needs Docker pre-flight, fonts:library needs a real library store). The six
 # `pnpm accept deployed` gates run on deploy day only, started by a person:
-# they provision real Events in the Installation they target, staging, and
-# spend Ably free-plan quota (#189). The still-image and silent-video gates'
+# they provision real Events in the Installation they target, staging. The
+# still-image and silent-video gates'
 # deployed modes, which write nothing, run in the Deploy workflow's staging
 # job (ADR-0125).
 #
@@ -306,8 +306,8 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup
       # Each shard starts its own servers over its own databases, so the halves
-      # share nothing. Realtime tests self-skip: no Ably key is configured in CI
-      # by decision; realtime coverage runs locally (#189).
+      # share nothing, the realtime tests included: each server's objects are
+      # in the realtime dev Worker beside it, and need no key.
       - run: pnpm test:integration --run --shard=${{ matrix.shard }}/2
 
   server-and-browser:

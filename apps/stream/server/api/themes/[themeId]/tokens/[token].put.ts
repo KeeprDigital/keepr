@@ -1,7 +1,7 @@
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
 import { themeLibraryModule } from '~~/server/modules/theme-library';
 import { setThemeTokenSchema, themeTokenParamsSchema } from '~~/server/schemas/api/theme';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 /** Set one Theme Token. Last write wins; there is no lease and no draft. */
 export default defineEventHandler(async (event) => {

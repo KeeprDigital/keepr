@@ -12,7 +12,7 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 /*
  * The Melee Sync commands that run several stages, against real SQL: what each
  * refuses, which stages it runs, and what they leave stored. Only Melee, the card
- * provider and Ably are stood in for; a lost Session race is forced on the real service.
+ * provider and the realtime publish are stood in for; a lost Session race is forced on the real service.
  */
 
 vi.stubGlobal(
@@ -53,7 +53,7 @@ vi.doMock('~~/server/services/importedMtgCardResolver', () => ({
 		}),
 	}),
 }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => 'origin-1',
 	publishMessage,
 	publishMessageStrict: publishMessage,

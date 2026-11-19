@@ -13,7 +13,8 @@
 			{ "name": "BRIEF_LOG", "class_name": "BriefLog" },
 			{ "name": "BRIEF_GRACE", "class_name": "BriefGrace" },
 			{ "name": "BRIEF_SWEEP", "class_name": "BriefSweep" },
-			{ "name": "BRIEF_ASK", "class_name": "BriefAsk" }
+			{ "name": "BRIEF_ASK", "class_name": "BriefAsk" },
+			{ "name": "BRIEF_WITHDRAWAL", "class_name": "BriefWithdrawal" }
 		]
 	},
 	"migrations": [
@@ -25,7 +26,8 @@
 				"BriefLog",
 				"BriefGrace",
 				"BriefSweep",
-				"BriefAsk"
+				"BriefAsk",
+				"BriefWithdrawal"
 			]
 		}
 	]

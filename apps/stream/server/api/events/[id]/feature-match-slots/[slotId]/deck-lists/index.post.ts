@@ -1,7 +1,7 @@
 import { featureMatchDeckListModule } from '~~/server/modules/feature-match-deck-list';
 import { featureMatchSlotParamsSchema } from '~~/server/schemas/api/featureMatch';
 import { saveFeatureMatchDeckListSchema } from '~~/server/schemas/api/featureMatchDeckList';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 /** Saves a pasted Deck List to a Slot side, replacing the one it held. Warnings never refuse it. */
 export default defineEventHandler(async (event) => {

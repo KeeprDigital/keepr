@@ -62,10 +62,8 @@ since `main`: its changesets (below), lint (which fails on unformatted code;
 reach the files it changed. CI is the full gate, and runs everything. Open the PR
 as a draft, which CI skips, and mark it ready when the branch is done: that
 runs every gate `pnpm verify` runs, Worker build and workerd smoke included.
-Realtime integration tests are the exception: CI has no Ably key, so they run
-only against your local `apps/stream/.env`. A change touching realtime needs
-`pnpm test:integration --run` green in `apps/stream` before you mark it
-ready. Reach for `pnpm verify` to reproduce a CI failure locally. A
+No test needs a key for realtime. Reach for `pnpm verify` to reproduce a CI
+failure locally. A
 dependency's version lives in the named catalog of its group in
 `pnpm-workspace.yaml`, and each `package.json` names it as `catalog:<group>`;
 `pnpm add --save-catalog-name=<group>`, run in the app or package that needs

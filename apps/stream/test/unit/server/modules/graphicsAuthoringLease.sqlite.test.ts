@@ -8,7 +8,7 @@ import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Graphics Authoring Lease as its stored row: what a heartbeat keeps, when a lapsed
-// lease frees its artifact, and that it never gates a read. Only the clock, Ably and
+// lease frees its artifact, and that it never gates a read. Only the clock, the realtime publish and
 // the Session are faked; the commit-time fence is `screenGraphicsAuthoringLease.sqlite.test.ts`'s.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
@@ -24,7 +24,7 @@ const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 
 vi.doMock('~~/server/db', () => ({ db, schema }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: async () => {},
 	publishMessageStrict: async () => {},
 	publishScreenCommand: async () => {},

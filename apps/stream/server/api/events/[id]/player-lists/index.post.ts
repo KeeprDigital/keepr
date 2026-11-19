@@ -1,7 +1,7 @@
 import { playerListWriteModule } from '~~/server/modules/player-list-write';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
 import { createPlayerListSchema } from '~~/server/schemas/api/playerList';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id } = await getValidatedRouterParams(event, eventParamsSchema.parse);

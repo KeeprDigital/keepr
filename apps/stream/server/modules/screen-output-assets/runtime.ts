@@ -4,6 +4,11 @@ import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset
 import { createR2CanonicalGraphicsObjectStore } from '~~/server/modules/graphics-asset-library/r2-object-store';
 import { graphicsCatalogueClient } from '~~/server/modules/graphics-asset-library/runtime';
 import { screenService } from '~~/server/services/screen';
+import {
+	eventRealtimeScope,
+	screenOutputCapabilityRealtimeTag,
+	screenOutputRealtimeClientId,
+} from '~~/shared/utils/realtimeChannels';
 import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
 import { createScreenOutputAssetDelivery } from '.';
 import { createD1ScreenOutputAssetAuthorizer } from './authorizer';
@@ -48,6 +53,17 @@ export function screenOutputAssetCapabilityManagerForEvent(event: H3Event) {
 	return createScreenOutputAssetCapabilityManager({
 		signingKey: signingKey(event),
 		screens: screenService(),
+		// By the tags the port gives a Screen Output's socket
+		// (`server/routes/realtime/port.ts`), in the Event's object: every socket
+		// of the Screen's outputs but the regenerated capability's, and for a
+		// minute after, any that arrives on a grant decided before this.
+		// Asynchronous, so a Worker with no realtime binding rejects like any
+		// other failure.
+		disconnectOutputs: async ({ eventId, screenId, capabilityVersion }) =>
+			await useRealtimeScope(event, eventRealtimeScope(eventId)).disconnect(
+				screenOutputRealtimeClientId(screenId),
+				{ except: screenOutputCapabilityRealtimeTag(screenId, capabilityVersion) },
+			),
 	});
 }
 

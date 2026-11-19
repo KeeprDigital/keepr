@@ -470,7 +470,7 @@ describe("the realtime transport over an Event's object", () => {
 		it('is one a write can name before any socket, and the same through a reconnect and on another Event', async () => {
 			const rig = socketRealtimeRig();
 			const own = rig.realtime.connectionId;
-			// What the server takes for an origin connection id (`server/utils/ably.ts`).
+			// What the server takes for an origin connection id (`server/utils/realtimePublish.ts`).
 			expect(own).toMatch(/^[\w!-]{1,64}$/);
 
 			rig.realtime.onChannel(EVENT, 'player:updated', vi.fn());

@@ -13,7 +13,7 @@ vi.mock('~~/server/services/event', () => ({
 	eventService: () => mockEventService,
 }));
 
-vi.mock('~~/server/utils/ably', () => ({
+vi.mock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: mockPublishMessage,
 }));
 

@@ -42,9 +42,9 @@ export function useEventRealtimeSession() {
 		]);
 	}
 	useReconnectResync(resync, room, realtime);
-	// Subscriptions that waited on a token missed what was published meanwhile,
-	// and a first attach over an unbroken connection reports no continuity loss
-	// (ADR-0023).
+	// A client that was refused missed what was published meanwhile, and a first
+	// attach over an unbroken connection reports no continuity loss (ADR-0023,
+	// ADR-0143).
 	watch(
 		() => !!realtime.tokenError,
 		(waiting, wasWaiting) => {
@@ -55,8 +55,8 @@ export function useEventRealtimeSession() {
 	watch(
 		room,
 		(channel) => {
-			// The transport scopes its token to the room's Event internally, so
-			// an event switch is just a room change.
+			// The transport finds the room's Event's socket itself, so an event
+			// switch is just a room change.
 			realtime.setRoom(channel);
 		},
 		{ immediate: true },

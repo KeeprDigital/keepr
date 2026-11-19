@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3';
 import { screenCommandSchema, screenParamsSchema } from '~~/server/schemas/api/screen';
 import { screenService } from '~~/server/services/screen';
-import { publishScreenCommand } from '~~/server/utils/ably';
+import { publishScreenCommand } from '~~/server/utils/realtimePublish';
 
 async function assertTrustedScreenCommandBoundary(
 	_event: H3Event,
@@ -21,7 +21,7 @@ async function assertTrustedScreenCommandBoundary(
 
 export default defineEventHandler(async (event) => {
 	const { id: eventId, screenId } = await getValidatedRouterParams(event, screenParamsSchema.parse);
-	const { command } = await readValidatedBody(event, screenCommandSchema.parse);
+	const command = await readValidatedBody(event, screenCommandSchema.parse);
 
 	const screen = await screenService().findById(screenId, eventId);
 	if (!screen) {

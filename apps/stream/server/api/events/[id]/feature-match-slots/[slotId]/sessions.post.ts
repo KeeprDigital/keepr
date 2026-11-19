@@ -1,6 +1,6 @@
 import { featureMatchSessionModule } from '~~/server/modules/feature-match-session';
 import { featureMatchSlotParamsSchema } from '~~/server/schemas/api/featureMatch';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id, slotId } = await getValidatedRouterParams(event, featureMatchSlotParamsSchema.parse);

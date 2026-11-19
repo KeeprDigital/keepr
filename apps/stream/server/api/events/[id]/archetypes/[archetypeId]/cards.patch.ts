@@ -1,6 +1,6 @@
 import { archetypeWriteModule } from '~~/server/modules/archetype-write';
 import { archetypeParamsSchema, setArchetypeKeyCardsSchema } from '~~/server/schemas/api/archetype';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id, archetypeId } = await getValidatedRouterParams(event, archetypeParamsSchema.parse);

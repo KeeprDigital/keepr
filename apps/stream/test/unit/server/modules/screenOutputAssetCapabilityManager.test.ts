@@ -8,6 +8,7 @@ describe('screen Output Asset Capability lifecycle', () => {
 	const findById = vi.fn();
 	const findByIdInAnyEvent = vi.fn();
 	const replaceAssetCapability = vi.fn();
+	const disconnectOutputs = vi.fn();
 	const stored = {
 		id: 17,
 		eventId: 3,
@@ -27,12 +28,14 @@ describe('screen Output Asset Capability lifecycle', () => {
 			eventId: 3,
 			...replacement,
 		}));
+		disconnectOutputs.mockResolvedValue(0);
 	});
 
 	function manager() {
 		return createScreenOutputAssetCapabilityManager({
 			signingKey,
 			screens: { findById, findByIdInAnyEvent, replaceAssetCapability },
+			disconnectOutputs,
 			generateSeed: () => 'seed-2',
 		});
 	}
@@ -152,6 +155,80 @@ describe('screen Output Asset Capability lifecycle', () => {
 			},
 			1,
 		);
+	});
+
+	// ADR-0137: the sockets the former capability admitted close at once. Before the
+	// write commits, a closed output would reconnect with the capability still good.
+	it("closes the Screen's realtime sockets once the regenerated capability is stored, and not before", async () => {
+		const order: string[] = [];
+		replaceAssetCapability.mockImplementation(async (_screenId, _eventId, replacement) => {
+			await Promise.resolve();
+			order.push('stored');
+			return { id: 17, eventId: 3, ...replacement };
+		});
+		disconnectOutputs.mockImplementation(async () => order.push('disconnected'));
+
+		await manager().rotate({ eventId: 3, screenId: 17 });
+
+		expect(order).toEqual(['stored', 'disconnected']);
+		// The version it spares is the one just stored: the former was 1.
+		expect(disconnectOutputs).toHaveBeenCalledWith({
+			eventId: 3,
+			screenId: 17,
+			capabilityVersion: 2,
+		});
+	});
+
+	it.each([
+		['the Screen was deleted under it', async () => undefined],
+		[
+			'another regeneration got there first',
+			async () => {
+				throw new Error('Screen Output Asset Capability 17 state was modified concurrently');
+			},
+		],
+	])('closes no socket when the capability was not regenerated: %s', async (_case, write) => {
+		replaceAssetCapability.mockImplementation(write);
+
+		await manager()
+			.rotate({ eventId: 3, screenId: 17 })
+			.catch(() => undefined);
+
+		expect(disconnectOutputs).not.toHaveBeenCalled();
+	});
+
+	describe('when the sockets cannot be closed', () => {
+		let logged: ReturnType<typeof vi.spyOn>;
+		beforeEach(() => {
+			logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		it('asks again, and says nothing when the second attempt closes them', async () => {
+			disconnectOutputs.mockRejectedValueOnce(new Error('object reset'));
+
+			const rotated = await manager().rotate({ eventId: 3, screenId: 17 });
+
+			expect(rotated.outcome).toBe('available');
+			expect(disconnectOutputs).toHaveBeenCalledTimes(2);
+			expect(logged).not.toHaveBeenCalled();
+		});
+
+		// The capability is regenerated either way, so the answer is the new one. What
+		// was not done is written where an operator reads it, naming the Screen.
+		it('answers the regenerated capability and logs which Screen may still have outputs connected', async () => {
+			disconnectOutputs.mockRejectedValue(new Error('object reset'));
+
+			const rotated = await manager().rotate({ eventId: 3, screenId: 17 });
+
+			expect(rotated).toMatchObject({ outcome: 'available' });
+			expect(logged).toHaveBeenCalledTimes(1);
+			expect(JSON.parse(logged.mock.calls[0]![0] as string)).toMatchObject({
+				message: 'screen_output_disconnect_failed',
+				eventId: 3,
+				screenId: 17,
+				errorMessage: 'object reset',
+			});
+		});
 	});
 
 	it('returns a non-retryable missing outcome after the Screen is deleted', async () => {

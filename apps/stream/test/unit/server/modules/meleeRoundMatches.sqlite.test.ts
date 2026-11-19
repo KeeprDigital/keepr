@@ -14,7 +14,7 @@ import {
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /*
- * Round Match import against real SQL: only Melee and Ably are stood in for.
+ * Round Match import against real SQL: only Melee and the realtime publish are stood in for.
  * Round Standings are stored only for a complete Round, on every sync path, and a
  * Round sync announces only what it changed.
  */
@@ -71,7 +71,7 @@ vi.doMock('~~/server/db', () => ({ db }));
 vi.doMock('~~/server/services/meleeIntegration', () => ({
 	requireMeleeService: () => melee,
 }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => 'origin-1',
 	publishMessage,
 	publishMessageStrict,

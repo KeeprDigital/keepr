@@ -4,7 +4,7 @@ import { screenParamsSchema } from '~~/server/schemas/api/screen';
 import { cardInputSchema } from '~~/server/schemas/kv/card';
 import { cardService } from '~~/server/services/card';
 import { screenService } from '~~/server/services/screen';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event): Promise<ScreenCardWriteResult> => {
 	const { id, screenId } = await getValidatedRouterParams(event, screenParamsSchema.parse);

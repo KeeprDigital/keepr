@@ -1,7 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Grant } from '../../src/object/grant.ts';
 import { CLOSE_REFUSED, CLOSE_SUPERSEDED } from '../../src/protocol.ts';
+import { sleep } from './client.ts';
 import { anyone, startServer } from './server.ts';
+import { BRIEF_WITHDRAWAL_MS } from './timings.ts';
 import type { Server } from './server.ts';
 
 let server: Server;
@@ -207,5 +209,132 @@ describe('a disconnect by tag', () => {
 
 		expect(held).toHaveLength(1);
 		expect(watching.members('news')).toEqual([]);
+	});
+
+	// The socket whose grant the app decided before the disconnect, and which
+	// reaches the object after it: closed as the ones already here were.
+	it('refuses a socket admitted before it that arrives after', async () => {
+		const scope = server.scope();
+		const ticket = await scope.admit({ ...anyone, tags: ['key:1'] });
+
+		await scope.disconnect('key:1');
+		const late = ticket.connect();
+
+		expect(await late.opened).toBe(true);
+		expect(await late.closed).toMatchObject({ code: CLOSE_REFUSED });
+	});
+
+	it('refuses a socket whose grant carries it and reaches the object after, and no other', async () => {
+		const scope = server.scope();
+		await scope.disconnect('key:1');
+
+		const late = scope.connect({ ...anyone, tags: ['key:9', 'key:1'] });
+		const other = scope.connect({ ...anyone, tags: ['key:2'] });
+		const untagged = scope.connect();
+		await other.hello({ attach: [{ channel: 'news' }] });
+		await untagged.hello({ attach: [{ channel: 'news' }] });
+		const [answer] = await scope.publish({ channel: 'news', name: 'said', data: 1 });
+
+		expect(await late.closed).toMatchObject({ code: CLOSE_REFUSED });
+		expect(answer?.recipients).toBe(2);
+	});
+
+	it("goes on refusing through the object's restart", async () => {
+		const scope = server.scope();
+		await scope.disconnect('key:1');
+		await scope.restart();
+
+		const late = scope.connect({ ...anyone, tags: ['key:1'] });
+
+		expect(await late.closed).toMatchObject({ code: CLOSE_REFUSED });
+	});
+
+	it('lets its tag in again once the withdrawal has ended', async () => {
+		const scope = server.scope('BRIEF_WITHDRAWAL');
+		await scope.disconnect('key:1');
+		const during = scope.connect({ ...anyone, tags: ['key:1'] });
+		expect(await during.closed).toMatchObject({ code: CLOSE_REFUSED });
+
+		await sleep(BRIEF_WITHDRAWAL_MS + 100);
+		const after = scope.connect({ ...anyone, tags: ['key:1'] });
+		await after.hello({ attach: [{ channel: 'news' }] });
+		const [answer] = await scope.publish({ channel: 'news', name: 'said', data: 1 });
+
+		expect(answer?.recipients).toBe(1);
+	});
+});
+
+// A replaced credential: `holder` is whose it is, `credential:n` which one.
+describe('a disconnect that spares a tag', () => {
+	const holding = (credential: number): Grant => ({
+		...anyone,
+		tags: ['holder', `credential:${credential}`],
+	});
+
+	it('closes the sockets that carry its tag without the spared one, and leaves those with it', async () => {
+		const scope = server.scope();
+		const watching = scope.connect();
+		await watching.hello({ watch: ['news'] });
+		const former = scope.connect(holding(1), { client: 'client-1' });
+		await former.hello({ presence: { news: 1 } });
+		const current = scope.connect(holding(2), { client: 'client-2' });
+		await current.hello({ attach: [{ channel: 'news' }], presence: { news: 2 } });
+
+		const closed = await scope.disconnect('holder', { except: 'credential:2' });
+		await watching.sync();
+		const [answer] = await scope.publish({ channel: 'news', name: 'said', data: 1 });
+
+		expect(closed).toBe(1);
+		expect(await former.closed).toMatchObject({ code: CLOSE_REFUSED });
+		expect(watching.members('news')).toMatchObject([{ data: 2 }]);
+		expect(answer?.recipients).toBe(1);
+	});
+
+	it('keeps the grace period of a held member that carries the spared tag', async () => {
+		const scope = server.scope();
+		const watching = scope.connect();
+		await watching.hello({ watch: ['news'] });
+		const former = scope.connect(holding(1), { client: 'client-1' });
+		await former.hello({ presence: { news: 1 } });
+		const current = scope.connect(holding(2), { client: 'client-2' });
+		await current.hello({ presence: { news: 2 } });
+		former.close();
+		current.close();
+		await Promise.all([former.closed, current.closed]);
+
+		await scope.disconnect('holder', { except: 'credential:2' });
+		await watching.sync();
+
+		expect(watching.members('news')).toMatchObject([{ data: 2 }]);
+	});
+
+	it('lets in a socket that carries the spared tag, and refuses one of its tag without it', async () => {
+		const scope = server.scope();
+		const admitted = await scope.admit(holding(1));
+		await scope.disconnect('holder', { except: 'credential:2' });
+
+		const former = admitted.connect();
+		const stale = scope.connect(holding(1));
+		const current = scope.connect(holding(2));
+		await current.hello({ attach: [{ channel: 'news' }] });
+		const [answer] = await scope.publish({ channel: 'news', name: 'said', data: 1 });
+
+		expect(await former.closed).toMatchObject({ code: CLOSE_REFUSED });
+		expect(await stale.closed).toMatchObject({ code: CLOSE_REFUSED });
+		expect(answer?.recipients).toBe(1);
+	});
+
+	it('spares only the tag its latest disconnect named', async () => {
+		const scope = server.scope();
+		await scope.disconnect('holder', { except: 'credential:2' });
+		await scope.disconnect('holder', { except: 'credential:3' });
+
+		const second = scope.connect(holding(2));
+		const third = scope.connect(holding(3));
+		await third.hello({ attach: [{ channel: 'news' }] });
+		const [answer] = await scope.publish({ channel: 'news', name: 'said', data: 1 });
+
+		expect(await second.closed).toMatchObject({ code: CLOSE_REFUSED });
+		expect(answer?.recipients).toBe(1);
 	});
 });

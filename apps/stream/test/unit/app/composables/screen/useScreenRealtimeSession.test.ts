@@ -87,6 +87,19 @@ describe('useScreenRealtimeSession', () => {
 		});
 	});
 
+	// `false` too: a state dropped on the way would reach the output as hidden.
+	it.each([true, false])(
+		'hands a debug command for its Screen the state it asks for: shown %s',
+		async (shown) => {
+			const session = await createSession();
+			await session.start(1, 10);
+
+			handlers.get('screen:1:10:screen:command:debug')!({ screenId: 10, shown });
+
+			expect(callbacks.onDebug.mock.calls).toEqual([[shown]]);
+		},
+	);
+
 	it('unsubscribes command handlers and leaves presence when stopped', async () => {
 		const session = await createSession();
 		await session.start(1, 10);

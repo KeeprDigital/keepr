@@ -1,6 +1,6 @@
 import { archetypeWriteModule } from '~~/server/modules/archetype-write';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 /** Removes the Event's Empty Archetypes, answering the ids it removed. */
 export default defineEventHandler(async (event) => {

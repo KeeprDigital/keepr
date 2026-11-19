@@ -70,7 +70,6 @@
 		"@pinia/nuxt": "catalog:framework",
 		"@vueuse/core": "catalog:framework",
 		"@vueuse/nuxt": "catalog:framework",
-		"ably": "catalog:server",
 		"drizzle-orm": "catalog:server",
 		"drizzle-zod": "catalog:server",
 		"echarts": "catalog:charts",

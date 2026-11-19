@@ -19,7 +19,7 @@ const protectMeleeClientSecret = vi.fn(async (secret: string) => `encrypted:${se
 
 vi.doMock('~~/server/db', () => ({ db }));
 vi.doMock('~~/server/services/meleeCredentials', () => ({ protectMeleeClientSecret }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: async () => {},
 	publishMessageStrict: async () => {},
 }));

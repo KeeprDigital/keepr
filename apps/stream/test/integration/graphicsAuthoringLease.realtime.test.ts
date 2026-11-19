@@ -2,12 +2,10 @@ import type { ScreenResponse } from '~~/shared/api';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { $fetch, fetch, operatorSessionCookie } from './client';
 import { anotherBrowser } from './identities';
-import { diagnoseRealtimePublishFailure, SCREEN_COMMAND_ROUTE_REFUSALS } from './realtimeDiagnosis';
-import { integrationRealtimeConfigured } from './realtimeKey';
 
 /**
  * The one lease claim that is a realtime publish. Everything else about a graphics
- * Authoring Lease runs keyless, in `graphicsAuthoringLease.test.ts`.
+ * Authoring Lease is in `graphicsAuthoringLease.test.ts`.
  */
 describe('graphics Authoring Leases and Screen commands', () => {
 	let eventId: number;
@@ -66,44 +64,28 @@ describe('graphics Authoring Leases and Screen commands', () => {
 		} catch {}
 	});
 
-	// A Screen command *is* a realtime publish — the route has nothing else to do — so
-	// it can only answer 200 where a real Ably key is.
-	it.skipIf(!integrationRealtimeConfigured)(
-		'never restricts a Screen command while the Edit workspace is leased',
-		async () => {
-			// The route's only work is the publish, so a rejected Ably key would read as a
-			// lease regression without the diagnosis as the failure message.
+	// A Screen command *is* a realtime publish: the route has nothing else to do, so
+	// its 200 says the publish reached the Event's object.
+	it('never restricts a Screen command while the Edit workspace is leased', async () => {
+		// The lease holder is session A; every live action below is another operator.
+		const held = await request(
+			`/api/events/${eventId}/screens/${screenId}/graphics-authoring-lease`,
+			{
+				body: {},
+				cookie: browserA,
+			},
+		);
+		expect(held.data.outcome).toBe('grant');
 
-			// The lease holder is session A; every live action below is another operator.
-			const held = await request(
-				`/api/events/${eventId}/screens/${screenId}/graphics-authoring-lease`,
-				{
-					body: {},
-					cookie: browserA,
-				},
-			);
-			expect(held.data.outcome).toBe('grant');
+		const command = await request(`/api/events/${eventId}/screens/${screenId}/command`, {
+			body: { command: 'refresh' },
+			cookie: browserB,
+		});
+		expect(command.status).toBe(200);
 
-			const command = await request(`/api/events/${eventId}/screens/${screenId}/command`, {
-				body: { command: 'refresh' },
-				cookie: browserB,
-			});
-			expect(
-				command.status,
-				diagnoseRealtimePublishFailure(command.status, command.data, SCREEN_COMMAND_ROUTE_REFUSALS),
-			).toBe(200);
-
-			const anonymousCommand = await request(`/api/events/${eventId}/screens/${screenId}/command`, {
-				body: { command: 'refresh' },
-			});
-			expect(
-				anonymousCommand.status,
-				diagnoseRealtimePublishFailure(
-					anonymousCommand.status,
-					anonymousCommand.data,
-					SCREEN_COMMAND_ROUTE_REFUSALS,
-				),
-			).toBe(200);
-		},
-	);
+		const anonymousCommand = await request(`/api/events/${eventId}/screens/${screenId}/command`, {
+			body: { command: 'refresh' },
+		});
+		expect(anonymousCommand.status).toBe(200);
+	});
 });

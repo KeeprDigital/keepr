@@ -41,7 +41,7 @@ vi.doMock('~~/server/db', () => ({ db }));
 /** Every realtime message the writes under test published, in order. */
 const published: Array<{ channel: number; name: string; payload: unknown }> = [];
 
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: async (channel: number, name: string, payload: unknown) => {
 		published.push({ channel, name, payload });
 	},

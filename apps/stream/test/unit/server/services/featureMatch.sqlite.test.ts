@@ -20,7 +20,7 @@ let failNextOpen: Error | undefined;
 
 vi.doMock('~~/server/db', () => ({ db }));
 const publishMessage = vi.fn(async (..._args: unknown[]) => {});
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage,
 	publishMessageStrict: publishMessage,
 }));
