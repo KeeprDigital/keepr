@@ -829,7 +829,10 @@ your `wrangler login`. In order, stopping at the first failure:
    just deployed. A redirect fails and is never followed, so an Access or login
    page cannot pass, and neither can an HTML fallback. Unreachable, 5xx and 429
    answers, and another Release's identity, are retried; anything else fails at
-   once. Set `KEEPR_DEPLOY_URL` only to verify a different origin.
+   once. A name that does not resolve yet, as a first deploy's new custom
+   domain may not, is waited for up to two minutes, asked of the zone's own
+   nameservers (ADR-0136). Set `KEEPR_DEPLOY_URL` only to verify a different
+   origin.
 
    A Release from before `/api/release` (`@keepr/stream@1.7.0` and earlier) is
    checked for **liveness only**, at `GET /api/time`, and the output says so.
