@@ -1049,7 +1049,10 @@ Every GitHub environment secret's value is recorded in 1Password (vault
 the `release` environment's App credentials), mapped in `secrets.jsonc`, and
 set from there with `pnpm secrets:sync --github <environment>` (`--check`
 names what is missing and sets nothing; ADR-0134). A rolled token is recorded
-in 1Password first, then synced. No workflow reads 1Password.
+in 1Password first, then synced. No workflow reads 1Password. Record the App's
+private key with the CLI,
+`op item edit keepr-release --vault Keepr "KEEPR_RELEASE_APP_PRIVATE_KEY[password]=$(cat key.pem)"`:
+the 1Password app saves a pasted key as one line, which the sync refuses.
 
 ### Deploy day
 

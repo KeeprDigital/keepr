@@ -46,6 +46,7 @@ const SECRETS_MAP = {
 	},
 	github: {
 		staging: references('github-staging', ['CLOUDFLARE_API_TOKEN', 'OPERATOR_PASSWORD']),
+		release: references('keepr-release', ['KEEPR_RELEASE_APP_ID', 'KEEPR_RELEASE_APP_PRIVATE_KEY']),
 	},
 };
 
@@ -56,6 +57,9 @@ const VALUES = {
 	ABLY_KEY: 'ably-value-3',
 	CLOUDFLARE_API_TOKEN: 'cf-value-4',
 	OPERATOR_PASSWORD: 'multi\nline-value-5',
+	KEEPR_RELEASE_APP_ID: 'app-id-value-6',
+	KEEPR_RELEASE_APP_PRIVATE_KEY:
+		'-----BEGIN RSA PRIVATE KEY-----\nkey-body-value-7\nkey-body-value-8\n-----END RSA PRIVATE KEY-----\n',
 };
 
 const VAULTS: FakeState['vaults'] = {
@@ -78,6 +82,10 @@ const VAULTS: FakeState['vaults'] = {
 			CLOUDFLARE_API_TOKEN: VALUES.CLOUDFLARE_API_TOKEN,
 			OPERATOR_PASSWORD: VALUES.OPERATOR_PASSWORD,
 		},
+		'keepr-release': {
+			KEEPR_RELEASE_APP_ID: VALUES.KEEPR_RELEASE_APP_ID,
+			KEEPR_RELEASE_APP_PRIVATE_KEY: VALUES.KEEPR_RELEASE_APP_PRIVATE_KEY,
+		},
 	},
 };
 
@@ -92,7 +100,12 @@ describe('pnpm secrets:sync', () => {
 			descriptor: DESCRIPTOR,
 			wranglerConfig: WRANGLER_CONFIG,
 			secretsMap: SECRETS_MAP,
-			state: { vaults: structuredClone(VAULTS), workers: {}, github: { staging: {} }, ...state },
+			state: {
+				vaults: structuredClone(VAULTS),
+				workers: {},
+				github: { staging: {}, release: {} },
+				...state,
+			},
 		});
 		checkouts.push(checkout);
 		const lines: string[] = [];
@@ -214,6 +227,61 @@ describe('pnpm secrets:sync', () => {
 			);
 			expect(state().github.staging).toEqual({ CLOUDFLARE_API_TOKEN: 'x' });
 			expect(result.ok).toBe(false);
+		});
+	});
+
+	// The 1Password app saves a concealed field as one line, so a pasted key's
+	// line breaks become spaces, and GitHub's App token action cannot decode it.
+	describe('a private key whose line breaks were lost', () => {
+		const RELEASE = { github: 'release' };
+		const KEY = VALUES.KEEPR_RELEASE_APP_PRIVATE_KEY;
+
+		function withKey(key: string, release: Record<string, string> = {}) {
+			const vaults = structuredClone(VAULTS);
+			vaults.Keepr!['keepr-release']!.KEEPR_RELEASE_APP_PRIVATE_KEY = key;
+			return setUp({ vaults, github: { release } });
+		}
+
+		it('refuses the sync, naming the secret, its reference and the fix, and sets nothing', () => {
+			const { sync, state } = withKey(KEY.replaceAll('\n', ' ').trim());
+
+			let failure = '';
+			try {
+				sync({ target: RELEASE });
+			} catch (error) {
+				failure = (error as Error).message;
+			}
+
+			expect(failure).toMatch(
+				/KEEPR_RELEASE_APP_PRIVATE_KEY at op:\/\/Keepr\/keepr-release\/KEEPR_RELEASE_APP_PRIVATE_KEY[^]*no line break/,
+			);
+			expect(failure).toContain(
+				'op item edit keepr-release --vault Keepr "KEEPR_RELEASE_APP_PRIVATE_KEY[password]=$(cat key.pem)"',
+			);
+			expect(failure).not.toMatch(/key-body-value/);
+			expect(state().github.release).toEqual({});
+		});
+
+		it('with --check, names it and fails, though GitHub has every secret', () => {
+			const { sync, lines } = withKey(KEY.replaceAll('\n', ' ').trim(), {
+				KEEPR_RELEASE_APP_ID: 'x',
+				KEEPR_RELEASE_APP_PRIVATE_KEY: 'y',
+			});
+
+			const result = sync({ target: RELEASE, check: true });
+
+			expect(lines.join('\n')).toMatch(/KEEPR_RELEASE_APP_PRIVATE_KEY at op:[^]*no line break/);
+			expect(lines.join('\n')).not.toMatch(/key-body-value/);
+			expect(result.ok).toBe(false);
+		});
+
+		it('syncs a key whose line breaks were kept', () => {
+			const { sync, state } = withKey(KEY);
+
+			const result = sync({ target: RELEASE });
+
+			expect(state().github.release!.KEEPR_RELEASE_APP_PRIVATE_KEY).toBe(KEY);
+			expect(result.ok).toBe(true);
 		});
 	});
 
