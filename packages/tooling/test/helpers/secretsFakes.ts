@@ -16,6 +16,8 @@ export type FakeState = {
 	argv: string[][];
 	/** Set to make that tool fail as it does when signed out. */
 	signedOut?: Partial<Record<'op' | 'wrangler' | 'gh', true>>;
+	/** Set to make `op item edit` exit 0 and store nothing. */
+	opDropsEdits?: true;
 };
 
 const STATE_IO = `
@@ -30,7 +32,12 @@ const fail = (message) => { save(); process.stderr.write(message + '\\n'); proce
 const stdin = () => readFileSync(0, 'utf8');
 `;
 
-/** 1Password's CLI: \`item get <item> --vault <v> --format json --reveal\` and \`item edit <item> --vault <v>\` with the item's JSON on stdin. */
+/**
+ * 1Password's CLI as 2.42 behaves: \`item get <item> --vault <v> --format json --reveal\`,
+ * and \`item edit <item> --vault <v> 'FIELD[password]=value'\`. Like the real
+ * one, it exits 0 on the item's JSON piped to \`item edit\` and keeps no value
+ * from it.
+ */
 const OP = `${STATE_IO}
 if (state.signedOut?.op) fail('[ERROR] You are not currently signed in.');
 const [noun, verb, title] = args;
@@ -44,9 +51,16 @@ if (noun === 'item' && verb === 'get' && at('--format') === 'json' && args.inclu
 	fields.unshift({ id: 'notesPlain', type: 'STRING', purpose: 'NOTES', label: 'notesPlain' });
 	save();
 	process.stdout.write(JSON.stringify({ id: 'x', title, category: 'SECURE_NOTE', fields }));
-} else if (noun === 'item' && verb === 'edit' && args.length === 5) {
-	const edited = JSON.parse(stdin());
-	for (const field of edited.fields) if (field.label in item) item[field.label] = field.value ?? '';
+} else if (noun === 'item' && verb === 'edit' && args[3] === '--vault') {
+	const assignments = args.slice(5);
+	// The item's JSON piped in: taken, exit 0, and no concealed value kept.
+	if (assignments.length === 0) stdin();
+	for (const assignment of assignments) {
+		const equals = assignment.indexOf('=');
+		const label = assignment.slice(0, equals).replace(/\\[password\\]$/, '');
+		if (equals < 0 || !(label in item)) fail('fake op: unexpected assignment');
+		if (!state.opDropsEdits) item[label] = assignment.slice(equals + 1);
+	}
 	save();
 } else fail('fake op: unexpected ' + args.join(' '));
 `;

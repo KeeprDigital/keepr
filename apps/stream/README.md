@@ -1337,8 +1337,10 @@ blocks name each account. An empty field is not recorded yet: the sync names
 it and sets nothing for it. A value a provider issues (the Ably key, the
 bandai-keepr key) is recorded in 1Password first, then synced. One that is
 random by nature is generated straight into 1Password with
-`--generate <NAME>`, once per secret, then synced; it prints what the new value
-does, below, before writing it, and refuses the Melee key. Never set a value
+`--generate <NAME>`, once per secret, read back from 1Password, then synced; it
+prints what the new value does, below, before writing it, refuses the Melee
+key, and stops before setting anything if 1Password did not keep the new
+value (ADR-0135). Never set a value
 only on a Worker: it can never be read back.
 
 Required: `NUXT_BETTER_AUTH_SECRET`,
