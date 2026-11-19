@@ -89,19 +89,34 @@ describe('which API paths require a session', () => {
 		// Pages and assets are unavoidably public under `ssr: false`, and are
 		// gated client-side as UX. The one that would matter if it were wrong is
 		// the SPA shell, since the whole application is served from it.
-		for (const path of ['/', '/login', '/event/12/screen/main', '/_nuxt/entry.js', '/favicon.ico'])
+		for (const path of [
+			'/',
+			'/no-access',
+			'/event/12/screen/main',
+			'/_nuxt/entry.js',
+			'/favicon.ico',
+		])
 			expect(apiPathRequiresSession(path)).toBe(false);
 	});
 
-	it('exempts the clock, the release identity, the realtime token and the bootstrap route', () => {
+	it('exempts the clock, the release identity and the realtime token', () => {
 		expect(apiPathRequiresSession('/api/time')).toBe(false);
 		expect(apiPathRequiresSession('/api/release')).toBe(false);
 		expect(apiPathRequiresSession('/api/realtime/token')).toBe(false);
-		expect(apiPathRequiresSession('/api/bootstrap/ensure-admin')).toBe(false);
 	});
 
-	it('exempts the auth router, the capability surface and the public reads', () => {
-		expect(apiPathRequiresSession('/api/auth/sign-in/email')).toBe(false);
+	// A User signs in at Keepr Accounts (ADR-0141): nothing here must be reachable
+	// without a Session for anyone to acquire one, the "who am I" read included.
+	it.each([
+		['/api/identity'],
+		['/api/auth/sign-in/email'],
+		['/api/auth/get-session'],
+		['/api/bootstrap/ensure-admin'],
+	])('exempts nothing of sign-in: %s requires a Session', (path) => {
+		expect(apiPathRequiresSession(path)).toBe(true);
+	});
+
+	it('exempts the capability surface and the public reads', () => {
 		expect(apiPathRequiresSession('/api/screen-output/screens/7/asset-capability-session')).toBe(
 			false,
 		);
@@ -111,7 +126,6 @@ describe('which API paths require a session', () => {
 
 	it('requires one for the admin surface, whose Graphics Administrator is a signed-in User', () => {
 		expect(apiPathRequiresSession('/api/admin/graphics-assets/health')).toBe(true);
-		expect(apiPathRequiresSession('/api/admin/users')).toBe(true);
 	});
 
 	it('ignores the one trailing slash Nitro ignores', () => {
@@ -128,16 +142,12 @@ describe('which API paths require a session', () => {
 		// reading, and nothing under it is.
 		expect(apiPathRequiresSession('/api/time/zones')).toBe(true);
 		expect(apiPathRequiresSession('/api/realtime/token/mint')).toBe(true);
-		expect(apiPathRequiresSession('/api/bootstrap/ensure-anything-else')).toBe(true);
+		expect(apiPathRequiresSession('/api/release/notes')).toBe(true);
 	});
 
 	it('does not let a prefix exemption capture a sibling that merely starts the same', () => {
 		// The near misses are a single character, and each of them would be a
-		// private surface published: `/api/authors/**` is not Better Auth's
-		// router, and `/api/administration/**` is not the Graphics Administrator
-		// surface.
-		expect(apiPathRequiresSession('/api/authors/12')).toBe(true);
-		expect(apiPathRequiresSession('/api/administration/users')).toBe(true);
+		// private surface published.
 		expect(apiPathRequiresSession('/api/screen-outputs/7')).toBe(true);
 		expect(apiPathRequiresSession('/api/publications/7')).toBe(true);
 		// And the bare prefixes themselves are not exempt. No route answers any
@@ -175,25 +185,19 @@ describe('which API paths require a session', () => {
 describe('the public surface, counted against the routes on disk', () => {
 	it('is found at all, so this cannot pass by scanning nothing', () => {
 		expect(routeFiles.length).toBeGreaterThan(150);
-		expect(adminRouteFiles.length).toBe(25);
+		expect(adminRouteFiles.length).toBe(18);
 	});
 
 	it('is exactly these routes, and every one of them is a decision ADR-0010 records', () => {
 		expect(publicRouteFiles).toEqual([
-			// Better Auth's own router. Sign-in must be reachable or nothing ever
-			// acquires a session.
-			'server/api/auth/[...all].ts',
-			// The first-admin bootstrap, armed by a Worker secret and 503 without
-			// it. It exists for the installation that has no account to sign in to.
-			'server/api/bootstrap/ensure-admin.post.ts',
 			// Stopgaps for outside tools: a Feature Match Slot as its Overlay shows
 			// it (ADR-0056), and commentator names and holding text (ADR-0055).
 			'server/api/public/events/[id]/commentators.get.ts',
 			'server/api/public/events/[id]/feature-match-slots/[slotId].get.ts',
 			'server/api/public/events/[id]/holding-text.get.ts',
 			'server/api/public/events/[id]/on-air.get.ts',
-			// An Ably token request. #397 narrows what an unauthenticated caller is
-			// granted; that is a change to what this issues, not to its reachability.
+			// An Ably token request. It grants only to a Session or a Screen Output
+			// Asset Capability, and asks who the request belongs to itself.
 			'server/api/realtime/token.get.ts',
 			// Which Release serves: the deploy's verify reads it with no session (ADR-0119).
 			'server/api/release.get.ts',

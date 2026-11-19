@@ -397,22 +397,15 @@ _Avoid_: bulk update, transaction, multi-command, command group.
 
 ### Identity and access
 
-User, Session, Organisation, App role and Keepr Administrator are defined in the root `GLOSSARY.md`, and so are Installation and Environment. What is installation-wide in Stream Keepr is shared by all of one Installation's Events.
+User, Session, Organisation, App role, App access, Identity Proof, Keepr Administrator, Local Developer User and Accounts Stand-in are defined in the root `GLOSSARY.md`, and so are Installation and Environment. Stream Keepr holds none of them: it relies on Keepr Accounts. What is installation-wide in Stream Keepr is shared by all of one Installation's Events.
 
 **Operator**:
 The Stream Keepr App role of a User who runs an Event's broadcast.
 _Avoid_: Organiser (Score Keepr's App role), user, producer
 
-**Password Reset Link**:
-The single-use, expiring credential a Graphics Administrator hands a person out of band to set their own password. Stream Keepr's own until it moves onto Keepr Accounts.
-_Avoid_: invite token, activation link.
-
 **Graphics Administrator**:
 The Stream Keepr App role that may operate the Operations Cockpit and Operational Queues and change Graphics Asset Library Capacity limits.
 _Avoid_: admin (an Organisation role), Keepr Administrator (who runs the platform)
-
-**Local Developer Session**:
-The synthetic Session a browser receives while Stream Keepr's development bypass is active. Stream Keepr's own until it moves onto Keepr Accounts.
 
 **Graphics Authoring Lease**:
 The exclusive, Session-scoped right to edit one graphics authoring artifact: a Screen's complete graphics Edit workspace or one reusable graphics Template.

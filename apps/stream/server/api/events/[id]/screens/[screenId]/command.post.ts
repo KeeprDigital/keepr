@@ -12,7 +12,7 @@ async function assertTrustedScreenCommandBoundary(
 	//
 	// It said "when auth is introduced" until #396, and auth is introduced: the
 	// deny-by-default boundary (`server/middleware/api-session.ts`) now refuses
-	// this path without a Better Auth session. What it does not do is scope the
+	// this path without a Session. What it does not do is scope the
 	// permission — any signed-in user may command any Screen — and narrowing that
 	// is a roles-and-permissions effort ADR-0010 rules out of its own scope and
 	// names as the successor work. So this stays empty on purpose, and is not a

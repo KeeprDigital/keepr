@@ -1,35 +1,26 @@
 import type { Game } from '~~/shared/types/enums';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
-import { flushPromises, mount } from '@vue/test-utils';
+import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, reactive } from 'vue';
-import {
-	LOCAL_DEVELOPER_USER_EMAIL,
-	LOCAL_DEVELOPER_USER_ID,
-	LOCAL_DEVELOPER_USER_NAME,
-} from '~~/shared/utils/localDeveloperAuth';
 import { UNavigationMenuStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 
 vi.mock('~/composables/workflows/useEventLiveRefresh', () => ({
 	useEventLiveRefresh: vi.fn(),
 }));
 
-const { mockClearPlayerDeckCache, mockNavigateTo, mockSignOut, mockToastAdd, mockUser } =
-	vi.hoisted(() => ({
-		mockClearPlayerDeckCache: vi.fn(),
-		mockNavigateTo: vi.fn(),
-		mockSignOut: vi.fn(),
-		mockToastAdd: vi.fn(),
-		mockUser: { value: null as { id: string; email: string; name: string } | null },
-	}));
+const { mockClearPlayerDeckCache, mockNavigateTo, mockUser } = vi.hoisted(() => ({
+	mockClearPlayerDeckCache: vi.fn(),
+	mockNavigateTo: vi.fn(),
+	mockUser: { value: null as { id: string; email: string; name: string } | null },
+}));
 
-// `user` has to be a real ref for the layout's template to unwrap it, and a
+// `identity` has to be a real ref for the layout to read through, and a
 // hoisted factory cannot call `ref`; a computed over the hoisted container is
 // both, and each test sets the container before it mounts.
-vi.mock('~/modules/auth/session', () => ({
-	useAuthSession: () => ({
-		signOut: mockSignOut,
-		user: computed(() => mockUser.value),
+vi.mock('~/modules/access/session', () => ({
+	useAccess: () => ({
+		identity: computed(() => (mockUser.value ? { user: mockUser.value } : null)),
 	}),
 }));
 
@@ -96,7 +87,6 @@ mockNuxtImport('useRoute', () => () => ({
 }));
 mockNuxtImport('clearPlayerDeckCache', () => mockClearPlayerDeckCache);
 mockNuxtImport('navigateTo', () => mockNavigateTo);
-mockNuxtImport('useToast', () => () => ({ add: mockToastAdd }));
 
 const UDashboardGroupStub = defineComponent({
 	template: '<div><slot /></div>',
@@ -272,60 +262,33 @@ describe('default layout sync navigation', () => {
 	});
 });
 
-describe('default layout sign-out', () => {
+describe("default layout's account", () => {
 	beforeEach(() => {
-		mockNavigateTo.mockReset();
-		mockSignOut.mockReset();
-		mockToastAdd.mockReset();
 		mockUser.value = { id: 'usr_1', email: 'operator@example.test', name: 'Operator' };
 	});
 
-	it('names the signed-in operator, so a shared machine says whose session it is', async () => {
+	it.each([
+		['by name', 'Operator', 'Operator'],
+		['by address when the name is blank', '', 'operator@example.test'],
+	])(
+		'names the signed-in User %s, so a shared machine says whose Session it is',
+		async (_case, name, shown) => {
+			mockUser.value = { id: 'usr_1', email: 'operator@example.test', name };
+
+			const wrapper = await mountLayout();
+
+			expect(wrapper.text()).toContain(shown);
+		},
+	);
+
+	// A Session is every App's: it is ended at Keepr Accounts, never here.
+	it('opens Keepr Accounts for the account, and offers no sign-out of its own', async () => {
 		const wrapper = await mountLayout();
 
-		expect(wrapper.text()).toContain('operator@example.test');
-	});
-
-	it('names the Local Developer User and offers no meaningless sign-out', async () => {
-		mockUser.value = {
-			id: LOCAL_DEVELOPER_USER_ID,
-			email: LOCAL_DEVELOPER_USER_EMAIL,
-			name: LOCAL_DEVELOPER_USER_NAME,
-		};
-
-		const wrapper = await mountLayout();
-
-		expect(wrapper.text()).toContain(LOCAL_DEVELOPER_USER_NAME);
-		expect(wrapper.find('[data-nav-item="Sign out"]').exists()).toBe(false);
-	});
-
-	it('signs out and sends the browser to the login page', async () => {
-		mockSignOut.mockResolvedValue({ ok: true });
-
-		const wrapper = await mountLayout();
-		await wrapper.find('[data-nav-item="Sign out"]').trigger('click');
-		await flushPromises();
-
-		expect(mockSignOut).toHaveBeenCalledOnce();
-		expect(mockNavigateTo).toHaveBeenCalledWith('/login');
-	});
-
-	it('stays put and says so when the sign-out did not land', async () => {
-		mockSignOut.mockResolvedValue({
-			ok: false,
-			message: 'Could not sign out — the session is still open. Try again.',
-		});
-
-		const wrapper = await mountLayout();
-		await wrapper.find('[data-nav-item="Sign out"]').trigger('click');
-		await flushPromises();
-
-		expect(mockNavigateTo).not.toHaveBeenCalled();
-		expect(mockToastAdd).toHaveBeenCalledWith(
-			expect.objectContaining({
-				description: 'Could not sign out — the session is still open. Try again.',
-			}),
+		expect(wrapper.find('[data-nav-item="Keepr account"]').attributes('href')).toBe(
+			'https://accounts.keepr.digital',
 		);
+		expect(wrapper.find('[data-nav-item="Sign out"]').exists()).toBe(false);
 	});
 });
 

@@ -1,6 +1,6 @@
 import { graphicAssetId, graphicAssetRevisionId } from '~~/server/modules/graphics-asset-library';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 
 /**

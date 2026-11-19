@@ -126,7 +126,7 @@ export const rootAliases = {
 const nodeOnlyAppCoverageInclude = [
 	'app/composables/screen/screenSettingsSummaries.ts',
 	'app/composables/screen/useScreenRealtimeSession.ts',
-	'app/modules/auth/pageGate.ts',
+	'app/modules/access/pageGate.ts',
 	'app/modules/event-data/client.ts',
 	'app/modules/feature-match-session/client.ts',
 	'app/modules/metagame/client.ts',

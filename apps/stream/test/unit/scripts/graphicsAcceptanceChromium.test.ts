@@ -9,12 +9,12 @@ import {
 } from '../../../scripts/graphics-acceptance/chromium.mjs';
 import { ACCEPTANCE_FAILURE_CODES } from '../../../scripts/graphics-acceptance/evidence.mjs';
 
-/** The name Better Auth issues this installation's session under, over http (#398). */
-const COOKIE_NAME = 'better-auth.session_token';
+/** A Session cookie's name, as a server that sets it unprefixed spells it (#398). */
+const COOKIE_NAME = 'keepr.session_token';
 /**
- * Shaped like a real token rather than merely opaque: Better Auth signs the
- * token, so the value carries a `.` — which is exactly the separator a naive
- * split would take for the cookie's own.
+ * Shaped like a real token rather than merely opaque: a signed token's value
+ * carries a `.`, which is exactly the separator a naive split would take for
+ * the cookie's own.
  */
 const COOKIE_VALUE = '0f8b1c2d3e4f5a6b.7c8d9e0f1a2b3c4d';
 const COOKIE = `${COOKIE_NAME}=${COOKIE_VALUE}`;
@@ -59,9 +59,9 @@ describe('the author session the acceptance browser is given', () => {
 	});
 
 	/**
-	 * A built Worker under `pnpm preview` issues `__Secure-better-auth.session_token`
-	 * with `Secure` over plain http (#451). A browser refuses that name without
-	 * `Secure`, so the prefix decides it; Chromium accepts a `Secure` cookie on
+	 * Keepr Accounts issues its Session cookie `__Secure-` prefixed, with `Secure`,
+	 * on every built server (#451). A browser refuses that name without `Secure`,
+	 * so the prefix decides it; Chromium accepts a `Secure` cookie on
 	 * loopback because it treats loopback as a secure origin.
 	 */
 	it('installs a __Secure- prefixed cookie as Secure even on loopback http', () => {

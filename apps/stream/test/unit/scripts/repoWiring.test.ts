@@ -160,9 +160,9 @@ describe('every heavy gate takes run slots', () => {
 
 // Each starts servers, and two at once make every result meaningless (README § Testing).
 describe('verify runs the server-backed suites one at a time', () => {
-	it('chains integration, local-auth and the browser gates, each behind the one before', () => {
+	it('chains integration and the browser gates, each behind the one before', () => {
 		const serverBacked = Object.keys(GATES).filter((name) =>
-			/^test:(?:integration|local-auth)$|^accept:/u.test(name),
+			/^test:integration$|^accept:/u.test(name),
 		);
 
 		expect(serverBacked.length).toBeGreaterThan(2);

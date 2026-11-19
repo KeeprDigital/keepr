@@ -4,7 +4,7 @@ import {
 	GRAPHICS_ASSET_EVIDENCE_CATEGORY_VALUES,
 	GRAPHICS_ASSET_EVIDENCE_SUBJECT_KIND_VALUES,
 } from '~~/server/db/schema/graphicsAsset';
-import { requireGraphicsAdministrator } from '~~/server/modules/graphics-administrator';
+import { requireGraphicsAdministratorUser } from '~~/server/modules/graphics-administrator';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
 import { withActorNames } from '~~/server/utils/actorNames';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
@@ -62,7 +62,7 @@ const evidenceQuerySchema = z
  */
 export default defineEventHandler(async (event): Promise<GraphicsAssetEvidenceReading> => {
 	try {
-		await requireGraphicsAdministrator(event);
+		const administrator = await requireGraphicsAdministratorUser(event);
 		const query = await getValidatedQuery(event, evidenceQuerySchema.parse);
 		// A group is a name for a set of categories, so asking by group and by
 		// category is one question asked in two vocabularies rather than two
@@ -90,9 +90,10 @@ export default defineEventHandler(async (event): Promise<GraphicsAssetEvidenceRe
 		});
 
 		// The ledger records who acted, never what they were called at the time, so
-		// the names are resolved at the moment the page is read (#398, ADR-0010) —
-		// a rename is a rename everywhere, including in evidence written years ago.
-		return await withActorNames(
+		// an actor is named as the page is read (#398, ADR-0010), for the User
+		// reading it (`server/utils/actorNames.ts`).
+		return withActorNames(
+			administrator,
 			page,
 			page.entries.map((entry) => entry.actor),
 		);

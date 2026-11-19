@@ -1,7 +1,7 @@
 import { graphicsAuthoringLeaseModule } from '~~/server/modules/graphics-authoring-lease';
 import { screenEditWorkspaceLeaseRef } from '~~/server/modules/graphics-authoring-lease/screenEditWorkspace';
 import { screenParamsSchema } from '~~/server/schemas/api/screen';
-import { requireBrowserSessionId } from '~~/server/utils/auth';
+import { requireBrowserSessionId } from '~~/server/utils/session';
 
 /**
  * Give up this session's lease on the Screen's graphics Edit workspace, so a

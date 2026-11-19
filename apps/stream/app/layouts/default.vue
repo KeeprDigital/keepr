@@ -2,9 +2,7 @@
 import type { EventKind } from '~~/shared/config/games';
 import type { NavigationMenuItem } from '#ui/types';
 import { EVENT_PAGE_OFFERED_TO, EVERY_EVENT, itemsOfferedToEvent } from '~~/shared/config/games';
-import { isLocalDeveloperUserId } from '~~/shared/utils/localDeveloperAuth';
-import { LOGIN_PATH } from '~/modules/auth/pageGate';
-import { useAuthSession } from '~/modules/auth/session';
+import { useAccess } from '~/modules/access/session';
 import { useConsumedEventData } from '~/modules/event-data/resync';
 
 interface Props {
@@ -62,59 +60,27 @@ const colorModeItem = computed<NavigationMenuItem[]>(() => [
 	},
 ]);
 
-const session = useAuthSession();
-const currentUser = session.user;
-const isLocalDeveloperUser = computed(
-	() => currentUser.value !== null && isLocalDeveloperUserId(currentUser.value.id),
-);
-const accountLabel = computed(() =>
-	isLocalDeveloperUser.value ? currentUser.value?.name : currentUser.value?.email,
-);
-const toast = useToast();
+const { identity } = useAccess();
+const currentUser = computed(() => identity.value?.user ?? null);
+const { keeprAccountsOrigin } = useRuntimeConfig().public;
 
 /**
- * Sign-out lives in the sidebar footer, beside the colour mode, because that
- * is where the things belonging to this browser rather than to the Event sit.
+ * The User's account lives in the sidebar footer, beside the colour mode,
+ * because that is where the things belonging to this browser rather than to
+ * the Event sit.
  *
- * In ordinary authentication the operator's address and sign-out action answer
- * which account this laptop holds. The Local Developer User instead shows its
- * conspicuous name and no sign-out action: the bypass would immediately mint
- * the same identity again, so sign-out would claim to do something it cannot.
+ * A Session is every App's, held by Keepr Accounts (ADR-0112), so nothing here
+ * ends one: the entry opens the User's profile there, which is where they
+ * sign out, change the Organisation they work in, and see their Sessions.
  */
-const accountItems = computed<NavigationMenuItem[]>(() =>
-	isLocalDeveloperUser.value
-		? []
-		: [
-				{
-					label: 'Sign out',
-					icon: 'i-lucide-log-out',
-					onSelect: () => {
-						void signOut();
-					},
-				},
-			],
-);
-
-/**
- * Navigating only after the server agreed the session is over. A sign-out that
- * failed leaves the operator where they were with the failure said out loud —
- * dropping them on the login page over a session that is still live would be
- * the app telling them something untrue about their own credentials.
- */
-async function signOut() {
-	const result = await session.signOut();
-
-	if (!result.ok) {
-		toast.add({
-			title: 'Sign out failed',
-			description: result.message,
-			color: 'error',
-		});
-		return;
-	}
-
-	await navigateTo(LOGIN_PATH);
-}
+const accountItems = computed<NavigationMenuItem[]>(() => [
+	{
+		label: 'Keepr account',
+		icon: 'i-lucide-circle-user',
+		to: String(keeprAccountsOrigin),
+		target: '_blank',
+	},
+]);
 
 interface NavGroup {
 	label: string;
@@ -157,14 +123,6 @@ function graphicsAssetLibraryHealthItem(): NavigationMenuItem {
 		label: 'Graphics Asset Library health',
 		icon: 'i-lucide-activity',
 		to: '/admin/graphics-assets/health',
-	};
-}
-
-function userAdministrationItem(): NavigationMenuItem {
-	return {
-		label: 'User Administration',
-		icon: 'i-lucide-users',
-		to: '/admin/users',
 	};
 }
 
@@ -316,7 +274,6 @@ const navGroups = computed<NavGroup[]>(() => {
 				graphicsAssetLibraryItem(),
 				graphicsOperationsCockpitItem(),
 				graphicsAssetLibraryHealthItem(),
-				userAdministrationItem(),
 			],
 		},
 	];
@@ -333,7 +290,6 @@ const homeLinks = computed<NavigationMenuItem[]>(() => [
 	graphicsAssetLibraryItem(),
 	graphicsOperationsCockpitItem(),
 	graphicsAssetLibraryHealthItem(),
-	userAdministrationItem(),
 ]);
 </script>
 
@@ -392,7 +348,7 @@ const homeLinks = computed<NavigationMenuItem[]>(() => [
 						class="px-3 pb-1 text-xs text-muted truncate"
 						:title="currentUser.email"
 					>
-						{{ accountLabel }}
+						{{ currentUser.name || currentUser.email }}
 					</div>
 					<UNavigationMenu :collapsed="collapsed" :items="accountItems" orientation="vertical" />
 					<div class="flex w-full items-center" :class="collapsed ? 'flex-col gap-1' : 'gap-1'">

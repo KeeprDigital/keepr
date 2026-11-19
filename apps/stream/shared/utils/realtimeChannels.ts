@@ -19,8 +19,8 @@ export function screenChannelWildcard(eventId: number): string {
  * purpose: it appears in Ably's own dashboards and in presence, where "which Screen
  * is this" is the only question anybody asks of it.
  *
- * A signed-in operator connects as their userId instead, which needs no helper —
- * Better Auth already owns that name. Both replace the `'*'` the token used to
+ * A signed-in operator connects as their User id instead, which needs no helper:
+ * Keepr Accounts already owns that name. Both replace the `'*'` the token used to
  * grant, which let a holder claim any identity on the channels it was granted.
  */
 export function screenOutputRealtimeClientId(screenId: number): string {

@@ -21,24 +21,15 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { assertWorkerConfigurationDoesNotArmLocalAuthBypass } from '../build/localAuthDeployment.ts';
 import { builtFontsScan } from './assert-built-fonts.mjs';
-import { nativeScryptScan } from './assert-native-scrypt.mjs';
 import { runtimeWasmScan } from './assert-no-runtime-wasm.mjs';
 
 /** Both paths as the README writes them, relative to the repository root. */
 const CONFIG = '.output/server/wrangler.json';
 const OUT_DIR = '.output/wrangler-dry-run';
-/**
- * Where the scrypt guard reads its resolution evidence. The `workerd` export
- * condition is applied by Nitro's bundling, so the source maps recording it
- * live in the build output — wrangler's re-bundle neither repeats nor undoes
- * that resolution (#393).
- */
-const NITRO_OUT_DIR = '.output/server';
 /** The static assets, where Nuxt Fonts' `@font-face` rules land (ADR-0086). */
 const PUBLIC_DIR = '.output/public';
 
@@ -46,16 +37,6 @@ const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const outDir = fileURLToPath(new URL(`../${OUT_DIR}`, import.meta.url));
 // The repository-pinned wrangler, not whatever a bare `wrangler` would find.
 const wrangler = fileURLToPath(new URL('../node_modules/.bin/wrangler', import.meta.url));
-
-try {
-	const configuration = JSON.parse(readFileSync(new URL(`../${CONFIG}`, import.meta.url), 'utf8'));
-	assertWorkerConfigurationDoesNotArmLocalAuthBypass(configuration);
-} catch (error) {
-	process.stderr.write(
-		`worker:dry-run: unsafe or unreadable generated configuration — ${error.message}\n`,
-	);
-	process.exit(1);
-}
 
 // Emptied first so what the guard reads is always what this run produced. A
 // scan that passes over a previous run's leftovers is the same false clean the
@@ -78,7 +59,6 @@ if (dryRun.status !== 0) process.exit(dryRun.status ?? 1);
 
 const scans = [
 	runtimeWasmScan(outDir),
-	nativeScryptScan(fileURLToPath(new URL(`../${NITRO_OUT_DIR}`, import.meta.url))),
 	builtFontsScan(fileURLToPath(new URL(`../${PUBLIC_DIR}`, import.meta.url))),
 ];
 for (const scan of scans) {

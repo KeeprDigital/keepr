@@ -82,7 +82,7 @@ const JOBS = [
 	'Lint, typecheck, unit and Nuxt suites',
 	'Integration suite (1/2)',
 	'Integration suite (2/2)',
-	'Local-auth suite and browser gates',
+	'Browser gates',
 	'Build, wrangler dry runs, and Worker smoke (stream)',
 	'Record the verified tree',
 	'CI passed',

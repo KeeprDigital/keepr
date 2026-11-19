@@ -30,8 +30,10 @@ vi.doMock('~~/server/db', async (importOriginal) => ({
 vi.doMock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	graphicsAssetLibraryForEvent: () => context.library,
 }));
+/** The Graphics Administrator who purges, and reads the ledger afterwards. */
+const ADMINISTRATOR = { id: 'grace', name: 'Grace Hopper', email: 'grace@example.test' };
 vi.doMock('~~/server/modules/graphics-administrator', () => ({
-	requireGraphicsAdministrator: async () => 'a-graphics-administrator',
+	requireGraphicsAdministratorUser: async () => ADMINISTRATOR,
 }));
 
 interface StubEvent {
@@ -63,7 +65,7 @@ async function purgedAsset(name: string, bytes?: Uint8Array): Promise<GraphicAss
 	await context.library.trashGraphicAsset({ assetId });
 	await context.library.purgeTrashedGraphicAsset({
 		assetId,
-		actor: 'graphics-administrator',
+		actor: ADMINISTRATOR.id,
 		confirmation: 'purge-now',
 	});
 	return assetId;
@@ -90,6 +92,17 @@ describe('the Evidence Ledger read for one subject', () => {
 		// The ledger holds the other subject's entries too, so the address narrowed the read.
 		const everything = await evidence();
 		expect(everything.entries.some((entry) => entry.subject.id === other)).toBe(true);
+	});
+
+	// Wiring for `graphicsActorNames`: the Graphics Administrator reading is who it names.
+	it('names the actor of an entry the reading administrator caused', async () => {
+		const { actorNames, entries } = await evidence({
+			subjectKind: 'graphic-asset',
+			subjectId: asked,
+		});
+
+		expect(entries.map((entry) => entry.actor)).toContain(ADMINISTRATOR.id);
+		expect(actorNames[ADMINISTRATOR.id]).toBe('Grace Hopper');
 	});
 
 	// Half a subject would silently widen the read to every subject, so it is refused instead.

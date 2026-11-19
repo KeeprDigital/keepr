@@ -3,7 +3,6 @@ import { transformWithOxc } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 import { CHECKOUT_TSCONFIG } from '../../../build/checkoutTsconfig.ts';
 import integrationConfig from '../../../vitest.integration.config.ts';
-import localAuthConfig from '../../../vitest.local-auth.config.ts';
 import { checkoutInsideOneBeingPrepared } from '../../helpers/checkoutInsideAnother.ts';
 
 const cleanups: (() => void)[] = [];
@@ -21,11 +20,8 @@ describe("a Vite server here reads this checkout's tsconfig and no other", () =>
 		);
 	});
 
-	it.each([
-		{ suite: 'integration', config: integrationConfig },
-		{ suite: 'local-auth', config: localAuthConfig },
-	])("the $suite suite is told which tsconfig is the checkout's", ({ config }) => {
-		expect(config.tsconfig).toBe(CHECKOUT_TSCONFIG);
+	it("the integration suite is told which tsconfig is the checkout's", () => {
+		expect(integrationConfig.tsconfig).toBe(CHECKOUT_TSCONFIG);
 	});
 
 	// Vue's plugin is not told: it climbs from the component, and `app/tsconfig.json` is what stops it.

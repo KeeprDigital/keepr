@@ -74,7 +74,8 @@ export function gitHistory({ cwd }) {
 /**
  * Whether one block of a Wrangler configuration, by its `services`, binds
  * Keepr Accounts. The deploy reads one Environment's block
- * (`bindsKeeprAccounts`), CI's scope every block (`ci-scope.mjs`).
+ * (`bindsKeeprAccounts`), CI's scope and the build every block
+ * (`configBindsKeeprAccounts`).
  *
  * @param {unknown} services a block's `services`, whatever it holds
  */
@@ -82,6 +83,20 @@ export function servicesBindKeeprAccounts(services) {
 	return (
 		Array.isArray(services) &&
 		services.some((/** @type {any} */ binding) => binding?.service === KEEPR_ACCOUNTS.service)
+	);
+}
+
+/**
+ * Whether an app's source Wrangler configuration binds Keepr Accounts, at its
+ * top level or in any Environment's block: what is asked before anything is
+ * built, by CI's scope (`ci-scope.mjs`) and by the build itself (`build.mjs`),
+ * which cannot read the built configuration a deploy's order check does.
+ *
+ * @param {{ services?: unknown, env?: Record<string, { services?: unknown }> }} config a parsed `wrangler.jsonc`
+ */
+export function configBindsKeeprAccounts(config) {
+	return [config, ...Object.values(config.env ?? {})].some((block) =>
+		servicesBindKeeprAccounts(block?.services),
 	);
 }
 

@@ -10,7 +10,6 @@ import { and, eq, lte, or, sql } from 'drizzle-orm';
 import { SQLiteAsyncDialect } from 'drizzle-orm/sqlite-core';
 import { db } from '~~/server/db';
 import { graphicsAuthoringLeases } from '~~/server/db/schema';
-import { sessionHolderName } from '~~/server/utils/actorNames';
 import {
 	graphicsAuthoringLeaseAllowsWrite,
 	graphicsAuthoringLeaseDeadline,
@@ -57,6 +56,13 @@ export interface GraphicsAuthoringLeaseRef {
 
 export interface AcquireGraphicsAuthoringLeaseParams extends GraphicsAuthoringLeaseRef {
 	sessionId: string;
+	/**
+	 * What to call the User whose Session this is, as their Identity Proof names
+	 * them. Kept with the lease it takes, and shown to a Session that finds the
+	 * artifact held: Stream Keepr holds no Session or User to read it from later
+	 * (ADR-0141).
+	 */
+	holderName?: string | undefined;
 	takeover?: boolean;
 	heartbeatIntervalMs?: number;
 }
@@ -121,13 +127,22 @@ export function graphicsAuthoringLeaseConflict() {
 
 type StoredLease = typeof graphicsAuthoringLeases.$inferSelect;
 
-function toRecord(row: StoredLease | undefined): GraphicsAuthoringLeaseRecord | undefined {
+/** A stored lease as the policy reads it, and the name its holder took it under. */
+type NamedLeaseRecord = GraphicsAuthoringLeaseRecord & { holderName: string | null };
+
+function toRecord(row: StoredLease | undefined): NamedLeaseRecord | undefined {
 	if (!row) return undefined;
 	return {
 		holderSessionId: row.holderSessionId,
+		holderName: row.holderName,
 		acquiredAt: row.acquiredAt.getTime(),
 		expiresAt: row.expiresAt.getTime(),
 	};
+}
+
+/** The name a lease is stored under: none for a blank one, so no surface shows an empty label. */
+function storedHolderName(holderName: string | undefined): string | null {
+	return holderName?.trim() || null;
 }
 
 export function graphicsAuthoringLeaseModule() {
@@ -140,7 +155,7 @@ export function graphicsAuthoringLeaseModule() {
 
 	async function loadRecord(
 		artifact: GraphicsAuthoringArtifactRef,
-	): Promise<GraphicsAuthoringLeaseRecord | undefined> {
+	): Promise<NamedLeaseRecord | undefined> {
 		const [row] = await db
 			.select()
 			.from(graphicsAuthoringLeases)
@@ -164,32 +179,27 @@ export function graphicsAuthoringLeaseModule() {
 		sessionId: string | undefined,
 	): Promise<GraphicsAuthoringLeaseReading> {
 		const record = await loadRecord(ref.artifact);
-		return await named(
-			graphicsAuthoringLeaseState(ref.artifact, record, sessionId, Date.now()),
-			record,
-		);
+		return named(graphicsAuthoringLeaseState(ref.artifact, record, sessionId, Date.now()), record);
 	}
 
 	/**
 	 * Who is holding it, for the one shape that can be holding it for somebody
 	 * else (#398, ADR-0010).
 	 *
-	 * Grant, renew, and takeover all answer the asking session as holder and have
-	 * nobody to name, so this is reached only by an observation. That is one
-	 * indexed join per observing answer — and an observer heartbeats, so it
-	 * recurs at the lease cadence rather than once. Left uncached deliberately:
-	 * the holder can change between two heartbeats, and a name cached across them
-	 * would tell an operator that a colleague is editing something they have
-	 * already released.
+	 * Grant, renew, and takeover all answer the asking Session as holder and have
+	 * nobody to name, so this is reached only by an observation. The name is the
+	 * one the holder took the lease under, read from the lease itself, so it is
+	 * always the current holder's: a take-over replaces it with the holder.
+	 * Only the name crosses to the client, never the holder's Session id or
+	 * address.
 	 */
-	async function named(
+	function named(
 		state: GraphicsAuthoringLeaseState,
-		record: GraphicsAuthoringLeaseRecord | undefined,
-	): Promise<GraphicsAuthoringLeaseReading> {
-		if (!state.heldByAnotherSession || !record) return state;
+		record: NamedLeaseRecord | undefined,
+	): GraphicsAuthoringLeaseReading {
+		if (!state.heldByAnotherSession || !record?.holderName) return state;
 
-		const holderName = await sessionHolderName(record.holderSessionId);
-		return holderName === null ? state : { ...state, holderName };
+		return { ...state, holderName: record.holderName };
 	}
 
 	/**
@@ -221,6 +231,7 @@ export function graphicsAuthoringLeaseModule() {
 		params: AcquireGraphicsAuthoringLeaseParams,
 	): Promise<GraphicsAuthoringLeaseAcquisition> {
 		const { artifact, eventId, sessionId, takeover, heartbeatIntervalMs } = params;
+		const holderName = storedHolderName(params.holderName);
 		const now = Date.now();
 		const expiresAt = graphicsAuthoringLeaseDeadline(now, heartbeatIntervalMs);
 		const resolution = resolveGraphicsAuthoringLease(
@@ -277,6 +288,7 @@ export function graphicsAuthoringLeaseModule() {
 			.set({
 				eventId: eventId ?? null,
 				holderSessionId: sessionId,
+				holderName,
 				acquiredAt: new Date(now),
 				expiresAt: new Date(expiresAt),
 			})
@@ -299,6 +311,7 @@ export function graphicsAuthoringLeaseModule() {
 					artifactId: artifact.id,
 					eventId: eventId ?? null,
 					holderSessionId: sessionId,
+					holderName,
 					acquiredAt: new Date(now),
 					expiresAt: new Date(expiresAt),
 				})
@@ -333,7 +346,7 @@ export function graphicsAuthoringLeaseModule() {
 		// answering it the unnamed sentence until its next heartbeat would make the
 		// name look intermittent.
 		return {
-			lease: await named(
+			lease: named(
 				graphicsAuthoringLeaseState(params.artifact, record, params.sessionId, now),
 				record,
 			),

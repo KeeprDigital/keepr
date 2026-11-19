@@ -9,7 +9,10 @@
 		// The layer's files it imports are written to the layer's own options, not the packages'.
 		"erasableSyntaxOnly": false,
 		"exactOptionalPropertyTypes": false,
-		"types": ["node"]
+		"types": ["node"],
+		// The launcher is JavaScript run by Node with no build step: a test reads
+		// its JSDoc types without checking its body.
+		"allowJs": true
 	},
-	"include": ["src", "test", "vitest.config.ts"]
+	"include": ["src", "scripts", "test", "vitest.config.ts"]
 }

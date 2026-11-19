@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3';
 import type { GraphicsAuthoringLeaseRef } from './index';
-import { optionalBrowserSessionId } from '~~/server/utils/auth';
+import { optionalBrowserSessionId } from '~~/server/utils/session';
 import { graphicsTemplateArtifact } from '~~/shared/modules/graphics-authoring-lease';
 import { graphicsAuthoringLeaseModule } from './index';
 

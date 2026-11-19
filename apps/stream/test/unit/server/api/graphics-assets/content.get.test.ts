@@ -12,7 +12,7 @@ const { library, mockRequireUserId, mockSetResponseHeader } = vi.hoisted(() => (
 	mockSetResponseHeader: vi.fn(),
 }));
 
-vi.mock('~~/server/utils/auth', () => ({
+vi.mock('~~/server/utils/session', () => ({
 	requireUserId: mockRequireUserId,
 }));
 

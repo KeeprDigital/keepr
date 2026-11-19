@@ -1,7 +1,7 @@
 import { graphicsIngestionOperationId } from '~~/server/modules/graphics-asset-library';
 import { createBoundedByteStream } from '~~/server/modules/graphics-asset-library/object-store';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 import { getBoundedRequestBodyStream } from '@keepr/nuxt-layer/server/utils/payloadLimits';
 import { MAX_SILENT_VIDEO_INGESTION_BYTES } from '~~/shared/utils/graphicsAssetCompatibility';

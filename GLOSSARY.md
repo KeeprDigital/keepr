@@ -2,7 +2,7 @@
 
 The words every Keepr app shares: who a person is and what they may use, how each app is released and deployed, and the named modules of the shared layer. Each app's own words are in its own glossary; `GLOSSARY-MAP.md` says where, and how the vocabularies meet.
 
-Identity and access is written to the model of Keepr Accounts (issue #1228). Until Stream Keepr moves onto it, Stream Keepr's own sign-in follows the rules in `apps/stream/RULES.md`.
+Identity and access is written to the model of Keepr Accounts (issue #1228), which Stream Keepr relies on (ADR-0141, in `apps/stream/docs/adr`).
 
 ## Language
 
@@ -29,7 +29,7 @@ The User the Accounts Stand-in answers with, so local work needs no sign-in: a K
 _Avoid_: bypass user, test user
 
 **Accounts Stand-in**:
-The Worker a development setup runs under Keepr Accounts' service name, which answers every App's request with an Identity Proof for the Local Developer User, signed by a key of its own. It is never deployed.
+The Worker a development setup runs under Keepr Accounts' service name, which answers every App's request with an Identity Proof for the Local Developer User, or for whoever the request's own cookie asks it to answer as, signed by a key of its own. It is never deployed.
 _Avoid_: mock accounts, fake auth, auth bypass, stub
 
 **Session**:

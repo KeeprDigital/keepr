@@ -1,6 +1,6 @@
 # ADR-0018: A LAN bypassed launcher is an accepted local exposure
 
-Accepted · 2026-09-23
+Accepted · 2026-09-23 · Amended by ADR-0141: the accepted exposure is `pnpm dev:local`'s, which the Accounts Stand-in answers as the Local Developer User; `dev:local:bypass` and `AUTH_ALLOWED_HOSTS` are gone
 
 ### Decision
 

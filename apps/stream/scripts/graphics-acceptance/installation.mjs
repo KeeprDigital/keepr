@@ -15,8 +15,7 @@ import process from 'node:process';
 import { crc32 } from 'node:zlib';
 import { acceptanceEnvironment } from './deployed-target.mjs';
 import { AcceptanceFailure, deliveryRouteLabel } from './evidence.mjs';
-import { readLocalConfigurationFiles, suppliedNames } from './local-configuration.mjs';
-import { openOperatorSession } from './operator.mjs';
+import { LOCAL_SIGNED_OUT_COOKIE, openOperatorSession } from './operator.mjs';
 import { featureMatchLayoutReferencing } from './repository-bridge.mjs';
 import { acceptanceRoutes, screenOutputRepresentation } from './routes.mjs';
 
@@ -145,39 +144,30 @@ async function observe(response) {
 /**
  * Open an installation as somebody, and as the author of what this run stages.
  *
- * Two credentials, and they answer different questions. The **session** says a
- * request is allowed past #396's boundary at all — every route in `routes.mjs`
- * outside the Screen Output surface requires one, so it rides on every request
- * rather than being asked for. The **author cookie** says which Graphics Author
- * owns a Graphics Ingestion Operation, which is why it is opt-in per request:
- * a helper that staged an operation as one author and then read it as another
- * would get a 404 and read as a broken route (ADR-0010, #276).
+ * The **Session** says a request is allowed past #396's boundary at all: every
+ * route in `routes.mjs` outside the Screen Output surface requires one, so it
+ * rides on every request rather than being asked for. It also names the User
+ * who owns the Graphics Ingestion Operations this harness starts (ADR-0010).
  *
- * `deployed` decides where the session's credentials may come from, and the
- * decision is `./operator.mjs`'s. It is a parameter rather than something
- * inferred from `origin`, because the wrong inference sends a local checkout's
- * bootstrap secret to a remote host.
+ * `deployed` decides who vouches for the run, and the decision is
+ * `./operator.mjs`'s: a deployed run signs in to Keepr Accounts, and a local
+ * one is answered by its installation's Accounts Stand-in. It is a parameter
+ * rather than something inferred from `origin`.
  *
  * @param {string} origin
  * @param {{ deployed?: boolean }} [options]
  */
 export async function openInstallation(origin, { deployed = false } = {}) {
-	const sessionCookies = await openOperatorSession(origin, {
-		deployed,
-		supplied: deployed ? {} : suppliedNames(readLocalConfigurationFiles()),
-	});
-
-	// The operator's session is the whole identity since ADR-0010's cutover
-	// (#398): it admits the request *and* names the author who owns the Graphics
-	// Ingestion Operations this harness starts. The page load that used to mint a
-	// second, author-only cookie is gone with the thing it minted.
+	const sessionCookies = await openOperatorSession(origin, { deployed });
 
 	/**
 	 * @param {string} path
-	 * `anonymous` sends no session at all, which is the only way to ask what an
-	 * unauthenticated caller is answered since #398 retired the second identity a
-	 * harness could withhold. It is a probe of the boundary, so it exists here
-	 * rather than being assembled at a call site that could forget the difference.
+	 * `anonymous` asks as a signed-out visitor, which is the only way to ask what
+	 * a caller with no Session is answered. A deployed run sends no cookie at
+	 * all; a local one says so with the Accounts Stand-in's cookie, since its
+	 * installation answers a request carrying none as the Local Developer User.
+	 * It is a probe of the boundary, so it exists here rather than being
+	 * assembled at a call site that could forget the difference.
 	 *
 	 * @param {{ method?: string, headers?: Record<string, string>, body?: unknown, anonymous?: boolean }} init
 	 */
@@ -186,8 +176,9 @@ export async function openInstallation(origin, { deployed = false } = {}) {
 		// Unconditionally unless asked otherwise, because the boundary is
 		// unconditional: a request without this is a 401 from every path here but
 		// the Screen Output ones, where an extra cookie is ignored.
-		if (!init.anonymous) {
-			headers.set('cookie', [headers.get('cookie'), ...sessionCookies].filter(Boolean).join('; '));
+		const cookies = init.anonymous ? (deployed ? [] : [LOCAL_SIGNED_OUT_COOKIE]) : sessionCookies;
+		if (cookies.length > 0) {
+			headers.set('cookie', [headers.get('cookie'), ...cookies].filter(Boolean).join('; '));
 		}
 		let body = init.body;
 		if (body !== undefined && !(body instanceof Uint8Array)) {

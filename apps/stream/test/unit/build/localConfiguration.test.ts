@@ -2,12 +2,9 @@ import type { LocallyRequiredNuxtName } from '~~/build/localConfiguration';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { assertWorkerConfigurationDoesNotArmLocalAuthBypass } from '~~/build/localAuthDeployment';
 import {
 	announcesLocalConfiguration,
 	LOCAL_NUXT_NAME_SURFACES,
-	localAuthBypassActive,
-	localAuthBypassLogLine,
 	localConfigurationBootNotice,
 	localConfigurationLogLine,
 	LOCALLY_OPTIONAL_NUXT_NAMES,
@@ -16,10 +13,6 @@ import {
 	parseDotenv,
 	sentenceList,
 } from '~~/build/localConfiguration';
-import {
-	LOCAL_AUTH_BYPASS_ENABLED_VALUE,
-	LOCAL_AUTH_BYPASS_NAME,
-} from '~~/shared/utils/localDeveloperAuth';
 
 // The signing key is read as 32-byte base64, so a configured checkout holds one.
 const CONFIGURED_VALUES: Partial<Record<LocallyRequiredNuxtName, string>> = {
@@ -32,8 +25,6 @@ function configuredEnv(): Record<string, string | undefined> {
 		LOCALLY_REQUIRED_NUXT_NAMES.map((name) => [name, CONFIGURED_VALUES[name] ?? 'from-dotenv']),
 	);
 }
-
-const bypassed = { [LOCAL_AUTH_BYPASS_NAME]: LOCAL_AUTH_BYPASS_ENABLED_VALUE };
 
 describe('which processes say anything about local configuration at all', () => {
 	it.each([
@@ -94,13 +85,11 @@ describe('which names a local checkout has to be given', () => {
 		);
 	});
 
-	it('does not require the Better Auth setup names while the local bypass is enabled', () => {
-		expect(missingLocalNuxtNames({}, { localAuthBypassActive: true })).toEqual([
-			'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY',
-		]);
-		expect(missingLocalNuxtNames({})).toEqual([...LOCALLY_REQUIRED_NUXT_NAMES]);
+	// Who a request belongs to is Keepr Accounts' answer, and locally the Accounts
+	// Stand-in's: no name a file could carry is for signing in, or for skipping it.
+	it('names nothing for signing in, and nothing that could skip it', () => {
 		for (const name of [...LOCALLY_REQUIRED_NUXT_NAMES, ...LOCALLY_OPTIONAL_NUXT_NAMES])
-			expect(name).not.toContain('LOCAL_AUTH_BYPASS');
+			expect(name).not.toMatch(/AUTH|BYPASS|BOOTSTRAP|SESSION/);
 	});
 });
 
@@ -177,64 +166,6 @@ describe('what a dev server says about its local configuration', () => {
 		],
 	])('lists %j as a sentence', (items, sentence) => {
 		expect(sentenceList(items, 'and')).toBe(sentence);
-	});
-});
-
-describe('the Local Developer Session startup warning', () => {
-	it('conspicuously names the bypass and the risk of binding beyond loopback', () => {
-		const line = localAuthBypassLogLine({ dev: true, env: bypassed });
-
-		expect(line?.level).toBe('warn');
-		for (const token of [
-			'AUTHENTICATION BYPASSED',
-			'Local Developer User',
-			'loopback',
-			'other machines',
-		])
-			expect(line?.message).toContain(token);
-	});
-
-	it.each(['', ' ', 'TRUE', 'false', '1'])(
-		'stays silent on the value %j, which is not the exact enabling one',
-		(value) => {
-			expect(
-				localAuthBypassLogLine({
-					dev: true,
-					env: { [LOCAL_AUTH_BYPASS_NAME]: value },
-				}),
-			).toBeUndefined();
-		},
-	);
-
-	it('reads the launcher-owned name and no NUXT_ spelling of it, which a file could supply', () => {
-		const nuxtSpelling = { [`NUXT_${LOCAL_AUTH_BYPASS_NAME}`]: LOCAL_AUTH_BYPASS_ENABLED_VALUE };
-
-		expect(localAuthBypassActive({ dev: true, env: bypassed })).toBe(true);
-		expect(localAuthBypassActive({ dev: true, env: nuxtSpelling })).toBe(false);
-		expect(localAuthBypassLogLine({ dev: true, env: nuxtSpelling })).toBeUndefined();
-	});
-
-	it('says nothing in a build, whatever the environment holds', () => {
-		expect(localAuthBypassLogLine({ dev: false, env: bypassed })).toBeUndefined();
-		expect(localConfigurationLogLine({ dev: false, env: bypassed })).toBeUndefined();
-	});
-});
-
-describe('the generated Worker configuration auth boundary', () => {
-	it('refuses the bypass name anywhere in generated deployment configuration', () => {
-		expect(() =>
-			assertWorkerConfigurationDoesNotArmLocalAuthBypass({
-				env: {
-					production: { vars: bypassed },
-				},
-			}),
-		).toThrow(/refusing to deploy/u);
-		expect(() =>
-			assertWorkerConfigurationDoesNotArmLocalAuthBypass({
-				name: 'stream',
-				vars: { ORDINARY_CONFIGURATION: 'value' },
-			}),
-		).not.toThrow();
 	});
 });
 

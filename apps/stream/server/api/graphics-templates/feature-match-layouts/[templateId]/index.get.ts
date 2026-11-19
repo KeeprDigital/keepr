@@ -3,7 +3,7 @@ import {
 	findFeatureMatchLayoutTemplateLibraryEntry,
 } from '~~/server/modules/feature-match-layout-template-library';
 import { featureMatchLayoutTemplateParamsSchema } from '~~/server/schemas/api/featureMatchLayoutTemplate';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 
 /**
  * One library entry with the Feature Match Layout it stores.

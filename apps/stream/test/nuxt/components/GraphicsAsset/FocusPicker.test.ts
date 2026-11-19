@@ -597,14 +597,14 @@ describe('the contextual Graphic Asset Focus Picker', () => {
 	it('relays a preserved 503 naming the setting that was never configured', async () => {
 		listingError.value = transportFailure({
 			status: 503,
-			body: { message: 'NUXT_BETTER_AUTH_SECRET is not configured' },
+			body: { message: 'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY is not configured' },
 			request: `[GET] "/api/graphics-assets"`,
 		});
 
 		const wrapper = await mountWithListingFailure();
 
 		expect(wrapper.get('[data-testid="library-listing-error"]').text()).toContain(
-			'NUXT_BETTER_AUTH_SECRET is not configured',
+			'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY is not configured',
 		);
 	});
 

@@ -10,7 +10,7 @@ import {
 	FeatureMatchLayoutTemplateRevisionConflict,
 	featureMatchLayoutTemplateService,
 } from '~~/server/services/featureMatchLayoutTemplate';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import {
 	assertFeatureMatchLayoutTemplateReferencesSelectable,
 	refuseBuiltInFeatureMatchLayoutTemplate,

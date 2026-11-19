@@ -31,10 +31,12 @@
 	// NUXT_BANDAI_KEEPR_API_KEY; without it OP card data is unavailable (ADR-0057).
 	// NUXT_MELEE_CREDENTIAL_KEY_VERSION labels the active
 	// NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY; a rotation changes both (README.md §
-	// Worker secrets, ADR-0132).
+	// Worker secrets, ADR-0132). NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN is where a
+	// signed-out visitor is sent to sign in: this Environment's Keepr Accounts.
 	"vars": {
 		"NUXT_BANDAI_KEEPR_API_URL": "https://op-api.keepr.digital",
-		"NUXT_MELEE_CREDENTIAL_KEY_VERSION": "1"
+		"NUXT_MELEE_CREDENTIAL_KEY_VERSION": "1",
+		"NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN": "https://accounts.keepr.digital"
 	},
 	"kv_namespaces": [{ "binding": "KV", "id": "a15cf281b12d43e4b5479baf8b69b587" }],
 	"r2_buckets": [
@@ -68,6 +70,14 @@
 			// validator first (pnpm deploy:validator) so this binding resolves.
 			"binding": "SILENT_VIDEO_PLAYBACK_VALIDATOR",
 			"service": "stream-silent-video-validator"
+		},
+		{
+			// Keepr Accounts, which says who a request belongs to (ADR-0112,
+			// ADR-0141): the one way a request is recognised. Each Environment
+			// binds its own account's `keepr-accounts`, which deploys first
+			// (ADR-0120).
+			"binding": "KEEPR_ACCOUNTS",
+			"service": "keepr-accounts"
 		}
 	],
 	"observability": {
@@ -108,7 +118,8 @@
 			],
 			"vars": {
 				"NUXT_BANDAI_KEEPR_API_URL": "https://op-api.keepr.digital",
-				"NUXT_MELEE_CREDENTIAL_KEY_VERSION": "1"
+				"NUXT_MELEE_CREDENTIAL_KEY_VERSION": "1",
+				"NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN": "https://accounts.keepr-staging.digital"
 			},
 			"kv_namespaces": [{ "binding": "KV", "id": "f38e3b36f6e5463794d5208ee373bef8" }],
 			"r2_buckets": [
@@ -128,7 +139,8 @@
 				{
 					"binding": "SILENT_VIDEO_PLAYBACK_VALIDATOR",
 					"service": "stream-silent-video-validator"
-				}
+				},
+				{ "binding": "KEEPR_ACCOUNTS", "service": "keepr-accounts" }
 			]
 		}
 	}

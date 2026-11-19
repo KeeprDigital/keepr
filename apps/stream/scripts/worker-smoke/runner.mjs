@@ -7,14 +7,8 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
+import { standInCookie } from '@keepr/accounts-stand-in/cookie';
 import { LIVE_RESULTS_CRON } from '../../server/utils/cronSchedules.ts';
-import {
-	LOCAL_AUTH_BYPASS_ENABLED_VALUE,
-	LOCAL_AUTH_BYPASS_NAME,
-	LOCAL_DEVELOPER_SESSION_COOKIE,
-	LOCAL_DEVELOPER_SESSION_ID_PREFIX,
-	LOCAL_DEVELOPER_USER_ID,
-} from '../../shared/utils/localDeveloperAuth.ts';
 import { DeployVerifyFailure, verifyDeployment } from '@keepr/tooling/scripts/deploy/verify.mjs';
 
 const PIXEL_PNG = Uint8Array.from(
@@ -55,7 +49,6 @@ export function redactSmokeText(value, secrets = []) {
 		redacted = redacted.replaceAll(secret, '[redacted]');
 	return redacted
 		.replace(/https?:\/\/[^\s"'`]+/giu, '[redacted-url]')
-		.replace(/((?:__Secure-)?better-auth\.session_token=)[^;\s]+/giu, '$1[redacted]')
 		.replace(/\b[a-f0-9]{64}\b/giu, '[redacted-digest]')
 		.replace(
 			/\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/giu,
@@ -207,39 +200,15 @@ export async function runWorkerSmoke({
 			});
 			return origin;
 		};
-		const stopWorker = async () => {
-			await terminateChild(activeChild, activeChildExit);
-			activeChild = undefined;
-			activeChildExit = undefined;
-		};
-
-		const productionOrigin = await startWorker();
+		// One run of the artifact: nothing it could be restarted under changes
+		// who it admits. The Accounts Stand-in this command runs beside answers
+		// its `KEEPR_ACCOUNTS` binding, as Keepr Accounts does when deployed.
+		const origin = await startWorker();
 		await runProductProbes({
-			origin: productionOrigin,
+			origin,
 			fetchRequest,
 			generated,
 			sensitiveValues,
-			signal: smokeSignal,
-		});
-		await stopWorker();
-
-		// The same artifact, restarted with the one name a bypassed local launcher
-		// sets. Two runs of one bundle is the whole of what #519 left to prove here:
-		// the production artifact denies by default, and admits the Local Developer
-		// Session only where that name is present. It was three runs while
-		// activation took a second attestation, and the middle one — the bypass
-		// name alone, expecting 401 — is a state that no longer exists.
-		await writeFile(
-			stagedEnvPath,
-			`${generated.body}${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE}\n`,
-			{
-				mode: 0o600,
-			},
-		);
-		const bypassedOrigin = await startWorker();
-		await runLocalPreviewAuthProbes({
-			origin: bypassedOrigin,
-			fetchRequest,
 			signal: smokeSignal,
 		});
 		return { elapsedMs: Date.now() - startedAt };
@@ -264,90 +233,27 @@ export async function runWorkerSmoke({
 	}
 }
 
-async function runLocalPreviewAuthProbes({ origin, fetchRequest, signal }) {
-	const firstResponse = await expectStatus({
-		probe: 'local-auth-bypassed-session',
-		expected: 200,
-		origin,
-		path: '/api/auth/get-session',
-		fetchRequest,
-		signal,
-	});
-	const first = await responseJson(firstResponse, 'local-auth-bypassed-session');
-	const firstCookie = sessionCookie(firstResponse);
-	if (
-		first?.user?.id !== LOCAL_DEVELOPER_USER_ID ||
-		typeof first?.session?.id !== 'string' ||
-		!first.session.id.startsWith(LOCAL_DEVELOPER_SESSION_ID_PREFIX) ||
-		!firstCookie.includes(`${LOCAL_DEVELOPER_SESSION_COOKIE}=`)
-	) {
-		throwShapeFailure('local-auth-bypassed-session', 'Local Developer User and Session cookie');
-	}
-
-	const repeatedResponse = await expectStatus({
-		probe: 'local-auth-bypassed-session-repeat',
-		expected: 200,
-		origin,
-		path: '/api/auth/get-session',
-		fetchRequest,
-		signal,
-		init: {
-			headers: { cookie: firstCookie },
-		},
-	});
-	const repeated = await responseJson(repeatedResponse, 'local-auth-bypassed-session-repeat');
-	const otherResponse = await expectStatus({
-		probe: 'local-auth-bypassed-other-browser',
-		expected: 200,
-		origin,
-		path: '/api/auth/get-session',
-		fetchRequest,
-		signal,
-	});
-	const other = await responseJson(otherResponse, 'local-auth-bypassed-other-browser');
-	if (
-		repeated?.user?.id !== first.user.id ||
-		other?.user?.id !== first.user.id ||
-		repeated?.session?.id !== first.session.id ||
-		other?.session?.id === first.session.id
-	) {
-		throwShapeFailure(
-			'local-auth-bypassed-session-semantics',
-			'stable User and one stable Session per browser',
-		);
-	}
-
-	await expectStatus({
-		probe: 'local-auth-bypassed-api',
-		expected: 200,
-		origin,
-		path: '/api/events',
-		fetchRequest,
-		signal,
-		init: {
-			headers: { cookie: firstCookie },
-		},
-	});
-}
-
 function generatedConfiguration() {
 	// Deliberately omit Ably and external Melee credentials. Publication is
 	// disabled without Ably, and the Melee persistence probe saves disabled
 	// configuration, so this process has neither authority nor reason to leave
 	// loopback.
-	const randomSecret = (bytes = 32) => randomBytes(bytes).toString('base64url');
 	const base64Key = () => randomBytes(32).toString('base64');
+	// Nothing here is for sign-in: who a request belongs to is the Accounts
+	// Stand-in's answer. The Keepr Accounts origin is a var the Environment sets
+	// (`wrangler.jsonc`), named here as a host of this run's own so the shell
+	// probe shows the artifact reads it at runtime.
 	const entries = {
-		NUXT_ADMIN_BOOTSTRAP_TOKEN: randomSecret(),
-		NUXT_BETTER_AUTH_SECRET: randomSecret(48),
 		NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY: base64Key(),
 		NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY: base64Key(),
 		NUXT_MELEE_CREDENTIAL_KEY_VERSION: '1',
+		NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN: `https://accounts.${randomBytes(6).toString('hex')}.invalid`,
 	};
+	const PUBLIC = ['NUXT_MELEE_CREDENTIAL_KEY_VERSION', 'NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN'];
 	return {
 		entries,
 		secrets: Object.entries(entries)
-			.filter(([name]) => name !== 'NUXT_MELEE_CREDENTIAL_KEY_VERSION')
+			.filter(([name]) => !PUBLIC.includes(name))
 			.map(([, entry]) => entry),
 		body: `${Object.entries(entries)
 			.map(([name, entry]) => `${name}=${entry}`)
@@ -365,6 +271,9 @@ function hermeticChildEnvironment() {
 		'WINDIR',
 		'ComSpec',
 		'PATHEXT',
+		// Where the Worker's `KEEPR_ACCOUNTS` binding finds the Accounts Stand-in
+		// this command runs beside (`keepr-accounts-stand-in`).
+		'WRANGLER_REGISTRY_PATH',
 	];
 	return Object.fromEntries([
 		...allowedNames
@@ -550,79 +459,90 @@ function captureChildOutput(child, tail) {
 	child.stderr?.on('data', (chunk) => tail.append(chunk));
 }
 
+/** The admin route the role probes ask: a read of settings, with nothing to seed. */
+const ADMIN_ROUTE = '/api/admin/graphics-assets/capacity';
+
+/**
+ * Who the artifact admits, asked of it as the Accounts Stand-in's cookie names
+ * each caller (ADR-0141). Every refusal here is the built Worker's own: the
+ * stand-in only says who is asking, as Keepr Accounts would.
+ */
+async function expectIdentityBoundary({ origin, fetchRequest, signal }) {
+	const run = randomBytes(4).toString('hex');
+	const operator = standInCookie({ user: `worker-smoke-operator-${run}` });
+	const member = standInCookie({
+		user: `worker-smoke-member-${run}`,
+		apps: { stream: 'member' },
+	});
+	const outsider = standInCookie({
+		user: `worker-smoke-outsider-${run}`,
+		apps: { stream: null },
+	});
+	const ask = (probe, expected, path, cookie, init = {}) =>
+		expectStatus({
+			probe,
+			expected,
+			origin,
+			path,
+			fetchRequest,
+			signal,
+			init: { ...init, headers: { ...init.headers, cookie } },
+		});
+
+	// No Identity Proof: Keepr Accounts answers a signed-out visitor with none.
+	await ask('api-boundary', 401, '/api/events', standInCookie('signed-out'));
+	// A valid Identity Proof is admitted, and names who the request belongs to.
+	await ask('identity-proof-admitted', 200, '/api/events', operator);
+	const identity = await responseJson(
+		await ask('identity-read', 200, '/api/identity', operator),
+		'identity-read',
+	);
+	if (identity?.user?.id !== `worker-smoke-operator-${run}` || identity?.appRole !== 'admin')
+		throwShapeFailure('identity-read', 'the User and App role the Identity Proof names');
+	// A User with no App access to Stream Keepr is refused, an admin route included.
+	await ask('no-app-access', 403, '/api/events', outsider);
+	await ask('no-app-access-admin-route', 403, ADMIN_ROUTE, outsider);
+	// An admin route refuses a User whose App role is not `admin`, and admits one whose is.
+	await ask('member-admitted', 200, '/api/events', member);
+	await ask('admin-role-required', 403, ADMIN_ROUTE, member);
+	await ask('admin-role-admitted', 200, ADMIN_ROUTE, operator);
+	// A Session cookie does not carry a write another site's page made.
+	await ask('cross-site-refusal', 403, '/api/events', operator, {
+		...jsonRequest({ name: 'Cross-site Event', game: 'mtg' }, { 'sec-fetch-site': 'cross-site' }),
+	});
+	// The realtime grant is outside the boundary and asks for itself.
+	await ask(
+		'realtime-grant-signed-out',
+		401,
+		'/api/realtime/token?eventId=1',
+		standInCookie('signed-out'),
+	);
+	await ask('realtime-grant-no-app-access', 403, '/api/realtime/token?eventId=1', outsider);
+
+	return operator;
+}
+
+/**
+ * The page a signed-out visitor is sent from names this Environment's Keepr
+ * Accounts: the artifact reads the origin at runtime, from the var each
+ * Environment sets, so Staging sends nobody to Production's sign-in.
+ */
+async function expectShellNamesKeeprAccounts({ origin, fetchRequest, generated, signal }) {
+	const shell = await expectStatus({
+		probe: 'shell-keepr-accounts-origin',
+		expected: 200,
+		origin,
+		path: '/',
+		fetchRequest,
+		signal,
+	});
+	if (!(await shell.text()).includes(generated.entries.NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN))
+		throwShapeFailure('shell-keepr-accounts-origin', "the Environment's Keepr Accounts origin");
+}
+
 async function runProductProbes({ origin, fetchRequest, generated, sensitiveValues, signal }) {
-	await expectStatus({
-		probe: 'api-boundary',
-		expected: 401,
-		origin,
-		path: '/api/events',
-		fetchRequest,
-		signal,
-	});
-
-	const operatorEmail = `worker-smoke-${randomBytes(8).toString('hex')}@keepr.invalid`;
-	const operatorPassword = randomBytes(24).toString('base64url');
-	sensitiveValues.push(operatorEmail, operatorPassword);
-	await expectStatus({
-		probe: 'first-admin-bootstrap',
-		expected: 200,
-		origin,
-		path: '/api/bootstrap/ensure-admin',
-		fetchRequest,
-		signal,
-		init: jsonRequest(
-			{
-				email: operatorEmail,
-				password: operatorPassword,
-				name: 'Built Worker smoke operator',
-			},
-			{ 'x-admin-bootstrap-token': generated.entries.NUXT_ADMIN_BOOTSTRAP_TOKEN },
-		),
-	});
-
-	const signInBody = { email: operatorEmail, password: operatorPassword };
-	// Before the probes that sign in without a client header, so their passing
-	// is what shows this scenario left their bucket alone. Those header-less
-	// sign-ins share one bucket of three per 10 seconds, and the limiter counts
-	// an origin refusal too, so the two below use two of the three.
-	await expectSignInRateLimit({
-		origin,
-		fetchRequest,
-		signInBody,
-		signal,
-	});
-	await expectStatus({
-		probe: 'auth-origin-refusal',
-		expected: 403,
-		origin,
-		path: '/api/auth/sign-in/email',
-		fetchRequest,
-		signal,
-		init: jsonRequest(signInBody),
-	});
-	const signIn = await expectStatus({
-		probe: 'auth-sign-in',
-		expected: 200,
-		origin,
-		path: '/api/auth/sign-in/email',
-		fetchRequest,
-		signal,
-		init: jsonRequest(signInBody, { origin }),
-	});
-	assertSessionCookieAttributes(signIn);
-	const cookie = sessionCookie(signIn);
-	sensitiveValues.push(cookie);
-	await expectStatus({
-		probe: 'authenticated-api',
-		expected: 200,
-		origin,
-		path: '/api/events',
-		fetchRequest,
-		signal,
-		init: {
-			headers: { cookie },
-		},
-	});
+	const cookie = await expectIdentityBoundary({ origin, fetchRequest, signal });
+	await expectShellNamesKeeprAccounts({ origin, fetchRequest, generated, signal });
 
 	const event = await expectJson({
 		probe: 'event-persistence',
@@ -714,79 +634,6 @@ async function runProductProbes({ origin, fetchRequest, generated, sensitiveValu
 	await expectLiveResultsTickOnlyOnCron({ origin, cookie, fetchRequest, signal });
 }
 
-/** Better Auth's own sign-in rule: three requests per client per 10 seconds. */
-const SIGN_IN_ADMITTED_PER_WINDOW = 3;
-
-/**
- * Sign-in refused once a client exceeds its limit, on the artifact a deploy
- * uploads (#697).
- *
- * Before `server/utils/authOptions.ts` stated `rateLimit`, Better Auth enabled
- * its limiter only under `NODE_ENV=production`, which nothing sets in the
- * Worker, so this artifact admitted every attempt. Each client is a generated
- * documentation address in `cf-connecting-ip`, the header the limiter keys on,
- * so this run's buckets are its own: the limited client sends a different
- * `x-forwarded-for` each time and is still refused, and an independent client
- * signs in straight after. The probes that follow send no client header and
- * share none of these buckets.
- */
-async function expectSignInRateLimit({ origin, fetchRequest, signInBody, signal }) {
-	const limitedClient = documentationAddress('203.0.113');
-	const independentClient = documentationAddress('198.51.100');
-	const wrongPassword = {
-		...signInBody,
-		password: randomBytes(24).toString('base64url'),
-	};
-	const limitedAttempt = () =>
-		jsonRequest(wrongPassword, {
-			origin: origin,
-			'cf-connecting-ip': limitedClient,
-			'x-forwarded-for': documentationAddress('192.0.2'),
-		});
-
-	for (let attempt = 0; attempt < SIGN_IN_ADMITTED_PER_WINDOW; attempt++) {
-		await expectStatus({
-			probe: 'auth-rate-limit-admitted',
-			expected: 401,
-			origin,
-			path: '/api/auth/sign-in/email',
-			fetchRequest,
-			signal,
-			init: limitedAttempt(),
-		});
-	}
-	const refused = await expectStatus({
-		probe: 'auth-rate-limit-refusal',
-		expected: 429,
-		origin,
-		path: '/api/auth/sign-in/email',
-		fetchRequest,
-		signal,
-		init: limitedAttempt(),
-	});
-	if (!/^[1-9]\d*$/u.test(refused.headers.get('x-retry-after') ?? ''))
-		throwShapeFailure('auth-rate-limit-refusal', 'positive X-Retry-After seconds');
-
-	await expectStatus({
-		probe: 'auth-rate-limit-independent-client',
-		expected: 200,
-		origin,
-		path: '/api/auth/sign-in/email',
-		fetchRequest,
-		signal,
-		init: jsonRequest(signInBody, { origin: origin, 'cf-connecting-ip': independentClient }),
-	});
-}
-
-/** A random host in one of RFC 5737's documentation networks, given as its first three octets. */
-function documentationAddress(network) {
-	return `${network}.${1 + (randomBytes(1)[0] % 254)}`;
-}
-
-/**
- * The Release this checkout is, as the deploy's verify expects `/api/release`
- * to name it. The bundle was built from here, so its build recorded the same.
- */
 function checkoutIdentity() {
 	const { version } = JSON.parse(
 		readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
@@ -916,59 +763,6 @@ async function responseJson(response, probe) {
 			actual: 'unparseable body',
 		});
 	}
-}
-
-function setCookieHeaders(response) {
-	return typeof response.headers.getSetCookie === 'function'
-		? response.headers.getSetCookie()
-		: [response.headers.get('set-cookie')].filter(Boolean);
-}
-
-const SESSION_TOKEN_COOKIE = /^(?:__Secure-)?better-auth\.session_token$/u;
-
-/**
- * The Better Auth session cookie's attributes, held to production's (#451).
- *
- * The built Worker is the artifact a deploy uploads, so the cookie it sets
- * here is the one a deployed installation sets: `HttpOnly`, `SameSite=Lax`,
- * `Path=/`, `Secure`, and named `__Secure-` so a browser refuses it from
- * anything but a secure origin. The scheme the smoke run reaches it over has
- * no say, because `server/utils/authOptions.ts` states `useSecureCookies`
- * rather than letting Better Auth infer it (ADR-0012). Before that, this
- * artifact set an unprefixed cookie without `Secure`.
- */
-function assertSessionCookieAttributes(response) {
-	const session = setCookieHeaders(response)
-		.map((header) => header.split(';').map((part) => part.trim()))
-		.find(([pair]) => SESSION_TOKEN_COOKIE.test(pair.split('=', 1)[0]));
-	if (!session) {
-		throw new WorkerSmokeFailure('auth-sign-in', 'session-cookie-missing', {
-			expected: 'better-auth.session_token cookie',
-			actual: 'none',
-		});
-	}
-	const [pair, ...attributes] = session;
-	const attributeNames = attributes.map((attribute) => attribute.toLowerCase());
-	const problems = [
-		!pair.startsWith('__Secure-') && 'name not __Secure- prefixed',
-		!attributeNames.includes('secure') && 'Secure missing',
-		!attributeNames.includes('httponly') && 'HttpOnly missing',
-		!attributeNames.includes('samesite=lax') && 'SameSite not Lax',
-		!attributeNames.includes('path=/') && 'Path not /',
-	].filter(Boolean);
-	if (problems.length > 0) {
-		throw new WorkerSmokeFailure('auth-sign-in', 'session-cookie-attributes', {
-			expected: '__Secure-better-auth.session_token; HttpOnly; SameSite=Lax; Path=/; Secure',
-			actual: problems.join(', '),
-		});
-	}
-}
-
-function sessionCookie(response) {
-	return setCookieHeaders(response)
-		.map((value) => value.split(';', 1)[0])
-		.filter((value) => value.includes('='))
-		.join('; ');
 }
 
 function throwShapeFailure(probe, expected) {

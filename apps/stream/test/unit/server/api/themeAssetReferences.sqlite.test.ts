@@ -31,7 +31,7 @@ vi.doMock('~~/server/utils/ably', () => ({
 	publishMessageStrict: async () => {},
 	getOriginConnectionId: () => undefined,
 }));
-vi.doMock('~~/server/utils/auth', () => ({
+vi.doMock('~~/server/utils/session', () => ({
 	optionalBrowserSessionId: async () => undefined,
 }));
 

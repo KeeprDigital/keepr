@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { parseJsonc } from '@keepr/tooling/scripts/jsonc.mjs';
 import { AcceptanceFailure } from './evidence.mjs';
 import { acceptanceOrigin } from './installation.mjs';
-import { newOperatorPassword, operatorCredentialPlan } from './operator.mjs';
+import { operatorCredentialPlan } from './operator.mjs';
 
 /** Wrangler's own name for the account, so the value it is given is the value it uses. */
 export const ACCOUNT_ID_ENV = 'CLOUDFLARE_ACCOUNT_ID';
@@ -147,11 +147,7 @@ export function resolveDeployedTarget({
 	// Called for its refusal: it throws, with its notice, when no operator is
 	// available. A cleanup retry signs in as nobody, so it does not ask.
 	if (requireOperator) {
-		operatorCredentialPlan({
-			deployed: true,
-			env,
-			newPassword: newOperatorPassword(),
-		});
+		operatorCredentialPlan({ deployed: true, env });
 	}
 
 	const { validatorConfigPath } = installation;

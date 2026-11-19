@@ -5,8 +5,8 @@ import { screenOutputAssetCapabilityDigest } from '~~/server/modules/screen-outp
 import { eventIdParamSchema } from '~~/server/schemas/api/eventId';
 import { eventService } from '~~/server/services/event';
 import { getAblyClient } from '~~/server/utils/ably';
-import { optionalUserSession } from '~~/server/utils/auth';
 import { bearerScreenOutputCapability } from '~~/server/utils/screenOutputCapabilityAuthorization';
+import { requestIdentity } from '~~/server/utils/session';
 import {
 	eventRealtimeChannel,
 	screenChannelWildcard,
@@ -19,16 +19,18 @@ import {
  * (#397, ADR-0010's dual grant).
  *
  * **No anonymous issuance.** This route stays on the boundary's allowlist because a
- * Screen Output has no session to present, not because it is public: until #397 it
+ * Screen Output has no Session to present, not because it is public: until #397 it
  * handed any caller a grant over every channel of any Event they named, which is the
  * hole the allowlist entry was keeping open. Two credentials are recognised now and
  * a request carrying neither is refused.
  *
  * The two grants differ in reach as well as identity:
  *
- * - **A signed-in user** gets the grant this route always issued — the Event channel
- *   plus every Screen channel under it — because an operator's surfaces move between
- *   Screens and subscribe to whichever they are showing.
+ * - **A Session**, read from the request's Identity Proof (ADR-0141), gets the grant
+ *   this route always issued — the Event channel plus every Screen channel under it —
+ *   because an operator's surfaces move between Screens and subscribe to whichever
+ *   they are showing. A User with no App access to Stream Keepr is refused as on
+ *   every route, by the layer's 403.
  * - **A capability bearer** gets one Screen's channel and its Event's, and nothing
  *   else. A Screen Output only ever needs its own, and the capability names which
  *   Screen without being asked (`screenForCapability`), so the narrowing costs the
@@ -85,8 +87,12 @@ export default defineEventHandler(async (event) => {
 		}
 	}
 
-	const session = await optionalUserSession(event);
-	if (!session) {
+	// Outside the Session boundary, so this route asks for itself: the same
+	// question, with the same refusals for a User with no App access and for a
+	// Keepr Accounts that cannot be asked. Only a signed-out visitor is this
+	// route's own to refuse, having no capability either.
+	const identity = await requestIdentity(event);
+	if (!identity) {
 		throw createError({
 			statusCode: 401,
 			statusMessage: 'Unauthorized',
@@ -103,7 +109,7 @@ export default defineEventHandler(async (event) => {
 	// Event updates stay read-only for clients. Screen channels only need
 	// subscribe/presence; admin commands publish through the server API.
 	return await getAblyClient().auth.createTokenRequest({
-		clientId: session.user.id,
+		clientId: identity.user.id,
 		capability: {
 			[eventRealtimeChannel(eventId)]: ['subscribe', 'history'],
 			[screenChannelWildcard(eventId)]: ['subscribe', 'history', 'presence'],

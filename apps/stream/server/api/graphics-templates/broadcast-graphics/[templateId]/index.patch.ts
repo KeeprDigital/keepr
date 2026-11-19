@@ -10,7 +10,7 @@ import {
 	BroadcastGraphicTemplateRevisionConflict,
 	broadcastGraphicTemplateService,
 } from '~~/server/services/broadcastGraphicTemplate';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import { assertBroadcastGraphicTemplateReferencesSelectable } from '~~/server/utils/broadcastGraphicTemplateReferences';
 import { refuseInstalledBroadcastGraphicTemplateWrite } from '~~/server/utils/broadcastGraphicTemplateWrites';
 import { graphicsTemplateReferenceConflict } from '~~/server/utils/graphicsTemplateReferences';

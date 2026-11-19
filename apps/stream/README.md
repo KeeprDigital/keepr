@@ -32,7 +32,7 @@ Changesets; never edit it by hand.
 ## Contents
 
 - **Set up**: [Setup](#setup), [Local configuration](#local-configuration),
-  [Development](#development), [Local auth bypass](#local-auth-bypass).
+  [Development](#development), [Local sign-in](#local-sign-in).
 - **Test**: [Testing](#testing) (what to run when, `pnpm verify`, CI),
   [Database](#database) (migrations).
 - **Release**: [Releases](#releases).
@@ -42,15 +42,14 @@ Changesets; never edit it by hand.
   [Deploy day](#deploy-day), [Worker secrets](#worker-secrets).
 - **Recover**: rollback in [Deploy day](#deploy-day) step 3,
   [Recovering from a partial promotion](#recovering-from-a-partial-promotion),
-  [First admin account](#first-admin-account) (every admin locked out),
   [Retention](#retention) (orphaned multipart uploads),
   [Reconciliation](#reconciliation).
 - **Accept**: local harnesses in [Testing](#testing) (`pnpm accept`), the
   deployed gates in [Deploy day](#deploy-day) steps 4 and 5,
   [Fault injection](#fault-injection), and the
   [Silent-video validator](#silent-video-validator)'s gate.
-- **Accounts and access**: [First admin account](#first-admin-account),
-  [Other accounts](#other-accounts), [Access model](#access-model).
+- **Accounts and access**: [Users and App access](#users-and-app-access),
+  [Access model](#access-model).
 - **Operate the library**:
   [Graphics Asset Library operations](#graphics-asset-library-operations).
 - **Operate Live Results**: [Melee Live Results](#melee-live-results).
@@ -60,7 +59,8 @@ Changesets; never edit it by hand.
 
 Nuxt 4 SPA (`ssr: false`), Vue 3, Pinia, Nuxt UI, Tailwind; Nitro on Cloudflare
 Workers (`cloudflare_module` preset); D1 (SQLite) with Drizzle; R2 for graphics
-bytes; Ably for realtime; Better Auth for accounts.
+bytes; Ably for realtime; Keepr Accounts for sign-in (`apps/accounts` at the
+repository's root, ADR-0141).
 
 ```text
 app/        Frontend: pages, components, stores, composables
@@ -92,22 +92,24 @@ Where each subsystem is operated here, named in `GLOSSARY.md`, and decided in
 `docs/adr`. The linked sections are the sources of truth; this map only
 points at them.
 
-- **Authentication**: Users, their Sessions, the Graphics Administrator
-  role, and the Local Developer User under a bypass.
-  - Operate: [Local auth bypass](#local-auth-bypass),
-    [Allowed hostnames](#allowed-hostnames),
-    [Session cookies](#session-cookies),
-    [First admin account](#first-admin-account),
-    [Other accounts](#other-accounts), [Access model](#access-model).
+- **Identity and access**: who a request belongs to, read from Keepr Accounts'
+  Identity Proof; the Session boundary; the Graphics Administrator role; and
+  the Local Developer User the Accounts Stand-in answers as locally.
+  - Operate: [Local sign-in](#local-sign-in),
+    [Users and App access](#users-and-app-access),
+    [Access model](#access-model).
   - Terms: [Identity and access](GLOSSARY.md#identity-and-access),
+    [Identity and access](RULES.md#identity-and-access),
     [Access](RULES.md#access).
   - Decisions:
+    [ADR-0141](docs/adr/0141-stream-keepr-relies-on-keepr-accounts-and-its-own-sign-in-is-removed.md),
     [ADR-0010](docs/adr/0010-authentication-replaces-the-anonymous-author-session.md),
-    [ADR-0012](docs/adr/0012-environment-dependent-library-behaviour-is-stated-tested-or-recorded.md),
-    [ADR-0017](docs/adr/0017-the-local-auth-bypass-is-one-launcher-owned-name.md),
-    [ADR-0018](docs/adr/0018-a-lan-bypassed-launcher-is-an-accepted-local-exposure.md).
-  - Code: `server/utils/authOptions.ts`, `server/middleware/api-session.ts`,
-    `server/modules/user-administration/`.
+    [ADR-0131](docs/adr/0131-the-graphics-administrator-is-an-app-role-on-a-signed-in-user-not-a-shared-token.md),
+    [ADR-0018](docs/adr/0018-a-lan-bypassed-launcher-is-an-accepted-local-exposure.md),
+    and ADR-0112 and ADR-0113 in the root `docs/adr`.
+  - Code: `server/utils/session.ts`, `server/middleware/api-session.ts`,
+    `server/utils/apiBoundary.ts`, `server/modules/graphics-administrator.ts`,
+    `app/middleware/access.global.ts`.
 - **Event Data and realtime**: Event Data, Realtime Subscriptions, Reconnect
   Resync, Event Data Resync, and Sequenced Live State.
   - Operate: [Access model](#access-model) (Ably Free plan),
@@ -222,8 +224,7 @@ every way the app runs locally:
   `.env` relative to its config file. Edit that copy; the staged one is
   overwritten on every preview.
 - Local acceptance harnesses read it directly and refuse to start if it lacks
-  `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`, `NUXT_BETTER_AUTH_SECRET`, or
-  `NUXT_ADMIN_BOOTSTRAP_TOKEN`.
+  `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`.
 
 `.env` is gitignored, so **a new git worktree starts without it**. Copy it in
 when you create one (a worktree also needs its own `pnpm install`):
@@ -232,14 +233,13 @@ when you create one (a worktree also needs its own `pnpm install`):
 cp .env ../../.claude/worktrees/<name>/apps/stream/
 ```
 
-Without it, dev answers 503 from the signed-in and Screen Output surfaces, and the
+Without it, dev answers 503 where a Screen Output asset capability is minted, and the
 realtime integration tests skip. That is a configuration gap, not a
-failure on `main`.
+failure on `main`. No name in it is for signing in: locally the Accounts
+Stand-in answers that ([Local sign-in](#local-sign-in)).
 
 | Name                                             | Purpose                                                                                                                    |
 | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `NUXT_BETTER_AUTH_SECRET`                        | Signs sessions. Unset: sign-in and every authenticated route answer 503.                                                   |
-| `NUXT_ADMIN_BOOTSTRAP_TOKEN`                     | Arms the first-admin route. Locally, leave it set; it is how a fresh checkout and the local harnesses get an account.      |
 | `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`      | 32-byte base64 HMAC key for Screen Output asset capabilities.                                                              |
 | `NUXT_ABLY_API_KEY`                              | Ably key. Optional for tests: leave it empty rather than fake. A fake key makes one realtime test pass and the other fail. |
 | `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`           | 32-byte base64 key encrypting Melee client secrets (AES-256-GCM).                                                          |
@@ -248,21 +248,19 @@ failure on `main`.
 | `NUXT_BANDAI_KEEPR_API_KEY`                      | Optional Bearer key for bandai-keepr, the One Piece card API. Blank: OP card features show "card data unavailable".        |
 | `NUXT_BANDAI_KEEPR_API_URL`                      | bandai-keepr's base URL (`https://op-api.keepr.digital`). Blank: OP card data is unavailable, as above.                    |
 
-Generate keys and secrets with `openssl rand -base64 32`.
-A `NUXT_ADMIN_BOOTSTRAP_TOKEN` shorter than 32 characters is treated as unset
-(its route answers 503, and the server log says why). A deployed Worker reads no file; there these are Worker secrets (see
+Generate keys with `openssl rand -base64 32`. A deployed Worker reads no file; there these are Worker secrets (see
 [Worker secrets](#worker-secrets)).
 
 ## Development
 
-| Launcher                | Serves                 | Auth                 |
-| ----------------------- | ---------------------- | -------------------- |
-| `pnpm dev`              | loopback               | Better Auth          |
-| `pnpm dev:bypass`       | loopback               | Local Developer User |
-| `pnpm dev:local`        | the LAN (`0.0.0.0`)    | Better Auth          |
-| `pnpm dev:local:bypass` | the LAN (`0.0.0.0`)    | Local Developer User |
-| `pnpm preview`          | loopback, built Worker | Better Auth          |
-| `pnpm preview:bypass`   | loopback, built Worker | Local Developer User |
+| Launcher         | Serves                 | Who a request belongs to                          |
+| ---------------- | ---------------------- | ------------------------------------------------- |
+| `pnpm dev`       | loopback               | The Local Developer User (the Accounts Stand-in)  |
+| `pnpm dev:local` | the LAN (`0.0.0.0`)    | The same, for every machine that can reach yours  |
+| `pnpm preview`   | loopback, built Worker | The Local Developer User (the Accounts Stand-in)  |
+
+Each launcher runs its server through `keepr-accounts-stand-in`
+([Local sign-in](#local-sign-in)).
 
 The `dev` launchers first apply pending migrations to the local D1 store Nitro
 serves from (`.wrangler/state/v3`, bindings from `wrangler.dev.jsonc`).
@@ -273,7 +271,7 @@ workerd (`scripts/preview-worker.mjs`, which also fires its minute cron; see
 
 Stop dev servers with Ctrl-C (SIGINT) or SIGTERM. A server killed with SIGKILL
 or SIGHUP strands its `workerd` process, which then holds memory and sqlite
-locks. `pnpm dev`, `pnpm preview`, their `:bypass` variants, `pnpm
+locks. `pnpm dev`, `pnpm preview`, `pnpm
 worker:smoke`, and the integration suite reap orphans on start; `pnpm reap`
 does it on demand (`scripts/reap.mjs`, over the workspace's workerd reaper in
 `packages/tooling`, which `pnpm reap` at the root runs alone). It only ever kills `workerd` whose parent is gone and whose
@@ -295,49 +293,63 @@ once the run has ended, and the profile folder is then yours to remove.
 A Chrome that fails to start names why (#790): the error carries its stderr
 tail, its state when the launcher gave up, what it took to stop it, and whether
 it had written `DevToolsActivePort`. Chrome's first launch on a fresh machine is
-far slower than later ones, so the local-auth suite starts and stops one
-before its dev server, rather than leaving the cold launch to compete with
-`nuxt dev`.
+far slower than later ones.
 
-### Local auth bypass
+### Local sign-in
 
-The `:bypass` launchers set `STREAM_KEEPR_LOCAL_AUTH_BYPASS=true` on their own
-command line. **That is the only place the name is written.** Never put it in
-`.env`, `.env.example`, `wrangler.jsonc`, CI, or a Worker var. Nothing needs it:
-builds, tests, `pnpm verify`, and CI behave identically without it. The server
-compares it to the exact string `true` and infers nothing from `NODE_ENV`,
-hostnames, or bindings. `pnpm worker:dry-run` fails if generated deploy config
-carries it. `pnpm preview:bypass` stages it into `.output/server/.env`, which
-every `nuxt build` wipes, so a deploy cannot pick it up.
+Nobody signs in locally, and nothing skips sign-in either. Stream Keepr asks
+Keepr Accounts who each request belongs to, over its `KEEPR_ACCOUNTS` binding
+to the `keepr-accounts` service, and locally the **Accounts Stand-in**
+(`packages/accounts-stand-in` at the repository's root, ADR-0113) is registered
+under that name. It answers every request as the **Local Developer User**: a
+Keepr Administrator with the highest App role in every App, so every page
+opens, `/admin/**` included. The server runs the code it runs deployed; only
+which Worker answers the binding differs. No setting, variable, header or
+query turns the question off (ADR-0141).
 
-Under a bypass:
-
-- `NUXT_BETTER_AUTH_SECRET` and `NUXT_ADMIN_BOOTSTRAP_TOKEN` may be blank.
-- Protected pages open as the stable **Local Developer User**. Each browser still
-  gets its own Session, so Graphics Authoring Leases tell concurrent editors
-  apart. The shell shows that identity and has no sign-out.
-- Startup warns that authentication is bypassed.
-- The Local Developer User holds the Graphics Administrator role, so `/admin/**`
-  opens too.
+- **`pnpm dev`, `pnpm dev:local`, `pnpm preview` and `pnpm worker:smoke` start
+  the stand-in themselves**, through `keepr-accounts-stand-in -- <command>`,
+  and stop it with the server. The integration suite starts one for each of
+  its servers. Start a server some other way (`nuxt dev` alone) and every
+  route behind the Session boundary answers 503, naming `keepr-accounts` and
+  the stand-in.
+- **Each run keeps a Wrangler registry of its own.** A binding finds its Worker
+  through Wrangler's local registry, by name. The stand-in makes a temporary
+  one for its run and names it in `WRANGLER_REGISTRY_PATH`, and realtime's dev
+  Worker (`packages/realtime/README.md` at the repository's root) registers in
+  the registry already named. So two dev servers at once, in two worktrees or
+  in one integration run, never find each other's Workers.
+- **Every browser is one Session.** The Local Developer User's Session is the
+  same in every browser, so a Graphics Authoring Lease sees two browsers as one
+  editor. To be a second editor, give one browser the stand-in's cookie, in its
+  console: `document.cookie = 'keepr-stand-in=session=second'`.
+- **To be someone else**, set the same cookie: `keepr-stand-in=signed-out` is a
+  signed-out visitor, `keepr-stand-in=stream=member` a User without the
+  Graphics Administrator role, `keepr-stand-in=stream=none` a User with no App
+  access, and `user=<id>` another User (`packages/accounts-stand-in/README.md`).
+  Tests of a whole server build it with `@keepr/accounts-stand-in/cookie`.
+- **To sign in for real**, run Keepr Accounts beside the app
+  (`apps/accounts/README.md` § Running it beside an App): start it and this
+  app under one `WRANGLER_REGISTRY_PATH`, this app with
+  `KEEPR_ACCOUNTS_STAND_IN=off` and `NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN` naming
+  it.
 - It does **not** cover Screen Output capabilities or any other configuration.
 
-**`pnpm dev:local:bypass` gives every machine that can reach yours
-unauthenticated access.** It exists for testing from a phone, tablet, or the
-broadcast machine, where sign-in cannot work because a LAN address is not in
-`AUTH_ALLOWED_HOSTS`. Use it only on a trusted network and stop it when done.
-Binding any other bypassed launcher off loopback carries the same exposure
-(ADR-0017, ADR-0018).
+**`pnpm dev:local` gives every machine that can reach yours the Local Developer
+User's access.** It exists for testing from a phone, tablet, or the broadcast
+machine. Use it only on a trusted network and stop it when done (ADR-0018,
+ADR-0141).
 
 ## Testing
 
 | When                                        | Command                                                                             | Notes                                                                                                                                                                                                                                                                                                                       |
 | ------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| While developing                            | `pnpm test:unit`, `pnpm test:nuxt`, `pnpm test:integration`, `pnpm test:local-auth` | Watch mode; pass `--run` for a single pass. Local-auth is one spawned-dev-server pass.                                                                                                                                                                                                                                      |
-| Before commit                               | `pnpm test`                                                                         | Every test gate of `pnpm verify` (`verify.mjs --tests`): unit + Nuxt (coverage thresholds in `vitest.shared.ts`), integration, local-auth, then the five local browser gates, each in turn: `still-images`, `silent-video`, `fonts`, `animation-effects`, `key-matte`. No lint, typecheck, or build. Needs Chrome/Chromium. |
+| While developing                            | `pnpm test:unit`, `pnpm test:nuxt`, `pnpm test:integration`                         | Watch mode; pass `--run` for a single pass. The integration suite starts its own servers, each beside an Accounts Stand-in of its own.                                                                                                                                                                                      |
+| Before commit                               | `pnpm test`                                                                         | Every test gate of `pnpm verify` (`verify.mjs --tests`): unit + Nuxt (coverage thresholds in `vitest.shared.ts`), integration, then the five local browser gates, each in turn: `still-images`, `silent-video`, `fonts`, `animation-effects`, `key-matte`. No lint, typecheck, or build. Needs Chrome/Chromium. |
 | Tests your branch touches                   | `pnpm test:changed`                                                                 | Only the unit and Nuxt test files whose imports reach a file changed since `origin/main`; seconds to half a minute, no coverage thresholds.                                                                                                                                                                                 |
 | Before a push                               | `pnpm verify:quick`                                                                 | The changeset check, lint, typecheck, and the unit and Nuxt tests whose imports reach what this checkout changes since `main`. Seconds to about a minute. `--all` runs the whole cheap half instead: lint, typecheck, unit and Nuxt suites with their coverage floors.                                                                           |
 | Reproducing a CI failure                    | `pnpm verify`                                                                       | CI's gates on the working tree, run side by side as a graph (`scripts/verify.mjs`) and stopped at the first failure: typecheck (the validator Worker included), lint, every `pnpm test` suite, `validator:dry-run`, build, `worker:dry-run`, `worker:smoke`.                                                                |
-| Checking an existing build                  | `pnpm worker:smoke`                                                                 | Runs `.output/server` under local workerd and probes routing, Better Auth, deny-by-default, the bypass session, D1, generated config, object storage, codec Wasm, and ranged delivery. Refuses a missing build.                                                                                                             |
+| Checking an existing build                  | `pnpm worker:smoke`                                                                 | Runs `.output/server` under local workerd, beside the Accounts Stand-in, and probes routing, who the Session boundary admits (below), D1, generated config, object storage, codec Wasm, and ranged delivery. Refuses a missing build.                                                                                        |
 | Seeing what holds the machine               | `pnpm slots`                                                                        | Who holds run slots and who waits, across every worktree (below).                                                                                                                                                                                                                                                           |
 | Listing acceptance harnesses                | `pnpm accept`                                                                       | Every harness, what it proves, what it needs, and its flags. Run one with `pnpm accept <name> [flags]`.                                                                                                                                                                                                                     |
 | Touching still-image codecs or Wasm         | `pnpm accept still-image-ingestion`                                                 | Proves JPEG/WebP ingestion decodes on workerd. Needs `pnpm preview` running at `127.0.0.1:8787`.                                                                                                                                                                                                                            |
@@ -368,6 +380,17 @@ bundles that pass on Node and break on workerd (#302), so reach for it when
 CI's Worker job fails on a change to dependencies, bundling, `nuxt.config.ts`,
 or server code.
 
+`worker:smoke` is also where the built Worker is held to who it admits
+(ADR-0141). The Accounts Stand-in it runs beside answers the Worker's
+`KEEPR_ACCOUNTS` binding, and its cookie names each caller, so every refusal is
+the Worker's own: a request with no Identity Proof is refused 401; one with a
+valid proof is admitted, and `/api/identity` names its User; a User with no
+App access to `stream` is refused 403, an admin route included; an admin route
+refuses a User whose App role is not `admin` 403 and admits one whose is; a
+write another site's page made is refused 403; and the realtime grant refuses
+both a signed-out visitor and a User with no App access. It also checks that
+the page shell names the Keepr Accounts origin the Environment's var sets.
+
 How `pnpm verify` runs:
 
 - **Cheap gates first.** `nuxt prepare`, then lint, typecheck, and the unit and
@@ -375,7 +398,7 @@ How `pnpm verify` runs:
   typecheck and bundle check start at once beside `nuxt prepare`. The
   server-backed suites and browser gates start only once those pass, so a lint
   or type error arrives in seconds, and run one after another: integration,
-  local-auth, then the browser gates.
+  then the browser gates.
 - **Every heavy gate takes run slots** (`keepr-slots`, from `packages/tooling`). The machine has
   one budget of them, shared by every worktree of this checkout: a slot is
   about one busy core and 1.5 GB, and a 10-core, 16 GB machine has eight. Lint,
@@ -425,12 +448,14 @@ How `pnpm verify` runs:
 CI (`.github/workflows/ci.yml`) runs the same gates as `pnpm verify` on PRs
 and in the merge queue, split across parallel jobs (lint, typecheck, the unit
 suite, the Nuxt suite, the workspace's packages, two integration shards,
-local-auth and browser gates, and a Worker leg per deployable app) so the longest job sets the wall time. The queue's run tests the exact tree that lands
+the browser gates, and a Worker leg per deployable app) so the longest job sets the wall time. The queue's run tests the exact tree that lands
 ([Releases](#releases)). It skips draft PRs (marking one ready runs it). Each
 deployable app's Worker leg runs `keepr-deploy check`, the parts bundled and the
 descriptor's build (here `build`, `worker:dry-run`, `worker:smoke`), only when
 the change touches that app's shipped code or what builds the legs, so none
-runs when only tests, docs or the other workflows changed (ADR-0121). A change
+runs when only tests, docs or the other workflows changed (ADR-0121). The
+tooling starts the Accounts Stand-in around that build, since this app binds
+Keepr Accounts, and a change to the stand-in runs the leg too. A change
 that touches only docs skips the code gates and runs `pnpm verify:docs`
 instead: the documentation link test, the one thing those gates check of a
 document (`packages/tooling/scripts/ci-scope.mjs` decides, against a PR's
@@ -461,12 +486,17 @@ Gotchas:
 - **The integration suite has the machine to itself.** It takes every run
   slot, so it waits for other runs to end and nothing starts beside it, from
   this worktree or another. Its tests time real requests: on a loaded machine
-  every result is meaningless. A cascade of `ECONNREFUSED` or "session cookie
-  was not issued" with zero assertion failures means a `workerd` backend died,
-  not that the code broke.
+  every result is meaningless. A cascade of `ECONNREFUSED`, or of 503s naming
+  `keepr-accounts`, with zero assertion failures means a `workerd` backend
+  died, a server's own or its Accounts Stand-in's, not that the code broke.
 - **The integration suite runs several servers.** One `nuxt dev` per vitest
   worker, each over its own database under `.wrangler/state/integration-<n>`, so
-  test files run in parallel but never two against one database. The default is
+  test files run in parallel but never two against one database. Each is
+  started through `keepr-accounts-stand-in`, so it has an Accounts Stand-in and
+  a Wrangler registry of its own, and no server finds another's stand-in or
+  realtime dev Worker ([Local sign-in](#local-sign-in)). A test asks as the
+  suite's operator unless it names someone else, or a signed-out visitor, with
+  the stand-in's cookie. The default is
   a third of the CPU cores, at most four; set `STREAM_KEEPR_INTEGRATION_SERVERS`
   to change it (`1` is the old serial run). Each server's output is kept in
   `node_modules/.cache/integration-servers/`. The servers share one Ably app,
@@ -794,13 +824,18 @@ your `wrangler login`. In order, stopping at the first failure:
    2. `pnpm worker:dry-run`: bundles what Wrangler would upload into
       `.output/wrangler-dry-run/` and fails if it contains
       `new WebAssembly.Module(`, which a deployed Worker refuses (every
-      JPEG/WebP ingestion would fail, #302). It also fails if the bypass name
-      appears in generated config, or if `.output/public`'s CSS lacks a
+      JPEG/WebP ingestion would fail, #302). It also fails if
+      `.output/public`'s CSS lacks a
       declared application font face, loads or imports one from a remote URL,
       or gives one a `local()` source, or if the build ships a forbidden family
       (MPlantin) as a face or as a file named for it
       (`scripts/assert-built-fonts.mjs`).
    3. `pnpm worker:smoke` against that production build.
+
+   The tooling runs each of these beside the Accounts Stand-in, because this
+   app's Worker binds Keepr Accounts: the smoke needs something answering as
+   Keepr Accounts, and a build has none to call. The stand-in is never
+   deployed (ADR-0113, ADR-0141).
 
    `--artifact <dir>` deploys a downloaded `.output/` of the same Release
    instead of building it: one build is what every Environment deploys.
@@ -811,7 +846,7 @@ your `wrangler login`. In order, stopping at the first failure:
    configuration and the Environment's block) and stops, naming each one
    missing and the command that sets it, unless every secret `deploy.jsonc`
    requires is set (ADR-0128). A Worker without them passes `deploy:verify`
-   and every unattended gate while sign-in answers 503. Then **deploy order**
+   while the surfaces that read them answer 503. Then **deploy order**
    ([Deploy order](#deploy-order)): a deploy that Keepr Accounts'
    Installation does not allow stops here. And the **D1 recovery point**: the
    deploy reads D1 Time Travel's current bookmark for `DB`
@@ -882,12 +917,11 @@ the commits that change `apps/accounts`.
   nothing is not recorded.
 
 The check reads the repository's full history, so a shallow clone is refused.
-No App binds Keepr Accounts yet, so today it refuses nothing. Nor does a
-deploy's build start the Accounts Stand-in that a binding App's
-`worker:smoke` needs: CI's Worker leg starts it around `keepr-deploy check`.
-The change that first binds `keepr-accounts` moves that into the tooling's
-build step, for the deploy and CI alike, and a tooling test
-(`deployWorkflow.test.ts`) fails until it does.
+Stream Keepr binds `keepr-accounts` in both Environments (ADR-0141), so its
+deploy to an Environment refuses until that Environment's Keepr Accounts is
+deployed and at least as new, and its app marker carries `needs: accounts`.
+The tooling's build step starts the Accounts Stand-in that a binding App's
+`worker:smoke` needs, for the deploy and CI alike.
 
 ### Promotion markers
 
@@ -1008,8 +1042,8 @@ A run's jobs, per app:
    its markers), then the app's **acceptance gates** (`keepr-deploy gates`),
    with no person present: the deploy descriptor's `gates`, Stream Keepr's
    `pnpm accept:deployed`, every deployed gate of [Deploy day](#deploy-day)
-   step 5, 1–6. They sign in as the staging operator and write to staging
-   (ADR-0129). The job summary lists each gate's outcome. A failure fails the
+   step 5, 1–6. They sign in to Staging's Keepr Accounts as the staging
+   operator and write to staging (ADR-0129, ADR-0141). The job summary lists each gate's outcome. A failure fails the
    job, and production does not deploy.
 4. **Production**, in the GitHub environment `production`, once every App's
    staging job passed: it waits for the environment's required reviewer.
@@ -1048,9 +1082,9 @@ release GitHub App's key: each job records its app's
 The caller passes the secrets by name, and only the deploy and gates steps
 see the Cloudflare ones. `staging` also holds
 `STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL` and
-`STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD`, an operator account on the
-Staging Installation, which the Apps' staging call alone passes and the gates
-step alone reads; its token also reads and writes the staging bucket's
+`STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD`, a User of Staging's Keepr
+Accounts who holds the `admin` App role in Stream Keepr, which the Apps'
+staging call alone passes and the gates step alone reads; its token also reads and writes the staging bucket's
 objects and triggers the validator's Workflow, for the validator gate. One deploy per Installation runs at a time (concurrency group
 `deploy-<app>-<environment>`); two apps deploy at once. An app joins the
 workflow with its deploy descriptor alone.
@@ -1076,7 +1110,11 @@ one again, or fault injection. Each gate provisions real Events and assets in
 the Installation it targets and deletes them afterwards. A harness that dies
 mid-run names the Event it left behind; delete it before rerunning.
 
-1. **Pre-flight.** Nothing on air in production. Docker running. Secrets
+1. **Pre-flight.** Nothing on air in production. Docker running. Keepr
+   Accounts deployed in each Environment, at least as new as this Release's
+   view of it ([Deploy order](#deploy-order)), with the gates' operator and
+   everyone who needs Stream Keepr invited there
+   ([Users and App access](#users-and-app-access)). Secrets
    present in each Installation: each deploy refuses an Installation without
    them, and `pnpm exec keepr-deploy check --app stream --env <environment>`
    from the workspace root says so ahead of it, after a build, against that
@@ -1114,8 +1152,8 @@ mid-run names the Event it left behind; delete it before rerunning.
    "table … already exists": nothing was applied, the v1.5.0 Worker keeps
    serving, and the `stream/production` marker reads `pending`.
 
-   The new database has no accounts, so bootstrap the first admin again
-   ([First admin account](#first-admin-account)). The R2 buckets are not
+   No User is lost with it: Users are Keepr Accounts'
+   ([Users and App access](#users-and-app-access)). The R2 buckets are not
    touched: the new catalogue knows none of their objects, and
    [Reconciliation](#reconciliation) reports them as unexpected unless the
    buckets are emptied with the database.
@@ -1200,14 +1238,18 @@ Installation's, attempt by attempt.
    | ------------------------------------------- | --------------------------------------------------------------------------------- |
    | `STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT`       | The Environment to test: `production` (when unset) or `staging`.                  |
    | `STREAM_KEEPR_BROWSER_ACCEPTANCE_URL`       | That Environment's Installation. Falls back to `KEEPR_DEPLOY_URL`.                |
-   | `STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL`    | An existing operator account. `/api/**` denies by default, so gates must sign in. |
-   | `STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD` | That account's password.                                                          |
+   | `STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL`    | A User of that Environment's Keepr Accounts holding the `admin` App role in Stream Keepr. `/api/**` denies by default, so gates must sign in. |
+   | `STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD` | That User's password.                                                             |
+   | `STREAM_KEEPR_ACCEPTANCE_ACCOUNTS_ORIGIN`   | Leave unset: the gates sign in at the `accounts` host of the Installation's Keepr domain. Set it only for an Installation whose Keepr Accounts is elsewhere. |
    | `CLOUDFLARE_ACCOUNT_ID`                     | Leave unset: the Environment's configs name its account, and the validator gate writes with Wrangler on it alone. Set, it must agree. |
 
    A `--deployed` harness refuses to start without a URL rather than guessing.
-   Without the operator pair it stops with `harness-operator-unavailable`.
-   Setting `NUXT_ADMIN_BOOTSTRAP_TOKEN` in the shell also works if that secret is
-   armed on the installation for the run.
+   Without the operator pair it stops with `harness-operator-unavailable`, and
+   so does a sign-in Keepr Accounts refuses. The gates post the pair to Keepr
+   Accounts alone and carry the Session cookie it sets
+   (`scripts/graphics-acceptance/operator.mjs`). Keepr Accounts admits three
+   sign-ins per client in ten seconds, so gates started by hand in quick
+   succession may be refused one.
 
    The URL must be a host the committed `wrangler.jsonc` serves in that
    Environment: its top level for production, its `env.staging` block for
@@ -1230,8 +1272,8 @@ Installation's, attempt by attempt.
    `harness-precondition-unmet reason=environment-unknown`.
 
    **Against staging.** Point every variable at the Staging Installation, with
-   an operator account that exists there; the `env.staging` blocks name the
-   staging account:
+   an operator who is a User of Staging's Keepr Accounts; the `env.staging`
+   blocks name the staging account:
 
    ```bash
    STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT=staging \
@@ -1363,11 +1405,14 @@ key, and stops before setting anything if 1Password did not keep the new
 value (ADR-0135). Never set a value
 only on a Worker: it can never be read back.
 
-Required: `NUXT_BETTER_AUTH_SECRET`,
-`NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`, `NUXT_ABLY_API_KEY`,
-`NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`. `NUXT_ADMIN_BOOTSTRAP_TOKEN` is
-set only briefly (see [First admin](#first-admin-account)). Never put any of
-them in `wrangler.jsonc`, source control, or public runtime config.
+Required: `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`, `NUXT_ABLY_API_KEY`,
+`NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`. Never put any of
+them in `wrangler.jsonc`, source control, or public runtime config. None is
+for sign-in: Keepr Accounts holds that secret (ADR-0112), and Stream Keepr
+reaches it through the `KEEPR_ACCOUNTS` service binding, which is no secret.
+The two sign-in secrets an Installation held before ADR-0141 are read by
+nothing; the Release that removed them names them, to delete
+(`CHANGELOG.md`).
 
 `deploy.jsonc` lists the required ones as `worker.secrets`, and a deploy
 refuses an Installation whose Worker lacks any, before it changes anything
@@ -1378,10 +1423,6 @@ refuses too: sync its secrets first, which creates the Worker, then deploy.
 `secrets.jsonc` lists the same names, plus the optional
 `NUXT_BANDAI_KEEPR_API_KEY`; the tooling's tests fail until the two agree.
 
-- **`NUXT_BETTER_AUTH_SECRET`**: without it the installation is unusable.
-  `/api/**` denies by default and every check goes through Better Auth, so
-  sign-in and every authenticated route answer 503. Changing it signs every
-  User out: each Session cookie is signed with it.
 - **`NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`**: changing it revokes every
   Screen Output asset capability. Rotate each Screen's asset access afterwards
   before using its output URL.
@@ -1401,105 +1442,82 @@ refuses too: sync its secrets first, which creates the Worker, then deploy.
   label), re-save each enabled Melee integration, and remove the old key only
   once nothing uses it. A deploy refuses a Worker secret named like a var.
 
-### Allowed hostnames
+### Session cookie
 
-`AUTH_ALLOWED_HOSTS` in `server/utils/authOptions.ts` lists the origins Better
-Auth accepts for state-changing requests: each Environment's custom domain
-(`stream.keepr.digital`, `stream.keepr-staging.digital`), since every
-Environment deploys the one build, plus loopback on any port. Any other host gets 403 at sign-in. `*.workers.dev` is deliberately absent
-(#410), because admitting the whole subdomain trusts hosts nobody here controls.
-To sign in on one, add that exact hostname and rebuild.
+The Session cookie is Keepr Accounts', not Stream Keepr's. Keepr Accounts sets
+it on its Installation's Keepr domain (`keepr.digital`, or
+`keepr-staging.digital` in Staging), so a browser sends it to Stream Keepr's
+host in the same Environment and never to the other's. Stream Keepr forwards
+it to Keepr Accounts over the `KEEPR_ACCOUNTS` binding with each question, and
+passes any renewed cookie back to the browser. Its name, attributes and
+lifetime, the sign-in rate limit and password resets are Keepr Accounts' rules
+(`apps/accounts/RULES.md` at the repository's root, § Session and § Password).
 
-### Session cookies
+`NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN`, a var of each Environment in
+`wrangler.jsonc`, is where a signed-out visitor is sent to sign in:
+`https://accounts.keepr.digital` for production,
+`https://accounts.keepr-staging.digital` for staging. `pnpm worker:smoke`
+checks the built Worker reads it at runtime. The first deploy on Keepr
+Accounts ends every browser's sign-in to Stream Keepr once: its old cookie is
+read by nothing.
 
-Every built server, meaning a deployment, `pnpm preview` and `pnpm
-worker:smoke`, sets the Session as `__Secure-better-auth.session_token` with
-`Secure; HttpOnly; SameSite=Lax; Path=/`. Only `nuxt dev` (the `dev` launchers
-and the integration and local-auth suites) sets it unprefixed and without
-`Secure`, as it always has. The split is `advanced.useSecureCookies` in
-`server/utils/authOptions.ts`, decided by the build rather than by `NODE_ENV`
-(ADR-0012, #451). Chromium keeps a `Secure` cookie on loopback, so signing in
-to `pnpm preview` works there; a browser that does not treat
-`http://127.0.0.1` as secure (WebKit, historically) will not keep it. `pnpm
-worker:smoke` fails if the built Worker's cookie lacks any of those
-attributes. The deployed origin sets the same name and attributes, host-only,
-observed on 2026-10-21 against v1.5.0 (#451). Session renewal there is not yet
-observed: #451 checks it 24 hours after a sign-in on the 1.6.0 deploy.
+Stream Keepr keeps an answer for up to five minutes, the life of an Identity
+Proof (`packages/nuxt-layer/RULES.md` at the repository's root). So a Session
+ended at Keepr Accounts, a disabled User, or App access taken away stops
+working here within five minutes, and Stream Keepr keeps admitting a Session
+it has already recognised for as long if Keepr Accounts is unreachable. Past
+that, every route behind the boundary answers 503 until Keepr Accounts
+answers. A Screen Output with its capability is unaffected.
 
-The first deploy with this split ends every browser's sign-in once. An older
-unprefixed cookie is ignored rather than refused, so the person simply signs
-in again, and its D1 Session lapses after 7 days.
+### Users and App access
 
-### Sign-in rate limit
+Stream Keepr holds no Users, and nobody signs in on a page of it (ADR-0141).
+A signed-out visitor is sent to Keepr Accounts and returned to the page they
+asked for.
 
-Every built server limits Better Auth's routes per client, keyed on
-`cf-connecting-ip` and counted in D1's `rateLimit` table: three sign-in
-attempts per 10 seconds, then 429 with `X-Retry-After`. `nuxt dev` does not
-limit. The policy is `rateLimit` in `server/utils/authOptions.ts`
-(ADR-0012, #697), and `pnpm worker:smoke` fails if the built Worker admits a
-fourth attempt. Under `pnpm preview` every local caller is one client, so a fourth
-sign-in within 10 seconds is refused there too.
+- **Give someone Stream Keepr**: invite them in Keepr Accounts (`/invite`
+  there), to an Organisation, with App access to `stream`: the `member` App
+  role, or `admin` for a Graphics Administrator, which opens `/admin/**`
+  (ADR-0131). Nothing in Stream Keepr grants either.
+- **Change or take away access, disable a User, end a Session**: in Keepr
+  Accounts (`/members`, `/platform`, the User's own profile). It reaches
+  Stream Keepr within five minutes ([Session cookie](#session-cookie)).
+- **A User with no App access** to `stream`, in the Organisation they are
+  working in, is refused 403 by every route behind the boundary and shown
+  `/no-access`, which sends them to Keepr Accounts to switch Organisation or
+  to ask for access.
+- **Sign out, change a password, see Sessions**: the shell's **Keepr account**
+  link opens the User's profile at Keepr Accounts.
+- **The first User of all** is Keepr Accounts' first Keepr Administrator
+  (`apps/accounts/README.md` at the repository's root, § The first Keepr
+  Administrator). Being a Keepr Administrator grants no App access by itself.
+- **Names.** A Graphics Authoring Lease notice names its holder as Keepr
+  Accounts named them when they took the lease. An administrator reading (the
+  Operations Cockpit, a queue inspection, the Evidence Ledger) names only its
+  reader; any other User shows as the id recorded, since Stream Keepr holds no
+  Users to look up (ADR-0141).
 
-### First admin account
-
-Accounts are created by admins and there is no self sign-up, so a new
-installation bootstraps its first admin with a temporary secret. The same steps
-recover from every admin losing their password (there is no email sender, so no
-reset link exists):
-
-```bash
-pnpm exec wrangler secret put NUXT_ADMIN_BOOTSTRAP_TOKEN --config .output/server/wrangler.json
-
-curl -X POST https://stream.keepr.digital/api/bootstrap/ensure-admin \
-  -H "x-admin-bootstrap-token: <token>" \
-  -H 'content-type: application/json' \
-  -d '{"email":"you@example.com","password":"<strong password>","name":"Your Name"}'
-
-pnpm exec wrangler secret delete NUXT_ADMIN_BOOTSTRAP_TOKEN --config .output/server/wrangler.json
-```
-
-The response is `{"outcome":"created"}` or `{"outcome":"updated"}` (an existing
-email gets the new password and the admin role). The `admin` role is the
-Graphics Administrator: it opens `/admin/**` (ADR-0131). This is also the only
-way to grant it to someone else: run it with their email and let them set
-their own password afterwards with a reset link from `/admin/users`. Repeating the call is safe.
-It neither lifts a ban nor renames. **Delete the secret afterwards**: nothing
-records that bootstrap happened, so the route stays armed while the secret
-exists. Unset, the route answers 503.
-
-### Other accounts
-
-Admins manage everyone else at **`/admin/users`**, signed in as a Graphics
-Administrator. Accounts made here hold no role.
-
-- **Create**: makes a password-less account and returns a single-use invite
-  link valid for 24 hours. Send it yourself; it is not stored or shown again.
-  Always set a name: Graphics Authoring Lease notices name holders by it.
-- **Reset link**: same kind of link for a forgotten password. Using it ends
-  every session the account holds and signs nobody in.
-- **Revoke sessions**: ends every session; the password stays. Sessions slide
-  over 7 days of inactivity; this, a used reset link, and a ban are what end
-  one early.
-- **Ban**: refuses sign-in and ends all sessions. Unbanning restores the old
-  password.
-- **Set password**: for an operator locked out mid-show. Prefer a reset link.
-
-Screen Outputs use capabilities, not sessions, so none of the above affects
+Screen Outputs use capabilities, not Sessions, so none of the above affects
 them.
 
 ## Access model
 
 - **`/api/**` denies by default** (`server/middleware/api-session.ts`; the
   list is `server/utils/apiBoundary.ts`). Exempt: `/api/time`,
-  `/api/realtime/token` (Screen Outputs have no session), Better Auth's own
-  routes, the capability-authorized `/api/screen-output/**`, the secret-armed
-  bootstrap route, and `/api/public/**`.
+  `/api/release`, `/api/realtime/token` (Screen Outputs have no Session), the
+  capability-authorized `/api/screen-output/**`, and `/api/public/**`. Nothing
+  of sign-in is among them: that is Keepr Accounts' (ADR-0141).
+- **A Session is read from an Identity Proof, and from nothing else**
+  (`server/utils/session.ts`): 401 without one, 403 for a User with no App
+  access to `stream`, and 503 while Keepr Accounts cannot be asked and no
+  answer is held. A state-changing request another site's page made is
+  refused 403 before any of it.
 - **`/api/admin/**` requires the Graphics Administrator**: a Session whose User
-  holds the `admin` role, checked per route by `requireGraphicsAdministrator`
-  (401 without a Session, 403 without the role; ADR-0131).
+  holds the `admin` App role, checked per route by `requireGraphicsAdministrator`
+  (401 without a Session, 403 without the role; ADR-0131, ADR-0141).
   `test/unit/server/utils/apiBoundary.test.ts` proves every admin route
   reaches that guard.
-- **Authentication, not authorization.** Every signed-in user sees every Graphic
+- **Authentication, not authorization.** Every User with App access sees every Graphic
   Asset; the library is installation-wide. Identity records who started work
   (for example a Graphics Ingestion Operation's `initiatedBy`), and an operation
   is 404 to anyone else.
@@ -1538,7 +1556,7 @@ Melee reporting a result. ADR-0052 has the rules.
 - **A deploy without the minute cron stops Live Results silently.** Events keep
   the setting and resume once the cron is back.
 - **Local launchers tick it too.** No local runtime fires a cron trigger, so
-  `pnpm dev`, `pnpm dev:local` and their `:bypass` variants fire the minute
+  `pnpm dev` and `pnpm dev:local` fire the minute
   cron's hook in-process, and `pnpm preview` fires it through Wrangler's
   `/__scheduled` route: at start, then each minute. A run never overlaps the
   next under `pnpm dev`; under `pnpm preview`, as in production, the Melee Sync

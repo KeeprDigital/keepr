@@ -4,7 +4,6 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import * as authSchema from '~~/server/db/schema/auth';
 import { seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
@@ -24,7 +23,6 @@ vi.doMock('~~/server/db', () => ({
 	db,
 	schema: {
 		...schema,
-		...authSchema,
 	},
 }));
 vi.doMock('~~/server/utils/ably', () => ({

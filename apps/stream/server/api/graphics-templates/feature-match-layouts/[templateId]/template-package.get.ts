@@ -1,6 +1,6 @@
 import { findFeatureMatchLayoutTemplateLibraryEntry } from '~~/server/modules/feature-match-layout-template-library';
 import { featureMatchLayoutTemplateParamsSchema } from '~~/server/schemas/api/featureMatchLayoutTemplate';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import { refuseBuiltInFeatureMatchLayoutTemplate } from '~~/server/utils/featureMatchLayoutTemplateWrites';
 import { exportFeatureMatchLayoutTemplatePackage } from '~~/server/utils/templatePackageExportApi';
 
