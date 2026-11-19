@@ -83,8 +83,10 @@ Worker's entry, which exports the class of the Durable Object every Environment
 binds as `REALTIME` and hands a socket on `/realtime/socket` to it, and the
 Worker that holds that class beside `nuxt dev`, which the dev server starts and
 stops itself (`packages/realtime/README.md` at the repository's root). Who may
-hear what is `server/routes/realtime/port.ts`. It refuses every socket until
-the pages move onto the object (#1315); until then realtime is Ably's.
+hear what is `server/routes/realtime/port.ts`: a Session, or a Screen Output
+that presents a Realtime Ticket (`server/api/realtime/ticket.post.ts`), and
+nobody else (ADR-0142). No page opens the socket yet, and nothing publishes to
+the object: until the pages move onto it, realtime is Ably's.
 
 ## Subsystem map
 
@@ -389,7 +391,11 @@ App access to `stream` is refused 403, an admin route included; an admin route
 refuses a User whose App role is not `admin` 403 and admits one whose is; a
 write another site's page made is refused 403; and the realtime grant refuses
 both a signed-out visitor and a User with no App access. It also checks that
-the page shell names the Keepr Accounts origin the Environment's var sets.
+the page shell names the Keepr Accounts origin the Environment's var sets, and
+who the artifact lets onto a realtime socket (ADR-0142): a Session from its own
+page and not from another site's, a signed-out visitor never, a Screen Output
+once for each Realtime Ticket, onto its own Screen's channel and not its
+Event's, and no longer once its capability is regenerated.
 
 How `pnpm verify` runs:
 
@@ -508,6 +514,11 @@ Gotchas:
   server whose key is blank, so its writes open no channels on the account
   production shares. A test that subscribes or needs a publish accepted belongs
   in a `*.realtime.test.ts` file; anywhere else it fails on import, saying so.
+  That is Ably's realtime. A test of the Event's object needs no key and runs
+  with every other file: `test/integration/realtimeAdmission.test.ts` opens
+  sockets on its server's realtime dev Worker, and publishes to the object
+  through `/api/_test/realtime-publish`, a route only an integration server has
+  (`nuxt.config.ts`).
 - **A failed integration test prints its requests.** The
   `[integration] requests during "…"` block lists each request with its time;
   on a timeout, the one marked `never returned` is the stall. It names the
@@ -1504,9 +1515,15 @@ them.
 
 - **`/api/**` denies by default** (`server/middleware/api-session.ts`; the
   list is `server/utils/apiBoundary.ts`). Exempt: `/api/time`,
-  `/api/release`, `/api/realtime/token` (Screen Outputs have no Session), the
-  capability-authorized `/api/screen-output/**`, and `/api/public/**`. Nothing
-  of sign-in is among them: that is Keepr Accounts' (ADR-0141).
+  `/api/release`, `/api/realtime/token` and `/api/realtime/ticket` (Screen
+  Outputs have no Session), the capability-authorized `/api/screen-output/**`,
+  and `/api/public/**`. Nothing of sign-in is among them: that is Keepr
+  Accounts' (ADR-0141).
+- **A realtime socket is let in by `server/routes/realtime/port.ts`**, which
+  only realtime's hand-off reaches: a Session whose socket its own page
+  opened, or a Screen Output for a Realtime Ticket, which lasts 30 s and
+  admits one socket. Everyone else gets a socket closed `CLOSE_REFUSED`
+  (ADR-0137, ADR-0142; `RULES.md` § Access).
 - **A Session is read from an Identity Proof, and from nothing else**
   (`server/utils/session.ts`): 401 without one, 403 for a User with no App
   access to `stream`, and 503 while Keepr Accounts cannot be asked and no
