@@ -823,7 +823,8 @@ async function expectRealtimeAdmission({
 			'realtime-screen',
 			201,
 			`/api/events/${eventId}/screens`,
-			jsonRequest({ name: 'Built Worker smoke Screen', slug: 'worker-smoke' }, { cookie }),
+			// A Screen of its own: the Event already has the one the publish probe commanded.
+			jsonRequest({ name: 'Built Worker smoke output', slug: 'worker-smoke-output' }, { cookie }),
 		);
 		const capabilityPath = `/api/events/${eventId}/screens/${screen?.id}/asset-capability`;
 		const { assetCapability } = await request('realtime-capability', 200, capabilityPath, {
