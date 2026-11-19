@@ -14,10 +14,9 @@
 		// `pnpm secrets:sync` passes it against wrangler.jsonc for production.
 		"name": "stream",
 		// The Worker secrets every Installation requires (README.md § Worker secrets): a
-		// deploy refuses one that lacks any. NUXT_BANDAI_KEEPR_API_KEY is optional,
-		// and NUXT_ADMIN_BOOTSTRAP_TOKEN is set only briefly.
+		// deploy refuses one that lacks any. NUXT_BANDAI_KEEPR_API_KEY is optional.
+		// None is for sign-in: Keepr Accounts holds that secret (ADR-0112).
 		"secrets": [
-			"NUXT_BETTER_AUTH_SECRET",
 			"NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY",
 			"NUXT_ABLY_API_KEY",
 			"NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY"
@@ -32,7 +31,7 @@
 	// The acceptance gates: the Deploy workflow's staging job runs them against the
 	// Staging Installation once it is verified, with no person present, and never
 	// in production (ADR-0129). Every deployed gate, 1–6 of README.md § Deploy day;
-	// they sign in as a staging operator and write to staging.
+	// they sign in to Staging's Keepr Accounts as a staging operator and write to staging.
 	"gates": ["accept:deployed"],
 	"parts": {
 		// The app binds it (SILENT_VIDEO_PLAYBACK_VALIDATOR), so it deploys first,

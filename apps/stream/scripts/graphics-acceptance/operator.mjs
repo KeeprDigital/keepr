@@ -1,60 +1,49 @@
 /**
- * The signed-in operator an acceptance run works as (#396).
+ * The signed-in operator an acceptance run works as (#396, ADR-0141).
  *
  * Every path in `routes.mjs` except the Screen Output surface sits behind
- * ADR-0010's deny-by-default boundary, so a harness with no session gets 401
- * from the first request it makes and proves nothing. The author cookie
- * `openInstallation` already mints is a different credential entirely — it says
- * which Graphics Author owns an operation, not that anybody is allowed in.
+ * ADR-0010's deny-by-default Session boundary, so a harness nobody vouches for
+ * gets 401 from the first request it makes and proves nothing. Who vouches
+ * depends on where the run is pointed, and that is a stated choice, never
+ * inferred:
  *
- * Two ways in, and which one a run takes is decided by what it was given rather
- * than by where it is pointed:
- *
- * - **Credentials in the environment.** An operator who has an account says so,
- *   and the harness signs in as them. This is the only way a `--deployed` run
- *   can work, since a deployed installation's bootstrap secret is deleted after
- *   the install ceremony and is not something a harness can read.
- * - **The first-admin bootstrap.** With `NUXT_ADMIN_BOOTSTRAP_TOKEN` in hand the
- *   harness ensures its **own** account — a dedicated address, never a
- *   developer's — and signs in as that. This is the ordinary local path, and
- *   `.env` is where the token comes from, which is why #396 made that name
- *   one a local run is checked for (`./local-configuration.mjs`).
- *
- * **The password is generated per run and never written down.** A literal in
- * this file would be a source-known password on an admin account, and the
- * bootstrap route's ensure semantics are create-or-reset — so the same literal
- * pointed at a real installation would arm an account anybody who can read this
- * repository could then use. Each run resets its own account's password to a
- * fresh random value it keeps in memory for the length of one sign-in.
+ * - **A local run needs no credential.** The installation it targets was started
+ *   through the Accounts Stand-in (`pnpm preview`, `pnpm dev`), which answers
+ *   every request as the Local Developer User (ADR-0113). The harness sends no
+ *   cookie, and says it is nobody with the stand-in's own cookie.
+ * - **A deployed run signs in to Keepr Accounts**, as the operator named in the
+ *   environment. A User signs in only there (ADR-0112): the harness posts the
+ *   credentials to the Installation's Keepr Accounts and carries the Session
+ *   cookie it is given, which every host under the Keepr domain accepts.
  *
  * The decision is a pure function so it can be exercised in every state without
  * an installation in front of it; only `openOperatorSession` performs requests.
  */
 
-import { randomBytes } from 'node:crypto';
 import process from 'node:process';
+import { standInCookie } from '@keepr/accounts-stand-in/cookie';
 import { AcceptanceFailure } from './evidence.mjs';
-import { readLocalConfigurationFiles, suppliedNames } from './local-configuration.mjs';
 
-/** Where a run says it already has an account, and what it signs in with. */
+/** Where a deployed run says who it signs in as. */
 export const OPERATOR_EMAIL_ENV = 'STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL';
 export const OPERATOR_PASSWORD_ENV = 'STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD';
 
-/** The armed secret the first-admin bootstrap answers to, as the operator sets it. */
-export const BOOTSTRAP_TOKEN_NAME = 'NUXT_ADMIN_BOOTSTRAP_TOKEN';
+/**
+ * Names the Keepr Accounts a deployed run signs in to, for an Installation
+ * whose own cannot be read off its host.
+ */
+export const ACCOUNTS_ORIGIN_ENV = 'STREAM_KEEPR_ACCEPTANCE_ACCOUNTS_ORIGIN';
+
+/** Keepr Accounts' host under an Installation's Keepr domain, and its sign-in route. */
+const ACCOUNTS_HOST_LABEL = 'accounts';
+const SIGN_IN_ROUTE = '/api/auth/sign-in/email';
 
 /**
- * The account a bootstrapping run owns.
- *
- * Its own address rather than a developer's, because ensure is create-or-reset:
- * a shared address would mean every acceptance run silently changed the password
- * of the account its operator signs in with by hand.
+ * What a local run sends to ask as a signed-out visitor: a local installation's
+ * Accounts Stand-in answers a request carrying no cookie as the Local Developer
+ * User, so "no Session" has to be said.
  */
-export const HARNESS_OPERATOR_EMAIL = 'graphics-acceptance@keepr.digital';
-
-const SIGN_IN_ROUTE = '/api/auth/sign-in/email';
-const BOOTSTRAP_ROUTE = '/api/bootstrap/ensure-admin';
-const BOOTSTRAP_TOKEN_HEADER = 'x-admin-bootstrap-token';
+export const LOCAL_SIGNED_OUT_COOKIE = standInCookie('signed-out');
 
 /** A value the environment can actually supply, or undefined. */
 function usable(value) {
@@ -64,90 +53,65 @@ function usable(value) {
 /**
  * How this run intends to become somebody, or a named failure if it cannot.
  *
- * `supplied` is what the checkout's own files could give — resolved by
- * `suppliedNames` in `./local-configuration.mjs` — and it is consulted **only**
- * for a local run. Sending a checkout's own token to a deployed origin would
- * be handing this checkout's secret to a remote host on the strength of a
- * default, which is not a mistake a harness should be able to make.
+ * A deployed run is never given anything of this checkout's: its two names come
+ * from the shell that started it, and nothing local is read.
  *
- * @param {{
- *   deployed?: boolean,
- *   env?: Record<string, string | undefined>,
- *   supplied?: Record<string, string | undefined>,
- *   newPassword: string,
- * }} options
+ * @param {{ deployed?: boolean, env?: Record<string, string | undefined> }} options
  */
-export function operatorCredentialPlan({ deployed = false, env = {}, supplied = {}, newPassword }) {
+export function operatorCredentialPlan({ deployed = false, env = {} }) {
+	if (!deployed) return { kind: 'stand-in' };
+
 	const email = usable(env[OPERATOR_EMAIL_ENV]);
 	const password = usable(env[OPERATOR_PASSWORD_ENV]);
 	if (email && password) return { kind: 'sign-in', email, password };
 
-	const bootstrapToken =
-		usable(env[BOOTSTRAP_TOKEN_NAME]) ??
-		(deployed ? undefined : usable(supplied[BOOTSTRAP_TOKEN_NAME]));
-	if (bootstrapToken) {
-		return {
-			kind: 'bootstrap',
-			email: HARNESS_OPERATOR_EMAIL,
-			password: newPassword,
-			bootstrapToken,
-		};
-	}
-
 	// Prose first, then the code, exactly as the local-configuration preflight
 	// does it: the reader needs the two names, and the detail a formatter will
 	// print cannot carry a secret or a long value.
-	process.stderr.write(`${operatorUnavailableNotice({ deployed })}\n`);
-	throw new AcceptanceFailure('harness-operator-unavailable', {
-		mode: deployed ? 'deployed' : 'local',
-	});
+	process.stderr.write(`${operatorUnavailableNotice()}\n`);
+	throw new AcceptanceFailure('harness-operator-unavailable', { mode: 'deployed' });
 }
 
-/**
- * What to set, and why this run stopped before it opened anything.
- *
- * Split by mode because the two readers are in different positions. A local run
- * is almost always a checkout missing its gitignored `.env`, and the fix is the
- * copy step every other notice here points at. A deployed run has no such file
- * to copy and never reads one, so telling its reader about `.env` would send
- * them after something that could not have helped.
- *
- * @param {{ deployed?: boolean }} options
- */
-export function operatorUnavailableNotice({ deployed = false } = {}) {
-	const credentials =
-		`Set ${OPERATOR_EMAIL_ENV} and ${OPERATOR_PASSWORD_ENV} to an existing operator's ` +
-		'account to sign in as them';
-
-	if (deployed) {
-		return (
-			`This run has no operator to sign in as, and every route behind the API boundary answers 401 ` +
-			`without one, so nothing would have been proved. ${credentials} — a deployed installation's ` +
-			`${BOOTSTRAP_TOKEN_NAME} is deleted after the install ceremony, so there is nothing here to ` +
-			`bootstrap with. Setting ${BOOTSTRAP_TOKEN_NAME} in this shell works too, if you have armed it on ` +
-			`the installation for the length of the run.`
-		);
-	}
-
+/** What to set, and why a deployed run stopped before it opened anything. */
+export function operatorUnavailableNotice() {
 	return (
-		`This run has no operator to sign in as, and every route behind the API boundary answers 401 ` +
-		`without one, so nothing would have been proved. A local run ordinarily takes ${BOOTSTRAP_TOKEN_NAME} ` +
-		`from .env and creates its own account through the first-admin bootstrap; a fresh git worktree has no ` +
-		`such file, because it is gitignored. Fix: copy .env in from the checkout you branched from, or fill ` +
-		`in .env.example. ${credentials} instead, ` +
-		`if you would rather not arm the bootstrap. See README.md → Local configuration.`
+		`This run has no operator to sign in as, and every route behind the Session boundary answers 401 ` +
+		`without one, so nothing would have been proved. Set ${OPERATOR_EMAIL_ENV} and ` +
+		`${OPERATOR_PASSWORD_ENV} to a User of the Installation's Keepr Accounts who holds the Graphics ` +
+		`Administrator App role in Stream Keepr: the run signs in there as them.`
 	);
 }
 
 /**
- * Whether this checkout's own secrets may be presented to this origin.
+ * The Keepr Accounts an Installation relies on: the `accounts` host of its
+ * Keepr domain, so `stream.keepr-staging.digital` signs in at
+ * `accounts.keepr-staging.digital` and never at Production's (ADR-0122).
+ *
+ * @param {string} origin The Stream Keepr Installation's origin.
+ * @param {Record<string, string | undefined>} [env]
+ */
+export function keeprAccountsOriginOf(origin, env = {}) {
+	const named = usable(env[ACCOUNTS_ORIGIN_ENV]);
+	if (named) return new URL(named).origin;
+
+	const url = new URL(origin);
+	const labels = url.hostname.split('.');
+	if (url.protocol !== 'https:' || labels.length < 3) {
+		throw new AcceptanceFailure('harness-operator-unavailable', {
+			step: 'sign-in',
+			reason: 'accounts-origin-unknown',
+		});
+	}
+	return `https://${[ACCOUNTS_HOST_LABEL, ...labels.slice(1)].join('.')}`;
+}
+
+/**
+ * Whether this origin is a server on this machine.
  *
  * The acceptance harnesses answer that question with their `--deployed` flag,
  * which they already thread through everything. The measurement probes in
- * `scripts/` have no such flag — they take one mandatory `PROBE_ORIGIN` — so for
- * them the question really is about the host, and this is its honest form: a
- * secret out of `.env` is for a server on this machine, and
- * anything else is somebody else's installation.
+ * `scripts/` have no such flag: they take one mandatory `PROBE_ORIGIN`, so for
+ * them the question really is about the host.
  *
  * `0.0.0.0` counts because a server bound to it and addressed by it is the local
  * one; a hostname that merely resolves to a loopback address does not, since
@@ -164,23 +128,13 @@ export function isLoopbackOrigin(origin) {
 	}
 }
 
-/** A password nobody has to know, for the length of one sign-in. */
-export function newOperatorPassword() {
-	return randomBytes(24).toString('base64url');
-}
-
 /**
  * Every cookie a response set, as `name=value` pairs.
  *
- * All of them rather than the session token by name: a built Worker (a
- * deployment, or `pnpm preview`) writes `__Secure-`-prefixed names and the dev
- * server writes plain ones (`useSecureCookies`, `server/utils/authOptions.ts`),
- * and a harness that matched one spelling would sign in against one kind of
- * server and refuse the other.
- *
- * Pairs rather than one folded header, because both consumers need them
- * separately: a request header joins them with `; `, and the acceptance browser
- * installs each one in its own jar entry.
+ * All of them rather than the Session cookie by name, so the harness does not
+ * depend on how Keepr Accounts spells it. Pairs rather than one folded header,
+ * because both consumers need them separately: a request header joins them
+ * with `; `, and the acceptance browser installs each one in its own jar entry.
  */
 export function sessionCookiePairs(response) {
 	return response.headers
@@ -190,73 +144,33 @@ export function sessionCookiePairs(response) {
 }
 
 /**
- * A JSON POST that says where it came from.
+ * Open the run's Session, returning its cookie pairs, which every later request
+ * carries: none for a local run, whose installation's Accounts Stand-in vouches
+ * for a request with no cookie.
  *
- * **`origin` is load-bearing, and its absence is why this failed against a built
- * Worker.** Better Auth refuses a state-changing request carrying no `Origin` with
- * `403 MISSING_OR_NULL_ORIGIN` — its CSRF defence, and correct: a browser always
- * sends one on a cross-document POST, so a request without one is not a browser and
- * should not be taken for a session-issuing one on trust. `fetch` in Node sends
- * none, so this harness has to say so itself, truthfully — it *is* the client at
- * this origin.
+ * A deployed run posts its credentials to Keepr Accounts and nowhere else, with
+ * the `Origin` a page of Keepr Accounts would send: a write to its sign-in is
+ * admitted only from itself (`apps/accounts/RULES.md` § Session), and `fetch`
+ * in Node sends none. Both failures are `harness-operator-unavailable` rather
+ * than an unmet precondition: the Installation is answering, this run simply
+ * has no identity on it.
  *
- * Found by running the fan-out probe against `pnpm preview` rather than by reading:
- * the integration suite signs in happily because `nuxt dev` does not enforce this,
- * so nothing on the dev server would ever have caught it and every `--deployed`
- * acceptance run would have stopped at `harness-operator-unavailable` with a 403.
- *
- * @param {string} origin The installation, as the `Origin` a browser would send.
- */
-async function postJson(origin, path, body, headers = {}) {
-	return await fetch(`${origin}${path}`, {
-		method: 'POST',
-		headers: { 'content-type': 'application/json', origin, ...headers },
-		body: JSON.stringify(body),
-		redirect: 'manual',
-	});
-}
-
-/**
- * Sign in, arming an account first where that is this run's way in.
- *
- * Returns the session's cookie pairs, which every later request carries. Both
- * failures are `harness-operator-unavailable` rather than an unmet precondition:
- * the installation is answering, this run simply has no identity on it, and the
- * distinction is what tells a reader to look at their environment rather than at
- * their server.
- *
- * @param {string} origin
- * @param {{ deployed?: boolean, env?: Record<string, string | undefined>, supplied?: Record<string, string | undefined> }} options
+ * @param {string} origin The Stream Keepr Installation's origin.
+ * @param {{ deployed?: boolean, env?: Record<string, string | undefined>, fetchRequest?: typeof fetch }} options
  */
 export async function openOperatorSession(
 	origin,
-	{ deployed = false, env = process.env, supplied = {} } = {},
+	{ deployed = false, env = process.env, fetchRequest = fetch } = {},
 ) {
-	const plan = operatorCredentialPlan({
-		deployed,
-		env,
-		supplied,
-		newPassword: newOperatorPassword(),
-	});
+	const plan = operatorCredentialPlan({ deployed, env });
+	if (plan.kind === 'stand-in') return [];
 
-	if (plan.kind === 'bootstrap') {
-		const armed = await postJson(
-			origin,
-			BOOTSTRAP_ROUTE,
-			{ email: plan.email, password: plan.password, name: 'Graphics acceptance harness' },
-			{ [BOOTSTRAP_TOKEN_HEADER]: plan.bootstrapToken },
-		);
-		if (!armed.ok) {
-			throw new AcceptanceFailure('harness-operator-unavailable', {
-				step: 'bootstrap',
-				actual: armed.status,
-			});
-		}
-	}
-
-	const signIn = await postJson(origin, SIGN_IN_ROUTE, {
-		email: plan.email,
-		password: plan.password,
+	const accountsOrigin = keeprAccountsOriginOf(origin, env);
+	const signIn = await fetchRequest(`${accountsOrigin}${SIGN_IN_ROUTE}`, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json', origin: accountsOrigin },
+		body: JSON.stringify({ email: plan.email, password: plan.password }),
+		redirect: 'manual',
 	});
 	if (!signIn.ok) {
 		throw new AcceptanceFailure('harness-operator-unavailable', {
@@ -277,24 +191,16 @@ export async function openOperatorSession(
 }
 
 /**
- * Sign in against one origin, deciding from the origin alone what this checkout
- * may present to it.
+ * Open a Session against one origin, deciding from the origin alone whether it
+ * is this machine's.
  *
  * For the callers that have no `--deployed` flag: the measurement probes take a
- * single mandatory origin, and both of them were writing out the same three lines
- * — resolve loopback, invert it into `deployed`, read local files only when local.
- * Two copies of a rule about where a secret may travel is one copy too many.
- *
- * The acceptance harnesses keep passing `deployed` explicitly, because they have
- * it: a run's mode is a stated choice there, not something to infer from a
- * hostname.
+ * single mandatory origin. The acceptance harnesses keep passing `deployed`
+ * explicitly, because they have it: a run's mode is a stated choice there, not
+ * something to infer from a hostname.
  *
  * @param {string} origin
  */
 export async function openOperatorSessionForOrigin(origin) {
-	const local = isLoopbackOrigin(origin);
-	return await openOperatorSession(origin, {
-		deployed: !local,
-		supplied: local ? suppliedNames(readLocalConfigurationFiles()) : {},
-	});
+	return await openOperatorSession(origin, { deployed: !isLoopbackOrigin(origin) });
 }

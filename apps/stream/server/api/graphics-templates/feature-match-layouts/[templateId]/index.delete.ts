@@ -2,7 +2,7 @@ import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-l
 import { requireGraphicsTemplateWritable } from '~~/server/modules/graphics-authoring-lease/graphicsTemplate';
 import { featureMatchLayoutTemplateParamsSchema } from '~~/server/schemas/api/featureMatchLayoutTemplate';
 import { featureMatchLayoutTemplateService } from '~~/server/services/featureMatchLayoutTemplate';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import { refuseBuiltInFeatureMatchLayoutTemplate } from '~~/server/utils/featureMatchLayoutTemplateWrites';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 

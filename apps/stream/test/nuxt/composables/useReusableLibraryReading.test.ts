@@ -10,8 +10,8 @@ const { mockLoad, mockNavigateTo, mockRoute } = vi.hoisted(() => ({
 	mockRoute: { fullPath: '/graphics-assets' },
 }));
 
-vi.mock('~/modules/auth/session', () => ({
-	useAuthSession: () => ({ load: mockLoad }),
+vi.mock('~/modules/access/session', () => ({
+	useAccess: () => ({ load: mockLoad }),
 }));
 
 mockNuxtImport('navigateTo', () => mockNavigateTo);

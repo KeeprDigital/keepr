@@ -18,22 +18,12 @@ import {
 	STALE_PREVIEW_DEV_VARS,
 	suppliedNames,
 } from '../../../scripts/graphics-acceptance/local-configuration.mjs';
-import {
-	LOCAL_AUTH_BYPASS_ENABLED_VALUE,
-	LOCAL_AUTH_BYPASS_NAME,
-} from '../../../shared/utils/localDeveloperAuth';
 
 const SIGNING_KEY = 'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY';
-const AUTH_SECRET = 'NUXT_BETTER_AUTH_SECRET';
-const BOOTSTRAP_TOKEN = 'NUXT_ADMIN_BOOTSTRAP_TOKEN';
 /** A real one is 32 bytes base64; nothing here decodes it, only measures emptiness. */
 const A_KEY = 'Zm9vYmFyYmF6cXV4Zm9vYmFyYmF6cXV4Zm9vYmFyYmE=';
 
-/**
- * Every name a local run needs, as an `.env` body — because "configured" has
- * meant three names since #396 and a fixture that supplies one of them is a
- * fixture about a broken checkout wearing the name of a working one.
- */
+/** Every name a local run needs, as an `.env` body. */
 function configuredBody() {
 	return LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES.map(
 		(name) => `${name}=${name === SIGNING_KEY ? A_KEY : 'a-value'}`,
@@ -56,36 +46,17 @@ describe('which required names a local acceptance run needs', () => {
 		);
 	});
 
-	// A local run signs in with both; a deployed run, which has neither, is not checked (#396).
-	it('needs the auth secret and the bootstrap token a local run signs in with', () => {
-		expect(missingLocalAcceptanceNames({})).toEqual([SIGNING_KEY, AUTH_SECRET, BOOTSTRAP_TOKEN]);
+	// Nothing a local run needs is for signing in: its installation's Accounts
+	// Stand-in vouches for it. A deployed run is not checked at all.
+	it('needs the signing key and nothing to sign in with', () => {
+		expect(missingLocalAcceptanceNames({})).toEqual([SIGNING_KEY]);
 		expect(
 			localAcceptanceConfiguration({ deployed: true, env: {}, readSources: noFiles }).missing,
 		).toEqual([]);
 	});
-
-	it('does not treat a bypass name in the environment as authentication for an acceptance run', () => {
-		// A harness is its own process and cannot see how the installation in front
-		// of it was started, so the name reaching *here* decides nothing. Only the
-		// staging path, which is the launcher, passes the decision in explicitly.
-		expect(
-			missingLocalAcceptanceNames({ [LOCAL_AUTH_BYPASS_NAME]: LOCAL_AUTH_BYPASS_ENABLED_VALUE }),
-		).toEqual([SIGNING_KEY, AUTH_SECRET, BOOTSTRAP_TOKEN]);
-	});
-
-	it('lets the bypassed preview staging path omit its two Better Auth setup names', () => {
-		expect(missingLocalAcceptanceNames({}, { localAuthBypassActive: true })).toEqual([SIGNING_KEY]);
-	});
 });
 
-/**
- * The fold, read one name at a time.
- *
- * On the signing key rather than on "nothing is missing", because three names are
- * required of a local run since #396 and a fixture that supplies one of them is a
- * checkout that would still be refused. What these rows are about is whether a
- * value survives the fold, which is a question about one name.
- */
+/** The fold, read one name at a time: whether a value survives it is a question about one name. */
 describe("folding the checkout's sources into one answer", () => {
 	it('reads the name out of any one of them', () => {
 		for (const source of [
@@ -191,11 +162,7 @@ describe('a local run', () => {
 		).toThrow(
 			expect.objectContaining({
 				code: 'harness-local-configuration-missing',
-				detail: {
-					surface:
-						'Screen Output asset capabilities, signing in and every authenticated API route, ' +
-						'and first-admin bootstrap',
-				},
+				detail: { surface: 'Screen Output asset capabilities' },
 			}),
 		);
 	});
@@ -246,13 +213,11 @@ describe('the notice', () => {
 		expect(noticeFor(readSources as () => (string | null)[], env)).toBeUndefined();
 	});
 
-	it('blames only the missing names, through the shared surface map', () => {
+	it('blames the missing names, through the shared surface map', () => {
 		const notice = localConfigurationNotice([SIGNING_KEY]);
 		const cause = notice.slice(0, notice.indexOf('and this run would never reach'));
 
 		expect(cause).toContain(`so ${LOCAL_NUXT_NAME_SURFACES[SIGNING_KEY]} answer 503`);
-		expect(cause).not.toContain(AUTH_SECRET);
-		expect(cause).not.toContain(LOCAL_NUXT_NAME_SURFACES[AUTH_SECRET]);
 	});
 });
 
@@ -289,48 +254,8 @@ describe('staging .env for the preview', () => {
 		});
 	});
 
-	/**
-	 * #519: `pnpm preview:bypass` sets the name in its own environment, and
-	 * wrangler passes no host environment to the Worker it starts — so the choice
-	 * reaches the previewed Worker through the one file wrangler does read, or not
-	 * at all.
-	 */
-	it('adds the bypass line for a bypassed preview, and says so', () => {
-		const plan = previewStagingPlan({
-			source,
-			existing: null,
-			stale: false,
-			bypassActive: true,
-		});
-
-		expect(plan.body).toBe(
-			`${source}${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE}\n`,
-		);
-		expect(plan.lines.at(-1)).toContain(LOCAL_AUTH_BYPASS_NAME);
-		expect(plan.lines.at(-1)).toContain('Local Developer User');
-		expect(plan.lines.at(-1)).toContain('loopback');
-	});
-
-	it('stages the bypass on its own when the checkout has no .env at all', () => {
-		// A fresh worktree previewing bypassed: nothing to sign in with and nothing
-		// that needs signing in. The old plan returned `stage: false` here, which
-		// would have left the choice with no way to reach the Worker.
-		const plan = previewStagingPlan({
-			source: null,
-			existing: null,
-			stale: false,
-			bypassActive: true,
-		});
-
-		expect(plan.stage).toBe(true);
-		expect(plan.body).toBe(`${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE}\n`);
-	});
-
-	it('adds nothing to an ordinary preview', () => {
-		const plan = previewStagingPlan({ source, existing: null, stale: false });
-
-		expect(plan.body).toBe(source);
-		expect(plan.lines.join(' ')).not.toContain(LOCAL_AUTH_BYPASS_NAME);
+	it("stages the checkout's .env as it is, adding nothing", () => {
+		expect(previewStagingPlan({ source, existing: null, stale: false }).body).toBe(source);
 	});
 
 	it('stages quietly when nothing is there yet', () => {

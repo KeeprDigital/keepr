@@ -1,6 +1,6 @@
 import type { GraphicsQueueInspectionReading } from '~~/shared/types/graphicsAsset';
 import { z } from 'zod';
-import { requireGraphicsAdministrator } from '~~/server/modules/graphics-administrator';
+import { requireGraphicsAdministratorUser } from '~~/server/modules/graphics-administrator';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
 import { withActorNames } from '~~/server/utils/actorNames';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
@@ -25,13 +25,13 @@ const inspectionQuerySchema = z
  */
 export default defineEventHandler(async (event): Promise<GraphicsQueueInspectionReading> => {
 	try {
-		await requireGraphicsAdministrator(event);
+		const administrator = await requireGraphicsAdministratorUser(event);
 		const query = await getValidatedQuery(event, inspectionQuerySchema.parse);
 		const inspection = await graphicsAssetLibraryForEvent(event).inspectOperationalQueueItem(query);
 
 		// Both places an inspection names somebody: the operation it is about, when
 		// it is about one, and every Evidence entry filtered to the subject (#398).
-		return await withActorNames(inspection, [
+		return withActorNames(administrator, inspection, [
 			...(inspection.detail.kind === 'graphics-ingestion-operation'
 				? [inspection.detail.operation.initiatedBy]
 				: []),

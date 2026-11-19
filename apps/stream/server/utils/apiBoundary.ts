@@ -1,8 +1,8 @@
 /**
- * Which requests the API boundary requires a Better Auth session for (#396,
+ * Which requests the Session boundary requires a Session for (#396,
  * ADR-0010's protection boundary).
  *
- * Deny-by-default, in the same sense `app/modules/auth/pageGate.ts` gives the
+ * Deny-by-default, in the same sense `app/modules/access/pageGate.ts` gives the
  * page gate one layer up: a route added tomorrow is private without anybody
  * remembering to make it private. The posture this replaces was guard-by-guard,
  * and it left all ninety-six `events/**` routes public — the on-air Screen
@@ -24,7 +24,7 @@
 /**
  * Every path under here is the boundary's business. Pages, static assets and
  * the SPA shell are outside it altogether: they are unavoidably public under
- * `ssr: false`, and ADR-0010 gates them client-side (`app/middleware/auth.global.ts`)
+ * `ssr: false`, and ADR-0010 gates them client-side (`app/middleware/access.global.ts`)
  * as UX rather than as security.
  */
 const API_PREFIX = '/api/';
@@ -40,35 +40,24 @@ const API_PREFIX = '/api/';
  * - `/api/release` — which Release this Worker serves (ADR-0119). The deploy's
  *   verify reads it with no session, and it names only the app, its version
  *   and the commit, all public in the repository.
- * - `/api/realtime/token` — an Ably token request. Public today because the
- *   Screen Output page needs one and has no session; #397 narrows what an
- *   unauthenticated caller is granted (ADR-0010's dual-grant), which is a
- *   change to what the route *issues* rather than to whether it is reachable.
- * - `/api/bootstrap/ensure-admin` — the first-admin bootstrap (#394). It cannot
- *   require a session: it exists for the installation that has no account to
- *   sign in to, and for the lockout that has lost the only one. It carries its
- *   own credential — a Worker secret an operator arms for the length of one
- *   curl — and answers 503 while that secret is blank.
+ * - `/api/realtime/token` — an Ably token request. Outside the boundary
+ *   because the Screen Output page needs one and has no Session; the route
+ *   grants only to a Session or a Screen Output Asset Capability, and refuses
+ *   a request carrying neither (ADR-0010's dual grant).
  *
- * The bootstrap route is the reason this list exists separately from the
- * prefixes below. It is deliberately not under `/api/admin/` or `/api/auth/`,
- * because both of those prefixes already mean something here, and an entry
- * written as a prefix would hand every future sibling under `/api/bootstrap/`
- * the same exemption without anyone deciding to.
+ * An entry is an exact path so that a sibling added beside it is private until
+ * somebody decides otherwise: written as a prefix, it would hand every future
+ * route under it the same exemption without anyone deciding to.
  */
 export const SESSION_EXEMPT_API_PATHS: readonly string[] = [
 	'/api/time',
 	'/api/release',
 	'/api/realtime/token',
-	'/api/bootstrap/ensure-admin',
 ];
 
 /**
  * Exempt by prefix, because each of these is one surface with many paths.
  *
- * - `/api/auth/` — Better Auth's own router. Sign-in must be reachable without
- *   a session, or nothing ever acquires one. Its own endpoints refuse on their
- *   own terms (a wrong password is a 401 from Better Auth, sign-up is disabled).
  * - `/api/screen-output/` — the Screen Output Asset Capability surface. Every
  *   route under it is authorised by the bearer token the output page already
  *   holds in its URL hash, and refuses **404** rather than 401/403 so a caller
@@ -80,6 +69,11 @@ export const SESSION_EXEMPT_API_PATHS: readonly string[] = [
  * - `/api/public/` — deliberately unauthenticated reads for outside tools
  *   (ADR-0055). Everything under it is public by name, so a route belongs
  *   there only if anyone on the internet may read what it answers.
+ *
+ * **Nothing of sign-in is here.** A User signs in at Keepr Accounts, on its
+ * own host, so Stream Keepr serves no route that must be reachable without a
+ * Session for anyone to acquire one (ADR-0141). `/api/identity`, which answers
+ * who the browser is, is behind the boundary like any other route.
  *
  * **`/api/admin/` is not exempt** (ADR-0131): a Graphics Administrator is a
  * signed-in User, so the boundary refuses a request with no Session there as
@@ -93,7 +87,6 @@ export const SESSION_EXEMPT_API_PATHS: readonly string[] = [
  * every one of those graphs instead.
  */
 export const SESSION_EXEMPT_API_PREFIXES: readonly string[] = [
-	'/api/auth/',
 	'/api/screen-output/',
 	'/api/public/',
 ];
@@ -132,7 +125,7 @@ function isApiPath(path: string): boolean {
 }
 
 /**
- * Whether this request must present a Better Auth session.
+ * Whether this request must present a Session.
  *
  * `false` for everything outside `/api/**`, so the caller does not have to ask
  * two questions; the middleware's whole decision is this function.

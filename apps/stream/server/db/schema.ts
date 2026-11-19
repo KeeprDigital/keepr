@@ -889,8 +889,14 @@ export const graphicsAuthoringLeases = sqliteTable(
 		 */
 		eventId: integer('event_id').references(() => events.id, { onDelete: 'cascade' }),
 
-		/** The Better Auth session — one browser — holding the lease (ADR-0010). */
+		/** The Session, one signed-in browser, holding the lease (ADR-0010). */
 		holderSessionId: text('holder_session_id').notNull(),
+		/**
+		 * What the holder's User was called as the lease was taken, for another
+		 * Session that finds the artifact held. Stream Keepr holds no User to read
+		 * it from later (ADR-0141); blank for a lease taken before it was kept.
+		 */
+		holderName: text('holder_name'),
 		acquiredAt: integer('acquired_at', { mode: 'timestamp_ms' }).notNull(),
 		/**
 		 * The deadline past which the lease counts as absent. Liveness is this column

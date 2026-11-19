@@ -2,14 +2,25 @@ The workspace's rules are in the root `AGENTS.md`. These are Stream Keepr's
 own, and `README.md` here is its guide to setup, testing, deploy, and
 operations. Paths in this file are relative to `apps/stream`.
 
-## Local auth bypass
+## Sign-in, and no way round it
 
-- `STREAM_KEEPR_LOCAL_AUTH_BYPASS` is written only in the `package.json`
-  `:bypass` scripts. Keep it out of `.env`, `.env.example`, `wrangler.jsonc`,
-  CI, and Worker vars: a deployed installation carrying it serves the app
-  unauthenticated.
-- Nothing needs it set. No build, suite, or gate depends on it; a task that
-  seems to has been misread.
+- Stream Keepr has no sign-in of its own and no bypass (ADR-0141). Who a
+  request belongs to is read only from an Identity Proof, through
+  `server/utils/session.ts`. Never add a setting, an environment variable, a
+  header, a query or a build flag that admits a request without one, in the
+  app, a script or a test: a deployed Installation carrying it would serve the
+  app to anyone.
+- Local work is served by the Accounts Stand-in, which answers as the Local
+  Developer User. `pnpm dev`, `pnpm preview` and `pnpm worker:smoke` start it
+  themselves, and the integration suite starts one for each of its servers. A
+  test of a whole server that needs someone else, or nobody, says so with the
+  stand-in's cookie (`@keepr/accounts-stand-in/cookie`), never with a change
+  to the app.
+- `pnpm dev:local` binds the LAN, and gives every machine that can reach it
+  the Local Developer User's access. Use it only on a network you trust.
+- A 503 naming `keepr-accounts` means no stand-in is registered where the
+  server looks: start the server through its `package.json` script, not
+  `nuxt dev` alone.
 
 ## Domain docs
 

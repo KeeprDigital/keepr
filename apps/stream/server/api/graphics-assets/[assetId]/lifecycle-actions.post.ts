@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { graphicAssetId } from '~~/server/modules/graphics-asset-library';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 import { GRAPHIC_ASSET_LIFECYCLE_ACTIONS } from '~~/shared/types/graphicsAsset';
 

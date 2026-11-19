@@ -1,61 +1,66 @@
 import { requestIsCrossSiteMutation } from '@keepr/nuxt-layer/server/utils/crossSiteMutation';
 import { apiPathRequiresSession } from '~~/server/utils/apiBoundary';
-import { requestUserSession } from '~~/server/utils/auth';
+import { requestIdentity } from '~~/server/utils/session';
 
 /**
- * The deny-by-default API boundary (#396, ADR-0010): every `/api/**` route
- * requires a session through the authentication interface unless
- * `apiPathRequiresSession` exempts it. In an ordinary run that is a Better Auth
- * session; an explicitly bypassed dev server supplies the Local Developer
- * Session through the same `requestUserSession` call.
+ * The deny-by-default Session boundary (ADR-0010, ADR-0141): every `/api/**`
+ * route requires a Session, and App access to Stream Keepr, unless
+ * `apiPathRequiresSession` exempts it. Who the request belongs to is read from
+ * an Identity Proof Keepr Accounts signs (`server/utils/session.ts`), and from
+ * nothing else: nothing here, or anywhere in a build, can skip the question.
  *
- * This is the wall. The page gate in `app/middleware/auth.global.ts` is UX — it
+ * This is the wall. The page gate in `app/middleware/access.global.ts` is UX: it
  * spares a signed-out browser a shell of pages whose every request comes back
- * 401 — and a client-side gate protects nothing on its own. What protects this
- * installation is that an unauthenticated request to a private path never
- * reaches a handler.
+ * 401, and a client-side gate protects nothing on its own. What protects this
+ * Installation is that a request with no Session never reaches a handler behind
+ * the boundary.
  *
  * **Named to sort first.** Nitro composes `server/middleware/**` in filename
  * order, and this file's name puts it ahead of all three of its neighbours,
  * which is load-bearing rather than incidental:
  *
  * - `event-exists.ts` answers 404 for an Event that is not there. Running it
- *   first would let an anonymous caller ask which Event ids exist and read the
+ *   first would let a signed-out caller ask which Event ids exist and read the
  *   answer off the difference between 404 and 401.
  * - `request-body-limit.ts` wraps the request body in a bounded stream, and
  *   `retired-author-session-cookies.ts` expires stale cookies. Neither is work
  *   worth doing for a request that is about to be refused.
  *
  * **A state-changing request another site's page made is refused 403** before
- * the session is read: `SameSite=Lax` alone leaves a sibling subdomain able to
+ * the Session is read: the Session cookie is shared by every host under the
+ * Keepr domain and is `SameSite=Lax`, which leaves a sibling subdomain able to
  * make a signed-in browser POST here.
  *
- * **The 401 and the 403 are written out here, as literals, on purpose.** Each
- * is composed around every route in the application, so it lands in every graph
- * `test/helpers/routeRefusalScan.ts` builds — and that scan resolves a `const`
- * only within the file it is reading. A status or a message imported from
- * elsewhere would arrive at the exhaustiveness check as a refusal it could not
- * read, which is the shape #277 was filed over. It is the same reason the
- * refusal is raised in this file rather than in a helper under
- * `server/utils/`: one uniform 401 for the whole boundary, in the one place a
- * reader of the middleware directory will find it.
+ * **The 401 and the cross-site 403 are written out here, as literals, on
+ * purpose.** Each is composed around every route in the application, so it
+ * lands in every graph `test/helpers/routeRefusalScan.ts` builds, and that scan
+ * resolves a `const` only within the file it is reading. A status or a message
+ * imported from elsewhere would arrive at the exhaustiveness check as a refusal
+ * it could not read, which is the shape #277 was filed over. So the layer's own
+ * 401 for a signed-out visitor is answered here in the boundary's words: one
+ * uniform 401, in the one place a reader of the middleware directory will find
+ * it.
  *
- * `test/integration/apiBoundary.test.ts` is where a real anonymous request
- * meets it; `test/unit/server/middleware/apiSession.test.ts` pins the shape.
+ * **Two refusals are the layer's, in the layer's words, and the same in every
+ * App** (`packages/nuxt-layer/server/utils/requestIdentity.ts`): the 403 for a
+ * User with no App access to Stream Keepr, and the 503 while there is no
+ * Identity Proof to trust and Keepr Accounts does not answer.
+ *
+ * `test/integration/apiBoundary.test.ts` is where real requests meet it;
+ * `test/unit/server/middleware/apiSession.test.ts` pins the shape.
  */
 export default defineEventHandler(async (event) => {
 	const url = getRequestURL(event);
 	if (!apiPathRequiresSession(url.pathname)) return;
 
-	// Before the session is read: a Session cookie on a state-changing request
+	// Before the Session is read: a Session cookie on a state-changing request
 	// another site's page made is the thing being refused, so whether it is a
-	// valid one is not worth a database read to find out. The rule, and why a
-	// request naming no origin at all is admitted, is `requestIsCrossSiteMutation`.
+	// valid one is not worth asking Keepr Accounts. The rule, and why a request
+	// naming no origin at all is admitted, is `requestIsCrossSiteMutation`.
 	// The exempt surfaces need none of it: each carries a credential a
-	// cross-site page cannot attach (a bootstrap header token, a bearer, a
-	// `SameSite=Strict` cookie, or a Screen Output Link in the body, which a
-	// page can send only if it already holds it), and Better Auth checks its own
-	// router's origin.
+	// cross-site page cannot attach (a bearer, or a Screen Output Link in the
+	// body, which a page can send only if it already holds it), or changes
+	// nothing.
 	const crossSite = requestIsCrossSiteMutation({
 		method: event.method,
 		secFetchSite: event.headers.get('sec-fetch-site'),
@@ -70,28 +75,17 @@ export default defineEventHandler(async (event) => {
 		});
 	}
 
-	// Outside the opt-in Local Developer Session, a blank
-	// `NUXT_BETTER_AUTH_SECRET` raises out of here as the
-	// `ServiceConfigurationError` 503 that names the setting — an unfinished
-	// deployment answered with the name of the thing to go and set, rather than
-	// with a 401 that would send an operator looking for their password. It is
-	// also why that name is locally *required* as of this ticket
-	// (`build/localConfiguration.ts`): with a boundary in front of `/api/**`, a
-	// checkout without the secret has no way to sign in to anything.
-	//
-	// Through `requestUserSession` rather than `serverAuth()` directly, so this
-	// resolution is the one the handler behind it reuses (#398). Since the
-	// Graphics Author Session was retired, a route asks the same request who the
-	// person is and which browser they are in; without the memo those are two
-	// more reads of the row this line has just read, on routes a resumable
-	// transfer calls once per part.
-	const session = await requestUserSession(event);
+	// Asked through `requestIdentity`, so this answer is the one the handler
+	// behind it reuses: a route asks the same request who the User is and which
+	// Session they are in, and the question is put to Keepr Accounts once. It
+	// refuses a User with no App access itself, 403, and raises the 503 that
+	// names why when Keepr Accounts cannot be asked.
+	const identity = await requestIdentity(event);
 
-	if (!session) {
-		// One message for every refusal inside the boundary. A per-route or
-		// per-reason sentence would be a census entry each, and would say which
-		// of "no cookie", "expired", "revoked" or "unknown user" happened — none
-		// of which the caller can act on differently, and all of which are
+	if (!identity) {
+		// One message for every request with no Session. A per-reason sentence
+		// would say which of "no cookie", "expired", "ended" or "disabled User"
+		// happened, none of which the caller can act on differently: all are
 		// answered by signing in again.
 		throw createError({
 			statusCode: 401,

@@ -1,5 +1,5 @@
 import { eventKind, isOfferedToEvent } from '~~/shared/config/games';
-import { isScreenOutputPage } from '~/modules/auth/pageGate';
+import { isScreenOutputPage } from '~/modules/access/pageGate';
 import { resetAllEventStores } from '~/utils/eventStores';
 
 export default defineNuxtRouteMiddleware(async (to) => {
@@ -8,7 +8,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 	if (!(await confirmDiscardInOpenModals())) return false;
 
 	// A Screen Output holds no Session, so the operator's Event read would refuse
-	// it and this would send program to the home page and on to sign-in (#604).
+	// it and this would send program to the home page and on to sign in (#604).
 	// The output's display session loads the Event context its capability admits.
 	if (isScreenOutputPage(to.path)) return;
 

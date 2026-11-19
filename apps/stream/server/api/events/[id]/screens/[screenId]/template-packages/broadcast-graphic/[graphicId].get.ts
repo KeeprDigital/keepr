@@ -1,6 +1,6 @@
 import { screenParamsSchema } from '~~/server/schemas/api/screen';
 import { screenService } from '~~/server/services/screen';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import { exportBroadcastGraphicTemplatePackage } from '~~/server/utils/templatePackageExportApi';
 
 /**

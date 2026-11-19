@@ -3,7 +3,7 @@ import { graphicsAuthoringLeaseModule } from '~~/server/modules/graphics-authori
 import { screenEditWorkspaceLeaseRef } from '~~/server/modules/graphics-authoring-lease/screenEditWorkspace';
 import { screenParamsSchema } from '~~/server/schemas/api/screen';
 import { screenService } from '~~/server/services/screen';
-import { requireBrowserSessionId } from '~~/server/utils/auth';
+import { requireLeaseHolder } from '~~/server/utils/session';
 
 /**
  * Take, keep, or explicitly take over the Graphics Authoring Lease on this
@@ -26,7 +26,7 @@ const acquireSchema = z
 	.strict();
 
 export default defineEventHandler(async (event) => {
-	const sessionId = await requireBrowserSessionId(event);
+	const holder = await requireLeaseHolder(event);
 	const { id: eventId, screenId } = await getValidatedRouterParams(event, screenParamsSchema.parse);
 	const body = acquireSchema.parse((await readBody(event)) ?? {});
 
@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
 
 	const acquisition = await graphicsAuthoringLeaseModule().acquire({
 		...screenEditWorkspaceLeaseRef(eventId, screenId),
-		sessionId,
+		...holder,
 		takeover: body.takeover,
 		heartbeatIntervalMs: body.heartbeatIntervalMs,
 	});

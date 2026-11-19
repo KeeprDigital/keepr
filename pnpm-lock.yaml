@@ -562,9 +562,6 @@ importers:
       ably:
         specifier: catalog:server
         version: 2.30.0
-      better-auth:
-        specifier: catalog:server
-        version: 1.7.25(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@libsql/client@0.18.0)(kysely@0.29.5))(vitest@5.1.0)(vue@3.5.45(typescript@6.0.3))
       drizzle-orm:
         specifier: catalog:server
         version: 0.45.4(@libsql/client@0.18.0)(kysely@0.29.5)
@@ -620,6 +617,9 @@ importers:
       '@iconify-json/simple-icons':
         specifier: catalog:fonts
         version: 1.2.102
+      '@keepr/accounts-stand-in':
+        specifier: workspace:*
+        version: link:../../packages/accounts-stand-in
       '@keepr/tooling':
         specifier: workspace:*
         version: link:../../packages/tooling

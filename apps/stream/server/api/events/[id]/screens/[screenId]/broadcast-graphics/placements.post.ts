@@ -5,7 +5,7 @@ import { placeBroadcastGraphicTemplateSchema } from '~~/server/schemas/api/broad
 import { screenParamsSchema } from '~~/server/schemas/api/screen';
 import { screenService } from '~~/server/services/screen';
 import { getOriginConnectionId } from '~~/server/utils/ably';
-import { optionalBrowserSessionId } from '~~/server/utils/auth';
+import { optionalBrowserSessionId } from '~~/server/utils/session';
 import { placeBroadcastGraphicTemplate } from '~~/shared/modules/graphics';
 import { randomUuid } from '~~/shared/utils/uuid';
 

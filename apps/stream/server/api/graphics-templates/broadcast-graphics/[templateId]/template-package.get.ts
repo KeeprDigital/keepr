@@ -1,6 +1,6 @@
 import { findBroadcastGraphicTemplateLibraryEntry } from '~~/server/modules/broadcast-graphic-template-library';
 import { broadcastGraphicTemplateParamsSchema } from '~~/server/schemas/api/broadcastGraphicTemplate';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import { exportBroadcastGraphicTemplatePackage } from '~~/server/utils/templatePackageExportApi';
 
 /**

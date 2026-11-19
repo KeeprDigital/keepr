@@ -1,5 +1,4 @@
-import { LOGIN_PATH, loginPathFor } from '~/modules/auth/pageGate';
-import { useAuthSession } from '~/modules/auth/session';
+import { useAccess } from '~/modules/access/session';
 
 /**
  * Who a Library Workspace's work belongs to, and what it says when a refusal
@@ -50,7 +49,7 @@ export const GRAPHICS_AUTHOR_SIGNED_OUT_MESSAGE = `${GRAPHICS_AUTHOR_SIGNED_OUT_
 /**
  * Whether a failure means this browser has no session any more.
  *
- * Only `401` qualifies, and it is now the API boundary's uniform refusal rather
+ * Only `401` qualifies, and it is the Session boundary's uniform refusal rather
  * than a sentence about authorship (`server/middleware/api-session.ts`). A `404`
  * from an ingestion route is the *other* half of per-person ownership — a signed-in
  * operator asking about somebody else's operation — and reading it as a lost
@@ -75,8 +74,7 @@ export function useGraphicsAuthorship() {
 	// Read at call time, which is setup time: `signIn` is invoked from a click
 	// handler after an await, where the composable-context reads are no longer
 	// valid.
-	const route = useRoute();
-	const session = useAuthSession();
+	const access = useAccess();
 
 	/**
 	 * Records what a failure was and returns what to say about it.
@@ -111,26 +109,23 @@ export function useGraphicsAuthorship() {
 	}
 
 	/**
-	 * Takes the operator to the login page, with this page to come back to.
+	 * Takes the operator to Keepr Accounts to sign in, with this page to come
+	 * back to.
 	 *
-	 * The unconditional `load()` before the navigation is what makes the trip
-	 * work. `ensure()` treats `signed-in` as settled and does not re-ask, so the
-	 * browser still believes in the session the server has just refused; arriving
-	 * at the login page with that belief intact, the page gate would read
-	 * "already signed in" and send the operator straight back to the page that
-	 * refused them. Asking the server outright replaces the stale answer with the
-	 * true one before the gate reads it.
+	 * Asking the server outright is the whole of it. `ensure()` treats an
+	 * Identity this browser holds as settled and does not re-ask, so the browser
+	 * still believes in the Session the server has just refused; `load()` asks
+	 * again, and `useIdentity` sends a visitor the server calls signed out to
+	 * sign in and back to the page they are on.
 	 */
 	async function signIn(): Promise<void> {
-		await session.load();
-		await navigateTo(loginPathFor(route.fullPath));
+		await access.load();
 	}
 
 	return {
 		signedOut,
 		ownershipNotice: GRAPHICS_AUTHOR_OWNERSHIP_NOTICE,
 		signedOutNotice: GRAPHICS_AUTHOR_SIGNED_OUT_NOTICE,
-		loginPath: LOGIN_PATH,
 		describeFailure,
 		signIn,
 	};

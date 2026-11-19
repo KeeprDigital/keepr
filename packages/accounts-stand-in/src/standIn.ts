@@ -1,4 +1,5 @@
 import type { IdentityProofClaims } from '@keepr/nuxt-layer/shared/utils/identityProof';
+import type { StandInPersona } from './cookie.mjs';
 import { exportJWK, generateKeyPair, type JWK, SignJWT } from 'jose';
 import { APP_IDS, highestAppRole } from '@keepr/nuxt-layer/shared/utils/appRegistry';
 import {
@@ -9,6 +10,9 @@ import {
 	KEEPR_ACCOUNTS_ORIGIN,
 	PUBLIC_KEYS_PATH,
 } from '@keepr/nuxt-layer/shared/utils/identityProof';
+import { STAND_IN_COOKIE, STAND_IN_NO_APP_ACCESS, STAND_IN_SIGNED_OUT } from './cookie.mjs';
+
+export { STAND_IN_COOKIE, standInCookie, type StandInPersona } from './cookie.mjs';
 
 /** The Local Developer User, as the Accounts Stand-in names them. */
 export const LOCAL_DEVELOPER = {
@@ -20,6 +24,35 @@ export const LOCAL_DEVELOPER = {
 
 /** The Keepr Organisation the Local Developer User works in: the same id every run. */
 export const LOCAL_ORGANISATION_ID = 'keepr-local';
+
+/** The stand-in cookie's value in a `Cookie` header, or `undefined` when it carries none. */
+function standInCookieValue(header: string | null): string | undefined {
+	for (const pair of (header ?? '').split(';')) {
+		const separator = pair.indexOf('=');
+		if (separator !== -1 && pair.slice(0, separator).trim() === STAND_IN_COOKIE)
+			return pair.slice(separator + 1).trim();
+	}
+	return undefined;
+}
+
+/** Who a request's cookies ask the stand-in to answer as: a persona, or nobody. */
+function personaOf(header: string | null): StandInPersona | 'signed-out' {
+	const value = standInCookieValue(header);
+	if (value === undefined) return {};
+	if (value === STAND_IN_SIGNED_OUT) return 'signed-out';
+	const fields = new URLSearchParams(value);
+	const apps: Record<string, string | null> = {};
+	for (const app of APP_IDS) {
+		const role = fields.get(app);
+		if (role !== null) apps[app] = role === STAND_IN_NO_APP_ACCESS ? null : role;
+	}
+	return {
+		user: fields.get('user') ?? undefined,
+		name: fields.get('name') ?? undefined,
+		session: fields.get('session') ?? undefined,
+		apps,
+	};
+}
 
 /** Keepr Accounts' answers to an App, as the stand-in gives them. */
 export interface AccountsStandIn {
@@ -35,7 +68,8 @@ interface StandInKey {
 /**
  * Answers as Keepr Accounts does for an App, without anyone signing in: every
  * Identity Proof names the Local Developer User, a Keepr Administrator who owns
- * the Keepr Organisation and holds the highest App role in every App (ADR-0113).
+ * the Keepr Organisation and holds the highest App role in every App (ADR-0113),
+ * unless the request's `keepr-stand-in` cookie names someone else, or nobody.
  * It signs with the production issuer and audience, so an App's verifier has
  * no development branch, and with a key of its own, made on its first request, which
  * Keepr Accounts never publishes.
@@ -57,21 +91,28 @@ export function createAccountsStandIn(): AccountsStandIn {
 		};
 	};
 
-	const claims: IdentityProofClaims = {
-		sid: LOCAL_DEVELOPER.sessionId,
-		email: LOCAL_DEVELOPER.email,
-		name: LOCAL_DEVELOPER.name,
-		org: LOCAL_ORGANISATION_ID,
-		orgRole: 'owner',
-		apps: Object.fromEntries(APP_IDS.map((app) => [app, highestAppRole(app)])),
-		keeprAdmin: true,
-	};
-
-	async function identityProof(): Promise<string> {
+	async function identityProof(persona: StandInPersona): Promise<string> {
+		const user = persona.user ?? LOCAL_DEVELOPER.id;
+		const isLocalDeveloper = user === LOCAL_DEVELOPER.id;
+		const apps: Record<string, string> = {};
+		for (const app of APP_IDS) {
+			const role = persona.apps?.[app];
+			if (role === undefined) apps[app] = highestAppRole(app);
+			else if (role !== null) apps[app] = role;
+		}
+		const claims: IdentityProofClaims = {
+			sid: persona.session ?? `${user}-session`,
+			email: isLocalDeveloper ? LOCAL_DEVELOPER.email : `${user}@keepr.invalid`,
+			name: persona.name ?? (isLocalDeveloper ? LOCAL_DEVELOPER.name : user),
+			org: LOCAL_ORGANISATION_ID,
+			orgRole: 'owner',
+			apps,
+			keeprAdmin: true,
+		};
 		const { privateKey, kid } = await keyOf();
 		return await new SignJWT({ ...claims })
 			.setProtectedHeader({ alg: IDENTITY_PROOF_ALGORITHM, kid })
-			.setSubject(LOCAL_DEVELOPER.id)
+			.setSubject(user)
 			.setIssuer(KEEPR_ACCOUNTS_ORIGIN)
 			.setAudience(IDENTITY_PROOF_AUDIENCE)
 			.setIssuedAt()
@@ -82,8 +123,12 @@ export function createAccountsStandIn(): AccountsStandIn {
 	return {
 		async fetch(request: Request): Promise<Response> {
 			const { pathname } = new URL(request.url);
-			if (request.method === 'GET' && pathname === IDENTITY_PROOF_PATH)
-				return Response.json({ token: await identityProof() });
+			if (request.method === 'GET' && pathname === IDENTITY_PROOF_PATH) {
+				const persona = personaOf(request.headers.get('cookie'));
+				// As Keepr Accounts answers a request with no Session.
+				if (persona === 'signed-out') return new Response(null, { status: 401 });
+				return Response.json({ token: await identityProof(persona) });
+			}
 			if (request.method === 'GET' && pathname === PUBLIC_KEYS_PATH)
 				return Response.json({ keys: [(await keyOf()).jwk] });
 			return new Response(

@@ -37,15 +37,15 @@ const db = new Proxy(realDb, {
 });
 vi.doMock('~~/server/db', () => ({ db }));
 
-/** Whether the request carries a Session, as every request does under the local auth bypass. */
+/** Whether the request carries a Session. */
 let signedIn = false;
-vi.doMock('~~/server/utils/auth', () => ({
+vi.doMock('~~/server/utils/session', () => ({
 	requireUserId: async () => 'user-1',
-	optionalUserSession: async () =>
+	optionalIdentity: async () =>
 		signedIn
 			? {
 					user: { id: 'user-1' },
-					session: { id: 'session-1' },
+					sessionId: 'session-1',
 				}
 			: null,
 }));
@@ -345,7 +345,7 @@ describe('exchanging a Screen Output Link', () => {
 				};
 			},
 		],
-		// Under the local auth bypass every request carries a Session; it names no Screen here.
+		// A request that carries a Session names no Screen by it.
 		[
 			'a Session and no link',
 			() => {

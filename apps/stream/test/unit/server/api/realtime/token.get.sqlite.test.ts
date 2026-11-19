@@ -7,7 +7,7 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 
 // The realtime token (ADR-0010): never issued anonymously, a bearer's grant narrowed to its own
 // Screen with the Event taken from the capability, and the client identity pinned. The Event is
-// a real row; Ably's signing, the session and the Screen Output capability ports are stood in for.
+// a real row; Ably's signing, the Session and the Screen Output capability ports are stood in for.
 
 const mockCreateTokenRequest = vi.fn();
 const mockGetAblyClient = vi.fn(() => ({
@@ -16,7 +16,7 @@ const mockGetAblyClient = vi.fn(() => ({
 	},
 }));
 const mockGetValidatedQuery = vi.fn();
-const mockOptionalUserSession = vi.fn();
+const mockRequestIdentity = vi.fn();
 const mockScreenForCapability = vi.fn();
 const mockGetRequestHeader = vi.fn();
 
@@ -24,8 +24,8 @@ vi.mock('~~/server/utils/ably', () => ({
 	getAblyClient: mockGetAblyClient,
 }));
 
-vi.mock('~~/server/utils/auth', () => ({
-	optionalUserSession: mockOptionalUserSession,
+vi.mock('~~/server/utils/session', () => ({
+	requestIdentity: mockRequestIdentity,
 }));
 
 vi.mock('~~/server/modules/graphics-asset-library/runtime', () => ({
@@ -69,11 +69,11 @@ const handler = (await import('~~/server/api/realtime/token.get')).default;
 /** A capability long enough to be one, as `bearerScreenOutputCapability` reads it. */
 const CAPABILITY = 'a-screen-output-capability-token';
 
-/** A signed-in operator, as `optionalUserSession` answers. */
+/** A signed-in operator, as `requestIdentity` answers. */
 function signedIn(userId = 'user-1') {
-	mockOptionalUserSession.mockResolvedValue({
+	mockRequestIdentity.mockResolvedValue({
 		user: { id: userId },
-		session: { id: 'session-1' },
+		sessionId: 'session-1',
 	});
 }
 
@@ -91,7 +91,7 @@ describe('/api/realtime/token', () => {
 		mockCreateTokenRequest.mockResolvedValue({ token: 'test-token-request' });
 		mockGetValidatedQuery.mockReset();
 		asking({ eventId: '5' });
-		mockOptionalUserSession.mockReset().mockResolvedValue(null);
+		mockRequestIdentity.mockReset().mockResolvedValue(null);
 		mockScreenForCapability.mockReset().mockResolvedValue(null);
 		mockGetRequestHeader.mockReset().mockReturnValue(undefined);
 	});
@@ -157,7 +157,7 @@ describe('/api/realtime/token', () => {
 
 			await handler(stubH3Event());
 
-			expect(mockOptionalUserSession).not.toHaveBeenCalled();
+			expect(mockRequestIdentity).not.toHaveBeenCalled();
 		});
 
 		// The Event is derived from the capability and compared with the one asked for:
@@ -186,6 +186,21 @@ describe('/api/realtime/token', () => {
 			expect(mockCreateTokenRequest).toHaveBeenCalledWith(
 				expect.objectContaining({ clientId: 'user-42' }),
 			);
+		});
+	});
+
+	// Outside the Session boundary, so the route asks for itself, and lets the
+	// same refusals out: a User with no App access, and Keepr Accounts unreachable.
+	describe('a Session the boundary would refuse', () => {
+		it.each([
+			['a User with no App access to Stream Keepr', 403],
+			['a Session Keepr Accounts cannot be asked about', 503],
+		])('is refused as on every route: %s', async (_case, statusCode) => {
+			const refusal = Object.assign(new Error('refused'), { statusCode });
+			mockRequestIdentity.mockRejectedValue(refusal);
+
+			await expect(handler(stubH3Event())).rejects.toBe(refusal);
+			expect(mockCreateTokenRequest).not.toHaveBeenCalled();
 		});
 	});
 

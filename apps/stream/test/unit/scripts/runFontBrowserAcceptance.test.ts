@@ -36,7 +36,7 @@ const ORIGIN = 'https://stream.example.workers.dev';
  * both admits the request and names the user whose operation is staged. It is a
  * secret, so it is masked before anything can print it.
  */
-const SESSION_COOKIE = '__Secure-better-auth.session_token=0f8b1c2d3e4f5a6b.7c8d9e0f1a2b3c4d';
+const SESSION_COOKIE = '__Secure-keepr.session_token=0f8b1c2d3e4f5a6b.7c8d9e0f1a2b3c4d';
 
 /** Shaped like `openInstallation`'s session; only identity matters here. */
 function fakeSession() {

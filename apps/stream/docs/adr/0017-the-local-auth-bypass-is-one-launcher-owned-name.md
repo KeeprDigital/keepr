@@ -1,6 +1,6 @@
 # ADR-0017: The local auth bypass is one launcher-owned name
 
-Accepted · 2026-08-25 · [#519](https://github.com/KeeprDigital/stream-keepr/issues/519). Replaces the former ADR-0013; launcher list extended by ADR-0018. · Amended by ADR-0113: every App on Keepr Accounts is served locally by the Accounts Stand-in instead; this holds for Stream Keepr's own sign-in until it moves onto Keepr Accounts
+Accepted · 2026-08-25 · [#519](https://github.com/KeeprDigital/stream-keepr/issues/519). Replaces the former ADR-0013; launcher list extended by ADR-0018. · Amended by ADR-0113: every App on Keepr Accounts is served locally by the Accounts Stand-in instead; this holds for Stream Keepr's own sign-in until it moves onto Keepr Accounts · Superseded by ADR-0141: Stream Keepr relies on Keepr Accounts, and no bypass name, launcher or scan remains
 
 ### Decision
 

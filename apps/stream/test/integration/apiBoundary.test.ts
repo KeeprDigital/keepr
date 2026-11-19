@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { $fetch, anonymousFetch, fetch, url } from './client';
-import { aUserWithoutTheRole } from './identities';
+import { INTEGRATION_OPERATOR_ID } from './environment';
+import { aUserWithoutAccess, aUserWithoutTheRole } from './identities';
 
 /**
- * The deny-by-default API boundary as a request meets it (#396, ADR-0010).
+ * The deny-by-default Session boundary as a request meets it (#396, ADR-0010,
+ * ADR-0141), on a server whose `KEEPR_ACCOUNTS` binding the Accounts Stand-in
+ * answers: who asks is the stand-in's to say, and every admission and refusal
+ * here is the server's own.
  *
  * What this file owns over the unit suite is that the middleware is **mounted and
  * composed around real routes** — that Nitro runs it before the handler, before
@@ -12,10 +16,10 @@ import { aUserWithoutTheRole } from './identities';
  * `test/unit/server/utils/apiBoundary.test.ts`, which is the only place the claim
  * "exhaustive" can be checked.
  *
- * Every request here goes through `anonymousFetch`, deliberately. The rest of the
- * suite is signed in (see `client.ts`), and a boundary proved only by the absence
- * of failures elsewhere is a boundary nobody tested: the same green run would come
- * back from a middleware that admitted everybody.
+ * Most requests here go through `anonymousFetch`, deliberately. The rest of the
+ * suite asks as its operator (see `client.ts`), and a boundary proved only by the
+ * absence of failures elsewhere is a boundary nobody tested: the same green run
+ * would come back from a middleware that admitted everybody.
  */
 
 const REFUSAL = 'Authentication is required';
@@ -50,7 +54,7 @@ describe('the API boundary', () => {
 		['GET', '/api/graphics-assets'],
 		// A write. The boundary must refuse before the body is read, not after.
 		['POST', '/api/events'],
-	])('refuses an anonymous %s %s with one uniform 401', async (method, path) => {
+	])('refuses a %s %s with no Identity Proof, as one uniform 401', async (method, path) => {
 		const { status, message } = await anonymous(path, { method });
 
 		expect(status).toBe(401);
@@ -99,20 +103,64 @@ describe('the API boundary', () => {
 	 * real request can establish — that `event-exists.ts` really does run after
 	 * this — is the pair of rows above.
 	 */
-	it('admits the same request once it carries a session', async () => {
+	it('admits the same request on a valid Identity Proof, and knows whose it is', async () => {
 		// The negative control for every row above: they would all pass against a
 		// middleware that refused everything, which is a broken installation rather
 		// than a boundary. `/api/events` because it is behind the boundary and
-		// nothing else — the graphics routes want a Graphics Author session too, and
-		// a control that failed for that reason would read as a broken boundary.
-		const response = await fetch('/api/events');
+		// nothing else.
+		expect((await fetch('/api/events')).status).toBe(200);
+
+		const identity = (await (await fetch('/api/identity')).json()) as {
+			user: { id: string };
+			appRole: string;
+		};
+		expect(identity).toMatchObject({ user: { id: INTEGRATION_OPERATOR_ID }, appRole: 'admin' });
+	});
+
+	// What `pnpm dev` gives a browser that has never signed in anywhere: this
+	// server was started as `pnpm dev` starts one, through the Accounts Stand-in,
+	// and a request that carries no cookie at all is the Local Developer User's.
+	// `globalThis.fetch`, because the suite's client always says who asks.
+	it('recognises the Local Developer User on a request that says nothing about who asks', async () => {
+		const response = await globalThis.fetch(url('/api/identity'));
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({
+			user: { id: 'local-developer', name: 'Local Developer' },
+			appRole: 'admin',
+		});
+	});
+
+	// The same way everywhere: a read, a write, an admin route, and the route
+	// outside the boundary that asks for itself.
+	it.each([
+		['GET', '/api/events'],
+		['POST', '/api/events'],
+		['GET', '/api/admin/graphics-assets/health'],
+		['GET', '/api/identity'],
+		['GET', '/api/realtime/token?eventId=1'],
+	])('refuses a User with no App access to Stream Keepr: %s %s', async (method, path) => {
+		const response = await fetch(path, {
+			method,
+			headers: { cookie: await aUserWithoutAccess('api-boundary-no-access') },
+		});
+		const body = (await response.json()) as { data?: { code?: string } };
+
+		expect(response.status).toBe(403);
+		expect(body.data?.code).toBe('NO_APP_ACCESS');
+	});
+
+	it('admits a User whose App role is member, who is no Graphics Administrator', async () => {
+		const response = await fetch('/api/events', {
+			headers: { cookie: await aUserWithoutTheRole('api-boundary-no-role') },
+		});
 
 		expect(response.status).toBe(200);
 	});
 
 	/**
-	 * A Session cookie is `SameSite=Lax`, which a sibling subdomain's page can
-	 * still make a browser send on a POST. The rule is exercised row by row in
+	 * A Session cookie is `SameSite=Lax` and every Keepr host's, which a sibling
+	 * subdomain's page can still make a browser send on a POST. The rule is exercised row by row in
 	 * the unit suite; here a real server answers each side of it once, with a
 	 * real `Host` to compare an `Origin` against.
 	 */
@@ -147,7 +195,7 @@ describe('the API boundary', () => {
 
 	it('answers 401 rather than 404 for a private path that does not exist', async () => {
 		// Stated on its own because it is a deliberate consequence: the boundary
-		// runs before the router, so an unauthenticated caller cannot use "Cannot
+		// runs before the router, so a signed-out caller cannot use "Cannot
 		// find any route matching" to map the API. `realtimeDiagnosis.ts` reads
 		// that message for its own purposes and does so from authenticated runs.
 		const { message } = await anonymous('/api/events/1/screens/1/not-a-real-action', {
@@ -166,28 +214,15 @@ describe('the surfaces the boundary exempts', () => {
 		expect(status).toBe(200);
 	});
 
-	it('reaches Better Auth, or nothing could ever sign in', async () => {
-		// A wrong password rather than a right one: what is being established is
-		// that the boundary did not stand in front of the router. Better Auth's own
-		// 401 is a different refusal from the boundary's, and the message is what
-		// tells them apart.
-		//
-		// `Origin` because the request has to get past Better Auth's own CSRF
-		// defence to reach the password check at all: since #410 that defence is
-		// live in this suite, and without the header the answer is its 403 rather
-		// than the 401 this test is about. Anonymous is not the same as unattributed
-		// — a signed-out browser still says where it came from.
-		const { status, message } = await anonymous('/api/auth/sign-in/email', {
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json',
-				origin: url('/'),
-			},
-			body: JSON.stringify({ email: 'nobody@keepr.digital', password: 'not-a-password' }),
-		});
-
-		expect(status).toBe(401);
-		expect(message).not.toBe(REFUSAL);
+	// Sign-in is Keepr Accounts' (ADR-0141): Stream Keepr serves none of it, and
+	// what used to be reachable without a Session is behind the boundary like any
+	// path nobody wrote a route for.
+	it.each([
+		['POST', '/api/auth/sign-in/email'],
+		['GET', '/api/auth/get-session'],
+		['POST', '/api/bootstrap/ensure-admin'],
+	])('exempts nothing of its former sign-in: %s %s', async (method, path) => {
+		expect(await anonymous(path, { method })).toMatchObject({ status: 401, message: REFUSAL });
 	});
 
 	/**
@@ -241,32 +276,17 @@ describe('the surfaces the boundary exempts', () => {
 		expect(message).toBe(REFUSAL);
 	});
 
-	it('refuses an admin route to a signed-in User without the Graphics Administrator role', async () => {
+	it('refuses an admin route to a signed-in User whose App role is not admin', async () => {
 		const response = await fetch('/api/admin/graphics-assets/health', {
 			headers: { cookie: await aUserWithoutTheRole('api-boundary-no-role') },
 		});
+		const body = (await response.json()) as { data?: { code?: string } };
 
 		expect(response.status).toBe(403);
+		expect(body.data?.code).toBe('APP_ROLE_REQUIRED');
 	});
 
 	it('admits the Graphics Administrator to an admin route', async () => {
 		expect((await fetch('/api/admin/graphics-assets/health')).status).toBe(200);
-	});
-
-	it('answers the first-admin bootstrap, which exists for installations with no account', async () => {
-		// A wrong token, because a right one would create an account this file has
-		// no business creating. 403 rather than 401 is the route's own refusal, and
-		// the point is that the boundary let the request reach it.
-		const { status, message } = await anonymous('/api/bootstrap/ensure-admin', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json', 'x-admin-bootstrap-token': 'not-the-token' },
-			body: JSON.stringify({
-				email: 'nobody@keepr.digital',
-				password: 'not-a-password-that-is-used',
-			}),
-		});
-
-		expect(status).toBe(403);
-		expect(message).not.toBe(REFUSAL);
 	});
 });

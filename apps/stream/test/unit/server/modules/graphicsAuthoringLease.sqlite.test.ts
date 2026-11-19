@@ -3,7 +3,6 @@ import type { BroadcastGraphicConfig } from '~~/shared/types/graphics';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import * as authSchema from '~~/server/db/schema/auth';
 import { seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
@@ -24,14 +23,7 @@ vi.stubGlobal(
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 
-// The lease names its holder through the auth tables, as the real `~~/server/db` does.
-vi.doMock('~~/server/db', () => ({
-	db,
-	schema: {
-		...schema,
-		...authSchema,
-	},
-}));
+vi.doMock('~~/server/db', () => ({ db, schema }));
 vi.doMock('~~/server/utils/ably', () => ({
 	publishMessage: async () => {},
 	publishMessageStrict: async () => {},
@@ -41,7 +33,7 @@ vi.doMock('~~/server/utils/ably', () => ({
 
 /** The Session the next request is made with, as the API boundary would have admitted it. */
 let askingSessionId = 'session-holder';
-vi.doMock('~~/server/utils/auth', () => ({
+vi.doMock('~~/server/utils/session', () => ({
 	requireUserId: async () => 'user-1',
 	requireBrowserSessionId: async () => askingSessionId,
 	optionalBrowserSessionId: async () => askingSessionId,
@@ -68,6 +60,16 @@ function ask(sessionId: string, heartbeatIntervalMs?: number) {
 		...screenEditWorkspaceLeaseRef(eventId, screenId),
 		sessionId,
 		heartbeatIntervalMs,
+	});
+}
+
+/** Ask as a Session whose User is called `holderName`, taking over where `takeover` says so. */
+function askAs(sessionId: string, holderName: string, takeover = false) {
+	return graphicsAuthoringLeaseModule().acquire({
+		...screenEditWorkspaceLeaseRef(eventId, screenId),
+		sessionId,
+		holderName,
+		takeover,
 	});
 }
 
@@ -143,6 +145,48 @@ describe('a Graphics Authoring Lease whose holder stopped asking', () => {
 		expect(asked.outcome).toBe(outcome);
 		expect(asked.lease).toMatchObject(lease);
 		expect((await storedLease()).map(([stored]) => stored)).toEqual([holder]);
+	});
+});
+
+// Stream Keepr holds no Users (ADR-0141): the name another Session is shown is
+// the one the holder's Identity Proof gave as the lease was taken, kept with it.
+describe("a Graphics Authoring Lease's holder", () => {
+	it('is named to a Session that finds the artifact held, and to nobody else', async () => {
+		const granted = await askAs(HOLDER, 'Ada');
+		const renewed = await askAs(HOLDER, 'Ada');
+		const observed = await askAs(OTHER, 'Grace');
+
+		expect(granted.lease).not.toHaveProperty('holderName');
+		expect(renewed.lease).not.toHaveProperty('holderName');
+		expect(observed).toMatchObject({ outcome: 'observe', lease: { holderName: 'Ada' } });
+	});
+
+	it('is whoever took it over, from then on', async () => {
+		await askAs(HOLDER, 'Ada');
+		await askAs(OTHER, 'Grace', true);
+
+		const displaced = await graphicsAuthoringLeaseModule().describe(
+			screenEditWorkspaceLeaseRef(eventId, screenId),
+			HOLDER,
+		);
+
+		expect(displaced).toMatchObject({ heldByAnotherSession: true, holderName: 'Grace' });
+	});
+
+	it.each([
+		['a blank name', '   '],
+		['no name', undefined],
+	])('is left unnamed, not given an empty label, when taken under %s', async (_case, name) => {
+		await graphicsAuthoringLeaseModule().acquire({
+			...screenEditWorkspaceLeaseRef(eventId, screenId),
+			sessionId: HOLDER,
+			holderName: name,
+		});
+
+		const observed = await ask(OTHER);
+
+		expect(observed.lease.heldByAnotherSession).toBe(true);
+		expect(observed.lease).not.toHaveProperty('holderName');
 	});
 });
 

@@ -10,7 +10,7 @@ function nodeDigest(bytes: Uint8Array): string {
 	return createHash('sha256').update(bytes).digest('hex');
 }
 
-// A page opened over plain HTTP on a LAN address has no `crypto.subtle` (README § Local auth bypass).
+// A page opened over plain HTTP on a LAN address has no `crypto.subtle`, as `pnpm dev:local` serves one.
 describe('a SHA-256 digest on a page with no Web Crypto', () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();

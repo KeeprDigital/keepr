@@ -311,7 +311,7 @@ jobs:
       - run: pnpm test:integration --run --shard=${{ matrix.shard }}/2
 
   server-and-browser:
-    name: Local-auth suite and browser gates
+    name: Browser gates
     needs: scope
     if: needs.scope.outputs.code == 'true'
     runs-on: ubuntu-24.04
@@ -324,7 +324,6 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-      - run: pnpm test:local-auth
       - run: pnpm accept still-images
       - run: pnpm accept silent-video
       - run: pnpm accept fonts
@@ -336,8 +335,8 @@ jobs:
   # bundled as a deploy would upload it (no Docker, no credentials), then the
   # descriptor's build (for Stream Keepr: the build, the wrangler dry run, and
   # the Worker smoke under production-shaped local workerd, the #302 class of
-  # failure). An app binding Keepr Accounts runs it beside the Accounts
-  # Stand-in (ADR-0113); any other with the stand-in off.
+  # failure). The tooling builds an app that binds Keepr Accounts beside the
+  # Accounts Stand-in itself, as a deploy's build does (ADR-0113, ADR-0141).
   #
   # One leg per app the change ships in (`apps`, from the scope), so an app it
   # does not touch has no leg rather than a skipped one: a merge group reuses
@@ -362,8 +361,7 @@ jobs:
       - uses: ./.github/actions/setup
       - env:
           APP: ${{ matrix.app }}
-          KEEPR_ACCOUNTS_STAND_IN: ${{ matrix.accounts && 'on' || 'off' }}
-        run: node packages/accounts-stand-in/scripts/stand-in.mjs -- pnpm exec keepr-deploy check --app "$APP"
+        run: pnpm exec keepr-deploy check --app "$APP"
 
   # A PR run that ran every gate and passed leaves a record of the tree it
   # verified, so its merge group can skip running them again on exactly that

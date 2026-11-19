@@ -1,7 +1,7 @@
 /**
- * The contract of the shared Nuxt suite setup (#367): the two background
- * singletons that write through `$fetch` — `useServerTime`'s clock sync and the
- * realtime plugin's token mint — never reach a suite's `$fetch` mock.
+ * The contract of the shared Nuxt suite setup (#367): the background writers
+ * through `$fetch` — `useServerTime`'s clock sync, the realtime plugin's token
+ * mint and the page gate's "who am I" — never reach a suite's `$fetch` mock.
  *
  * This file mocks `$fetch` exactly the way the 40-odd affected suites do, pokes
  * each singleton the way an ordinary mount does, and asserts the mock recorded
@@ -19,6 +19,7 @@
  * out its API.
  */
 
+import { useRouter } from '#app';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
@@ -73,5 +74,15 @@ describe('shared nuxt suite setup', () => {
 		// The transport is still provided and still answers its API.
 		expect(realtime.onChannel).toBeTypeOf('function');
 		realtime.setRoom(null);
+	});
+
+	// Every navigation runs the page gate. Unstubbed, it asks the suite's mock who
+	// the browser is, and drops the navigation when the mock's answer reads as nobody.
+	it('a navigation to a gated page asks nobody who the browser is, and lands', async () => {
+		await useRouter().push('/themes');
+
+		expect(callsTo(mockFetch, 0, '/api/identity')).toEqual([]);
+		expect(useRouter().currentRoute.value.path).toBe('/themes');
+		await useRouter().replace('/');
 	});
 });

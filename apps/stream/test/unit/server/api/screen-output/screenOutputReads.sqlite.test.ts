@@ -24,13 +24,13 @@ vi.doMock('~~/server/utils/ably', () => ({
 
 /** Whether the request carries a Session, as an operator's embed does. */
 let signedIn = false;
-vi.doMock('~~/server/utils/auth', () => ({
+vi.doMock('~~/server/utils/session', () => ({
 	requireUserId: async () => 'user-1',
-	optionalUserSession: async () =>
+	optionalIdentity: async () =>
 		signedIn
 			? {
 					user: { id: 'user-1' },
-					session: { id: 'session-1' },
+					sessionId: 'session-1',
 				}
 			: null,
 }));

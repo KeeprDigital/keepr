@@ -1,0 +1,49 @@
+// The cookie that tells the Accounts Stand-in who to answer as, in place of the
+// Local Developer User. JavaScript, importing nothing, so a script Node runs
+// with no build step names it as the stand-in itself does (`standIn.ts`).
+
+/**
+ * The cookie's name. An App forwards a request's cookies to Keepr Accounts, so
+ * this reaches the stand-in exactly as a session cookie reaches Keepr Accounts.
+ */
+export const STAND_IN_COOKIE = 'keepr-stand-in';
+
+/** The cookie's value for a visitor nobody is signed in as: the stand-in answers 401. */
+export const STAND_IN_SIGNED_OUT = 'signed-out';
+
+/** The cookie's value for an App the User has no App access to. */
+export const STAND_IN_NO_APP_ACCESS = 'none';
+
+/**
+ * @typedef {{
+ *   user?: string | undefined,
+ *   name?: string | undefined,
+ *   session?: string | undefined,
+ *   apps?: Record<string, string | null> | undefined,
+ * }} StandInPersona
+ *   Who the stand-in answers as. Whatever is left out is the Local Developer
+ *   User's: full authority, in the one Session. `user`: the User's id; its
+ *   Session, name and email follow from it unless named. `session`: the
+ *   Session's id, where a second one is a second signed-in browser of the same
+ *   User. `apps`: the App role held in each App named, or `null` for no App
+ *   access; an App left out keeps its highest role.
+ */
+
+/**
+ * The `Cookie` header that makes the stand-in answer as `persona`, or refuse
+ * as it would a signed-out visitor. Tests of a whole server send it; a browser
+ * can be given it by hand (`README.md`).
+ *
+ * @param {StandInPersona | 'signed-out'} persona
+ * @returns {string}
+ */
+export function standInCookie(persona) {
+	if (persona === 'signed-out') return `${STAND_IN_COOKIE}=${STAND_IN_SIGNED_OUT}`;
+	const fields = new URLSearchParams();
+	if (persona.user !== undefined) fields.set('user', persona.user);
+	if (persona.name !== undefined) fields.set('name', persona.name);
+	if (persona.session !== undefined) fields.set('session', persona.session);
+	for (const [app, role] of Object.entries(persona.apps ?? {}))
+		fields.set(app, role ?? STAND_IN_NO_APP_ACCESS);
+	return `${STAND_IN_COOKIE}=${fields.toString()}`;
+}

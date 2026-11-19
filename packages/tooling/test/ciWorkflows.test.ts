@@ -208,18 +208,14 @@ describe("CI builds, dry runs and smokes each deployable app's Worker the way it
 		expect(worker.name).toBe(NO_LEG_WORKER_JOB);
 	});
 
-	it("runs the deploy tooling's check at the root, against the Accounts Stand-in when the app binds Keepr Accounts", () => {
+	// The check builds as a deploy builds: the tooling starts the Accounts Stand-in
+	// for an app that binds Keepr Accounts (`deploy/build.mjs`), so the leg starts none.
+	it("runs the deploy tooling's check at the root, and nothing around it", () => {
 		const leg = (worker.steps ?? []).filter((step) => step.run);
 
 		expect(worker.defaults).toBeUndefined();
 		expect(leg.map((step) => [step.run, step.env])).toEqual([
-			[
-				'node packages/accounts-stand-in/scripts/stand-in.mjs -- pnpm exec keepr-deploy check --app "$APP"',
-				{
-					APP: '${{ matrix.app }}',
-					KEEPR_ACCOUNTS_STAND_IN: "${{ matrix.accounts && 'on' || 'off' }}",
-				},
-			],
+			['pnpm exec keepr-deploy check --app "$APP"', { APP: '${{ matrix.app }}' }],
 		]);
 	});
 });

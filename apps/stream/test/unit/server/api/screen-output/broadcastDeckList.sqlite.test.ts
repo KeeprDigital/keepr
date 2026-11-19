@@ -11,10 +11,10 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
-vi.doMock('~~/server/utils/auth', () => ({
-	optionalUserSession: async () => ({
+vi.doMock('~~/server/utils/session', () => ({
+	optionalIdentity: async () => ({
 		user: { id: 'user-1' },
-		session: { id: 'session-1' },
+		sessionId: 'session-1',
 	}),
 }));
 

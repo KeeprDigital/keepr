@@ -186,6 +186,41 @@ describe('the keepr-deploy command line', () => {
 		});
 	});
 
+	// Wiring for `build.mjs`: the build an Environment deploys, and CI's Worker
+	// leg, start the Release's own stand-in around each script, in the app's
+	// directory. The launcher here records what it was handed and runs nothing.
+	it.each([['build'], ['check']])(
+		'%s runs the build scripts of an app that binds Keepr Accounts beside the Accounts Stand-in',
+		(command) => {
+			const root = workspace({
+				'pnpm-workspace.yaml': 'packages: []\n',
+				'apps/stream/package.json': JSON.stringify({ name: '@keepr/stream', version: '4.0.0' }),
+				'apps/stream/deploy.jsonc': JSON.stringify({
+					app: 'stream',
+					build: ['build', 'worker:smoke'],
+					output: '.output',
+					worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
+					databases: [],
+					environments: { production: { url: 'https://stream.keepr.digital' } },
+					parts: {},
+				}),
+				'apps/stream/wrangler.jsonc': JSON.stringify({
+					services: [{ binding: 'KEEPR_ACCOUNTS', service: 'keepr-accounts' }],
+				}),
+				'packages/accounts-stand-in/scripts/stand-in.mjs':
+					"import { appendFileSync } from 'node:fs';\n" +
+					"appendFileSync(new URL('../../../ran', import.meta.url), `${process.cwd().split('/').at(-1)} ${process.argv.slice(2).join(' ')}\\n`);\n",
+			});
+
+			const result = run([command, '--app', 'stream'], root);
+
+			expect(result.status, result.stderr).toBe(0);
+			expect(readFileSync(join(root, 'ran'), 'utf8')).toBe(
+				'stream -- pnpm run build\nstream -- pnpm run worker:smoke\n',
+			);
+		},
+	);
+
 	/**
 	 * The staging job's acceptance gates: each runs as the app's package script
 	 * against the Environment's Installation. A fake `pnpm`, alone on PATH,

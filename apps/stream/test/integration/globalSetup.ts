@@ -2,7 +2,7 @@ import type { IntegrationServer, IntegrationServerAddress } from './servers';
 import process from 'node:process';
 import { main as reapStrandedRuns } from '../../scripts/reap.mjs';
 import { acquireRunSlots, RUN_SLOT_COSTS } from '@keepr/tooling/scripts/slots.mjs';
-import { signInAsOperator } from './client';
+import { INTEGRATION_OPERATOR_COOKIE } from './environment';
 import {
 	INTEGRATION_REALTIME_SKIP_NOTICE,
 	integrationServerEnv,
@@ -23,20 +23,18 @@ import {
 import './disable-fs-watch.mjs';
 
 /**
- * That the server is up, its database is migrated, and an operator can get in.
+ * That the server is up, its database is migrated, and the operator is admitted.
  *
- * `/api/events` is the readiness probe because it reads D1 — a server that
- * answers it has run its migrations. Since #396 it is also behind the API
- * boundary, so this now proves the second thing as well: that the suite's
- * operator exists and its session is accepted. Both facts are worth failing here
- * for. Without the second, a broken sign-in would surface as every test in the
- * run answering 401, with nothing naming the cause.
+ * `/api/events` is the readiness probe because it reads D1: a server that
+ * answers it has run its migrations. It is also behind the Session boundary, so
+ * this proves the second thing as well: that the server's Accounts Stand-in
+ * answers its binding and vouches for the suite's operator. Both facts are worth
+ * failing here for. Without the second, a stand-in the server cannot reach would
+ * surface as every test in the run answering 503, with nothing naming the cause.
  */
 async function assertIntegrationServerReady(server: IntegrationServer) {
-	const request = (path: string, init?: RequestInit) => fetch(new URL(path, server.url), init);
-	const cookie = await signInAsOperator(request, server.url);
-	const response = await request('/api/events', {
-		headers: { cookie },
+	const response = await fetch(new URL('/api/events', server.url), {
+		headers: { cookie: INTEGRATION_OPERATOR_COOKIE },
 	});
 	if (!response.ok) {
 		const detail = await response.text();

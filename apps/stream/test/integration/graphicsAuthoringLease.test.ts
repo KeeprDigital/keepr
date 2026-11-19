@@ -38,7 +38,7 @@ describe('graphics Authoring Leases', () => {
 	 * ADR-0010).
 	 *
 	 * A lease guards concurrent editors, and one person signed in from two browsers
-	 * is two editors — so `holderSessionId` carries a Better Auth session id rather
+	 * is two editors — so `holderSessionId` carries a Session's id rather
 	 * than a userId. Proving that with two different *people* would prove something
 	 * weaker and would pass just as well against a lease held per user, which is
 	 * the shape that lets one operator silently overwrite their own composition.

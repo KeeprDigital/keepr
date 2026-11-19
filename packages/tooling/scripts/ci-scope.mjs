@@ -38,7 +38,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { verifiedRunOnGitHub } from './ci-reuse.mjs';
-import { servicesBindKeeprAccounts } from './deploy/order.mjs';
+import { configBindsKeeprAccounts } from './deploy/order.mjs';
 import { deployableApps, workerSourceConfig } from './deploy/release.mjs';
 import { parseJsonc } from './jsonc.mjs';
 import { shippedDirectories, ships } from './shipped-code.mjs';
@@ -119,19 +119,7 @@ export function workerLegsOf(changedFiles, { apps, packages }) {
 	});
 }
 
-/**
- * Whether an app's source Wrangler configuration binds Keepr Accounts, at its
- * top level or in any Environment's block: the scope runs before any build,
- * so it cannot read the built one a deploy's order check does
- * (`deploy/order.mjs`).
- *
- * @param {{ services?: unknown, env?: Record<string, { services?: unknown }> }} config a parsed `wrangler.jsonc`
- */
-export function configBindsKeeprAccounts(config) {
-	return [config, ...Object.values(config.env ?? {})].some((block) =>
-		servicesBindKeeprAccounts(block?.services),
-	);
-}
+export { configBindsKeeprAccounts };
 
 /**
  * What `read` answers, or `fallback` when what it reads does not exist.

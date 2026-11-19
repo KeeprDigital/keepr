@@ -1,6 +1,6 @@
 import { screenOutputAssetCapabilityManagerForEvent } from '~~/server/modules/screen-output-assets/runtime';
 import { screenParamsSchema } from '~~/server/schemas/api/screen';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 
 export default defineEventHandler(async (event) => {
 	await requireUserId(event);

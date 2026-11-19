@@ -3,7 +3,6 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import * as authSchema from '~~/server/db/schema/auth';
 import { BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES } from '~~/shared/builtInFeatureMatchLayoutTemplates';
 import { isFourSeatFeatureMatchLayout } from '~~/shared/featureMatchLayoutSeats';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
@@ -19,7 +18,6 @@ vi.doMock('~~/server/db', () => ({
 	db,
 	schema: {
 		...schema,
-		...authSchema,
 	},
 }));
 vi.doMock('~~/server/utils/ably', () => ({
@@ -28,7 +26,7 @@ vi.doMock('~~/server/utils/ably', () => ({
 	publishScreenCommand: async () => {},
 	getOriginConnectionId: () => undefined,
 }));
-vi.doMock('~~/server/utils/auth', () => ({
+vi.doMock('~~/server/utils/session', () => ({
 	requireUserId: async () => 'user-1',
 	optionalBrowserSessionId: async () => undefined,
 }));

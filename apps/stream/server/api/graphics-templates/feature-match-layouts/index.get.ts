@@ -2,7 +2,7 @@ import {
 	featureMatchLayoutTemplateLibrarySummary,
 	listFeatureMatchLayoutTemplateLibrary,
 } from '~~/server/modules/feature-match-layout-template-library';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 
 /**
  * Browse the installation's Feature Match Layout Template library.

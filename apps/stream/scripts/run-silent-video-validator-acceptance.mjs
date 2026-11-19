@@ -344,8 +344,8 @@ async function preflightDeployed(
 ) {
 	const target = resolveDeployedTarget({ env, environment, installation });
 	evidence.addSecret(target.accountId);
-	// Read-only probes before the sign-in, because a bootstrapping sign-in
-	// creates or resets an account and is itself a write.
+	// Read-only probes before the sign-in, which opens a Session and is itself
+	// a write to the Installation's Keepr Accounts.
 	await remote('harness-target-unverified', { step: 'bucket' }, () =>
 		commands.probeBucket({ target }),
 	);

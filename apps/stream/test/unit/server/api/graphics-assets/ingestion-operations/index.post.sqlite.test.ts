@@ -19,7 +19,7 @@ const { library } = createTestGraphicsLibrary({
 vi.doMock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	graphicsAssetLibraryForEvent: () => library,
 }));
-vi.doMock('~~/server/utils/auth', () => ({
+vi.doMock('~~/server/utils/session', () => ({
 	requireUserId: async () => 'author-1',
 }));
 
