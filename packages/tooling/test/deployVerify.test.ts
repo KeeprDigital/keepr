@@ -1,7 +1,7 @@
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createServer } from 'node:http';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Release } from '../scripts/deploy/release.mjs';
 import {
 	DeployVerifyFailure,
@@ -219,6 +219,133 @@ describe('deploy:verify against a local stand-in origin', () => {
 				}),
 			).rejects.toThrow(/could not be reached/);
 			expect(fetchRequest).toHaveBeenCalledTimes(3);
+		});
+	});
+
+	// A first deploy attaches its custom domain moments before the probe asks for
+	// it, and the runner's resolver keeps that NXDOMAIN for the zone's negative TTL.
+	describe("waiting out a new custom domain's DNS", () => {
+		const IDENTITY = { app: 'accounts', version: '0.1.0', commit: 'c'.repeat(40) };
+		const BASE_URL = 'https://accounts.keepr.test';
+
+		function unreachable(code: string) {
+			return new TypeError('fetch failed', {
+				cause: Object.assign(new Error(`getaddrinfo ${code} accounts.keepr.test`), { code }),
+			});
+		}
+
+		beforeEach(() => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'Date'] });
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		/** Settles `outcome` while the fake clock runs; resolves with it and the clock time it took. */
+		async function settle(
+			outcome: Promise<unknown>,
+		): Promise<{ value?: unknown; error?: unknown; elapsedMs: number }> {
+			const start = Date.now();
+			const settled = outcome.then(
+				(value) => ({ value }),
+				(error: unknown) => ({ error }),
+			);
+			await vi.runAllTimersAsync();
+			return { ...(await settled), elapsedMs: Date.now() - start };
+		}
+
+		it('passes once the name resolves, re-asking its authoritative nameservers', async () => {
+			const start = Date.now();
+			const fetchRequest = vi.fn(async () => {
+				throw unreachable('ENOTFOUND');
+			});
+			const uncachedFetch = vi.fn(async () => {
+				if (Date.now() - start < 90_000) throw unreachable('ENOTFOUND');
+				return Response.json(IDENTITY);
+			});
+
+			const { value, error } = await settle(
+				verifyDeployment({
+					baseUrl: BASE_URL,
+					expected: IDENTITY,
+					fetchRequest: fetchRequest as unknown as typeof fetch,
+					uncachedFetch: uncachedFetch as unknown as typeof fetch,
+				}),
+			);
+
+			expect(error).toBeUndefined();
+			expect(value).toMatchObject({ url: `${BASE_URL}/api/release`, identity: IDENTITY });
+			expect(fetchRequest).toHaveBeenCalledTimes(1);
+		});
+
+		it('fails a name that never resolves after about two minutes', async () => {
+			const fetchRequest = vi.fn(async () => {
+				throw unreachable('ENOTFOUND');
+			});
+
+			const { error, elapsedMs } = await settle(
+				verifyDeployment({
+					baseUrl: BASE_URL,
+					expected: IDENTITY,
+					fetchRequest: fetchRequest as unknown as typeof fetch,
+					uncachedFetch: fetchRequest as unknown as typeof fetch,
+				}),
+			);
+
+			expect(error).toBeInstanceOf(DeployVerifyFailure);
+			expect((error as Error).message).toMatch(/could not be reached \(ENOTFOUND\)/);
+			expect(elapsedMs).toBeGreaterThanOrEqual(120_000);
+			expect(elapsedMs).toBeLessThanOrEqual(130_000);
+		});
+
+		// Today's budget: four tries, five seconds apart.
+		it.each<[string, () => Promise<Response>]>([
+			[
+				'a refused connection',
+				async () => {
+					throw unreachable('ECONNREFUSED');
+				},
+			],
+			['a 503', async () => new Response('Service Unavailable', { status: 503 })],
+			['the previous Release', async () => Response.json({ ...IDENTITY, version: '0.0.9' })],
+		])('fails %s as fast as before, without the DNS wait', async (_case, answer) => {
+			const fetchRequest = vi.fn(answer);
+			const uncachedFetch = vi.fn(answer);
+
+			const { error, elapsedMs } = await settle(
+				verifyDeployment({
+					baseUrl: BASE_URL,
+					expected: IDENTITY,
+					fetchRequest: fetchRequest as unknown as typeof fetch,
+					uncachedFetch: uncachedFetch as unknown as typeof fetch,
+				}),
+			);
+
+			expect(error).toBeInstanceOf(DeployVerifyFailure);
+			expect(fetchRequest).toHaveBeenCalledTimes(4);
+			expect(uncachedFetch).not.toHaveBeenCalled();
+			expect(elapsedMs).toBe(15_000);
+		});
+
+		it('gives the answer after the name resolves the ordinary budget', async () => {
+			const fetchRequest = vi.fn(async () => {
+				throw unreachable('ENOTFOUND');
+			});
+			const uncachedFetch = vi.fn(async () => new Response('', { status: 503 }));
+
+			const { error } = await settle(
+				verifyDeployment({
+					baseUrl: BASE_URL,
+					expected: IDENTITY,
+					fetchRequest: fetchRequest as unknown as typeof fetch,
+					uncachedFetch: uncachedFetch as unknown as typeof fetch,
+				}),
+			);
+
+			expect((error as Error).message).toMatch(/answered 503/);
+			expect(uncachedFetch).toHaveBeenCalledTimes(4);
 		});
 	});
 

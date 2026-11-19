@@ -25,6 +25,12 @@
  * Release's identity is retried, since a freshly promoted Worker can briefly
  * answer those. A definitive wrong answer fails at once.
  *
+ * A name that does not resolve (ENOTFOUND) is waited for apart from that
+ * budget, for up to two minutes with backoff: a first deploy's custom domain
+ * reaches its zone moments after the probe first asks (#1320). Those asks go to
+ * the zone's authoritative nameservers, since the runner's resolver keeps the
+ * first NXDOMAIN for the zone's negative TTL (ADR-0136).
+ *
  * What a pass does not establish: **dependency readiness**. Neither handler
  * reads a binding, so a pass says nothing about D1, auth, R2, KV, Ably or the
  * silent-video validator. The deployed acceptance gates (`pnpm accept deployed`)
@@ -35,6 +41,7 @@
  */
 
 import process from 'node:process';
+import { fetchResolvingAtAuthority } from './authoritative-dns.mjs';
 
 export const RELEASE_PATH = '/api/release';
 const SERVER_TIME_PATH = '/api/time';
@@ -43,6 +50,13 @@ const SERVER_TIME_PATH = '/api/time';
 const DEFAULT_ATTEMPTS = 4;
 const DEFAULT_RETRY_DELAY_MS = 5_000;
 const DEFAULT_TIMEOUT_MS = 15_000;
+/**
+ * How long a name that does not resolve is waited for, and the backoff between
+ * asks: a custom domain a first deploy just attached can take a minute to be in
+ * its zone (#1320).
+ */
+const DEFAULT_DNS_WAIT_MS = 120_000;
+const DNS_RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 16_000, 30_000];
 
 const NOT_PROVEN =
 	'D1, auth, R2, KV, Ably and validator readiness (the deployed acceptance gates cover those)';
@@ -50,12 +64,14 @@ const NOT_PROVEN =
 export class DeployVerifyFailure extends Error {
 	/**
 	 * @param {string} message
-	 * @param {{ retryable?: boolean, cause?: unknown }} [options]
+	 * @param {{ retryable?: boolean, unresolved?: boolean, cause?: unknown }} [options]
 	 */
-	constructor(message, { retryable = false, cause } = {}) {
+	constructor(message, { retryable = false, unresolved = false, cause } = {}) {
 		super(message, { cause });
 		this.name = 'DeployVerifyFailure';
 		this.retryable = retryable;
+		/** The target's name did not resolve (ENOTFOUND). */
+		this.unresolved = unresolved;
 	}
 }
 
@@ -124,6 +140,7 @@ async function fetchJson(url, { fetchRequest, timeoutMs, signal }) {
 		const reason = failure?.cause?.code ?? failure?.name ?? 'error';
 		throw new DeployVerifyFailure(`${url} could not be reached (${reason}).`, {
 			retryable: true,
+			unresolved: reason === 'ENOTFOUND',
 			cause: error,
 		});
 	}
@@ -206,8 +223,10 @@ async function probe(url, expected, options) {
  *   baseUrl: string,
  *   expected?: ReleaseIdentity,
  *   fetchRequest?: typeof fetch,
+ *   uncachedFetch?: typeof fetch,
  *   attempts?: number,
  *   retryDelayMs?: number,
+ *   dnsWaitMs?: number,
  *   timeoutMs?: number,
  *   signal?: AbortSignal,
  * }} options
@@ -216,20 +235,45 @@ export async function verifyDeployment({
 	baseUrl,
 	expected,
 	fetchRequest = fetch,
+	uncachedFetch = fetchResolvingAtAuthority(),
 	attempts = DEFAULT_ATTEMPTS,
 	retryDelayMs = DEFAULT_RETRY_DELAY_MS,
+	dnsWaitMs = DEFAULT_DNS_WAIT_MS,
 	timeoutMs = DEFAULT_TIMEOUT_MS,
 	signal,
 }) {
 	const url = probeUrl(baseUrl, expected === undefined ? SERVER_TIME_PATH : RELEASE_PATH);
-	for (let attempt = 1; ; attempt += 1) {
+	let request = fetchRequest;
+	let failures = 0;
+	/** @type {number | undefined} */
+	let unresolvedSince;
+	let unresolvedRetries = 0;
+	for (;;) {
 		try {
-			return await probe(url, expected, { fetchRequest, timeoutMs, signal });
+			return await probe(url, expected, { fetchRequest: request, timeoutMs, signal });
 		} catch (error) {
-			if (!(error instanceof DeployVerifyFailure) || !error.retryable || attempt >= attempts)
-				throw error;
-			console.error(`deploy:verify: attempt ${attempt}/${attempts}: ${error.message} Retrying.`);
-			await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+			if (!(error instanceof DeployVerifyFailure) || !error.retryable) throw error;
+			let delayMs;
+			if (error.unresolved) {
+				unresolvedSince ??= Date.now();
+				const waitedMs = Date.now() - unresolvedSince;
+				if (waitedMs >= dnsWaitMs) throw error;
+				request = uncachedFetch;
+				delayMs = Math.min(
+					DNS_RETRY_DELAYS_MS[Math.min(unresolvedRetries, DNS_RETRY_DELAYS_MS.length - 1)],
+					dnsWaitMs - waitedMs,
+				);
+				unresolvedRetries += 1;
+				console.error(
+					`deploy:verify: ${error.message} Asking its zone's nameservers again in ${delayMs / 1000} s, for up to ${dnsWaitMs / 1000} s in all.`,
+				);
+			} else {
+				failures += 1;
+				if (failures >= attempts) throw error;
+				delayMs = retryDelayMs;
+				console.error(`deploy:verify: attempt ${failures}/${attempts}: ${error.message} Retrying.`);
+			}
+			await new Promise((resolve) => setTimeout(resolve, delayMs));
 		}
 	}
 }
