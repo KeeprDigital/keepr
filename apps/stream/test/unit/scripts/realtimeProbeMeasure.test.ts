@@ -61,14 +61,16 @@ function aRun(clients: Record<string, string[]> = { output: [CHANNEL] }) {
 		hears(
 			client: string,
 			n: number,
-			{
-				took = 10 + FASTEST,
-				seq = n,
-				replayed = false,
-				at = sent(n) + took,
-				channel = CHANNEL,
+			heard: {
+				took?: number;
+				seq?: number;
+				replayed?: boolean;
+				at?: number;
+				channel?: string;
 			} = {},
 		) {
+			const { took = 10 + FASTEST, seq = n, replayed = false, channel = CHANNEL } = heard;
+			const at = heard.at ?? sent(n) + took;
 			records.push({
 				kind: 'message',
 				client,

@@ -67,11 +67,14 @@ export function createProbeClient(options) {
 	/** The runtime's WebSocket as the transport is handed it, heard by the tap first. */
 	class Tapped {
 		#socket;
+		#severed = false;
+		/** What the transport asked to be told when this closes. */
+		#onClose = [];
 
 		constructor(url) {
 			// Node's WebSocket takes headers; a browser's sends its own.
 			this.#socket = new Socket(url, { headers: options.headers ?? {} });
-			sockets.add(this.#socket);
+			sockets.add(this);
 		}
 
 		get readyState() {
@@ -87,25 +90,42 @@ export function createProbeClient(options) {
 		}
 
 		addEventListener(type, listener) {
+			if (type === 'close') this.#onClose.push(listener);
 			this.#socket.addEventListener(type, (event) => {
-				if (type === 'close') sockets.delete(this.#socket);
-				if (type === 'message') {
-					// A cut socket carries nothing more, whatever was already on its way.
-					if (cut) return;
-					tap(String(event.data));
-				}
+				// A severed socket carries nothing more, whatever was already on its way.
+				if (this.#severed) return;
+				if (type === 'close') sockets.delete(this);
+				if (type === 'message') tap(String(event.data));
 				listener(event);
 			});
+		}
+
+		/**
+		 * Cut it. The transport is told now that it closed, with no close frame
+		 * (1006), as when a network drops: how long the other end takes to answer
+		 * a close is not part of the cut. The socket itself is closed cleanly.
+		 */
+		sever() {
+			this.#severed = true;
+			sockets.delete(this);
+			this.#socket.close();
+			for (const listener of this.#onClose) listener({ code: 1006, reason: '' });
 		}
 	}
 
 	const transport = createSocketTransport({
 		...options.transport,
 		// No address while cut, and so no Realtime Ticket fetched for a socket
-		// that will not open: a failed attempt, which the transport retries.
+		// that will not open: a failed attempt, which the transport retries. Nor
+		// one that was on its way when the cut was made.
 		address: async () => {
-			if (cut) throw new Error('The probe has cut this socket');
-			return await options.address();
+			const refuseWhileCut = () => {
+				if (cut) throw new Error('The probe has cut this socket');
+			};
+			refuseWhileCut();
+			const address = await options.address();
+			refuseWhileCut();
+			return address;
 		},
 		WebSocket: Tapped,
 	});
@@ -165,7 +185,7 @@ export function createProbeClient(options) {
 			if (cut || stopped) return;
 			keep({ kind: 'cut', at: now() });
 			cut = true;
-			for (const socket of sockets) socket.close();
+			for (const socket of [...sockets]) socket.sever();
 		},
 		/** Let its socket open again, at once: the transport reconnects and catches up. */
 		restore() {

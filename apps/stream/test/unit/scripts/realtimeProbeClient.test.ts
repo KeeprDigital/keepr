@@ -35,9 +35,12 @@ function fakeSockets() {
 			this.sent.push(data);
 		}
 
+		/** Whether the other end answers a close. One that does not leaves the socket closing for good. */
+		answersClose = true;
+
 		close() {
-			this.readyState = 3;
-			this.#tell('close', { code: 1000 });
+			this.readyState = this.answersClose ? 3 : 2;
+			if (this.answersClose) this.#tell('close', { code: 1000 });
 		}
 
 		/** The object accepts the socket. */
@@ -205,6 +208,52 @@ describe('a client of the realtime probe', () => {
 		expect(asked.addresses).toBe(1);
 		expect(sockets).toHaveLength(1);
 		expect(client.connected).toBe(false);
+	});
+
+	it('is cut at once, and comes back when restored, though the close of its socket is never answered', async () => {
+		const { client, clock, nextSocket, of } = aClient();
+		const first = await nextSocket();
+		first.open();
+		first.says(attached(4));
+		first.answersClose = false;
+
+		clock.now = 2500;
+		client.cut();
+
+		expect(client.connected).toBe(false);
+		expect(of('state').at(-1)).toEqual({
+			kind: 'state',
+			client: 'output-2',
+			at: 2500,
+			state: 'disconnected',
+			why: 'The realtime connection closed (1006)',
+		});
+
+		client.restore();
+		(await nextSocket()).open();
+	});
+
+	it('opens no socket on an address that was on its way when it was cut', async () => {
+		const sockets = fakeSockets();
+		let answer = (_address: string) => {};
+		const client = createProbeClient({
+			name: 'output-2',
+			role: 'output',
+			channels: [CHANNEL],
+			address: () => new Promise<string>((resolve) => (answer = resolve)),
+			isProbeMessage: () => false,
+			record: () => {},
+			now: () => 0,
+			WebSocket: sockets.WebSocket,
+			transport: { timers: heldTimers().timers },
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		client.cut();
+		answer('ws://stream.test/realtime/socket?eventId=1&ticket=t1');
+		await new Promise((resolve) => setTimeout(resolve, 20));
+
+		expect(sockets.opened).toHaveLength(0);
 	});
 
 	it('comes back at once when restored, on a socket of its own address, asking for what followed', async () => {
