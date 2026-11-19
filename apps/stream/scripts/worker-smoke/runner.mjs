@@ -8,7 +8,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
 import { standInCookie } from '@keepr/accounts-stand-in/cookie';
+import { CLOSE_REFUSED } from '@keepr/realtime/protocol';
 import { LIVE_RESULTS_CRON } from '../../server/utils/cronSchedules.ts';
+import {
+	eventRealtimeChannel,
+	screenRealtimeChannel,
+} from '../../shared/utils/realtimeChannels.ts';
 import { DeployVerifyFailure, verifyDeployment } from '@keepr/tooling/scripts/deploy/verify.mjs';
 
 const PIXEL_PNG = Uint8Array.from(
@@ -27,6 +32,8 @@ const PIXEL_JPEG = Uint8Array.from(
 /** An Event with Live Results on and no Rounds, so its tick idles and asks Melee nothing. */
 const LIVE_RESULTS_EVENT_ID = 900_001;
 const LIVE_RESULTS_TICK_TIMEOUT_MS = 10_000;
+/** How long a realtime socket may take to answer what it was asked, or to close. */
+const REALTIME_SOCKET_TIMEOUT_MS = 10_000;
 const LIVE_RESULTS_EVENT_SQL =
 	'INSERT INTO events (id, name, game, feature_match_orientation, melee_enabled, melee_live_results_enabled) ' +
 	`VALUES (${LIVE_RESULTS_EVENT_ID}, 'Built Worker smoke Live Results', 'mtg', 'horizontal', 1, 1)`;
@@ -83,6 +90,7 @@ export function formatWorkerSmokeFailure(error) {
  *   repositoryRoot: string,
  *   spawnProcess?: Function,
  *   fetchRequest?: Function,
+ *   openSocket?: (url: string, headers: Record<string, string>) => WebSocket,
  *   readinessTimeoutMs?: number,
  *   hardTimeoutMs?: number,
  *   temporaryRoot?: string,
@@ -94,6 +102,8 @@ export async function runWorkerSmoke({
 	repositoryRoot,
 	spawnProcess = spawn,
 	fetchRequest = fetch,
+	// Node's `WebSocket` takes a handshake's headers, as a browser's cannot.
+	openSocket = (url, headers) => new WebSocket(url, { headers }),
 	readinessTimeoutMs = 30_000,
 	hardTimeoutMs = 300_000,
 	temporaryRoot = tmpdir(),
@@ -207,6 +217,7 @@ export async function runWorkerSmoke({
 		await runProductProbes({
 			origin,
 			fetchRequest,
+			openSocket,
 			generated,
 			sensitiveValues,
 			signal: smokeSignal,
@@ -540,7 +551,14 @@ async function expectShellNamesKeeprAccounts({ origin, fetchRequest, generated, 
 		throwShapeFailure('shell-keepr-accounts-origin', "the Environment's Keepr Accounts origin");
 }
 
-async function runProductProbes({ origin, fetchRequest, generated, sensitiveValues, signal }) {
+async function runProductProbes({
+	origin,
+	fetchRequest,
+	openSocket,
+	generated,
+	sensitiveValues,
+	signal,
+}) {
 	const cookie = await expectIdentityBoundary({ origin, fetchRequest, signal });
 	await expectShellNamesKeeprAccounts({ origin, fetchRequest, generated, signal });
 
@@ -630,8 +648,220 @@ async function runProductProbes({ origin, fetchRequest, generated, sensitiveValu
 		signal,
 	});
 
+	await expectRealtimeAdmission({
+		origin,
+		cookie,
+		eventId: event.id,
+		fetchRequest,
+		openSocket,
+		sensitiveValues,
+		signal,
+	});
+
 	await expectDeployVerifyPasses({ origin, fetchRequest, signal });
 	await expectLiveResultsTickOnlyOnCron({ origin, cookie, fetchRequest, signal });
+}
+
+/**
+ * One realtime socket to the artifact, opened as given: what the Event's
+ * object answers each channel it asks to attach, or the code it was closed
+ * with first. A refused socket opens too, so opening says nothing.
+ */
+async function realtimeSocket({ probe, origin, query, headers, attach, openSocket, signal }) {
+	const address = `${origin.replace(/^http/u, 'ws')}/realtime/socket?${new URLSearchParams(query)}`;
+	let socket;
+	try {
+		socket = openSocket(address, headers);
+	} catch {
+		throw new WorkerSmokeFailure(probe, 'socket-failed', {
+			expected: 'a socket',
+			actual: 'the socket could not be opened',
+		});
+	}
+	const frames = [];
+	let settleClosed;
+	const whenClosed = new Promise((resolve) => {
+		settleClosed = resolve;
+	});
+	const answered = new Promise((resolve) => {
+		socket.addEventListener('open', () =>
+			socket.send(JSON.stringify({ t: 'hello', attach: attach.map((channel) => ({ channel })) })),
+		);
+		socket.addEventListener('message', ({ data }) => {
+			try {
+				const { t, channel, what } = JSON.parse(data);
+				frames.push(t === 'refused' ? `${what} refused ${channel}` : `${t} ${channel}`);
+			} catch {
+				frames.push('unreadable');
+			}
+			if (frames.length === attach.length) resolve({ frames });
+		});
+		socket.addEventListener('close', ({ code }) => {
+			settleClosed(code);
+			resolve({ closed: code });
+		});
+	});
+	let timer;
+	const timedOut = new Promise((_resolve, reject) => {
+		timer = setTimeout(
+			() =>
+				reject(
+					new WorkerSmokeFailure(probe, 'socket-timeout', {
+						expected: `an answer within ${REALTIME_SOCKET_TIMEOUT_MS}ms`,
+						actual: frames.length > 0 ? frames.join(', ') : 'no answer',
+					}),
+				),
+			REALTIME_SOCKET_TIMEOUT_MS,
+		);
+	});
+	try {
+		return {
+			...(await abortable(Promise.race([answered, timedOut]), signal)),
+			socket,
+			whenClosed,
+		};
+	} catch (error) {
+		socket.close();
+		throw error;
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
+/**
+ * Who the artifact lets onto a realtime socket (ADR-0137, ADR-0142), through
+ * the built Worker's own entry and hand-off: a Session from the app's own
+ * origin, and a Screen Output for a Realtime Ticket, once. The artifact has no
+ * route that publishes for a test, so what a socket may hear is read from what
+ * the Event's object answers an attach.
+ */
+async function expectRealtimeAdmission({
+	origin,
+	cookie,
+	eventId,
+	fetchRequest,
+	openSocket,
+	sensitiveValues,
+	signal,
+}) {
+	const opened = [];
+	const open = async (probe, query, headers, attach = []) => {
+		const answer = await realtimeSocket({
+			probe,
+			origin,
+			query,
+			headers,
+			attach,
+			openSocket,
+			signal,
+		});
+		opened.push(answer.socket);
+		return answer;
+	};
+	const expectAnswers = async (probe, query, headers, expected) => {
+		const answer = await open(
+			probe,
+			query,
+			headers,
+			expected.map((frame) => frame.split(' ').at(-1)),
+		);
+		const actual = answer.frames ? answer.frames.toSorted().join(', ') : `closed ${answer.closed}`;
+		if (actual !== expected.toSorted().join(', '))
+			throw new WorkerSmokeFailure(probe, 'unexpected-socket-answer', {
+				expected: expected.toSorted().join(', '),
+				actual,
+			});
+		return answer;
+	};
+	const expectRefused = async (probe, query, headers) => {
+		// Asked to attach, so a socket wrongly let in answers, and is not waited out.
+		const answer = await open(probe, query, headers, [eventRealtimeChannel(eventId)]);
+		if (answer.closed !== CLOSE_REFUSED)
+			throw new WorkerSmokeFailure(probe, 'socket-not-refused', {
+				expected: `closed ${CLOSE_REFUSED}`,
+				actual: answer.frames ? answer.frames.join(', ') : `closed ${answer.closed}`,
+			});
+	};
+	const request = (probe, expected, path, init) =>
+		expectJson({ probe, expected, origin, path, fetchRequest, signal, init });
+
+	try {
+		// A Session, from the app's own page: its Event's channel is its to hear.
+		await expectAnswers('realtime-session-admitted', { eventId }, { cookie, origin }, [
+			`attached ${eventRealtimeChannel(eventId)}`,
+		]);
+		// The same Session's cookie on a socket another site's page opened.
+		await expectRefused(
+			'realtime-session-cross-origin',
+			{ eventId },
+			{ cookie, origin: 'https://another-site.invalid' },
+		);
+		await expectRefused(
+			'realtime-signed-out',
+			{ eventId },
+			{ cookie: standInCookie('signed-out'), origin },
+		);
+
+		const screen = await request(
+			'realtime-screen',
+			201,
+			`/api/events/${eventId}/screens`,
+			jsonRequest({ name: 'Built Worker smoke Screen', slug: 'worker-smoke' }, { cookie }),
+		);
+		const capabilityPath = `/api/events/${eventId}/screens/${screen?.id}/asset-capability`;
+		const { assetCapability } = await request('realtime-capability', 200, capabilityPath, {
+			headers: { cookie },
+		});
+		sensitiveValues.push(assetCapability);
+		const ticketPath = `/api/realtime/ticket?eventId=${eventId}`;
+		// A Session is no capability: an Operator who presents none is given no ticket.
+		await expectStatus({
+			probe: 'realtime-ticket-needs-capability',
+			expected: 401,
+			origin,
+			path: ticketPath,
+			fetchRequest,
+			signal,
+			init: { method: 'POST', headers: { cookie } },
+		});
+		const { ticket } = await request('realtime-ticket', 200, ticketPath, {
+			method: 'POST',
+			headers: { authorization: `Bearer ${assetCapability}` },
+		});
+		if (typeof ticket !== 'string') throwShapeFailure('realtime-ticket', 'a Realtime Ticket');
+		sensitiveValues.push(ticket);
+
+		// A Screen Output: its own Screen's channel, and nothing of its Event's.
+		const output = await expectAnswers('realtime-output-admitted', { eventId, ticket }, {}, [
+			`attached ${screenRealtimeChannel(eventId, screen.id)}`,
+			`attach refused ${eventRealtimeChannel(eventId)}`,
+		]);
+		// One ticket, one socket.
+		await expectRefused('realtime-ticket-spent', { eventId, ticket }, {});
+
+		// Regenerating the capability closes the socket it admitted.
+		await request('realtime-capability-regenerated', 200, capabilityPath, {
+			method: 'POST',
+			headers: { cookie },
+		});
+		let timer;
+		const closedWith = await abortable(
+			Promise.race([
+				output.whenClosed,
+				new Promise((resolve) => {
+					timer = setTimeout(() => resolve('still open'), REALTIME_SOCKET_TIMEOUT_MS);
+				}),
+			]),
+			signal,
+		).finally(() => clearTimeout(timer));
+		if (closedWith !== CLOSE_REFUSED)
+			throw new WorkerSmokeFailure('realtime-output-disconnected', 'socket-not-closed', {
+				expected: `closed ${CLOSE_REFUSED}`,
+				actual: closedWith === 'still open' ? closedWith : `closed ${closedWith}`,
+			});
+	} finally {
+		for (const socket of opened) socket.close();
+	}
 }
 
 function checkoutIdentity() {
