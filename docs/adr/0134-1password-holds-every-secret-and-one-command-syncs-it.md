@@ -1,6 +1,6 @@
 # ADR-0134: 1Password holds every secret, and one command syncs it
 
-Accepted · 2026-11-18 · [#1290](https://github.com/KeeprDigital/keepr/issues/1290) · Amends ADR-0128
+Accepted · 2026-11-18 · [#1290](https://github.com/KeeprDigital/keepr/issues/1290) · Amends ADR-0128 · Amended by ADR-0135: `--generate` writes the value as an `op` argument, since `op` 2.42 keeps no concealed value from piped JSON, and reads it back before syncing it
 
 ### Decision
 
