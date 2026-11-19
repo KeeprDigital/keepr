@@ -1,6 +1,6 @@
 # ADR-0131: The Graphics Administrator is an App role on a signed-in User, not a shared token
 
-Accepted · 2026-11-18 · [#1293](https://github.com/KeeprDigital/keepr/issues/1293) · Amends ADR-0010
+Accepted · 2026-11-18 · [#1293](https://github.com/KeeprDigital/keepr/issues/1293) · Amends ADR-0010 · Amended by ADR-0141: the role is the `admin` App role the Identity Proof names, granted in Keepr Accounts, and its 403 is the layer's
 
 ### Decision
 

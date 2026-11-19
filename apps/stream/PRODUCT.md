@@ -9,7 +9,7 @@ web
 ## Users
 
 Keepr Digital's in-house production crew: a handful of trusted operators on one
-installation, each holding a User account a Graphics Administrator created.
+installation, each a Keepr Accounts User with App access to Stream Keepr.
 They prepare and run broadcast coverage of Magic: The Gathering and One Piece
 Card Game tournaments. Much of the work is setup before a broadcast (Events,
 Players, Deck Lists, Themes, Screens, graphics templates); the rest is live
@@ -55,7 +55,7 @@ manual re-keying, and any graphic a broadcast needs can be built.
 ## Capabilities and Constraints
 
 - Nuxt 4 SPA, Vue 3, Pinia, Nuxt UI, Tailwind; Nitro on Cloudflare Workers;
-  D1 with Drizzle; R2; Ably; Better Auth.
+  D1 with Drizzle; R2; Ably; Keepr Accounts for sign-in.
 - The operator app's UI is built with Nuxt UI v4 components and its theming
   (`app/assets/css/main.css`, Nuxt UI config). Use an existing Nuxt UI
   component wherever one fits; add no other component library and don't
@@ -65,8 +65,9 @@ manual re-keying, and any graphic a broadcast needs can be built.
   (ADR-0049, ADR-0051).
 - Feature Match Controls is an operator surface: it fills its window and
   consumes no Theme Token.
-- No self-signup and no email; accounts and Password Reset Links are handed
-  out by a Graphics Administrator.
+- No sign-in of its own: a User signs in at Keepr Accounts, where they are
+  invited with App access to Stream Keepr. A signed-out visitor is sent there
+  and back.
 - Domain language is binding: name concepts with `GLOSSARY.md` terms, never its
   _Avoid_ synonyms. Settled decisions live in `docs/adr`.
 

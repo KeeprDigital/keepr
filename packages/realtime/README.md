@@ -334,7 +334,8 @@ by the Worker's name; so each dev server keeps a registry of its own, under
 the app's `.wrangler`, by setting `WRANGLER_REGISTRY_PATH` for its process.
 One already set is left alone. An app that binds another local Worker through
 the registry, as the Accounts Stand-in is bound, starts both under one
-`WRANGLER_REGISTRY_PATH`, one for each dev server.
+`WRANGLER_REGISTRY_PATH`, one for each dev server: `keepr-accounts-stand-in --
+<command>` names one for each run (`packages/accounts-stand-in/README.md`).
 
 **The dev Worker keeps nothing between runs.** Each run starts from empty
 storage, so a page that held a sequence is told continuity was lost, by the
