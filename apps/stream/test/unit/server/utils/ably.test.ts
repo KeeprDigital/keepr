@@ -557,7 +557,7 @@ describe('publishScreenCommand', () => {
 	it("publishes a Screen command on the Screen's channel of its Event's object", async () => {
 		const { publishScreenCommand } = await import('~~/server/utils/ably');
 
-		await publishScreenCommand(1, 10, 'identify');
+		await publishScreenCommand(1, 10, { command: 'identify' });
 
 		expect(realtime.calls).toEqual([
 			{
@@ -573,17 +573,35 @@ describe('publishScreenCommand', () => {
 		]);
 	});
 
-	// A failed publish leaves as this server's failure, not with a status of its
-	// own that h3 would adopt as the route's answer (#264).
+	// `false` as well as `true`: a state dropped on the way would read as hidden.
+	it.each([true, false])(
+		'tells the outputs the state a debug command asks for: shown %s',
+		async (shown) => {
+			const { publishScreenCommand } = await import('~~/server/utils/ably');
+
+			await publishScreenCommand(1, 10, { command: 'debug', shown });
+
+			expect(realtime.on('screen:1:10')).toEqual([
+				{
+					channel: 'screen:1:10',
+					type: 'screen:command:debug',
+					payload: { screenId: 10, shown },
+				},
+			]);
+		},
+	);
+
+	// A publish that failed on both attempts leaves as this server's failure, not
+	// with a status of its own that h3 would adopt as the route's answer (#264).
 	describe('when the publish fails', () => {
 		it("propagates a named server-side failure instead of the failure's own status", async () => {
-			realtime.refuse('screen:1:10', 1, new ErrorInfoShaped('No application found', 40400, 404));
+			realtime.refuse('screen:1:10', 2, new ErrorInfoShaped('No application found', 40400, 404));
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 			const { REALTIME_PUBLISH_FAILED_MESSAGE, RealtimePublishError } =
 				await import('~~/server/utils/realtimePublishFailure');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(
+			const failure = await publishScreenCommand(1, 10, { command: 'identify' }).then(
 				() => null,
 				(error) => error,
 			);
@@ -595,11 +613,11 @@ describe('publishScreenCommand', () => {
 		});
 
 		it("carries the failure's numeric code, when it has one, for the request's log line", async () => {
-			realtime.refuse('screen:1:10', 1, new ErrorInfoShaped('No application found', 40400, 404));
+			realtime.refuse('screen:1:10', 2, new ErrorInfoShaped('No application found', 40400, 404));
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(
+			const failure = await publishScreenCommand(1, 10, { command: 'identify' }).then(
 				() => null,
 				(error) => error,
 			);
@@ -616,7 +634,7 @@ describe('publishScreenCommand', () => {
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 
-			await publishScreenCommand(1, 10, 'identify').catch(() => {});
+			await publishScreenCommand(1, 10, { command: 'identify' }).catch(() => {});
 
 			expect(loggedFields(errorSpy)).toEqual({
 				message: 'realtime_publish_failed',
@@ -633,33 +651,16 @@ describe('publishScreenCommand', () => {
 
 		it('keeps the throw it wrapped, so nothing about the failure is lost', async () => {
 			const refusal = new Error('The object is overloaded');
-			realtime.refuse('screen:1:10', 1, refusal);
+			realtime.refuse('screen:1:10', 2, refusal);
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(
+			const failure = await publishScreenCommand(1, 10, { command: 'identify' }).then(
 				() => null,
 				(error) => error,
 			);
 
 			expect(failure.cause).toBe(refusal);
-			errorSpy.mockRestore();
-		});
-
-		// A command is done each time it is heard, and `debug` turns a panel on or
-		// off: sent again, one the first call did deliver would be undone.
-		it('is not sent a second time, where an Event message would be', async () => {
-			realtime.refuse('screen:1:10', 1);
-			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const { publishScreenCommand } = await import('~~/server/utils/ably');
-			const { RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
-
-			await expect(publishScreenCommand(1, 10, 'debug')).rejects.toBeInstanceOf(
-				RealtimePublishError,
-			);
-
-			expect(realtime.calls).toHaveLength(1);
-			expect(realtime.published).toEqual([]);
 			errorSpy.mockRestore();
 		});
 
@@ -671,7 +672,7 @@ describe('publishScreenCommand', () => {
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 			const { RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
 
-			const failure = await publishScreenCommand(1, 10, 'identify').then(
+			const failure = await publishScreenCommand(1, 10, { command: 'identify' }).then(
 				() => null,
 				(error) => error,
 			);
@@ -680,6 +681,66 @@ describe('publishScreenCommand', () => {
 			expect(failure.statusCode).toBe(502);
 			expect(loggedFields(errorSpy).reason).toContain('The Worker has no REALTIME binding');
 			errorSpy.mockRestore();
+		});
+	});
+
+	// Made once more, as an Event message is: every command names what an output
+	// is to do, so one the first call did deliver is safe to deliver again.
+	describe('a command whose call fails', () => {
+		it('is delivered on the second, whole, and nothing is logged as failed', async () => {
+			realtime.refuse('screen:1:10', 1);
+			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const { publishScreenCommand } = await import('~~/server/utils/ably');
+
+			await expect(
+				publishScreenCommand(1, 10, { command: 'debug', shown: true }),
+			).resolves.toBeUndefined();
+
+			expect(realtime.on('screen:1:10')).toEqual([
+				{
+					channel: 'screen:1:10',
+					type: 'screen:command:debug',
+					payload: { screenId: 10, shown: true },
+				},
+			]);
+			expect(errorSpy).not.toHaveBeenCalled();
+		});
+
+		// Refused twice and no more: a third attempt would be answered, and deliver.
+		it('is attempted twice and never a third time, then fails as the second did', async () => {
+			const second = new Error('The object is overloaded');
+			realtime.refuse('screen:1:10', 1, new Error('The object is being reset'));
+			realtime.refuse('screen:1:10', 1, second);
+			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const { publishScreenCommand } = await import('~~/server/utils/ably');
+			const { RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
+
+			const failure = await publishScreenCommand(1, 10, { command: 'refresh' }).then(
+				() => null,
+				(error) => error,
+			);
+
+			expect(realtime.calls).toHaveLength(2);
+			expect(realtime.published).toEqual([]);
+			expect(failure).toBeInstanceOf(RealtimePublishError);
+			expect(failure.statusCode).toBe(502);
+			expect(failure.cause).toBe(second);
+			expect(
+				errorSpy.mock.calls
+					.filter(isPublishFailureLine)
+					.map(([line]: unknown[]) => JSON.parse(line as string)),
+			).toEqual([
+				{
+					message: 'realtime_publish_failed',
+					eventId: 1,
+					screenId: 10,
+					messageType: 'screen:command:refresh',
+					statusCode: null,
+					errorCode: null,
+					errorName: 'Error',
+					reason: second.message,
+				},
+			]);
 		});
 	});
 });

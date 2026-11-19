@@ -34,7 +34,7 @@ provideScreenContext(session.screenContext);
 			/>
 		</Transition>
 
-		<!-- Debug Overlay -->
+		<!-- Debug panel -->
 		<div
 			v-if="showDebug"
 			class="fixed top-4 left-4 z-50 flex flex-col gap-1 text-sm p-4 rounded-lg font-mono"

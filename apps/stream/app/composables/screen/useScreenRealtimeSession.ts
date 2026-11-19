@@ -7,7 +7,7 @@ import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequen
 interface ScreenRealtimeSessionOptions {
 	onRefresh: () => void;
 	onIdentify: () => void;
-	onDebug: () => void;
+	onDebug: (shown: boolean) => void;
 	getPresenceData: (eventId: number, screenId: number) => RealtimePresenceData;
 }
 
@@ -36,7 +36,7 @@ export function useScreenRealtimeSession(options: ScreenRealtimeSessionOptions) 
 					if (data.screenId === screenId) options.onIdentify();
 				}),
 				realtime.onChannel(channel, screenCommandMessageTypes.debug, (data) => {
-					if (data.screenId === screenId) options.onDebug();
+					if (data.screenId === screenId) options.onDebug(data.shown);
 				}),
 			);
 		} catch (err) {

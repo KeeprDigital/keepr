@@ -9,7 +9,8 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 
 // POST /api/events/:id/screens/:screenId/command over real SQL: a command goes to the
 // Screen's own channel, only for a Screen of that Event, and the 200 means it was
-// delivered. Only the realtime object is faked; how a refusal is named and logged is `ably.test.ts`'s.
+// delivered. Only the realtime object is faked; how a refusal is named and logged, and
+// the second attempt before it, are `ably.test.ts`'s.
 
 interface StubRequest {
 	params: Record<string, string>;
@@ -92,6 +93,30 @@ describe('commanding a Screen', () => {
 				payload: { screenId },
 			},
 		]);
+	});
+
+	it("carries the state a debug command asks for to the Screen's outputs", async () => {
+		await expect(post(screenId, { command: 'debug', shown: false })).resolves.toEqual({ ok: true });
+
+		expect(realtime.published).toEqual([
+			{
+				channel: screenRealtimeChannel(eventId, screenId),
+				type: 'screen:command:debug',
+				payload: { screenId, shown: false },
+			},
+		]);
+	});
+
+	// A debug command naming no state could only turn the panel over, which cannot be
+	// delivered twice. The error plugin answers a ZodError as the 400.
+	it.each([
+		['a debug command naming no state', { command: 'debug' }],
+		['a debug command whose state is no boolean', { command: 'debug', shown: 'true' }],
+		['a state on a command that takes none', { command: 'refresh', shown: true }],
+	])('refuses %s, sending nothing', async (_body, body) => {
+		await expect(post(screenId, body)).rejects.toMatchObject({ name: 'ZodError' });
+
+		expect(realtime.published).toEqual([]);
 	});
 
 	it.each([

@@ -5,7 +5,7 @@ import type {
 	EventMessage,
 	ScreenChannelDelivery,
 } from '~~/server/modules/screen-output-publication';
-import type { MessagePayload, MessageType } from '../types/messages';
+import type { MessagePayload, MessageType, ScreenCommandRequest } from '../types/messages';
 import Ably from 'ably';
 import { publishToScreenOutputs } from '~~/server/modules/screen-output-publication';
 import {
@@ -159,20 +159,36 @@ async function publishToEvent(eventId: number, deliveries: readonly Delivery[]):
 }
 
 /**
- * Publish one message on its Event's channel, and once more if that call
- * fails: an object being reset, as a deploy resets it, fails the call that
- * meets it and answers the next. A second failure is the caller's to judge.
+ * Publish to an Event's object, and once more if that call fails: an object
+ * being reset, as a deploy resets it, fails the call that meets it and answers
+ * the next. The second is the call whole, on a stub of its own, and its
+ * failure is the caller's to judge.
  *
  * The server cannot tell a call that failed from one whose answer was lost, so
- * the second can repeat a message the first delivered. On this channel that is
- * safe, because a message announces and a read is the authority (ADR-0137). A
- * page holds each one as a record it adds or replaces by id, as a state it
- * keeps only if no older by sequence or revision than what it holds, or as a
- * cause to re-read: hearing one twice leaves it where hearing it once did.
+ * the second can repeat what the first delivered. Each caller says why hearing
+ * its message twice leaves a page where hearing it once does.
+ */
+async function publishToEventOnceMore(
+	eventId: number,
+	deliveries: readonly Delivery[],
+): Promise<void> {
+	const attempt = async () => await publishToEvent(eventId, deliveries);
+	await attempt().catch(attempt);
+}
+
+/**
+ * Publish one message on its Event's channel, and once more if that call fails
+ * (`publishToEventOnceMore`).
+ *
+ * A repeat is safe on this channel, because a message announces and a read is
+ * the authority (ADR-0137). A page holds each one as a record it adds or
+ * replaces by id, as a state it keeps only if no older by sequence or revision
+ * than what it holds, or as a cause to re-read: hearing one twice leaves it
+ * where hearing it once did.
  *
  * The Screens' call is retried where it is made
- * (`server/modules/screen-output-publication`), and a Screen command not at
- * all (`publishScreenCommand`).
+ * (`server/modules/screen-output-publication`), and a Screen command as this
+ * is (`publishScreenCommand`).
  */
 async function publishOnEventChannel<T extends MessageType>(
 	eventId: number,
@@ -181,11 +197,9 @@ async function publishOnEventChannel<T extends MessageType>(
 	originConnectionId: string | undefined,
 ): Promise<void> {
 	reportOversizedMessage(eventId, messageType, payload, originConnectionId);
-	const deliveries = [
+	await publishToEventOnceMore(eventId, [
 		delivery(eventRealtimeChannel(eventId), eventId, messageType, payload, originConnectionId),
-	];
-	const attempt = async () => await publishToEvent(eventId, deliveries);
-	await attempt().catch(attempt);
+	]);
 }
 
 /**
@@ -334,29 +348,39 @@ export async function publishMessageStrict<T extends MessageType>(
  * A Worker with no binding for the object fails the same way: nothing an
  * operator sets leaves one out, and the log line names the binding.
  *
- * Published once, and never again on a failure. A command is not an
- * announcement: an output does it each time it hears it, and `debug` turns its
- * panel on or off, so a repeat of one the first call did deliver would undo
- * it. The caller hears the failure, and the person who sent it sends it again.
+ * Published once more if the call fails, as an Event message is
+ * (`publishToEventOnceMore`); the failure the caller hears is the second's.
+ * A command is not an announcement: an output does it each time it hears it.
+ * So a command says what an output is to do, and none turns over what the
+ * output last did: a repeat of one the first call did deliver reloads the
+ * output again, has it say which display it is again, or leaves its debug
+ * panel as `debug` names it, and the output ends where one delivery leaves
+ * it. A command that turned something over, as `debug` once did its panel,
+ * could not be sent twice.
  */
 export async function publishScreenCommand(
 	eventId: number,
 	screenId: number,
-	command: ScreenCommand,
+	command: ScreenCommandRequest,
 ): Promise<void> {
-	const messageType = screenCommandMessageTypes[command];
+	const channel = screenRealtimeChannel(eventId, screenId);
+	const message =
+		command.command === 'debug'
+			? delivery(channel, eventId, screenCommandMessageTypes.debug, {
+					screenId,
+					shown: command.shown,
+				})
+			: delivery(channel, eventId, screenCommandMessageTypes[command.command], { screenId });
 
 	try {
-		await publishToEvent(eventId, [
-			delivery(screenRealtimeChannel(eventId, screenId), eventId, messageType, { screenId }),
-		]);
+		await publishToEventOnceMore(eventId, [message]);
 	} catch (error) {
 		console.error(
 			JSON.stringify({
 				message: 'realtime_publish_failed',
 				eventId,
 				screenId,
-				messageType,
+				messageType: message.name,
 				...publishFailureFields(error),
 			}),
 		);

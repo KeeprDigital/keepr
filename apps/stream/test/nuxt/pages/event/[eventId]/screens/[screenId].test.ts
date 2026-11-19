@@ -544,14 +544,15 @@ describe('screen config page — the Screen header', () => {
 		).toEqual(['hand-out', 'refresh', 'more']);
 	});
 
-	it('holds Identify, Debug, Rotate Asset Access and Reset mode settings in the one menu', async () => {
+	it('holds Identify, the debug panel, Rotate Asset Access and Reset mode settings in the one menu', async () => {
 		const page = await mountLoadedPage();
 
 		await page.get(MORE_MENU).trigger('click');
 
 		expect(page.findAll('[role="menuitem"]').map((item) => item.text())).toEqual([
 			'Identify',
-			'Debug',
+			'Show debug panel',
+			'Hide debug panel',
 			'Rotate Asset Access',
 			'Reset mode settings',
 		]);
@@ -563,12 +564,16 @@ describe('screen config page — the Screen header', () => {
 		await page.get('[data-header-action="refresh"]').trigger('click');
 		await flushPromises();
 
-		expect(mockScreenStore.sendScreenCommand).toHaveBeenCalledExactlyOnceWith(1, 'refresh');
+		expect(mockScreenStore.sendScreenCommand).toHaveBeenCalledExactlyOnceWith(1, {
+			command: 'refresh',
+		});
 	});
 
+	// The page cannot read an output's debug panel, so each debug item names the state it asks for.
 	it.each([
-		{ item: 'Identify', command: 'identify' },
-		{ item: 'Debug', command: 'debug' },
+		{ item: 'Identify', command: { command: 'identify' } },
+		{ item: 'Show debug panel', command: { command: 'debug', shown: true } },
+		{ item: 'Hide debug panel', command: { command: 'debug', shown: false } },
 	])('sends $command when $item is chosen from the menu', async ({ item, command }) => {
 		const page = await mountLoadedPage();
 

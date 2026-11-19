@@ -432,8 +432,13 @@ export interface MessageDefinitions {
 		screenId: number;
 	};
 
+	/**
+	 * It names the state the debug panel is to be left in, where it once turned
+	 * the panel over: heard twice, it leaves an output where hearing it once does.
+	 */
 	'screen:command:debug': {
 		screenId: number;
+		shown: boolean;
 	};
 
 	/*
@@ -460,6 +465,14 @@ export const screenCommandMessageTypes = {
 	identify: 'screen:command:identify',
 	debug: 'screen:command:debug',
 } as const satisfies Record<ScreenCommand, MessageType>;
+
+/**
+ * A Screen command as it is asked for: its name, and what its message carries
+ * beside the Screen. An operator's page sends it and the command route accepts it.
+ */
+export type ScreenCommandRequest =
+	| { command: Exclude<ScreenCommand, 'debug'> }
+	| { command: 'debug'; shown: boolean };
 
 /** The messages only a Screen's own channel carries, which tell its outputs to re-read. */
 export const screenOutputMessageTypes = [

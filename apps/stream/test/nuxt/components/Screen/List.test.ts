@@ -158,7 +158,7 @@ describe('screen list', () => {
 		['an edit', 1, 'Edit Screen', 'editScreen', [screens[1]]],
 		['a delete', 2, 'Delete Screen', 'deleteScreen', [screens[2]]],
 		['a mode change', 2, 'Standings', 'setMode', [screens[2], 'standings']],
-		['a command', 1, 'Identify', 'sendCommand', [screens[1], 'identify']],
+		['a command', 1, 'Identify', 'sendCommand', [screens[1], { command: 'identify' }]],
 	] as const)(
 		'reports %s against the Screen whose card asked for it',
 		async (_, index, label, event, payload) => {
@@ -177,8 +177,8 @@ describe('screen list', () => {
 		await choose(cards(wrapper)[2]!, 'Refresh Clients');
 
 		expect(wrapper.emitted('sendCommand')).toEqual([
-			[screens[0], 'refresh'],
-			[screens[2], 'refresh'],
+			[screens[0], { command: 'refresh' }],
+			[screens[2], { command: 'refresh' }],
 		]);
 	});
 

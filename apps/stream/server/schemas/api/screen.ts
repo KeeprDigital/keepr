@@ -1926,11 +1926,15 @@ export const updateScreenSchema = createUpdateSchema(screens)
 	})
 	.strict();
 
-export const screenCommandSchema = z
-	.object({
-		command: z.enum(SCREEN_COMMAND_VALUES),
-	})
-	.strict();
+/**
+ * A Screen command, with what its message carries. `debug` must say whether the
+ * debug panel is to be shown or hidden: a command that only turned it over could
+ * not be delivered twice, and a failed one is (`publishScreenCommand`).
+ */
+export const screenCommandSchema = z.discriminatedUnion('command', [
+	z.object({ command: z.enum(SCREEN_COMMAND_VALUES).exclude(['debug']) }).strict(),
+	z.object({ command: z.literal('debug'), shown: z.boolean() }).strict(),
+]);
 
 /**
  * A Screen Theme Override write: each named token's new value, or `null` to
