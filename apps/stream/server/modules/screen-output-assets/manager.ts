@@ -49,6 +49,15 @@ type ScreenOutputAssetCapabilityOutcome =
 	| { outcome: 'available'; capability: string; link: string }
 	| { outcome: 'missing' };
 
+/**
+ * A regeneration's answer. `outputsClosed` is false when the capability was
+ * regenerated and the Screen's realtime sockets could not be closed: the
+ * Operator is told, since regenerating again is theirs to do.
+ */
+type ScreenOutputAssetCapabilityRegeneration =
+	| { outcome: 'available'; capability: string; link: string; outputsClosed: boolean }
+	| { outcome: 'missing' };
+
 type ScreenOutputLinkExchangeOutcome =
 	| { outcome: 'available'; eventId: number; screenId: number; capability: string }
 	| { outcome: 'missing' };
@@ -124,16 +133,16 @@ export function createScreenOutputAssetCapabilityManager(
 	/**
 	 * Close the sockets the former capability admitted. The capability is
 	 * already regenerated, and nothing here can undo that, so a failure is not
-	 * the regeneration's: it is tried again, and then written where an operator
-	 * reads it, because those sockets go on hearing their Screen's channel until
+	 * the regeneration's: it is tried again, and then logged and answered
+	 * `false`, because those sockets go on hearing their Screen's channel until
 	 * they drop. They cannot return: the former capability is given no ticket.
 	 */
-	async function disconnectOutputs(screen: FormerOutputs) {
+	async function disconnectOutputs(screen: FormerOutputs): Promise<boolean> {
 		let failure: unknown;
 		for (let attempt = 0; attempt < DISCONNECT_ATTEMPTS; attempt++) {
 			try {
 				await dependencies.disconnectOutputs(screen);
-				return;
+				return true;
 			} catch (error) {
 				failure = error;
 			}
@@ -149,6 +158,7 @@ export function createScreenOutputAssetCapabilityManager(
 				errorMessage: failure instanceof Error ? failure.message : String(failure),
 			}),
 		);
+		return false;
 	}
 
 	/**
@@ -160,7 +170,7 @@ export function createScreenOutputAssetCapabilityManager(
 	async function rotate(input: {
 		eventId: number;
 		screenId: number;
-	}): Promise<ScreenOutputAssetCapabilityOutcome> {
+	}): Promise<ScreenOutputAssetCapabilityRegeneration> {
 		const screen = await dependencies.screens.findById(input.screenId, input.eventId);
 		if (!screen) return { outcome: 'missing' };
 		const prepared = await prepare({
@@ -174,7 +184,7 @@ export function createScreenOutputAssetCapabilityManager(
 			screen.assetCapabilityVersion,
 		);
 		if (!updated) return { outcome: 'missing' };
-		await disconnectOutputs({
+		const outputsClosed = await disconnectOutputs({
 			eventId: updated.eventId,
 			screenId: updated.id,
 			capabilityVersion: prepared.persisted.assetCapabilityVersion,
@@ -183,6 +193,7 @@ export function createScreenOutputAssetCapabilityManager(
 			outcome: 'available',
 			capability: prepared.capability,
 			link: await deriveLink(updated.id, prepared.persisted),
+			outputsClosed,
 		};
 	}
 
