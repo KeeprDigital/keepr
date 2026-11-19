@@ -418,11 +418,12 @@ describe('regenerating a Screen Output Asset Capability', () => {
 		output.socket.send(JSON.stringify({ t: 'enter', channel: screen.channel, data: {} }));
 		await until('the output to be present', () => members.length === 1);
 
-		const regenerated = await $fetch<{ assetCapability: string }>(
+		const regenerated = await $fetch<{ assetCapability: string; outputsClosed: boolean }>(
 			`/api/events/${eventId}/screens/${screen.id}/asset-capability`,
 			{ method: 'POST' },
 		);
 
+		expect(regenerated.outputsClosed).toBe(true);
 		expect(await output.closed).toBe(CLOSE_REFUSED);
 		await until('its watchers to be told', () => members.length === 0);
 		// The former capability: its unspent ticket admits nobody, and it is given no other.

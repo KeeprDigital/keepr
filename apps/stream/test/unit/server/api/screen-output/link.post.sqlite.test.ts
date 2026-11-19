@@ -236,7 +236,10 @@ describe('what an operator is handed for a Screen', () => {
 
 		expect(after.outputLink).not.toBe(before.outputLink);
 		expect(after.assetCapability).not.toBe(before.assetCapability);
-		expect(await issued()).toEqual(after);
+		expect(await issued()).toEqual({
+			assetCapability: after.assetCapability,
+			outputLink: after.outputLink,
+		});
 	});
 });
 

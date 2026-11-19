@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { BackgroundLayersCapableMode } from '~~/shared/screenModes';
 import type { Screen, ScreenCommandRequest, ScreenMode } from '~/types';
+import type { ScreenOutputCapabilityRegeneration } from '~/utils/screenOutputCapabilityRegeneration';
 import { screenModeSupportsBackgroundLayers } from '~~/shared/screenModes';
 import { useEditorFocusMode } from '~/modules/graphics/editorFocusMode';
 import {
@@ -206,17 +207,13 @@ async function rotateAssetCapability() {
 	if (!screen.value) return;
 	await runRequest(
 		() =>
-			$fetch<{ assetCapability: string }>(
+			$fetch<ScreenOutputCapabilityRegeneration>(
 				`/api/events/${eventId.value}/screens/${screen.value!.id}/asset-capability`,
 				{ method: 'POST' },
 			),
 		{
 			loadingRef: rotatingCapability,
-			success: {
-				title: 'Asset Access Rotated',
-				description: 'Previously copied Screen URLs can no longer resolve Graphic Assets.',
-				color: 'success',
-			},
+			success: screenOutputCapabilityRegenerationNotice,
 			error: {
 				title: 'Rotation Failed',
 				description: 'Screen Output asset access could not be rotated.',

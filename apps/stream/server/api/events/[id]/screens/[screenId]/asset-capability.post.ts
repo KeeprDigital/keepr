@@ -17,5 +17,11 @@ export default defineEventHandler(async (event) => {
 		});
 	}
 	setResponseHeader(event, 'cache-control', 'private, no-store');
-	return { assetCapability: result.capability, outputLink: result.link };
+	// `outputsClosed` false is still a regeneration: the page tells the Operator
+	// what was left open, and to regenerate again (ADR-0142).
+	return {
+		assetCapability: result.capability,
+		outputLink: result.link,
+		outputsClosed: result.outputsClosed,
+	};
 });
