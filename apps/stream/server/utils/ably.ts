@@ -28,8 +28,8 @@ import { publishFailureFields, RealtimePublishError } from './realtimePublishFai
  * here publishes to Ably.
  *
  * The file keeps its name, and `getAblyClient`, for `GET /api/realtime/token`,
- * which still signs Ably token requests for the pages until they move onto the
- * object. Both go when Ably does (#1319).
+ * which still signs Ably token requests for the pages. Both go when the pages
+ * move onto the object (#1317).
  */
 
 /** The environment name behind `runtimeConfig.ablyApiKey`, as the operator sets it. */
