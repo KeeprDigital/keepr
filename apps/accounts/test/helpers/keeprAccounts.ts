@@ -17,6 +17,8 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 export const LOCAL_HOST = 'localhost:3000';
 /** The production host, where the session cookie is shared across Keepr hosts. */
 export const PRODUCTION_HOST = 'accounts.keepr.digital';
+/** The staging host, where the session cookie is shared across staging's Keepr hosts. */
+export const STAGING_HOST = 'accounts.keepr-staging.digital';
 
 /** A password long enough for every rule, and in no breach. */
 export const PASSWORD = 'a-long-enough-password';

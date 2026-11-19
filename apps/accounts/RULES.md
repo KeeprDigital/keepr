@@ -7,6 +7,7 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - Keepr Accounts alone opens the identity database, holds the sign-in secret and runs Better Auth. No App binds the database. (ADR-0112)
 - A blank `NUXT_BETTER_AUTH_SECRET` answers 503 naming it, and nobody can sign in. (ADR-0112)
 - The identity schema is Better Auth's tables for its chosen add-ons, held to the library's own definitions by a test, plus App access, the Audit Record and the First Administrator Claim. The adapter runs without transactions. (ADR-0112)
+- Keepr Accounts answers on `accounts.keepr.digital` in Production and `accounts.keepr-staging.digital` in Staging, each Installation in its Environment's account, and on loopback locally. Each Installation keeps to its own Keepr domain, `keepr.digital` or `keepr-staging.digital`: its cookie, its Return Addresses and its email. Served on neither, it keeps to `keepr.digital`'s Return Addresses and sender. (ADR-0122, #1255)
 
 ## User
 
@@ -19,7 +20,7 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 
 - A Session lasts seven days from its last renewal. A request a day or more after the last renewal renews it. (ADR-0112)
 - Signing out ends the Session at once: no cached copy of it is kept in a cookie. (ADR-0112)
-- The session cookie is `HttpOnly`, `SameSite=Lax` and `Path=/`, and `Secure` with the `__Secure-` prefix on every server but `nuxt dev`. Served on a Keepr host it is set on `keepr.digital`, so every App's requests carry it; served anywhere else it is host-only. (ADR-0012, ADR-0112)
+- The session cookie is `HttpOnly`, `SameSite=Lax` and `Path=/`, and `Secure` with the `__Secure-` prefix on every server but `nuxt dev`. Served on a Keepr host it is set on that host's Keepr domain, `keepr.digital` or `keepr-staging.digital`, so every App of that Installation's Environment carries it; served anywhere else it is host-only. (ADR-0012, ADR-0112)
 - A write to Better Auth's routes is admitted only from a page of Keepr Accounts itself: another origin, an App's included, is refused 403. (ADR-0112)
 - A Session records the client address Cloudflare vouches for, never a forwarded one the caller wrote. (ADR-0012)
 
@@ -34,14 +35,14 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 
 ## Email
 
-- Every email is from `Keepr <accounts@keepr.digital>`, sent through Cloudflare's email service bound as `EMAIL`, which may send as no other address. Without the binding a send fails, naming it. (#1228 § Email)
+- Every email is from Keepr at its Installation's Keepr domain, `Keepr <accounts@keepr.digital>` in Production and `Keepr <accounts@keepr-staging.digital>` in Staging, sent through Cloudflare's email service bound as `EMAIL`, which may send as no other address. Without the binding a send fails, naming it. (#1228 § Email, #1255)
 - Nothing local sends mail. The dev server writes each message to `apps/accounts/.data/email` and logs where; `wrangler dev` simulates the binding; tests record it. (#1228 § Email)
 - No response waits for an email: the Worker sends it after answering, so how long a request takes does not tell whether an address has a User. (#1228 § Email)
 
 ## Return Address
 
 - A User signs in at `/sign-in`, and is sent afterwards to the Return Address named by `?returnTo=` when it is accepted, and to Keepr Accounts' home otherwise, told that the address was outside Keepr. (ADR-0112)
-- Accepted: a path of Keepr Accounts itself, or an https address on `keepr.digital` or any host under it, carrying no credentials. A loopback address is accepted only when Keepr Accounts is itself served from one. (ADR-0112)
+- Accepted: a path of Keepr Accounts itself, or an https address on its Installation's Keepr domain or any host under it, carrying no credentials: Staging sends nobody to Production, nor Production to Staging. A loopback address is accepted only when Keepr Accounts is itself served from one. (ADR-0112)
 
 ## Identity Proof
 

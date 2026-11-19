@@ -9,6 +9,7 @@ import {
 	KEEPR_ACCOUNTS_ORIGIN,
 } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { passwordResetEmail } from '~~/server/email/messages';
+import { keeprDomainOf } from '~~/shared/utils/keeprDomain';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 import { organisationOptions } from './organisations';
 
@@ -22,9 +23,6 @@ import { organisationOptions } from './organisations';
  * Stream Keepr's census found (ADR-0012): the tests run under `NODE_ENV=test`,
  * where the library's defaults differ from a deployed Worker's.
  */
-
-/** The domain every Keepr host shares, on which the session cookie is set in production. */
-export const KEEPR_DOMAIN = 'keepr.digital';
 
 /**
  * Sessions last seven days from their last renewal, and a request a day or more
@@ -53,13 +51,15 @@ export const DISABLED_USER_MESSAGE =
 	'This account has been disabled. Ask a Keepr Administrator to enable it again.';
 
 /**
- * The hostnames Keepr Accounts answers on. The origin check trusts these and no
+ * The hostnames Keepr Accounts answers on: production's and staging's, as
+ * `wrangler.jsonc` attaches them. The one build deploys to both. The origin check trusts these and no
  * others, so an App's page cannot send a write here (#1228 § Further Notes).
  * Loopback is listed with any port, for the dev server and a local run of the
  * built Worker.
  */
 export const ALLOWED_HOSTS = [
 	'accounts.keepr.digital',
+	'accounts.keepr-staging.digital',
 	'localhost',
 	'localhost:*',
 	'127.0.0.1',
@@ -67,16 +67,13 @@ export const ALLOWED_HOSTS = [
 ];
 
 /**
- * The domain the session cookie is set on for a request to `host`: the shared
- * Keepr domain when Keepr Accounts is served on a Keepr host, so every App's
- * requests carry it, and none (host-only) anywhere else. A browser refuses a
- * cookie for `keepr.digital` from `localhost`, so local runs must be host-only.
+ * The domain the session cookie is set on for a request to `host`: the Keepr
+ * domain Keepr Accounts is served under, so every App of that Installation
+ * carries it, and none (host-only) anywhere else. A browser refuses a cookie for
+ * `keepr.digital` from `localhost`, so local runs must be host-only.
  */
 export function sharedCookieDomainFor(host: string): string | undefined {
-	const hostname = host.replace(/:\d+$/, '').toLowerCase();
-	return hostname === KEEPR_DOMAIN || hostname.endsWith(`.${KEEPR_DOMAIN}`)
-		? KEEPR_DOMAIN
-		: undefined;
+	return keeprDomainOf(host);
 }
 
 const adminPlugin = admin({ bannedUserMessage: DISABLED_USER_MESSAGE });

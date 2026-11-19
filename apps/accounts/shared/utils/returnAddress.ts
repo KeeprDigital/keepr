@@ -1,12 +1,14 @@
-const KEEPR_DOMAIN = 'keepr.digital';
+import { installationDomainOf } from './keeprDomain';
+
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1']);
 
 /**
  * The Return Address a User is sent to after signing in, or `null` when
  * `candidate` is not one Keepr Accounts will send anyone to (`RULES.md`).
  *
- * Accepted: a page of Keepr Accounts itself, and any page on a Keepr host over
- * https. A loopback address is accepted only when Keepr Accounts is itself served
+ * Accepted: a page of Keepr Accounts itself, and any page over https on the
+ * Keepr domain of the Installation it is served from (`servedFrom`), so staging
+ * sends nobody to production, nor production to staging. A loopback address is accepted only when Keepr Accounts is itself served
  * from one (`servedFrom`), so a deployment never sends anyone to a local address.
  */
 export function acceptedReturnAddress(
@@ -26,11 +28,13 @@ export function acceptedReturnAddress(
 	}
 	if (address.username || address.password) return null;
 
+	const served = new URL(servedFrom).hostname;
+	const domain = installationDomainOf(served);
 	const keeprHost =
 		address.protocol === 'https:' &&
-		(address.hostname === KEEPR_DOMAIN || address.hostname.endsWith(`.${KEEPR_DOMAIN}`));
+		(address.hostname === domain || address.hostname.endsWith(`.${domain}`));
 	const localHost =
-		LOOPBACK_HOSTNAMES.has(new URL(servedFrom).hostname) &&
+		LOOPBACK_HOSTNAMES.has(served) &&
 		(address.protocol === 'http:' || address.protocol === 'https:') &&
 		LOOPBACK_HOSTNAMES.has(address.hostname);
 

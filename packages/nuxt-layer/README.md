@@ -17,7 +17,7 @@ export default defineNuxtConfig({
 | `shared/` | What the server and the client both read: the state-conflict code, the body-limit route rule's types, the server time and release paths, clock time formatting and parsing, Intervals, the App registry, the Identity Proof's shape. |
 | `app/composables`, `app/utils` | Request feedback, forms, unsaved changes, async actions, store helpers, who am I (`useIdentity`), server time, the Clock Projection scheduler and the Frame Clock, failure sentences. Auto-imported. |
 | `app/components/UI` | Confirm, empty, loading, search and tab components, as `<UI…>`. |
-| `test/` | Test kits an app's tests import, the SQLite D1 harness over an app's real migrations and the auth schema contract (`authSchemaContract.ts`) among them, and this layer's own tests. |
+| `test/` | Test kits an app's tests import, the SQLite D1 harness over an app's real migrations and the auth schema contract (`authSchemaContract.ts`) and the check of each Environment's Wrangler configuration against the deploy descriptor (`wranglerEnvironments.ts`) among them, and this layer's own tests. |
 | `RULES.md`, `docs/adr` | What the layer's named modules must do, and the decisions behind them (ADR-0095). Their terms are in the root `GLOSSARY.md`. |
 | `vitest.shared.ts` | What an app's Vitest configurations name: the h3 Nitro runs on, the setup files, the load-tolerant bounds. |
 

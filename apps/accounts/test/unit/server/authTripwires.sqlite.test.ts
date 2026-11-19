@@ -7,6 +7,7 @@ import {
 	PASSWORD,
 	PRODUCTION_HOST,
 	sessionSetCookie,
+	STAGING_HOST,
 } from '~~/test/helpers/keeprAccounts';
 
 /**
@@ -50,8 +51,12 @@ function signIn(
 }
 
 describe('the origin check', () => {
-	it('admits a sign-in from a page of Keepr Accounts', async () => {
-		expect((await signIn(await withUser())).status).toBe(200);
+	it.each([
+		['locally', LOCAL_HOST],
+		['in production', PRODUCTION_HOST],
+		['in staging', STAGING_HOST],
+	])('admits a sign-in from a page of Keepr Accounts %s', async (_case, host) => {
+		expect((await signIn(await withUser({ host }))).status).toBe(200);
 	});
 
 	it.each([
@@ -85,6 +90,7 @@ describe('the origin check', () => {
 describe('the session cookie', () => {
 	it.each([
 		['production', PRODUCTION_HOST, ['domain=keepr.digital']],
+		['staging', STAGING_HOST, ['domain=keepr-staging.digital']],
 		['development', LOCAL_HOST, []],
 	])('in %s is set on %s with %j', async (_case, host, domain) => {
 		const cookie = sessionSetCookie(await signIn(await withUser({ host })));

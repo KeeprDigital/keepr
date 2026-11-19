@@ -66,7 +66,7 @@ export function serverAuth(host: string): KeeprAuth {
 			database: db(),
 			secret,
 			sharedCookieDomain,
-			email: serverEmailSender(),
+			email: serverEmailSender(host),
 			afterResponse: runAfterResponse,
 		});
 		instances.set(sharedCookieDomain, auth);

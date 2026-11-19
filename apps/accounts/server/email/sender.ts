@@ -5,7 +5,9 @@
  * real person.
  */
 
-/** One message to one person. The sender is always `KEEPR_SENDER`. */
+import { installationDomainOf } from '~~/shared/utils/keeprDomain';
+
+/** One message to one person, from Keepr (`keeprSenderFor`). */
 export interface Email {
 	to: string;
 	subject: string;
@@ -19,5 +21,20 @@ export interface EmailSender {
 	send: (email: Email) => Promise<void>;
 }
 
-/** Who every email from Keepr Accounts is from. */
-export const KEEPR_SENDER = { email: 'accounts@keepr.digital', name: 'Keepr' } as const;
+/** Who an email from Keepr Accounts is from. */
+export interface KeeprSender {
+	email: string;
+	name: 'Keepr';
+}
+
+/** Who every email from Keepr Accounts is from, in production and in a local run. */
+export const KEEPR_SENDER: KeeprSender = { email: 'accounts@keepr.digital', name: 'Keepr' };
+
+/**
+ * Who an email from Keepr Accounts served at `host` is from: Keepr, at its
+ * Installation's Keepr domain, the one domain its account may send as
+ * (`wrangler.jsonc`'s `send_email`).
+ */
+export function keeprSenderFor(host: string): KeeprSender {
+	return { email: `accounts@${installationDomainOf(host)}`, name: 'Keepr' };
+}

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cloudflareEmailSender } from '~~/server/email/cloudflare';
 import { createEmailRecorder } from '~~/server/email/recorder';
+import { keeprSenderFor } from '~~/server/email/sender';
 
 // The two implementations of the email seam: Cloudflare's service, and the recorder
 // local runs write to instead of sending.
@@ -31,6 +32,25 @@ describe("Cloudflare's email service", () => {
 		expect(handed).toEqual([
 			{ ...EMAIL, from: { email: 'accounts@keepr.digital', name: 'Keepr' } },
 		]);
+	});
+
+	// Each Installation sends from its own Keepr domain, the one its account may send as.
+	it.each([
+		['production', 'accounts.keepr.digital', 'accounts@keepr.digital'],
+		['staging', 'accounts.keepr-staging.digital', 'accounts@keepr-staging.digital'],
+		['a local run', 'localhost:8790', 'accounts@keepr.digital'],
+	])('is handed, in %s, each message from Keepr at its domain', async (_case, host, address) => {
+		const handed: { from: unknown }[] = [];
+		const binding: SendEmailBinding = {
+			send: async (message) => {
+				handed.push(message);
+				return { messageId: 'm-1' };
+			},
+		};
+
+		await cloudflareEmailSender(binding, keeprSenderFor(host)).send(EMAIL);
+
+		expect(handed.map(({ from }) => from)).toEqual([{ email: address, name: 'Keepr' }]);
 	});
 
 	it('fails a send it refuses, with its reason', async () => {

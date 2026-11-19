@@ -1,5 +1,6 @@
 {
 	"name": "@keepr/accounts",
+	"version": "0.0.0",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -9,6 +10,11 @@
 		"typecheck": "nuxt prepare && keepr-slots typecheck -- vue-tsc --noEmit && keepr-slots typecheck -- vue-tsc --noEmit -p test/tsconfig.json",
 		"test": "vitest run && vitest run --config vitest.nuxt.config.ts",
 		"verify": "pnpm typecheck && pnpm test && pnpm build",
+		"worker:dry-run": "node scripts/worker-dry-run.mjs",
+		"worker:smoke": "keepr-slots worker-smoke -- node scripts/worker-smoke.mjs",
+		"deploy": "keepr-deploy deploy --app accounts --env production",
+		"deploy:verify": "keepr-deploy verify --app accounts --env production",
+		"deploy:status": "keepr-deploy status --app accounts --env production",
 		"postinstall": "nuxt prepare",
 		"lint": "pnpm --workspace-root lint",
 		"lint:fix": "pnpm --workspace-root lint:fix",
