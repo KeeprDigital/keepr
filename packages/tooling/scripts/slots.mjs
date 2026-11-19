@@ -66,8 +66,6 @@ export const RUN_SLOT_COSTS = /** @type {const} */ ({
 	lint: 3,
 	typecheck: 3,
 	build: 3,
-	// One `nuxt dev` with its workerd, and a Chrome beside it.
-	'local-auth': 3,
 	'browser-gate': 2,
 	'worker-smoke': 2,
 	// Several `nuxt dev` servers whose tests time real requests: nothing beside it.

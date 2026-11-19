@@ -48,6 +48,7 @@ import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { parseArgs } from 'node:util';
 import { refuseAccountMismatch } from './account.mjs';
+import { buildCommands } from './build.mjs';
 import { bundlePart, fingerprintPart } from './fingerprint.mjs';
 import { describeMarker, gitMarkerStore, markerName, markerStore } from './markers.mjs';
 import { checkDeployOrder, gitHistory, neededBy } from './order.mjs';
@@ -152,8 +153,9 @@ function realSteps({ release, environment, store, env, log }) {
 	const envArgs = wranglerEnv === undefined ? [] : ['--env', wranglerEnv];
 	const wrangler = join(appDir, 'node_modules/.bin/wrangler');
 	return {
+		// Beside the Accounts Stand-in when the app binds Keepr Accounts (`build.mjs`).
 		build: () => {
-			for (const script of descriptor.build) run('pnpm', ['run', script], appDir);
+			for (const { command, args } of buildCommands(release)) run(command, args, appDir);
 		},
 		placeArtifact: (path) => {
 			const output = join(appDir, descriptor.output);

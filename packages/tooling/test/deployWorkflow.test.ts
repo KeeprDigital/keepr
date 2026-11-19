@@ -1,9 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { configBindsKeeprAccounts } from '../scripts/ci-scope.mjs';
+import { buildCommands, STAND_IN_LAUNCHER } from '../scripts/deploy/build.mjs';
+import { configBindsKeeprAccounts } from '../scripts/deploy/order.mjs';
 import { STAGING_THEN_PRODUCTION } from '../scripts/deploy/plan.mjs';
-import { deployableApps } from '../scripts/deploy/release.mjs';
+import { deployableApps, readRelease, workerSourceConfig } from '../scripts/deploy/release.mjs';
 import { parseJsonc } from '../scripts/jsonc.mjs';
 
 /**
@@ -538,14 +540,27 @@ describe('a job that checks out only the tooling checks out every module it runs
 	});
 });
 
-// The deploy's build runs the app's `worker:smoke` with no Accounts Stand-in,
-// which CI's Worker leg starts around `keepr-deploy check` instead. The first
-// App to bind Keepr Accounts moves that wrapping into the tooling's build step.
-it('no deployable app binds Keepr Accounts while the deploy builds without the stand-in', () => {
-	const apps = deployableApps('../..');
-	const config = (app: string) =>
-		parseJsonc(readFileSync(`../../apps/${app}/wrangler.jsonc`, 'utf8'));
+// A Worker smoke of an App that binds Keepr Accounts has nobody to ask in a
+// deploy's build, so the tooling's build starts the Accounts Stand-in around
+// each of its scripts (`build.mjs`, tested at its home). This holds the
+// committed Apps and workflows to it: each App that binds Keepr Accounts builds
+// through the launcher this checkout has, and no workflow starts one itself.
+it('builds each deployable app that binds Keepr Accounts beside the Accounts Stand-in, from the tooling', () => {
+	const root = resolve('../..');
+	const launcher = join(root, STAND_IN_LAUNCHER);
+	const bound = deployableApps(root).filter((app) =>
+		configBindsKeeprAccounts(parseJsonc(readFileSync(workerSourceConfig(root, app), 'utf8'))),
+	);
 
-	expect(apps).toContain('stream');
-	expect(apps.filter((app) => configBindsKeeprAccounts(config(app)))).toEqual([]);
+	expect(bound).toEqual(['stream']);
+	expect(existsSync(launcher)).toBe(true);
+	for (const app of bound) {
+		const commands = buildCommands(readRelease({ root, app }));
+
+		expect(commands.length).toBeGreaterThan(0);
+		for (const { args } of commands) expect(args.slice(0, 2)).toEqual([launcher, '--']);
+	}
+	for (const file of [deploy, installation, building])
+		for (const job of Object.values(file.jobs))
+			for (const step of job.steps ?? []) expect(step.run ?? '').not.toContain('stand-in');
 });
