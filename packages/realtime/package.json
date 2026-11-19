@@ -10,7 +10,8 @@
 		"./client": "./src/client/index.ts"
 	},
 	"scripts": {
-		"typecheck": "tsc --noEmit -p tsconfig.client.json && tsc --noEmit -p tsconfig.object.json",
+		"typecheck": "tsc --noEmit -p tsconfig.client.json && pnpm types:object --check && tsc --noEmit -p tsconfig.object.json && tsc --noEmit -p test/object/tsconfig.json",
+		"types:object": "wrangler types test/object/worker/worker-configuration.d.ts --config test/object/worker/wrangler.jsonc --env-file /dev/null",
 		"test": "vitest run"
 	},
 	"devDependencies": {

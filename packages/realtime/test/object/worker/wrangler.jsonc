@@ -1,0 +1,24 @@
+{
+	"$schema": "../../../node_modules/wrangler/config-schema.json",
+	// The Worker the object's tests run in local `workerd` (`../server.ts`). It
+	// grants whatever a test asks for, so it is never deployed: no script names it.
+	"name": "realtime-object-test",
+	"main": "index.ts",
+	"compatibility_date": "2026-07-16",
+	"workers_dev": false,
+	"durable_objects": {
+		"bindings": [
+			{ "name": "PLAIN", "class_name": "RealtimeObject" },
+			{ "name": "DEFAULTS", "class_name": "Observed" },
+			{ "name": "BRIEF_LOG", "class_name": "BriefLog" },
+			{ "name": "BRIEF_GRACE", "class_name": "BriefGrace" },
+			{ "name": "BRIEF_SWEEP", "class_name": "BriefSweep" }
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["RealtimeObject", "Observed", "BriefLog", "BriefGrace", "BriefSweep"]
+		}
+	]
+}

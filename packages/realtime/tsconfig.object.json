@@ -1,8 +1,10 @@
 {
 	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		"noEmit": true,
-		"types": ["node"]
+		"noEmit": true
 	},
-	"include": ["src/protocol.ts", "src/object", "test/object"]
+	// What runs in the Workers runtime: the object, and the Worker its tests drive. The
+	// runtime's types are that Worker's generated ones (`pnpm types:object`), and Node's
+	// are kept out. The tests themselves run in Node (`test/object/tsconfig.json`).
+	"include": ["src/protocol.ts", "src/object", "test/object/worker", "test/object/timings.ts"]
 }

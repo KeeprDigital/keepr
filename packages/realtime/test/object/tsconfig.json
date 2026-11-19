@@ -1,0 +1,10 @@
+{
+	"extends": "../../../../tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"types": ["node"]
+	},
+	// The tests, and what drives the test Worker from Node. The Worker itself (`worker/`)
+	// is in `tsconfig.object.json`, under the Workers runtime's types.
+	"include": ["*.ts"]
+}
