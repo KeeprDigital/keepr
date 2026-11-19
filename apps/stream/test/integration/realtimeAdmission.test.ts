@@ -1,15 +1,19 @@
 import type { PresenceMember } from '@keepr/realtime/protocol';
-import type { SocketConstructor, SocketTransport } from '@keepr/realtime/client';
-import type { Delivery, PublishAnswer } from '@keepr/realtime/object';
+import type { SocketTransport } from '@keepr/realtime/client';
 import type { ScreenResponse } from '~~/shared/api';
-import { createSocketTransport } from '@keepr/realtime/client';
 import { CLOSE_REFUSED, PING, PONG } from '@keepr/realtime/protocol';
 import { afterEach, describe, expect, it } from 'vitest';
 import { eventRealtimeChannel, screenRealtimeChannel } from '../../shared/utils/realtimeChannels';
-import { $fetch, fetch, url } from './client';
-import { INTEGRATION_OPERATOR_COOKIE, INTEGRATION_SIGNED_OUT_COOKIE } from './environment';
+import { $fetch, fetch } from './client';
+import { INTEGRATION_SIGNED_OUT_COOKIE } from './environment';
 import { aUserWithoutAccess } from './identities';
 import { executeIntegrationD1 } from './integrationD1';
+import {
+	connectRealtime,
+	operatorPage,
+	realtimeSocketUrl as socketUrl,
+	until,
+} from './realtimeFollower';
 
 /**
  * Who a realtime socket lets in, on a running server (ADR-0137, ADR-0142): a
@@ -22,27 +26,18 @@ import { executeIntegrationD1 } from './integrationD1';
  * This is what only a server shows: the layer's hand-off asks the port, the
  * object holds each socket to its grant, and one ticket is spent once in D1.
  *
- * Nothing of the app publishes to the object yet, so a message is published by
- * the suite's own route (`fixtures/realtime-publish.ts`).
+ * What a socket hears is what the app's own writes announce: an Event's rename
+ * on its Event's channel, and a Screen command on that Screen's. Nothing
+ * publishes for a test.
  */
 
-const origin = new URL(url('/')).origin;
-
 /** What an Operator's page of this server sends with its socket. */
-const OPERATOR_PAGE = { cookie: INTEGRATION_OPERATOR_COOKIE, origin };
+const OPERATOR_PAGE = operatorPage();
 
-const socketUrl = (query: Record<string, string | number>) =>
-	`${url('/realtime/socket').replace('http', 'ws')}?${new URLSearchParams(
-		Object.entries(query).map(([name, value]) => [name, String(value)]),
-	)}`;
-
-async function until(what: string, condition: () => boolean, timeoutMs = 10_000): Promise<void> {
-	const deadline = Date.now() + timeoutMs;
-	while (!condition()) {
-		if (Date.now() > deadline) throw new Error(`Timed out waiting for ${what}`);
-		await new Promise((resolve) => setTimeout(resolve, 20));
-	}
-}
+/** What renaming an Event announces, on its Event's channel. */
+const EVENT_UPDATED = 'event:updated';
+/** What the `identify` command sends a Screen, on that Screen's channel. */
+const SCREEN_COMMANDED = 'screen:command:identify';
 
 const transports: SocketTransport[] = [];
 const sockets: WebSocket[] = [];
@@ -56,35 +51,33 @@ function connect(
 	address: () => string | Promise<string>,
 	headers: Record<string, string> = {},
 ): SocketTransport {
-	const Socket = class extends WebSocket {
-		constructor(address: string) {
-			super(address, { headers } as never);
-		}
-	} as SocketConstructor;
-	const transport = createSocketTransport({ address, WebSocket: Socket });
+	const transport = connectRealtime(address, headers);
 	transports.push(transport);
 	return transport;
 }
 
-/** Hear what is `said` on `channel`, once the object has attached it. */
-async function hear(transport: SocketTransport, channel: string): Promise<unknown[]> {
-	const heard: unknown[] = [];
+/** Hear the messages named `name` on `channel`, once the object has attached it. */
+async function hear(transport: SocketTransport, channel: string, name: string): Promise<any[]> {
+	const heard: any[] = [];
 	let attached = false;
 	transport.onceAttached(channel, () => {
 		attached = true;
 	});
-	transport.onMessage(channel, 'said', (data) => heard.push(data));
+	transport.onMessage(channel, name, (data) => heard.push(data));
 	await until(`${channel} to attach`, () => attached);
 	return heard;
 }
 
-const said = (channel: string, text: string): Delivery => ({ channel, name: 'said', data: text });
+/** Rename the Event: the app announces it on the Event's channel. */
+async function renameEvent(eventId: number, name: string): Promise<void> {
+	await $fetch(`/api/events/${eventId}`, { method: 'PATCH', body: { name } });
+}
 
-/** Publish to an Event's object, as the app's own write will. */
-async function publish(eventId: number, deliveries: Delivery[]): Promise<PublishAnswer[]> {
-	return await $fetch<PublishAnswer[]>('/api/_test/realtime-publish', {
+/** Command a Screen to identify itself: the app sends it on that Screen's channel. */
+async function commandScreen(eventId: number, screenId: number): Promise<void> {
+	await $fetch(`/api/events/${eventId}/screens/${screenId}/command`, {
 		method: 'POST',
-		body: { eventId, deliveries },
+		body: { command: 'identify' },
 	});
 }
 
@@ -191,23 +184,26 @@ describe('a Session', () => {
 		const eventId = await createEvent();
 		const screen = await createScreen(eventId);
 		const session = connect(() => socketUrl({ eventId }), OPERATOR_PAGE);
-		const onEvent = await hear(session, eventRealtimeChannel(eventId));
-		const onScreen = await hear(session, screen.channel);
+		const onEvent = await hear(session, eventRealtimeChannel(eventId), EVENT_UPDATED);
+		const onScreen = await hear(session, screen.channel, SCREEN_COMMANDED);
 		let members: PresenceMember[] = [];
 		session.watchPresence(screen.channel, (now) => {
 			members = now;
 		});
 		session.enterPresence(screen.channel, { as: 'an Operator' });
 
-		await publish(eventId, [
-			said(eventRealtimeChannel(eventId), 'to the Event'),
-			said(screen.channel, 'to the Screen'),
-		]);
+		await renameEvent(eventId, 'Heard by its Session');
+		await commandScreen(eventId, screen.id);
 
 		await until('both messages', () => onEvent.length === 1 && onScreen.length === 1);
 		await until('its presence', () => members.length === 1);
-		expect(onEvent).toEqual(['to the Event']);
-		expect(onScreen).toEqual(['to the Screen']);
+		expect(onEvent).toEqual([
+			expect.objectContaining({
+				eventId,
+				event: expect.objectContaining({ name: 'Heard by its Session' }),
+			}),
+		]);
+		expect(onScreen).toEqual([expect.objectContaining({ eventId, screenId: screen.id })]);
 		expect(members).toEqual([expect.objectContaining({ data: { as: 'an Operator' } })]);
 		expect(session.channelRefusals).toEqual([]);
 	});
@@ -215,10 +211,10 @@ describe('a Session', () => {
 	it("is refused another Event's channels and its own Event's presence, by the object", async () => {
 		const [eventId, otherEventId] = [await createEvent(), await createEvent()];
 		const session = connect(() => socketUrl({ eventId }), OPERATOR_PAGE);
-		await hear(session, eventRealtimeChannel(eventId));
+		await hear(session, eventRealtimeChannel(eventId), EVENT_UPDATED);
 
-		session.onMessage(eventRealtimeChannel(otherEventId), 'said', () => {});
-		session.onMessage(screenRealtimeChannel(otherEventId, 1), 'said', () => {});
+		session.onMessage(eventRealtimeChannel(otherEventId), EVENT_UPDATED, () => {});
+		session.onMessage(screenRealtimeChannel(otherEventId, 1), SCREEN_COMMANDED, () => {});
 		session.enterPresence(eventRealtimeChannel(eventId), {});
 
 		await until('the refusals', () => session.channelRefusals.length === 3);
@@ -261,19 +257,18 @@ describe('a Screen Output', () => {
 		const eventId = await createEvent();
 		const screen = await createScreen(eventId);
 		const output = connectOutput(eventId, screen.capability);
-		const heard = await hear(output, screen.channel);
+		const heard = await hear(output, screen.channel, SCREEN_COMMANDED);
 		let members: PresenceMember[] = [];
 		output.watchPresence(screen.channel, (now) => {
 			members = now;
 		});
 		output.enterPresence(screen.channel, { protocol: 2 });
 
-		const answers = await publish(eventId, [said(screen.channel, 'to the Screen')]);
+		await commandScreen(eventId, screen.id);
 
 		await until('the message', () => heard.length === 1);
 		await until('its presence', () => members.length === 1);
-		expect(heard).toEqual(['to the Screen']);
-		expect(answers).toEqual([expect.objectContaining({ recipients: 1 })]);
+		expect(heard).toEqual([expect.objectContaining({ eventId, screenId: screen.id })]);
 		expect(output.channelRefusals).toEqual([]);
 	});
 
@@ -281,20 +276,19 @@ describe('a Screen Output', () => {
 		const eventId = await createEvent();
 		const [screen, otherScreen] = [await createScreen(eventId), await createScreen(eventId)];
 		const output = connectOutput(eventId, screen.capability);
-		const heard = await hear(output, screen.channel);
+		const heard = await hear(output, screen.channel, SCREEN_COMMANDED);
 		const elsewhere: unknown[] = [];
 
-		output.onMessage(eventRealtimeChannel(eventId), 'said', (data) => elsewhere.push(data));
-		output.onMessage(otherScreen.channel, 'said', (data) => elsewhere.push(data));
+		output.onMessage(eventRealtimeChannel(eventId), EVENT_UPDATED, (data) => elsewhere.push(data));
+		output.onMessage(otherScreen.channel, SCREEN_COMMANDED, (data) => elsewhere.push(data));
 		output.enterPresence(otherScreen.channel, { protocol: 2 });
 		await until('the refusals', () => output.channelRefusals.length === 3);
-		await publish(eventId, [
-			said(eventRealtimeChannel(eventId), 'to the Event'),
-			said(otherScreen.channel, 'to another Screen'),
-			said(screen.channel, 'to the Screen'),
-		]);
+		await renameEvent(eventId, 'Not heard by its outputs');
+		await commandScreen(eventId, otherScreen.id);
+		await commandScreen(eventId, screen.id);
 
-		// Published last, so everything before it was sent to whoever may hear it.
+		// Commanded last, and one object orders an Event's messages: everything
+		// before it was sent to whoever may hear it.
 		await until('its own message', () => heard.length === 1);
 		expect(elsewhere).toEqual([]);
 		expect(sorted(output)).toEqual(
