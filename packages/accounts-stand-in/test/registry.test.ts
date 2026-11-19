@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { connect } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
@@ -105,6 +106,76 @@ describe('keepr-accounts-stand-in -- <command>', () => {
 
 		expect(code).toBe(0);
 		expect(existsSync(checkoutState)).toBe(false);
+	}, 60_000);
+
+	// Told to stop by itself, as a supervisor stops one process and not its group,
+	// it leaves only once the stand-in has: nothing of the run outlives it.
+	it('has stopped the stand-in by the time it leaves, when it alone is told to stop', async () => {
+		const child = spawn(
+			process.execPath,
+			[
+				launcher,
+				'--',
+				process.execPath,
+				'-e',
+				`const fs = require('node:fs');
+				const registry = process.env.WRANGLER_REGISTRY_PATH;
+				const { debugPortAddress } = JSON.parse(fs.readFileSync(registry + '/keepr-accounts', 'utf8'));
+				// The stand-in is the launcher's other child.
+				const standIn = require('node:child_process')
+					.execFileSync('ps', ['-axo', 'pid=,ppid=,command='], { encoding: 'utf8' })
+					.split('\\n')
+					.map((line) => line.trim().split(/\\s+/))
+					.find(([pid, ppid, ...argv]) => Number(ppid) === process.ppid && argv.join(' ').includes('stand-in.wrangler.jsonc'));
+				console.log(JSON.stringify({ registry, debugPortAddress, standIn: Number(standIn[0]) }));
+				setInterval(() => {}, 1000);`,
+			],
+			{
+				env: {
+					...process.env,
+					WRANGLER_REGISTRY_PATH: undefined,
+					KEEPR_ACCOUNTS_STAND_IN: undefined,
+					KEEPR_ACCOUNTS_STAND_IN_REGISTRY: undefined,
+				},
+				stdio: ['ignore', 'pipe', 'inherit'],
+			},
+		);
+		const exit = new Promise((resolve) => child.once('exit', resolve));
+		const { registry, debugPortAddress, standIn } = await new Promise<{
+			registry: string;
+			debugPortAddress: string;
+			standIn: number;
+		}>((resolve) => {
+			let output = '';
+			child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
+				output += chunk;
+				const line = output.split('\n').find((each) => each.startsWith('{') && each.endsWith('}'));
+				if (line) resolve(JSON.parse(line));
+			});
+		});
+		const [host, port] = debugPortAddress.split(':');
+		const answers = () =>
+			new Promise<boolean>((resolve) => {
+				const socket = connect({ host: host!, port: Number(port) });
+				socket.once('connect', () => resolve(true)).once('error', () => resolve(false));
+				socket.setTimeout(1000, () => resolve(false));
+			});
+		const alive = (pid: number) => {
+			try {
+				return process.kill(pid, 0);
+			} catch {
+				return false;
+			}
+		};
+		expect(await answers()).toBe(true);
+		expect(alive(standIn)).toBe(true);
+
+		child.kill('SIGINT');
+		await exit;
+
+		expect(alive(standIn)).toBe(false);
+		expect(await answers()).toBe(false);
+		expect(existsSync(registry)).toBe(false);
 	}, 60_000);
 
 	it('gives two runs at once a registry each, and a run inside one no second stand-in', async () => {

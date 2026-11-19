@@ -38,11 +38,7 @@ describe('useAccess', () => {
 	it.each([
 		['a User with App access', 'signed-in', () => mockFetch.mockResolvedValueOnce(ADA)],
 		['a signed-out visitor', 'signed-out', () => mockFetch.mockRejectedValueOnce(refusal(401))],
-		[
-			'a User with no App access',
-			'no-access',
-			() => mockFetch.mockRejectedValueOnce(refusal(403)),
-		],
+		['a User with no App access', 'no-access', () => mockFetch.mockRejectedValueOnce(refusal(403))],
 		// The server did not say: never grounds for taking an operator off a page.
 		[
 			'Keepr Accounts unreachable',

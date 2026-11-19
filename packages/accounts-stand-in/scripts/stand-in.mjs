@@ -43,11 +43,39 @@ const plan = standInRegistry({ env: process.env, besideCommand: command.length >
 
 /** @type {import('node:child_process').ChildProcess[]} */
 const children = [];
+/** Those already told to stop: each is told once, and left to finish. */
+const signalled = new Set();
 let stopping = false;
+
+/** @param {import('node:child_process').ChildProcess} child */
+const running = (child) => child.exitCode === null && child.signalCode === null;
 
 function stopAll(signal = 'SIGTERM') {
 	stopping = true;
-	for (const child of children) if (child.exitCode === null) child.kill(signal);
+	for (const child of children) {
+		if (!running(child) || signalled.has(child)) continue;
+		signalled.add(child);
+		child.kill(signal);
+	}
+}
+
+/**
+ * Resolves once every child has exited, so this run never leaves a stand-in
+ * behind it; one that will not stop within `ms` is left to the workerd reaper.
+ */
+async function allExited(ms = 10_000) {
+	await Promise.all(
+		children.filter(running).map(
+			(child) =>
+				new Promise((resolve) => {
+					const timer = setTimeout(resolve, ms);
+					child.once('exit', () => {
+						clearTimeout(timer);
+						resolve(undefined);
+					});
+				}),
+		),
+	);
 }
 
 // The stand-in keeps nothing, and what Wrangler writes for it is this run's
@@ -115,6 +143,7 @@ if (plan.start) {
 		if (!registered) {
 			console.error('[accounts-stand-in] did not register; the command was not started.');
 			stopAll();
+			await allExited();
 			end(1);
 		}
 	}
@@ -132,8 +161,9 @@ if (command.length > 0 && !stopping) {
 		env,
 	});
 	children.push(child);
-	child.on('exit', (code, signal) => {
+	child.on('exit', async (code, signal) => {
 		stopAll();
+		await allExited();
 		end(code ?? (signal ? 1 : 0));
 	});
 } else if (!plan.start && command.length === 0) {
