@@ -5,7 +5,7 @@
  */
 import type { ChildProcess } from 'node:child_process';
 import type { AddressInfo } from 'node:net';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +19,15 @@ export interface FixtureServer {
 	/** Its origin, with no trailing slash. */
 	origin: string;
 	stop(): Promise<void>;
+}
+
+/** A dev server, which a test may also stop as whatever supervises one does. */
+export interface DevServer extends FixtureServer {
+	/**
+	 * Signal its process and nothing else, and wait for it to exit. Answers what
+	 * is still running of it and of all it started: the command of each.
+	 */
+	stopBySignal(signal: 'SIGINT' | 'SIGTERM'): Promise<string[]>;
 }
 
 function exited(child: ChildProcess): Promise<number | null> {
@@ -35,6 +44,19 @@ function signalGroup(child: ChildProcess, signal: NodeJS.Signals): void {
 	}
 }
 
+/**
+ * What runs in a server's process group, by command: the server and all it
+ * started, `workerd` among it.
+ */
+function groupOf(child: ChildProcess): string[] {
+	return execFileSync('ps', ['-A', '-o', 'pgid=,command='], { encoding: 'utf8' })
+		.split('\n')
+		.flatMap((line) => {
+			const [, group, command] = line.trim().match(/^(\d+)\s+(.*)$/) ?? [];
+			return command !== undefined && Number(group) === child.pid ? [command] : [];
+		});
+}
+
 /** Servers still running when this process ends, however it ends. */
 const running = new Set<ChildProcess>();
 process.once('exit', () => {
@@ -43,7 +65,7 @@ process.once('exit', () => {
 
 function run(
 	args: string[],
-	env: Record<string, string> = {},
+	env: Record<string, string | undefined> = {},
 ): { child: ChildProcess; output: () => string } {
 	const child = spawn(nuxt, args, {
 		cwd: fixture,
@@ -97,23 +119,42 @@ async function freePort(): Promise<number> {
 }
 
 /**
+ * What tells a dev server that a suite or CI started it (`std-env`). Nitro then
+ * ends its own worker without waiting for it to close, so the `workerd` of its
+ * bindings outlives a dev server that was not stopped as a whole group.
+ */
+const SAYS_UNATTENDED = { TEST: undefined, CI: undefined, GITHUB_ACTIONS: undefined };
+
+/**
  * `nuxt dev`, which starts the Worker that holds the class beside itself.
  * `beside` names a build directory of its own, for a server that runs while
- * another does.
+ * another does. `by` a developer, it runs as one started at a terminal does,
+ * and closes all it started when it is told to stop.
  */
-export async function startDevServer(beside?: string): Promise<FixtureServer> {
+export async function startDevServer(
+	beside?: string,
+	by: 'suite' | 'developer' = 'suite',
+): Promise<DevServer> {
 	const port = await freePort();
 	const origin = `http://${HOST}:${port}`;
-	const { child, output } = run(
-		['dev', '--host', HOST, '--port', String(port)],
-		beside === undefined ? {} : { REALTIME_FIXTURE_BUILD_DIR: `.wrangler/nuxt-${beside}` },
-	);
+	const { child, output } = run(['dev', '--host', HOST, '--port', String(port)], {
+		...(by === 'developer' ? SAYS_UNATTENDED : {}),
+		...(beside === undefined ? {} : { REALTIME_FIXTURE_BUILD_DIR: `.wrangler/nuxt-${beside}` }),
+	});
+	const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 	const stop = async (): Promise<void> => {
-		const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 		signalGroup(child, 'SIGTERM');
 		await Promise.race([exited(child), sleep(10_000)]);
 		// `workerd` may outlive a leader that exited on SIGTERM.
 		signalGroup(child, 'SIGKILL');
+	};
+	const stopBySignal = async (signal: 'SIGINT' | 'SIGTERM'): Promise<string[]> => {
+		child.kill(signal);
+		await Promise.race([exited(child), sleep(20_000)]);
+		// What it stopped on its way out may take a moment to be gone.
+		const deadline = Date.now() + 5000;
+		while (groupOf(child).length > 0 && Date.now() < deadline) await sleep(50);
+		return groupOf(child);
 	};
 
 	const deadline = Date.now() + 120_000;
@@ -123,7 +164,7 @@ export async function startDevServer(beside?: string): Promise<FixtureServer> {
 		try {
 			// A route of the app's own: `nuxt dev` answers 503 until its server is up.
 			const response = await fetch(`${origin}/ready`, { signal: AbortSignal.timeout(5000) });
-			if (response.ok && (await response.text()) === 'ready') return { origin, stop };
+			if (response.ok && (await response.text()) === 'ready') return { origin, stop, stopBySignal };
 		} catch {
 			// Not listening yet.
 		}
