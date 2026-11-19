@@ -2,7 +2,7 @@ import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-l
 import { requireGraphicsTemplateWritable } from '~~/server/modules/graphics-authoring-lease/graphicsTemplate';
 import { broadcastGraphicTemplateParamsSchema } from '~~/server/schemas/api/broadcastGraphicTemplate';
 import { broadcastGraphicTemplateService } from '~~/server/services/broadcastGraphicTemplate';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 
 /**

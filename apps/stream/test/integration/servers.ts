@@ -9,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { INTEGRATION_WRANGLER_PERSIST_DIR_ENV } from './state';
 
 /**
- * Starting the `nuxt dev` servers the integration and local-auth suites test.
+ * Starting the `nuxt dev` servers the integration suite tests, each beside an
+ * Accounts Stand-in of its own.
  *
  * `@nuxt/test-utils`' `createTest` did this until the suite ran more than one
  * server. In dev mode it runs `loadNuxt()` and a build in the globalSetup process
@@ -17,10 +18,20 @@ import { INTEGRATION_WRANGLER_PERSIST_DIR_ENV } from './state';
  * the first copy served nothing. Its context is also a module singleton, so it
  * cannot start two servers at once. This spawns the same `nuxi _dev` child with
  * the same readiness rule and nothing else.
+ *
+ * **Each server is started through `keepr-accounts-stand-in`** (ADR-0113,
+ * ADR-0141), as `pnpm dev` is: the launcher starts the stand-in that answers the
+ * server's `KEEPR_ACCOUNTS` binding, in a Wrangler registry made for that run,
+ * and the realtime layer registers the server's dev Worker in the same one. A
+ * registry is keyed by a Worker's name, so one each is what lets several
+ * servers run at once without finding each other's stand-in or dev Worker.
  */
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const nuxi = fileURLToPath(new URL('../../node_modules/.bin/nuxi', import.meta.url));
+const standIn = fileURLToPath(
+	new URL('../../node_modules/.bin/keepr-accounts-stand-in', import.meta.url),
+);
 const HOST = '127.0.0.1';
 const START_TIMEOUT_MS = 180_000;
 const LOG_LINES_KEPT = 200;
@@ -90,8 +101,9 @@ function exited(child: ChildProcess): Promise<void> {
 }
 
 /**
- * Signal the server's whole process group. Signalling `nuxi _dev` alone leaves
- * its workerd children running with no parent, holding sqlite locks.
+ * Signal the server's whole process group: the launcher, its Accounts Stand-in,
+ * `nuxi _dev` and their workerd children. Signalling the leader alone leaves
+ * workerd running with no parent, holding sqlite locks.
  */
 function signalGroup(child: ChildProcess, signal: NodeJS.Signals) {
 	try {
@@ -139,13 +151,19 @@ export async function startIntegrationServer({
 }): Promise<IntegrationServer> {
 	const url = `http://${HOST}:${port}/`;
 	const logs: string[] = [];
-	const child = spawn(nuxi, ['_dev'], {
+	const child = spawn(standIn, ['--', nuxi, '_dev'], {
 		cwd: repositoryRoot,
 		// Its own process group, so `stopChild` reaches workerd too.
 		detached: true,
 		stdio: ['ignore', 'pipe', 'pipe'],
 		env: {
 			...process.env,
+			// A stand-in and a registry of this server's own, whatever this run was
+			// started inside: a registry named for the whole suite would be shared by
+			// every server's dev Worker.
+			KEEPR_ACCOUNTS_STAND_IN: 'on',
+			KEEPR_ACCOUNTS_STAND_IN_REGISTRY: undefined,
+			WRANGLER_REGISTRY_PATH: undefined,
 			NODE_ENV: 'development',
 			// Info level: the output goes to a file, and a restart or rebuild is worth seeing there.
 			CONSOLA_LEVEL: '3',

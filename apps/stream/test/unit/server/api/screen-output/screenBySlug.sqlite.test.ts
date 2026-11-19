@@ -17,13 +17,13 @@ vi.doMock('~~/server/db', () => ({ db }));
 /** Whether the request carries a Session, and how often one was asked about. */
 let signedIn = false;
 let sessionsAsked = 0;
-vi.doMock('~~/server/utils/auth', () => ({
-	optionalUserSession: async () => {
+vi.doMock('~~/server/utils/session', () => ({
+	optionalIdentity: async () => {
 		sessionsAsked += 1;
 		return signedIn
 			? {
 					user: { id: 'user-1' },
-					session: { id: 'session-1' },
+					sessionId: 'session-1',
 				}
 			: null;
 	},

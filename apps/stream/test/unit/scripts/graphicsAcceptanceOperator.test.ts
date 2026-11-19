@@ -1,21 +1,25 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ACCEPTANCE_FAILURE_CODES } from '../../../scripts/graphics-acceptance/evidence.mjs';
 import {
-	BOOTSTRAP_TOKEN_NAME,
-	HARNESS_OPERATOR_EMAIL,
+	ACCOUNTS_ORIGIN_ENV,
 	isLoopbackOrigin,
-	newOperatorPassword,
+	keeprAccountsOriginOf,
+	LOCAL_SIGNED_OUT_COOKIE,
+	openOperatorSession,
 	OPERATOR_EMAIL_ENV,
 	OPERATOR_PASSWORD_ENV,
 	operatorCredentialPlan,
 	operatorUnavailableNotice,
 } from '../../../scripts/graphics-acceptance/operator.mjs';
 
-// How an acceptance run becomes an operator behind the deny-by-default boundary
-// (#396). Above all, a deployed run must never send a local `.env` secret to a remote host.
+// How an acceptance run becomes an operator behind the deny-by-default Session
+// boundary (ADR-0141): a local run is vouched for by its installation's Accounts
+// Stand-in, and a deployed run signs in to the Installation's Keepr Accounts.
 
-const A_TOKEN = 'a-bootstrap-token';
-const PASSWORD = 'a-generated-password';
+const CREDENTIALS = {
+	[OPERATOR_EMAIL_ENV]: 'ops@keepr.digital',
+	[OPERATOR_PASSWORD_ENV]: 'their-password',
+};
 
 /** The plan for an environment, with stderr silenced where it refuses. */
 function planFor(options: Parameters<typeof operatorCredentialPlan>[0]) {
@@ -24,96 +28,24 @@ function planFor(options: Parameters<typeof operatorCredentialPlan>[0]) {
 }
 
 describe('how an acceptance run acquires an operator', () => {
-	it('signs in as the account the environment names', () => {
-		const plan = planFor({
-			env: { [OPERATOR_EMAIL_ENV]: 'ops@keepr.digital', [OPERATOR_PASSWORD_ENV]: 'their-password' },
-			newPassword: PASSWORD,
-		});
+	it('needs no credential locally, and takes none from the environment', () => {
+		expect(planFor({ env: CREDENTIALS })).toEqual({ kind: 'stand-in' });
+	});
 
-		expect(plan).toEqual({
+	it('signs a deployed run in as the User the environment names', () => {
+		expect(planFor({ deployed: true, env: CREDENTIALS })).toEqual({
 			kind: 'sign-in',
 			email: 'ops@keepr.digital',
 			password: 'their-password',
 		});
 	});
 
-	it('prefers a named account to the bootstrap, so a run never resets an account it was not asked to', () => {
-		// Ensure is create-or-reset. A run that bootstrapped in preference to
-		// signing in would change the password of whichever account it aimed at,
-		// which is a side effect nobody asked a read-only gate for.
-		const plan = planFor({
-			env: {
-				[OPERATOR_EMAIL_ENV]: 'ops@keepr.digital',
-				[OPERATOR_PASSWORD_ENV]: 'their-password',
-				[BOOTSTRAP_TOKEN_NAME]: A_TOKEN,
-			},
-			newPassword: PASSWORD,
-		});
-
-		expect(plan.kind).toBe('sign-in');
-	});
-
-	it('bootstraps its own account when only a token is available', () => {
-		const plan = planFor({
-			env: { [BOOTSTRAP_TOKEN_NAME]: A_TOKEN },
-			newPassword: PASSWORD,
-		});
-
-		expect(plan).toEqual({
-			kind: 'bootstrap',
-			email: HARNESS_OPERATOR_EMAIL,
-			password: PASSWORD,
-			bootstrapToken: A_TOKEN,
-		});
-	});
-
-	it('takes the token from the checkout for a local run', () => {
-		// The ordinary local path: `.env` carries the token, which is
-		// why #396 made that name one a local run is checked for.
-		const plan = planFor({
-			supplied: { [BOOTSTRAP_TOKEN_NAME]: A_TOKEN },
-			newPassword: PASSWORD,
-		});
-
-		expect(plan).toMatchObject({ kind: 'bootstrap', bootstrapToken: A_TOKEN });
-	});
-
-	it("never sends a checkout's own secret to a deployed installation", () => {
-		// The one state a default must not reach. A deployed origin is a remote
-		// host, and this checkout's `.env` is not its secret to present.
-		expect(() =>
-			planFor({
-				deployed: true,
-				supplied: { [BOOTSTRAP_TOKEN_NAME]: A_TOKEN },
-				newPassword: PASSWORD,
-			}),
-		).toThrow(expect.objectContaining({ code: 'harness-operator-unavailable' }));
-	});
-
-	it('takes a token from the shell even when deployed, because that is the operator saying so', () => {
-		// Not a default: somebody typed it into this shell for this run, which is
-		// the same act as arming the secret on the installation.
-		const plan = planFor({
-			deployed: true,
-			env: { [BOOTSTRAP_TOKEN_NAME]: A_TOKEN },
-			newPassword: PASSWORD,
-		});
-
-		expect(plan).toMatchObject({ kind: 'bootstrap', bootstrapToken: A_TOKEN });
-	});
-
 	it.each([
-		[
-			'blank values',
-			{
-				[OPERATOR_EMAIL_ENV]: 'ops@keepr.digital',
-				[OPERATOR_PASSWORD_ENV]: '   ',
-				[BOOTSTRAP_TOKEN_NAME]: '',
-			},
-		],
+		['no credential', {}],
+		['a blank password', { ...CREDENTIALS, [OPERATOR_PASSWORD_ENV]: '   ' }],
 		['half a credential', { [OPERATOR_EMAIL_ENV]: 'ops@keepr.digital' }],
-	])('refuses %s rather than signing in with an empty password', (_, env) => {
-		expect(() => planFor({ env, newPassword: PASSWORD })).toThrow(
+	])('refuses a deployed run with %s rather than signing in with nothing', (_, env) => {
+		expect(() => planFor({ deployed: true, env })).toThrow(
 			expect.objectContaining({ code: 'harness-operator-unavailable' }),
 		);
 	});
@@ -121,33 +53,125 @@ describe('how an acceptance run acquires an operator', () => {
 	it('stops with a registered code, and prose above it', () => {
 		const written = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
-		expect(() => operatorCredentialPlan({ env: {}, newPassword: PASSWORD })).toThrow(
+		expect(() => operatorCredentialPlan({ deployed: true, env: {} })).toThrow(
 			expect.objectContaining({
 				code: 'harness-operator-unavailable',
-				detail: { mode: 'local' },
+				detail: { mode: 'deployed' },
 			}),
 		);
 		expect(ACCEPTANCE_FAILURE_CODES).toContain('harness-operator-unavailable');
 		expect(written).toHaveBeenCalledTimes(1);
-		expect(written.mock.calls[0]![0]).toBe(`${operatorUnavailableNotice({ deployed: false })}\n`);
+		expect(written.mock.calls[0]![0]).toBe(`${operatorUnavailableNotice()}\n`);
 	});
 
-	it('generates a password rather than carrying one, so nothing in the repository is a credential', () => {
-		const first = newOperatorPassword();
+	it('names what to set, and never a local file a deployed run does not read', () => {
+		const notice = operatorUnavailableNotice();
 
-		expect(first).not.toBe(newOperatorPassword());
-		expect(first.length).toBeGreaterThanOrEqual(16);
+		expect(notice).not.toContain('.env');
+		expect(notice).toContain(OPERATOR_EMAIL_ENV);
+		expect(notice).toContain(OPERATOR_PASSWORD_ENV);
+		expect(notice).toContain('Keepr Accounts');
 	});
 });
 
-// Reading `true` for a remote origin would present this checkout's `.env` secret to it.
-describe('whether local secrets may reach an origin', () => {
+// Staging's run signs in at Staging's Keepr Accounts, never at Production's.
+describe('the Keepr Accounts an Installation relies on', () => {
+	it.each([
+		['https://stream.keepr.digital', 'https://accounts.keepr.digital'],
+		['https://stream.keepr-staging.digital', 'https://accounts.keepr-staging.digital'],
+	])('is the accounts host of %s: %s', (origin, accounts) => {
+		expect(keeprAccountsOriginOf(origin)).toBe(accounts);
+	});
+
+	it('is the one the environment names, where it names one', () => {
+		expect(
+			keeprAccountsOriginOf('https://stream.keepr.digital', {
+				[ACCOUNTS_ORIGIN_ENV]: 'https://accounts.example.test/sign-in',
+			}),
+		).toBe('https://accounts.example.test');
+	});
+
+	it.each([['http://stream.keepr.digital'], ['https://localhost'], ['https://keepr.digital']])(
+		'is refused for %s rather than guessed',
+		(origin) => {
+			expect(() => keeprAccountsOriginOf(origin)).toThrow(
+				expect.objectContaining({ code: 'harness-operator-unavailable' }),
+			);
+		},
+	);
+});
+
+describe('opening the Session a run works under', () => {
+	const signedIn = (cookies: string[], status = 200) =>
+		vi.fn<typeof fetch>(async () => {
+			const headers = new Headers();
+			for (const cookie of cookies) headers.append('set-cookie', cookie);
+			return new Response(null, { status, headers });
+		});
+
+	it('sends a local run no credential and makes no request', async () => {
+		const fetchRequest = signedIn([]);
+
+		expect(
+			await openOperatorSession('http://127.0.0.1:8787', { env: CREDENTIALS, fetchRequest }),
+		).toEqual([]);
+		expect(fetchRequest).not.toHaveBeenCalled();
+	});
+
+	// A write to Keepr Accounts' sign-in is admitted only from Keepr Accounts
+	// itself, and the credentials go nowhere else.
+	it('signs a deployed run in at Keepr Accounts, as a page of Keepr Accounts would', async () => {
+		const fetchRequest = signedIn([
+			'__Secure-session=abc.def; Domain=keepr-staging.digital; Path=/; HttpOnly; Secure',
+			'malformed',
+		]);
+
+		const cookies = await openOperatorSession('https://stream.keepr-staging.digital', {
+			deployed: true,
+			env: CREDENTIALS,
+			fetchRequest,
+		});
+
+		expect(cookies).toEqual(['__Secure-session=abc.def']);
+		expect(fetchRequest).toHaveBeenCalledOnce();
+		const [url, init] = fetchRequest.mock.calls[0]!;
+		expect(url).toBe('https://accounts.keepr-staging.digital/api/auth/sign-in/email');
+		expect(new Headers(init?.headers).get('origin')).toBe('https://accounts.keepr-staging.digital');
+		expect(JSON.parse(String(init?.body))).toEqual({
+			email: 'ops@keepr.digital',
+			password: 'their-password',
+		});
+	});
+
+	it.each([
+		['Keepr Accounts refuses the credentials', signedIn([], 401), { step: 'sign-in', actual: 401 }],
+		[
+			'it answers with no Session cookie',
+			signedIn([]),
+			{ step: 'sign-in', reason: 'no session cookie' },
+		],
+	])('stops a deployed run when %s', async (_case, fetchRequest, detail) => {
+		await expect(
+			openOperatorSession('https://stream.keepr.digital', {
+				deployed: true,
+				env: CREDENTIALS,
+				fetchRequest,
+			}),
+		).rejects.toMatchObject({ code: 'harness-operator-unavailable', detail });
+	});
+
+	it('asks a local installation as nobody with the cookie its Accounts Stand-in reads', () => {
+		expect(LOCAL_SIGNED_OUT_COOKIE).toBe('keepr-stand-in=signed-out');
+	});
+});
+
+describe('whether an origin is a server on this machine', () => {
 	it.each([
 		'http://127.0.0.1:8787',
 		'http://localhost:3000',
 		'http://[::1]:8787',
 		'http://0.0.0.0:8787',
-	])('says yes to %s, a server on this machine', (origin) => {
+	])('says yes to %s', (origin) => {
 		expect(isLoopbackOrigin(origin)).toBe(true);
 	});
 
@@ -159,25 +183,5 @@ describe('whether local secrets may reach an origin', () => {
 		'',
 	])('says no to %j, including a host that only looks local', (origin) => {
 		expect(isLoopbackOrigin(origin)).toBe(false);
-	});
-});
-
-describe('what a run with no operator says', () => {
-	it('sends a local reader to the two gitignored files it is probably missing', () => {
-		const notice = operatorUnavailableNotice({ deployed: false });
-
-		expect(notice).toContain(BOOTSTRAP_TOKEN_NAME);
-		expect(notice).toMatch(/\.env(?!\.example)/);
-		expect(notice).toContain('git worktree');
-		expect(notice).toContain('Fix:');
-	});
-
-	it('does not send a deployed reader after a local file, which it never reads', () => {
-		const notice = operatorUnavailableNotice({ deployed: true });
-
-		expect(notice).not.toContain('.env');
-		expect(notice).not.toContain('worktree');
-		expect(notice).toContain(OPERATOR_EMAIL_ENV);
-		expect(notice).toContain(OPERATOR_PASSWORD_ENV);
 	});
 });

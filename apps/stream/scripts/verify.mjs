@@ -12,7 +12,7 @@
  *   suites (their persist directories) and the build (`STREAM_KEEPR_BUILD_DIR`)
  *   each write their own. The silent-video validator's gates are the exception:
  *   its tsconfig stands alone, so they need no `prepare`.
- * - The server-backed stage (integration, local-auth, browser gates) starts only
+ * - The server-backed stage (integration, browser gates) starts only
  *   once the cheap stage has passed, so a lint or type error never waits behind
  *   it.
  *
@@ -95,14 +95,10 @@ export const GATES = {
 		command: ['run', 'test:integration', '--run'],
 		after: FIRST_STAGE,
 	},
-	// One after another: each starts its own servers, and is timed against them.
-	'test:local-auth': {
-		command: ['run', 'test:local-auth'],
-		after: ['test:integration'],
-	},
+	// One after another: each is timed against what it starts.
 	'accept:still-images': {
 		command: ['run', 'accept', 'still-images'],
-		after: ['test:local-auth'],
+		after: ['test:integration'],
 	},
 	'accept:silent-video': {
 		command: ['run', 'accept', 'silent-video'],

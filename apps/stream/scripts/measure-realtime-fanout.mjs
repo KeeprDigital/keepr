@@ -187,12 +187,11 @@ export async function main({
 	const marker = randomUUID().slice(0, 8);
 
 	// ------------------------------------------------------------ provisioning
-	// One credential since #398: the session gets a request past the
-	// deny-by-default boundary over `/api/**` *and* names the user who owns what
-	// this probe provisions. Where it comes from — an account named in the
-	// environment, or one this probe creates through the first-admin bootstrap —
-	// is `graphics-acceptance/operator.mjs`'s decision, and it is not defaulted to
-	// a local file for a remote origin.
+	// One credential since #398: the Session gets a request past the
+	// deny-by-default boundary over `/api/**` *and* names the User who owns what
+	// this probe provisions. Who vouches for it (Keepr Accounts, signed in to as
+	// the operator named in the environment, or a local installation's Accounts
+	// Stand-in) is `graphics-acceptance/operator.mjs`'s decision.
 	const sessionCookies = await openOperatorSession(origin);
 	cookie = sessionCookies.join('; ');
 

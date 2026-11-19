@@ -6,7 +6,7 @@ import {
 	featureMatchLayoutTemplateService,
 } from '~~/server/services/featureMatchLayoutTemplate';
 import { screenService } from '~~/server/services/screen';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import { assertFeatureMatchLayoutTemplateReferencesSelectable } from '~~/server/utils/featureMatchLayoutTemplateWrites';
 import { graphicsTemplateReferenceConflict } from '~~/server/utils/graphicsTemplateReferences';
 import { resolveScreenModeConfig } from '~~/shared/types/screenConfig';

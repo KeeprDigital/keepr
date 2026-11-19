@@ -1,7 +1,7 @@
 import { screenWriteModule } from '~~/server/modules/screen-write';
 import { screenParamsSchema, updateScreenSchema } from '~~/server/schemas/api/screen';
 import { getOriginConnectionId } from '~~/server/utils/ably';
-import { optionalBrowserSessionId } from '~~/server/utils/auth';
+import { optionalBrowserSessionId } from '~~/server/utils/session';
 
 export default defineEventHandler(async (event) => {
 	const { id: eventId, screenId } = await getValidatedRouterParams(event, screenParamsSchema.parse);

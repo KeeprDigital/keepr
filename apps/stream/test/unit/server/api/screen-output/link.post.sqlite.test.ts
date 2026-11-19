@@ -39,13 +39,13 @@ vi.doMock('~~/server/db', () => ({ db }));
 
 /** Whether the request carries a Session, as every request does under the local auth bypass. */
 let signedIn = false;
-vi.doMock('~~/server/utils/auth', () => ({
+vi.doMock('~~/server/utils/session', () => ({
 	requireUserId: async () => 'user-1',
-	optionalUserSession: async () =>
+	optionalIdentity: async () =>
 		signedIn
 			? {
 					user: { id: 'user-1' },
-					session: { id: 'session-1' },
+					sessionId: 'session-1',
 				}
 			: null,
 }));

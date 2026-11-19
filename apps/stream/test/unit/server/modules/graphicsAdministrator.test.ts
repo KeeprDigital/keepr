@@ -1,83 +1,50 @@
-import { IncomingMessage, ServerResponse } from 'node:http';
-import { Socket } from 'node:net';
-import { createEvent } from 'h3';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-	LOCAL_AUTH_BYPASS_ENABLED_VALUE,
-	LOCAL_AUTH_BYPASS_NAME,
-	LOCAL_DEVELOPER_USER_ID,
-} from '~~/shared/utils/localDeveloperAuth';
+	A_MEMBER,
+	AN_ADMINISTRATOR,
+	AN_OUTSIDER,
+	keeprAccountsBinding,
+	SIGNED_OUT,
+	stubServerGlobals,
+	workerRequest,
+} from '~~/test/helpers/keeprAccounts';
 
-vi.mock('~~/server/db', () => ({ db: {}, schema: {} }));
+// The Graphics Administrator is the `admin` App role, read from the request's
+// Identity Proof (ADR-0131, ADR-0141). Keepr Accounts is stood in for by the
+// Accounts Stand-in behind the Worker's binding.
 
-const mockUseRuntimeConfig = vi.fn();
-vi.stubGlobal('useRuntimeConfig', mockUseRuntimeConfig);
-vi.stubGlobal('createError', (input: { statusCode: number; message: string }) =>
-	Object.assign(new Error(input.message), input),
-);
+stubServerGlobals();
 
-/** The guard over a real auth module whose only fake is Better Auth's session read. */
-async function guardReading(session: unknown) {
-	vi.resetModules();
-	mockUseRuntimeConfig.mockReturnValue({ betterAuthSecret: 'a-configured-secret-0000000000' });
-	const auth = await import('~~/server/utils/auth');
-	vi.spyOn(auth.serverAuth().api, 'getSession').mockResolvedValue({
-		headers: new Headers(),
-		response: session,
-	} as never);
-	return (await import('~~/server/modules/graphics-administrator')).requireGraphicsAdministrator;
-}
-
-function requestEvent() {
-	const request = new IncomingMessage(new Socket());
-	return createEvent(request, new ServerResponse(request));
-}
-
-function signedInAs(role: string | null) {
-	return { session: { id: 'a-browser-session' }, user: { id: 'a-user', role } };
-}
-
-afterEach(() => {
-	vi.unstubAllEnvs();
-});
+const env = { KEEPR_ACCOUNTS: keeprAccountsBinding() };
+const { requireGraphicsAdministrator } = await import('~~/server/modules/graphics-administrator');
 
 describe('the Graphics Administrator guard', () => {
-	// Better Auth stores a User's roles as one comma-separated column.
-	it.each([
-		['holds only the role', 'admin'],
-		['holds it among others', 'user, admin'],
-	])('admits a signed-in User who %s, answering who they are', async (_label, role) => {
-		const guard = await guardReading(signedInAs(role));
-
-		await expect(guard(requestEvent())).resolves.toBe('a-user');
+	it('admits a User whose Identity Proof names the admin App role, answering who they are', async () => {
+		await expect(
+			requireGraphicsAdministrator(workerRequest({ as: AN_ADMINISTRATOR, env })),
+		).resolves.toBe('grace');
 	});
 
 	it.each([
-		['holds no role', null],
-		['holds another role', 'user'],
-		['holds a role that only contains its name', 'admins'],
-	])('refuses a signed-in User who %s with 403', async (_label, role) => {
-		const guard = await guardReading(signedInAs(role));
-
-		await expect(guard(requestEvent())).rejects.toMatchObject({
-			statusCode: 403,
-			message: 'Graphics Administrator authorization is required',
+		['a User whose App role is not admin', A_MEMBER, 403, 'APP_ROLE_REQUIRED'],
+		['a User with no App access', AN_OUTSIDER, 403, 'NO_APP_ACCESS'],
+		// A role only Keepr Accounts' newer App registry knows grants nothing here.
+		[
+			'a User whose App role this build does not know',
+			{ user: 'mallory', apps: { stream: 'superadmin' } },
+			403,
+			'NO_APP_ACCESS',
+		],
+	])('refuses %s', async (_case, as, statusCode, code) => {
+		await expect(requireGraphicsAdministrator(workerRequest({ as, env }))).rejects.toMatchObject({
+			statusCode,
+			data: { code },
 		});
 	});
 
-	it('refuses a request with no Session with 401', async () => {
-		const guard = await guardReading(null);
-
-		await expect(guard(requestEvent())).rejects.toMatchObject({
-			statusCode: 401,
-			message: 'Authentication is required',
-		});
-	});
-
-	it('admits the Local Developer User, who holds the highest App role', async () => {
-		vi.stubEnv(LOCAL_AUTH_BYPASS_NAME, LOCAL_AUTH_BYPASS_ENABLED_VALUE);
-		const guard = await guardReading(null);
-
-		await expect(guard(requestEvent())).resolves.toBe(LOCAL_DEVELOPER_USER_ID);
+	it("refuses a request with no Session in the boundary's own words", async () => {
+		await expect(
+			requireGraphicsAdministrator(workerRequest({ as: SIGNED_OUT, env })),
+		).rejects.toMatchObject({ statusCode: 401, message: 'Authentication is required' });
 	});
 });

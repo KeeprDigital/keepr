@@ -13,8 +13,8 @@ const { mockLoad, mockNavigateTo, mockRoute } = vi.hoisted(() => ({
 	mockRoute: { fullPath: '/graphics-assets' },
 }));
 
-vi.mock('~/modules/auth/session', () => ({
-	useAuthSession: () => ({ load: mockLoad }),
+vi.mock('~/modules/access/session', () => ({
+	useAccess: () => ({ load: mockLoad }),
 }));
 
 mockNuxtImport('navigateTo', () => mockNavigateTo);
@@ -83,26 +83,13 @@ describe('useGraphicsAuthorship', () => {
 		expect(describeFailure('not an error', 'Cancellation failed.')).toBe('Cancellation failed.');
 	});
 
-	// The browser still believes in the refused session; without a fresh read first,
-	// the page gate's "already signed in" arm sends the operator straight back.
-	it('asks the server who this browser is before sending it to sign in', async () => {
-		const order: string[] = [];
-		mockLoad.mockImplementation(async () => {
-			order.push('load');
-			return 'signed-out';
-		});
-		mockNavigateTo.mockImplementation(() => {
-			order.push('navigate');
-		});
-
+	// The browser still believes in the refused Session: only asking the server
+	// again finds it signed out, and that ask is what sends it to Keepr Accounts
+	// and back to this page (`useIdentity`).
+	it('asks the server who this browser is, which sends a signed-out one to sign in', async () => {
 		await useGraphicsAuthorship().signIn();
 
-		expect(order).toEqual(['load', 'navigate']);
-	});
-
-	it('carries the page the operator was on, so signing in returns them to it', async () => {
-		await useGraphicsAuthorship().signIn();
-
-		expect(mockNavigateTo).toHaveBeenCalledWith('/login?redirect=%2Fgraphics-assets');
+		expect(mockLoad).toHaveBeenCalledOnce();
+		expect(mockNavigateTo).not.toHaveBeenCalled();
 	});
 });

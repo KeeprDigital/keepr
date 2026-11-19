@@ -1,7 +1,7 @@
 import { graphicsAuthoringLeaseModule } from '~~/server/modules/graphics-authoring-lease';
 import { graphicsTemplateLeaseRef } from '~~/server/modules/graphics-authoring-lease/graphicsTemplate';
 import { broadcastGraphicTemplateParamsSchema } from '~~/server/schemas/api/broadcastGraphicTemplate';
-import { requireBrowserSessionId } from '~~/server/utils/auth';
+import { requireBrowserSessionId } from '~~/server/utils/session';
 
 /**
  * Give up this session's lease on one Broadcast Graphic Template, so a departing

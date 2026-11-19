@@ -36,6 +36,13 @@
       "when": 1794705983163,
       "tag": "0004_event_op_card_number_resolutions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1795082362743,
+      "tag": "0005_keepr_accounts_identity",
+      "breakpoints": true
     }
   ]
 }

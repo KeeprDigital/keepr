@@ -249,7 +249,7 @@ describe('broadcast Graphic Template library', () => {
 	 *
 	 * Every use below is about two concurrent *editors* — a lease held against one
 	 * of them, a placement refused to the other, a revision written from under
-	 * them — and a lease holder is a Better Auth session, not a person. Two
+	 * them — and a lease holder is a Session, not a person. Two
 	 * different people would prove something weaker: it would pass against a lease
 	 * held per user, which is the shape that lets one operator overwrite their own
 	 * work from two windows.

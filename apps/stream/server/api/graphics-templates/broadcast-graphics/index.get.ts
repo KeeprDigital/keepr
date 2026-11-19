@@ -2,7 +2,7 @@ import {
 	broadcastGraphicTemplateLibrarySummary,
 	listBroadcastGraphicTemplateLibrary,
 } from '~~/server/modules/broadcast-graphic-template-library';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 
 /**
  * Browse the installation's Broadcast Graphic Template library.

@@ -1,13 +1,11 @@
 import process from 'node:process';
 import { drizzle } from 'drizzle-orm/d1';
 import * as coreSchema from './schema';
-import * as authSchema from './schema/auth';
 import * as graphicsAssetSchema from './schema/graphicsAsset';
 
 /** Every table and relation Drizzle's relational queries (`db.query.*`) can reach. */
 export const schema = {
 	...coreSchema,
-	...authSchema,
 	...graphicsAssetSchema,
 };
 

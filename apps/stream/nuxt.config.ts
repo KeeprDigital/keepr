@@ -54,11 +54,9 @@ export default defineNuxtConfig({
 
 	runtimeConfig: {
 		ablyApiKey: '',
-		adminBootstrapToken: '',
 		// One Piece card data (ADR-0057). Either blank leaves it unavailable.
 		bandaiKeeprApiKey: '',
 		bandaiKeeprApiUrl: '',
-		betterAuthSecret: '',
 		screenOutputCapabilitySigningKey: '',
 		meleeCredentialEncryptionKey: '',
 		meleeCredentialKeyVersion: '',

@@ -1,155 +1,146 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
-import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
+import { beforeEach, describe, expect, it } from 'vitest';
+import {
+	A_MEMBER,
+	AN_ADMINISTRATOR,
+	AN_OUTSIDER,
+	type Asker,
+	keeprAccountsBinding,
+	SIGNED_OUT,
+	stubServerGlobals,
+	workerRequest,
+} from '~~/test/helpers/keeprAccounts';
 import { serverMiddlewareFiles } from '~~/test/helpers/routeRefusalScan';
 
 /**
- * The deny-by-default API boundary as the middleware answers it (#396,
- * ADR-0010).
+ * The deny-by-default Session boundary as the middleware answers it (ADR-0010,
+ * ADR-0141), over the real identity reading: only Keepr Accounts is stood in
+ * for, by the Accounts Stand-in behind the Worker's binding.
  *
  * The path policy is exercised against every route on disk in
  * `test/unit/server/utils/apiBoundary.test.ts`; what is left for here is what
- * this file adds to it — that a private path with no session is refused with
- * the one uniform 401, that a session admits, that an exempt path is not asked
- * about a session **at all**, and that a blank secret arrives as the 503 naming
- * the setting rather than as a 401 about a password.
- *
- * The last of those is not a nicety. The session read is the first thing inside
- * the boundary that can fail on configuration, and it now runs on every
- * `/api/**` request in the application; an operator whose deployment is missing
- * `NUXT_BETTER_AUTH_SECRET` needs the name of the setting, not an invitation to
- * sign in again with credentials that would never have worked.
+ * this file adds to it: who a private path admits and how it refuses everyone
+ * else, that an exempt path is not asked who it belongs to **at all**, and that
+ * a write another site's page made is refused before anyone is asked.
  */
 
-/**
- * The one session read a request makes, mocked as the middleware calls it (#398).
- *
- * It asks `requestUserSession` rather than `serverAuth().api.getSession` so the
- * handler behind it reuses this answer instead of reading the same row again;
- * what the middleware does with the answer — refuse, admit, or not ask at all —
- * is unchanged, and is what the rows below are about.
- */
-const mockRequestUserSession = vi.fn();
+stubServerGlobals();
 
-vi.mock('~~/server/utils/auth', () => ({
-	requestUserSession: mockRequestUserSession,
-}));
-
-const mockGetRequestURL = vi.fn();
-
-vi.stubGlobal(
-	'defineEventHandler',
-	vi.fn((handler) => handler),
-);
-vi.stubGlobal('getRequestURL', mockGetRequestURL);
-vi.stubGlobal('createError', (input: { statusCode: number; message: string }) =>
-	Object.assign(new Error(input.message), input),
-);
-
+const accounts = keeprAccountsBinding();
 const handler = (await import('~~/server/middleware/api-session')).default;
 
-/** A request for `path`, carrying the headers Better Auth would read a cookie from. */
-function request(path: string, method = 'GET', headers: Record<string, string> = {}) {
-	mockGetRequestURL.mockReturnValue(new URL(`https://stream.example${path}`));
-	return stubH3Event({
-		method,
-		headers: new Headers({ cookie: 'better-auth.session_token=a-token', ...headers }),
-	});
+/** What the boundary answers `as` on `path`: admitted, or the refusal's status, words and code. */
+async function answered(
+	as: Asker,
+	{
+		path = '/api/events/1/players',
+		method = 'GET',
+		headers = {},
+		env = { KEEPR_ACCOUNTS: accounts } as Record<string, unknown>,
+	} = {},
+) {
+	try {
+		await handler(workerRequest({ as, path, method, headers, env }));
+		return 'admitted';
+	} catch (refusal) {
+		const { statusCode, message, data } = refusal as {
+			statusCode: number;
+			message: string;
+			data?: { code?: string };
+		};
+		return { statusCode, message, code: data?.code };
+	}
 }
 
-const SESSION = {
-	session: { id: 'a-session' },
-	user: { id: 'a-user' },
-};
+beforeEach(() => {
+	accounts.asked.length = 0;
+});
 
-describe('the API boundary middleware', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
+describe('the Session boundary', () => {
+	it.each([
+		['a User with App access', A_MEMBER],
+		['a Graphics Administrator', AN_ADMINISTRATOR],
+	])('admits %s, on their Identity Proof', async (_case, as) => {
+		expect(await answered(as)).toBe('admitted');
 	});
 
-	it('refuses a private route with no session, as one uniform 401', async () => {
-		mockRequestUserSession.mockResolvedValue(null);
-
-		await expect(handler(request('/api/events/1/players'))).rejects.toMatchObject({
+	// One message for every route, so the refusal lists that have to stay
+	// exhaustive (`SCREEN_COMMAND_ROUTE_REFUSALS`) carry one entry.
+	it.each([
+		['/api/events/1/screens/2/command'],
+		['/api/graphics-assets'],
+		['/api/admin/graphics-assets/health'],
+		['/api/identity'],
+	])('refuses a request with no Identity Proof on %s, as one uniform 401', async (path) => {
+		expect(await answered(SIGNED_OUT, { path })).toEqual({
 			statusCode: 401,
 			message: 'Authentication is required',
+			code: undefined,
 		});
 	});
 
-	it('answers every private route with the same refusal, so the census has one entry', async () => {
-		// The uniformity is what keeps this to a single entry in the refusal lists
-		// that have to stay exhaustive (`SCREEN_COMMAND_ROUTE_REFUSALS`), and it is
-		// also all a caller can act on: every reason a session is absent is
-		// answered by signing in again.
-		mockRequestUserSession.mockResolvedValue(null);
-
-		const refusals = [];
-		for (const path of [
-			'/api/events/1/screens/2/command',
-			'/api/graphics-assets',
-			'/api/_test/ordinary-mutation',
-		])
-			refusals.push(await handler(request(path)).catch((error: Error) => error.message));
-
-		expect(new Set(refusals)).toEqual(new Set(['Authentication is required']));
+	it('refuses a User with no App access to Stream Keepr, as every App refuses one', async () => {
+		expect(await answered(AN_OUTSIDER)).toMatchObject({ statusCode: 403, code: 'NO_APP_ACCESS' });
 	});
 
-	it('admits a request that carries a session', async () => {
-		mockRequestUserSession.mockResolvedValue({
-			session: { id: 'a-session' },
-			user: { id: 'a-user' },
-		});
+	// Nothing admits a request Keepr Accounts did not vouch for: with nobody to
+	// ask, the answer is a 503 that names why, never an admission.
+	it.each([
+		['is not bound', {}, 'KEEPR_ACCOUNTS is not bound'],
+		[
+			'has nothing registered under its name locally',
+			{
+				KEEPR_ACCOUNTS: {
+					fetch: async () => new Response('Worker "keepr-accounts" not found', { status: 503 }),
+				},
+			},
+			'Accounts Stand-in',
+		],
+		[
+			'cannot be reached',
+			{
+				KEEPR_ACCOUNTS: {
+					fetch: async () => {
+						throw new Error('connection lost');
+					},
+				},
+			},
+			'Keepr Accounts did not answer',
+		],
+	])('refuses everyone while Keepr Accounts %s, 503', async (_case, env, says) => {
+		const refusal = await answered({ user: 'nobody-asked-before' }, { env });
 
-		await expect(handler(request('/api/events/1/players'))).resolves.toBeUndefined();
-		expect(mockRequestUserSession).toHaveBeenCalledOnce();
+		expect(refusal).toMatchObject({ statusCode: 503, message: expect.stringContaining(says) });
 	});
 
-	it('does not ask about a session on an exempt path, rather than asking and allowing', async () => {
-		// Asking would cost a session lookup per Screen Output request and, on a
-		// checkout with no `NUXT_BETTER_AUTH_SECRET`, would turn the clock and the
-		// capability surface into 503s — the two surfaces that have to keep working
-		// for a machine showing program.
-		mockRequestUserSession.mockResolvedValue(null);
-
-		for (const path of [
-			'/api/time',
-			'/api/release',
-			'/api/auth/sign-in/email',
-			'/api/screen-output/screens/7/asset-capability-session',
-			'/api/bootstrap/ensure-admin',
-			'/login',
-		])
-			await expect(handler(request(path))).resolves.toBeUndefined();
-
-		expect(mockRequestUserSession).not.toHaveBeenCalled();
+	// Asking would make the clock, the Release and the capability surface depend
+	// on Keepr Accounts: the surfaces that have to keep working for a machine
+	// showing program, and for the deploy's verify.
+	it.each([
+		['/api/time', 'GET'],
+		['/api/release', 'GET'],
+		['/api/realtime/token', 'GET'],
+		['/api/public/events/1/on-air', 'GET'],
+		['/api/screen-output/screens/7/asset-capability-session', 'POST'],
+		['/event/1/screens/2', 'GET'],
+	])('does not ask who %s belongs to, rather than asking and allowing', async (path, method) => {
+		expect(await answered(SIGNED_OUT, { path, method })).toBe('admitted');
+		expect(accounts.asked).toEqual([]);
 	});
 
 	// The Screen Output Link exchange carries its credential in its body: OBS's
-	// browser source or a script POSTs it with no `Origin`, and no Session is read.
-	it.each([
-		['naming no origin', {}],
-		['from its own page', { 'sec-fetch-site': 'same-origin', origin: 'https://stream.example' }],
-		[
-			'from another site',
-			{ 'sec-fetch-site': 'cross-site', origin: 'https://not-this-installation.example' },
-		],
-	])(
-		'admits a Screen Output Link exchange %s without asking about a session',
-		async (_from, headers) => {
-			mockRequestUserSession.mockResolvedValue(SESSION);
-
-			await expect(
-				handler(
-					request('/api/screen-output/link', 'POST', {
-						'content-type': 'application/json',
-						...headers,
-					}),
-				),
-			).resolves.toBeUndefined();
-
-			expect(mockRequestUserSession).not.toHaveBeenCalled();
-		},
-	);
+	// browser source or a script POSTs it from anywhere, and no Session decides it.
+	it('leaves a cross-site POST to an exempt surface to its own guard', async () => {
+		expect(
+			await answered(SIGNED_OUT, {
+				path: '/api/screen-output/link',
+				method: 'POST',
+				headers: {
+					'sec-fetch-site': 'cross-site',
+					origin: 'https://not-this-installation.example',
+				},
+			}),
+		).toBe('admitted');
+	});
 
 	// Wiring for `requestIsCrossSiteMutation`: a signed-in browser made to POST
 	// by another site is refused before a handler runs; its own page, and a
@@ -168,91 +159,53 @@ describe('the API boundary middleware', () => {
 		['a script or test that names no origin', 'admitted', {}],
 		['a sibling subdomain', 403, { 'sec-fetch-site': 'same-site', origin: 'https://evil.example' }],
 		[
-			'another site',
-			403,
-			{ 'sec-fetch-site': 'cross-site', origin: 'https://not-this-installation.example' },
-		],
-		[
 			'another site, in a browser without Sec-Fetch-Site',
 			403,
 			{ origin: 'https://not-this-installation.example' },
 		],
 	] as const)('answers a signed-in POST from %s: %s', async (_from, outcome, headers) => {
-		mockRequestUserSession.mockResolvedValue(SESSION);
-
-		const answered = await Promise.resolve(
-			handler(request('/api/events/1/screens/2/command', 'POST', headers)),
-		).then(
-			() => 'admitted',
-			(refusal: { statusCode: number }) => refusal.statusCode,
-		);
-
-		expect(answered).toBe(outcome);
-	});
-
-	it('refuses a cross-site POST as Forbidden, in words that say why', async () => {
-		mockRequestUserSession.mockResolvedValue(SESSION);
-
-		await expect(
-			handler(request('/api/events', 'POST', { 'sec-fetch-site': 'cross-site' })),
-		).rejects.toMatchObject({
-			statusCode: 403,
-			statusMessage: 'Forbidden',
-			message: 'Cross-site request refused',
+		const answer = await answered(A_MEMBER, {
+			path: '/api/events/1/screens/2/command',
+			method: 'POST',
+			headers,
 		});
+
+		expect(typeof answer === 'string' ? answer : answer.statusCode).toBe(outcome);
 	});
 
-	it.each([
-		['a cross-site read of a private route', '/api/events', 'GET'],
-		// These carry their own credential and no Session cookie decides them:
-		// Better Auth checks its own origin, the rest present a token or a bearer.
-		["a cross-site POST to Better Auth's router", '/api/auth/sign-in/email', 'POST'],
-		[
-			'a cross-site POST to the capability surface',
-			'/api/screen-output/screens/7/asset-capability-session',
-			'POST',
-		],
-		['a cross-site POST to the first-admin bootstrap', '/api/bootstrap/ensure-admin', 'POST'],
-	])('leaves %s to its own guard', async (_case, path, method) => {
-		mockRequestUserSession.mockResolvedValue(SESSION);
-
-		await expect(
-			handler(
-				request(path, method, {
-					'sec-fetch-site': 'cross-site',
-					origin: 'https://not-this-installation.example',
-				}),
+	it('refuses a cross-site POST as Forbidden, in words that say why, before anyone is asked', async () => {
+		// A User no earlier row asked about, so no Identity Proof already held stands in for the ask.
+		expect(
+			await answered(
+				{ user: 'never-asked-about' },
+				{
+					path: '/api/events',
+					method: 'POST',
+					headers: { 'sec-fetch-site': 'cross-site' },
+				},
 			),
-		).resolves.toBeUndefined();
+		).toEqual({ statusCode: 403, message: 'Cross-site request refused', code: undefined });
+		expect(accounts.asked).toEqual([]);
+	});
+
+	it('admits a cross-site read of a private route, which changes nothing', async () => {
+		expect(
+			await answered(A_MEMBER, {
+				headers: { 'sec-fetch-site': 'cross-site', origin: 'https://elsewhere.example' },
+			}),
+		).toBe('admitted');
 	});
 
 	it('sorts ahead of every other middleware, which is the order Nitro composes them in', () => {
-		// Load-bearing, and the reason the file is named `api-session.ts` rather
-		// than anything more descriptive:
-		//
-		// - `event-exists.ts` answers 404 for an Event that is not there. Running it
-		//   first would let an anonymous caller ask which Event ids exist and read
-		//   the answer off the difference between 404 and 401. The integration suite
-		//   pins that pair against a real server; this pins why it holds.
-		// - `request-body-limit.ts` would otherwise stream an unauthenticated
-		//   upload and answer 413, telling a caller with no session what the body
-		//   ceiling is.
-		//
-		// Read off the directory, so a middleware added tomorrow with an earlier
-		// name fails here rather than silently running in front of the boundary.
+		// Load-bearing, and the reason the file is named `api-session.ts`:
+		// `event-exists.ts` answers 404 for an Event that is not there, and running
+		// it first would let a signed-out caller read which Event ids exist off the
+		// difference between 404 and 401; `request-body-limit.ts` would tell one
+		// what the body ceiling is. Read off the directory, so a middleware added
+		// tomorrow with an earlier name fails here.
 		const names = serverMiddlewareFiles().map((file) => file.slice(file.lastIndexOf('/') + 1));
 
 		expect(names[0]).toBe('api-session.ts');
 		expect([...names].sort()).toEqual(names);
-	});
-
-	it('lets a blank secret arrive as the 503 that names the setting', async () => {
-		mockRequestUserSession.mockRejectedValue(
-			new ServiceConfigurationError('NUXT_BETTER_AUTH_SECRET', 'is not configured'),
-		);
-
-		await expect(handler(request('/api/events/1/players'))).rejects.toThrow(
-			/NUXT_BETTER_AUTH_SECRET/,
-		);
 	});
 });

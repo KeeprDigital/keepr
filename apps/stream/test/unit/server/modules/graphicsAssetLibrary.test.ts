@@ -15,9 +15,7 @@ import {
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 
-// The API boundary imports the asking user for its actor resolution, which builds the
-// Better Auth instance over `~~/server/db` — a binding no unit run has. Nothing here asks it
-// anything.
+// `rethrowGraphicsAssetApiError` reaches Nitro's auto-imported `createError`, which a unit run lacks.
 vi.stubGlobal('createError', (input: { statusCode: number; message: string; cause?: unknown }) =>
 	Object.assign(new Error(input.message), input),
 );

@@ -6,7 +6,7 @@ import {
 	broadcastGraphicTemplateService,
 } from '~~/server/services/broadcastGraphicTemplate';
 import { screenService } from '~~/server/services/screen';
-import { requireUserId } from '~~/server/utils/auth';
+import { requireUserId } from '~~/server/utils/session';
 import { assertBroadcastGraphicTemplateReferencesSelectable } from '~~/server/utils/broadcastGraphicTemplateReferences';
 import { graphicsTemplateReferenceConflict } from '~~/server/utils/graphicsTemplateReferences';
 import { broadcastGraphicTemplateDocument } from '~~/shared/modules/graphics';

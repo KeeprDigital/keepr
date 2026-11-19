@@ -1,11 +1,7 @@
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { fetch } from './client';
-import {
-	INTEGRATION_ADMIN_BOOTSTRAP_TOKEN,
-	INTEGRATION_BETTER_AUTH_SECRET,
-	INTEGRATION_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY,
-} from './environment';
+import { INTEGRATION_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY } from './environment';
 import { PRELOAD_PATH as INTEGRATION_SERVER_PRELOAD } from './serverConnectionDiagnostics.mjs';
 import { INTEGRATION_MODE_ENV, withoutAblyKey } from './state';
 
@@ -28,16 +24,14 @@ const nodeOptions = [
 	.join(' ');
 
 /**
- * The invented secrets and the suite's operator, re-exported because this file is
+ * The invented secret and the suite's operator, re-exported because this file is
  * where every suite already looks for them. They live in `./environment` so the
- * authenticated client can read the bootstrap token without this file and that one
- * importing each other — see the docblock there.
+ * suite's client can read who it asks as without this file and that one importing
+ * each other: see the docblock there.
  */
 export {
-	INTEGRATION_ADMIN_BOOTSTRAP_TOKEN,
-	INTEGRATION_BETTER_AUTH_SECRET,
-	INTEGRATION_OPERATOR_EMAIL,
-	INTEGRATION_OPERATOR_PASSWORD,
+	INTEGRATION_OPERATOR_ID,
+	INTEGRATION_OPERATOR_NAME,
 	INTEGRATION_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY,
 } from './environment';
 
@@ -111,13 +105,12 @@ export {
  * The environment every integration server starts with (`./servers.ts` adds its
  * persist directory and address). `STREAM_KEEPR_INTEGRATION` is what makes
  * `nuxt.config.ts` isolate the server's state and turn off watchers, HMR, and the
- * type checker; the rest are the secrets the suite invents for itself.
+ * type checker; the rest are the secrets the suite invents for itself. None is for
+ * signing in: each server runs beside an Accounts Stand-in (`./servers.ts`).
  */
 export const integrationServerEnv: Record<string, string> = {
 	[INTEGRATION_MODE_ENV]: 'true',
 	NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY: INTEGRATION_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY,
-	NUXT_BETTER_AUTH_SECRET: INTEGRATION_BETTER_AUTH_SECRET,
-	NUXT_ADMIN_BOOTSTRAP_TOKEN: INTEGRATION_ADMIN_BOOTSTRAP_TOKEN,
 	// Answered by `./mock-bandai-keepr.mjs`; the key is invented, the origin served by nobody.
 	NUXT_BANDAI_KEEPR_API_URL: 'https://bandai-keepr.integration.invalid',
 	NUXT_BANDAI_KEEPR_API_KEY: 'integration-bandai-keepr-key',

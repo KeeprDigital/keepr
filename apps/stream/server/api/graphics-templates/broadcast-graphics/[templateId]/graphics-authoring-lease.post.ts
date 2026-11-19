@@ -3,7 +3,7 @@ import { graphicsAuthoringLeaseModule } from '~~/server/modules/graphics-authori
 import { graphicsTemplateLeaseRef } from '~~/server/modules/graphics-authoring-lease/graphicsTemplate';
 import { broadcastGraphicTemplateParamsSchema } from '~~/server/schemas/api/broadcastGraphicTemplate';
 import { broadcastGraphicTemplateService } from '~~/server/services/broadcastGraphicTemplate';
-import { requireBrowserSessionId } from '~~/server/utils/auth';
+import { requireLeaseHolder } from '~~/server/utils/session';
 
 /**
  * Take, keep, or explicitly take over the Graphics Authoring Lease on one
@@ -22,7 +22,7 @@ const acquireSchema = z
 	.strict();
 
 export default defineEventHandler(async (event) => {
-	const sessionId = await requireBrowserSessionId(event);
+	const holder = await requireLeaseHolder(event);
 	const { templateId } = await getValidatedRouterParams(
 		event,
 		broadcastGraphicTemplateParamsSchema.parse,
@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
 
 	const acquisition = await graphicsAuthoringLeaseModule().acquire({
 		...graphicsTemplateLeaseRef(templateId),
-		sessionId,
+		...holder,
 		takeover: body.takeover,
 		heartbeatIntervalMs: body.heartbeatIntervalMs,
 	});

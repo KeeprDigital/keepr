@@ -134,9 +134,11 @@ describe('the built Worker smoke runner', () => {
 		const repositoryRoot = await builtRepository();
 		const stagedEnv = join(repositoryRoot, '.output/server/.env');
 		const stagedDevVars = join(repositoryRoot, '.output/server/.dev.vars');
-		const originalEnv = Buffer.from('NUXT_BETTER_AUTH_SECRET=developer-value\n');
-		const originalDevVars = Buffer.from('NUXT_ADMIN_BOOTSTRAP_TOKEN=older-preview\n');
+		const originalEnv = Buffer.from('NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY=developer-value\n');
+		const originalDevVars = Buffer.from('NUXT_ABLY_API_KEY=older-preview\n');
 		vi.stubEnv('NUXT_DEVELOPER_CREDENTIAL', 'must-not-reach-wrangler');
+		// Where the Worker's binding finds the Accounts Stand-in this command runs beside.
+		vi.stubEnv('WRANGLER_REGISTRY_PATH', '/the/stand-in/registry');
 		await writeFile(stagedEnv, originalEnv);
 		await writeFile(stagedDevVars, originalDevVars);
 		let generatedBody = '';
@@ -145,12 +147,15 @@ describe('the built Worker smoke runner', () => {
 			.mockImplementationOnce((_command, _arguments, options) => {
 				generatedBody = readFileSync(stagedEnv, 'utf8');
 				expect(generatedBody).not.toContain('developer-value');
-				expect(generatedBody).toContain('NUXT_BETTER_AUTH_SECRET=');
-				expect(generatedBody).toContain('NUXT_ADMIN_BOOTSTRAP_TOKEN=');
 				expect(generatedBody).toContain('NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY=');
 				expect(generatedBody).toContain('NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY=');
+				// Nothing it generates is for signing in, or could stand in for it.
+				expect(generatedBody).not.toMatch(/AUTH|BOOTSTRAP|BYPASS/);
 				expect(existsSync(stagedDevVars)).toBe(false);
-				expect(options.env).toMatchObject({ NODE_ENV: 'production' });
+				expect(options.env).toMatchObject({
+					NODE_ENV: 'production',
+					WRANGLER_REGISTRY_PATH: '/the/stand-in/registry',
+				});
 				expect(options.env.NUXT_DEVELOPER_CREDENTIAL).toBeUndefined();
 				expect(options.env.HOME).toBeUndefined();
 				return exitedProcess(0);
@@ -247,208 +252,150 @@ describe('the built Worker smoke runner', () => {
 		expect(worker.kill).toHaveBeenCalled();
 	});
 
-	/**
-	 * What a limiting Worker answers the rate-limit scenario: three refused
-	 * passwords, a 429, then the independent client's sign-in. `overrides`
-	 * replaces answers by position.
-	 */
-	function rateLimitScenario(overrides: Record<number, Response> = {}) {
-		const answers = [
-			new Response(null, { status: 401 }),
-			new Response(null, { status: 401 }),
-			new Response(null, { status: 401 }),
-			new Response('{}', {
-				status: 429,
-				headers: { 'x-retry-after': '10' },
-			}),
-			new Response('{}', { status: 200 }),
-		];
-		return answers.map((answer, index) => overrides[index] ?? answer);
-	}
+	/** Who a request asks as, read from the cookie the Accounts Stand-in would read. */
+	type Asked = {
+		who: 'nobody' | 'outsider' | 'member' | 'administrator';
+		method: string;
+		path: string;
+		crossSite: boolean;
+	};
 
 	/**
-	 * A Worker that is ready, refuses the API boundary, bootstraps its operator,
-	 * then answers the smoke's next requests with `answers`, in order.
+	 * A built Worker that holds every identity rule, as the smoke run's requests
+	 * meet it, until `broken` answers one of them itself. Past the identity
+	 * probes it fails the first write, so a run that got that far says so.
 	 */
-	async function bootstrappedWorkerAnswering(answers: Response[]) {
+	function workerAnswering(
+		repositoryRoot: string,
+		broken: (asked: Asked) => Response | undefined = () => undefined,
+	) {
+		return vi.fn(async (input: string, init: RequestInit = {}) => {
+			const url = new URL(input);
+			const headers = new Headers(init.headers);
+			if (url.pathname === '/api/time') return Response.json({ serverTime: Date.now() });
+
+			const cookie = headers.get('cookie') ?? '';
+			const persona = new URLSearchParams(cookie.replace(/^keepr-stand-in=/u, ''));
+			const asked: Asked = {
+				who:
+					cookie === 'keepr-stand-in=signed-out'
+						? 'nobody'
+						: persona.get('stream') === 'none'
+							? 'outsider'
+							: persona.get('stream') === 'member'
+								? 'member'
+								: 'administrator',
+				method: init.method ?? 'GET',
+				path: url.pathname,
+				crossSite: headers.get('sec-fetch-site') === 'cross-site',
+			};
+			const answer = broken(asked);
+			if (answer) return answer;
+
+			if (asked.path === '/')
+				return new Response(readFileSync(join(repositoryRoot, '.output/server/.env'), 'utf8'));
+			if (asked.who === 'nobody') return new Response(null, { status: 401 });
+			if (asked.who === 'outsider' || asked.crossSite) return new Response(null, { status: 403 });
+			if (asked.path.startsWith('/api/admin/') && asked.who !== 'administrator')
+				return new Response(null, { status: 403 });
+			if (asked.path === '/api/identity')
+				return Response.json({
+					user: { id: persona.get('user') },
+					appRole: asked.who === 'member' ? 'member' : 'admin',
+				});
+			return asked.method === 'GET' ? Response.json([]) : new Response(null, { status: 500 });
+		});
+	}
+
+	async function smokeAgainst(broken?: (asked: Asked) => Response | undefined) {
 		const repositoryRoot = await builtRepository();
-		const spawnProcess = spawnAfterSetup(() => livingProcess());
-		const fetchRequest = vi.fn();
-		for (const answer of [
-			Response.json({
-				serverTime: Date.now(),
-			}),
-			new Response(null, { status: 401 }),
-			Response.json({ outcome: 'created' }),
-			...answers,
-		]) {
-			fetchRequest.mockResolvedValueOnce(answer);
-		}
-		return {
-			run: runWorkerSmoke({ repositoryRoot, spawnProcess, fetchRequest }),
-			fetchRequest,
-		};
+		return await runWorkerSmoke({
+			repositoryRoot,
+			spawnProcess: spawnAfterSetup(() => livingProcess()),
+			fetchRequest: workerAnswering(repositoryRoot, broken),
+		}).catch((error) => error);
 	}
 
-	/** Answers the rate-limit scenario with `scenario`, then fails the next probe with a 500. */
-	async function rateLimitAnswering(scenario: Response[]) {
-		const { run, fetchRequest } = await bootstrappedWorkerAnswering([
-			...scenario,
-			new Response(null, { status: 500 }),
-		]);
-		return { outcome: await run.catch((error) => error), fetchRequest };
-	}
+	const admitted = () => Response.json([]);
+	const refused = (status: number) => () => new Response(null, { status });
 
-	/**
-	 * Built Workers limit sign-in (#697). The first case is what this artifact
-	 * did before `rateLimit` was stated: every attempt reached the password check.
-	 */
-	it('refuses a Worker that admits a fourth sign-in attempt from one client', async () => {
-		const { outcome } = await rateLimitAnswering(
-			rateLimitScenario({
-				3: new Response(null, { status: 401 }),
-			}),
-		);
-
-		expect(outcome).toMatchObject({
-			probe: 'auth-rate-limit-refusal',
-			failureClass: 'unexpected-status',
-			detail: { expected: 429, actual: 401 },
-		});
+	it('goes on to the product probes once the artifact holds every identity rule', async () => {
+		expect(await smokeAgainst()).toMatchObject({ probe: 'event-persistence' });
 	});
 
-	it('refuses a Worker that limits a client it should not have limited yet', async () => {
-		const { outcome } = await rateLimitAnswering(
-			rateLimitScenario({
-				2: new Response(null, { status: 429 }),
-			}),
-		);
-
-		expect(outcome).toMatchObject({
-			probe: 'auth-rate-limit-admitted',
-			failureClass: 'unexpected-status',
-		});
-	});
-
-	it('refuses a 429 that names no retry delay', async () => {
-		const { outcome } = await rateLimitAnswering(
-			rateLimitScenario({
-				3: new Response('{}', { status: 429 }),
-			}),
-		);
-
-		expect(outcome).toMatchObject({
-			probe: 'auth-rate-limit-refusal',
-			failureClass: 'unexpected-body',
-		});
-	});
-
-	it('refuses a Worker whose limit also refuses an independent client', async () => {
-		const { outcome } = await rateLimitAnswering(
-			rateLimitScenario({
-				4: new Response(null, { status: 429 }),
-			}),
-		);
-
-		expect(outcome).toMatchObject({
-			probe: 'auth-rate-limit-independent-client',
-			failureClass: 'unexpected-status',
-			detail: { expected: 200, actual: 429 },
-		});
-	});
-
-	it('names each client in cf-connecting-ip, varies x-forwarded-for, and keeps both off the probes that follow', async () => {
-		const { outcome, fetchRequest } = await rateLimitAnswering(rateLimitScenario());
-
-		// The first probe after the scenario is the origin refusal, answered 500 here.
-		expect(outcome).toMatchObject({
-			probe: 'auth-origin-refusal',
-			detail: { actual: 500 },
-		});
-		const headers = fetchRequest.mock.calls.slice(3).map(([, init]) => new Headers(init?.headers));
-		const limited = headers.slice(0, 4);
-		const independent = headers[4]!;
-		const following = headers[5]!;
-
-		expect(new Set(limited.map((each) => each.get('cf-connecting-ip'))).size).toBe(1);
-		expect(new Set(limited.map((each) => each.get('x-forwarded-for'))).size).toBeGreaterThan(1);
-		expect(independent.get('cf-connecting-ip')).toMatch(/^\d+\.\d+\.\d+\.\d+$/u);
-		expect(independent.get('cf-connecting-ip')).not.toBe(limited[0]!.get('cf-connecting-ip'));
-		expect(following.has('cf-connecting-ip')).toBe(false);
-		expect(following.has('x-forwarded-for')).toBe(false);
-	});
-
-	/**
-	 * A Worker that reaches sign-in and answers it with `setCookies`, then
-	 * refuses the first signed-in request, so a cookie the probe accepts shows
-	 * up as the next probe's failure.
-	 */
-	async function signInAnswering(setCookies: string[]) {
-		const signIn = new Response('{}', { status: 200 });
-		for (const value of setCookies) signIn.headers.append('set-cookie', value);
-		const { run } = await bootstrappedWorkerAnswering([
-			...rateLimitScenario(),
-			new Response(null, { status: 403 }),
-			signIn,
-			new Response(null, { status: 401 }),
-		]);
-		return await run;
-	}
-
-	/**
-	 * The built Worker is the artifact a deploy uploads, so its session cookie
-	 * is the production one even though the smoke run reaches it over plain
-	 * http: `Secure` and `__Secure-`-prefixed. The first case is what the built
-	 * Worker actually set before the option was stated, measured on #621.
-	 */
-	it.each([
+	// Each row is a built Worker that breaks one rule of who it admits (ADR-0141),
+	// and the probe that must name it.
+	it.each<[string, (asked: Asked) => boolean, () => Response, string]>([
 		[
-			'unprefixed and not Secure',
-			'better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax',
+			'refuses a User whose Identity Proof is valid',
+			({ who, path }) => who === 'administrator' && path === '/api/events',
+			refused(401),
+			'identity-proof-admitted',
 		],
 		[
-			'named __Secure- but not Secure',
-			'__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax',
+			'answers another User than the Identity Proof names',
+			({ path }) => path === '/api/identity',
+			() => Response.json({ user: { id: 'somebody-else' }, appRole: 'admin' }),
+			'identity-read',
 		],
 		[
-			'Secure but not named __Secure-',
-			'better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax; Secure',
+			'admits a User with no App access',
+			({ who, path }) => who === 'outsider' && path === '/api/events',
+			admitted,
+			'no-app-access',
 		],
 		[
-			'without HttpOnly',
-			'__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; Secure; SameSite=Lax',
+			'admits a User with no App access on an admin route',
+			({ who, path }) => who === 'outsider' && path.startsWith('/api/admin/'),
+			admitted,
+			'no-app-access-admin-route',
 		],
 		[
-			'without SameSite=Lax',
-			'__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=None',
+			'refuses a User whose App role is member',
+			({ who, path }) => who === 'member' && path === '/api/events',
+			refused(403),
+			'member-admitted',
 		],
 		[
-			'scoped below the root path',
-			'__Secure-better-auth.session_token=t; Max-Age=604800; Path=/api; HttpOnly; Secure; SameSite=Lax',
+			'admits a User whose App role is not admin on an admin route',
+			({ who, path }) => who === 'member' && path.startsWith('/api/admin/'),
+			admitted,
+			'admin-role-required',
 		],
-	])('refuses a production session cookie %s', async (_case, setCookie) => {
-		await expect(signInAnswering([setCookie])).rejects.toMatchObject({
-			probe: 'auth-sign-in',
-			failureClass: 'session-cookie-attributes',
-		});
-	});
+		[
+			'refuses a Graphics Administrator an admin route',
+			({ who, path }) => who === 'administrator' && path.startsWith('/api/admin/'),
+			refused(403),
+			'admin-role-admitted',
+		],
+		[
+			"admits a write another site's page made",
+			({ crossSite }) => crossSite,
+			admitted,
+			'cross-site-refusal',
+		],
+		[
+			'grants a signed-out visitor a realtime token',
+			({ who, path }) => who === 'nobody' && path === '/api/realtime/token',
+			admitted,
+			'realtime-grant-signed-out',
+		],
+		[
+			'grants a User with no App access a realtime token',
+			({ who, path }) => who === 'outsider' && path === '/api/realtime/token',
+			admitted,
+			'realtime-grant-no-app-access',
+		],
+		[
+			"serves a page that does not name its Environment's Keepr Accounts",
+			({ path }) => path === '/',
+			() => new Response('<html>https://accounts.keepr.digital</html>'),
+			'shell-keepr-accounts-origin',
+		],
+	])('refuses a Worker that %s', async (_case, breaks, answer, probe) => {
+		const outcome = await smokeAgainst((asked) => (breaks(asked) ? answer() : undefined));
 
-	it('names a sign-in that sets cookies but no session token', async () => {
-		await expect(signInAnswering(['unrelated=1; Path=/'])).rejects.toMatchObject({
-			probe: 'auth-sign-in',
-			failureClass: 'session-cookie-missing',
-		});
-	});
-
-	it('accepts a __Secure- prefixed, Secure session cookie and signs in with it', async () => {
-		await expect(
-			signInAnswering([
-				'__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=Lax',
-			]),
-		).rejects.toMatchObject({
-			probe: 'authenticated-api',
-			failureClass: 'unexpected-status',
-		});
+		expect(outcome).toMatchObject({ probe });
 	});
 
 	it('escalates cleanup to SIGKILL and waits for the child exit', async () => {
@@ -502,12 +449,11 @@ describe('the built Worker smoke runner', () => {
 		expect(worker.kill).toHaveBeenCalled();
 	});
 
-	it('redacts generated values, cookies, digests, resource identities, and full URLs', () => {
+	it('redacts generated values, digests, resource identities, and full URLs', () => {
 		const secret = 'generated-secret-value';
 		const digest = 'a'.repeat(64);
 		const text = [
 			secret,
-			'better-auth.session_token=session-cookie-value',
 			digest,
 			'/api/events/42/graphics-assets/550e8400-e29b-41d4-a716-446655440000',
 			'{"eventId":42,"assetId":"asset-in-a-log"}',
@@ -516,7 +462,6 @@ describe('the built Worker smoke runner', () => {
 		const redacted = redactSmokeText(text, [secret]);
 
 		expect(redacted).not.toContain(secret);
-		expect(redacted).not.toContain('session-cookie-value');
 		expect(redacted).not.toContain(digest);
 		expect(redacted).not.toContain('550e8400-e29b-41d4-a716-446655440000');
 		expect(redacted).not.toContain('asset-in-a-log');

@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { GRAPHICS_MULTIPART_PART_BYTES } from '../../shared/utils/graphicsAssetCompatibility';
 import { $fetch, anonymousFetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
+import { INTEGRATION_SIGNED_OUT_COOKIE } from './environment';
 import { anotherBrowser, anotherUser } from './identities';
 import { expectResponseStatus } from './responseStatus';
 
@@ -375,9 +376,9 @@ describe('graphics author authorisation across the ingestion and lifecycle route
 	// Ownership is the person's, so a transfer whose session ended is refused from nobody,
 	// keeps its checkpoint, and is reached and finished by its owner from any session.
 	describe('a session that ends mid-transfer', () => {
-		// A session cookie by name, carrying a token the server never issued: Better Auth finds
-		// nothing for it, as for an expired one. The suite's client signs a request with none.
-		const endedCookie = 'better-auth.session_token=a7f1c0d2-ended-session-token-no-longer-stored';
+		// What a browser whose Session has ended asks with: Keepr Accounts vouches for
+		// nobody, as for an expired one. The suite's client signs a request that says nothing.
+		const endedCookie = INTEGRATION_SIGNED_OUT_COOKIE;
 
 		const bytes = new Uint8Array(GRAPHICS_MULTIPART_PART_BYTES + 1);
 

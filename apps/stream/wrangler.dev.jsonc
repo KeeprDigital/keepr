@@ -33,5 +33,8 @@
 		"bindings": [
 			{ "name": "REALTIME", "class_name": "RealtimeObject", "script_name": "keepr-realtime-dev" }
 		]
-	}
+	},
+	// Keepr Accounts, by its production name (ADR-0113): locally the Accounts
+	// Stand-in registers under it, started beside the dev server by `pnpm dev`.
+	"services": [{ "binding": "KEEPR_ACCOUNTS", "service": "keepr-accounts" }]
 }

@@ -1,159 +1,65 @@
-import {
-	$fetch as unauthenticated$Fetch,
-	fetch as unauthenticatedFetch,
-	url,
-} from '@nuxt/test-utils/e2e';
-import {
-	INTEGRATION_ADMIN_BOOTSTRAP_TOKEN,
-	INTEGRATION_OPERATOR_EMAIL,
-	INTEGRATION_OPERATOR_PASSWORD,
-} from './environment';
+import { $fetch as unsigned$Fetch, fetch as unsignedFetch } from '@nuxt/test-utils/e2e';
+import { INTEGRATION_OPERATOR_COOKIE, INTEGRATION_SIGNED_OUT_COOKIE } from './environment';
 import { requestLabel, requestLedger } from './requestLedger';
 
 /**
- * The integration suite's HTTP client: `@nuxt/test-utils`' own, signed in (#396).
+ * The integration suite's HTTP client: `@nuxt/test-utils`' own, asking as the
+ * suite's operator (#396, ADR-0141).
  *
- * ADR-0010's deny-by-default boundary means there is no unauthenticated client for
- * these routes any more, so **every suite imports `fetch` and `$fetch` from here
- * rather than from `@nuxt/test-utils/e2e`**. That is the whole of the change to
- * fifty-odd suites, and it is an explicit import rather than a global patch on
- * purpose:
+ * ADR-0010's deny-by-default boundary means every route here answers a Session,
+ * so **every suite imports `fetch` and `$fetch` from here rather than from
+ * `@nuxt/test-utils/e2e`**. Each server the suite starts runs beside an
+ * Accounts Stand-in (`./servers.ts`), which vouches for whoever the request's
+ * `keepr-stand-in` cookie names, as Keepr Accounts vouches for a Session cookie.
+ * Nobody signs in: there is nothing in Stream Keepr to sign in to.
+ *
+ * It is an explicit import rather than a global patch on purpose:
  *
  * - A patched `globalThis.fetch` does not work here at all, which is worth writing
  *   down because it looks like it should. `@nuxt/test-utils` calls `ofetch`'s
- *   `fetch`, which dereferences its own realm's global — and an externalised
+ *   `fetch`, which dereferences its own realm's global, and an externalised
  *   dependency's realm is not the test file's, so the patch is installed, visible
- *   from the test, and never consulted. Measured, not assumed: a direct
- *   `globalThis.fetch` call answered 200 through the patch in the same run where
- *   the helper answered 401 around it.
+ *   from the test, and never consulted.
  * - Even where it worked it would be invisible. A suite whose requests are
- *   authenticated by machinery in a config file reads as a suite testing
- *   unauthenticated routes, and the next person to add one would find out from a
- *   wall of 401s.
+ *   vouched for by machinery in a config file reads as a suite testing
+ *   unauthenticated routes.
  *
- * `test/unit/integration/integrationClient.test.ts` keeps it honest: no file under
- * `test/integration/` may import the raw helpers except this one.
- *
- * **The session is appended, never substituted — and never appended to a request
- * that carries one already** (see `signed` below, and `./identities.ts` for the
- * two identities a suite can present instead of the operator).
+ * **Who asks is appended, never substituted, and never appended to a request
+ * that says who it is already** (see `signed` below, and `./identities.ts` for
+ * who a suite can ask as instead of the operator).
  */
 
-/** The paths that get a session, which is every API path but two surfaces. */
-const UNAUTHENTICATED_API_PREFIXES = ['/api/auth/', '/api/bootstrap/'] as const;
-
 /**
- * Whether this path is one the client signs.
+ * Whether this path is one the client signs: every API path.
  *
  * Deliberately **not** derived from `apiPathRequiresSession`. A client built from
  * the boundary's own allowlist could not catch a mistake in it: both would exempt
- * the same path and the suite would pass. So this is its own list, and it is a
- * short one — Better Auth's router, where `auth.test.ts` manages cookies itself and
- * a second live session in the header would falsify its sign-out assertion; and the
- * first-admin bootstrap, which is how this file acquires a session in the first
- * place.
+ * the same path and the suite would pass. An exempt route is signed too, and
+ * ignores it.
  *
- * Pages are left alone because nothing about them needs a session: the boundary
+ * Pages are left alone because nothing about them needs a Session: the boundary
  * covers `/api/**`, and a page request's answer must be the one a real browser
  * gets.
  */
 export function requestCarriesSession(path: string): boolean {
-	if (!path.startsWith('/api/')) return false;
-
-	return !UNAUTHENTICATED_API_PREFIXES.some((prefix) => path.startsWith(prefix));
-}
-
-let sessionCookie: Promise<string> | undefined;
-
-/**
- * The operator's session cookie, minted once per process.
- *
- * Memoised on the promise rather than on the value, so the several requests a test
- * file makes before the first one resolves share one sign-in instead of racing to
- * create the same account three times.
- *
- * The account is created through the first-admin bootstrap rather than by direct
- * SQL because that route is armed for the whole run anyway, and "can somebody sign
- * in now" is the only question its answer is worth anything for.
- */
-export function operatorSessionCookie(): Promise<string> {
-	sessionCookie ??= signInAsOperator();
-	return sessionCookie;
+	return path.startsWith('/api/');
 }
 
 /**
- * Create the operator if needed and sign it in, returning its session cookie.
- *
- * Takes the transport so `globalSetup` can sign in to each server it starts
- * before any test context exists; test files use the defaults.
+ * The cookie the suite's operator asks with, for a request the client does not
+ * make: a socket, or a hand-built header. Asynchronous for the suites that
+ * await it, from when the operator had to sign in.
  */
-export async function signInAsOperator(
-	request: (path: string, init?: RequestInit) => Promise<Response> = unauthenticatedFetch,
-	origin: string = url('/'),
-): Promise<string> {
-	const ensured = await request('/api/bootstrap/ensure-admin', {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			'x-admin-bootstrap-token': INTEGRATION_ADMIN_BOOTSTRAP_TOKEN,
-		},
-		body: JSON.stringify({
-			email: INTEGRATION_OPERATOR_EMAIL,
-			password: INTEGRATION_OPERATOR_PASSWORD,
-			name: 'Integration Operator',
-		}),
-	});
-	if (!ensured.ok) {
-		throw new Error(
-			`The integration suite could not create its operator: ${ensured.status} from the first-admin bootstrap. ` +
-				'Every route behind the API boundary answers 401 without one, so the run would fail wholesale with ' +
-				'nothing naming the cause.',
-		);
-	}
-
-	const signIn = await request('/api/auth/sign-in/email', {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			// Better Auth refuses a state-changing request with no `Origin` —
-			// `403 MISSING_OR_NULL_ORIGIN`, its CSRF defence. `nuxt dev` does not
-			// enforce it and a built Worker does, so this suite would have gone on
-			// passing while every non-browser sign-in against a real deployment was
-			// refused. Found by running the fan-out probe against `pnpm preview`;
-			// sent here too so the suite's own client asks the way a browser does
-			// rather than the way only the dev server tolerates.
-			origin,
-		},
-		body: JSON.stringify({
-			email: INTEGRATION_OPERATOR_EMAIL,
-			password: INTEGRATION_OPERATOR_PASSWORD,
-		}),
-	});
-	if (!signIn.ok)
-		throw new Error(`The integration suite's operator could not sign in: ${signIn.status}.`);
-
-	// Every cookie the response set, not the session token by name: the dev
-	// server this suite spawns sets it unprefixed and a built server prefixes it
-	// `__Secure-` (`useSecureCookies`, `server/utils/authOptions.ts`), and the
-	// suite should not depend on which kind of server it is talking to.
-	const cookie = signIn.headers
-		.getSetCookie()
-		.map((value) => value.split(';', 1)[0] ?? '')
-		.filter((pair) => pair.includes('='))
-		.join('; ');
-	if (!cookie)
-		throw new Error("The integration suite's operator signed in and was issued no session cookie.");
-
-	return cookie;
+export async function operatorSessionCookie(): Promise<string> {
+	return INTEGRATION_OPERATOR_COOKIE;
 }
 
 /**
  * The one retry in this suite, re-exported so a caller needs one import.
  *
  * It lives in `./transportRetry` rather than here because it is the only thing in
- * this file that can be tested without a spawned server — and it needed to be,
- * since the defect it had was a docblock promising "once" while two layers each
- * retried. `test/unit/integration/transportRetry.test.ts` pins it now.
+ * this file that can be tested without a spawned server.
+ * `test/unit/integration/transportRetry.test.ts` pins it.
  *
  * Deliberately **not** applied inside `fetch` and `$fetch` below: they cannot
  * rebuild a streamed body, which is the shape that actually fails, so a retry there
@@ -161,53 +67,41 @@ export async function signInAsOperator(
  */
 export { throughOneTransportFailure } from './transportRetry';
 
-/**
- * A Better Auth session cookie, under either name it can be issued as.
- *
- * Which name depends on the kind of server, not the scheme: the `nuxt dev`
- * server this suite spawns sets it unprefixed, and a built server sets it
- * `__Secure-` (`useSecureCookies`, `server/utils/authOptions.ts`).
- */
-const SESSION_COOKIE = /(?:^|;\s*)(?:__Secure-)?better-auth\.session_token=/;
+/** The cookie that says who a request asks as, wherever it sits in the header. */
+const WHO_ASKS = /(?:^|;\s*)keepr-stand-in=/;
 
 /**
- * One request's headers, signed as the operator unless the caller signed it as
- * somebody else.
+ * One request's headers, with `cookie` saying who asks unless the caller said so.
  *
- * **A caller's own session wins, and that rule arrived with #398.** Before the
- * cutover the identity a graphics suite presented was a Graphics Author Session
- * under a name of its own, so appending the operator's cookie beside it was two
- * different questions answered by two different cookies. Since the cutover both
- * are `better-auth.session_token`: appending would put the same cookie name in one
- * header twice and leave which identity the server reads to whichever end of the
- * header it parsed first. So a request that already carries a session is left
- * exactly as the caller wrote it — which is also what makes `./identities.ts`
- * work at all.
+ * **A caller's own identity wins.** Appending would put the same cookie name in
+ * one header twice and leave who the server reads to whichever end of the header
+ * it parsed first. So a request that already says who it is is left exactly as
+ * the caller wrote it, which is also what makes `./identities.ts` work at all.
  */
-async function signed(
+function asking(
 	path: string,
 	headers: HeadersInit | undefined,
-): Promise<Record<string, string>> {
+	cookie: string,
+): Record<string, string> {
 	const merged = new Headers(headers ?? {});
 	const own = merged.get('cookie');
-	if (requestCarriesSession(path) && !SESSION_COOKIE.test(own ?? ''))
-		merged.set('cookie', [own, await operatorSessionCookie()].filter(Boolean).join('; '));
+	if (requestCarriesSession(path) && !WHO_ASKS.test(own ?? ''))
+		merged.set('cookie', [own, cookie].filter(Boolean).join('; '));
 
 	return Object.fromEntries(merged);
 }
 
 /**
- * `@nuxt/test-utils`' `fetch`, signed in.
+ * `@nuxt/test-utils`' `fetch`, asking as the operator.
  *
- * Same signature, so a suite reads exactly as it did before the boundary existed —
+ * Same signature, so a suite reads exactly as it did before the boundary existed,
  * which is the point: what changed is who the suite is, not what it asserts.
  */
-export const fetch: typeof unauthenticatedFetch = async (path, options) => {
-	// Signed before recording: a stalled sign-in is not the route never answering.
-	const headers = await signed(path, options?.headers);
+export const fetch: typeof unsignedFetch = async (path, options) => {
+	const headers = asking(path, options?.headers, INTEGRATION_OPERATOR_COOKIE);
 	return await requestLedger.record(
 		requestLabel(path, options?.method),
-		async () => await unauthenticatedFetch(path, { ...options, headers }),
+		async () => await unsignedFetch(path, { ...options, headers }),
 	);
 };
 
@@ -217,67 +111,71 @@ export const fetch: typeof unauthenticatedFetch = async (path, options) => {
  *
  * Nitro types `$fetch` against every route in the application, and instantiating
  * that machinery inside a wrapper exhausts TypeScript's depth budget: `vue-tsc`
- * answers TS2321 "Excessive stack depth", a family that reveals only one or two
- * errors at a time.
- * Measured rather than guessed at: seven errors with the call passed through a
- * generic helper, six with it inlined, nil with the callee narrowed here.
- *
- * Nothing is lost by narrowing, because the exported binding is declared as
- * `typeof unauthenticated$Fetch`: every **caller** keeps the real types, including
- * the `$fetch<Screen>(…)` generics the suites rely on. What is narrowed is only
- * this file's own view of the callee.
- *
- * The same goes for `requestLedger.record` inside them: left to infer, its `T` is
- * drawn from the cast's contextual return type — the routed one — so it is pinned
- * to `unknown`.
+ * answers TS2321 "Excessive stack depth". Nothing is lost by narrowing, because
+ * the exported binding is declared as `typeof unsigned$Fetch`: every **caller**
+ * keeps the real types, including the `$fetch<Screen>(…)` generics the suites
+ * rely on. The same goes for `requestLedger.record` inside them: left to infer,
+ * its `T` is drawn from the cast's contextual return type, so it is pinned to
+ * `unknown`.
  */
-const untyped$Fetch = unauthenticated$Fetch as unknown as (
+const untyped$Fetch = unsigned$Fetch as unknown as (
 	path: string,
 	options?: Record<string, unknown>,
 ) => Promise<unknown>;
 
-/** `@nuxt/test-utils`' `$fetch`, signed in. */
-export const $fetch: typeof unauthenticated$Fetch = (async (
+/** `@nuxt/test-utils`' `$fetch`, asking as the operator. */
+export const $fetch: typeof unsigned$Fetch = (async (
 	path: string,
 	options?: Record<string, unknown>,
 ) => {
-	const headers = await signed(path, options?.headers as HeadersInit | undefined);
+	const headers = asking(
+		path,
+		options?.headers as HeadersInit | undefined,
+		INTEGRATION_OPERATOR_COOKIE,
+	);
 	return await requestLedger.record<unknown>(
 		requestLabel(path, options?.method),
 		async () => await untyped$Fetch(path, { ...options, headers }),
 	);
-}) as typeof unauthenticated$Fetch;
+}) as typeof unsigned$Fetch;
 
 /**
- * The same two helpers with no session at all, for the suite that tests the
- * boundary itself.
+ * The same two helpers asking as a signed-out visitor, for the suite that tests
+ * the boundary itself.
  *
- * Exported from here rather than left to a direct import of the raw module, so the
- * structural guard can stay absolute — and so an anonymous request says out loud
- * that it is one. Recorded like the signed pair, so a stall here is named too.
+ * They say so with the stand-in's cookie: a request carrying none would be
+ * answered as the Local Developer User, and a boundary test that sent one would
+ * pass against a boundary that admitted everybody. Recorded like the signed
+ * pair, so a stall here is named too.
  */
-export const anonymousFetch: typeof unauthenticatedFetch = async (path, options) => {
+export const anonymousFetch: typeof unsignedFetch = async (path, options) => {
+	const headers = asking(path, options?.headers, INTEGRATION_SIGNED_OUT_COOKIE);
 	return await requestLedger.record(
 		requestLabel(path, options?.method),
-		async () => await unauthenticatedFetch(path, options),
+		async () => await unsignedFetch(path, { ...options, headers }),
 	);
 };
-export const anonymous$Fetch: typeof unauthenticated$Fetch = (async (
+export const anonymous$Fetch: typeof unsigned$Fetch = (async (
 	path: string,
 	options?: Record<string, unknown>,
 ) => {
+	const headers = asking(
+		path,
+		options?.headers as HeadersInit | undefined,
+		INTEGRATION_SIGNED_OUT_COOKIE,
+	);
 	return await requestLedger.record<unknown>(
 		requestLabel(path, options?.method),
-		async () => await untyped$Fetch(path, options),
+		async () => await untyped$Fetch(path, { ...options, headers }),
 	);
-}) as typeof unauthenticated$Fetch;
+}) as typeof unsigned$Fetch;
 
 /**
  * The rest of `@nuxt/test-utils/e2e`'s surface, passed straight through.
  *
- * Nothing about these needs a session — they start the server, publish its URL, and
+ * Nothing about these needs a Session: they start the server, publish its URL, and
  * resolve a path against it. They are re-exported so the structural guard can be
  * absolute: **one** file in `test/integration/` names the raw module, and it is this
- * one, so "is this suite authenticated?" has a single answer everywhere else.
+ * one, so "who is this suite asking as?" has a single answer everywhere else.
  */
 export { createTest, exposeContextToEnv, url } from '@nuxt/test-utils/e2e';

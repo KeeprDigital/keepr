@@ -3,7 +3,7 @@ import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-l
 import { screenWriteModule } from '~~/server/modules/screen-write';
 import { modeConfigParamsSchema, modeConfigPatchSchemaMap } from '~~/server/schemas/api/screen';
 import { getOriginConnectionId } from '~~/server/utils/ably';
-import { optionalBrowserSessionId } from '~~/server/utils/auth';
+import { optionalBrowserSessionId } from '~~/server/utils/session';
 import { readJsonPayloadLimited } from '@keepr/nuxt-layer/server/utils/payloadLimits';
 
 const versionedPatchSchema = z

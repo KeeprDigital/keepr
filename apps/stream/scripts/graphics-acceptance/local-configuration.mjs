@@ -31,10 +31,6 @@ import {
 	parseDotenv,
 	sentenceList,
 } from '../../build/localConfiguration.ts';
-import {
-	LOCAL_AUTH_BYPASS_ENABLED_VALUE,
-	LOCAL_AUTH_BYPASS_NAME,
-} from '../../shared/utils/localDeveloperAuth.ts';
 import { AcceptanceFailure } from './evidence.mjs';
 
 /**
@@ -42,26 +38,13 @@ import { AcceptanceFailure } from './evidence.mjs';
  * name a checkout requires (`build/localConfiguration.ts`).
  *
  * `.env.example` and the README both already say the signing key is
- * load-bearing; this is that sentence made executable. The two auth names joined
- * it on #396, when `/api/**` began denying by default and every route in
- * `routes.mjs` became a route that needs a signed-in operator (`./operator.mjs`):
- *
- * - `NUXT_BETTER_AUTH_SECRET`, because an installation without it cannot admit
- *   anybody at all — sign-in itself answers 503 naming the setting — however the
- *   harness came by its credentials.
- * - `NUXT_ADMIN_BOOTSTRAP_TOKEN`, because a local run acquires its operator by
- *   calling the first-admin bootstrap with it. A deployed run is not checked
- *   here at all and takes the other path, signing in with credentials from the
- *   environment; that is why this name being required *locally* is not the false
- *   alarm it would otherwise look like.
+ * load-bearing; this is that sentence made executable. No name here is for
+ * signing in: a local installation's Accounts Stand-in vouches for the run
+ * (`./operator.mjs`), and a deployed run is not checked here at all.
  *
  * @type {import('../../build/localConfiguration.ts').LocallyRequiredNuxtName[]}
  */
-export const LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES = [
-	'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY',
-	'NUXT_BETTER_AUTH_SECRET',
-	'NUXT_ADMIN_BOOTSTRAP_TOKEN',
-];
+export const LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES = ['NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY'];
 
 /**
  * Where a previewed Worker's secrets are actually opened from.
@@ -130,10 +113,9 @@ const LOCAL_CONFIGURATION_FILES = ['.env', RESOLVED_PREVIEW_ENV];
  * `cp .env.example .env` holds a file full of blanks.
  *
  * @param {Record<string, string | undefined>} env
- * @param {{ localAuthBypassActive?: boolean }} [options]
  */
-export function missingLocalAcceptanceNames(env, options = {}) {
-	return missingLocalNuxtNames(env, options).filter((name) =>
+export function missingLocalAcceptanceNames(env) {
+	return missingLocalNuxtNames(env).filter((name) =>
 		LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES.includes(name),
 	);
 }
@@ -245,25 +227,13 @@ export function localConfigurationNotice(missing) {
  * stopped editing. Unconditional on there being anything to stage, because a
  * leftover arming a preview all by itself is the worse half of that.
  *
- * The staged body is the root file's plus one line when — and only when — the
- * launcher chose a bypassed preview (#519). `pnpm preview:bypass` sets
- * `STREAM_KEEPR_LOCAL_AUTH_BYPASS` in its own environment, and wrangler passes
- * no host environment to the Worker it starts, so the choice has to arrive
- * through the one file wrangler does read. Written here rather than as a
- * `--var` on the preview command line because this step already owns what the
- * previewed Worker's environment is, and a second mechanism for one name would
- * be a second place to look when it is not there.
+ * The staged body is the root file's, and nothing is ever added to it.
  *
- * That line is the only thing this ever adds, `.output` is gitignored and wiped
- * by every `nuxt build`, and `pnpm run deploy` builds before it uploads — so a
- * bypassed preview cannot leave anything behind that a deploy could pick up.
- *
- * @param {{ source: string | null, existing: string | null, stale: boolean, bypassActive?: boolean }} files
- *   `source` is the root `.env` body, `existing` the staged copy's, `stale`
- *   whether a pre-#412 `.dev.vars` is still sitting beside the config, and
- *   `bypassActive` whether this launcher asked for a bypassed preview.
+ * @param {{ source: string | null, existing: string | null, stale: boolean }} files
+ *   `source` is the root `.env` body, `existing` the staged copy's, and `stale`
+ *   whether a pre-#412 `.dev.vars` is still sitting beside the config.
  */
-export function previewStagingPlan({ source, existing, stale, bypassActive = false }) {
+export function previewStagingPlan({ source, existing, stale }) {
 	const lines = [];
 
 	if (stale) {
@@ -275,7 +245,7 @@ export function previewStagingPlan({ source, existing, stale, bypassActive = fal
 		);
 	}
 
-	if (source === null && !bypassActive) {
+	if (source === null) {
 		return {
 			stage: false,
 			body: null,
@@ -284,12 +254,7 @@ export function previewStagingPlan({ source, existing, stale, bypassActive = fal
 		};
 	}
 
-	const base = source ?? '';
-	const body = bypassActive
-		? `${
-				base.endsWith('\n') || base.length === 0 ? base : `${base}\n`
-			}${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE}\n`
-		: base;
+	const body = source;
 
 	if (existing !== null && existing !== body) {
 		lines.push(
@@ -303,14 +268,6 @@ export function previewStagingPlan({ source, existing, stale, bypassActive = fal
 		`Staged .env into ${RESOLVED_PREVIEW_ENV}, ` +
 			'where wrangler resolves it from the config (#274, #412).',
 	);
-
-	if (bypassActive) {
-		lines.push(
-			`Added ${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE} to ${RESOLVED_PREVIEW_ENV}: this ` +
-				'preview was launched bypassed, so every request acts as the Local Developer User. Keep it on ' +
-				'loopback.',
-		);
-	}
 
 	return {
 		stage: true,
