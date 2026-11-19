@@ -9,7 +9,7 @@ Event management and streaming overlay system for competitive gaming tournaments
 - **Streaming overlays**: card displays, deck views, match info, Feature Match
   Overlay, and Broadcast Graphics Screens rendered to OBS browser sources.
 - **Melee integration**: sync tournament data from Melee.
-- **Realtime**: live sync across connected clients via Ably.
+- **Realtime**: live sync across connected clients.
 
 This README is the single guide for developing, testing, deploying, and
 operating Stream Keepr. The other docs:
@@ -60,7 +60,8 @@ Changesets; never edit it by hand.
 
 Nuxt 4 SPA (`ssr: false`), Vue 3, Pinia, Nuxt UI, Tailwind; Nitro on Cloudflare
 Workers (`cloudflare_module` preset); D1 (SQLite) with Drizzle; R2 for graphics
-bytes; Ably for realtime; Better Auth for accounts.
+bytes; a Durable Object per Event for realtime (ADR-0137), with Ably still
+under the pages until they move; Better Auth for accounts.
 
 ```text
 app/        Frontend: pages, components, stores, composables
@@ -82,9 +83,16 @@ It also extends realtime's layer, `@keepr/realtime/nuxt` (ADR-0138): the
 Worker's entry, which exports the class of the Durable Object every Environment
 binds as `REALTIME` and hands a socket on `/realtime/socket` to it, and the
 Worker that holds that class beside `nuxt dev`, which the dev server starts and
-stops itself (`packages/realtime/README.md` at the repository's root). Who may
-hear what is `server/routes/realtime/port.ts`. It refuses every socket until
-the pages move onto the object (#1315); until then realtime is Ably's.
+stops itself (`packages/realtime/README.md` at the repository's root).
+
+The server publishes every message by RPC to its Event's object, the one
+`eventRealtimeScope` names (`shared/utils/realtimeChannels.ts`), through
+`server/utils/ably.ts`; nothing it publishes goes to Ably (ADR-0140). Who may
+hear what is `server/routes/realtime/port.ts`, which refuses every socket until
+a Session and a Screen Output are authorized (#1315). The pages still connect
+to Ably, with a token from `GET /api/realtime/token`, until they move onto the
+object (#1317): the two land in one Release, since a page on Ably hears
+nothing the server publishes.
 
 ## Subsystem map
 
@@ -241,7 +249,7 @@ failure on `main`.
 | `NUXT_BETTER_AUTH_SECRET`                        | Signs sessions. Unset: sign-in and every authenticated route answer 503.                                                   |
 | `NUXT_ADMIN_BOOTSTRAP_TOKEN`                     | Arms the first-admin route. Locally, leave it set; it is how a fresh checkout and the local harnesses get an account.      |
 | `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`      | 32-byte base64 HMAC key for Screen Output asset capabilities.                                                              |
-| `NUXT_ABLY_API_KEY`                              | Ably key. Optional for tests: leave it empty rather than fake. A fake key makes one realtime test pass and the other fail. |
+| `NUXT_ABLY_API_KEY`                              | Ably key: signs the pages' realtime tokens, and the server publishes nothing with it. Optional for tests: leave it empty.  |
 | `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`           | 32-byte base64 key encrypting Melee client secrets (AES-256-GCM).                                                          |
 | `NUXT_MELEE_CREDENTIAL_KEY_VERSION`   | Non-empty version label for the active key. Deployed, a var in `wrangler.jsonc`, not a secret.                             |
 | `NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS` | Optional JSON `{"<version>":"<key>"}` of retired keys still needed to decrypt during rotation.                             |
@@ -469,15 +477,19 @@ Gotchas:
   test files run in parallel but never two against one database. The default is
   a third of the CPU cores, at most four; set `STREAM_KEEPR_INTEGRATION_SERVERS`
   to change it (`1` is the old serial run). Each server's output is kept in
-  `node_modules/.cache/integration-servers/`. The servers share one Ably app,
-  and channels are named by Event id, so each server mints Event ids from its
-  own block of a million (`integrationEventIdBlocks`); without that, two files
-  hear each other's publications (#630).
-- **Only `*.realtime.test.ts` files reach Ably.** They run first, one at a
-  time, against the one server given the key. Every other file runs against a
-  server whose key is blank, so its writes open no channels on the account
-  production shares. A test that subscribes or needs a publish accepted belongs
-  in a `*.realtime.test.ts` file; anywhere else it fails on import, saying so.
+  `node_modules/.cache/integration-servers/`. Each server publishes to the
+  objects of the Worker beside it, which no other server reaches. The
+  `*.realtime.test.ts` files still listen on one Ably app, where channels are
+  named by Event id, so each server mints Event ids from its own block of a
+  million (`integrationEventIdBlocks`, #630).
+- **Only `*.realtime.test.ts` files reach Ably**, as a page does: for a token,
+  and to listen. They run first, one at a time, against the one server given
+  the key; every other file runs against a server whose key is blank. A test
+  that reads the key belongs in a `*.realtime.test.ts` file; anywhere else it
+  fails on import, saying so. No server publishes to Ably (ADR-0140), so with
+  a key the seven of them that wait to hear a write time out until they listen
+  on the object (#1317). That a write's publish reaches its Event's object is
+  `realtimePublish.test.ts`, which needs no key.
 - **A failed integration test prints its requests.** The
   `[integration] requests during "…"` block lists each request with its time;
   on a timeout, the one marked `never returned` is the stall. It names the

@@ -7,20 +7,18 @@ import * as schema from '~~/server/db/schema';
 import { SCREEN_MODES } from '~~/shared/screenModes';
 import { SCREEN_MODE_VALUES } from '~~/shared/types/enums';
 import { eventRealtimeChannel, screenRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // Deleting a Feature Match Slot releases every Screen reference to it in the
 // same write, and tells each released Screen to re-read itself, ahead of the
-// delete's own announcement. Driven through the real writes; only Ably is faked.
+// delete's own announcement. Driven through the real writes; only the realtime object is faked.
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
+const realtime = await installRealtimeObjectFake();
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
 	Object.assign(new Error(input.message ?? 'error'), input),
 );
@@ -28,7 +26,7 @@ vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) 
 const { featureMatchSlotWriteModule } = await import('~~/server/modules/feature-match-slot-write');
 const { eventWriteModule } = await import('~~/server/modules/event-write');
 
-beforeEach(() => ably.reset());
+beforeEach(() => realtime.reset());
 afterAll(async () => await harness.close());
 
 let staged = 0;
@@ -106,7 +104,7 @@ type Staged = Awaited<ReturnType<typeof stage>>;
 type Heard = [type: string, payload: object];
 
 const heardOn = (channel: string): Heard[] =>
-	ably.on(channel).map(({ type, payload }) => [type, payload]);
+	realtime.on(channel).map(({ type, payload }) => [type, payload]);
 function screenUpdated(screenId: number): Heard {
 	return ['screen:updated', { screenId }];
 }

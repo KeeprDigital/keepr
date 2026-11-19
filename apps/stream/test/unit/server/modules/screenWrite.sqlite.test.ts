@@ -17,14 +17,14 @@ import { updateScreenSchema } from '~~/server/schemas/api/screen';
 import { BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES } from '~~/shared/builtInFeatureMatchLayoutTemplates';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
 import { testGraphicAssetReference } from '~~/test/helpers/graphicsAssetIdentities';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Screen write over real SQL: the row and Graphic Asset Reference index it
 // stores, what it answers and announces, and what it leaves of a playout epoch.
-// Faked: Ably, the Screen Card's key-value store, the capability signer, and the
+// Faked: the realtime object, the Screen Card's key-value store, the capability signer, and the
 // Graphics Asset Library port, whose one question is its contract. An Event
 // Reference from another Event is `screenModeEventReferences.sqlite.test.ts`'s.
 
@@ -45,9 +45,7 @@ vi.doMock('~~/server/db', () => ({
 	},
 }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
+const realtime = await installRealtimeObjectFake();
 
 /** Each Screen Card the write cleaned out of the key-value store, with whether its Screen row was already gone. */
 const cleanedCards: { screenId: number; afterRowDeleted: boolean }[] = [];
@@ -123,7 +121,7 @@ async function stored(screenId: number) {
 
 /** What the Event's channel was sent, as `[type, payload]`. */
 function announced() {
-	return ably.on(eventRealtimeChannel(eventId)).map(({ type, payload }) => [type, payload]);
+	return realtime.on(eventRealtimeChannel(eventId)).map(({ type, payload }) => [type, payload]);
 }
 
 const PLATE = testGraphicAssetReference('asset-plate', 'plate-revision-1');
@@ -192,7 +190,7 @@ function writeLayout(
 async function stageScreenPinningPlate() {
 	const screen = await stageScreen({ currentMode: 'feature-match-overlay' });
 	await writeLayout(screen.id, layoutPinning(PLATE), libraryAnswering([SELECTABLE_IMAGE]).provide);
-	ably.reset();
+	realtime.reset();
 	return (await stored(screen.id))!;
 }
 
@@ -229,7 +227,7 @@ async function stageScreenOnAir() {
 		} as never,
 		graphicsAssets: () => ({}) as never,
 	});
-	ably.reset();
+	realtime.reset();
 	return { ...seeded, sessionId: session.id };
 }
 
@@ -244,7 +242,7 @@ async function activeEpoch(screenId: number) {
 
 /** Each kind of message sent, to the Event's channel or a Screen's own. */
 function announcedTypes() {
-	return [...new Set(ably.published.map((message) => message.type))];
+	return [...new Set(realtime.published.map((message) => message.type))];
 }
 
 async function commandReceipts(sessionId: number) {
@@ -307,7 +305,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-	ably.reset();
+	realtime.reset();
 	cleanedCards.length = 0;
 	capabilitiesPrepared = 0;
 });

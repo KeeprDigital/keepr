@@ -8,22 +8,20 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel, screenRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake, REFUSAL_MESSAGE } from '~~/test/helpers/realtimeObjectFake';
 import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { eventMessageSamples } from '~~/test/helpers/eventMessageSamples';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // What each Screen's own channel is sent beside the Event channel's messages:
 // its Screen's messages unchanged, and a notice of each change its mode shows.
-// Driven through the real publish functions; only the Ably client is faked.
+// Driven through the real publish functions; only the realtime object is faked.
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
+const realtime = await installRealtimeObjectFake();
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
 	Object.assign(new Error(input.message ?? 'error'), input),
 );
@@ -158,7 +156,7 @@ function everyScreen(heard: (screen: ScreenName) => Heard[]) {
 /** What each Screen channel of `forEvent` received, by Screen name where it has one; a silent Screen is left out. */
 function heardByScreens(forEvent = eventId) {
 	const heard: Record<string, Heard[]> = {};
-	for (const { channel, type, payload } of ably.published) {
+	for (const { channel, type, payload } of realtime.published) {
 		if (!channel.startsWith(`screen:${forEvent}:`)) continue;
 		const name =
 			SCREEN_NAMES.find((screen) => screenRealtimeChannel(eventId, SCREENS[screen]) === channel) ??
@@ -169,14 +167,22 @@ function heardByScreens(forEvent = eventId) {
 }
 
 function heardByEvent(forEvent = eventId): Heard[] {
-	return ably.on(eventRealtimeChannel(forEvent)).map(({ type, payload }) => [type, payload]);
+	return realtime.on(eventRealtimeChannel(forEvent)).map(({ type, payload }) => [type, payload]);
+}
+
+const isScreenChannel = (channel: string) => channel.startsWith('screen:');
+/** The channels each call to the Screens named, a delivery each, in call order. */
+function screenRequests() {
+	return realtime.calls
+		.map(({ deliveries }) => deliveries.map(({ channel }) => channel))
+		.filter((channels) => channels.every(isScreenChannel));
 }
 
 async function announce(messages: readonly EventDataMessage[], forEvent = eventId) {
 	for (const { type, payload } of messages) await publishMessage(forEvent, type, payload as never);
 }
 
-beforeEach(() => ably.reset());
+beforeEach(() => realtime.reset());
 afterEach(() => vi.restoreAllMocks());
 afterAll(async () => await harness.close());
 
@@ -438,15 +444,15 @@ describe("what a Screen's channel is sent", () => {
 	it('sends no Screen request for a message no output shows', async () => {
 		await announce([message('featureMatchAssignment:updated')]);
 
-		expect(ably.batches).toEqual([]);
+		expect(screenRequests()).toEqual([]);
 	});
 
 	// One request carries every Screen's messages, whatever the Event's Screen count.
 	it('tells every Screen in one request', async () => {
 		await announce([message('event:updated')]);
 
-		expect(ably.batches).toHaveLength(1);
-		expect(ably.batches[0]).toHaveLength(SCREEN_NAMES.length);
+		expect(screenRequests()).toHaveLength(1);
+		expect(screenRequests()[0]).toHaveLength(SCREEN_NAMES.length);
 	});
 
 	// A Take must not wait on the rest of a run (ADR-0004): its Screen has it at once.
@@ -509,7 +515,7 @@ describe("what a Screen's channel is sent", () => {
 		);
 
 		expect(heardByScreens(other.id)).toEqual({});
-		expect(ably.batches).toEqual([]);
+		expect(screenRequests()).toEqual([]);
 		expect(heardByEvent(other.id)).toHaveLength(3);
 	});
 });
@@ -735,7 +741,7 @@ describe('what a Feature Match Overlay is told of Matches, Rounds and Phases', a
 		);
 		expect(heardByScreens(moved.id)).toEqual(told('featureMatchSlot'));
 
-		ably.reset();
+		realtime.reset();
 		await announce([updated(after!.id)], moved.id);
 		expect(heardByScreens(moved.id)).toEqual(told('match'));
 	});
@@ -825,8 +831,8 @@ describe('a write made in a request', () => {
 	)('$name', async ({ request, write, answersFirst }) => {
 		const finishing = request ? inRequest() : [];
 		const release = deferred();
-		ably.holdNextBatch(release.promise);
-		const asked = ably.nextBatchAsked();
+		realtime.holdNext(isScreenChannel, release.promise);
+		const asked = realtime.nextAsked(isScreenChannel);
 		const answered = vi.fn();
 
 		const writing = write().then(answered);
@@ -849,8 +855,8 @@ describe('a write made in a request', () => {
 	it("keeps one request's notices in order", async () => {
 		const finishing = inRequest();
 		const release = deferred();
-		ably.holdNextBatch(release.promise);
-		const asked = ably.nextBatchAsked();
+		realtime.holdNext(isScreenChannel, release.promise);
+		const asked = realtime.nextAsked(isScreenChannel);
 
 		const writing = announce([roundUpdated, playerUpdated]);
 		await asked;
@@ -871,7 +877,7 @@ describe('a write made in a request', () => {
 	it('logs a publish refused after the answer, and rejects nothing', async () => {
 		const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const finishing = inRequest();
-		ably.refuseBatches(2);
+		realtime.refuse(isScreenChannel, 2);
 
 		await publishMessage(eventId, roundUpdated.type, roundUpdated.payload as never);
 
@@ -884,7 +890,7 @@ describe('a write made in a request', () => {
 					eventId,
 					screenId: SCREENS[screen],
 					messageTypes: ['output:modeDataChanged'],
-					statusCode: 500,
+					reason: REFUSAL_MESSAGE,
 				}),
 			),
 		);
@@ -905,55 +911,39 @@ describe('a write made in a request', () => {
 
 describe('a Screen channel publish that fails', () => {
 	const roundUpdated = message('round:updated');
-	const overlayChannel = screenRealtimeChannel(eventId, SCREENS.overlay);
 	const told = [changed('standings', 'round')];
-	const toldOverlay = [changed('overlay', 'round')];
+	const HEARING = ['standings', 'overlay', 'otherOverlay', 'headToHead'] as const;
 
-	// The write has committed and the Event channel has its message: a Screen
-	// channel's failure is retried once for that channel alone, then logged.
-	it.each([
+	// The write has committed and the Event channel has its message: the call
+	// to the Screens fails as one, is made once more, then logged for each Screen.
+	it.each<{ name: string; refused: number; hearing: readonly ScreenName[]; logged: number }>([
+		{ name: 'is retried once, whole', refused: 1, hearing: HEARING, logged: 0 },
 		{
-			name: 'is retried once for the failed channel alone',
-			arrange: () => ably.refuse(overlayChannel, 1),
-			retried: [overlayChannel],
-			overlay: toldOverlay,
-			logged: 0,
+			name: 'is logged for each Screen and swallowed when the retry fails too',
+			refused: 2,
+			hearing: [],
+			logged: HEARING.length,
 		},
-		{
-			name: 'is logged and swallowed when the retry fails too',
-			arrange: () => ably.refuse(overlayChannel),
-			retried: [overlayChannel],
-			overlay: undefined,
-			logged: 1,
-		},
-		{
-			name: 'is retried once for every channel when the whole request failed',
-			arrange: () => ably.refuseBatches(1),
-			retried: null,
-			overlay: toldOverlay,
-			logged: 0,
-		},
-	])('$name', async ({ arrange, retried, overlay, logged }) => {
+	])('$name', async ({ refused, hearing, logged }) => {
 		const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-		arrange();
+		realtime.refuse(isScreenChannel, refused);
 
 		await expect(
 			publishMessage(eventId, roundUpdated.type, roundUpdated.payload as never),
 		).resolves.toBeUndefined();
 
 		expect(heardByEvent()).toEqual([forwarded(roundUpdated)]);
-		expect(ably.batches).toHaveLength(2);
-		expect(ably.batches[1]).toEqual(retried ?? ably.batches[0]);
-		expect(heardByScreens().standings).toEqual(told);
-		expect(heardByScreens().overlay).toEqual(overlay);
+		expect(screenRequests()).toHaveLength(2);
+		expect(screenRequests()[1]).toEqual(screenRequests()[0]);
+		expect(Object.keys(heardByScreens())).toEqual(hearing);
 		expect(errors.mock.calls.map(([line]) => JSON.parse(line as string))).toEqual(
-			Array.from({ length: logged }, () =>
+			HEARING.slice(0, logged).map((screen) =>
 				expect.objectContaining({
 					message: 'realtime_publish_failed',
 					eventId,
-					screenId: SCREENS.overlay,
+					screenId: SCREENS[screen],
 					messageTypes: ['output:modeDataChanged'],
-					statusCode: 500,
+					reason: REFUSAL_MESSAGE,
 				}),
 			),
 		);
@@ -961,7 +951,7 @@ describe('a Screen channel publish that fails', () => {
 
 	it('does not fail a strict publish, whose Event message has landed', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {});
-		ably.refuseBatches(2);
+		realtime.refuse(isScreenChannel, 2);
 
 		await expect(
 			publishMessageStrict(eventId, 'round:updated', roundUpdated.payload as never),
@@ -980,7 +970,7 @@ describe('a Screen channel publish that fails', () => {
 		'still tells the Screens when the Event publish is refused, which $name',
 		async ({ publish, rejects }) => {
 			vi.spyOn(console, 'error').mockImplementation(() => {});
-			ably.refuse(eventRealtimeChannel(eventId), 1);
+			realtime.refuse(eventRealtimeChannel(eventId), 1);
 
 			const outcome = await publish(eventId, 'round:updated', roundUpdated.payload as never).then(
 				() => 'resolved',
@@ -996,7 +986,7 @@ describe('a Screen channel publish that fails', () => {
 
 describe('every publish site reaches the Screen channels', () => {
 	const hears = (screen: ScreenName) =>
-		ably.on(screenRealtimeChannel(eventId, SCREENS[screen])).map(({ type }) => type);
+		realtime.on(screenRealtimeChannel(eventId, SCREENS[screen])).map(({ type }) => type);
 
 	// One row per family of publish site: each announces through the two publish
 	// functions, so its Screens hear it without the site doing anything.

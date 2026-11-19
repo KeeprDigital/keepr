@@ -3,13 +3,13 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { createScryfallFake } from '~~/test/helpers/scryfallFake';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A Broadcast Deck List write over real SQL and the real import: the rows it
 // stores, what it answers and announces, and what a refusal leaves as it was.
-// Faked: Scryfall's HTTP API and Ably.
+// Faked: Scryfall's HTTP API and the realtime object.
 
 vi.stubGlobal(
 	'createError',
@@ -21,9 +21,7 @@ const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
+const realtime = await installRealtimeObjectFake();
 
 /** Scryfall as the write reaches it: the cards it knows, whether it is down, and how often it was asked. */
 const scryfall = {
@@ -74,7 +72,7 @@ async function stageList(eventId: number, name = 'Burn') {
 		eventId,
 		input: { name, sourceText: '4 Lightning Bolt' },
 	});
-	ably.reset();
+	realtime.reset();
 	scryfall.asked = 0;
 	return list;
 }
@@ -124,7 +122,7 @@ async function storedCards(listId: number) {
 
 /** What the Event's channel was sent, as `[type, payload]`. */
 function announced(eventId: number) {
-	return ably.on(eventRealtimeChannel(eventId)).map(({ type, payload }) => [type, payload]);
+	return realtime.on(eventRealtimeChannel(eventId)).map(({ type, payload }) => [type, payload]);
 }
 
 const BURN = {
@@ -135,7 +133,7 @@ const BURN = {
 };
 
 beforeEach(() => {
-	ably.reset();
+	realtime.reset();
 	scryfall.down = false;
 	scryfall.asked = 0;
 });
@@ -278,7 +276,7 @@ describe('a source the import refuses', () => {
 		});
 
 		expect(await storedLists(eventId)).toEqual([]);
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 	});
 
 	it('refuses a replacement naming a card Scryfall does not know, leaving the saved list as it was', async () => {
@@ -309,7 +307,7 @@ describe('a source the import refuses', () => {
 
 		expect(await storedLists(eventId)).toEqual([BURN]);
 		expect(await storedCards(list.id)).toEqual([['mainboard', 4, 'Lightning Bolt']]);
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 	});
 });
 
@@ -330,7 +328,7 @@ describe('a write while Scryfall is down', () => {
 		});
 
 		expect(await storedLists(eventId)).toEqual([]);
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 	});
 });
 
@@ -360,7 +358,7 @@ describe('a write that lost to another', () => {
 				listId: list.id,
 				input: { expectedRevision: 1, name: 'Winner' },
 			});
-			ably.reset();
+			realtime.reset();
 
 			await expect(attempt(eventId, list.id)).rejects.toMatchObject({
 				statusCode: 409,
@@ -376,7 +374,7 @@ describe('a write that lost to another', () => {
 			});
 
 			expect(await storedLists(eventId)).toEqual([{ ...BURN, name: 'Winner', revision: 2 }]);
-			expect(ably.published).toEqual([]);
+			expect(realtime.published).toEqual([]);
 		},
 	);
 
@@ -410,7 +408,7 @@ describe('a write that lost to another', () => {
 		});
 
 		expect(await storedLists(eventId)).toEqual([{ ...BURN, name: 'Control' }, BURN]);
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 	});
 });
 
@@ -443,7 +441,7 @@ describe('a write to a list the Event does not hold', () => {
 			});
 
 			expect(await storedLists(otherEventId)).toEqual([BURN]);
-			expect(ably.published).toEqual([]);
+			expect(realtime.published).toEqual([]);
 		},
 	);
 });
@@ -480,7 +478,7 @@ describe('a delete of a list Screens select', () => {
 		});
 
 		expect(await storedLists(eventId)).toEqual([BURN]);
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 	});
 });
 
@@ -532,7 +530,7 @@ describe('a write to an Event that holds no Broadcast Deck Lists', () => {
 
 			expect(scryfall.asked).toBe(0);
 			expect(await storedLists(eventId)).toEqual([BURN]);
-			expect(ably.published).toEqual([]);
+			expect(realtime.published).toEqual([]);
 		},
 	);
 

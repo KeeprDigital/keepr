@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_REALTIME_MESSAGE_BYTES } from '~~/shared/types/messages';
+import { eventRealtimeScope } from '~~/shared/utils/realtimeChannels';
+import {
+	installRealtimeObjectFake,
+	REFUSAL_MESSAGE,
+	setWorkerBindings,
+} from '~~/test/helpers/realtimeObjectFake';
 import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 import { ErrorInfoShaped } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
 
@@ -25,11 +31,7 @@ function loggedFields(spy: ReturnType<typeof vi.spyOn>) {
 	return JSON.parse(loggedLine(spy));
 }
 
-const mockPublish = vi.fn();
-const mockGetChannel = vi.fn(() => ({ publish: mockPublish }));
-
 class MockAblyRest {
-	channels = { get: mockGetChannel };
 	static callCount = 0;
 	static lastKey: string | undefined;
 	constructor(key: string) {
@@ -47,8 +49,9 @@ vi.mock('ably', () => ({
 	default: { Rest: MockAblyRest },
 }));
 
-// These cases are the Event channel's. What a publish then tells the Screens
-// is pinned over real SQL in `screenOutputPublication.sqlite.test.ts`.
+// These cases are the Event channel's and a Screen command's. What a publish
+// then tells the Screens is pinned over real SQL in
+// `screenOutputPublication.sqlite.test.ts`.
 vi.mock('~~/server/modules/screen-output-publication', () => ({
 	publishToScreenOutputs: async () => {},
 }));
@@ -59,11 +62,25 @@ vi.stubGlobal(
 );
 vi.stubGlobal('getHeader', vi.fn());
 
+// Every publish goes by RPC to its Event's object, on the Worker's own binding
+// (ADR-0137). The binding is what is faked.
+const realtime = await installRealtimeObjectFake();
+
+/** A Worker whose configuration binds no object. */
+function withoutTheBinding() {
+	setWorkerBindings({});
+}
+
+beforeEach(() => {
+	vi.resetModules();
+	realtime.reset();
+	setWorkerBindings(realtime.env);
+});
+
 // ──────────────── getOriginConnectionId ────────────────
 
 describe('getOriginConnectionId', () => {
 	beforeEach(() => {
-		vi.resetModules();
 		vi.mocked(getHeader).mockReset();
 	});
 
@@ -75,17 +92,23 @@ describe('getOriginConnectionId', () => {
 		expect(getHeader).toHaveBeenCalledWith(mockEvent, 'x-realtime-connection-id');
 	});
 
-	it('accepts the shapes Ably actually issues', async () => {
-		// Connection ids are base64url-style tokens; connection keys carry `!`.
+	it('accepts the id a page makes itself, and the shapes Ably issues', async () => {
+		// A page on the object names itself with 32 hex characters. Ably's connection
+		// ids are base64url-style tokens; its connection keys carry `!`.
 		const { getOriginConnectionId } = await import('~~/server/utils/ably');
-		for (const id of ['veTb7EJgYVFI7g', 'cf80Ju!xxxx-yyyy_zzzz', 'a']) {
+		for (const id of [
+			'0f1e2d3c4b5a69788796a5b4c3d2e1f0',
+			'veTb7EJgYVFI7g',
+			'cf80Ju!xxxx-yyyy_zzzz',
+			'a',
+		]) {
 			vi.mocked(getHeader).mockReturnValue(id);
 			expect(getOriginConnectionId({} as any)).toBe(id);
 		}
 	});
 
 	// The header is client-supplied and reaches the echo filter and every publish, so
-	// only an id the provider could have issued is relayed.
+	// only an id a page could have named itself by is relayed.
 	it('ignores an oversized connection id instead of relaying it', async () => {
 		vi.mocked(getHeader).mockReturnValue('a'.repeat(65));
 		const { getOriginConnectionId } = await import('~~/server/utils/ably');
@@ -124,9 +147,9 @@ describe('getOriginConnectionId', () => {
 
 // ──────────────── getAblyClient ────────────────
 
+// The token route's alone, until the pages leave Ably: nothing publishes through it.
 describe('getAblyClient', () => {
 	beforeEach(() => {
-		vi.resetModules();
 		MockAblyRest.reset();
 		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: 'test-key' } as any);
 	});
@@ -135,8 +158,7 @@ describe('getAblyClient', () => {
 		const { getAblyClient } = await import('~~/server/utils/ably');
 		const client = getAblyClient();
 		expect(MockAblyRest.lastKey).toBe('test-key');
-		expect(client).toBeDefined();
-		expect(client.channels).toBeDefined();
+		expect(client).toBeInstanceOf(MockAblyRest);
 	});
 
 	it('returns same instance on subsequent calls', async () => {
@@ -146,32 +168,65 @@ describe('getAblyClient', () => {
 		expect(client1).toBe(client2);
 		expect(MockAblyRest.callCount).toBe(1);
 	});
+
+	it('names the setting when no key is configured', async () => {
+		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: '' } as any);
+		const { getAblyClient } = await import('~~/server/utils/ably');
+		const { ServiceConfigurationError } = await import('@keepr/nuxt-layer/server/utils/errors');
+
+		const failure = (() => {
+			try {
+				return getAblyClient();
+			} catch (error) {
+				return error;
+			}
+		})() as InstanceType<typeof ServiceConfigurationError>;
+
+		expect(failure).toBeInstanceOf(ServiceConfigurationError);
+		expect(failure.message).toBe('NUXT_ABLY_API_KEY is not configured');
+		expect(failure.statusCode).toBe(503);
+	});
 });
 
 // ──────────────── publishMessage ────────────────
 
 describe('publishMessage', () => {
-	beforeEach(() => {
-		vi.resetModules();
-		MockAblyRest.reset();
-		mockGetChannel.mockClear();
-		mockPublish.mockClear();
-		mockPublish.mockResolvedValue(undefined);
-		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: 'test-key' } as any);
-	});
-
-	it('calls channel.publish with correct message type', async () => {
+	// A page's transport hands a handler the delivery's data as the message, under
+	// the delivery's name, and its echo filter reads the origin inside it.
+	it("publishes the message whole, under its type, on the Event's channel of the Event's object", async () => {
 		const { publishMessage } = await import('~~/server/utils/ably');
-		await publishMessage(1, 'event:deleted', { eventId: 1 }, 'conn-123');
-		expect(mockGetChannel).toHaveBeenCalledWith('event:1');
-		expect(mockPublish).toHaveBeenCalledWith(
-			'event:deleted',
-			expect.objectContaining({ eventId: 1, originConnectionId: 'conn-123' }),
-		);
+
+		await publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123');
+
+		expect(realtime.calls).toEqual([
+			{
+				scope: eventRealtimeScope(7),
+				deliveries: [
+					{
+						channel: 'event:7',
+						name: 'event:deleted',
+						data: { eventId: 7, timestamp: expect.any(Number), originConnectionId: 'conn-123' },
+					},
+				],
+			},
+		]);
 	});
 
-	it('does not turn missing realtime configuration into a command failure', async () => {
-		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: '' } as any);
+	it('publishes each Event to an object of its own', async () => {
+		const { publishMessage } = await import('~~/server/utils/ably');
+
+		await publishMessage(7, 'event:deleted', { eventId: 7 });
+		await publishMessage(8, 'event:deleted', { eventId: 8 });
+
+		expect(realtime.calls.map(({ scope }) => scope)).toEqual([
+			eventRealtimeScope(7),
+			eventRealtimeScope(8),
+		]);
+		expect(eventRealtimeScope(7)).not.toBe(eventRealtimeScope(8));
+	});
+
+	it('does not turn a Worker with no binding for the object into a command failure', async () => {
+		withoutTheBinding();
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
 
@@ -180,91 +235,28 @@ describe('publishMessage', () => {
 		).resolves.toBeUndefined();
 
 		expect(errorSpy).toHaveBeenCalledOnce();
-		expect(mockPublish).not.toHaveBeenCalled();
+		expect(realtime.calls).toEqual([]);
 		errorSpy.mockRestore();
 	});
 
-	it('preserves missing realtime configuration failures for strict publications', async () => {
-		// The strict path's contract is that the caller hears about it. What it hears
-		// is #267's classification: the setting's own name, so a Melee sync that could
-		// not announce itself says which environment variable to go and set.
-		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: '' } as any);
+	it('preserves a missing binding as a failure for strict publications', async () => {
+		// The strict path's contract is that the caller hears about it, as it was thrown.
+		withoutTheBinding();
 		const { publishMessageStrict } = await import('~~/server/utils/ably');
-		const { ServiceConfigurationError } = await import('@keepr/nuxt-layer/server/utils/errors');
 
-		const failure = await publishMessageStrict(
-			1,
-			'melee:playersSynced',
-			{ playerCount: 2 },
-			'conn-123',
-		).then(
-			() => null,
-			(error) => error,
-		);
-
-		expect(failure).toBeInstanceOf(ServiceConfigurationError);
-		expect(failure.message).toBe('NUXT_ABLY_API_KEY is not configured');
-		expect(failure.statusCode).toBe(503);
+		await expect(
+			publishMessageStrict(1, 'melee:playersSynced', { playerCount: 2 }, 'conn-123'),
+		).rejects.toThrow('The Worker has no REALTIME binding');
 	});
 });
 
 // ──────────────── the failed-publish diagnosis ────────────────
 
-// `publishMessage` swallows a refused publish, so its log line is the only witness: it
+// `publishMessage` swallows a failed publish, so its log line is the only witness: it
 // names why, keeps everything else out, and still swallows (#253).
 describe('failed realtime publishes', () => {
-	beforeEach(() => {
-		vi.resetModules();
-		MockAblyRest.reset();
-		mockGetChannel.mockClear();
-		mockPublish.mockClear();
-		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: 'test-key' } as any);
-	});
-
-	it('names the provider status and code a rejected key fails with', async () => {
-		// The 40400/404 shape #242 diagnosed client-side; the server had it all along.
-		mockPublish.mockRejectedValue(new ErrorInfoShaped('No application found', 40400, 404));
-		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
-
-		await publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123');
-
-		expect(loggedFields(errorSpy)).toEqual({
-			message: 'realtime_publish_failed',
-			eventId: 7,
-			messageType: 'event:deleted',
-			statusCode: 404,
-			errorCode: 40400,
-			errorName: 'Error',
-			reason: 'No application found',
-		});
-		errorSpy.mockRestore();
-	});
-
-	it('still swallows the failure, because the route has no local effect to report', async () => {
-		mockPublish.mockRejectedValue(new ErrorInfoShaped('No application found', 40400, 404));
-		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
-
-		await expect(
-			publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123'),
-		).resolves.toBeUndefined();
-
-		expect(errorSpy).toHaveBeenCalledOnce();
-		errorSpy.mockRestore();
-	});
-
-	it('leaves the strict path free to propagate the same rejection', async () => {
-		mockPublish.mockRejectedValue(new ErrorInfoShaped('No application found', 40400, 404));
-		const { publishMessageStrict } = await import('~~/server/utils/ably');
-
-		await expect(
-			publishMessageStrict(7, 'melee:playersSynced', { playerCount: 2 }, 'conn-123'),
-		).rejects.toThrow('No application found');
-	});
-
-	it('falls back to nulls and the error name when the throw is not the provider’s', async () => {
-		mockPublish.mockRejectedValue(new TypeError('channel.publish is not a function'));
+	it('names why the object did not take the publish', async () => {
+		realtime.refuse('event:7');
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
 
@@ -276,29 +268,64 @@ describe('failed realtime publishes', () => {
 			messageType: 'event:deleted',
 			statusCode: null,
 			errorCode: null,
-			errorName: 'TypeError',
-			reason: 'channel.publish is not a function',
+			errorName: 'Error',
+			reason: REFUSAL_MESSAGE,
 		});
 		errorSpy.mockRestore();
 	});
 
-	it('says the key was missing rather than only that a publish failed', async () => {
-		// A missing key arrives with its reason, told apart from a provider refusal by `errorName`.
-		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: '' } as any);
+	it('names the status and code of a failure that carries them', async () => {
+		realtime.refuse('event:7', 1, new ErrorInfoShaped('No application found', 40400, 404));
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const { publishMessage } = await import('~~/server/utils/ably');
+
+		await publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123');
+
+		expect(loggedFields(errorSpy)).toMatchObject({ statusCode: 404, errorCode: 40400 });
+		errorSpy.mockRestore();
+	});
+
+	it('still swallows the failure, because the route has no local effect to report', async () => {
+		realtime.refuse('event:7');
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const { publishMessage } = await import('~~/server/utils/ably');
+
+		await expect(
+			publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123'),
+		).resolves.toBeUndefined();
+
+		expect(errorSpy).toHaveBeenCalledOnce();
+		expect(realtime.published).toEqual([]);
+		errorSpy.mockRestore();
+	});
+
+	it('leaves the strict path free to propagate the same rejection', async () => {
+		const failure = new Error('The object is overloaded');
+		realtime.refuse('event:7', 1, failure);
+		const { publishMessageStrict } = await import('~~/server/utils/ably');
+
+		await expect(
+			publishMessageStrict(7, 'melee:playersSynced', { playerCount: 2 }, 'conn-123'),
+		).rejects.toBe(failure);
+	});
+
+	it('says the binding was missing rather than only that a publish failed', async () => {
+		// Told apart from the object's own failure by its `reason`, which names the binding.
+		withoutTheBinding();
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
 
 		await publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123');
 
 		expect(loggedFields(errorSpy)).toMatchObject({
-			errorName: 'ServiceConfigurationError',
-			reason: 'NUXT_ABLY_API_KEY is not configured',
+			errorName: 'Error',
+			reason: expect.stringContaining('The Worker has no REALTIME binding'),
 		});
 		errorSpy.mockRestore();
 	});
 
-	it('bounds the reason, because the transport puts whole response bodies in it', async () => {
-		mockPublish.mockRejectedValue(new Error(`No application found ${'x'.repeat(5000)}`));
+	it('bounds the reason, because a failure may put anything in its message', async () => {
+		realtime.refuse('event:7', 1, new Error(`No application found ${'x'.repeat(5000)}`));
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
 		const { MAX_PUBLISH_FAILURE_REASON_CHARS } =
@@ -312,13 +339,13 @@ describe('failed realtime publishes', () => {
 		errorSpy.mockRestore();
 	});
 
-	it('keeps the provider’s request metadata out of the log', async () => {
-		// The fields are chosen, not copied: `href`, `detail` and `cause` are the
-		// parts of an ErrorInfo that can retain request context, and none is named.
+	it('keeps whatever else a failure carries out of the log', async () => {
+		// The fields are chosen, not copied: anything else on the error can retain
+		// request context, and none of it is named.
 		const withMetadata = new ErrorInfoShaped('No application found', 40400, 404);
-		withMetadata.href = 'https://help.ably.io/error/40400';
+		withMetadata.href = 'https://help.example/error/40400';
 		withMetadata.detail = { key: 'appId.keyId:secret-that-must-not-be-logged' };
-		mockPublish.mockRejectedValue(withMetadata);
+		realtime.refuse('event:7', 1, withMetadata);
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
 
@@ -326,7 +353,7 @@ describe('failed realtime publishes', () => {
 
 		const line = loggedLine(errorSpy);
 		expect(line).not.toContain('secret-that-must-not-be-logged');
-		expect(line).not.toContain('help.ably.io');
+		expect(line).not.toContain('help.example');
 		expect(Object.keys(loggedFields(errorSpy))).toEqual([
 			'message',
 			'eventId',
@@ -348,7 +375,7 @@ describe('failed realtime publishes', () => {
 				throw new Error('property access refused');
 			},
 		});
-		mockPublish.mockRejectedValue(hostile);
+		realtime.refuse('event:7', 1, hostile);
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
 
@@ -368,12 +395,12 @@ describe('failed realtime publishes', () => {
 
 // ──────────────── the oversized-message diagnostic ────────────────
 
-// An oversized message is reported, never refused: the write it announces has already
-// committed, and the account's ceiling may be above the documented floor (#95).
+// A message over 64 KiB is reported, never refused: the write it announces has
+// already committed (ADR-0004, #95).
 describe('oversized realtime messages', () => {
 	function oversizedPayload() {
-		// One field over the documented floor, so the assertion is about the threshold
-		// rather than about any particular message type's shape.
+		// One field over the bound, so the assertion is about the threshold rather
+		// than about any particular message type's shape.
 		return {
 			eventId: 1,
 			reason: 'x'.repeat(MAX_REALTIME_MESSAGE_BYTES),
@@ -391,15 +418,6 @@ describe('oversized realtime messages', () => {
 		return JSON.parse(line as string);
 	}
 
-	beforeEach(() => {
-		vi.resetModules();
-		MockAblyRest.reset();
-		mockGetChannel.mockClear();
-		mockPublish.mockClear();
-		mockPublish.mockResolvedValue(undefined);
-		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: 'test-key' } as any);
-	});
-
 	it('reports the size and the limit, and still publishes', async () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
@@ -416,9 +434,8 @@ describe('oversized realtime messages', () => {
 			},
 		]);
 		expect(oversizedFields(errorSpy).bytes).toBeGreaterThan(MAX_REALTIME_MESSAGE_BYTES);
-		// Reported, not refused: the write has committed and this is a documented
-		// floor rather than this account's confirmed ceiling.
-		expect(mockPublish).toHaveBeenCalledOnce();
+		// Reported, not refused: the write has committed.
+		expect(realtime.on('event:1')).toHaveLength(1);
 		errorSpy.mockRestore();
 	});
 
@@ -429,7 +446,7 @@ describe('oversized realtime messages', () => {
 		await publishMessage(1, 'event:deleted', { eventId: 1 }, 'conn-123');
 
 		expect(errorSpy).not.toHaveBeenCalled();
-		expect(mockPublish).toHaveBeenCalledOnce();
+		expect(realtime.on('event:1')).toHaveLength(1);
 		errorSpy.mockRestore();
 	});
 
@@ -443,7 +460,7 @@ describe('oversized realtime messages', () => {
 			message: 'realtime_publish_oversized',
 			messageType: 'melee:dataReset',
 		});
-		expect(mockPublish).toHaveBeenCalledOnce();
+		expect(realtime.on('event:1')).toHaveLength(1);
 		errorSpy.mockRestore();
 	});
 });
@@ -451,36 +468,30 @@ describe('oversized realtime messages', () => {
 // ──────────────── publishScreenCommand ────────────────
 
 describe('publishScreenCommand', () => {
-	beforeEach(() => {
-		vi.resetModules();
-		MockAblyRest.reset();
-		mockGetChannel.mockClear();
-		mockPublish.mockClear();
-		mockPublish.mockResolvedValue(undefined);
-		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: 'test-key' } as any);
-	});
-
-	it('publishes screen commands to the screen channel', async () => {
+	it("publishes a Screen command on the Screen's channel of its Event's object", async () => {
 		const { publishScreenCommand } = await import('~~/server/utils/ably');
 
 		await publishScreenCommand(1, 10, 'identify');
 
-		expect(mockGetChannel).toHaveBeenCalledWith('screen:1:10');
-		expect(mockPublish).toHaveBeenCalledWith(
-			'screen:command:identify',
-			expect.objectContaining({
-				eventId: 1,
-				screenId: 10,
-				timestamp: expect.any(Number),
-			}),
-		);
+		expect(realtime.calls).toEqual([
+			{
+				scope: eventRealtimeScope(1),
+				deliveries: [
+					{
+						channel: 'screen:1:10',
+						name: 'screen:command:identify',
+						data: { eventId: 1, screenId: 10, timestamp: expect.any(Number) },
+					},
+				],
+			},
+		]);
 	});
 
-	// A refused publish leaves as this server's failure, not the provider's status
-	// that h3 would otherwise adopt as the route's answer (#264).
-	describe('when the provider refuses the publish', () => {
-		it("propagates a named server-side failure instead of the provider's 404", async () => {
-			mockPublish.mockRejectedValue(new ErrorInfoShaped('No application found', 40400, 404));
+	// A failed publish leaves as this server's failure, not with a status of its
+	// own that h3 would adopt as the route's answer (#264).
+	describe('when the publish fails', () => {
+		it("propagates a named server-side failure instead of the failure's own status", async () => {
+			realtime.refuse('screen:1:10', 1, new ErrorInfoShaped('No application found', 40400, 404));
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 			const { REALTIME_PUBLISH_FAILED_MESSAGE, RealtimePublishError } =
@@ -497,11 +508,8 @@ describe('publishScreenCommand', () => {
 			errorSpy.mockRestore();
 		});
 
-		it("carries the provider's numeric code, which is what names the refusal", async () => {
-			// The error handler logs a cause's `code`, and 40400 is the answer to
-			// "why did this fail" — 'No application found' for a key whose app does
-			// not exist. Nothing else in the request log line can say that.
-			mockPublish.mockRejectedValue(new ErrorInfoShaped('No application found', 40400, 404));
+		it("carries the failure's numeric code, when it has one, for the request's log line", async () => {
+			realtime.refuse('screen:1:10', 1, new ErrorInfoShaped('No application found', 40400, 404));
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 
@@ -514,11 +522,11 @@ describe('publishScreenCommand', () => {
 			errorSpy.mockRestore();
 		});
 
-		it("keeps the provider's own account of it in the log", async () => {
+		it("keeps the failure's own account of itself in the log", async () => {
 			// The same field set the swallowing path emits (#253), for the same
-			// reason: the response is not allowed to carry the provider's text, so
-			// this line is the only place 'No application found' is ever said.
-			mockPublish.mockRejectedValue(new ErrorInfoShaped('No application found', 40400, 404));
+			// reason: the response is not allowed to carry the failure's text, so
+			// this line is the only place it is ever said.
+			realtime.refuse('screen:1:10');
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 
@@ -529,17 +537,17 @@ describe('publishScreenCommand', () => {
 				eventId: 1,
 				screenId: 10,
 				messageType: 'screen:command:identify',
-				statusCode: 404,
-				errorCode: 40400,
+				statusCode: null,
+				errorCode: null,
 				errorName: 'Error',
-				reason: 'No application found',
+				reason: REFUSAL_MESSAGE,
 			});
 			errorSpy.mockRestore();
 		});
 
 		it('keeps the throw it wrapped, so nothing about the failure is lost', async () => {
-			const refusal = new ErrorInfoShaped('No application found', 40400, 404);
-			mockPublish.mockRejectedValue(refusal);
+			const refusal = new Error('The object is overloaded');
+			realtime.refuse('screen:1:10', 1, refusal);
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 
@@ -551,57 +559,24 @@ describe('publishScreenCommand', () => {
 			expect(failure.cause).toBe(refusal);
 			errorSpy.mockRestore();
 		});
-	});
 
-	// A key nobody set is a configuration failure naming the setting, not a provider refusal (#267).
-	describe('when the key was never configured', () => {
-		it('leaves an unconfigured key to say so as a configuration failure', async () => {
-			// The classification first: not a publish refusal, and not an SDK
-			// TypeError either. `not configured` is the part every wording of this
-			// has kept, from the plain Error #264 pinned through #267's named one.
-			vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: '' } as any);
+		// No setting produces a Worker without the binding, so it is no
+		// configuration failure: the command was not delivered, and the log says why.
+		it('answers a Worker with no binding for the object the same way, and logs the binding', async () => {
+			withoutTheBinding();
+			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 			const { RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
-			const { ServiceConfigurationError } = await import('@keepr/nuxt-layer/server/utils/errors');
 
 			const failure = await publishScreenCommand(1, 10, 'identify').then(
 				() => null,
 				(error) => error,
 			);
 
-			expect(failure).not.toBeInstanceOf(RealtimePublishError);
-			expect(failure).toBeInstanceOf(ServiceConfigurationError);
-			expect(failure.message).toContain('not configured');
-			// The setting's own name, which is the whole reason the message is
-			// allowed out of a 5xx at all (#233).
-			expect(failure.setting).toBe('NUXT_ABLY_API_KEY');
-		});
-
-		it('reaches the caller as a 503 naming the setting, not as a sanitized 500', async () => {
-			// Through the real mapper, from the sanitizer's worst case: a plain 500 still marked unhandled.
-			vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: '' } as any);
-			const { publishScreenCommand } = await import('~~/server/utils/ably');
-			const { mapPublicNitroError } = await import('~~/server/utils/nitroErrorMapping');
-
-			const cause = await publishScreenCommand(1, 10, 'identify').then(
-				() => null,
-				(error) => error,
-			);
-			const error = {
-				statusCode: 500,
-				message: 'Something went wrong',
-				cause,
-				unhandled: true,
-			};
-
-			mapPublicNitroError(error);
-
-			expect(error).toMatchObject({
-				statusCode: 503,
-				statusMessage: 'Service Unavailable',
-				message: 'NUXT_ABLY_API_KEY is not configured',
-				unhandled: false,
-			});
+			expect(failure).toBeInstanceOf(RealtimePublishError);
+			expect(failure.statusCode).toBe(502);
+			expect(loggedFields(errorSpy).reason).toContain('The Worker has no REALTIME binding');
+			errorSpy.mockRestore();
 		});
 	});
 });

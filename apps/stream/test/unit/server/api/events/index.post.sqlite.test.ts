@@ -3,13 +3,13 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // POST /api/events over real SQL: an Event is stored with its Feature Match Slots or
 // not at all. The database itself refuses the Slot insert, or the Event delete undoing
-// it, through a trigger; only Ably is faked.
+// it, through a trigger; only the realtime object is faked.
 
 interface StubRequest {
 	body: unknown;
@@ -25,14 +25,12 @@ vi.stubGlobal('setResponseStatus', (event: StubRequest, status: number) => {
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; data?: unknown }) =>
 	Object.assign(new Error(input.message ?? 'error'), input),
 );
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
+await installRealtimeObjectFake();
 
 type Handler = (event: H3Event) => Promise<Record<string, unknown>>;
 const createEvent = (await import('~~/server/api/events/index.post')).default as unknown as Handler;

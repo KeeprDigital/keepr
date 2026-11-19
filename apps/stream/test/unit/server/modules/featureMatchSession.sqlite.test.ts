@@ -3,11 +3,11 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The Feature Match Session module over real SQL: what a route's command and open
-// answer, announce and ask of Broadcast Graphics. Faked: Ably, and the port that
+// answer, announce and ask of Broadcast Graphics. Faked: the realtime object, and the port that
 // re-resolves Graphic Input Bindings. Command admission, receipts and races are
 // `featureMatchState.sqlite.test.ts`'s; every other opener, `featureMatchSessionOpeners.sqlite.test.ts`'s.
 
@@ -19,9 +19,7 @@ const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
+const realtime = await installRealtimeObjectFake();
 
 /** Each Event whose bindings were asked to re-resolve, with what its channel had been sent by then. */
 const bindingsRefreshed: { eventId: number; after: string[] }[] = [];
@@ -39,7 +37,7 @@ const { featureMatchSessionModule } = await import('~~/server/modules/feature-ma
 
 /** What the Event's channel was sent, as `[type, payload]`. */
 function announced(eventId: number) {
-	return ably
+	return realtime
 		.on(eventRealtimeChannel(eventId))
 		.map(({ type, payload }) => [type, payload] as const);
 }
@@ -57,7 +55,7 @@ async function stageSlot() {
 }
 
 beforeEach(() => {
-	ably.reset();
+	realtime.reset();
 	bindingsRefreshed.length = 0;
 });
 afterAll(async () => await harness.close());
@@ -67,7 +65,7 @@ describe('a Feature Match Session command', () => {
 	it("is applied, announced under the writer's origin, and then catches bound Broadcast Graphics up", async () => {
 		const { eventId, slotId } = await stageSlot();
 		const session = (await featureMatchSessionModule().createSessionForSlot(slotId, eventId))!;
-		ably.reset();
+		realtime.reset();
 		bindingsRefreshed.length = 0;
 
 		const result = await featureMatchSessionModule().applyCommand(
@@ -121,6 +119,6 @@ describe('opening a Feature Match Session', () => {
 				.from(schema.featureMatchSessions)
 				.where(inArray(schema.featureMatchSessions.eventId, [eventId, other.eventId])),
 		).toEqual([]);
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 	});
 });

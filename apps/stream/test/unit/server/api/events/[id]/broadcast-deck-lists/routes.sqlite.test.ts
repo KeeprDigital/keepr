@@ -4,14 +4,14 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createScryfallFake } from '~~/test/helpers/scryfallFake';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The Broadcast Deck List routes over real SQL: what a read answers of its Event,
 // and what a write passes on from its path, body and origin. The write's rules are
-// `broadcastDeckListWrite.sqlite.test.ts`'s. Faked: Scryfall's HTTP API and Ably.
+// `broadcastDeckListWrite.sqlite.test.ts`'s. Faked: Scryfall's HTTP API and the realtime object.
 
 interface StubRequest {
 	params: Record<string, string>;
@@ -40,9 +40,7 @@ const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
+const realtime = await installRealtimeObjectFake();
 
 vi.stubGlobal(
 	'fetch',
@@ -129,11 +127,11 @@ async function storedLists(eventId: number) {
 
 /** What the Event's channel was sent, as `[type, payload]`. */
 function announced(eventId: number) {
-	return ably.on(eventRealtimeChannel(eventId)).map(({ type, payload }) => [type, payload]);
+	return realtime.on(eventRealtimeChannel(eventId)).map(({ type, payload }) => [type, payload]);
 }
 
 beforeEach(() => {
-	ably.reset();
+	realtime.reset();
 	responseStatus = undefined;
 });
 afterAll(async () => await harness.close());

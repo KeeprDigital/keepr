@@ -4,13 +4,13 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // PUT /api/events/:id/melee/unresolved-deck-cards/:unresolvedCardId over real SQL: the
 // route resolves the Unresolved Deck Card its path names as the card its body names, for
-// the request it answers. Scryfall and Ably are faked; `deckListResolution.sqlite.test.ts` owns the resolution.
+// the request it answers. Scryfall and the realtime object are faked; `deckListResolution.sqlite.test.ts` owns the resolution.
 
 interface StubRequest {
 	params: Record<string, string>;
@@ -35,14 +35,12 @@ vi.stubGlobal(
 	(input: { statusCode?: number; message?: string; statusMessage?: string; cause?: unknown }) =>
 		Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input),
 );
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
+const realtime = await installRealtimeObjectFake();
 
 const BOLT_ID = '3b1e5f6a-9d2c-4e8f-b7a1-0c5d4e3f2a1b';
 /** The card provider: each id it was asked for, and whether it is down. */
@@ -144,7 +142,7 @@ async function unresolvedIn(deckId: number) {
 }
 
 beforeEach(() => {
-	ably.reset();
+	realtime.reset();
 	scryfall.asked.length = 0;
 	scryfall.down = false;
 });
@@ -170,7 +168,7 @@ describe('resolving an Unresolved Deck Card through its route', () => {
 		expect(scryfall.asked).toEqual([BOLT_ID]);
 		expect(await deckCards(deckId)).toEqual([{ name: 'Lightning Bolt', quantity: 4 }]);
 		expect(await unresolvedIn(deckId)).toEqual([]);
-		expect(ably.on(eventRealtimeChannel(eventId))).toEqual([
+		expect(realtime.on(eventRealtimeChannel(eventId))).toEqual([
 			expect.objectContaining({
 				type: 'playerDeck:cardsResolved',
 				payload: {
@@ -232,7 +230,7 @@ describe('resolving an Unresolved Deck Card through its route', () => {
 
 			expect(scryfall.asked).toEqual([]);
 			expect(await unresolvedIn(deckId)).toHaveLength(1);
-			expect(ably.published).toEqual([]);
+			expect(realtime.published).toEqual([]);
 		},
 	);
 });

@@ -331,10 +331,10 @@ async function runLocalPreviewAuthProbes({ origin, fetchRequest, signal }) {
 }
 
 function generatedConfiguration() {
-	// Deliberately omit Ably and external Melee credentials. Publication is
-	// disabled without Ably, and the Melee persistence probe saves disabled
-	// configuration, so this process has neither authority nor reason to leave
-	// loopback.
+	// Deliberately omit Ably and external Melee credentials. The Worker
+	// publishes to its own objects, and the Melee persistence probe saves
+	// disabled configuration, so this process has neither authority nor reason
+	// to leave loopback.
 	const randomSecret = (bytes = 32) => randomBytes(bytes).toString('base64url');
 	const base64Key = () => randomBytes(32).toString('base64');
 	const entries = {

@@ -5,13 +5,13 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { encryptMeleeCredential } from '~~/server/utils/meleeCredentialCrypto';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // PUT /api/events/:id/melee-config over real SQL and the real credential keyring:
 // what it stores, resets and announces, and what it refuses before writing. Only
-// Melee.gg's HTTP and Ably are faked; upstream and keyring failures are `melee-config.put.test.ts`'s.
+// Melee.gg's HTTP and the realtime object are faked; upstream and keyring failures are `melee-config.put.test.ts`'s.
 
 interface StubRequest {
 	params: Record<string, string>;
@@ -35,7 +35,6 @@ function base64Key(fill: number): string {
 	return btoa(String.fromCharCode(...new Uint8Array(32).fill(fill)));
 }
 vi.stubGlobal('useRuntimeConfig', () => ({
-	ablyApiKey: 'test-key',
 	meleeCredentialEncryptionKey: base64Key(2),
 	meleeCredentialKeyVersion: 'v2',
 	meleeCredentialEncryptionPreviousKeys: {
@@ -47,8 +46,7 @@ const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
+const realtime = await installRealtimeObjectFake();
 
 /** The tournament Melee.gg answers with, and each request it was sent. */
 const melee = {
@@ -123,13 +121,13 @@ function put(eventId: number, body: unknown) {
 
 /** What the Event's channel was sent, as `[type, payload]`. */
 function announced(eventId: number) {
-	return ably
+	return realtime
 		.on(eventRealtimeChannel(eventId))
 		.map(({ type, payload }) => [type, payload] as const);
 }
 
 beforeEach(() => {
-	ably.reset();
+	realtime.reset();
 	melee.tournament = { ID: 123, Game: 'Magic: The Gathering' };
 	melee.requests.length = 0;
 });
@@ -301,7 +299,7 @@ describe('a configuration refused before it is stored', () => {
 			meleeClientSecret: secretUnderRetiredKey,
 			meleeSyncLeaseToken: null,
 		});
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 	});
 
 	// A sync command still running could repopulate what this change resets.
@@ -320,6 +318,6 @@ describe('a configuration refused before it is stored', () => {
 
 		expect(await stored(eventId)).toEqual(before);
 		expect(melee.requests).toEqual([]);
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 	});
 });

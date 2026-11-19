@@ -2,20 +2,18 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
+import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // A batch of Feature Match Slot updates over real SQL: which Slots it announces, how
-// often it reads them, and how often Graphic Input Bindings re-resolve. Faked: Ably, and
+// often it reads them, and how often Graphic Input Bindings re-resolve. Faked: the realtime object, and
 // the Broadcast Graphics Live Session port. Each message's shape is `eventDataPublication.test.ts`'s.
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 vi.doMock('~~/server/db', () => ({ db }));
 
-const ably = createAblyRestFake();
-vi.doMock('ably', () => ably.module);
-vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
+const realtime = await installRealtimeObjectFake();
 
 /** Each Event whose Graphic Input Bindings were re-resolved, in order. */
 const reResolved: number[] = [];
@@ -57,7 +55,7 @@ async function stageEventWithSlots(count: number) {
 
 /** What the Event's channel was sent, as `[type, Slot id, origin]`. */
 function announced() {
-	return ably
+	return realtime
 		.on(eventRealtimeChannel(eventId))
 		.map(({ type, payload }) => [
 			type,
@@ -78,7 +76,7 @@ beforeAll(async () => {
 	foreignSlotId = (await stageEventWithSlots(1)).slotIds[0]!;
 });
 beforeEach(() => {
-	ably.reset();
+	realtime.reset();
 	reResolved.length = 0;
 });
 afterAll(async () => await harness.close());
@@ -116,7 +114,7 @@ describe('a batch of Feature Match Slot updates', () => {
 		).resolves.toEqual([]);
 
 		expect(harness.roundTrips()).toBe(before);
-		expect(ably.published).toEqual([]);
+		expect(realtime.published).toEqual([]);
 		expect(reResolved).toEqual([]);
 	});
 
