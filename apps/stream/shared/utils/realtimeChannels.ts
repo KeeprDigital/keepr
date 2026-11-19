@@ -1,3 +1,13 @@
+/**
+ * The realtime scope of an Event (ADR-0137): the name of the one object that
+ * holds every socket of the Event and orders every message on its channels,
+ * the Event's own and each of its Screens'. The server publishes to it, and
+ * the port names it for each socket it lets in.
+ */
+export function eventRealtimeScope(eventId: number): string {
+	return `event:${eventId}`;
+}
+
 export function eventRealtimeChannel(eventId: number): string {
 	return `event:${eventId}`;
 }
