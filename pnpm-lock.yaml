@@ -807,6 +807,21 @@ importers:
         specifier: catalog:test
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
 
+  packages/realtime:
+    devDependencies:
+      '@types/node':
+        specifier: catalog:tooling
+        version: 26.6.6
+      typescript:
+        specifier: catalog:tooling
+        version: 6.0.3
+      vitest:
+        specifier: catalog:test
+        version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
+      wrangler:
+        specifier: catalog:cloudflare
+        version: 4.161.0(@types/node@26.6.6)
+
   packages/standings:
     dependencies:
       '@keepr/engine-core':

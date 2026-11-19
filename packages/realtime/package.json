@@ -1,0 +1,22 @@
+{
+	"name": "@keepr/realtime",
+	"private": true,
+	"description": "Realtime for every app: the Durable Object that fans a scope's channels out to its sockets, its wire protocol, and the client transport that reconnects to it (ADR-0137).",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		"./protocol": "./src/protocol.ts",
+		"./object": "./src/object/index.ts",
+		"./client": "./src/client/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit -p tsconfig.client.json && tsc --noEmit -p tsconfig.object.json",
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:tooling",
+		"typescript": "catalog:tooling",
+		"vitest": "catalog:test",
+		"wrangler": "catalog:cloudflare"
+	}
+}
