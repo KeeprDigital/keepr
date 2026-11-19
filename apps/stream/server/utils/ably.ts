@@ -151,10 +151,41 @@ function delivery<T extends MessageType>(
  * Publish to an Event's object, through the realtime layer's
  * `useRealtimeScope`: one call, whose deliveries the object sends in order. It
  * rejects when the Worker has no binding for the object, or the object could
- * not be reached or threw.
+ * not be reached or threw. Each call takes a stub of its own: one whose call
+ * failed may answer nothing more.
  */
 async function publishToEvent(eventId: number, deliveries: readonly Delivery[]): Promise<void> {
 	await useRealtimeScope(workerBindings(), eventRealtimeScope(eventId)).publish(deliveries);
+}
+
+/**
+ * Publish one message on its Event's channel, and once more if that call
+ * fails: an object being reset, as a deploy resets it, fails the call that
+ * meets it and answers the next. A second failure is the caller's to judge.
+ *
+ * The server cannot tell a call that failed from one whose answer was lost, so
+ * the second can repeat a message the first delivered. On this channel that is
+ * safe, because a message announces and a read is the authority (ADR-0137). A
+ * page holds each one as a record it adds or replaces by id, as a state it
+ * keeps only if no older by sequence or revision than what it holds, or as a
+ * cause to re-read: hearing one twice leaves it where hearing it once did.
+ *
+ * The Screens' call is retried where it is made
+ * (`server/modules/screen-output-publication`), and a Screen command not at
+ * all (`publishScreenCommand`).
+ */
+async function publishOnEventChannel<T extends MessageType>(
+	eventId: number,
+	messageType: T,
+	payload: MessagePayload<T> | undefined,
+	originConnectionId: string | undefined,
+): Promise<void> {
+	reportOversizedMessage(eventId, messageType, payload, originConnectionId);
+	const deliveries = [
+		delivery(eventRealtimeChannel(eventId), eventId, messageType, payload, originConnectionId),
+	];
+	const attempt = async () => await publishToEvent(eventId, deliveries);
+	await attempt().catch(attempt);
 }
 
 /**
@@ -247,15 +278,12 @@ export async function publishMessage<T extends MessageType>(
 	originConnectionId?: string,
 ): Promise<void> {
 	try {
-		reportOversizedMessage(eventId, messageType, payload, originConnectionId);
-		await publishToEvent(eventId, [
-			delivery(eventRealtimeChannel(eventId), eventId, messageType, payload, originConnectionId),
-		]);
+		await publishOnEventChannel(eventId, messageType, payload, originConnectionId);
 	} catch (error) {
 		// Realtime delivery is best-effort for this API, so this line is the only
-		// witness that the publish was attempted and failed. It carries the bounded
-		// routing identifiers and the failure's own account of itself, and nothing
-		// else.
+		// witness that the publish was attempted, twice, and failed. It carries the
+		// bounded routing identifiers and the last failure's own account of itself,
+		// and nothing else.
 		console.error(
 			JSON.stringify({
 				message: 'realtime_publish_failed',
@@ -274,9 +302,9 @@ export async function publishMessage<T extends MessageType>(
  * The default publishMessage API intentionally retains its legacy log-and-
  * swallow behavior for unrelated callers.
  *
- * Only the Event channel's failure is preserved, as it was thrown. The Screens
- * are told after it either way, before this answers or after the request does,
- * and a Screen channel's failure is never this function's.
+ * Only the Event channel's failure is preserved, as its second attempt threw
+ * it. The Screens are told after it either way, before this answers or after
+ * the request does, and a Screen channel's failure is never this function's.
  */
 export async function publishMessageStrict<T extends MessageType>(
 	eventId: number,
@@ -285,10 +313,7 @@ export async function publishMessageStrict<T extends MessageType>(
 	originConnectionId?: string,
 ): Promise<void> {
 	try {
-		reportOversizedMessage(eventId, messageType, payload, originConnectionId);
-		await publishToEvent(eventId, [
-			delivery(eventRealtimeChannel(eventId), eventId, messageType, payload, originConnectionId),
-		]);
+		await publishOnEventChannel(eventId, messageType, payload, originConnectionId);
 	} finally {
 		await tellScreenOutputs(eventId, messageType, payload, originConnectionId);
 	}
@@ -308,6 +333,11 @@ export async function publishMessageStrict<T extends MessageType>(
  *
  * A Worker with no binding for the object fails the same way: nothing an
  * operator sets leaves one out, and the log line names the binding.
+ *
+ * Published once, and never again on a failure. A command is not an
+ * announcement: an output does it each time it hears it, and `debug` turns its
+ * panel on or off, so a repeat of one the first call did deliver would undo
+ * it. The caller hears the failure, and the person who sent it sends it again.
  */
 export async function publishScreenCommand(
 	eventId: number,

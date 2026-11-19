@@ -970,7 +970,7 @@ describe('a Screen channel publish that fails', () => {
 		'still tells the Screens when the Event publish is refused, which $name',
 		async ({ publish, rejects }) => {
 			vi.spyOn(console, 'error').mockImplementation(() => {});
-			realtime.refuse(eventRealtimeChannel(eventId), 1);
+			realtime.refuse(eventRealtimeChannel(eventId), 2);
 
 			const outcome = await publish(eventId, 'round:updated', roundUpdated.payload as never).then(
 				() => 'resolved',

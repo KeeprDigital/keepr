@@ -88,10 +88,23 @@ function createRealtimeObjectFake() {
 		/** The Worker's bindings, as Nitro hands them to the server. */
 		env: {
 			REALTIME: {
-				getByName: (scope: string) => ({
-					publish: async (deliveries: readonly Delivery[]) => await publish(scope, deliveries),
-					disconnect: async () => 0,
-				}),
+				getByName: (scope: string) => {
+					// A stub whose call failed is taken to be broken, as the runtime's can
+					// be: it reaches the object no more, and a caller takes another.
+					let broken = false;
+					return {
+						publish: async (deliveries: readonly Delivery[]) => {
+							if (broken) throw new Error('This stub is broken: a call on it failed');
+							try {
+								return await publish(scope, deliveries);
+							} catch (error) {
+								broken = true;
+								throw error;
+							}
+						},
+						disconnect: async () => 0,
+					};
+				},
 			},
 		},
 		/** Every call made, in order, refused or not. */

@@ -286,7 +286,7 @@ describe('failed realtime publishes', () => {
 	});
 
 	it('names the status and code of a failure that carries them', async () => {
-		realtime.refuse('event:7', 1, new ErrorInfoShaped('No application found', 40400, 404));
+		realtime.refuse('event:7', 2, new ErrorInfoShaped('No application found', 40400, 404));
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
 
@@ -312,7 +312,7 @@ describe('failed realtime publishes', () => {
 
 	it('leaves the strict path free to propagate the same rejection', async () => {
 		const failure = new Error('The object is overloaded');
-		realtime.refuse('event:7', 1, failure);
+		realtime.refuse('event:7', 2, failure);
 		const { publishMessageStrict } = await import('~~/server/utils/ably');
 
 		await expect(
@@ -336,7 +336,7 @@ describe('failed realtime publishes', () => {
 	});
 
 	it('bounds the reason, because a failure may put anything in its message', async () => {
-		realtime.refuse('event:7', 1, new Error(`No application found ${'x'.repeat(5000)}`));
+		realtime.refuse('event:7', 2, new Error(`No application found ${'x'.repeat(5000)}`));
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
 		const { MAX_PUBLISH_FAILURE_REASON_CHARS } =
@@ -356,7 +356,7 @@ describe('failed realtime publishes', () => {
 		const withMetadata = new ErrorInfoShaped('No application found', 40400, 404);
 		withMetadata.href = 'https://help.example/error/40400';
 		withMetadata.detail = { key: 'appId.keyId:secret-that-must-not-be-logged' };
-		realtime.refuse('event:7', 1, withMetadata);
+		realtime.refuse('event:7', 2, withMetadata);
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
 
@@ -386,7 +386,7 @@ describe('failed realtime publishes', () => {
 				throw new Error('property access refused');
 			},
 		});
-		realtime.refuse('event:7', 1, hostile);
+		realtime.refuse('event:7', 2, hostile);
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/ably');
 
@@ -402,6 +402,79 @@ describe('failed realtime publishes', () => {
 		});
 		errorSpy.mockRestore();
 	});
+});
+
+// ──────────────── the second attempt ────────────────
+
+// An object being reset fails the call that meets it and answers the next, so a
+// publish on the Event's channel is made once more, on a stub of its own. A
+// repeat is safe there: a message announces, and a read is the authority.
+describe("a publish on the Event's channel whose call fails", () => {
+	const HELPERS = [
+		{ helper: 'publishMessage', strict: false },
+		{ helper: 'publishMessageStrict', strict: true },
+	];
+
+	async function publish(strict: boolean) {
+		const { publishMessage, publishMessageStrict } = await import('~~/server/utils/ably');
+		return await (
+			strict
+				? publishMessageStrict(7, 'melee:playersSynced', { playerCount: 2 }, 'conn-123')
+				: publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123')
+		).then(
+			() => 'resolved',
+			(error: unknown) => error,
+		);
+	}
+
+	function loggedFailures(spy: ReturnType<typeof vi.spyOn>) {
+		return spy.mock.calls.filter(isPublishFailureLine).map(([line]) => JSON.parse(line as string));
+	}
+
+	it.each(HELPERS)(
+		'is delivered by $helper on the second, and nothing is logged as failed',
+		async ({ strict }) => {
+			realtime.refuse('event:7', 1);
+			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			expect(await publish(strict)).toBe('resolved');
+
+			expect(realtime.on('event:7')).toHaveLength(1);
+			expect(errorSpy).not.toHaveBeenCalled();
+		},
+	);
+
+	// Refused twice and no more: a third attempt would be answered, and deliver.
+	it.each(HELPERS)(
+		'is attempted twice by $helper and never a third time, then fails as it does',
+		async ({ strict }) => {
+			const second = new Error('The object is overloaded');
+			realtime.refuse('event:7', 1, new Error('The object is being reset'));
+			realtime.refuse('event:7', 1, second);
+			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			const outcome = await publish(strict);
+
+			expect(realtime.calls).toHaveLength(2);
+			expect(realtime.published).toEqual([]);
+			expect(outcome).toBe(strict ? second : 'resolved');
+			expect(loggedFailures(errorSpy)).toEqual(
+				strict
+					? []
+					: [
+							{
+								message: 'realtime_publish_failed',
+								eventId: 7,
+								messageType: 'event:deleted',
+								statusCode: null,
+								errorCode: null,
+								errorName: 'Error',
+								reason: second.message,
+							},
+						],
+			);
+		},
+	);
 });
 
 // ──────────────── the oversized-message diagnostic ────────────────
@@ -568,6 +641,23 @@ describe('publishScreenCommand', () => {
 			);
 
 			expect(failure.cause).toBe(refusal);
+			errorSpy.mockRestore();
+		});
+
+		// A command is done each time it is heard, and `debug` turns a panel on or
+		// off: sent again, one the first call did deliver would be undone.
+		it('is not sent a second time, where an Event message would be', async () => {
+			realtime.refuse('screen:1:10', 1);
+			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const { publishScreenCommand } = await import('~~/server/utils/ably');
+			const { RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
+
+			await expect(publishScreenCommand(1, 10, 'debug')).rejects.toBeInstanceOf(
+				RealtimePublishError,
+			);
+
+			expect(realtime.calls).toHaveLength(1);
+			expect(realtime.published).toEqual([]);
 			errorSpy.mockRestore();
 		});
 
