@@ -4,7 +4,10 @@
  * string to both ends.
  */
 
-/** The heartbeat: a text frame the runtime answers without waking the object. */
+/**
+ * The heartbeat: a text frame the runtime answers without waking the object.
+ * It is also a client's answer to an `ask`.
+ */
 export const PING = 'ping';
 export const PONG = 'pong';
 
@@ -112,4 +115,14 @@ export interface RefusedFrame {
 	what: 'attach' | 'watch' | 'enter';
 }
 
-export type ServerFrame = AttachedFrame | MessageFrame | PresenceFrame | RefusedFrame;
+/**
+ * The object has heard no ping from this socket for most of the time a member
+ * may be silent, and will sweep it unless it answers. The answer is a `PING`,
+ * sent from the handler this frame arrives in and not from a timer: a page's
+ * timers may be slowed, and its message handlers are not.
+ */
+export interface AskFrame {
+	t: 'ask';
+}
+
+export type ServerFrame = AttachedFrame | MessageFrame | PresenceFrame | RefusedFrame | AskFrame;

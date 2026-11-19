@@ -4,7 +4,7 @@ import { sleep } from './client.ts';
 import type { TestClient } from './client.ts';
 import { anyone, startServer } from './server.ts';
 import type { Scope, Server } from './server.ts';
-import { BRIEF_GRACE_MS, BRIEF_SWEEP_MS } from './timings.ts';
+import { ASKED_SWEEP_MS, BRIEF_ASK_MS, BRIEF_GRACE_MS, BRIEF_SWEEP_MS } from './timings.ts';
 
 let server: Server;
 beforeAll(async () => {
@@ -412,6 +412,74 @@ describe('a member whose pings stop', () => {
 			clearInterval(pinging);
 		}
 	}, 20_000);
+
+	it('is asked first, and keeps its place by answering, with no watcher told', async () => {
+		const scope = server.scope('BRIEF_ASK');
+		const watching = await watcher(scope);
+		const present = await member(scope, 1);
+		present.socket.answerAsks();
+		await watching.sync();
+		const told = watching.presence(ROOM).length;
+
+		// It pings only in answer, and is still there well past the limit.
+		await sleep(ASKED_SWEEP_MS * 1.5);
+		await settled(present.socket, watching);
+
+		expect(present.socket.asks()).toBeGreaterThan(0);
+		expect(present.socket.isClosed()).toBe(false);
+		expect(watching.presence(ROOM)).toHaveLength(told);
+		// And it is still there for whoever asks.
+		const late = await watcher(scope);
+		expect(late.members(ROOM)).toEqual([{ connectionId: present.connectionId, data: 1 }]);
+	}, 15_000);
+
+	it('is asked once, and swept at the limit when it does not answer', async () => {
+		const scope = server.scope('BRIEF_ASK');
+		const watching = await watcher(scope);
+		// Measured from before it connects, so a slow machine can only lengthen it.
+		const connecting = Date.now();
+		const first = await member(scope, 'first');
+		// The second's ask is an alarm between the first's ask and its sweep, and the
+		// first's sweep is one between the second's. Neither asks again.
+		await sleep(BRIEF_ASK_MS / 2);
+		const second = await member(scope, 'second');
+
+		expect(await first.socket.closed).toMatchObject({ code: CLOSE_STALE });
+		expect(Date.now() - connecting).toBeGreaterThanOrEqual(ASKED_SWEEP_MS);
+		expect(await second.socket.closed).toMatchObject({ code: CLOSE_STALE });
+		await watching.sync();
+		expect([first.socket.asks(), second.socket.asks()]).toEqual([1, 1]);
+		expect(watching.members(ROOM)).toEqual([]);
+	}, 15_000);
+
+	it('is asked at two thirds of the limit by an object that states only its sweep', async () => {
+		const scope = server.scope('BRIEF_SWEEP');
+		// Measured from before it connects, so a slow machine can only lengthen it.
+		const connecting = Date.now();
+		const silent = await member(scope, 1);
+
+		// The ask reaches it before its close does, or the wait fails on the close.
+		await silent.socket.waitFor('the ask', () => silent.socket.asks() > 0, BRIEF_SWEEP_MS * 4);
+
+		expect(Date.now() - connecting).toBeGreaterThanOrEqual((BRIEF_SWEEP_MS * 2) / 3);
+	}, 15_000);
+
+	it('is looked for when its ask is due, and once asked, at its limit', async () => {
+		const scope = server.scope('BRIEF_ASK');
+		// It was accepted between these two, and nothing is heard from it after.
+		const connecting = Date.now();
+		const silent = await member(scope, 1);
+		const connected = Date.now();
+
+		const unasked = await scope.call<number>('alarmAt');
+		await silent.socket.waitFor('the ask', () => silent.socket.asks() > 0, ASKED_SWEEP_MS);
+		const asked = await scope.call<number>('alarmAt');
+
+		expect(unasked).toBeGreaterThanOrEqual(connecting + BRIEF_ASK_MS);
+		expect(unasked).toBeLessThanOrEqual(connected + BRIEF_ASK_MS);
+		expect(asked).toBeGreaterThanOrEqual(connecting + ASKED_SWEEP_MS);
+		expect(asked).toBeLessThanOrEqual(connected + ASKED_SWEEP_MS);
+	}, 15_000);
 
 	it('is looked for only while anyone is present', async () => {
 		const scope = server.scope('BRIEF_SWEEP');

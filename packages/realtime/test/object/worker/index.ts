@@ -6,7 +6,13 @@
 import { TICKET_HEADER } from '../../../src/object/handOff.ts';
 import { connectSocket, RealtimeObject, refuseSocket } from '../../../src/object/index.ts';
 import type { Grant, RealtimeObjectOptions } from '../../../src/object/index.ts';
-import { BRIEF_GRACE_MS, BRIEF_RETENTION_MS, BRIEF_SWEEP_MS } from '../timings.ts';
+import {
+	ASKED_SWEEP_MS,
+	BRIEF_ASK_MS,
+	BRIEF_GRACE_MS,
+	BRIEF_RETENTION_MS,
+	BRIEF_SWEEP_MS,
+} from '../timings.ts';
 
 export { RealtimeObject };
 
@@ -50,6 +56,12 @@ export class BriefGrace extends Observed {
 export class BriefSweep extends Observed {
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env, { sweepMs: BRIEF_SWEEP_MS });
+	}
+}
+
+export class BriefAsk extends Observed {
+	constructor(ctx: DurableObjectState, env: Env) {
+		super(ctx, env, { askMs: BRIEF_ASK_MS, sweepMs: ASKED_SWEEP_MS });
 	}
 }
 

@@ -546,6 +546,15 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 		// retried four times a second for as long as it does.
 		failures = 0;
 
+		if (frame.t === 'ask') {
+			// Answered here, where the frame was heard, and with no timer: a hidden
+			// page's timers are slowed and its message handlers are not. It is the
+			// answer to the object's question, not a ping of the heartbeat's, so it
+			// waits for no pong and is sent whether or not one is waited for.
+			if (live?.socket?.readyState === OPEN) live.socket.send(PING);
+			return;
+		}
+
 		if (frame.t === 'presence') {
 			const watch = watches.get(frame.channel);
 			if (!watch) return;

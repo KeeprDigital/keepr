@@ -12,13 +12,21 @@
 			{ "name": "DEFAULTS", "class_name": "Observed" },
 			{ "name": "BRIEF_LOG", "class_name": "BriefLog" },
 			{ "name": "BRIEF_GRACE", "class_name": "BriefGrace" },
-			{ "name": "BRIEF_SWEEP", "class_name": "BriefSweep" }
+			{ "name": "BRIEF_SWEEP", "class_name": "BriefSweep" },
+			{ "name": "BRIEF_ASK", "class_name": "BriefAsk" }
 		]
 	},
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": ["RealtimeObject", "Observed", "BriefLog", "BriefGrace", "BriefSweep"]
+			"new_sqlite_classes": [
+				"RealtimeObject",
+				"Observed",
+				"BriefLog",
+				"BriefGrace",
+				"BriefSweep",
+				"BriefAsk"
+			]
 		}
 	]
 }

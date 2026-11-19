@@ -74,7 +74,7 @@ is answered 403. The URL carries only the client's id (`CLIENT_ID_PARAM`).
   when nothing between that sequence and the head was pruned and the epoch is
   this storage's; otherwise continuity was lost and the consumer re-reads.
 - **Heartbeat.** A `ping` is answered `pong` by the runtime, without waking the
-  object. Every client pings.
+  object. Every client pings, and answers an `ask` with one more.
 - **Presence** is held in each socket's attachment, with its channels and
   watches, so all of it outlasts the object's sleep, and in storage for a
   member that could return, so it outlasts a restart (below). A watcher is sent
@@ -91,10 +91,24 @@ A presence entry ends in one of three ways:
 | --- | --- |
 | The client sends `leave` or `detach`, or the app calls `disconnect` | At once |
 | Its socket closes | After the grace period, if its client has not returned. At once if it named no client, since nothing can return |
-| Its socket never closes, and its pings stop | When the alarm sweeps it at the limit, closing it with `CLOSE_STALE` |
+| Its socket never closes, its pings stop, and it does not answer when asked | When the alarm sweeps it at the limit, closing it with `CLOSE_STALE` |
+
+**The object asks before it sweeps** (ADR-0139). A page's heartbeat is a timer,
+and a browser slows a hidden page's timers but not its message handlers. So
+when a member has sent no ping for `askMs`, the alarm sends its socket an `ask`
+frame, once for that silence. A client answers with a `ping` from the handler
+the frame arrived in. The runtime answers that ping as any other, so the answer
+does not wake the object: the alarm reads it when it next looks. A member that
+answered is kept and no watcher is told; one that did not is swept at
+`sweepMs`. The object remembers whom it asked in memory and writes nothing; one
+that slept since may ask a second time.
 
 The alarm is set only while a member is present or held, for the first moment
-one of them could need telling of.
+one of them could need asking or telling of: a grace period's end, the ask of a
+member not yet asked, or the limit of one that was. While every member pings
+every 15 s that is one alarm every 15 to 30 s. A member that only answers has
+two alarms of its own every 30 s: its ask, and 15 s later the look that finds it
+answered.
 
 **A restart of the object is a closed socket for every member at once**, and
 no close reaches the object: the runtime stops it, its sockets end, and their
@@ -131,6 +145,7 @@ export class BriefRealtime extends RealtimeObject<Env> {
 | `retentionMs` | 2 minutes | How long a channel's log answers a reattach |
 | `graceMs` | 5 s | How long a member whose socket closed is held |
 | `sweepMs` | 45 s | How long a member's pings may have stopped: three of a client's 15 s pings |
+| `askMs` | Two thirds of `sweepMs`: 30 s | How long a member's pings may have stopped before it is asked: two of those pings. At `sweepMs` or more, nobody is asked |
 
 ### Its tests
 
@@ -174,6 +189,7 @@ transport.onContinuityLost('some-channel', () => {
 | Retries | Without limit: the first after 250 ms, doubling to 4 s, then 5, 10 and 20 s, then one every 30 s. The rhythm starts again once the object has answered on a socket; a socket that answered only its ping leaves it where it was. |
 | Connect timeout | 10 s from asking for the address to the socket opening (`connectTimeoutMs`). |
 | Heartbeat | A `ping` as the socket opens and every 15 s (`heartbeatMs`). A socket that sends nothing in the 5 s after one (`pongTimeoutMs`) is given up, and a late close or frame from it is not heard. |
+| An `ask` | Answered with a `ping` at once, from the handler it arrived in, whatever the heartbeat is doing. No timer sends it and it waits for no pong, so a hidden page whose timers are slowed still answers. As a frame heard, the ask ends a wait for a pong like any other. |
 | Connected | Once a frame is heard, not once the socket opens: a refused socket opens too. |
 | The fault | `connectionState` is `suspended` once there has been no connection for 8 s (`faultAfterMs`), counted from the cut or from the first connect, whatever the count of retries. It clears on connect. `error` says why there is no connection. |
 | A refusal | A socket closed with `CLOSE_REFUSED` sets `refusal`, which a dead network never does. So does an `address` that rejects with a `RefusedError`, for a caller refused where its ticket is given; the error it rejected with is the refusal's `cause`. Any other rejection is a failed attempt. Retries go on from the 5 s step, and the refusal clears on connect. |
