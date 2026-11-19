@@ -643,6 +643,33 @@ async function runProductProbes({ origin, fetchRequest, generated, sensitiveValu
 	if (!Number.isInteger(event?.id))
 		throwShapeFailure('event-persistence', 'numeric Event identity');
 
+	// A Screen command's whole effect is its publish, so its 200 says the built
+	// Worker's entry exports the object's class and the RPC to it answered
+	// (ADR-0137). A publish that failed answers 502.
+	const screen = await expectJson({
+		probe: 'screen-persistence',
+		expected: 201,
+		origin,
+		path: `/api/events/${event.id}/screens`,
+		fetchRequest,
+		signal,
+		init: jsonRequest(
+			{ name: 'Built Worker smoke Screen', slug: 'worker-smoke', currentMode: 'background' },
+			{ cookie },
+		),
+	});
+	if (!Number.isInteger(screen?.id))
+		throwShapeFailure('screen-persistence', 'numeric Screen identity');
+	await expectStatus({
+		probe: 'realtime-publish',
+		expected: 200,
+		origin,
+		path: `/api/events/${event.id}/screens/${screen.id}/command`,
+		fetchRequest,
+		signal,
+		init: jsonRequest({ command: 'refresh' }, { cookie }),
+	});
+
 	const meleeClientSecret = randomBytes(24).toString('base64url');
 	sensitiveValues.push(meleeClientSecret);
 	const melee = await expectJson({

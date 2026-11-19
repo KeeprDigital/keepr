@@ -212,6 +212,17 @@ describe('publishMessage', () => {
 		]);
 	});
 
+	// The RPC refuses a whole call over a value it cannot carry, which JSON leaves out.
+	it('publishes a message as JSON carries it', async () => {
+		const { publishMessage } = await import('~~/server/utils/ably');
+
+		await publishMessage(7, 'event:deleted', { eventId: 7, render: () => {} } as never);
+
+		expect(realtime.on('event:7')).toEqual([
+			{ channel: 'event:7', type: 'event:deleted', payload: {} },
+		]);
+	});
+
 	it('publishes each Event to an object of its own', async () => {
 		const { publishMessage } = await import('~~/server/utils/ably');
 

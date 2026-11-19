@@ -78,6 +78,10 @@ export function integrationServerPersistDir(slot: number): string {
  * first, one at a time, against the one keyed server; every other file runs
  * against a server whose key is blank, where a publish is logged and the write
  * still answers, as in CI.
+ *
+ * That was Ably's. No server publishes there now (ADR-0140): each publishes to
+ * the objects of the Worker beside it, keyed or not. The split and the Event id
+ * blocks above stay until the realtime files listen on the object (#1317).
  */
 export const INTEGRATION_REALTIME_TEST_FILES = 'test/integration/**/*.realtime.test.ts';
 /** Set by `vitest.integration.config.ts` on the project that runs those files. */

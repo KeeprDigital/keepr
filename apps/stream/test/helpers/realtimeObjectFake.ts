@@ -12,7 +12,7 @@ import { vi } from 'vitest';
  */
 
 /** One message as a page attached to `channel` would be handed it. */
-export interface PublishedRealtimeMessage {
+interface PublishedRealtimeMessage {
 	channel: string;
 	type: string;
 	/** The message without its envelope's `eventId` and `timestamp`. */
@@ -20,7 +20,7 @@ export interface PublishedRealtimeMessage {
 }
 
 /** One `publish` call, as the object named `scope` was sent it. */
-export interface RealtimePublishCall {
+interface RealtimePublishCall {
 	scope: string;
 	deliveries: Delivery[];
 }
@@ -47,7 +47,7 @@ function received({ channel, name, data }: Delivery): PublishedRealtimeMessage {
 	return { channel, type: name, payload };
 }
 
-export function createRealtimeObjectFake() {
+function createRealtimeObjectFake() {
 	const calls: RealtimePublishCall[] = [];
 	const published: PublishedRealtimeMessage[] = [];
 	const heads = new Map<string, number>();
@@ -68,7 +68,7 @@ export function createRealtimeObjectFake() {
 		}
 		await hold?.until;
 
-		// A call is taken whole or not at all.
+		// A call fails as one: none of a refused call's deliveries is published.
 		const refusal = refusing.find(({ naming, left }) => left > 0 && names(naming, call));
 		if (refusal) {
 			refusal.left -= 1;
