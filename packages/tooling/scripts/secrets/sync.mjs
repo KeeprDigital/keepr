@@ -11,12 +11,13 @@
  * names, never values, so a value that differs cannot be seen.
  *
  * `generate` names Worker secrets that are random by nature: each gets a new
- * value (`openssl rand -base64 32`'s), written into 1Password first, then
- * synced with the rest. Only a secret the map says may be generated is, and
- * the map's warning of what a new value does is logged first.
+ * value (`openssl rand -base64 32`'s), written into 1Password first and read
+ * back from it, then synced with the rest; one 1Password does not hold is
+ * synced nowhere. Only a secret the map says may be generated is, and the
+ * map's warning of what a new value does is logged first.
  *
- * No value is ever logged, put in an argument, or left in an error: each goes
- * to its tool on stdin.
+ * No value is ever logged or left in an error. Each goes to its tool on stdin,
+ * but a generated one, which `op` takes only as an argument (ADR-0135).
  */
 
 import { spawnSync } from 'node:child_process';
@@ -143,13 +144,21 @@ function onePassword({ root, env, redactor }) {
 		/** @param {import('./map.mjs').Reference} ref @param {string} value */
 		write: (ref, value) => {
 			redactor.values.add(value);
-			fieldOf(ref).value = value;
-			run('op', ['item', 'edit', ref.item, '--vault', ref.vault], {
+			fieldOf(ref);
+			// op 2.42 exits 0 on an item's JSON piped in, and keeps no concealed value from it
+			// (ADR-0135), so the value is an assignment, in its field's existing section.
+			const label = ref.field.replace(/[\\.=]/g, '\\$&');
+			run('op', ['item', 'edit', ref.item, '--vault', ref.vault, `${label}[password]=${value}`], {
 				cwd: root,
 				env,
-				input: JSON.stringify(itemOf(ref)),
 				redactor,
 			});
+			// Read back fresh: op's exit status alone once let a value reach only a Worker.
+			items.delete(`${ref.vault}/${ref.item}`);
+			if (fieldOf(ref).value !== value)
+				throw new Error(
+					`1Password did not keep the new ${ref.field} at ${formatReference(ref)}: op item edit succeeded, but the field does not hold it. Nothing was set on the destination.`,
+				);
 		},
 	};
 }
@@ -285,7 +294,7 @@ export function syncSecrets({ root, target, check = false, generate = [], env = 
 			);
 		secrets = githubSecrets(map, target.github);
 		destination = githubDestination({ root, environment: target.github, env: childEnv, redactor });
-		title = `the GitHub environment ${target.github}`;
+		title = destination.label;
 	} else {
 		const release = readRelease({ root, app: target.app });
 		if (!(target.environment in release.descriptor.environments))
@@ -317,7 +326,7 @@ export function syncSecrets({ root, target, check = false, generate = [], env = 
 			throw new Error(`Refusing to generate: ${refusals.join('; ')}. Nothing was changed.`);
 	}
 
-	log(`${title}: ${destination.label}.`);
+	log(title === destination.label ? `${title}.` : `${title}: ${destination.label}.`);
 	const vault = onePassword({ root, env: childEnv, redactor });
 	for (const { secret, warn } of generated) {
 		log(`Warning: ${warn}.`);

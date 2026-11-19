@@ -176,6 +176,21 @@ describe('pnpm secrets:sync', () => {
 		});
 	});
 
+	it.each([
+		[
+			'an Installation by its Worker',
+			{ app: 'stream', environment: 'staging' },
+			'stream in staging: Worker stream (apps/stream/wrangler.jsonc --env staging).',
+		],
+		['a GitHub environment once', { github: 'staging' }, 'GitHub environment staging.'],
+	])('opens by naming %s', (_case, target, heading) => {
+		const { sync, lines } = setUp();
+
+		sync({ target });
+
+		expect(lines[0]).toBe(heading);
+	});
+
 	describe('a GitHub environment', () => {
 		it('gets every secret 1Password records, each value whole', () => {
 			const { sync, state } = setUp();
@@ -252,6 +267,20 @@ describe('pnpm secrets:sync', () => {
 			expect(state().workers.stream!.AUTH_SECRET).toBe(recorded.AUTH_SECRET);
 			expect(lines.join('\n')).toMatch(/Warning: a new AUTH_SECRET signs every User out/);
 		});
+
+		// A value only a Worker holds can never be read back (ADR-0134).
+		it('refuses to sync a value 1Password did not keep, though op said it did', () => {
+			const { sync, state, lines } = setUp({
+				opDropsEdits: true,
+				workers: { stream: { AUTH_SECRET: 'old' } },
+			});
+
+			expect(() => sync({ target: STAGING, generate: ['AUTH_SECRET'] })).toThrow(
+				/1Password did not keep the new AUTH_SECRET at op:\/\/Keepr\/stream-staging\/AUTH_SECRET.*Nothing was set/,
+			);
+			expect(state().workers).toEqual({ stream: { AUTH_SECRET: 'old' } });
+			expect(lines.join('\n')).not.toMatch(/Generated/);
+		});
 	});
 
 	describe('never shows a value', () => {
@@ -268,7 +297,11 @@ describe('pnpm secrets:sync', () => {
 			sync(options);
 
 			const generated = state().vaults.Keepr!['stream-staging']!.SCREEN_KEY!;
-			const shown = [...state().argv.flat(), ...lines].join('\n');
+			// op takes a value only as an assignment (ADR-0135): the generated one's single argument.
+			const assignment = `SCREEN_KEY[password]=${generated}`;
+			const shown = [...state().argv.flat(), ...lines]
+				.filter((text) => text !== assignment)
+				.join('\n');
 			for (const value of [...Object.values(VALUES), generated]) expect(shown).not.toContain(value);
 		});
 
