@@ -735,7 +735,7 @@ describe('useScreenDisplaySession', () => {
 	});
 
 	/**
-	 * Ably drops message continuity after a couple of minutes suspended, and a
+	 * An Event's object keeps what it published for two minutes (ADR-0137), and a
 	 * Screen announcement carries no sequence number — so unlike a Broadcast
 	 * Graphics notification, nothing about it can tell a client it fell behind. An
 	 * output that missed a mode change while away rendered the old mode

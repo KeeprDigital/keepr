@@ -3,12 +3,12 @@
  * What this client's realtime link is doing, where an operator can see it.
  *
  * Two faults are worth separating, because the second used to have no surface at
- * all. A dropped connection is loud and self-healing: Ably reconnects, and every
- * realtime-fed surface re-reads authoritative state once its channel is attached
- * again (`useReconnectResync`). A token this client cannot mint is neither. The socket
- * stays connected, the page looks healthy, and every channel for the Event the
- * operator just switched to is silently unsubscribable — which before #307 was
- * reported by a single `console.warn` and recovered only by a page reload.
+ * all. A dropped connection is loud and self-healing: the transport reconnects, and
+ * every realtime-fed surface re-reads authoritative state once its channel is
+ * attached again (`useReconnectResync`). A client that is refused is neither: its
+ * network is fine, the page looks healthy, and nothing on the Event the operator
+ * is on can be heard — which before #307 was reported by a single `console.warn`
+ * and recovered only by a page reload.
  *
  * Sits beside the server-time indicator in the sidebar footer, for the same
  * reason that one does: it is a standing fact about this client's health rather

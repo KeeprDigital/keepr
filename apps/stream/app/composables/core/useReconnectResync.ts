@@ -5,10 +5,10 @@ import type { RealtimeTransport } from '~/types/realtime';
  * Reloading authoritative state after this client has been out of touch.
  *
  * Realtime messages are notifications and the server's state is the authority,
- * which has a consequence that only shows up across a disconnection: Ably drops
- * message continuity after a couple of minutes suspended, and every notification
- * published while a client was away is simply gone. Nothing arrives late, so
- * nothing tells the client it fell behind. A Screen Output renders the mode it
+ * which has a consequence that only shows up across a disconnection: an Event's
+ * object keeps what it published for two minutes (ADR-0137), and a notification
+ * published longer ago than that, while a client was away, is simply gone. Nothing
+ * arrives late, so nothing tells the client it fell behind. A Screen Output renders the mode it
  * had when the socket dropped; a Feature Match surface is missing whatever
  * happened in between; a Live Control shows a stack minutes out of date.
  *
@@ -22,10 +22,10 @@ import type { RealtimeTransport } from '~/types/realtime';
  * Once the channel the consumer listens on is attached again having lost
  * continuity, not when the connection comes back. That channel is the consumer's
  * to name: its Event's for an operator page or an editor preview, its Screen's
- * own for a Screen Output or a Program Monitor, which hears nothing else. Ably reattaches channels only
- * after the connection is back, so a read sent then can be answered before
- * anything listens again, and a change published in between is in neither the
- * read nor any message (#641). The channel's own signal also catches a loss on
+ * own for a Screen Output or a Program Monitor, which hears nothing else. A
+ * channel reattaches only after the connection is back, so a read sent then can
+ * be answered before anything listens again, and a change published in between
+ * is in neither the read nor any message (#641). The channel's own signal also catches a loss on
  * the channel alone while the connection stays up, and stays quiet when the
  * reattach resumed, because then nothing was missed.
  *

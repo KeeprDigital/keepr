@@ -1,17 +1,18 @@
 /**
- * The contract of the shared Nuxt suite setup (#367): the background writers
- * through `$fetch` — `useServerTime`'s clock sync, the realtime plugin's token
- * mint and the page gate's "who am I" — never reach a suite's `$fetch` mock.
+ * The contract of the shared Nuxt suite setup (#367): the app's background
+ * work — `useServerTime`'s clock sync, the realtime plugin's socket and the
+ * page gate's "who am I" — never reaches a suite's `$fetch` mock, or the network.
  *
  * This file mocks `$fetch` exactly the way the 40-odd affected suites do, pokes
  * each singleton the way an ordinary mount does, and asserts the mock recorded
- * nothing. At a tip without the shared setup both halves are red: the first
+ * nothing. At a tip without the shared setup each half is red: the first
  * `useServerTime()` consumer fires an `/api/time` sample in the same tick, and
- * the first Event-scoped room subscription mints a token through
- * `/api/realtime/token`. Either stray is what #367's five costumes dress up as —
- * a tripped `not.toHaveBeenCalled()`, a drained `mockResolvedValueOnce` queue,
- * a shifted `toHaveBeenNthCalledWith` slot, or the graphics-assets page suite's
- * 1-in-3 `idempotencyKey` TypeError.
+ * the first Event-scoped room subscription opens a socket to a server no suite
+ * has, then reports a fault once it has had no connection for 8 s. A stray
+ * request is what #367's five costumes dress up as — a tripped
+ * `not.toHaveBeenCalled()`, a drained `mockResolvedValueOnce` queue, a shifted
+ * `toHaveBeenNthCalledWith` slot, or the graphics-assets page suite's 1-in-3
+ * `idempotencyKey` TypeError.
  *
  * The stubs must also keep both surfaces usable, or the cure would spread its
  * own class of breakage — so this file asserts the replacement behaviour too:
@@ -42,6 +43,7 @@ async function settle() {
 describe('shared nuxt suite setup', () => {
 	afterEach(() => {
 		vi.useRealTimers();
+		vi.unstubAllGlobals();
 	});
 
 	it('a useServerTime consumer starts no clock sync against the suite $fetch mock', async () => {
@@ -63,14 +65,27 @@ describe('shared nuxt suite setup', () => {
 		expect(getServerTime()).toBeTypeOf('number');
 	});
 
-	it('an Event-scoped room subscription mints no token against the suite $fetch mock', async () => {
+	it('an Event-scoped room subscription opens no socket and stays standing by', async () => {
 		vi.useFakeTimers();
+		const opened = vi.fn();
+		vi.stubGlobal(
+			'WebSocket',
+			class {
+				constructor(url: string) {
+					opened(url);
+				}
+
+				addEventListener() {}
+				close() {}
+			},
+		);
 		const realtime = useRealtime();
 		realtime.setRoom(eventRealtimeChannel(7));
-		await settle();
+		// Past the 8 s after which a transport with no connection reports its fault.
+		await vi.advanceTimersByTimeAsync(10_000);
 
-		// Throws a named error listing what arrived if a token was minted.
-		expect(callsTo(mockFetch, 0, '/api/realtime/token')).toEqual([]);
+		expect(opened).not.toHaveBeenCalled();
+		expect(realtime.connectionState).toBe('initialized');
 		// The transport is still provided and still answers its API.
 		expect(realtime.onChannel).toBeTypeOf('function');
 		realtime.setRoom(null);

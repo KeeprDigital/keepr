@@ -11,6 +11,9 @@ import { SCREEN_MODE_REREAD_MS, useScreenModeFreshness } from '~/modules/screen-
  * it: a message, and a refusal standing where a token wait did (ADR-0137).
  */
 
+// The client transport itself, on the rig's socket: the shared setup's never connects.
+vi.unmock('@keepr/realtime/client');
+
 const EVENT = 'event:1';
 
 const scopes: EffectScope[] = [];

@@ -3,6 +3,9 @@
  * (`app/modules/realtime-transport/socketTransport.ts`): a socket whose other
  * end is the test, on time that moves only when the test moves it. The object's
  * part is played frame by frame, so a test says what the object answered.
+ *
+ * A Nuxt suite on this rig takes the shared setup's client transport, which
+ * never connects, off first: `vi.unmock('@keepr/realtime/client')`.
  */
 
 import type { PageLike, SocketEvent, SocketLike } from '@keepr/realtime/client';

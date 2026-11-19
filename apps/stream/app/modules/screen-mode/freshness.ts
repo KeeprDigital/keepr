@@ -72,8 +72,8 @@ export interface ScreenModeFreshnessOptions<T> {
  *   the kinds of Output Change its mode shows; a rendering of authored state
  *   hears its Event's and applies the same rule itself (`useScreenModeHearing`);
  * - **degraded refetch** — on a slow cadence while realtime cannot deliver:
- *   disconnected, or connected with subscriptions waiting on a token for the
- *   one Event the transport covers (ADR-0023). It re-reads, never
+ *   disconnected, or refused on the Event the page is on (ADR-0023,
+ *   ADR-0143). It re-reads, never
  *   re-registers: holding subscriptions through an outage is the transport's;
  * - **Reconnect Resync** — once on coming back from either, because what was
  *   published meanwhile is gone;
@@ -209,7 +209,7 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 		{ immediate: true },
 	);
 
-	// Reconnect Resync, and its twin for subscriptions that waited on a token. A
+	// Reconnect Resync, and its twin for a client that was refused and is let in. A
 	// mode reads as it mounts, which on a Screen Output's first load is before its
 	// channel has attached: what was published in between was heard by
 	// nothing, and that first attach reports no continuity loss (#733).

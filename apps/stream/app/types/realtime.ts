@@ -54,31 +54,26 @@ export interface RealtimeTransport {
 	readonly isConnected: boolean;
 	readonly error: Error | null;
 	/**
-	 * Why this client is not let hear on the Event it is on, when it is not: under
-	 * Ably it has no token for the Event, and over an Event's object it was
-	 * refused (ADR-0137).
+	 * Why this client is not let hear on the Event it is on, when it is not: it
+	 * was refused (ADR-0137, ADR-0143). The name is from when the refusal was a
+	 * token that could not be had.
 	 *
 	 * Separate from `error`, which is about the connection: the connection can be
-	 * perfectly connected while nothing on the active Event can be heard. That
-	 * state used to exist only as a console warning, so an operator whose Event
-	 * switch lost its token saw a healthy-looking page that had silently stopped
-	 * receiving anything (#307).
+	 * perfectly connected while something on the Event cannot be heard. That
+	 * state used to exist only as a console warning, so an operator saw a
+	 * healthy-looking page that had silently stopped receiving anything (#307).
 	 *
-	 * When it is set and when it ends is each transport's own:
+	 * Set when the refusal is heard, with no retries first: a refusal is the
+	 * app's answer, which a network blip never gives. Two things are refused
+	 * (`app/modules/realtime-transport/socketTransport.ts`):
 	 *
-	 * - **Ably** (`app/plugins/realtime.client.ts`). Set only after the mint's own
-	 *   retries are exhausted, so a network blip during an Event switch never puts
-	 *   a fault in front of anyone. It then stands while the transport keeps
-	 *   re-attempting for the Realtime Subscriptions still waiting, and clears only
-	 *   once they have all attached, or when the last of them is disposed (#609,
-	 *   ADR-0023).
-	 * - **An Event's object** (`app/modules/realtime-transport/socketTransport.ts`).
-	 *   Set when the refusal is heard, with no retries first: a refusal is the
-	 *   app's answer, which a network blip never gives. A refused socket's stands,
-	 *   while the socket is retried, until the client is let in, whatever has
-	 *   attached by then, or until the page leaves that Event. A channel the object
-	 *   refused has its own, which ends when the next socket asks again or the
-	 *   last thing asked of the channel is disposed.
+	 * - **The socket**, by the app's port or where a Screen Output is given its
+	 *   ticket. It stands, while the socket is retried, until the client is let
+	 *   in, whatever has attached by then, or until the page leaves that Event.
+	 *   Disposing what was asked there does not end it.
+	 * - **A channel**, by the Event's object. It ends when the next socket asks
+	 *   again, since a grant is fixed for a socket's life, or when the last thing
+	 *   asked of the channel is disposed.
 	 */
 	readonly tokenError: Error | null;
 	setRoom: (room: string | null) => void;
@@ -112,9 +107,8 @@ export interface RealtimeTransport {
 	leavePresence: (channel: string) => Promise<void>;
 	/**
 	 * Replace the presence data this client entered a channel with — or, for a held
-	 * entry, the data it will enter with. A no-op on a channel with no entry: Ably
-	 * treats an update on an unentered channel as an enter, which is
-	 * `enterPresence`'s job.
+	 * entry, the data it will enter with. A no-op on a channel with no entry:
+	 * entering is `enterPresence`'s job.
 	 */
 	updatePresence: (channel: string, data: RealtimePresenceData) => Promise<void>;
 	/**

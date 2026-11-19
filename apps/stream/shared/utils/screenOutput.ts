@@ -132,9 +132,9 @@ export const SCREEN_OUTPUT_ASSET_CAPABILITY_PATTERN = /^[\w-]{20,200}$/;
  * inverse of the fragment `screenOutputPath` writes.
  *
  * Here rather than in the one page that used to parse it, because #397 gave the
- * capability two more readers: the realtime plugin presents it to
- * `/api/realtime/token` for its narrowed grant, and the Screen lookup by slug
- * presents it as the credential that route now requires. Three parsers for one
+ * capability two more readers: the realtime plugin presents it for the ticket
+ * that admits its socket (ADR-0137), and the Screen lookup by slug presents it
+ * as the credential that route requires. Three parsers for one
  * encoding is how a fragment written in one place stops being readable in
  * another; this file already owns writing it, so it owns reading it.
  */
@@ -147,7 +147,7 @@ export function screenOutputAssetCapabilityFromHash(hash: string): string | null
  * How a capability is presented on a request, or nothing to present.
  *
  * Both callers wrote this ternary out — the Screen lookup by slug and the realtime
- * token request — which is two places to get a scheme name right. `undefined`
+ * plugin — which is two places to get a scheme name right. `undefined`
  * rather than an empty object because that is what `$fetch` wants for "no headers",
  * and because a document with no capability is making an ordinary request that its
  * session speaks for.

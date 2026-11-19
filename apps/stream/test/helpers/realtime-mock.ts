@@ -15,7 +15,7 @@ export interface MockRealtime {
 	isConnected: boolean;
 	connectionState: string;
 	error: null | Error;
-	/** Set only when the token for the active Event could not be minted (#307). */
+	/** Set only while this client is refused on the Event it is on (#307, ADR-0137). */
 	tokenError: null | Error;
 	connectionId: string;
 

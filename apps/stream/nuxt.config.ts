@@ -11,6 +11,7 @@ import {
 	MAX_SILENT_VIDEO_INGESTION_BYTES,
 	MAX_STILL_IMAGE_INGESTION_BYTES,
 } from './shared/utils/graphicsAssetCompatibility';
+import { REALTIME_SOCKET_PATH } from './shared/utils/realtimeChannels';
 import { MUTATION_BODY_METHODS } from '@keepr/nuxt-layer/shared/utils/requestBodyLimits';
 import { TCGPLUS_IMPORT_MAX_BODY_BYTES } from './shared/utils/tcgPlusImportLimits';
 
@@ -42,6 +43,10 @@ export default defineNuxtConfig({
 	// class and hands a socket to it, and the Worker that holds the class beside
 	// `nuxt dev`. Who may hear what is `server/routes/realtime/port.ts`.
 	extends: ['@keepr/nuxt-layer', '@keepr/realtime/nuxt'],
+
+	// Where a page opens an Event's socket: the path the Worker's entry and the
+	// dev proxy take, and the one `app/plugins/realtime.client.ts` asks for.
+	realtime: { socketPath: REALTIME_SOCKET_PATH },
 
 	// Nothing but `nuxt prepare` may rewrite `.nuxt` while other gates run:
 	// the root tsconfig extends it, so every Vite and TypeScript consumer reads it.
