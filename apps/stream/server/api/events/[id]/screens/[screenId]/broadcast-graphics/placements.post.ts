@@ -4,7 +4,7 @@ import { screenWriteModule } from '~~/server/modules/screen-write';
 import { placeBroadcastGraphicTemplateSchema } from '~~/server/schemas/api/broadcastGraphicTemplate';
 import { screenParamsSchema } from '~~/server/schemas/api/screen';
 import { screenService } from '~~/server/services/screen';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 import { optionalBrowserSessionId } from '~~/server/utils/session';
 import { placeBroadcastGraphicTemplate } from '~~/shared/modules/graphics';
 import { randomUuid } from '~~/shared/utils/uuid';

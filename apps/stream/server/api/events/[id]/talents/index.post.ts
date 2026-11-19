@@ -2,7 +2,7 @@ import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-l
 import { talentWriteModule } from '~~/server/modules/talent-write';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
 import { createTalentSchema } from '~~/server/schemas/api/talent';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id: eventId } = await getValidatedRouterParams(event, eventParamsSchema.parse);

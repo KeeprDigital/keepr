@@ -140,7 +140,7 @@ export default defineNuxtConfig({
 		experimental: {
 			wasm: true,
 			// `useEvent()` names the request a publish is made in, so its Screen
-			// notices finish after the answer (`server/utils/ably.ts`).
+			// notices finish after the answer (`server/utils/realtimePublish.ts`).
 			asyncContext: true,
 		},
 		handlers: isIntegration

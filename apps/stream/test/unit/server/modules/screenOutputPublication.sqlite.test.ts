@@ -26,7 +26,7 @@ vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) 
 	Object.assign(new Error(input.message ?? 'error'), input),
 );
 
-const { publishMessage, publishMessageStrict } = await import('~~/server/utils/ably');
+const { publishMessage, publishMessageStrict } = await import('~~/server/utils/realtimePublish');
 const { asOneOutputChange } = await import('~~/server/modules/screen-output-publication');
 
 let screenSeq = 0;

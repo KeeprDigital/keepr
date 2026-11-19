@@ -12,7 +12,7 @@ const mockRefreshBindings = vi.fn();
 vi.mock('~~/server/modules/broadcast-graphics-live-session', () => ({
 	refreshBroadcastGraphicsBindings: mockRefreshBindings,
 }));
-vi.mock('~~/server/utils/ably', () => ({
+vi.mock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: mockPublishMessage,
 	publishMessageStrict: mockPublishMessageStrict,
 }));

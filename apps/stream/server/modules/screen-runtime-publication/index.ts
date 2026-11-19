@@ -1,5 +1,5 @@
 import type { CardInput } from '~~/server/schemas/kv/card';
-import { publishMessage } from '~~/server/utils/ably';
+import { publishMessage } from '~~/server/utils/realtimePublish';
 
 interface PublicationInput {
 	eventId: number;

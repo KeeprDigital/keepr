@@ -25,7 +25,7 @@ vi.doMock('~~/server/db', () => ({
 		...schema,
 	},
 }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: async () => {},
 	publishMessageStrict: async () => {},
 	publishScreenCommand: async () => {},

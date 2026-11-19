@@ -86,7 +86,7 @@ describe('getOriginConnectionId', () => {
 
 	it('extracts x-realtime-connection-id header', async () => {
 		vi.mocked(getHeader).mockReturnValue('conn-abc-123');
-		const { getOriginConnectionId } = await import('~~/server/utils/ably');
+		const { getOriginConnectionId } = await import('~~/server/utils/realtimePublish');
 		const mockEvent = {} as any;
 		expect(getOriginConnectionId(mockEvent)).toBe('conn-abc-123');
 		expect(getHeader).toHaveBeenCalledWith(mockEvent, 'x-realtime-connection-id');
@@ -95,7 +95,7 @@ describe('getOriginConnectionId', () => {
 	it('accepts the id a page makes itself, and the shapes Ably issues', async () => {
 		// A page on the object names itself with 32 hex characters. Ably's connection
 		// ids are base64url-style tokens; its connection keys carry `!`.
-		const { getOriginConnectionId } = await import('~~/server/utils/ably');
+		const { getOriginConnectionId } = await import('~~/server/utils/realtimePublish');
 		for (const id of [
 			'0f1e2d3c4b5a69788796a5b4c3d2e1f0',
 			'veTb7EJgYVFI7g',
@@ -111,18 +111,18 @@ describe('getOriginConnectionId', () => {
 	// only an id a page could have named itself by is relayed.
 	it('ignores an oversized connection id instead of relaying it', async () => {
 		vi.mocked(getHeader).mockReturnValue('a'.repeat(65));
-		const { getOriginConnectionId } = await import('~~/server/utils/ably');
+		const { getOriginConnectionId } = await import('~~/server/utils/realtimePublish');
 		expect(getOriginConnectionId({} as any)).toBeUndefined();
 	});
 
 	it('accepts an id at exactly the length bound', async () => {
 		vi.mocked(getHeader).mockReturnValue('a'.repeat(64));
-		const { getOriginConnectionId } = await import('~~/server/utils/ably');
+		const { getOriginConnectionId } = await import('~~/server/utils/realtimePublish');
 		expect(getOriginConnectionId({} as any)).toBe('a'.repeat(64));
 	});
 
 	it('ignores a malformed connection id instead of relaying it', async () => {
-		const { getOriginConnectionId } = await import('~~/server/utils/ably');
+		const { getOriginConnectionId } = await import('~~/server/utils/realtimePublish');
 		for (const malformed of [
 			'has spaces',
 			'json{"a":1}',
@@ -137,7 +137,7 @@ describe('getOriginConnectionId', () => {
 	});
 
 	it('treats an absent or empty header as no origin', async () => {
-		const { getOriginConnectionId } = await import('~~/server/utils/ably');
+		const { getOriginConnectionId } = await import('~~/server/utils/realtimePublish');
 		vi.mocked(getHeader).mockReturnValue(undefined as any);
 		expect(getOriginConnectionId({} as any)).toBeUndefined();
 		vi.mocked(getHeader).mockReturnValue('');
@@ -155,14 +155,14 @@ describe('getAblyClient', () => {
 	});
 
 	it('returns Ably.Rest instance when configured', async () => {
-		const { getAblyClient } = await import('~~/server/utils/ably');
+		const { getAblyClient } = await import('~~/server/utils/realtimePublish');
 		const client = getAblyClient();
 		expect(MockAblyRest.lastKey).toBe('test-key');
 		expect(client).toBeInstanceOf(MockAblyRest);
 	});
 
 	it('returns same instance on subsequent calls', async () => {
-		const { getAblyClient } = await import('~~/server/utils/ably');
+		const { getAblyClient } = await import('~~/server/utils/realtimePublish');
 		const client1 = getAblyClient();
 		const client2 = getAblyClient();
 		expect(client1).toBe(client2);
@@ -171,7 +171,7 @@ describe('getAblyClient', () => {
 
 	it('names the setting when no key is configured', async () => {
 		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: '' } as any);
-		const { getAblyClient } = await import('~~/server/utils/ably');
+		const { getAblyClient } = await import('~~/server/utils/realtimePublish');
 		const { ServiceConfigurationError } = await import('@keepr/nuxt-layer/server/utils/errors');
 
 		const failure = (() => {
@@ -194,7 +194,7 @@ describe('publishMessage', () => {
 	// A page's transport hands a handler the delivery's data as the message, under
 	// the delivery's name, and its echo filter reads the origin inside it.
 	it("publishes the message whole, under its type, on the Event's channel of the Event's object", async () => {
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123');
 
@@ -214,7 +214,7 @@ describe('publishMessage', () => {
 
 	// The RPC refuses a whole call over a value it cannot carry, which JSON leaves out.
 	it('publishes a message as JSON carries it', async () => {
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await publishMessage(7, 'event:deleted', { eventId: 7, render: () => {} } as never);
 
@@ -224,7 +224,7 @@ describe('publishMessage', () => {
 	});
 
 	it('publishes each Event to an object of its own', async () => {
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await publishMessage(7, 'event:deleted', { eventId: 7 });
 		await publishMessage(8, 'event:deleted', { eventId: 8 });
@@ -239,7 +239,7 @@ describe('publishMessage', () => {
 	it('does not turn a Worker with no binding for the object into a command failure', async () => {
 		withoutTheBinding();
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await expect(
 			publishMessage(1, 'event:deleted', { eventId: 1 }, 'conn-123'),
@@ -253,7 +253,7 @@ describe('publishMessage', () => {
 	it('preserves a missing binding as a failure for strict publications', async () => {
 		// The strict path's contract is that the caller hears about it, as it was thrown.
 		withoutTheBinding();
-		const { publishMessageStrict } = await import('~~/server/utils/ably');
+		const { publishMessageStrict } = await import('~~/server/utils/realtimePublish');
 
 		await expect(
 			publishMessageStrict(1, 'melee:playersSynced', { playerCount: 2 }, 'conn-123'),
@@ -269,7 +269,7 @@ describe('failed realtime publishes', () => {
 	it('names why the object did not take the publish', async () => {
 		realtime.refuse('event:7');
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123');
 
@@ -288,7 +288,7 @@ describe('failed realtime publishes', () => {
 	it('names the status and code of a failure that carries them', async () => {
 		realtime.refuse('event:7', 2, new ErrorInfoShaped('No application found', 40400, 404));
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123');
 
@@ -299,7 +299,7 @@ describe('failed realtime publishes', () => {
 	it('still swallows the failure, because the route has no local effect to report', async () => {
 		realtime.refuse('event:7');
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await expect(
 			publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123'),
@@ -313,7 +313,7 @@ describe('failed realtime publishes', () => {
 	it('leaves the strict path free to propagate the same rejection', async () => {
 		const failure = new Error('The object is overloaded');
 		realtime.refuse('event:7', 2, failure);
-		const { publishMessageStrict } = await import('~~/server/utils/ably');
+		const { publishMessageStrict } = await import('~~/server/utils/realtimePublish');
 
 		await expect(
 			publishMessageStrict(7, 'melee:playersSynced', { playerCount: 2 }, 'conn-123'),
@@ -324,7 +324,7 @@ describe('failed realtime publishes', () => {
 		// Told apart from the object's own failure by its `reason`, which names the binding.
 		withoutTheBinding();
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123');
 
@@ -338,7 +338,7 @@ describe('failed realtime publishes', () => {
 	it('bounds the reason, because a failure may put anything in its message', async () => {
 		realtime.refuse('event:7', 2, new Error(`No application found ${'x'.repeat(5000)}`));
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 		const { MAX_PUBLISH_FAILURE_REASON_CHARS } =
 			await import('~~/server/utils/realtimePublishFailure');
 
@@ -358,7 +358,7 @@ describe('failed realtime publishes', () => {
 		withMetadata.detail = { key: 'appId.keyId:secret-that-must-not-be-logged' };
 		realtime.refuse('event:7', 2, withMetadata);
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123');
 
@@ -388,7 +388,7 @@ describe('failed realtime publishes', () => {
 		});
 		realtime.refuse('event:7', 2, hostile);
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await expect(
 			publishMessage(7, 'event:deleted', { eventId: 7 }, 'conn-123'),
@@ -416,7 +416,8 @@ describe("a publish on the Event's channel whose call fails", () => {
 	];
 
 	async function publish(strict: boolean) {
-		const { publishMessage, publishMessageStrict } = await import('~~/server/utils/ably');
+		const { publishMessage, publishMessageStrict } =
+			await import('~~/server/utils/realtimePublish');
 		return await (
 			strict
 				? publishMessageStrict(7, 'melee:playersSynced', { playerCount: 2 }, 'conn-123')
@@ -506,7 +507,7 @@ describe('oversized realtime messages', () => {
 
 	it('reports the size and the limit, and still publishes', async () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await publishMessage(1, 'event:deleted', oversizedPayload(), 'conn-123');
 
@@ -527,7 +528,7 @@ describe('oversized realtime messages', () => {
 
 	it('says nothing about a message inside the limit', async () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessage } = await import('~~/server/utils/ably');
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
 		await publishMessage(1, 'event:deleted', { eventId: 1 }, 'conn-123');
 
@@ -538,7 +539,7 @@ describe('oversized realtime messages', () => {
 
 	it('reports on the strict publication path too, which is where a sync failure surfaces', async () => {
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		const { publishMessageStrict } = await import('~~/server/utils/ably');
+		const { publishMessageStrict } = await import('~~/server/utils/realtimePublish');
 
 		await publishMessageStrict(1, 'melee:dataReset', oversizedPayload(), 'conn-123');
 
@@ -555,7 +556,7 @@ describe('oversized realtime messages', () => {
 
 describe('publishScreenCommand', () => {
 	it("publishes a Screen command on the Screen's channel of its Event's object", async () => {
-		const { publishScreenCommand } = await import('~~/server/utils/ably');
+		const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
 
 		await publishScreenCommand(1, 10, { command: 'identify' });
 
@@ -577,7 +578,7 @@ describe('publishScreenCommand', () => {
 	it.each([true, false])(
 		'tells the outputs the state a debug command asks for: shown %s',
 		async (shown) => {
-			const { publishScreenCommand } = await import('~~/server/utils/ably');
+			const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
 
 			await publishScreenCommand(1, 10, { command: 'debug', shown });
 
@@ -597,7 +598,7 @@ describe('publishScreenCommand', () => {
 		it("propagates a named server-side failure instead of the failure's own status", async () => {
 			realtime.refuse('screen:1:10', 2, new ErrorInfoShaped('No application found', 40400, 404));
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const { publishScreenCommand } = await import('~~/server/utils/ably');
+			const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
 			const { REALTIME_PUBLISH_FAILED_MESSAGE, RealtimePublishError } =
 				await import('~~/server/utils/realtimePublishFailure');
 
@@ -615,7 +616,7 @@ describe('publishScreenCommand', () => {
 		it("carries the failure's numeric code, when it has one, for the request's log line", async () => {
 			realtime.refuse('screen:1:10', 2, new ErrorInfoShaped('No application found', 40400, 404));
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const { publishScreenCommand } = await import('~~/server/utils/ably');
+			const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
 
 			const failure = await publishScreenCommand(1, 10, { command: 'identify' }).then(
 				() => null,
@@ -632,7 +633,7 @@ describe('publishScreenCommand', () => {
 			// this line is the only place it is ever said.
 			realtime.refuse('screen:1:10');
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const { publishScreenCommand } = await import('~~/server/utils/ably');
+			const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
 
 			await publishScreenCommand(1, 10, { command: 'identify' }).catch(() => {});
 
@@ -653,7 +654,7 @@ describe('publishScreenCommand', () => {
 			const refusal = new Error('The object is overloaded');
 			realtime.refuse('screen:1:10', 2, refusal);
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const { publishScreenCommand } = await import('~~/server/utils/ably');
+			const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
 
 			const failure = await publishScreenCommand(1, 10, { command: 'identify' }).then(
 				() => null,
@@ -669,7 +670,7 @@ describe('publishScreenCommand', () => {
 		it('answers a Worker with no binding for the object the same way, and logs the binding', async () => {
 			withoutTheBinding();
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const { publishScreenCommand } = await import('~~/server/utils/ably');
+			const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
 			const { RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
 
 			const failure = await publishScreenCommand(1, 10, { command: 'identify' }).then(
@@ -690,7 +691,7 @@ describe('publishScreenCommand', () => {
 		it('is delivered on the second, whole, and nothing is logged as failed', async () => {
 			realtime.refuse('screen:1:10', 1);
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const { publishScreenCommand } = await import('~~/server/utils/ably');
+			const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
 
 			await expect(
 				publishScreenCommand(1, 10, { command: 'debug', shown: true }),
@@ -712,7 +713,7 @@ describe('publishScreenCommand', () => {
 			realtime.refuse('screen:1:10', 1, new Error('The object is being reset'));
 			realtime.refuse('screen:1:10', 1, second);
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			const { publishScreenCommand } = await import('~~/server/utils/ably');
+			const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
 			const { RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
 
 			const failure = await publishScreenCommand(1, 10, { command: 'refresh' }).then(

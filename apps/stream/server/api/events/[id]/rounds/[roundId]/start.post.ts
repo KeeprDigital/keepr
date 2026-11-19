@@ -1,6 +1,6 @@
 import { roundWriteModule } from '~~/server/modules/round-write';
 import { roundParamsSchema } from '~~/server/schemas/api/round';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 /** "Start now": the Round's start becomes server time (ADR-0066). */
 export default defineEventHandler(async (event) => {

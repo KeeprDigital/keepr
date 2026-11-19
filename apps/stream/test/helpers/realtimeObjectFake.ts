@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 
 /**
  * A stand-in for the objects the server publishes to (ADR-0137), recording what
- * each channel was sent so a suite can drive the real `server/utils/ably`. It
+ * each channel was sent so a suite can drive the real `server/utils/realtimePublish`. It
  * stands where the Worker's `REALTIME` binding does, so the realtime layer's
  * own `useRealtimeScope` runs against it.
  *

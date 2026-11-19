@@ -20,7 +20,7 @@ const mockRequestIdentity = vi.fn();
 const mockScreenForCapability = vi.fn();
 const mockGetRequestHeader = vi.fn();
 
-vi.mock('~~/server/utils/ably', () => ({
+vi.mock('~~/server/utils/realtimePublish', () => ({
 	getAblyClient: mockGetAblyClient,
 }));
 

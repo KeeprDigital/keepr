@@ -1,6 +1,6 @@
 import { phaseWriteModule } from '~~/server/modules/phase-write';
 import { phaseParamsSchema } from '~~/server/schemas/api/phase';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id, phaseId } = await getValidatedRouterParams(event, phaseParamsSchema.parse);

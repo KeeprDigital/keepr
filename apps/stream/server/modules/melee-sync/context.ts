@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 /**
  * What a Melee Sync run carries from whoever started it. An operator's request

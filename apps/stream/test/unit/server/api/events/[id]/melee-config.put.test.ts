@@ -61,7 +61,7 @@ vi.mock('~~/server/modules/event-data-publication', () => ({
 		eventUpdated: mockPublishEventUpdated,
 	}),
 }));
-vi.mock('~~/server/utils/ably', () => ({
+vi.mock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: mockGetOriginConnectionId,
 }));
 vi.mock('~~/server/utils/meleeSyncState', () => ({

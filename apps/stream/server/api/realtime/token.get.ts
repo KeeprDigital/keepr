@@ -4,7 +4,7 @@ import { createD1ScreenOutputAssetAuthorizer } from '~~/server/modules/screen-ou
 import { screenOutputAssetCapabilityDigest } from '~~/server/modules/screen-output-assets/capability';
 import { eventIdParamSchema } from '~~/server/schemas/api/eventId';
 import { eventService } from '~~/server/services/event';
-import { getAblyClient } from '~~/server/utils/ably';
+import { getAblyClient } from '~~/server/utils/realtimePublish';
 import { bearerScreenOutputCapability } from '~~/server/utils/screenOutputCapabilityAuthorization';
 import { requestIdentity } from '~~/server/utils/session';
 import {

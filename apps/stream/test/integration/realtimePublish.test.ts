@@ -5,7 +5,7 @@ import { $fetch } from './client';
 /**
  * The server publishes to its Event's object (ADR-0137). What each helper
  * publishes, and what it does when the object fails, is tested at its home,
- * `test/unit/server/utils/ably.test.ts`; this is what only a running server
+ * `test/unit/server/utils/realtimePublish.test.ts`; this is what only a running server
  * shows: the RPC, on the dev server's real binding, reaching the object.
  *
  * No socket can attach yet (the port lets nobody in until #1315), so what is

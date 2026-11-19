@@ -31,7 +31,7 @@ vi.doMock('~~/server/services/meleeIntegration', () => ({
 vi.doMock('~~/server/services/importedMtgCardResolver', () => ({
 	importedMtgCardResolverService: () => ({ resolveBatch }),
 }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => 'origin-1',
 	publishMessage,
 	publishMessageStrict: publishMessage,

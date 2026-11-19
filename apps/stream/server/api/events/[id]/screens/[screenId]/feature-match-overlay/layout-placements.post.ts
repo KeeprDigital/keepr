@@ -5,7 +5,7 @@ import { placeFeatureMatchLayoutTemplateSchema } from '~~/server/schemas/api/fea
 import { screenParamsSchema } from '~~/server/schemas/api/screen';
 import { eventService } from '~~/server/services/event';
 import { screenService } from '~~/server/services/screen';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 import { optionalBrowserSessionId } from '~~/server/utils/session';
 import { eventKind } from '~~/shared/config/games';
 import {

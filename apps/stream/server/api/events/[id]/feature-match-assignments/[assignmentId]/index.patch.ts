@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { featureMatchAssignmentModule } from '~~/server/modules/feature-match-assignment';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
 import { updateFeatureMatchAssignmentSchema } from '~~/server/schemas/api/featureMatchAssignment';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 const paramsSchema = eventParamsSchema.extend({
 	assignmentId: z.coerce.number().int().positive(),

@@ -1,6 +1,6 @@
 import { themeLibraryModule } from '~~/server/modules/theme-library';
 import { themeTokenParamsSchema } from '~~/server/schemas/api/theme';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 /** Clear one Theme Token, so the Theme reads its default again. */
 export default defineEventHandler(async (event) => {

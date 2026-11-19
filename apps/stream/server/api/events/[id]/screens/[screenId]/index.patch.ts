@@ -1,6 +1,6 @@
 import { screenWriteModule } from '~~/server/modules/screen-write';
 import { screenParamsSchema, updateScreenSchema } from '~~/server/schemas/api/screen';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 import { optionalBrowserSessionId } from '~~/server/utils/session';
 
 export default defineEventHandler(async (event) => {

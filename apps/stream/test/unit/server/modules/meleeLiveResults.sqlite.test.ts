@@ -67,7 +67,7 @@ vi.doMock('~~/server/db', () => ({ db }));
 vi.doMock('~~/server/services/meleeIntegration', () => ({
 	requireMeleeService: (eventData: { meleeEventId: string }) => fakeMelee(eventData.meleeEventId),
 }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => 'origin-1',
 	publishMessage,
 	publishMessageStrict,

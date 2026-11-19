@@ -4,7 +4,7 @@ import {
 	broadcastGraphicsCommandSchema,
 	broadcastGraphicsLiveSessionParamsSchema,
 } from '~~/server/schemas/api/broadcastGraphicsLiveSession';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 /**
  * One playout action, named by the Live Session epoch it belongs to.

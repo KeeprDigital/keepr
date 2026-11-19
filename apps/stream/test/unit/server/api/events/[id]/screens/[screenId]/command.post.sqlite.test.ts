@@ -10,7 +10,7 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 // POST /api/events/:id/screens/:screenId/command over real SQL: a command goes to the
 // Screen's own channel, only for a Screen of that Event, and the 200 means it was
 // delivered. Only the realtime object is faked; how a refusal is named and logged, and
-// the second attempt before it, are `ably.test.ts`'s.
+// the second attempt before it, are `realtimePublish.test.ts`'s.
 
 interface StubRequest {
 	params: Record<string, string>;

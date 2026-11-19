@@ -87,7 +87,7 @@ stops itself (`packages/realtime/README.md` at the repository's root).
 
 The server publishes every message by RPC to its Event's object, the one
 `eventRealtimeScope` names (`shared/utils/realtimeChannels.ts`), through
-`server/utils/ably.ts`; nothing it publishes goes to Ably (ADR-0140). Who may
+`server/utils/realtimePublish.ts`; nothing it publishes goes to Ably (ADR-0140). Who may
 hear what is `server/routes/realtime/port.ts`, which refuses every socket until
 a Session and a Screen Output are authorized (#1315). The pages still connect
 to Ably, with a token from `GET /api/realtime/token`, until they move onto the

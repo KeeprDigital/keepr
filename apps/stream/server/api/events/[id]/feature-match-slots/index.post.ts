@@ -1,7 +1,7 @@
 import { featureMatchSlotWriteModule } from '~~/server/modules/feature-match-slot-write';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
 import { createFeatureMatchSchema } from '~~/server/schemas/api/featureMatch';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id } = await getValidatedRouterParams(event, eventParamsSchema.parse);

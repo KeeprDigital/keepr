@@ -24,7 +24,7 @@ const publishMessage = vi.fn(async (..._args: unknown[]) => {});
 const refreshBroadcastGraphicsBindings = vi.fn(async (_eventId: number) => {});
 
 vi.doMock('~~/server/db', () => ({ db }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage,
 	publishMessageStrict: publishMessage,
 	publishScreenCommand: async () => {},

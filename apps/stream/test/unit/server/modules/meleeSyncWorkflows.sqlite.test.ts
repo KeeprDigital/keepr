@@ -53,7 +53,7 @@ vi.doMock('~~/server/services/importedMtgCardResolver', () => ({
 		}),
 	}),
 }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => 'origin-1',
 	publishMessage,
 	publishMessageStrict: publishMessage,

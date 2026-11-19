@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { deckListResolutionModule } from '~~/server/modules/deck-list-resolution';
 import { eventIdParamSchema } from '~~/server/schemas/api/eventId';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 const paramsSchema = z.object({
 	id: eventIdParamSchema,

@@ -31,7 +31,7 @@ vi.doMock('~~/server/modules/player-update', () => ({
 vi.doMock('~~/server/modules/event-data-publication', () => ({
 	eventDataPublicationModule: () => ({ archetypeDeleted: mockArchetypeDeleted }),
 }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => 'origin-1',
 }));
 

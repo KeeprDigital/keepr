@@ -17,7 +17,7 @@ afterAll(async () => await harness.dispose());
 const announcedSlotIds: number[] = [];
 
 vi.doMock('~~/server/db', () => ({ db }));
-vi.doMock('~~/server/utils/ably', () => ({
+vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishMessage: async (
 		_eventId: number,
 		name: string,

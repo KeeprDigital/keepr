@@ -1,7 +1,7 @@
 import { archetypeWriteModule } from '~~/server/modules/archetype-write';
 import { createArchetypeSchema } from '~~/server/schemas/api/archetype';
 import { eventParamsSchema } from '~~/server/schemas/api/event';
-import { getOriginConnectionId } from '~~/server/utils/ably';
+import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 
 export default defineEventHandler(async (event) => {
 	const { id } = await getValidatedRouterParams(event, eventParamsSchema.parse);
