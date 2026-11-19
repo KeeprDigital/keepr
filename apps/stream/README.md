@@ -90,8 +90,9 @@ The server publishes every message by RPC to its Event's object, the one
 and nothing else (ADR-0143): `app/plugins/realtime.client.ts` opens one socket
 for the Event the page is on, at `/realtime/socket?eventId=<id>` on the page's
 own host. A page holding a Screen Output Asset Capability first asks
-`POST /api/realtime/ticket` for a ticket with it, and opens its socket with
-that; any other page opens its socket as its Session. Who may hear what is
+`POST /api/realtime/ticket` for a Realtime Ticket with it, one for each socket,
+and opens its socket with that; any other page opens its socket as its
+Session. Who may hear what is
 `server/routes/realtime/port.ts`: a Session, or a Screen Output that presents a
 Realtime Ticket (`server/api/realtime/ticket.post.ts`), and nobody else
 (ADR-0142).
@@ -490,9 +491,9 @@ are pinned in `ci.yml`, and `.github/zizmor.yml` holds each audit switched off
 and why. To run them before a push that edits a workflow:
 `brew install actionlint shellcheck zizmor`, then
 `actionlint && zizmor --no-online-audits --collect=workflows,actions .`.
-No test needs a key for realtime. The `*.realtime.test.ts` integration files
-are skipped everywhere until they listen on the Event's object (below). The
-suites in the table above that need a running preview,
+No test needs a key for realtime: every realtime test runs in CI, on the
+Event's object in local `workerd`. The suites in the table above that need a
+running preview,
 Docker, or a real store stay local. Other vitest modes work directly,
 e.g. `pnpm exec vitest --ui`.
 
@@ -514,25 +515,16 @@ Gotchas:
   the stand-in's cookie. The default is
   a third of the CPU cores, at most four; set `STREAM_KEEPR_INTEGRATION_SERVERS`
   to change it (`1` is the old serial run). Each server's output is kept in
-  `node_modules/.cache/integration-servers/`. Each server publishes to the
-  objects of the Worker beside it, which no other server reaches. Each still
-  mints Event ids from its own block of a million (`integrationEventIdBlocks`,
-  #630), from when the `*.realtime.test.ts` files shared one Ably app.
-- **The `*.realtime.test.ts` files are skipped** until they listen on the
-  Event's object, which waits on a socket's caller being let in (#1315, #1317).
-  Seven of them wait to hear a write on Ably, which nothing publishes to and
-  no page uses any more (ADR-0140): they are why `ably` is still a
-  devDependency. They decide by `NUXT_ABLY_API_KEY` in `.env`, which nothing
-  else reads: leave it unset, since with a key those seven run and time out.
-  They run first, one at a time, against one server, and a test that reads the
-  key belongs in one of them; anywhere else it fails on import, saying so. That
-  a write's publish reaches its Event's object is `realtimePublish.test.ts`,
-  which needs no key.
-  A test of the Event's object needs no key and runs with every other file:
-  `test/integration/realtimeAdmission.test.ts` opens sockets on its server's
-  realtime dev Worker, and publishes to the object through
-  `/api/_test/realtime-publish`, a route only an integration server has
-  (`nuxt.config.ts`).
+  `node_modules/.cache/integration-servers/`.
+- **A test hears realtime as a page does**, with no key and no service beside
+  its server. Each server publishes to, and hands sockets to, the objects of
+  the realtime dev Worker it started beside itself, which no other server
+  reaches. `test/integration/realtimeFollower.ts` opens a socket by the client
+  transport the app's pages use, as the suite's operator or as a Screen Output
+  with a Realtime Ticket, and a test asks it what the app's own write
+  announced: nothing publishes for a test. The `*.realtime.test.ts` files are
+  those that listen, and run like every other file. Who a socket lets in is
+  `realtimeAdmission.test.ts`.
 - **A failed integration test prints its requests.** The
   `[integration] requests during "…"` block lists each request with its time;
   on a timeout, the one marked `never returned` is the stall. It names the

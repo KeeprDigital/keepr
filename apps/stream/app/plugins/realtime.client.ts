@@ -7,7 +7,7 @@ import {
 	screenOutputCapabilityHeaders,
 } from '~~/shared/utils/screenOutput';
 
-/** Where a Screen Output is given the ticket for one socket of its Event (ADR-0137). */
+/** Where a Screen Output is given a Realtime Ticket, for one socket of its Event (ADR-0142). */
 const REALTIME_TICKET_PATH = '/api/realtime/ticket';
 
 /** The statuses by which the ticket's route says this output may not, as distinct from could not be answered. */
@@ -34,8 +34,8 @@ function answeredStatus(error: unknown): number | undefined {
  *
  * - **A page holding a Screen Output Asset Capability** in its URL fragment is
  *   a Screen Output, or a Program Monitor. A browser cannot put `Authorization`
- *   on a WebSocket, so it presents the capability to the ticket's route and its
- *   socket carries the ticket. A ticket admits one socket, so each connect
+ *   on a WebSocket, so it presents the capability for a Realtime Ticket and its
+ *   socket carries that. A Realtime Ticket admits one socket, so each connect
  *   fetches another.
  * - **Any other page** is its Session's: the socket's URL alone, since the
  *   browser sends the Session's cookie with the upgrade. An operator's page is
@@ -55,7 +55,7 @@ export default defineNuxtPlugin({
 		}
 
 		/**
-		 * A ticket for one socket of `eventId`, for the capability this page holds.
+		 * A Realtime Ticket for one socket of `eventId`, for the capability this page holds.
 		 *
 		 * Refused (401, 403) rejects with `RefusedError`, which the transport
 		 * reports as the refusal: `tokenError`, with retries at the slow rhythm.
@@ -74,14 +74,14 @@ export default defineNuxtPlugin({
 			} catch (error) {
 				const status = answeredStatus(error);
 				if (status !== undefined && REFUSED_STATUSES.includes(status))
-					throw new RefusedError(`No realtime ticket for this Screen Output (${status})`, {
+					throw new RefusedError(`No Realtime Ticket for this Screen Output (${status})`, {
 						cause: error,
 					});
 				throw error;
 			}
 			// An answer with no ticket is the server's defect, not its refusal.
 			if (typeof answer?.ticket !== 'string' || answer.ticket === '')
-				throw new Error('The realtime ticket route answered with no ticket');
+				throw new Error('The Realtime Ticket route answered with no ticket');
 			return answer.ticket;
 		}
 

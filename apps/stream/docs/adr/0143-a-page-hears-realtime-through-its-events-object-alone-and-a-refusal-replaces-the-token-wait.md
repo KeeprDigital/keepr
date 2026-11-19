@@ -10,7 +10,7 @@ ADR-0137 moved realtime onto a Durable Object per Event, and ADR-0140 made the m
 
 **Which address a page asks for is decided by what it holds**, read afresh for each socket.
 
-- **A page holding a Screen Output Asset Capability** in its URL fragment, a Screen Output or a Program Monitor, presents it to `POST /api/realtime/ticket?eventId=<id>` and opens the socket with the ticket it is given. Each socket fetches a ticket of its own.
+- **A page holding a Screen Output Asset Capability** in its URL fragment, a Screen Output or a Program Monitor, presents it to `POST /api/realtime/ticket?eventId=<id>` and opens the socket with the Realtime Ticket it is given. Each socket fetches one of its own.
 - **Any other page** opens `/realtime/socket?eventId=<id>` on the host that served it, `wss` or, on plain HTTP, `ws`. The browser sends its Session's cookie with the upgrade. An editor preview is one of these: it holds no capability.
 
 A page with a capability is never let in as its Session instead. Where its ticket is refused, it is refused.
@@ -30,7 +30,7 @@ Any other failure of the ticket's route, and an answer that carries no ticket, i
 
 **The pages end their sockets on `pagehide`, and a page restored from the back/forward cache reloads**, as before.
 
-**The token route ends, and its grant with it.** ADR-0010's dual grant, the route's exemption from the Session boundary and its own 401, and ADR-0141's account of how it asks who a request belongs to, describe nothing any more. Nothing ever read a channel's history, which only that grant gave. A Screen Output no longer hears its Event's channel: the token granted it and nothing on an output listened there (`SCREEN_CHANNEL_PROTOCOL` 2), and the object's grant is its own Screen's channel alone. Who a socket's caller is, and the ticket, are #1315's to decide.
+**The token route ends, and its grant with it.** ADR-0010's dual grant, the route's exemption from the Session boundary and its own 401, and ADR-0141's account of how it asks who a request belongs to, describe nothing any more. Nothing ever read a channel's history, which only that grant gave. A Screen Output no longer hears its Event's channel: the token granted it and nothing on an output listened there (`SCREEN_CHANNEL_PROTOCOL` 2), and the object's grant is its own Screen's channel alone. Who a socket's caller is, and the Realtime Ticket, are ADR-0142's.
 
 **Every Screen command is safe to hear twice, and that is now a rule.** The server makes a failed publish once more and cannot tell a call that failed from one whose answer was lost, so a command the first call delivered can arrive again. A command therefore says what an output is to do and never turns over what the output last did. #1316 and the debug command's change made each command so; `RULES.md` now holds every later one to it.
 
@@ -41,7 +41,7 @@ Any other failure of the ticket's route, and an answer that carries no ticket, i
 ### Why
 
 - **One transport, because a flag keeps two true** (ADR-0140). And Ably could no longer be run: the app behind the local key was disabled, and CI never had one.
-- **The capability decides, not the page's route.** It is what the page can present, and reading it per socket costs nothing. A Session fallback for a refused ticket would hand an output its Operator's wider grant, under an identity regenerating the capability does not close (#1315).
+- **The capability decides, not the page's route.** It is what the page can present, and reading it per socket costs nothing. A Session fallback for a refused ticket would hand an output its Operator's wider grant, under an identity regenerating the capability does not close (ADR-0142).
 - **No retries before the fault**, because the two cases no longer look alike. Under Ably a blip during an Event switch and a token that could not be minted were the same failed call. Here a blip is a socket that does not open, shown after 8 s as the connection's fault (ADR-0137), and a refusal is a code the app sent.
 - **The fault outlives disposal** because of the hold. Without a hold, a Screen Output that for a moment asks nothing would close its socket and spend a ticket to return. With one, the socket of the page's Event is a standing fact about the page, and so is its refusal.
 - **Retrying a refused channel on a timer would ask a question whose answer cannot change.** The next socket is the first moment it can.
@@ -51,7 +51,7 @@ Any other failure of the ticket's route, and an answer that carries no ticket, i
 
 - **A refused page shows its fault at once**, where it took about 8 s of failed mints before.
 - **`NUXT_ABLY_API_KEY` is read by nothing.** It leaves `deploy.jsonc`'s required secrets and `secrets.jsonc`, so a deploy no longer refuses an Installation without it, and the operator deletes it once this Release is live (the changeset says how). A rollback to a Release from before this one needs it again.
-- **The realtime integration files that wait to hear a write** still listened on Ably when this was written. They move onto the object once a socket's caller is let in (#1315), and then run with no key, in CI.
+- **Every realtime integration test runs with no key, in CI.** A test follows a channel as a page does, by the client transport on a socket of its server's own, and hears what the app's write announced. The suite's one server that held the Ably key, the Event ids each server minted from a block of its own so that two files on one Ably app never heard each other, the diagnosis of a rejected key and the two test-only routes that published to an object are gone: each server's objects are its own.
 - **The root `AGENTS.md` loses its realtime exception to CI** (ADR-0140).
 - **`tokenError` is a name from the transport that is gone.** Renaming it touches every consumer and each of the three suites on the fake, and is left to a change of its own.
 

@@ -68,7 +68,7 @@ export interface RealtimeTransport {
 	 * (`app/modules/realtime-transport/socketTransport.ts`):
 	 *
 	 * - **The socket**, by the app's port or where a Screen Output is given its
-	 *   ticket. It stands, while the socket is retried, until the client is let
+	 *   Realtime Ticket. It stands, while the socket is retried, until the client is let
 	 *   in, whatever has attached by then, or until the page leaves that Event.
 	 *   Disposing what was asked there does not end it.
 	 * - **A channel**, by the Event's object. It ends when the next socket asks

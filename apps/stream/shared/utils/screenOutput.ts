@@ -132,8 +132,8 @@ export const SCREEN_OUTPUT_ASSET_CAPABILITY_PATTERN = /^[\w-]{20,200}$/;
  * inverse of the fragment `screenOutputPath` writes.
  *
  * Here rather than in the one page that used to parse it, because #397 gave the
- * capability two more readers: the realtime plugin presents it for the ticket
- * that admits its socket (ADR-0137), and the Screen lookup by slug presents it
+ * capability two more readers: the realtime plugin presents it for the Realtime
+ * Ticket that admits its socket (ADR-0142), and the Screen lookup by slug presents it
  * as the credential that route requires. Three parsers for one
  * encoding is how a fragment written in one place stops being readable in
  * another; this file already owns writing it, so it owns reading it.

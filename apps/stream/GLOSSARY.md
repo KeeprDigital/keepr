@@ -339,7 +339,7 @@ _Avoid_: short link, output token, output code, share link.
 
 **Realtime Ticket**:
 A short-lived, single-use right to open one realtime socket as a Screen Output, given for its Screen Output Asset Capability.
-_Avoid_: socket token, realtime token — which is the Ably token request a page asks for.
+_Avoid_: socket token, realtime token.
 
 **Output Hand-out**:
 The one place an Operator is handed a Screen Output's URL: Open and Copy URL side by side, each carrying a Screen Output Asset Capability obtained at the moment of the hand-out, and refusing rather than handing out a URL without one.

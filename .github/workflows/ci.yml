@@ -306,8 +306,8 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup
       # Each shard starts its own servers over its own databases, so the halves
-      # share nothing. The `*.realtime.test.ts` files self-skip until they
-      # listen on the Event's object, which needs no key (#1317).
+      # share nothing, the realtime tests included: each server's objects are
+      # in the realtime dev Worker beside it, and need no key.
       - run: pnpm test:integration --run --shard=${{ matrix.shard }}/2
 
   server-and-browser:
