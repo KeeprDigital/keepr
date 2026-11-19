@@ -1,6 +1,6 @@
 # ADR-0023: A Realtime Subscription is held until disposed, and its Event's recovery re-attempts while one waits
 
-Accepted · 2026-10-18 · #609
+Accepted · 2026-10-18 · #609 · Amended by ADR-0137: reconnection, backoff and heartbeat become the transport's own, with no token to mint; the token recovery holds while an Installation is on Ably
 
 ### Decision
 
