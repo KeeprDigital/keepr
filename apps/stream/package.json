@@ -100,7 +100,6 @@
 		"@vitest/coverage-v8": "catalog:test",
 		"@vitest/ui": "catalog:test",
 		"@vue/test-utils": "catalog:test",
-		"ably": "catalog:test",
 		"drizzle-kit": "catalog:server",
 		"esbuild": "catalog:tooling",
 		"happy-dom": "catalog:test",

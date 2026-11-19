@@ -104,8 +104,6 @@ catalogs:
     fast-check: 4.10.2
     '@libsql/client': 0.18.0
     yaml: 2.9.1
-    # Only the realtime integration files that still listen on Ably (#1317).
-    ably: 2.30.0
 
   # Build, types, lint and format
   tooling:

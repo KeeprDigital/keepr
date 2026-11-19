@@ -194,8 +194,7 @@ describe('the API boundary', () => {
 	it('answers 401 rather than 404 for a private path that does not exist', async () => {
 		// Stated on its own because it is a deliberate consequence: the boundary
 		// runs before the router, so a signed-out caller cannot use "Cannot
-		// find any route matching" to map the API. `realtimeDiagnosis.ts` reads
-		// that message for its own purposes and does so from authenticated runs.
+		// find any route matching" to map the API.
 		const { message } = await anonymous('/api/events/1/screens/1/not-a-real-action', {
 			method: 'POST',
 		});

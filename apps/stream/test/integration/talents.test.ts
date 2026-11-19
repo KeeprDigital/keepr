@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { $fetch } from './client';
 import { $fetchRaw } from './helpers';
 
-// What the Talent routes publish is in `talents.realtime.test.ts`, the only part that needs the Ably key.
+// What the Talent routes announce is in `talents.realtime.test.ts`, as a page hears it.
 
 describe('talents API', () => {
 	let eventId: number;

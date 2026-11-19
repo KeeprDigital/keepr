@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { fetch } from './client';
 import { INTEGRATION_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY } from './environment';
 import { PRELOAD_PATH as INTEGRATION_SERVER_PRELOAD } from './serverConnectionDiagnostics.mjs';
-import { INTEGRATION_MODE_ENV, withoutAblyKey } from './state';
+import { INTEGRATION_MODE_ENV } from './state';
 
 const disableFsWatchImport = fileURLToPath(new URL('./disable-fs-watch.mjs', import.meta.url));
 const mockScryfallImport = fileURLToPath(new URL('./mock-scryfall.mjs', import.meta.url));
@@ -34,20 +34,6 @@ export {
 	INTEGRATION_OPERATOR_NAME,
 	INTEGRATION_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY,
 } from './environment';
-
-/**
- * The realtime notices and the diagnosis behind them live in `realtimeDiagnosis`,
- * which imports nothing, so the unit suite can exercise them without the e2e harness.
- * Re-exported here because this file is where the suites look for integration wiring.
- */
-export {
-	diagnoseRealtimePublishFailure,
-	INTEGRATION_ABLY_API_KEY_ENV,
-	INTEGRATION_REALTIME_PUBLISH_FAILED_NOTICE,
-	INTEGRATION_REALTIME_PUBLISH_REJECTED_NOTICE,
-	INTEGRATION_REALTIME_SKIP_NOTICE,
-	SCREEN_COMMAND_ROUTE_REFUSALS,
-} from './realtimeDiagnosis';
 
 /**
  * Which suite owns which Graphic Asset Content padding counts. Claim a free
@@ -116,13 +102,6 @@ export const integrationServerEnv: Record<string, string> = {
 	NUXT_BANDAI_KEEPR_API_KEY: 'integration-bandai-keepr-key',
 	NODE_OPTIONS: nodeOptions,
 };
-
-/**
- * What every server but the realtime one starts with: the same, with the Ably key
- * blanked. Empty, not absent, because `nuxt dev` fills an unset name from `.env`.
- * See `./state.ts` § realtime server.
- */
-export const keylessIntegrationServerEnv = withoutAblyKey(integrationServerEnv);
 
 /**
  * Wrapper around `fetch` that mimics ofetch's `$fetch.raw()` response shape.

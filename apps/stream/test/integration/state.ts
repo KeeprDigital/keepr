@@ -2,7 +2,6 @@ import { rm } from 'node:fs/promises';
 import { availableParallelism } from 'node:os';
 import { resolve } from 'node:path';
 import process from 'node:process';
-import { INTEGRATION_ABLY_API_KEY_ENV } from './realtimeDiagnosis.ts';
 
 export const INTEGRATION_MODE_ENV = 'STREAM_KEEPR_INTEGRATION';
 /**
@@ -29,85 +28,9 @@ export function integrationServerCount(env: NodeJS.ProcessEnv = process.env): nu
 	return Math.max(1, Math.min(4, Math.floor(availableParallelism() / 3)));
 }
 
-/** Event ids one server may mint; no test file creates anywhere near this many Events. */
-export const INTEGRATION_EVENT_ID_BLOCK_SIZE = 1_000_000;
-const INTEGRATION_EVENT_ID_BLOCKS = Math.floor((2 ** 31 - 1) / INTEGRATION_EVENT_ID_BLOCK_SIZE) - 1;
-
-/**
- * The first Event id each of `count` servers mints, one disjoint block apiece (#630).
- *
- * Every server owns its own D1, but all of them publish to one Ably app, and an
- * Event's channels (`event:<id>`, `screen:<id>:*`) are named by its id alone. Left
- * to count from 1, two servers both create Event 17 and a test listening on
- * `event:17` receives the other file's publications. The run's blocks are
- * consecutive from a random start, not from slot 1, so another run on the same
- * Ably app (a second worktree, CI) is unlikely to land on them either. Block 0
- * is never drawn, and every id stays a positive int32 like the small ids a
- * production database mints. `random` returns [0, 1), as `Math.random` does.
- */
-export function integrationEventIdBlocks(
-	count: number,
-	random: () => number = Math.random,
-): number[] {
-	if (count > INTEGRATION_EVENT_ID_BLOCKS)
-		throw new Error(
-			`Cannot give ${count} integration servers disjoint Event ids; at most ${INTEGRATION_EVENT_ID_BLOCKS}`,
-		);
-	const blocks = new Set<number>();
-	let block = 1 + Math.floor(random() * INTEGRATION_EVENT_ID_BLOCKS);
-	while (blocks.size < count) {
-		blocks.add(block);
-		block = (block % INTEGRATION_EVENT_ID_BLOCKS) + 1;
-	}
-	return [...blocks].map((drawn) => drawn * INTEGRATION_EVENT_ID_BLOCK_SIZE);
-}
-
 /** The state directory of the `slot`th server (1-based), matching `VITEST_POOL_ID`. */
 export function integrationServerPersistDir(slot: number): string {
 	return `${DEFAULT_INTEGRATION_WRANGLER_PERSIST_DIR}-${slot}`;
-}
-
-/**
- * § realtime server. One server holds the Ably key, and only the files that test
- * realtime run against it.
- *
- * Every write publishes, and an Event's channels are named by its id, so a server
- * holding the key opens a new channel on the real Ably app for nearly every Event
- * its files create. The account's channel limit is shared with production, and
- * runs from several worktrees exceeded it. So `*.realtime.test.ts` files run
- * first, one at a time, against the one keyed server; every other file runs
- * against a server whose key is blank, where a publish is logged and the write
- * still answers, as in CI.
- *
- * That was Ably's. No server publishes there now (ADR-0140): each publishes to
- * the objects of the Worker beside it, keyed or not. The split and the Event id
- * blocks above stay until the realtime files listen on the object (#1317).
- */
-export const INTEGRATION_REALTIME_TEST_FILES = 'test/integration/**/*.realtime.test.ts';
-/** Set by `vitest.integration.config.ts` on the project that runs those files. */
-export const INTEGRATION_REALTIME_PROJECT_ENV = 'STREAM_KEEPR_INTEGRATION_REALTIME_PROJECT';
-/** The realtime server's address, as `selectServer.ts` reads it. */
-export const INTEGRATION_REALTIME_SERVER_ENV = 'STREAM_KEEPR_INTEGRATION_REALTIME_SERVER';
-/** Set by `selectServer.ts` in a worker whose server holds no key. */
-export const INTEGRATION_KEYLESS_WORKER_ENV = 'STREAM_KEEPR_INTEGRATION_KEYLESS_WORKER';
-export const INTEGRATION_REALTIME_SERVER_PERSIST_DIR = `${DEFAULT_INTEGRATION_WRANGLER_PERSIST_DIR}-realtime`;
-
-/** `env` with the Ably key blanked: empty, not absent, because `nuxt dev` fills an unset name from `.env`. */
-export function withoutAblyKey(env: Record<string, string>): Record<string, string> {
-	return { ...env, [INTEGRATION_ABLY_API_KEY_ENV]: '' };
-}
-
-/**
- * Refuse a realtime test in a file that runs against a keyless server. Without
- * this it would wait out its timeout for a publish that never left.
- */
-export function assertRealtimeTestFile(env: NodeJS.ProcessEnv = process.env) {
-	if (env[INTEGRATION_KEYLESS_WORKER_ENV] !== 'true') return;
-	throw new Error(
-		'This file reads the Ably key, but it runs against an integration server that has none. ' +
-			'Only *.realtime.test.ts files run against the server holding the key: rename this file, ' +
-			'or move its realtime test into one that is. See test/integration/state.ts § realtime server.',
-	);
 }
 
 /**

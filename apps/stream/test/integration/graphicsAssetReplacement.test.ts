@@ -67,7 +67,7 @@ function decodeEvidence(bytes: Uint8Array) {
  * are now one per scenario, which narrows a recurrence to a handful of
  * operations; this narrows it to one. A stalled operation never resolves, so its
  * `finally` never runs and it is the step printed as `never returned` — the two
- * candidate stall sites #123 names (a real Ably REST publish behind every Screen
+ * candidate stall sites #123 names (a realtime publish behind every Screen
  * mutation, and two concurrent replacements of one asset) are separate steps
  * here, and the second has a test to itself.
  */
@@ -173,7 +173,7 @@ describe('the Graphic Asset replacement and explicit adoption', () => {
 
 	/**
 	 * A Screen mutation, so this is one of the two operations #123 suspects: it
-	 * awaits a real Ably REST publish before it answers.
+	 * awaits a realtime publish before it answers.
 	 *
 	 * The `$fetch` here has no explicit response type, so `step`'s type parameter
 	 * would be inferred through Nitro's route table — which overflows the checker
@@ -330,7 +330,7 @@ describe('the Graphic Asset replacement and explicit adoption', () => {
 			revisionId: replaced.result.revisionId,
 		};
 
-		// The second Screen mutation, and the second real Ably REST publish.
+		// The second Screen mutation, and the second realtime publish.
 		await pin(adopted);
 
 		expect(await usageOf(reference.assetId)).toEqual([

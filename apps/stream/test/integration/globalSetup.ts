@@ -3,19 +3,11 @@ import process from 'node:process';
 import { main as reapStrandedRuns } from '../../scripts/reap.mjs';
 import { acquireRunSlots, RUN_SLOT_COSTS } from '@keepr/tooling/scripts/slots.mjs';
 import { INTEGRATION_OPERATOR_COOKIE } from './environment';
-import {
-	INTEGRATION_REALTIME_SKIP_NOTICE,
-	integrationServerEnv,
-	keylessIntegrationServerEnv,
-} from './helpers';
+import { integrationServerEnv } from './helpers';
 import { prepareIntegrationD1 } from './integrationD1';
-import { integrationRealtimeConfigured } from './realtimeKey';
 import { freePorts, INTEGRATION_SERVER_LIST_ENV, startIntegrationServer } from './servers';
 import {
 	announceIntegrationMode,
-	INTEGRATION_REALTIME_SERVER_ENV,
-	INTEGRATION_REALTIME_SERVER_PERSIST_DIR,
-	integrationEventIdBlocks,
 	integrationServerCount,
 	integrationServerPersistDir,
 	resetIntegrationWranglerState,
@@ -44,15 +36,10 @@ async function assertIntegrationServerReady(server: IntegrationServer) {
 	}
 }
 
-async function startReadyServer(
-	persistDir: string,
-	port: number,
-	firstEventId: number,
-	env: Record<string, string>,
-): Promise<IntegrationServer> {
+async function startReadyServer(persistDir: string, port: number): Promise<IntegrationServer> {
 	await resetIntegrationWranglerState(persistDir);
-	await prepareIntegrationD1(persistDir, { firstEventId });
-	const server = await startIntegrationServer({ persistDir, env, port });
+	await prepareIntegrationD1(persistDir);
+	const server = await startIntegrationServer({ persistDir, env: integrationServerEnv, port });
 	try {
 		await assertIntegrationServerReady(server);
 	} catch (error) {
@@ -63,37 +50,21 @@ async function startReadyServer(
 }
 
 /**
- * Start one keyless server per test worker, each over its own database and
- * minting Event ids from its own block, and the realtime server beside them.
+ * Start one server per test worker, each over its own database.
  *
  * Test files share library-wide state, so a server serves one file at a time;
- * `selectServer.ts` pins each worker to the server matching its pool id.
- *
- * The realtime server is the only one given the Ably key, and comes last in
- * the answer (`./state.ts` § realtime server). A run with no key starts none:
- * the realtime files then take the first server, which is idle while they run.
+ * `selectServer.ts` pins each worker to the server matching its pool id. Each
+ * server publishes to, and hands sockets to, the objects of the realtime dev
+ * Worker it started beside itself, which no other server reaches: two servers
+ * that both create Event 17 hear nothing of each other.
  */
-async function startIntegrationServers(): Promise<{
-	servers: IntegrationServer[];
-	realtime: IntegrationServer;
-}> {
-	const specs = Array.from(
-		{
-			length: integrationServerCount(),
-		},
-		(_, index) => ({
-			persistDir: integrationServerPersistDir(index + 1),
-			env: keylessIntegrationServerEnv,
-		}),
+async function startIntegrationServers(): Promise<IntegrationServer[]> {
+	const persistDirs = Array.from({ length: integrationServerCount() }, (_, index) =>
+		integrationServerPersistDir(index + 1),
 	);
-	if (integrationRealtimeConfigured)
-		specs.push({ persistDir: INTEGRATION_REALTIME_SERVER_PERSIST_DIR, env: integrationServerEnv });
-	const ports = await freePorts(specs.length);
-	const firstEventIds = integrationEventIdBlocks(specs.length);
+	const ports = await freePorts(persistDirs.length);
 	const started = await Promise.allSettled(
-		specs.map(({ persistDir, env }, index) =>
-			startReadyServer(persistDir, ports[index]!, firstEventIds[index]!, env),
-		),
+		persistDirs.map((persistDir, index) => startReadyServer(persistDir, ports[index]!)),
 	);
 	const servers = started.flatMap((result) =>
 		result.status === 'fulfilled' ? [result.value] : [],
@@ -103,20 +74,13 @@ async function startIntegrationServers(): Promise<{
 		await Promise.all(servers.map((server) => server.stop()));
 		throw failed.reason;
 	}
-	return {
-		servers,
-		realtime: integrationRealtimeConfigured ? servers.at(-1)! : servers[0]!,
-	};
+	return servers;
 }
 
 export async function setup() {
 	// First: the servers inherit this process's environment, and anything here
 	// that reads the environment must see the same answer they do.
 	announceIntegrationMode();
-
-	// Say this once, before anything runs, so a reader meets the reason for the
-	// skipped tests rather than having to work back to it from a bare skip mark.
-	if (!integrationRealtimeConfigured) console.warn(INTEGRATION_REALTIME_SKIP_NOTICE);
 
 	// The whole machine's run slots, before anything starts: these tests time
 	// real requests against several servers, and another suite beside them, in
@@ -130,7 +94,7 @@ export async function setup() {
 	// persist directories; sweep them before touching that state.
 	await reapStrandedRuns();
 
-	const { servers, realtime } = await startIntegrationServers().catch((error) => {
+	const servers = await startIntegrationServers().catch((error) => {
 		slots.release();
 		throw error;
 	});
@@ -138,9 +102,7 @@ export async function setup() {
 		url,
 		persistDir,
 	});
-	// The pool list may include the realtime server: no pool id reaches past the keyless ones.
 	process.env[INTEGRATION_SERVER_LIST_ENV] = JSON.stringify(servers.map(address));
-	process.env[INTEGRATION_REALTIME_SERVER_ENV] = JSON.stringify(address(realtime));
 
 	return async () => {
 		await Promise.all(servers.map((server) => server.stop()));

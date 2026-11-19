@@ -1,15 +1,12 @@
-import type { InboundMessage } from 'ably';
 import type { ScreenResponse } from '~~/shared/api';
-import Ably from 'ably';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eventRealtimeChannel } from '../../shared/utils/realtimeChannels';
-import { LOAD_TOLERANT_WAIT_MS } from '@keepr/nuxt-layer/test/helpers/loadTolerantBounds';
 import { $fetch, anonymousFetch } from './client';
-import { INTEGRATION_ABLY_API_KEY, integrationRealtimeConfigured } from './realtimeKey';
+import { followAsOperator } from './realtimeFollower';
 
 // A Deck List Screen showing an OP Slot side is released, and says so, when
 // its Slot is deleted (ADR-0057). What it reads is in
-// `featureMatchDeckScreen.test.ts`, which needs no Ably key.
+// `featureMatchDeckScreen.test.ts`.
 
 describe('a Deck List Screen showing a Feature Match Slot side, to its followers', () => {
 	let eventId: number;
@@ -73,50 +70,27 @@ describe('a Deck List Screen showing a Feature Match Slot side, to its followers
 	});
 
 	// The delete clears the Screen's Deck Source in its own write, and announces the Screen.
-	it.skipIf(!integrationRealtimeConfigured)(
-		'is released and announced when its Slot is deleted',
-		async () => {
-			const realtime = new Ably.Realtime(INTEGRATION_ABLY_API_KEY);
-			const channel = realtime.channels.get(eventRealtimeChannel(eventId));
-			let resolveMessage!: (message: InboundMessage) => void;
-			const announced = new Promise<InboundMessage>((resolve) => {
-				resolveMessage = resolve;
+	it('is released and announced when its Slot is deleted', async () => {
+		const follower = await followAsOperator(eventId, eventRealtimeChannel(eventId), [
+			'screen:updated',
+		]);
+
+		try {
+			const before = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens/${screen.id}`);
+			await $fetch(`/api/events/${eventId}/feature-match-slots/${slotId}`, { method: 'DELETE' });
+
+			await follower.hear('screen:updated', (data) => data?.screenId === screen.id);
+
+			const released = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens/${screen.id}`);
+			expect(released.modeConfigs?.deck?.deckSource).toEqual({
+				type: 'featureMatchSlot',
+				slotId: null,
+				side: 'player1',
 			});
-			const listener = (message: InboundMessage) => {
-				if (message.data?.screenId === screen.id) resolveMessage(message);
-			};
-			let timeout: ReturnType<typeof setTimeout> | undefined;
-
-			try {
-				const before = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens/${screen.id}`);
-				await channel.subscribe('screen:updated', listener);
-				await $fetch(`/api/events/${eventId}/feature-match-slots/${slotId}`, { method: 'DELETE' });
-
-				await Promise.race([
-					announced,
-					new Promise<never>((_resolve, reject) => {
-						timeout = setTimeout(
-							() => reject(new Error('Timed out waiting for the Screen announcement')),
-							LOAD_TOLERANT_WAIT_MS,
-						);
-					}),
-				]);
-
-				const released = await $fetch<ScreenResponse>(
-					`/api/events/${eventId}/screens/${screen.id}`,
-				);
-				expect(released.modeConfigs?.deck?.deckSource).toEqual({
-					type: 'featureMatchSlot',
-					slotId: null,
-					side: 'player1',
-				});
-				expect(released.stateVersion).toBe(before.stateVersion + 1);
-				expect(await outputStatus(`feature-match-slots/${slotId}`)).toBe(404);
-			} finally {
-				if (timeout) clearTimeout(timeout);
-				channel.unsubscribe(listener);
-				realtime.close();
-			}
-		},
-	);
+			expect(released.stateVersion).toBe(before.stateVersion + 1);
+			expect(await outputStatus(`feature-match-slots/${slotId}`)).toBe(404);
+		} finally {
+			follower.stop();
+		}
+	});
 });

@@ -1,13 +1,11 @@
-import type { InboundMessage } from 'ably';
 import type { ScreenResponse } from '~~/shared/api';
 import type { BroadcastDeckListResponse } from '~~/shared/types/broadcastDeckList';
-import Ably from 'ably';
 import { describe, expect, it } from 'vitest';
 import { eventRealtimeChannel } from '../../shared/utils/realtimeChannels';
-import { LOAD_TOLERANT_WAIT_MS } from '@keepr/nuxt-layer/test/helpers/loadTolerantBounds';
 import { $fetch, anonymousFetch, fetch } from './client';
 import { queryIntegrationD1 } from './integrationD1';
-import { INTEGRATION_ABLY_API_KEY, integrationRealtimeConfigured } from './realtimeKey';
+import type { RealtimeFollower } from './realtimeFollower';
+import { followAsOperator } from './realtimeFollower';
 
 const initialSource = '1 Integration Bolt (it1) 1';
 const authoredSource = [
@@ -55,7 +53,7 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 	it('proves the complete resource, Deck Source, authority, guard, security, and cascade workflow', async () => {
 		let eventId: number | undefined;
 		let otherEventId: number | undefined;
-		let realtime: Ably.Realtime | undefined;
+		let follower: RealtimeFollower | undefined;
 
 		try {
 			const event = await $fetch('/api/events', {
@@ -321,19 +319,9 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 			expect(wrongCapabilityRead.status).toBe(404);
 			expect(capabilitySelect.status).toBe(401);
 
-			let updateNotice: Promise<InboundMessage> | undefined;
-			let unsubscribeUpdateNotice: (() => void) | undefined;
-			if (integrationRealtimeConfigured) {
-				realtime = new Ably.Realtime(INTEGRATION_ABLY_API_KEY);
-				const channel = realtime.channels.get(eventRealtimeChannel(eventId));
-				let resolveUpdate!: (message: InboundMessage) => void;
-				updateNotice = new Promise<InboundMessage>((resolve) => {
-					resolveUpdate = resolve;
-				});
-				const listener = (message: InboundMessage) => resolveUpdate(message);
-				await channel.subscribe('broadcastDeckList:updated', listener);
-				unsubscribeUpdateNotice = () => channel.unsubscribe(listener);
-			}
+			follower = await followAsOperator(eventId, eventRealtimeChannel(eventId), [
+				'broadcastDeckList:updated',
+			]);
 
 			const updateRequest = $fetch<BroadcastDeckListResponse>(
 				`/api/events/${eventId}/broadcast-deck-lists/${created.id}`,
@@ -352,23 +340,13 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 			expect([2, 3]).toContain(duringUpdate.revision);
 			expect(duringUpdate.entries.length).toBeGreaterThan(0);
 
-			if (updateNotice) {
-				const notice = await Promise.race([
-					updateNotice,
-					new Promise<never>((_resolve, reject) => {
-						setTimeout(
-							() =>
-								reject(new Error('Timed out waiting for Broadcast Deck List update notification')),
-							LOAD_TOLERANT_WAIT_MS,
-						);
-					}),
-				]);
-				unsubscribeUpdateNotice?.();
-				expect(notice.name).toBe('broadcastDeckList:updated');
-				expect(notice.data).toMatchObject({ eventId, listId: created.id, revision: 3 });
-				expect(notice.data).not.toHaveProperty('sourceText');
-				expect(notice.data).not.toHaveProperty('entries');
-			}
+			const notice = await follower.hear(
+				'broadcastDeckList:updated',
+				(data) => data?.listId === created.id,
+			);
+			expect(notice).toMatchObject({ eventId, listId: created.id, revision: 3 });
+			expect(notice).not.toHaveProperty('sourceText');
+			expect(notice).not.toHaveProperty('entries');
 
 			const collection = await $fetch<{
 				broadcastDeckLists: Array<{ id: number; revision: number; name: string }>;
@@ -489,7 +467,7 @@ describe('the Broadcast Deck List merged-result acceptance', () => {
 			expect(cascaded).toEqual([{ lists: 0, entries: 0 }]);
 			eventId = undefined;
 		} finally {
-			realtime?.close();
+			follower?.stop();
 			if (eventId !== undefined) {
 				try {
 					await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });

@@ -75,10 +75,7 @@ export function publishFailureFields(error: unknown) {
  *
  * Fixed text, and deliberately incurious: the failure's own account is in the
  * log line beside it, and a response body is the wrong place for text this
- * server did not write. `test/integration/realtimeDiagnosis.ts` matches on this
- * exact string to tell a failed publish from the route's own answers — that
- * file imports nothing by design, so the string is a literal on both sides and
- * `realtimeDiagnosis.test.ts` pins the two together through the real mapping.
+ * server did not write.
  */
 export const REALTIME_PUBLISH_FAILED_MESSAGE = 'Realtime publish failed';
 
