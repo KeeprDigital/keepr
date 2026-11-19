@@ -77,7 +77,8 @@ async function publish(
 		headers: { 'content-type': 'application/json' },
 		body: JSON.stringify(deliveries),
 	});
-	expect(response.status).toBe(200);
+	// The body says why, when the app's route could not publish.
+	expect(response.status, await response.clone().text()).toBe(200);
 	return (await response.json()) as PublishAnswer[];
 }
 
