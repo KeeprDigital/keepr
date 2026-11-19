@@ -205,7 +205,8 @@ transport.onContinuityLost('some-channel', () => {
 | Presence | An entry also attaches its channel. A watcher is told its channel's members whole; one that comes later is told the members last heard. |
 | `checkNow()` | Pings an open socket, or cuts the wait before the next retry. `checkOnPageEvents` calls it on a page's `online` and on its `visibilitychange` to visible, and does nothing where there is no page. |
 | Nothing asked of it | The socket closes and `connectionState` is `closed`; the next thing asked connects again. |
-| `dispose()` | Ends timers, socket and listeners. |
+| `hold()` | Keeps the socket though nothing else is asked, until the function it returns is called: for a caller whose consumers come and go, where each socket costs an address. A hold is a need like any other, which asks the object for nothing: it connects when there is no connection, is retried through a cut, and shows the fault and a refusal as any other does. Each hold is its own, so the socket is kept until every one is released; the last released with nothing asked closes it. A channel is still forgotten with the last thing asked of it, and is a first attach for whoever asks next. |
+| `dispose()` | Ends timers, socket, listeners and holds. |
 
 The source uses no DOM and no Node API. It takes its `WebSocket` and timers
 from the options, or from `globalThis` when given none, and `tsconfig.client.json`

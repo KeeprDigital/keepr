@@ -63,12 +63,21 @@ function randomId(): string {
  *
  * - **What it reports is the Event last asked for.** A page is on one Event;
  *   while it moves to another, the one it leaves closes behind it.
- * - **Nothing asked is standing by**, `initialized`, where the client transport
- *   says `closed`: a page with no Event open has lost nothing. Only `dispose`
- *   reports `closed`. `suspended` is the client transport's fault, reported once
- *   it has had no connection for 8 s.
+ * - **The Event the page is on keeps its socket**, by the client transport's
+ *   hold, though for a moment the page asks nothing of it: a component swapped,
+ *   a Screen Output changing Screen. Each socket is asked its address, which for
+ *   a Screen Output is a ticket fetched. The page is on an Event from the first
+ *   thing asked of it, its room included, until it asks something of another
+ *   Event, leaves that Event's room for none, or goes away. An Event it has left
+ *   closes its socket with the last thing still asked there, and keeps its
+ *   client transport for a return.
+ * - **A page on no Event is standing by**, `initialized`, where the client
+ *   transport says `closed`: it has lost nothing. Only `dispose` reports
+ *   `closed`. `suspended` is the client transport's fault, reported once it has
+ *   had no connection for 8 s.
  * - **`tokenError` is the refusal**: of the socket itself, or of a channel by
- *   the object. A network that does not answer is never one.
+ *   the object. A network that does not answer is never one. A refused socket's
+ *   stands while the page is on its Event, whatever it asks there.
  * - **`connectionId` is this page's own id**, made once: a write names it and
  *   the echo filter compares (`useRealtimeMessageGate`). Not the object's id for
  *   a socket, which a reconnect replaces and no socket has before it attaches:
@@ -81,6 +90,8 @@ export function createSocketRealtimeTransport(
 	const sockets = new Map<number, EventSocket>();
 	/** The Event last asked for, whose socket the port reports. */
 	let current: EventSocket | null = null;
+	/** The Event the page is on, and what ends the hold that keeps its socket. */
+	let stayed: { readonly socket: EventSocket; readonly release: () => void } | null = null;
 	let disposed = false;
 	/** Read by every reported value and written when any may have changed, so each is reactive. */
 	const reported = shallowRef(0);
@@ -94,9 +105,17 @@ export function createSocketRealtimeTransport(
 	}
 
 	/** The socket of the Event `channel` names, if it has one: nothing is made and nothing moves. */
-	function socketOf(channel: string): SocketTransport | null {
+	function socketOf(channel: string): EventSocket | null {
 		const eventId = realtimeChannelEventId(channel);
-		return (eventId == null ? undefined : sockets.get(eventId))?.transport ?? null;
+		return (eventId == null ? undefined : sockets.get(eventId)) ?? null;
+	}
+
+	/** The page is on `socket`'s Event, or on none: hold that socket open, and let go of the one it was on. */
+	function stayOn(socket: EventSocket | null) {
+		if (stayed?.socket === socket) return;
+		const left = stayed;
+		stayed = socket && { socket, release: socket.transport.hold() };
+		left?.release();
 	}
 
 	/**
@@ -127,6 +146,7 @@ export function createSocketRealtimeTransport(
 			transport.onChange(report);
 		}
 		const answer = of(socket.transport);
+		stayOn(socket);
 		if (current !== socket) {
 			current = socket;
 			report();
@@ -208,6 +228,7 @@ export function createSocketRealtimeTransport(
 		setRoom(room) {
 			if (currentRoom === room) return;
 			const left = [...roomSubscriptions.values()].flat();
+			const leftRoom = currentRoom;
 			roomSubscriptions.clear();
 			currentRoom = room;
 			if (room) {
@@ -217,6 +238,8 @@ export function createSocketRealtimeTransport(
 			}
 			// Left only once the new room is joined, so a move within an Event keeps its socket.
 			for (const unsubscribe of left) unsubscribe();
+			// In no room, the page has left the Event its room was in.
+			if (!room && leftRoom && stayed?.socket === socketOf(leftRoom)) stayOn(null);
 		},
 
 		onRoom(owner, handlers: Partial<RealtimeRoomHandlers>) {
@@ -251,11 +274,11 @@ export function createSocketRealtimeTransport(
 		},
 
 		async leavePresence(channel) {
-			socketOf(channel)?.leavePresence(channel);
+			socketOf(channel)?.transport.leavePresence(channel);
 		},
 
 		async updatePresence(channel, data) {
-			socketOf(channel)?.updatePresence(channel, data);
+			socketOf(channel)?.transport.updatePresence(channel, data);
 		},
 
 		watchPresence<Data extends RealtimePresenceData>(
@@ -285,6 +308,7 @@ export function createSocketRealtimeTransport(
 			roomHandlers.clear();
 			roomSubscriptions.clear();
 			current = null;
+			stayed = null;
 			currentRoom = null;
 			report();
 		},

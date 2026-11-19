@@ -80,6 +80,66 @@ describe("the realtime transport over an Event's object", () => {
 		});
 	});
 
+	// The hold's rules are the client transport's, tested there (`packages/realtime`).
+	// These are the adapter's: which Event's socket it holds, and until when.
+	describe('the Event the page is on', () => {
+		it('keeps its socket when its last Realtime Subscription is disposed, and hears the next on it', async () => {
+			const { realtime, asked, sockets, open } = socketRealtimeRig();
+			const heard = vi.fn();
+			const stop = realtime.onChannel(EVENT, 'player:updated', vi.fn());
+			const socket = await open(1, EVENT);
+
+			stop();
+			realtime.onChannel(EVENT, 'player:updated', heard);
+			await settle();
+			socket.attach(EVENT).publish(EVENT, 'player:updated');
+
+			expect(socket.closed).toBe(false);
+			// The address stands for a Screen Output's ticket fetch: none was asked for again.
+			expect(asked).toEqual([1]);
+			expect(sockets).toHaveLength(1);
+			expect(heard).toHaveBeenCalledOnce();
+		});
+
+		it.each<[string, (realtime: SocketRealtimeRig['realtime']) => void]>([
+			[
+				'asks something of another Event',
+				(realtime) => realtime.onChannel('event:2', 'player:updated', vi.fn()),
+			],
+			['leaves its room for none', (realtime) => realtime.setRoom(null)],
+		])(
+			'closes the socket of the Event it leaves once it %s, and holds it again when it comes back',
+			async (_, leave) => {
+				const { realtime, open } = socketRealtimeRig();
+				realtime.setRoom(EVENT);
+				const left = await open(1);
+
+				leave(realtime);
+				expect(left.closed).toBe(true);
+
+				const stop = realtime.onChannel(EVENT, 'player:updated', vi.fn());
+				const back = await open(1, EVENT);
+				stop();
+				expect(back).not.toBe(left);
+				expect(back.closed).toBe(false);
+			},
+		);
+
+		it('ends with the page, though nothing is asked there', async () => {
+			const { realtime, clock, asked, open } = socketRealtimeRig();
+			realtime.setRoom(EVENT);
+			const held = await open(1);
+
+			realtime.dispose();
+			held.drop();
+			await clock.advance(60_000);
+
+			expect(held.closed).toBe(true);
+			expect(asked).toEqual([1]);
+			expect(realtime.connectionState).toBe('closed');
+		});
+	});
+
 	it('gives a channel handler each message of its type, whole, until it is disposed', async () => {
 		const { realtime, open } = socketRealtimeRig();
 		const updated = vi.fn();
@@ -186,6 +246,22 @@ describe("the realtime transport over an Event's object", () => {
 			expect(replacement).toHaveBeenCalledTimes(replacementHeard);
 			expect(other).toHaveBeenCalledOnce();
 		});
+
+		it('lets an owner that has left hear nothing in the next room either', async () => {
+			const { realtime, open } = socketRealtimeRig();
+			const left = vi.fn();
+			const stays = vi.fn();
+			realtime.setRoom(EVENT);
+			realtime.onRoom('page', { 'player:updated': left });
+			realtime.onRoom('session', { 'player:updated': stays });
+
+			realtime.offRoom('page');
+			realtime.setRoom('event:2');
+			(await open(2, 'event:2')).publish('event:2', 'player:updated');
+
+			expect(left).not.toHaveBeenCalled();
+			expect(stays).toHaveBeenCalledOnce();
+		});
 	});
 
 	describe('the connection it reports', () => {
@@ -225,11 +301,22 @@ describe("the realtime transport over an Event's object", () => {
 				{ connected: false, failing: true },
 			],
 			[
-				'everything asked of it is disposed',
+				'everything asked of its Event is disposed, the page still on it',
 				async (rig) => {
 					const stop = rig.realtime.onChannel(EVENT, 'player:updated', vi.fn());
 					await rig.open(1, EVENT);
 					stop();
+				},
+				// Its Event's socket is held.
+				'connected',
+				{ connected: true, failing: false },
+			],
+			[
+				'it has left its Event for none',
+				async (rig) => {
+					rig.realtime.setRoom(EVENT);
+					await rig.open(1, EVENT);
+					rig.realtime.setRoom(null);
 				},
 				// Standing by, where the client transport says `closed`.
 				'initialized',
@@ -341,20 +428,28 @@ describe("the realtime transport over an Event's object", () => {
 			expect(heard).toHaveBeenCalledOnce();
 		});
 
-		it.each<[string, (rig: SocketRealtimeRig) => Promise<void>]>([
-			['its socket', async (rig) => (await rig.socket()).drop(CLOSE_REFUSED)],
-			[
-				'a channel',
-				async (rig) => (await rig.open(1)).hear({ t: 'refused', channel: SCREEN, what: 'attach' }),
-			],
-		])('ends once what was asked of %s is disposed', async (_, refuse) => {
+		it('ends, when of a channel, once what was asked of the channel is disposed', async () => {
 			const rig = socketRealtimeRig();
 			const stopRefused = rig.realtime.onChannel(SCREEN, 'output:modeDataChanged', vi.fn());
-			await refuse(rig);
+			(await rig.open(1)).hear({ t: 'refused', channel: SCREEN, what: 'attach' });
 			expect(rig.realtime.tokenError).not.toBeNull();
 
 			stopRefused();
 
+			expect(rig.realtime.tokenError).toBeNull();
+		});
+
+		it('stands, when of its socket, whatever the page disposes on its Event, and ends once it leaves', async () => {
+			const rig = socketRealtimeRig();
+			rig.realtime.setRoom(EVENT);
+			const stopRefused = rig.realtime.onChannel(SCREEN, 'output:modeDataChanged', vi.fn());
+			(await rig.socket()).drop(CLOSE_REFUSED);
+
+			// Still on its Event, and still refused there: the next thing asked would be too.
+			stopRefused();
+			expect(rig.realtime.tokenError).not.toBeNull();
+
+			rig.realtime.setRoom(null);
 			expect(rig.realtime.tokenError).toBeNull();
 		});
 
@@ -471,6 +566,8 @@ describe("the realtime transport over an Event's object", () => {
 			rig.online();
 			await settle();
 			expect(rig.asked).toEqual([1, 1]);
+			// And the page is let go of, not only unheard.
+			expect(rig.listening()).toBe(0);
 		});
 	});
 
@@ -497,21 +594,22 @@ describe("the realtime transport over an Event's object", () => {
 			expect(rig.asked).toEqual([1]);
 		});
 
-		it.each<[string, boolean, string[]]>([
-			['entered', true, ['hello', 'leave', 'detach']],
-			['still held', false, []],
-		])('withdraws an entry %s when it leaves', async (_, entered, frames) => {
+		it.each<[string, boolean, string[], Record<string, unknown>]>([
+			['entered', true, ['hello', 'leave', 'detach'], { [SCREEN]: { protocol: 2 } }],
+			['still held', false, ['hello'], {}],
+		])('withdraws an entry %s when it leaves', async (_, entered, frames, saidOnOpening) => {
 			const rig = socketRealtimeRig();
 			await rig.realtime.enterPresence(SCREEN, { protocol: 2 });
 			if (entered) await rig.open(1, SCREEN);
 
 			await rig.realtime.leavePresence(SCREEN);
-			await settle();
+			// The page is still on its Event, whose socket is held: one not yet open opens now.
+			if (!entered) await rig.open(1);
 
 			expect(rig.sockets.flatMap((socket) => socket.frames.map((frame) => frame.t))).toEqual(
 				frames,
 			);
-			expect(rig.realtime.connectionState).toBe('initialized');
+			expect(rig.sockets[0]?.hello?.presence).toEqual(saidOnOpening);
 		});
 
 		it("tells a watcher its channel's members, whole, until it stops watching", async () => {
