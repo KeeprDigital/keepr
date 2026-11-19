@@ -14,6 +14,136 @@ who may hear and enter what.
 
 ## The object
 
+`RealtimeObject` (`src/object`) is one scope's realtime: every socket of the
+scope, a sequence and a catch-up log per channel, and presence. A channel is an
+opaque string. An app's Worker exports the class, binds it as a SQLite-backed
+Durable Object, and names one object per scope:
+
+```ts
+import { connectSocket, refuseSocket, RealtimeObject } from '@keepr/realtime/object';
+
+export { RealtimeObject };
+
+// In the Worker's fetch, for the socket's route:
+const grant = whoIsThis(request); // the app's own rule
+if (!grant) return refuseSocket();
+return connectSocket(env.REALTIME.getByName(scope), request, grant);
+
+// Anywhere the app writes:
+const [{ seq }] = await env.REALTIME.getByName(scope).publish([{ channel, name, data }]);
+// When a credential is withdrawn:
+await env.REALTIME.getByName(scope).disconnect(tag);
+```
+
+| Export | What |
+| --- | --- |
+| `RealtimeObject` | The class. `publish(deliveries)` answers each delivery's `seq` on its channel and the `recipients` it was sent to; `disconnect(tag)` answers how many sockets it closed. |
+| `connectSocket(stub, request, grant)` | Hands a socket's upgrade to a scope's object with what the app grants it. The only way in. |
+| `refuseSocket()` | Answers an upgrade the app refuses: an accepted socket closed with `CLOSE_REFUSED`, which a page can read where it cannot read a 403. |
+| `Grant`, `Delivery`, `PublishAnswer`, `RealtimeObjectOptions`, `RealtimeObjectStub` | Their types. |
+
+### The grant
+
+The app decides who the caller is; the object enforces what it was told.
+
+| Field | What |
+| --- | --- |
+| `identity` | Who the caller is, in the app's terms. A client id replaces only sockets of the same identity. |
+| `hear` | The channels it may attach to, and whose presence it may watch. |
+| `enter` | The channels it may enter presence on. None when left out. |
+| `tags` | Names `disconnect` can close it by, fixed when the socket is accepted. At most 9, of 240 characters. |
+
+A channel is named exactly, or by a prefix ending `*` (`room:12:*`). An attach,
+watch or enter outside the grant is answered with `refused` and changes
+nothing; so is one that would put a socket past the 16 KiB the runtime lets it
+hold. A grant the object cannot hold throws from `connectSocket`: it is the
+app's defect.
+
+The grant goes to the object by RPC and answers a ticket for one socket, which
+the upgrade carries. The object reads nothing else of the request, so nothing a
+caller sends is taken for a grant, and a request that reaches it any other way
+is answered 403. The URL carries only the client's id (`CLIENT_ID_PARAM`).
+
+### What it does
+
+- **Fan-out and order.** A publish gives each delivery the next sequence of its
+  channel and sends it to the sockets attached there. One call's deliveries, and
+  every call's, are heard in the order published, across channels.
+- **Catch-up.** An attach that carries the sequence it held and the epoch it
+  came from is replayed what followed, marked `replayed`. It is `resumed` only
+  when nothing between that sequence and the head was pruned and the epoch is
+  this storage's; otherwise continuity was lost and the consumer re-reads.
+- **Heartbeat.** A `ping` is answered `pong` by the runtime, without waking the
+  object. Every client pings.
+- **Presence** is held in each socket's attachment, with its channels and
+  watches, so all of it outlasts the object's sleep, and in storage for a
+  member that could return, so it outlasts a restart (below). A watcher is sent
+  a channel's members, whole, when it starts to watch and whenever they change.
+- **A client that connects again** under the same id and identity replaces its
+  earlier socket (closed with `CLOSE_SUPERSEDED`) and stands where that stood,
+  under its connection id, until its `hello` says what it wants. No watcher is
+  told unless what it holds changes. It keeps only the places its new grant
+  lets it enter.
+
+A presence entry ends in one of three ways:
+
+| When | Watchers are told |
+| --- | --- |
+| The client sends `leave` or `detach`, or the app calls `disconnect` | At once |
+| Its socket closes | After the grace period, if its client has not returned. At once if it named no client, since nothing can return |
+| Its socket never closes, and its pings stop | When the alarm sweeps it at the limit, closing it with `CLOSE_STALE` |
+
+The alarm is set only while a member is present or held, for the first moment
+one of them could need telling of.
+
+**A restart of the object is a closed socket for every member at once**, and
+no close reaches the object: the runtime stops it, its sockets end, and their
+attachments end with them. So a member whose client named itself is also a row
+in the object's storage (`member`), written when its presence changes: an
+enter, an update that changes its data, a leave, a `hello` or a replacement
+that changes what it holds, a close, a sweep, a `disconnect`. Never for a
+publish. When the object starts, a stored member whose client has no socket is
+held for the grace period from then, under its connection id, as a closed
+socket's is: it is in the members a watcher is sent, its client returning takes
+its place back with no watcher told, `disconnect` drops it, and the alarm tells
+watchers if it does not return. A member that named no client cannot return and
+is not stored: a restart ends it, and the watchers it would have told are gone
+with it.
+
+After a sleep the sockets are still there, so nobody is held. Telling the two
+apart costs one read of that table each time the object starts, and none on a
+publish.
+
+### Timings
+
+A subclass states the timings it changes; nothing reads a variable.
+
+```ts
+export class BriefRealtime extends RealtimeObject<Env> {
+	constructor(ctx: DurableObjectState, env: Env) {
+		super(ctx, env, { graceMs: 2000 });
+	}
+}
+```
+
+| Option | Default | What |
+| --- | --- | --- |
+| `retentionMs` | 2 minutes | How long a channel's log answers a reattach |
+| `graceMs` | 5 s | How long a member whose socket closed is held |
+| `sweepMs` | 45 s | How long a member's pings may have stopped: three of a client's 15 s pings |
+
+### Its tests
+
+`test/object` runs the class in local `workerd` with no credential: Wrangler's
+test harness serves `test/object/worker`, a Worker that exports the class at its
+defaults and under timings short enough to wait out, and grants whatever a test
+asks for. It is never deployed. The tests drive it from Node over `WebSocket`.
+
+The Workers runtime's types are `test/object/worker/worker-configuration.d.ts`,
+generated and committed. `pnpm typecheck` fails while it is stale: after
+bumping `wrangler` or changing that Worker's `wrangler.jsonc`, run
+`pnpm types:object` and commit the result.
+
 ## The client transport
 
 `createSocketTransport` holds one socket to one scope's object and keeps it:
