@@ -68,7 +68,10 @@ interface Admission {
 	until: number;
 }
 
-/** A member whose socket closed, held until its grace period ends or its client returns. */
+/**
+ * A member no socket holds, because its socket closed or a restart closed it:
+ * held until its grace period ends or its client returns.
+ */
 interface HeldMember {
 	client: string;
 	connectionId: string;
@@ -100,7 +103,9 @@ const same = (one: unknown, other: unknown): boolean =>
  * subclass that states other timings, and names one object per scope.
  *
  * A socket's channels, watches, presence and grant live in its attachment, not
- * its tags, because tags are fixed at accept and what a page wants is not.
+ * its tags, because tags are fixed at accept and what a page wants is not. An
+ * attachment outlasts the object's sleep and dies with its socket, so a member
+ * that could return is also in storage, which a restart leaves.
  */
 export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 	readonly #epoch: string;
@@ -125,10 +130,13 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		ctx.storage.sql.exec(
 			'CREATE TABLE IF NOT EXISTS head (channel TEXT PRIMARY KEY, seq INTEGER NOT NULL) WITHOUT ROWID',
 		);
+		// Each member whose client named itself, written when its presence changes. One
+		// whose socket holds it has no `until`; one that is held has the end of its
+		// grace period.
 		ctx.storage.sql.exec(
-			`CREATE TABLE IF NOT EXISTS held (
+			`CREATE TABLE IF NOT EXISTS member (
 				client TEXT PRIMARY KEY, connection TEXT NOT NULL, presence TEXT NOT NULL,
-				tags TEXT NOT NULL, until INTEGER NOT NULL
+				tags TEXT NOT NULL, until INTEGER
 			) WITHOUT ROWID`,
 		);
 		// A wiped object starts a new epoch, so a client holding a sequence from the
@@ -140,6 +148,27 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		}
 		this.#epoch = epoch;
 		ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(PING, PONG));
+		this.#holdTheLost();
+	}
+
+	/**
+	 * A restart closes every socket of the scope and tells the object of none.
+	 * So when the object starts, a member the storage says a socket holds, whose
+	 * client has no socket, is held from now as a closed socket's is. After a
+	 * sleep every socket is still here, and nobody is held.
+	 */
+	#holdTheLost(): void {
+		const stored = this.ctx.storage.sql
+			.exec<{ client: string }>('SELECT client FROM member WHERE until IS NULL')
+			.toArray();
+		if (stored.length === 0) return;
+		const here = new Set(this.#sockets().map(({ attachment }) => attachment.client));
+		const lost = stored.filter(({ client }) => !here.has(client));
+		if (lost.length === 0) return;
+		const until = Date.now() + this.#graceMs;
+		for (const { client } of lost)
+			this.ctx.storage.sql.exec('UPDATE member SET until = ? WHERE client = ?', until, client);
+		void this.ctx.blockConcurrencyWhile(() => this.#schedule());
 	}
 
 	/**
@@ -187,7 +216,7 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 				Object.assign(inherited, was.presence);
 				connectionId = was.connectionId;
 			}
-			const held = this.#takeHeld(client);
+			const held = this.#held().find((member) => member.client === client);
 			if (held) {
 				Object.assign(inherited, held.presence);
 				connectionId ??= held.connectionId;
@@ -217,6 +246,8 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 			attachment.presence = {};
 			socket.serializeAttachment(attachment);
 		}
+		// The place it stood in is now this socket's, or nobody's.
+		if (Object.keys(inherited).length > 0) this.#record(attachment);
 		this.#tellWatchers(left);
 		if (kept.length > 0) await this.#schedule();
 		return new Response(null, { status: 101, webSocket: pair[0] });
@@ -275,12 +306,13 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 			const was = this.#retire(socket, CLOSE_REFUSED, 'refused');
 			if (!was) continue;
 			closed += 1;
+			this.#record({ ...was, presence: {} });
 			for (const channel of Object.keys(was.presence)) left.add(channel);
 		}
 		// A member in its grace period has no socket to close, and no place to keep.
 		for (const held of this.#held()) {
 			if (!held.tags.includes(tag)) continue;
-			this.#takeHeld(held.client);
+			this.ctx.storage.sql.exec('DELETE FROM member WHERE client = ?', held.client);
 			for (const channel of Object.keys(held.presence)) left.add(channel);
 		}
 		this.#tellWatchers(left);
@@ -326,7 +358,9 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 				const present = Object.hasOwn(attachment.presence, channel);
 				delete attachment.presence[channel];
 				this.#keep(socket, attachment);
-				if (present) this.#tellWatchers([channel]);
+				if (!present) return;
+				this.#record(attachment);
+				this.#tellWatchers([channel]);
 				return;
 			}
 			case 'enter':
@@ -337,7 +371,10 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 					!Object.hasOwn(attachment.presence, channel) || !same(attachment.presence[channel], data);
 				attachment.presence[channel] = data;
 				if (!this.#keep(socket, attachment)) return refuse('enter');
-				if (changed) this.#tellWatchers([channel]);
+				if (changed) {
+					this.#record(attachment);
+					this.#tellWatchers([channel]);
+				}
 				await this.#schedule();
 			}
 		}
@@ -361,16 +398,34 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 	async #closed(attachment: Attachment | null): Promise<void> {
 		const channels = Object.keys(attachment?.presence ?? {});
 		if (!attachment || channels.length === 0) return;
-		if (attachment.client === undefined || this.#graceMs <= 0) return this.#tellWatchers(channels);
+		if (attachment.client === undefined || this.#graceMs <= 0) {
+			this.#record({ ...attachment, presence: {} });
+			return this.#tellWatchers(channels);
+		}
+		this.#record(attachment, Date.now() + this.#graceMs);
+		await this.#schedule();
+	}
+
+	/**
+	 * Write a client's member to storage, where a restart cannot lose it: what
+	 * its socket holds, or with `until`, what is held for it. Called only when
+	 * its presence changes, never for a publish. A socket that named no client
+	 * cannot return, and is not written.
+	 */
+	#record(attachment: Attachment, until: number | null = null): void {
+		if (attachment.client === undefined) return;
+		if (Object.keys(attachment.presence).length === 0) {
+			this.ctx.storage.sql.exec('DELETE FROM member WHERE client = ?', attachment.client);
+			return;
+		}
 		this.ctx.storage.sql.exec(
-			'INSERT OR REPLACE INTO held (client, connection, presence, tags, until) VALUES (?, ?, ?, ?, ?)',
+			'INSERT OR REPLACE INTO member (client, connection, presence, tags, until) VALUES (?, ?, ?, ?, ?)',
 			attachment.client,
 			attachment.connectionId,
 			JSON.stringify(attachment.presence),
 			JSON.stringify(attachment.tags),
-			Date.now() + this.#graceMs,
+			until,
 		);
-		await this.#schedule();
 	}
 
 	/**
@@ -382,7 +437,9 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		const now = Date.now();
 		const left = new Set<string>();
 		const ended = this.ctx.storage.sql
-			.exec<{ presence: string }>('DELETE FROM held WHERE until <= ? RETURNING presence', now)
+			.exec<{
+				presence: string;
+			}>('DELETE FROM member WHERE until IS NOT NULL AND until <= ? RETURNING presence', now)
 			.toArray();
 		for (const { presence } of ended)
 			for (const channel of Object.keys(JSON.parse(presence) as object)) left.add(channel);
@@ -390,6 +447,7 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 			if (Object.keys(attachment.presence).length === 0) continue;
 			if (this.#lastSeen(socket, attachment) + this.#sweepMs > now) continue;
 			this.#retire(socket, CLOSE_STALE, 'stale');
+			this.#record({ ...attachment, presence: {} });
 			for (const channel of Object.keys(attachment.presence)) left.add(channel);
 		}
 		this.#tellWatchers(left);
@@ -445,6 +503,7 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		for (const channel of attachment.watches)
 			if (!changed.has(channel)) this.#send(socket, this.#presenceFrame(channel));
 		for (const each of refused) this.#send(socket, JSON.stringify(each));
+		if (changed.size > 0) this.#record(attachment);
 		this.#tellWatchers(changed);
 		if (Object.keys(attachment.presence).length > 0) await this.#schedule();
 	}
@@ -556,9 +615,12 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		return attachment;
 	}
 
+	/** The members no socket holds: each in its grace period. */
 	#held(): HeldMember[] {
 		return this.ctx.storage.sql
-			.exec<HeldRow>('SELECT client, connection, presence, tags FROM held')
+			.exec<HeldRow>(
+				'SELECT client, connection, presence, tags FROM member WHERE until IS NOT NULL',
+			)
 			.toArray()
 			.map((row) => ({
 				client: row.client,
@@ -566,13 +628,6 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 				presence: JSON.parse(row.presence) as Record<string, unknown>,
 				tags: JSON.parse(row.tags) as string[],
 			}));
-	}
-
-	/** The member held for `client`, no longer held. */
-	#takeHeld(client: string): HeldMember | undefined {
-		const held = this.#held().find((member) => member.client === client);
-		if (held) this.ctx.storage.sql.exec('DELETE FROM held WHERE client = ?', client);
-		return held;
 	}
 
 	#presenceFrame(channel: string): string {
@@ -614,7 +669,7 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 	 */
 	async #schedule(): Promise<void> {
 		let next = this.ctx.storage.sql
-			.exec<{ until: number | null }>('SELECT MIN(until) AS until FROM held')
+			.exec<{ until: number | null }>('SELECT MIN(until) AS until FROM member')
 			.one().until;
 		for (const { socket, attachment } of this.#sockets()) {
 			if (Object.keys(attachment.presence).length === 0) continue;

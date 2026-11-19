@@ -76,8 +76,9 @@ is answered 403. The URL carries only the client's id (`CLIENT_ID_PARAM`).
 - **Heartbeat.** A `ping` is answered `pong` by the runtime, without waking the
   object. Every client pings.
 - **Presence** is held in each socket's attachment, with its channels and
-  watches, so all of it outlasts the object's sleep. A watcher is sent a
-  channel's members, whole, when it starts to watch and whenever they change.
+  watches, so all of it outlasts the object's sleep, and in storage for a
+  member that could return, so it outlasts a restart (below). A watcher is sent
+  a channel's members, whole, when it starts to watch and whenever they change.
 - **A client that connects again** under the same id and identity replaces its
   earlier socket (closed with `CLOSE_SUPERSEDED`) and stands where that stood,
   under its connection id, until its `hello` says what it wants. No watcher is
@@ -94,6 +95,24 @@ A presence entry ends in one of three ways:
 
 The alarm is set only while a member is present or held, for the first moment
 one of them could need telling of.
+
+**A restart of the object is a closed socket for every member at once**, and
+no close reaches the object: the runtime stops it, its sockets end, and their
+attachments end with them. So a member whose client named itself is also a row
+in the object's storage (`member`), written when its presence changes: an
+enter, an update that changes its data, a leave, a `hello` or a replacement
+that changes what it holds, a close, a sweep, a `disconnect`. Never for a
+publish. When the object starts, a stored member whose client has no socket is
+held for the grace period from then, under its connection id, as a closed
+socket's is: it is in the members a watcher is sent, its client returning takes
+its place back with no watcher told, `disconnect` drops it, and the alarm tells
+watchers if it does not return. A member that named no client cannot return and
+is not stored: a restart ends it, and the watchers it would have told are gone
+with it.
+
+After a sleep the sockets are still there, so nobody is held. Telling the two
+apart costs one read of that table each time the object starts, and none on a
+publish.
 
 ### Timings
 

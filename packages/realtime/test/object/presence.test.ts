@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { CLOSE_STALE, CLOSE_SUPERSEDED } from '../../src/protocol.ts';
 import { sleep } from './client.ts';
 import type { TestClient } from './client.ts';
-import { startServer } from './server.ts';
+import { anyone, startServer } from './server.ts';
 import type { Scope, Server } from './server.ts';
 import { BRIEF_GRACE_MS, BRIEF_SWEEP_MS } from './timings.ts';
 
@@ -248,6 +248,145 @@ describe('a member whose socket closes', () => {
 		expect(late.members(ROOM)).toEqual([
 			{ connectionId: earlier.connectionId, data: { name: 'same' } },
 		]);
+	}, 15_000);
+});
+
+// A restart closes every socket of the scope at once, and no close reaches the object.
+describe('a member whose object restarts', () => {
+	it('is there for a watcher that returns first, and keeps its place when its client returns', async () => {
+		const scope = server.scope();
+		const before = await watcher(scope);
+		const earlier = await member(scope, { name: 'same' }, 'client-1');
+		const unnamed = await member(scope, 'cannot return');
+		await before.sync();
+
+		await scope.restart();
+		await Promise.all([before.closed, earlier.socket.closed, unnamed.socket.closed]);
+		const watching = await watcher(scope);
+		const again = await member(scope, { name: 'same' }, 'client-1');
+		await settled(again.socket, watching);
+
+		// One frame, on watching: the member that named a client, never seen to leave.
+		expect(watching.presence(ROOM).map(({ members }) => members)).toEqual([
+			[{ connectionId: earlier.connectionId, data: { name: 'same' } }],
+		]);
+		expect(again.connectionId).toBe(earlier.connectionId);
+	});
+
+	it('is told of after the grace period when its client does not return', async () => {
+		const scope = server.scope('BRIEF_GRACE');
+		await member(scope, 1, 'client-1');
+
+		// Measured from before the restart, so a slow machine can only lengthen it.
+		const restarting = Date.now();
+		await scope.restart();
+		const watching = await watcher(scope);
+		const held = watching.members(ROOM);
+		await watching.waitFor(
+			'the member to go',
+			() => watching.members(ROOM)?.length === 0,
+			BRIEF_GRACE_MS * 4,
+		);
+
+		expect(held).toHaveLength(1);
+		expect(Date.now() - restarting).toBeGreaterThanOrEqual(BRIEF_GRACE_MS);
+	}, 15_000);
+
+	it('is dropped at once by a disconnect of its tag', async () => {
+		const scope = server.scope();
+		const present = scope.connect({ ...anyone, tags: ['key:1'] }, { client: 'client-1' });
+		await present.hello({ presence: { [ROOM]: 1 } });
+
+		await scope.restart();
+		const watching = await watcher(scope);
+		const held = watching.members(ROOM);
+		await scope.disconnect('key:1');
+		await watching.sync();
+
+		expect(held).toHaveLength(1);
+		expect(watching.members(ROOM)).toEqual([]);
+	});
+
+	it('is held with what it last had: an update is kept', async () => {
+		const scope = server.scope();
+		const present = await member(scope, { version: 1 }, 'client-1');
+		present.socket.send({ t: 'update', channel: ROOM, data: { version: 2 } });
+		await present.socket.sync();
+
+		await scope.restart();
+		const watching = await watcher(scope);
+
+		expect(watching.members(ROOM)).toEqual([
+			{ connectionId: present.connectionId, data: { version: 2 } },
+		]);
+	});
+
+	// Whoever was told of as gone before the restart is not brought back by it.
+	it.each([
+		{
+			how: 'left',
+			binding: 'DEFAULTS' as const,
+			go: async (socket: TestClient) => {
+				socket.send({ t: 'leave', channel: ROOM });
+				await socket.sync();
+			},
+		},
+		{
+			how: 'was disconnected',
+			binding: 'DEFAULTS' as const,
+			go: async (socket: TestClient, scope: Scope) => {
+				await scope.disconnect('key:1');
+				await socket.closed;
+			},
+		},
+		{
+			how: 'was swept',
+			binding: 'BRIEF_SWEEP' as const,
+			go: async (socket: TestClient) => {
+				await socket.closed;
+			},
+		},
+		{
+			how: 'gave up its place on connecting again',
+			binding: 'DEFAULTS' as const,
+			go: async (_socket: TestClient, scope: Scope) => {
+				const again = scope.connect({ ...anyone, tags: ['key:1'] }, { client: 'client-1' });
+				await again.hello();
+			},
+		},
+	])(
+		'is not held when it $how before the restart',
+		async ({ binding, go }) => {
+			const scope = server.scope(binding);
+			const present = scope.connect({ ...anyone, tags: ['key:1'] }, { client: 'client-1' });
+			await present.hello({ presence: { [ROOM]: 1 } });
+			await go(present, scope);
+
+			await scope.restart();
+			const watching = await watcher(scope);
+
+			expect(watching.members(ROOM)).toEqual([]);
+		},
+		15_000,
+	);
+});
+
+describe('a member whose object sleeps', () => {
+	it('is neither held nor dropped: it is counted once, and no watcher is told', async () => {
+		const scope = server.scope('BRIEF_GRACE');
+		const watching = await watcher(scope);
+		const present = await member(scope, 1, 'client-1');
+		await watching.sync();
+		const told = watching.presence(ROOM).length;
+
+		await scope.hibernate();
+		const late = await watcher(scope);
+		await sleep(BRIEF_GRACE_MS + 300);
+		await settled(present.socket, watching);
+
+		expect(late.members(ROOM)).toEqual([{ connectionId: present.connectionId, data: 1 }]);
+		expect(watching.presence(ROOM)).toHaveLength(told);
+		expect(present.socket.isClosed()).toBe(false);
 	}, 15_000);
 });
 
