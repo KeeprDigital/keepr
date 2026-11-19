@@ -1,0 +1,6 @@
+{
+	// The tests and their fixture app are a third program: nothing in the layer imports them.
+	"extends": "../.nuxt/tsconfig.json",
+	"files": ["../../test/object/worker/worker-configuration.d.ts"],
+	"include": ["../.nuxt/nuxt.d.ts", "../.nuxt/nuxt.node.d.ts", "."]
+}

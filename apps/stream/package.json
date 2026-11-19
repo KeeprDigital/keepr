@@ -67,6 +67,7 @@
 		"@jsquash/jpeg": "catalog:images",
 		"@jsquash/webp": "catalog:images",
 		"@keepr/nuxt-layer": "workspace:*",
+		"@keepr/realtime": "workspace:*",
 		"@nuxt/fonts": "catalog:framework",
 		"@nuxt/image": "catalog:framework",
 		"@nuxt/ui": "catalog:framework",

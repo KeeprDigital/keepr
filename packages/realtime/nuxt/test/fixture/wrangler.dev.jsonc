@@ -1,0 +1,13 @@
+{
+	"$schema": "../../../node_modules/wrangler/config-schema.json",
+	// What `nuxt dev` binds. The class is in the Worker the layer starts beside
+	// the dev server, so the binding names that Worker.
+	"name": "realtime-fixture-local",
+	"compatibility_date": "2026-07-16",
+	"compatibility_flags": ["nodejs_compat"],
+	"durable_objects": {
+		"bindings": [
+			{ "name": "REALTIME", "class_name": "RealtimeObject", "script_name": "keepr-realtime-dev" }
+		]
+	}
+}

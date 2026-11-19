@@ -1,0 +1,6 @@
+{
+	// What a Worker runs: the server program `nuxt prepare` writes, under the
+	// Workers runtime's types (`../tsconfig.json` says whose).
+	"extends": "../.nuxt/tsconfig.server.json",
+	"files": ["../../test/object/worker/worker-configuration.d.ts"]
+}

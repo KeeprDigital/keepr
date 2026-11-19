@@ -78,6 +78,14 @@ foundation that is no product's own. A file there has the path it would have
 here, is auto-imported the same way, and is named in an import as
 `@keepr/nuxt-layer/<path>`. The layer registers no route and no middleware.
 
+It also extends realtime's layer, `@keepr/realtime/nuxt` (ADR-0138): the
+Worker's entry, which exports the class of the Durable Object every Environment
+binds as `REALTIME` and hands a socket on `/realtime/socket` to it, and the
+Worker that holds that class beside `nuxt dev`, which the dev server starts and
+stops itself (`packages/realtime/README.md` at the repository's root). Who may
+hear what is `server/routes/realtime/port.ts`. It refuses every socket until
+the pages move onto the object (#1315); until then realtime is Ably's.
+
 ## Subsystem map
 
 Where each subsystem is operated here, named in `GLOSSARY.md`, and decided in
