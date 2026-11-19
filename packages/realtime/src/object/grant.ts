@@ -18,10 +18,19 @@ export interface Grant {
 	enter?: readonly string[];
 	/**
 	 * Names the app can later disconnect it by (`disconnect`), fixed when the
-	 * socket is accepted: a credential's id, so regenerating it closes the
-	 * sockets it admitted.
+	 * socket is accepted: a credential's holder and the credential, so replacing
+	 * it closes the sockets the earlier ones admitted and spares the new one's.
 	 */
 	tags?: readonly string[];
+}
+
+/** What a disconnect spares. */
+export interface DisconnectOptions {
+	/**
+	 * A tag whose sockets stay, and go on being let in: the credential that
+	 * replaced the ones withdrawn, where `tag` names their holder.
+	 */
+	except?: string;
 }
 
 /** A grant as the object holds it. */

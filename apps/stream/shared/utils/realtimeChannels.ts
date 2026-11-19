@@ -45,6 +45,16 @@ export function screenOutputRealtimeClientId(screenId: number): string {
 }
 
 /**
+ * The tag a Screen Output's socket also carries: which of its Screen's
+ * capabilities let it in, by that capability's version. Regenerating the
+ * capability closes the Screen's sockets and spares the ones that carry the new
+ * version's (`server/modules/screen-output-assets/runtime.ts`).
+ */
+export function screenOutputCapabilityRealtimeTag(screenId: number, version: number): string {
+	return `${screenOutputRealtimeClientId(screenId)}:capability:${version}`;
+}
+
+/**
  * The Event a realtime channel belongs to, or null for unrecognized shapes.
  * Every channel built above encodes its Event; the transport uses this to
  * find the Event's socket without callers passing the Event separately.

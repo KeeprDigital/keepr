@@ -26,11 +26,20 @@ interface ScreenOutputAssetCapabilityManagerDependencies {
 		) => Promise<CapabilityScreen | undefined>;
 	};
 	/**
-	 * Close the realtime sockets the Screen's outputs hold (ADR-0137). `rotate`
-	 * calls it once the regenerated capability is stored, and never before.
+	 * Close the realtime sockets the Screen's outputs hold, but for the ones the
+	 * capability of `capabilityVersion` let in (ADR-0137, ADR-0142). `rotate`
+	 * calls it once the regenerated capability is stored, and never before,
+	 * with that capability's version.
 	 */
-	disconnectOutputs: (screen: { eventId: number; screenId: number }) => Promise<unknown>;
+	disconnectOutputs: (screen: FormerOutputs) => Promise<unknown>;
 	generateSeed?: () => string;
+}
+
+/** A Screen whose outputs are to be closed, and the version of the capability that replaced theirs. */
+interface FormerOutputs {
+	eventId: number;
+	screenId: number;
+	capabilityVersion: number;
 }
 
 /** How often `rotate` asks for the Screen's sockets to be closed before it gives up. */
@@ -119,7 +128,7 @@ export function createScreenOutputAssetCapabilityManager(
 	 * reads it, because those sockets go on hearing their Screen's channel until
 	 * they drop. They cannot return: the former capability is given no ticket.
 	 */
-	async function disconnectOutputs(screen: { eventId: number; screenId: number }) {
+	async function disconnectOutputs(screen: FormerOutputs) {
 		let failure: unknown;
 		for (let attempt = 0; attempt < DISCONNECT_ATTEMPTS; attempt++) {
 			try {
@@ -165,7 +174,11 @@ export function createScreenOutputAssetCapabilityManager(
 			screen.assetCapabilityVersion,
 		);
 		if (!updated) return { outcome: 'missing' };
-		await disconnectOutputs({ eventId: updated.eventId, screenId: updated.id });
+		await disconnectOutputs({
+			eventId: updated.eventId,
+			screenId: updated.id,
+			capabilityVersion: prepared.persisted.assetCapabilityVersion,
+		});
 		return {
 			outcome: 'available',
 			capability: prepared.capability,

@@ -22,7 +22,9 @@ ADR-0137 decided who may open a realtime socket: a Session by its cookie, with t
 
 **Whoever is not let in is answered `null`**, which the layer answers with a socket closed `CLOSE_REFUSED`: a signed-out visitor, a User with no App access, another origin's page, an Event that does not exist or is not named, and every refused ticket. **A caller who could not be judged is neither let in nor refused**: when Keepr Accounts cannot be asked, or D1 does not answer, the port throws, the layer passes the server's 5xx on, and a page reads a failed attempt and tries again. No path that throws admits.
 
-**The disconnect is called by the capability's manager**, `rotate` in `server/modules/screen-output-assets/manager.ts`, after the write that stores the regenerated capability has answered with its row, and never when that write did not land. It closes the sockets tagged `screen-output:<Screen id>` in the Event's object.
+**The disconnect is called by the capability's manager**, `rotate` in `server/modules/screen-output-assets/manager.ts`, after the write that stores the regenerated capability has answered with its row, and never when that write did not land. It closes the sockets tagged `screen-output:<Screen id>` in the Event's object, but for the regenerated capability's.
+
+**A Screen Output's socket carries two tags**: `screen-output:<Screen id>`, and `screen-output:<Screen id>:capability:<version>` for the capability its ticket was given for, read by the statement that spends the ticket. Regenerating disconnects the first and spares the new version's. The object goes on refusing what a disconnect withdrew for a minute (`withdrawalMs`, `packages/realtime`), so a socket whose ticket was spent just before the regeneration, and which reaches the object just after the disconnect, is refused there.
 
 **A disconnect that fails does not fail the regeneration.** The capability is already regenerated and nothing can undo that. The disconnect is tried twice, and then the server logs `screen_output_disconnect_failed` with the Event and the Screen, saying outputs opened under the former capability may still be connected and that regenerating again closes them. The route still answers the new capability.
 
@@ -44,11 +46,14 @@ ADR-0137 decided who may open a realtime socket: a Session by its cookie, with t
 - **Falling through to the Session when a ticket is refused**, as `GET /api/realtime/token` does for a capability. See Why.
 - **`optionalIdentity` for the Session**, which answers `null` while Keepr Accounts cannot be asked. It would turn an outage into a refusal.
 - **Failing the regeneration when its sockets cannot be closed.** See Why.
+- **Refusing by the Screen's tag alone after a regeneration.** It would refuse the regenerated capability's outputs for the same minute, which is when an Operator pastes the new link.
+- **A time on the grant, compared with the disconnect's.** Two clocks, the Worker's and the object's. A version is compared with nothing.
 
 ### Consequences
 
 - **`/api/realtime/ticket` is outside the Session boundary**, an exact path beside `/api/realtime/token`. It reads no Session.
-- **A socket let in during a regeneration can outlive it.** The port reads the capability and answers; the layer then hands the socket to the object. A regeneration that commits and disconnects between the two does not close that socket. The gap is the hand-off's own, a few milliseconds, and closing it needs the object to know when a grant was decided: it is the layer's to close, not this route's.
+- **A socket let in during a regeneration does not outlive it**, so long as it reaches the object within a minute of the disconnect. The port reads the capability and answers; the layer then hands the socket to the object. A regeneration that commits and disconnects between the two finds no socket to close, and the object refuses it when it arrives. A hand-off slower than a minute would get through; nothing a caller sends slows one, since the port's answer is the last thing read from it.
+- **A disconnect that fails leaves that gap open too**, along with the sockets it did not close. Regenerating again closes both: it disconnects every socket of the Screen that is not the newest capability's.
 - **A Session cookie Keepr Accounts renews on the port's question is not passed to the browser.** The layer's resolver hands a renewed cookie to the next request that asks, once, and the hand-off reads the port's answer and drops its headers. When that request is a socket's, the browser keeps the cookie it had. It is the layer's to pass on.
 - **Deleting a Screen does not close its outputs' sockets.** Its tickets go with it, so none returns.
 - **The Ably token route is untouched** and keeps its own grant until the pages leave Ably (ADR-0140).

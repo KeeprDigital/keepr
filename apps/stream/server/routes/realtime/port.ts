@@ -10,6 +10,7 @@ import {
 	eventRealtimeChannel,
 	eventRealtimeScope,
 	screenChannelWildcard,
+	screenOutputCapabilityRealtimeTag,
 	screenOutputRealtimeClientId,
 	screenRealtimeChannel,
 } from '~~/shared/utils/realtimeChannels';
@@ -109,12 +110,20 @@ async function admitScreenOutput(ticket: unknown, eventId: number): Promise<Admi
 	const spent = await createD1RealtimeTickets(graphicsCatalogueClient()).spend({ ticket, eventId });
 	if (!spent) return null;
 
-	// The name regenerating the Screen's capability disconnects
-	// (`server/modules/screen-output-assets/runtime.ts`).
+	// Two tags: the name regenerating the Screen's capability disconnects, and
+	// the capability that let this socket in, which that disconnect spares when
+	// it is the regenerated one (`server/modules/screen-output-assets/runtime.ts`).
+	// A ticket spent a moment before a regeneration carries the former
+	// capability's, so the object refuses its socket though it arrives after.
 	const identity = screenOutputRealtimeClientId(spent.screenId);
 	const channel = screenRealtimeChannel(eventId, spent.screenId);
 	return {
 		scope: eventRealtimeScope(eventId),
-		grant: { identity, hear: [channel], enter: [channel], tags: [identity] },
+		grant: {
+			identity,
+			hear: [channel],
+			enter: [channel],
+			tags: [identity, screenOutputCapabilityRealtimeTag(spent.screenId, spent.capabilityVersion)],
+		},
 	};
 }

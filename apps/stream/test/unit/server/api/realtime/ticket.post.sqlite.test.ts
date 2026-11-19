@@ -84,7 +84,7 @@ describe('POST /api/realtime/ticket', () => {
 		expect(asked.responseHeaders).toEqual({ 'cache-control': 'private, no-store' });
 		expect(
 			await createD1RealtimeTickets(database).spend({ ticket: answer.ticket, eventId }),
-		).toEqual({ screenId: screen!.id });
+		).toMatchObject({ screenId: screen!.id });
 	});
 
 	it.each([

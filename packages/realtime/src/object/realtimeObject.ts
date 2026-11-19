@@ -9,8 +9,8 @@ import type {
 } from '../protocol.ts';
 import { isChannel, readClientFrame } from './frames.ts';
 import { allows, holdGrant } from './grant.ts';
-import type { Grant, HeldGrant } from './grant.ts';
-import { TICKET_HEADER } from './handOff.ts';
+import type { DisconnectOptions, Grant, HeldGrant } from './grant.ts';
+import { refuseSocket, TICKET_HEADER } from './handOff.ts';
 
 /** One message for one channel. */
 export interface Delivery {
@@ -39,12 +39,20 @@ export interface RealtimeObjectOptions {
 	 * there. Two thirds of `sweepMs` when left out: two of its three missed pings.
 	 */
 	askMs?: number;
+	/** How long a disconnect goes on turning away the sockets it withdrew. */
+	withdrawalMs?: number;
 }
 
 export const DEFAULT_RETENTION_MS: number = 2 * 60 * 1000;
 export const DEFAULT_GRACE_MS: number = 5000;
 /** Three missed pings of a client that sends one every 15 s. */
 export const DEFAULT_SWEEP_MS: number = 45_000;
+/**
+ * Longer than a hand-off takes, from the app's port deciding a grant to the
+ * object accepting its socket: a grant decided before a disconnect reaches the
+ * object within this of it, or not at all.
+ */
+export const DEFAULT_WITHDRAWAL_MS: number = 60_000;
 
 /** What a silent member is sent before it is swept. It says nothing else, so it is one text. */
 const ASK: string = JSON.stringify({ t: 'ask' } satisfies ServerFrame);
@@ -121,6 +129,7 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 	readonly #graceMs: number;
 	readonly #sweepMs: number;
 	readonly #askMs: number;
+	readonly #withdrawalMs: number;
 	/** In memory: a ticket is spent by the request that follows the call that made it. */
 	readonly #admissions = new Map<string, Admission>();
 	/**
@@ -138,6 +147,7 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		this.#sweepMs = options.sweepMs ?? DEFAULT_SWEEP_MS;
 		// An ask no earlier than the sweep is never sent: the sweep comes first.
 		this.#askMs = Math.min(options.askMs ?? Math.round((this.#sweepMs * 2) / 3), this.#sweepMs);
+		this.#withdrawalMs = options.withdrawalMs ?? DEFAULT_WITHDRAWAL_MS;
 		ctx.storage.sql.exec(
 			`CREATE TABLE IF NOT EXISTS log (
 				channel TEXT NOT NULL, seq INTEGER NOT NULL, name TEXT NOT NULL,
@@ -156,6 +166,11 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 				client TEXT PRIMARY KEY, connection TEXT NOT NULL, presence TEXT NOT NULL,
 				tags TEXT NOT NULL, until INTEGER
 			) WITHOUT ROWID`,
+		);
+		// Each tag a disconnect withdrew, and the tag it spared, until the withdrawal
+		// ends. In storage, so the object's sleep or restart does not end it early.
+		ctx.storage.sql.exec(
+			'CREATE TABLE IF NOT EXISTS withdrawn (tag TEXT PRIMARY KEY, spared TEXT, until INTEGER NOT NULL) WITHOUT ROWID',
 		);
 		// A wiped object starts a new epoch, so a client holding a sequence from the
 		// old one is told it lost continuity instead of being replayed nothing.
@@ -220,6 +235,8 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		)
 			return new Response('A socket reaches this object through connectSocket.', { status: 403 });
 		const { grant, client } = admission;
+		// Its grant was decided before a disconnect that has since withdrawn it.
+		if (this.#isWithdrawn(grant.tags)) return refuseSocket();
 
 		// The client's earlier socket, if it is still here, is one the client gave
 		// up on; one that closed is held. The new one stands where that stood, under
@@ -313,14 +330,32 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 	}
 
 	/**
-	 * Close every socket whose grant carried `tag`, with `CLOSE_REFUSED`, and
-	 * tell watchers at once: this is how an app withdraws what it granted.
-	 * Answers how many sockets it closed.
+	 * Withdraw what the app granted under `tag`: close every socket whose grant
+	 * carried it, with `CLOSE_REFUSED`, tell watchers at once, and for
+	 * `withdrawalMs` let in no socket whose grant carries it. That last is for
+	 * the socket whose grant the app's port decided before this and which
+	 * reaches the object after: without it, that socket would outlive what
+	 * admitted it. Answers how many sockets it closed.
+	 *
+	 * A grant that also carries `except` is spared, here and for as long: so an
+	 * app that replaces a credential names the holder as `tag` and the new
+	 * credential as `except`, and the new one's sockets are let in at once.
 	 */
-	disconnect(tag: string): number {
+	disconnect(tag: string, { except }: DisconnectOptions = {}): number {
+		const now = Date.now();
+		this.ctx.storage.sql.exec('DELETE FROM withdrawn WHERE until <= ?', now);
+		this.ctx.storage.sql.exec(
+			'INSERT OR REPLACE INTO withdrawn (tag, spared, until) VALUES (?, ?, ?)',
+			tag,
+			except ?? null,
+			now + this.#withdrawalMs,
+		);
+		const spared = (tags: readonly string[]): boolean =>
+			except !== undefined && tags.includes(except);
 		const left = new Set<string>();
 		let closed = 0;
 		for (const socket of this.ctx.getWebSockets(grantTag(tag))) {
+			if (spared(this.#read(socket)?.tags ?? [])) continue;
 			const was = this.#retire(socket, CLOSE_REFUSED, 'refused');
 			if (!was) continue;
 			closed += 1;
@@ -329,12 +364,24 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		}
 		// A member in its grace period has no socket to close, and no place to keep.
 		for (const held of this.#held()) {
-			if (!held.tags.includes(tag)) continue;
+			if (!held.tags.includes(tag) || spared(held.tags)) continue;
 			this.ctx.storage.sql.exec('DELETE FROM member WHERE client = ?', held.client);
 			for (const channel of Object.keys(held.presence)) left.add(channel);
 		}
 		this.#tellWatchers(left);
 		return closed;
+	}
+
+	/** Whether a disconnect still standing withdrew a grant of `tags`. */
+	#isWithdrawn(tags: readonly string[]): boolean {
+		if (tags.length === 0) return false;
+		return this.ctx.storage.sql
+			.exec<{
+				tag: string;
+				spared: string | null;
+			}>('SELECT tag, spared FROM withdrawn WHERE until > ?', Date.now())
+			.toArray()
+			.some(({ tag, spared }) => tags.includes(tag) && !(spared !== null && tags.includes(spared)));
 	}
 
 	override async webSocketMessage(socket: WebSocket, raw: string | ArrayBuffer): Promise<void> {

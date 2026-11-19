@@ -27,6 +27,9 @@ async function createEvent(): Promise<number> {
 	return event!.id;
 }
 
+/** Not the column's default, so a version answered is one read from the Screen. */
+const CAPABILITY_VERSION = 4;
+
 let screens = 0;
 /** A Screen of `eventId` whose capability's digest is the one answered. */
 async function createScreen(eventId: number): Promise<{ id: number; capabilityDigest: string }> {
@@ -40,10 +43,14 @@ async function createScreen(eventId: number): Promise<{ id: number; capabilityDi
 			slug: `screen-${screens}`,
 			assetCapabilitySeed: `seed-${screens}`,
 			assetCapabilityDigest: capabilityDigest,
+			assetCapabilityVersion: CAPABILITY_VERSION,
 		})
 		.returning({ id: schema.screens.id });
 	return { id: screen!.id, capabilityDigest };
 }
+
+/** What a ticket spent for `screen` answers. */
+const admitted = () => ({ screenId: screen.id, capabilityVersion: CAPABILITY_VERSION });
 
 const storedTickets = async () => await db.select().from(schema.realtimeTickets);
 
@@ -100,7 +107,7 @@ describe('giving a Realtime Ticket', () => {
 		await given();
 
 		expect(await storedTickets()).toHaveLength(2);
-		expect(await tickets.spend({ ticket: live, eventId })).toEqual({ screenId: screen.id });
+		expect(await tickets.spend({ ticket: live, eventId })).toEqual(admitted());
 	});
 });
 
@@ -109,7 +116,7 @@ describe('spending a Realtime Ticket', () => {
 		const ticket = await given();
 		now += REALTIME_TICKET_LIFETIME_MS - 1;
 
-		expect(await tickets.spend({ ticket, eventId })).toEqual({ screenId: screen.id });
+		expect(await tickets.spend({ ticket, eventId })).toEqual(admitted());
 	});
 
 	it('admits one of two sockets that present it at once', async () => {
@@ -120,7 +127,7 @@ describe('spending a Realtime Ticket', () => {
 			tickets.spend({ ticket, eventId }),
 		]);
 
-		expect(answers.filter(Boolean)).toEqual([{ screenId: screen.id }]);
+		expect(answers.filter(Boolean)).toEqual([admitted()]);
 	});
 
 	it.each<[string, (ticket: string) => Promise<{ ticket: string; eventId: number }>]>([

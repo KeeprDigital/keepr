@@ -73,15 +73,19 @@ export function createD1RealtimeTickets(database: D1Database, now: () => number 
 		},
 
 		/**
-		 * Spend `ticket` on a socket of `eventId`: the Screen it was given for, or
-		 * `null`. It admits when it is unexpired, was given for this Event, and
-		 * the capability it was given for is still its Screen's.
+		 * Spend `ticket` on a socket of `eventId`: the Screen it was given for and
+		 * the version of that Screen's capability, or `null`. It admits when it is
+		 * unexpired, was given for this Event, and the capability it was given for
+		 * is still its Screen's.
 		 *
 		 * A ticket presented is spent whatever the answer: the row is deleted by
 		 * the statement that reads it, and that statement reads everything the
 		 * answer depends on, the Screen's capability included, at one moment.
 		 */
-		async spend(input: { ticket: string; eventId: number }): Promise<{ screenId: number } | null> {
+		async spend(input: {
+			ticket: string;
+			eventId: number;
+		}): Promise<{ screenId: number; capabilityVersion: number } | null> {
 			if (!REALTIME_TICKET_PATTERN.test(input.ticket)) return null;
 			const spent = await database
 				.prepare(`
@@ -91,26 +95,27 @@ export function createD1RealtimeTickets(database: D1Database, now: () => number 
 					event_id AS eventId,
 					screen_id AS screenId,
 					expires_at AS expiresAt,
-					EXISTS (
-						SELECT 1 FROM screens screen
+					(
+						SELECT screen.asset_capability_version FROM screens screen
 						WHERE screen.id = realtime_tickets.screen_id
 							AND screen.event_id = realtime_tickets.event_id
 							AND screen.asset_capability_digest = realtime_tickets.capability_digest
-					) AS capabilityIsCurrent
+					) AS currentCapabilityVersion
 			`)
 				.bind(await ticketDigest(input.ticket))
 				.all<{
 					eventId: number;
 					screenId: number;
 					expiresAt: number;
-					capabilityIsCurrent: number;
+					/** `null` once the capability it was given for is no longer its Screen's. */
+					currentCapabilityVersion: number | null;
 				}>();
 			const [row] = spent.results;
 			if (!row) return null;
 			if (row.eventId !== input.eventId) return null;
 			if (row.expiresAt <= now()) return null;
-			if (row.capabilityIsCurrent !== 1) return null;
-			return { screenId: row.screenId };
+			if (row.currentCapabilityVersion === null) return null;
+			return { screenId: row.screenId, capabilityVersion: row.currentCapabilityVersion };
 		},
 	};
 }

@@ -38,14 +38,25 @@ return connectSocket(env.REALTIME.getByName(scope), request, grant);
 const [{ seq }] = await env.REALTIME.getByName(scope).publish([{ channel, name, data }]);
 // When a credential is withdrawn:
 await env.REALTIME.getByName(scope).disconnect(tag);
+// When one replaces it: the holder's sockets close, but for the new credential's.
+await env.REALTIME.getByName(scope).disconnect(holder, { except: credential });
 ```
+
+**`disconnect` withdraws, it does not only close.** For `withdrawalMs` after it,
+the object lets in no socket whose grant carries the tag: accepted, then closed
+with `CLOSE_REFUSED`. This is for the socket whose grant the app decided just
+before the disconnect and which reaches the object just after, which would
+otherwise outlive the credential that admitted it. A grant that also carries
+`except` is spared, then and after. So a tag that must be usable again at once
+names what was withdrawn, not only who held it. The withdrawal is in the
+object's storage, and outlasts its sleep and its restart.
 
 | Export | What |
 | --- | --- |
-| `RealtimeObject` | The class. `publish(deliveries)` answers each delivery's `seq` on its channel and the `recipients` it was sent to; `disconnect(tag)` answers how many sockets it closed. |
+| `RealtimeObject` | The class. `publish(deliveries)` answers each delivery's `seq` on its channel and the `recipients` it was sent to; `disconnect(tag, { except })` answers how many sockets it closed. |
 | `connectSocket(stub, request, grant)` | Hands a socket's upgrade to a scope's object with what the app grants it. The only way in. |
 | `refuseSocket()` | Answers an upgrade the app refuses: an accepted socket closed with `CLOSE_REFUSED`, which a page can read where it cannot read a 403. |
-| `Grant`, `Delivery`, `PublishAnswer`, `RealtimeObjectOptions`, `RealtimeObjectStub` | Their types. |
+| `Grant`, `Delivery`, `DisconnectOptions`, `PublishAnswer`, `RealtimeObjectOptions`, `RealtimeObjectStub` | Their types. |
 
 ### The grant
 
@@ -56,7 +67,7 @@ The app decides who the caller is; the object enforces what it was told.
 | `identity` | Who the caller is, in the app's terms. A client id replaces only sockets of the same identity. |
 | `hear` | The channels it may attach to, and whose presence it may watch. |
 | `enter` | The channels it may enter presence on. None when left out. |
-| `tags` | Names `disconnect` can close it by, fixed when the socket is accepted. At most 9, of 240 characters. |
+| `tags` | Names `disconnect` can close it by, and refuse it by for a while after, fixed when the socket is accepted. At most 9, of 240 characters. |
 
 A channel is named exactly, or by a prefix ending `*` (`room:12:*`). An attach,
 watch or enter outside the grant is answered with `refused` and changes
@@ -151,6 +162,7 @@ export class BriefRealtime extends RealtimeObject<Env> {
 | `graceMs` | 5 s | How long a member whose socket closed is held |
 | `sweepMs` | 45 s | How long a member's pings may have stopped: three of a client's 15 s pings |
 | `askMs` | Two thirds of `sweepMs`: 30 s | How long a member's pings may have stopped before it is asked: two of those pings. At `sweepMs` or more, nobody is asked |
+| `withdrawalMs` | 60 s | How long a `disconnect` goes on refusing the sockets it withdrew: longer than a hand-off takes, from the app's port deciding a grant to the object accepting its socket |
 
 ### Its tests
 
@@ -271,7 +283,7 @@ await useRealtimeScope(event, `room:${room}`).publish([{ channel, name, data }])
 | --- | --- |
 | The Worker entry (`nuxt/server/worker/entry.ts`) | A production build's entry, wrapping Nitro's. It exports `RealtimeObject` and hands an upgrade on `socketPath` to a scope's object. Every other request is Nitro's. Only a build takes it: under `nuxt dev` it would replace Nitro's dev entry. |
 | `defineRealtimePort(port)` | The route that answers the app's port: given the event, a scope and a grant, or `null` to refuse. The layer registers no route, so the app exports this from a file of its own. |
-| `useRealtimeScope(event, scope)` | One scope's object on the app's own binding: `publish(deliveries)` and `disconnect(tag)`, by RPC. Takes the Worker's bindings where there is no request, as in a scheduled handler. |
+| `useRealtimeScope(event, scope)` | One scope's object on the app's own binding: `publish(deliveries)` and `disconnect(tag, { except })`, by RPC. Takes the Worker's bindings where there is no request, as in a scheduled handler. |
 | The dev Worker (`nuxt/server/worker/dev.ts`) | Holds the class beside `nuxt dev` (below). |
 
 `defineRealtimePort` and `useRealtimeScope` are auto-imported from

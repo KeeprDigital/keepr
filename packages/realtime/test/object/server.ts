@@ -5,7 +5,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { createTestHarness } from 'wrangler';
-import type { Grant } from '../../src/object/grant.ts';
+import type { DisconnectOptions, Grant } from '../../src/object/grant.ts';
 import { CLIENT_ID_PARAM } from '../../src/protocol.ts';
 import { openClient } from './client.ts';
 import type { TestClient } from './client.ts';
@@ -17,7 +17,8 @@ export type Binding =
 	| 'BRIEF_LOG'
 	| 'BRIEF_GRACE'
 	| 'BRIEF_SWEEP'
-	| 'BRIEF_ASK';
+	| 'BRIEF_ASK'
+	| 'BRIEF_WITHDRAWAL';
 
 export interface Delivery {
 	channel: string;
@@ -58,7 +59,7 @@ export interface Scope {
 	/** The same door, asked for no socket: a plain request. */
 	request(grant?: Grant): Promise<Response>;
 	publish(...deliveries: Delivery[]): Promise<PublishAnswer[]>;
-	disconnect(tag: string): Promise<number>;
+	disconnect(tag: string, options?: DisconnectOptions): Promise<number>;
 	/** Ask the object for a ticket, as `connectSocket` does, and hold it instead of using it. */
 	admit(grant?: Grant): Promise<Ticketed>;
 	/** A ticket another scope's object answered, carried to this one. */
@@ -136,7 +137,7 @@ export async function startServer(): Promise<Server> {
 				},
 				request: (grant = anyone) => fetch(door('connect', grant)),
 				publish: (...deliveries) => call('publish', deliveries),
-				disconnect: (tag) => call('disconnect', tag),
+				disconnect: (tag, options = {}) => call('disconnect', tag, options),
 				admit: async (grant = anyone) => carry(await call<string>('admit', grant)),
 				carry: ({ ticket }) => carry(ticket),
 				call,

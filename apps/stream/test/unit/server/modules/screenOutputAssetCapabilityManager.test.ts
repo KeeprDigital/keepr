@@ -171,7 +171,12 @@ describe('screen Output Asset Capability lifecycle', () => {
 		await manager().rotate({ eventId: 3, screenId: 17 });
 
 		expect(order).toEqual(['stored', 'disconnected']);
-		expect(disconnectOutputs).toHaveBeenCalledWith({ eventId: 3, screenId: 17 });
+		// The version it spares is the one just stored: the former was 1.
+		expect(disconnectOutputs).toHaveBeenCalledWith({
+			eventId: 3,
+			screenId: 17,
+			capabilityVersion: 2,
+		});
 	});
 
 	it.each([

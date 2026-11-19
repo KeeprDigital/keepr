@@ -54,6 +54,8 @@ const [screen] = await db
 		slug: 'main',
 		assetCapabilitySeed: 'seed',
 		assetCapabilityDigest: 'capability-digest',
+		// Not the column's default: the tag below names the version read.
+		assetCapabilityVersion: 3,
 	})
 	.returning({ id: schema.screens.id });
 const screenId = screen!.id;
@@ -138,7 +140,7 @@ describe('a Screen Output', () => {
 				identity: `screen-output:${screenId}`,
 				hear: [`screen:${eventId}:${screenId}`],
 				enter: [`screen:${eventId}:${screenId}`],
-				tags: [`screen-output:${screenId}`],
+				tags: [`screen-output:${screenId}`, `screen-output:${screenId}:capability:3`],
 			},
 		});
 		expect(requestIdentity).not.toHaveBeenCalled();
