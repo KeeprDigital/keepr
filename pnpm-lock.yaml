@@ -538,6 +538,9 @@ importers:
       '@keepr/nuxt-layer':
         specifier: workspace:*
         version: link:../../packages/nuxt-layer
+      '@keepr/realtime':
+        specifier: workspace:*
+        version: link:../../packages/realtime
       '@nuxt/fonts':
         specifier: 1.2.0
         version: 1.2.0(@nuxt/schema@4.6.1)(cac@7.1.0)(confbox@0.3.1)(db0@0.3.4(@libsql/client@0.18.0)(drizzle-orm@0.45.4(@libsql/client@0.18.0)(kysely@0.29.5)))(dotenv@17.4.2)(esbuild@0.28.2)(giget@3.3.1)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.33.0)(magic-string@1.4.3)(mlly@1.8.2)(postcss@8.5.32)(rolldown@1.2.19)(rollup@4.68.2)(srvx@1.0.5)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
