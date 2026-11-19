@@ -54,19 +54,31 @@ export interface RealtimeTransport {
 	readonly isConnected: boolean;
 	readonly error: Error | null;
 	/**
-	 * Why this client currently has no token for the Event it is on, when it has none.
+	 * Why this client is not let hear on the Event it is on, when it is not: under
+	 * Ably it has no token for the Event, and over an Event's object it was
+	 * refused (ADR-0137).
 	 *
-	 * Separate from `error`, which is about the connection: the socket can be
-	 * perfectly connected while every channel for the active Event is unsubscribable
-	 * because its token could not be minted. That state used to exist only as a
-	 * console warning, so an operator whose Event switch lost its token saw a
-	 * healthy-looking page that had silently stopped receiving anything (#307).
+	 * Separate from `error`, which is about the connection: the connection can be
+	 * perfectly connected while nothing on the active Event can be heard. That
+	 * state used to exist only as a console warning, so an operator whose Event
+	 * switch lost its token saw a healthy-looking page that had silently stopped
+	 * receiving anything (#307).
 	 *
-	 * Set only after the mint's own retries are exhausted, so a network blip during
-	 * an Event switch never puts a fault in front of anyone. It then stands while
-	 * the transport keeps re-attempting for the Realtime Subscriptions still
-	 * waiting, and clears only once they have all attached, or when the last of
-	 * them is disposed (#609, ADR-0023).
+	 * When it is set and when it ends is each transport's own:
+	 *
+	 * - **Ably** (`app/plugins/realtime.client.ts`). Set only after the mint's own
+	 *   retries are exhausted, so a network blip during an Event switch never puts
+	 *   a fault in front of anyone. It then stands while the transport keeps
+	 *   re-attempting for the Realtime Subscriptions still waiting, and clears only
+	 *   once they have all attached, or when the last of them is disposed (#609,
+	 *   ADR-0023).
+	 * - **An Event's object** (`app/modules/realtime-transport/socketTransport.ts`).
+	 *   Set when the refusal is heard, with no retries first: a refusal is the
+	 *   app's answer, which a network blip never gives. A refused socket's stands,
+	 *   while the socket is retried, until the client is let in, whatever has
+	 *   attached by then, or until the page leaves that Event. A channel the object
+	 *   refused has its own, which ends when the next socket asks again or the
+	 *   last thing asked of the channel is disposed.
 	 */
 	readonly tokenError: Error | null;
 	setRoom: (room: string | null) => void;
