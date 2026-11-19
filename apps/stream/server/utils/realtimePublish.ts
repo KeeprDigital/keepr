@@ -6,7 +6,6 @@ import type {
 	ScreenChannelDelivery,
 } from '~~/server/modules/screen-output-publication';
 import type { MessagePayload, MessageType, ScreenCommandRequest } from '../types/messages';
-import Ably from 'ably';
 import { publishToScreenOutputs } from '~~/server/modules/screen-output-publication';
 import {
 	eventRealtimeChannel,
@@ -19,58 +18,19 @@ import {
 	realtimeMessageBytes,
 	screenCommandMessageTypes,
 } from '../types/messages';
-import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
 import { publishFailureFields, RealtimePublishError } from './realtimePublishFailure';
 
 /**
  * What the server publishes, and to where: every message goes by RPC to its
- * Event's object, on the Worker's own binding (ADR-0137, ADR-0140). Nothing
- * here publishes to Ably.
- *
- * The file keeps its name, and `getAblyClient`, for `GET /api/realtime/token`,
- * which still signs Ably token requests for the pages. Both go when the pages
- * move onto the object (#1317).
+ * Event's object, on the Worker's own binding (ADR-0137, ADR-0140).
  */
 
-/** The environment name behind `runtimeConfig.ablyApiKey`, as the operator sets it. */
-const ABLY_API_KEY_SETTING = 'NUXT_ABLY_API_KEY';
-
-let ablyClient: Ably.Rest | null = null;
-
 /**
- * Ably's client, for the token route alone, or the name of the setting that
- * would have produced one.
- *
- * A `ServiceConfigurationError` rather than a bare throw because of where this
- * failure is read: an unset key is an unfinished deployment, and the only person
- * who can finish it is the one holding the response. A plain `Error` matches no
- * branch of `mapPublicNitroError`, so the 5xx sanitizer rewrote it to 'Internal
- * Server Error' and the operator got a stack-free 500 for a one-line environment
- * change — the exact #233 symptom, one setting over (#267). The classification is
- * what makes the message public: it names a setting and never a value.
- */
-export function getAblyClient(): Ably.Rest {
-	if (!ablyClient) {
-		const config = useRuntimeConfig();
-
-		const serverApiKey = config.ablyApiKey;
-
-		if (!serverApiKey) {
-			throw new ServiceConfigurationError(ABLY_API_KEY_SETTING, 'is not configured');
-		}
-
-		ablyClient = new Ably.Rest(serverApiKey);
-	}
-
-	return ablyClient;
-}
-
-/**
- * The id a page names itself by. On the object's transport a page makes its
- * own: 32 hex characters. On Ably it is the connection's id, a short
- * base64url-style token (a connection key adds `!`). Generous against both,
- * tight against the header being an arbitrary channel: the value rides inside
- * every message published with it, so an unbounded one inflates each of them.
+ * The id a page names itself by, which it makes itself: 32 hex characters
+ * (`app/modules/realtime-transport/socketTransport.ts`). Generous against
+ * that, tight against the header being an arbitrary channel: the value rides
+ * inside every message published with it, so an unbounded one inflates each of
+ * them.
  */
 const ORIGIN_CONNECTION_ID_SHAPE = /^[\w!-]{1,64}$/;
 

@@ -40,20 +40,12 @@ const API_PREFIX = '/api/';
  * - `/api/release` — which Release this Worker serves (ADR-0119). The deploy's
  *   verify reads it with no session, and it names only the app, its version
  *   and the commit, all public in the repository.
- * - `/api/realtime/token` — an Ably token request. Outside the boundary
- *   because the Screen Output page needs one and has no Session; the route
- *   grants only to a Session or a Screen Output Asset Capability, and refuses
- *   a request carrying neither (ADR-0010's dual grant).
  *
  * An entry is an exact path so that a sibling added beside it is private until
  * somebody decides otherwise: written as a prefix, it would hand every future
  * route under it the same exemption without anyone deciding to.
  */
-export const SESSION_EXEMPT_API_PATHS: readonly string[] = [
-	'/api/time',
-	'/api/release',
-	'/api/realtime/token',
-];
+export const SESSION_EXEMPT_API_PATHS: readonly string[] = ['/api/time', '/api/release'];
 
 /**
  * Exempt by prefix, because each of these is one surface with many paths.

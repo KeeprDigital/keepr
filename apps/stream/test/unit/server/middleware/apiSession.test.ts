@@ -118,7 +118,6 @@ describe('the Session boundary', () => {
 	it.each([
 		['/api/time', 'GET'],
 		['/api/release', 'GET'],
-		['/api/realtime/token', 'GET'],
 		['/api/public/events/1/on-air', 'GET'],
 		['/api/screen-output/screens/7/asset-capability-session', 'POST'],
 		['/event/1/screens/2', 'GET'],

@@ -10,7 +10,7 @@ import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1'
 import { tcgPlusDeck, tcgPlusExport } from '~~/test/helpers/tcgPlusExport';
 
 // The TCG+ Import (ADR-0074) through its preview and import routes, from
-// synthetic exports. bandai-keepr is faked at its bulk lookup port, Ably at publish.
+// synthetic exports. bandai-keepr is faked at its bulk lookup port, realtime at its publish.
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });

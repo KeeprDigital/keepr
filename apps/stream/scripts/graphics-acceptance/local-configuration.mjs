@@ -2,10 +2,9 @@
  * What a local acceptance run needs the checkout to have, checked before the
  * run touches the installation.
  *
- * #223 made the integration suite announce a missing Ably key, and #130 made
- * `nuxt dev` warn when the required `NUXT_` names are unusable. Neither reaches
- * here: an acceptance harness is its own `node` process, started separately
- * from whatever installation it points at, so it inherits neither notice. A
+ * #130 made `nuxt dev` warn when the required `NUXT_` names are unusable. That
+ * does not reach here: an acceptance harness is its own `node` process, started separately
+ * from whatever installation it points at, so it does not inherit the notice. A
  * fresh worktree running `pnpm accept graphics-delivery` therefore got 503s from
  * capability minting and, in the ticket's words, never reached anything to
  * assert — with no named cause anywhere in the transcript (#274).

@@ -178,7 +178,7 @@ export interface PublishedMessage {
 
 /**
  * Fakes the boundaries a One Piece write reaches past the database, for a
- * suite on `createSqliteD1Harness`: `db` stands in for the server's, Ably
+ * suite on `createSqliteD1Harness`: `db` stands in for the server's, realtime
  * publishes are recorded in `published`, Broadcast Graphics bindings are not
  * refreshed, and the bulk lookup is whichever fake `lookup()` answers when
  * called. Call it before importing the server code under test.

@@ -406,7 +406,7 @@ describe('the realtime message each Event Data change sends', () => {
 	);
 
 	it('names the message type when a strict Melee Sync notification fails', async () => {
-		const cause = new Error('Ably unavailable');
+		const cause = new Error('realtime unavailable');
 		mockPublishMessageStrict.mockRejectedValueOnce(cause);
 
 		await expect(

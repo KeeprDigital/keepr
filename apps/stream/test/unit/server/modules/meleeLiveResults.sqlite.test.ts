@@ -14,7 +14,7 @@ import {
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /*
- * A Live Results tick against real SQL: only Melee, Ably and the clock are stood in
+ * A Live Results tick against real SQL: only Melee, the realtime publish and the clock are stood in
  * for. It polls the Current Round, announces only what changed, and writes the
  * Event row only for poll state; the runner keeps one Event's failure from the rest.
  */

@@ -278,7 +278,7 @@ describe('staging .env for the preview', () => {
 	it('says so before replacing a staged copy that differs', () => {
 		const plan = previewStagingPlan({
 			source,
-			existing: `${source}NUXT_ABLY_API_KEY=live\n`,
+			existing: `${source}NUXT_BANDAI_KEEPR_API_KEY=live\n`,
 			stale: false,
 		});
 		expect(plan.stage).toBe(true);

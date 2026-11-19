@@ -31,24 +31,6 @@ function loggedFields(spy: ReturnType<typeof vi.spyOn>) {
 	return JSON.parse(loggedLine(spy));
 }
 
-class MockAblyRest {
-	static callCount = 0;
-	static lastKey: string | undefined;
-	constructor(key: string) {
-		MockAblyRest.callCount++;
-		MockAblyRest.lastKey = key;
-	}
-
-	static reset() {
-		MockAblyRest.callCount = 0;
-		MockAblyRest.lastKey = undefined;
-	}
-}
-
-vi.mock('ably', () => ({
-	default: { Rest: MockAblyRest },
-}));
-
 // These cases are the Event channel's and a Screen command's. What a publish
 // then tells the Screens is pinned over real SQL in
 // `screenOutputPublication.sqlite.test.ts`.
@@ -56,10 +38,6 @@ vi.mock('~~/server/modules/screen-output-publication', () => ({
 	publishToScreenOutputs: async () => {},
 }));
 
-vi.stubGlobal(
-	'useRuntimeConfig',
-	vi.fn(() => ({ ablyApiKey: 'test-key' })),
-);
 vi.stubGlobal('getHeader', vi.fn());
 
 // Every publish goes by RPC to its Event's object, on the Worker's own binding
@@ -92,9 +70,9 @@ describe('getOriginConnectionId', () => {
 		expect(getHeader).toHaveBeenCalledWith(mockEvent, 'x-realtime-connection-id');
 	});
 
-	it('accepts the id a page makes itself, and the shapes Ably issues', async () => {
-		// A page on the object names itself with 32 hex characters. Ably's connection
-		// ids are base64url-style tokens; its connection keys carry `!`.
+	it('accepts the id a page makes itself, and any other of the shape', async () => {
+		// A page names itself with 32 hex characters. The shape is wider: word
+		// characters, `-` and `!`, at most 64.
 		const { getOriginConnectionId } = await import('~~/server/utils/realtimePublish');
 		for (const id of [
 			'0f1e2d3c4b5a69788796a5b4c3d2e1f0',
@@ -142,49 +120,6 @@ describe('getOriginConnectionId', () => {
 		expect(getOriginConnectionId({} as any)).toBeUndefined();
 		vi.mocked(getHeader).mockReturnValue('');
 		expect(getOriginConnectionId({} as any)).toBeUndefined();
-	});
-});
-
-// ──────────────── getAblyClient ────────────────
-
-// The token route's alone, until the pages leave Ably: nothing publishes through it.
-describe('getAblyClient', () => {
-	beforeEach(() => {
-		MockAblyRest.reset();
-		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: 'test-key' } as any);
-	});
-
-	it('returns Ably.Rest instance when configured', async () => {
-		const { getAblyClient } = await import('~~/server/utils/realtimePublish');
-		const client = getAblyClient();
-		expect(MockAblyRest.lastKey).toBe('test-key');
-		expect(client).toBeInstanceOf(MockAblyRest);
-	});
-
-	it('returns same instance on subsequent calls', async () => {
-		const { getAblyClient } = await import('~~/server/utils/realtimePublish');
-		const client1 = getAblyClient();
-		const client2 = getAblyClient();
-		expect(client1).toBe(client2);
-		expect(MockAblyRest.callCount).toBe(1);
-	});
-
-	it('names the setting when no key is configured', async () => {
-		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: '' } as any);
-		const { getAblyClient } = await import('~~/server/utils/realtimePublish');
-		const { ServiceConfigurationError } = await import('@keepr/nuxt-layer/server/utils/errors');
-
-		const failure = (() => {
-			try {
-				return getAblyClient();
-			} catch (error) {
-				return error;
-			}
-		})() as InstanceType<typeof ServiceConfigurationError>;
-
-		expect(failure).toBeInstanceOf(ServiceConfigurationError);
-		expect(failure.message).toBe('NUXT_ABLY_API_KEY is not configured');
-		expect(failure.statusCode).toBe(503);
 	});
 });
 

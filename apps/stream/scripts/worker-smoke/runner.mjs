@@ -234,10 +234,9 @@ export async function runWorkerSmoke({
 }
 
 function generatedConfiguration() {
-	// Deliberately omit Ably and external Melee credentials. The Worker
-	// publishes to its own objects, and the Melee persistence probe saves
-	// disabled configuration, so this process has neither authority nor reason
-	// to leave loopback.
+	// Deliberately omit external Melee credentials. The Worker publishes to its
+	// own objects, and the Melee persistence probe saves disabled configuration,
+	// so this process has neither authority nor reason to leave loopback.
 	const base64Key = () => randomBytes(32).toString('base64');
 	// Nothing here is for sign-in: who a request belongs to is the Accounts
 	// Stand-in's answer. The Keepr Accounts origin is a var the Environment sets
@@ -510,15 +509,6 @@ async function expectIdentityBoundary({ origin, fetchRequest, signal }) {
 	await ask('cross-site-refusal', 403, '/api/events', operator, {
 		...jsonRequest({ name: 'Cross-site Event', game: 'mtg' }, { 'sec-fetch-site': 'cross-site' }),
 	});
-	// The realtime grant is outside the boundary and asks for itself.
-	await ask(
-		'realtime-grant-signed-out',
-		401,
-		'/api/realtime/token?eventId=1',
-		standInCookie('signed-out'),
-	);
-	await ask('realtime-grant-no-app-access', 403, '/api/realtime/token?eventId=1', outsider);
-
 	return operator;
 }
 

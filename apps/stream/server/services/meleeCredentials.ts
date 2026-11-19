@@ -120,9 +120,8 @@ export function getMeleeCredentialKeyring(
 
 /**
  * The environment names behind the keyring config above, as the operator sets them.
- * The same convention as `ABLY_API_KEY_SETTING`: these exist so a refusal can name
- * the setting an operator must fix, and they live here because this module is the
- * one that reads them.
+ * These exist so a refusal can name the setting an operator must fix, and they live
+ * here because this module is the one that reads them.
  */
 const KEY_SETTING = 'NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY';
 const KEY_VERSION_SETTING = 'NUXT_MELEE_CREDENTIAL_KEY_VERSION';

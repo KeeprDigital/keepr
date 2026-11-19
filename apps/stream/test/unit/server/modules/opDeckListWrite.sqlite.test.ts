@@ -6,7 +6,7 @@ import { fakeOpCardBulkLookup, knownOpCard, mockOpWriteBoundaries } from '~~/tes
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // The OP Deck List write (ADR-0074), for a Player: every rule behind it, at
-// its seam. bandai-keepr is faked at its bulk lookup port, Ably at publish.
+// its seam. bandai-keepr is faked at its bulk lookup port, realtime at its publish.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
 	Object.assign(new Error(input.message ?? 'error'), input),

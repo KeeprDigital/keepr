@@ -131,14 +131,12 @@ describe('the API boundary', () => {
 		});
 	});
 
-	// The same way everywhere: a read, a write, an admin route, and the route
-	// outside the boundary that asks for itself.
+	// The same way everywhere: a read, a write, an admin route and "who am I".
 	it.each([
 		['GET', '/api/events'],
 		['POST', '/api/events'],
 		['GET', '/api/admin/graphics-assets/health'],
 		['GET', '/api/identity'],
-		['GET', '/api/realtime/token?eventId=1'],
 	])('refuses a User with no App access to Stream Keepr: %s %s', async (method, path) => {
 		const response = await fetch(path, {
 			method,
@@ -244,15 +242,6 @@ describe('the surfaces the boundary exempts', () => {
 
 		expect(status).toBe(404);
 		expect(message).toBe('Screen not found');
-	});
-
-	it('issues no realtime token to a caller with neither credential', async () => {
-		// ADR-0010's "no anonymous issuance". Until #397 this exact request was
-		// answered with a grant over every channel of the Event named.
-		const { status, message } = await anonymous('/api/realtime/token?eventId=1');
-
-		expect(status).toBe(401);
-		expect(message).toBe('A session or a Screen Output Asset Capability is required');
 	});
 
 	it('keeps the capability surface refusing 404, not 401', async () => {

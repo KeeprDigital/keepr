@@ -61,7 +61,6 @@ export default defineNuxtConfig({
 			: {}),
 
 	runtimeConfig: {
-		ablyApiKey: '',
 		// One Piece card data (ADR-0057). Either blank leaves it unavailable.
 		bandaiKeeprApiKey: '',
 		bandaiKeeprApiUrl: '',
@@ -272,7 +271,7 @@ export default defineNuxtConfig({
 				}
 			: {}),
 		optimizeDeps: {
-			include: ['ably', 'three', '@tanstack/vue-table', 'vue-draggable-plus', 'vue-echarts'],
+			include: ['three', '@tanstack/vue-table', 'vue-draggable-plus', 'vue-echarts'],
 		},
 	},
 

@@ -99,10 +99,9 @@ describe('which API paths require a session', () => {
 			expect(apiPathRequiresSession(path)).toBe(false);
 	});
 
-	it('exempts the clock, the release identity and the realtime token', () => {
+	it('exempts the clock and the release identity', () => {
 		expect(apiPathRequiresSession('/api/time')).toBe(false);
 		expect(apiPathRequiresSession('/api/release')).toBe(false);
-		expect(apiPathRequiresSession('/api/realtime/token')).toBe(false);
 	});
 
 	// A User signs in at Keepr Accounts (ADR-0141): nothing here must be reachable
@@ -141,7 +140,6 @@ describe('which API paths require a session', () => {
 		// The exact entries are exact for a reason: `/api/time` is a clock
 		// reading, and nothing under it is.
 		expect(apiPathRequiresSession('/api/time/zones')).toBe(true);
-		expect(apiPathRequiresSession('/api/realtime/token/mint')).toBe(true);
 		expect(apiPathRequiresSession('/api/release/notes')).toBe(true);
 	});
 
@@ -196,9 +194,6 @@ describe('the public surface, counted against the routes on disk', () => {
 			'server/api/public/events/[id]/feature-match-slots/[slotId].get.ts',
 			'server/api/public/events/[id]/holding-text.get.ts',
 			'server/api/public/events/[id]/on-air.get.ts',
-			// An Ably token request. It grants only to a Session or a Screen Output
-			// Asset Capability, and asks who the request belongs to itself.
-			'server/api/realtime/token.get.ts',
 			// Which Release serves: the deploy's verify reads it with no session (ADR-0119).
 			'server/api/release.get.ts',
 			// The Screen Output Asset Capability surface: authorised by the bearer
