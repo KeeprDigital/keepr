@@ -428,7 +428,9 @@ describe("a publish on the Event's channel whose call fails", () => {
 	}
 
 	function loggedFailures(spy: ReturnType<typeof vi.spyOn>) {
-		return spy.mock.calls.filter(isPublishFailureLine).map(([line]) => JSON.parse(line as string));
+		return spy.mock.calls
+			.filter(isPublishFailureLine)
+			.map(([line]: unknown[]) => JSON.parse(line as string));
 	}
 
 	it.each(HELPERS)(
