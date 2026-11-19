@@ -6,6 +6,11 @@
 		"keepr-accounts-stand-in": "./scripts/stand-in.mjs"
 	},
 	"type": "module",
+	"exports": {
+		"./cookie": "./src/cookie.mjs",
+		"./standIn": "./src/standIn.ts",
+		"./package.json": "./package.json"
+	},
 	"scripts": {
 		"start": "node scripts/stand-in.mjs",
 		"typecheck": "tsc --noEmit -p tsconfig.json",
