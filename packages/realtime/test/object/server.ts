@@ -39,6 +39,8 @@ export interface ConnectOptions {
 export interface Scope {
 	/** A socket the Worker hands to the object with `grant`, or refuses when given `null`. */
 	connect(grant?: Grant | null, options?: ConnectOptions): TestClient;
+	/** The address of that door, for a client that opens its own socket. */
+	address(grant?: Grant | null): string;
 	/** The same door, asked for no socket: a plain request. */
 	request(grant?: Grant): Promise<Response>;
 	publish(...deliveries: Delivery[]): Promise<PublishAnswer[]>;
@@ -93,6 +95,11 @@ export async function startServer(): Promise<Server> {
 					const opened = openClient(url);
 					clients.add(opened);
 					return opened;
+				},
+				address(grant = anyone) {
+					const url = door('connect', grant);
+					url.protocol = 'ws:';
+					return url.href;
 				},
 				request: (grant = anyone) => fetch(door('connect', grant)),
 				publish: (...deliveries) => call('publish', deliveries),
