@@ -1,6 +1,6 @@
 # ADR-0028: Reconnect Resync re-reads the Event Data its consumers name, and a revisit re-reads what was missed
 
-Accepted · 2026-10-20 · [#610](https://github.com/KeeprDigital/stream-keepr/issues/610)
+Accepted · 2026-10-20 · [#610](https://github.com/KeeprDigital/stream-keepr/issues/610) · Amended by ADR-0137: off Ably, a token wait is a refused socket
 
 ### Decision
 

@@ -1,6 +1,6 @@
 # ADR-0004: A Live Session notification carries the difference
 
-Accepted · 2026-08-02 · [#168](https://github.com/KeeprDigital/stream-keepr/issues/168)
+Accepted · 2026-08-02 · [#168](https://github.com/KeeprDigital/stream-keepr/issues/168) · Amended by ADR-0137: 64 KiB stays as a design rule once realtime leaves Ably, no longer an account's limit
 
 ### Decision
 
