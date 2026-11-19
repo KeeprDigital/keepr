@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { createSocketTransport } from '../../src/client/index.ts';
 import type { SocketConstructor, SocketTransport } from '../../src/client/index.ts';
 import type { Delivery, PublishAnswer } from '../../src/object/index.ts';
+import { TICKET_HEADER } from '../../src/object/handOff.ts';
 import { HAND_OFF_HEADER } from '../server/worker/headers.ts';
 import { buildFixture, startBuiltWorker, startDevServer } from './servers.ts';
 import type { FixtureServer } from './servers.ts';
@@ -154,12 +155,30 @@ describe.each([
 		expect(await response.text()).not.toContain('admission');
 	});
 
-	it('answers a request for the socket that is no upgrade with 426', async () => {
-		const response = await fetch(`${server.origin}${SOCKET_PATH}?room=${randomUUID()}`, {
-			headers: page(server),
-		});
+	// Before the port is asked: a caller it would refuse is told the same.
+	it.each([
+		['a caller the port would admit', (): Record<string, string> => page(server)],
+		['a caller it would refuse', (): Record<string, string> => ({})],
+	])(
+		'answers a request for the socket that is no upgrade with 426, from %s',
+		async (_who, headers) => {
+			const response = await fetch(`${server.origin}${SOCKET_PATH}?room=${randomUUID()}`, {
+				headers: headers(),
+			});
 
-		expect(response.status).toBe(426);
+			expect(response.status).toBe(426);
+		},
+	);
+
+	it('a caller gains nothing by sending the headers the hand-off itself reads: its port never sees them', async () => {
+		const room = randomUUID();
+		const forging = { ...page(server), [TICKET_HEADER]: 'forged', [HAND_OFF_HEADER]: 'forged' };
+		const heard = await hear(connect(server, room, forging), `room:${room}:chat`);
+
+		await publish(server, room, [said(room, 'hello')]);
+
+		await until('the message', () => heard.length === 1);
+		expect(heard).toEqual([{ text: 'hello' }]);
 	});
 });
 
