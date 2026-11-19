@@ -182,6 +182,7 @@ export const unitCoverageConfig: CoverageOptions = {
 		// Unit-tested here and still exercised by the Nuxt suite, so measured in both.
 		'app/composables/core/useRealtimeMessageGate.ts',
 		'app/composables/workflows/useEventRealtimeSession.ts',
+		'app/modules/realtime-transport/socketTransport.ts',
 		'app/modules/screen-mode/index.ts',
 		'app/modules/screen-mode/modeTokens.ts',
 	],
