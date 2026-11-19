@@ -3,6 +3,7 @@
  * same class under timings short enough to wait out, and a door that grants
  * whatever the test asks for. Only a test may be that trusting.
  */
+import { TICKET_HEADER } from '../../../src/object/handOff.ts';
 import { connectSocket, RealtimeObject, refuseSocket } from '../../../src/object/index.ts';
 import type { Grant, RealtimeObjectOptions } from '../../../src/object/index.ts';
 import { BRIEF_GRACE_MS, BRIEF_RETENTION_MS, BRIEF_SWEEP_MS } from '../timings.ts';
@@ -76,6 +77,12 @@ export default {
 		}
 		// What no app does: the request as it came, straight to the object.
 		if (door === 'bare') return stub.fetch(request);
+		// Nor this: a ticket the test holds, put where `connectSocket` puts its own.
+		if (door === 'ticket') {
+			const carrying = new Request(request);
+			carrying.headers.set(TICKET_HEADER, url.searchParams.get('ticket') ?? '');
+			return stub.fetch(carrying);
+		}
 		if (door === 'call' && method) {
 			const methods = stub as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
 			const answer = await methods[method]?.(...((await request.json()) as unknown[]));

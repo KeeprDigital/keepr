@@ -35,6 +35,14 @@ export interface ConnectOptions {
 	door?: 'connect' | 'bare';
 }
 
+/** A ticket as `admit` answers it, carried to the object as `connectSocket` carries its own. */
+export interface Ticketed {
+	readonly ticket: string;
+	connect(): TestClient;
+	/** The same, asked for no socket: a plain request. */
+	request(): Promise<Response>;
+}
+
 /** One scope's object, which no other test shares. */
 export interface Scope {
 	/** A socket the Worker hands to the object with `grant`, or refuses when given `null`. */
@@ -45,6 +53,10 @@ export interface Scope {
 	request(grant?: Grant): Promise<Response>;
 	publish(...deliveries: Delivery[]): Promise<PublishAnswer[]>;
 	disconnect(tag: string): Promise<number>;
+	/** Ask the object for a ticket, as `connectSocket` does, and hold it instead of using it. */
+	admit(grant?: Grant): Promise<Ticketed>;
+	/** A ticket another scope's object answered, carried to this one. */
+	carry(ticket: Ticketed): Ticketed;
 	/** Any other method of the object, by RPC. */
 	call<Answer>(method: string, ...args: unknown[]): Promise<Answer>;
 	/** Put the object to sleep as the runtime does, its sockets kept. */
@@ -88,6 +100,21 @@ export async function startServer(): Promise<Server> {
 				if (client) url.searchParams.set(CLIENT_ID_PARAM, client);
 				return url;
 			};
+			const carry = (ticket: string): Ticketed => {
+				const url = door('ticket', null);
+				url.searchParams.set('ticket', ticket);
+				return {
+					ticket,
+					connect() {
+						const socket = new URL(url);
+						socket.protocol = 'ws:';
+						const opened = openClient(socket);
+						clients.add(opened);
+						return opened;
+					},
+					request: () => fetch(url),
+				};
+			};
 			return {
 				connect(grant = anyone, { client, door: which = 'connect' } = {}) {
 					const url = door(which, grant, client);
@@ -104,6 +131,8 @@ export async function startServer(): Promise<Server> {
 				request: (grant = anyone) => fetch(door('connect', grant)),
 				publish: (...deliveries) => call('publish', deliveries),
 				disconnect: (tag) => call('disconnect', tag),
+				admit: async (grant = anyone) => carry(await call<string>('admit', grant)),
+				carry: ({ ticket }) => carry(ticket),
 				call,
 				hibernate: () => evict('hibernate'),
 				restart: () => evict('close'),
