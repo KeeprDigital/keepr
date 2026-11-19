@@ -176,6 +176,8 @@ export function fakePage() {
 		online() {
 			for (const listener of [...listeners]) listener();
 		},
+		/** How many listeners the page still holds for coming online. */
+		listening: () => listeners.size,
 	};
 }
 
@@ -188,6 +190,8 @@ export interface SocketRealtimeRig {
 	readonly asked: number[];
 	/** The page comes online. */
 	online: () => void;
+	/** How many listeners the page still holds for coming online. */
+	listening: () => number;
 	/** The newest socket, of `eventId` when given, once the address it waits on has answered. */
 	socket: (eventId?: number) => Promise<FakeSocket>;
 	/** That socket, let in, with each of `channels` attached for the first time. */
@@ -201,7 +205,7 @@ export function socketRealtimeRig(
 	const clock = new FakeClock();
 	const sockets: FakeSocket[] = [];
 	const asked: number[] = [];
-	const { page, online } = fakePage();
+	const { page, online, listening } = fakePage();
 	class Socket extends FakeSocket {
 		constructor(url: string) {
 			super(url);
@@ -228,6 +232,7 @@ export function socketRealtimeRig(
 		sockets,
 		asked,
 		online,
+		listening,
 		socket,
 		open: async (eventId, ...channels) => {
 			const newest = (await socket(eventId)).letIn();

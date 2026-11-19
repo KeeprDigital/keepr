@@ -246,6 +246,22 @@ describe("the realtime transport over an Event's object", () => {
 			expect(replacement).toHaveBeenCalledTimes(replacementHeard);
 			expect(other).toHaveBeenCalledOnce();
 		});
+
+		it('lets an owner that has left hear nothing in the next room either', async () => {
+			const { realtime, open } = socketRealtimeRig();
+			const left = vi.fn();
+			const stays = vi.fn();
+			realtime.setRoom(EVENT);
+			realtime.onRoom('page', { 'player:updated': left });
+			realtime.onRoom('session', { 'player:updated': stays });
+
+			realtime.offRoom('page');
+			realtime.setRoom('event:2');
+			(await open(2, 'event:2')).publish('event:2', 'player:updated');
+
+			expect(left).not.toHaveBeenCalled();
+			expect(stays).toHaveBeenCalledOnce();
+		});
 	});
 
 	describe('the connection it reports', () => {
@@ -550,6 +566,8 @@ describe("the realtime transport over an Event's object", () => {
 			rig.online();
 			await settle();
 			expect(rig.asked).toEqual([1, 1]);
+			// And the page is let go of, not only unheard.
+			expect(rig.listening()).toBe(0);
 		});
 	});
 
