@@ -78,7 +78,8 @@ async function publish(
 		body: JSON.stringify(deliveries),
 	});
 	// The body says why, when the app's route could not publish.
-	expect(response.status, await response.clone().text()).toBe(200);
+	if (response.status !== 200)
+		throw new Error(`The fixture's publish answered ${response.status}: ${await response.text()}`);
 	return (await response.json()) as PublishAnswer[];
 }
 
