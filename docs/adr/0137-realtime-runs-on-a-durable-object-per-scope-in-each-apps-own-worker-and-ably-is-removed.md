@@ -1,6 +1,6 @@
 # ADR-0137: Realtime runs on a Durable Object per scope in each app's own Worker, and Ably is removed
 
-Accepted · 2026-11-19 · [#1311](https://github.com/KeeprDigital/keepr/issues/1311), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310), from the spike [#1295](https://github.com/KeeprDigital/keepr/issues/1295) · Amends ADR-0004, ADR-0010, ADR-0023 and ADR-0028 · Supersedes #189's decision to stay on Ably's Free plan
+Accepted · 2026-11-19 · [#1311](https://github.com/KeeprDigital/keepr/issues/1311), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310), from the spike [#1295](https://github.com/KeeprDigital/keepr/issues/1295) · Amends ADR-0004, ADR-0010, ADR-0023 and ADR-0028 · Supersedes #189's decision to stay on Ably's Free plan · Amended by ADR-0138: the Nuxt glue is a layer of its own in `@keepr/realtime`, which an app that wants realtime extends
 
 Stream Keepr's realtime ran on Ably: the server published over REST, pages subscribed with Ably's SDK, and a Screen Output entered presence on its Screen's channel. #1295 asked whether it could move onto Cloudflare, and the owner set one constraint: what is built must serve every app in the workspace that needs realtime.
 

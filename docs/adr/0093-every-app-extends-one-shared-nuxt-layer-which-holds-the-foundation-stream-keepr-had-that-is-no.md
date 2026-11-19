@@ -1,6 +1,6 @@
 # ADR-0093: Every app extends one shared Nuxt layer, which holds the foundation Stream Keepr had that is no product's own
 
-Accepted · 2026-11-16 · Amended by ADR-0112: the layer holds the App registry and the SQLite D1 harness; sign-in is Keepr Accounts'
+Accepted · 2026-11-16 · Amended by ADR-0112: the layer holds the App registry and the SQLite D1 harness; sign-in is Keepr Accounts'; by ADR-0138: what gives a Worker a binding, an entry or a dev process is a layer an app chooses, never part of this one
 
 ### Decision
 
