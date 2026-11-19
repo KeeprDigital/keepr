@@ -137,6 +137,7 @@ const { archetypeWriteModule } = await import('~~/server/modules/archetype-write
 const manager = createScreenOutputAssetCapabilityManager({
 	signingKey,
 	screens: screenService(),
+	disconnectOutputs: async () => 0,
 });
 
 const NOT_FOUND = {
