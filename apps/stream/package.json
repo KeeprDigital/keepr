@@ -44,7 +44,8 @@
 		"test:nuxt:coverage": "vitest run --config vitest.nuxt.config.ts --coverage",
 		"test:integration": "vitest --config vitest.integration.config.ts",
 		"accept": "node scripts/accept.mjs",
-		"accept:deployed": "node scripts/accept.mjs deployed"
+		"accept:deployed": "node scripts/accept.mjs deployed",
+		"probe:realtime": "node scripts/realtime-probe.mjs"
 	},
 	"dependencies": {
 		"@fontsource/arimo": "catalog:fonts",
