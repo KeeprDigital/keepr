@@ -1149,6 +1149,12 @@ mid-run names the Event it left behind; delete it before rerunning.
    Then follow
    [Recovering from a partial promotion](#recovering-from-a-partial-promotion).
 
+   One rollback Cloudflare refuses: to a Worker version from before the
+   Release that created the realtime object's class (the `migrations` entry in
+   `wrangler.jsonc`, ADR-0137). Creating a Durable Object class cannot be
+   rolled back past. If that Release's own verify fails, fix forward: deploy a
+   build that still exports the class.
+
 #### Recovering from a partial promotion
 
 A deploy that fails after the validator succeeded leaves the app and its validator on
