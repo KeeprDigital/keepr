@@ -95,6 +95,7 @@ const { screenService } = await import('~~/server/services/screen');
 const manager = createScreenOutputAssetCapabilityManager({
 	signingKey,
 	screens: screenService(),
+	disconnectOutputs: async () => 0,
 });
 
 interface Issued {

@@ -99,9 +99,10 @@ describe('which API paths require a session', () => {
 			expect(apiPathRequiresSession(path)).toBe(false);
 	});
 
-	it('exempts the clock and the release identity', () => {
+	it('exempts the clock, the release identity and the Realtime Ticket', () => {
 		expect(apiPathRequiresSession('/api/time')).toBe(false);
 		expect(apiPathRequiresSession('/api/release')).toBe(false);
+		expect(apiPathRequiresSession('/api/realtime/ticket')).toBe(false);
 	});
 
 	// A User signs in at Keepr Accounts (ADR-0141): nothing here must be reachable
@@ -194,6 +195,9 @@ describe('the public surface, counted against the routes on disk', () => {
 			'server/api/public/events/[id]/feature-match-slots/[slotId].get.ts',
 			'server/api/public/events/[id]/holding-text.get.ts',
 			'server/api/public/events/[id]/on-air.get.ts',
+			// A Realtime Ticket for one socket (ADR-0137, ADR-0142): given only for a
+			// Screen Output Asset Capability of the Event asked for. No Session is read.
+			'server/api/realtime/ticket.post.ts',
 			// Which Release serves: the deploy's verify reads it with no session (ADR-0119).
 			'server/api/release.get.ts',
 			// The Screen Output Asset Capability surface: authorised by the bearer

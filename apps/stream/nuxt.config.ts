@@ -24,6 +24,9 @@ const integrationMutationDrainHandler = fileURLToPath(
 const integrationRealtimeSequenceHandler = fileURLToPath(
 	new URL('./test/integration/fixtures/realtime-sequence.ts', import.meta.url),
 );
+const integrationRealtimePublishHandler = fileURLToPath(
+	new URL('./test/integration/fixtures/realtime-publish.ts', import.meta.url),
+);
 
 /**
  * Semantic Social Network Icon configurations resolve entirely from bytes shipped
@@ -163,6 +166,13 @@ export default defineNuxtConfig({
 						route: '/api/_test/realtime-sequence',
 						method: 'post',
 						handler: integrationRealtimeSequenceHandler,
+					},
+					// Publishes to an Event's realtime object, so the suite can show what
+					// each socket hears. No built Worker has it.
+					{
+						route: '/api/_test/realtime-publish',
+						method: 'post',
+						handler: integrationRealtimePublishHandler,
 					},
 				]
 			: [],

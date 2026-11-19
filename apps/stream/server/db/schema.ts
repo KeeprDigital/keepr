@@ -1312,6 +1312,40 @@ export const screens = sqliteTable(
 	],
 );
 
+/**
+ * The Realtime Tickets given and not yet spent (ADR-0137, ADR-0142).
+ *
+ * A row is here for exactness, not for keeping: a ticket admits one socket, and
+ * only a relational write decides two sockets that present one ticket at once.
+ * The port deletes the row as it reads it, so whichever statement runs second
+ * finds nothing (`server/modules/realtime-ticket`).
+ *
+ * `capability_digest` is the Screen Output Asset Capability the ticket was
+ * given for. A ticket admits only while that is still its Screen's, so
+ * regenerating the capability leaves its unspent tickets admitting nobody.
+ * Deleting the Screen or its Event deletes them.
+ */
+export const realtimeTickets = sqliteTable(
+	'realtime_tickets',
+	{
+		/** SHA-256 of the ticket. The ticket itself is held only by whoever was given it. */
+		ticketDigest: text('ticket_digest').primaryKey(),
+		eventId: integer('event_id')
+			.references(() => events.id, { onDelete: 'cascade' })
+			.notNull(),
+		screenId: integer('screen_id')
+			.references(() => screens.id, { onDelete: 'cascade' })
+			.notNull(),
+		capabilityDigest: text('capability_digest').notNull(),
+		/** Past this the ticket admits nobody. Giving the next ticket deletes it. */
+		expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+	},
+	(table) => [
+		index('realtime_tickets_screen_id_idx').on(table.screenId),
+		index('realtime_tickets_expires_at_idx').on(table.expiresAt),
+	],
+);
+
 /* RELATIONS */
 export const eventsRelations = relations(events, ({ many }) => ({
 	talents: many(eventTalents),
