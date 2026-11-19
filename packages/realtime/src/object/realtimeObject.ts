@@ -34,12 +34,20 @@ export interface RealtimeObjectOptions {
 	graceMs?: number;
 	/** How long a member's pings may have stopped before it is swept. */
 	sweepMs?: number;
+	/**
+	 * How long a member's pings may have stopped before it is asked whether it is
+	 * there. Two thirds of `sweepMs` when left out: two of its three missed pings.
+	 */
+	askMs?: number;
 }
 
 export const DEFAULT_RETENTION_MS: number = 2 * 60 * 1000;
 export const DEFAULT_GRACE_MS: number = 5000;
 /** Three missed pings of a client that sends one every 15 s. */
 export const DEFAULT_SWEEP_MS: number = 45_000;
+
+/** What a silent member is sent before it is swept. It says nothing else, so it is one text. */
+const ASK: string = JSON.stringify({ t: 'ask' } satisfies ServerFrame);
 
 /** How long a ticket waits for its socket: the upgrade follows it in the same call. */
 const TICKET_MS = 10_000;
@@ -112,14 +120,24 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 	readonly #retentionMs: number;
 	readonly #graceMs: number;
 	readonly #sweepMs: number;
+	readonly #askMs: number;
 	/** In memory: a ticket is spent by the request that follows the call that made it. */
 	readonly #admissions = new Map<string, Admission>();
+	/**
+	 * The members asked and not heard from since: each connection id with the last
+	 * sign of life it was asked at. In memory, so an ask writes nothing. An object
+	 * that slept between a member's ask and its sweep has forgotten it asked; if
+	 * anything wakes it in that time it asks once more, which costs a frame.
+	 */
+	#asked = new Map<string, number>();
 
 	constructor(ctx: DurableObjectState, env: Env, options: RealtimeObjectOptions = {}) {
 		super(ctx, env);
 		this.#retentionMs = options.retentionMs ?? DEFAULT_RETENTION_MS;
 		this.#graceMs = options.graceMs ?? DEFAULT_GRACE_MS;
 		this.#sweepMs = options.sweepMs ?? DEFAULT_SWEEP_MS;
+		// An ask no earlier than the sweep is never sent: the sweep comes first.
+		this.#askMs = Math.min(options.askMs ?? Math.round((this.#sweepMs * 2) / 3), this.#sweepMs);
 		ctx.storage.sql.exec(
 			`CREATE TABLE IF NOT EXISTS log (
 				channel TEXT NOT NULL, seq INTEGER NOT NULL, name TEXT NOT NULL,
@@ -430,8 +448,9 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 
 	/**
 	 * Runs only while anyone is present or held: tells watchers of the members
-	 * whose grace period ended, and sweeps those whose pings stopped, whose
-	 * sockets never closed.
+	 * whose grace period ended, asks those whose pings have stopped whether they
+	 * are there, and sweeps those whose pings stopped a sweep ago, whose sockets
+	 * never closed. A member that answers its ask pings, so it is not swept.
 	 */
 	override async alarm(): Promise<void> {
 		const now = Date.now();
@@ -443,13 +462,24 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 			.toArray();
 		for (const { presence } of ended)
 			for (const channel of Object.keys(JSON.parse(presence) as object)) left.add(channel);
+		const asked = new Map<string, number>();
 		for (const { socket, attachment } of this.#sockets()) {
 			if (Object.keys(attachment.presence).length === 0) continue;
-			if (this.#lastSeen(socket, attachment) + this.#sweepMs > now) continue;
-			this.#retire(socket, CLOSE_STALE, 'stale');
-			this.#record({ ...attachment, presence: {} });
-			for (const channel of Object.keys(attachment.presence)) left.add(channel);
+			const seen = this.#lastSeen(socket, attachment);
+			if (seen + this.#sweepMs <= now) {
+				this.#retire(socket, CLOSE_STALE, 'stale');
+				this.#record({ ...attachment, presence: {} });
+				for (const channel of Object.keys(attachment.presence)) left.add(channel);
+				continue;
+			}
+			if (seen + this.#askMs > now) continue;
+			// Asked once for each silence: an alarm that runs for another member's
+			// sake finds this one already asked.
+			if (this.#asked.get(attachment.connectionId) !== seen) this.#send(socket, ASK);
+			asked.set(attachment.connectionId, seen);
 		}
+		// Whoever answered, was swept or left is no longer waited on.
+		this.#asked = asked;
 		this.#tellWatchers(left);
 		await this.#schedule();
 	}
@@ -663,9 +693,10 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 	}
 
 	/**
-	 * Set the alarm for the first moment a member could need telling of: a grace
-	 * period ending, or the sweep limit of whoever was heard from longest ago.
-	 * With no one present or held there is nothing to wait for, and no alarm.
+	 * Set the alarm for the first moment a member could need asking or telling
+	 * of: a grace period ending, the ask of whoever was heard from longest ago, or
+	 * the sweep limit of whoever was asked. With no one present or held there is
+	 * nothing to wait for, and no alarm.
 	 */
 	async #schedule(): Promise<void> {
 		let next = this.ctx.storage.sql
@@ -673,8 +704,10 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 			.one().until;
 		for (const { socket, attachment } of this.#sockets()) {
 			if (Object.keys(attachment.presence).length === 0) continue;
-			const limit = this.#lastSeen(socket, attachment) + this.#sweepMs;
-			next = next === null ? limit : Math.min(next, limit);
+			const seen = this.#lastSeen(socket, attachment);
+			const wasAsked = this.#asked.get(attachment.connectionId) === seen;
+			const need = seen + (wasAsked ? this.#sweepMs : this.#askMs);
+			next = next === null ? need : Math.min(next, need);
 		}
 		if (next === null) return;
 		const set = await this.ctx.storage.getAlarm();

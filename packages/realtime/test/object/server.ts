@@ -11,7 +11,13 @@ import { openClient } from './client.ts';
 import type { TestClient } from './client.ts';
 
 /** The test Worker's bindings: the class as exported, at its defaults, and under each brief timing. */
-export type Binding = 'PLAIN' | 'DEFAULTS' | 'BRIEF_LOG' | 'BRIEF_GRACE' | 'BRIEF_SWEEP';
+export type Binding =
+	| 'PLAIN'
+	| 'DEFAULTS'
+	| 'BRIEF_LOG'
+	| 'BRIEF_GRACE'
+	| 'BRIEF_SWEEP'
+	| 'BRIEF_ASK';
 
 export interface Delivery {
 	channel: string;

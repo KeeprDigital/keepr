@@ -38,6 +38,10 @@ export interface TestClient {
 	sync(): Promise<void>;
 	/** Send a ping and wait for its pong. */
 	ping(): Promise<void>;
+	/** How many times the object has asked whether this socket is there. */
+	asks(): number;
+	/** From now on, answer each ask as a client must: with a ping. */
+	answerAsks(): void;
 	waitFor<Found>(
 		what: string,
 		find: (frames: readonly ServerFrame[]) => Found | undefined | null | false,
@@ -66,6 +70,7 @@ export function openClient(url: URL): TestClient {
 		for (const waiter of [...waiters]) waiter();
 	};
 	let pongs = 0;
+	let answersAsks = false;
 	let isClosed = false;
 
 	const opened = new Promise<boolean>((resolve) => {
@@ -89,7 +94,9 @@ export function openClient(url: URL): TestClient {
 		if (data === PONG) pongs += 1;
 		else {
 			const frame = JSON.parse(String(data)) as ServerFrame;
-			if (frame.t !== 'msg' && frame.channel.startsWith(SYNC)) synced.add(frame.channel);
+			if (frame.t === 'ask' && answersAsks) socket.send(PING);
+			if (frame.t !== 'msg' && frame.t !== 'ask' && frame.channel.startsWith(SYNC))
+				synced.add(frame.channel);
 			else frames.push(frame);
 		}
 		settle();
@@ -144,6 +151,10 @@ export function openClient(url: URL): TestClient {
 			const before = pongs;
 			sendText(PING);
 			await until('a pong', () => pongs > before);
+		},
+		asks: () => frames.filter((frame) => frame.t === 'ask').length,
+		answerAsks() {
+			answersAsks = true;
 		},
 		async waitFor(what, find, timeoutMs) {
 			let found: unknown;

@@ -337,6 +337,26 @@ describe('the fault', () => {
 	});
 });
 
+describe('an ask', () => {
+	it.each([
+		{ when: 'no ping of its own is waiting', waiting: false },
+		{ when: 'its own ping is waiting for its pong', waiting: true },
+	])('is answered at once with a ping, and with no timer, when $when', async ({ waiting }) => {
+		const { transport, clock, letIn } = rig();
+		transport.onMessage('a', 'note', () => {});
+		const open = await letIn();
+		if (waiting) await clock.advance(15_000);
+		const before = { pings: open.pings, timers: clock.pending };
+
+		open.hear({ t: 'ask' });
+
+		// The clock has not moved. The ask is a frame heard, so it ends a wait for a
+		// pong as any frame does; its answer starts none.
+		expect(open.pings).toBe(before.pings + 1);
+		expect(clock.pending).toBe(before.timers - (waiting ? 1 : 0));
+	});
+});
+
 describe('the times', () => {
 	it('are taken from the options', async () => {
 		const { transport, clock, socket, letIn } = rig({
