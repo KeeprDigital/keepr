@@ -48,6 +48,37 @@ export function devRegistry({ rootDir, buildDir }: { rootDir: string; buildDir: 
 	return registry;
 }
 
+/** The signals a dev server shuts itself down on: it runs each `close` hook, then exits. */
+const SHUTDOWN_SIGNALS = ['SIGINT', 'SIGTERM'] as const;
+
+/**
+ * Run `start`, and take off this process whatever it made listen for a
+ * shutdown signal.
+ *
+ * Miniflare, which runs the Worker, listens for both in the process it is
+ * started in, and its listener ends that process at once. The dev server's own
+ * shutdown is then cut off before a `close` hook has run: the Worker is never
+ * stopped by `stop`, and the `workerd` of Nitro's bindings, which only Nitro's
+ * `close` stops, is left running with no parent. So the signal stays the dev
+ * server's, whose shutdown stops the Worker (`stop`). Miniflare still stops its
+ * `workerd` on the process's `exit`, should a shutdown not reach `stop`.
+ *
+ * Where nothing else listened, there is no shutdown to cut off, and ending the
+ * process is right: the listeners stay.
+ */
+async function leavingShutdownToTheDevServer<T>(start: () => Promise<T>): Promise<T> {
+	const before = SHUTDOWN_SIGNALS.map((signal) => [signal, process.listeners(signal)] as const);
+	try {
+		return await start();
+	} finally {
+		for (const [signal, listeners] of before) {
+			if (listeners.length === 0) continue;
+			for (const added of process.listeners(signal))
+				if (!listeners.includes(added)) process.removeListener(signal, added);
+		}
+	}
+}
+
 /**
  * Start the Worker and wait until it listens. `secret` marks each request it
  * puts to the app's port, which the port's route requires (`defineRealtimePort`):
@@ -71,44 +102,46 @@ export async function startDevWorker({
 	) as typeof import('wrangler');
 	let appOrigin: string | undefined;
 
-	const worker = await unstable_startWorker({
-		name: DEV_WORKER_NAME,
-		entrypoint: fileURLToPath(new URL('../server/worker/dev.ts', import.meta.url)),
-		compatibilityDate,
-		bindings: {
-			OBJECT: { type: 'durable_object_namespace', class_name: 'RealtimeObject' },
-			PORT_PATH: { type: 'plain_text', value: portPath },
-			// The dev server, asked over the loopback at the address it listens on. The
-			// caller's host goes with the request, so the app's port compares an
-			// `Origin` with what the page sees, as the built Worker's does.
-			APP: {
-				type: 'fetcher',
-				fetcher: async (asked: { url: string; headers: Iterable<[string, string]> }) => {
-					if (appOrigin === undefined)
-						return new Response('The dev server is not listening yet.', { status: 503 });
-					const { host, pathname, search } = new URL(asked.url);
-					const headers = new Headers([...asked.headers]);
-					headers.set('host', host);
-					headers.set(HAND_OFF_HEADER, secret);
-					return fetch(new URL(pathname + search, appOrigin), { headers, redirect: 'manual' });
+	const { worker, url } = await leavingShutdownToTheDevServer(async () => {
+		const started = await unstable_startWorker({
+			name: DEV_WORKER_NAME,
+			entrypoint: fileURLToPath(new URL('../server/worker/dev.ts', import.meta.url)),
+			compatibilityDate,
+			bindings: {
+				OBJECT: { type: 'durable_object_namespace', class_name: 'RealtimeObject' },
+				PORT_PATH: { type: 'plain_text', value: portPath },
+				// The dev server, asked over the loopback at the address it listens on. The
+				// caller's host goes with the request, so the app's port compares an
+				// `Origin` with what the page sees, as the built Worker's does.
+				APP: {
+					type: 'fetcher',
+					fetcher: async (asked: { url: string; headers: Iterable<[string, string]> }) => {
+						if (appOrigin === undefined)
+							return new Response('The dev server is not listening yet.', { status: 503 });
+						const { host, pathname, search } = new URL(asked.url);
+						const headers = new Headers([...asked.headers]);
+						headers.set('host', host);
+						headers.set(HAND_OFF_HEADER, secret);
+						return fetch(new URL(pathname + search, appOrigin), { headers, redirect: 'manual' });
+					},
 				},
 			},
-		},
-		migrations: [{ tag: 'v1', new_sqlite_classes: ['RealtimeObject'] }],
-		dev: {
-			server: { hostname: '127.0.0.1', port: 0 },
-			inspector: false,
-			registry,
-			// Each run starts from empty storage: a page that held a sequence is told
-			// continuity was lost, by the object's epoch, and reads again.
-			persist: false,
-			watch: false,
-			liveReload: false,
-			logLevel: 'warn',
-		},
+			migrations: [{ tag: 'v1', new_sqlite_classes: ['RealtimeObject'] }],
+			dev: {
+				server: { hostname: '127.0.0.1', port: 0 },
+				inspector: false,
+				registry,
+				// Each run starts from empty storage: a page that held a sequence is told
+				// continuity was lost, by the object's epoch, and reads again.
+				persist: false,
+				watch: false,
+				liveReload: false,
+				logLevel: 'warn',
+			},
+		});
+		await started.ready;
+		return { worker: started, url: await started.url };
 	});
-	await worker.ready;
-	const url = await worker.url;
 
 	return {
 		url: url.origin,

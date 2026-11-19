@@ -6,7 +6,7 @@ import type { Delivery, PublishAnswer } from '../../src/object/index.ts';
 import { TICKET_HEADER } from '../../src/object/handOff.ts';
 import { HAND_OFF_HEADER } from '../server/worker/headers.ts';
 import { buildFixture, startBuiltWorker, startDevServer } from './servers.ts';
-import type { FixtureServer } from './servers.ts';
+import type { DevServer, FixtureServer } from './servers.ts';
 
 // The layer's whole promise, held on the fixture app each way an app runs: one
 // path for the socket, and the same answer from the built Worker and `nuxt dev`.
@@ -207,4 +207,25 @@ describe('two dev servers at once', () => {
 		expect(atOne).toEqual([{ text: 'from one' }]);
 		expect(atTwo).toEqual([{ text: 'from two' }]);
 	});
+});
+
+// What stops `nuxt dev` may signal that one process and no other: a supervisor,
+// or an agent with its pid. Everything the dev server started stops with it.
+describe('a dev server signalled alone', () => {
+	let server: DevServer | undefined;
+
+	afterEach(async () => {
+		await server?.stop();
+		server = undefined;
+	});
+
+	it.each(['SIGTERM', 'SIGINT'] as const)(
+		'leaves nothing it started running, on %s',
+		async (signal) => {
+			server = await startDevServer(undefined, 'developer');
+
+			expect(await server.stopBySignal(signal)).toEqual([]);
+		},
+		START_TIMEOUT_MS,
+	);
 });

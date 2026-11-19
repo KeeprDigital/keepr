@@ -329,7 +329,15 @@ the dev server and hands off as the entry does.
 
 **The dev server itself starts it**, from the layer's module. So an app's
 `pnpm dev` starts it, and so does anything else that runs `nuxt dev`, an
-integration suite's servers among them. It stops with the dev server.
+integration suite's servers among them.
+
+**It stops with the dev server, in the dev server's own shutdown.** Miniflare,
+which runs the dev Worker, listens for `SIGINT` and `SIGTERM` in the process it
+is started in, and ends that process at once. Left there, it cuts Nuxt's
+shutdown off before anything is closed, and the `workerd` of Nitro's bindings
+is left running with no parent. So the layer takes those listeners off again
+once the dev Worker has started, each time it starts. A signal to `nuxt dev`
+alone then closes the dev Worker and Nitro's `workerd` with it.
 
 **The dev binding lives in the configuration `nuxt dev` reads**
 (`nitro.cloudflare.dev.configPath`), a dev configuration apart from the
@@ -367,7 +375,10 @@ names. It is never deployed. `nuxt/test/handOff.test.ts` builds it, then holds
 each rule above twice: on the built Worker in local `workerd`, and under
 `nuxt dev`, on one path, driven from Node by the client transport. It then
 runs two dev servers at once, and holds that neither hears the other's
-publishes.
+publishes. Last it stops a dev server by `SIGTERM` and by `SIGINT` to its
+process alone, and holds that nothing it started is left running. That server
+runs as a developer's does: told that a suite or CI started it, Nitro ends its
+own worker without waiting, and strands its `workerd` whatever the layer does.
 
 `pnpm typecheck` checks the layer as an app with nothing but itself
 (`nuxt prepare`), in three programs: its configuration and module, what a

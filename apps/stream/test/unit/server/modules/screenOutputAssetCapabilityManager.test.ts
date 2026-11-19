@@ -208,19 +208,19 @@ describe('screen Output Asset Capability lifecycle', () => {
 
 			const rotated = await manager().rotate({ eventId: 3, screenId: 17 });
 
-			expect(rotated.outcome).toBe('available');
+			expect(rotated).toMatchObject({ outcome: 'available', outputsClosed: true });
 			expect(disconnectOutputs).toHaveBeenCalledTimes(2);
 			expect(logged).not.toHaveBeenCalled();
 		});
 
 		// The capability is regenerated either way, so the answer is the new one. What
-		// was not done is written where an operator reads it, naming the Screen.
-		it('answers the regenerated capability and logs which Screen may still have outputs connected', async () => {
+		// was not done is said in the answer, for the Operator, and logged with the Screen.
+		it('answers the regenerated capability, says its outputs were not closed, and logs which Screen', async () => {
 			disconnectOutputs.mockRejectedValue(new Error('object reset'));
 
 			const rotated = await manager().rotate({ eventId: 3, screenId: 17 });
 
-			expect(rotated).toMatchObject({ outcome: 'available' });
+			expect(rotated).toMatchObject({ outcome: 'available', outputsClosed: false });
 			expect(logged).toHaveBeenCalledTimes(1);
 			expect(JSON.parse(logged.mock.calls[0]![0] as string)).toMatchObject({
 				message: 'screen_output_disconnect_failed',
