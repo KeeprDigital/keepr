@@ -1,0 +1,9 @@
+{
+	"$schema": "../../../node_modules/wrangler/config-schema.json",
+	// The fixture's built Worker, bound as an app binds the object: the class the
+	// layer's entry exports, SQLite-backed. Never deployed.
+	"compatibility_date": "2026-07-16",
+	"compatibility_flags": ["nodejs_compat"],
+	"durable_objects": { "bindings": [{ "name": "REALTIME", "class_name": "RealtimeObject" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["RealtimeObject"] }]
+}

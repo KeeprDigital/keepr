@@ -47,6 +47,14 @@
 			"bucket_name": "stream-graphics-asset-canonical"
 		}
 	],
+	// Realtime (ADR-0137): one object per scope holds that scope's sockets. Its
+	// class is an export of the Worker's entry, which the realtime layer supplies
+	// (`@keepr/realtime/nuxt`, ADR-0138), and its storage is the object's own
+	// SQLite. `migrations` is one list, which every Environment inherits.
+	"durable_objects": {
+		"bindings": [{ "name": "REALTIME", "class_name": "RealtimeObject" }]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["RealtimeObject"] }],
 	// Hourly: Graphics Asset Library retention and reconciliation. Deadlines are
 	// evaluated inside the library, so this only needs to run often enough to
 	// keep queues short. Every minute: Melee Live Results ticks for due Events.
@@ -80,10 +88,11 @@
 	// account (ADR-0122): the same build, deployed with `--env staging`. Wrangler
 	// does not inherit vars or bindings into an env block, so each is restated
 	// with the staging account's ids; it inherits the rest (compatibility,
-	// triggers, observability), and `routes`, which would carry production's
-	// custom domain, is restated. `name` is set, or Wrangler deploys
-	// `stream-staging`. test/unit/build/wranglerEnvironments.test.ts holds the
-	// two to the same bindings.
+	// triggers, observability, the Durable Object `migrations`), and `routes`,
+	// which would carry production's custom domain, is restated. `name` is set,
+	// or Wrangler deploys `stream-staging`.
+	// test/unit/build/wranglerEnvironments.test.ts holds the two to the same
+	// bindings.
 	"env": {
 		"staging": {
 			"name": "stream",
@@ -112,6 +121,9 @@
 					"bucket_name": "stream-graphics-asset-canonical"
 				}
 			],
+			"durable_objects": {
+				"bindings": [{ "name": "REALTIME", "class_name": "RealtimeObject" }]
+			},
 			"services": [
 				{
 					"binding": "SILENT_VIDEO_PLAYBACK_VALIDATOR",

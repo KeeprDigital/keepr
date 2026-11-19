@@ -1,16 +1,21 @@
 # @keepr/realtime
 
 Realtime for every app in the workspace (ADR-0137, in the root `docs/adr`): one
-Durable Object per scope an app names, holding every socket of that scope, and
-the client transport that reconnects to it. It knows channels, sockets and
-presence. It names no product: an app supplies the scope, the channel names and
-who may hear and enter what.
+Durable Object per scope an app names, holding every socket of that scope, the
+client transport that reconnects to it, and the Nuxt layer an app extends to
+have them (ADR-0138). It knows channels, sockets and presence. It names no
+product: an app supplies the scope, the channel names and who may hear and
+enter what.
 
 | Import | What |
 | --- | --- |
 | `@keepr/realtime/protocol` | The frames both ends speak, and the close codes |
 | `@keepr/realtime/object` | The Durable Object class an app's Worker exports |
 | `@keepr/realtime/client` | The client transport, with no framework in it |
+| `@keepr/realtime/nuxt` | The Nuxt layer an app that wants realtime extends |
+
+`src/` has no framework in it. Nuxt is a peer dependency that only `nuxt/`
+reads.
 
 ## The object
 
@@ -207,3 +212,149 @@ from the options, or from `globalThis` when given none, and `tsconfig.client.jso
 checks it with neither the DOM library nor Node's types. Its tests run under
 Node on a fake socket and clock (`test/client/helpers/rig.ts`), and once on
 Node's own `WebSocket` and timers. No test runs it in a browser.
+
+## The Nuxt layer
+
+`nuxt/` is the layer an app that wants realtime extends, beside the layer every
+app extends (ADR-0138). An app that does not names neither it nor this package.
+It keeps the shared layer's rules (ADR-0093): no route, no middleware, no
+product's name, and it typechecks and tests alone.
+
+An app takes it with a dependency on `@keepr/realtime`, the `extends` line, its
+own binding and its own port.
+
+```ts
+// nuxt.config.ts
+export default defineNuxtConfig({
+	extends: ['@keepr/nuxt-layer', '@keepr/realtime/nuxt'],
+	// Each is this unless the app says otherwise.
+	realtime: { binding: 'REALTIME', socketPath: '/realtime/socket', portPath: '/realtime/port' },
+});
+```
+
+```jsonc
+// wrangler.jsonc. Wrangler does not inherit a binding into an `env` block, so
+// each Environment restates `durable_objects`; `migrations` is inherited.
+"durable_objects": { "bindings": [{ "name": "REALTIME", "class_name": "RealtimeObject" }] },
+"migrations": [{ "tag": "v1", "new_sqlite_classes": ["RealtimeObject"] }]
+```
+
+```jsonc
+// The configuration `nuxt dev` reads (below): the class is in another Worker there.
+"durable_objects": {
+	"bindings": [
+		{ "name": "REALTIME", "class_name": "RealtimeObject", "script_name": "keepr-realtime-dev" }
+	]
+}
+```
+
+```ts
+// server/routes/realtime/port.ts: the app's own route, at `realtime.portPath`
+export default defineRealtimePort(async (event) => {
+	const user = await whoIsThis(event); // the app's own rule
+	if (!user) return null;
+	return { scope: `room:${room}`, grant: { identity: user.id, hear: [`room:${room}:*`] } };
+});
+
+// Anywhere the server writes:
+await useRealtimeScope(event, `room:${room}`).publish([{ channel, name, data }]);
+```
+
+| `realtime` | Default | What |
+| --- | --- | --- |
+| `binding` | `REALTIME` | The Durable Object binding the app's Wrangler configuration gives `RealtimeObject`. |
+| `socketPath` | `/realtime/socket` | Where a page opens its socket: one path under `nuxt dev` and in the built Worker. |
+| `portPath` | `/realtime/port` | Where the app's route answers the port. Not a path that starts with `socketPath`, which the dev proxy takes whole. |
+
+| Piece | What |
+| --- | --- |
+| The Worker entry (`nuxt/server/worker/entry.ts`) | A production build's entry, wrapping Nitro's. It exports `RealtimeObject` and hands an upgrade on `socketPath` to a scope's object. Every other request is Nitro's. Only a build takes it: under `nuxt dev` it would replace Nitro's dev entry. |
+| `defineRealtimePort(port)` | The route that answers the app's port: given the event, a scope and a grant, or `null` to refuse. The layer registers no route, so the app exports this from a file of its own. |
+| `useRealtimeScope(event, scope)` | One scope's object on the app's own binding: `publish(deliveries)` and `disconnect(tag)`, by RPC. Takes the Worker's bindings where there is no request, as in a scheduled handler. |
+| The dev Worker (`nuxt/server/worker/dev.ts`) | Holds the class beside `nuxt dev` (below). |
+
+`defineRealtimePort` and `useRealtimeScope` are auto-imported from
+`nuxt/server/utils/realtime.ts`; code that names them imports
+`@keepr/realtime/nuxt/server/utils/realtime`.
+
+### The hand-off
+
+An upgrade on `socketPath` is put to the app's port before any object sees it.
+The port is asked with a plain `GET` of `portPath` that carries the socket's
+query and the caller's headers, so the app reads a cookie, an `Origin` or a
+ticket as it does anywhere, and its own middleware runs first. Nothing of the
+upgrade goes with it.
+
+| The port answers | The caller gets |
+| --- | --- |
+| A scope and a grant | Its socket, handed to that scope's object with that grant (`connectSocket`) |
+| `null` | A socket closed with `CLOSE_REFUSED` (`refuseSocket`), which a page can read |
+| Nothing: a middleware answered first, the port threw, or no route is there | The app's own response. A page reads it as a failed attempt, so an app refuses in its port |
+
+A request for `socketPath` that is no upgrade is answered 426.
+
+**The port's route is no way in, and no way to ask.** Only the hand-off reaches
+it; any other request is answered 404.
+
+- **In the built Worker** the entry marks the request object it makes, in
+  memory, and the route asks whether it was handed that object. It reads no
+  header and no query for this, so nothing a caller sends can stand for it.
+- **Under `nuxt dev`** the request comes over the loopback from the dev
+  server's own process, with a secret made for that run. The dev Worker never
+  holds the secret, and a build has no such branch.
+- **A caller cannot supply what the hand-off reads.** `x-realtime-ticket` and
+  `x-realtime-hand-off` are taken off its request before the port is asked,
+  and `connectSocket` sets the ticket itself.
+
+### Under `nuxt dev`
+
+`nuxt dev` runs the server in Node, which cannot hold a Durable Object. So the
+layer starts a Worker beside it in local `workerd`, which holds the class, and
+Nitro's dev proxy (`ws: true`) sends `socketPath` there. A page opens the same
+path it opens on the built Worker. The dev Worker asks the app's port through
+the dev server and hands off as the entry does.
+
+**The dev server itself starts it**, from the layer's module. So an app's
+`pnpm dev` starts it, and so does anything else that runs `nuxt dev`, an
+integration suite's servers among them. It stops with the dev server.
+
+**The dev binding lives in the configuration `nuxt dev` reads**
+(`nitro.cloudflare.dev.configPath`), a dev configuration apart from the
+deployed one, as `wrangler.dev.jsonc` is in Stream Keepr. It names the dev
+Worker by `script_name`, so the server publishes by RPC on a real binding, with
+the code it runs when built. It is not a Wrangler environment of
+`wrangler.jsonc`: that file is what is deployed, each `env` block in it is an
+Environment held to production's bindings, and a `dev` block there is one
+mistyped `--env` from a deploy.
+
+**Two dev servers at once share nothing.** The dev Worker listens on a free
+port of its own choosing. A `script_name` binding finds its Worker through
+Wrangler's local registry, which is one directory for the whole machine, keyed
+by the Worker's name; so each dev server keeps a registry of its own, under
+the app's `.wrangler`, by setting `WRANGLER_REGISTRY_PATH` for its process.
+One already set is left alone. An app that binds another local Worker through
+the registry, as the Accounts Stand-in is bound, starts both under one
+`WRANGLER_REGISTRY_PATH`, one for each dev server.
+
+**The dev Worker keeps nothing between runs.** Each run starts from empty
+storage, so a page that held a sequence is told continuity was lost, by the
+object's epoch, and reads again.
+
+**Hot reload leaves it alone.** A change to the app's code reloads the page or
+the server as before; the dev Worker and its sockets are untouched. A change
+to `nuxt.config.ts` restarts Nuxt and the dev Worker with it, and each socket
+reconnects.
+
+### Its tests
+
+`nuxt/test/fixture` is an app as the tests need one: it takes the layer by the
+`extends` line, and its port lets a caller with a cookie into the room its query
+names. It is never deployed. `nuxt/test/handOff.test.ts` builds it, then holds
+each rule above twice: on the built Worker in local `workerd`, and under
+`nuxt dev`, on one path, driven from Node by the client transport. It then
+runs two dev servers at once, and holds that neither hears the other's
+publishes.
+
+`pnpm typecheck` checks the layer as an app with nothing but itself
+(`nuxt prepare`), in three programs: its configuration and module, what a
+Worker runs, and the tests with their fixture.

@@ -35,7 +35,10 @@ const workerName = 'stream';
 export default defineNuxtConfig({
 	// What every app of the workspace starts from: client rendering, Nuxt UI, the
 	// colour mode, strict TypeScript and the Cloudflare Workers target (ADR-0093).
-	extends: ['@keepr/nuxt-layer'],
+	// Then realtime's layer (ADR-0138): the Worker entry that exports the object's
+	// class and hands a socket to it, and the Worker that holds the class beside
+	// `nuxt dev`. Who may hear what is `server/routes/realtime/port.ts`.
+	extends: ['@keepr/nuxt-layer', '@keepr/realtime/nuxt'],
 
 	// Nothing but `nuxt prepare` may rewrite `.nuxt` while other gates run:
 	// the root tsconfig extends it, so every Vite and TypeScript consumer reads it.

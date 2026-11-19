@@ -1,23 +1,32 @@
 {
 	"name": "@keepr/realtime",
 	"private": true,
-	"description": "Realtime for every app: the Durable Object that fans a scope's channels out to its sockets, its wire protocol, and the client transport that reconnects to it (ADR-0137).",
+	"description": "Realtime for every app: the Durable Object that fans a scope's channels out to its sockets, its wire protocol, the client transport that reconnects to it (ADR-0137), and the Nuxt layer an app extends to have them (ADR-0138).",
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
 		"./protocol": "./src/protocol.ts",
 		"./object": "./src/object/index.ts",
-		"./client": "./src/client/index.ts"
+		"./client": "./src/client/index.ts",
+		"./nuxt": "./nuxt/nuxt.config.ts",
+		"./nuxt/*": "./nuxt/*.ts"
 	},
 	"scripts": {
-		"typecheck": "tsc --noEmit -p tsconfig.client.json && pnpm types:object --check && tsc --noEmit -p tsconfig.object.json && tsc --noEmit -p test/object/tsconfig.json",
+		"typecheck": "tsc --noEmit -p tsconfig.client.json && pnpm types:object --check && tsc --noEmit -p tsconfig.object.json && tsc --noEmit -p test/object/tsconfig.json && pnpm typecheck:nuxt",
+		"typecheck:nuxt": "nuxt prepare nuxt && tsc --noEmit -p nuxt/tsconfig.json && tsc --noEmit -p nuxt/server/tsconfig.json && tsc --noEmit -p nuxt/test/tsconfig.json",
 		"types:object": "wrangler types test/object/worker/worker-configuration.d.ts --config test/object/worker/wrangler.jsonc --env-file /dev/null",
-		"test": "vitest run"
+		"test": "vitest run",
+		"postinstall": "nuxt prepare nuxt"
 	},
 	"devDependencies": {
 		"@types/node": "catalog:tooling",
+		"nuxt": "catalog:framework",
 		"typescript": "catalog:tooling",
 		"vitest": "catalog:test",
+		"wrangler": "catalog:cloudflare"
+	},
+	"peerDependencies": {
+		"nuxt": "catalog:framework",
 		"wrangler": "catalog:cloudflare"
 	}
 }

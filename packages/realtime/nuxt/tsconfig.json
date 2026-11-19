@@ -1,0 +1,8 @@
+{
+	// The layer as an app with nothing but itself (ADR-0138): `nuxt prepare` writes
+	// this program. The Workers runtime's types are the ones the object's test
+	// Worker generates (`pnpm types:object`), at the same compatibility date; an
+	// app that extends the layer checks the layer's files against its own.
+	"extends": "./.nuxt/tsconfig.json",
+	"files": ["../test/object/worker/worker-configuration.d.ts"]
+}

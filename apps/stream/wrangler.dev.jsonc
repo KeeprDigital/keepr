@@ -25,5 +25,13 @@
 		{
 			"binding": "GRAPHICS_ASSET_CANONICAL"
 		}
-	]
+	],
+	// Realtime's object (ADR-0137). `nuxt dev` runs in Node and cannot hold the
+	// class, so the binding names the Worker the realtime layer starts beside the
+	// dev server (`packages/realtime/README.md` § Under nuxt dev).
+	"durable_objects": {
+		"bindings": [
+			{ "name": "REALTIME", "class_name": "RealtimeObject", "script_name": "keepr-realtime-dev" }
+		]
+	}
 }

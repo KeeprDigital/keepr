@@ -19,6 +19,14 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
   root run them all. `nuxt-layer` is the Nuxt layer every app extends, with the
   server, client and test foundation the apps share: what a second app needs
   moves there, never into a second copy. Its `README.md` has its rules.
+- `packages/realtime` (`@keepr/realtime`): realtime for every app that wants it
+  (ADR-0137): the Durable Object that holds a scope's sockets, its wire
+  protocol and the client transport, with no framework in them, and in `nuxt/`
+  the Nuxt layer such an app extends beside the shared one,
+  `extends: ['@keepr/nuxt-layer', '@keepr/realtime/nuxt']`. What gives a Worker
+  a binding, an entry of its own or a process in development is a layer an app
+  chooses, never part of `packages/nuxt-layer` (ADR-0138). Its `README.md` says
+  how an app takes it.
 - `apps/accounts`: Keepr Accounts (`@keepr/accounts`), the one Keepr identity,
   with its own database and the only Better Auth (ADR-0112). It speaks the
   root `GLOSSARY.md` and adds its own `GLOSSARY.md`; `RULES.md` and
