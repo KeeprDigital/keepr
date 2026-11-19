@@ -441,6 +441,36 @@ describe('regenerating a Screen Output Asset Capability', () => {
 	});
 });
 
+describe('deleting a Screen', () => {
+	it("closes its outputs' sockets at once, tells its watchers, and leaves another Screen's", async () => {
+		const eventId = await createEvent();
+		const [screen, otherScreen] = [await createScreen(eventId), await createScreen(eventId)];
+		const output = await open({ eventId, ticket: await ticket(eventId, screen.capability) });
+		const otherOutput = await open({
+			eventId,
+			ticket: await ticket(eventId, otherScreen.capability),
+		});
+		if (!output.admitted || !otherOutput.admitted) throw new Error('An output was refused');
+		const operator = connect(() => socketUrl({ eventId }), OPERATOR_PAGE);
+		let members: PresenceMember[] = [];
+		operator.watchPresence(screen.channel, (now) => {
+			members = now;
+		});
+		output.socket.send(JSON.stringify({ t: 'enter', channel: screen.channel, data: {} }));
+		await until('the output to be present', () => members.length === 1);
+
+		await $fetch(`/api/events/${eventId}/screens/${screen.id}`, { method: 'DELETE' });
+
+		expect(await output.closed).toBe(CLOSE_REFUSED);
+		await until('its watchers to be told', () => members.length === 0);
+		const stillThere = new Promise((resolve) =>
+			otherOutput.socket.addEventListener('message', ({ data }) => resolve(data), { once: true }),
+		);
+		otherOutput.socket.send(PING);
+		expect(await stillThere).toBe(PONG);
+	});
+});
+
 describe("realtime's port", () => {
 	it('answers no request from outside', async () => {
 		const eventId = await createEvent();
