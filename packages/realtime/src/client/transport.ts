@@ -35,7 +35,7 @@ import type {
  * - `disconnected`: it has no connection and is retrying.
  * - `suspended`: the fault. It has been without a connection for
  *   `faultAfterMs`, whatever the count of retries, and is still retrying.
- * - `closed`: disposed, or nothing is asked of it any more.
+ * - `closed`: disposed, or nothing is asked of it any more and nothing holds it.
  */
 export type ConnectionState =
 	| 'initialized'
@@ -158,7 +158,17 @@ export interface SocketTransport {
 	leavePresence(channel: string): void;
 	/** Be told `channel`'s members, whole, whenever they change. */
 	watchPresence(channel: string, callback: PresenceCallback): () => void;
-	/** End everything: timers, socket and listeners. Nothing asked afterwards is acted on. */
+	/**
+	 * Keep the socket though nothing else is asked, until the function returned is
+	 * called: for a caller whose consumers come and go, where each socket costs.
+	 * A hold is a need like any other, which asks nothing of the object: it
+	 * connects when there is no connection, is retried through a cut, and shows the
+	 * fault and a refusal as any other does. Each hold is its own, so the socket is
+	 * kept until every one is released. A channel is still forgotten with the last
+	 * thing asked of it, and is a first attach for whoever asks next.
+	 */
+	hold(): () => void;
+	/** End everything: timers, socket, listeners and holds. Nothing asked afterwards is acted on. */
 	dispose(): void;
 }
 
@@ -247,6 +257,8 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 	const entries = new Map<string, unknown>();
 	const watches = new Map<string, Watch>();
 	const refusals = new Map<string, Set<ChannelRefusal['what']>>();
+	/** Each hold a caller has not released. */
+	const holds = new Set<Held<null>>();
 	const changeListeners = new Set<Held<() => void>>();
 
 	/** The connect in flight or the socket in use. Nothing of an earlier one is heard. */
@@ -309,7 +321,7 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 	}
 
 	const isOutOfTouch = () => state === 'disconnected' || state === 'suspended';
-	const wantsAnything = () => channels.size > 0 || watches.size > 0;
+	const wantsAnything = () => channels.size > 0 || watches.size > 0 || holds.size > 0;
 
 	function send(frame: ClientFrame) {
 		if (live?.socket?.readyState === OPEN) live.socket.send(JSON.stringify(frame));
@@ -356,7 +368,7 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 		return held;
 	}
 
-	/** Forget a channel nothing refers to any more; the last one closes the socket. */
+	/** Forget a channel nothing refers to any more; the last one closes a socket nothing holds. */
 	function release(name: string) {
 		const held = channels.get(name);
 		if (!held || entries.has(name)) return;
@@ -722,6 +734,12 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 			return stopWatching;
 		},
 
+		hold() {
+			const release = hold(holds, null, closeIfIdle);
+			connect();
+			return release;
+		},
+
 		dispose() {
 			if (disposed) return;
 			disposed = true;
@@ -730,6 +748,7 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 			entries.clear();
 			watches.clear();
 			refusals.clear();
+			holds.clear();
 			changeListeners.clear();
 		},
 	};
