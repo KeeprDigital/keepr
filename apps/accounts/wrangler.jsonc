@@ -19,7 +19,7 @@
 			"database_name": "accounts-identity",
 			// The identity database does not exist yet. Its operator creates it and
 			// writes its ID here in a PR before the first deploy (README.md § Deploying).
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			"database_id": "1a2b50ba-d8bc-4330-adbb-6dfd58e2a520",
 			"migrations_dir": "../../server/db/migrations/sqlite"
 		}
 	],
@@ -51,7 +51,7 @@
 					"binding": "DB",
 					"database_name": "accounts-identity",
 					// Not created yet either: README.md § Deploying.
-					"database_id": "00000000-0000-0000-0000-000000000000",
+					"database_id": "441ba901-9397-4a1c-ad4c-532ca26788cd",
 					"migrations_dir": "../../server/db/migrations/sqlite"
 				}
 			],

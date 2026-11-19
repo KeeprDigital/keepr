@@ -95,11 +95,13 @@ A new Installation is provisioned in this order: its resources, its Worker's sec
 
    `wrangler.jsonc` holds a placeholder ID, `00000000-0000-0000-0000-000000000000`, in each Environment's `d1_databases` until then. Write the printed `database_id` in its place, at the top level for Production and in `env.staging` for Staging, and land it in a PR with a patch changeset for `@keepr/accounts`. A deploy reads the configuration of the Release it deploys, so land it before marking the Version PR that releases `0.1.0` ready, or the first Release carries the placeholder. A deploy of a Release with the placeholder stops before its first remote change, when it reads the database's recovery point. The deploy applies the migrations itself (`databases` in `deploy.jsonc`); none is applied by hand.
 
-2. **Set the sign-in secret**, `NUXT_BETTER_AUTH_SECRET`, the one Worker secret `deploy.jsonc` requires: a deploy refuses an Installation without it, and a blank one answers 503. Give each Environment its own value (`openssl rand -base64 32`), and keep it where Keepr's secrets are kept; the secrets sync command (#1290) sets it from there once it exists. By hand, after `pnpm build`:
+2. **Set the sign-in secret**, `NUXT_BETTER_AUTH_SECRET`, the one Worker secret `deploy.jsonc` requires: a deploy refuses an Installation without it, and a blank one answers 503. Each Environment has its own value, recorded in 1Password (`op://Keepr/accounts-<environment>/NUXT_BETTER_AUTH_SECRET`, ADR-0134). From the workspace root, generate it there and set it in one step:
 
    ```
-   pnpm exec wrangler secret put NUXT_BETTER_AUTH_SECRET --config .output/server/wrangler.json [--env staging]
+   pnpm secrets:sync --app accounts --env staging --generate NUXT_BETTER_AUTH_SECRET
    ```
+
+   (`--env production` for Production.) Never set it only on the Worker with `wrangler secret put`: a Worker's secret can never be read back.
 
    The Worker `keepr-accounts` does not exist before this: setting its secret creates it. Changing the value later signs every User out and makes the Identity Proof's stored keys unreadable, so it is never rotated casually.
 

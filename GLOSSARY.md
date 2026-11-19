@@ -99,7 +99,7 @@ A Worker an app deploys from source beside its own, with its own promotion marke
 _Avoid_: component (a marker's field, which also names the app), sidecar
 
 **Promotion marker**:
-The annotated tag on `origin` recording one app's, or one part's, latest deploy to one Environment, `pending` or `deployed`, named `<app>/<environment>[-<part>]`.
+The GitHub Deployments environment recording one app's, or one part's, latest deploy to one Environment, `pending` or `deployed`, named `<app>/<environment>[-<part>]` (ADR-0133; an annotated tag on `origin` of that name before it).
 _Avoid_: deploy tag, production tag
 
 **Release identity**:

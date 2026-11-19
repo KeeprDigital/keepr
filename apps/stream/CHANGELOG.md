@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.1
+
+### Fixes
+
+- **stream:** `/admin` opens the Operations Cockpit at `/admin/graphics-assets` instead of answering 404. A browser with no Session is sent to sign in and returns to the cockpit. (#1301)
+
 ## 3.0.0
 
 ### Operator steps

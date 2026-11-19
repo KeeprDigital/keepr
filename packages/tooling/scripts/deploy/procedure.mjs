@@ -16,8 +16,6 @@
  * 5. Each part that the decision deploys, between its `pending` and `deployed`
  *    markers.
  * 6. The app: mark pending, migrate D1, deploy the Worker, verify, mark deployed.
- * 7. Retire the markers from before per-app names whose replacement now
- *    records a confirmed deploy.
  *
  * A pending marker is the state a deploy leaves when it dies part-way: it
  * claims nothing, and the next decision does not trust it. Writing it first is
@@ -33,7 +31,7 @@
 
 import { join } from 'node:path';
 import { undeployableReason } from '../deploy-guard.mjs';
-import { LEGACY_MARKERS, formatMarker, markerName, parseMarker } from './markers.mjs';
+import { formatMarker, markerName, parseMarker } from './markers.mjs';
 import { requireSecrets } from './secrets.mjs';
 
 const FINGERPRINT = /^sha256:[0-9a-f]{64}$/;
@@ -87,7 +85,7 @@ export const MODES = ['auto', 'always', 'never'];
  *   markerText: string | undefined,
  * }} input `part` is the part its marker's `component` field names and `marker` the marker's
  *   name; `targetFingerprint` is undefined when the target could not be
- *   fingerprinted; `markerText` is the marker tag's message, undefined when no
+ *   fingerprinted; `markerText` is the marker as it reads, undefined when no
  *   marker exists.
  * @returns {Decision}
  */
@@ -243,27 +241,6 @@ export function promotePart({
 }
 
 /**
- * Remove each marker from before per-app names whose replacement, among
- * `names`, now records a confirmed deploy.
- *
- * @param {MarkerStore} store
- * @param {string[]} names
- * @returns {string[]} the markers removed
- */
-function retireLegacyMarkers(store, names) {
-	const retired = [];
-	for (const name of names) {
-		const legacy = LEGACY_MARKERS.get(name);
-		if (legacy === undefined || store.read(legacy) === undefined) continue;
-		const text = store.read(name);
-		if (text === undefined || parseMarker(text)?.state !== 'deployed') continue;
-		store.remove(legacy);
-		retired.push(legacy);
-	}
-	return retired;
-}
-
-/**
  * Refuse a Release whose built or placed Worker configuration, or a part's,
  * sits under a package marked `keepr.undeployable`. `readRelease` refuses the
  * configurations the descriptor names before building; this reads what will
@@ -298,7 +275,7 @@ function refuseUndeployable({ app, appDir, descriptor }) {
  * }} options `artifact`: a downloaded build of this Release, deployed instead
  *   of building it; `beforeRemoteChange` throws to refuse the deploy, or
  *   answers fields the app's markers record.
- * @returns {Promise<{ parts: Record<string, Decision>, verified: unknown, retired: string[] }>}
+ * @returns {Promise<{ parts: Record<string, Decision>, verified: unknown }>}
  */
 export async function deployRelease({
 	release,
@@ -369,18 +346,10 @@ export async function deployRelease({
 	const verified = await steps.verify();
 	markApp({ store, release, environment, state: 'deployed', source, recorded });
 
-	const retired = retireLegacyMarkers(store, [
-		markerName(app, environment),
-		...Object.keys(descriptor.parts).map((part) => markerName(app, environment, part)),
-	]);
-	for (const name of retired)
-		log(`Retired the ${name} marker: its replacement records this deploy.`);
-
 	return {
 		parts: Object.fromEntries(
 			Object.entries(parts).map(([part, { deploy, reason }]) => [part, { deploy, reason }]),
 		),
 		verified,
-		retired,
 	};
 }

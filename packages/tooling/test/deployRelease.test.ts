@@ -147,6 +147,11 @@ describe("reading the Release's deploy descriptor", () => {
 			/gates/,
 		],
 		[
+			'a Worker name Cloudflare would not take',
+			{ ...STREAM_DESCRIPTOR, worker: { ...STREAM_DESCRIPTOR.worker, name: 'Stream Keepr' } },
+			/worker\.name/,
+		],
+		[
 			'Worker secrets that are not a list',
 			{ ...STREAM_DESCRIPTOR, worker: { ...STREAM_DESCRIPTOR.worker, secrets: 'NUXT_KEY' } },
 			/worker\.secrets/,

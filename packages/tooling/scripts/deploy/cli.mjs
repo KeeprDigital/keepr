@@ -49,7 +49,7 @@ import process from 'node:process';
 import { parseArgs } from 'node:util';
 import { refuseAccountMismatch } from './account.mjs';
 import { bundlePart, fingerprintPart } from './fingerprint.mjs';
-import { LEGACY_MARKERS, describeMarker, gitMarkerStore, markerName } from './markers.mjs';
+import { describeMarker, gitMarkerStore, markerName, markerStore } from './markers.mjs';
 import { checkDeployOrder, gitHistory, neededBy } from './order.mjs';
 import { MODES, decidePartDeploy, deployRelease, markApp, promotePart } from './procedure.mjs';
 import { recordRecoveryPoints } from './recovery.mjs';
@@ -140,7 +140,7 @@ function deployer(env) {
  * @param {{
  *   release: import('./release.mjs').Release,
  *   environment: string,
- *   store: import('./markers.mjs').MarkerStore,
+ *   store: Pick<import('./markers.mjs').MarkerStore, 'head'>,
  *   env: Record<string, string | undefined>,
  *   log: (line: string) => void,
  * }} options
@@ -232,16 +232,7 @@ function markerLines(release, environment, store) {
 			markerName(release.app, environment, part),
 		),
 	];
-	const lines = names.map((name) => `${name}: ${describeMarker(store.read(name))}`);
-	for (const name of names) {
-		const legacy = LEGACY_MARKERS.get(name);
-		const text = legacy === undefined ? undefined : store.read(legacy);
-		if (text !== undefined)
-			lines.push(
-				`${legacy}: ${describeMarker(text)} (before per-app names; a deploy that confirms ${name} removes it)`,
-			);
-	}
-	return lines;
+	return names.map((name) => `${name}: ${describeMarker(store.read(name))}`);
 }
 
 /**
@@ -398,7 +389,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 			return 1;
 		}
 	}
-	const store = gitMarkerStore({ cwd: release.appDir });
+	const store = markerStore({ cwd: release.appDir });
 
 	if (command === 'deploy') {
 		const steps = realSteps({ release, environment: target, store, env, log });

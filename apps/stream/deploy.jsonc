@@ -10,6 +10,9 @@
 	"worker": {
 		"source": "wrangler.jsonc",
 		"config": ".output/server/wrangler.json",
+		// Its name, which nuxt.config.ts gives the build and `env.staging` restates;
+		// `pnpm secrets:sync` passes it against wrangler.jsonc for production.
+		"name": "stream",
 		// The Worker secrets every Installation requires (README.md § Worker secrets): a
 		// deploy refuses one that lacks any. NUXT_BANDAI_KEEPR_API_KEY is optional,
 		// and NUXT_ADMIN_BOOTSTRAP_TOKEN is set only briefly.

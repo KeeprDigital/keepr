@@ -35,6 +35,9 @@ export const DESCRIPTOR_FILE = 'deploy.jsonc';
  * - `worker.source`: the Worker's source Wrangler configuration, which the build
  *   turns into `worker.config`; what a check that runs before the build reads.
  * - `worker.config`: the built Worker's Wrangler configuration.
+ * - `worker.name`, optional: the Worker's name, when its source configuration
+ *   leaves naming it to the build; what a command run against the source
+ *   configuration passes as `--name` (`pnpm secrets:sync`, ADR-0134).
  * - `worker.secrets`, optional: the Worker secrets every Installation of the
  *   app requires, by name; a deploy refuses an Installation that lacks one
  *   (`secrets.mjs`, ADR-0128). Absent in a Release cut before it.
@@ -56,7 +59,7 @@ export const DESCRIPTOR_FILE = 'deploy.jsonc';
  *   app: string,
  *   build: string[],
  *   output: string,
- *   worker: { source: string, config: string, secrets?: string[] },
+ *   worker: { source: string, config: string, name?: string, secrets?: string[] },
  *   databases: { binding: string }[],
  *   environments: Record<string, { url: string, wranglerEnv?: string }>,
  *   parts: Record<string, import('./fingerprint.mjs').Part>,
@@ -111,6 +114,7 @@ const NAME = /^[a-z]+$/;
 const APP_NAME = /^[a-z]+(?:-[a-z]+)*$/;
 const SCRIPT = /^[a-z][a-z0-9:-]*$/;
 const SECRET = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const WORKER_NAME = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
 /** @param {unknown} value */
 const isText = (value) => typeof value === 'string' && value !== '';
@@ -154,6 +158,8 @@ function descriptorProblems(descriptor, app) {
 	if (!isText(descriptor.output)) problems.push('output is not a directory');
 	if (!isText(descriptor.worker?.source)) problems.push('worker.source is not a path');
 	if (!isText(descriptor.worker?.config)) problems.push('worker.config is not a path');
+	if (descriptor.worker?.name !== undefined && !WORKER_NAME.test(descriptor.worker.name))
+		problems.push('worker.name is not a Worker name');
 	if (!isSecretList(descriptor.worker?.secrets))
 		problems.push('worker.secrets is not a list of secret names');
 	if (

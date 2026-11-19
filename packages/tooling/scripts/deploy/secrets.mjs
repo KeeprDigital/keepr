@@ -22,7 +22,7 @@ import { parseJsonc } from '../jsonc.mjs';
 import { resolveWranglerConfig } from './fingerprint.mjs';
 
 /** Wrangler's answer for a Worker the account does not have. */
-const WORKER_NOT_FOUND = /\bWorker "[^"]+"(?: \(env: [^)]+\))? not found\./;
+export const WORKER_NOT_FOUND = /\bWorker "[^"]+"(?: \(env: [^)]+\))? not found\./;
 
 /**
  * The secret names set on the Worker deployed from each configuration, as
@@ -108,20 +108,25 @@ export function requireSecrets({ release, environment, secretNames, configuredVa
 			source: descriptor.worker.source,
 			config: descriptor.worker.config,
 			required: descriptor.worker.secrets,
+			synced: true,
 		},
 		...Object.entries(descriptor.parts).map(([part, { config, secrets }]) => ({
 			label: `${app}'s ${part}`,
 			source: config,
 			config,
 			required: secrets,
+			synced: false,
 		})),
 	];
 	const refusals = [];
-	for (const { label, source, config, required = [] } of workers) {
+	for (const { label, source, config, required = [], synced } of workers) {
 		const vars = Object.keys(configuredVars(source));
 		if (required.length === 0 && vars.length === 0) continue;
 		const flags = `--config ${config}` + (wranglerEnv === undefined ? '' : ` --env ${wranglerEnv}`);
-		const put = `from apps/${app} with wrangler secret put <NAME> ${flags}`;
+		// The app's Worker's secrets are set from 1Password (ADR-0134).
+		const put =
+			(synced ? `with pnpm secrets:sync --app ${app} --env ${environment}, or ` : '') +
+			`from apps/${app} with wrangler secret put <NAME> ${flags}`;
 		let set;
 		try {
 			set = secretNames(config);

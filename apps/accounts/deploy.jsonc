@@ -10,6 +10,9 @@
 	"worker": {
 		"source": "wrangler.jsonc",
 		"config": ".output/server/wrangler.json",
+		// Its name, which nuxt.config.ts gives the build and `env.staging` restates;
+		// `pnpm secrets:sync` passes it against wrangler.jsonc for production.
+		"name": "keepr-accounts",
 		// The Worker secrets every Installation requires (README.md § Deploying): a
 		// deploy refuses one that lacks any (ADR-0128).
 		"secrets": ["NUXT_BETTER_AUTH_SECRET"]

@@ -677,10 +677,8 @@ How a change reaches `main`, and why:
   release gate below. The **release tags** ruleset makes release tags
   immutable (`v*` and `@keepr/*`), and repository admins can bypass it. `CI passed` is one summary job that always reports, so CI can
   skip what a change cannot affect without leaving a required check waiting.
-  The promotion-marker tags (`stream/production` and the rest,
-  [Promotion markers](#promotion-markers)) are unprotected: every deploy
-  force-moves them, and GitHub refuses the Actions app as a ruleset bypass
-  actor.
+  The [promotion markers](#promotion-markers) are GitHub Deployments, not
+  tags, so no ruleset governs them.
 - **A release is cut only from a revision the queue verified.** With no
   changeset left on `main`, the action runs `pnpm release:publish`:
   `packages/tooling/scripts/release-gate.mjs`, then `changeset git-tag`, which
@@ -728,12 +726,14 @@ deploys only from `main` and holds the release GitHub App's
 is installed on this repository only, with Contents, Pull requests and
 Workflows read and write (and Metadata read). `GITHUB_TOKEN` cannot do its
 job: a PR it opens starts no workflow without a maintainer's approval, and it
-can never hold `workflows`, which the Version PR's branch and the marker tags
-need once `main`'s workflows have changed. The default workflow token is
-read-only; each workflow declares the scopes it needs. Its one write is the
-release workflow's `deploy` job's `actions: write`, which dispatches the
-Deploy run (a `workflow_dispatch` sent with `GITHUB_TOKEN` starts a run, as
-its other events never do); the Deploy workflow gives it none.
+can never hold `workflows`, which the Version PR's branch and the release
+tags need once `main`'s workflows have changed. The default workflow token is
+read-only; each workflow declares the scopes it needs. It writes in two
+places: the release workflow's `deploy` job's `actions: write`, which
+dispatches the Deploy run (a `workflow_dispatch` sent with `GITHUB_TOKEN`
+starts a run, as its other events never do), and the Deploy workflow's
+deploying jobs' `deployments: write`, which records the
+[promotion markers](#promotion-markers) (ADR-0133).
 
 ## Deploy
 
@@ -881,10 +881,12 @@ build step, for the deploy and CI alike, and a tooling test
 ### Promotion markers
 
 The app and the validator are deployed separately and can fail separately.
-Each has its own marker per Environment, an annotated git tag on `origin` named
-`<app>/<environment>[-<part>]` (ADR-0035, ADR-0119):
+Each has its own marker per Environment, named `<app>/<environment>[-<part>]`
+(ADR-0035, ADR-0119). A marker is a GitHub Deployments environment of that
+name, under the repository's Environments (ADR-0133): each deploy of the app
+or part is a deployment there, at the commit it deploys.
 
-| Tag                           | Marks                                | Moved by                                                   |
+| Marker                        | Marks                                | Moved by                                                   |
 | ----------------------------- | ------------------------------------ | ---------------------------------------------------------- |
 | `stream/staging`              | The Staging Installation's app       | `pnpm run deploy --env staging` (steps 3 and 7), or the Deploy workflow |
 | `stream/staging-validator`    | The Staging Installation's validator | `pnpm run deploy --env staging` (step 2), or the Deploy workflow |
@@ -895,31 +897,44 @@ Each Installation's markers are its own: a deploy to staging never moves a
 production marker, and a failure in one Environment leaves the other's as
 they were.
 
-A marker records what it marks (its `component` field: `app`, or the part's
-name), its state, the commit it was deployed from, whether that checkout had
-uncommitted or untracked changes (`worktree: dirty`), who deployed it (a
-workflow run or `local`), for the validator its **fingerprint**, and the app,
-Environment and Release version. An app marker also records `needs: accounts`
-when the Installation depends on Keepr Accounts, `override` with its reason
-when a deploy bypassed [deploy order](#deploy-order), and `recovery`, the D1
-Time Travel bookmark read before the deploy changed anything
-(`DB=<bookmark>`). Every deploy marks the
-app or part `pending` before it changes anything, and `deployed` once it
-succeeded. A deploy that died part-way leaves `pending`, which means
-"unconfirmed: either version may be serving". A deploy that cannot write its
-pending marker does not start. `pnpm deploy:status` prints both markers and
-says whether this checkout's validator would deploy. It reads `origin` and
-bundles the validator (`pnpm validator:dry-run`), so it needs network access
-and installed dependencies, but no Docker or Cloudflare credentials.
+A marker records, in its deployment's payload, what it marks (its
+`component` field: `app`, or the part's name), the commit it was deployed
+from, whether that checkout had uncommitted or untracked changes
+(`worktree: dirty`), who deployed it (a workflow run or `local`), for the
+validator its **fingerprint**, and the app, Environment and Release version.
+An app marker also records `needs: accounts` when the Installation depends on
+Keepr Accounts, `override` with its reason when a deploy bypassed
+[deploy order](#deploy-order), and `recovery`, the D1 Time Travel bookmark
+read before the deploy changed anything (`DB=<bookmark>`). Its state is the
+latest deployment's latest status. Every deploy marks the app or part
+`pending` (a new deployment, `in_progress`) before it changes anything, and
+`deployed` (that deployment's `success`) once it succeeded. A deploy that died
+part-way leaves `pending`, which means "unconfirmed: either version may be
+serving"; a deployment whose latest status is anything but `success`
+(`failure`, `error`, `inactive`) reads `pending` too. A deploy that cannot
+write its pending marker does not start.
 
-Until ADR-0119 the markers were `production` and `production-validator`. They
-are no longer read: the first deploy under the new names redeploys the
-validator once, and removes each old tag once its replacement records a
-confirmed deploy. Until then `pnpm deploy:status` lists them too.
+`pnpm deploy:status` prints the markers and says whether this checkout's
+validator would deploy. It reads GitHub through `gh` and bundles the validator
+(`pnpm validator:dry-run`), so it needs network access, `gh auth login` and
+installed dependencies, but no Docker or Cloudflare credentials. The Deploy
+workflow writes markers with `GITHUB_TOKEN`; a local deploy writes them as the
+operator `gh` is signed in as, who needs write access to the repository.
+GitHub refuses a deployment at a commit it does not have, so a local deploy
+from unpushed commits stops before it changes anything: push them first.
 
-Markers are force-pushed, and the last writer wins. Deploy runs are serialised,
-but nothing stops a local deploy during one, so don't start one. A local deploy
-from unpushed commits pushes them to `origin` along with its marker tag.
+Until ADR-0133 the markers were annotated tags on `origin` of the same names.
+A marker with no deployment yet is read from its tag, so the first deploy after
+it keeps its fingerprint decisions; once a marker has a deployment, its tag is
+never read again. Nothing writes a tag any more. An operator deletes each tag
+once the repository's Environments list its marker
+(`git push origin --delete stream/production-validator`, and so on). A
+validator whose fingerprint has not changed gets no deployment, so its tag
+stays read until it does; deleting the tag sooner costs that validator one
+redeploy, the safe default for a missing marker.
+
+The last writer wins. Deploy runs are serialised, but nothing stops a local
+deploy during one, so don't start one.
 
 The validator fingerprint is a sha256 of what `wrangler deploy` would upload
 and build in that Environment: the bundle `pnpm validator:dry-run` produces
@@ -1015,15 +1030,12 @@ secret: the Wrangler configs name it ([Deploy](#deploy), ADR-0130), and no
 workflow passes `CLOUDFLARE_ACCOUNT_ID`. A Release from before that names no
 account, and deploys to the one account the token reaches.
 Cloudflare grants D1 and Containers only across an account, so a token per
-app would isolate nothing; the account is the boundary. It also holds the
-release GitHub App's `KEEPR_RELEASE_APP_ID` and
-`KEEPR_RELEASE_APP_PRIVATE_KEY` ([Releases](#releases), ADR-0124), never as
-repository secrets: each job pushes its app's
-[promotion markers](#promotion-markers) with a token of that App, narrowed to
-Contents and Workflows, because `GITHUB_TOKEN` can never hold `workflows` and
-GitHub refuses it a tag on a Release whose workflows differ from `main`'s.
-The caller passes all four secrets by name, and only the deploy and gates
-steps see the Cloudflare ones. `staging` also holds
+app would isolate nothing; the account is the boundary. Neither holds the
+release GitHub App's key: each job records its app's
+[promotion markers](#promotion-markers), GitHub Deployments, with
+`GITHUB_TOKEN`, granted `deployments: write` and nothing else (ADR-0133).
+The caller passes the secrets by name, and only the deploy and gates steps
+see the Cloudflare ones. `staging` also holds
 `STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL` and
 `STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD`, an operator account on the
 Staging Installation, which the Apps' staging call alone passes and the gates
@@ -1031,6 +1043,13 @@ step alone reads; its token also reads and writes the staging bucket's
 objects and triggers the validator's Workflow, for the validator gate. One deploy per Installation runs at a time (concurrency group
 `deploy-<app>-<environment>`); two apps deploy at once. An app joins the
 workflow with its deploy descriptor alone.
+
+Every GitHub environment secret's value is recorded in 1Password (vault
+`Keepr`: items `github-staging`, `github-production`, and `keepr-release` for
+the `release` environment's App credentials), mapped in `secrets.jsonc`, and
+set from there with `pnpm secrets:sync --github <environment>` (`--check`
+names what is missing and sets nothing; ADR-0134). A rolled token is recorded
+in 1Password first, then synced. No workflow reads 1Password.
 
 ### Deploy day
 
@@ -1047,7 +1066,9 @@ mid-run names the Event it left behind; delete it before rerunning.
    present in each Installation: each deploy refuses an Installation without
    them, and `pnpm exec keepr-deploy check --app stream --env <environment>`
    from the workspace root says so ahead of it, after a build, against that
-   Environment's account. No leftover `workerd` (`pnpm reap`).
+   Environment's account; `pnpm secrets:sync --app stream --env <environment>
+   --check` says so with no build, and what 1Password does not record
+   ([Worker secrets](#worker-secrets)). No leftover `workerd` (`pnpm reap`).
 2. **Recovery point.** Each deploy reads D1 Time Travel's current bookmark
    before it changes anything, refuses without one, and records it in its
    step summary and its app marker ([Deploy](#deploy)); nothing is typed. To
@@ -1118,15 +1139,18 @@ mid-run names the Event it left behind; delete it before rerunning.
 
 A deploy that fails after the validator succeeded leaves the app and its validator on
 different Releases, in that Installation only: each Environment's markers are
-its own. Read the markers first (`pnpm deploy:status --env <environment>`, or
-the failed run's step summary). For example, with A in production, a deploy of
-B that fails after its validator leaves:
+its own. Read the markers first (`pnpm deploy:status --env <environment>`, the
+failed run's step summary, or each marker's environment under the
+repository's Environments, whose latest deployment is the marker). For
+example, with A in production, a deploy of B that fails after its validator
+leaves:
 
-- `stream/production-validator`: `deployed` B: B's validator is serving.
-- `stream/production`: `pending` B, when it failed at the migration, the Worker
-  deploy or the verify, so A or B may be serving. A failure in the build, dry
-  run or smoke test comes before the validator and before any marker moves, so
-  it leaves both as they were.
+- `stream/production-validator`: `deployed` B (B's deployment, `success`):
+  B's validator is serving.
+- `stream/production`: `pending` B (B's deployment, still `in_progress`),
+  when it failed at the migration, the Worker deploy or the verify, so A or B
+  may be serving. A failure in the build, dry run or smoke test comes before
+  the validator and before any marker moves, so it leaves both as they were.
 
 Pick the release that Installation should run, then deploy it whole, to the
 same Environment (the same applies to staging, with `stream/staging` and
@@ -1142,10 +1166,13 @@ same Environment (the same applies to staging, with `stream/staging` and
 - **Locally**, when Actions is not an option: check out that release, install
   it, then run `node <a main checkout>/packages/tooling/scripts/deploy/cli.mjs
   deploy --app stream --env production` from the release's root, as the Deploy
-  workflow does. It records its markers, `worktree: dirty` included.
+  workflow does, signed in to `gh`. It records its markers, `worktree: dirty`
+  included.
 
 A `pending` validator marker means its deploy died part-way, so the next
-`auto` run always redeploys it, even at the same fingerprint.
+`auto` run always redeploys it, even at the same fingerprint. Each redeploy
+is a new deployment in the marker's environment, so its history there is the
+Installation's, attempt by attempt.
 
 4. **Set the harness variables:**
 
@@ -1294,13 +1321,25 @@ and 4 prove the transparency on Chromium.
 
 ### Worker secrets
 
-Set these against the generated config after building:
+Every value is recorded in 1Password, vault `Keepr`, item
+`stream-<environment>`, a concealed field named after the secret (ADR-0134).
+`secrets.jsonc` at the workspace root maps each secret to its
+`op://Keepr/<item>/<field>` reference, and holds no value. From the workspace
+root, with `op` signed in and `wrangler login`, nothing built:
 
 ```bash
-pnpm exec wrangler secret put <NAME> --config .output/server/wrangler.json
+pnpm secrets:sync --app stream --env staging --check   # what the Worker or 1Password lacks; sets nothing
+pnpm secrets:sync --app stream --env staging           # set every value 1Password records
 ```
 
-For the Staging Installation, add `--env staging`, against the staging account.
+It sets them on the Environment's Worker through `wrangler.jsonc`, whose
+blocks name each account. An empty field is not recorded yet: the sync names
+it and sets nothing for it. A value a provider issues (the Ably key, the
+bandai-keepr key) is recorded in 1Password first, then synced. One that is
+random by nature is generated straight into 1Password with
+`--generate <NAME>`, once per secret, then synced; it prints what the new value
+does, below, before writing it, and refuses the Melee key. Never set a value
+only on a Worker: it can never be read back.
 
 Required: `NUXT_BETTER_AUTH_SECRET`,
 `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`, `NUXT_ABLY_API_KEY`,
@@ -1313,12 +1352,14 @@ refuses an Installation whose Worker lacks any, before it changes anything
 (ADR-0128); a required secret added here is added there. The validator
 requires none. A new Installation's Worker does not exist until something
 creates it, and one that does not exist has no secrets, so its first deploy
-refuses too: set every required secret first, which creates the Worker, then
-deploy.
+refuses too: sync its secrets first, which creates the Worker, then deploy.
+`secrets.jsonc` lists the same names, plus the optional
+`NUXT_BANDAI_KEEPR_API_KEY`; the tooling's tests fail until the two agree.
 
 - **`NUXT_BETTER_AUTH_SECRET`**: without it the installation is unusable.
   `/api/**` denies by default and every check goes through Better Auth, so
-  sign-in and every authenticated route answer 503.
+  sign-in and every authenticated route answer 503. Changing it signs every
+  User out: each Session cookie is signed with it.
 - **`NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`**: changing it revokes every
   Screen Output asset capability. Rotate each Screen's asset access afterwards
   before using its output URL.
@@ -1331,8 +1372,9 @@ deploy.
   `NUXT_MELEE_CREDENTIAL_KEY_VERSION` var in `wrangler.jsonc` (top
   level for production, `env.staging` for staging), not a secret (ADR-0132),
   so a rotation is a Release that changes the var with the key. Put the old
-  version and key in `NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS`, set the
-  new key, deploy the Release carrying the new version (save no Melee
+  version and key in `NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS`, record
+  the new key in 1Password and sync it (`pnpm secrets:sync` will not generate
+  it), deploy the Release carrying the new version (save no Melee
   integration in between: it would encrypt with the new key under the old
   label), re-save each enabled Melee integration, and remove the old key only
   once nothing uses it. A deploy refuses a Worker secret named like a var.

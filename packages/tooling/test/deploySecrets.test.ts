@@ -158,7 +158,7 @@ describe('the Worker secrets an Installation requires', () => {
 		const { run } = check({ [`${APP_CONFIG} staging`]: ['NUXT_ABLY_API_KEY'] });
 
 		expect(run).toThrow(
-			`stream's Worker lacks NUXT_BETTER_AUTH_SECRET: set each from apps/stream with wrangler secret put <NAME> --config ${APP_CONFIG} --env staging`,
+			`stream's Worker lacks NUXT_BETTER_AUTH_SECRET: set each with pnpm secrets:sync --app stream --env staging, or from apps/stream with wrangler secret put <NAME> --config ${APP_CONFIG} --env staging`,
 		);
 		expect(run).not.toThrow(/NUXT_ABLY_API_KEY/);
 	});
@@ -181,7 +181,7 @@ describe('the Worker secrets an Installation requires', () => {
 		const { run } = check({});
 
 		expect(run).toThrow(
-			/stream's Worker does not exist in staging yet, so it lacks NUXT_BETTER_AUTH_SECRET, NUXT_ABLY_API_KEY: set each first, which creates it, .*wrangler secret put <NAME> --config \.output\/server\/wrangler\.json --env staging/,
+			/stream's Worker does not exist in staging yet, so it lacks NUXT_BETTER_AUTH_SECRET, NUXT_ABLY_API_KEY: set each first, which creates it, with pnpm secrets:sync --app stream --env staging, or .*wrangler secret put <NAME> --config \.output\/server\/wrangler\.json --env staging/,
 		);
 	});
 
