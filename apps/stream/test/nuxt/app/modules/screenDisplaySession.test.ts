@@ -649,8 +649,8 @@ describe('useScreenDisplaySession', () => {
 		expect(harness.session.showIdentify.value).toBe(false);
 	});
 
-	// Heard twice, the panel ends as the command asked, where one that turned it
-	// over would undo it.
+	// A failed command is sent once more, so an output can hear one twice: the
+	// panel ends as the command asked, where one that turned it over would undo it.
 	it.each([
 		{ asked: 'shown', from: 'hidden, as an output loads', heardBefore: [], shown: true },
 		{ asked: 'hidden', from: 'shown', heardBefore: [true], shown: false },

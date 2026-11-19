@@ -1929,7 +1929,7 @@ export const updateScreenSchema = createUpdateSchema(screens)
 /**
  * A Screen command, with what its message carries. `debug` must say whether the
  * debug panel is to be shown or hidden: a command that only turned it over could
- * not be delivered twice.
+ * not be delivered twice, and a failed one is (`publishScreenCommand`).
  */
 export const screenCommandSchema = z.discriminatedUnion('command', [
 	z.object({ command: z.enum(SCREEN_COMMAND_VALUES).exclude(['debug']) }).strict(),
