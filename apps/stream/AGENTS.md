@@ -52,7 +52,7 @@ relies on breaks, and staying green through a refactor.
 - A test that mounts nothing and uses no Nuxt import belongs in `test/unit`,
   where it costs no Nuxt boot.
 - Drive real code through a public seam and fake only the boundary: network,
-  Ably, clock, object storage. Persistence runs on `createSqliteD1Harness` with
+  the realtime socket, clock, object storage. Persistence runs on `createSqliteD1Harness` with
   the real migrations.
 - Assert outcomes: stored rows, returned values, emitted events, visible text,
   ARIA state. Call arguments are the assertion only at a port whose call is the

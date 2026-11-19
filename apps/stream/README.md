@@ -59,9 +59,8 @@ Changesets; never edit it by hand.
 
 Nuxt 4 SPA (`ssr: false`), Vue 3, Pinia, Nuxt UI, Tailwind; Nitro on Cloudflare
 Workers (`cloudflare_module` preset); D1 (SQLite) with Drizzle; R2 for graphics
-bytes; a Durable Object per Event for realtime (ADR-0137), with Ably still
-under the pages until they move; Keepr Accounts for sign-in (`apps/accounts`
-at the repository's root, ADR-0141).
+bytes; a Durable Object per Event for realtime (ADR-0137); Keepr Accounts for
+sign-in (`apps/accounts` at the repository's root, ADR-0141).
 
 ```text
 app/        Frontend: pages, components, stores, composables
@@ -87,12 +86,15 @@ stops itself (`packages/realtime/README.md` at the repository's root).
 
 The server publishes every message by RPC to its Event's object, the one
 `eventRealtimeScope` names (`shared/utils/realtimeChannels.ts`), through
-`server/utils/realtimePublish.ts`; nothing it publishes goes to Ably (ADR-0140). Who may
-hear what is `server/routes/realtime/port.ts`, which refuses every socket until
-a Session and a Screen Output are authorized (#1315). The pages still connect
-to Ably, with a token from `GET /api/realtime/token`, until they move onto the
-object (#1317): the two land in one Release, since a page on Ably hears
-nothing the server publishes.
+`server/utils/realtimePublish.ts` (ADR-0140). A page hears through that object
+and nothing else (ADR-0143): `app/plugins/realtime.client.ts` opens one socket
+for the Event the page is on, at `/realtime/socket?eventId=<id>` on the page's
+own host. A page holding a Screen Output Asset Capability first asks
+`POST /api/realtime/ticket` for a ticket with it, and opens its socket with
+that; any other page opens its socket as its Session. Who may hear what is
+`server/routes/realtime/port.ts`, which refuses every socket until a Session
+and a Screen Output are authorized (#1315): until then every page says its
+live updates are unauthorized.
 
 ## Subsystem map
 
@@ -120,9 +122,8 @@ points at them.
     `app/middleware/access.global.ts`.
 - **Event Data and realtime**: Event Data, Realtime Subscriptions, Reconnect
   Resync, Event Data Resync, and Sequenced Live State.
-  - Operate: [Access model](#access-model) (Ably Free plan),
-    [Local configuration](#local-configuration) (`NUXT_ABLY_API_KEY`),
-    [Testing](#testing) (realtime integration tests run only locally).
+  - Operate: [Stack and layout](#stack-and-layout) (where a page's socket is),
+    [Testing](#testing) (the realtime integration files).
   - Terms:
     [Client and live-state infrastructure](GLOSSARY.md#client-and-live-state-infrastructure).
   - Decisions:
@@ -131,9 +132,14 @@ points at them.
     [ADR-0024](docs/adr/0024-an-event-scoped-writes-continuation-belongs-to-its-event-lifetime-not-its-event-id.md),
     [ADR-0026](docs/adr/0026-a-live-aggregates-epochs-are-ordered-by-its-id.md),
     [ADR-0028](docs/adr/0028-reconnect-resync-re-reads-the-event-data-its-consumers-name-and-a-revisit-re-reads-what-was-missed.md),
-    [ADR-0029](docs/adr/0029-sequenced-live-state-opens-and-closes-epochs-and-announces-only-what-a-commit-changed.md).
+    [ADR-0029](docs/adr/0029-sequenced-live-state-opens-and-closes-epochs-and-announces-only-what-a-commit-changed.md),
+    [ADR-0143](docs/adr/0143-a-page-hears-realtime-through-its-events-object-alone-and-a-refusal-replaces-the-token-wait.md),
+    and ADR-0137 to ADR-0140 in the root `docs/adr`.
   - Code: `app/composables/core/useRealtime.ts`,
-    `app/composables/core/useReconnectResync.ts`, `server/modules/live-state/`,
+    `app/plugins/realtime.client.ts`,
+    `app/modules/realtime-transport/socketTransport.ts`,
+    `app/composables/core/useReconnectResync.ts`,
+    `server/utils/realtimePublish.ts`, `server/modules/live-state/`,
     `server/modules/event-data-publication/`.
 - **Screen Outputs**: Screens, their Screen Modes, the Overlay, Fill and Key
   Outputs a Screen Output Asset Capability admits, and the Graphics Authoring
@@ -241,15 +247,14 @@ when you create one (a worktree also needs its own `pnpm install`):
 cp .env ../../.claude/worktrees/<name>/apps/stream/
 ```
 
-Without it, dev answers 503 where a Screen Output asset capability is minted, and the
-realtime integration tests skip. That is a configuration gap, not a
-failure on `main`. No name in it is for signing in: locally the Accounts
-Stand-in answers that ([Local sign-in](#local-sign-in)).
+Without it, dev answers 503 where a Screen Output asset capability is minted.
+That is a configuration gap, not a failure on `main`. No name in it is for
+signing in: locally the Accounts Stand-in answers that
+([Local sign-in](#local-sign-in)).
 
 | Name                                             | Purpose                                                                                                                    |
 | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
 | `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`      | 32-byte base64 HMAC key for Screen Output asset capabilities.                                                              |
-| `NUXT_ABLY_API_KEY`                              | Ably key: signs the pages' realtime tokens, and the server publishes nothing with it. Optional for tests: leave it empty.  |
 | `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`           | 32-byte base64 key encrypting Melee client secrets (AES-256-GCM).                                                          |
 | `NUXT_MELEE_CREDENTIAL_KEY_VERSION`   | Non-empty version label for the active key. Deployed, a var in `wrangler.jsonc`, not a secret.                             |
 | `NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS` | Optional JSON `{"<version>":"<key>"}` of retired keys still needed to decrypt during rotation.                             |
@@ -376,9 +381,7 @@ runs every test when the change reaches a file every test depends on and
 none imports (`package.json`, a Vitest config or setup file, a migration:
 `unitRerunTriggers` in `vitest.shared.ts`); a
 test that reads a file without importing it is CI's to catch. Open the PR as a draft and
-mark it ready when the branch is done. Realtime integration tests are the one
-gate CI cannot run, so a change touching realtime runs
-`pnpm test:integration --run` locally first.
+mark it ready when the branch is done.
 
 `pnpm verify` reproduces CI on the working tree. Its tail matters most:
 `worker:dry-run` checks the upload bundle statically (and the built CSS for
@@ -395,9 +398,8 @@ the Worker's own: a request with no Identity Proof is refused 401; one with a
 valid proof is admitted, and `/api/identity` names its User; a User with no
 App access to `stream` is refused 403, an admin route included; an admin route
 refuses a User whose App role is not `admin` 403 and admits one whose is; a
-write another site's page made is refused 403; and the realtime grant refuses
-both a signed-out visitor and a User with no App access. It also checks that
-the page shell names the Keepr Accounts origin the Environment's var sets.
+write another site's page made is refused 403. It also checks that the page
+shell names the Keepr Accounts origin the Environment's var sets.
 
 How `pnpm verify` runs:
 
@@ -484,8 +486,9 @@ are pinned in `ci.yml`, and `.github/zizmor.yml` holds each audit switched off
 and why. To run them before a push that edits a workflow:
 `brew install actionlint shellcheck zizmor`, then
 `actionlint && zizmor --no-online-audits --collect=workflows,actions .`.
-Realtime integration tests self-skip in CI: no Ably key is configured there, by
-decision (#189). The suites in the table above that need a running preview,
+No test needs a key for realtime. The `*.realtime.test.ts` integration files
+are skipped everywhere until they listen on the Event's object (below). The
+suites in the table above that need a running preview,
 Docker, or a real store stay local. Other vitest modes work directly,
 e.g. `pnpm exec vitest --ui`.
 
@@ -508,18 +511,19 @@ Gotchas:
   a third of the CPU cores, at most four; set `STREAM_KEEPR_INTEGRATION_SERVERS`
   to change it (`1` is the old serial run). Each server's output is kept in
   `node_modules/.cache/integration-servers/`. Each server publishes to the
-  objects of the Worker beside it, which no other server reaches. The
-  `*.realtime.test.ts` files still listen on one Ably app, where channels are
-  named by Event id, so each server mints Event ids from its own block of a
-  million (`integrationEventIdBlocks`, #630).
-- **Only `*.realtime.test.ts` files reach Ably**, as a page does: for a token,
-  and to listen. They run first, one at a time, against the one server given
-  the key; every other file runs against a server whose key is blank. A test
-  that reads the key belongs in a `*.realtime.test.ts` file; anywhere else it
-  fails on import, saying so. No server publishes to Ably (ADR-0140), so with
-  a key the seven of them that wait to hear a write time out until they listen
-  on the object (#1317). That a write's publish reaches its Event's object is
-  `realtimePublish.test.ts`, which needs no key.
+  objects of the Worker beside it, which no other server reaches. Each still
+  mints Event ids from its own block of a million (`integrationEventIdBlocks`,
+  #630), from when the `*.realtime.test.ts` files shared one Ably app.
+- **The `*.realtime.test.ts` files are skipped** until they listen on the
+  Event's object, which waits on a socket's caller being let in (#1315, #1317).
+  Seven of them wait to hear a write on Ably, which nothing publishes to and
+  no page uses any more (ADR-0140): they are why `ably` is still a
+  devDependency. They decide by `NUXT_ABLY_API_KEY` in `.env`, which nothing
+  else reads: leave it unset, since with a key those seven run and time out.
+  They run first, one at a time, against one server, and a test that reads the
+  key belongs in one of them; anywhere else it fails on import, saying so. That
+  a write's publish reaches its Event's object is `realtimePublish.test.ts`,
+  which needs no key.
 - **A failed integration test prints its requests.** The
   `[integration] requests during "…"` block lists each request with its time;
   on a timeout, the one marked `never returned` is the stall. It names the
@@ -805,7 +809,7 @@ Staging Installation before the Production Installation (ADR-0125):
 Both deploy the same build, staging with `--env staging`: Workers `stream`
 and `stream-silent-video-validator` in each account, each host attached as a
 `custom_domain` route. Staging shares nothing with production: its own D1,
-KV, R2, secrets and Ably key, and a domain of its own, so neither's session
+KV, R2, Durable Objects and secrets, and a domain of its own, so neither's session
 cookie reaches the other. Wrangler does not inherit bindings or vars into an
 `env` block, so a binding added at the top level of `wrangler.jsonc` or the
 validator's config is added to its `env.staging` too, with the staging
@@ -892,7 +896,7 @@ your `wrangler login`. In order, stopping at the first failure:
    A Release from before `/api/release` (`@keepr/stream@1.7.0` and earlier) is
    checked for **liveness only**, at `GET /api/time`, and the output says so.
    Neither probe reads a binding, so a pass says nothing about D1, auth, R2,
-   KV, Ably or the validator. The deployed gates (Deploy day, step 5) cover
+   KV, realtime or the validator. The deployed gates (Deploy day, step 5) cover
    those. `worker:smoke` runs both probes against the built Worker.
 
 7. The `stream/<environment>` marker is marked `deployed`, only once
@@ -1408,8 +1412,8 @@ pnpm secrets:sync --app stream --env staging           # set every value 1Passwo
 
 It sets them on the Environment's Worker through `wrangler.jsonc`, whose
 blocks name each account. An empty field is not recorded yet: the sync names
-it and sets nothing for it. A value a provider issues (the Ably key, the
-bandai-keepr key) is recorded in 1Password first, then synced. One that is
+it and sets nothing for it. A value a provider issues (the bandai-keepr key)
+is recorded in 1Password first, then synced. One that is
 random by nature is generated straight into 1Password with
 `--generate <NAME>`, once per secret, read back from 1Password, then synced; it
 prints what the new value does, below, before writing it, refuses the Melee
@@ -1417,13 +1421,14 @@ key, and stops before setting anything if 1Password did not keep the new
 value (ADR-0135). Never set a value
 only on a Worker: it can never be read back.
 
-Required: `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`, `NUXT_ABLY_API_KEY`,
+Required: `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`,
 `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`. Never put any of
 them in `wrangler.jsonc`, source control, or public runtime config. None is
 for sign-in: Keepr Accounts holds that secret (ADR-0112), and Stream Keepr
 reaches it through the `KEEPR_ACCOUNTS` service binding, which is no secret.
-The two sign-in secrets an Installation held before ADR-0141 are read by
-nothing; the Release that removed them names them, to delete
+The two sign-in secrets an Installation held before ADR-0141, and the
+`NUXT_ABLY_API_KEY` it held while realtime ran on Ably (ADR-0140), are read by
+nothing; the Release that removed each names it, and says when to delete it
 (`CHANGELOG.md`).
 
 `deploy.jsonc` lists the required ones as `worker.secrets`, and a deploy
@@ -1516,9 +1521,9 @@ them.
 
 - **`/api/**` denies by default** (`server/middleware/api-session.ts`; the
   list is `server/utils/apiBoundary.ts`). Exempt: `/api/time`,
-  `/api/release`, `/api/realtime/token` (Screen Outputs have no Session), the
-  capability-authorized `/api/screen-output/**`, and `/api/public/**`. Nothing
-  of sign-in is among them: that is Keepr Accounts' (ADR-0141).
+  `/api/release`, the capability-authorized `/api/screen-output/**`, and
+  `/api/public/**`. Nothing of sign-in is among them: that is Keepr Accounts'
+  (ADR-0141).
 - **A Session is read from an Identity Proof, and from nothing else**
   (`server/utils/session.ts`): 401 without one, 403 for a User with no App
   access to `stream`, and 503 while Keepr Accounts cannot be asked and no
@@ -1535,9 +1540,6 @@ them.
   is 404 to anyone else.
 - The SPA shell and static assets are public (`ssr: false`); client-side route
   guards are UX only. The API is the wall.
-
-Realtime stays within the Ably **Free** plan by decision (#189). Validate
-against its limits and report anything that would exceed them.
 
 ## Melee Live Results
 

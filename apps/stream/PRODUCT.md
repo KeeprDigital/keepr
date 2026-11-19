@@ -35,7 +35,7 @@ manual re-keying, and any graphic a broadcast needs can be built.
   an edit reaches on-air Screens at once.
 - **Built to the broadcast's needs.** Features are added for what a broadcast
   specifically requires, rather than fitting the show to a generic overlay tool.
-- **Low-cost infrastructure.** Cloudflare Workers, D1, R2, and Ably's Free plan.
+- **Low-cost infrastructure.** Cloudflare Workers, D1, R2 and Durable Objects.
 
 ## Operating Context
 
@@ -50,12 +50,13 @@ manual re-keying, and any graphic a broadcast needs can be built.
     scaled uniformly to its window.
 - Tournament data arrives from Melee.gg (Magic: The Gathering) and Bandai TCG+
   (One Piece Card Game).
-- Realtime sync across connected clients via Ably.
+- Realtime sync across connected clients, through a Durable Object per Event.
 
 ## Capabilities and Constraints
 
 - Nuxt 4 SPA, Vue 3, Pinia, Nuxt UI, Tailwind; Nitro on Cloudflare Workers;
-  D1 with Drizzle; R2; Ably; Keepr Accounts for sign-in.
+  D1 with Drizzle; R2; a Durable Object per Event for realtime; Keepr Accounts
+  for sign-in.
 - The operator app's UI is built with Nuxt UI v4 components and its theming
   (`app/assets/css/main.css`, Nuxt UI config). Use an existing Nuxt UI
   component wherever one fits; add no other component library and don't
