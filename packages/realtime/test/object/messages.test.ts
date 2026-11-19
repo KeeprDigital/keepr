@@ -210,6 +210,9 @@ describe('a socket', () => {
 
 		await scope.hibernate();
 		await client.ping();
+		// Put to sleep again if the ping woke it, which the harness refuses when it
+		// did not: an object left awake would answer the count without a wake.
+		await scope.hibernate().catch(() => {});
 
 		// Asking woke it once. A ping that had woken it would make that twice.
 		expect(await scope.call<number>('wakes')).toBe(wakes + 1);
