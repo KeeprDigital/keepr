@@ -16,6 +16,10 @@
  * synced nowhere. Only a secret the map says may be generated is, and the
  * map's warning of what a new value does is logged first.
  *
+ * A private key whose line breaks were lost, which is what the 1Password app
+ * saves when a key is pasted into a concealed field, is refused before anything
+ * is set, and `check` names it; `op` keeps a value's line breaks.
+ *
  * No value is ever logged or left in an error. Each goes to its tool on stdin,
  * but a generated one, which `op` takes only as an argument (ADR-0135).
  */
@@ -262,6 +266,13 @@ function githubDestination({ root, environment, env, redactor }) {
 const describe = (secret) =>
 	`${secret.name}${secret.optional ? ' (optional)' : ''} at ${formatReference(secret.ref)}`;
 
+/** A PEM block: a private key, which cannot be decoded without its line breaks. */
+const PEM = /-----BEGIN [^-]+-----.*-----END [^-]+-----/s;
+
+/** @param {Secret} secret */
+const lostLineBreaks = (secret) =>
+	`${describe(secret)} is a PEM block with no line break, as the 1Password app saves one pasted into a concealed field. Write it with the CLI instead: op item edit ${secret.ref.item} --vault ${secret.ref.vault} "${secret.ref.field}[password]=$(cat key.pem)"`;
+
 /**
  * Set every secret of `target` that 1Password records, or with `check`, only
  * say what is missing.
@@ -275,7 +286,8 @@ const describe = (secret) =>
  *   log: (line: string) => void,
  * }} options `env`: added to this process's environment for each tool.
  * @returns {{ ok: boolean }} not ok when a secret no Installation can go
- *   without is not recorded, or with `check`, not set
+ *   without is not recorded, or with `check`, not set, or a key whose line
+ *   breaks were lost
  */
 export function syncSecrets({ root, target, check = false, generate = [], env = {}, log }) {
 	const childEnv = { ...process.env, ...env };
@@ -328,15 +340,23 @@ export function syncSecrets({ root, target, check = false, generate = [], env = 
 
 	log(title === destination.label ? `${title}.` : `${title}: ${destination.label}.`);
 	const vault = onePassword({ root, env: childEnv, redactor });
+	/** @type {Map<string, string>} */
+	const values = new Map(secrets.map((secret) => [secret.name, vault.read(secret.ref)]));
+	const broken = secrets.filter((secret) => {
+		const value = /** @type {string} */ (values.get(secret.name));
+		return PEM.test(value) && !/[\r\n]/.test(value);
+	});
+	if (broken.length > 0 && !check)
+		throw new Error(`Refusing to sync: ${broken.map(lostLineBreaks).join('; ')}. Nothing was set.`);
 	for (const { secret, warn } of generated) {
 		log(`Warning: ${warn}.`);
 		vault.write(secret.ref, randomBytes(32).toString('base64'));
 		log(`Generated ${secret.name} into ${formatReference(secret.ref)}.`);
+		values.set(secret.name, vault.read(secret.ref));
 	}
-	/** @type {Map<string, string>} */
-	const values = new Map(secrets.map((secret) => [secret.name, vault.read(secret.ref)]));
 	const unrecorded = secrets.filter((secret) => values.get(secret.name) === '');
-	let ok = !unrecorded.some((secret) => !secret.optional);
+	let ok = !unrecorded.some((secret) => !secret.optional) && broken.length === 0;
+	for (const secret of broken) log(`${lostLineBreaks(secret)}.`);
 
 	if (check) {
 		const set = destination.names();
