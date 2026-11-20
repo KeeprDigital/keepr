@@ -1,3 +1,4 @@
+import type { OrganisationRole } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import type { EmailRecorder } from '~~/server/email/recorder';
 import type { EmailSender } from '~~/server/email/sender';
@@ -62,7 +63,7 @@ export interface TestAccounts {
 	) => Promise<{ organizationId: string; memberId: string }>;
 }
 
-export type OrganisationRole = 'owner' | 'admin' | 'member';
+export type { OrganisationRole };
 
 /**
  * Keepr Accounts' Better Auth, configured as the server configures it, over a

@@ -41,8 +41,14 @@ export const KEEPR_ACCOUNTS_BINDING = 'KEEPR_ACCOUNTS';
 /** Where an App answers "who am I" for its own pages (`readRequestIdentity`). */
 export const IDENTITY_PATH = '/api/identity';
 
+/** The Organisation roles, lowest first: the one list Keepr Accounts and every App read. */
 export const ORGANISATION_ROLES = ['member', 'admin', 'owner'] as const;
 export type OrganisationRole = (typeof ORGANISATION_ROLES)[number];
+
+/** Whether `role` is an Organisation role: what a membership, an Invitation and an Identity Proof must hold. */
+export function isOrganisationRole(role: unknown): role is OrganisationRole {
+	return (ORGANISATION_ROLES as readonly unknown[]).includes(role);
+}
 
 /** The claims Keepr Accounts adds to an Identity Proof, beside `sub`, `iss`, `aud`, `iat` and `exp`. */
 export interface IdentityProofClaims {
@@ -82,9 +88,7 @@ export function identityFromClaims<App extends AppId>(
 	payload: Record<string, unknown>,
 ): Identity<App> {
 	const claims = payload as Partial<IdentityProofClaims> & { sub?: unknown };
-	const orgRole = (ORGANISATION_ROLES as readonly unknown[]).includes(claims.orgRole)
-		? (claims.orgRole as OrganisationRole)
-		: null;
+	const orgRole = isOrganisationRole(claims.orgRole) ? claims.orgRole : null;
 	const role = isAppId(app) ? claims.apps?.[app] : undefined;
 	return {
 		app,

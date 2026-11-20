@@ -4,13 +4,14 @@ import type { Actor } from './actor';
 import type { AppRoles } from './appAccess';
 import type { ManagingStanding } from './memberManagement';
 import { and, asc, count, eq, gt, ne } from 'drizzle-orm';
+import { isOrganisationRole } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { schema } from '~~/server/db';
 import { invitationEmail } from '~~/server/email/messages';
 import { invitationLink } from '~~/shared/utils/invitationLink';
 import { offeredAppRoles } from './appAccess';
 import { recordAudit } from './auditRecord';
 import { INVITATION_EXPIRES_IN_SECONDS, INVITATION_LIMIT } from './authOptions';
-import { managingStanding, ORGANISATION_ROLES, ownerRequired } from './memberManagement';
+import { managingStanding, ownerRequired } from './memberManagement';
 import { KeeprRefusal, refusalFromAuth } from './refusal';
 
 /**
@@ -143,7 +144,7 @@ export async function inviteMember(
 	const { organisation, standing } = await managingStanding(database, actor, organizationId);
 	const address = invitedAddress(email);
 	if (!address) throw new KeeprRefusal(400, 'INVALID_EMAIL', 'Enter an email address.');
-	if (!ORGANISATION_ROLES.includes(role))
+	if (!isOrganisationRole(role))
 		throw new KeeprRefusal(400, 'ORGANISATION_ROLE_NOT_KNOWN', `No Organisation role is ${role}.`);
 	if (role === 'owner' && standing === 'admin') throw ownerRequired();
 	let offered: AppRoles;
