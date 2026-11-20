@@ -125,7 +125,7 @@ export function createIdentityResolver<App extends AppId>(
 			return undefined;
 		});
 		const late = new Promise<undefined>((resolve) => {
-			timer = setTimeout(resolve, sharedTimeoutMs, undefined);
+			timer = setTimeout(() => resolve(undefined), sharedTimeoutMs);
 		});
 		try {
 			return await Promise.race([calling, late]);
