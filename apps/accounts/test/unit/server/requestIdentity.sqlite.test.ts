@@ -93,6 +93,36 @@ describe('a valid Identity Proof', () => {
 	});
 });
 
+// Why an App takes a retired cookie of the session cookie's name out of a
+// request before it asks (ADR-0141): Keepr Accounts reads the first it is sent.
+describe("a request that carries another cookie of the session cookie's name", () => {
+	const sessionCookieName = () => cookie.slice(0, cookie.indexOf('='));
+
+	it('is signed out when the other one comes first', async () => {
+		const resolve = createIdentityResolver('stream');
+
+		const answer = await resolve({
+			cookie: `${sessionCookieName()}=retired.signature; ${cookie}`,
+			accounts: connection,
+			waitUntil,
+		});
+
+		expect(answer.kind).toBe('signed-out');
+	});
+
+	it("is signed in when the Session's own comes first", async () => {
+		const resolve = createIdentityResolver('stream');
+
+		const answer = await resolve({
+			cookie: `${cookie}; ${sessionCookieName()}=retired.signature`,
+			accounts: connection,
+			waitUntil,
+		});
+
+		expect(answer.kind).toBe('signed-in');
+	});
+});
+
 it('resolves an Identity Proof signed by a key published since the App last read the keys', async () => {
 	const resolve = createIdentityResolver('stream');
 	await resolve({ cookie, accounts: connection, waitUntil });
