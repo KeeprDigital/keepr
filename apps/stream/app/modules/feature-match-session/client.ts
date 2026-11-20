@@ -14,7 +14,9 @@ import type {
 } from '~~/shared/types/featureMatchState';
 import { isCoveredByBulkClockAction, pairSeatOf } from '~~/shared/modules/feature-match-session';
 import { randomCommandId, randomUuid } from '~~/shared/utils/uuid';
+import { failureStatus } from '@keepr/nuxt-layer/app/utils/failureStatus';
 import { useFeatureMatchStateRepository } from '~/composables/repositories/useFeatureMatchStateRepository';
+import { createKeyedQueue } from '~/utils/keyedQueue';
 
 export interface FeatureMatchResetOptions {
 	type: ResetType;
@@ -209,15 +211,42 @@ function createBulkClockCommand(
 	}
 }
 
+export interface FeatureMatchSessionClientOptions {
+	/** The Session the page holds for a Slot: what an absolute command claims to have seen. */
+	heldSession?: (slotId: number) => FeatureMatchSessionResponse | undefined;
+	/** A Session the client re-read after a refusal, for the page to hold. */
+	onReread?: (session: FeatureMatchSessionResponse) => void;
+}
+
+/** The newer of two Sessions of one Slot: a later epoch, else a later sequence (ADR-0026). */
+function newerSession(
+	a: FeatureMatchSessionResponse | undefined,
+	b: FeatureMatchSessionResponse | undefined,
+): FeatureMatchSessionResponse | undefined {
+	if (!a || !b) return a ?? b;
+	if (a.id !== b.id) return a.id > b.id ? a : b;
+	return a.sequence >= b.sequence ? a : b;
+}
+
 /**
  * Client-side Feature Match Session seam.
  *
  * The repository is the HTTP adapter. This Module owns command construction,
  * command sequencing, and bulk command orchestration so stores depend on one
  * deep Interface instead of route payload details.
+ *
+ * A command claims the Session the page holds, so one the operator sent from a
+ * view the Session has moved past is refused, and the Slot is re-read only
+ * then. A Slot's commands go one at a time, each claiming the Session the one
+ * before it left, so an operator's own quick taps never refuse each other.
  */
-export function useFeatureMatchSessionClient() {
+export function useFeatureMatchSessionClient(options: FeatureMatchSessionClientOptions = {}) {
 	const repository = useFeatureMatchStateRepository();
+	const queue = createKeyedQueue<number>();
+	/** The Session each Slot's latest answer carried, which the page may not hold yet. */
+	const answered = new Map<number, FeatureMatchSessionResponse>();
+	/** How many of each Slot's commands were refused: one queued before a refusal was made from the view refused. */
+	const refusals = new Map<number, number>();
 
 	const ensureSession = async (
 		eventId: number,
@@ -228,17 +257,60 @@ export function useFeatureMatchSessionClient() {
 		return slot.activeSession ?? (await repository.createSession(eventId, slotId));
 	};
 
-	const sendSlotCommand = async (
+	/** The Session a command for the Slot claims: the newest this page knows, read only when it knows none. */
+	const knownSession = async (
+		eventId: number,
+		slotId: number,
+	): Promise<FeatureMatchSessionResponse> => {
+		const known = newerSession(options.heldSession?.(slotId), answered.get(slotId));
+		const session = known ?? (await ensureSession(eventId, slotId));
+		if (!session) throw new Error('Feature match session not found');
+		return session;
+	};
+
+	/** One command for a Slot, after every earlier one for it has settled. */
+	const sendToSlot = (
+		eventId: number,
+		slotId: number,
+		command: (session: FeatureMatchSessionResponse) => FeatureMatchSessionCommand | null,
+	): Promise<FeatureMatchCommandStateResult> => {
+		const refusedBefore = refusals.get(slotId) ?? 0;
+		return queue.enqueue(slotId, async () => {
+			const session = await knownSession(eventId, slotId);
+			const built = command(session);
+			if (!built) return sessionStateResult(session);
+			// An absolute command queued behind a refused one was made from the same stale view.
+			if (built.baseSequence !== undefined && (refusals.get(slotId) ?? 0) !== refusedBefore)
+				throw Object.assign(new Error('Feature match session has advanced'), { statusCode: 409 });
+			try {
+				const result = toCommandStateResult(
+					await repository.sendCommand(eventId, session.id, built),
+				);
+				answered.set(slotId, newerSession(answered.get(slotId), result.session)!);
+				return result;
+			} catch (error) {
+				// Refused: the page is behind, so it takes the Session as it now stands.
+				if (failureStatus(error) === 409) {
+					refusals.set(slotId, (refusals.get(slotId) ?? 0) + 1);
+					await reread(eventId, slotId);
+				}
+				throw error;
+			}
+		});
+	};
+
+	const reread = async (eventId: number, slotId: number) => {
+		const session = await ensureSession(eventId, slotId).catch(() => null);
+		if (!session) return;
+		answered.set(slotId, session);
+		options.onReread?.(session);
+	};
+
+	const sendSlotCommand = (
 		eventId: number,
 		slotId: number,
 		createCommand: (session: FeatureMatchSessionResponse) => FeatureMatchSessionCommand,
-	): Promise<FeatureMatchCommandStateResult> => {
-		const session = await ensureSession(eventId, slotId);
-		if (!session) throw new Error('Feature match session not found');
-
-		const result = await repository.sendCommand(eventId, session.id, createCommand(session));
-		return toCommandStateResult(result);
-	};
+	): Promise<FeatureMatchCommandStateResult> => sendToSlot(eventId, slotId, createCommand);
 
 	const loadState = async (eventId: number, slotId: number): Promise<FeatureMatchState | null> => {
 		const session = await ensureSession(eventId, slotId);
@@ -252,32 +324,27 @@ export function useFeatureMatchSessionClient() {
 	 * bounded regardless of how many fields the operator edited, and the server
 	 * applies the whole save atomically or not at all.
 	 */
-	const updateState = async (
+	const updateState = (
 		eventId: number,
 		slotId: number,
 		update: FeatureMatchStateUpdate,
 	): Promise<FeatureMatchCommandStateResult> => {
-		const session = await ensureSession(eventId, slotId);
-		if (!session) throw new Error('Feature match session not found');
-
 		const commands = buildStateUpdateCommands(update);
-		if (commands.length === 0) return sessionStateResult(session);
-
-		const command: FeatureMatchSessionCommand =
-			commands.length === 1
-				? {
+		return sendToSlot(eventId, slotId, (session) => {
+			if (commands.length === 0) return null;
+			return commands.length === 1
+				? ({
 						...commands[0]!,
 						commandId: randomCommandId(commands[0]!.type),
 						baseSequence: session.sequence,
-					}
+					} as FeatureMatchSessionCommand)
 				: {
 						commandId: randomCommandId('Batch'),
 						type: 'Batch',
 						payload: { commands },
 						baseSequence: session.sequence,
 					};
-
-		return toCommandStateResult(await repository.sendCommand(eventId, session.id, command));
+		});
 	};
 
 	const startClock = (eventId: number, slotId: number) =>
@@ -337,23 +404,30 @@ export function useFeatureMatchSessionClient() {
 		const updates: BulkClockUpdate[] = [];
 
 		for (const slot of slots) {
-			const session = slot.activeSession;
-			if (!session || !isCoveredByBulkClockAction(session.currentState)) continue;
-
-			const command = createBulkClockCommand(
-				action,
-				session,
-				`bulk:${bulkId}:${session.id}:${action}`,
-				deltaMs,
+			// The page's own view of a Slot it holds, the listing's of one it does not.
+			const listed = newerSession(
+				slot.activeSession ?? undefined,
+				newerSession(options.heldSession?.(slot.id), answered.get(slot.id)),
 			);
-			if (!command) continue;
+			if (!listed || !isCoveredByBulkClockAction(listed.currentState)) continue;
 
-			const result = await repository.sendCommand(eventId, session.id, command);
+			let sent = false;
+			const result = await sendToSlot(eventId, slot.id, (session) => {
+				const command = createBulkClockCommand(
+					action,
+					session,
+					`bulk:${bulkId}:${session.id}:${action}`,
+					deltaMs,
+				);
+				sent = command !== null;
+				return command;
+			});
+			if (!sent) continue;
 			updates.push({
 				featureMatchId: slot.id,
-				featureMatchState: result.currentState,
+				featureMatchState: result.featureMatchState,
 				session: result.session,
-				sessionId: result.sessionId,
+				sessionId: result.session.id,
 				sequence: result.sequence,
 			});
 		}
@@ -460,12 +534,12 @@ export function useFeatureMatchSessionClient() {
 			baseSequence: session.sequence,
 		}));
 
+	/** Any page may ask once the clock runs out: the server starts extra turns once. */
 	const startOvertime = (eventId: number, slotId: number, totalTurns: number) =>
-		sendSlotCommand(eventId, slotId, (session) => ({
+		sendSlotCommand(eventId, slotId, () => ({
 			commandId: randomCommandId('StartOvertime'),
 			type: 'StartOvertime',
 			payload: { totalTurns },
-			baseSequence: session.sequence,
 		}));
 
 	// ── A Commander Session's own commands (ADR-0087) ──

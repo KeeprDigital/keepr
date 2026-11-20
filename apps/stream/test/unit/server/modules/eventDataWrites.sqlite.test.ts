@@ -448,8 +448,9 @@ describe('a committed write', () => {
 		]);
 	});
 
-	// ADR-0045: the saving client applied only the Slot, so it must hear of the Player too.
-	it("announces the Player a Slot setup edit writes first and with no origin, then the Slot under the writer's", async () => {
+	// ADR-0045: the saving client applied only the Slot, so it must hear of the Player too,
+	// which is written once the Slot's write has committed.
+	it("announces the Slot a setup edit writes under the writer's origin, then the Player it writes with none", async () => {
 		const { eventId, slot, players } = await stage();
 
 		await featureMatchSlotWriteModule().updateSetup({
@@ -467,8 +468,8 @@ describe('a committed write', () => {
 			([type]) => !type.startsWith('featureMatchSession:'),
 		);
 		expect(eventData.map(([type, payload]) => [type, payload.originConnectionId ?? null])).toEqual([
-			['player:updated', null],
 			['featureMatch:updated', ORIGIN],
+			['player:updated', null],
 		]);
 	});
 });

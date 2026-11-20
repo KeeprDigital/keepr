@@ -8,6 +8,7 @@ import {
 	DEFAULT_FEATURE_MATCH_DEFAULTS,
 	fromFeatureMatchDefaults,
 } from '~~/shared/types/featureMatchDefaults';
+import { MAX_REALTIME_MESSAGE_BYTES, realtimeMessageBytes } from '~~/server/types/messages';
 import { projectFeatureMatchClock, readStoredClock } from '~~/shared/utils/clock';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
@@ -415,6 +416,40 @@ describe('applyCommand', () => {
 			},
 			'origin-1',
 		);
+	});
+
+	// A Seat's pasted deck list text is the Slot's, read from it; no Session message carries it.
+	it("keeps a Seat's deck list text out of its Session's messages", async () => {
+		const deckList = '4 Lightning Bolt\n'.repeat(6_000);
+		const slot = await stageSlot({
+			player1Data: { name: 'Alice', deckList },
+			player2Data: { name: 'Bob', deckList },
+		});
+		const session = (await featureMatchStateService().createSessionForSlot(slot.id, slot.eventId))!;
+		publishMessage.mockClear();
+
+		await featureMatchStateService().applyCommand(
+			session.id,
+			slot.eventId,
+			{
+				commandId: 'a',
+				type: 'SetLife',
+				payload: { player: 'player1', lifeTotal: 12 },
+				baseSequence: session.sequence,
+			},
+			undefined,
+			{ publish: true },
+		);
+
+		const [, type, payload] = publishMessage.mock.calls[0]!;
+		expect(
+			realtimeMessageBytes(
+				slot.eventId,
+				type as 'featureMatchSession:eventApplied',
+				payload as never,
+			),
+		).toBeLessThanOrEqual(MAX_REALTIME_MESSAGE_BYTES);
+		expect(session.sourceSnapshot.player1.data).toEqual({ name: 'Alice' });
 	});
 
 	it('stays silent when not asked to announce', async () => {

@@ -1,0 +1,1 @@
+ALTER TABLE `feature_match_slots` ADD `version` integer DEFAULT 0 NOT NULL;

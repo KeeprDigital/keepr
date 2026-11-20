@@ -345,8 +345,10 @@ async function saveAssignmentNote(note: string) {
 async function save() {
 	if (!eventStore.eventId) return;
 
-	const updateData: UpdateFeatureMatchInput = buildFeatureMatchSetupUpdate(getChanges());
-	if (Object.keys(updateData).length === 0) return;
+	const changes: UpdateFeatureMatchInput = buildFeatureMatchSetupUpdate(getChanges());
+	if (Object.keys(changes).length === 0) return;
+	// A Slot another save has moved past refuses this one, rather than it landing unseen.
+	const updateData: UpdateFeatureMatchInput = { ...changes, version: formData.value.version };
 
 	await runSave(() =>
 		runRequest(

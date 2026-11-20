@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 import { createOptimisticState } from '~/modules/optimistic-state';
 
@@ -33,11 +34,14 @@ describe('optimistic-state module', () => {
 		vi.useRealTimers();
 	});
 
-	function createTestSetup(flush = vi.fn(async (entry: any) => entry.payload)) {
+	function createTestSetup(
+		flush = vi.fn(async (entry: any) => entry.payload),
+		serverState?: (id: number) => SlotState | undefined,
+	) {
 		const stateMap = ref(new Map<number, SlotState>([[1, { life1: 20, life2: 20, clockMs: 100 }]]));
 		const errorRef = ref<string | null>(null);
 
-		const optimistic = createOptimisticState<SlotState>({ stateMap, errorRef });
+		const optimistic = createOptimisticState<SlotState>({ stateMap, errorRef, serverState });
 		const { enqueue } = optimistic.batch<Partial<SlotState>>({
 			flush,
 			debounceMs: 100,
@@ -100,16 +104,26 @@ describe('optimistic-state module', () => {
 			expect(stateMap.value.get(1)).toEqual({ life1: 15, life2: 20, clockMs: 100 });
 		});
 
-		it('drops a concurrent call for the same action key', async () => {
-			const apiCall = vi.fn(() => new Promise<SlotState>(() => {}));
-			const { run } = createTestSetup();
+		// Two quick taps on one control: both show at once, and both are sent, in order.
+		it('runs a second call for the same action key once the first settles', async () => {
+			const answers = [deferred<SlotState>(), deferred<SlotState>()];
+			const apiCall = vi.fn(() => answers[apiCall.mock.calls.length - 1]!.promise);
+			const { stateMap, run } = createTestSetup();
 
-			const first = run('swap', 1, (current) => ({ ...current, life1: 15 }), apiCall);
-			const second = run('swap', 1, (current) => ({ ...current, life1: 10 }), apiCall);
-
-			expect(first).not.toBeNull();
-			expect(second).toBeNull();
+			const first = run('cards', 1, (current) => ({ ...current, life1: 15 }), apiCall);
+			const second = run('cards', 1, (current) => ({ ...current, life1: 10 }), apiCall);
+			expect(stateMap.value.get(1)!.life1).toBe(10);
 			expect(apiCall).toHaveBeenCalledOnce();
+
+			answers[0]!.resolve({ life1: 15, life2: 20, clockMs: 100 });
+			await first;
+			expect(apiCall).toHaveBeenCalledTimes(2);
+			// The first answer leaves the newer tap on screen.
+			expect(stateMap.value.get(1)!.life1).toBe(10);
+
+			answers[1]!.resolve({ life1: 10, life2: 20, clockMs: 100 });
+			await second;
+			expect(stateMap.value.get(1)!.life1).toBe(10);
 		});
 
 		it('rolls back only the owned fields on error, and releases the claim', async () => {
@@ -384,6 +398,36 @@ describe('optimistic-state module', () => {
 
 			// life1 keeps the committed value; life2 rolls back to the snapshot.
 			expect(stateMap.value.get(1)).toEqual({ life1: 21, life2: 20, clockMs: 100 });
+		});
+
+		it('two failed flushes of one key roll back to what the server accepted, not the first prediction', async () => {
+			const answers = [deferred<SlotState>(), deferred<SlotState>()];
+			const flush = vi.fn(() => answers[flush.mock.calls.length - 1]!.promise);
+			const accepted = { life1: 20, life2: 20, clockMs: 100 };
+			const { stateMap, enqueue } = createTestSetup(flush as any, () => accepted);
+
+			enqueue(
+				'life-1',
+				1,
+				(current) => ({ ...current, life1: 21 }),
+				() => ({ life1: 21 }),
+			);
+			vi.advanceTimersByTime(200);
+			enqueue(
+				'life-1',
+				1,
+				(current) => ({ ...current, life1: 22 }),
+				() => ({ life1: 22 }),
+			);
+			vi.advanceTimersByTime(200);
+
+			answers[0]!.reject(new Error('refused'));
+			await flushPromises();
+			answers[1]!.reject(new Error('refused'));
+			await flushPromises();
+			await flushPromises();
+
+			expect(stateMap.value.get(1)).toEqual(accepted);
 		});
 
 		it('claims are shared across batches of the same instance', () => {

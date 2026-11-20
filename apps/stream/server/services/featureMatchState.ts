@@ -161,12 +161,13 @@ export function featureMatchStateService() {
 		eventId: number,
 		game: Game,
 		playerId: number | null,
-		data: FeatureMatchSnapshotPlayerData | null,
+		slotData: FeatureMatchSnapshotPlayerData | null,
 		preloadedPlayers?: ReadonlyMap<number, DbPlayer>,
 	): Promise<{ playerId: number | null; data: FeatureMatchSnapshotPlayerData | null }> => {
-		const hasSlotData = data
-			? hasMeaningfulSnapshotValue(data) || hasAuthoritativeDeckSnapshotValue(data)
-			: false;
+		// A Seat's pasted deck list text stays on the Slot: the snapshot rides every
+		// Session message, and that text alone could outgrow the realtime bound.
+		const { deckList: _deckList, ...data } = slotData ?? {};
+		const hasSlotData = hasMeaningfulSnapshotValue(data) || hasAuthoritativeDeckSnapshotValue(data);
 
 		if (!playerId) {
 			return {
@@ -189,7 +190,7 @@ export function featureMatchStateService() {
 		}
 
 		const playerData = playerToSnapshotData(player);
-		const overrides = data ? compactSnapshotOverrides(data) : {};
+		const overrides = compactSnapshotOverrides(data);
 		const merged = hasSlotData
 			? {
 					...playerData,
@@ -271,6 +272,7 @@ export function featureMatchStateService() {
 					slot.player4Data ?? null,
 				),
 			}),
+			slotVersion: slot.version,
 			// The build time, which is the right answer only for the builds that open a
 			// Session. A rebuild for a `SnapshotCorrected` has this discarded in favour
 			// of the stamp the Session is already holding — the field means first taken,
@@ -655,7 +657,7 @@ export function featureMatchStateService() {
 				and ${featureMatchSessions.status} = 'active'
 		`,
 
-		projection: ({ aggregate, reduction, nextSequence }) =>
+		projection: ({ aggregate, reduction, nextSequence, holds }) =>
 			db
 				.update(featureMatchSessions)
 				.set({
@@ -670,6 +672,7 @@ export function featureMatchStateService() {
 						eq(featureMatchSessions.eventId, aggregate.eventId),
 						eq(featureMatchSessions.sequence, aggregate.sequence),
 						eq(featureMatchSessions.status, 'active'),
+						holds,
 					),
 				)
 				.returning(),
@@ -721,6 +724,7 @@ export function featureMatchStateService() {
 			session: DbFeatureMatchSession,
 		) => FeatureMatchSessionCommand | null | Promise<FeatureMatchSessionCommand | null>,
 		originConnectionId?: string,
+		options: Pick<SequencedLiveStateExecuteOptions, 'alongside'> = {},
 	): Promise<FeatureMatchSessionCommandResult | null> => {
 		const session =
 			(await getActiveSession(slotId, eventId)) ?? (await createSessionForSlot(slotId, eventId));
@@ -728,7 +732,7 @@ export function featureMatchStateService() {
 
 		const command = await createCommand(session);
 		if (!command) return null;
-		return await applyCommand(session.id, eventId, command, originConnectionId);
+		return await applyCommand(session.id, eventId, command, originConnectionId, options);
 	};
 
 	return {

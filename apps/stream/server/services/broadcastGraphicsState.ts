@@ -500,7 +500,7 @@ export function broadcastGraphicsStateService() {
 				and ${broadcastGraphicsLiveSessions.status} = 'active'
 		`,
 
-			projection: ({ aggregate, reduction, nextSequence }) =>
+			projection: ({ aggregate, reduction, nextSequence, holds }) =>
 				db
 					.update(broadcastGraphicsLiveSessions)
 					.set({
@@ -514,6 +514,7 @@ export function broadcastGraphicsStateService() {
 							eq(broadcastGraphicsLiveSessions.eventId, aggregate.eventId),
 							eq(broadcastGraphicsLiveSessions.sequence, aggregate.sequence),
 							eq(broadcastGraphicsLiveSessions.status, 'active'),
+							holds,
 						),
 					)
 					.returning(),

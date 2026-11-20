@@ -343,4 +343,99 @@ describe('feature Match Session client module', () => {
 		expect(result.updates).toHaveLength(1);
 		expect(result.updates[0]).toMatchObject({ featureMatchId: 2, sessionId: 7, sequence: 5 });
 	});
+
+	describe('a command from the page that holds the Session', () => {
+		/** The server's Session: refuses an absolute command claiming any sequence but its own. */
+		function serveSession(sequence: number) {
+			const server = { sequence };
+			repository.getSlot.mockImplementation(async () => ({
+				id: 2,
+				activeSession: createSession({ sequence: server.sequence }),
+			}));
+			repository.sendCommand.mockImplementation(async (_eventId, _sessionId, command) => {
+				if (command.baseSequence !== undefined && command.baseSequence !== server.sequence)
+					throw Object.assign(new Error('Feature match session has advanced'), { statusCode: 409 });
+				server.sequence += 1;
+				return commandResult(createSession({ sequence: server.sequence }));
+			});
+			return server;
+		}
+
+		function clientHolding(sequence: number) {
+			const reread = vi.fn();
+			const held = createSession({ sequence });
+			const client = useFeatureMatchSessionClient({
+				heldSession: () => held as never,
+				onReread: reread,
+			});
+			return { client, reread };
+		}
+
+		// Another operator's command landed at 5; this page still shows 4.
+		it.each([
+			[
+				'a clock set',
+				(client: ReturnType<typeof useFeatureMatchSessionClient>) => client.setClock(1, 2, 30_000),
+			],
+			[
+				'a declared outcome',
+				(client: ReturnType<typeof useFeatureMatchSessionClient>) =>
+					client.setOutcome(1, 2, { winner: 'player1' }),
+			],
+		])('refuses %s from a view the Session has moved past', async (_case, send) => {
+			const server = serveSession(5);
+			const { client } = clientHolding(4);
+
+			await expect(send(client)).rejects.toMatchObject({ statusCode: 409 });
+			expect(server.sequence).toBe(5);
+		});
+
+		it('re-reads the Slot only after a refusal, and hands the page the Session it read', async () => {
+			serveSession(5);
+			const { client, reread } = clientHolding(4);
+
+			await client.setClock(1, 2, 30_000).catch(() => {});
+
+			expect(reread).toHaveBeenCalledWith(expect.objectContaining({ id: 7, sequence: 5 }));
+			expect(repository.getSlot).toHaveBeenCalledOnce();
+		});
+
+		// The second tap was made from the same view as the refused first: it is refused too, unsent.
+		it('refuses a command queued behind a refused one, rather than sending it over the re-read Session', async () => {
+			const server = serveSession(5);
+			const { client } = clientHolding(4);
+
+			const taps = await Promise.allSettled([
+				client.setEliminated(1, 2, 'player3', true),
+				client.setEliminated(1, 2, 'player3', false),
+			]);
+
+			expect(taps.map((tap) => tap.status)).toEqual(['rejected', 'rejected']);
+			expect(server.sequence).toBe(5);
+			expect(repository.sendCommand).toHaveBeenCalledOnce();
+		});
+
+		it('lands a command claiming the Session it holds, with no Slot read', async () => {
+			const server = serveSession(4);
+			const { client } = clientHolding(4);
+
+			await client.setClock(1, 2, 30_000);
+
+			expect(server.sequence).toBe(5);
+			expect(repository.getSlot).not.toHaveBeenCalled();
+		});
+
+		// Two quick taps: the second claims the Session the first left, so both land.
+		it('lands two commands sent at once, one after the other', async () => {
+			const server = serveSession(4);
+			const { client } = clientHolding(4);
+
+			await Promise.all([
+				client.setEliminated(1, 2, 'player3', true),
+				client.setEliminated(1, 2, 'player3', false),
+			]);
+
+			expect(server.sequence).toBe(6);
+		});
+	});
 });

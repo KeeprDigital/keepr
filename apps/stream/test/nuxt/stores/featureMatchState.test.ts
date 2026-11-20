@@ -221,25 +221,56 @@ describe('useFeatureMatchStateStore', () => {
 		});
 	});
 
-	it('drops a second startClock for a Slot while the first is out', async () => {
+	// Two quick taps on one control: both are sent, one after the other, and the last shows.
+	it.each([
+		[
+			'cards kept',
+			() => {
+				store.setCardsKept(EVENT_ID, MATCH_ID, 'player1', 6);
+				return store.setCardsKept(EVENT_ID, MATCH_ID, 'player1', 5);
+			},
+			sessionClient.updatePlayerFeatureMatchState,
+			(state: FeatureMatchState) => state.player1.cardsKept,
+			5,
+		],
+		[
+			'the turn number',
+			() => {
+				store.setTurnNumber(EVENT_ID, MATCH_ID, 3);
+				return store.setTurnNumber(EVENT_ID, MATCH_ID, 4);
+			},
+			sessionClient.updateState,
+			(state: FeatureMatchState) => state.turnNumber,
+			4,
+		],
+		[
+			'Eliminated',
+			() => {
+				store.setEliminated(EVENT_ID, MATCH_ID, 'player2', true);
+				return store.setEliminated(EVENT_ID, MATCH_ID, 'player2', false);
+			},
+			sessionClient.setEliminated,
+			(state: FeatureMatchState) => state.player2.eliminated,
+			false,
+		],
+		[
+			'a winner, then taking it back',
+			() => {
+				store.setOutcome(EVENT_ID, MATCH_ID, { winner: 'player1' });
+				return store.setOutcome(EVENT_ID, MATCH_ID, null);
+			},
+			sessionClient.setOutcome,
+			(state: FeatureMatchState) => state.outcome,
+			undefined,
+		],
+	] as const)('lands both of two quick taps on %s', async (_case, tap, sent, read, last) => {
 		seedState();
-		const first = deferred<unknown>();
-		sessionClient.startClock.mockReturnValueOnce(first.promise);
+		// The server answers each with the state the tap predicted.
+		sent.mockImplementation(async () => commandResult(held()));
 
-		const starting = store.startClock(EVENT_ID, MATCH_ID);
-		const duplicate = store.startClock(EVENT_ID, MATCH_ID);
+		await tap();
+		await vi.waitFor(() => expect(sent).toHaveBeenCalledTimes(2));
 
-		expect(duplicate).toBeNull();
-
-		first.resolve(
-			commandResult(
-				createMockFeatureMatchState({
-					clock: clock({ isRunning: true, lastStartedAt: SERVER_NOW }),
-				}),
-			),
-		);
-		await starting;
-
-		expect(sessionClient.startClock).toHaveBeenCalledTimes(1);
+		expect(read(held())).toEqual(last);
 	});
 });

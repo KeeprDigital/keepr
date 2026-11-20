@@ -185,6 +185,7 @@ function buildPromotionPlanFenceQuery(
 				sortOrder: sql`0`,
 				playerDisplayMode: sql`'score'`,
 				activeSessionId: sql`null`,
+				version: sql`0`,
 				createdAt: sql`${now}`,
 				updatedAt: sql`${now}`,
 			},

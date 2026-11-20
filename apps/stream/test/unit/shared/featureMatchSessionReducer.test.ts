@@ -287,7 +287,8 @@ describe('feature match session reducer', () => {
 
 		state = reduce(state, snapshot, 'SetActivePlayer', { player: 'player2' }).currentState;
 		state = reduce(state, snapshot, 'SetTurnNumber', { turnNumber: 5 }).currentState;
-		state = reduce(state, snapshot, 'StartOvertime', { totalTurns: 3 }).currentState;
+		state = reduce(state, snapshot, 'SetClock', { at: 6000, targetMs: 0 }).currentState;
+		state = reduce(state, snapshot, 'StartOvertime', { totalTurns: 3, at: 6000 }).currentState;
 		state = reduce(state, snapshot, 'StepOvertime', { delta: 1 }).currentState;
 
 		expect(state.turnNumber).toBe(5);
@@ -439,7 +440,7 @@ describe('feature match session reducer', () => {
 				},
 				{
 					type: 'SetClock',
-					payload: { at: 6000, targetMs: 30_000 },
+					payload: { at: 6000, targetMs: 0 },
 				},
 				{
 					type: 'SetFirstPlayer',
@@ -455,7 +456,7 @@ describe('feature match session reducer', () => {
 				},
 				{
 					type: 'StartOvertime',
-					payload: { totalTurns: 3 },
+					payload: { totalTurns: 3, at: 6000 },
 				},
 			],
 		});

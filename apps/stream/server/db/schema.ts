@@ -603,6 +603,14 @@ export const featureMatchSlots = sqliteTable(
 			{ onDelete: 'set null' },
 		),
 
+		/**
+		 * Goes up by one with each setup save and Swap Seats, in the statement
+		 * that writes it. A Session's snapshot carries the version it was built
+		 * from, so a correction built from an older Slot never lands over a newer
+		 * one, and a setup save names the version its form showed.
+		 */
+		version: integer('version').notNull().default(0),
+
 		...timestamps,
 	},
 	(table) => [

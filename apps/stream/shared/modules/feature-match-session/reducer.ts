@@ -22,6 +22,7 @@ import {
 	DEFAULT_STARTING_LIFE,
 	resetPlayerFeatureMatchStateForNewGame,
 } from '~~/shared/types/featureMatchState';
+import { projectFeatureMatchClock } from '~~/shared/utils/clock';
 import { clockTransitions, minutesToMs, readStoredClock, writeStoredClock } from './clock';
 import {
 	applyCommanderDamage,
@@ -192,7 +193,8 @@ export function normalizeFeatureMatchSessionCommandPayload(
 		type === 'SetClock' ||
 		type === 'StartClock' ||
 		type === 'PauseClock' ||
-		type === 'RestartClock'
+		type === 'RestartClock' ||
+		type === 'StartOvertime'
 	) {
 		return {
 			...payload,
@@ -241,6 +243,12 @@ function correctedSourceSnapshot(
 			: rebuilt;
 
 	return { ...oriented, createdAt: held.createdAt };
+}
+
+/** Whether a snapshot was built from an older Slot row than the one the Session holds. */
+function isOlderSlotWrite(rebuilt: unknown, held: FeatureMatchSourceSnapshot): boolean {
+	const version = (rebuilt as FeatureMatchSourceSnapshot | null | undefined)?.slotVersion;
+	return version !== undefined && held.slotVersion !== undefined && version < held.slotVersion;
 }
 
 /** Whether the match is decided, re-asked of the game wins it holds under a new best of. */
@@ -313,6 +321,12 @@ function isRefusedByUntimedMatch(currentState: FeatureMatchState, type: string):
  */
 export function isCoveredByBulkClockAction(currentState: FeatureMatchState): boolean {
 	return currentState.clock.type !== 'untimed';
+}
+
+/** Whether a countdown, read at `at` (server time), has not yet run out. */
+function hasTimeLeft(currentState: FeatureMatchState, at: number): boolean {
+	const { remainingMs } = projectFeatureMatchClock(readStoredClock(currentState.clock), at, '');
+	return remainingMs !== null && remainingMs > 0;
 }
 
 const CLOCK_COMMAND_TYPES = [
@@ -427,6 +441,13 @@ function reduceFeatureMatchSessionEvent(
 			sourceSnapshot: payload.sourceSnapshot as FeatureMatchSourceSnapshot,
 		};
 	}
+
+	// A Slot write that reaches the Session after a newer one changes nothing.
+	if (
+		(type === 'SnapshotCorrected' || type === 'SwapSeats') &&
+		isOlderSlotWrite(payload.sourceSnapshot, sourceSnapshot)
+	)
+		return { currentState, sourceSnapshot };
 
 	if (type === 'SnapshotCorrected') {
 		const corrected = correctedSourceSnapshot(
@@ -637,6 +658,14 @@ function reduceFeatureMatchSessionEvent(
 		return reduced && { currentState: reduced, sourceSnapshot };
 	}
 
+	// A Commander game's first Seat is chosen once: only a reset changes it (ADR-0087).
+	if (
+		(type === 'SelectFirstPlayer' || type === 'SetFirstPlayer') &&
+		isCommander &&
+		currentState.firstPlayer
+	)
+		return null;
+
 	if (type === 'SelectFirstPlayer') {
 		const player = seatOf(payload.player, sourceSnapshot);
 		if (!player) return null;
@@ -783,7 +812,12 @@ function reduceFeatureMatchSessionEvent(
 
 	if (type === 'StartOvertime') {
 		const totalTurns = finiteNumber(payload.totalTurns);
-		if (totalTurns === null) return null;
+		const at = finiteNumber(payload.at);
+		if (totalTurns === null || at === null) return null;
+		// Extra turns under way are not started again, whoever else asks.
+		if (currentState.overtime) return { currentState, sourceSnapshot };
+		// Time is called by the server's own reading of the clock, not a page's.
+		if (hasTimeLeft(currentState, at)) return null;
 		return {
 			sourceSnapshot,
 			currentState: {

@@ -209,7 +209,8 @@ export function applyCommanderTurnStep(
  * A Commander Session's state under a corrected snapshot. A Seat filled since
  * joins at starting life, and one emptied leaves at once: its state goes, the
  * turn it held passes on, and the Commander Damage counted against a
- * Commander no Seat holds any more is dropped. Life already lost stays lost.
+ * Commander no Seat holds any more is dropped, and an outcome it won is taken
+ * back. Life already lost stays lost.
  */
 export function withSeatsCorrected(
 	state: FeatureMatchState,
@@ -237,6 +238,13 @@ export function withSeatsCorrected(
 				[seat]: { ...next[seat]!, commanderDamage: dealt },
 			};
 		}
+	}
+
+	// A game won by a Seat that has left is reopened; a draw stays drawn.
+	const winner = next.outcome?.winner;
+	if (winner && !isSeatFilled(corrected, winner)) {
+		const { outcome: _outcome, ...reopened } = next;
+		next = { ...reopened, isComplete: false };
 	}
 
 	const active = next.activePlayer;

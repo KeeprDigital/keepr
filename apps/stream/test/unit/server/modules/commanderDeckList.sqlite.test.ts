@@ -373,6 +373,26 @@ describe("a Commander Slot's setup save, for a Seat holding a Deck List", () => 
 		expect(await storedLists(slotId)).toEqual([{ id: deckListId }]);
 	});
 
+	// A form that edits only who sits there sends no game data: it never deletes the list.
+	it("keeps the Seat's Commanders and list when the save names the Seat without its game data", async () => {
+		const { eventId, slotId, deckListId } = await pastedSlot();
+
+		const saved = await featureMatchSlotWriteModule().updateSetup({
+			eventId,
+			slotId,
+			input: { player1Data: { name: 'Ana K.' } },
+		});
+
+		expect([saved.player1Data?.name, held(saved.player1Data)]).toEqual([
+			'Ana K.',
+			expect.objectContaining({
+				commanders: [ASHLING],
+				featureMatchDeckList: { id: deckListId, mainboardCount: 8 },
+			}),
+		]);
+		expect(await storedLists(slotId)).toEqual([{ id: deckListId }]);
+	});
+
 	// While a list is held its Commanders are its cards: a stale form's searched pick must not land beside it.
 	it.each([
 		{

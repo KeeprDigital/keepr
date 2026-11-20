@@ -912,6 +912,7 @@ const OP_SAMPLE_SLOT: FeatureMatchResponse = {
 	playerDisplayMode: 'score',
 	activeSessionId: null,
 	activeSession: null,
+	version: 0,
 	createdAt: SAMPLE_TIMESTAMP,
 	updatedAt: SAMPLE_TIMESTAMP,
 };

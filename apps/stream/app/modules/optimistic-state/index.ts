@@ -31,6 +31,12 @@ interface OptimisticStateOptions<S> {
 	stateMap: Ref<Map<number, S>>;
 	/** Error ref for error reporting */
 	errorRef: Ref<string | null>;
+	/**
+	 * The last state the server accepted for an entity, where the caller holds
+	 * one. A refused prediction rolls back to it, so a refusal never restores an
+	 * earlier prediction the server refused too.
+	 */
+	serverState?: (id: number) => S | undefined;
 }
 
 interface BatchOptions<S, P> {
@@ -148,6 +154,11 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 		mergeIntoState(id, answer, new Set([...target.owned].filter((field) => !others.has(field))));
 	}
 
+	/** What a refused prediction rolls back to: what the server holds, else the state before it. */
+	function acceptedState(id: number, target: TargetState<S>): S {
+		return options.serverState?.(id) ?? target.snapshot;
+	}
+
 	function resultFor(result: FlushResult<S>, id: number): S | undefined {
 		if (result == null) return undefined;
 		return result instanceof Map ? result.get(id) : (result as S);
@@ -217,7 +228,7 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 									// the last committed state rolls back to the snapshot.
 									if (flight.current) {
 										for (const [id, target] of targets) {
-											const baseline = resultFor(committed, id) ?? target.snapshot;
+											const baseline = resultFor(committed, id) ?? acceptedState(id, target);
 											mergeIntoState(id, baseline, target.owned);
 										}
 									}
@@ -300,15 +311,16 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 		return { enqueue, reset };
 	}
 
-	// Prevents concurrent in-flight requests for the same discrete action.
-	const inFlightActions = new Set<string>();
+	// One action key's calls are sent one at a time, in the order they were made.
+	let actionQueue = createKeyedQueue<string>();
 
 	/**
-	 * Immediate optimistic action with in-flight dedup: concurrent calls for
-	 * the same action key are silently dropped (pass null to allow concurrency).
-	 * Field Ownership is derived from the optimistic diff; the API result and
-	 * any rollback write only owned fields. Multiple targets share one API
-	 * call (bulk actions); return null from `getOptimistic` to skip a target.
+	 * Immediate optimistic action. Calls for one action key show at once and are
+	 * sent one after another, so two quick taps on one control both land (pass
+	 * null to send at once). Field Ownership is derived from the optimistic
+	 * diff; the API result and any rollback write only owned fields. Multiple
+	 * targets share one API call (bulk actions); return null from
+	 * `getOptimistic` to skip a target.
 	 */
 	function run(
 		actionKey: string | null,
@@ -317,8 +329,6 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 		apiCall: () => Promise<FlushResult<S>>,
 		ownership?: OwnershipOptions<S>,
 	) {
-		if (actionKey && inFlightActions.has(actionKey)) return null;
-
 		const ids = normalizeTargets(targets);
 		const applied = new Map<number, TargetState<S>>();
 		for (const id of ids) {
@@ -337,11 +347,9 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 
 		if (applied.size === 0) return null;
 
-		if (actionKey) inFlightActions.add(actionKey);
-
 		const promise = executeReporting(
 			async () => {
-				const result = await apiCall();
+				const result = await (actionKey ? actionQueue.enqueue(actionKey, apiCall) : apiCall());
 				for (const [id, target] of applied) {
 					const state = resultFor(result, id);
 					if (state !== undefined) settleIntoState(id, state, target);
@@ -351,14 +359,14 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 			{
 				errorRef: options.errorRef,
 				onError: () => {
-					for (const [id, target] of applied) mergeIntoState(id, target.snapshot, target.owned);
+					for (const [id, target] of applied)
+						mergeIntoState(id, acceptedState(id, target), target.owned);
 				},
 			},
 		);
 
 		void promise
 			.finally(() => {
-				if (actionKey) inFlightActions.delete(actionKey);
 				for (const target of applied.values()) target.release();
 			})
 			.catch(() => {});
@@ -383,7 +391,8 @@ export function createOptimisticState<S>(options: OptimisticStateOptions<S>) {
 
 	function reset() {
 		claims.clear();
-		inFlightActions.clear();
+		// Calls still waiting behind one that never settles are let go.
+		actionQueue = createKeyedQueue<string>();
 	}
 
 	return { batch, run, applyRemote, reset };

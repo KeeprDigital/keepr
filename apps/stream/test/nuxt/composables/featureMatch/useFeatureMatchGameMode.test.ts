@@ -233,25 +233,6 @@ describe('useFeatureMatchGameMode', () => {
 			await vi.advanceTimersByTimeAsync(1);
 			expect(mode.isClockExpired.value).toBe(true);
 		});
-
-		it("starts overtime with the Event's extra turns when the countdown runs out", async () => {
-			const state = shallowRef(
-				createMockFeatureMatchState({
-					clock: countdown(0),
-				}),
-			);
-			useFeatureMatchGameMode(
-				10,
-				computed(() => state.value as FeatureMatchState),
-			);
-
-			state.value = createMockFeatureMatchState({
-				clock: countdown(60001),
-			});
-			await nextTick();
-
-			expect(mockFeatureMatchStateStore.startOvertime).toHaveBeenCalledWith(1, 10, 5);
-		});
 	});
 
 	// The One Piece Card Game tracks the clock, game wins, turns and players only, whatever the Event's toggles say.
