@@ -10,15 +10,14 @@
  * A publish is an RPC to the Event's object (ADR-0137), so what fails it is the
  * Workers runtime's error for an object it could not reach, whatever the object
  * threw, or the realtime layer's for a Worker with no binding. #253 built the
- * fields and #264 the classification, both for Ably's refusals; the judgement
- * is kept for whatever throws.
+ * fields and #264 the classification; the judgement holds for whatever throws.
  */
 
 /**
  * How much of a failure's own message the log will carry.
  *
  * A message is usually a short phrase, but nothing bounds what a thrower puts in
- * one: Ably's transport once put a whole response body there. Bounded rather
+ * one: a transport may put a whole response body there. Bounded rather
  * than dropped: the phrase is the diagnosis.
  */
 export const MAX_PUBLISH_FAILURE_REASON_CHARS = 200;

@@ -65,9 +65,9 @@ export interface BaseMessage {
 /**
  * The most bytes one published realtime message may carry: 64 KiB.
  *
- * A design rule (ADR-0004, as ADR-0137 amends it). It was the limit of the Ably
- * account's Free package, which refused a larger message; an Event's object
- * would deliver one. The bound stays because every message was designed to it:
+ * A design rule (ADR-0004, as ADR-0137 amends it). It began as a realtime
+ * provider's limit (ADR-0137 says which); an Event's object would deliver a
+ * larger message. The bound stays because every message was designed to it:
  * what scales with a show is announced and re-read, or carried as a difference,
  * never shipped whole.
  *

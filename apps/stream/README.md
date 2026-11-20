@@ -1546,7 +1546,7 @@ them in `wrangler.jsonc`, source control, or public runtime config. None is
 for sign-in: Keepr Accounts holds that secret (ADR-0112), and Stream Keepr
 reaches it through the `KEEPR_ACCOUNTS` service binding, which is no secret.
 The two sign-in secrets an Installation held before ADR-0141, and the
-`NUXT_ABLY_API_KEY` it held while realtime ran on Ably (ADR-0140), are read by
+`NUXT_ABLY_API_KEY` it held for realtime before ADR-0140, are read by
 nothing; the Release that removed each names it, and says when to delete it
 (`CHANGELOG.md`).
 
