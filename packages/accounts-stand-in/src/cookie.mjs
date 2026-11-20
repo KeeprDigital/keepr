@@ -16,6 +16,14 @@ export const STAND_IN_COOKIE = 'keepr-stand-in';
  */
 export const LOCAL_DEVELOPER_COOKIE = `${STAND_IN_COOKIE}=`;
 
+/**
+ * The Keepr Organisation the Local Developer User works in: the same id every
+ * run, and the one every local Installation of an App names as its own, so a
+ * local App admits whoever the stand-in answers as unless told otherwise
+ * (ADR-0161, in `apps/stream/docs/adr`).
+ */
+export const LOCAL_ORGANISATION_ID = 'keepr-local';
+
 /** The cookie's value for a visitor nobody is signed in as: the stand-in answers 401. */
 export const STAND_IN_SIGNED_OUT = 'signed-out';
 

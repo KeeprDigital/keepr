@@ -20,6 +20,7 @@ import {
 import { STAND_IN_BUNDLE_MARK } from './bundleMark.mjs';
 import {
 	LOCAL_DEVELOPER_COOKIE,
+	LOCAL_ORGANISATION_ID,
 	STAND_IN_COOKIE,
 	STAND_IN_NO_APP_ACCESS,
 	STAND_IN_NO_ORGANISATION,
@@ -28,6 +29,7 @@ import {
 
 export {
 	LOCAL_DEVELOPER_COOKIE,
+	LOCAL_ORGANISATION_ID,
 	STAND_IN_COOKIE,
 	standInCookie,
 	type StandInPersona,
@@ -76,9 +78,6 @@ export const LOCAL_DEVELOPER = {
 	name: 'Local Developer',
 	sessionId: 'local-developer-session',
 } as const;
-
-/** The Keepr Organisation the Local Developer User works in: the same id every run. */
-export const LOCAL_ORGANISATION_ID = 'keepr-local';
 
 /** The stand-in cookie's value in a `Cookie` header, or `undefined` when it carries none. */
 function standInCookieValue(header: string | null): string | undefined {

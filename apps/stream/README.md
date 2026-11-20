@@ -1643,7 +1643,7 @@ or shadowed secret names `wrangler secret put|delete <NAME>` with
 `--config wrangler.jsonc`, with `--env staging` for Staging.
 
 Required: `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`,
-`NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`. Never put any of
+`NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`, `NUXT_INSTALLATION_ORGANISATION_ID`. Never put any of
 them in `wrangler.jsonc`, source control, or public runtime config. None is
 for sign-in: Keepr Accounts holds that secret (ADR-0112), and Stream Keepr
 reaches it through the `KEEPR_ACCOUNTS` service binding, which is no secret.
@@ -1661,6 +1661,12 @@ refuses too: sync its secrets first, which creates the Worker, then deploy.
 `secrets.jsonc` lists the same names, plus the optional
 `NUXT_BANDAI_KEEPR_API_KEY`; the tooling's tests fail until the two agree.
 
+- **`NUXT_INSTALLATION_ORGANISATION_ID`**: the id Keepr Accounts gives the
+  Organisation this Installation serves (ADR-0161), read from that
+  Environment's Keepr Accounts. No secret, but each Installation's own, so it
+  is recorded and synced with the rest; `--generate` refuses it. Unset, every
+  request that requires a Session is refused 503. Changing it hands the
+  Installation's data to the Organisation named.
 - **`NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`**: changing it revokes every
   Screen Output asset capability. Rotate each Screen's asset access afterwards
   before using its output URL.
@@ -1724,6 +1730,11 @@ asked for.
   working in, is refused 403 by every route behind the boundary and shown
   `/no-access`, which sends them to Keepr Accounts to switch Organisation or
   to ask for access.
+- **One Organisation.** An Installation serves the Organisation it names in
+  `NUXT_INSTALLATION_ORGANISATION_ID` ([Worker secrets](#worker-secrets)). A
+  User working in any other is refused as one with no App access, whatever
+  App role that Organisation gave them (ADR-0161). Give someone Stream Keepr
+  in the Installation's Organisation.
 - **Sign out, change a password, see Sessions**: the shell's **Keepr account**
   link opens the User's profile at Keepr Accounts.
 - **The first User of all** is Keepr Accounts' first Keepr Administrator
@@ -1756,7 +1767,8 @@ them.
   (ADR-0137, ADR-0142; `RULES.md` § Access).
 - **A Session is read from an Identity Proof, and from nothing else**
   (`server/utils/session.ts`): 401 without one, 403 for a User with no App
-  access to `stream`, and 503 while Keepr Accounts cannot be asked and no
+  access to `stream` or working in an Organisation other than the
+  Installation's (ADR-0161), and 503 while Keepr Accounts cannot be asked and no
   answer is held. A state-changing request another site's page made is
   refused 403 before any of it.
 - **`/api/admin/**` requires the Graphics Administrator**: a Session whose User
@@ -1764,8 +1776,9 @@ them.
   (401 without a Session, 403 without the role; ADR-0131, ADR-0141).
   `test/unit/server/utils/apiBoundary.test.ts` proves every admin route
   reaches that guard.
-- **Authentication, not authorization.** Every User with App access sees every Graphic
-  Asset; the library is installation-wide. Identity records who started work
+- **Authentication, not authorization.** Every User with App access in the
+  Installation's Organisation sees every Graphic Asset; the library is
+  installation-wide. Identity records who started work
   (for example a Graphics Ingestion Operation's `initiatedBy`), and an operation
   is 404 to anyone else.
 - The SPA shell and static assets are public (`ssr: false`); client-side route

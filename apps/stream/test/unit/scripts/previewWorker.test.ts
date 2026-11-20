@@ -71,6 +71,25 @@ describe('the preview launcher', () => {
 		},
 	);
 
+	// ADR-0161: the built Worker names no Organisation of its own, and would refuse everyone.
+	it("names the Accounts Stand-in's Organisation as the Installation's", async () => {
+		const { child, spawnProcess } = fakeWrangler();
+
+		const exited = runPreviewWorker({
+			argv: [],
+			repositoryRoot,
+			spawnProcess: spawnProcess as unknown as typeof spawn,
+			fetchRequest: (async () => new Response('ok')) as unknown as typeof fetch,
+		});
+
+		const [, wranglerArguments] = spawnProcess.mock.calls[0]!;
+		expect(wranglerArguments.join(' ')).toContain(
+			'--var NUXT_INSTALLATION_ORGANISATION_ID:keepr-local',
+		);
+		child.emit('exit', 0, null);
+		await exited;
+	});
+
 	it('fires its first minute once Wrangler is listening', async () => {
 		const { child, spawnProcess } = fakeWrangler();
 		const refused = Object.assign(new TypeError('fetch failed'), {
@@ -116,8 +135,12 @@ describe('the preview launcher', () => {
 		await vi.advanceTimersByTimeAsync(0);
 
 		const [, wranglerArguments] = spawnProcess.mock.calls[0]!;
-		const varAt = wranglerArguments.indexOf('--var');
-		expect(varAt === -1 ? [] : wranglerArguments.slice(varAt, varAt + 2)).toEqual(passed);
+		const varAt = wranglerArguments.findIndex(
+			(argument, at) =>
+				argument.startsWith('NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN:') &&
+				wranglerArguments[at - 1] === '--var',
+		);
+		expect(varAt === -1 ? [] : wranglerArguments.slice(varAt - 1, varAt + 1)).toEqual(passed);
 		child.emit('exit', 0, null);
 		await exited;
 	});

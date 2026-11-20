@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3';
 import type { AppRole } from '@keepr/nuxt-layer/shared/utils/appRegistry';
 import type { Identity } from '@keepr/nuxt-layer/shared/utils/identityProof';
+import { readConfiguredSecret } from '@keepr/nuxt-layer/server/utils/configuredSecret';
 import {
 	ServiceConfigurationError,
 	TemporarilyUnavailableError,
@@ -18,6 +19,9 @@ import { writeTimingOf } from './writeTiming';
  * Keepr Accounts signs and this Worker verifies, and from nothing else
  * (ADR-0113, ADR-0141). No setting, variable, header or query admits a request
  * without one. Locally the Accounts Stand-in answers the same binding.
+ *
+ * One Installation serves one Organisation (ADR-0161): an Identity Proof that
+ * names any other is refused as one with no App access.
  */
 
 /** The App this Worker is, as the App registry names it. */
@@ -66,7 +70,29 @@ export async function requestIdentity(event: H3Event): Promise<StreamIdentity | 
 	return await asking;
 }
 
+/** The setting that names the Installation's Organisation, as an operator sets it. */
+const INSTALLATION_ORGANISATION_SETTING = 'NUXT_INSTALLATION_ORGANISATION_ID';
+
+/**
+ * The Organisation whose data this Installation holds (ADR-0161). Unset, no
+ * Organisation's User is admitted: a 503 that names the setting, never every
+ * Organisation.
+ */
+function installationOrganisationId(event: H3Event): string {
+	const id = readConfiguredSecret(
+		useRuntimeConfig(event).installationOrganisationId,
+		INSTALLATION_ORGANISATION_SETTING,
+	);
+	if (!id)
+		throw new ServiceConfigurationError(
+			INSTALLATION_ORGANISATION_SETTING,
+			"is not set, so no Organisation's User can be admitted",
+		);
+	return id;
+}
+
 async function readIdentity(event: H3Event): Promise<StreamIdentity | null> {
+	const organisationId = installationOrganisationId(event);
 	// Before Keepr Accounts is asked: it reads the first session cookie it is sent.
 	discardRetiredSignInCookie(event);
 	let identity: Identity<typeof APP>;
@@ -80,8 +106,12 @@ async function readIdentity(event: H3Event): Promise<StreamIdentity | null> {
 		if ((refusal as { statusCode?: unknown }).statusCode === SIGNED_OUT_STATUS) return null;
 		throw refusal;
 	}
-	requireAppAccess(identity);
-	return identity;
+	// A User working in another Organisation, or in none, has no App access to
+	// this Installation, whatever App role that Organisation gave them (ADR-0161).
+	const admitted =
+		identity.organisation?.id === organisationId ? identity : { ...identity, appRole: null };
+	requireAppAccess(admitted);
+	return admitted;
 }
 
 /**

@@ -7,7 +7,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import process from 'node:process';
-import { standInCookie } from '@keepr/accounts-stand-in/cookie';
+import { LOCAL_ORGANISATION_ID, standInCookie } from '@keepr/accounts-stand-in/cookie';
 import { CLOSE_REFUSED } from '@keepr/realtime/protocol';
 import { LIVE_RESULTS_CRON } from '../../server/utils/cronSchedules.ts';
 import {
@@ -258,8 +258,14 @@ function generatedConfiguration() {
 		NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY: base64Key(),
 		NUXT_MELEE_CREDENTIAL_KEY_VERSION: '1',
 		NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN: `https://accounts.${randomBytes(6).toString('hex')}.invalid`,
+		// The Organisation the Installation serves (ADR-0161): the stand-in's.
+		NUXT_INSTALLATION_ORGANISATION_ID: LOCAL_ORGANISATION_ID,
 	};
-	const PUBLIC = ['NUXT_MELEE_CREDENTIAL_KEY_VERSION', 'NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN'];
+	const PUBLIC = [
+		'NUXT_MELEE_CREDENTIAL_KEY_VERSION',
+		'NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN',
+		'NUXT_INSTALLATION_ORGANISATION_ID',
+	];
 	return {
 		entries,
 		secrets: Object.entries(entries)
@@ -488,6 +494,10 @@ async function expectIdentityBoundary({ origin, fetchRequest, signal }) {
 		user: `worker-smoke-outsider-${run}`,
 		apps: { stream: null },
 	});
+	const anotherOrganisation = standInCookie({
+		user: `worker-smoke-elsewhere-${run}`,
+		organisation: { id: `worker-smoke-elsewhere-${run}`, role: 'owner' },
+	});
 	const ask = (probe, expected, path, cookie, init = {}) =>
 		expectStatus({
 			probe,
@@ -512,6 +522,8 @@ async function expectIdentityBoundary({ origin, fetchRequest, signal }) {
 	// A User with no App access to Stream Keepr is refused, an admin route included.
 	await ask('no-app-access', 403, '/api/events', outsider);
 	await ask('no-app-access-admin-route', 403, ADMIN_ROUTE, outsider);
+	// So is a User of another Organisation, whatever App role it gave them (ADR-0161).
+	await ask('another-organisation', 403, ADMIN_ROUTE, anotherOrganisation);
 	// An admin route refuses a User whose App role is not `admin`, and admits one whose is.
 	await ask('member-admitted', 200, '/api/events', member);
 	await ask('admin-role-required', 403, ADMIN_ROUTE, member);
