@@ -1,6 +1,6 @@
 # ADR-0150: An Identity Proof one isolate verified answers every isolate of its Worker, through the Cache API
 
-Accepted · 2026-11-20 · [#1375](https://github.com/KeeprDigital/keepr/issues/1375) · Amends ADR-0113 · Amended by ADR-0163: Keepr Accounts' keys are shared for an Identity Proof's lifetime, not an hour
+Accepted · 2026-11-20 · [#1375](https://github.com/KeeprDigital/keepr/issues/1375) · Amends ADR-0113 · Amended by ADR-0158: Keepr Accounts' keys are shared for an Identity Proof's lifetime, not an hour
 
 ADR-0113 has an App cache each Identity Proof, and the layer's resolver did so in its isolate. Cloudflare spreads a Worker's requests over several isolates, and refreshes a proof only when a request reaches the isolate holding it. On Staging (#1363), at one write every 30 s, an isolate that served nothing for five minutes held an expired proof, and its next write waited 230 to 380 ms on Keepr Accounts: about one Take in thirty was up to half a second late on air. A fresh isolate also fetched Keepr Accounts' keys first.
 

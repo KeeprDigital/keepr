@@ -94,6 +94,34 @@ describe('the preview launcher', () => {
 		await exited;
 	});
 
+	// The built Worker reads its vars from Wrangler, not this process: the
+	// Accounts Stand-in's sign-in reaches it as one (ADR-0158).
+	it.each([
+		[
+			'passes the sign-in origin it was given to the built Worker',
+			'http://localhost:4321',
+			['--var', 'NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN:http://localhost:4321'],
+		],
+		['passes none it was not given', undefined, []],
+	])('%s', async (_case, origin, passed) => {
+		const { child, spawnProcess } = fakeWrangler();
+
+		const exited = runPreviewWorker({
+			argv: [],
+			repositoryRoot,
+			env: { NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN: origin },
+			spawnProcess: spawnProcess as unknown as typeof spawn,
+			fetchRequest: (async () => new Response('ok')) as unknown as typeof fetch,
+		});
+		await vi.advanceTimersByTimeAsync(0);
+
+		const [, wranglerArguments] = spawnProcess.mock.calls[0]!;
+		const varAt = wranglerArguments.indexOf('--var');
+		expect(varAt === -1 ? [] : wranglerArguments.slice(varAt, varAt + 2)).toEqual(passed);
+		child.emit('exit', 0, null);
+		await exited;
+	});
+
 	it.each([['--port', 'nope'], ['--port=0']])(
 		'refuses %s before starting Wrangler',
 		async (...argv) => {

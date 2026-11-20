@@ -522,6 +522,8 @@ export function createIdentityResolver<App extends AppId>(
 		origin?: string | undefined;
 	}): Promise<IdentityAnswer<App>> {
 		const cookie = keeprAccountsCookies(header);
+		// Keepr Accounts knows nobody without a cookie of its own: not worth asking (ADR-0158).
+		if (!cookie) return { kind: 'signed-out', setCookie: [] };
 		const question: Question = {
 			defer: (promise) => waitUntil?.(promise),
 			shared: sharedStore && origin ? sharedIdentityRecords(sharedStore, app, origin) : undefined,

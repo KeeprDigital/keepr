@@ -6,17 +6,19 @@ import { USER_NAMES_MAX_IDS, userNamesAddress } from '@keepr/nuxt-layer/shared/u
 import {
 	type AccountsStandIn,
 	createAccountsStandIn,
+	LOCAL_DEVELOPER_COOKIE,
 	standInCookie,
 	type StandInPersona,
 } from '../src/standIn';
 
-// The Accounts Stand-in answers every request as the Local Developer User with full
-// authority, read by the same identity function an App runs in production.
+// The Accounts Stand-in answers a browser its sign-in gave its cookie as the Local
+// Developer User with full authority, read by the same identity function an App
+// runs in production.
 
 async function resolveThrough(
 	standIn: AccountsStandIn,
 	app: keyof typeof APP_REGISTRY,
-	cookie?: string,
+	cookie: string = LOCAL_DEVELOPER_COOKIE,
 ) {
 	return await createIdentityResolver(app)({
 		cookie,
@@ -29,7 +31,7 @@ describe('the Accounts Stand-in', () => {
 		['stream', 'admin'],
 		['score', 'admin'],
 	] as const)(
-		'answers with no sign-in as a Keepr Administrator and owner, with the highest App role in %s',
+		'answers its own cookie as a Keepr Administrator and owner, with the highest App role in %s',
 		async (app, appRole) => {
 			const answer = await resolveThrough(createAccountsStandIn(), app);
 
@@ -65,6 +67,7 @@ describe('the Accounts Stand-in', () => {
 		};
 
 		const answer = await createIdentityResolver('stream')({
+			cookie: LOCAL_DEVELOPER_COOKIE,
 			accounts: {
 				fetch: async (input) =>
 					new URL(input).pathname === '/api/auth/token'
@@ -76,6 +79,50 @@ describe('the Accounts Stand-in', () => {
 		expect(answer).toMatchObject({
 			kind: 'unavailable',
 			reason: expect.stringContaining('ERR_JWKS_NO_MATCHING_KEY'),
+		});
+	});
+
+	// A local browser arrives with no cookie, is refused 401 by the App, and is sent
+	// here by its page gate as it would be to Keepr Accounts' sign-in.
+	describe('its sign-in', () => {
+		const signIn = async (returnTo: string, at = 'http://localhost:8790') =>
+			await createAccountsStandIn().fetch(
+				new Request(`${at}/sign-in?returnTo=${encodeURIComponent(returnTo)}`),
+			);
+
+		it('gives a local browser the Local Developer User and sends it back', async () => {
+			const response = await signIn('http://localhost:3000/event/1?tab=screens');
+
+			expect(response.status).toBe(302);
+			expect(response.headers.get('location')).toBe('http://localhost:3000/event/1?tab=screens');
+			const [cookie] = response.headers.getSetCookie();
+			expect(cookie).toMatch(/^keepr-stand-in=;.*Path=\//);
+			expect(
+				await resolveThrough(createAccountsStandIn(), 'stream', cookie!.split(';')[0]),
+			).toMatchObject({ kind: 'signed-in', identity: { user: { id: 'local-developer' } } });
+		});
+
+		// A cookie is kept per host, whatever the port: so it is set on the App's.
+		it('sends a browser returning to another local host to its sign-in there first', async () => {
+			const response = await signIn('http://127.0.0.1:3000/', 'http://localhost:8790');
+
+			expect(response.status).toBe(302);
+			expect(response.headers.get('location')).toBe(
+				`http://127.0.0.1:8790/sign-in?returnTo=${encodeURIComponent('http://127.0.0.1:3000/')}`,
+			);
+			expect(response.headers.getSetCookie()).toEqual([]);
+		});
+
+		it.each([
+			['another site', 'https://elsewhere.example/'],
+			['a Keepr host', 'https://stream.keepr.digital/'],
+			['a page given as a path', '/event/1'],
+			['a local address it does not listen on', 'http://[::1]:3000/'],
+		])('refuses to return to %s, 400', async (_case, returnTo) => {
+			const response = await signIn(returnTo);
+
+			expect(response.status).toBe(400);
+			expect(response.headers.getSetCookie()).toEqual([]);
 		});
 	});
 

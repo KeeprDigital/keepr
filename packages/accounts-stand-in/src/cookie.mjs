@@ -8,6 +8,14 @@
  */
 export const STAND_IN_COOKIE = 'keepr-stand-in';
 
+/**
+ * The cookie naming nobody else: the Local Developer User, in their one
+ * Session. What the stand-in's sign-in gives a local browser, and what a
+ * script or test sends to ask as them: an App asks Keepr Accounts nothing for
+ * a request with no cookie of its own (ADR-0158).
+ */
+export const LOCAL_DEVELOPER_COOKIE = `${STAND_IN_COOKIE}=`;
+
 /** The cookie's value for a visitor nobody is signed in as: the stand-in answers 401. */
 export const STAND_IN_SIGNED_OUT = 'signed-out';
 

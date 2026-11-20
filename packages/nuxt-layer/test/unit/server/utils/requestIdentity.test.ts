@@ -227,6 +227,16 @@ it('verifies an Identity Proof signed by a key Keepr Accounts published since th
 });
 
 describe('what Keepr Accounts is asked', () => {
+	it.each([
+		['no cookie', undefined],
+		['no cookie of its own', 'theme=dark; _ga=1'],
+	])('is nothing for a request with %s: it is signed out', async (_case, cookie) => {
+		const answer = await resolver()({ cookie, accounts: accounts.connection, waitUntil });
+
+		expect(answer).toEqual({ kind: 'signed-out', setCookie: [] });
+		expect(accounts.asked).toEqual([]);
+	});
+
 	it('carries only its own cookies', async () => {
 		await ask(
 			resolver(),

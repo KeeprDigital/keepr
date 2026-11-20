@@ -14,11 +14,17 @@
 // already named is used as it is, and the stand-in alone registers where
 // Wrangler registers by default (`registry.mjs`).
 //
+// Its sign-in answers on a port picked free for the run, which the command is
+// told as NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN unless it names one already: an
+// App's page gate sends a browser with no cookie there, and is sent back
+// signed in as the Local Developer User (ADR-0158).
+//
 // KEEPR_ACCOUNTS_STAND_IN=off runs the command alone, for when the real Keepr
 // Accounts is running beside the App instead (apps/accounts/README.md).
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
@@ -99,8 +105,34 @@ function end(code) {
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => stopAll(signal));
 process.on('exit', dispose);
 
-/** What the command and the stand-in both read the registry from. */
-const env = { ...process.env, ...plan.env };
+/** Where an App sends a browser to sign in: Keepr Accounts' origin, as its runtime config reads it. */
+const ACCOUNTS_ORIGIN_ENV = 'NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN';
+
+/**
+ * A port on loopback nothing listens on now, for the stand-in's sign-in. It is
+ * free when asked, not held: another process taking it first makes Wrangler
+ * fail to start, and the run says so as it would for any other failure.
+ */
+async function freePort() {
+	const server = createServer();
+	await new Promise((resolve, reject) =>
+		server.once('error', reject).listen(0, '127.0.0.1', () => resolve(undefined)),
+	);
+	const { port } = /** @type {import('node:net').AddressInfo} */ (server.address());
+	await new Promise((resolve) => server.close(() => resolve(undefined)));
+	return port;
+}
+
+const port = plan.start ? await freePort() : undefined;
+
+/** What the command and the stand-in both read the registry, and the sign-in, from. */
+const env = {
+	...process.env,
+	...plan.env,
+	...(port !== undefined && !process.env[ACCOUNTS_ORIGIN_ENV]
+		? { [ACCOUNTS_ORIGIN_ENV]: `http://localhost:${port}` }
+		: {}),
+};
 
 if (plan.start) {
 	const standIn = spawn(
@@ -112,9 +144,9 @@ if (plan.start) {
 			join(packageRoot, 'stand-in.wrangler.jsonc'),
 			'--ip',
 			'127.0.0.1',
-			// The binding reaches it through the local dev registry, not a port: any free one does.
+			// A binding reaches it through the registry; a browser, on this port.
 			'--port',
-			'0',
+			String(port),
 			'--inspector-port',
 			'0',
 			'--persist-to',
@@ -129,7 +161,9 @@ if (plan.start) {
 		{ cwd: packageRoot, stdio: ['ignore', 'inherit', 'inherit'], env },
 	);
 	children.push(standIn);
-	console.log('[accounts-stand-in] answering as the Local Developer User under "keepr-accounts"');
+	console.log(
+		`[accounts-stand-in] answering under "keepr-accounts"; a local browser signs in as the Local Developer User at http://localhost:${port}/sign-in`,
+	);
 	standIn.on('exit', (code) => {
 		if (command.length === 0) end(code ?? 0);
 		if (stopping) return;

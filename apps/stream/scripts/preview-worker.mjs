@@ -60,13 +60,19 @@ async function onceListening(request) {
 	}
 }
 
+/** The Keepr Accounts a signed-out browser is sent to: the Accounts Stand-in's sign-in, which its launcher names. */
+const ACCOUNTS_ORIGIN_ENV = 'NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN';
+
 /**
  * Starts Wrangler on the built Worker with `argv` passed through, fires the Live
- * Results cron at it each minute, and resolves with Wrangler's exit code.
+ * Results cron at it each minute, and resolves with Wrangler's exit code. The
+ * built Worker reads its vars from Wrangler, not from this process, so the
+ * Keepr Accounts origin `env` names is passed to it as one (ADR-0158).
  */
 export async function runPreviewWorker({
 	argv,
 	repositoryRoot,
+	env = process.env,
 	spawnProcess = spawn,
 	fetchRequest = fetch,
 	signals = undefined,
@@ -84,6 +90,9 @@ export async function runPreviewWorker({
 			'--test-scheduled',
 			'--port',
 			String(port),
+			...(env[ACCOUNTS_ORIGIN_ENV]
+				? ['--var', `${ACCOUNTS_ORIGIN_ENV}:${env[ACCOUNTS_ORIGIN_ENV]}`]
+				: []),
 			...rest,
 		],
 		{ cwd: repositoryRoot, stdio: 'inherit' },

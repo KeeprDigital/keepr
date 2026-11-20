@@ -1,24 +1,26 @@
 # @keepr/accounts-stand-in
 
-The Accounts Stand-in (root `GLOSSARY.md`, ADR-0113): a Worker registered locally under Keepr Accounts' service name, `keepr-accounts`, that answers every App's request as the Local Developer User with full authority. It is how local work needs no sign-in, with no switch in any shipped build. **It is never deployed.**
+The Accounts Stand-in (root `GLOSSARY.md`, ADR-0113): a Worker registered locally under Keepr Accounts' service name, `keepr-accounts`, that signs a local browser in as the Local Developer User with full authority, with no password, and answers every App's request for it. It is how local work needs no account, with no switch in any shipped build. **It is never deployed.**
 
 | Path | What |
 |---|---|
-| `src/standIn.ts` | The answers: an Identity Proof at `/api/auth/token`, its key at `/api/auth/jwks`, names at `/api/users/names`, and 404 for anything else. |
+| `src/standIn.ts` | The answers: its sign-in at `/sign-in`, an Identity Proof at `/api/auth/token`, its key at `/api/auth/jwks`, names at `/api/users/names`, and 404 for anything else. |
 | `src/cookie.mjs` | The `keepr-stand-in` cookie that names who it answers as: `@keepr/accounts-stand-in/cookie`, plain JavaScript a script or a test imports. |
 | `src/worker.ts` | The same, as a Worker, answering only where its script started it. |
 | `src/bundleMark.mjs`, `src/bundleScan.mjs` | The mark its code carries into any bundle, and `@keepr/accounts-stand-in/bundle-scan`, which an App's build runs to refuse a Worker that holds it. |
 | `stand-in.wrangler.jsonc` | Its Wrangler configuration, under a name Wrangler does not find by itself. |
-| `scripts/stand-in.mjs` | `keepr-accounts-stand-in [-- <command>]`: starts it under `wrangler dev`, beside the command, and stops it when the command ends. |
+| `scripts/stand-in.mjs` | `keepr-accounts-stand-in [-- <command>]`: starts it under `wrangler dev` on a free port, beside the command, tells the command its sign-in, and stops it when the command ends. |
 | `scripts/registry.mjs` | Where a run registers it: the Wrangler registry it uses, and what it tells the command. |
 
 ## What it answers
 
-The Local Developer User (`local-developer`), a Keepr Administrator, owner of the Keepr Organisation `keepr-local` (the same id every run), with the highest App role in every App the App registry names, in one Session (`local-developer-session`) whatever the browser. It signs with the production issuer and audience and a key it makes on its first request, so an App verifies it with the code it runs in production, and nothing it signs verifies against Keepr Accounts' keys.
+An App asks Keepr Accounts nothing for a request with no cookie of its own (ADR-0158): it is signed out, and the App's page gate sends the browser to Keepr Accounts' sign-in. Beside the stand-in, that is the stand-in's `/sign-in`: its launcher picks a free port and names `http://localhost:<port>` to the command as `NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN`, unless one is named already. The sign-in sets `keepr-stand-in=` and sends the browser back to `?returnTo=`, only ever a page on this machine (`localhost` or `127.0.0.1`, where it listens); a browser returning to another of those hosts is sent to the sign-in on that host first, as a cookie is kept per host. Anything else is refused 400. A script or test sends the same cookie, `LOCAL_DEVELOPER_COOKIE` from `@keepr/accounts-stand-in/cookie`.
+
+That cookie, with no fields, is the Local Developer User (`local-developer`), a Keepr Administrator, owner of the Keepr Organisation `keepr-local` (the same id every run), with the highest App role in every App the App registry names, in one Session (`local-developer-session`) whatever the browser. It signs with the production issuer and audience and a key it makes on its first request, so an App verifies it with the code it runs in production, and nothing it signs verifies against Keepr Accounts' keys.
 
 ### As someone else
 
-An App forwards a request's cookies to Keepr Accounts, and the stand-in reads one of its own, `keepr-stand-in`, as Keepr Accounts reads a session cookie (ADR-0141, in `apps/stream/docs/adr`). With none, it answers as above. Its value is `signed-out`, or fields joined by `&`:
+An App forwards a request's cookies to Keepr Accounts, and the stand-in reads one of its own, `keepr-stand-in`, as Keepr Accounts reads a session cookie (ADR-0141, in `apps/stream/docs/adr`). With no fields, it answers as above. Its value is `signed-out`, or fields joined by `&`:
 
 | Value | Answers as |
 |---|---|
@@ -76,7 +78,7 @@ An App's binding finds the stand-in through Wrangler's local registry: one direc
 
 ## Never deployed
 
-The stand-in's key ids carry a mark of their own, and Stream Keepr's `worker:dry-run` refuses a built Worker that holds it, so nothing an App ships carries the stand-in (ADR-0163).
+The stand-in's key ids carry a mark of their own, and Stream Keepr's `worker:dry-run` refuses a built Worker that holds it, so nothing an App ships carries the stand-in (ADR-0158).
 
 There is no deploy script, and Wrangler does not find `stand-in.wrangler.jsonc` by itself. `package.json` carries `keepr.undeployable`, which `keepr-deploy-guard` (`@keepr/tooling`) refuses: reading a Release runs the guard on every configuration its descriptor names, and a deploy runs it again on what it is about to upload (ADR-0119). The deploy tooling starts the stand-in around a binding App's build, to answer its Worker smoke run; it uploads nothing of it. Deployed under `keepr-accounts`, the stand-in would replace Keepr Accounts and sign anyone in. So it also fails closed without any of that (ADR-0154): its configuration names an account no one holds, and its Worker refuses every request unless the launcher started it with `--var KEEPR_ACCOUNTS_STAND_IN:launched`.
 

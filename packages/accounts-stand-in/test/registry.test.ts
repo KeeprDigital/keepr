@@ -178,6 +178,49 @@ describe('keepr-accounts-stand-in -- <command>', () => {
 		expect(existsSync(registry)).toBe(false);
 	}, 60_000);
 
+	// The command's page gate sends a signed-out browser to Keepr Accounts' sign-in:
+	// beside the stand-in, that is the stand-in's, on this machine (ADR-0158).
+	const SIGNS_IN = `const origin = process.env.NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN;
+		fetch(origin + '/sign-in?returnTo=' + encodeURIComponent('http://localhost:3000/event/1'), { redirect: 'manual' })
+			.then((response) => console.log(JSON.stringify({
+				origin,
+				status: response.status,
+				location: response.headers.get('location'),
+				cookie: response.headers.getSetCookie()[0]?.split(';')[0],
+			})))
+			.catch((error) => console.log(JSON.stringify({ origin, error: String(error) })));`;
+
+	it("points the command's sign-in at the stand-in, which signs a local browser in", async () => {
+		const { code, seen } = await run(['--', process.execPath, '-e', SIGNS_IN]);
+
+		expect(code).toBe(0);
+		expect(seen).toEqual([
+			{
+				origin: expect.stringMatching(/^http:\/\/localhost:\d+$/),
+				status: 302,
+				location: 'http://localhost:3000/event/1',
+				cookie: 'keepr-stand-in=',
+			},
+		]);
+	}, 60_000);
+
+	it('leaves a sign-in origin already named as it was', async () => {
+		const { seen } = await run(
+			[
+				'--',
+				process.execPath,
+				'-e',
+				`${SEES.split(';')[0]};
+			console.log(JSON.stringify({ origin: process.env.NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN }));`,
+			],
+			{
+				NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN: 'http://localhost:8790',
+			},
+		);
+
+		expect(seen).toEqual([{ origin: 'http://localhost:8790' }]);
+	}, 60_000);
+
 	it('gives two runs at once a registry each, and a run inside one no second stand-in', async () => {
 		const nested = [
 			'--',

@@ -15,9 +15,8 @@ export const INTEGRATION_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY =
 
 /**
  * The operator the suite asks as (ADR-0141): a User of its own, a Graphics
- * Administrator, named to the server's Accounts Stand-in by its cookie. Not the
- * Local Developer User a request with no cookie is answered as, so a request
- * the suite forgot to sign is a different User's, and shows.
+ * Administrator, named to the server's Accounts Stand-in by its cookie. A
+ * request the suite forgot to sign carries none, and is refused 401 (ADR-0158).
  */
 export const INTEGRATION_OPERATOR_ID = 'integration-operator';
 export const INTEGRATION_OPERATOR_NAME = 'Integration Operator';
@@ -27,9 +26,9 @@ export const INTEGRATION_OPERATOR_COOKIE = standInCookie({
 });
 
 /**
- * What a request sends to ask as a signed-out visitor. A request carrying no
- * cookie at all is the Local Developer User to an Accounts Stand-in, so "no
- * Session" has to be said: Keepr Accounts then answers with no Identity Proof,
- * as it answers a browser nobody is signed in on.
+ * What a request sends to ask as a signed-out visitor: the stand-in's own word
+ * for it, so the question reaches Keepr Accounts' stand-in, which answers with
+ * no Identity Proof as Keepr Accounts answers a browser nobody is signed in on.
+ * A request carrying no cookie at all is refused before anyone is asked.
  */
 export const INTEGRATION_SIGNED_OUT_COOKIE = standInCookie('signed-out');

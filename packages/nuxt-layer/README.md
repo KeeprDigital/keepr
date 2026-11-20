@@ -28,7 +28,7 @@ export default defineNuxtConfig({
 - **No route and no middleware.** An app registers its own, in its own order, and calls the layer's code.
 - **Nothing here knows a product.** If it names an Event, a Screen or a Tournament, it belongs in that app.
 - **A named module's term is in the root `GLOSSARY.md`**, under Platform. A module that moves here brings its term in the same change.
-- **It stands alone.** `pnpm typecheck` and `pnpm test` run here, with no app around it. A rule's tests live here with the rule. `resolveRequestIdentity`'s are here too, against Identity Proofs signed with keys a fake of Keepr Accounts publishes and withdraws (ADR-0163, in the root `docs/adr`), and again in `apps/accounts` (`test/unit/server/requestIdentity.sqlite.test.ts`), against Keepr Accounts' real minting, which the layer cannot import (ADR-0113).
+- **It stands alone.** `pnpm typecheck` and `pnpm test` run here, with no app around it. A rule's tests live here with the rule. `resolveRequestIdentity`'s are here too, against Identity Proofs signed with keys a fake of Keepr Accounts publishes and withdraws (ADR-0158, in the root `docs/adr`), and again in `apps/accounts` (`test/unit/server/requestIdentity.sqlite.test.ts`), against Keepr Accounts' real minting, which the layer cannot import (ADR-0113).
 - **Something two apps need moves here, in the change that moves the first app onto it.** Do not copy a file between apps.
 - **Nothing here gives a Worker a binding, an entry of its own or a process in development.** That is a layer an app chooses (ADR-0138, in the root `docs/adr`), as realtime's is: `@keepr/realtime/nuxt`. This layer keeps what costs an app nothing when unused.
 

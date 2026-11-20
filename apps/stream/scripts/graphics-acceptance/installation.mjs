@@ -164,8 +164,7 @@ export async function openInstallation(origin, { deployed = false } = {}) {
 	 * @param {string} path
 	 * `anonymous` asks as a signed-out visitor, which is the only way to ask what
 	 * a caller with no Session is answered. A deployed run sends no cookie at
-	 * all; a local one says so with the Accounts Stand-in's cookie, since its
-	 * installation answers a request carrying none as the Local Developer User.
+	 * all; a local one says so with the Accounts Stand-in's signed-out cookie.
 	 * It is a probe of the boundary, so it exists here rather than being
 	 * assembled at a call site that could forget the difference.
 	 *
