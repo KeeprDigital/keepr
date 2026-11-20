@@ -26,13 +26,10 @@
 
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
-import { resolveWranglerConfig } from '../deploy/fingerprint.mjs';
 import { readRelease } from '../deploy/release.mjs';
-import { WORKER_NOT_FOUND } from '../deploy/secrets.mjs';
-import { parseJsonc } from '../jsonc.mjs';
+import { WORKER_NOT_FOUND, workerTarget, wranglerSourceConfig } from '../deploy/secrets.mjs';
 import {
 	formatReference,
 	generation,
@@ -169,9 +166,9 @@ function onePassword({ root, env, redactor }) {
 
 /**
  * The Worker of `release`'s Installation in `environment`, through its own
- * Wrangler and its source config, which names the Environment's account. A
- * config that leaves naming the Worker to the build takes the descriptor's
- * `worker.name`.
+ * Wrangler and its source config, which names the Environment's account, as
+ * the deploy's hints reach it (`workerTarget`). A config that leaves naming
+ * the Worker to the build takes the descriptor's `worker.name`.
  *
  * @param {{
  *   release: import('../deploy/release.mjs').Release,
@@ -185,24 +182,14 @@ function workerDestination({ release, environment, env, redactor }) {
 	const { app, appDir, descriptor } = release;
 	const { source } = descriptor.worker;
 	const wranglerEnv = descriptor.environments[environment]?.wranglerEnv;
-	const configured = resolveWranglerConfig(
-		parseJsonc(readFileSync(join(appDir, source), 'utf8')),
-		wranglerEnv,
-	).name;
-	const name = configured ?? descriptor.worker.name;
-	if (name === undefined)
-		throw new Error(
-			`Neither apps/${app}/${source}${wranglerEnv ? ` (env.${wranglerEnv})` : ''} nor its deploy descriptor's worker.name names ${app}'s Worker.`,
-		);
-	// Wrangler names `--name x --env y` Worker x-y, so an env block names its own.
-	if (configured === undefined && wranglerEnv !== undefined)
-		throw new Error(`apps/${app}/${source}'s env.${wranglerEnv} names no Worker.`);
-	const args = [
-		'--config',
+	const { name, args } = workerTarget({
+		app,
+		label: `${app}'s Worker`,
 		source,
-		...(wranglerEnv === undefined ? [] : ['--env', wranglerEnv]),
-		...(configured === undefined ? ['--name', name] : []),
-	];
+		wranglerEnv,
+		config: wranglerSourceConfig({ appDir, wranglerEnv })(source),
+		name: descriptor.worker.name,
+	});
 	const wrangler = join(appDir, 'node_modules/.bin/wrangler');
 	return {
 		label: `Worker ${name} (apps/${app}/${source}${wranglerEnv ? ` --env ${wranglerEnv}` : ''})`,

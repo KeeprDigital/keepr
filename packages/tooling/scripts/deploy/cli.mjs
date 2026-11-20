@@ -55,7 +55,7 @@ import { checkDeployOrder, gitHistory, neededBy } from './order.mjs';
 import { MODES, decidePartDeploy, deployRelease, markApp, promotePart } from './procedure.mjs';
 import { recordRecoveryPoints } from './recovery.mjs';
 import { readRelease } from './release.mjs';
-import { requireSecrets, wranglerSecretNames, wranglerVars } from './secrets.mjs';
+import { requireSecrets, wranglerSecretNames, wranglerSourceConfig } from './secrets.mjs';
 import { DeployVerifyFailure, verifyInstallation } from './verify.mjs';
 
 const USAGE = `usage: keepr-deploy <command> --app <app> [--env <environment>]
@@ -166,7 +166,7 @@ function realSteps({ release, environment, store, env, log }) {
 		},
 		fingerprint: (part) => fingerprintPart({ appDir, part: descriptor.parts[part], wranglerEnv }),
 		secretNames: wranglerSecretNames({ wrangler, appDir, wranglerEnv }),
-		configuredVars: wranglerVars({ appDir, wranglerEnv }),
+		sourceConfig: wranglerSourceConfig({ appDir, wranglerEnv }),
 		// A remote read: the database's current Time Travel bookmark, as JSON.
 		bookmark: (binding) => {
 			const output = read(
@@ -346,7 +346,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 				release,
 				environment,
 				secretNames,
-				configuredVars: wranglerVars({
+				sourceConfig: wranglerSourceConfig({
 					appDir,
 					wranglerEnv: descriptor.environments[environment].wranglerEnv,
 				}),
