@@ -9,7 +9,7 @@ import type {
 } from '../../src/index.ts';
 import { configurations } from './configurations.ts';
 
-const NAMES = ['ann', 'ben', 'cal', 'dee', 'eve', 'fay', 'gus', 'hal'];
+const NAMES = ['ann', 'ben', 'cal', 'dee', 'eve', 'fay', 'gus', 'hal', 'ida', 'jon', 'kat', 'lou'];
 /** Game scores the two-game points table lists, as [won by first, won by second, drawn]. */
 const LISTED_GAMES: [number, number, number][] = [
 	[2, 0, 0],
@@ -24,9 +24,10 @@ export type EventOptions = { config?: string; maxEntrants?: number; maxRounds?: 
 /**
  * A valid event: a few Entrants, a few rounds, each round a random set of matches and solo
  * rounds, with game scores and victory points on every match so any Configuration can read it.
+ * An Entrant who drops does so after any round, and has no Result after it.
  */
 export function event(options: EventOptions = {}): fc.Arbitrary<StandingsInput> {
-	const { maxEntrants = 8, maxRounds = 4 } = options;
+	const { maxEntrants = NAMES.length, maxRounds = 6 } = options;
 	return fc
 		.record({
 			size: fc.integer({ min: 0, max: maxEntrants }),
@@ -36,8 +37,43 @@ export function event(options: EventOptions = {}): fc.Arbitrary<StandingsInput> 
 					? fc.constantFrom(...Object.keys(configurations))
 					: fc.constant(options.config),
 		})
-		.chain(({ size, rounds, config }) => {
+		.chain(({ size, rounds, config }) =>
+			fc.record({
+				size: fc.constant(size),
+				rounds: fc.constant(rounds),
+				config: fc.constant(config),
+				statuses: fc.tuple(
+					...NAMES.slice(0, size).map(() =>
+						fc.record({
+							state: fc.constantFrom<'active' | 'dropped' | 'removed'>(
+								'active',
+								'active',
+								'active',
+								'dropped',
+								'removed',
+							),
+							afterRound: fc.integer({ min: 0, max: rounds }),
+						}),
+					),
+				),
+			}),
+		)
+		.chain(({ size, rounds, config, statuses }) => {
 			const ids = NAMES.slice(0, size);
+			const entrants = ids.map((id, at): StandingsEntrant => {
+				const { state, afterRound } = statuses[at] as (typeof statuses)[number];
+				return state === 'active'
+					? { id }
+					: state === 'removed'
+						? { id, status: { type: 'removed' } }
+						: { id, status: { type: 'dropped', afterRound } };
+			});
+			const stillIn = (number: number): string[] =>
+				entrants
+					.filter(
+						(entrant) => entrant.status?.type !== 'dropped' || entrant.status.afterRound >= number,
+					)
+					.map((entrant) => entrant.id);
 			const configuration = configurations[config] as StandingsInput['configuration'];
 			const drawsAllowed = configuration.allow.draws;
 			const twoGame = configuration.points.type === 'by-game-score';
@@ -75,7 +111,7 @@ export function event(options: EventOptions = {}): fc.Arbitrary<StandingsInput> 
 					});
 
 			const round = (number: number): fc.Arbitrary<Result[]> =>
-				fc.shuffledSubarray(ids).chain((present) => {
+				fc.shuffledSubarray(stillIn(number)).chain((present) => {
 					const results: fc.Arbitrary<Result>[] = [];
 					for (let at = 0; at + 1 < present.length; at += 2)
 						results.push(match(number, present[at] as string, present[at + 1] as string));
@@ -95,25 +131,7 @@ export function event(options: EventOptions = {}): fc.Arbitrary<StandingsInput> 
 				});
 
 			return fc.record({
-				entrants: fc.tuple(
-					...ids.map((id) =>
-						fc
-							.constantFrom<'active' | 'dropped' | 'removed'>(
-								'active',
-								'active',
-								'active',
-								'dropped',
-								'removed',
-							)
-							.map((state): StandingsEntrant =>
-								state === 'active'
-									? { id }
-									: state === 'removed'
-										? { id, status: { type: 'removed' } }
-										: { id, status: { type: 'dropped', afterRound: rounds } },
-							),
-					),
-				),
+				entrants: fc.constant(entrants),
 				results: fc
 					.tuple(...Array.from({ length: rounds }, (_, at) => round(at + 1)))
 					.map((all) => all.flat()),

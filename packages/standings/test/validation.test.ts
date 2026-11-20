@@ -198,6 +198,53 @@ describe('computeStandings input checks', () => {
 			'missing-setting',
 		],
 		['fractional points', (i) => ((config(i)['points'] as Loose)['win'] = 2.5), 'invalid-input'],
+		// Every Score stays exact: no value counted into one may pass a million either way.
+		[
+			'points above the limit',
+			(i) => ((config(i)['points'] as Loose)['win'] = 1_000_001),
+			'invalid-input',
+		],
+		[
+			'points below the limit',
+			(i) => ((config(i)['points'] as Loose)['loss'] = -1_000_001),
+			'invalid-input',
+		],
+		[
+			'Bye points above the limit',
+			(i) => ((config(i)['bye'] as Loose)['points'] = 1_000_001),
+			'invalid-input',
+		],
+		[
+			'an Extra Score above the limit',
+			(i) => (results(i)[0]!['extraScores'] = { vp: [1_000_001, 0] }),
+			'invalid-input',
+		],
+		[
+			'games above the limit',
+			(i) => (results(i)[0]!['games'] = [1_000_001, 0, 0]),
+			'invalid-input',
+		],
+		[
+			'an Extra Score named like a built-in property, which no Result has',
+			(i) => {
+				config(i)['points'] = { type: 'by-extra-score', extraScore: 'constructor' };
+				results(i)[0]!['extraScores'] = { vp: [1, 0] };
+			},
+			'missing-extra-score',
+		],
+		[
+			'a Result after its Entrant dropped',
+			(i) => (entrants(i)[0]!['status'] = { type: 'dropped', afterRound: 0 }),
+			'result-after-drop',
+		],
+		[
+			'planned rounds below a round that holds a Result',
+			(i) => {
+				i['plannedRounds'] = 1;
+				results(i).push({ round: 2, entrants: ['ann', 'cal'], outcomes: ['win', 'loss'] });
+			},
+			'invalid-input',
+		],
 		[
 			'a Bye that does not say whether it counts as played',
 			(i) => delete (config(i)['bye'] as Loose)['countsAsPlayed'],
@@ -389,6 +436,18 @@ describe('computeStandings input checks', () => {
 		],
 		['an empty Tiebreaker list', (i) => (config(i)['tiebreakers'] = [])],
 		['a negative points value', (i) => ((config(i)['points'] as Loose)['loss'] = -1)],
+		[
+			'points at the limit either way',
+			(i) => {
+				(config(i)['points'] as Loose)['win'] = 1_000_000;
+				(config(i)['points'] as Loose)['loss'] = -1_000_000;
+			},
+		],
+		[
+			'a Result in the round its Entrant dropped after',
+			(i) => (entrants(i)[0]!['status'] = { type: 'dropped', afterRound: 1 }),
+		],
+		['planned rounds equal to the last round with a Result', (i) => (i['plannedRounds'] = 1)],
 	])('accepts %s', (_, change) => {
 		expect(codes(change)).toEqual([]);
 	});

@@ -1,11 +1,25 @@
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 
-import type { StandingsInput } from '../src/index.ts';
+import type { StandingsInput, TiebreakerValue } from '../src/index.ts';
 import { event, reordered } from './support/arbitraries.ts';
 import { mustRank } from './support/run.ts';
 
 const RUNS = { numRuns: 300 };
+
+/**
+ * Compares two exact Tiebreaker values. Two that say nothing are level. Only head-to-head says
+ * nothing, and then for everyone level so far, so one that does beside one that does not is a fault.
+ */
+function compareExact(a: TiebreakerValue | undefined, b: TiebreakerValue | undefined): number {
+	const x = a?.exact ?? null;
+	const y = b?.exact ?? null;
+	if (x === null && y === null) return 0;
+	if (x === null || y === null) throw new Error('One value says nothing and the other does not');
+	const difference =
+		BigInt(x.numerator) * BigInt(y.denominator) - BigInt(y.numerator) * BigInt(x.denominator);
+	return difference > 0n ? 1 : difference < 0n ? -1 : 0;
+}
 const ranked = (input: StandingsInput): string[] =>
 	input.entrants
 		.filter((entrant) => entrant.status?.type !== 'removed')
@@ -44,19 +58,29 @@ describe('rules that hold for every set of Standings', () => {
 		);
 	});
 
-	test('rows that share a Rank are level on Score and on every Tiebreaker', () => {
+	test('rows run by Score, then each Tiebreaker in its direction, and share a Rank only when level on all', () => {
 		fc.assert(
 			fc.property(event(), (input) => {
 				const { rows } = mustRank(input);
-				const signature = (row: (typeof rows)[number]): string =>
-					JSON.stringify([row.score, row.tiebreakers.map((each) => each.exact)]);
+				const better = input.configuration.tiebreakers.map((tiebreaker) =>
+					tiebreaker.type === 'loss-rate' ||
+					tiebreaker.type === 'opponents-loss-rate' ||
+					tiebreaker.type === 'random' ||
+					(tiebreaker.type === 'extra-score-total' && tiebreaker.of === 'against')
+						? -1
+						: 1,
+				);
 				for (const [at, row] of rows.entries()) {
 					const previous = rows[at - 1];
-					expect(
-						previous === undefined ||
-							previous.rank !== row.rank ||
-							signature(previous) === signature(row),
-					).toBe(true);
+					if (previous === undefined) continue;
+					// Above zero when the earlier row is ahead, zero when the two are level on everything.
+					let ahead = Math.sign(previous.score - row.score);
+					for (const [level, direction] of better.entries()) {
+						if (ahead !== 0) break;
+						ahead = direction * compareExact(previous.tiebreakers[level], row.tiebreakers[level]);
+					}
+					expect(ahead).toBeGreaterThanOrEqual(0);
+					expect(previous.rank === row.rank).toBe(ahead === 0);
 				}
 			}),
 			RUNS,

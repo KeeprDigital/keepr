@@ -5,7 +5,7 @@ The Standings Engine: it turns Results into Standings for the Phases before a To
 It is a package of the workspace, consumed as source (ADR-0092, in the root `docs/adr`): nothing is built or published. It depends on `@keepr/engine-core` alone, which holds its types, and never on `@keepr/pairing`.
 
 - `RULES.md`: what the engine promises, and the exact definition of every points method, Tiebreaker and Rank. It wins any disagreement.
-- `docs/adr`: why (ADR-0101 and ADR-0102).
+- `docs/adr`: why (ADR-0101, ADR-0102 and ADR-0153).
 - `apps/score/GLOSSARY.md`: the words. Use them.
 
 ## Use
@@ -49,16 +49,20 @@ What the Consumer must do around these calls is in `apps/score/RULES.md`.
 
 ## Speed
 
-The target is a whole recalculation for 20,000 Entrants over 15 rounds in 1 s, on one thread, on a mid-range laptop. Measured once, on Apple M4 and Node 26: 20,001 Entrants, 15 rounds and 150,015 Results took about 0.4 s under the Starting Configuration and under each Preset. This package has no benchmark yet, and nothing has been measured on a mid-range laptop or in a browser.
+The target is a whole recalculation for 20,000 Entrants over 15 rounds in 1 s, and Final Placings for as many, on one thread, on a mid-range laptop. Measured once, on Apple M4 and Node 26: 20,001 Entrants, 15 rounds and 150,015 Results took about 0.4 s under the Starting Configuration and under each Preset. Final Placings for 20,001 Entrants and a cut of eight take under 0.03 s: their time grows in step with the Entrants outside the cut. Nothing has been measured on a mid-range laptop or in a browser.
+
+`bench/speed.ts` times both at that size. CI's `Packages: Engines` job runs its `bench:check`, which fails if Final Placings take over 1 s or any call is refused. The recalculations are printed but not gated: on a shared CI machine they sit too close to the target.
 
 ## Commands
 
 In this directory:
 
 ```
-pnpm test        # vitest run
-pnpm test -u     # re-record scenario answers after an intended change
+pnpm test             # vitest run
+pnpm test -u          # record a new scenario's answer, or re-record after an intended change
 pnpm typecheck
+pnpm bench:check      # Final Placings for 20,001 Entrants within 1 s
+pnpm bench 20001 15   # time a recalculation and Final Placings at <entrants> <rounds>
 ```
 
 `test/scenarios` holds stored inputs and answers that catch an accidental change, and `test/presets.test.ts` reproduces each Preset's document's worked examples.

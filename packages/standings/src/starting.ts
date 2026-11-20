@@ -1,4 +1,4 @@
-import type { RateSettings, StandingsConfiguration } from '@keepr/engine-core';
+import { deepFrozen, type RateSettings, type StandingsConfiguration } from '@keepr/engine-core';
 
 const third = { numerator: 1, denominator: 3 };
 
@@ -11,9 +11,9 @@ const rate: RateSettings = {
 
 /**
  * A generic Configuration to pass in or adapt. The engine never applies it on its own.
- * It needs match Outcomes only, no game scores.
+ * It needs match Outcomes only, no game scores. It is frozen: adapt a copy.
  */
-export const startingConfiguration: StandingsConfiguration = {
+export const startingConfiguration: StandingsConfiguration = deepFrozen({
 	points: { type: 'by-outcome', win: 3, draw: 1, loss: 0 },
 	bye: { points: 3, games: [2, 0, 0], countsAsPlayed: true },
 	unplayedLoss: { points: 0, games: [0, 2, 0], countsAsPlayed: true },
@@ -23,4 +23,4 @@ export const startingConfiguration: StandingsConfiguration = {
 		{ type: 'opponents-opponents-match-win-rate', rate, withNoOpponents: third },
 	],
 	byesReceived: 'assigned',
-};
+});

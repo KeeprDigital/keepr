@@ -114,6 +114,28 @@ describe('checkPairings', () => {
 		}
 	});
 
+	test('a set strictly better than an unproven best is as good as the best', () => {
+		// Out of work, the best is the fallback in Score order: two rematches.
+		const result = mustCheck({
+			...fourEntrants(),
+			workLimit: 1,
+			pairings: [
+				['ann', 'cal'],
+				['ben', 'dee'],
+			],
+			byes: [],
+			compare: true,
+		});
+		expect(result.comparison).toEqual({
+			asGoodAsBest: true,
+			provenBest: false,
+			levels: [
+				{ constraint: { type: 'no-rematch' }, given: 0, best: 2 },
+				{ constraint: { type: 'pair-close-in-score' }, given: 18, best: 0 },
+			],
+		});
+	});
+
 	test('shows both levels of a Pair-down choice', () => {
 		const input: RoundInput = {
 			...fourEntrants(),

@@ -1,6 +1,6 @@
 import type { Constraint, PairDownPick } from '@keepr/engine-core';
 
-import type { Field } from './field.ts';
+import { labelsOf, type Field } from './field.ts';
 
 /**
  * One level of the priority order. Every level scores a Pairing or a Bye on its own, as a whole
@@ -18,7 +18,10 @@ export type Level = {
 
 /** How a level scores a Pairing, for the forms the matcher knows how to exploit. */
 export type LevelShape =
-	/** It depends on the two Scores and nothing else. */
+	/**
+	 * It depends on the two Scores and nothing else, and for a given higher Score it never falls
+	 * as the lower one drops. The proof step relies on that to rule out lower Score Groups.
+	 */
 	| { type: 'scores' }
 	/** It is the square of `from[a] - to[b]`, and comes out the same whichever is called `a`. */
 	| { type: 'line'; from: readonly number[]; to: readonly number[] }
@@ -43,14 +46,13 @@ export function breaksOf(constraint: Constraint, field: Field): Breaks | undefin
 			return { pair: (a, b) => (field.faced[a] as Set<number>).has(b), bye: never };
 		case 'bye-cap':
 			return { pair: never, bye: (a) => (field.byes[a] as number) >= constraint.max };
-		case 'avoid-same-group-label':
+		case 'avoid-same-group-label': {
+			const label = labelsOf(field, constraint.kind);
 			return {
-				pair: (a, b) => {
-					const mine = field.groups[a]?.[constraint.kind];
-					return mine !== undefined && mine === field.groups[b]?.[constraint.kind];
-				},
+				pair: (a, b) => label[a] !== undefined && label[a] === label[b],
 				bye: never,
 			};
+		}
 		case 'avoid-listed-pairs':
 			return { pair: (a, b) => (field.listed[a] as Set<number>).has(b), bye: never };
 		default:
@@ -98,11 +100,7 @@ function levelsOfConstraint(constraint: Constraint, field: Field): Level[] {
 			bye: (a) => flag(breaks.bye(a)),
 		};
 		if (constraint.type === 'avoid-same-group-label') {
-			level.shape = {
-				type: 'labels',
-				label: field.groups.map((groups) => groups?.[constraint.kind]),
-				scoring: 'same',
-			};
+			level.shape = { type: 'labels', label: labelsOf(field, constraint.kind), scoring: 'same' };
 		}
 		return [level];
 	}
@@ -111,22 +109,17 @@ function levelsOfConstraint(constraint: Constraint, field: Field): Level[] {
 	const pairDown = (a: number, b: number): boolean => field.score[a] !== field.score[b];
 
 	switch (constraint.type) {
-		case 'prefer-same-group-label':
+		case 'prefer-same-group-label': {
+			const label = labelsOf(field, constraint.kind);
 			return [
 				{
-					pair: (a, b) => {
-						const mine = field.groups[a]?.[constraint.kind];
-						const theirs = field.groups[b]?.[constraint.kind];
-						return flag(mine !== undefined && theirs !== undefined && mine !== theirs);
-					},
+					pair: (a, b) =>
+						flag(label[a] !== undefined && label[b] !== undefined && label[a] !== label[b]),
 					bye: NONE,
-					shape: {
-						type: 'labels',
-						label: field.groups.map((groups) => groups?.[constraint.kind]),
-						scoring: 'different',
-					},
+					shape: { type: 'labels', label, scoring: 'different' },
 				},
 			];
+		}
 		case 'bye-to-lowest-score':
 			return [{ pair: NONE, bye: (a) => score(a) - field.minScore }];
 		case 'bye-to-lowest-rank': {

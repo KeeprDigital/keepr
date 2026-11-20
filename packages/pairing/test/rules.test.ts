@@ -322,6 +322,23 @@ describe('very large fields', () => {
 		expect(sums).toEqual(new Set([size]));
 		expect(result.pairings).toHaveLength((size - 1) / 2);
 	}, 60_000);
+
+	test('a call at the limit of 262,144 Entrants is paired', () => {
+		const size = 262_144;
+		const result = mustPair({
+			system: 'swiss',
+			entrants: Array.from({ length: size }, (_, at) => ({
+				id: `e${at}`,
+				score: 0,
+				opponents: [],
+				byes: 0,
+			})),
+			configuration: startingConfiguration,
+			randomSeed: 'limit',
+			round: 1,
+		});
+		expect(result.pairings).toHaveLength(size / 2);
+	}, 120_000);
 });
 
 describe('what each measured Constraint achieves when it comes first', () => {

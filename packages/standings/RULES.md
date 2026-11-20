@@ -13,11 +13,14 @@ Every number here is exact. Fractions are kept as fractions and never rounded.
 
 ## What the engine is given
 
-- Every Entrant, each with an id and, optionally, a Status: dropped, or removed. Every Entrant given gets a row, with or without Results, unless removed.
+- Every Entrant, each with an id and, optionally, a Status: dropped after a round, or removed. Every Entrant given gets a row, with or without Results, unless removed.
+- A dropped Entrant has no Result after the round it dropped after. It counts as dropped only in Standings as of that round or later, and Standings are as of the last round that holds a Result: called with the Results of rounds 1 to 3, an Entrant who dropped after round 4 has not dropped yet (ADR-0153).
 - The Results, as one list. A Result has two Entrants and an Outcome for each side, optionally with games won by each side and games drawn, and Extra Scores per side. Or it has one Entrant and is a Bye assigned by pairing (`bye`), an Awarded Bye (`awarded-bye`) or an Unplayed Loss (`unplayed-loss`).
 - The Configuration is data: a points method, how a Bye and an Unplayed Loss count, the allowed Outcomes, the Tiebreakers in order, and how Byes received are counted. Every setting is stated. Nothing is assumed.
 - Each call works out the whole tournament from the Results it is given, and nothing is kept between calls. Standings as of round 4 is a call with the Results of rounds 1 to 4. A corrected Result means calling again. A Pairing with no Result yet is simply absent.
-- Planned rounds, needed only by a rate that counts `planned` rounds, and a Random Seed, needed only by the `random` Tiebreaker.
+- Planned rounds, needed only by a rate that counts `planned` rounds, and never fewer than the last round that holds a Result, so no rate can pass 1. A Random Seed, needed only by the `random` Tiebreaker.
+- Every value counted into a Score or a total, points, Extra Scores and games, is a whole number no further than 1,000,000 from 0, and games are never negative. So every Score and every total is an exact number, as the Pairing Engine's Score limit keeps its sums exact (ADR-0153).
+- An Extra Score is named by any text. Only the names a Result is given count, so a name like a built-in property, such as `constructor`, is an ordinary name that a Result without it lacks.
 - Every Entrant given is ranked in one field. Tiebreakers count every opponent faced, whoever they are.
 - The order of the Entrants and of the Results never changes the result. The order of the Tiebreakers is their priority.
 
@@ -37,6 +40,7 @@ Every error found comes back, each with a code, a sentence for a person and the 
 | `unknown-field` | A field the engine does not know, at any level. |
 | `duplicate-id` | Two Entrants have one id. |
 | `unknown-entrant` | A Result names someone who is not an Entrant. |
+| `result-after-drop` | A dropped Entrant has a Result after the round it dropped after. |
 | `two-results-in-round` | An Entrant has more than one Result in a round. |
 | `impossible-outcomes` | The two sides of a Result are not one of the pairs in § Outcomes. |
 | `disallowed-outcome` | A draw, or both sides losing, that the Configuration does not allow. |
@@ -45,7 +49,7 @@ Every error found comes back, each with a code, a sentence for a person and the 
 | `unlisted-game-score` | A game score the `by-game-score` table does not list. |
 | `missing-planned-rounds` | A rate counts `planned` rounds and no planned rounds are given. |
 | `missing-random-seed` | The `random` Tiebreaker is chosen and no Random Seed is given. |
-| `invalid-input` | Any other malformed input, such as a round below 1, a Result naming one Entrant twice, or `points.bands` that do not rise. |
+| `invalid-input` | Any other malformed input, such as a round below 1, a Result naming one Entrant twice, `points.bands` that do not rise, a value beyond 1,000,000 either way, or planned rounds fewer than the last round that holds a Result. |
 
 For `finalPlacings`: `duplicate-id`, `unknown-field`, `unknown-entrant` (in the Top Cut but not an Entrant), `shared-rank` (§ Final Placings), `unknown-pairing` and `duplicate-winner` (a winner given for a Pairing the structure does not hold, or twice), `invalid-winner` (a winner not known to be in that Pairing), and `invalid-input` for anything else malformed.
 
@@ -143,7 +147,7 @@ The count the Pairing Engine uses for its Bye cap. It is the assigned Byes, plus
 
 ## Starting Configuration
 
-`startingConfiguration`, in `src/starting.ts`, is a Configuration to pass in or adapt. It is not a Preset, and the engine never applies it on its own. It needs match Outcomes only, no game scores, and has no `random` Tiebreaker, so Entrants level on everything share a Rank.
+`startingConfiguration`, in `src/starting.ts`, is a Configuration to pass in or adapt. It is frozen, so a caller adapts a copy. It is not a Preset, and the engine never applies it on its own. It needs match Outcomes only, no game scores, and has no `random` Tiebreaker, so Entrants level on everything share a Rank.
 
 ## Presets
 
@@ -154,6 +158,6 @@ Each reproduces one dated rules document. It takes the points and the Tiebreaker
 
 The worked examples in both documents are reproduced in `test/presets.test.ts`.
 
-A Preset never changes. A publisher's new rules get a new Preset beside the old one, and none is removed.
+A Preset never changes, and `presets` is frozen so no caller can change one. A publisher's new rules get a new Preset beside the old one, and none is removed.
 
 The engine applies no Preset on its own. The Consumer passes the chosen Preset's Configuration and stores which Preset a Tournament uses.

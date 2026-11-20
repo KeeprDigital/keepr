@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,12 +9,15 @@ import { parseScenario, type Scenario } from './scenario.ts';
 const INPUT = '.scenario.txt';
 const OUTPUT = '.expected.txt';
 
+/** How the run treats snapshots: `all` under `-u`, `new` locally, `none` on CI. */
+export type UpdateMode = 'all' | 'new' | 'none';
+
 /**
  * Turns every `*.scenario.txt` file in a folder into a test. `run` returns the engine's answer
  * as text, which is compared with the `*.expected.txt` file beside it.
  *
- * A scenario with no expected file has one recorded on its first run. To re-record after an
- * intended change, run the tests with `-u` and review the diff.
+ * A scenario with no expected file fails. Run the tests with `-u` to record a new one, or to
+ * re-record after an intended change, and review the diff.
  */
 export function scenarioSuite(folder: URL, run: (scenario: Scenario) => string): void {
 	const directory = fileURLToPath(folder);
@@ -29,8 +32,19 @@ export function scenarioSuite(folder: URL, run: (scenario: Scenario) => string):
 
 	for (const name of names) {
 		test(name, async () => {
+			const expected = join(directory, name + OUTPUT);
+			requireExpected(expected, expect.getState().snapshotState.snapshotUpdateState);
 			const scenario = parseScenario(readFileSync(join(directory, name + INPUT), 'utf8'));
-			await expect(`${run(scenario)}\n`).toMatchFileSnapshot(join(directory, name + OUTPUT));
+			await expect(`${run(scenario)}\n`).toMatchFileSnapshot(expected);
 		});
+	}
+}
+
+/** Throws when a scenario's expected answer is missing, unless this run records answers (`-u`). */
+export function requireExpected(path: string, mode: UpdateMode): void {
+	if (mode !== 'all' && !existsSync(path)) {
+		throw new Error(
+			`${path} is missing. Run the tests with -u to record it, then review what was written.`,
+		);
 	}
 }

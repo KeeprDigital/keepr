@@ -31,7 +31,7 @@ function prepare(input: RoundInput): { size: number; levels: Level[] } {
  */
 function afterFiveRounds(
 	size: number,
-	configuration: Constraint[],
+	configuration: readonly Constraint[],
 	groups: (at: number) => Record<string, string>,
 ): RoundInput {
 	const scoreOf = (at: number): number => {
@@ -200,7 +200,7 @@ describe('the fast matcher against the slow exact solver', () => {
 	// the number of buckets must stay small. Each case below once had a bucket for every pod, or
 	// every small blossom, or would have without the rule it names. Each takes under 40
 	// comparisons per Entrant now, and over 350 with its rule broken.
-	test.each<[string, Constraint[], (at: number) => Record<string, string>]>([
+	test.each<[string, readonly Constraint[], (at: number) => Record<string, string>]>([
 		[
 			'pods of 8, sharing one preferred: small labels and small blossoms share buckets',
 			[{ type: 'prefer-same-group-label', kind: 'pod' }, ...startingConfiguration],
@@ -239,6 +239,51 @@ describe('the fast matcher against the slow exact solver', () => {
 		const usage = { steps: 0, offered: 0 };
 		expect(solveByMatching(field, levelsOf(configuration, field), { usage })).toBeDefined();
 		expect(usage.offered).toBeLessThan(40 * size);
+	});
+
+	test.each<[string, (at: number) => string]>([
+		['two clubs of equal size', (at) => (at % 2 === 0 ? 'a' : 'b')],
+		['one club holding 70%', (at) => (at % 10 < 7 ? 'big' : `own${at}`)],
+	])(
+		'avoiding a shared club first, %s, the matcher is offered what it needs at the start',
+		(_, club) => {
+			// Long runs of one club by Shuffle Position leave its members no other club nearby. When
+			// the Pairings across those runs are not offered at the start, the proof step adds them
+			// by the hundred thousand, and the whole field is solved again after every batch.
+			const size = 2001;
+			const configuration: Constraint[] = [
+				{ type: 'avoid-same-group-label', kind: 'club' },
+				...startingConfiguration,
+			];
+			const field = buildField(afterFiveRounds(size, configuration, (at) => ({ club: club(at) })));
+			const usage = { steps: 0, offered: 0 };
+			expect(solveByMatching(field, levelsOf(configuration, field), { usage })).toBeDefined();
+			expect(usage.offered).toBeLessThan(40 * size);
+		},
+	);
+
+	test('every comparison the proof step makes counts toward the work allowed', () => {
+		// Every Score distinct: the proof step compares each Entrant with many Score Groups.
+		const size = 2001;
+		const input: RoundInput = {
+			system: 'swiss',
+			entrants: Array.from({ length: size }, (_, at) => ({
+				id: `e${at}`,
+				score: at,
+				opponents: [],
+				byes: 0,
+			})),
+			configuration: [{ type: 'pair-close-in-score' }],
+			randomSeed: 'proof',
+			round: 1,
+		};
+		const field = buildField(input);
+		const levels = levelsOf(input.configuration, field);
+		const usage = { steps: 0, proofChecks: 0 };
+		expect(solveByMatching(field, levels, { usage })).toBeDefined();
+		expect(usage.proofChecks).toBeGreaterThan(0);
+		expect(usage.steps).toBeGreaterThan(usage.proofChecks);
+		expect(solveByMatching(field, levels, { maxSteps: usage.steps - 1 })).toBeUndefined();
 	});
 
 	test('with no limit given, the built-in ceiling applies', () => {

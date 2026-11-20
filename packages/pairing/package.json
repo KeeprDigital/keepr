@@ -12,7 +12,8 @@
 		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p test/tsconfig.json && tsc --noEmit -p bench/tsconfig.json",
 		"test": "vitest run --testTimeout=30000",
 		"bench": "node bench/simulate.ts",
-		"bench:check": "node bench/simulate.ts 10001 15 --check && node bench/simulate.ts 20001 15 --check"
+		"bench:configurations": "node bench/configurations.ts",
+		"bench:check": "node bench/simulate.ts 10001 15 --check && node bench/simulate.ts 20001 15 --check && node bench/configurations.ts 2001 --check two-clubs"
 	},
 	"dependencies": {
 		"@keepr/engine-core": "workspace:*"

@@ -1,4 +1,4 @@
-import type { RateSettings, StandingsConfiguration } from '@keepr/engine-core';
+import { deepFrozen, type RateSettings, type StandingsConfiguration } from '@keepr/engine-core';
 
 /**
  * A Standings Configuration that reproduces one dated rules document. A Preset never changes:
@@ -28,7 +28,8 @@ const pokemonRate: RateSettings = {
 	capIfDropped: { numerator: 75, denominator: 100 },
 };
 
-export const presets: { 'magic-2026-02-27': Preset; 'pokemon-2026-09-01': Preset } = {
+/** Every Preset, by name. Frozen, as a Preset never changes. */
+export const presets: { 'magic-2026-02-27': Preset; 'pokemon-2026-09-01': Preset } = deepFrozen({
 	'magic-2026-02-27': {
 		source:
 			'Magic: The Gathering Tournament Rules, effective February 27, 2026: section 3.1 and Appendix C',
@@ -87,4 +88,4 @@ export const presets: { 'magic-2026-02-27': Preset; 'pokemon-2026-09-01': Preset
 			byesReceived: 'assigned',
 		},
 	},
-};
+});

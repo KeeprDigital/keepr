@@ -45,7 +45,7 @@ export function checkPairings(input: CheckInput): CheckResult {
 			wrong('`compare` must be true or false.');
 
 		const parsed = parseRoundInput(round);
-		if (!parsed.ok) errors.push(...parsed.errors);
+		if (!parsed.ok) for (const error of parsed.errors) errors.push(error);
 		if (!parsed.ok || errors.length > 0) return failure(errors);
 
 		const { configuration, workLimit } = parsed.input;
@@ -109,14 +109,16 @@ export function checkPairings(input: CheckInput): CheckResult {
 				if (b === -1) bestByes.push(a);
 				else if (a < b) bestPairs.push([a, b]);
 			}
-			let asGoodAsBest = true;
+			// Level by level, as Best is defined: the first level that differs decides. A best that
+			// is not proven can be beaten, and a set that beats it is as good as it.
+			let decided = 0;
 			const levels = constraintLevels(configuration, field).map(({ constraint, part, level }) => {
 				const total = (somePairs: [number, number][], someByes: number[]): bigint =>
 					somePairs.reduce((sum, [a, b]) => sum + BigInt(level.pair(a, b)), 0n) +
 					someByes.reduce((sum, a) => sum + BigInt(level.bye(a)), 0n);
 				const given = total(pairs, byeNumbers);
 				const best = total(bestPairs, bestByes);
-				if (given !== best) asGoodAsBest = false;
+				if (decided === 0 && given !== best) decided = given < best ? -1 : 1;
 				return {
 					constraint,
 					...(part === undefined ? {} : { part }),
@@ -124,7 +126,7 @@ export function checkPairings(input: CheckInput): CheckResult {
 					best: Number(best),
 				};
 			});
-			comparison = { asGoodAsBest, provenBest: proven, levels };
+			comparison = { asGoodAsBest: decided <= 0, provenBest: proven, levels };
 		}
 
 		return {

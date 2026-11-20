@@ -28,6 +28,17 @@ export const POSITION_BITS = 20;
 /** The most Entrants one call can hold, leaving Shuffle Positions plenty of room. */
 export const MAX_ENTRANTS: number = 2 ** POSITION_BITS / 4;
 
+/**
+ * Each Entrant's Group Label of one kind, or undefined where they have none. Only a kind the
+ * Entrant was given counts, so a kind named like a built-in property, such as `constructor`,
+ * is an ordinary name.
+ */
+export function labelsOf(field: Field, kind: string): (string | undefined)[] {
+	return field.groups.map((groups) =>
+		groups !== undefined && Object.hasOwn(groups, kind) ? groups[kind] : undefined,
+	);
+}
+
 export function buildField(input: RoundInput): Field {
 	const positions = distinctPositions(
 		['shuffle', input.randomSeed, String(input.round)],
@@ -70,8 +81,8 @@ export function buildField(input: RoundInput): Field {
 		position: entrants.map((entrant) => positions.get(entrant.id) as number),
 		faced: entrants.map((entrant) => present(entrant.opponents)),
 		listed,
-		minScore: size === 0 ? 0 : Math.min(...score),
-		maxScore: size === 0 ? 0 : Math.max(...score),
+		minScore: score.reduce((least, each) => Math.min(least, each), size === 0 ? 0 : score[0]!),
+		maxScore: score.reduce((most, each) => Math.max(most, each), size === 0 ? 0 : score[0]!),
 		everyoneRanked: entrants.every((entrant) => entrant.rank !== undefined),
 	};
 }
