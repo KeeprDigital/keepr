@@ -81,7 +81,6 @@ export async function claimFirstAdministrator(
 	requestHeaders?: Headers,
 ): Promise<{ setCookie: string[] }> {
 	const { email } = await openClaim(database, claimId);
-	if (name.trim().length === 0) throw new KeeprRefusal(400, 'NAME_REQUIRED', 'Enter your name.');
 	// The library's server-side creation does not check the minimum (#1256).
 	if (password.length < MIN_PASSWORD_LENGTH)
 		throw new KeeprRefusal(400, 'PASSWORD_TOO_SHORT', 'Password too short');
@@ -102,11 +101,11 @@ export async function claimFirstAdministrator(
 
 	let userId: string;
 	try {
-		// The breached-password check runs here.
+		// The breached-password check runs here, and a blank name is refused (`userName.ts`).
 		const created = await auth.api.createUser({
 			body: {
 				email,
-				name: name.trim(),
+				name,
 				password,
 				role: KEEPR_ADMINISTRATOR_ROLE,
 				data: { emailVerified: true },

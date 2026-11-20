@@ -50,16 +50,29 @@ async function signInOn(userAgent: string) {
 }
 
 describe('the name', () => {
-	it('is the User’s to change', async () => {
+	it('is the User’s to change, and kept trimmed', async () => {
 		const cookie = await accounts.signIn(EMAIL);
 
 		const response = await accounts.send('/update-user', {
-			body: { name: 'Ada Lovelace' },
+			body: { name: '  Ada Lovelace ' },
 			headers: { cookie },
 		});
 
 		expect(response.status).toBe(200);
 		expect((await signedInAs(cookie))!.user.name).toBe('Ada Lovelace');
+	});
+
+	it('cannot be made blank: the User keeps the one they had', async () => {
+		const cookie = await accounts.signIn(EMAIL);
+
+		const response = await accounts.send('/update-user', {
+			body: { name: '   ' },
+			headers: { cookie },
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({ code: 'NAME_REQUIRED' });
+		expect((await signedInAs(cookie))!.user.name).toBe('ada');
 	});
 });
 

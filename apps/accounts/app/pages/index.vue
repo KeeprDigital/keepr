@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { APP_REGISTRY, isAppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
-import { NEW_PASSWORD_REFUSALS, refusalSentence } from '~/utils/refusal';
+import { NEW_PASSWORD_REFUSALS, refusalSentence, USER_NAME_REFUSALS } from '~/utils/refusal';
 import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 import { isKeeprAdministrator } from '~~/shared/utils/keeprAdministrator';
 
@@ -118,8 +118,11 @@ async function saveName() {
 		await $fetch('/api/auth/update-user', { method: 'POST', body: { name: nameForm.name } });
 		name.saved = true;
 		await loadSignedIn();
-	} catch {
-		name.refusal = 'Saving your name failed. Try again.';
+	} catch (failure) {
+		name.refusal = refusalSentence(failure, {
+			...USER_NAME_REFUSALS,
+			otherwise: 'Saving your name failed. Try again.',
+		});
 	} finally {
 		name.saving = false;
 	}
@@ -316,6 +319,7 @@ async function signOut() {
 						<p class="text-sm text-muted">How you are shown to others in every Keepr App.</p>
 						<UAlert
 							v-if="name.refusal"
+							data-refusal
 							color="error"
 							variant="subtle"
 							:description="name.refusal"
@@ -329,14 +333,7 @@ async function signOut() {
 							/>
 						</UFormField>
 						<div class="flex items-center gap-3">
-							<UButton
-								type="submit"
-								color="primary"
-								:loading="name.saving"
-								:disabled="nameForm.name.trim().length === 0"
-							>
-								Save name
-							</UButton>
+							<UButton type="submit" color="primary" :loading="name.saving">Save name</UButton>
 							<span v-if="name.saved" data-saved class="text-sm text-muted">Saved.</span>
 						</div>
 					</div>

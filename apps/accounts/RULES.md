@@ -12,6 +12,7 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 ## User
 
 - Nobody signs themselves up. A User is created by Keepr Accounts itself. (ADR-0112)
+- A User always has a name. No path creates a User with a blank one, or saves one: a name that is empty once trimmed, or is not text, is refused 400 `NAME_REQUIRED`, and the page says so where it was typed. A name is kept trimmed. The rule is held where the library writes a User, so its own routes are bound by it as Keepr Accounts' are. Nothing rewrites a name saved before this rule: one the library's `/update-user` saved blank stands until its User enters a name. (#1354)
 - A disabled User cannot sign in, and is told the account has been disabled and to ask a Keepr Administrator. (ADR-0112)
 - Repeated sign-ins from one client are refused: a fourth within ten seconds answers 429 with a retry delay, the right password included. The count is kept in the database, keyed on the address Cloudflare vouches for (`cf-connecting-ip`), and is off only under `nuxt dev`. (ADR-0012, ADR-0112)
 - The library's administrator routes answer 404 to every request, a Keepr Administrator's included. (ADR-0112)
@@ -77,7 +78,7 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - Inviting and cancelling need no recent sign-in. (#1228 § Sessions and cookies)
 - An Invitation lasts seven days. It is emailed to the address, naming who invited them and to which Organisation, with a link to `/invitation`, its id in the fragment. The inviter is shown the same link to copy; an email that fails to send leaves the Invitation standing. (ADR-0114)
 - The invitee sees who invited them, to which Organisation, and the roles offered, before accepting. (ADR-0114)
-- An invitee with no User accepts by choosing a name and a password of 8 to 128 characters in no breach. Keepr Accounts creates exactly one User, its email verified, signs them in, makes them a member with the Organisation role offered, and gives them App access in each App the Invitation named. An address that already has a User is told to sign in to accept. (ADR-0114)
+- An invitee with no User accepts by choosing a name, which is not blank, and a password of 8 to 128 characters in no breach. Keepr Accounts creates exactly one User, its email verified, signs them in, makes them a member with the Organisation role offered, and gives them App access in each App the Invitation named. An address that already has a User is told to sign in to accept. (ADR-0114)
 - Accepting copies the Invitation's App roles into App access, whoever accepts. (ADR-0114)
 - An invitee who has a User signs in with the invited address, through `/sign-in` and back to the Invitation, and accepts: the Organisation and its App access are added to their User, and their Session works in it. Signed in with any other address, accepting is refused 403 and nothing changes. (ADR-0114)
 - The invitee may decline from the Invitation's link, signed in or not: the link proves the address, as it does for accepting. A decline another origin's page made the browser send is refused 403 `CROSS_SITE_REQUEST`, and the Invitation stays open. (#1228 § Invitations, ADR-0010)
@@ -88,6 +89,7 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 
 ## Profile
 
+- A User changes their own name on the profile. A blank one is refused, and they keep the name they had. (#1354)
 - The profile lists the User's Organisations, in the order they joined, with their Organisation role and their App role in each App they can use there. (#1228 § The model)
 - A User in more than one Organisation switches the one they work in on the profile. It is carried on the Session, so every App's next Identity Proof names it, with their roles there. Switching to an Organisation they do not belong to is refused 403. A User in exactly one is shown no switcher. (ADR-0113)
 
@@ -116,7 +118,7 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 ## First Administrator Claim
 
 - No request creates a Keepr Administrator. `pnpm claim-first-administrator <email>` writes a First Administrator Claim, and prints the link that claims it, only while no Keepr Administrator exists. (ADR-0115)
-- The claim page, `/first-administrator`, works once, and only while no Keepr Administrator exists. Claiming creates the address's User as a Keepr Administrator, email verified, with the name and password chosen under the same rules as any new password; creates the Keepr Organisation with them as its owner; consumes the claim; and signs them in. A refused password leaves the claim to try again. (ADR-0115)
+- The claim page, `/first-administrator`, works once, and only while no Keepr Administrator exists. Claiming creates the address's User as a Keepr Administrator, email verified, with the name chosen, which is not blank, and the password chosen under the same rules as any new password; creates the Keepr Organisation with them as its owner; consumes the claim; and signs them in. A refused name or password leaves the claim to try again. (ADR-0115, #1354)
 
 ## Audit Record
 

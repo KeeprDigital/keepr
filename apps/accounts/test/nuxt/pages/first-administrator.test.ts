@@ -66,12 +66,15 @@ describe('the first-administrator page', () => {
 		expect(navigate).toHaveBeenCalledWith('/');
 	});
 
-	it('says why the claim was refused', async () => {
-		claimAnswer = { status: 409, body: { code: 'KEEPR_ADMINISTRATOR_EXISTS', message: 'exists' } };
+	it.each([
+		[409, 'KEEPR_ADMINISTRATOR_EXISTS', 'a Keepr Administrator exists'],
+		[400, 'NAME_REQUIRED', 'Enter your name'],
+	])('says why the claim was refused: %i %s', async (status, code, sentence) => {
+		claimAnswer = { status, body: { code, message: 'from the server' } };
 
 		const page = await claim();
 
-		expect(page.get('[data-refusal]').text()).toContain('a Keepr Administrator exists');
+		expect(page.get('[data-refusal]').text()).toContain(sentence);
 		expect(navigate).not.toHaveBeenCalled();
 	});
 });

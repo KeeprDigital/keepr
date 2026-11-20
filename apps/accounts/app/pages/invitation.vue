@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { APP_REGISTRY, isAppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
-import { NEW_PASSWORD_REFUSALS, readRefusal, refusalSentence } from '~/utils/refusal';
+import {
+	NEW_PASSWORD_REFUSALS,
+	readRefusal,
+	refusalSentence,
+	USER_NAME_REFUSALS,
+} from '~/utils/refusal';
 import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 
 /**
@@ -100,7 +105,7 @@ const ANSWER_REFUSALS = {
 		USER_ALREADY_EXISTS: 'This address already has a Keepr account. Sign in to accept.',
 		YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION:
 			'This invitation is for another address. Sign in with that address to accept.',
-		NAME_REQUIRED: 'Enter your name.',
+		...USER_NAME_REFUSALS.codes,
 	},
 	otherwise: 'That did not work. Try again.',
 };

@@ -62,3 +62,8 @@ export const NEW_PASSWORD_REFUSALS = {
 		500: 'Your new password could not be checked just now. Try again in a few minutes.',
 	},
 } as const satisfies Omit<RefusalSentences, 'otherwise'>;
+
+/** What a User whose name was refused is told, on whichever page set it. */
+export const USER_NAME_REFUSALS = {
+	codes: { NAME_REQUIRED: 'Enter your name.' },
+} as const satisfies Omit<RefusalSentences, 'otherwise'>;

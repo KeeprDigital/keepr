@@ -116,6 +116,18 @@ describe('accepting as a new User', () => {
 		]);
 	});
 
+	it('names the User as they chose, trimmed', async () => {
+		const id = await invite();
+
+		await acceptInvitationAsNewUser(accounts.auth, {
+			invitationId: id,
+			name: '  New Comer ',
+			password: PASSWORD,
+		});
+
+		expect((await usersCalled(INVITEE)).map((user) => user.name)).toEqual(['New Comer']);
+	});
+
 	it('writes no App access for an App the Invitation left out', async () => {
 		const id = await invite({});
 

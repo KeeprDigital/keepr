@@ -44,11 +44,12 @@ async function writeClaim(email = FOUNDER) {
 	return claimId;
 }
 
-async function claim(claimId: string, password = PASSWORD) {
+async function claim(claimId: string, chosen: { name?: string; password?: string } = {}) {
 	return await claimFirstAdministrator(accounts.auth, database, {
 		claimId,
 		name: 'Founder',
-		password,
+		password: PASSWORD,
+		...chosen,
 	});
 }
 
@@ -190,12 +191,13 @@ describe('claiming', () => {
 	});
 
 	it.each([
-		['a password under the minimum', 'short', 'PASSWORD_TOO_SHORT'],
-		['a password from a breach', BREACHED, 'PASSWORD_COMPROMISED'],
-	])('refuses %s, leaving the claim to try again', async (_case, password, code) => {
+		['a password under the minimum', { password: 'short' }, 'PASSWORD_TOO_SHORT'],
+		['a password from a breach', { password: BREACHED }, 'PASSWORD_COMPROMISED'],
+		['a blank name', { name: '  ' }, 'NAME_REQUIRED'],
+	])('refuses %s, leaving the claim to try again', async (_case, chosen, code) => {
 		const claimId = await writeClaim();
 
-		await expect(claim(claimId, password)).rejects.toMatchObject({ statusCode: 400, code });
+		await expect(claim(claimId, chosen)).rejects.toMatchObject({ statusCode: 400, code });
 		expect(await database.select().from(schema.user)).toEqual([]);
 
 		await claim(claimId);

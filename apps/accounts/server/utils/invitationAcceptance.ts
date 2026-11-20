@@ -156,17 +156,17 @@ export async function acceptInvitationAsNewUser(
 			'USER_ALREADY_EXISTS',
 			'This address already has a Keepr account: sign in to accept.',
 		);
-	if (name.trim().length === 0) throw new KeeprRefusal(400, 'NAME_REQUIRED', 'Enter your name.');
 	// The library's server-side creation does not check the minimum (#1256).
 	if (password.length < MIN_PASSWORD_LENGTH)
 		throw new KeeprRefusal(400, 'PASSWORD_TOO_SHORT', 'Password too short');
 
 	try {
-		// The breached-password check runs here, before anything is written.
+		// The breached-password check runs here, then a blank name is refused
+		// (`userName.ts`), before anything is written.
 		await auth.api.createUser({
 			body: {
 				email: invitation.email,
-				name: name.trim(),
+				name,
 				password,
 				data: { emailVerified: true },
 			},
