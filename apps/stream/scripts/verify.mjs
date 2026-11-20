@@ -25,7 +25,10 @@
  *   --quick  what this checkout's change can break: its changesets, lint,
  *            typecheck, and the unit and Nuxt tests whose imports reach the
  *            files it changes.
- *            Before a push; CI is the full gate.
+ *            Before a push; CI runs every gate of each project the
+ *            change affects (ADR-0147). Run by the root's
+ *            `verify:quick`, which checks the changesets and lints once
+ *            itself, it leaves those two out (ADR-0148).
  *   --quick --all
  *            the whole cheap stage: lint, typecheck, unit and Nuxt suites.
  *   --tests  every test suite and local acceptance gate, without lint,
@@ -38,6 +41,7 @@ import { mkdir, readFile } from 'node:fs/promises';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { changeBase } from '@keepr/tooling/scripts/change-base.mjs';
+import { WORKSPACE_CHECKED_ENV } from '@keepr/tooling/scripts/verify-quick.mjs';
 import { main as reapStrandedRuns } from './reap.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -182,24 +186,38 @@ function changedGates(baseRef) {
 	};
 }
 
+/** What the root's `verify:quick` runs once for the whole workspace, so an app's leaves out. */
+const WORKSPACE_CHECKS = new Set(['changesets', 'lint']);
+
 /**
  * The gates a mode runs. A dependency outside the selection counts as met, so
  * `--tests` starts the server-backed stage once the unit and Nuxt suites pass.
  *
  * `--quick` narrows to the change when there is a `main` to measure it from
  * (`baseRef` answers which), and is the whole first stage otherwise or with
- * `--all`.
+ * `--all`. Run by the root's `verify:quick` (`workspaceChecked`), it leaves
+ * out the changeset check and the lint, which the root runs itself.
  *
  * @param {string[]} argv the command line
  * @param {() => string | undefined} [baseRef] the ref the branch is measured from, if any
+ * @param {boolean} [workspaceChecked] whether the root runs the workspace's checks
  * @returns {Record<string, { command: string[], after: string[], env?: Record<string, string> }>} the gates, by name
  */
-export function selectGates(argv, baseRef = () => changeBase()?.ref) {
+export function selectGates(
+	argv,
+	baseRef = () => changeBase()?.ref,
+	workspaceChecked = Boolean(process.env[WORKSPACE_CHECKED_ENV]),
+) {
 	if (argv.includes('--quick')) {
 		const base = argv.includes('--all') ? undefined : baseRef();
-		if (base) return changedGates(base);
 		const wanted = new Set(['prepare', ...FIRST_STAGE]);
-		return Object.fromEntries(Object.entries(GATES).filter(([name]) => wanted.has(name)));
+		const gates = base
+			? changedGates(base)
+			: Object.fromEntries(Object.entries(GATES).filter(([name]) => wanted.has(name)));
+		if (!workspaceChecked) return gates;
+		return Object.fromEntries(
+			Object.entries(gates).filter(([name]) => !WORKSPACE_CHECKS.has(name)),
+		);
 	}
 	if (argv.includes('--tests'))
 		return Object.fromEntries(Object.entries(GATES).filter(([name]) => !NOT_TESTS.has(name)));
@@ -220,7 +238,7 @@ export async function main(argv = process.argv) {
 	await mkdir(logDirectory, { recursive: true });
 	if ('test:unit:changed' in gates)
 		process.stdout.write(
-			`verify --quick: checking what this checkout changes since ${changeBase()?.ref}; CI runs everything\n`,
+			`verify --quick: checking what this checkout changes since ${changeBase()?.ref}; CI runs every gate of each project the change affects\n`,
 		);
 
 	const started = Date.now();

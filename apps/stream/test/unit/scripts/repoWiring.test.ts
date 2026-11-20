@@ -86,7 +86,7 @@ describe('verify and CI run the same gates', () => {
 	});
 });
 
-// Before a push, a change is checked in proportion to it; CI is the full gate (README § Testing).
+// Before a push, a change is checked in proportion to it (README § Testing).
 describe('verify --quick checks what a checkout changes', () => {
 	const firstStage = [
 		'prepare',
@@ -99,7 +99,7 @@ describe('verify --quick checks what a checkout changes', () => {
 	];
 
 	it('checks its changesets, lints, typechecks, and runs the unit and Nuxt tests the change reaches', () => {
-		const gates = selectGates(['--quick'], () => 'origin/main');
+		const gates = selectGates(['--quick'], () => 'origin/main', false);
 
 		expect(Object.keys(gates)).toEqual([
 			'changesets',
@@ -132,7 +132,19 @@ describe('verify --quick checks what a checkout changes', () => {
 			baseRef: undefined,
 		},
 	])('runs the whole first stage when $run', ({ argv, baseRef }) => {
-		expect(Object.keys(selectGates(argv, () => baseRef))).toEqual(firstStage);
+		expect(Object.keys(selectGates(argv, () => baseRef, false))).toEqual(firstStage);
+	});
+
+	// The root's `verify:quick` checks the changesets and lints once, for every project (ADR-0148).
+	it.each([
+		{ run: 'the change', argv: ['--quick'] },
+		{ run: 'the whole first stage', argv: ['--quick', '--all'] },
+	])('run by the root, checks $run without the changeset check or the lint', ({ argv }) => {
+		const gates = Object.keys(selectGates(argv, () => 'origin/main', true));
+
+		expect(gates).toContain('typecheck:app');
+		expect(gates).not.toContain('changesets');
+		expect(gates).not.toContain('lint');
 	});
 });
 

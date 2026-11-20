@@ -45,6 +45,7 @@ pnpm typecheck
 pnpm test         # the server's tests, then the pages'
 pnpm build        # the Worker bundle
 pnpm verify       # the three above, as CI's `Keepr Accounts` job runs them
+pnpm verify:quick # the typecheck, and the tests whose imports reach what the branch changes
 pnpm worker:dry-run && pnpm worker:smoke   # after a build: the checks a deploy and CI's Worker leg run
 pnpm db:generate  # after a change to server/db/schema.ts: the next migration
 pnpm beside       # the built Worker, registered locally as keepr-accounts: see below

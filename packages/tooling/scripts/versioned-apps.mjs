@@ -22,6 +22,7 @@ const WORKSPACE_DIRECTORIES = ['apps', 'packages'];
  *   dependencies: Record<string, string>,
  *   devDependencies?: Record<string, string>,
  *   exports?: unknown,
+ *   scripts?: Record<string, string>,
  * }} WorkspacePackage
  */
 
@@ -57,6 +58,7 @@ export function workspacePackages(root) {
 				dependencies: manifest.dependencies ?? {},
 				devDependencies: manifest.devDependencies ?? {},
 				exports: manifest.exports,
+				scripts: manifest.scripts ?? {},
 			});
 		}
 	}

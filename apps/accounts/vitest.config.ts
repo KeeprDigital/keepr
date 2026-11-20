@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { rerunTriggers } from '@keepr/tooling/scripts/rerun-triggers.mjs';
 import { fileURLToPath } from 'node:url';
 import {
 	blockCloudflareCredentialsSetup,
@@ -24,5 +25,12 @@ export default defineConfig({
 		hookTimeout: LOAD_TOLERANT_HOOK_TIMEOUT_MS,
 		restoreMocks: true,
 		clearMocks: true,
+		// Vitest's own and the migrations the SQLite harness reads, held to this app
+		// and the packages it consumes (`verify:quick`, ADR-0148).
+		forceRerunTriggers: rerunTriggers('@keepr/accounts', [
+			'**/package.json',
+			'**/{vitest,vite}.config.*',
+			'**/server/db/migrations/**',
+		]),
 	},
 });

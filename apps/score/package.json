@@ -8,6 +8,7 @@
 		"typecheck": "nuxt prepare && keepr-slots typecheck -- vue-tsc --noEmit",
 		"test": "vitest run",
 		"verify": "pnpm typecheck && pnpm test && pnpm build",
+		"verify:quick": "pnpm typecheck && vitest run --changed origin/main --passWithNoTests",
 		"postinstall": "nuxt prepare",
 		"lint": "pnpm --workspace-root lint",
 		"lint:fix": "pnpm --workspace-root lint:fix",

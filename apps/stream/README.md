@@ -362,7 +362,7 @@ ADR-0141).
 | While developing                            | `pnpm test:unit`, `pnpm test:nuxt`, `pnpm test:integration`                         | Watch mode; pass `--run` for a single pass. The integration suite starts its own servers, each beside an Accounts Stand-in of its own.                                                                                                                                                                                      |
 | Before commit                               | `pnpm test`                                                                         | Every test gate of `pnpm verify` (`verify.mjs --tests`): unit + Nuxt (coverage thresholds in `vitest.shared.ts`), integration, then the five local browser gates, each in turn: `still-images`, `silent-video`, `fonts`, `animation-effects`, `key-matte`. No lint, typecheck, or build. Needs Chrome/Chromium. |
 | Tests your branch touches                   | `pnpm test:changed`                                                                 | Only the unit and Nuxt test files whose imports reach a file changed since `origin/main`; seconds to half a minute, no coverage thresholds.                                                                                                                                                                                 |
-| Before a push                               | `pnpm verify:quick`                                                                 | The changeset check, lint, typecheck, and the unit and Nuxt tests whose imports reach what this checkout changes since `main`. Seconds to about a minute. `--all` runs the whole cheap half instead: lint, typecheck, unit and Nuxt suites with their coverage floors.                                                                           |
+| Before a push                               | `pnpm verify:quick`                                                                 | The changeset check, lint, typecheck, and the unit and Nuxt tests whose imports reach what this checkout changes since `main`. Seconds to about a minute. `--all` runs the whole cheap half instead: lint, typecheck, unit and Nuxt suites with their coverage floors. From the root, it runs this for each app and package the change affects (below).                                                                           |
 | Reproducing a CI failure                    | `pnpm verify`                                                                       | CI's gates on the working tree, run side by side as a graph (`scripts/verify.mjs`) and stopped at the first failure: typecheck (the validator Worker included), lint, every `pnpm test` suite, `validator:dry-run`, build, `worker:dry-run`, `worker:smoke`.                                                                |
 | Checking an existing build                  | `pnpm worker:smoke`                                                                 | Runs `.output/server` under local workerd, beside the Accounts Stand-in, and probes routing, who the Session boundary admits (below), D1, a realtime publish, generated config, object storage, codec Wasm, and ranged delivery. Refuses a missing build.                                                                                        |
 | Seeing what holds the machine               | `pnpm slots`                                                                        | Who holds run slots and who waits, across every worktree (below).                                                                                                                                                                                                                                                           |
@@ -376,14 +376,26 @@ ADR-0141).
 | Deploy day                                  | `pnpm accept deployed`                                                              | The six deployed gates in order, stopping at the first failure. See [Deploy day](#deploy-day).                                                                                                                                                                                                                              |
 
 Before push, `pnpm verify:quick` is enough. It checks the change in proportion
-to it, and CI is the full gate (below): running the suites or `pnpm verify`
+to it, and CI runs the rest (below): running the suites or `pnpm verify`
 first would only repeat it. Vitest finds the tests by following each test
 file's imports to the files changed since `origin/main`, committed or not, and
 runs every test when the change reaches a file every test depends on and
-none imports (`package.json`, a Vitest config or setup file, a migration:
-`unitRerunTriggers` in `vitest.shared.ts`); a
+none imports: the lockfile, or a `package.json`, a Vitest config or setup
+file or a migration in this app or a package it consumes (`unitRerunTriggers`
+in `vitest.shared.ts`, ADR-0148). A change to another app's runs none. A
 test that reads a file without importing it is CI's to catch. Open the PR as a draft and
 mark it ready when the branch is done.
+
+From the root, `pnpm verify:quick` checks each app and package the change
+affects, by the graph CI's scope reads (`packages/tooling/scripts/verify-quick.mjs`,
+ADR-0148). It runs the changeset check, then each one's quick gate, packages
+first, then the lint: an app's `verify:quick` (this one's above, less the
+changeset check and the lint; Score Keepr's and Keepr Accounts' a typecheck
+and their tests the change reaches, with no build), and a package's
+`typecheck` and `test`. A change only to this app runs no package's tests and
+no other app's gates; one to `packages/realtime` runs realtime's and this
+app's. With no `main` to measure from, it checks every project. From the root,
+`pnpm verify` runs every project's full gates, as CI would.
 
 `pnpm verify` reproduces CI on the working tree. Its tail matters most:
 `worker:dry-run` checks the upload bundle statically (and the built CSS for

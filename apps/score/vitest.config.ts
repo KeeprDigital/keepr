@@ -1,4 +1,5 @@
 import { defineVitestConfig } from '@nuxt/test-utils/config';
+import { rerunTriggers } from '@keepr/tooling/scripts/rerun-triggers.mjs';
 
 export default defineVitestConfig({
 	test: {
@@ -10,6 +11,12 @@ export default defineVitestConfig({
 		fsModuleCache: false,
 		restoreMocks: true,
 		clearMocks: true,
+		// Vitest's own, held to this app and the packages it consumes (`verify:quick`, ADR-0148).
+		forceRerunTriggers: rerunTriggers('@keepr/score', [
+			'**/package.json',
+			'**/{vitest,vite}.config.*',
+			'**/nuxt.config.ts',
+		]),
 		environmentOptions: {
 			nuxt: {
 				domEnvironment: 'happy-dom',

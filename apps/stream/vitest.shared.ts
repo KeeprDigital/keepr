@@ -3,6 +3,7 @@ import type { CoverageOptions, Reporter } from 'vitest/node';
 import { nitroH3Directory } from '@keepr/nuxt-layer/vitest.shared.ts';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { rerunTriggers } from '@keepr/tooling/scripts/rerun-triggers.mjs';
 import {
 	acquireRunSlots,
 	RUN_SLOTS_HELD_ENV,
@@ -98,21 +99,23 @@ export function heldToRunSlots(
  * What no test imports and every test depends on. Under `--changed`
  * (`pnpm verify:quick`) Vitest selects tests by following their imports, so a
  * change to one of these would select none; it runs the whole suite instead.
+ * Each is matched in this app and the packages it consumes, and nowhere else,
+ * with the lockfile (`rerunTriggers`, ADR-0148).
  */
-export const unitRerunTriggers = [
+const unitRerunPatterns = [
 	'**/package.json',
-	'**/pnpm-lock.yaml',
 	'**/{vitest,vite}.config.*',
 	'**/vitest.shared.ts',
 	'**/test/helpers/{blockCloudflareCredentials,loadTolerantBounds,loadTolerantWaits}.ts',
 	// The sqlite harness reads these from disk.
 	'**/server/db/migrations/**',
 ];
-export const nuxtRerunTriggers = [
-	...unitRerunTriggers,
+export const unitRerunTriggers = rerunTriggers('@keepr/stream', unitRerunPatterns);
+export const nuxtRerunTriggers = rerunTriggers('@keepr/stream', [
+	...unitRerunPatterns,
 	'**/nuxt.config.ts',
 	'**/test/nuxt/{setup,quietSuspenseNotice,failOnUnbundledIcon}.ts',
-];
+]);
 
 export const rootAliases = {
 	'~~': rootDir,

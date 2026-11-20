@@ -63,6 +63,34 @@ export function dependentsOf(packages) {
 }
 
 /**
+ * The projects `name` depends on, one through another: every workspace
+ * package its build, code or tests can import.
+ *
+ * @param {string} name a project's name
+ * @param {Map<string, WorkspacePackage>} packages
+ * @returns {Set<string>} their names, `name`'s own left out
+ */
+export function dependenciesOf(name, packages) {
+	/** @type {Set<string>} */
+	const found = new Set();
+	const queue = [name];
+	for (const next of queue) {
+		const pkg = packages.get(next);
+		if (!pkg) continue;
+		for (const [dependency, spec] of Object.entries({
+			...pkg.dependencies,
+			...pkg.devDependencies,
+		}))
+			if (spec.startsWith('workspace:') && packages.has(dependency) && !found.has(dependency)) {
+				found.add(dependency);
+				queue.push(dependency);
+			}
+	}
+	found.delete(name);
+	return found;
+}
+
+/**
  * The project a file belongs to, if any.
  *
  * @param {string} file a path from the repository's root

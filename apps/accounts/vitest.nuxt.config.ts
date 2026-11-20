@@ -1,5 +1,6 @@
 import { defineVitestConfig } from '@nuxt/test-utils/config';
 import { defineConfig } from 'vitest/config';
+import { rerunTriggers } from '@keepr/tooling/scripts/rerun-triggers.mjs';
 import {
 	blockCloudflareCredentialsSetup,
 	LOAD_TOLERANT_HOOK_TIMEOUT_MS,
@@ -22,6 +23,13 @@ const nuxtVitestConfig = defineVitestConfig({
 		hookTimeout: LOAD_TOLERANT_HOOK_TIMEOUT_MS,
 		restoreMocks: true,
 		clearMocks: true,
+		// Vitest's own and Nuxt's config, held to this app and the packages it
+		// consumes (`verify:quick`, ADR-0148).
+		forceRerunTriggers: rerunTriggers('@keepr/accounts', [
+			'**/package.json',
+			'**/{vitest,vite}.config.*',
+			'**/nuxt.config.ts',
+		]),
 		environmentOptions: {
 			nuxt: {
 				domEnvironment: 'happy-dom',

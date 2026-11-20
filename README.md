@@ -30,8 +30,9 @@ pnpm dev
 ```
 
 `pnpm lint`, `pnpm lint:fix`, `pnpm format`, `pnpm verify` and
-`pnpm verify:quick` also run from the root, where the two verifies check the
-packages as well (`pnpm typecheck:packages`, `pnpm test:packages`). Everything else about setup,
+`pnpm verify:quick` also run from the root. There `pnpm verify` checks every
+app and package, and `pnpm verify:quick` each one the change affects
+(`AGENTS.md` § Before pushing). Everything else about setup,
 testing, releasing and deploying is in [apps/stream/README.md](apps/stream/README.md),
 and the decisions behind it in [apps/stream/docs/adr](apps/stream/docs/adr). The
 workspace's own decisions are in [docs/adr](docs/adr).
