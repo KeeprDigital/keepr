@@ -7,7 +7,7 @@ import { eventService } from '~~/server/services/event';
 import { requireMeleeService } from '~~/server/services/meleeIntegration';
 import { MeleeTransportError } from '~~/server/services/meleeTransport';
 import { errorNameOf } from '@keepr/nuxt-layer/server/utils/errorLogFields';
-import { toPublicOperationalError } from '@keepr/nuxt-layer/server/utils/errors';
+import { toPublicOperationalError } from '~~/server/utils/meleeSyncPublicError';
 import {
 	acquireMeleeSyncLease,
 	isMeleeSyncLeaseUnavailable,

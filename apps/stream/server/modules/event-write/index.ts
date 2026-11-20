@@ -1,6 +1,9 @@
 import type { UpdateEventInput } from '~~/server/schemas/api/event';
 import type { EventResponse } from '~~/shared/api';
-import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
+import {
+	asOneEventDataChange,
+	eventDataPublicationModule,
+} from '~~/server/modules/event-data-publication';
 import { BROADCAST_DECK_LISTS_REFUSAL } from '~~/server/schemas/api/event';
 import { cardService } from '~~/server/services/card';
 import { eventService } from '~~/server/services/event';
@@ -102,6 +105,20 @@ export function eventWriteModule() {
 			});
 		}
 
+		// Everything the save changed is one Event Data change: each Screen is told,
+		// and Graphic Input Bindings re-resolve, once for the lot.
+		return await asOneEventDataChange(
+			async () => await applyToSlotsAndAnnounce(eventId, input, updatedEvent, originConnectionId),
+		);
+	}
+
+	/** What an Event save does to its Feature Match Slots, and its announcement. */
+	async function applyToSlotsAndAnnounce(
+		eventId: number,
+		input: UpdateEventInput,
+		updatedEvent: NonNullable<Awaited<ReturnType<typeof events.update>>>,
+		originConnectionId: string | undefined,
+	): Promise<EventResponse> {
 		if (input.numFeatureMatches !== undefined) {
 			const slotService = featureMatchService();
 			try {

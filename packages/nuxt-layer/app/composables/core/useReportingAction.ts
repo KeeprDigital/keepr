@@ -16,8 +16,8 @@ import type { AsyncActionOptions } from './useAsyncAction';
  * `FetchError`'s status, say — still meets the raw failure untouched.
  *
  * It is a separate composable, not a second method on `useAsyncAction`, because reporting
- * the authority's sentence is a decision a surface makes: the Screen Output showing a bare
- * status line and the Live Control showing a refusal are not the same reader, and a store
+ * the authority's sentence is a decision a surface makes: an unattended display showing a
+ * bare status line and an operator's control showing a refusal are not the same reader, and a store
  * adopts this by naming it rather than by hand-copying the wrapper #245 wrote when there
  * was no composable to put one in (`967d1aa`, #262). So the order runs the other way from
  * the ticket numbers: #262 built this and moved six stores onto it (`f82864a`), and #245's

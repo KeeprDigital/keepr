@@ -3,9 +3,14 @@ import type { Deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, reactive, ref } from 'vue';
+import { defineComponent, ref } from 'vue';
 import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
+import {
+	createMockEvent,
+	createWireMockPlayer,
+	createWireMockRound,
+} from '~~/test/helpers/fixtures';
 
 interface StandingsAnswer {
 	standings: Array<{
@@ -28,15 +33,17 @@ vi.mock('~/modules/event-data/resync', async (importOriginal) => ({
 	useConsumedEventData: () => {},
 }));
 
-const eventStore = reactive({
-	eventId: 1,
-	event: { id: 1, game: 'mtg', meleeEnabled: false },
-});
-const playerStore = reactive({
-	isLoaded: true,
-	loading: false,
-	players: [
-		{
+const rounds = [
+	createWireMockRound({ id: 3, phaseId: 1, name: 'Round 3', roundNumber: 3 }),
+	createWireMockRound({ id: 4, phaseId: 1, name: 'Round 4', roundNumber: 4 }),
+];
+
+/** Event 1 with Alice, 9-0, and two Rounds, as the stores hold them once loaded. */
+function holdEvent({ meleeEnabled = false } = {}) {
+	resetAllEventStores();
+	useEventStore().event = createMockEvent({ id: 1, game: 'mtg', meleeEnabled }) as never;
+	usePlayerStore().players = [
+		createWireMockPlayer({
 			id: 41,
 			name: 'Alice',
 			wins: 9,
@@ -44,63 +51,14 @@ const playerStore = reactive({
 			draws: 0,
 			position: 1,
 			points: 27,
-		},
-	],
-});
-const rounds = [
-	{
-		id: 3,
-		phaseId: 1,
-		name: 'Round 3',
-		roundNumber: 3,
-	},
-	{
-		id: 4,
-		phaseId: 1,
-		name: 'Round 4',
-		roundNumber: 4,
-	},
-];
-const roundStore = reactive({
-	isLoaded: true,
-	rounds,
-	getRoundById: (id: number) => rounds.find((round) => round.id === id),
-	loadRoundsByEventId: vi.fn(),
-});
+		}),
+	] as never;
+	useRoundStore().rounds = structuredClone(rounds) as never;
+}
 
-mockNuxtImport('useEventStore', () => () => eventStore);
-mockNuxtImport('usePlayerStore', () => () => playerStore);
-mockNuxtImport('useRoundStore', () => () => roundStore);
-mockNuxtImport('usePhaseStore', () => () => ({
-	isLoaded: true,
-	getPhaseById: () => undefined,
-}));
-const playerListStore = reactive({
-	isLoaded: true,
-	lists: [] as Array<{ id: number }>,
-	unread: new Set<number>(),
-	getCachedMemberIds: () => undefined,
-	memberLoadFailed: (listId: number) => playerListStore.unread.has(listId),
-	loadListMembers: vi.fn(async (_eventId: number, listId: number) => {
-		playerListStore.unread.add(listId);
-		return null;
-	}),
-});
-mockNuxtImport('usePlayerListStore', () => () => playerListStore);
-const meleeStore = reactive({
-	syncingRound: false,
-	lastOperation: null as { status: string; title: string; description: string } | null,
-	syncSpecificRound: vi.fn(),
-});
-const toast = {
-	add: vi.fn(),
-};
-mockNuxtImport('useMeleeStore', () => () => meleeStore);
-mockNuxtImport('useScreenStore', () => () => ({ isLoaded: true, currentEventId: 1, screens: [] }));
 mockNuxtImport('useOverlay', () => () => ({
 	create: vi.fn(),
 }));
-mockNuxtImport('useToast', () => () => toast);
 mockNuxtImport('usePlayerDeckListModal', () => () => ({
 	openPlayerDeckList: vi.fn(),
 }));
@@ -205,6 +163,7 @@ describe('players page — Round Standings', () => {
 	let reads: Map<string, Deferred<StandingsAnswer>>;
 
 	beforeEach(() => {
+		holdEvent();
 		reads = new Map();
 		mockFetch.mockReset();
 		mockFetch.mockImplementation((path: string) => {
@@ -259,30 +218,45 @@ describe('players page — Round Standings', () => {
 // The Players page starts a Round sync from the alert over a Round with no standings.
 describe('players page — Round sync', () => {
 	let wrapper: Awaited<ReturnType<typeof mountPage>> | null = null;
+	/** Every write the server was sent, and whether its Event re-read fails after one. */
+	let writes: Array<[string, unknown]>;
+	let eventReadFails: boolean;
 
 	beforeEach(() => {
-		eventStore.event.meleeEnabled = true;
-		Object.assign(rounds[0]!, { externalSource: 'melee' });
-		mockFetch.mockReset().mockResolvedValue({ standings: [] });
-		toast.add.mockClear();
-		meleeStore.lastOperation = null;
+		holdEvent({ meleeEnabled: true });
+		useRoundStore().rounds[0]!.externalSource = 'melee';
+		writes = [];
+		eventReadFails = false;
+		useToast().clear();
+		mockFetch.mockReset();
+		mockFetch.mockImplementation(
+			async (path: string, init?: { method?: string; body?: unknown }) => {
+				if (init?.method && init.method !== 'GET') {
+					writes.push([`${init.method} ${path}`, init.body]);
+					return {
+						round: { id: 3, name: 'Round 3' },
+						matchCount: 0,
+						created: 0,
+						updated: 0,
+						staleDeleted: 0,
+						warnings: [],
+					};
+				}
+				if (path === '/api/events/1' && eventReadFails)
+					throw Object.assign(new Error('Unavailable'), { statusCode: 503 });
+				if (path.startsWith('/api/events/1/standings')) return { standings: [] };
+				if (path === '/api/events/1') return createMockEvent({ id: 1, meleeEnabled: true });
+				return [];
+			},
+		);
 	});
 
 	afterEach(() => {
 		wrapper?.unmount();
 		wrapper = null;
-		eventStore.event.meleeEnabled = false;
 	});
 
-	it('tells the operator what the Melee store recorded of the sync, as the Sync page does', async () => {
-		meleeStore.syncSpecificRound.mockImplementation(async () => {
-			meleeStore.lastOperation = {
-				status: 'warning',
-				title: 'Round Synced — Reload Needed',
-				description: 'Round 3 synced successfully. Reload the page before retrying the sync.',
-			};
-			return { success: true };
-		});
+	async function syncRoundThree() {
 		wrapper = await mountPage({
 			UAlert: defineComponent({ template: '<div><slot name="actions" /></div>' }),
 			UButton: defineComponent({ template: '<button type="button"><slot /></button>' }),
@@ -295,16 +269,27 @@ describe('players page — Round sync', () => {
 			.find((button) => button.text() === 'Sync Round')!
 			.trigger('click');
 		await flushPromises();
+	}
 
-		expect(meleeStore.syncSpecificRound).toHaveBeenCalledWith(3);
-		expect(toast.add.mock.calls).toEqual([
-			[
-				{
-					title: 'Round Synced — Reload Needed',
-					description: 'Round 3 synced successfully. Reload the page before retrying the sync.',
-					color: 'warning',
-				},
-			],
+	it('syncs the Round picked, and says so', async () => {
+		await syncRoundThree();
+
+		expect({
+			writes,
+			toasts: useToast().toasts.value.map(({ title, color }) => ({ title, color })),
+		}).toEqual({
+			writes: [['POST /api/events/1/melee/sync-round', { roundId: 3 }]],
+			toasts: [{ title: 'Round Synced', color: 'success' }],
+		});
+	});
+
+	it('tells the operator what the Melee store recorded of the sync, as the Sync page does', async () => {
+		eventReadFails = true;
+
+		await syncRoundThree();
+
+		expect(useToast().toasts.value.map(({ title, color }) => ({ title, color }))).toEqual([
+			{ title: 'Round Synced — Reload Needed', color: 'warning' },
 		]);
 	});
 });
@@ -312,6 +297,14 @@ describe('players page — Round sync', () => {
 // A List whose members could not be read is not an empty List: the page says so and reads again.
 describe('players page — a Player List it could not read', () => {
 	it('says so and reads the members again on retry', async () => {
+		holdEvent();
+		const memberReads: string[] = [];
+		mockFetch.mockReset();
+		mockFetch.mockImplementation(async (path: string) => {
+			if (path !== '/api/events/1/player-lists/7/member-ids') return await new Promise(() => {});
+			memberReads.push(path);
+			throw new Error('unreachable');
+		});
 		const wrapper = await mountPage({
 			PlayerListTabs: defineComponent({
 				emits: ['select'],
@@ -331,7 +324,7 @@ describe('players page — a Player List it could not read', () => {
 			.find((button) => button.text() === 'Retry')!
 			.trigger('click');
 		await flushPromises();
-		expect(playerListStore.loadListMembers).toHaveBeenCalledTimes(2);
+		expect(memberReads).toHaveLength(2);
 		wrapper.unmount();
 	});
 });

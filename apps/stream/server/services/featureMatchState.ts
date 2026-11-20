@@ -47,6 +47,7 @@ import {
 	toFeatureMatchDefaults,
 } from '~~/shared/types/featureMatchDefaults';
 import { isMergeableFeatureMatchCommand } from '~~/shared/types/featureMatchSession';
+import { randomCommandId } from '~~/shared/utils/uuid';
 import { STATE_CONFLICT_CODE } from '@keepr/nuxt-layer/shared/utils/stateConflict';
 
 export { applyFeatureMatchSessionEvent } from '~~/shared/modules/feature-match-session';
@@ -741,6 +742,78 @@ export function featureMatchStateService() {
 		return await applyCommand(session.id, eventId, command, originConnectionId, options);
 	};
 
+	/** A `SnapshotCorrected` taking the snapshot onto the Session as it stands. */
+	const snapshotCorrection = (
+		session: DbFeatureMatchSession,
+		sourceSnapshot: FeatureMatchSourceSnapshot,
+	): FeatureMatchSessionCommand => ({
+		commandId: randomCommandId('SnapshotCorrected'),
+		type: 'SnapshotCorrected',
+		payload: { sourceSnapshot },
+		baseSequence: session.sequence,
+	});
+
+	/**
+	 * Corrects each Slot's active Session to the Slot as given and the Event's
+	 * Feature Match defaults, in round trips that do not grow with the Slots: one
+	 * read of their Sessions, one of their Players, and one batch committing every
+	 * correction, so a whole Event's Slots follow a settings save without a query
+	 * per Slot inside its request. A Session that moved on meanwhile is corrected
+	 * again alone, against the state it then holds. Like any reverse-sync write,
+	 * the corrections announce nothing: the Slot change carrying them does.
+	 */
+	const correctSessionSnapshots = async (
+		eventId: number,
+		slots: readonly DbFeatureMatch[],
+	): Promise<void> => {
+		if (slots.length === 0) return;
+		const defaults = await loadEventDefaults(eventId);
+		const playerIds = [
+			...new Set(
+				slots.flatMap((slot) =>
+					[slot.player1Id, slot.player2Id].filter((id): id is number => id !== null),
+				),
+			),
+		];
+		const [sessions, slotPlayers] = await Promise.all([
+			findActiveSessions({ eventId, slotIds: slots.map((slot) => slot.id) }),
+			playerIds.length === 0
+				? []
+				: db.query.players.findMany({
+						where: and(eq(players.eventId, eventId), inJsonArray(players.id, playerIds)),
+					}),
+		]);
+		const sessionOf = new Map(sessions.map((session) => [session.slotId, session]));
+		const preloadedPlayers = new Map(slotPlayers.map((player) => [player.id, player]));
+		const snapshots = await Promise.all(
+			slots.map((slot) => buildSourceSnapshot(slot, defaults, preloadedPlayers)),
+		);
+
+		const held = slots.flatMap((slot, index) => {
+			const session = sessionOf.get(slot.id);
+			return session ? [{ slot, session, snapshot: snapshots[index]! }] : [];
+		});
+		const committed = await liveState.executeMinted(
+			held.map(({ session, snapshot }) => ({
+				ref: { sessionId: session.id, eventId },
+				aggregate: session,
+				command: snapshotCorrection(session, snapshot),
+			})),
+		);
+
+		// A Slot whose Session moved on, or that holds none the read found, the one-Slot way.
+		const alone = [
+			...slots
+				.map((slot, index) => ({ slot, snapshot: snapshots[index]! }))
+				.filter(({ slot }) => !sessionOf.has(slot.id)),
+			...held.filter((_, index) => committed[index] === null),
+		];
+		for (const { slot, snapshot } of alone)
+			await applyCommandToActiveSession(slot.id, eventId, (session) =>
+				snapshotCorrection(session, snapshot),
+			);
+	};
+
 	return {
 		loadEventDefaults,
 		buildSourceSnapshot,
@@ -749,5 +822,6 @@ export function featureMatchStateService() {
 		createSessionForSlot,
 		applyCommand,
 		applyCommandToActiveSession,
+		correctSessionSnapshots,
 	};
 }

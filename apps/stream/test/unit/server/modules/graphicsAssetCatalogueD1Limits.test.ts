@@ -14,7 +14,7 @@ import { D1_MAXIMUM_BOUND_PARAMETERS } from '~~/server/modules/graphics-asset-li
 import { TEMPLATE_PACKAGE_LIMITS } from '~~/shared/types/templatePackage';
 import { createMiniflareD1Harness } from '~~/test/helpers/miniflare-d1';
 
-// Real D1 rejects a query over a hundred bound parameters; libSQL does not. Lists are
+// Real D1 rejects a query over a hundred bound parameters, proved here on D1 itself. Lists are
 // sized past the ceiling divided by the most times any query binds them.
 const OVER_THE_LIMIT = D1_MAXIMUM_BOUND_PARAMETERS * 3;
 

@@ -17,7 +17,8 @@ vi.mock('~~/server/utils/realtimePublish', () => ({
 	publishMessageStrict: mockPublishMessageStrict,
 }));
 
-const { eventDataPublicationModule } = await import('~~/server/modules/event-data-publication');
+const { asOneEventDataChange, eventDataPublicationModule } =
+	await import('~~/server/modules/event-data-publication');
 
 const NOW = new Date('2026-01-01T00:00:00.000Z');
 const origin = 'origin-1';
@@ -606,6 +607,38 @@ describe('re-resolving Broadcast Graphic bindings', () => {
 			[1, 'player:updated', 8, origin],
 		]);
 		expect(answered.map((answer) => answer.id)).toEqual([6, 7, 8]);
+		expect(mockRefreshBindings.mock.calls).toEqual([[1]]);
+	});
+
+	// A write announcing many changes is one change to a binding: never a re-resolution per item.
+	it('catches them up once per Event, after a run of changes settles', async () => {
+		const happened: string[] = [];
+		mockRefreshBindings.mockImplementation(async (eventId: number) => {
+			happened.push(`re-resolved ${eventId}`);
+		});
+		const publication = eventDataPublicationModule();
+
+		await asOneEventDataChange(async () => {
+			await publication.roundUpdated({ eventId: 1, entity: round });
+			await publication.playersUpdated({ eventId: 1, entities: [player] });
+			await asOneEventDataChange(
+				async () => await publication.talentUpdated({ eventId: 2, entity: talent }),
+			);
+			await publication.meleePlayersSynced({ eventId: 1, playerCount: 120 });
+			happened.push('written');
+		});
+
+		expect(happened).toEqual(['written', 're-resolved 1', 're-resolved 2']);
+	});
+
+	it('catches them up for what a failed run announced before it failed', async () => {
+		await expect(
+			asOneEventDataChange(async () => {
+				await eventDataPublicationModule().roundUpdated({ eventId: 1, entity: round });
+				throw new Error('refused');
+			}),
+		).rejects.toThrow('refused');
+
 		expect(mockRefreshBindings.mock.calls).toEqual([[1]]);
 	});
 

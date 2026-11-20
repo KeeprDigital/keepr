@@ -3,7 +3,11 @@ import type { ComputedRef } from 'vue';
 /** What a clock projection answers at one server instant. */
 export interface ClockProjection<T> {
 	value: T;
-	/** How long until `value` next changes; null when it will not change on its own. */
+	/**
+	 * How long until `value` next changes; null when it will not change on its own.
+	 * One not finite is waited for on no timer; one due now or past is asked again
+	 * after `OVERDUE_RECHECK_MS`, never at once.
+	 */
 	nextChangeInMs: number | null;
 }
 
@@ -24,6 +28,9 @@ export interface ClockProjectionOptions<T> {
 
 /** The longest one timer waits; a change further off is waited for in steps of it. */
 const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
+
+/** How long a projection answering a change due now or past waits to be asked again. */
+export const OVERDUE_RECHECK_MS = 250;
 
 /**
  * The scheduler every clock projection runs on (ADR-0088). `project` is a pure
@@ -63,11 +70,14 @@ export function useClockProjection<T>(
 		watch(
 			projection,
 			({ nextChangeInMs }, _previous, onCleanup) => {
-				if (nextChangeInMs == null) return;
+				if (nextChangeInMs == null || !Number.isFinite(nextChangeInMs)) return;
+				// A change due now or past is asked again after a pause, never at once,
+				// so a projection that keeps answering one cannot spin a zero-delay loop.
+				const delay = nextChangeInMs > 0 ? deviceDelayFor(nextChangeInMs) : OVERDUE_RECHECK_MS;
 				// Waited on the device for as long as server time takes to get there.
 				const timer = setTimeout(
 					() => tick.value++,
-					Math.min(Math.max(0, deviceDelayFor(nextChangeInMs)), MAX_TIMER_DELAY_MS),
+					Math.min(Math.max(0, delay), MAX_TIMER_DELAY_MS),
 				);
 				onCleanup(() => clearTimeout(timer));
 			},

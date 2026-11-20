@@ -19,6 +19,7 @@ import type {
 	PlayerDeckCollectionResponse,
 } from '~~/shared/types/metagame';
 import type { SavedOpPlayerDeckList } from '~~/shared/types/opDeckList';
+import type { StandingsRow } from '~~/shared/utils/standingsRows';
 
 /**
  * The answers of the Screen Output read family (#604, ADR-0022): what one
@@ -64,30 +65,21 @@ export interface ScreenOutputArchetypeSpotlightResponse {
 	topCards: CardBreakdownEntry[];
 }
 
-/** One Player's record as it stood at the end of a Round. */
-export interface ScreenOutputRoundStanding {
-	playerId: number;
-	wins: number | null;
-	losses: number | null;
-	draws: number | null;
-	position: number | null;
-	points: number | null;
-}
-
 /** What a Standings Screen renders from. */
 export interface ScreenOutputStandingsResponse {
-	/** The Event's active roster, as the operator's Players read answers it. */
-	players: PlayerResponse[];
+	/**
+	 * The rows it shows, in order, each with only what its visible columns show
+	 * (`standingsRows`): never a Player field it has no use for (#1380).
+	 */
+	rows: StandingsRow[];
 	/** The Round the configuration fixes the standings at, if any. */
 	round: RoundResponse | null;
-	/** The snapshot at that Round; `null` when the standings are current. */
-	roundStandings: ScreenOutputRoundStanding[] | null;
-	/** The watchlist's name and members; `null` unless the view is a watchlist of a list that exists. */
-	watchlist: { name: string; playerIds: number[] } | null;
+	/** The watchlist's name; `null` unless the view is a watchlist of a list that exists. */
+	watchlist: { name: string } | null;
 	/**
-	 * The previous Round's Round Standings positions, which the Position Change
-	 * column measures against (#755); `null` unless that column shows, and when
-	 * there is no previous Round.
+	 * The previous Round's Round Standings positions of the rows it shows, which
+	 * the Position Change column measures against (#755); `null` unless that
+	 * column shows, and when there is no previous Round.
 	 */
 	previousRoundPositions: ScreenOutputPreviousRoundPositions | null;
 }

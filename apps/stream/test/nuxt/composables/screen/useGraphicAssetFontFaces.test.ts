@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
 import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { testGraphicAssetReference } from '~~/test/helpers/graphicsAssetIdentities';
+import { FONT_LOAD_TIMEOUT_MS } from '~/composables/screen/useApplicationFontFaces';
 import { useGraphicAssetFontFaces } from '~/composables/screen/useGraphicAssetFontFaces';
 
 /**
@@ -75,6 +76,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	vi.useRealTimers();
 });
 
 function mountFonts(initial: ScreenGraphicAssetReference[], settled = true) {
@@ -163,6 +165,27 @@ describe('useGraphicAssetFontFaces', () => {
 		expect(fonts.fontsReady.value).toBe(false);
 		expect(documentFonts.delete).toHaveBeenCalledOnce();
 	});
+
+	// A hidden display waiting on a face that never settles would stay blank on air.
+	it.each([
+		{ step: "the face's own load", hold: 'face' },
+		{ step: "the document's load", hold: 'document' },
+	])(
+		'fails a font whose $step never settles once the font load timeout passes',
+		async ({ hold }) => {
+			vi.useFakeTimers();
+			if (hold === 'face') loadFor = async () => deferred().promise;
+			else documentFonts.load.mockReturnValue(deferred().promise);
+			const { fonts } = mountFonts([font('font-revision-2')]);
+			await vi.advanceTimersByTimeAsync(FONT_LOAD_TIMEOUT_MS - 1);
+			const before = fonts.fontsFailed.value;
+
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect([before, fonts.fontsFailed.value]).toEqual([false, true]);
+			expect(documentFonts.delete).toHaveBeenCalledOnce();
+		},
+	);
 
 	// Hiding means "this font has not loaded yet"; blanking a settled output for an
 	// edit no font depends on is the blank on air the hiding exists to prevent (#160).

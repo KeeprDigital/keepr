@@ -1,14 +1,26 @@
-/** One off-DOM image and whether it loaded and decoded; a failure settles as `false`. */
+/**
+ * How long a preload waits for one image before it counts as failed, so an
+ * image that never loads cannot hold what waits on it, a Deck List's staged
+ * swap among them, forever. Under the ready timeout (`SCREEN_MODE_READY_TIMEOUT_MS`).
+ */
+export const IMAGE_PRELOAD_TIMEOUT_MS = 8_000;
+
+/**
+ * One off-DOM image and whether it loaded and decoded; a failure, or no answer
+ * within `IMAGE_PRELOAD_TIMEOUT_MS`, settles as `false`.
+ */
 function loadImage(url: string): { image: HTMLImageElement; loaded: Promise<boolean> } {
 	const image = new Image();
 	const loaded = new Promise<boolean>((resolve) => {
 		let settled = false;
+		const timeout = setTimeout(() => finish(false), IMAGE_PRELOAD_TIMEOUT_MS);
 
-		const finish = (result: boolean) => {
+		function finish(result: boolean) {
 			if (settled) return;
 			settled = true;
+			clearTimeout(timeout);
 			resolve(result);
-		};
+		}
 
 		const decode = () => {
 			if (typeof image.decode === 'function') {

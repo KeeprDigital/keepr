@@ -47,7 +47,7 @@ import {
 	sameScreenGraphicAssetReferences,
 } from '~~/shared/utils/graphicsAssetReferences';
 import { randomCommandId } from '~~/shared/utils/uuid';
-import { canonicalJson } from '@keepr/nuxt-layer/server/utils/canonicalJson';
+import { canonicalJson } from '@keepr/nuxt-layer/shared/utils/canonicalJson';
 
 /**
  * A collaborator an operation needs, passed as a thunk and invoked at the point

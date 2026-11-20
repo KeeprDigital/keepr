@@ -1,13 +1,18 @@
+import type { ActiveScreenLookup, ScreenPresenceInfo } from '~/modules/screen/runtime';
 import type { Screen } from '~/types';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { reactive, ref } from 'vue';
+import { useReportingAction } from '@keepr/nuxt-layer/app/composables/core/useReportingAction';
 import { STATE_CONFLICT_CODE } from '@keepr/nuxt-layer/shared/utils/stateConflict';
 import { createMockScreen } from '~~/test/helpers/fixtures';
+import { useScreenRuntime } from '~/modules/screen/runtime';
 
 /**
- * The Screen store's writes against everything else that can move a held Screen
+ * The Screen runtime's writes against everything else that can move a held Screen
  * while they are out (#703): an announcement's reload, a newer local edit, a
- * conflict refresh, and the end of the Event Lifetime they began in.
+ * conflict refresh, and the end of the Event Lifetime they began in. The Screen
+ * store's own suites keep its loaders and one wiring pass of its writes.
  *
  * Every answer is served by the test, so the order under test is the test's.
  */
@@ -59,13 +64,26 @@ async function sendPending() {
 	await vi.advanceTimersByTimeAsync(1_000);
 }
 
-describe('screen store writes and what overtakes them', () => {
-	let store: ReturnType<typeof useScreenStore>;
+/** The runtime over the state a store hands it, its refs read and written as plain fields. */
+function screenRuntime() {
+	const state = {
+		screens: ref<Screen[]>([]),
+		activeScreen: ref<Screen | null>(null),
+		activeScreenLookup: ref<ActiveScreenLookup | null>(null),
+		currentEventId: ref<number | null>(null),
+		screenPresence: ref(new Map<number, ScreenPresenceInfo>()),
+		error: ref<string | null>(null),
+		executeAction: useReportingAction().executeReporting,
+	};
+	return reactive({ ...state, ...useScreenRuntime(state) });
+}
+
+describe('screen runtime writes and what overtakes them', () => {
+	let store: ReturnType<typeof screenRuntime>;
 
 	beforeEach(() => {
 		vi.useFakeTimers();
-		store = useScreenStore();
-		store.$reset();
+		store = screenRuntime();
 		vi.clearAllMocks();
 		store.currentEventId = 1;
 	});
@@ -575,10 +593,11 @@ describe('screen store writes and what overtakes them', () => {
 			},
 		});
 
-		async function moveToEventTwo() {
-			store.$reset();
-			mockRepo.list.mockResolvedValueOnce([eventTwoScreen]);
-			await store.loadScreensByEventId(2);
+		/** What the store does on leaving an Event and loading the next one's Screens. */
+		function moveToEventTwo() {
+			store.resetRuntime();
+			store.screens = [eventTwoScreen];
+			store.currentEventId = 2;
 		}
 
 		it('sends a write queued behind one in flight at the revision that one answers with', async () => {
@@ -600,7 +619,7 @@ describe('screen store writes and what overtakes them', () => {
 			const firstSave = store.updateModeConfig(1, 1, 'metagame', { topN: 16 });
 			await sendPending();
 			const secondSave = store.updateModeConfig(1, 1, 'metagame', { limit: 20 });
-			await moveToEventTwo();
+			moveToEventTwo();
 
 			first.resolve(
 				createMockScreen({
@@ -660,7 +679,7 @@ describe('screen store writes and what overtakes them', () => {
 
 			const save = store.updateThemeOverrides(1, 1, { accent: '#fff' });
 			await sendPending();
-			await moveToEventTwo();
+			moveToEventTwo();
 			conflict.reject(stateConflictFailure());
 
 			await expect(save).resolves.toMatchObject({ stateVersion: 6 });
@@ -684,7 +703,7 @@ describe('screen store writes and what overtakes them', () => {
 
 			const save = store.updateModeConfig(1, 1, 'metagame', { topN: 16 });
 			await sendPending();
-			await moveToEventTwo();
+			moveToEventTwo();
 			write.reject(new Error('Refused'));
 
 			await expect(save).rejects.toThrow('Refused');
@@ -710,8 +729,8 @@ describe('screen store writes and what overtakes them', () => {
 			const saving = store.updateModeConfig(1, 1, 'metagame', { topN: 16 });
 			const configuring = store.updateThemeOverrides(1, 1, { accent: '#fff' });
 			await sendPending();
-			await moveToEventTwo();
-			store.$reset();
+			moveToEventTwo();
+			store.resetRuntime();
 			// Event 1 loaded afresh, before either answer: it already holds the edit that will succeed.
 			const reloaded = createMockScreen({
 				id: 1,
@@ -721,8 +740,8 @@ describe('screen store writes and what overtakes them', () => {
 					metagame: { topN: 16 },
 				},
 			});
-			mockRepo.list.mockResolvedValueOnce([reloaded]);
-			await store.loadScreensByEventId(1);
+			store.screens = [reloaded];
+			store.currentEventId = 1;
 
 			succeeded.resolve(
 				createMockScreen({
@@ -754,7 +773,7 @@ describe('screen store writes and what overtakes them', () => {
 
 			const save = store.updateThemeOverrides(1, 1, { accent: '#fff' });
 			await sendPending();
-			await moveToEventTwo();
+			moveToEventTwo();
 			const answer = createMockScreen({
 				id: 1,
 				stateVersion: 2,

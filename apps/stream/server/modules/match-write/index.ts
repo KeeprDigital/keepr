@@ -1,5 +1,8 @@
 import type { CreateMatchInput, MatchResponse, UpdateMatchInput } from '~~/shared/api';
-import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
+import {
+	asOneEventDataChange,
+	eventDataPublicationModule,
+} from '~~/server/modules/event-data-publication';
 import { matchService } from '~~/server/services/match';
 import { requirePlayersInEvent, requireRoundInEvent } from '~~/server/utils/routeGuards';
 import { refuseOnCommanderEvent } from '~~/server/utils/commanderEventRefusal';
@@ -80,20 +83,22 @@ export function matchWriteModule() {
 			throw createError({ statusCode: 404, message: 'Match not found' });
 		}
 
-		await publication.matchDeleted({
-			eventId,
-			id: matchId,
-			originConnectionId,
-		});
-		// With no origin: the deleting client's response carries neither.
-		if (featured.slots.length > 0) {
-			await publication.featureMatchSlotsUpdated({
+		await asOneEventDataChange(async () => {
+			await publication.matchDeleted({
 				eventId,
-				slotIds: featured.slots.map((slot) => slot.id),
+				id: matchId,
+				originConnectionId,
 			});
-		}
-		for (const assignment of featured.assignments)
-			await publication.featureMatchAssignmentDeleted({ eventId, id: assignment.id });
+			// With no origin: the deleting client's response carries neither.
+			if (featured.slots.length > 0) {
+				await publication.featureMatchSlotsUpdated({
+					eventId,
+					slotIds: featured.slots.map((slot) => slot.id),
+				});
+			}
+			for (const assignment of featured.assignments)
+				await publication.featureMatchAssignmentDeleted({ eventId, id: assignment.id });
+		});
 	}
 
 	return {

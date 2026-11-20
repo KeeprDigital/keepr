@@ -1,6 +1,6 @@
 import type { LoggedNitroError } from '../../../../server/utils/errorLogFields';
 import { describe, expect, it } from 'vitest';
-import { errorLogFields } from '../../../../server/utils/errorLogFields';
+import { errorLogFields, errorNameOf } from '../../../../server/utils/errorLogFields';
 import { TemporarilyUnavailableError } from '../../../../server/utils/errors';
 import { CodedProviderError, providerRefusal } from '../../../helpers/providerRefusal';
 
@@ -229,5 +229,15 @@ describe('what a failure was, with no user data', () => {
 	it('names the step of the write that failed, and none where no step did', () => {
 		expect(errorLogFields(failed({}), '/api/events/1', 'd1')).toMatchObject({ failedStep: 'd1' });
 		expect(errorLogFields(failed({}), '/api/events/1')).toMatchObject({ failedStep: null });
+	});
+});
+
+describe('errorNameOf', () => {
+	it.each([
+		['an Error', new RangeError('x'), 'RangeError'],
+		['a non-Error throw', { name: 'Pretender' }, null],
+		['a string', 'boom', null],
+	])('names %s', (_label, thrown, name) => {
+		expect(errorNameOf(thrown)).toBe(name);
 	});
 });

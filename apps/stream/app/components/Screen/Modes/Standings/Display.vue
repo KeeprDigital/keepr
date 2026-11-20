@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { StandingsColumnKey } from '~~/shared/types/enums';
-import type { Player } from '~/types';
-import { getMtgGameData } from '~~/shared/utils/gameData';
+import type { StandingsRow } from '~~/shared/utils/standingsRows';
 import {
 	foundationTokenVar,
 	foundationTypographyStyle,
@@ -48,7 +47,7 @@ const surfaceStyle = {
 
 const isRevealMode = computed(() => config.value.viewMode === 'reveal');
 
-function getCellStyle(key: StandingsColumnKey, player: Player) {
+function getCellStyle(key: StandingsColumnKey, player: StandingsRow) {
 	switch (key) {
 		case 'name':
 		case 'points':
@@ -78,12 +77,12 @@ function getCellStyle(key: StandingsColumnKey, player: Player) {
 }
 
 /** A Position Change cell's direction, which its colour reads from. */
-function positionChangeKind(key: StandingsColumnKey, player: Player) {
+function positionChangeKind(key: StandingsColumnKey, player: StandingsRow) {
 	return key === 'positionChange' ? positionChangeOf(player).kind : undefined;
 }
 
-function getDeckColors(player: Player) {
-	return getMtgGameData(player.gameData).deckColors;
+function getDeckColors(player: StandingsRow) {
+	return player.deckColors;
 }
 
 const layoutRowCount = computed(() => {

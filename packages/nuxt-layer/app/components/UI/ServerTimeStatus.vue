@@ -1,5 +1,19 @@
 <script setup lang="ts">
-const { isSynced, lastSyncedAt, serverTimeOffset } = useServerTime();
+const { isSynced, doubt, lastSyncedAt, serverTimeOffset } = useServerTime();
+
+/** Synced on an offset not known to be wrong. */
+const trusted = computed(() => isSynced.value && doubt.value === null);
+
+const heading = computed(() => {
+	if (!isSynced.value) return 'Not Synced';
+	return trusted.value ? 'Server Time Synced' : 'Server Time Uncertain';
+});
+
+const doubtReason = computed(() =>
+	doubt.value === 'device-clock-changed'
+		? "This device's clock was changed since the last sync. Re-syncing."
+		: 'The last sync answered slowly, so the offset may be off. Re-syncing.',
+);
 
 const timeAgo = useTimeAgo(
 	computed(() => lastSyncedAt.value ?? Date.now()),
@@ -9,7 +23,7 @@ const timeAgo = useTimeAgo(
 	},
 );
 
-const statusIcon = computed(() => (isSynced.value ? 'i-lucide-clock-3' : 'i-lucide-clock-alert'));
+const statusIcon = computed(() => (trusted.value ? 'i-lucide-clock-3' : 'i-lucide-clock-alert'));
 
 const offsetLabel = computed(() => {
 	const ms = Math.round(serverTimeOffset.value);
@@ -33,7 +47,7 @@ const offsetLabel = computed(() => {
 			<UIcon
 				:name="statusIcon"
 				class="size-4"
-				:class="[isSynced ? 'text-success' : 'text-warning']"
+				:class="[trusted ? 'text-success' : 'text-warning']"
 			/>
 		</button>
 
@@ -42,15 +56,16 @@ const offsetLabel = computed(() => {
 				<div class="flex items-center gap-2">
 					<span
 						class="size-2 rounded-full shrink-0"
-						:class="[isSynced ? 'bg-success' : 'bg-warning']"
+						:class="[trusted ? 'bg-success' : 'bg-warning']"
 					/>
 					<span class="text-sm font-medium text-highlighted">
-						{{ isSynced ? 'Server Time Synced' : 'Not Synced' }}
+						{{ heading }}
 					</span>
 				</div>
 
 				<div class="flex flex-col gap-1 text-xs text-muted">
 					<template v-if="isSynced">
+						<p v-if="!trusted">{{ doubtReason }}</p>
 						<div class="flex justify-between gap-4">
 							<span>Last synced</span>
 							<span class="text-dimmed">{{ timeAgo }}</span>

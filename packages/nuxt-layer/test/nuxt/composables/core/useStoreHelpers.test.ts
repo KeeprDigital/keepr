@@ -145,4 +145,95 @@ describe('useStoreHelpers', () => {
 			expect(apiCall).not.toHaveBeenCalled();
 		},
 	);
+
+	describe('overlapping requests', () => {
+		function update(items: Ref<TestItem[]>, name: string, call: Promise<TestItem>) {
+			return useStoreHelpers().optimisticUpdate({
+				items,
+				id: 1,
+				updates: { name },
+				apiCall: () => call,
+				errorRef: ref(null),
+				entityLabel: 'Item',
+			});
+		}
+
+		it.each([
+			['the earlier update fails', 0, ['Second', 'Original']],
+			['the later update fails', 1, ['First', 'Original']],
+		] as const)(
+			'keeps a newer prediction shown, and never restores a failed one, when %s',
+			async (_, failing, namesAfterEachFailure) => {
+				const items = itemsOf('Original');
+				const calls = [deferred<TestItem>(), deferred<TestItem>()] as const;
+				const runs = [
+					update(items, 'First', calls[0].promise),
+					update(items, 'Second', calls[1].promise),
+				];
+				expect(items.value[0]!.name).toBe('Second');
+
+				calls[failing].reject(new Error('refused'));
+				await runs[failing];
+				expect(items.value[0]!.name).toBe(namesAfterEachFailure[0]);
+
+				const other = failing === 0 ? 1 : 0;
+				calls[other].reject(new Error('refused'));
+				await runs[other];
+				expect(items.value[0]!.name).toBe(namesAfterEachFailure[1]);
+			},
+		);
+
+		it('does not re-insert a refused delete when a reload brought the item back', async () => {
+			const items = itemsOf('A', 'B');
+			const call = deferred();
+			const run = useStoreHelpers().optimisticDelete({
+				items,
+				id: 1,
+				apiCall: () => call.promise,
+				errorRef: ref(null),
+				entityLabel: 'Item',
+			});
+			expect(items.value.map((item) => item.id)).toEqual([2]);
+
+			items.value = [
+				{ id: 1, name: 'Reloaded' },
+				{ id: 2, name: 'B' },
+			];
+			call.reject(new Error('refused'));
+			await run;
+
+			expect(items.value).toEqual([
+				{ id: 1, name: 'Reloaded' },
+				{ id: 2, name: 'B' },
+			]);
+		});
+	});
+
+	it.each([
+		['optimisticUpdate', ['Answer']],
+		['optimisticDelete', []],
+	] as const)(
+		'%s keeps the answer and reports no failure when its success callback throws',
+		async (helper, namesAfter) => {
+			const helpers = useStoreHelpers();
+			const items = itemsOf('A');
+			const errorRef = ref<string | null>(null);
+
+			const run = (helpers[helper] as (options: object) => Promise<unknown>)({
+				items,
+				id: 1,
+				updates: { name: 'Predicted' },
+				apiCall: async () => ({ id: 1, name: 'Answer' }),
+				errorRef,
+				entityLabel: 'Item',
+				onSuccess: () => {
+					throw new Error('callback fault');
+				},
+			});
+
+			await expect(run).rejects.toThrow('callback fault');
+			expect(errorRef.value).toBeNull();
+			expect(items.value.map((item) => item.name)).toEqual(namesAfter);
+		},
+	);
 });

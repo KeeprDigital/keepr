@@ -2,12 +2,11 @@
  * A real Cloudflare D1 binding, backed by Miniflare through Wrangler's platform
  * proxy, with the repository's real migrations applied.
  *
- * The libSQL database the other module tests run against accepts several
- * hundred bound parameters per query. D1 accepts one hundred, and fails the
- * whole statement on the hundred-and-first with `too many SQL variables`. That
- * gap means a query can pass every module test and still fail on its first
- * production run, so the queries whose parameter count grows with the data need
- * a database that enforces the real limit.
+ * D1 accepts one hundred bound parameters per query, and fails the whole
+ * statement on the hundred-and-first with `too many SQL variables`. The libSQL
+ * harness the other module tests run on refuses the same, but as a copy of
+ * D1's limits; the queries whose parameter count grows with the data are proved
+ * here, on the real one.
  *
  * This is deliberately not a general replacement for the libSQL harness: it
  * starts a Workers runtime, so it is reserved for the behaviour only a real D1

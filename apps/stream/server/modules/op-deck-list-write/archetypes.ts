@@ -3,7 +3,10 @@ import type { OpCatalogueCard } from '~~/shared/types/card/op';
 import { and, eq, isNotNull, or, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { archetypes, cards, playerDecks, players } from '~~/server/db/schema';
-import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
+import {
+	asOneEventDataChange,
+	eventDataPublicationModule,
+} from '~~/server/modules/event-data-publication';
 import { opCatalogueRowFor } from '~~/server/services/opCardCatalogue';
 import { buildReleaseScreenEventReferencesQuery } from '~~/server/services/screen';
 import { inJsonArray } from '@keepr/nuxt-layer/server/utils/db';
@@ -140,14 +143,16 @@ export async function announceDerivedArchetypes(
 	derived: readonly LeaderArchetype[],
 ): Promise<void> {
 	const publication = eventDataPublicationModule();
-	for (const { created } of derived) {
-		if (created) await publication.archetypeCreated({ eventId, entity: created });
-	}
-	const renamed = new Map(
-		derived.flatMap(({ renamed }) => renamed).map((archetype) => [archetype.id, archetype]),
-	);
-	for (const archetype of renamed.values())
-		await publication.archetypeUpdated({ eventId, entity: archetype });
+	await asOneEventDataChange(async () => {
+		for (const { created } of derived) {
+			if (created) await publication.archetypeCreated({ eventId, entity: created });
+		}
+		const renamed = new Map(
+			derived.flatMap(({ renamed }) => renamed).map((archetype) => [archetype.id, archetype]),
+		);
+		for (const archetype of renamed.values())
+			await publication.archetypeUpdated({ eventId, entity: archetype });
+	});
 }
 
 /**
@@ -161,7 +166,9 @@ export async function releaseEmptiedLeaderArchetypes(
 ): Promise<void> {
 	const { deletedIds, releasedScreens } = await removeEmptiedLeaderArchetypes(eventId, ids);
 	const publication = eventDataPublicationModule();
-	for (const screen of releasedScreens)
-		await publication.screenUpdated({ eventId, entity: screen });
-	for (const id of deletedIds) await publication.archetypeDeleted({ eventId, id });
+	await asOneEventDataChange(async () => {
+		for (const screen of releasedScreens)
+			await publication.screenUpdated({ eventId, entity: screen });
+		for (const id of deletedIds) await publication.archetypeDeleted({ eventId, id });
+	});
 }

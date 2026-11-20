@@ -20,7 +20,7 @@ import { cardService } from '~~/server/services/card';
 import { featureMatchService } from '~~/server/services/featureMatch';
 import { screenService } from '~~/server/services/screen';
 import { disconnectDeletedScreenOutputs } from '~~/server/utils/realtimePublish';
-import { canonicalJson } from '@keepr/nuxt-layer/server/utils/canonicalJson';
+import { canonicalJson } from '@keepr/nuxt-layer/shared/utils/canonicalJson';
 import { assertGraphicsTemplateReferencesSelectable } from '~~/server/utils/graphicsTemplateReferences';
 import {
 	validateScreenModeConfigReferences,
@@ -168,10 +168,7 @@ function rejectChangedGraphicAssetReferencesOnGenericUpdate(
 
 /** Compared as JSON, so a stack sent back exactly as it was read is no change. */
 function sameJson(left: unknown, right: unknown): boolean {
-	return (
-		canonicalJson(JSON.parse(JSON.stringify(left ?? null))) ===
-		canonicalJson(JSON.parse(JSON.stringify(right ?? null)))
-	);
+	return canonicalJson(left ?? null) === canonicalJson(right ?? null);
 }
 
 /**

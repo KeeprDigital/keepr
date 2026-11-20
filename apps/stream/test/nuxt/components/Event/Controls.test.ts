@@ -48,7 +48,6 @@ mockNuxtImport('useOverlay', () => () => ({
 		}),
 	}),
 }));
-mockNuxtImport('onBeforeRouteLeave', () => () => {});
 
 // Attached, so pressing a form's Save — a submit button — submits it.
 const mountOptions = {

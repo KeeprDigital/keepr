@@ -6,7 +6,10 @@ import { eq } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { events } from '~~/server/db/schema';
 import { mapPlayerToResponse } from '~~/server/mappers/player';
-import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
+import {
+	asOneEventDataChange,
+	eventDataPublicationModule,
+} from '~~/server/modules/event-data-publication';
 import { releaseEmptiedLeaderArchetypes } from '~~/server/modules/op-deck-list-write/archetypes';
 import { archetypeService } from '~~/server/services/archetype';
 import { playerService } from '~~/server/services/player';
@@ -245,8 +248,11 @@ export function playerUpdateModule() {
 
 		// Even for a Player already gone: the clear committed either way (ADR-0032).
 		// No origin, because the deleting client never received these Screens back.
-		for (const screen of clearedScreens)
-			await publication.screenUpdated({ eventId, entity: screen });
+		// The Screens told once for every one released, not once per Screen.
+		await asOneEventDataChange(async () => {
+			for (const screen of clearedScreens)
+				await publication.screenUpdated({ eventId, entity: screen });
+		});
 
 		if (!deleted) {
 			throw createError({

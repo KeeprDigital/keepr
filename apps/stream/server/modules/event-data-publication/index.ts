@@ -16,6 +16,7 @@ import type { ArchetypeKeyCard } from '~~/server/services/archetypeCard';
 import type { BroadcastDeckListResponse } from '~~/shared/types/broadcastDeckList';
 import type { MessagePayload, MessageType } from '~~/shared/types/messages';
 import type { EventDataMessage } from './messages';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { mapArchetypeToResponse } from '~~/server/mappers/archetype';
 import { mapEventToResponse } from '~~/server/mappers/event';
 import { mapFeatureMatchToResponse } from '~~/server/mappers/featureMatch';
@@ -164,6 +165,35 @@ export async function publishSyncAfterCommit(
 	}
 }
 
+/** The Events whose Graphic Input Bindings the run in progress will re-resolve once it settles. */
+const bindingsBehind = new AsyncLocalStorage<Set<number>>();
+
+/**
+ * Publish everything `work` announces as one Event Data change: each message
+ * goes out as it is published, each Screen is told once (`asOneOutputChange`),
+ * and each Event's Graphic Input Bindings re-resolve once, after `work`
+ * settles, rather than once per item it announces (#1380). What was announced
+ * before a failure announced a committed write all the same, so it is caught
+ * up too. A run inside a run joins it.
+ */
+export async function asOneEventDataChange<T>(work: () => Promise<T>): Promise<T> {
+	if (bindingsBehind.getStore()) return await work();
+
+	const behind = new Set<number>();
+	try {
+		return await asOneOutputChange(async () => await bindingsBehind.run(behind, work));
+	} finally {
+		for (const eventId of behind) await refreshBroadcastGraphicsBindings(eventId);
+	}
+}
+
+/** Let an Event's Graphic Input Bindings catch up: now, or once the run in progress settles. */
+async function catchUpBindings(eventId: number): Promise<void> {
+	const behind = bindingsBehind.getStore();
+	if (behind) behind.add(eventId);
+	else await refreshBroadcastGraphicsBindings(eventId);
+}
+
 /**
  * Announce one Event Data change, and let anything resolving against it catch up.
  *
@@ -191,7 +221,7 @@ async function publishEventDataChange<T extends MessageType>(
 	originConnectionId?: string,
 ): Promise<void> {
 	await publishMessage(eventId, messageType, payload, originConnectionId);
-	await refreshBroadcastGraphicsBindings(eventId);
+	await catchUpBindings(eventId);
 }
 
 /**
@@ -213,14 +243,14 @@ async function publishEventDataMessages(
 ): Promise<void> {
 	if (messages.length === 0) return;
 	// One change to the Screens too: each is told once, however many messages it shows.
-	await asOneOutputChange(async () => {
+	await asOneEventDataChange(async () => {
 		for (const message of messages) {
 			// The pairing of type and payload is what `EventDataMessage` guarantees; a
 			// union cannot carry it through `publishMessage`'s per-type overloads.
 			await publishMessage(eventId, message.type, message.payload as never, originConnectionId);
 		}
+		await catchUpBindings(eventId);
 	});
-	await refreshBroadcastGraphicsBindings(eventId);
 }
 
 async function publishSyncMessage<T extends MessageType>(
@@ -237,7 +267,7 @@ async function publishSyncMessage<T extends MessageType>(
 
 	// A Melee Sync reports what it changed as a count rather than per entity, so this is
 	// the only notice a Broadcast Graphic bound to a synced Player or Round ever gets.
-	await refreshBroadcastGraphicsBindings(eventId);
+	await catchUpBindings(eventId);
 }
 
 function mapArchetypeKeyCard(card: ArchetypeKeyCard) {

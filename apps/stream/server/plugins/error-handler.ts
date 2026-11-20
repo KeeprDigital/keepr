@@ -1,6 +1,6 @@
 import process from 'node:process';
 import { errorLogFields } from '@keepr/nuxt-layer/server/utils/errorLogFields';
-import { safeErrorLogPath } from '@keepr/nuxt-layer/server/utils/errorLogPath';
+import { safeErrorLogPath } from '~~/server/utils/errorLogPath';
 import { mapPublicNitroError } from '~~/server/utils/nitroErrorMapping';
 import { logWriteTiming, writeTimingOf } from '~~/server/utils/writeTiming';
 

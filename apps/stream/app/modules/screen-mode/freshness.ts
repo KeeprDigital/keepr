@@ -89,7 +89,9 @@ export interface ScreenModeFreshnessOptions<T> {
  * published one message at a time costs one more read per read in flight, not
  * one per message (#650).
  * Every other reason supersedes, as does a message heard once a read has run
- * for the slow cadence, since a read can hang where a reason must not.
+ * for the slow cadence, since a read can hang where a reason must not; a read
+ * still in flight at the slow cadence with a follow-up asked of it is superseded
+ * then, so a hung read cannot hold back a message heard while it was young.
  *
  * Every read is stale-while-revalidate: a rendering holds what it shows until a
  * newer read answers, and a failed re-read never blanks program.
@@ -113,9 +115,19 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 	/** What, since the read in flight began, asks for another once it settles. */
 	let followUpAsked: FollowUpReason | null = null;
 
+	/** Supersedes the read in flight once it is overdue with a follow-up asked of it. */
+	let overdue: ReturnType<typeof setTimeout> | null = null;
+	function stopOverdue() {
+		if (overdue !== null) {
+			clearTimeout(overdue);
+			overdue = null;
+		}
+	}
+
 	/** Reads now, superseding any read in flight. */
 	function refresh(load = false) {
 		stopRetry();
+		stopOverdue();
 		followUpAsked = null;
 		reading = null;
 		const flight = reads.begin();
@@ -127,6 +139,12 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 			since: Date.now(),
 			load,
 		};
+		// A read that hangs would otherwise hold back the follow-up a message asked
+		// for until the next message, which may never come.
+		overdue = setTimeout(() => {
+			overdue = null;
+			if (flight.current && reading && followUpAsked) refresh();
+		}, SCREEN_MODE_REREAD_MS);
 		void display
 			.refresh(async () => {
 				try {
@@ -149,6 +167,7 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 				// The answer is applied: now the follow-up can start.
 				if (flight.stale) return;
 				reading = null;
+				stopOverdue();
 				if (followUpAsked) refresh();
 			});
 	}
@@ -246,6 +265,7 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 		unsubscribe();
 		stopCadence();
 		stopRetry();
+		stopOverdue();
 		reads.supersede();
 	});
 

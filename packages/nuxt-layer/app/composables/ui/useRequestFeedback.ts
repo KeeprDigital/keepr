@@ -1,4 +1,5 @@
 import { isPlainRecord } from '../../../shared/utils/plainObject';
+import { holdLoading } from '../../utils/loadingHold';
 
 type MaybePromise<T> = T | Promise<T>;
 type ToastOptions = Parameters<ReturnType<typeof useToast>['add']>[0];
@@ -136,45 +137,10 @@ export function useRequestFeedback() {
 		const { loadingRef, errorRef, success, error, onSuccess, onFailure, isSuccess, latestKey } =
 			options;
 		const flight = latestKey === undefined ? unguarded : requests.begin(latestKey);
-
-		if (loadingRef) loadingRef.value = true;
+		const releaseLoading = loadingRef ? holdLoading(loadingRef) : undefined;
 		if (errorRef) errorRef.value = null;
 
-		try {
-			const result = await action();
-			if (flight.stale) return null;
-			const succeeded = isSuccess ? isSuccess(result) : isDefaultSuccess(result);
-
-			if (!succeeded) {
-				const failure = {
-					message: resolveResultErrorMessage(result),
-					result,
-				};
-				if (errorRef) errorRef.value = failure.message;
-				await onFailure?.(failure);
-
-				const toastOptions =
-					resolveToast(error, failure) ??
-					(error === undefined
-						? { title: 'Error', description: failure.message, color: 'error' as const }
-						: null);
-				if (toastOptions) toast.add(toastOptions);
-
-				return null;
-			}
-
-			const successfulResult = result as SuccessfulResult<T>;
-			await onSuccess?.(successfulResult);
-			const toastOptions = resolveToast(success, successfulResult);
-			if (toastOptions) toast.add(toastOptions);
-
-			return successfulResult;
-		} catch (caughtError) {
-			if (flight.stale) return null;
-			const failure = {
-				message: getErrorMessage(caughtError),
-				error: caughtError,
-			};
+		const fail = async (failure: RequestFailure<T>) => {
 			if (errorRef) errorRef.value = failure.message;
 			await onFailure?.(failure);
 
@@ -184,10 +150,35 @@ export function useRequestFeedback() {
 					? { title: 'Error', description: failure.message, color: 'error' as const }
 					: null);
 			if (toastOptions) toast.add(toastOptions);
+		};
 
-			return null;
+		try {
+			let result: T;
+			try {
+				result = await action();
+			} catch (caughtError) {
+				if (flight.current)
+					await fail({ message: getErrorMessage(caughtError), error: caughtError });
+				return null;
+			}
+			if (flight.stale) return null;
+
+			const succeeded = isSuccess ? isSuccess(result) : isDefaultSuccess(result);
+			if (!succeeded) {
+				await fail({ message: resolveResultErrorMessage(result), result });
+				return null;
+			}
+
+			// Past this point the request has succeeded: a throwing callback is the
+			// caller's fault, raised to it, never reported as a failed request.
+			const successfulResult = result as SuccessfulResult<T>;
+			await onSuccess?.(successfulResult);
+			const toastOptions = resolveToast(success, successfulResult);
+			if (toastOptions) toast.add(toastOptions);
+
+			return successfulResult;
 		} finally {
-			if (loadingRef && flight.current) loadingRef.value = false;
+			releaseLoading?.();
 		}
 	}
 

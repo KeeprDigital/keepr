@@ -26,7 +26,8 @@ const mockPublication = {
 	playerDeleted: vi.fn(),
 	eventUpdated: vi.fn(async ({ entity }: { entity: unknown }) => entity),
 };
-vi.doMock('~~/server/modules/event-data-publication', () => ({
+vi.doMock('~~/server/modules/event-data-publication', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	eventDataPublicationModule: () => mockPublication,
 }));
 

@@ -3,6 +3,23 @@ import type { ApplicationFontFaceRequest } from '~~/shared/modules/graphics/typo
 import { getGraphicFontDefinition } from '~~/shared/modules/graphics/typography';
 import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
+/**
+ * How long a font host waits for its fonts before they count as failed. Under
+ * the ready timeout (`SCREEN_MODE_READY_TIMEOUT_MS`), so a rendering whose
+ * font never settles goes on program in its fallback face, its display shown,
+ * rather than hidden behind a load that may never end.
+ */
+export const FONT_LOAD_TIMEOUT_MS = 8_000;
+
+/** Settles as `load` does, or rejects once `FONT_LOAD_TIMEOUT_MS` has passed. */
+export function withinFontLoadTimeout<T>(load: Promise<T>): Promise<T> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => reject(new Error('Font load timed out.')), FONT_LOAD_TIMEOUT_MS);
+	});
+	return Promise.race([load, timeout]).finally(() => clearTimeout(timer));
+}
+
 /** Whether a host's fonts have loaded, or failed; settled once either holds. */
 export interface FontFaceState {
 	fontsReady: Readonly<Ref<boolean>>;
@@ -23,8 +40,9 @@ export interface FontFaceState {
  * any weight or style a display's own stylesheet asks for beyond the requested
  * face, swaps in when first painted (ADR-0053).
  *
- * A load that rejects, or answers no face because the family is not declared,
- * fails rather than waits: its host shows the fallback, as for a library font.
+ * A load that rejects, answers no face because the family is not declared, or
+ * has not settled within `FONT_LOAD_TIMEOUT_MS`, fails rather than waits: its
+ * host shows the fallback, as for a library font.
  * The set settles only once every load has: a face that rejects early does not
  * release the hold while another is still loading.
  */
@@ -62,11 +80,11 @@ export function useApplicationFontFaces(
 			fontsReady.value = pending.length === 0;
 			fontsFailed.value = false;
 			if (pending.length === 0 || !import.meta.client) return;
-			const loaded = await Promise.allSettled(
-				pending.map(async (font) => document.fonts.load(font)),
-			);
+			const loaded = await withinFontLoadTimeout(
+				Promise.allSettled(pending.map(async (font) => document.fonts.load(font))),
+			).catch(() => null);
 			if (flight.stale) return;
-			if (loaded.every((result) => result.status === 'fulfilled' && result.value.length > 0))
+			if (loaded?.every((result) => result.status === 'fulfilled' && result.value.length > 0))
 				fontsReady.value = true;
 			else fontsFailed.value = true;
 		},

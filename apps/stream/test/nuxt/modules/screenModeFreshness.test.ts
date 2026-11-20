@@ -368,6 +368,26 @@ describe('useScreenModeFreshness', () => {
 			expect(freshness.data.value.label).toBe('read 3');
 		});
 
+		// The follow-up a message asked for waits on the read in flight; a read that
+		// hangs must not hold it back past the slow cadence.
+		it('supersedes a read that hangs past the slow cadence after a message asked for a follow-up', async () => {
+			vi.useFakeTimers();
+			const { read, deliver, freshness } = harness({ 'player:updated': true });
+			await vi.advanceTimersByTimeAsync(0);
+
+			read.mockImplementationOnce(() => new Promise(() => {}));
+			deliver('player:updated');
+			await vi.advanceTimersByTimeAsync(0);
+			deliver('player:updated');
+			await vi.advanceTimersByTimeAsync(SCREEN_MODE_REREAD_MS - 1);
+			const before = read.mock.calls.length;
+
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect([before, read.mock.calls.length]).toEqual([2, 3]);
+			expect(freshness.data.value.label).toBe('read 3');
+		});
+
 		it('still supersedes the read in flight at once on a change of selection', async () => {
 			const { read, deliver, selection, freshness } = harness({ 'player:updated': true });
 			await flushPromises();

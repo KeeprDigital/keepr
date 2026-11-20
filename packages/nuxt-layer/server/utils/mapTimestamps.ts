@@ -22,7 +22,7 @@ type ConvertedTimestamp<V> = [Extract<V, Date | string>] extends [never]
  *
  * The key test is the template literal rather than the two names in
  * `WithTimestamps`, because the body's test is `key.endsWith('At')` — it converts
- * `lastSeenAt` and `meleeSyncLeaseExpiresAt` too, and a type naming only
+ * `lastSeenAt` or any `*ExpiresAt` too, and a type naming only
  * `createdAt`/`updatedAt` would be a smaller lie rather than none. The mapping is
  * over `keyof T` so it stays homomorphic: an optional `resolvedAt?: string` comes
  * back optional, not `Date | undefined` and required.

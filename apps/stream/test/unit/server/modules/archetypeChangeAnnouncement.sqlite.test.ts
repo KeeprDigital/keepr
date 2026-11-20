@@ -60,16 +60,22 @@ async function stage(pilots: number) {
 		.insert(schema.archetypes)
 		.values({ eventId, name: 'Azorius Control', colors: 'WU' })
 		.returning();
-	const players = await db
-		.insert(schema.players)
-		.values(
-			Array.from({ length: pilots + 1 }, (_, index) => ({ eventId, name: `Player ${index + 1}` })),
-		)
-		.returning({ id: schema.players.id });
-	const playerIds = players.map((player) => player.id);
+	const players = Array.from({ length: pilots + 1 }, (_, index) => ({
+		eventId,
+		name: `Player ${index + 1}`,
+	}));
+	// Three parameters a row: thirty rows a statement fit D1's hundred.
+	const playerIds: number[] = [];
+	for (let at = 0; at < players.length; at += 30) {
+		const inserted = await db
+			.insert(schema.players)
+			.values(players.slice(at, at + 30))
+			.returning({ id: schema.players.id });
+		playerIds.push(...inserted.map((player) => player.id));
+	}
 	const bystanderId = playerIds.pop()!;
-	await db.insert(schema.playerDecks).values(
-		[...playerIds, bystanderId].map((playerId): typeof schema.playerDecks.$inferInsert => ({
+	const decks = [...playerIds, bystanderId].map(
+		(playerId): typeof schema.playerDecks.$inferInsert => ({
 			eventId,
 			playerId,
 			externalId: `deck-${++sequence}`,
@@ -81,8 +87,11 @@ async function stage(pilots: number) {
 				archetypeId: archetype!.id,
 				reviewedAt: new Date('2026-10-01T00:00:00.000Z'),
 			}),
-		})),
+		}),
 	);
+	// Twelve parameters a row, its defaults among them.
+	for (let at = 0; at < decks.length; at += 8)
+		await db.insert(schema.playerDecks).values(decks.slice(at, at + 8));
 	return {
 		eventId,
 		archetypeId: archetype!.id,

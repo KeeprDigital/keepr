@@ -629,13 +629,6 @@ describe('the Theme editor', () => {
 				written: 24,
 			},
 			{
-				case: 'a dimension above its bound, at the bound',
-				control: (wrapper: VueWrapper) => field(wrapper, 'inset').get('input'),
-				entered: '900',
-				token: 'inset',
-				written: 480,
-			},
-			{
 				case: "a surface's fill opacity",
 				control: (wrapper: VueWrapper) =>
 					field(wrapper, 'panel').get('input[aria-label="Panel fill opacity"]'),

@@ -1,3 +1,5 @@
+import { canonicalJson } from '../../../shared/utils/canonicalJson';
+
 type DeepPartial<T> = {
 	[P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
@@ -36,7 +38,8 @@ export interface UseFormReturn<T> {
 	reset: () => void;
 	/**
 	 * Get only the fields that have changed (for PATCH requests)
-	 * Returns DeepPartial<T> with only modified fields
+	 * Returns DeepPartial<T> with only modified fields; a key removed from the
+	 * form is reported with the value undefined
 	 */
 	getChanges: () => DeepPartial<T>;
 	/**
@@ -126,20 +129,10 @@ export function useForm<T extends Record<string, any>>(
 	};
 
 	/**
-	 * Serializes with object keys sorted: a merge appends keys the new baseline
-	 * added, so the same values can arrive in another key order and must still
-	 * compare equal.
+	 * A merge appends keys the new baseline added, so the same values can arrive
+	 * in another key order and must still compare equal.
 	 */
-	const serialize = (value: unknown): string =>
-		JSON.stringify(value, (_key, entry: unknown) =>
-			isPlainObject(entry)
-				? Object.fromEntries(
-						Object.keys(entry)
-							.sort()
-							.map((key) => [key, entry[key]]),
-					)
-				: entry,
-		);
+	const serialize = canonicalJson;
 
 	const isDirty = computed(() => {
 		return serialize(formData.value) !== serialize(originalFormData.value);
@@ -261,9 +254,8 @@ export function useForm<T extends Record<string, any>>(
 		const original = originalFormData.value as Record<string, unknown>;
 		const changes: Record<string, unknown> = {};
 
-		for (const key in current) {
-			if (!Object.hasOwn(current, key)) continue;
-
+		// A key the form no longer holds is a change too, reported as undefined.
+		for (const key of new Set([...Object.keys(current), ...Object.keys(original ?? {})])) {
 			if (!areValuesEqual(current[key], original?.[key])) {
 				changes[key] = current[key];
 			}

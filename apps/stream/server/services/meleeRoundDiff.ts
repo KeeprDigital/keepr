@@ -1,3 +1,4 @@
+import { canonicalJson } from '@keepr/nuxt-layer/shared/utils/canonicalJson';
 import type { DbMatch } from '~~/server/db/schema';
 import type { MatchUpsertInput } from '~~/server/services/match';
 import type { RoundStandingInput } from '~~/server/services/playerRoundStandings';
@@ -35,18 +36,6 @@ function incomingValue(match: MatchUpsertInput, field: ComparedField): unknown {
 		default:
 			return match[field] ?? null;
 	}
-}
-
-/** JSON with object keys sorted and `undefined` dropped, as stored JSON reads back. */
-function canonicalJson(value: unknown): string {
-	return JSON.stringify(value, (_key, nested: unknown) => {
-		if (nested === null || typeof nested !== 'object' || Array.isArray(nested)) {
-			return nested;
-		}
-		return Object.fromEntries(
-			Object.entries(nested).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
-		);
-	});
 }
 
 function fieldsDiffer(

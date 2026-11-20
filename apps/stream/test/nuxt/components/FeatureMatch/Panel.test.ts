@@ -79,7 +79,6 @@ mockNuxtImport('useOverlay', () => () => ({
 		}),
 	}),
 }));
-mockNuxtImport('onBeforeRouteLeave', () => () => {});
 mockNuxtImport('useFeatureMatchDeckList', () => () => ({
 	getDeckForCurrentPhase: vi.fn((_, name, colors) => ({ name, colors })),
 	player1ForDeckList: ref(null),

@@ -230,16 +230,16 @@ describe('player manage modal', () => {
 
 	it('holds navigation on an unsaved edit until the operator discards it', async () => {
 		const wrapper = await mountModal();
-		expect(await confirmDiscardInOpenModals()).toBe(true);
+		expect(await confirmDiscardBeforeNavigation()).toBe(true);
 
 		editName(wrapper, 'Alicia');
 		await flushPromises();
-		expect(await confirmDiscardInOpenModals()).toBe(false);
+		expect(await confirmDiscardBeforeNavigation()).toBe(false);
 
 		confirmOpen.mockReturnValue({
 			result: Promise.resolve(true),
 		});
-		expect(await confirmDiscardInOpenModals()).toBe(true);
+		expect(await confirmDiscardBeforeNavigation()).toBe(true);
 	});
 
 	it('stops guarding once the save lands', async () => {
@@ -251,7 +251,7 @@ describe('player manage modal', () => {
 		await flushPromises();
 
 		expect(wrapper.emitted('close')).toHaveLength(1);
-		expect(await confirmDiscardInOpenModals()).toBe(true);
+		expect(await confirmDiscardBeforeNavigation()).toBe(true);
 		expect(confirmOpen).not.toHaveBeenCalled();
 	});
 
@@ -262,7 +262,7 @@ describe('player manage modal', () => {
 
 		wrapper.unmount();
 
-		expect(await confirmDiscardInOpenModals()).toBe(true);
+		expect(await confirmDiscardBeforeNavigation()).toBe(true);
 		expect(confirmOpen).not.toHaveBeenCalled();
 	});
 

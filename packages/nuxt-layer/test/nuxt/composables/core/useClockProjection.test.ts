@@ -1,6 +1,7 @@
 import type { EffectScope } from 'vue';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { OVERDUE_RECHECK_MS } from '../../../../app/composables/core/useClockProjection';
 
 const NOW = 1_000_000;
 
@@ -176,6 +177,38 @@ describe('useClockProjection', () => {
 		await vi.advanceTimersByTimeAsync(1);
 		expect(state.value).toBe('running');
 	});
+
+	// A change answered as never due is waited for on no timer at all.
+	it.each([{ nextChangeInMs: Number.NaN }, { nextChangeInMs: Number.POSITIVE_INFINITY }])(
+		'waits on no timer for a next change in $nextChangeInMs ms',
+		async ({ nextChangeInMs }) => {
+			const project = vi.fn(() => ({ value: 'held', nextChangeInMs }));
+			const { result: state } = inScope(() =>
+				useClockProjection(project, { whileServerTimeUnknown: 'device-time' }),
+			);
+			expect(state.value).toBe('held');
+
+			await vi.advanceTimersByTimeAsync(1000);
+
+			expect(project).toHaveBeenCalledOnce();
+			expect(vi.getTimerCount()).toBe(0);
+		},
+	);
+
+	// A change answered as due now or past is asked again after a pause, never at once.
+	it.each([{ nextChangeInMs: 0 }, { nextChangeInMs: -5 }])(
+		'asks again only after the overdue pause for a next change in $nextChangeInMs ms',
+		async ({ nextChangeInMs }) => {
+			const project = vi.fn(() => ({ value: 'held', nextChangeInMs }));
+			inScope(() => useClockProjection(project, { whileServerTimeUnknown: 'device-time' }));
+
+			await vi.advanceTimersByTimeAsync(OVERDUE_RECHECK_MS - 1);
+			expect(project).toHaveBeenCalledOnce();
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(project).toHaveBeenCalledTimes(2);
+		},
+	);
 
 	it('stops answering anew once its owner is disposed', async () => {
 		const project = vi.fn(secondsOf);

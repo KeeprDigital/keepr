@@ -1,4 +1,5 @@
 import type { Flight } from '../../utils/guardedSequence';
+import { holdLoading } from '../../utils/loadingHold';
 
 export interface AsyncActionOptions {
 	loadingRef?: Ref<boolean>;
@@ -7,8 +8,9 @@ export interface AsyncActionOptions {
 	throwError?: boolean;
 	/**
 	 * The Flight the action belongs to. Once it is stale the action settles without
-	 * touching `loadingRef` or `errorRef` and without calling `onError`: the state
-	 * they describe has been superseded. The result is still returned, and a
+	 * touching `errorRef` and without calling `onError`: the state they describe has
+	 * been superseded. `loadingRef` stays up while any action holding it is in
+	 * flight, superseded ones included (`holdLoading`). The result is still returned, and a
 	 * `throwError` failure still raised, to the caller that started it.
 	 */
 	flight?: Flight;
@@ -21,7 +23,7 @@ export function useAsyncAction() {
 	): Promise<T | null> => {
 		const { loadingRef, errorRef, onError, throwError = false, flight = unguarded } = options;
 
-		if (loadingRef) loadingRef.value = true;
+		const releaseLoading = loadingRef ? holdLoading(loadingRef) : undefined;
 		if (errorRef) errorRef.value = null;
 
 		try {
@@ -44,7 +46,7 @@ export function useAsyncAction() {
 
 			return null;
 		} finally {
-			if (loadingRef && flight.current) loadingRef.value = false;
+			releaseLoading?.();
 		}
 	};
 

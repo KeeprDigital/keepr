@@ -1,5 +1,8 @@
 import type { CreatePhaseInput, PhaseResponse, UpdatePhaseInput } from '~~/shared/api';
-import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
+import {
+	asOneEventDataChange,
+	eventDataPublicationModule,
+} from '~~/server/modules/event-data-publication';
 import { phaseService } from '~~/server/services/phase';
 
 interface CreatePhaseParams {
@@ -66,8 +69,11 @@ export function phaseWriteModule() {
 
 		// Even for a Phase already gone: the release committed either way (ADR-0060).
 		// No origin, because the deleting client never received these Screens back.
-		for (const screen of clearedScreens)
-			await publication.screenUpdated({ eventId, entity: screen });
+		// The Screens told once for every one released, not once per Screen.
+		await asOneEventDataChange(async () => {
+			for (const screen of clearedScreens)
+				await publication.screenUpdated({ eventId, entity: screen });
+		});
 
 		if (!deleted) {
 			throw createError({ statusCode: 404, message: 'Phase not found' });

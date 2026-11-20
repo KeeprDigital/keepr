@@ -255,8 +255,7 @@ describe('an Invitation is refused, and nothing is invited or emailed', () => {
 			createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000),
 			inviterId,
 		}));
-		for (let at = 0; at < rows.length; at += 500)
-			await database.insert(schema.invitation).values(rows.slice(at, at + 500));
+		await insertInvitations(rows);
 
 		expect(await outcome(invite(OWNER, { email: 'last@example.com' }))).toMatchObject({
 			invitationId: expect.any(String),
@@ -467,6 +466,14 @@ describe('an admin inviting an address again', () => {
 	});
 });
 
+/** Writes Invitation rows in one batch, twelve to a statement: eight parameters each fit D1's hundred. */
+async function insertInvitations(rows: (typeof schema.invitation.$inferInsert)[]) {
+	const statements = [];
+	for (let at = 0; at < rows.length; at += 12)
+		statements.push(database.insert(schema.invitation).values(rows.slice(at, at + 12)));
+	await database.batch(statements as [(typeof statements)[number]]);
+}
+
 /** An Invitation `inviterId` made to the Keepr Organisation at `at`, written as the library writes one. */
 function madeAt(inviterId: string, at: number, n: number) {
 	return {
@@ -498,9 +505,9 @@ describe('how many Invitations one inviter makes', () => {
 		const inviterId = await userIdOf(OWNER);
 		// Made more than an hour ago, so not counted.
 		await database.insert(schema.invitation).values(madeAt(inviterId, now - 61 * 60 * 1000, 0));
-		await database
-			.insert(schema.invitation)
-			.values(Array.from({ length: made }, (_, n) => madeAt(inviterId, now - 30 * 60 * 1000, n)));
+		await insertInvitations(
+			Array.from({ length: made }, (_, n) => madeAt(inviterId, now - 30 * 60 * 1000, n)),
+		);
 
 		const answered = await outcome(invite(OWNER));
 
@@ -509,13 +516,11 @@ describe('how many Invitations one inviter makes', () => {
 
 	it('is counted per inviter, so another manager still invites', async () => {
 		const inviterId = await userIdOf(OWNER);
-		await database
-			.insert(schema.invitation)
-			.values(
-				Array.from({ length: INVITATIONS_PER_INVITER_PER_HOUR }, (_, n) =>
-					madeAt(inviterId, Date.now(), n),
-				),
-			);
+		await insertInvitations(
+			Array.from({ length: INVITATIONS_PER_INVITER_PER_HOUR }, (_, n) =>
+				madeAt(inviterId, Date.now(), n),
+			),
+		);
 
 		expect(await outcome(invite(await holding('admin')))).toEqual({
 			invitationId: expect.any(String),

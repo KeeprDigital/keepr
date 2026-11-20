@@ -48,15 +48,19 @@ export function useScreenGraphicAssetContentUrls(
 	 * and through a refusal: an emptied `src` tears down every image and video
 	 * element, which on a live output restarts an on-air video from zero. Only a
 	 * different Screen or capability makes the held URLs wrong.
+	 *
+	 * A retry after a refusal asks the same question again, so it stays settled
+	 * on the answer it holds: going unsettled would hide a display that fell back
+	 * to fallback fonts for the length of every retry.
 	 */
-	async function resolve() {
+	async function resolve(retrying = false) {
 		const currentReferences = toValue(references);
 		const screenId = screen.value?.id;
 		const capability = assetCapability?.value;
 		const preview = isPreview?.value === true;
 		const flight = loads.begin();
 		clearTimeout(retry);
-		contentUrlsSettled.value = false;
+		if (!retrying) contentUrlsSettled.value = false;
 		const session = preview || !screenId || !capability ? '' : `${screenId}\0${capability}`;
 		if (session !== heldSession || session === '') {
 			heldSession = '';
@@ -83,7 +87,7 @@ export function useScreenGraphicAssetContentUrls(
 		if (!response?.ok) {
 			// The session route answers 503 when its catalogue is briefly unreachable;
 			// giving up there would leave the output without media until a reload.
-			retry = setTimeout(() => void resolve(), SCREEN_MODE_REREAD_MS);
+			retry = setTimeout(() => void resolve(true), SCREEN_MODE_REREAD_MS);
 			contentUrlsSettled.value = true;
 			return;
 		}
@@ -97,7 +101,7 @@ export function useScreenGraphicAssetContentUrls(
 		contentUrlsSettled.value = true;
 	}
 
-	watch(resolutionKey, resolve, { immediate: true });
+	watch(resolutionKey, () => resolve(), { immediate: true });
 
 	onBeforeUnmount(() => {
 		loads.supersede();

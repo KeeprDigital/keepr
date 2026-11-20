@@ -12,8 +12,8 @@ import { createMiniflareD1Harness } from '~~/test/helpers/miniflare-d1';
  * The count is one to fifty, and every Slot it adds needs its first Feature
  * Match Session. The Slot insert bound four parameters per row, so on D1 —
  * which fails a statement on its hundred-and-first parameter — twenty-five
- * Slots fitted and twenty-six did not. The libSQL harness the module's other
- * tests use accepts several hundred, so these run against a real D1 binding.
+ * Slots fitted and twenty-six did not. These run against a real D1 binding, so
+ * the limit is D1's own rather than the libSQL harness's copy of it.
  *
  * The count is the Event's own field, written before the Slots are; so a write
  * that fails part-way must leave the count describing the Slots the Event

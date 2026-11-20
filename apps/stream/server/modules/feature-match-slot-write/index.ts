@@ -14,7 +14,10 @@ import type { FeatureMatchDeckListReference } from '~~/shared/types/featureMatch
 import { eq } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { events } from '~~/server/db/schema';
-import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
+import {
+	asOneEventDataChange,
+	eventDataPublicationModule,
+} from '~~/server/modules/event-data-publication';
 import { opCardCatalogueModule } from '~~/server/modules/op-card-catalogue';
 import { playerUpdateModule } from '~~/server/modules/player-update';
 import { featureMatchService } from '~~/server/services/featureMatch';
@@ -188,8 +191,11 @@ export function featureMatchSlotWriteModule() {
 		const { deleted, clearedScreens } = await slots.remove(slotId, eventId);
 		// Each released Screen first, and with no origin: the deleting client
 		// holds those Screens at their old version too (ADR-0032, ADR-0060).
-		for (const screen of clearedScreens)
-			await publication.screenUpdated({ eventId, entity: screen });
+		// The Screens told once for every one released, not once per Screen.
+		await asOneEventDataChange(async () => {
+			for (const screen of clearedScreens)
+				await publication.screenUpdated({ eventId, entity: screen });
+		});
 		if (!deleted) {
 			throw createError({ statusCode: 404, message: 'Feature match slot not found' });
 		}

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { deferred } from '../../../helpers/deferred';
 
 describe('useAsyncAction', () => {
 	it('answers a successful action, loading while it runs and clearing a stale error', async () => {
@@ -45,4 +46,38 @@ describe('useAsyncAction', () => {
 			expect(onError).toHaveBeenCalledOnce();
 		},
 	);
+
+	it('keeps a shared loading flag up until every request sharing it has settled', async () => {
+		const { executeAction } = useAsyncAction();
+		const loading = ref(false);
+		const first = deferred<string>();
+		const second = deferred<string>();
+
+		const firstRun = executeAction(() => first.promise, { loadingRef: loading });
+		const secondRun = executeAction(() => second.promise, { loadingRef: loading });
+		first.resolve('one');
+		await firstRun;
+		expect(loading.value).toBe(true);
+
+		second.resolve('two');
+		await secondRun;
+		expect(loading.value).toBe(false);
+	});
+
+	it('lowers the loading flag once a superseded request settles with nothing newer in flight', async () => {
+		const { executeAction } = useAsyncAction();
+		const loading = ref(false);
+		const requests = createGuardedSequence();
+		const call = deferred<string>();
+
+		const run = executeAction(() => call.promise, {
+			loadingRef: loading,
+			flight: requests.begin(),
+		});
+		requests.supersede();
+		call.resolve('late');
+		await run;
+
+		expect(loading.value).toBe(false);
+	});
 });

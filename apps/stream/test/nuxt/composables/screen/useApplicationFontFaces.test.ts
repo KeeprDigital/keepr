@@ -1,10 +1,11 @@
 import type { ApplicationFontFaceRequest } from '~~/shared/modules/graphics/typography';
 import { flushPromises, mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
 import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { stubDocumentFonts } from '~~/test/nuxt/helpers/fontFaces';
 import {
+	FONT_LOAD_TIMEOUT_MS,
 	useApplicationFontFaces,
 	useCombinedFontFaces,
 } from '~/composables/screen/useApplicationFontFaces';
@@ -57,6 +58,10 @@ async function settle() {
 }
 
 describe('useApplicationFontFaces', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it.each([
 		{
 			row: 'pending',
@@ -166,6 +171,24 @@ describe('useApplicationFontFaces', () => {
 		expect({ fontsReady: fonts.fontsReady.value, fontsFailed: fonts.fontsFailed.value }).toEqual(
 			settled,
 		);
+	});
+
+	// A face that never settles must not leave the rendering waiting on it.
+	it('fails a load that never settles once the font load timeout passes', async () => {
+		vi.useFakeTimers();
+		const { fonts } = mountFonts([POPPINS_BOLD], () => deferred().promise);
+		await vi.advanceTimersByTimeAsync(FONT_LOAD_TIMEOUT_MS - 1);
+		const before = { fontsReady: fonts.fontsReady.value, fontsFailed: fonts.fontsFailed.value };
+
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect([
+			before,
+			{ fontsReady: fonts.fontsReady.value, fontsFailed: fonts.fontsFailed.value },
+		]).toEqual([
+			{ fontsReady: false, fontsFailed: false },
+			{ fontsReady: false, fontsFailed: true },
+		]);
 	});
 
 	// "Loaded or failed" means every face: an early rejection does not release a face still loading.

@@ -172,6 +172,17 @@ export interface SequencedLiveState<TRef, TAggregate, TCommand, TResult> {
 		command: TCommand,
 		options?: SequencedLiveStateExecuteOptions,
 	) => Promise<TResult | undefined>;
+	/**
+	 * Commit many commands the server has just minted, each onto the aggregate
+	 * it was built from, in one batch: one round trip however many there are.
+	 * Each answers its result, or `null` where its aggregate had moved on, which
+	 * the caller recovers one by one. A command minted here has no receipt yet,
+	 * so none is looked for; nothing a client sends comes this way.
+	 */
+	executeMinted: (
+		entries: ReadonlyArray<{ ref: TRef; aggregate: TAggregate; command: TCommand }>,
+		options?: Omit<SequencedLiveStateExecuteOptions, 'alongside'>,
+	) => Promise<Array<TResult | null>>;
 }
 
 /**
@@ -257,12 +268,16 @@ export function createSequencedLiveState<
 	 * a notification measuring a difference from the loaded one would be measuring
 	 * across commands it knows nothing about.
 	 */
-	async function commitOnce(
+	/**
+	 * The statements committing one reduction with its receipt, the projection
+	 * last: its returned row, or none, says whether the guard held.
+	 */
+	async function commitStatements(
 		ref: TRef,
 		aggregate: TAggregate,
 		command: TCommand,
 		alongside?: SequencedLiveStateExecuteOptions['alongside'],
-	): Promise<{ result: TResult; previous?: TAggregate }> {
+	): Promise<BatchItem<'sqlite'>[]> {
 		const nextSequence = port.sequenceOf(aggregate) + 1;
 		const reduction = await port.reduce(aggregate, command);
 		const guard = port.casGuard(aggregate);
@@ -274,19 +289,27 @@ export function createSequencedLiveState<
 			contentKey: commandContentKey(command.type, command.payload),
 			sequence: nextSequence,
 		};
+		return [
+			...(companion?.statements ?? []),
+			...commandReceiptStatements({
+				aggregateKind: port.aggregateKind,
+				aggregateId: port.aggregateIdOf(ref),
+				eventId: port.eventIdOf(ref),
+				receipt,
+				guard: sql`${guard} and ${holds}`,
+			}),
+			port.projection({ aggregate, reduction, nextSequence, holds }),
+		];
+	}
 
+	async function commitOnce(
+		ref: TRef,
+		aggregate: TAggregate,
+		command: TCommand,
+		alongside?: SequencedLiveStateExecuteOptions['alongside'],
+	): Promise<{ result: TResult; previous?: TAggregate }> {
+		const statements = await commitStatements(ref, aggregate, command, alongside);
 		try {
-			const statements: BatchItem<'sqlite'>[] = [
-				...(companion?.statements ?? []),
-				...commandReceiptStatements({
-					aggregateKind: port.aggregateKind,
-					aggregateId: port.aggregateIdOf(ref),
-					eventId: port.eventIdOf(ref),
-					receipt,
-					guard: sql`${guard} and ${holds}`,
-				}),
-				port.projection({ aggregate, reduction, nextSequence, holds }),
-			];
 			const results = await db.batch(statements as [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]]);
 
 			// The projection is the last statement; no returned row means the guard
@@ -398,9 +421,41 @@ export function createSequencedLiveState<
 		return replayed && (await announce(replayed, options, undefined));
 	}
 
+	async function executeMinted(
+		entries: ReadonlyArray<{ ref: TRef; aggregate: TAggregate; command: TCommand }>,
+		options: Omit<SequencedLiveStateExecuteOptions, 'alongside'> = {},
+	): Promise<Array<TResult | null>> {
+		if (entries.length === 0) return [];
+		for (const { aggregate, command } of entries) port.admit(aggregate, command);
+
+		const perEntry = await Promise.all(
+			entries.map(({ ref, aggregate, command }) => commitStatements(ref, aggregate, command)),
+		);
+		const results = await db.batch(
+			perEntry.flat() as [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]],
+		);
+
+		let end = 0;
+		const committed = perEntry.map((statements) => {
+			end += statements.length;
+			return (results[end - 1] as TAggregate[] | undefined)?.[0] ?? null;
+		});
+		const answered: Array<TResult | null> = [];
+		for (const [index, aggregate] of committed.entries()) {
+			const { aggregate: previous, command } = entries[index]!;
+			answered.push(
+				aggregate
+					? await announce(port.toResult(aggregate, command.type), options, previous)
+					: null,
+			);
+		}
+		return answered;
+	}
+
 	return {
 		load: port.load,
 		execute,
 		replay,
+		executeMinted,
 	};
 }

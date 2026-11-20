@@ -11,8 +11,8 @@ import { createMiniflareD1Harness } from '~~/test/helpers/miniflare-d1';
  * plus the Event's, so on D1 — which fails a statement on its
  * hundred-and-first parameter — a hundred represented Archetypes failed every
  * Metagame read, and a small requested limit did not help because it applied
- * after the lookup. The libSQL harness accepts several hundred parameters, so
- * this runs against a real D1 binding.
+ * after the lookup. This runs against a real D1 binding, so the limit is D1's
+ * own rather than the libSQL harness's copy of it.
  *
  * The large Event: 120 represented Archetypes, named `Archetype 001` to `120`,
  * plus one with no Players. `001` has four Players (3-1 each, positions 1-4),
