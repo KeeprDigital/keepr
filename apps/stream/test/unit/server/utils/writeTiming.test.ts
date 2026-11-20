@@ -56,6 +56,7 @@ describe('a write that called its Event’s object', () => {
 			publishMs: 300,
 			publishCalls: 1,
 			publishFailures: 0,
+			failedStep: null,
 			isolateRequest: 4,
 		});
 	});
@@ -72,6 +73,8 @@ describe('a write that called its Event’s object', () => {
 			publishMs: 840,
 			publishCalls: 2,
 			publishFailures: 1,
+			// The call made once more succeeded, so no step stands failed.
+			failedStep: null,
 		});
 	});
 
@@ -94,6 +97,43 @@ describe('which requests have a line', () => {
 		await timing.time('d1', takes(5));
 
 		expect(timing.fields(COMMAND)).toBeNull();
+	});
+
+	// A write that failed before its object still says where its time went.
+	it('logs one for a write that failed before calling its Event’s object, naming the step that failed', async () => {
+		const { clock, takes, fails } = manualClock();
+		const timing = createWriteTiming(1, clock);
+
+		await timing.time('identity', takes(2));
+		await expect(timing.time('d1', fails(16_600))).rejects.toThrow('refused');
+
+		expect(timing.fields({ ...COMMAND, statusCode: 500 })).toMatchObject({
+			statusCode: 500,
+			totalMs: 16_602,
+			identityMs: 2,
+			d1Ms: 16_600,
+			d1Queries: 1,
+			publishCalls: 0,
+			failedStep: 'd1',
+		});
+	});
+
+	it('logs a write once, though both its failure and its answer would log it', async () => {
+		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+		const event = stubH3Event({
+			method: 'POST',
+			path: COMMAND.path,
+			context: {},
+			node: { res: { statusCode: 200 } },
+		});
+
+		beginWriteTiming(event);
+		logWriteTiming(event, 500);
+		logWriteTiming(event);
+
+		expect(log.mock.calls.map(([line]) => (line as { statusCode: number }).statusCode)).toEqual([
+			500,
+		]);
 	});
 
 	it.each([

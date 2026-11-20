@@ -694,6 +694,15 @@ and CPU time:
 | `d1Ms`, `d1Queries`                            | Its time in D1, and its round trips there                                                                                    |
 | `publishMs`, `publishCalls`, `publishFailures` | Its calls to the Event's object; a second call is the one made once more after a failure                                     |
 | `isolateRequest`                               | Which request of its Worker isolate it was: `1` is an isolate's first, a cold start                                          |
+| `failedStep`                                   | The step whose call failed last and not since succeeded (`identity`, `d1` or `publish`), or `null`                                                |
+
+A write that fails with a server error logs the line too, whether or not it
+reached its object, beside its `api_request_failed` line (#1376). That line
+names the same `failedStep`, and in `errorCause` what the failure was without
+quoting its message: `d1_timeout`, `d1_overloaded`, `d1_network_lost`,
+`d1_reset` or `d1_unavailable` for a refusal of D1's platform, `d1_error` (or
+D1's other prefix, as `d1_type_error`) for another D1 refusal, `timeout` for
+another timeout, and `null` where nothing says.
 
 A step's time is the sum of its calls. What no step accounts for is the
 Worker's own computing, which its CPU time shows. To match a probe's `late`

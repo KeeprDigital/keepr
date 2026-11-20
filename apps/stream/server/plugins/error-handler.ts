@@ -2,6 +2,7 @@ import process from 'node:process';
 import { errorLogFields } from '@keepr/nuxt-layer/server/utils/errorLogFields';
 import { safeErrorLogPath } from '@keepr/nuxt-layer/server/utils/errorLogPath';
 import { mapPublicNitroError } from '~~/server/utils/nitroErrorMapping';
+import { logWriteTiming, writeTimingOf } from '~~/server/utils/writeTiming';
 
 interface NitroError extends Error {
 	statusCode: number;
@@ -15,8 +16,15 @@ export default defineNitroPlugin((nitroApp) => {
 		const error = _error as NitroError;
 		mapPublicNitroError(error);
 
+		const failedStep = event ? (writeTimingOf(event)?.failedStep() ?? null) : null;
 		if (!shouldSuppressIntegrationLog(error))
-			console.error(JSON.stringify(errorLogFields(error, safeErrorLogPath(event?.path))));
+			console.error(
+				JSON.stringify(errorLogFields(error, safeErrorLogPath(event?.path), failedStep)),
+			);
+		// A failure is answered by Nitro's error handler, which runs no
+		// `afterResponse`: a write's timing line is logged here instead (#1376).
+		// One already answered logged its own as it was.
+		if (event && !event.handled) logWriteTiming(event, error.statusCode);
 	});
 });
 

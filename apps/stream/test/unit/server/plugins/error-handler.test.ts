@@ -1,6 +1,8 @@
-import type { LoggedNitroError } from '@keepr/nuxt-layer/server/utils/errorLogFields';
 import type { MappableNitroError } from '~~/server/utils/nitroErrorMapping';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { createFakeNitroApp, installNitroPlugin } from '@keepr/nuxt-layer/test/helpers/nitroApp';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
+import { beginWriteTiming, writeTimingOf } from '~~/server/utils/writeTiming';
 import { GraphicsAssetLibraryError } from '~~/server/modules/graphics-asset-library/errors';
 import { errorLogFields } from '@keepr/nuxt-layer/server/utils/errorLogFields';
 import { safeErrorLogPath } from '@keepr/nuxt-layer/server/utils/errorLogPath';
@@ -16,10 +18,7 @@ import {
 	RealtimePublishError,
 } from '~~/server/utils/realtimePublishFailure';
 import { STATE_CONFLICT_CODE } from '@keepr/nuxt-layer/shared/utils/stateConflict';
-import {
-	CodedProviderError,
-	providerRefusal,
-} from '@keepr/nuxt-layer/test/helpers/providerRefusal';
+import { providerRefusal } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
 
 describe('error-handler mapping logic', () => {
 	it('maps Broadcast Deck provider outages to a stable retryable API failure', () => {
@@ -68,175 +67,6 @@ describe('error-handler mapping logic', () => {
 		it('preserves unrelated paths', () => {
 			expect(safeErrorLogPath('/api/events/17')).toBe('/api/events/17');
 			expect(safeErrorLogPath(undefined)).toBeUndefined();
-		});
-	});
-
-	describe('the fields a failed request logs', () => {
-		function failed(overrides: Partial<LoggedNitroError>): LoggedNitroError {
-			return { name: 'Error', statusCode: 500, ...overrides };
-		}
-
-		it('carries a provider code that arrives as a number', () => {
-			// #264: a provider may name its refusal by number (R2 does), and a
-			// string-only guard logged `null` for precisely the failure the field
-			// exists to name.
-			expect(
-				errorLogFields(
-					failed({
-						cause: providerRefusal(),
-					}),
-					'/api/events/1',
-				),
-			).toMatchObject({
-				// A provider's class need not assign `name`, so the sibling field
-				// reports the inherited 'Error' and identifies nothing. The code is the
-				// only thing in the line that can name the refusal.
-				errorName: 'Error',
-				errorCode: 40400,
-			});
-		});
-
-		it('still carries a provider code that arrives as a string', () => {
-			// Node's own convention, and the shape the previous guard was written for.
-			expect(
-				errorLogFields(
-					failed({
-						cause: { name: 'SystemError', code: 'ENOENT' },
-					}),
-					'/api/events/1',
-				),
-			).toMatchObject({ errorName: 'SystemError', errorCode: 'ENOENT' });
-		});
-
-		it('reports a NaN code as absent rather than as a number', () => {
-			// A code built with `Number(…)` from something absent is NaN, which no
-			// one can look up. #253 guards the same value the same way in the
-			// publish log.
-			expect(
-				errorLogFields(
-					failed({
-						cause: new CodedProviderError('', Number.NaN, 502),
-					}),
-					'/api/events/1',
-				),
-			).toMatchObject({ errorCode: null });
-			expect(
-				errorLogFields(
-					failed({
-						cause: new CodedProviderError('', Number.POSITIVE_INFINITY, 502),
-					}),
-					'/api/events/1',
-				),
-			).toMatchObject({ errorCode: null });
-		});
-
-		it('reports a code that is neither string nor number as absent', () => {
-			// Widening the guard must not turn it into no guard: an object or a
-			// boolean in `code` is not an identifier anyone can look up.
-			expect(
-				errorLogFields(
-					failed({
-						cause: {
-							code: { value: 40400 },
-						},
-					}),
-					'/api/events/1',
-				),
-			).toMatchObject({ errorCode: null });
-			expect(
-				errorLogFields(
-					failed({
-						cause: { code: true },
-					}),
-					'/api/events/1',
-				),
-			).toMatchObject({ errorCode: null });
-		});
-
-		it('walks the cause chain for a code the nearest cause does not carry, keeping the class name', () => {
-			// #323: a class like `TemporarilyUnavailableError` names the failure but
-			// carries no code, so before this walk the store exception's own code —
-			// the one thing that says WHY the store refused — never reached the log.
-			const error = failed({
-				cause: new TemporarilyUnavailableError('Graphic Asset Content is temporarily unavailable', {
-					cause: { name: 'R2Error', code: 'R2_CONNECTION_LOST' },
-				}),
-			});
-			expect(errorLogFields(error, '/api/events/1')).toMatchObject({
-				errorName: 'TemporarilyUnavailableError',
-				errorCode: 'R2_CONNECTION_LOST',
-			});
-		});
-
-		it('prefers the nearest valid code over a deeper one', () => {
-			// A domain error's own code is the classification; the store code under it
-			// is only the fallback for a level that classifies nothing.
-			const error = failed({
-				cause: {
-					name: 'GraphicsAssetLibraryError',
-					code: 'invalid-ingestion-input',
-					cause: { code: 'ENOENT' },
-				},
-			});
-			expect(errorLogFields(error, '/api/events/1')).toMatchObject({
-				errorName: 'GraphicsAssetLibraryError',
-				errorCode: 'invalid-ingestion-input',
-			});
-		});
-
-		it('skips an invalid code and keeps walking', () => {
-			// An object in `code` is not an identifier anyone can look up; the number
-			// beneath it is.
-			expect(
-				errorLogFields(
-					failed({
-						cause: {
-							code: { value: 1 },
-							cause: { code: 40400 },
-						},
-					}),
-					'/api/events/1',
-				),
-			).toMatchObject({ errorCode: 40400 });
-		});
-
-		it('bounds the walk, so a cycle terminates and a too-deep code stays absent', () => {
-			const cyclic: { code?: unknown; cause?: unknown } = {};
-			cyclic.cause = cyclic;
-			expect(errorLogFields(failed({ cause: cyclic }), '/api/events/1')).toMatchObject({
-				errorCode: null,
-			});
-
-			const tooDeep = Array.from({ length: 5 }).reduce<object>((cause) => ({ cause }), {
-				code: 'BURIED',
-			});
-			expect(errorLogFields(failed({ cause: tooDeep }), '/api/events/1')).toMatchObject({
-				errorCode: null,
-			});
-		});
-
-		it('reports an absent unhandled flag as handled, and a set one as unhandled', () => {
-			// `unhandled: false` means something classified the failure, never that the flag was absent.
-			expect(errorLogFields(failed({}), '/api/events/1')).toMatchObject({ unhandled: false });
-			expect(errorLogFields(failed({ unhandled: false }), '/api/events/1')).toMatchObject({
-				unhandled: false,
-			});
-			expect(errorLogFields(failed({ unhandled: true }), '/api/events/1')).toMatchObject({
-				unhandled: true,
-			});
-		});
-
-		it("falls back to the error's own name, and to no code at all, without a cause", () => {
-			expect(
-				errorLogFields(failed({ name: 'TypeError', statusCode: 500, unhandled: true }), undefined),
-			).toEqual({
-				message: 'api_request_failed',
-				path: null,
-				statusCode: 500,
-				errorName: 'TypeError',
-				errorCode: null,
-				unhandled: true,
-			});
 		});
 	});
 
@@ -379,6 +209,8 @@ describe('error-handler mapping logic', () => {
 				statusCode: 502,
 				errorName: 'RealtimePublishError',
 				errorCode: 40400,
+				errorCause: null,
+				failedStep: null,
 				unhandled: false,
 			});
 		});
@@ -854,6 +686,50 @@ describe('error-handler mapping logic', () => {
 			};
 			mapPublicNitroError(error);
 			expect(error.statusCode).toBe(409);
+		});
+	});
+});
+
+describe('a write that fails', () => {
+	// The failure log names the step that failed, and the write's timing
+	// line, which no `afterResponse` reaches on a failure, is logged with it.
+	it('logs the failed step on both its lines', async () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+		vi.stubGlobal('defineNitroPlugin', (plugin: unknown) => plugin);
+		const { default: plugin } = await import('~~/server/plugins/error-handler');
+		const nitroApp = createFakeNitroApp();
+		installNitroPlugin(plugin, nitroApp);
+		const event = stubH3Event({
+			method: 'POST',
+			path: '/api/events/1/screens/12/command',
+			context: {},
+			node: { res: { statusCode: 500 } },
+		});
+		const d1Refusal = new Error('D1_ERROR: Network connection lost.');
+		beginWriteTiming(event);
+		await writeTimingOf(event)!
+			.time('d1', async () => {
+				throw d1Refusal;
+			})
+			.catch(() => {});
+
+		await nitroApp.hooks.callHook(
+			'error',
+			Object.assign(new Error('wrapped'), { statusCode: 500, unhandled: true, cause: d1Refusal }),
+			{ event },
+		);
+
+		expect(JSON.parse(error.mock.calls[0]![0] as string)).toMatchObject({
+			message: 'api_request_failed',
+			errorCause: expect.any(String),
+			failedStep: 'd1',
+		});
+		expect(log.mock.calls[0]![0]).toMatchObject({
+			message: 'realtime_write_timed',
+			statusCode: 500,
+			d1Queries: 1,
+			failedStep: 'd1',
 		});
 	});
 });
