@@ -10,6 +10,7 @@ import { publishToScreenOutputs } from '~~/server/modules/screen-output-publicat
 import {
 	eventRealtimeChannel,
 	eventRealtimeScope,
+	screenOutputRealtimeClientId,
 	screenRealtimeChannel,
 } from '~~/shared/utils/realtimeChannels';
 import {
@@ -134,6 +135,45 @@ async function publishToEventOnceMore(
 ): Promise<void> {
 	const attempt = async () => await publishToEvent(eventId, deliveries);
 	await attempt().catch(attempt);
+}
+
+/**
+ * Close the realtime sockets a deleted Screen's outputs hold, in its Event's
+ * object, and tell each watcher of its presence they left (ADR-0144). For a
+ * Screen whose row is already gone: no capability replaces the one withdrawn,
+ * so nothing is spared, and the object refuses for a minute a socket let in
+ * just before the delete that reaches it after.
+ *
+ * The delete has committed and nothing here can undo it, so a failure is not
+ * the delete's: the call is made once more on a stub of its own, and then
+ * logged with the Screen, because those sockets stay on a channel of a Screen
+ * that no longer exists until they drop. They cannot return: the Screen's
+ * Realtime Tickets went with it.
+ */
+export async function disconnectDeletedScreenOutputs(screen: {
+	eventId: number;
+	screenId: number;
+}): Promise<void> {
+	// Asynchronous, so a Worker with no realtime binding rejects like any other failure.
+	const attempt = async () =>
+		await useRealtimeScope(workerBindings(), eventRealtimeScope(screen.eventId)).disconnect(
+			screenOutputRealtimeClientId(screen.screenId),
+		);
+	try {
+		await attempt().catch(attempt);
+	} catch (failure) {
+		console.error(
+			JSON.stringify({
+				message: 'screen_output_disconnect_failed',
+				detail:
+					'The Screen was deleted, but its realtime sockets could not be closed. Its Screen Outputs may stay connected until they drop. They cannot return.',
+				eventId: screen.eventId,
+				screenId: screen.screenId,
+				errorName: failure instanceof Error ? failure.name : null,
+				errorMessage: failure instanceof Error ? failure.message : String(failure),
+			}),
+		);
+	}
 }
 
 /**

@@ -18,6 +18,7 @@ import { parseModeConfigPatchResult } from '~~/server/schemas/api/screen';
 import { cardService } from '~~/server/services/card';
 import { featureMatchService } from '~~/server/services/featureMatch';
 import { screenService } from '~~/server/services/screen';
+import { disconnectDeletedScreenOutputs } from '~~/server/utils/realtimePublish';
 import { canonicalJson } from '@keepr/nuxt-layer/server/utils/canonicalJson';
 import { assertGraphicsTemplateReferencesSelectable } from '~~/server/utils/graphicsTemplateReferences';
 import {
@@ -557,6 +558,12 @@ export function screenWriteModule() {
 				message: 'Screen not found',
 			});
 		}
+
+		// Its outputs' realtime sockets close once the row is gone, and never
+		// before: a closed output would be let back in for a Screen that still
+		// exists. First of what follows the delete, so nothing that fails after
+		// leaves them open. It does not fail the delete (ADR-0144).
+		await disconnectDeletedScreenOutputs({ eventId, screenId });
 
 		// D1 is authoritative. Derived KV/realtime artifacts are cleaned only after
 		// the relational delete commits, so a failed delete cannot erase live state.

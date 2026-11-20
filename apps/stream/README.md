@@ -48,6 +48,7 @@ Changesets; never edit it by hand.
   deployed gates in [Deploy day](#deploy-day) steps 4 and 5,
   [Fault injection](#fault-injection), and the
   [Silent-video validator](#silent-video-validator)'s gate.
+- **Measure realtime**: [Realtime probe](#realtime-probe).
 - **Accounts and access**: [Users and App access](#users-and-app-access),
   [Access model](#access-model).
 - **Operate the library**:
@@ -576,6 +577,93 @@ Gotchas:
   checkout is serving it, and provision real Events there. Set
   `STREAM_KEEPR_LOCAL_ACCEPTANCE_URL` to aim at your own preview.
 - **`pnpm lint` checks the formatting, then lints** (ADR-0089): Oxfmt (`.oxfmtrc.json`) and Oxlint (`.oxlintrc.json`), both at the workspace root, over the whole workspace in about ten seconds, from the root or from here. `pnpm lint:fix` applies Oxlint's safe fixes and formats; `pnpm format` only formats. The commit that reformatted the repository is in `.git-blame-ignore-revs`: GitHub's blame reads past it, and a local `git blame` does after `git config blame.ignoreRevsFile .git-blame-ignore-revs`. Oxlint reads types only where a tsconfig covers the file: not in a component, a test or a script.
+
+## Realtime probe
+
+`pnpm probe:realtime` measures what each realtime client of one Event hears
+(#1338). It is for the gates on delivery that are otherwise judged by eye:
+gates 1, 2, 6, 8 and 10 of
+[#1318](https://github.com/KeeprDigital/keepr/issues/1318). It holds sockets as
+the pages do, by the client transport they use (`@keepr/realtime/client`),
+publishes on a timer through a real write, and reports for each client:
+
+- **The delay of each publish**, from its write being sent to its message
+  arriving, on the probe's own clock: p50, p95 and the worst.
+- **Each message that was late, missing, repeated or reordered, and each
+  sequence skipped**, by publish number, channel, sequence and time. Late is
+  over `--late`, 400 ms unless given. A time marked `object` is the Event's
+  object's own, which the Worker's log has.
+- **Each connection a client lost** that the probe did not cut: when, why, for
+  how long, and whether the fault showed.
+- **For a client it cut** (`--cut`): what it missed, what it was replayed, and
+  how long after its socket was restored.
+
+It exits 0 when nothing was missing, repeated, reordered or skipped, no write
+failed, and every cut client was replayed exactly what it missed, and 1
+otherwise. A late message does not fail a run: it is recorded. `--log <file>`
+keeps every record of the run, one JSON object a line, with no credential in
+it. `pnpm probe:realtime` alone prints every option.
+
+**Nothing in the app is opened for it, and it holds no credential.**
+
+- **Its clients** are two sockets held as a signed-in page holds one
+  (`session-1`, `session-2`), on the Event's channel and each probed Screen's,
+  and one as a Screen Output of each probed Screen (`output-<Screen id>`), on
+  that Screen's channel alone and in its presence. The probe is handed each
+  Screen Output's URL as the Output Hand-out hands one out, and from there
+  does what an output does: its capability from the URL's fragment, and a
+  Realtime Ticket for each socket.
+- **Its write** is a Screen command, to each probed Screen in turn:
+  `POST /api/events/<id>/screens/<id>/command` with
+  `{"command":"debug","shown":false}`. A Screen command stores nothing, so
+  there is nothing to put back. An output that hears this one hides its debug
+  panel, which is hidden already unless an operator is debugging that output.
+- **Its Session** is yours. Locally the Accounts Stand-in vouches for it, as
+  for every local request ([Local sign-in](#local-sign-in)). Anywhere else it
+  signs in to the Installation's Keepr Accounts as you, by the request the
+  sign-in page makes, with the email and password you put in its environment.
+  It keeps the Session in memory for the run and prints and writes nothing of
+  it.
+
+**Probe a test Event.** Every output of a probed Screen hears the write, and
+an operator's page counts the probe's own outputs among that Screen's for as
+long as it runs. The Event needs at least one Screen.
+
+**Against a local preview.** `pnpm preview` in one terminal, an Event with
+Screens on it, then:
+
+```bash
+pnpm probe:realtime http://127.0.0.1:8787 --event <id> \
+  --count 400 --every 100ms --cut output-<Screen id>@10s+5s
+```
+
+**Against Staging.** As a User of Staging's Keepr Accounts with App access to
+Stream Keepr, on the test Event #1318's gates use. Read the password without
+echo, so it is in no shell history:
+
+```bash
+export STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL=<your email>
+read -rs STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD && export STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD
+pnpm probe:realtime https://stream.keepr-staging.digital --event <id> --log probe.jsonl
+unset STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD
+```
+
+| Gate of #1318                      | Run                                                                                                          | Take from the report                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| 1, 2: a browser and OBS as outputs | As above, beside the browser or OBS output, with a cut: `--cut output-<Screen id>@30s+20s`                   | Each client's `heard`, delays, and that nothing was missing, repeated or reordered; the cut's catch-up.  |
+| 6: far from the object             | From the far machine or through the VPN: `--count 20 --every 3s`                                             | p50, p95 and the worst, and from where.                                                                  |
+| 8: the heartbeat over a show       | `--for 8h --every 30s --log gate-8.jsonl`. Ctrl-C ends it early and reports what it has.                     | Each connection lost, with its reason, and every gap.                                                    |
+| 10: the 0.4 s stall                | Any of the runs above                                                                                        | Each `late` line: its publish, both times, and its delay, to set beside the Worker's log at `object`.    |
+
+What the probe's clients hear is what the Event's object delivered and when.
+Whether a browser or OBS drew it is still seen by eye, and so is presence on
+an operator's page.
+
+**It is never run against Production without a person's say.** It runs as
+asked against a server on this machine and against the Staging Installation
+(`deploy.jsonc`). Against Production, or any other origin, it refuses unless
+the run names who said to, `--said-by <person>`, and the report's first line
+then names them.
 
 ## Database
 

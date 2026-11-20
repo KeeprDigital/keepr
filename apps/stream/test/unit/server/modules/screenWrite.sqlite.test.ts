@@ -5,7 +5,7 @@ import type {
 import type { FeatureMatchOverlayModeConfig } from '~~/shared/types/screenConfig';
 import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import {
 	graphicAssetContents,
@@ -688,6 +688,7 @@ describe('updating a Screen', () => {
 
 			expect(cleanedCards).toEqual([]);
 			expect(announced()).toEqual([]);
+			expect(realtime.disconnects).toEqual([]);
 		},
 	);
 
@@ -902,5 +903,53 @@ describe('deleting a Screen', () => {
 		expect(announced()).toEqual([
 			['screen:deleted', { screenId: screen.id, originConnectionId: 'origin-1' }],
 		]);
+	});
+
+	// ADR-0144: by the name the port gives a Screen Output's socket, in the
+	// Event's object, sparing none.
+	it("closes its outputs' realtime sockets", async () => {
+		const screen = await stageScreen();
+
+		await screenWriteModule().deleteScreen({ eventId, screenId: screen.id });
+
+		expect(realtime.disconnects).toEqual([
+			{ scope: `event:${eventId}`, tag: `screen-output:${screen.id}` },
+		]);
+	});
+
+	describe('when the sockets cannot be closed', () => {
+		let logged: ReturnType<typeof vi.spyOn>;
+		beforeEach(() => {
+			logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+		afterEach(() => logged.mockRestore());
+
+		it('asks once more, and says nothing when that closes them', async () => {
+			const screen = await stageScreen();
+			realtime.refuseDisconnect(1);
+
+			await screenWriteModule().deleteScreen({ eventId, screenId: screen.id });
+
+			expect(realtime.disconnects).toHaveLength(2);
+			expect(logged).not.toHaveBeenCalled();
+		});
+
+		// The row is gone either way, so the delete answers and is announced.
+		it('deletes all the same, and logs which Screen may still have outputs connected', async () => {
+			const screen = await stageScreen();
+			realtime.refuseDisconnect();
+
+			const answered = await screenWriteModule().deleteScreen({ eventId, screenId: screen.id });
+
+			expect(answered).toEqual({ success: true });
+			expect(announcedTypes()).toEqual(['screen:deleted']);
+			expect(realtime.disconnects).toHaveLength(2);
+			expect(logged).toHaveBeenCalledTimes(1);
+			expect(JSON.parse(logged.mock.calls[0]![0] as string)).toMatchObject({
+				message: 'screen_output_disconnect_failed',
+				eventId,
+				screenId: screen.id,
+			});
+		});
 	});
 });

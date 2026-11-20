@@ -1,4 +1,4 @@
-import type { Delivery, PublishAnswer } from '@keepr/realtime/object';
+import type { Delivery, DisconnectOptions, PublishAnswer } from '@keepr/realtime/object';
 import { vi } from 'vitest';
 
 /**
@@ -23,6 +23,13 @@ interface PublishedRealtimeMessage {
 interface RealtimePublishCall {
 	scope: string;
 	deliveries: Delivery[];
+}
+
+/** One `disconnect` call, as the object named `scope` was sent it. */
+interface RealtimeDisconnectCall {
+	scope: string;
+	tag: string;
+	options?: DisconnectOptions;
 }
 
 /** What a refused call rejects with, when a test names no error of its own. */
@@ -54,6 +61,8 @@ function createRealtimeObjectFake() {
 	let refusing: { naming: Naming; left: number; error: unknown }[] = [];
 	let held: { naming: Naming; until: Promise<unknown> } | null = null;
 	let asked: { naming: Naming; tell: () => void } | null = null;
+	const disconnects: RealtimeDisconnectCall[] = [];
+	let refusingDisconnects = 0;
 
 	async function publish(scope: string, sent: readonly Delivery[]): Promise<PublishAnswer[]> {
 		// An RPC's arguments cross as a structured clone, or the call is refused.
@@ -102,7 +111,16 @@ function createRealtimeObjectFake() {
 								throw error;
 							}
 						},
-						disconnect: async () => 0,
+						disconnect: async (tag: string, options?: DisconnectOptions) => {
+							if (broken) throw new Error('This stub is broken: a call on it failed');
+							disconnects.push({ scope, tag, ...(options && { options }) });
+							if (refusingDisconnects > 0) {
+								refusingDisconnects -= 1;
+								broken = true;
+								throw new Error(REFUSAL_MESSAGE);
+							}
+							return 0;
+						},
 					};
 				},
 			},
@@ -110,6 +128,12 @@ function createRealtimeObjectFake() {
 		/** Every call made, in order, refused or not. */
 		calls,
 		published,
+		/** Every `disconnect` call made, in order, refused or not. */
+		disconnects,
+		/** Fail the next `times` `disconnect` calls. */
+		refuseDisconnect(times = Number.POSITIVE_INFINITY) {
+			refusingDisconnects = times;
+		},
 		/** What `channel` received, in order. */
 		on: (channel: string) => published.filter((message) => message.channel === channel),
 		/** Fail the next `times` calls that name `naming`, each of them whole, with `error`. */
@@ -133,6 +157,8 @@ function createRealtimeObjectFake() {
 		reset() {
 			calls.length = 0;
 			published.length = 0;
+			disconnects.length = 0;
+			refusingDisconnects = 0;
 			heads.clear();
 			refusing = [];
 			held = null;

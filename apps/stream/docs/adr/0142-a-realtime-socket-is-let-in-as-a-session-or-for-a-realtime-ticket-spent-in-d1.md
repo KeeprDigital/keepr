@@ -1,6 +1,6 @@
 # ADR-0142: A realtime socket is let in as a Session, or for a Realtime Ticket spent in D1
 
-Accepted · 2026-11-19 · [#1315](https://github.com/KeeprDigital/keepr/issues/1315), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310) · Amends ADR-0010 and ADR-0141
+Accepted · 2026-11-19 · [#1315](https://github.com/KeeprDigital/keepr/issues/1315), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310) · Amends ADR-0010 and ADR-0141 · Amended by ADR-0144
 
 ADR-0137 decided who may open a realtime socket: a Session by its cookie, with the upgrade's `Origin` checked as the Session boundary checks a state-changing request, and a Screen Output by a short-lived ticket that admits one socket, given for its Screen Output Asset Capability. #1315's contract fixed the socket's address, each caller's scope and grant, and the ticket's route, lifetime and answers. Neither said where a ticket is kept, what it is bound to, how the `Origin` rule is applied to a GET, what a socket that presents both credentials is, or what happens when a capability's sockets cannot be closed. The ticket and the `Origin` check were not prototyped (ADR-0137).
 
