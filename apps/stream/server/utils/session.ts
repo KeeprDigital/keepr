@@ -30,8 +30,10 @@ export type StreamIdentity = Identity<typeof APP> & { appRole: AppRole<typeof AP
 const REQUEST_IDENTITY_CONTEXT_KEY = 'streamIdentity';
 
 /**
- * The isolate's resolver, which holds the Identity Proofs it has verified. Its
- * own, not the layer's default, so a write's log line can say how each was had.
+ * The isolate's resolver, which holds the Identity Proofs it has verified and
+ * shares them with the Worker's other isolates through its Cache API
+ * (ADR-0150). Its own, not the layer's default, so a write's log line can say
+ * how each was had.
  */
 const resolveIdentity = createIdentityResolver(APP);
 

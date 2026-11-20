@@ -690,7 +690,7 @@ and CPU time:
 | Field                                          | What                                                                                                                         |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `path`, `statusCode`, `totalMs`                | The write, and its time from arriving to answered                                                                            |
-| `identityMs`, `identityProof`                  | Learning who it belongs to, and how: `cached`, `refreshing` (cached, refreshed in the background), or `asked` while it waited |
+| `identityMs`, `identityProof`                  | Learning who it belongs to, and how: `cached` (held by its isolate, or shared by another of the Worker's, ADR-0150), `refreshing` (cached, refreshed in the background), or `asked` while it waited |
 | `d1Ms`, `d1Queries`                            | Its time in D1, and its round trips there                                                                                    |
 | `publishMs`, `publishCalls`, `publishFailures` | Its calls to the Event's object; a second call is the one made once more after a failure                                     |
 | `isolateRequest`                               | Which request of its Worker isolate it was: `1` is an isolate's first, a cold start                                          |
