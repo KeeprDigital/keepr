@@ -22,7 +22,7 @@ With no `main` to measure from, every project is affected. Before this, the root
 
 - **The root checked too much.** A one-line Stream Keepr change ran about three CI-minutes of package tests and two Nuxt builds before its own gates (#1343).
 - **One graph.** CI's scope and the local quick gate now answer "what can this change affect" in one place. A project that is added or rewired is scoped the same way in both.
-- **The triggers reached the whole repository.** This was read from the config in #1343 and confirmed here. With a Keepr Accounts migration as the only change, `vitest list --changed` in Stream Keepr listed all 532 unit files. With the triggers narrowed, it listed none.
+- **The triggers reached the whole repository.** This was read from the config in #1343 and confirmed here. With a Keepr Accounts migration as the only change, `vitest list --changed` in Stream Keepr listed all 532 unit files. With the triggers narrowed, it listed 4 unit files and no Nuxt file. Those 4 are the ones Vitest lists for any change at all, a README edit included.
 - **Packages run whole.** A package's tests take seconds to a minute, and none has a `--changed` gate. A package that wants one adds a `verify:quick` script, and the root runs that instead.
 
 ### Consequences
