@@ -9,10 +9,10 @@ import ts from 'typescript';
  * (`test/unit/server/utils/apiBoundary.test.ts`, `test/unit/server/middleware/apiSession.test.ts`).
  *
  * It was built for a guard that is gone: the realtime integration tests once told a
- * rejected Ably key from a route's own refusal by a list of that route's refusals
- * (`SCREEN_COMMAND_ROUTE_REFUSALS`), which this scan kept exhaustive. Realtime needs
- * no key now (ADR-0143), so the list and its diagnosis went. What follows still says
- * why the scan reads as it does, in that guard's terms.
+ * realtime provider's refusal of its key from a route's own refusal by a list of that
+ * route's refusals (`SCREEN_COMMAND_ROUTE_REFUSALS`), which this scan kept exhaustive.
+ * Realtime needs no key now (ADR-0143), so the list and its diagnosis went. What follows
+ * still says why the scan reads as it does, in that guard's terms.
  *
  * The guarantee this owes its caller is narrow and worth stating exactly: **every
  * `createError` call it finds produces exactly one entry, whether or not it could read
@@ -453,7 +453,7 @@ function resolveModule(
 	} else if (specifier.startsWith('.')) {
 		base = resolve(dirname(fromFile), specifier);
 	} else {
-		// A bare or virtual specifier (`h3`, `ably`, `drizzle-orm`, `#imports`) is not the
+		// A bare or virtual specifier (`h3`, `drizzle-orm`, `#imports`) is not the
 		// route's own code. A refusal from a dependency is not one this repository can
 		// list or rename.
 		return undefined;
@@ -537,7 +537,7 @@ function scanModule(file: string): ScannedModule {
  *
  * **When that false alarm arrives, narrow the scan — never widen the refusal list.**
  * Adding an uncalled module's message to `SCREEN_COMMAND_ROUTE_REFUSALS` would silence it
- * by teaching the diagnosis to excuse that message at that status, so a genuine Ably 403
+ * by teaching the diagnosis to excuse that message at that status, so a genuine provider 403
  * whose body echoed it would go unremarked. That is precisely the hole #268 closed. The
  * fixes that stay honest are call-reachability or excluding a subtree.
  *
@@ -630,7 +630,7 @@ function isDomainLayer(file: string): boolean {
  * path this route is not on". The boundary refuses `/api/**` without a session, and this
  * route is inside it: an unauthenticated request to the Screen-command path really is
  * answered 401, so a run whose session lapsed must read as a missing cookie rather than
- * as a fabricated Ably key. ADR-0010 pre-authorised exactly that addition, and
+ * as a fabricated provider key. ADR-0010 pre-authorised exactly that addition, and
  * `SCREEN_COMMAND_ROUTE_REFUSALS` carries the argument at the entry. What stays
  * forbidden is the other thing: silencing a refusal the route **cannot** answer by
  * teaching the diagnosis to excuse its message, which is #268's hole.

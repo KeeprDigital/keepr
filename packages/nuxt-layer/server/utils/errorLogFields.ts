@@ -10,18 +10,17 @@ export interface LoggedNitroError {
  * A provider's own identifier for a refusal, as a log line may carry it.
  *
  * Both types, because both arrive. Node's convention is a string ('ENOENT'), and
- * the guard this replaces accepted only those — but Ably's `ErrorInfo.code` is a
- * number, 40400 for a key whose application does not exist, so the one field that
- * could name a provider refusal logged `null` for exactly the failure it exists
- * to name (#264). A rejected key then spent an outbound request per Screen
- * mutation with nothing in the log to say why.
+ * the guard this replaces accepted only those — but a provider may name its
+ * refusal by number (R2's errors do, and `RealtimePublishError` carries one), so
+ * a string-only guard logged `null` for exactly the failure the field exists to
+ * name (#264).
  *
- * Finiteness mirrors the guard #253 put on the same value in the publish log: the
- * Ably transport derives `Number(headers['x-ably-errorcode'])` and hands over
- * `NaN` for a response carrying no Ably error body. `JSON.stringify` would render
- * that as null anyway; the check is what makes the declared type true of the
- * value rather than true of one serialisation. Nothing is coerced — a code that
- * is neither a string nor a number is absent, not `Number(code)`.
+ * Finiteness mirrors the guard #253 put on the same value in the publish log: a
+ * code a thrower built with `Number(…)` from something absent is `NaN`, which is
+ * no identifier. `JSON.stringify` would render that as null anyway; the check is
+ * what makes the declared type true of the value rather than true of one
+ * serialisation. Nothing is coerced — a code that is neither a string nor a
+ * number is absent, not `Number(code)`.
  */
 function errorCodeOf(code: unknown): string | number | null {
 	if (typeof code === 'string') return code;

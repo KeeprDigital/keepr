@@ -14,7 +14,7 @@ const DESCRIPTOR = {
 		config: '.output/server/wrangler.json',
 		// The build names production's Worker; staging's env block names it itself.
 		name: 'stream',
-		secrets: ['AUTH_SECRET', 'SCREEN_KEY', 'MELEE_KEY', 'ABLY_KEY'],
+		secrets: ['AUTH_SECRET', 'SCREEN_KEY', 'MELEE_KEY', 'ISSUED_KEY'],
 	},
 	databases: [],
 	environments: {
@@ -54,7 +54,7 @@ const SECRETS_MAP = {
 const VALUES = {
 	AUTH_SECRET: 'auth-value-1',
 	SCREEN_KEY: 'screen-value-2',
-	ABLY_KEY: 'ably-value-3',
+	ISSUED_KEY: 'issued-value-3',
 	CLOUDFLARE_API_TOKEN: 'cf-value-4',
 	OPERATOR_PASSWORD: 'multi\nline-value-5',
 	KEEPR_RELEASE_APP_ID: 'app-id-value-6',
@@ -68,14 +68,14 @@ const VAULTS: FakeState['vaults'] = {
 			AUTH_SECRET: VALUES.AUTH_SECRET,
 			SCREEN_KEY: VALUES.SCREEN_KEY,
 			MELEE_KEY: '',
-			ABLY_KEY: VALUES.ABLY_KEY,
+			ISSUED_KEY: VALUES.ISSUED_KEY,
 			CARD_KEY: '',
 		},
 		'stream-production': {
 			AUTH_SECRET: VALUES.AUTH_SECRET,
 			SCREEN_KEY: VALUES.SCREEN_KEY,
 			MELEE_KEY: '',
-			ABLY_KEY: VALUES.ABLY_KEY,
+			ISSUED_KEY: VALUES.ISSUED_KEY,
 			CARD_KEY: '',
 		},
 		'github-staging': {
@@ -134,7 +134,7 @@ describe('pnpm secrets:sync', () => {
 					stream: {
 						AUTH_SECRET: VALUES.AUTH_SECRET,
 						SCREEN_KEY: VALUES.SCREEN_KEY,
-						ABLY_KEY: VALUES.ABLY_KEY,
+						ISSUED_KEY: VALUES.ISSUED_KEY,
 					},
 				});
 				expect(lines.join('\n')).toMatch(/Not recorded in 1Password.*MELEE_KEY/);
@@ -158,7 +158,7 @@ describe('pnpm secrets:sync', () => {
 			});
 			const said = lines.join('\n');
 			expect(said).toMatch(
-				/Missing on Worker stream.*: SCREEN_KEY at .*, MELEE_KEY at .*, ABLY_KEY at .*, CARD_KEY \(optional\)/,
+				/Missing on Worker stream.*: SCREEN_KEY at .*, MELEE_KEY at .*, ISSUED_KEY at .*, CARD_KEY \(optional\)/,
 			);
 			expect(said).toMatch(/Not recorded in 1Password.*MELEE_KEY/);
 			expect(said).toMatch(/not in the secrets map: ADMIN_BOOTSTRAP_TOKEN/);
@@ -173,7 +173,7 @@ describe('pnpm secrets:sync', () => {
 			Object.assign(vaults.Keepr!['stream-staging']!, recorded);
 			const { sync } = setUp({
 				vaults,
-				workers: { stream: { AUTH_SECRET: 'a', SCREEN_KEY: 'b', MELEE_KEY: 'c', ABLY_KEY: 'd' } },
+				workers: { stream: { AUTH_SECRET: 'a', SCREEN_KEY: 'b', MELEE_KEY: 'c', ISSUED_KEY: 'd' } },
 			});
 
 			expect(sync({ target: { app: 'stream', environment: 'staging' }, check: true }).ok).toBe(ok);
@@ -296,8 +296,8 @@ describe('pnpm secrets:sync', () => {
 			],
 			[
 				'a secret its provider issues',
-				{ target: STAGING, generate: ['ABLY_KEY'] },
-				/ABLY_KEY is issued by its provider/,
+				{ target: STAGING, generate: ['ISSUED_KEY'] },
+				/ISSUED_KEY is issued by its provider/,
 			],
 			[
 				'a name the Installation does not have',
@@ -422,7 +422,7 @@ describe('pnpm secrets:sync', () => {
 		it.each([
 			['a sync that set everything', ['--github', 'staging'], 0],
 			['a check that finds a gap', ['--app', 'stream', '--env', 'staging', '--check'], 1],
-			['a refusal', ['--app', 'stream', '--env', 'staging', '--generate', 'ABLY_KEY'], 1],
+			['a refusal', ['--app', 'stream', '--env', 'staging', '--generate', 'ISSUED_KEY'], 1],
 		])('exits as %s does, from anywhere in the checkout', (_case, args, status) => {
 			const { root, env } = setUp();
 

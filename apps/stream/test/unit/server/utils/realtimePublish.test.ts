@@ -7,7 +7,7 @@ import {
 	setWorkerBindings,
 } from '~~/test/helpers/realtimeObjectFake';
 import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
-import { ErrorInfoShaped } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
+import { CodedProviderError } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
 
 /** The failure line, selected by its own `message`: the size diagnostic logs beside it. */
 function isPublishFailureLine(call: unknown[]): boolean {
@@ -221,7 +221,7 @@ describe('failed realtime publishes', () => {
 	});
 
 	it('names the status and code of a failure that carries them', async () => {
-		realtime.refuse('event:7', 2, new ErrorInfoShaped('No application found', 40400, 404));
+		realtime.refuse('event:7', 2, new CodedProviderError('No application found', 40400, 404));
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { publishMessage } = await import('~~/server/utils/realtimePublish');
 
@@ -288,7 +288,7 @@ describe('failed realtime publishes', () => {
 	it('keeps whatever else a failure carries out of the log', async () => {
 		// The fields are chosen, not copied: anything else on the error can retain
 		// request context, and none of it is named.
-		const withMetadata = new ErrorInfoShaped('No application found', 40400, 404);
+		const withMetadata = new CodedProviderError('No application found', 40400, 404);
 		withMetadata.href = 'https://help.example/error/40400';
 		withMetadata.detail = { key: 'appId.keyId:secret-that-must-not-be-logged' };
 		realtime.refuse('event:7', 2, withMetadata);
@@ -531,7 +531,7 @@ describe('publishScreenCommand', () => {
 	// with a status of its own that h3 would adopt as the route's answer (#264).
 	describe('when the publish fails', () => {
 		it("propagates a named server-side failure instead of the failure's own status", async () => {
-			realtime.refuse('screen:1:10', 2, new ErrorInfoShaped('No application found', 40400, 404));
+			realtime.refuse('screen:1:10', 2, new CodedProviderError('No application found', 40400, 404));
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
 			const { REALTIME_PUBLISH_FAILED_MESSAGE, RealtimePublishError } =
@@ -549,7 +549,7 @@ describe('publishScreenCommand', () => {
 		});
 
 		it("carries the failure's numeric code, when it has one, for the request's log line", async () => {
-			realtime.refuse('screen:1:10', 2, new ErrorInfoShaped('No application found', 40400, 404));
+			realtime.refuse('screen:1:10', 2, new CodedProviderError('No application found', 40400, 404));
 			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
 

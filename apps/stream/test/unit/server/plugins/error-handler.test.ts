@@ -16,7 +16,7 @@ import {
 	RealtimePublishError,
 } from '~~/server/utils/realtimePublishFailure';
 import { STATE_CONFLICT_CODE } from '@keepr/nuxt-layer/shared/utils/stateConflict';
-import { ErrorInfoShaped, providerRefusal } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
+import { CodedProviderError, providerRefusal } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
 
 describe('error-handler mapping logic', () => {
 	it('maps Broadcast Deck provider outages to a stable retryable API failure', () => {
@@ -74,10 +74,9 @@ describe('error-handler mapping logic', () => {
 		}
 
 		it('carries a provider code that arrives as a number', () => {
-			// #264, the whole of it: Ably's `ErrorInfo.code` is 40400, a number, and
-			// the string-only guard this replaces logged `null` for precisely the
-			// failure the field exists to name. A rejected key then spent an outbound
-			// request per Screen mutation with nothing in the log to say why.
+			// #264: a provider may name its refusal by number (R2 does), and a
+			// string-only guard logged `null` for precisely the failure the field
+			// exists to name.
 			expect(
 				errorLogFields(
 					failed({
@@ -86,7 +85,7 @@ describe('error-handler mapping logic', () => {
 					'/api/events/1',
 				),
 			).toMatchObject({
-				// A genuine `ErrorInfo` never assigns `name`, so the sibling field
+				// A provider's class need not assign `name`, so the sibling field
 				// reports the inherited 'Error' and identifies nothing. The code is the
 				// only thing in the line that can name the refusal.
 				errorName: 'Error',
@@ -107,13 +106,13 @@ describe('error-handler mapping logic', () => {
 		});
 
 		it('reports a NaN code as absent rather than as a number', () => {
-			// The Ably transport builds `Number(headers['x-ably-errorcode'])` for a
-			// response carrying no Ably error body, so NaN is a shape that reaches
-			// here. #253 guards the same value the same way in the publish log.
+			// A code built with `Number(…)` from something absent is NaN, which no
+			// one can look up. #253 guards the same value the same way in the
+			// publish log.
 			expect(
 				errorLogFields(
 					failed({
-						cause: new ErrorInfoShaped('', Number.NaN, 502),
+						cause: new CodedProviderError('', Number.NaN, 502),
 					}),
 					'/api/events/1',
 				),
@@ -121,7 +120,7 @@ describe('error-handler mapping logic', () => {
 			expect(
 				errorLogFields(
 					failed({
-						cause: new ErrorInfoShaped('', Number.POSITIVE_INFINITY, 502),
+						cause: new CodedProviderError('', Number.POSITIVE_INFINITY, 502),
 					}),
 					'/api/events/1',
 				),
