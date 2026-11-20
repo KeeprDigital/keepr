@@ -9,6 +9,7 @@ import {
 	requireAppAccess,
 	resolveRequestIdentity,
 } from '@keepr/nuxt-layer/server/utils/requestIdentity';
+import { discardRetiredSignInCookie } from './retiredSignInCookie';
 
 /**
  * Who a request belongs to, as Stream Keepr reads it: from an Identity Proof
@@ -55,6 +56,8 @@ export async function requestIdentity(event: H3Event): Promise<StreamIdentity | 
 }
 
 async function readIdentity(event: H3Event): Promise<StreamIdentity | null> {
+	// Before Keepr Accounts is asked: it reads the first session cookie it is sent.
+	discardRetiredSignInCookie(event);
 	let identity: Identity<typeof APP>;
 	try {
 		identity = await resolveRequestIdentity(event, APP);

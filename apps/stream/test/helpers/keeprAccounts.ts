@@ -30,6 +30,8 @@ export interface KeeprAccountsBinding {
 	fetch: (input: string, init?: RequestInit) => Promise<Response>;
 	/** Each path Keepr Accounts was asked, in order: empty while nobody asked who a request belongs to. */
 	asked: string[];
+	/** The `Cookie` header each of those questions carried, in the same order. */
+	askedWith: (string | null)[];
 	/** The User ids each question about names asked of, in order. */
 	askedToName: string[][];
 	/**
@@ -43,13 +45,16 @@ export interface KeeprAccountsBinding {
 export function keeprAccountsBinding(): KeeprAccountsBinding {
 	const standIn = createAccountsStandIn();
 	const asked: string[] = [];
+	const askedWith: (string | null)[] = [];
 	const askedToName: string[][] = [];
 	return {
 		asked,
+		askedWith,
 		askedToName,
 		async fetch(input, init) {
 			const address = new URL(input);
 			asked.push(address.pathname);
+			askedWith.push(new Headers(init?.headers).get('cookie'));
 			if (address.pathname === USER_NAMES_PATH) askedToName.push(askedUserIds(address));
 			return await standIn.fetch(new Request(input, init));
 		},

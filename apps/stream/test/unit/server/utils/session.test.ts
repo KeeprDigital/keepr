@@ -57,6 +57,20 @@ describe('requestIdentity', () => {
 		});
 	});
 
+	// ADR-0141: Keepr Accounts reads the first session cookie it is sent, so the
+	// one Stream Keepr's former sign-in left is out of the request before it is asked.
+	it("asks Keepr Accounts without the cookie of Stream Keepr's former sign-in", async () => {
+		const name = '__Secure-better-auth.session_token';
+		const event = request(A_MEMBER);
+		event.node.req.headers.cookie = `${name}=retired; ${event.node.req.headers.cookie}; ${name}=accounts`;
+		accounts.askedWith.length = 0;
+
+		await requestIdentity(event);
+
+		expect(accounts.askedWith[0]).not.toContain(`${name}=retired`);
+		expect(accounts.askedWith[0]).toContain(`${name}=accounts`);
+	});
+
 	it('answers nobody for a signed-out visitor, leaving the refusal to its caller', async () => {
 		expect(await requestIdentity(request(SIGNED_OUT))).toBeNull();
 	});
