@@ -6,6 +6,7 @@ import {
 	REFUSAL_MESSAGE,
 	setWorkerBindings,
 } from '~~/test/helpers/realtimeObjectFake';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 import { CodedProviderError } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
 
@@ -507,6 +508,29 @@ describe('publishScreenCommand', () => {
 				],
 			},
 		]);
+	});
+
+	// A late command's log line says how long its calls to the object took (#1363).
+	it("times each call to its Event's object as its write's, the one made once more included", async () => {
+		const { beginWriteTiming, writeTimingOf } = await import('~~/server/utils/writeTiming');
+		const command = stubH3Event({ method: 'POST', context: {} });
+		beginWriteTiming(command);
+		vi.stubGlobal('useEvent', () => command);
+		realtime.refuse('screen:1:10', 1);
+		const { publishScreenCommand } = await import('~~/server/utils/realtimePublish');
+
+		try {
+			await publishScreenCommand(1, 10, { command: 'identify' });
+		} finally {
+			Reflect.deleteProperty(globalThis, 'useEvent');
+		}
+
+		expect(
+			writeTimingOf(command)!.fields({ method: 'POST', path: '/', statusCode: 200 }),
+		).toMatchObject({
+			publishCalls: 2,
+			publishFailures: 1,
+		});
 	});
 
 	// `false` as well as `true`: a state dropped on the way would read as hidden.

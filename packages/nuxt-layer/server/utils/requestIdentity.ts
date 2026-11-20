@@ -29,9 +29,19 @@ export interface AccountsConnection {
 	fetch: (input: string, init?: RequestInit) => Promise<Response>;
 }
 
+/**
+ * How a signed-in answer's Identity Proof was had: one the resolver held
+ * (`cached`), one it held and began refreshing in the background with this
+ * answer (`refreshing`), or a fresh one Keepr Accounts was asked for while the
+ * request waited (`asked`). Only `asked` costs the request a call to Keepr
+ * Accounts, and a resolver's first also fetches its keys. An App's log names it
+ * where a request's time matters (#1363).
+ */
+export type IdentityProofSource = 'cached' | 'refreshing' | 'asked';
+
 /** What Keepr Accounts said about one request, and the cookies to pass to the browser. */
 export type IdentityAnswer<App extends AppId> =
-	| { kind: 'signed-in'; identity: Identity<App>; setCookie: string[] }
+	| { kind: 'signed-in'; identity: Identity<App>; setCookie: string[]; proof: IdentityProofSource }
 	| { kind: 'signed-out'; setCookie: string[] }
 	/** No Identity Proof this App can trust, and no answer that says why: refused. */
 	| { kind: 'unavailable'; reason: string; setCookie: string[] };
@@ -150,7 +160,7 @@ export function createIdentityResolver<App extends AppId>(
 		}
 		if (verified.kind === 'refused') return unavailable(verified.reason, setCookie);
 		return {
-			answer: { kind: 'signed-in', identity: verified.identity, setCookie },
+			answer: { kind: 'signed-in', identity: verified.identity, setCookie, proof: 'asked' },
 			cached: {
 				identity: verified.identity,
 				expiresAt: verified.expiresAt,
@@ -194,14 +204,20 @@ export function createIdentityResolver<App extends AppId>(
 		const now = Date.now();
 		const proof = proofs.get(cookie);
 		if (proof && now < proof.expiresAt) {
-			if (now >= proof.refreshAfter && !proof.refreshing) {
+			const refreshes = now >= proof.refreshAfter && !proof.refreshing;
+			if (refreshes) {
 				proof.refreshing = true;
 				const refreshed = refresh(accounts, cookie, proof);
 				if (waitUntil) waitUntil(refreshed);
 			}
 			const setCookie = proof.renewedCookies;
 			proof.renewedCookies = [];
-			return { kind: 'signed-in', identity: proof.identity, setCookie };
+			return {
+				kind: 'signed-in',
+				identity: proof.identity,
+				setCookie,
+				proof: refreshes ? 'refreshing' : 'cached',
+			};
 		}
 		proofs.delete(cookie);
 		const { answer, cached } = await ask(accounts, cookie);

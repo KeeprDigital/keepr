@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beginWriteTiming, logWriteTiming, writeTimingOf } from '~~/server/utils/writeTiming';
 import {
 	A_MEMBER,
 	AN_OUTSIDER,
@@ -162,5 +163,32 @@ describe('the identities a route asks for', () => {
 
 	it('refuse while Keepr Accounts cannot be reached, 503', async () => {
 		expect(await statusOf(requireUserId(request({ user: 'cut-off-too' }, UNREACHABLE)))).toBe(503);
+	});
+});
+
+// A late write's log line says whether it waited on Keepr Accounts for an
+// Identity Proof (#1363); which answer is which is the layer's rule.
+describe("a write's log line", () => {
+	it('times reading who it belongs to, and says whether Keepr Accounts was asked', async () => {
+		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+		const as: Asker = { user: 'lin', name: 'Lin', apps: { stream: 'member' } };
+
+		for (const _write of ['first', 'second']) {
+			const event = workerRequest({
+				as,
+				method: 'POST',
+				path: '/api/events/3/screens/7/command',
+				env: { KEEPR_ACCOUNTS: accounts },
+			});
+			beginWriteTiming(event);
+			await requestIdentity(event);
+			await writeTimingOf(event)!.time('publish', async () => {});
+			logWriteTiming(event);
+		}
+
+		expect(log.mock.calls.map(([line]) => line)).toMatchObject([
+			{ identityProof: 'asked', identityMs: expect.any(Number) },
+			{ identityProof: 'cached', identityMs: expect.any(Number) },
+		]);
 	});
 });

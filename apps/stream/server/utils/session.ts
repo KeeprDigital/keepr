@@ -6,10 +6,12 @@ import {
 	TemporarilyUnavailableError,
 } from '@keepr/nuxt-layer/server/utils/errors';
 import {
+	createIdentityResolver,
 	requireAppAccess,
 	resolveRequestIdentity,
 } from '@keepr/nuxt-layer/server/utils/requestIdentity';
 import { discardRetiredSignInCookie } from './retiredSignInCookie';
+import { writeTimingOf } from './writeTiming';
 
 /**
  * Who a request belongs to, as Stream Keepr reads it: from an Identity Proof
@@ -26,6 +28,12 @@ export type StreamIdentity = Identity<typeof APP> & { appRole: AppRole<typeof AP
 
 /** Where a request keeps the answer it has already been given, for as long as the request lives. */
 const REQUEST_IDENTITY_CONTEXT_KEY = 'streamIdentity';
+
+/**
+ * The isolate's resolver, which holds the Identity Proofs it has verified. Its
+ * own, not the layer's default, so a write's log line can say how each was had.
+ */
+const resolveIdentity = createIdentityResolver(APP);
 
 /** The status the layer refuses a signed-out visitor with. */
 const SIGNED_OUT_STATUS = 401;
@@ -50,7 +58,8 @@ export async function requestIdentity(event: H3Event): Promise<StreamIdentity | 
 		| undefined;
 	if (asked) return await asked;
 
-	const asking = readIdentity(event);
+	const timing = writeTimingOf(event);
+	const asking = timing ? timing.time('identity', () => readIdentity(event)) : readIdentity(event);
 	event.context[REQUEST_IDENTITY_CONTEXT_KEY] = asking;
 	return await asking;
 }
@@ -60,7 +69,11 @@ async function readIdentity(event: H3Event): Promise<StreamIdentity | null> {
 	discardRetiredSignInCookie(event);
 	let identity: Identity<typeof APP>;
 	try {
-		identity = await resolveRequestIdentity(event, APP);
+		identity = await resolveRequestIdentity(event, APP, async (question) => {
+			const answer = await resolveIdentity(question);
+			if (answer.kind === 'signed-in') writeTimingOf(event)?.identityProof(answer.proof);
+			return answer;
+		});
 	} catch (refusal) {
 		if ((refusal as { statusCode?: unknown }).statusCode === SIGNED_OUT_STATUS) return null;
 		throw refusal;

@@ -233,6 +233,25 @@ describe('a cached Identity Proof', () => {
 		expect((await resolve({ cookie, accounts: connection, waitUntil })).kind).toBe('signed-in');
 	});
 
+	// An App's log names which, as the one of them that keeps a request waiting on Keepr Accounts.
+	it.each([
+		['asked, with none held', null, 'asked'],
+		['cached, before half its life', 2 * MINUTE_MS, 'cached'],
+		['refreshing, once half its life has passed', 3 * MINUTE_MS, 'refreshing'],
+		['asked, once it has expired', 5 * MINUTE_MS + 1000, 'asked'],
+	] as const)('says the answer was %s', async (_case, heldFor, proof) => {
+		const resolve = createIdentityResolver('stream');
+		if (heldFor !== null) {
+			await resolve({ cookie, accounts: connection, waitUntil });
+			later(heldFor);
+		}
+
+		const answer = await resolve({ cookie, accounts: connection, waitUntil });
+		await Promise.all(pending);
+
+		expect(answer).toMatchObject({ kind: 'signed-in', proof });
+	});
+
 	it.each([
 		['is still accepted while Keepr Accounts is unreachable', 4 * MINUTE_MS, 'signed-in'],
 		['is refused once expired with no answer', 5 * MINUTE_MS + 1000, 'unavailable'],

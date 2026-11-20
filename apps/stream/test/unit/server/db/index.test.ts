@@ -5,10 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * first use rather than at import, and a missing one fails at the use.
  */
 
-/** Enough of a D1 binding for Drizzle to wrap; nothing here runs a query. */
+/** Enough of a D1 binding for Drizzle to wrap, whose every statement answers `answered`. */
 function binding(): D1Database {
+	const statement = { first: async () => 'answered' };
 	return {
-		prepare: vi.fn(),
+		prepare: vi.fn(() => statement),
 		batch: vi.fn(),
 		exec: vi.fn(),
 		dump: vi.fn(),
@@ -41,11 +42,11 @@ describe('the database client', () => {
 		expect(() => db.$client).toThrowError('DB binding not found');
 	});
 
-	it("wraps the Worker's DB binding", async () => {
-		const database = binding();
-		(globalThis as { __env__?: unknown }).__env__ = { DB: database };
+	// Through the write timing's wrapper (`server/db/timedD1.ts`), which answers what D1 answered.
+	it("runs its statements on the Worker's DB binding", async () => {
+		(globalThis as { __env__?: unknown }).__env__ = { DB: binding() };
 		const { db } = await freshModule();
 
-		expect(db.$client).toBe(database);
+		await expect(db.$client.prepare('select 1').first()).resolves.toBe('answered');
 	});
 });

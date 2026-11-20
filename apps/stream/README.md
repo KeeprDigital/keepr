@@ -667,6 +667,29 @@ unset STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD
 | 8: the heartbeat over a show       | `--for 8h --every 30s --log gate-8.jsonl`. Ctrl-C ends it early and reports what it has.                     | Each connection lost, with its reason, and every gap.                                                    |
 | 10: the 0.4 s stall                | Any of the runs above                                                                                        | Each `late` line: its publish, both times, and its delay, to set beside the Worker's log at `object`.    |
 
+**Where a late write's time went.** Each write that calls its Event's object
+logs one line, `realtime_write_timed` (`server/utils/writeTiming.ts`, #1363),
+which `wrangler tail` shows inside that request's own event, beside its wall
+and CPU time:
+
+| Field                                          | What                                                                                                                         |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `path`, `statusCode`, `totalMs`                | The write, and its time from arriving to answered                                                                            |
+| `identityMs`, `identityProof`                  | Learning who it belongs to, and how: `cached`, `refreshing` (cached, refreshed in the background), or `asked` while it waited |
+| `d1Ms`, `d1Queries`                            | Its time in D1, and its round trips there                                                                                    |
+| `publishMs`, `publishCalls`, `publishFailures` | Its calls to the Event's object; a second call is the one made once more after a failure                                     |
+| `isolateRequest`                               | Which request of its Worker isolate it was: `1` is an isolate's first, a cold start                                          |
+
+A step's time is the sum of its calls. What no step accounts for is the
+Worker's own computing, which its CPU time shows. To match a probe's `late`
+line, tail Staging's Worker beside the run, from this directory, and keep
+the lines whose `totalMs` is over the mark:
+
+```bash
+pnpm exec wrangler tail --env staging --format json \
+  | jq -c '.logs[]?.message[]? | select(.message? == "realtime_write_timed" and .totalMs > 300)'
+```
+
 What the probe's clients hear is what the Event's object delivered and when.
 Whether a browser or OBS drew it is still seen by eye, and so is presence on
 an operator's page.
