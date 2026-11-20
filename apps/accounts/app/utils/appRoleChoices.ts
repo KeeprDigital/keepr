@@ -1,5 +1,7 @@
 import type { AppId } from '@keepr/nuxt-layer/shared/utils/appRegistry';
+import type { OrganisationRole } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { APP_IDS, APP_REGISTRY } from '@keepr/nuxt-layer/shared/utils/appRegistry';
+import { ORGANISATION_ROLES } from '@keepr/nuxt-layer/shared/utils/identityProof';
 
 /** The choice of no App access, beside each App role. */
 export const NO_ACCESS = 'none';
@@ -24,9 +26,14 @@ export function chosenAppRoles(choices: Record<AppId, string>): Partial<Record<A
 	return Object.fromEntries(Object.entries(choices).filter(([, role]) => role !== NO_ACCESS));
 }
 
+const ORGANISATION_ROLE_LABELS: Record<OrganisationRole, string> = {
+	member: 'Member',
+	admin: 'Admin',
+	owner: 'Owner',
+};
+
 /** The Organisation roles, lowest first. */
-export const ORGANISATION_ROLE_CHOICES = [
-	{ label: 'Member', value: 'member' },
-	{ label: 'Admin', value: 'admin' },
-	{ label: 'Owner', value: 'owner' },
-];
+export const ORGANISATION_ROLE_CHOICES = ORGANISATION_ROLES.map((role) => ({
+	label: ORGANISATION_ROLE_LABELS[role],
+	value: role,
+}));

@@ -4,6 +4,7 @@ import type { AppRoles } from './appAccess';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { schema } from '~~/server/db';
 import { isAppId, isAppRole } from '@keepr/nuxt-layer/shared/utils/appRegistry';
+import { isOrganisationRole } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { APP_ROLE_NOT_IN_REGISTRY } from './appAccess';
 import { recordAudit } from './auditRecord';
 import { requireRecentSignIn } from './recentSignIn';
@@ -193,9 +194,6 @@ export async function setAppAccess(
 	});
 }
 
-/** The Organisation roles, as the organisation add-on names them. */
-export const ORGANISATION_ROLES: readonly string[] = ['owner', 'admin', 'member'];
-
 export const ownerRequired = () =>
 	new KeeprRefusal(403, 'OWNER_REQUIRED', 'Only an owner of this Organisation can do this.');
 const lastOwner = () =>
@@ -226,7 +224,7 @@ export async function changeOrganisationRole(
 	const { standing } = await managingChange(database, actor, organizationId);
 	if (standing === 'admin') throw ownerRequired();
 	const target = await memberOf(database, organizationId, memberId);
-	if (!ORGANISATION_ROLES.includes(role))
+	if (!isOrganisationRole(role))
 		throw new KeeprRefusal(400, 'ORGANISATION_ROLE_NOT_KNOWN', `No Organisation role is ${role}.`);
 	const [changed] = await database
 		.update(schema.member)
