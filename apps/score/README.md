@@ -33,11 +33,18 @@ In this directory:
 ```
 pnpm dev          # the placeholder, on Nuxt's dev server
 pnpm typecheck
-pnpm test         # one page test, in the Nuxt environment
+pnpm test         # both suites below
 pnpm build        # the Worker bundle; nothing deploys it yet
 pnpm verify       # the three above, as CI's `Score Keepr` job runs them
 pnpm verify:quick # the typecheck, and the tests whose imports reach what the branch changes
 ```
+
+The tests take the layer's shared settings (`packages/nuxt-layer/vitest.shared.ts`), in two suites:
+
+| Suite | Config | Tests |
+|---|---|---|
+| `test/unit` | `vitest.config.ts`, plain Node | `/api/time` answers the server clock; `/api/release` answers the Release its runtime config records. |
+| `test/nuxt` | `vitest.nuxt.config.ts`, in a Nuxt app | The placeholder page names each engine and the version it reports. |
 
 It extends `packages/nuxt-layer`: the Nuxt shell, and the server, client and test foundation it shares with Stream Keepr. It adds only its own, and it has no sign-in, no database and no deployment.
 
@@ -58,7 +65,7 @@ In one package's directory:
 
 ```
 pnpm test                 # vitest run
-pnpm test -u              # re-record scenario answers after an intended change
+pnpm test -u              # record a new scenario's answer, or re-record after an intended change
 pnpm typecheck
 pnpm bench:check              # packages/pairing: its speed targets
 pnpm bench 10001 15 --check   # packages/pairing: time a simulated event

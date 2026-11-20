@@ -9,8 +9,10 @@
 		".": "./src/index.ts"
 	},
 	"scripts": {
-		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p test/tsconfig.json",
-		"test": "vitest run"
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p test/tsconfig.json && tsc --noEmit -p bench/tsconfig.json",
+		"test": "vitest run",
+		"bench": "node bench/speed.ts",
+		"bench:check": "node bench/speed.ts 20001 15 --check"
 	},
 	"dependencies": {
 		"@keepr/engine-core": "workspace:*"

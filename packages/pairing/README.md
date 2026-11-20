@@ -53,7 +53,7 @@ What the Consumer must do around these calls is in `apps/score/RULES.md`.
 
 ## Scale
 
-The targets are 10,000 Entrants in 2 s and 20,000 in 10 s per round, on one thread. CI's `Packages: Engines` job runs its `bench:check`: a simulated event of 15 rounds at 10,001 and at 20,001 Entrants, failing if a round is over target or not proven best. Where exactness and speed conflict, exactness wins and the target loosens (ADR-0099).
+The targets are 10,000 Entrants in 2 s and 20,000 in 10 s per round, on one thread. CI's `Packages: Engines` job runs its `bench:check`: a simulated event of 15 rounds at 10,001 and at 20,001 Entrants, and one round of 2,001 Entrants in two equal clubs kept apart, failing if a round is over target or not proven best. Where exactness and speed conflict, exactness wins and the target loosens (ADR-0099).
 
 Measured on Apple M4, Node 26, one thread, the whole call including input checks, a simulated event with drops, Starting Configuration:
 
@@ -66,6 +66,17 @@ Measured on Apple M4, Node 26, one thread, the whole call including input checks
 
 Every round was proven best. Ten other Configurations, one round each at 2,001, 6,001 and 20,001 Entrants, were all proven best and none took over 1.0 s; the slowest were `pair-adjacent-by-rank` with an odd count and no Bye rule, `prefer-same-group-label` over four regions mid-event, and a Pair-down choice by Rank.
 
+Some shapes of field are far slower, and are not yet within the targets. `bench/configurations.ts` times one round of each, all Scores level unless stated, measured on the same M4 while other work shared it:
+
+| Shape | 2,001 | 6,001 | 10,001 |
+|---|---|---|---|
+| `avoid-same-group-label` first, two equal clubs | 0.4 s | 4 s | 10 to 18 s |
+| `avoid-same-group-label` first, one club holding 70% | 2.2 s | | 33 to 40 s |
+| `keep-top-clean` first, about 300 Scores | 12 s | | |
+| `keep-top-clean` first, every Score distinct | not proven | | not proven, 166 s |
+
+Both club shapes spend their time in the matcher itself, which grows a tree across most of the field for each Entrant the greedy start leaves unpaired. With `keep-top-clean` first, a Pair-down costs the same however far down it reaches, so the proof step finds Pairings that could improve the result across every pair of Score Groups, and the field is solved again after each batch until the work ceiling ends the call.
+
 The built-in work ceiling (`RULES.md` § Limits today) only stops a fault from hanging a call: whole events of up to 20,001 Entrants use under a twentieth of it. A Consumer that needs a bound in time runs the engine in a worker and ends it.
 
 Not yet shown: speed on a mid-range laptop or in a browser. The M4 is faster than the target machine.
@@ -76,8 +87,9 @@ In this directory:
 
 ```
 pnpm test                       # vitest run
-pnpm test -u                    # re-record scenario answers after an intended change
+pnpm test -u                    # record a new scenario's answer, or re-record after an intended change
 pnpm typecheck
 pnpm bench:check                # the speed targets: 15 rounds at 10,001 and 20,001 Entrants
 pnpm bench 10001 15 --check     # time a simulated event of <entrants> <rounds>
+pnpm bench:configurations 2001  # time one round of each slow shape of field, at <entrants>
 ```

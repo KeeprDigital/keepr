@@ -111,17 +111,22 @@ export function solveByMatching(
 		if (verifyMatching(graph, solution) !== undefined) return undefined;
 		if (complete) return matesOf(solution, n, BYE);
 
+		// Every comparison the proof step makes is a step, so a proof too costly to finish ends the
+		// call as surely as a matcher that runs away.
+		steps += n;
+		if (steps > maxSteps) return undefined;
+		const checksBefore = proofWork.checks;
 		const improvers =
 			options.plainProof === true
 				? findImproversSlowly(field, levels, solution, N, 50 * N)
-				: findImprovers(field, levels, solution, N, 50 * N, proofWork);
-		steps += n;
+				: findImprovers(field, levels, solution, N, 50 * N, proofWork, maxSteps - steps);
+		steps += proofWork.checks - checksBefore;
 		if (options.usage !== undefined) {
 			options.usage.steps = steps;
 			options.usage.proofChecks = proofWork.checks;
 			options.usage.offered = edges.size;
 		}
-		if (steps > maxSteps) return undefined;
+		if (improvers === undefined || steps > maxSteps) return undefined;
 		if (improvers.length === 0) return matesOf(solution, n, BYE);
 		for (const key of improvers) edges.add(key);
 	}
@@ -272,6 +277,55 @@ function offerLikely(
 				// When more share a label than that reaches, the ones wanted are those close in Score
 				// as well: offer by Score among them, as for the whole field.
 				if (members.length > same + 1) offerByScore(members);
+			}
+		} else if (shape?.type === 'labels') {
+			offerAcrossLabels(field, shape.label, offer, same);
+		}
+	}
+}
+
+/**
+ * For a level that penalises a shared Group Label, such as clubs to keep apart: within each
+ * Score Group, offer every member of a large label the others that line up with it.
+ *
+ * Shuffle Positions scatter a label unevenly, so a long run of one club leaves its members no
+ * other club nearby, and the Pairings that keep clubs apart reach right across the run. Paired
+ * in Shuffle Position order, the k-th member of a label and the k-th of everyone else meet with
+ * the least distance overall, so each member is offered the few around its proportional match.
+ * A label shared by fewer than the square root of the group needs nothing: its members are
+ * spread thinly enough to find others close by.
+ */
+function offerAcrossLabels(
+	field: Field,
+	label: readonly (string | undefined)[],
+	offer: (a: number, b: number) => void,
+	reach: number,
+): void {
+	const byScore = new Map<number, number[]>();
+	for (let a = 0; a < field.size; a++) {
+		const group = byScore.get(field.score[a]!);
+		if (group === undefined) byScore.set(field.score[a]!, [a]);
+		else group.push(a);
+	}
+	for (const group of byScore.values()) {
+		const large = Math.max(reach, Math.ceil(Math.sqrt(group.length)));
+		const sharing = new Map<string, number[]>();
+		for (const a of group) {
+			const mine = label[a];
+			if (mine === undefined) continue;
+			const members = sharing.get(mine);
+			if (members === undefined) sharing.set(mine, [a]);
+			else members.push(a);
+		}
+		for (const [mine, members] of sharing) {
+			if (members.length <= large) continue;
+			// Entrant numbers rise with Shuffle Position, so each list is in Shuffle Position order.
+			const others = group.filter((b) => label[b] !== mine);
+			if (others.length === 0) continue;
+			for (const [at, a] of members.entries()) {
+				const match = Math.floor((at * others.length) / members.length);
+				const last = Math.min(others.length - 1, match + reach);
+				for (let k = Math.max(0, match - reach); k <= last; k++) offer(a, others[k]!);
 			}
 		}
 	}

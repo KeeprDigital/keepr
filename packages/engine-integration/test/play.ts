@@ -24,10 +24,12 @@ export type EventPlan = {
 	cut: number;
 	standings: StandingsConfiguration;
 	/** The pairing Configuration for a given round. */
-	pairing: (round: number, last: boolean) => Constraint[];
+	pairing: (round: number, last: boolean) => readonly Constraint[];
 	seed: number;
 	/** The chance that an Entrant with a losing record goes home after a round. */
 	dropRate: number;
+	/** How many Entrants are Late Entries, first paired in round 2. Left out, none. */
+	lateEntries?: number;
 };
 
 export type RoundPlayed = {
@@ -42,6 +44,8 @@ export type EventPlayed = {
 	finalStandings: StandingsSuccess;
 	results: Result[];
 	dropped: Map<string, number>;
+	/** Each Late Entry, and the round it was first paired in. */
+	joined: Map<string, number>;
 	cut?: {
 		structure: StructureSuccess;
 		placings: FinalPlacingsSuccess[];
@@ -74,6 +78,9 @@ export function playEvent(plan: EventPlan): EventPlayed {
 	const ids = Array.from({ length: plan.size }, (_, at) => `e${String(at).padStart(4, '0')}`);
 	const skill = new Map(ids.map((id) => [id, random()]));
 	const dropped = new Map<string, number>();
+	const joined = new Map(
+		ids.slice(ids.length - Math.min(plan.lateEntries ?? 0, ids.length)).map((id) => [id, 2]),
+	);
 	const results: Result[] = [];
 	const randomSeed = `event-${plan.seed}`;
 	const drawsAllowed = plan.standings.allow.draws;
@@ -98,7 +105,7 @@ export function playEvent(plan: EventPlan): EventPlayed {
 	const played: RoundPlayed[] = [];
 	for (let round = 1; round <= plan.rounds; round++) {
 		const standingsBefore = standingsNow(round - 1);
-		const present = ids.filter((id) => !dropped.has(id));
+		const present = ids.filter((id) => !dropped.has(id) && (joined.get(id) ?? 1) <= round);
 		const { entrants } = must(
 			'pairingEntrantsFrom',
 			pairingEntrantsFrom(standingsBefore.rows, { present }),
@@ -160,7 +167,7 @@ export function playEvent(plan: EventPlan): EventPlayed {
 	}
 
 	const finalStandings = standingsNow(plan.rounds);
-	const event: EventPlayed = { rounds: played, finalStandings, results, dropped };
+	const event: EventPlayed = { rounds: played, finalStandings, results, dropped, joined };
 	if (plan.cut < 2) return event;
 
 	// The cut is taken from those still in the event. A random last Tiebreaker makes every Rank different.

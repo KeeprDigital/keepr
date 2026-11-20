@@ -69,8 +69,12 @@ function place(parsed: Parsed, errors: InputError[]): FinalPlacing[] {
 			problem('unknown-entrant', `"${id}" is in the cut but is not an Entrant.`, [id]);
 	}
 	const sharing = new Map<number, string[]>();
-	for (const id of inCut)
-		if (rank.has(id)) sharing.set(rankOf(id), [...(sharing.get(rankOf(id)) ?? []), id]);
+	for (const id of inCut) {
+		if (!rank.has(id)) continue;
+		const ids = sharing.get(rankOf(id));
+		if (ids === undefined) sharing.set(rankOf(id), [id]);
+		else ids.push(id);
+	}
 	for (const [shared, ids] of sharing) {
 		if (ids.length > 1)
 			problem(
@@ -134,9 +138,13 @@ function place(parsed: Parsed, errors: InputError[]): FinalPlacing[] {
 		for (const [at, id] of losers.entries()) placing.set(id, wentFurther + 1 + at);
 	}
 
+	// In Rank order, so those with a strictly better Rank are exactly the ones before the first
+	// who shares this one.
 	const outside = [...rank.keys()].filter((id) => !inCut.has(id)).sort(byRank);
-	for (const id of outside) {
-		placing.set(id, inCut.size + 1 + outside.filter((other) => rankOf(other) < rankOf(id)).length);
+	let better = 0;
+	for (const [at, id] of outside.entries()) {
+		if (at > 0 && rankOf(outside[at - 1] as string) !== rankOf(id)) better = at;
+		placing.set(id, inCut.size + 1 + better);
 	}
 
 	// How far each Entrant in the cut got: the winner furthest, then those still in, then by round.

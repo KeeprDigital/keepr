@@ -110,7 +110,35 @@ export function findImprovers(
 	atMost: number,
 	/** Counts every comparison made, of an Entrant with a bucket or with another Entrant. */
 	work: { checks: number } = { checks: 0 },
+	/** Give up, returning undefined, once more comparisons than this have been made. */
+	budget: number = Number.POSITIVE_INFINITY,
+): number[] | undefined {
+	const limit = work.checks + budget;
+	try {
+		return search(field, levels, solution, N, atMost, work, limit);
+	} catch (thrown) {
+		if (thrown === OUT_OF_CHECKS) return undefined;
+		throw thrown;
+	}
+}
+
+/** Thrown from inside the search when the comparisons allowed run out. Never leaves this module. */
+const OUT_OF_CHECKS: { readonly reason: string } = {
+	reason: 'the comparisons allowed have run out',
+};
+
+function search(
+	field: Field,
+	levels: readonly Level[],
+	solution: MatchingSolution,
+	N: number,
+	atMost: number,
+	work: { checks: number },
+	limit: number,
 ): number[] {
+	const check = (): void => {
+		if (++work.checks > limit) throw OUT_OF_CHECKS;
+	};
 	const n = field.size;
 	const K = levels.length;
 	const { dual, inblossom } = solution;
@@ -133,21 +161,27 @@ export function findImprovers(
 	// for every pod or every small blossom would mean comparing each Entrant with all of them.
 	const few = Math.ceil(Math.sqrt(n));
 
-	// Which levels above the window reward a shared label, and where each keeps its label in a
-	// bucket. Their cost is 1 for most Pairings, so it has to be known exactly. A level that only
-	// penalises a shared label costs 0 for most Pairings, so assuming 0 is nearly always right,
-	// and splitting buckets by its labels would cost far more than it saves.
+	// Which levels above the window score Group Labels, and where each keeps its label in a
+	// bucket. A level that rewards a shared label costs 1 for most Pairings, so it has to be known
+	// exactly. A level that penalises a shared label costs 1 only between members of one label:
+	// for a large label, such as one club holding most of the field, that too must be known, or
+	// every Pairing inside the club fails the first test. Against a small label it is taken as 0.
 	const labelLevels: number[] = [];
+	/** For each of those levels, true when it penalises a shared label rather than rewarding one. */
+	const penalises: boolean[] = [];
 	for (let c = 0; c < window; c++) {
 		const shape = levels[c]!.shape;
-		if (shape?.type === 'labels' && shape.scoring === 'different') labelLevels.push(c);
+		if (shape?.type === 'labels') {
+			labelLevels.push(c);
+			penalises.push(shape.scoring === 'same');
+		}
 	}
 	// Every Entrant's label on each of those levels, as a class number: NO_LABEL, FEW for any
 	// label that fewer than `few` Entrants carry, or a number of its own for each other label.
 	const classOf: Int32Array[] = [];
-	/** The Entrants sharing each label that is in the FEW class, on any level. */
+	/** The Entrants sharing each label that is in the FEW class, on any level that rewards sharing. */
 	const sharingFew: number[][] = [];
-	for (const c of labelLevels) {
+	for (const [slot, c] of labelLevels.entries()) {
 		const label = (levels[c]!.shape as { label: readonly (string | undefined)[] }).label;
 		const sharing = new Map<string, number[]>();
 		for (let a = 0; a < n; a++) {
@@ -162,7 +196,7 @@ export function findImprovers(
 		for (const members of sharing.values()) {
 			const number = members.length < few ? FEW : next++;
 			for (const a of members) classes[a] = number;
-			if (number === FEW && members.length > 1) sharingFew.push(members);
+			if (number === FEW && members.length > 1 && !penalises[slot]) sharingFew.push(members);
 		}
 		classOf.push(classes);
 	}
@@ -186,7 +220,7 @@ export function findImprovers(
 
 	const slack = new Float64Array(K);
 	const improves = (a: number, b: number): boolean => {
-		work.checks++;
+		check();
 		for (let c = 0; c < K; c++)
 			slack[c] = dual[a * K + c]! + dual[b * K + c]! + 2 * levels[c]!.pair(a, b);
 		if (inblossom[a] === inblossom[b]) {
@@ -262,23 +296,67 @@ export function findImprovers(
 	const slotOf = new Int32Array(window).fill(-1);
 	for (const [slot, c] of labelLevels.entries()) slotOf[c] = slot;
 
+	/** Twice the cost on level `c` between two Score Groups, when it depends on the Scores alone; else 0. */
+	const scoresCost = (c: number, one: number, other: number): number =>
+		levels[c]!.shape?.type === 'scores' ? 2 * levels[c]!.pair(one, other) : 0;
+
+	// ----- Lower Score Groups ruled out all at once. -----
+	// For each Score Group, the least dual on each level above the window among its buckets and
+	// every bucket below it. A cost that depends on the Scores never falls as the other Score
+	// drops, so the least slack an Entrant could have against a group or any group below it only
+	// rises the further down that group is. Once it is above zero, everything from there down is
+	// ruled out, and the point where that starts is found by halving.
+	const G = groups.length;
+	const leastBelow = new Float64Array(G * window);
+	for (let h = G - 1; h >= 0; h--) {
+		for (let c = 0; c < window; c++) {
+			let least = h + 1 < G ? leastBelow[(h + 1) * window + c]! : Number.POSITIVE_INFINITY;
+			for (const bucket of buckets[h]!) if (bucket.upper[c]! < least) least = bucket.upper[c]!;
+			leastBelow[h * window + c] = least;
+		}
+	}
+	const ruledOutFrom = (a: number, g: number, h: number): boolean => {
+		check();
+		const one = groups[g]![0]!;
+		const other = groups[h]![0]!;
+		for (let c = 0; c < window; c++) {
+			const x = dual[a * K + c]! + leastBelow[h * window + c]! + scoresCost(c, one, other);
+			if (x > 0) return true;
+			if (x < 0) return false;
+		}
+		return false;
+	};
+	/** The first Score Group, from `g` down, against which nothing can improve for `a`. */
+	const reachOf = (a: number, g: number): number => {
+		let low = g;
+		let high = G;
+		while (low < high) {
+			const middle = (low + high) >> 1;
+			if (ruledOutFrom(a, g, middle)) high = middle;
+			else low = middle + 1;
+		}
+		return low;
+	};
+
 	for (let g = 0; g < groups.length; g++) {
 		const group = groups[g]!;
-		for (let h = g; h < groups.length; h++) {
+		const reach = group.map((a) => reachOf(a, g));
+		const furthest = reach.reduce((most, each) => Math.max(most, each), g);
+		for (let h = g; h < furthest; h++) {
 			const one = group[0]!;
 			const other = groups[h]![0]!;
-			for (let c = 0; c < window; c++)
-				knownCost[c] = levels[c]!.shape?.type === 'scores' ? 2 * levels[c]!.pair(one, other) : 0;
+			for (let c = 0; c < window; c++) knownCost[c] = scoresCost(c, one, other);
 			const against = buckets[h]!;
 
-			for (const a of group) {
+			for (const [at, a] of group.entries()) {
+				if (h >= reach[at]!) continue;
 				const oa = a * K;
 				const anchorA = anchor[a]!;
 				const here = from[a]!;
 				const windowA = dual[oa + window]!;
 
 				for (const bucket of against) {
-					work.checks++;
+					check();
 					const shared = sharedUnder(anchorA, bucket.anchor);
 					const os = shared * K;
 					let sign = 0;
@@ -290,11 +368,18 @@ export function findImprovers(
 							(shared === -1 ? 0 : 2 * sumFromTop[os + c]!);
 						const slot = slotOf[c]!;
 						if (slot !== -1) {
-							// Two labels that differ cost 1. Against the FEW class they are taken to differ.
 							const mine = classOf[slot]![a]!;
 							const theirs = bucket.classes[slot]!;
-							if (mine !== NO_LABEL && theirs !== NO_LABEL && (theirs === FEW || mine !== theirs))
-								x += 2;
+							if (mine !== NO_LABEL && theirs !== NO_LABEL) {
+								// Penalised, one large label shared costs 1, and the FEW class is taken to differ.
+								// Rewarded, two labels that differ cost 1, and against FEW they are taken to differ.
+								if (
+									penalises[slot]
+										? mine === theirs && mine !== FEW
+										: theirs === FEW || mine !== theirs
+								)
+									x += 2;
+							}
 						}
 						if (x > 0) sign = 1;
 						else if (x < 0) sign = -1;

@@ -2,6 +2,8 @@ import { startingConfiguration as pairingStart, type Constraint } from '@keepr/p
 import {
 	presets,
 	startingConfiguration as standingsStart,
+	type RateSettings,
+	type Ratio,
 	type StandingsConfiguration,
 } from '@keepr/standings';
 import fc from 'fast-check';
@@ -10,7 +12,7 @@ import { describe, expect, test } from 'vitest';
 import { playEvent, type EventPlan, type EventPlayed } from './play.ts';
 
 /** The last round pairs by standing, as some rule sets do; earlier rounds use the starting Configuration. */
-const lastRoundByRank = (_round: number, last: boolean): Constraint[] =>
+const lastRoundByRank = (_round: number, last: boolean): readonly Constraint[] =>
 	last
 		? [
 				{ type: 'no-rematch' },
@@ -19,8 +21,8 @@ const lastRoundByRank = (_round: number, last: boolean): Constraint[] =>
 				{ type: 'pair-adjacent-by-rank' },
 			]
 		: pairingStart;
-const always = (): Constraint[] => pairingStart;
-const byRankThroughout = (): Constraint[] => [
+const always = (): readonly Constraint[] => pairingStart;
+const byRankThroughout = (): readonly Constraint[] => [
 	{ type: 'no-rematch' },
 	{ type: 'bye-cap', max: 1 },
 	{ type: 'bye-to-lowest-rank' },
@@ -40,6 +42,96 @@ const setups: [string, StandingsConfiguration, EventPlan['pairing']][] = [
 
 const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
 const sorted = (ids: readonly string[]): string[] => [...ids].sort((x, y) => x.localeCompare(y));
+
+/** An exact fraction, as text in lowest terms: the form the Standings Engine reports. */
+function exact(numerator: bigint, denominator: bigint): string {
+	let [a, b] = [numerator < 0n ? -numerator : numerator, denominator];
+	while (b !== 0n) [a, b] = [b, a % b];
+	return numerator === 0n ? '0/1' : `${numerator / a}/${denominator / a}`;
+}
+const ratio = (value: Ratio): [bigint, bigint] => [
+	BigInt(value.numerator),
+	BigInt(value.denominator),
+];
+const atLeast = (x: [bigint, bigint], y: [bigint, bigint]): [bigint, bigint] =>
+	x[0] * y[1] >= y[0] * x[1] ? x : y;
+const atMost = (x: [bigint, bigint], y: [bigint, bigint]): [bigint, bigint] =>
+	x[0] * y[1] <= y[0] * x[1] ? x : y;
+
+/**
+ * The first Tiebreaker of every setup, opponents' match win rate, recounted from the Results
+ * alone by `RULES.md` § Tiebreakers, for each Entrant as of the end of the event.
+ */
+function opponentsMatchWinRates(event: EventPlayed, plan: EventPlan): Map<string, string> {
+	const first = plan.standings.tiebreakers[0];
+	if (first?.type !== 'opponents-match-win-rate') throw new Error('Not a setup this recount knows');
+	const { rate, withNoOpponents }: { rate: RateSettings; withNoOpponents: Ratio } = first;
+	const { points, bye } = plan.standings;
+	if (points.type !== 'by-outcome') throw new Error('Not a points method this recount knows');
+
+	type Count = { played: number; points: number; wins: number; byes: number; opponents: string[] };
+	const counts = new Map<string, Count>();
+	const countOf = (id: string): Count => {
+		let count = counts.get(id);
+		if (count === undefined) {
+			count = { played: 0, points: 0, wins: 0, byes: 0, opponents: [] };
+			counts.set(id, count);
+		}
+		return count;
+	};
+	for (const result of [...event.results].sort((x, y) => x.round - y.round)) {
+		if ('entrant' in result) {
+			const count = countOf(result.entrant);
+			count.byes++;
+			if (bye.countsAsPlayed) {
+				count.played++;
+				count.points += bye.points;
+				count.wins++;
+			}
+			continue;
+		}
+		for (const side of [0, 1] as const) {
+			const count = countOf(result.entrants[side]);
+			const outcome = result.outcomes[side];
+			count.played++;
+			count.points += points[outcome];
+			if (outcome === 'win') count.wins++;
+			count.opponents.push(result.entrants[side === 0 ? 1 : 0]);
+		}
+	}
+	const matchWinRate = (id: string): [bigint, bigint] => {
+		const count = countOf(id);
+		const dropped = event.dropped.has(id);
+		const notCounted = bye.countsAsPlayed ? 0 : count.byes;
+		const rounds =
+			rate.rounds === 'played' || dropped ? count.played : Math.max(plan.rounds, 1) - notCounted;
+		let value: [bigint, bigint] = [0n, 1n];
+		if (rounds > 0)
+			value =
+				rate.counts.type === 'wins'
+					? [BigInt(count.wins), BigInt(rounds)]
+					: [BigInt(count.points), BigInt(rate.counts.perRound * rounds)];
+		if (rate.floor !== null) value = atLeast(value, ratio(rate.floor));
+		if (dropped && rate.capIfDropped !== null) value = atMost(value, ratio(rate.capIfDropped));
+		return value;
+	};
+	const rates = new Map<string, string>();
+	for (const row of event.finalStandings.rows) {
+		const { opponents } = countOf(row.id);
+		if (opponents.length === 0) {
+			rates.set(row.id, exact(...ratio(withNoOpponents)));
+			continue;
+		}
+		// Added over a common denominator, then divided by how many were faced.
+		let total: [bigint, bigint] = [0n, 1n];
+		for (const id of opponents) {
+			const [n, d] = matchWinRate(id);
+			total = [total[0] * d + n * total[1], total[1] * d];
+		}
+		rates.set(row.id, exact(total[0], total[1] * BigInt(opponents.length)));
+	}
+	return rates;
+}
 
 /** Everything that must hold for any event, whatever happened in it. Returns what does not. */
 function problemsIn(event: EventPlayed, plan: EventPlan): string[] {
@@ -98,6 +190,28 @@ function problemsIn(event: EventPlayed, plan: EventPlan): string[] {
 			check(flagged === had >= 1, `round ${round}: Bye cap reporting is wrong for ${paired.bye}`);
 			byes.set(paired.bye, had + 1);
 		}
+	}
+
+	// A Late Entry is paired from the round it joins, never before.
+	for (const [id, from] of event.joined) {
+		const out = event.dropped.get(id);
+		for (const { round, present } of event.rounds)
+			check(
+				present.includes(id) === (round >= from && (out === undefined || out >= round)),
+				`round ${round}: Late Entry ${id} is present when it should not be, or missing`,
+			);
+	}
+
+	// The first Tiebreaker of the final Standings matches a recount from the Results alone.
+	const recounted = opponentsMatchWinRates(event, plan);
+	for (const row of event.finalStandings.rows) {
+		const value = row.tiebreakers[0]?.exact;
+		check(
+			value !== null &&
+				value !== undefined &&
+				`${value.numerator}/${value.denominator}` === recounted.get(row.id),
+			`${row.id}'s opponents' match win rate is not what the Results make it`,
+		);
 	}
 
 	// Final Standings: one row each, and Score never out of order.
@@ -160,6 +274,7 @@ describe.each(setups)('whole events through both engines: %s', (_, standings, pa
 					cut: fc.constantFrom(0, 2, 4, 8),
 					seed: fc.integer(),
 					dropRate: fc.constantFrom(0, 0.1, 0.3),
+					lateEntries: fc.constantFrom(0, 1, 3),
 				}),
 				(shape) => {
 					const plan: EventPlan = { ...shape, standings, pairing };
@@ -193,6 +308,7 @@ describe.each(setups)('whole events through both engines: %s', (_, standings, pa
 			cut: 8,
 			seed: 11,
 			dropRate: 0.1,
+			lateEntries: 5,
 			standings,
 			pairing,
 		};

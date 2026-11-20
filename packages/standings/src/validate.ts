@@ -24,6 +24,16 @@ const isFields = (value: unknown): value is Fields =>
 const isWhole = (value: unknown, least: number = Number.MIN_SAFE_INTEGER): value is number =>
 	typeof value === 'number' && Number.isSafeInteger(value) && value >= least;
 const isText = (value: unknown): value is string => typeof value === 'string' && value !== '';
+/**
+ * The most any one value counted into a Score or a total may be, either way: points, Extra
+ * Scores and games. A Score adds one per Result, and no list holds 2^32 of them, so every
+ * Score and total stays below 2^53 and exact, as the Pairing Engine's Score limit keeps its
+ * sums exact.
+ */
+export const VALUE_LIMIT = 1_000_000;
+const isValue = (value: unknown, least: number = -VALUE_LIMIT): value is number =>
+	isWhole(value, least) && value <= VALUE_LIMIT;
+const isCount = (value: unknown): value is number => isValue(value, 0);
 const OUTCOMES: readonly unknown[] = ['win', 'loss', 'draw'];
 const SOLO_KINDS: readonly unknown[] = ['bye', 'awarded-bye', 'unplayed-loss'];
 
@@ -169,11 +179,26 @@ export function parseStandingsInput(raw: unknown): Parsed {
 	}
 
 	// ----- Results against Entrants and against each other -----
+	const droppedAfter = new Map<string, number>();
+	for (const entrant of entrants)
+		if (entrant.status?.type === 'dropped') droppedAfter.set(entrant.id, entrant.status.afterRound);
 	const seenInRound = new Set<string>();
 	const clashes = new Set<string>();
+	const lateResults = new Set<string>();
+	let lastRound = 0;
 	for (const result of results) {
+		lastRound = Math.max(lastRound, result.round);
 		const ids = 'entrant' in result ? [result.entrant] : result.entrants;
 		for (const id of ids) {
+			const after = droppedAfter.get(id);
+			if (after !== undefined && result.round > after && !lateResults.has(id)) {
+				lateResults.add(id);
+				problem(
+					'result-after-drop',
+					`"${id}" dropped after round ${after}, and has a Result in round ${result.round}.`,
+					[id],
+				);
+			}
 			if (!known.has(id))
 				problem(
 					'unknown-entrant',
@@ -191,6 +216,10 @@ export function parseStandingsInput(raw: unknown): Parsed {
 			}
 			seenInRound.add(key);
 		}
+	}
+
+	if (isWhole(raw['plannedRounds'], 1) && raw['plannedRounds'] < lastRound) {
+		wrong(`\`plannedRounds\` must be at least ${lastRound}, the last round that holds a Result.`);
 	}
 
 	if (configuration !== undefined) checkAgainstConfiguration(results, configuration, raw, problem);
@@ -244,20 +273,24 @@ function parseMatch(
 	}
 	if (
 		games !== undefined &&
-		!(Array.isArray(games) && games.length === 3 && games.every((count) => isWhole(count, 0)))
+		!(Array.isArray(games) && games.length === 3 && games.every(isCount))
 	) {
-		bad('`games` must be three whole numbers: won by the first Entrant, won by the second, drawn.');
+		bad(
+			`\`games\` must be three whole numbers from 0 to ${VALUE_LIMIT}: won by the first Entrant, won by the second, drawn.`,
+		);
 	}
 	if (
 		scores !== undefined &&
 		!(
 			isFields(scores) &&
 			Object.values(scores).every(
-				(pair) => Array.isArray(pair) && pair.length === 2 && pair.every((score) => isWhole(score)),
+				(pair) => Array.isArray(pair) && pair.length === 2 && pair.every((score) => isValue(score)),
 			)
 		)
 	) {
-		bad('`extraScores` must give two whole numbers for each Extra Score.');
+		bad(
+			`\`extraScores\` must give two whole numbers from -${VALUE_LIMIT} to ${VALUE_LIMIT} for each Extra Score.`,
+		);
 	}
 	if (!sound) return undefined;
 	const result: MatchResult = {
@@ -371,10 +404,12 @@ function parsePoints(raw: unknown, fields: FieldsOf, wrong: Wrong): PointsMethod
 			fields(raw, '`points`', ['type', 'win', 'draw', 'loss']);
 			if (
 				![raw['win'], raw['draw'], raw['loss']].every(
-					(value) => value === undefined || isWhole(value),
+					(value) => value === undefined || isValue(value),
 				)
 			) {
-				wrong('`points`: `win`, `draw` and `loss` must be whole numbers.');
+				wrong(
+					`\`points\`: \`win\`, \`draw\` and \`loss\` must be whole numbers from -${VALUE_LIMIT} to ${VALUE_LIMIT}.`,
+				);
 				return undefined;
 			}
 			return {
@@ -398,10 +433,12 @@ function parsePoints(raw: unknown, fields: FieldsOf, wrong: Wrong): PointsMethod
 						isWhole(row['won'], 0) &&
 						isWhole(row['lost'], 0) &&
 						isWhole(row['drawn'], 0) &&
-						isWhole(row['points']),
+						isValue(row['points']),
 				);
 			if (!sound) {
-				wrong('`points.table` must list game scores as { won, lost, drawn, points }.');
+				wrong(
+					`\`points.table\` must list game scores as { won, lost, drawn, points }, with points from -${VALUE_LIMIT} to ${VALUE_LIMIT}.`,
+				);
 				return undefined;
 			}
 			return {
@@ -424,12 +461,12 @@ function parsePoints(raw: unknown, fields: FieldsOf, wrong: Wrong): PointsMethod
 						isFields(band) &&
 						Object.keys(band).length === 3 &&
 						(band['upTo'] === null || isWhole(band['upTo'], 0)) &&
-						isWhole(band['higher']) &&
-						isWhole(band['lower']),
+						isValue(band['higher']) &&
+						isValue(band['lower']),
 				);
 			if (!shaped) {
 				wrong(
-					'`points` by score difference needs a `score` name and `bands` of { upTo, higher, lower }.',
+					`\`points\` by score difference needs a \`score\` name and \`bands\` of { upTo, higher, lower }, with points from -${VALUE_LIMIT} to ${VALUE_LIMIT}.`,
 				);
 				return undefined;
 			}
@@ -483,12 +520,12 @@ function parseSoloScoring(
 	const { points, games, countsAsPlayed } = value;
 	if (points === undefined || games === undefined || countsAsPlayed === undefined) return undefined;
 	if (
-		!isWhole(points) ||
-		!(Array.isArray(games) && games.length === 3 && games.every((count) => isWhole(count, 0))) ||
+		!isValue(points) ||
+		!(Array.isArray(games) && games.length === 3 && games.every(isCount)) ||
 		typeof countsAsPlayed !== 'boolean'
 	) {
 		wrong(
-			`${where} needs whole-number \`points\`, three whole numbers for \`games\`, and \`countsAsPlayed\` true or false.`,
+			`${where} needs \`points\` and three numbers of \`games\`, whole numbers no further than ${VALUE_LIMIT} from 0, and \`countsAsPlayed\` true or false.`,
 		);
 		return undefined;
 	}
@@ -692,7 +729,7 @@ function checkAgainstConfiguration(
 			);
 		}
 		for (const name of scoreNames) {
-			if (result.extraScores?.[name] === undefined) {
+			if (result.extraScores === undefined || !Object.hasOwn(result.extraScores, name)) {
 				problem(
 					'missing-extra-score',
 					`${where}: the Configuration uses the Extra Score "${name}", and this Result does not have it.`,

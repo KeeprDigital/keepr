@@ -39,7 +39,7 @@ export type RoundInput = {
 	/** Only the Entrants to be paired this round. */
 	entrants: PairingEntrant[];
 	/** Constraints in priority order. Always required. */
-	configuration: Constraint[];
+	configuration: readonly Constraint[];
 	randomSeed: string;
 	/** Feeds Shuffle Positions and is echoed back. Nothing else depends on it. */
 	round: number;

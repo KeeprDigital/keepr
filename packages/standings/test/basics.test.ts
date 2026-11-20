@@ -69,6 +69,25 @@ describe('computeStandings on a first round', () => {
 		});
 	});
 
+	test.each([
+		[1, false],
+		[2, true],
+	])(
+		'an Entrant who dropped after round 2, in Standings as of round %i, counts as dropped: %s',
+		(asOf, dropped) => {
+			const input: StandingsInput = {
+				entrants: [{ id: 'ann', status: { type: 'dropped', afterRound: 2 } }, { id: 'ben' }],
+				results: [
+					{ round: 1, entrants: ['ann', 'ben'], outcomes: ['win', 'loss'] },
+					{ round: 2, entrants: ['ann', 'ben'], outcomes: ['loss', 'win'] },
+					{ round: 3, entrant: 'ben', kind: 'bye' },
+				].filter((result) => result.round <= asOf) as StandingsInput['results'],
+				configuration: startingConfiguration,
+			};
+			expect(rowOf(mustRank(input), 'ann').dropped).toBe(dropped);
+		},
+	);
+
 	test('reports the engine version from package.json', async () => {
 		const { default: manifest } = await import('../package.json', { with: { type: 'json' } });
 		expect(mustRank(roundOne()).engineVersion).toBe(manifest.version);

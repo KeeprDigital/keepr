@@ -16,7 +16,8 @@ What the Pairing Engine promises its callers, and exactly how it decides which s
 - An opponent or a listed pair that names an Entrant not present is ignored.
 - The Configuration is data: Constraints from the tables below, in priority order, with their settings. A Constraint the tables do not hold is an input error. A Constraint not in the Configuration is not applied.
 - A Configuration applies to the one call it comes with. No Constraint looks at the round number, so rules that change by round are a different Configuration in each call.
-- The engine ships no Presets. It exports one Starting Configuration, `startingConfiguration`: `no-rematch`, `bye-cap` (max 1), `bye-to-lowest-score`, `pair-close-in-score`, `keep-top-clean`. It uses no Rank. The engine never applies it on its own: every call states its Configuration.
+- The engine ships no Presets. It exports one Starting Configuration, `startingConfiguration`: `no-rematch`, `bye-cap` (max 1), `bye-to-lowest-score`, `pair-close-in-score`, `keep-top-clean`. It uses no Rank. The engine never applies it on its own: every call states its Configuration. It is frozen, so a caller adapts a copy.
+- A Group Label's kind is any name. Only the kinds an Entrant is given count, so a kind named like a built-in property, such as `constructor`, is an ordinary name.
 - The round number feeds Shuffle Positions and is echoed back. Nothing else depends on it.
 - A work limit, when given, counts steps, never time.
 - The order of the Entrants, of the opponents each lists and of the listed pairs never changes the result. The order of the Configuration is its priority.
@@ -122,7 +123,7 @@ A change to how Shuffle Positions are made is a major release.
 - Violations are scored as in a pairing result, in Configuration order, and within one Constraint in the order of the Pairings given, then the Byes.
 - The comparison comes back only when asked for and the coverage is clean: nothing missing, repeated or unknown, and the right number of Byes. It costs a full pairing run.
 - The comparison gives, for each level in Configuration order, the score of the given set and of the best set. `pair-down-choice` gives two, marked `from` and `opponent`. Shuffle Positions are left out, so a hand-made set can be as good as the best.
-- `asGoodAsBest` is exact even where the scores are too large to be exact numbers. `provenBest` is false when the best could not be proven.
+- `asGoodAsBest` compares the two sets level by level, as § Best does: it is true when the given set is no worse. Against a best that is not proven a given set can be strictly better, and it is then as good as the best. It is exact even where the scores are too large to be exact numbers. `provenBest` is false when the best could not be proven.
 - Checking a proven result against the input that made it finds the same Violations, and finds it as good as the best.
 
 ## Single Elimination
@@ -143,5 +144,6 @@ The whole structure comes back from one call. A Slot after the first round names
 - Those two limits keep the score of every Pairing an exact number.
 - Fields of up to 8 Entrants are solved by trying every set of Pairings.
 - With no work limit given, a field is allowed 50,000 steps plus 2,000 for each Entrant times the number of binary digits in the count.
+- A step is one move of the matcher, or one comparison the proof step makes on the way to checking its answer.
 - Larger fields are solved by the matcher, which carries a proof that is checked on every call.
 - If two sets of Pairings tie on every level, the engine's choice is fixed for a given version but is not defined here. With distinct positions this is not expected to happen.

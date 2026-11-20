@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import {
 	presets,
+	startingConfiguration,
 	type RateSettings,
 	type StandingsConfiguration,
 	type Tiebreaker,
@@ -193,5 +194,12 @@ describe('Pokémon, September 1 2026: the tables in section 5.3.3.1', () => {
 
 	test('someone who misses rounds without dropping is still measured over the whole tournament', () => {
 		expect(measure(pokemon, winRate, new Event().record('x', 3, 0, 0), 'x', 5)).toBe('3/5');
+	});
+});
+
+describe('the Configurations the package ships', () => {
+	test('cannot be changed by a caller', () => {
+		expect(Object.isFrozen(startingConfiguration.tiebreakers)).toBe(true);
+		expect(Object.isFrozen(presets['magic-2026-02-27'].configuration.tiebreakers)).toBe(true);
 	});
 });

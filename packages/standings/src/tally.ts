@@ -72,12 +72,15 @@ export function pointsFor(points: PointsMethod, result: MatchResult, side: 0 | 1
 /** Reads every Result once and adds up what each Entrant did. */
 export function tallyResults(input: StandingsInput): Map<string, Tally> {
 	const configuration: StandingsConfiguration = input.configuration;
+	// Standings are as of the last round that holds a Result: a Drop after a later round has not
+	// happened yet.
+	const asOf = input.results.reduce((last, result) => Math.max(last, result.round), 0);
 	const tallies = new Map<string, Tally>();
 	for (const entrant of input.entrants) {
 		tallies.set(entrant.id, {
 			id: entrant.id,
 			removed: entrant.status?.type === 'removed',
-			dropped: entrant.status?.type === 'dropped',
+			dropped: entrant.status?.type === 'dropped' && entrant.status.afterRound <= asOf,
 			score: 0,
 			wins: 0,
 			losses: 0,

@@ -71,7 +71,7 @@ export function roundFromScenario(scenario: Scenario): RoundInput {
 }
 
 /** Reads `no-rematch, bye-cap 1, pair-down-choice lowest highest`, or `starting`, or `none`. */
-function configurationFrom(text: string): Constraint[] {
+function configurationFrom(text: string): readonly Constraint[] {
 	if (text === 'none') return [];
 	if (text === 'starting') return startingConfiguration;
 	return text.split(',').map((entry) => {
