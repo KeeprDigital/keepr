@@ -1,6 +1,6 @@
 # ADR-0147: CI runs a gate only for a change that affects a project it checks
 
-Accepted · 2026-11-20 · [#1367](https://github.com/KeeprDigital/keepr/issues/1367), part of [#1343](https://github.com/KeeprDigital/keepr/issues/1343) · Amends ADR-0082 and ADR-0123
+Accepted · 2026-11-20 · [#1367](https://github.com/KeeprDigital/keepr/issues/1367), part of [#1343](https://github.com/KeeprDigital/keepr/issues/1343) · Amends ADR-0082 and ADR-0123 · Amended by ADR-0149: CI's jobs are grouped by project, so the Lint job is the Workspace checks and the Packages job is three, Engines, Shared app code and Tooling
 
 ### Decision
 

@@ -56,7 +56,7 @@ const OUTSIDE_CODE = /\.md$|^\.vscode\/|^\.github\/dependabot\.yml$/;
 /**
  * What the code gates check outside the code: the documentation test follows
  * every document's links. A change to a document that skips the gate running
- * that test still runs it, in the Lint job (`pnpm verify:docs`).
+ * that test still runs it, in the Workspace checks job (`pnpm verify:docs`).
  */
 const DOCUMENT = /\.md$/;
 /**
@@ -74,37 +74,49 @@ const STAND_IN = '@keepr/accounts-stand-in';
 const COMMIT_ID = /^[0-9a-f]{40}$/;
 
 /**
- * CI's gates that check workspace projects, each run only for a change that
- * affects a project it checks (`checks`, matched against the project's
- * directory): its job's id in ci.yml, and the name GitHub reports it under
- * when it is skipped. For a matrix job that is its name's template, since a
- * job skipped by its condition never expands its matrix (ADR-0123). The Lint
- * job checks the whole workspace and runs for every change to the code.
- * ciWorkflows.test.ts holds each entry to ci.yml.
+ * CI's gates that check workspace projects, grouped by project, each run only
+ * for a change that affects a project it checks (`checks`, matched against
+ * the project's directory): its job's id in ci.yml, and the name GitHub
+ * reports it under when it is skipped. For a matrix job that is its name's
+ * template, since a job skipped by its condition never expands its matrix
+ * (ADR-0123). Stream Keepr's are split by gate kind (ADR-0082), the packages
+ * by what consumes them (ADR-0149). The Workspace checks job checks the whole
+ * workspace and runs for every change to the code. ciWorkflows.test.ts holds
+ * each entry to ci.yml, and every project to a gate.
  *
  * @type {readonly { job: string, name: string, checks: RegExp }[]}
  */
 export const PROJECT_GATES = [
-	{ job: 'typecheck', name: 'Typecheck', checks: /^apps\/stream$/ },
-	{ job: 'unit', name: 'Unit suite', checks: /^apps\/stream$/ },
-	{ job: 'nuxt', name: 'Nuxt suite', checks: /^apps\/stream$/ },
+	{ job: 'stream-typecheck', name: 'Stream Keepr: Typecheck', checks: /^apps\/stream$/ },
+	{ job: 'stream-unit', name: 'Stream Keepr: Unit suite', checks: /^apps\/stream$/ },
+	{ job: 'stream-nuxt', name: 'Stream Keepr: Nuxt suite', checks: /^apps\/stream$/ },
 	{
-		job: 'integration',
-		name: 'Integration suite (${{ matrix.shard }}/2)',
+		job: 'stream-integration',
+		name: 'Stream Keepr: Integration suite (${{ matrix.shard }}/2)',
 		checks: /^apps\/stream$/,
 	},
-	{ job: 'server-and-browser', name: 'Browser gates', checks: /^apps\/stream$/ },
-	{ job: 'packages', name: 'Packages', checks: /^packages\// },
+	{ job: 'stream-browser', name: 'Stream Keepr: Browser gates', checks: /^apps\/stream$/ },
 	{ job: 'score', name: 'Score Keepr', checks: /^apps\/score$/ },
 	{ job: 'accounts', name: 'Keepr Accounts', checks: /^apps\/accounts$/ },
+	{
+		job: 'engines',
+		name: 'Packages: Engines',
+		checks: /^packages\/(?:engine-core|pairing|standings|testkit|engine-integration)$/,
+	},
+	{
+		job: 'shared-app-code',
+		name: 'Packages: Shared app code',
+		checks: /^packages\/(?:nuxt-layer|realtime|accounts-stand-in)$/,
+	},
+	{ job: 'tooling', name: 'Packages: Tooling', checks: /^packages\/tooling$/ },
 ];
 
 /**
  * The gate whose suite holds the documentation test (`pnpm verify:docs`).
- * When it does not run, a change to a document runs that test in the Lint
- * job instead.
+ * When it does not run, a change to a document runs that test in the
+ * Workspace checks job instead.
  */
-const DOCUMENTATION_TEST_GATE = 'unit';
+const DOCUMENTATION_TEST_GATE = 'stream-unit';
 
 /**
  * CI's Worker job (`worker-guard`) as GitHub names it when its scope chose no
@@ -119,7 +131,7 @@ export const NO_LEG_WORKER_JOB = 'Build, wrangler dry runs, and Worker smoke (${
 /**
  * @param {readonly string[]} changedFiles repository-relative paths
  * @param {Map<string, WorkspacePackage>} packages the workspace's packages, by name
- * @returns {{ code: boolean, docs: boolean, gates: string[] }} whether any file can affect the code gates; whether the Lint job runs the documentation test, because a document changed and the gate that runs it does not; and the project gates to run, by job id
+ * @returns {{ code: boolean, docs: boolean, gates: string[] }} whether any file can affect the code gates; whether the Workspace checks job runs the documentation test, because a document changed and the gate that runs it does not; and the project gates to run, by job id
  */
 export function scopeOf(changedFiles, packages) {
 	const codeFiles = changedFiles.filter((file) => !OUTSIDE_CODE.test(file));

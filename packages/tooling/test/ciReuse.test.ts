@@ -79,16 +79,18 @@ function token(
 
 const JOBS = [
 	'Decide what the change can affect',
-	'Lint',
-	'Typecheck',
-	'Unit suite',
-	'Nuxt suite',
-	'Packages',
+	'Workspace checks',
+	'Stream Keepr: Typecheck',
+	'Stream Keepr: Unit suite',
+	'Stream Keepr: Nuxt suite',
+	'Stream Keepr: Integration suite (1/2)',
+	'Stream Keepr: Integration suite (2/2)',
+	'Stream Keepr: Browser gates',
 	'Score Keepr',
 	'Keepr Accounts',
-	'Integration suite (1/2)',
-	'Integration suite (2/2)',
-	'Browser gates',
+	'Packages: Engines',
+	'Packages: Shared app code',
+	'Packages: Tooling',
 	'Build, wrangler dry runs, and Worker smoke (stream)',
 	'Record the verified tree',
 	'CI passed',
@@ -433,7 +435,7 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 		[
 			'a shard was cancelled',
 			{
-				jobs: jobs('Integration suite (2/2)', 'cancelled'),
+				jobs: jobs('Stream Keepr: Integration suite (2/2)', 'cancelled'),
 			},
 		],
 		['GitHub lists no jobs', { jobs: [] }],
@@ -443,7 +445,7 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 
 	/** As GitHub names a matrix job its condition skipped: the matrix never expanded. */
 	const NO_LEG = 'Build, wrangler dry runs, and Worker smoke (${{ matrix.app }})';
-	const INTEGRATION = 'Integration suite (${{ matrix.shard }}/2)';
+	const INTEGRATION = 'Stream Keepr: Integration suite (${{ matrix.shard }}/2)';
 	/** CI's jobs, each named one (a matrix job's every leg) listed once instead, so concluded. */
 	const runWith = (...replaced: [string, string][]) => {
 		const job = (name: string) => name.replace(/ \(.*\)$/, '');
@@ -462,14 +464,22 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 		[
 			'gates and the Worker job skipped, each one the group skips too',
 			true,
-			['Typecheck', INTEGRATION, NO_LEG],
-			runWith(['Typecheck', 'skipped'], [INTEGRATION, 'skipped'], [NO_LEG, 'skipped']),
+			['Stream Keepr: Typecheck', INTEGRATION, NO_LEG],
+			runWith(
+				['Stream Keepr: Typecheck', 'skipped'],
+				[INTEGRATION, 'skipped'],
+				[NO_LEG, 'skipped'],
+			),
 		],
 		[
 			'a gate skipped that the group runs',
 			false,
 			[INTEGRATION, NO_LEG],
-			runWith(['Typecheck', 'skipped'], [INTEGRATION, 'skipped'], [NO_LEG, 'skipped']),
+			runWith(
+				['Stream Keepr: Typecheck', 'skipped'],
+				[INTEGRATION, 'skipped'],
+				[NO_LEG, 'skipped'],
+			),
 		],
 		['a job failed that the group skips', false, [NO_LEG], runWith([NO_LEG, 'failure'])],
 		// The group skips the whole job by its template; a leg skipped alone is another job.
@@ -477,7 +487,7 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 			'one leg of a matrix job skipped, though the group skips the job',
 			false,
 			[INTEGRATION],
-			jobs('Integration suite (2/2)', 'skipped'),
+			jobs('Stream Keepr: Integration suite (2/2)', 'skipped'),
 		],
 	])('a PR run with %s: reused %s', async (_case, reused, skipped, ranJobs) => {
 		const result = await find(world({ jobs: ranJobs }), {}, { skipped });
