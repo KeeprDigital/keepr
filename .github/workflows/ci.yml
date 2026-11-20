@@ -21,15 +21,22 @@
 #   - Not on draft PRs. `pnpm verify:quick` is the gate while a branch is in
 #     progress; marking the PR ready for review runs CI, the full gate, so
 #     nobody runs `pnpm verify` locally just to repeat it.
-#   - Only the jobs a change can affect: for docs alone, only the docs checks
-#     (`pnpm verify:docs`, in the `checks` job); a Worker build only for each
-#     deployable app the change ships in. The `scope` job decides, measuring a PR
-#     against its base and a merge group against the queue's base
-#     (packages/tooling/scripts/ci-scope.mjs); anything it cannot measure runs everything.
+#   - Only the jobs a change can affect (ADR-0147): a gate only when the change
+#     affects a workspace project it checks, the project itself or one it
+#     depends on (its `package.json` says which); for docs alone, only the
+#     docs checks (`pnpm verify:docs`, in the `checks` job); a Worker build
+#     only for each deployable app the change ships in. The lockfile, the
+#     workspace's configuration, the tooling's scripts, this workflow and its
+#     setup run every gate. The `scope` job decides, measuring a PR against
+#     its base and a merge group against the queue's base
+#     (packages/tooling/scripts/ci-scope.mjs, its `PROJECT_GATES` naming the
+#     projects each gate checks); anything it cannot measure or place runs
+#     everything.
 #   - Not twice on the same tree. A merge group whose tree is byte-identical
-#     to one a full, green PR run verified (one PR, main unchanged since that
-#     run) skips every gate: the `record` job of that PR run left GitHub's
-#     signed word for which commit it ran (packages/tooling/scripts/ci-reuse.mjs). Any doubt
+#     to one a green PR run verified (one PR, main unchanged since that run)
+#     skips every gate, when that run skipped only jobs the group's own scope
+#     skips too: the `record` job of that PR run left GitHub's signed word for
+#     which commit it ran (packages/tooling/scripts/ci-reuse.mjs). Any doubt
 #     runs everything.
 #   - A newer push cancels the PR run it supersedes. Every merge-group entry
 #     has its own ref, so the queue's runs never cancel each other.
@@ -81,6 +88,7 @@ jobs:
     outputs:
       code: ${{ steps.scope.outputs.code }}
       docs: ${{ steps.scope.outputs.docs }}
+      gates: ${{ steps.scope.outputs.gates }}
       apps: ${{ steps.scope.outputs.apps }}
       verified-by: ${{ steps.scope.outputs.verified-by }}
     steps:
@@ -104,12 +112,16 @@ jobs:
   # jobs so the longest one, not the sum, sets the wall time. Lint, typecheck
   # and the two suites were one job of 11 to 18 minutes, three times the next
   # longest; each is its own job now, and the Nuxt suite sets the wall time.
+  #
+  # Each gate but this one runs only when the scope lists it in `gates`: when
+  # the change affects a project it checks (ADR-0147). This one checks the
+  # whole workspace, so it runs for any change to the code.
   checks:
     name: Lint
     needs: scope
-    # Past the changeset check, every step below runs for exactly one of the
-    # two: the lint for a change that can affect the code, the docs checks for
-    # one that cannot.
+    # Past the changeset check, the lint steps run for a change that can
+    # affect the code, and the docs checks for a change to a document that
+    # the Unit suite, which runs them among its tests, does not check.
     if: needs.scope.outputs.code == 'true' || needs.scope.outputs.docs == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -170,18 +182,19 @@ jobs:
           advanced-security: false
           online-audits: false
           collect: workflows,actions
-      # A docs-only change skips the code gates, but the documentation test
+      # A docs-only change skips the code gates, and a change that skips the
+      # Unit suite skips the documentation test with it, but that test
       # follows every document's links: unchecked, a broken one would fail the
-      # next code change instead (#1028). A step of
-      # this job, not a job of its own, so that a full run still has no skipped
-      # job: a merge group reuses only such a run (packages/tooling/scripts/ci-reuse.mjs).
+      # next code change instead (#1028). A step of this job, not a job of its
+      # own, so that it adds no job a merge group's reuse must account for
+      # (packages/tooling/scripts/ci-reuse.mjs).
       - if: needs.scope.outputs.docs == 'true'
         run: pnpm verify:docs
 
   typecheck:
     name: Typecheck
     needs: scope
-    if: needs.scope.outputs.code == 'true'
+    if: contains(fromJSON(needs.scope.outputs.gates), 'typecheck')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
@@ -201,7 +214,7 @@ jobs:
   unit:
     name: Unit suite
     needs: scope
-    if: needs.scope.outputs.code == 'true'
+    if: contains(fromJSON(needs.scope.outputs.gates), 'unit')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -217,7 +230,7 @@ jobs:
   nuxt:
     name: Nuxt suite
     needs: scope
-    if: needs.scope.outputs.code == 'true'
+    if: contains(fromJSON(needs.scope.outputs.gates), 'nuxt')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -235,7 +248,7 @@ jobs:
   packages:
     name: Packages
     needs: scope
-    if: needs.scope.outputs.code == 'true'
+    if: contains(fromJSON(needs.scope.outputs.gates), 'packages')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -252,7 +265,7 @@ jobs:
   score:
     name: Score Keepr
     needs: scope
-    if: needs.scope.outputs.code == 'true'
+    if: contains(fromJSON(needs.scope.outputs.gates), 'score')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
@@ -272,7 +285,7 @@ jobs:
   accounts:
     name: Keepr Accounts
     needs: scope
-    if: needs.scope.outputs.code == 'true'
+    if: contains(fromJSON(needs.scope.outputs.gates), 'accounts')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
@@ -290,7 +303,7 @@ jobs:
   integration:
     name: Integration suite (${{ matrix.shard }}/2)
     needs: scope
-    if: needs.scope.outputs.code == 'true'
+    if: contains(fromJSON(needs.scope.outputs.gates), 'integration')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
@@ -313,7 +326,7 @@ jobs:
   server-and-browser:
     name: Browser gates
     needs: scope
-    if: needs.scope.outputs.code == 'true'
+    if: contains(fromJSON(needs.scope.outputs.gates), 'server-and-browser')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -340,10 +353,11 @@ jobs:
   #
   # One leg per app the change ships in (`apps`, from the scope), so an app it
   # does not touch has no leg rather than a skipped one: a merge group reuses
-  # only a run none of whose jobs was skipped (packages/tooling/scripts/ci-reuse.mjs).
-  # An app's tests, docs or another workflow alone run no leg, so the whole job
-  # is skipped. That one skip a group accepts, when its own scope runs no leg
-  # either (ADR-0123); it knows the job by this name, which ci-reuse.mjs holds.
+  # only a run whose skipped jobs its own run would skip too
+  # (packages/tooling/scripts/ci-reuse.mjs). An app's tests, docs or another
+  # workflow alone run no leg, so the whole job is skipped. That skip a group
+  # accepts when its own scope runs no leg either (ADR-0123); it knows the job
+  # by this name, which ci-scope.mjs holds as `NO_LEG_WORKER_JOB`.
   worker-guard:
     name: Build, wrangler dry runs, and Worker smoke (${{ matrix.app }})
     needs: scope
@@ -363,15 +377,17 @@ jobs:
           APP: ${{ matrix.app }}
         run: pnpm exec keepr-deploy check --app "$APP"
 
-  # A PR run that ran every gate and passed leaves a record of the tree it
+  # A PR run of code whose gates passed leaves a record of the tree it
   # verified, so its merge group can skip running them again on exactly that
-  # tree (packages/tooling/scripts/ci-reuse.mjs). The record is an OIDC token GitHub signs for
+  # tree, when the group's own scope skips every job this run skipped
+  # (packages/tooling/scripts/ci-reuse.mjs, ADR-0147). The record is an OIDC token GitHub signs for
   # this job, naming the commit the run executed; the job's own code chooses
   # only the artifact's name, which nothing trusts. A fork's PR gets no token:
   # its group runs everything. Recording never fails `CI passed`; without a
-  # record the group runs everything. A run of code with no Worker leg records
-  # too (ADR-0123): the status functions let a skipped `worker-guard` through,
-  # and still stop the record when any job failed or was cancelled.
+  # record the group runs everything. A run of code that skipped a gate or the
+  # Worker job records too (ADR-0123, ADR-0147): the status functions let a
+  # skipped job through, and still stop the record when any job failed or was
+  # cancelled.
   record:
     name: Record the verified tree
     needs:

@@ -7,107 +7,223 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
 	configBindsKeeprAccounts,
 	diffRange,
+	NO_LEG_WORKER_JOB,
 	scope as scopeIn,
 	scopeOf,
+	skippedJobs,
 	workerLegsOf,
 } from '../scripts/ci-scope.mjs';
+import { workspacePackages } from '../scripts/versioned-apps.mjs';
 
 const packageRoot = join(import.meta.dirname, '..');
 
-const EVERYTHING = { code: true, docs: false };
+interface Package {
+	name: string;
+	dir: string;
+	dependencies: Record<string, string>;
+	devDependencies?: Record<string, string>;
+	exports?: unknown;
+}
 
-describe('what a change can affect', () => {
+const on = (...names: string[]) =>
+	Object.fromEntries(names.map((name) => [`@keepr/${name}`, 'workspace:*']));
+
+/**
+ * The workspace's shape: two deployable apps on the shared layer, Stream
+ * Keepr binding Keepr Accounts and on realtime, testing against the Accounts
+ * Stand-in; Score Keepr, not deployable, on the engines; every app on the
+ * tooling. The tooling and the engines export nothing under `test/`; the
+ * shared layer exports everything, its test helpers included.
+ */
+const PACKAGES: Package[] = [
+	{
+		name: '@keepr/stream',
+		dir: 'apps/stream',
+		dependencies: { ...on('nuxt-layer', 'realtime'), nuxt: 'catalog:framework' },
+		devDependencies: on('accounts-stand-in', 'tooling'),
+	},
+	{
+		name: '@keepr/accounts',
+		dir: 'apps/accounts',
+		dependencies: on('nuxt-layer'),
+		devDependencies: on('tooling'),
+	},
+	{
+		name: '@keepr/score',
+		dir: 'apps/score',
+		dependencies: on('nuxt-layer', 'pairing'),
+		devDependencies: on('tooling'),
+	},
+	{ name: '@keepr/nuxt-layer', dir: 'packages/nuxt-layer', dependencies: {} },
+	{
+		name: '@keepr/realtime',
+		dir: 'packages/realtime',
+		dependencies: {},
+		exports: { './client': './src/client/index.ts' },
+	},
+	{
+		name: '@keepr/engine-core',
+		dir: 'packages/engine-core',
+		dependencies: {},
+		exports: { '.': './src/index.ts' },
+	},
+	{
+		name: '@keepr/pairing',
+		dir: 'packages/pairing',
+		dependencies: on('engine-core'),
+		devDependencies: on('testkit'),
+		exports: { '.': './src/index.ts' },
+	},
+	{
+		name: '@keepr/testkit',
+		dir: 'packages/testkit',
+		dependencies: {},
+		exports: { '.': './src/index.ts' },
+	},
+	{
+		name: '@keepr/tooling',
+		dir: 'packages/tooling',
+		dependencies: {},
+		exports: { './scripts/*': './scripts/*' },
+	},
+	{
+		name: '@keepr/accounts-stand-in',
+		dir: 'packages/accounts-stand-in',
+		dependencies: on('nuxt-layer'),
+		exports: { './cookie': { import: './src/cookie.mjs' } },
+	},
+];
+const WORKSPACE = new Map(PACKAGES.map((pkg) => [pkg.name, pkg]));
+
+/** CI's project gates, by job id, in ci.yml's order. */
+const STREAM_KEEPR = ['typecheck', 'unit', 'nuxt', 'integration', 'server-and-browser'];
+const EVERY_GATE = [...STREAM_KEEPR, 'packages', 'score', 'accounts'];
+const EVERYTHING = { code: true, docs: false, gates: EVERY_GATE };
+/** A change that affects some projects, and a document the Unit suite runs no test of. */
+const only = (gates: string[], docs = false) => ({ code: true, docs, gates });
+
+describe('which gates a change runs: those checking a project it affects', () => {
 	it.each([
+		// Each app alone.
+		["an app's own code", ['apps/stream/server/api/time.get.ts'], only(STREAM_KEEPR)],
+		['Score Keepr', ['apps/score/app/pages/index.vue'], only(['score'])],
+		['Keepr Accounts', ['apps/accounts/server/api/x.ts'], only(['accounts'])],
+		// A package, and everything that depends on it, one through another.
+		['the shared layer: every app', ['packages/nuxt-layer/server/x.ts'], EVERYTHING],
+		[
+			'an engine: the engines and Score Keepr, through the engine between',
+			['packages/engine-core/src/x.ts'],
+			only(['packages', 'score']),
+		],
+		// Its tests import it, so a devDependency is a dependency too.
+		[
+			'the Accounts Stand-in: Stream Keepr, which tests against it',
+			['packages/accounts-stand-in/src/standIn.ts'],
+			only([...STREAM_KEEPR, 'packages']),
+		],
+		// What no dependent imports.
+		[
+			"a package's own test file: that package alone",
+			['packages/nuxt-layer/test/unit/x.test.ts'],
+			only(['packages']),
+		],
+		[
+			'a test helper of a package that exports nothing under test/: that package alone',
+			['packages/tooling/test/helpers/fakeGitHub.ts'],
+			only(['packages']),
+		],
+		[
+			'a test helper of a package without exports: its dependents too',
+			['packages/nuxt-layer/test/helpers/deferred.ts'],
+			EVERYTHING,
+		],
+		// Read across projects without an import.
+		[
+			'a deploy descriptor: its app and the tooling, whose tests read it',
+			['apps/accounts/deploy.jsonc'],
+			only(['packages', 'accounts']),
+		],
+		[
+			"a Version PR's manifest: everything, since the tooling and other apps read it",
+			['apps/stream/CHANGELOG.md', 'apps/stream/package.json', '.changeset/brave-owls.md'],
+			EVERYTHING,
+		],
+		// What every project is built or checked with.
+		['a tooling script', ['packages/tooling/scripts/slots.mjs'], EVERYTHING],
+		// Nothing says what reads it: the lockfile, the workspace's configuration, CI and the other workflows.
+		['a file in no project', ['pnpm-lock.yaml'], EVERYTHING],
+		// The documentation test is among the Unit suite's.
+		[
+			"a document beside a change the Unit suite checks: that suite's test",
+			['apps/stream/test/unit/scripts/repoWiring.test.ts', 'README.md'],
+			only(STREAM_KEEPR),
+		],
+		[
+			'a document beside a change it does not: the Lint job runs the test',
+			['packages/pairing/src/x.ts', 'packages/pairing/README.md'],
+			only(['packages', 'score'], true),
+		],
 		[
 			'docs only',
 			[
 				'README.md',
 				'apps/stream/docs/adr/0001-graphic-style-sets-reference-application-fonts-only.md',
 			],
-			{ code: false, docs: true },
+			{ code: false, docs: true, gates: [] },
 		],
 		[
 			'editor settings and dependabot',
 			['.vscode/settings.json', '.github/dependabot.yml'],
-			{ code: false, docs: false },
+			{ code: false, docs: false, gates: [] },
 		],
-		[
-			'docs beside editor settings',
-			['.vscode/settings.json', 'docs/notes.md'],
-			{ code: false, docs: true },
-		],
-		// Each is held by wiring tests, which run only if CI does.
-		[
-			'another workflow',
-			[
-				'.github/workflows/deploy.yml',
-				'.github/workflows/pr-title.yml',
-				'.github/workflows/release.yml',
-			],
-			EVERYTHING,
-		],
-		// The code gates lint every document and run the documentation test themselves.
-		[
-			'tests and docs',
-			['apps/stream/test/unit/scripts/repoWiring.test.ts', 'README.md'],
-			EVERYTHING,
-		],
-		['server code', ['apps/stream/server/api/time.get.ts'], EVERYTHING],
-		['a script', ['packages/tooling/scripts/ci-scope.mjs'], EVERYTHING],
-		['CI itself', ['.github/workflows/ci.yml'], EVERYTHING],
-		['the shared setup action', ['.github/actions/setup/action.yml'], EVERYTHING],
-		[
-			'the version bump of a Version PR',
-			['apps/stream/CHANGELOG.md', 'apps/stream/package.json', '.changeset/brave-owls.md'],
-			EVERYTHING,
-		],
+		['nothing it can tell', [], EVERYTHING],
 	])('%s', (_case, files, expected) => {
-		expect(scopeOf(files)).toEqual(expected);
+		expect(scopeOf(files, WORKSPACE)).toEqual(expected);
 	});
 
-	it('runs everything when it cannot tell what changed', () => {
-		expect(scopeOf([])).toEqual(EVERYTHING);
+	it('runs everything when it cannot read the workspace to place a change in', () => {
+		expect(scopeOf(['apps/score/app/pages/index.vue'], new Map())).toEqual(EVERYTHING);
+	});
+
+	// The graph is the package.json files themselves, read as the scope job reads them.
+	it("in this workspace, a change to the Pairing Engine runs Packages and Score Keepr's gates alone", () => {
+		expect(
+			scopeOf(['packages/pairing/src/index.ts'], workspacePackages(join(packageRoot, '../..'))),
+		).toEqual(only(['packages', 'score']));
 	});
 });
 
-interface Package {
-	name: string;
-	dir: string;
-	dependencies: Record<string, string>;
-}
+describe("what a merge group's own run would skip, by the names GitHub reports", () => {
+	it.each([
+		[
+			'every gate it does not run, a matrix job by its template',
+			{ gates: ['packages', 'score'], apps: [{ app: 'stream' }] },
+			[
+				'Typecheck',
+				'Unit suite',
+				'Nuxt suite',
+				'Integration suite (${{ matrix.shard }}/2)',
+				'Browser gates',
+				'Keepr Accounts',
+			],
+		],
+		[
+			'and the Worker job when it runs no leg',
+			{ gates: EVERY_GATE, apps: [] },
+			[NO_LEG_WORKER_JOB],
+		],
+	])('%s', (_case, group, expected) => {
+		expect(skippedJobs(group)).toEqual(expected);
+	});
+});
 
-/**
- * Two deployable apps on the shared layer, one binding Keepr Accounts; Score
- * Keepr, not deployable, alone on the Pairing Engine.
- */
-const PACKAGES: Package[] = [
-	{
-		name: '@keepr/stream',
-		dir: 'apps/stream',
-		dependencies: { '@keepr/nuxt-layer': 'workspace:*', nuxt: 'catalog:framework' },
-	},
-	{
-		name: '@keepr/accounts',
-		dir: 'apps/accounts',
-		dependencies: { '@keepr/nuxt-layer': 'workspace:*' },
-	},
-	{ name: '@keepr/score', dir: 'apps/score', dependencies: { '@keepr/pairing': 'workspace:*' } },
-	{ name: '@keepr/nuxt-layer', dir: 'packages/nuxt-layer', dependencies: {} },
-	{ name: '@keepr/pairing', dir: 'packages/pairing', dependencies: {} },
-	{ name: '@keepr/tooling', dir: 'packages/tooling', dependencies: {} },
-	{
-		name: '@keepr/accounts-stand-in',
-		dir: 'packages/accounts-stand-in',
-		dependencies: { '@keepr/nuxt-layer': 'workspace:*' },
-	},
-];
 const STREAM = { app: 'stream', accounts: true };
 const ACCOUNTS = { app: 'accounts', accounts: false };
 const ORPHAN = { app: 'orphan', accounts: false };
 
 describe("which deployable apps' Worker legs a change runs", () => {
 	const legs = (files: string[], apps = [STREAM, ACCOUNTS]) =>
-		workerLegsOf(files, { apps, packages: new Map(PACKAGES.map((pkg) => [pkg.name, pkg])) });
+		workerLegsOf(files, { apps, packages: WORKSPACE });
 
 	it.each([
 		[
@@ -409,7 +525,9 @@ describe("the scope job's command line", () => {
 			},
 		);
 
-		expect(output).toBe('code=true\ndocs=false\napps=[{"app":"stream","accounts":true}]\n');
+		expect(output).toBe(
+			'code=true\ndocs=false\ngates=["typecheck","unit","nuxt","integration","server-and-browser"]\napps=[{"app":"stream","accounts":true}]\n',
+		);
 		expect(log).toMatch(/Could not list the records.*HTTP 502/);
 		expect(log).toMatch(/running the gates/);
 	});
@@ -421,7 +539,9 @@ describe("the scope job's command line", () => {
 			scope(checkout, 'merge_group', {
 				merge_group: { base_sha: base, head_sha: head },
 			}).output,
-		).toBe('code=true\ndocs=false\napps=[{"app":"stream","accounts":true}]\n');
+		).toBe(
+			'code=true\ndocs=false\ngates=["typecheck","unit","nuxt","integration","server-and-browser"]\napps=[{"app":"stream","accounts":true}]\n',
+		);
 	});
 
 	it('a merge group of docs-only PRs skips the code gates and checks the docs', () => {
@@ -431,35 +551,48 @@ describe("the scope job's command line", () => {
 			scope(checkout, 'merge_group', {
 				merge_group: { base_sha: base, head_sha: head },
 			}).output,
-		).toBe('code=false\ndocs=true\napps=[]\n');
+		).toBe('code=false\ndocs=true\ngates=[]\napps=[]\n');
 	});
 
-	// GitHub holds a PR run of the group's tree whose scope chose no Worker leg
-	// (ci-reuse.mjs decides whether that verifies it): the group may reuse it only when its own scope chose none.
-	it.each<[string, keyof typeof QUEUED, object]>([
+	// The checkout holds Stream Keepr alone, so no change affects what the other gates check.
+	// GitHub holds a PR run of the group's tree; ci-reuse.mjs decides whether it verifies the group.
+	it.each<[string, keyof typeof QUEUED, string[]]>([
 		[
-			'tests-only, so no leg, reuses it',
+			"tests-only skips the other projects' gates and the Worker job",
 			'testsOnly',
-			{ code: false, docs: false, apps: [], verifiedBy: 'https://ci.example/runs/1' },
+			['Packages', 'Score Keepr', 'Keepr Accounts', NO_LEG_WORKER_JOB],
 		],
 		[
-			'shipping in an app, so with a leg, runs its gates',
+			"shipping in an app skips only the other projects' gates",
 			'codeThenDocs',
-			{ code: true, docs: false, apps: [{ app: 'stream', accounts: true }], verifiedBy: undefined },
+			['Packages', 'Score Keepr', 'Keepr Accounts'],
 		],
-	])('a merge group %s', async (_case, group, expected) => {
-		const { checkout, base, head } = mergeGroup(group);
+	])(
+		'a merge group %s, and asks the reuse check for a run that skipped no more',
+		async (_case, group, skipped) => {
+			const { checkout, base, head } = mergeGroup(group);
+			const asked: (readonly string[])[] = [];
 
-		await expect(
-			scopeIn({
-				eventName: 'merge_group',
-				event: { merge_group: { base_sha: base, head_sha: head } },
-				cwd: checkout,
-				verifiedRun: async (_head: string, { runsWorkerLegs }: { runsWorkerLegs: boolean }) =>
-					runsWorkerLegs ? undefined : { id: 1, url: 'https://ci.example/runs/1' },
-			}),
-		).resolves.toEqual(expected);
-	});
+			await expect(
+				scopeIn({
+					eventName: 'merge_group',
+					event: { merge_group: { base_sha: base, head_sha: head } },
+					cwd: checkout,
+					verifiedRun: async (_head: string, group: { skipped: readonly string[] }) => {
+						asked.push(group.skipped);
+						return { id: 1, url: 'https://ci.example/runs/1' };
+					},
+				}),
+			).resolves.toEqual({
+				code: false,
+				docs: false,
+				gates: [],
+				apps: [],
+				verifiedBy: 'https://ci.example/runs/1',
+			});
+			expect(asked).toEqual([skipped]);
+		},
+	);
 
 	it('a base it cannot fetch runs everything', () => {
 		const { checkout, head } = mergeGroup('docsOnly');
@@ -471,6 +604,8 @@ describe("the scope job's command line", () => {
 					head_sha: head,
 				},
 			}).output,
-		).toBe('code=true\ndocs=false\napps=[{"app":"stream","accounts":true}]\n');
+		).toBe(
+			'code=true\ndocs=false\ngates=["typecheck","unit","nuxt","integration","server-and-browser","packages","score","accounts"]\napps=[{"app":"stream","accounts":true}]\n',
+		);
 	});
 });

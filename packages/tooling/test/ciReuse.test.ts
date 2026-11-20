@@ -79,7 +79,13 @@ function token(
 
 const JOBS = [
 	'Decide what the change can affect',
-	'Lint, typecheck, unit and Nuxt suites',
+	'Lint',
+	'Typecheck',
+	'Unit suite',
+	'Nuxt suite',
+	'Packages',
+	'Score Keepr',
+	'Keepr Accounts',
 	'Integration suite (1/2)',
 	'Integration suite (2/2)',
 	'Browser gates',
@@ -155,13 +161,13 @@ function io(state: World) {
 function find(
 	state: World,
 	overrides: Partial<ReturnType<typeof io>> = {},
-	{ runsWorkerLegs = true } = {},
+	{ skipped = [] as readonly string[] } = {},
 ) {
 	return findVerifiedRun({
 		tree: GROUP_TREE,
 		repository: REPOSITORY,
 		repositoryId: REPOSITORY_ID,
-		runsWorkerLegs,
+		skipped,
 		io: {
 			...io(state),
 			...overrides,
@@ -435,54 +441,46 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 		await expectFullRun(world(overrides), /run|job/i);
 	});
 
-	/** As GitHub names the Worker job when its scope chose no leg: the matrix never expanded. */
+	/** As GitHub names a matrix job its condition skipped: the matrix never expanded. */
 	const NO_LEG = 'Build, wrangler dry runs, and Worker smoke (${{ matrix.app }})';
-	const withJob = (name: string, conclusion: string) => [
-		...JOBS.filter((job) => !job.startsWith('Build')).map((job) => ({
-			name: job,
-			status: 'completed',
-			conclusion: 'success',
-		})),
-		{ name, status: 'completed', conclusion },
-	];
+	const INTEGRATION = 'Integration suite (${{ matrix.shard }}/2)';
+	/** CI's jobs, each named one (a matrix job's every leg) listed once instead, so concluded. */
+	const runWith = (...replaced: [string, string][]) => {
+		const job = (name: string) => name.replace(/ \(.*\)$/, '');
+		return [
+			...JOBS.filter((name) => !replaced.some(([other]) => job(other) === job(name))).map(
+				(name) => ({ name, status: 'completed', conclusion: 'success' }),
+			),
+			...replaced.map(([name, conclusion]) => ({ name, status: 'completed', conclusion })),
+		];
+	};
 
-	// A tests-only change runs no Worker leg; the group's identical tree then runs none either.
-	it.each<[string, boolean, { runsWorkerLegs: boolean }, ReturnType<typeof withJob>]>([
+	// A gate whose projects the change does not affect is skipped, and so is the
+	// Worker job with no leg; the group's identical tree skips them too, unless
+	// its own scope, against its own base, says otherwise (ADR-0123, ADR-0147).
+	it.each<[string, boolean, readonly string[], ReturnType<typeof runWith>]>([
 		[
-			'its Worker job skipped, and the group runs no leg',
+			'gates and the Worker job skipped, each one the group skips too',
 			true,
-			{ runsWorkerLegs: false },
-			withJob(NO_LEG, 'skipped'),
+			['Typecheck', INTEGRATION, NO_LEG],
+			runWith(['Typecheck', 'skipped'], [INTEGRATION, 'skipped'], [NO_LEG, 'skipped']),
 		],
 		[
-			'its Worker job skipped, but the group runs a leg',
+			'a gate skipped that the group runs',
 			false,
-			{ runsWorkerLegs: true },
-			withJob(NO_LEG, 'skipped'),
+			[INTEGRATION, NO_LEG],
+			runWith(['Typecheck', 'skipped'], [INTEGRATION, 'skipped'], [NO_LEG, 'skipped']),
 		],
+		['a job failed that the group skips', false, [NO_LEG], runWith([NO_LEG, 'failure'])],
+		// The group skips the whole job by its template; a leg skipped alone is another job.
 		[
-			'its Worker job failed, and the group runs no leg',
+			'one leg of a matrix job skipped, though the group skips the job',
 			false,
-			{ runsWorkerLegs: false },
-			withJob(NO_LEG, 'failure'),
+			[INTEGRATION],
+			jobs('Integration suite (2/2)', 'skipped'),
 		],
-		[
-			"one app's Worker leg skipped, and the group runs no leg",
-			false,
-			{ runsWorkerLegs: false },
-			withJob('Build, wrangler dry runs, and Worker smoke (stream)', 'skipped'),
-		],
-		[
-			'another job skipped, and the group runs no leg',
-			false,
-			{ runsWorkerLegs: false },
-			[
-				...withJob(NO_LEG, 'skipped'),
-				{ name: 'Typecheck', status: 'completed', conclusion: 'skipped' },
-			],
-		],
-	])('a PR run with %s: reused %s', async (_case, reused, group, jobs) => {
-		const result = await find(world({ jobs }), {}, group);
+	])('a PR run with %s: reused %s', async (_case, reused, skipped, ranJobs) => {
+		const result = await find(world({ jobs: ranJobs }), {}, { skipped });
 
 		expect(result.run !== undefined, result.rejected.join('\n')).toBe(reused);
 	});
