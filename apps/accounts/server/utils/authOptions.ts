@@ -13,6 +13,7 @@ import {
 import { passwordResetEmail } from '~~/server/email/messages';
 import { keeprDomainOf } from '@keepr/nuxt-layer/shared/utils/keeprDomain';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
+import { openAuthRoutesOnly } from './openAuthRoutes';
 import { organisationOptions } from './organisations';
 import { userNameHooks } from './userName';
 
@@ -83,62 +84,6 @@ export function sharedCookieDomainFor(host: string): string | undefined {
 }
 
 const adminPlugin = admin({ bannedUserMessage: DISABLED_USER_MESSAGE });
-
-function httpPaths(plugin: { endpoints: Record<string, unknown> }): string[] {
-	return Object.values(plugin.endpoints as Record<string, { path?: unknown }>)
-		.map((endpoint) => endpoint.path)
-		.filter((path) => typeof path === 'string');
-}
-
-/**
- * Paths no request may reach. The admin add-on's routes admit any
- * Keepr Administrator to everything it can do, impersonation and hard deletion
- * included; Keepr Accounts serves its own narrower routes instead. Derived from
- * the add-on, so a bump that adds a route closes it too.
- */
-export const CLOSED_PATHS = httpPaths(adminPlugin);
-
-/**
- * The organisation add-on's routes that change a member, closed because Keepr
- * Accounts serves its own (`memberManagement.ts`): these would ask for no recent
- * sign-in, admit no Keepr Administrator, and leave App access out of the Audit
- * Record.
- */
-export const MEMBER_PATHS_KEEPR_SERVES = [
-	'/organization/update-member-role',
-	'/organization/remove-member',
-	// `invitations.ts`: these would admit no Keepr Administrator to an Organisation
-	// they are not a member of (#1228 story 48).
-	'/organization/invite-member',
-	'/organization/list-invitations',
-	'/organization/cancel-invitation',
-	// `invitationAcceptance.ts`: these would read, accept or decline an Invitation
-	// by its id alone, which its inviter and every manager hold; Keepr Accounts'
-	// own ask for the secret only the invitee is emailed (ADR-0155).
-	'/organization/get-invitation',
-	'/organization/list-user-invitations',
-	'/organization/accept-invitation',
-	'/organization/reject-invitation',
-];
-
-/**
- * The organisation add-on's routes that rename or delete an Organisation, closed
- * because nothing in Keepr does either: they would be open to its owners, and
- * leave no row in the Audit Record.
- */
-export const ORGANISATION_PATHS_CLOSED = ['/organization/update', '/organization/delete'];
-
-/**
- * The organisation add-on's routes a member reaches with no administrative
- * right, closed: the two reads answer every member's email and roles, which only
- * those who manage the members see (`listMembers`); leaving would take the
- * member's App access unaudited, and Keepr has only removal.
- */
-export const MEMBERSHIP_PATHS_CLOSED = [
-	'/organization/list-members',
-	'/organization/get-full-organization',
-	'/organization/leave',
-];
 
 /** Where the library's routes are served, which its rate limit's paths are relative to. */
 const AUTH_BASE_PATH = '/api/auth';
@@ -221,6 +166,12 @@ export function authOptions({
 			freshAge: 0,
 		},
 		plugins: [
+			// First, so every route but the open ones answers 404 before any other add-on
+			// sees the request (`OPEN_AUTH_ROUTES`).
+			openAuthRoutesOnly,
+			// For its schema, its refusal of a disabled User's sign-in and its server-side
+			// API: its routes, which would admit a Keepr Administrator to impersonation and
+			// hard deletion, are closed with every route not open.
 			adminPlugin,
 			organization({
 				// Organisations are created on purpose, by a Keepr Administrator.
@@ -274,12 +225,6 @@ export function authOptions({
 				},
 			},
 		},
-		disabledPaths: [
-			...CLOSED_PATHS,
-			...MEMBER_PATHS_KEEPR_SERVES,
-			...ORGANISATION_PATHS_CLOSED,
-			...MEMBERSHIP_PATHS_CLOSED,
-		],
 		baseURL: {
 			allowedHosts: ALLOWED_HOSTS,
 			fallback: KEEPR_ACCOUNTS_ORIGIN,

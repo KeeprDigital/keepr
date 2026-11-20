@@ -1,6 +1,6 @@
 # ADR-0115: The first Keepr Administrator is claimed once, from a command-written offer
 
-Accepted · 2026-11-17 · #1228, #1250
+Accepted · 2026-11-17 · #1228, #1250 · Amended by ADR-0156: a Keepr Administrator makes another; no request creates the first
 
 ### Decision
 

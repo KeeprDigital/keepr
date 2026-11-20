@@ -50,6 +50,12 @@ export interface TestAccounts {
 	actor: (email: string, method?: string) => Promise<Actor>;
 	/** An Organisation with `ownerEmail`'s User as its owner, made through the library. */
 	createOrganisation: (name: string, ownerEmail: string) => Promise<{ id: string }>;
+	/**
+	 * Makes every later insert into `table` fail, as a database failing between
+	 * one statement of a write and the next would: what the write already did in
+	 * the same batch is undone, and anything it did before the batch stays.
+	 */
+	failInsertsInto: (table: string) => Promise<void>;
 	/** The Audit Record, in the order it was written. */
 	auditRecord: () => Promise<(typeof schema.auditRecord.$inferSelect)[]>;
 	/**
@@ -154,6 +160,11 @@ export async function createTestAccounts(
 			});
 			if (!organisation) throw new Error(`no Organisation ${name}`);
 			return organisation;
+		},
+		async failInsertsInto(table) {
+			await harness.client.execute(
+				`create trigger "fail_${table}" before insert on "${table}" begin select raise(abort, 'injected failure'); end`,
+			);
 		},
 		async auditRecord() {
 			return await database

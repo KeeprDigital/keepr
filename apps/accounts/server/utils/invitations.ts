@@ -3,13 +3,13 @@ import type { EmailSender } from '~~/server/email/sender';
 import type { Actor } from './actor';
 import type { AppRoles } from './appAccess';
 import type { ManagingStanding } from './memberManagement';
-import { and, asc, count, eq, gt, ne } from 'drizzle-orm';
+import { and, asc, count, eq, gt, ne, sql } from 'drizzle-orm';
 import { isOrganisationRole } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { schema } from '~~/server/db';
 import { invitationEmail } from '~~/server/email/messages';
 import { invitationLink } from '~~/shared/utils/invitationLink';
 import { offeredAppRoles } from './appAccess';
-import { recordAudit } from './auditRecord';
+import { auditRow, auditRowsWhere, recordAudit } from './auditRecord';
 import {
 	INVITATION_EXPIRES_IN_SECONDS,
 	INVITATION_LIMIT,
@@ -24,7 +24,7 @@ import { KeeprRefusal, refusalFromAuth } from './refusal';
  * Accounts' own routes (ADR-0114, ADR-0116): who may is `managingStanding`'s
  * answer, so a Keepr Administrator invites to any Organisation as its owner
  * would (#1228 story 48). The library's invite, list and cancel routes stay
- * closed (`MEMBER_PATHS_KEEPR_SERVES`).
+ * closed (`OPEN_AUTH_ROUTES`).
  */
 
 /** How an Invitation's email is sent, and from which origin its link is named. */
@@ -40,77 +40,85 @@ export interface CreatedInvitation {
 	invitationId: string;
 }
 
+export interface InvitationIssue {
+	organisation: { id: string; name: string };
+	email: string;
+	role: string;
+	appRoles: AppRoles;
+	inviterId: string;
+	as: ManagingStanding;
+}
+
 /**
- * Invites `email` to `organisation`: the address's pending Invitation there is
- * replaced, each replacement a cancellation in the Audit Record, and the email,
- * whose link carries the Invitation's secret, is sent after answering. A failed
- * send leaves the Invitation standing.
+ * The statements that invite `email` to `organisation`, for one batch, and the
+ * secret its link carries: the address's pending Invitation there is replaced,
+ * each replacement a cancellation in the Audit Record, and the new one is
+ * created with its secret's digest and recorded. No Invitation stands without
+ * its secret or its row in the Audit Record.
  */
-export async function issueInvitation(
+export async function invitationWrites(
 	database: IdentityDatabase,
-	{
-		organisation,
-		email,
-		role,
-		appRoles,
-		inviterId,
-		as,
-	}: {
-		organisation: { id: string; name: string };
-		email: string;
-		role: string;
-		appRoles: AppRoles;
-		inviterId: string;
-		as: ManagingStanding;
-	},
-	{ email: sender, origin, afterResponse = (work) => work }: InvitationSending,
-): Promise<CreatedInvitation> {
+	{ organisation, email, role, appRoles, inviterId, as }: InvitationIssue,
+) {
 	const now = new Date();
 	const invitationId = crypto.randomUUID();
-	const replaced = await database
-		.update(schema.invitation)
-		.set({ status: 'canceled' })
-		.where(
-			and(
-				eq(schema.invitation.organizationId, organisation.id),
-				eq(schema.invitation.email, email),
-				eq(schema.invitation.status, 'pending'),
-				// Checked before (`pendingOwnerOffer`), and held here: an admin never
-				// replaces an offer to an owner, even one made in between.
-				as === 'admin' ? ne(schema.invitation.role, 'owner') : undefined,
-			),
-		)
-		.returning({ id: schema.invitation.id });
+	const { invitation } = schema;
+	const replaceable = and(
+		eq(invitation.organizationId, organisation.id),
+		eq(invitation.email, email),
+		eq(invitation.status, 'pending'),
+		// Checked before (`pendingOwnerOffer`), and held here: an admin never
+		// replaces an offer to an owner, even one made in between.
+		as === 'admin' ? ne(invitation.role, 'owner') : undefined,
+	)!;
 	const { secret, digest } = await newInvitationSecret();
-	// One write, so no Invitation stands without its secret.
-	await database.batch([
-		database.insert(schema.invitation).values({
-			id: invitationId,
-			organizationId: organisation.id,
-			email,
-			role,
-			status: 'pending',
-			expiresAt: new Date(now.getTime() + INVITATION_EXPIRES_IN_SECONDS * 1000),
-			createdAt: now,
-			inviterId,
-			appRoles: JSON.stringify(appRoles),
-		}),
-		database.insert(schema.invitationSecret).values({ invitationId, digest }),
-	]);
-	await recordAudit(database, {
-		action: 'invitation.created',
-		actorUserId: inviterId,
-		organizationId: organisation.id,
-		detail: { invitationId, email, role, appRoles, as },
-	});
-	for (const { id } of replaced)
-		await recordAudit(database, {
-			action: 'invitation.cancelled',
-			actorUserId: inviterId,
-			organizationId: organisation.id,
-			detail: { invitationId: id, email, replacedBy: invitationId, as },
-		});
+	return {
+		invitationId,
+		secret,
+		statements: [
+			// Recorded before they are replaced, while they are still the pending ones.
+			auditRowsWhere(database, {
+				action: 'invitation.cancelled',
+				actorUserId: inviterId,
+				organizationId: organisation.id,
+				detail: sql`json_object('invitationId', ${invitation.id}, 'email', ${email}, 'replacedBy', ${invitationId}, 'as', ${as})`,
+				from: sql`${invitation}`,
+				where: replaceable,
+			}),
+			database.update(invitation).set({ status: 'canceled' }).where(replaceable),
+			database.insert(invitation).values({
+				id: invitationId,
+				organizationId: organisation.id,
+				email,
+				role,
+				status: 'pending',
+				expiresAt: new Date(now.getTime() + INVITATION_EXPIRES_IN_SECONDS * 1000),
+				createdAt: now,
+				inviterId,
+				appRoles: JSON.stringify(appRoles),
+			}),
+			database.insert(schema.invitationSecret).values({ invitationId, digest }),
+			auditRow(database, {
+				action: 'invitation.created',
+				actorUserId: inviterId,
+				organizationId: organisation.id,
+				detail: { invitationId, email, role, appRoles, as },
+			}),
+		] as const,
+	};
+}
 
+/**
+ * Sends the email of an Invitation already written, after answering: its link,
+ * carrying the secret, goes to the invitee alone. A failed send leaves the
+ * Invitation standing.
+ */
+export async function sendInvitation(
+	database: IdentityDatabase,
+	{ organisation, email, inviterId }: InvitationIssue,
+	{ invitationId, secret }: { invitationId: string; secret: string },
+	{ email: sender, origin, afterResponse = (work) => work }: InvitationSending,
+): Promise<CreatedInvitation> {
 	const [inviter] = await database
 		.select({ name: schema.user.name })
 		.from(schema.user)
@@ -126,6 +134,20 @@ export async function issueInvitation(
 		),
 	);
 	return { invitationId };
+}
+
+/**
+ * Invites `email` to `organisation` in one batch (`invitationWrites`), and sends
+ * the email after answering.
+ */
+export async function issueInvitation(
+	database: IdentityDatabase,
+	issue: InvitationIssue,
+	sending: InvitationSending,
+): Promise<CreatedInvitation> {
+	const written = await invitationWrites(database, issue);
+	await database.batch(written.statements);
+	return await sendInvitation(database, issue, written, sending);
 }
 
 /**

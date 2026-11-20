@@ -414,6 +414,16 @@ describe('inviting an address again', () => {
 		]);
 	});
 
+	it('that fails before the new one is recorded leaves the earlier standing, alone', async () => {
+		const { invitationId: earlier } = await invite(OWNER, { role: 'member' });
+		await accounts.failInsertsInto('auditRecord');
+
+		await expect(invite(OWNER, { role: 'admin' })).rejects.toThrow(/injected failure/);
+
+		expect((await pending(OWNER)).map(({ id }) => id)).toEqual([earlier]);
+		expect(await invitations()).toBe(1);
+	});
+
 	// The library's own path, which only the server reaches, records a replacement
 	// as a cancellation with none recorded: so every cancellation here is recorded.
 	it('then through the library records each replacement once', async () => {

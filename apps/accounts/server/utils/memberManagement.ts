@@ -6,8 +6,8 @@ import { schema } from '~~/server/db';
 import { isAppId, isAppRole } from '@keepr/nuxt-layer/shared/utils/appRegistry';
 import { isOrganisationRole } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { APP_ROLE_NOT_IN_REGISTRY } from './appAccess';
-import { recordAudit } from './auditRecord';
-import { cancelInvitationsOfferedBy } from './offeredInvitations';
+import { auditRow, auditRowsWhere } from './auditRecord';
+import { offeredInvitationCancellations } from './offeredInvitations';
 import { requireRecentSignIn } from './recentSignIn';
 import { KeeprRefusal } from './refusal';
 
@@ -179,20 +179,22 @@ export async function setAppAccess(
 		.from(schema.appAccess)
 		.where(and(eq(schema.appAccess.memberId, memberId), eq(schema.appAccess.app, app)));
 	const now = new Date();
-	await database
-		.insert(schema.appAccess)
-		.values({ id: crypto.randomUUID(), memberId, app, role, createdAt: now, updatedAt: now })
-		.onConflictDoUpdate({
-			target: [schema.appAccess.memberId, schema.appAccess.app],
-			set: { role, updatedAt: now },
-		});
-	await recordAudit(database, {
-		action: 'app-access.set',
-		actorUserId: actor.userId,
-		organizationId,
-		subjectUserId: target.userId,
-		detail: { memberId, app, role, was: held?.role ?? null, as: standing },
-	});
+	await database.batch([
+		database
+			.insert(schema.appAccess)
+			.values({ id: crypto.randomUUID(), memberId, app, role, createdAt: now, updatedAt: now })
+			.onConflictDoUpdate({
+				target: [schema.appAccess.memberId, schema.appAccess.app],
+				set: { role, updatedAt: now },
+			}),
+		auditRow(database, {
+			action: 'app-access.set',
+			actorUserId: actor.userId,
+			organizationId,
+			subjectUserId: target.userId,
+			detail: { memberId, app, role, was: held?.role ?? null, as: standing },
+		}),
+	]);
 }
 
 export const ownerRequired = () =>
@@ -227,24 +229,29 @@ export async function changeOrganisationRole(
 	const target = await memberOf(database, organizationId, memberId);
 	if (!isOrganisationRole(role))
 		throw new KeeprRefusal(400, 'ORGANISATION_ROLE_NOT_KNOWN', `No Organisation role is ${role}.`);
-	const [changed] = await database
-		.update(schema.member)
-		.set({ role })
-		.where(
-			and(
-				eq(schema.member.id, memberId),
-				role === 'owner' ? undefined : keepsAnOwner(organizationId),
-			),
-		)
-		.returning({ id: schema.member.id });
-	if (!changed) throw lastOwner();
-	await recordAudit(database, {
-		action: 'member.role-changed',
-		actorUserId: actor.userId,
-		organizationId,
-		subjectUserId: target.userId,
-		detail: { memberId, role, was: target.role, as: standing },
-	});
+	// One batch: the row is recorded only if the change was made, which the member
+	// holding the new role afterwards shows.
+	const [changed] = await database.batch([
+		database
+			.update(schema.member)
+			.set({ role })
+			.where(
+				and(
+					eq(schema.member.id, memberId),
+					role === 'owner' ? undefined : keepsAnOwner(organizationId),
+				),
+			)
+			.returning({ id: schema.member.id }),
+		auditRowsWhere(database, {
+			action: 'member.role-changed',
+			actorUserId: actor.userId,
+			organizationId,
+			subjectUserId: target.userId,
+			detail: sql`${JSON.stringify({ memberId, role, was: target.role, as: standing })}`,
+			where: sql`exists (select 1 from ${schema.member} where ${schema.member.id} = ${memberId} and ${schema.member.role} = ${role})`,
+		}),
+	]);
+	if (changed.length === 0) throw lastOwner();
 }
 
 /**
@@ -264,28 +271,35 @@ export async function removeMember(
 		.select({ app: schema.appAccess.app, role: schema.appAccess.role })
 		.from(schema.appAccess)
 		.where(eq(schema.appAccess.memberId, memberId));
-	const [removed] = await database
-		.delete(schema.member)
-		.where(and(eq(schema.member.id, memberId), keepsAnOwner(organizationId)))
-		.returning({ id: schema.member.id });
-	if (!removed) throw lastOwner();
-	await recordAudit(database, {
-		action: 'member.removed',
-		actorUserId: actor.userId,
-		organizationId,
-		subjectUserId: target.userId,
-		detail: {
-			memberId,
-			role: target.role,
-			apps: Object.fromEntries(access.map(({ app, role }) => [app, role])),
-			as: standing,
-		},
-	});
-	await cancelInvitationsOfferedBy(
-		database,
-		{ inviterId: target.userId, organizationId },
-		{ actorUserId: actor.userId, as: standing, because: 'inviter-removed' },
-	);
+	// One batch: the row is recorded, and the Invitations they offered here cancelled,
+	// only if the member is gone afterwards.
+	const gone = sql`not exists (select 1 from ${schema.member} where ${schema.member.id} = ${memberId})`;
+	const [removed] = await database.batch([
+		database
+			.delete(schema.member)
+			.where(and(eq(schema.member.id, memberId), keepsAnOwner(organizationId)))
+			.returning({ id: schema.member.id }),
+		auditRowsWhere(database, {
+			action: 'member.removed',
+			actorUserId: actor.userId,
+			organizationId,
+			subjectUserId: target.userId,
+			detail: sql`${JSON.stringify({
+				memberId,
+				role: target.role,
+				apps: Object.fromEntries(access.map(({ app, role }) => [app, role])),
+				as: standing,
+			})}`,
+			where: gone,
+		}),
+		...offeredInvitationCancellations(
+			database,
+			{ inviterId: target.userId, organizationId },
+			{ actorUserId: actor.userId, as: standing, because: 'inviter-removed' },
+			gone,
+		),
+	]);
+	if (removed.length === 0) throw lastOwner();
 }
 
 /** Takes a member's App access in `app` away; they stay a member, with any other. */
@@ -296,17 +310,19 @@ export async function removeAppAccess(
 ): Promise<void> {
 	const { standing } = await managingChange(database, actor, organizationId);
 	const target = await memberOf(database, organizationId, memberId);
-	const [removed] = await database
-		.delete(schema.appAccess)
-		.where(and(eq(schema.appAccess.memberId, memberId), eq(schema.appAccess.app, app)))
-		.returning({ role: schema.appAccess.role });
-	// Nothing held is nothing changed, and nothing to record.
-	if (!removed) return;
-	await recordAudit(database, {
-		action: 'app-access.removed',
-		actorUserId: actor.userId,
-		organizationId,
-		subjectUserId: target.userId,
-		detail: { memberId, app, was: removed.role, as: standing },
-	});
+	const heldInApp = and(eq(schema.appAccess.memberId, memberId), eq(schema.appAccess.app, app))!;
+	// One batch: recorded from the row as it is removed, so nothing held is nothing
+	// changed, and nothing to record.
+	await database.batch([
+		auditRowsWhere(database, {
+			action: 'app-access.removed',
+			actorUserId: actor.userId,
+			organizationId,
+			subjectUserId: target.userId,
+			detail: sql`json_object('memberId', ${memberId}, 'app', ${app}, 'was', ${schema.appAccess.role}, 'as', ${standing})`,
+			from: sql`${schema.appAccess}`,
+			where: heldInApp,
+		}),
+		database.delete(schema.appAccess).where(heldInApp),
+	]);
 }

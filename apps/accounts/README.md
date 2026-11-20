@@ -12,6 +12,8 @@ Its words are the root `GLOSSARY.md`'s and its own `GLOSSARY.md`'s; `RULES.md` s
 | `server/utils/auth.ts` | The instance a request is answered by, one per cookie domain. |
 | `server/utils/identityProof.ts` | What an Identity Proof names, read from the identity database, and the Organisation a new Session works in. |
 | `server/api/auth/[...all].ts` | Better Auth's routes under `/api/auth`. |
+| `server/utils/openAuthRoutes.ts` | Which of Better Auth's routes are open; every other answers 404. |
+| `server/utils/securityHeaders.ts` | The headers every response carries, set by `server/middleware/securityHeaders.ts`. |
 | `server/utils/userNames.ts` | Whose name a Session is told, by id: a User who shares an Organisation with its own. Served by `server/api/users/names.get.ts`, which an App asks with its request's cookie. |
 | `server/db/schema.ts` | The identity schema, by hand; `server/db/migrations/sqlite` its migrations. |
 | `server/email` | The email seam (`sender.ts`): Cloudflare's email service (`cloudflare.ts`), the recorder tests and the dev server use instead (`recorder.ts`), and what each email says (`messages.ts`). |
@@ -31,7 +33,7 @@ Its words are the root `GLOSSARY.md`'s and its own `GLOSSARY.md`'s; `RULES.md` s
 | `app/utils/refusal.ts` | What a page tells its User about a refusal, a refused name's and a refused new password's among it. |
 | `app/utils/appRoleChoices.ts` | The Organisation roles and each App's App roles, as a form offers them. |
 | `app/pages` | Signing in (`/sign-in?returnTo=…`), the profile (`/`), resetting a password (`/forgot-password`, then the emailed link to `/reset-password`), inviting and the pending Invitations (`/invite`), accepting or declining an Invitation (`/invitation`), and claiming the first Keepr Administrator (`/first-administrator`). |
-| `test/unit` | The server, request in and response out, on SQLite with the real migrations (`test/helpers/keeprAccounts.ts`). Also the shared layer's identity function against this real minting (`requestIdentity.sqlite.test.ts`), since the layer cannot import an app. |
+| `test/unit` | The server, request in and response out, on SQLite with the real migrations (`test/helpers/keeprAccounts.ts`); `routes.sqlite.test.ts` drives every route handler behind the middleware. Also the shared layer's identity function against this real minting (`requestIdentity.sqlite.test.ts`), since the layer cannot import an app. |
 | `test/nuxt` | One wiring test per page. |
 
 ## Running it
@@ -72,7 +74,7 @@ pnpm claim-first-administrator you@example.com --remote accounts-identity       
 pnpm claim-first-administrator you@example.com --remote accounts-identity --env staging  # Staging's
 ```
 
-It writes a one-time claim for the address and prints the link that claims it: open it, choose a name and password, and you are the Keepr Administrator and owner of the Keepr Organisation. The local link is the dev server's (`http://localhost:3000`); under `pnpm beside`, use port 8790. A deployed database's link is its Installation's, from `deploy.jsonc`. Once a Keepr Administrator exists, the command writes nothing. Everyone else joins by Invitation, from `/invite`.
+It writes a one-time claim for the address, good for a day, and prints the link that claims it: open it, choose a name and password, and you are the Keepr Administrator and owner of the Keepr Organisation. The local link is the dev server's (`http://localhost:3000`); under `pnpm beside`, use port 8790. A deployed database's link is its Installation's, from `deploy.jsonc`. Once a Keepr Administrator exists, the command writes nothing. Everyone else joins by Invitation, from `/invite`.
 
 ## Deploying
 

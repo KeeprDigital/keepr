@@ -7,7 +7,8 @@ import { RECENT_SIGN_IN_REQUIRED } from '~~/shared/utils/recentSignIn';
 /**
  * The platform screen, a Keepr Administrator's: every Organisation, each opening
  * its members screen, and a new one created with its first owner invited; any
- * User found by name or email, and disabled or enabled again; and the Audit
+ * User found by name or email, disabled or enabled again, or made a Keepr
+ * Administrator; and the Audit
  * Record. Closed to anyone else, the server deciding; every rule is the server's.
  */
 
@@ -129,16 +130,16 @@ async function findUsers(query: string = usersForm.query) {
 	});
 }
 
-async function setDisabled(user: FoundUser, disabled: boolean) {
+/** A change to a found User: disabling, enabling, or making them a Keepr Administrator. */
+async function changeUser(user: FoundUser, change: 'disable' | 'enable' | 'keepr-administrator') {
 	if (changingUser.value) return;
 	changingUser.value = user.id;
 	usersRefusal.value = null;
 	signInAgain.value = false;
 	try {
-		await $fetch(
-			`/api/platform/users/${encodeURIComponent(user.id)}/${disabled ? 'disable' : 'enable'}`,
-			{ method: 'POST' },
-		);
+		await $fetch(`/api/platform/users/${encodeURIComponent(user.id)}/${change}`, {
+			method: 'POST',
+		});
 	} catch (failure) {
 		usersRefusal.value = refusalOf(failure, 'That change failed. Try again.');
 	} finally {
@@ -303,26 +304,38 @@ function shownAt(at: string): string {
 									<template v-if="user.keeprAdministrator"> · Keepr Administrator</template>
 								</p>
 							</div>
-							<UButton
-								v-if="user.disabled"
-								data-enable
-								color="neutral"
-								variant="outline"
-								:loading="changingUser === user.id"
-								@click="setDisabled(user, false)"
-							>
-								Enable
-							</UButton>
-							<UButton
-								v-else
-								data-disable
-								color="error"
-								variant="outline"
-								:loading="changingUser === user.id"
-								@click="setDisabled(user, true)"
-							>
-								Disable
-							</UButton>
+							<div class="flex shrink-0 gap-2">
+								<UButton
+									v-if="!user.keeprAdministrator"
+									data-grant-keepr-administrator
+									color="neutral"
+									variant="outline"
+									:loading="changingUser === user.id"
+									@click="changeUser(user, 'keepr-administrator')"
+								>
+									Make Keepr Administrator
+								</UButton>
+								<UButton
+									v-if="user.disabled"
+									data-enable
+									color="neutral"
+									variant="outline"
+									:loading="changingUser === user.id"
+									@click="changeUser(user, 'enable')"
+								>
+									Enable
+								</UButton>
+								<UButton
+									v-else
+									data-disable
+									color="error"
+									variant="outline"
+									:loading="changingUser === user.id"
+									@click="changeUser(user, 'disable')"
+								>
+									Disable
+								</UButton>
+							</div>
 						</li>
 					</ul>
 				</div>

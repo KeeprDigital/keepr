@@ -1,5 +1,6 @@
 import { failureStatus } from '@keepr/nuxt-layer/app/utils/failureStatus';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
+import { MAX_USER_NAME_LENGTH } from '~~/shared/utils/userName';
 
 /**
  * A refused request, as a page reads what `$fetch` threw. Better Auth's routes
@@ -65,5 +66,9 @@ export const NEW_PASSWORD_REFUSALS = {
 
 /** What a User whose name was refused is told, on whichever page set it. */
 export const USER_NAME_REFUSALS = {
-	codes: { NAME_REQUIRED: 'Enter your name.' },
+	codes: {
+		NAME_REQUIRED: 'Enter your name.',
+		NAME_TOO_LONG: `Enter a name of at most ${MAX_USER_NAME_LENGTH} characters.`,
+		NAME_INVALID: 'Enter your name on one line, without special characters.',
+	},
 } as const satisfies Omit<RefusalSentences, 'otherwise'>;

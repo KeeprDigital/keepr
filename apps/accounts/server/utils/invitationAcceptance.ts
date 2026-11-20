@@ -4,7 +4,6 @@ import type { AppRoles } from './appAccess';
 import type { InvitationKey } from './invitationSecret';
 import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 import { offeredAppRoles } from './appAccess';
-import { refuseCrossSiteWrite } from './actor';
 import { browserHeaders } from './browserHeaders';
 import { holdsInvitationSecret } from './invitationSecret';
 import { organisationRecords } from './organisations';
@@ -80,16 +79,13 @@ async function pendingInvitation(
 /**
  * The invitee declines from the Invitation's link, signed in or not: the
  * link's secret is the proof, as it is for accepting. Closes it and writes it in
- * the Audit Record, naming the address's User when it has one. A decline another
- * origin's page sent is refused 403 (`refuseCrossSiteWrite`).
+ * the Audit Record, naming the address's User when it has one.
  */
 export async function declineInvitation(
 	auth: KeeprAuth,
 	database: IdentityDatabase,
 	key: InvitationKey,
-	request: Request,
 ): Promise<void> {
-	refuseCrossSiteWrite(request);
 	const { invitationId } = key;
 	const invitation = await pendingInvitation(auth, database, key);
 	const { adapter, internalAdapter } = await auth.$context;
@@ -204,7 +200,7 @@ export async function acceptInvitationAsNewUser(
  * The invitee who has a User accepts, signed in with the invited address and
  * holding the link's secret: the Organisation and its App access are added to
  * their User, and their Session works in it. Signed in with another address, it
- * is refused 403 and nothing changes; so is an accept another origin's page sent.
+ * is refused 403 and nothing changes.
  */
 export async function acceptInvitationSignedIn(
 	auth: KeeprAuth,
@@ -212,7 +208,6 @@ export async function acceptInvitationSignedIn(
 	key: InvitationKey,
 	request: Request,
 ): Promise<void> {
-	refuseCrossSiteWrite(request);
 	await pendingInvitation(auth, database, key);
 	try {
 		await auth.api.acceptInvitation({

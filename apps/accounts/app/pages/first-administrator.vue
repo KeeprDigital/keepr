@@ -51,6 +51,7 @@ async function claim() {
 				...NEW_PASSWORD_REFUSALS.codes,
 				CLAIM_NOT_FOUND: SPENT,
 				KEEPR_ADMINISTRATOR_EXISTS: SPENT,
+				CLAIM_EXPIRED: 'This claim has expired. Run the first-administrator command again.',
 				...USER_NAME_REFUSALS.codes,
 			},
 			otherwise: 'Claiming failed. Try again.',
@@ -71,8 +72,8 @@ async function claim() {
 			<div v-if="claimId === null || email === null" data-no-claim class="flex flex-col gap-4">
 				<h1 class="text-lg font-semibold">This link claims nothing</h1>
 				<p class="text-sm text-muted">
-					A Keepr Administrator exists already, or the claim was never written. Run the
-					first-administrator command again if Keepr has none.
+					A Keepr Administrator exists already, or the claim has expired or was never written. Run
+					the first-administrator command again if Keepr has none.
 				</p>
 			</div>
 

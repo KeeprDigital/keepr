@@ -14,6 +14,7 @@ import {
 	disableUser,
 	enableUser,
 	findUsers,
+	grantKeeprAdministrator,
 	listOrganisations,
 	readAuditRecord,
 } from '~~/server/utils/keeprAdministration';
@@ -172,6 +173,44 @@ describe('creating an Organisation', () => {
 		expect(again).toEqual({ refused: 'ORGANISATION_EXISTS', statusCode: 409 });
 		expect(await listOrganisations(database, await actorFor(ADMINISTRATOR))).toHaveLength(1);
 		expect(accounts.email.sent).toHaveLength(1);
+	});
+
+	// Names are compared by their letters and digits in any script, so one with
+	// no ASCII letter is still unique, and a non-ASCII letter is not dropped.
+	it.each([
+		['the same name in another case', 'The Club', 'the-club', 'ORGANISATION_EXISTS'],
+		['a name of no ASCII letter, twice', '日本', '日本', 'ORGANISATION_EXISTS'],
+		['the same name of no letter at all, twice', '!!!', '!!!', 'ORGANISATION_EXISTS'],
+		['a name that differs by a non-ASCII letter', 'Škoda', 'koda', undefined],
+	])('under %s', async (_case, first, second, refusal) => {
+		const actor = await administrator();
+		const create = async (name: string) =>
+			await outcome(
+				createOrganisation(
+					database,
+					actor,
+					{ name, ownerEmail: FIRST_OWNER },
+					{ email: accounts.email, origin: ORIGIN },
+				),
+			);
+		await create(first);
+
+		const again = await create(second);
+
+		expect(again).toMatchObject(
+			refusal === undefined ? { organisation: { name: second } } : { refused: refusal },
+		);
+		expect(await listOrganisations(database, actor)).toHaveLength(refusal === undefined ? 2 : 1);
+	});
+
+	it('that fails before its Invitation is written leaves nothing half-written', async () => {
+		await accounts.failInsertsInto('invitation');
+
+		await expect(createClub()).rejects.toThrow(/injected failure/);
+
+		expect(await listOrganisations(database, await administrator())).toEqual([]);
+		expect(await accounts.auditRecord()).toEqual([]);
+		expect(accounts.email.sent).toEqual([]);
 	});
 
 	it('is in the Audit Record: the Organisation created and its first owner invited', async () => {
@@ -360,6 +399,19 @@ describe('disabling a User', () => {
 		expect(await audited('invitation.cancelled')).toHaveLength(2);
 	});
 
+	it('that fails before its Audit Record is written leaves them enabled and signed in', async () => {
+		const laptop = await accounts.signIn(ADA);
+		const actor = await administrator();
+		await accounts.failInsertsInto('auditRecord');
+
+		await expect(disableUser(database, actor, ada.id)).rejects.toThrow(/injected failure/);
+
+		expect(await signedIn(laptop)).toBe(true);
+		expect(await findUsers(database, actor, ADA)).toEqual([
+			expect.objectContaining({ disabled: false }),
+		]);
+	});
+
 	it.each<[string, string, () => Promise<TestActor>, () => string]>([
 		['by an ordinary User', 'NOT_A_KEEPR_ADMINISTRATOR', ordinaryUser, () => ada.id],
 		[
@@ -403,6 +455,76 @@ describe('disabling a User', () => {
 	});
 });
 
+// A Keepr Administrator makes another, so that one who is compromised can be
+// disabled by the other (ADR-0156).
+describe('granting a User Keepr Administrator', () => {
+	const ADA = 'ada@keepr.digital';
+	let ada: { id: string };
+
+	beforeEach(async () => {
+		ada = await accounts.createUser(ADA);
+	});
+
+	it('makes them one, who can then disable the Keepr Administrator who granted it', async () => {
+		const granter = await administrator();
+
+		await grantKeeprAdministrator(database, granter, ada.id);
+
+		expect(await findUsers(database, granter, ADA)).toEqual([
+			expect.objectContaining({ keeprAdministrator: true }),
+		]);
+		await disableUser(database, await actorFor(ADA, 'POST'), granter.userId);
+		expect(await findUsers(database, await actorFor(ADA), ADMINISTRATOR)).toEqual([
+			expect.objectContaining({ disabled: true }),
+		]);
+	});
+
+	it('is in the Audit Record, naming who granted it to whom', async () => {
+		const granter = await administrator();
+
+		await grantKeeprAdministrator(database, granter, ada.id);
+
+		expect(await audited('user.keepr-administrator-granted')).toEqual([
+			expect.objectContaining({
+				actorUserId: granter.userId,
+				subjectUserId: ada.id,
+				at: expect.any(Date),
+			}),
+		]);
+	});
+
+	it.each<[string, string, () => Promise<TestActor>, () => string]>([
+		['by an ordinary User', 'NOT_A_KEEPR_ADMINISTRATOR', ordinaryUser, () => ada.id],
+		[
+			'eleven minutes after signing in',
+			'RECENT_SIGN_IN_REQUIRED',
+			staleAdministrator,
+			() => ada.id,
+		],
+		['to a User who does not exist', 'USER_NOT_FOUND', administrator, () => 'nobody'],
+	])('%s is refused %s, and grants nothing', async (_case, refusal, actor, userId) => {
+		expect(await outcome(grantKeeprAdministrator(database, await actor(), userId()))).toMatchObject(
+			{ refused: refusal },
+		);
+		vi.useRealTimers();
+		expect(await findUsers(database, await administrator(), ADA)).toEqual([
+			expect.objectContaining({ keeprAdministrator: false }),
+		]);
+		expect(await audited('user.keepr-administrator-granted')).toEqual([]);
+	});
+
+	it('to one already is refused, and records nothing', async () => {
+		const granter = await administrator();
+		await grantKeeprAdministrator(database, granter, ada.id);
+
+		expect(await outcome(grantKeeprAdministrator(database, granter, ada.id))).toEqual({
+			refused: 'ALREADY_A_KEEPR_ADMINISTRATOR',
+			statusCode: 409,
+		});
+		expect(await audited('user.keepr-administrator-granted')).toHaveLength(1);
+	});
+});
+
 describe('the Audit Record a Keepr Administrator sees', () => {
 	it('is every action, newest first, naming who acted, on whom and in which Organisation', async () => {
 		const actor = await administrator();
@@ -436,6 +558,29 @@ describe('the Audit Record a Keepr Administrator sees', () => {
 				subject: null,
 				organisation: club,
 			}),
+		]);
+	});
+
+	// A row's `at` is stamped as its statement is built, so one written later can
+	// read earlier: within a batch, or from an isolate whose clock is behind.
+	it('lists the row written last first, whatever its time says', async () => {
+		const actor = await administrator();
+		const ada = await accounts.createUser('ada@keepr.digital');
+		const written = [new Date('2026-11-17T10:00:01Z'), new Date('2026-11-17T10:00:00Z')];
+		for (const [n, at] of written.entries())
+			await database.insert(schema.auditRecord).values({
+				id: `row-${n}`,
+				at,
+				action: 'user.enabled',
+				actorUserId: actor.userId,
+				subjectUserId: ada.id,
+			});
+
+		const seen = await readAuditRecord(database, actor);
+
+		expect(seen.map(({ id }) => id).filter((id) => id.startsWith('row-'))).toEqual([
+			'row-1',
+			'row-0',
 		]);
 	});
 

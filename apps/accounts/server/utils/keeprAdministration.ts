@@ -2,14 +2,15 @@ import type { IdentityDatabase } from '~~/server/db';
 import type { Actor } from './actor';
 import type { AppRoles } from './appAccess';
 import type { AuditAction } from './auditRecord';
-import type { InvitationSending } from './invitations';
-import { asc, count, desc, eq, or, sql } from 'drizzle-orm';
+import type { InvitationIssue, InvitationSending } from './invitations';
+import { asc, count, eq, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import { schema } from '~~/server/db';
+import { KEEPR_ADMINISTRATOR_ROLE } from '~~/shared/utils/keeprAdministrator';
 import { offeredAppRoles } from './appAccess';
-import { recordAudit } from './auditRecord';
-import { invitedAddress, issueInvitation } from './invitations';
-import { cancelInvitationsOfferedBy } from './offeredInvitations';
+import { auditRow } from './auditRecord';
+import { invitationWrites, invitedAddress, sendInvitation } from './invitations';
+import { offeredInvitationCancellations } from './offeredInvitations';
 import { userIsKeeprAdministrator } from './keeprAdministrator';
 import { requireRecentSignIn } from './recentSignIn';
 import { KeeprRefusal, refusalFromAuth } from './refusal';
@@ -17,7 +18,7 @@ import { KeeprRefusal, refusalFromAuth } from './refusal';
 /**
  * What a Keepr Administrator does to run the platform (#1228 § Keepr
  * Administrator), through Keepr Accounts' own routes: the admin add-on's stay
- * closed (`CLOSED_PATHS`). Each checks the Actor is a Keepr Administrator, a
+ * closed (`OPEN_AUTH_ROUTES`). Each checks the Actor is a Keepr Administrator, a
  * change from a recent sign-in, and each change is in the Audit Record.
  */
 
@@ -122,12 +123,23 @@ export interface CreatedOrganisation {
 	invitationId: string;
 }
 
-/** A slug for `name`: its letters and digits, hyphenated. */
-function slugOf(name: string): string {
-	return name
-		.toLowerCase()
-		.replaceAll(/[^a-z0-9]+/g, '-')
-		.replaceAll(/^-|-$/g, '');
+/**
+ * A slug for `name`: its letters and digits in any script, lower-cased and
+ * hyphenated, so `The Club` and `the-club` are one and `Škoda` is not `koda`. A
+ * name of no letter or digit is its own slug.
+ */
+export function slugOf(name: string): string {
+	const normalised = name.normalize('NFKC').toLowerCase();
+	return (
+		normalised.replaceAll(/[^\p{L}\p{N}]+/gu, '-').replaceAll(/^-|-$/g, '') || normalised.trim()
+	);
+}
+
+/** Whether `error` is the database refusing a second Organisation under one slug. */
+function isSlugTaken(error: unknown): boolean {
+	for (let cause: unknown = error; cause instanceof Error; cause = cause.cause)
+		if (/UNIQUE constraint failed: organization\.slug/.test(cause.message)) return true;
+	return false;
 }
 
 /**
@@ -156,32 +168,37 @@ export async function createOrganisation(
 	}
 
 	const organisation = { id: crypto.randomUUID(), name: named };
-	// Its slug is unique, so of two made at once under one name only one is.
-	const [created] = await database
-		.insert(schema.organization)
-		.values({ ...organisation, slug: slugOf(named) || organisation.id, createdAt: new Date() })
-		.onConflictDoNothing()
-		.returning({ id: schema.organization.id });
-	if (!created)
-		throw new KeeprRefusal(409, 'ORGANISATION_EXISTS', 'An Organisation has this name already.');
-	await recordAudit(database, {
-		action: 'organisation.created',
-		actorUserId: actor.userId,
-		organizationId: organisation.id,
-		detail: { name: named, as: 'keepr-administrator' },
-	});
-	const { invitationId } = await issueInvitation(
-		database,
-		{
-			organisation,
-			email: address,
-			role: 'owner',
-			appRoles: offered,
-			inviterId: actor.userId,
-			as: 'keepr-administrator',
-		},
-		sending,
-	);
+	const issue: InvitationIssue = {
+		organisation,
+		email: address,
+		role: 'owner',
+		appRoles: offered,
+		inviterId: actor.userId,
+		as: 'keepr-administrator',
+	};
+	const invitation = await invitationWrites(database, issue);
+	try {
+		// One batch: the Organisation, its first owner's Invitation and their rows in
+		// the Audit Record are written together or not at all. Its slug is unique, so
+		// of two made at once under one name only one is.
+		await database.batch([
+			database
+				.insert(schema.organization)
+				.values({ ...organisation, slug: slugOf(named), createdAt: new Date() }),
+			auditRow(database, {
+				action: 'organisation.created',
+				actorUserId: actor.userId,
+				organizationId: organisation.id,
+				detail: { name: named, as: 'keepr-administrator' },
+			}),
+			...invitation.statements,
+		]);
+	} catch (error) {
+		if (isSlugTaken(error))
+			throw new KeeprRefusal(409, 'ORGANISATION_EXISTS', 'An Organisation has this name already.');
+		throw error;
+	}
+	const { invitationId } = await sendInvitation(database, issue, invitation, sending);
 	return { organisation, invitationId };
 }
 
@@ -233,7 +250,10 @@ export async function readAuditRecord(
 		.leftJoin(actorUser, eq(actorUser.id, record.actorUserId))
 		.leftJoin(subjectUser, eq(subjectUser.id, record.subjectUserId))
 		.leftJoin(schema.organization, eq(schema.organization.id, record.organizationId))
-		.orderBy(desc(record.at), sql`${record}.rowid desc`)
+		// In the order written, not by `at`: rows of one batch are stamped as their
+		// statements are built, and isolates' clocks differ, so `at` can disagree with
+		// the order the database wrote them in. Rows are only added, so rowid is that order.
+		.orderBy(sql`${record}.rowid desc`)
 		.limit(AUDIT_RECORD_SHOWN);
 	return rows.map((row) => ({
 		id: row.id,
@@ -256,11 +276,11 @@ export async function readAuditRecord(
 /** The User `userId`, who a change is made to; 404 when there is none. */
 async function userOf(database: IdentityDatabase, userId: string) {
 	const [found] = await database
-		.select({ id: schema.user.id })
+		.select({ id: schema.user.id, keeprAdministrator: userIsKeeprAdministrator })
 		.from(schema.user)
 		.where(eq(schema.user.id, userId));
 	if (!found) throw new KeeprRefusal(404, 'USER_NOT_FOUND', 'No such User.');
-	return found;
+	return { id: found.id, keeprAdministrator: Boolean(found.keeprAdministrator) };
 }
 
 /**
@@ -279,31 +299,64 @@ export async function disableUser(
 	const target = await userOf(database, userId);
 	if (target.id === actor.userId)
 		throw new KeeprRefusal(409, 'CANNOT_DISABLE_SELF', 'You cannot disable your own account.');
-	// Disabled first, so no sign-in can open a Session after they are ended.
-	await database
-		.update(schema.user)
-		.set({ banned: true, banReason: null, banExpires: null, updatedAt: new Date() })
-		.where(eq(schema.user.id, target.id));
-	const ended = await database
-		.delete(schema.session)
-		.where(eq(schema.session.userId, target.id))
-		.returning({ id: schema.session.id });
-	await recordAudit(database, {
-		action: 'user.disabled',
-		actorUserId: actor.userId,
-		subjectUserId: target.id,
-	});
-	await recordAudit(database, {
-		action: 'user.sessions-ended',
-		actorUserId: actor.userId,
-		subjectUserId: target.id,
-		detail: { sessionsEnded: ended.length },
-	});
-	await cancelInvitationsOfferedBy(
-		database,
-		{ inviterId: target.id },
-		{ actorUserId: actor.userId, as: 'keepr-administrator', because: 'inviter-disabled' },
-	);
+	// One batch. Disabled first, so no sign-in can open a Session after they are
+	// ended; the Sessions are counted for the Audit Record as they are ended.
+	await database.batch([
+		database
+			.update(schema.user)
+			.set({ banned: true, banReason: null, banExpires: null, updatedAt: new Date() })
+			.where(eq(schema.user.id, target.id)),
+		auditRow(database, {
+			action: 'user.disabled',
+			actorUserId: actor.userId,
+			subjectUserId: target.id,
+		}),
+		auditRow(database, {
+			action: 'user.sessions-ended',
+			actorUserId: actor.userId,
+			subjectUserId: target.id,
+			detail: sql`json_object('sessionsEnded', (select count(*) from ${schema.session} where ${schema.session.userId} = ${target.id}))`,
+		}),
+		database.delete(schema.session).where(eq(schema.session.userId, target.id)),
+		// An offer stands no longer than its inviter's standing.
+		...offeredInvitationCancellations(
+			database,
+			{ inviterId: target.id },
+			{ actorUserId: actor.userId, as: 'keepr-administrator', because: 'inviter-disabled' },
+		),
+	]);
+}
+
+/**
+ * Makes another User a Keepr Administrator, so that there is always one who can
+ * disable another (ADR-0156). Their next Identity Proof says so; it grants them
+ * no Organisation and no App access.
+ */
+export async function grantKeeprAdministrator(
+	database: IdentityDatabase,
+	actor: Actor,
+	userId: string,
+): Promise<void> {
+	requireKeeprAdministrator(actor);
+	requireRecentSignIn(actor);
+	const target = await userOf(database, userId);
+	if (target.keeprAdministrator)
+		throw new KeeprRefusal(
+			409,
+			'ALREADY_A_KEEPR_ADMINISTRATOR',
+			'This User is a Keepr Administrator already.',
+		);
+	await database.batch([
+		database
+			.update(schema.user)
+			.set({ role: KEEPR_ADMINISTRATOR_ROLE, updatedAt: new Date() })
+			.where(eq(schema.user.id, target.id)),
+		auditRow(database, {
+			action: 'user.keepr-administrator-granted',
+			actorUserId: actor.userId,
+			subjectUserId: target.id,
+		}),
+	]);
 }
 
 /** Enables a disabled User again: they sign in as before. */
@@ -315,13 +368,15 @@ export async function enableUser(
 	requireKeeprAdministrator(actor);
 	requireRecentSignIn(actor);
 	const target = await userOf(database, userId);
-	await database
-		.update(schema.user)
-		.set({ banned: false, banReason: null, banExpires: null, updatedAt: new Date() })
-		.where(eq(schema.user.id, target.id));
-	await recordAudit(database, {
-		action: 'user.enabled',
-		actorUserId: actor.userId,
-		subjectUserId: target.id,
-	});
+	await database.batch([
+		database
+			.update(schema.user)
+			.set({ banned: false, banReason: null, banExpires: null, updatedAt: new Date() })
+			.where(eq(schema.user.id, target.id)),
+		auditRow(database, {
+			action: 'user.enabled',
+			actorUserId: actor.userId,
+			subjectUserId: target.id,
+		}),
+	]);
 }

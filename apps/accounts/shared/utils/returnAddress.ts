@@ -1,4 +1,5 @@
 import { installationDomainOf } from '@keepr/nuxt-layer/shared/utils/keeprDomain';
+import { hasControlCharacter } from './controlCharacter';
 
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1']);
 
@@ -10,12 +11,14 @@ const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1']);
  * Keepr domain of the Installation it is served from (`servedFrom`), so staging
  * sends nobody to production, nor production to staging. A loopback address is accepted only when Keepr Accounts is itself served
  * from one (`servedFrom`), so a deployment never sends anyone to a local address.
+ * An address carrying any control character is refused whole: a browser drops
+ * a tab or line break, so `/\t/host` would read as `//host`.
  */
 export function acceptedReturnAddress(
 	candidate: string | null | undefined,
 	servedFrom: string,
 ): string | null {
-	if (!candidate) return null;
+	if (!candidate || hasControlCharacter(candidate)) return null;
 
 	// A path of this site. `//` and `/\` are read by browsers as another host.
 	if (/^\/(?![/\\])/.test(candidate)) return candidate;

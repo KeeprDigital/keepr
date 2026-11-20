@@ -4,7 +4,7 @@ import { requestActor } from '~~/server/utils/actor';
 import { createTestAccounts, fakeBreachedPasswordService } from '~~/test/helpers/keeprAccounts';
 
 // Who acts in a request to one of Keepr Accounts' own routes: read from its
-// Session, and never from a write another origin's page made the browser send.
+// Session. A write another origin's page sent is refused before (`answerRoute`).
 
 const USER = 'someone@keepr.digital';
 const ADMINISTRATOR = 'administrator@keepr.digital';
@@ -55,22 +55,10 @@ describe('the Actor of a request', () => {
 		expect(actor.signedInAt).toEqual(SIGN_IN);
 	});
 
-	it.each([
-		['with no Session', 401, 'SIGNED_OUT', async () => ({})],
-		[
-			'from a page of another Keepr host',
-			403,
-			'CROSS_SITE_REQUEST',
-			async () => ({
-				cookie: await accounts.signIn(USER),
-				'sec-fetch-site': 'same-site',
-				origin: 'https://stream.keepr.digital',
-			}),
-		],
-	])('%s is refused %i %s', async (_case, statusCode, code, headers) => {
-		await expect(requestActor(accounts.auth, request(await headers()))).rejects.toMatchObject({
-			statusCode,
-			code,
+	it('with no Session is refused 401 SIGNED_OUT', async () => {
+		await expect(requestActor(accounts.auth, request({}))).rejects.toMatchObject({
+			statusCode: 401,
+			code: 'SIGNED_OUT',
 		});
 	});
 });

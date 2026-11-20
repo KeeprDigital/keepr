@@ -3,8 +3,8 @@ import type { AppRoles } from './appAccess';
 import { APIError } from 'better-auth/api';
 import { and, eq, notInArray, sql } from 'drizzle-orm';
 import { schema } from '~~/server/db';
-import { grantAppAccess, offeredAppRoles } from './appAccess';
-import { recordAudit } from './auditRecord';
+import { appAccessGrants, offeredAppRoles } from './appAccess';
+import { auditRow, recordAudit } from './auditRecord';
 
 /**
  * What Keepr Accounts adds to the organisation add-on (ADR-0114): App roles
@@ -96,14 +96,17 @@ export function organisationRecords(database: IdentityDatabase): OrganisationRec
 			});
 		},
 		async invitationAccepted({ invitationId, organizationId, memberId, userId, role, appRoles }) {
-			await grantAppAccess(database, memberId, appRoles);
-			await recordAudit(database, {
-				action: 'invitation.accepted',
-				actorUserId: userId,
-				organizationId,
-				subjectUserId: userId,
-				detail: { invitationId, role, appRoles },
-			});
+			// One batch: the App access granted and its row in the Audit Record.
+			await database.batch([
+				...appAccessGrants(database, memberId, appRoles),
+				auditRow(database, {
+					action: 'invitation.accepted',
+					actorUserId: userId,
+					organizationId,
+					subjectUserId: userId,
+					detail: { invitationId, role, appRoles },
+				}),
+			]);
 		},
 	};
 }
