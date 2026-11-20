@@ -8,7 +8,8 @@
  * and its write:
  *
  * - **Giving** inserts a row only where the capability is a Screen's and that
- *   Screen is in the Event asked for.
+ *   Screen is in the Event asked for. It reads that first, so a refusal writes
+ *   nothing.
  * - **Spending** deletes the row as it reads it. Two sockets that present one
  *   ticket at once run that statement one after the other, and the second
  *   finds no row.
@@ -53,6 +54,15 @@ export function createD1RealtimeTickets(database: D1Database, now: () => number 
 			capabilityDigest: string;
 			eventId: number;
 		}): Promise<GivenRealtimeTicket | null> {
+			// A read first, so a capability that admits nobody costs no write: an
+			// output that can never be let in may ask forever. The insert below
+			// checks again, so a regeneration between the two gives no ticket.
+			const holder = await database
+				.prepare('SELECT 1 FROM screens WHERE asset_capability_digest = ? AND event_id = ?')
+				.bind(input.capabilityDigest, input.eventId)
+				.first();
+			if (!holder) return null;
+
 			const ticket = newTicket();
 			const at = now();
 			const expiresAt = at + REALTIME_TICKET_LIFETIME_MS;

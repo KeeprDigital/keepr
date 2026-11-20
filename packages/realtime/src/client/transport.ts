@@ -149,6 +149,13 @@ export interface SocketTransport {
 	 * (`checkOnPageEvents`).
 	 */
 	checkNow(): void;
+	/**
+	 * Cut the socket in use, or the wait before a retry, and connect again at once,
+	 * asking for the address afresh: for a caller whose credential changed, to be
+	 * judged again on it. Everything asked is kept, and each channel attaches
+	 * again as after any cut. Nothing happens when nothing is asked.
+	 */
+	reconnect(): void;
 	/** Hear `channel`'s messages named `name`, from now until disposed. */
 	onMessage(channel: string, name: string, handler: MessageHandler): () => void;
 	/**
@@ -604,6 +611,15 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 		connect();
 	}
 
+	function reconnect() {
+		if (disposed || !wantsAnything()) return;
+		if (live) fail(live, new Error('The realtime connection was cut to be admitted afresh'));
+		clearTimers(retryTimer);
+		retryTimer = undefined;
+		failures = 0;
+		connect();
+	}
+
 	function receive(raw: string) {
 		// Anything heard proves the socket alive, and the first thing heard that this
 		// client was let in: a refused socket opens too, and closes saying nothing.
@@ -738,6 +754,7 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 			return hold(changeListeners, listener);
 		},
 		checkNow,
+		reconnect,
 
 		onMessage(name, type, handler) {
 			const held = channel(name);

@@ -7,7 +7,12 @@ import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createFakeEventChannel } from '~~/test/helpers/realtime-mock';
-import { SCREEN_MODE_REREAD_MS, useScreenModeFreshness } from '~/modules/screen-mode/freshness';
+import {
+	SCREEN_MODE_HEALTHY_REREAD_MS,
+	SCREEN_MODE_REREAD_CEILING_MS,
+	SCREEN_MODE_REREAD_MS,
+	useScreenModeFreshness,
+} from '~/modules/screen-mode/freshness';
 
 /**
  * Screen Mode Data Freshness, driven through a stand-in transport: a mode names
@@ -500,7 +505,59 @@ describe('useScreenModeFreshness', () => {
 		});
 	});
 
+	// A publish lost after its retries is announced to nobody, so a healthy
+	// output re-reads now and then rather than wait for the next message (ADR-0162).
+	describe('healthy re-read', () => {
+		it('re-reads at the low rate while realtime is healthy, and at no other moment', async () => {
+			vi.useFakeTimers();
+			const { read } = harness();
+			await flushPromises();
+
+			await vi.advanceTimersByTimeAsync(SCREEN_MODE_HEALTHY_REREAD_MS - 1);
+			expect(read).toHaveBeenCalledTimes(1);
+			await vi.advanceTimersByTimeAsync(1);
+			expect(read).toHaveBeenCalledTimes(2);
+			await vi.advanceTimersByTimeAsync(SCREEN_MODE_HEALTHY_REREAD_MS);
+			expect(read).toHaveBeenCalledTimes(3);
+		});
+
+		it('counts its wait from the latest read, whatever asked for it', async () => {
+			vi.useFakeTimers();
+			const { read, deliver } = harness({ 'player:updated': true });
+			await flushPromises();
+
+			await vi.advanceTimersByTimeAsync(SCREEN_MODE_HEALTHY_REREAD_MS / 2);
+			deliver('player:updated');
+			await vi.advanceTimersByTimeAsync(SCREEN_MODE_HEALTHY_REREAD_MS - 1);
+
+			expect(read).toHaveBeenCalledTimes(2);
+		});
+	});
+
 	describe('failed read', () => {
+		// An output that can never read again (its Screen deleted, its capability
+		// regenerated) stops asking every 15 s and asks ever more rarely.
+		it('waits longer after each failure past the first minute, up to the ceiling', async () => {
+			vi.useFakeTimers();
+			const { read } = harness({}, { readAs: async () => Promise.reject(new Error('not found')) });
+			await vi.advanceTimersByTimeAsync(0);
+
+			const waits: number[] = [];
+			for (let reads = 1; reads < 12; reads += 1) {
+				const before = read.mock.calls.length;
+				let waited = 0;
+				while (read.mock.calls.length === before) {
+					await vi.advanceTimersByTimeAsync(SCREEN_MODE_REREAD_MS);
+					waited += SCREEN_MODE_REREAD_MS;
+				}
+				waits.push(waited);
+			}
+
+			expect(waits.slice(0, 4)).toEqual(Array(4).fill(SCREEN_MODE_REREAD_MS));
+			expect(waits[4]).toBe(SCREEN_MODE_REREAD_MS * 2);
+			expect(waits.at(-1)).toBe(SCREEN_MODE_REREAD_CEILING_MS);
+		});
+
 		it('repeats a failed read on the slow cadence while connected, until one answers', async () => {
 			vi.useFakeTimers();
 			const { read, deliver, freshness } = harness({ 'player:updated': true });

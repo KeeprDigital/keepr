@@ -7,6 +7,7 @@ import { eventRealtimeChannel, screenRealtimeChannel } from '../../shared/utils/
 import { $fetch, fetch } from './client';
 import { INTEGRATION_SIGNED_OUT_COOKIE } from './environment';
 import { aUserOfAnotherOrganisation, aUserWithoutAccess } from './identities';
+import { INTEGRATION_REALTIME_SOCKET_MAX_AGE_MS } from './state';
 import { executeIntegrationD1 } from './integrationD1';
 import {
 	connectRealtime,
@@ -52,7 +53,7 @@ afterEach(() => {
 /** A page's socket by the client transport, with the headers its browser would send. */
 function connect(
 	address: () => string | Promise<string>,
-	headers: Record<string, string> = {},
+	headers: Record<string, string> | (() => Record<string, string>) = {},
 ): SocketTransport {
 	const transport = connectRealtime(address, headers);
 	transports.push(transport);
@@ -183,6 +184,38 @@ const sorted = (transport: SocketTransport) =>
 	transport.channelRefusals.map(({ channel, what }) => `${what} ${channel}`).toSorted();
 
 describe('a Session', () => {
+	// A socket is judged again when the object expires it, as REST judges every
+	// request: a Session ended, or a User who lost App access, since it was let
+	// in is refused on its next admission (ADR-0162; five minutes in production).
+	it.each([
+		['signed out', () => INTEGRATION_SIGNED_OUT_COOKIE],
+		['no longer has App access', () => aUserWithoutAccess('realtime-access-revoked')],
+	])(
+		'is refused once its socket expires, when its User is now %s',
+		async (_case, nowSends) => {
+			const eventId = await createEvent();
+			let page = OPERATOR_PAGE;
+			const transport = connect(
+				() => socketUrl({ eventId }),
+				() => page,
+			);
+			await hear(transport, eventRealtimeChannel(eventId), EVENT_UPDATED);
+			const admittedAt = Date.now();
+
+			page = { ...OPERATOR_PAGE, cookie: await nowSends() };
+			await until(
+				'its socket to be judged again and refused',
+				() => transport.refusal !== null,
+				INTEGRATION_REALTIME_SOCKET_MAX_AGE_MS + 10_000,
+			);
+
+			expect(Date.now() - admittedAt).toBeGreaterThanOrEqual(
+				INTEGRATION_REALTIME_SOCKET_MAX_AGE_MS - 1000,
+			);
+		},
+		INTEGRATION_REALTIME_SOCKET_MAX_AGE_MS + 30_000,
+	);
+
 	it("hears its Event's channel and its Screens', and enters a Screen's presence", async () => {
 		const eventId = await createEvent();
 		const screen = await createScreen(eventId);
@@ -308,6 +341,27 @@ describe('a Screen Output', () => {
 				`enter ${otherScreen.channel}`,
 			].toSorted(),
 		);
+	});
+
+	// A grant is fixed for a socket's life: a page that changes Screen is cut
+	// and admitted afresh on what it now holds, keeping what it asked (ADR-0162).
+	// The page's own wiring is `realtimeSocketTransport.test.ts`.
+	it('that changes Screen is admitted afresh on its new capability, and hears the new Screen', async () => {
+		const eventId = await createEvent();
+		const [screen, next] = [await createScreen(eventId), await createScreen(eventId)];
+		let held = screen.capability;
+		const output = connect(async () => socketUrl({ eventId, ticket: await ticket(eventId, held) }));
+		await hear(output, screen.channel, SCREEN_COMMANDED);
+
+		held = next.capability;
+		output.reconnect();
+		const heard = await hear(output, next.channel, SCREEN_COMMANDED);
+		await commandScreen(eventId, next.id);
+
+		await until('the new Screen’s message', () => heard.length === 1);
+		expect(heard).toEqual([expect.objectContaining({ screenId: next.id })]);
+		// What it asked under the former capability, that capability's grant alone admits.
+		expect(sorted(output)).toEqual([`attach ${screen.channel}`]);
 	});
 });
 

@@ -48,16 +48,16 @@ export async function until(
 
 /**
  * A page's socket by the client transport, with the headers its browser would
- * send. The caller disposes it.
+ * send, read afresh for each socket. The caller disposes it.
  */
 export function connectRealtime(
 	address: () => string | Promise<string>,
-	headers: Record<string, string> = {},
+	headers: Record<string, string> | (() => Record<string, string>) = {},
 ): SocketTransport {
 	const Socket = class extends WebSocket {
 		constructor(address: string) {
 			// Node's WebSocket takes headers; a browser's sends its own.
-			super(address, { headers } as never);
+			super(address, { headers: typeof headers === 'function' ? headers() : headers } as never);
 		}
 	} as SocketConstructor;
 	return createSocketTransport({ address, WebSocket: Socket });

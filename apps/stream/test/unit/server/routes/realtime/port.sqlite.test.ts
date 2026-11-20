@@ -84,6 +84,14 @@ beforeEach(() => {
 afterAll(async () => await harness.close());
 
 describe('a Session', () => {
+	// The upgrade's answer is the runtime's: a renewal taken here would never
+	// reach the browser, so it is left for the Session's next request (ADR-0162).
+	it('is asked for without taking a renewed Session cookie', async () => {
+		await asked({ eventId: String(eventId) });
+
+		expect(requestIdentity).toHaveBeenCalledWith(expect.anything(), { passesCookies: false });
+	});
+
 	it("is let into its Event's scope to hear the Event and its Screens, and to enter a Screen's presence", async () => {
 		expect(await asked({ eventId: String(eventId) })).toEqual({
 			scope: `event:${eventId}`,

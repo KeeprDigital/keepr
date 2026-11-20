@@ -164,6 +164,41 @@ describe('the realtime plugin', () => {
 			},
 		);
 
+		// An output that can never be let in (its Screen deleted, its capability
+		// regenerated) stops costing the server a ticket request every 30 s (ADR-0162).
+		it('asks for a ticket ever more rarely once refused for a while, and stays refused', async () => {
+			ticketRoute.mockRejectedValue(Object.assign(new Error('refused'), { statusCode: 401 }));
+			const realtime = await providedRealtime();
+			realtime.onChannel('screen:7:3', 'output:modeDataChanged', vi.fn());
+			await settle();
+
+			await vi.advanceTimersByTimeAsync(5 * 60_000);
+			const inFiveMinutes = ticketRoute.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(60 * 60_000);
+			const inTheHourAfter = ticketRoute.mock.calls.length - inFiveMinutes;
+
+			// Every 30 s, an hour would be 120 asks.
+			expect(inTheHourAfter).toBeLessThanOrEqual(7);
+			expect(inTheHourAfter).toBeGreaterThan(0);
+			expect(realtime.tokenError).not.toBeNull();
+			expect(sockets).toEqual([]);
+		});
+
+		it('asks again at once for a capability it now holds instead', async () => {
+			ticketRoute.mockRejectedValue(Object.assign(new Error('refused'), { statusCode: 401 }));
+			const realtime = await providedRealtime();
+			realtime.onChannel('screen:7:3', 'output:modeDataChanged', vi.fn());
+			await vi.advanceTimersByTimeAsync(10 * 60_000);
+
+			ticketRoute.mockReset();
+			ticketsGiven('ticket-new');
+			window.location.hash = `#asset-capability=${CAPABILITY}-new`;
+			realtime.onChannel('screen:7:4', 'output:modeDataChanged', vi.fn());
+			await settle();
+
+			expect(ticketRoute).toHaveBeenCalledOnce();
+		});
+
 		it('takes an answer that carries no ticket for a failed attempt, not a refusal', async () => {
 			ticketRoute.mockResolvedValueOnce({});
 			const realtime = await providedRealtime();

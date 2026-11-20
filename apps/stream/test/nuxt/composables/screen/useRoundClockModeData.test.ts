@@ -100,7 +100,10 @@ describe('useRoundClockModeData', () => {
 		expect(clock.value).toMatchObject({ state: 'running', display: '0:01' });
 		await vi.advanceTimersByTimeAsync(1);
 		expect(clock.value).toMatchObject({ state: 'ended', display: '0:00' });
-		expect(mockFetch).toHaveBeenCalledTimes(1);
+		// Only the Round's read, repeated at the healthy re-read's rate (ADR-0162).
+		expect(new Set(mockFetch.mock.calls.map(([path]) => path))).toEqual(
+			new Set(['/api/screen-output/events/1/screens/1/round-clock']),
+		);
 	});
 
 	// The Screen's count-up setting reaches the projection; its rule is projectRoundClock's own test.

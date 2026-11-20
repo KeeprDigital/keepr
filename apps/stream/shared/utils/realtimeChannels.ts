@@ -7,6 +7,14 @@
 export const REALTIME_SOCKET_PATH = '/realtime/socket';
 
 /**
+ * How long an Event's object keeps a socket before it closes it, to have its
+ * caller judged again by the port: the five minutes in which an ended Session
+ * or a User who lost App access stops being admitted anywhere (ADR-0113,
+ * ADR-0162). The client comes back within a second.
+ */
+export const REALTIME_SOCKET_MAX_AGE_MS = 5 * 60_000;
+
+/**
  * The realtime scope of an Event (ADR-0137): the name of the one object that
  * holds every socket of the Event and orders every message on its channels,
  * the Event's own and each of its Screens'. The server publishes to it, and

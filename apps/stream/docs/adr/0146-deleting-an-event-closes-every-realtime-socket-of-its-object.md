@@ -1,6 +1,6 @@
 # ADR-0146: Deleting an Event closes every realtime socket of its object
 
-Accepted · 2026-11-20 · [#1351](https://github.com/KeeprDigital/keepr/issues/1351), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310) · Amends ADR-0144
+Accepted · 2026-11-20 · [#1351](https://github.com/KeeprDigital/keepr/issues/1351), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310) · Amends ADR-0144 · Amended by ADR-0162
 
 ADR-0144 closed a deleted Screen's outputs' sockets, and recorded as a consequence that deleting an Event did not: its Screens go by the database's cascade, not through the Screen's delete, so its object kept whoever was connected, Screen Outputs and operators' pages, until each dropped. None can return: the port refuses an Event that does not exist, and the Realtime Tickets went with the Screens. But a Screen Output that stays present keeps the object's alarm waking it about every 15 s, and the output is never told its Event is gone. An operator's page is told, by `event:deleted`, and leaves.
 

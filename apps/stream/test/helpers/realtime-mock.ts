@@ -36,11 +36,18 @@ export interface MockRealtime {
 	watchPresence: ReturnType<typeof vi.fn>;
 }
 
-export function createMockRealtime(): MockRealtime {
+/**
+ * A transport whose methods record their calls and do nothing else, so it
+ * connects nothing and says so: `initialized`, never `connected`. A test
+ * about what a subscription hears, or when it ends, drives the real transport
+ * on `socketRealtimeRig` (`realtimeSocketFake.ts`) instead; one that needs a
+ * connected stand-in says so with `connected`.
+ */
+export function createMockRealtime({ connected = false } = {}): MockRealtime {
 	return {
 		// State
-		isConnected: true,
-		connectionState: 'connected',
+		isConnected: connected,
+		connectionState: connected ? 'connected' : 'initialized',
 		error: null,
 		tokenError: null,
 		connectionId: 'test-connection-id',

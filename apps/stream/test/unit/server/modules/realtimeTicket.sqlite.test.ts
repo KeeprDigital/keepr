@@ -93,9 +93,15 @@ describe('giving a Realtime Ticket', () => {
 			'is a Screen’s of another Event',
 			async () => ({ capabilityDigest: screen.capabilityDigest, eventId: await createEvent() }),
 		],
-	])('gives none for a capability that %s', async (_case, input) => {
+	])('gives none for a capability that %s, and writes nothing', async (_case, input) => {
+		// An expired ticket the next ticket given would delete: a refusal is a read alone.
+		await given();
+		now += REALTIME_TICKET_LIFETIME_MS;
+		const before = await storedTickets();
+
 		expect(await tickets.give(await input())).toBeNull();
-		expect(await storedTickets()).toEqual([]);
+		expect(await storedTickets()).toEqual(before);
+		expect(before).toHaveLength(1);
 	});
 
 	it('deletes the tickets that expired unspent, and keeps the ones that could still be spent', async () => {

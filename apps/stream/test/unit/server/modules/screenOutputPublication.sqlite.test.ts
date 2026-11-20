@@ -12,6 +12,7 @@ import { installRealtimeObjectFake, REFUSAL_MESSAGE } from '~~/test/helpers/real
 import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { eventMessageSamples } from '~~/test/helpers/eventMessageSamples';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
+import { PUBLISH_RETRY_AFTER_ANSWER_MS } from '~~/server/utils/realtimeRetry';
 
 // What each Screen's own channel is sent beside the Event channel's messages:
 // its Screen's messages unchanged, and a notice of each change its mode shows.
@@ -872,16 +873,34 @@ describe('a write made in a request', () => {
 		]);
 	});
 
-	// Finished after the answer, a refused publish is logged as before, and the
-	// work handed to the request never rejects.
-	it('logs a publish refused after the answer, and rejects nothing', async () => {
+	// Refused twice, the Screens' call is tried again behind the answer, after
+	// a wait that grows (ADR-0162), and the work handed over never rejects.
+	it('tries a publish refused twice again after the answer, and delivers it', async () => {
+		vi.useFakeTimers({ toFake: ['setTimeout'] });
 		const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const finishing = inRequest();
 		realtime.refuse(isScreenChannel, 2);
 
 		await publishMessage(eventId, roundUpdated.type, roundUpdated.payload as never);
+		await vi.advanceTimersByTimeAsync(PUBLISH_RETRY_AFTER_ANSWER_MS[0]);
+		await Promise.all(finishing);
+		vi.useRealTimers();
 
-		await expect(Promise.all(finishing)).resolves.toHaveLength(1);
+		expect(heardByScreens().standings).toEqual([changed('standings', 'round')]);
+		expect(errors).not.toHaveBeenCalled();
+	});
+
+	it('logs a publish refused until its last retry, and rejects nothing', async () => {
+		vi.useFakeTimers({ toFake: ['setTimeout'] });
+		const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const finishing = inRequest();
+		realtime.refuse(isScreenChannel);
+
+		await publishMessage(eventId, roundUpdated.type, roundUpdated.payload as never);
+		await vi.advanceTimersByTimeAsync(PUBLISH_RETRY_AFTER_ANSWER_MS.reduce((a, b) => a + b, 0));
+		await expect(Promise.all(finishing)).resolves.toHaveLength(2);
+		vi.useRealTimers();
+
 		expect(heardByScreens()).toEqual({});
 		expect(errors.mock.calls.map(([line]) => JSON.parse(line as string))).toEqual(
 			(['standings', 'overlay', 'otherOverlay', 'headToHead'] as const).map((screen) =>

@@ -11,6 +11,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { featureMatches, matches, rounds, screens } from '~~/server/db/schema';
 import { publishFailureFields } from '~~/server/utils/realtimePublishFailure';
+import { retryAfterAnswer } from '~~/server/utils/realtimeRetry';
 import { screenOutputFeatureMatchSlotId } from '~~/server/utils/screenOutputSelection';
 import { SCREEN_MODES } from '~~/shared/screenModes';
 import {
@@ -326,23 +327,24 @@ async function decideDeliveries(
 }
 
 /**
- * Publish to the Screen channels, retrying a failed call once.
+ * Publish to the Screen channels, retrying a failed call once at once, and then
+ * behind the request's answer where it can take the work (ADR-0162).
  *
- * A second failure is logged for each Screen and left: the forwarded messages
+ * The last failure is logged for each Screen and left: the forwarded messages
  * are sequenced or revisioned and the notices idempotent, so a duplicate is
- * safe and a loss is what an output's Reconnect Resync and slow re-read
- * already recover from.
+ * safe. A loss leaves an output behind until its next read: the next message,
+ * a Reconnect Resync, or the slow re-read it makes while healthy
+ * (`app/modules/screen-mode/freshness.ts`).
  */
 async function deliver(
 	eventId: number,
 	deliveries: readonly ScreenChannelDelivery[],
 	publish: PublishToScreenChannels,
+	afterAnswer: AfterAnswer | undefined,
 ): Promise<void> {
 	if (deliveries.length === 0) return;
 	const attempt = async () => await publish(eventId, deliveries);
-	try {
-		await attempt().catch(attempt);
-	} catch (error) {
+	const giveUp = (error: unknown) => {
 		for (const { screenId, messages } of deliveries) {
 			console.error(
 				JSON.stringify({
@@ -354,6 +356,12 @@ async function deliver(
 				}),
 			);
 		}
+	};
+	try {
+		await attempt().catch(attempt);
+	} catch (error) {
+		if (afterAnswer) retryAfterAnswer(afterAnswer, attempt, giveUp, error);
+		else giveUp(error);
 	}
 }
 
@@ -361,9 +369,10 @@ async function tellScreens(
 	eventId: number,
 	heard: readonly HeardMessage[],
 	publish: PublishToScreenChannels,
+	afterAnswer: AfterAnswer | undefined,
 ): Promise<void> {
 	try {
-		await deliver(eventId, await decideDeliveries(eventId, heard), publish);
+		await deliver(eventId, await decideDeliveries(eventId, heard), publish, afterAnswer);
 	} catch (error) {
 		// The write committed and its Event message went out: failing to work out
 		// who else to tell must not turn that into a failure inviting a retry.
@@ -409,12 +418,12 @@ async function tellScreensInTime(
 	afterAnswer: AfterAnswer | undefined,
 ): Promise<void> {
 	if (!afterAnswer || forwardsPayload(heard)) {
-		await tellScreens(eventId, heard, publish);
+		await tellScreens(eventId, heard, publish, afterAnswer);
 		return;
 	}
 	// `tellScreens` never rejects, so neither does the chain handed over.
 	const telling = (finishing.get(afterAnswer.request) ?? Promise.resolve()).then(
-		async () => await tellScreens(eventId, heard, publish),
+		async () => await tellScreens(eventId, heard, publish, afterAnswer),
 	);
 	finishing.set(afterAnswer.request, telling);
 	try {

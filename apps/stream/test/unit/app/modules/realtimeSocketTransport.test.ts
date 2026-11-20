@@ -36,8 +36,8 @@ describe("the realtime transport over an Event's object", () => {
 
 			realtime.onChannel(EVENT, 'player:updated', vi.fn());
 			realtime.onChannel(SCREEN, 'output:modeDataChanged', vi.fn());
-			realtime.onChannel('event:2', 'player:updated', vi.fn());
 			const first = await open(1);
+			realtime.onChannel('event:2', 'player:updated', vi.fn());
 			const second = await open(2);
 
 			expect(asked).toEqual([1, 2]);
@@ -64,19 +64,17 @@ describe("the realtime transport over an Event's object", () => {
 			const { realtime, asked, open } = socketRealtimeRig();
 			const heard = vi.fn();
 			realtime.onChannel(EVENT, 'player:updated', heard);
-			realtime.onChannel('event:2', 'player:updated', heard);
-			const first = await open(1, EVENT);
-			const second = await open(2, 'event:2');
+			const socket = await open(1, EVENT);
 
 			realtime.dispose();
-			first.publish(EVENT, 'player:updated');
+			socket.publish(EVENT, 'player:updated');
 			realtime.onChannel('event:3', 'player:updated', heard);
 			await settle();
 
-			expect([first.closed, second.closed]).toEqual([true, true]);
+			expect(socket.closed).toBe(true);
 			expect(realtime.connectionState).toBe('closed');
 			expect(heard).not.toHaveBeenCalled();
-			expect(asked).toEqual([1, 2]);
+			expect(asked).toEqual([1]);
 		});
 	});
 
@@ -108,7 +106,7 @@ describe("the realtime transport over an Event's object", () => {
 			],
 			['leaves its room for none', (realtime) => realtime.setRoom(null)],
 		])(
-			'closes the socket of the Event it leaves once it %s, and holds it again when it comes back',
+			'closes the socket of the Event it leaves once it %s, and holds it again when its room comes back',
 			async (_, leave) => {
 				const { realtime, open } = socketRealtimeRig();
 				realtime.setRoom(EVENT);
@@ -117,11 +115,80 @@ describe("the realtime transport over an Event's object", () => {
 				leave(realtime);
 				expect(left.closed).toBe(true);
 
-				const stop = realtime.onChannel(EVENT, 'player:updated', vi.fn());
-				const back = await open(1, EVENT);
-				stop();
+				realtime.setRoom(EVENT);
+				const back = await open(1);
 				expect(back).not.toBe(left);
 				expect(back.closed).toBe(false);
+			},
+		);
+
+		// A component of the page it left may still be tearing down, and a page
+		// that left a deleted Event must not be taken back to it (ADR-0162).
+		it('forgets everything asked of an Event it left, and is not taken back by what is asked there later', async () => {
+			const { realtime, asked, sockets, open } = socketRealtimeRig();
+			const heard = vi.fn();
+			realtime.setRoom(EVENT);
+			realtime.onChannel(EVENT, 'player:updated', heard);
+			const first = await open(1, EVENT);
+			realtime.setRoom('event:2');
+			const second = await open(2);
+
+			realtime.onChannel(EVENT, 'player:updated', heard);
+			realtime.onceAttached(EVENT, heard);
+			await settle();
+			first.publish(EVENT, 'player:updated');
+
+			expect(first.closed).toBe(true);
+			expect(second.closed).toBe(false);
+			expect(heard).not.toHaveBeenCalled();
+			expect([asked, sockets.length]).toEqual([[1, 2], 2]);
+			expect(realtime.connectionState).toBe('connected');
+		});
+
+		// A page switched back mounts its components before its room is set.
+		it('makes what was asked of an Event left once its room takes the page back there', async () => {
+			const { realtime, open } = socketRealtimeRig();
+			const heard = vi.fn();
+			const ended = vi.fn();
+			realtime.setRoom(EVENT);
+			await open(1);
+			realtime.setRoom('event:2');
+			await open(2);
+
+			realtime.onChannel(EVENT, 'player:updated', heard);
+			realtime.onChannel(EVENT, 'player:deleted', ended)();
+			realtime.setRoom(EVENT);
+			const back = await open(1, EVENT);
+			back.publish(EVENT, 'player:updated');
+			back.publish(EVENT, 'player:deleted');
+
+			expect(heard).toHaveBeenCalledOnce();
+			expect(ended).not.toHaveBeenCalled();
+		});
+
+		// A grant is fixed for a socket's life, so a page that now holds another
+		// credential is let in afresh on it, keeping what it asked (ADR-0162).
+		it.each([
+			['changes', 'capability-of-screen-8', 2],
+			['stays the same', 'capability-of-screen-7', 1],
+		])(
+			'cuts its socket and is admitted afresh when its credential %s',
+			async (_, next, sockets) => {
+				let held = 'capability-of-screen-7';
+				const rig = socketRealtimeRig({ credential: () => held });
+				const heard = vi.fn();
+				rig.realtime.onChannel('screen:1:7', 'screen:updated', heard);
+				const first = await rig.open(1, 'screen:1:7');
+
+				held = next;
+				rig.realtime.onChannel('screen:1:8', 'screen:updated', heard);
+				const newest = await rig.open(1, 'screen:1:7', 'screen:1:8');
+				newest.publish('screen:1:7', 'screen:updated');
+
+				expect(rig.sockets).toHaveLength(sockets);
+				expect(first.closed).toBe(sockets === 2);
+				expect(rig.asked).toEqual(Array(sockets).fill(1));
+				expect(heard).toHaveBeenCalledOnce();
 			},
 		);
 

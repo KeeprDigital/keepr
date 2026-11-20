@@ -56,17 +56,26 @@ const SIGNED_OUT_STATUS = 401;
  *
  * The promise is kept, not the answer, so two questions asked at once share
  * one. Any Session cookie Keepr Accounts renewed is passed on to the browser by
- * the layer, once.
+ * the layer, once, unless `passesCookies` is false: a realtime socket's port,
+ * whose answer never reaches the browser, leaves it for the next request that
+ * does (ADR-0162).
  */
-export async function requestIdentity(event: H3Event): Promise<StreamIdentity | null> {
-	const asked = event.context[REQUEST_IDENTITY_CONTEXT_KEY] as
-		| Promise<StreamIdentity | null>
-		| undefined;
+export async function requestIdentity(
+	event: H3Event,
+	{ passesCookies = true }: { passesCookies?: boolean } = {},
+): Promise<StreamIdentity | null> {
+	// Kept apart by whether it passes cookies on, so neither question takes the other's.
+	const key = passesCookies
+		? REQUEST_IDENTITY_CONTEXT_KEY
+		: `${REQUEST_IDENTITY_CONTEXT_KEY}:keepsCookies`;
+	const asked = event.context[key] as Promise<StreamIdentity | null> | undefined;
 	if (asked) return await asked;
 
 	const timing = writeTimingOf(event);
-	const asking = timing ? timing.time('identity', () => readIdentity(event)) : readIdentity(event);
-	event.context[REQUEST_IDENTITY_CONTEXT_KEY] = asking;
+	const asking = timing
+		? timing.time('identity', () => readIdentity(event, passesCookies))
+		: readIdentity(event, passesCookies);
+	event.context[key] = asking;
 	return await asking;
 }
 
@@ -91,17 +100,25 @@ function installationOrganisationId(event: H3Event): string {
 	return id;
 }
 
-async function readIdentity(event: H3Event): Promise<StreamIdentity | null> {
+async function readIdentity(
+	event: H3Event,
+	passesCookies: boolean,
+): Promise<StreamIdentity | null> {
 	const organisationId = installationOrganisationId(event);
 	// Before Keepr Accounts is asked: it reads the first session cookie it is sent.
 	discardRetiredSignInCookie(event);
 	let identity: Identity<typeof APP>;
 	try {
-		identity = await resolveRequestIdentity(event, APP, async (question) => {
-			const answer = await resolveIdentity(question);
-			if (answer.kind === 'signed-in') writeTimingOf(event)?.identityProof(answer.proof);
-			return answer;
-		});
+		identity = await resolveRequestIdentity(
+			event,
+			APP,
+			async (question) => {
+				const answer = await resolveIdentity(question);
+				if (answer.kind === 'signed-in') writeTimingOf(event)?.identityProof(answer.proof);
+				return answer;
+			},
+			{ passesCookies },
+		);
 	} catch (refusal) {
 		if ((refusal as { statusCode?: unknown }).statusCode === SIGNED_OUT_STATUS) return null;
 		throw refusal;
