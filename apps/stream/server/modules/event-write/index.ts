@@ -8,6 +8,7 @@ import { featureMatchService } from '~~/server/services/featureMatch';
 import { screenService } from '~~/server/services/screen';
 import { themeService } from '~~/server/services/theme';
 import { BroadcastDeckListsInUseError } from '~~/server/utils/deckSourceErrors';
+import { disconnectDeletedEvent } from '~~/server/utils/realtimePublish';
 import { runCompensation } from '@keepr/nuxt-layer/server/utils/errors';
 import { requireTalentInEvent } from '~~/server/utils/routeGuards';
 import { holdsBroadcastDeckLists } from '~~/shared/config/games';
@@ -168,6 +169,12 @@ export function eventWriteModule() {
 			eventId,
 			originConnectionId,
 		});
+
+		// Every realtime socket of the Event closes once the row is gone, and
+		// after `event:deleted`, which an operator's page leaves on: a socket
+		// hears what was sent it before it closes. Neither step above throws, so
+		// nothing leaves the sockets open. It does not fail the delete (ADR-0146).
+		await disconnectDeletedEvent(eventId);
 
 		return { success: true };
 	}

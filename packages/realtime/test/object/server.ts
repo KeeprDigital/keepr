@@ -60,6 +60,7 @@ export interface Scope {
 	request(grant?: Grant): Promise<Response>;
 	publish(...deliveries: Delivery[]): Promise<PublishAnswer[]>;
 	disconnect(tag: string, options?: DisconnectOptions): Promise<number>;
+	disconnectAll(): Promise<number>;
 	/** Ask the object for a ticket, as `connectSocket` does, and hold it instead of using it. */
 	admit(grant?: Grant): Promise<Ticketed>;
 	/** A ticket another scope's object answered, carried to this one. */
@@ -138,6 +139,7 @@ export async function startServer(): Promise<Server> {
 				request: (grant = anyone) => fetch(door('connect', grant)),
 				publish: (...deliveries) => call('publish', deliveries),
 				disconnect: (tag, options = {}) => call('disconnect', tag, options),
+				disconnectAll: () => call('disconnectAll'),
 				admit: async (grant = anyone) => carry(await call<string>('admit', grant)),
 				carry: ({ ticket }) => carry(ticket),
 				call,

@@ -177,6 +177,39 @@ export async function disconnectDeletedScreenOutputs(screen: {
 }
 
 /**
+ * Close every realtime socket of a deleted Event's object, whatever let it in,
+ * a Session or a Realtime Ticket (ADR-0146). For an Event whose row is already
+ * gone: none of them can return, since the port refuses an Event that does not
+ * exist and the tickets went with its Screens, and the object refuses every
+ * socket for a minute, for one let in just before the delete that reaches it
+ * after.
+ *
+ * The delete has committed and nothing here can undo it, so a failure is not
+ * the delete's: the call is made once more on a stub of its own, and then
+ * logged with the Event, because its Screen Outputs and its operators' pages
+ * stay connected to an Event that no longer exists until they drop.
+ */
+export async function disconnectDeletedEvent(eventId: number): Promise<void> {
+	// Asynchronous, so a Worker with no realtime binding rejects like any other failure.
+	const attempt = async () =>
+		await useRealtimeScope(workerBindings(), eventRealtimeScope(eventId)).disconnectAll();
+	try {
+		await attempt().catch(attempt);
+	} catch (failure) {
+		console.error(
+			JSON.stringify({
+				message: 'event_realtime_disconnect_failed',
+				detail:
+					'The Event was deleted, but its realtime sockets could not be closed. Its Screen Outputs and operator pages may stay connected until they drop. They cannot return.',
+				eventId,
+				errorName: failure instanceof Error ? failure.name : null,
+				errorMessage: failure instanceof Error ? failure.message : String(failure),
+			}),
+		);
+	}
+}
+
+/**
  * Publish one message on its Event's channel, and once more if that call fails
  * (`publishToEventOnceMore`).
  *

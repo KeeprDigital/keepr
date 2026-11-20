@@ -30,6 +30,7 @@ vi.doMock('~~/server/utils/realtimePublish', () => ({
 	},
 	publishMessageStrict: async () => {},
 	getOriginConnectionId: () => undefined,
+	disconnectDeletedEvent: async () => {},
 }));
 vi.doMock('~~/server/modules/broadcast-graphics-live-session', () => ({
 	refreshBroadcastGraphicsBindings: async () => {},

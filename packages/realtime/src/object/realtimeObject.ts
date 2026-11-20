@@ -57,6 +57,9 @@ export const DEFAULT_WITHDRAWAL_MS: number = 60_000;
 /** What a silent member is sent before it is swept. It says nothing else, so it is one text. */
 const ASK: string = JSON.stringify({ t: 'ask' } satisfies ServerFrame);
 
+/** Where `disconnectAll` keeps the end of its withdrawal, which every grant is refused until. */
+const EVERYONE_WITHDRAWN_UNTIL = 'everyoneWithdrawnUntil';
+
 /** How long a ticket waits for its socket: the upgrade follows it in the same call. */
 const TICKET_MS = 10_000;
 
@@ -372,8 +375,29 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		return closed;
 	}
 
+	/**
+	 * Withdraw everything the app granted in this scope, as `disconnect` does a
+	 * tag's, whatever each grant carries: close every socket with
+	 * `CLOSE_REFUSED`, end every member's grace period, and for `withdrawalMs`
+	 * let in no socket at all. For a scope the app has ended, whose sockets
+	 * nothing should hold: with nobody present or held, no alarm is left to
+	 * wake the object. Answers how many sockets it closed.
+	 */
+	async disconnectAll(): Promise<number> {
+		this.ctx.storage.kv.put(EVERYONE_WITHDRAWN_UNTIL, Date.now() + this.#withdrawalMs);
+		let closed = 0;
+		for (const socket of this.ctx.getWebSockets())
+			if (this.#retire(socket, CLOSE_REFUSED, 'refused')) closed += 1;
+		// Every watcher's socket closed with the rest, so there is nobody to tell.
+		this.ctx.storage.sql.exec('DELETE FROM member');
+		this.#asked.clear();
+		await this.ctx.storage.deleteAlarm();
+		return closed;
+	}
+
 	/** Whether a disconnect still standing withdrew a grant of `tags`. */
 	#isWithdrawn(tags: readonly string[]): boolean {
+		if ((this.ctx.storage.kv.get<number>(EVERYONE_WITHDRAWN_UNTIL) ?? 0) > Date.now()) return true;
 		if (tags.length === 0) return false;
 		return this.ctx.storage.sql
 			.exec<{

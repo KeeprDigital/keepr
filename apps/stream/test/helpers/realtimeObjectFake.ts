@@ -25,10 +25,13 @@ interface RealtimePublishCall {
 	deliveries: Delivery[];
 }
 
-/** One `disconnect` call, as the object named `scope` was sent it. */
+/**
+ * One `disconnect` call, as the object named `scope` was sent it, or one
+ * `disconnectAll` call, which names no tag.
+ */
 interface RealtimeDisconnectCall {
 	scope: string;
-	tag: string;
+	tag?: string;
 	options?: DisconnectOptions;
 }
 
@@ -101,6 +104,16 @@ function createRealtimeObjectFake() {
 					// A stub whose call failed is taken to be broken, as the runtime's can
 					// be: it reaches the object no more, and a caller takes another.
 					let broken = false;
+					const disconnect = async (call: RealtimeDisconnectCall) => {
+						if (broken) throw new Error('This stub is broken: a call on it failed');
+						disconnects.push(call);
+						if (refusingDisconnects > 0) {
+							refusingDisconnects -= 1;
+							broken = true;
+							throw new Error(REFUSAL_MESSAGE);
+						}
+						return 0;
+					};
 					return {
 						publish: async (deliveries: readonly Delivery[]) => {
 							if (broken) throw new Error('This stub is broken: a call on it failed');
@@ -111,16 +124,9 @@ function createRealtimeObjectFake() {
 								throw error;
 							}
 						},
-						disconnect: async (tag: string, options?: DisconnectOptions) => {
-							if (broken) throw new Error('This stub is broken: a call on it failed');
-							disconnects.push({ scope, tag, ...(options && { options }) });
-							if (refusingDisconnects > 0) {
-								refusingDisconnects -= 1;
-								broken = true;
-								throw new Error(REFUSAL_MESSAGE);
-							}
-							return 0;
-						},
+						disconnect: (tag: string, options?: DisconnectOptions) =>
+							disconnect({ scope, tag, ...(options && { options }) }),
+						disconnectAll: () => disconnect({ scope }),
 					};
 				},
 			},
@@ -128,9 +134,9 @@ function createRealtimeObjectFake() {
 		/** Every call made, in order, refused or not. */
 		calls,
 		published,
-		/** Every `disconnect` call made, in order, refused or not. */
+		/** Every `disconnect` and `disconnectAll` call made, in order, refused or not. */
 		disconnects,
-		/** Fail the next `times` `disconnect` calls. */
+		/** Fail the next `times` `disconnect` or `disconnectAll` calls. */
 		refuseDisconnect(times = Number.POSITIVE_INFINITY) {
 			refusingDisconnects = times;
 		},
