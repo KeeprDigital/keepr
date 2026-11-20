@@ -1,6 +1,6 @@
 # ADR-0085: A Magic: The Gathering Archetype is the operator's: kept when empty, and merged by repointing
 
-Accepted · 2026-11-12 · [#1151](https://github.com/KeeprDigital/stream-keepr/issues/1151), [#1154](https://github.com/KeeprDigital/stream-keepr/issues/1154). Extends ADR-0060; contrasts ADR-0074.
+Accepted · 2026-11-12 · [#1151](https://github.com/KeeprDigital/stream-keepr/issues/1151), [#1154](https://github.com/KeeprDigital/stream-keepr/issues/1154). Extends ADR-0060; contrasts ADR-0074. · Amended by ADR-0152: the name is unique ignoring case at the database, and names held twice in another case are renamed
 
 ### Decision
 

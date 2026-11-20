@@ -385,11 +385,20 @@ describe('error-handler mapping logic', () => {
 	});
 
 	describe('drizzle unique constraint mapping', () => {
-		it('maps UNIQUE constraint failed to 409', () => {
+		// Drizzle wraps the driver's refusal in a query error that names only the query.
+		it.each([
+			{ case: 'the driver', cause: new Error('UNIQUE constraint failed: screens.slug') },
+			{
+				case: 'a query error wrapping it',
+				cause: new Error('Failed query: insert into "screens"', {
+					cause: new Error('D1_ERROR: UNIQUE constraint failed: screens.event_id, screens.slug'),
+				}),
+			},
+		])('maps UNIQUE constraint failed from $case to 409', ({ cause }) => {
 			const error: MappableNitroError = {
 				statusCode: 500,
 				message: 'Something went wrong',
-				cause: new Error('UNIQUE constraint failed: screens.slug'),
+				cause,
 			};
 			mapPublicNitroError(error);
 			expect(error.statusCode).toBe(409);

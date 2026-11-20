@@ -1,12 +1,13 @@
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { mapMeleePlayersToDb } from '~~/server/mappers/melee';
 import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 import { meleeCompetitor, meleeMatch, meleePlayer } from '~~/test/helpers/meleeFixtures';
 import { providerRefusal } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
+import { StateConflictError } from '@keepr/nuxt-layer/server/utils/errors';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 /*
@@ -46,11 +47,14 @@ vi.doMock('~~/server/services/meleeIntegration', () => ({
 		return melee;
 	},
 }));
+/** Thrown by the card provider instead of answering, to fail the Deck List stage. */
+let cardProviderFailure: Error | null = null;
 vi.doMock('~~/server/services/importedMtgCardResolver', () => ({
 	importedMtgCardResolverService: () => ({
-		resolveBatch: async () => ({
-			resolutions: new Map(),
-		}),
+		resolveBatch: async () => {
+			if (cardProviderFailure) throw cardProviderFailure;
+			return { resolutions: new Map() };
+		},
 	}),
 }));
 vi.doMock('~~/server/utils/realtimePublish', () => ({
@@ -277,6 +281,7 @@ function announcedByMelee() {
 
 beforeEach(() => {
 	failNextCorrection = undefined;
+	cardProviderFailure = null;
 	tournamentsRead.length = 0;
 	publishMessage.mockReset();
 	melee.fetchEvent.mockReset().mockResolvedValue(tournament);
@@ -630,9 +635,7 @@ describe('a sync whose Reverse Sync loses a Session race', () => {
 				player1Data: { name: 'Old Name' },
 			})
 			.returning();
-		failNextCorrection = Object.assign(new Error('Feature match session has advanced'), {
-			statusCode: 409,
-		});
+		failNextCorrection = new StateConflictError('Feature match session', 1);
 		const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 		const result = await run(eventId);
@@ -732,5 +735,155 @@ describe('a command that completes', () => {
 
 		expect(leaseTaken).toBe(true);
 		expect([...new Set(tournamentsRead)]).toEqual(['melee-2']);
+	});
+});
+
+describe('a command that fails', () => {
+	const SYNC_TIMES = [
+		'initialSetupCompletedAt',
+		'lastEventSyncedAt',
+		'lastPlayersSyncedAt',
+		'lastDecklistsSyncedAt',
+	] as const;
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	/** The id of the stored Round of that name. */
+	async function roundNamed(eventId: number, name: string) {
+		const rounds = await db.select().from(schema.rounds).where(eq(schema.rounds.eventId, eventId));
+		return rounds.find((row) => row.name === name)!.id;
+	}
+
+	// Each stage commits on its own: a later one throwing keeps the times of those
+	// before it, records the failure and gives the Event back.
+	it.each<{
+		command: string;
+		fail: () => void;
+		run: (eventId: number) => Promise<unknown>;
+		records: readonly (typeof SYNC_TIMES)[number][];
+	}>([
+		{
+			command: 'a Player sync Melee fails',
+			fail: () => melee.fetchMergedPlayers.mockRejectedValue(new Error('Melee unavailable')),
+			run: (eventId) => meleeSyncModule().syncPlayers(requestEvent, eventId),
+			records: [],
+		},
+		{
+			command: 'a Round sync whose Round Melee fails after its Players refresh',
+			fail: () => melee.fetchMatchesByRound.mockRejectedValue(new Error('Round unavailable')),
+			run: async (eventId) =>
+				await meleeSyncModule().syncRoundMatches(
+					requestEvent,
+					eventId,
+					await roundNamed(eventId, 'Round 1'),
+				),
+			records: ['lastPlayersSyncedAt'],
+		},
+		{
+			command: 'initial Setup whose Deck Lists fail',
+			fail: () => {
+				cardProviderFailure = new Error('Deck import failed');
+			},
+			run: (eventId) => meleeSyncModule().runInitialSetup(requestEvent, eventId),
+			records: ['lastEventSyncedAt', 'lastPlayersSyncedAt'],
+		},
+		{
+			command: 'an update whose Round fails after its Deck Lists',
+			fail: () => melee.fetchMatchesByRound.mockRejectedValue(new Error('Round unavailable')),
+			run: (eventId) =>
+				meleeSyncModule().updateFromMelee(requestEvent, eventId, { includeDeckLists: true }),
+			records: ['lastEventSyncedAt', 'lastPlayersSyncedAt', 'lastDecklistsSyncedAt'],
+		},
+	])(
+		'$command records the stages done before it, the failure, and gives the Event back',
+		async ({ fail, run, records }) => {
+			const eventId = await seedTournament({ synced: [], deckListsSynced: false });
+			fail();
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			await expect(run(eventId)).rejects.toThrow();
+
+			vi.restoreAllMocks();
+			const event = await readEvent(eventId);
+			expect(SYNC_TIMES.filter((time) => event[time] !== null)).toEqual(records);
+			expect(event.lastSyncError).not.toBeNull();
+			expect(event).toMatchObject({ meleeSyncLeaseToken: null, meleeSyncLeaseCommand: null });
+		},
+	);
+
+	it('refreshes Players before the Round a Round sync stores, and records the Player sync', async () => {
+		const eventId = await seedTournament({ synced: [], deckListsSynced: false });
+		await db.delete(schema.players).where(eq(schema.players.eventId, eventId));
+
+		await meleeSyncModule().syncRoundMatches(
+			requestEvent,
+			eventId,
+			await roundNamed(eventId, 'Round 1'),
+		);
+
+		expect(await storedIn(eventId)).toMatchObject({
+			players: tournamentPlayers.map((player) => player.PlayerName),
+			pairedRounds: ['Round 1'],
+		});
+		expect((await readEvent(eventId)).lastPlayersSyncedAt).not.toBeNull();
+	});
+
+	it('runs nothing and records nothing while another command holds the Event', async () => {
+		const eventId = await createEvent({
+			meleeSyncLeaseToken: 'holder-token',
+			meleeSyncLeaseCommand: 'update',
+			meleeSyncLeaseExpiresAt: new Date('2999-01-01T00:00:00.000Z'),
+		});
+		const before = await readEvent(eventId);
+
+		await expect(meleeSyncModule().syncPlayers(requestEvent, eventId)).rejects.toMatchObject({
+			statusCode: 409,
+			data: { code: 'MELEE_SYNC_IN_PROGRESS' },
+		});
+
+		expect(melee.fetchMergedPlayers).not.toHaveBeenCalled();
+		expect(await readEvent(eventId)).toEqual(before);
+	});
+
+	// A long command keeps the Event by renewing its lease each heartbeat; one that
+	// finds another command holds it stops, and writes nothing over that command.
+	it.each([
+		{ case: 'keeps its lease', loses: false },
+		{ case: 'loses its lease', loses: true },
+	])('a long Player sync that $case at a heartbeat', async ({ loses }) => {
+		const eventId = await createEvent();
+		let answer!: (players: unknown) => void;
+		melee.fetchMergedPlayers.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+		vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+
+		const command = meleeSyncModule().syncPlayers(requestEvent, eventId);
+		await vi.waitFor(() => expect(melee.fetchMergedPlayers).toHaveBeenCalled());
+		const leased = (await readEvent(eventId)).meleeSyncLeaseExpiresAt!;
+		if (loses)
+			await db
+				.update(schema.events)
+				.set({ meleeSyncLeaseToken: 'another-command' })
+				.where(eq(schema.events.id, eventId));
+		await vi.advanceTimersByTimeAsync(60_000);
+		const heartbeat = await readEvent(eventId);
+		answer(mapMeleePlayersToDb(tournamentPlayers, []));
+
+		if (loses) {
+			await expect(command).rejects.toThrow('lease ownership was lost');
+			expect(await readEvent(eventId)).toMatchObject({
+				meleeSyncLeaseToken: 'another-command',
+				lastPlayersSyncedAt: null,
+				lastSyncError: null,
+			});
+		} else {
+			await command;
+			expect(heartbeat.meleeSyncLeaseExpiresAt!.getTime()).toBeGreaterThanOrEqual(leased.getTime());
+			expect(heartbeat.meleeSyncLeaseToken).not.toBeNull();
+			expect(await readEvent(eventId)).toMatchObject({ meleeSyncLeaseToken: null });
+			expect((await readEvent(eventId)).lastPlayersSyncedAt).not.toBeNull();
+		}
 	});
 });

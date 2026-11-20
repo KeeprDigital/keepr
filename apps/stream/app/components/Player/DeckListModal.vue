@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { DeckListCard, ManaCurve, PlayerDeckList } from '~~/shared/types/deckList';
-import type { MtgCard } from '~/types/card/mtg';
 import { useElementSize } from '@vueuse/core';
 import { getCounterTypeConfigs } from '~~/shared/config/games';
 import { getDeckColumnCount, splitDeckGroupsIntoColumns } from '~~/shared/utils/deckColumns';
@@ -8,7 +7,7 @@ import { counterConfigsForDeckCounterTypes } from '~~/shared/utils/deckCounters'
 import { formatPips, formatStats } from '~~/shared/utils/deckStats';
 import { uniqueDeckTokens } from '~~/shared/utils/deckTokens';
 import { formatHighlanderPointsLabel } from '~~/shared/utils/highlander';
-import { createDeckLookupCards, getDeckCardImageUrl } from '~~/shared/utils/playerDeck';
+import { getDeckCardImageUrl } from '~~/shared/utils/playerDeck';
 
 const props = defineProps<{
 	playerName: string;
@@ -215,8 +214,7 @@ const tabItems = computed(() => {
 });
 
 // Card image preview
-const { fetchScryfallCards } = useScryfallBatch();
-const cardDataMap = shallowRef(new Map<string, MtgCard>());
+const cardDataMap = useDeckCardData(() => selectedDeck.value);
 
 const { activePreviewCard, handlePreviewUpdate, togglePreviewPin, resetPreview } = useCardPreview();
 
@@ -225,17 +223,7 @@ function close() {
 	emit('close');
 }
 
-watch(
-	selectedDeck,
-	async (deck) => {
-		resetPreview();
-		cardDataMap.value = new Map();
-		if (!deck) return;
-		const lookupCards = createDeckLookupCards(deck.cards, deck.companion);
-		cardDataMap.value = (await fetchScryfallCards(lookupCards)).cards;
-	},
-	{ immediate: true },
-);
+watch(selectedDeck, () => resetPreview(), { immediate: true });
 
 function getCardImageUrl(card: DeckListCard): string | null {
 	return getDeckCardImageUrl(cardDataMap.value, card);

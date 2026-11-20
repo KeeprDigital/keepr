@@ -44,6 +44,8 @@ export interface ImportedStructureRemoval {
 		deletedRoundIds: number[];
 		/** The Screens released from a deleted Phase or Round, each a new version, to announce. */
 		clearedScreens: DbScreen[];
+		/** The imported Matches deleted with the scope's Rounds. */
+		deletedMatchIds: number[];
 	};
 }
 
@@ -92,7 +94,8 @@ export function buildRemoveImportedStructureQueries(
 					eq(matches.externalSource, 'melee'),
 					sql`${matches.roundId} in ${scopedRoundIds}`,
 				),
-			),
+			)
+			.returning({ id: matches.id }),
 		db
 			.delete(playerRoundStandings)
 			.where(
@@ -152,6 +155,7 @@ export function buildRemoveImportedStructureQueries(
 				keptPhases: byId(results[offset + 4] as KeptPhase[]),
 				deletedPhaseIds: byId(results[offset + 5] as { id: number }[]).map((row) => row.id),
 				clearedScreens: results[offset + 6] as DbScreen[],
+				deletedMatchIds: byId(results[offset] as { id: number }[]).map((row) => row.id),
 			};
 		},
 	};

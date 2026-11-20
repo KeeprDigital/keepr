@@ -87,7 +87,7 @@ describe("a Seat's Commander picker", () => {
 		await search(wrapper, 'atraxa');
 
 		expect(mockFetch.mock.calls.map(([url, options]) => [url, options.query])).toEqual([
-			[SEARCH, { q: 'atraxa game:paper', unique: 'cards' }],
+			[SEARCH, { q: 'name:"atraxa" game:paper', unique: 'cards' }],
 		]);
 		expect(labels(wrapper, 'Cards')).toEqual(["Pick Commander Atraxa, Praetors' Voice"]);
 

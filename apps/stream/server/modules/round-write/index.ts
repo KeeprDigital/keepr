@@ -3,6 +3,7 @@ import type { CreateRoundInput, RoundResponse } from '~~/shared/api';
 import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
 import { roundService } from '~~/server/services/round';
 import { requirePhaseInEvent } from '~~/server/utils/routeGuards';
+import { refuseOnCommanderEvent } from '~~/server/utils/commanderEventRefusal';
 
 interface CreateRoundParams {
 	eventId: number;
@@ -38,6 +39,7 @@ export function roundWriteModule() {
 		input,
 		originConnectionId,
 	}: CreateRoundParams): Promise<RoundResponse> {
+		await refuseOnCommanderEvent(eventId, 'Rounds');
 		await requirePhaseInEvent(eventId, input.phaseId);
 
 		const newRound = await rounds.create(eventId, input);
@@ -55,6 +57,7 @@ export function roundWriteModule() {
 		input,
 		originConnectionId,
 	}: UpdateRoundParams): Promise<RoundResponse> {
+		await refuseOnCommanderEvent(eventId, 'Rounds');
 		await requirePhaseInEvent(eventId, input.phaseId);
 
 		const updatedRound = await rounds.update(roundId, eventId, input);

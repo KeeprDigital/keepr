@@ -1,6 +1,8 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { flushPromises } from '@vue/test-utils';
 import { effectScope } from 'vue';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 
 // ── Mock stores ──
 
@@ -26,7 +28,7 @@ const mockPlayerDeckStore = reactive({
 });
 
 const mockDeckCache = {
-	fetchDeck: vi.fn().mockResolvedValue(null),
+	readDeck: vi.fn().mockResolvedValue(null),
 };
 
 mockNuxtImport('usePlayerStore', () => () => mockPlayerStore);
@@ -464,14 +466,51 @@ describe('useArchetypeReviewQueue', () => {
 				},
 			],
 		};
-		mockDeckCache.fetchDeck.mockResolvedValue(deck);
+		mockDeckCache.readDeck.mockResolvedValue(deck);
 		mockPlayerStore.players = [mtgPlayer(1, 'Deck A')];
 
 		const { activeDeck } = makeQueue();
 		await nextTick();
 		await nextTick();
 
-		expect(mockDeckCache.fetchDeck).toHaveBeenCalledWith(1, 1, expect.any(Date), { deckId: 1 });
+		expect(mockDeckCache.readDeck).toHaveBeenCalledWith(1, 1, expect.any(Date), { deckId: 1 });
+		expect(activeDeck.value).toEqual(deck);
+	});
+
+	// Moving on must never show the deck just left beside the next deck's form.
+	it('clears the deck shown the moment it moves on, and shows the next once it lands', async () => {
+		const first = { id: 1, cards: [] };
+		const next = deferred<{ id: number; cards: never[] }>();
+		mockDeckCache.readDeck.mockResolvedValueOnce(first).mockReturnValueOnce(next.promise);
+		mockPlayerStore.players = [mtgPlayer(1, 'Deck A'), mtgPlayer(2, 'Deck B')];
+		const { activeDeck, deckLoading, advance } = makeQueue();
+		await flushPromises();
+		expect(activeDeck.value).toEqual(first);
+
+		advance();
+		await nextTick();
+
+		expect(activeDeck.value).toBeNull();
+		expect(deckLoading.value).toBe(true);
+		next.resolve({ id: 2, cards: [] });
+		await flushPromises();
+		expect(activeDeck.value).toEqual({ id: 2, cards: [] });
+		expect(deckLoading.value).toBe(false);
+	});
+
+	it('reports a deck it could not load, and loads it again on retry', async () => {
+		const deck = { id: 1, cards: [] };
+		mockDeckCache.readDeck.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(deck);
+		mockPlayerStore.players = [mtgPlayer(1, 'Deck A')];
+		const { activeDeck, deckLoading, deckError, retryDeck } = makeQueue();
+		await flushPromises();
+
+		expect(deckError.value).toBe('This deck could not be loaded.');
+		expect(deckLoading.value).toBe(false);
+
+		retryDeck();
+		await flushPromises();
+		expect(deckError.value).toBeNull();
 		expect(activeDeck.value).toEqual(deck);
 	});
 });

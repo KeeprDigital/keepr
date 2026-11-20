@@ -11,7 +11,15 @@ import {
 } from '@keepr/nuxt-layer/server/utils/db';
 
 export function playerListService() {
-	const validatePlayersBelongToEvent = async (eventId: number, playerIds: number[]) => {
+	/**
+	 * Refuses a Player outside the Event. A member removal also takes one Melee has
+	 * deactivated, who stays a member until removed; an add takes active Players only.
+	 */
+	const validatePlayersBelongToEvent = async (
+		eventId: number,
+		playerIds: number[],
+		{ includeInactive = false }: { includeInactive?: boolean } = {},
+	) => {
 		if (playerIds.length === 0) return;
 
 		const uniquePlayerIds = [...new Set(playerIds)];
@@ -24,7 +32,7 @@ export function playerListService() {
 					.where(
 						and(
 							eq(players.eventId, eventId),
-							eq(players.isActive, true),
+							...(includeInactive ? [] : [eq(players.isActive, true)]),
 							sql`${players.id} in (
 						select cast(value as integer)
 						from json_each(${payload})
@@ -178,7 +186,7 @@ export function playerListService() {
 			throw createError({ statusCode: 404, message: 'Player list not found' });
 		}
 
-		await validatePlayersBelongToEvent(eventId, [playerId]);
+		await validatePlayersBelongToEvent(eventId, [playerId], { includeInactive: true });
 
 		const result = await db
 			.delete(playerListMembers)
@@ -267,7 +275,7 @@ export function playerListService() {
 
 		if (playerIds.length === 0) return 0;
 
-		await validatePlayersBelongToEvent(eventId, playerIds);
+		await validatePlayersBelongToEvent(eventId, playerIds, { includeInactive: true });
 
 		// Chunk the inArray to stay under D1's 100 bound-parameter limit.
 		// Uses db.batch so all deletes are atomic.

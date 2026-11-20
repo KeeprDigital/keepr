@@ -155,6 +155,37 @@ describe('replaceMeleeDecksForEvent', () => {
 		});
 	});
 
+	it('leaves an Archetype and deck fields set by hand on a Player Melee holds no Deck List for, and touches only Players it changes', async () => {
+		const handSet = await stagePlayer({ type: 'mtg', deckName: 'Hand Deck', deckColors: 'B' });
+		await db
+			.update(schema.players)
+			.set({ archetypeId, updatedAt: new Date(1000) })
+			.where(eq(schema.players.id, handSet));
+		const unchanged = await stagePlayer();
+		await playerDeckService().replaceMeleeDecksForEvent(eventId, [
+			{ playerId: unchanged, snapshots: [snapshot(unchanged)] },
+		]);
+		await db
+			.update(schema.players)
+			.set({ updatedAt: new Date(2000) })
+			.where(eq(schema.players.id, unchanged));
+
+		await playerDeckService().replaceMeleeDecksForEvent(eventId, [
+			{ playerId: handSet, snapshots: [] },
+			{ playerId: unchanged, snapshots: [snapshot(unchanged)] },
+		]);
+
+		expect(await storedPlayer(handSet)).toMatchObject({
+			archetypeId,
+			gameData: { deckName: 'Hand Deck', deckColors: 'B' },
+			updatedAt: new Date(1000),
+		});
+		expect(await storedPlayer(unchanged)).toMatchObject({
+			gameData: { deckName: 'Imported Control' },
+			updatedAt: new Date(2000),
+		});
+	});
+
 	it('keeps a review across an unchanged resubmission and drops it when the contents or companion change', async () => {
 		const playerId = await stagePlayer();
 		const service = playerDeckService();

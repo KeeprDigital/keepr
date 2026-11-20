@@ -115,6 +115,7 @@ describe('delete /api/events/[id]/archetypes/[archetypeId]', () => {
 		expect(mockReconcileDeckProjections).toHaveBeenCalledWith({
 			eventId,
 			playerIds: [primaryId],
+			changedPlayerIds: [],
 			originConnectionId: 'origin-1',
 		});
 		expect(mockPublishPlayerSnapshotUpdates).toHaveBeenCalledWith({

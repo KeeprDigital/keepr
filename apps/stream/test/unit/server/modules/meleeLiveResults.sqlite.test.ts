@@ -86,7 +86,9 @@ vi.stubGlobal(
 );
 
 const { runLiveResultsTick } = await import('~~/server/modules/melee-sync/liveResults/tick');
-const { runDueLiveResultsTicks } = await import('~~/server/modules/melee-sync/liveResults/runner');
+const { LIVE_RESULTS_RUN_BUDGET_MS, runDueLiveResultsTicks } =
+	await import('~~/server/modules/melee-sync/liveResults/runner');
+const { LIVE_RESULTS_CRON_INTERVAL_MS } = await import('~~/server/utils/cronSchedules');
 const { createMeleeSyncWorkflows } = await import('~~/server/modules/melee-sync/workflows');
 const { acquireMeleeSyncLease } = await import('~~/server/utils/meleeSyncState');
 const { default: getStatus } = await import('~~/server/api/events/[id]/melee/live-results.get');
@@ -332,9 +334,15 @@ describe('a Live Results tick', () => {
 		const { eventId, roundId, stage, tournament } = await seedEvent({
 			meleeLiveResultsBackoffStep: 3,
 		});
-		// Round 3 completed while Melee still had no standings for it.
-		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])]);
-		tournament.standings.set(ROUND_3, round3Standings);
+		// Round 3 is stored complete but holds no Round Standings.
+		await stage(
+			ROUND_3,
+			[pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])],
+			round3Standings,
+		);
+		await db
+			.delete(schema.playerRoundStandings)
+			.where(eq(schema.playerRoundStandings.roundId, roundId(ROUND_3)));
 		tournament.teamIds = [1, 2, 3, 4, 5];
 		tournament.matches.set(ROUND_4, [pairing('c', [1, 3]), pairing('d', [2, 5])]);
 
@@ -692,13 +700,40 @@ describe('the Live Results runner', () => {
 		];
 		breakSecond(second, first);
 
-		await runDueLiveResultsTicks(now);
+		await runDueLiveResultsTicks(() => now);
 
 		expect(await pollState(first.eventId)).toMatchObject({ lastCheckedAt: now, error: null });
 		expect(await pollState(third.eventId)).toMatchObject({ lastCheckedAt: now, error: null });
 		if (secondAfter)
 			expect(await pollState(second.eventId)).toMatchObject({ lastCheckedAt: now, ...secondAfter });
 		expect(await matchesOf(first.eventId, first.roundId(ROUND_3))).toHaveLength(2);
+	});
+
+	// A run reads the time for each Event, so a later tick's lease is not already
+	// spent, and starts none once its budget is gone, before the next run starts.
+	it('ticks each Event at the time it reaches it and starts none past its budget', async () => {
+		await db.update(schema.events).set({ meleeLiveResultsEnabled: false });
+		const seeded = [];
+		for (const minutes of [3, 2, 1]) {
+			const event = await seedEvent({ meleeLiveResultsNextCheckAt: minutesAgo(minutes) });
+			await event.stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
+			seeded.push(event);
+		}
+		const [first, second, third] = seeded as [
+			(typeof seeded)[0],
+			(typeof seeded)[0],
+			(typeof seeded)[0],
+		];
+		const before = await pollState(third.eventId);
+		const readings = [now, now, secondsLater(20), secondsLater(LIVE_RESULTS_RUN_BUDGET_MS / 1000)];
+		const clock = () => readings.shift() ?? secondsLater(600);
+
+		await runDueLiveResultsTicks(clock);
+
+		expect(await pollState(first.eventId)).toMatchObject({ lastCheckedAt: now });
+		expect(await pollState(second.eventId)).toMatchObject({ lastCheckedAt: secondsLater(20) });
+		expect(await pollState(third.eventId)).toEqual(before);
+		expect(LIVE_RESULTS_RUN_BUDGET_MS).toBeLessThan(LIVE_RESULTS_CRON_INTERVAL_MS);
 	});
 
 	it('leaves an Event alone until its next check is due', async () => {
@@ -709,7 +744,7 @@ describe('the Live Results runner', () => {
 		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		const before = await pollState(eventId);
 
-		await runDueLiveResultsTicks(now);
+		await runDueLiveResultsTicks(() => now);
 
 		expect(await pollState(eventId)).toEqual(before);
 		expect(meleeCalls).not.toHaveBeenCalled();

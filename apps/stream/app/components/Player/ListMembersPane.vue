@@ -205,6 +205,15 @@ function reset() {
 
 // ── Save ──
 
+/** The most Players one add or removal request names (`server/schemas/api/playerList.ts`). */
+const MEMBER_WRITE_MAX_PLAYERS = 500;
+
+function chunked<T>(items: T[], size: number): T[][] {
+	return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
+		items.slice(index * size, (index + 1) * size),
+	);
+}
+
 async function save() {
 	if (!eventStore.eventId || !hasChanges.value) return;
 	saving.value = true;
@@ -214,16 +223,17 @@ async function save() {
 		const addedIds = [...currentSet].filter((id) => !originalMemberIds.has(id));
 		const removedIds = [...originalMemberIds].filter((id) => !currentSet.has(id));
 
-		if (addedIds.length > 0) {
-			const added = await playerListStore.addMembers(eventStore.eventId, props.listId, addedIds);
+		// One add or removal request takes at most this many Players; a List may hold more.
+		for (const chunk of chunked(addedIds, MEMBER_WRITE_MAX_PLAYERS)) {
+			const added = await playerListStore.addMembers(eventStore.eventId, props.listId, chunk);
 			if (!added) throw new Error('Failed to add list members');
 		}
 
-		if (removedIds.length > 0) {
+		for (const chunk of chunked(removedIds, MEMBER_WRITE_MAX_PLAYERS)) {
 			const removed = await playerListStore.batchRemoveMembers(
 				eventStore.eventId,
 				props.listId,
-				removedIds,
+				chunk,
 			);
 			if (!removed) throw new Error('Failed to remove list members');
 		}

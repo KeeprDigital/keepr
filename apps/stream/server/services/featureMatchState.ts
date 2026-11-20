@@ -47,6 +47,7 @@ import {
 	toFeatureMatchDefaults,
 } from '~~/shared/types/featureMatchDefaults';
 import { isMergeableFeatureMatchCommand } from '~~/shared/types/featureMatchSession';
+import { STATE_CONFLICT_CODE } from '@keepr/nuxt-layer/shared/utils/stateConflict';
 
 export { applyFeatureMatchSessionEvent } from '~~/shared/modules/feature-match-session';
 
@@ -590,8 +591,13 @@ export function featureMatchStateService() {
 		sequenceOf: (session) => session.sequence,
 
 		admit: (session, command) => {
+			// Its successor opened in the same commit: a lost race, which a re-read cures.
 			if (session.status !== 'active')
-				throw createError({ statusCode: 409, message: 'Feature match session is closed' });
+				throw createError({
+					statusCode: 409,
+					message: 'Feature match session is closed',
+					data: { code: STATE_CONFLICT_CODE },
+				});
 
 			if (
 				command.type === 'SnapshotCorrected' &&

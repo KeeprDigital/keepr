@@ -50,7 +50,12 @@ const isDirty = computed(() => nameIsDirty.value || membersHaveChanges.value);
 const memberIds = ref<number[]>([]);
 const loading = ref(false);
 
-onMounted(async () => {
+/** The members could not be read: the pane would show an empty List and save over it. */
+const membersUnread = computed(
+	() => !loading.value && playerListStore.memberLoadFailed(props.listId),
+);
+
+async function loadMembers() {
 	if (!eventStore.eventId) return;
 
 	loading.value = true;
@@ -62,7 +67,9 @@ onMounted(async () => {
 	} finally {
 		loading.value = false;
 	}
-});
+}
+
+onMounted(loadMembers);
 
 // ── Save ──
 
@@ -175,6 +182,17 @@ function handleClose() {
 				<div v-if="loading" class="flex items-center justify-center py-12">
 					<UIcon name="i-lucide-loader-2" class="size-5 animate-spin text-muted" />
 				</div>
+				<UAlert
+					v-else-if="membersUnread"
+					color="error"
+					variant="subtle"
+					icon="i-lucide-circle-alert"
+					title="This list's members could not be loaded."
+					role="alert"
+					:actions="[
+						{ label: 'Retry', color: 'neutral', variant: 'outline', onClick: loadMembers },
+					]"
+				/>
 				<PlayerListMembersPane
 					v-else
 					ref="membersPane"

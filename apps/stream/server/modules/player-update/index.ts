@@ -14,6 +14,7 @@ import { playerDeckService } from '~~/server/services/playerDeck';
 import { playerFeatureMatchSyncService } from '~~/server/services/playerFeatureMatchSync';
 import { requireArchetypeInEvent } from '~~/server/utils/routeGuards';
 import { unshownPlayerReason } from '~~/shared/utils/playerName';
+import { refuseOnCommanderEvent } from '~~/server/utils/commanderEventRefusal';
 
 interface UpdatePlayerInputParams {
 	eventId: number;
@@ -57,7 +58,10 @@ interface PublishPlayerSnapshotUpdatesParams {
 	exceptSlotIds?: readonly number[];
 }
 
-type ReconcileDeckProjectionsParams = PublishPlayerSnapshotUpdatesParams;
+type ReconcileDeckProjectionsParams = PublishPlayerSnapshotUpdatesParams & {
+	/** Players the caller's own write already changed, announced and re-synced with the rest. */
+	changedPlayerIds?: number[];
+};
 
 /** A written Nickname as stored: trimmed, and none when blank. */
 function withStoredNickname<T extends { nickname?: string | null }>(input: T): T {
@@ -130,18 +134,22 @@ export function playerUpdateModule() {
 	async function reconcileDeckProjections({
 		eventId,
 		playerIds,
+		changedPlayerIds = [],
 		originConnectionId,
 	}: ReconcileDeckProjectionsParams) {
 		// One bulk write for every affected Player, all or none, then one message
-		// naming them in the order of the requested Player IDs (ADR-0084). It answers
-		// the Players it wrote; none written, nothing is announced.
+		// naming them, and those the caller changed, in the order of the requested
+		// Player IDs (ADR-0084). It answers the Players it wrote; none changed,
+		// nothing is announced.
 		const updatedPlayers = await playerDeckService().reconcilePrimaryArchetypesForPlayers(
 			eventId,
 			playerIds,
 		);
-		if (updatedPlayers.length === 0) return [];
+		const updatedIds = [
+			...new Set([...updatedPlayers.map((player) => player.id), ...changedPlayerIds]),
+		];
+		if (updatedIds.length === 0) return [];
 
-		const updatedIds = updatedPlayers.map((player) => player.id);
 		await publication.playerDeckProjectionsChanged({
 			eventId,
 			playerIds: updatedIds,
@@ -162,6 +170,7 @@ export function playerUpdateModule() {
 		originConnectionId,
 		exceptSlotIds,
 	}: UpdatePlayerInputParams): Promise<PlayerResponse> {
+		await refuseOnCommanderEvent(eventId, 'Players');
 		const game = await eventGame(eventId);
 		const written = withoutDeckListOwnedFields(game, withStoredNickname(input));
 		await requireArchetypeInEvent(eventId, written.archetypeId);
@@ -210,6 +219,7 @@ export function playerUpdateModule() {
 		input,
 		originConnectionId,
 	}: CreatePlayerInputParams): Promise<PlayerResponse> {
+		await refuseOnCommanderEvent(eventId, 'Players');
 		const game = await eventGame(eventId);
 		const written = withoutDeckListOwnedFields(game, withStoredNickname(input));
 		await requireArchetypeInEvent(eventId, written.archetypeId);
@@ -271,6 +281,7 @@ export function playerUpdateModule() {
 		archetypeId,
 		originConnectionId,
 	}: ReviewPlayerDeckParams): Promise<ReviewPlayerDeckResult> {
+		await refuseOnCommanderEvent(eventId, 'Archetype Review');
 		if ((await eventGame(eventId)) === 'op')
 			throw createError({
 				statusCode: 400,
@@ -317,6 +328,7 @@ export function playerUpdateModule() {
 		deckId,
 		originConnectionId,
 	}: Omit<ReviewPlayerDeckParams, 'archetypeId'>): Promise<ReviewPlayerDeckResult> {
+		await refuseOnCommanderEvent(eventId, 'Archetype Review');
 		if ((await eventGame(eventId)) === 'op')
 			throw createError({
 				statusCode: 400,

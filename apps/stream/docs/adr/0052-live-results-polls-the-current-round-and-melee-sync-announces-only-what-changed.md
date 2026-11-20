@@ -1,6 +1,6 @@
 # ADR-0052: Live Results polls the Current Round, and Melee Sync announces only what changed
 
-Accepted · 2026-10-27
+Accepted · 2026-10-27 · Amended by ADR-0152: a Live Results run reads the time per Event and starts no tick past its budget
 
 ### Decision
 

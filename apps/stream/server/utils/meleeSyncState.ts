@@ -125,6 +125,15 @@ export async function acquireMeleeSyncLease(
 	};
 }
 
+/** Whether a failure is another Melee Sync command holding the Event's lease. */
+export function isMeleeSyncLeaseUnavailable(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		(error as { data?: { code?: unknown } }).data?.code === 'MELEE_SYNC_IN_PROGRESS'
+	);
+}
+
 async function throwLeaseUnavailable(
 	eventId: number,
 	activeLease: { command: string; expiresAt: Date } | null,

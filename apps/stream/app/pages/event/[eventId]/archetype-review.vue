@@ -48,6 +48,8 @@ const {
 	currentEntry,
 	activeDeck,
 	deckLoading,
+	deckError,
+	retryDeck,
 	allEntries,
 	filteredCount,
 	totalDecks,
@@ -144,14 +146,17 @@ const {
 				:entry="currentEntry"
 				:active-deck="activeDeck"
 				:loading="saving || deckLoading"
+				:error="deckError"
 				:selected-key-cards="selectedKeyCards"
 				@toggle-key-card="toggleKeyCard"
+				@retry="retryDeck"
 			/>
 
 			<ArchetypeReviewAssignmentPanel
 				:name-input="nameInput"
 				:colors-input="colorsInput"
 				:saving="saving"
+				:deck-loading="deckLoading"
 				:is-edit-mode="isEditMode"
 				:is-name-valid="isNameValid"
 				:matches-existing-archetype="matchesExistingArchetype"

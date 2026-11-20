@@ -110,6 +110,48 @@ describe('playerListService membership', () => {
 		expect(await members(list.id)).toEqual([playerIds[1]]);
 	});
 
+	// A list grows past one add's 500, and a reorder names every member in one statement.
+	it('reorders a list of more than 500 members', async () => {
+		const list = await stageList();
+		const [late] = await db
+			.insert(schema.players)
+			.values({ eventId, name: 'Late entry' })
+			.returning({ id: schema.players.id });
+		await playerListService().addMembers(list.id, eventId, playerIds);
+		await playerListService().addMembers(list.id, eventId, [late!.id]);
+		const reversed = [late!.id, ...playerIds].toReversed();
+
+		expect(await playerListService().reorderMembers(list.id, eventId, reversed)).toEqual({
+			reordered: 501,
+		});
+		expect(await members(list.id)).toEqual(reversed);
+	});
+
+	// Melee deactivates a Player who leaves the tournament; they stay a member until removed.
+	it.each([
+		{
+			write: 'one member',
+			remove: (listId: number, playerId: number) =>
+				playerListService().removeMember(listId, eventId, playerId),
+		},
+		{
+			write: 'a batch',
+			remove: (listId: number, playerId: number) =>
+				playerListService().batchRemoveMembers(listId, eventId, [playerId]),
+		},
+	])('removes a member Melee has deactivated, as $write', async ({ remove }) => {
+		const list = await stageList();
+		const [dropped] = await db
+			.insert(schema.players)
+			.values({ eventId, name: 'Dropped', isActive: false })
+			.returning({ id: schema.players.id });
+		await db.insert(schema.playerListMembers).values({ listId: list.id, playerId: dropped!.id });
+
+		await remove(list.id, dropped!.id);
+
+		expect(await members(list.id)).toEqual([]);
+	});
+
 	it("answers 404 for every member write to another Event's list", async () => {
 		const list = await stageList();
 		const [other] = await db

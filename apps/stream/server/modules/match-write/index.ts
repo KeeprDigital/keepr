@@ -2,6 +2,7 @@ import type { CreateMatchInput, MatchResponse, UpdateMatchInput } from '~~/share
 import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
 import { matchService } from '~~/server/services/match';
 import { requirePlayersInEvent, requireRoundInEvent } from '~~/server/utils/routeGuards';
+import { refuseOnCommanderEvent } from '~~/server/utils/commanderEventRefusal';
 
 interface CreateMatchParams {
 	eventId: number;
@@ -31,6 +32,7 @@ export function matchWriteModule() {
 		input,
 		originConnectionId,
 	}: CreateMatchParams): Promise<MatchResponse> {
+		await refuseOnCommanderEvent(eventId, 'Matches');
 		await requireRoundInEvent(eventId, input.roundId);
 		await requirePlayersInEvent(eventId, [input.player1Id, input.player2Id]);
 
@@ -49,6 +51,7 @@ export function matchWriteModule() {
 		input,
 		originConnectionId,
 	}: UpdateMatchParams): Promise<MatchResponse> {
+		await refuseOnCommanderEvent(eventId, 'Matches');
 		await requireRoundInEvent(eventId, input.roundId);
 		await requirePlayersInEvent(eventId, [input.player1Id, input.player2Id]);
 

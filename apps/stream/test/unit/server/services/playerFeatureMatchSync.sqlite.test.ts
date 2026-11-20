@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
+import { StateConflictError } from '@keepr/nuxt-layer/server/utils/errors';
 import { createSqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 
 // Player → Slot reverse sync over real SQL: which deck a Slot side shows after a
@@ -442,9 +443,7 @@ describe('syncMatchesFromPlayers', () => {
 				player1Id: playerIds[0],
 				player1Data: { name: 'Old Name' },
 			});
-			failNextCorrection = Object.assign(new Error('Feature match session has advanced'), {
-				statusCode: 409,
-			});
+			failNextCorrection = new StateConflictError('Feature match session', 1);
 			const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 			await expect(

@@ -347,6 +347,36 @@ describe('creating a Screen', () => {
 		expect(capabilitiesPrepared).toBe(0);
 		expect(announced()).toEqual([]);
 	});
+
+	// Two creates can each find the slug free before either writes: the database decides.
+	it('answers a create that loses a race for the slug 409, storing one Screen', async () => {
+		let raced = 0;
+		const create = async () =>
+			await screenWriteModule().createScreen({
+				eventId,
+				input: { name: 'Raced', slug: 'raced', currentMode: 'standings' } as never,
+				screenOutputAssetCapabilities: (() => ({
+					prepare: async () => ({
+						...prepared,
+						persisted: {
+							...prepared.persisted,
+							assetCapabilitySeed: `raced-seed-${++raced}`,
+							assetCapabilityDigest: `raced-digest-${raced}`,
+						},
+					}),
+				})) as never,
+			});
+
+		const settled = await Promise.allSettled([create(), create()]);
+
+		expect(settled.map((outcome) => outcome.status).toSorted()).toEqual(['fulfilled', 'rejected']);
+		expect(settled.find((outcome) => outcome.status === 'rejected')).toMatchObject({
+			reason: { statusCode: 409, message: 'A screen with this slug already exists' },
+		});
+		expect(
+			await db.select().from(schema.screens).where(eq(schema.screens.slug, 'raced')),
+		).toHaveLength(1);
+	});
 });
 
 // A Commander Event has no Rounds or standings, so it is not offered Standings (ADR-0087).

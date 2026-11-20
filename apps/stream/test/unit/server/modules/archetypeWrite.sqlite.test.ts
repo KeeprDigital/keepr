@@ -474,6 +474,24 @@ describe('naming an Archetype as another of its Event', () => {
 		expect(publication.archetypeUpdated).not.toHaveBeenCalled();
 	});
 
+	// Two creates can each find the name free before either writes: the database decides.
+	it('answers a create that loses a race for the name 409, storing one Archetype', async () => {
+		const eventId = await createEvent();
+
+		const settled = await Promise.allSettled([
+			archetypeWriteModule().createArchetype({ eventId, input: { name: 'Izzet Phoenix' } }),
+			archetypeWriteModule().createArchetype({ eventId, input: { name: 'izzet phoenix ' } }),
+		]);
+
+		expect(settled.map((outcome) => outcome.status).toSorted()).toEqual(['fulfilled', 'rejected']);
+		expect(settled.find((outcome) => outcome.status === 'rejected')).toMatchObject({
+			reason: { statusCode: 409 },
+		});
+		expect(
+			await db.select().from(schema.archetypes).where(eq(schema.archetypes.eventId, eventId)),
+		).toHaveLength(1);
+	});
+
 	it.each([
 		['its own name in another case', 'izzet phoenix'],
 		["a name another Event's Archetype holds", 'Burn'],
@@ -511,8 +529,8 @@ describe('merging an Archetype into another', () => {
 			{ archetypeId: merged.id, cardId: await createCard('Goblin Guide') },
 			{ archetypeId: survivor!.id, cardId: await createCard('Lightning Helix') },
 		]);
-		const primary = await createReviewedDeck(eventId, merged.id, true);
-		const secondary = await createReviewedDeck(eventId, merged.id, false);
+		await createReviewedDeck(eventId, merged.id, true);
+		await createReviewedDeck(eventId, merged.id, false);
 		await createReviewedDeck(eventId, survivor!.id, true);
 		// The Player write can give a Player an Archetype with no Deck List: they move with it.
 		const [deckless] = await db
@@ -556,16 +574,7 @@ describe('merging an Archetype into another', () => {
 				.from(schema.players)
 				.where(eq(schema.players.id, deckless!.id)),
 		).toEqual([{ archetypeId: survivor!.id }]);
-		expect(playerUpdates.reconcileDeckProjections).toHaveBeenCalledWith(
-			expect.objectContaining({
-				playerIds: [primary.playerId],
-			}),
-		);
-		expect(playerUpdates.publishPlayerSnapshotUpdates).toHaveBeenCalledWith(
-			expect.objectContaining({
-				playerIds: [secondary.playerId],
-			}),
-		);
+		// What the merge announces of its Players is proved over real modules in archetypeChangeAnnouncement.
 		expect(publication.archetypeDeleted).toHaveBeenCalledWith({
 			eventId,
 			id: merged.id,

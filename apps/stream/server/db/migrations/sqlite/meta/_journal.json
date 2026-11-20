@@ -57,6 +57,13 @@
       "when": 1795165507220,
       "tag": "0007_feature_match_slot_version",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795216474421,
+      "tag": "0008_archetype_name_key",
+      "breakpoints": true
     }
   ]
 }

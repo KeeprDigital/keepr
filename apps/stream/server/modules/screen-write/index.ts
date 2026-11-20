@@ -42,6 +42,7 @@ import {
 	SCREEN_THEME_OVERRIDE_SLOT_PREFIX,
 	screenModeGraphicAssetReferences,
 } from '~~/shared/utils/graphicsAssetReferences';
+import { isUniqueConstraintViolation } from '~~/server/utils/uniqueConstraint';
 
 /**
  * A collaborator an operation needs, passed as a thunk and invoked at the point
@@ -336,6 +337,23 @@ async function withSeatDeckSourceDefault(
 	};
 }
 
+/**
+ * Runs a write that sets a Screen's slug. Another write can take the slug
+ * between the check and this one, and the slug index refuses it: a conflict,
+ * named as the check would name it, never a server error.
+ */
+async function refusingTakenSlug<T>(write: () => Promise<T>): Promise<T> {
+	try {
+		return await write();
+	} catch (error) {
+		if (!isUniqueConstraintViolation(error, 'screens.slug')) throw error;
+		throw createError({
+			statusCode: 409,
+			message: 'A screen with this slug already exists',
+		});
+	}
+}
+
 export function screenWriteModule() {
 	const publication = eventDataPublicationModule();
 	const screens = screenService();
@@ -396,10 +414,13 @@ export function screenWriteModule() {
 				? await withSeatDeckSourceDefault(eventId, event, input.modeConfigs)
 				: undefined;
 		const preparedCapability = await screenOutputAssetCapabilities().prepare();
-		const newScreen = await screens.create(
-			eventId,
-			withDeckSource ? { ...input, modeConfigs: withDeckSource } : input,
-			preparedCapability.persisted,
+		const newScreen = await refusingTakenSlug(
+			async () =>
+				await screens.create(
+					eventId,
+					withDeckSource ? { ...input, modeConfigs: withDeckSource } : input,
+					preparedCapability.persisted,
+				),
 		);
 
 		return publication.screenCreated({
@@ -487,13 +508,16 @@ export function screenWriteModule() {
 					)
 				: undefined;
 
-		const updatedScreen = await screens.update(
-			screenId,
-			eventId,
-			withDeckSource ? { ...data, modeConfigs: withDeckSource } : data,
-			stateVersion,
-			epochEnd?.statements,
-			leaseFence,
+		const updatedScreen = await refusingTakenSlug(
+			async () =>
+				await screens.update(
+					screenId,
+					eventId,
+					withDeckSource ? { ...data, modeConfigs: withDeckSource } : data,
+					stateVersion,
+					epochEnd?.statements,
+					leaseFence,
+				),
 		);
 
 		if (!updatedScreen) {

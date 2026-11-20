@@ -355,6 +355,109 @@ describe('a synced Round Melee then lists no Matches for', () => {
 	});
 });
 
+describe('a complete Round Melee lists no standings for', () => {
+	it("keeps the Round's stored Round Standings and Matches and refuses the answer", async () => {
+		const { eventId, roundId } = await seedEvent();
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])]);
+		meleeStandingsByRound.set(ROUND_3, standingsAfter);
+		await syncRound(eventId, roundId(ROUND_3));
+		const storedStandings = await standingsOf(eventId, roundId(ROUND_3));
+		const storedMatches = await matchesOf(eventId, roundId(ROUND_3));
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [0, 2]), pairing('b', [3, 4], [2, 1])]);
+		meleeStandingsByRound.set(ROUND_3, []);
+
+		await expect(syncRound(eventId, roundId(ROUND_3))).rejects.toMatchObject({
+			code: 'INVALID_MELEE_ROUND_SNAPSHOT',
+		});
+
+		expect(await standingsOf(eventId, roundId(ROUND_3))).toEqual(storedStandings);
+		expect(await matchesOf(eventId, roundId(ROUND_3))).toEqual(storedMatches);
+	});
+});
+
+describe("a Round's standings name only the Event's Melee Players", () => {
+	const complete = [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])];
+
+	it.each([
+		{
+			case: 'an unknown participant',
+			standings: [...standingsAfter, meleeStanding(99, { Rank: 5 })],
+			refusal: 'unknown Melee participant 99',
+		},
+		{
+			case: 'a participant twice',
+			standings: [...standingsAfter, meleeStanding(1, { Rank: 5 })],
+			refusal: 'Duplicate Melee Round standing participant 1',
+		},
+	])('refuses standings naming $case, storing nothing', async ({ standings, refusal }) => {
+		const { eventId, roundId } = await seedEvent();
+		meleeMatchesByRound.set(ROUND_3, complete);
+		meleeStandingsByRound.set(ROUND_3, standings);
+
+		await expect(syncRound(eventId, roundId(ROUND_3))).rejects.toThrow(refusal);
+
+		expect(await matchesOf(eventId, roundId(ROUND_3))).toEqual([]);
+		expect(await standingsOf(eventId, roundId(ROUND_3))).toEqual([]);
+	});
+
+	it('stores a standing for the Melee Player when a manual Player has the same external id', async () => {
+		const { eventId, roundId } = await seedEvent();
+		await db.insert(schema.players).values({
+			eventId,
+			name: 'Manual namesake',
+			externalId: '1',
+			externalSource: 'manual',
+		});
+		meleeMatchesByRound.set(ROUND_3, complete);
+		meleeStandingsByRound.set(ROUND_3, standingsAfter);
+
+		await syncRound(eventId, roundId(ROUND_3));
+
+		const [first] = await db
+			.select({ name: schema.players.name, externalSource: schema.players.externalSource })
+			.from(schema.playerRoundStandings)
+			.innerJoin(schema.players, eq(schema.players.id, schema.playerRoundStandings.playerId))
+			.where(eq(schema.playerRoundStandings.roundId, roundId(ROUND_3)))
+			.orderBy(schema.playerRoundStandings.position);
+		expect(first).toEqual({ name: 'Player 1', externalSource: 'melee' });
+	});
+});
+
+// Melee answers 404 for a Round it has not paired. Only a never-synced Round
+// reads that as not ready; any other failure is an upstream fault, never empty.
+describe('a Round sync Melee fails', () => {
+	it.each([
+		{
+			case: 'a 404 for a never-synced Round',
+			synced: false,
+			status: 404,
+			code: 'MELEE_ROUND_NOT_READY',
+		},
+		{ case: 'a 404 for a synced Round', synced: true, status: 404, code: 'MELEE_UPSTREAM_FAILURE' },
+		{
+			case: 'a 503 for a never-synced Round',
+			synced: false,
+			status: 503,
+			code: 'MELEE_UPSTREAM_FAILURE',
+		},
+	])('answers $code for $case, keeping what is stored', async ({ synced, status, code }) => {
+		const { eventId, roundId } = await seedEvent();
+		if (synced) {
+			meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2]), pairing('b', [3, 4])]);
+			await syncRound(eventId, roundId(ROUND_3));
+		}
+		const stored = await matchesOf(eventId, roundId(ROUND_3));
+		meleeMatchesByRound.set(
+			ROUND_3,
+			new MeleeTransportError(`Melee.gg API request failed with status ${status}`, 'http', status),
+		);
+
+		await expect(syncRound(eventId, roundId(ROUND_3))).rejects.toMatchObject({ code });
+
+		expect(await matchesOf(eventId, roundId(ROUND_3))).toEqual(stored);
+	});
+});
+
 // The next Round is unpaired for most of every Round: Update from Melee still
 // refreshes the Current Round and succeeds, naming the Round it could not import.
 describe('update from Melee while the next Round is not yet paired', () => {
@@ -480,7 +583,11 @@ describe("the Player records a Round's Matches carry", () => {
 		},
 	])('$case', async ({ round3Standings, round4, player1, player3 }) => {
 		const { eventId, roundId } = await seedEvent();
-		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])]);
+		// Round 3 stores no standings while a Match Result is outstanding.
+		meleeMatchesByRound.set(ROUND_3, [
+			pairing('a', [1, 2], [2, 0]),
+			round3Standings.length > 0 ? pairing('b', [3, 4], [2, 1]) : pairing('b', [3, 4]),
+		]);
 		meleeStandingsByRound.set(ROUND_3, round3Standings);
 		await syncRound(eventId, roundId(ROUND_3));
 		meleeMatchesByRound.set(ROUND_4, round4);

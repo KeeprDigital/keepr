@@ -138,8 +138,23 @@ export function playerDeckUnresolvedCardService() {
 			.orderBy(asc(playerDecks.sortOrder), asc(playerDeckUnresolvedCards.sortOrder));
 	};
 
+	/** Each name and set an Event's Deck Lists hold as unresolved, normalized, once. */
+	const listNamesByEventId = async (
+		eventId: number,
+	): Promise<Array<{ normalizedOriginalName: string; normalizedSetCode: string }>> => {
+		return await db
+			.selectDistinct({
+				normalizedOriginalName: playerDeckUnresolvedCards.normalizedOriginalName,
+				normalizedSetCode: playerDeckUnresolvedCards.normalizedSetCode,
+			})
+			.from(playerDeckUnresolvedCards)
+			.innerJoin(playerDecks, eq(playerDeckUnresolvedCards.deckId, playerDecks.id))
+			.where(eq(playerDecks.eventId, eventId));
+	};
+
 	return {
 		listByEventId,
+		listNamesByEventId,
 		findById,
 		listMatchingEntries,
 	};

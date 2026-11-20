@@ -18,6 +18,7 @@ import {
 	requireRoundInEvent,
 	validateFeatureMatchAssignmentCreateReferences,
 } from '~~/server/utils/routeGuards';
+import { refuseOnCommanderEvent } from '~~/server/utils/commanderEventRefusal';
 
 /**
  * Feature Match Assignment workflow seam.
@@ -43,6 +44,7 @@ export function featureMatchAssignmentModule() {
 		input: SaveFeatureMatchAssignmentInput,
 		originConnectionId?: string,
 	) {
+		await refuseOnCommanderEvent(eventId, 'Feature Match Assignments');
 		const { confirmedNoteDiscards = [], ...assignmentInput } = input;
 		await validateFeatureMatchAssignmentCreateReferences(eventId, assignmentInput);
 		const [existingAtSlot, existingForMatch] = await Promise.all([
@@ -118,6 +120,7 @@ export function featureMatchAssignmentModule() {
 		input: UpdateFeatureMatchAssignmentInput,
 		originConnectionId?: string,
 	) {
+		await refuseOnCommanderEvent(eventId, 'Feature Match Assignments');
 		await requireExisting(eventId, assignmentId);
 		const assignment = await assignments.update(eventId, assignmentId, input);
 		if (!assignment)

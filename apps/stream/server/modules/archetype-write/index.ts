@@ -12,7 +12,9 @@ import {
 	buildReleaseScreenEventReferencesQuery,
 	buildRepointScreenEventReferencesQuery,
 } from '~~/server/services/screen';
+import { isUniqueConstraintViolation } from '~~/server/utils/uniqueConstraint';
 import { sameArchetypeName } from '~~/shared/utils/archetypeName';
+import { refuseOnCommanderEvent } from '~~/server/utils/commanderEventRefusal';
 
 interface CreateArchetypeParams {
 	eventId: number;
@@ -77,6 +79,19 @@ function ensureUnique<T>(values: T[], label: string) {
 	}
 }
 
+/** The Players holding an Archetype with no Deck List reviewed as it, as the Player write allows. */
+async function listDecklessHolders(
+	eventId: number,
+	archetypeId: number,
+	deckHolderIds: readonly number[],
+): Promise<number[]> {
+	const holders = await db
+		.select({ id: players.id })
+		.from(players)
+		.where(and(eq(players.eventId, eventId), eq(players.archetypeId, archetypeId)));
+	return holders.map((holder) => holder.id).filter((id) => !deckHolderIds.includes(id));
+}
+
 export function archetypeWriteModule() {
 	const publication = eventDataPublicationModule();
 	const archetypes = archetypeService();
@@ -99,10 +114,40 @@ export function archetypeWriteModule() {
 		}
 	}
 
+	/**
+	 * Runs a write that names an Archetype. Another write can take the name
+	 * between the check and this one, and the database's name key refuses it:
+	 * that answers as the check would have.
+	 */
+	async function refusingTakenArchetypeName<T>(
+		eventId: number,
+		name: string | undefined,
+		renamedArchetypeId: number | undefined,
+		write: () => Promise<T>,
+	): Promise<T> {
+		try {
+			return await write();
+		} catch (error) {
+			if (name === undefined || !isUniqueConstraintViolation(error, 'archetypes')) throw error;
+			await refuseTakenName(eventId, name, renamedArchetypeId);
+			throw createError({
+				statusCode: 409,
+				statusMessage: 'Conflict',
+				message: 'This Event already has an Archetype of that name',
+			});
+		}
+	}
+
 	async function createArchetype({ eventId, input, originConnectionId }: CreateArchetypeParams) {
+		await refuseOnCommanderEvent(eventId, 'Archetypes');
 		await refuseOnOpEvent(eventId, 'created');
 		await refuseTakenName(eventId, input.name);
-		const newArchetype = await archetypes.create(eventId, input);
+		const newArchetype = await refusingTakenArchetypeName(
+			eventId,
+			input.name,
+			undefined,
+			async () => await archetypes.create(eventId, input),
+		);
 
 		return await publication.archetypeCreated({
 			eventId,
@@ -117,15 +162,22 @@ export function archetypeWriteModule() {
 		input,
 		originConnectionId,
 	}: UpdateArchetypeParams) {
+		await refuseOnCommanderEvent(eventId, 'Archetypes');
 		// A rename or a pin customises it, which a derived Archetype's cleanup spares (ADR-0074).
 		const current = await archetypes.findById(archetypeId, eventId);
 		if (input.name !== undefined) await refuseTakenName(eventId, input.name, archetypeId);
 		const customises =
 			(input.name !== undefined && input.name !== current?.name) || input.chartSeries != null;
-		const archetype = await archetypes.update(
-			archetypeId,
+		const archetype = await refusingTakenArchetypeName(
 			eventId,
-			customises ? { ...input, customised: true } : input,
+			input.name,
+			archetypeId,
+			async () =>
+				await archetypes.update(
+					archetypeId,
+					eventId,
+					customises ? { ...input, customised: true } : input,
+				),
 		);
 
 		if (!archetype) {
@@ -182,6 +234,8 @@ export function archetypeWriteModule() {
 			deckService.listPlayerIdsByArchetype(eventId, archetypeId),
 			deckService.listPrimaryPlayerIdsByArchetype(eventId, archetypeId),
 		]);
+		// Their Archetype goes with it, by foreign key.
+		const decklessHolderIds = await listDecklessHolders(eventId, archetypeId, playerIds);
 
 		// Clearing deck reviews and deleting the archetype must commit together —
 		// otherwise a delete without the review clear would leave decks pointing at
@@ -207,6 +261,7 @@ export function archetypeWriteModule() {
 		await playerUpdateModule().reconcileDeckProjections({
 			eventId,
 			playerIds: primaryPlayerIds,
+			changedPlayerIds: decklessHolderIds,
 			originConnectionId,
 		});
 		const secondaryPlayerIds = playerIds.filter((playerId) => !primaryPlayerIds.includes(playerId));
@@ -236,6 +291,7 @@ export function archetypeWriteModule() {
 		intoArchetypeId,
 		originConnectionId,
 	}: MergeArchetypeParams) {
+		await refuseOnCommanderEvent(eventId, 'Archetypes');
 		await refuseOnOpEvent(eventId, 'merged');
 		if (archetypeId === intoArchetypeId) {
 			throw createError({
@@ -259,6 +315,7 @@ export function archetypeWriteModule() {
 			deckService.listPlayerIdsByArchetype(eventId, archetypeId),
 			deckService.listPrimaryPlayerIdsByArchetype(eventId, archetypeId),
 		]);
+		const decklessHolderIds = await listDecklessHolders(eventId, archetypeId, playerIds);
 
 		// One commit: decks left on a deleted Archetype would lose their review, and
 		// a Screen left naming it would be released by the next delete (ADR-0060).
@@ -281,6 +338,7 @@ export function archetypeWriteModule() {
 		await playerUpdateModule().reconcileDeckProjections({
 			eventId,
 			playerIds: primaryPlayerIds,
+			changedPlayerIds: decklessHolderIds,
 			originConnectionId,
 		});
 		const secondaryPlayerIds = playerIds.filter((playerId) => !primaryPlayerIds.includes(playerId));
@@ -338,6 +396,7 @@ export function archetypeWriteModule() {
 		input,
 		originConnectionId,
 	}: UpdateCardsParams) {
+		await refuseOnCommanderEvent(eventId, 'Archetypes');
 		// Verify archetype belongs to this event
 		const archetype = await archetypes.findById(archetypeId, eventId);
 		if (!archetype) {
