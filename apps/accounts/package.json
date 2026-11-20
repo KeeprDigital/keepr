@@ -10,6 +10,7 @@
 		"typecheck": "nuxt prepare && keepr-slots typecheck -- vue-tsc --noEmit && keepr-slots typecheck -- vue-tsc --noEmit -p test/tsconfig.json",
 		"test": "vitest run && vitest run --config vitest.nuxt.config.ts",
 		"verify": "pnpm typecheck && pnpm test && pnpm build",
+		"verify:quick": "pnpm typecheck && vitest run --changed origin/main --passWithNoTests && vitest run --config vitest.nuxt.config.ts --changed origin/main --passWithNoTests",
 		"worker:dry-run": "node scripts/worker-dry-run.mjs",
 		"worker:smoke": "keepr-slots worker-smoke -- node scripts/worker-smoke.mjs",
 		"deploy": "keepr-deploy deploy --app accounts --env production",

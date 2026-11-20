@@ -51,15 +51,19 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
   (`tsconfig.base.json`) and the workflows (`.github/`).
 - `pnpm lint`, `pnpm lint:fix`, `pnpm format`, `pnpm verify` and
   `pnpm verify:quick` run from the root as well as from an app. The lint and
-  the format are one run over the whole workspace. From the root, the two
-  verifies check the packages too; from an app, only that app.
+  the format are one run over the whole workspace. From the root,
+  `pnpm verify` checks every app and package, and `pnpm verify:quick` each
+  one the change affects; from an app, either checks only that app.
 
 ## Before pushing
 
 Push once `pnpm verify:quick` passes. It checks what your checkout changes
 since `main`: its changesets (below), lint (which fails on unformatted code;
-`pnpm lint:fix` formats), typecheck, and the unit and Nuxt tests whose imports
-reach the files it changed. CI is the gate that lands (ADR-0147): the lint,
+`pnpm lint:fix` formats), and the quick gates of each app and package the
+change affects, by the graph CI's scope reads (ADR-0148): an app's typecheck
+and the tests whose imports reach the files it changed, and a package's
+typecheck and tests. Nothing in it builds. CI is the gate that lands
+(ADR-0147): the lint,
 and every gate of each project the change affects, which is each app or
 package it touches and every one that depends on it, as their `package.json`
 files say. A project's own `*.test.ts` affects only that project. The

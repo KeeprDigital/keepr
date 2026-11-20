@@ -36,6 +36,7 @@ pnpm typecheck
 pnpm test         # one page test, in the Nuxt environment
 pnpm build        # the Worker bundle; nothing deploys it yet
 pnpm verify       # the three above, as CI's `Score Keepr` job runs them
+pnpm verify:quick # the typecheck, and the tests whose imports reach what the branch changes
 ```
 
 It extends `packages/nuxt-layer`: the Nuxt shell, and the server, client and test foundation it shares with Stream Keepr. It adds only its own, and it has no sign-in, no database and no deployment.
@@ -50,7 +51,7 @@ pnpm typecheck:packages   # every package's types, its tests' included
 pnpm test:packages        # every package's tests
 pnpm bench:packages       # each package's speed targets (`bench:check`); today the Pairing Engine's
 pnpm lint                 # format and lint, the whole workspace
-pnpm verify:quick         # all of the above but the speed targets, then Stream Keepr's quick gates
+pnpm verify:quick         # the quick gates of each app and package the change affects
 ```
 
 In one package's directory:
