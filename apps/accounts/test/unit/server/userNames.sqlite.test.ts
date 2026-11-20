@@ -95,10 +95,12 @@ describe('nobody is named, and the answer does not say why', () => {
 		],
 		['in no Organisation', async () => await userIn('ada@x.test')],
 		[
-			'whose name is blank',
+			// No path saves a blank name any more (`userName`): this is a row from
+			// before that rule, written as the database held it.
+			'whose name is blank, from before a name was required',
 			async () => {
 				const id = await userIn('ada@x.test', 'keepr');
-				await update(id, { name: '  ' });
+				await database().update(schema.user).set({ name: '  ' }).where(eq(schema.user.id, id));
 				return id;
 			},
 		],
