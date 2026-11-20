@@ -1,6 +1,6 @@
 # ADR-0113: No shipped build can skip sign-in, and local work is served by the Accounts Stand-in
 
-Accepted · 2026-11-17 · #1228, #1254 · Amends ADR-0017 · Amended by ADR-0141 (in `apps/stream/docs/adr`): Stream Keepr runs the stand-in, which answers as whoever its `keepr-stand-in` cookie names and keeps a Wrangler registry for each run beside a command
+Accepted · 2026-11-17 · #1228, #1254 · Amends ADR-0017 · Amended by ADR-0141 (in `apps/stream/docs/adr`): Stream Keepr runs the stand-in, which answers as whoever its `keepr-stand-in` cookie names and keeps a Wrangler registry for each run beside a command · Amended by ADR-0145: the stand-in also answers what to call a User, for whoever it has answered as
 
 ### Decision
 

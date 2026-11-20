@@ -12,6 +12,7 @@ Its words are the root `GLOSSARY.md`'s and its own `GLOSSARY.md`'s; `RULES.md` s
 | `server/utils/auth.ts` | The instance a request is answered by, one per cookie domain. |
 | `server/utils/identityProof.ts` | What an Identity Proof names, read from the identity database, and the Organisation a new Session works in. |
 | `server/api/auth/[...all].ts` | Better Auth's routes under `/api/auth`. |
+| `server/utils/userNames.ts` | Whose name a Session is told, by id: a User who shares an Organisation with its own. Served by `server/api/users/names.get.ts`, which an App asks with its request's cookie. |
 | `server/db/schema.ts` | The identity schema, by hand; `server/db/migrations/sqlite` its migrations. |
 | `server/email` | The email seam (`sender.ts`): Cloudflare's email service (`cloudflare.ts`), the recorder tests and the dev server use instead (`recorder.ts`), and what each email says (`messages.ts`). |
 | `server/utils/email.ts` | Which sender a running server uses, and the work it finishes after answering. |

@@ -10,6 +10,12 @@ import {
 	KEEPR_ACCOUNTS_ORIGIN,
 	PUBLIC_KEYS_PATH,
 } from '@keepr/nuxt-layer/shared/utils/identityProof';
+import {
+	askedUserIds,
+	USER_NAMES_MAX_IDS,
+	USER_NAMES_PATH,
+	type UserNamesAnswer,
+} from '@keepr/nuxt-layer/shared/utils/userNames';
 import { STAND_IN_COOKIE, STAND_IN_NO_APP_ACCESS, STAND_IN_SIGNED_OUT } from './cookie.mjs';
 
 export { STAND_IN_COOKIE, standInCookie, type StandInPersona } from './cookie.mjs';
@@ -73,8 +79,15 @@ interface StandInKey {
  * It signs with the production issuer and audience, so an App's verifier has
  * no development branch, and with a key of its own, made on its first request, which
  * Keepr Accounts never publishes.
+ *
+ * It holds no Users. The ones it can name to an App (ADR-0145) are the Local
+ * Developer User and whoever it has answered as since it started, by the name
+ * it gave them last: locally a User exists once a request has named them.
+ * Everyone works in the one Organisation, so each is named to anyone signed in.
  */
 export function createAccountsStandIn(): AccountsStandIn {
+	const namesAnsweredAs = new Map<string, string>([[LOCAL_DEVELOPER.id, LOCAL_DEVELOPER.name]]);
+
 	// Made on the first request: a Worker may not generate keys at global scope.
 	let key: Promise<StandInKey> | undefined;
 	const keyOf = (): Promise<StandInKey> => (key ??= makeKey());
@@ -109,6 +122,7 @@ export function createAccountsStandIn(): AccountsStandIn {
 			apps,
 			keeprAdmin: true,
 		};
+		namesAnsweredAs.set(user, claims.name);
 		const { privateKey, kid } = await keyOf();
 		return await new SignJWT({ ...claims })
 			.setProtectedHeader({ alg: IDENTITY_PROOF_ALGORITHM, kid })
@@ -131,8 +145,21 @@ export function createAccountsStandIn(): AccountsStandIn {
 			}
 			if (request.method === 'GET' && pathname === PUBLIC_KEYS_PATH)
 				return Response.json({ keys: [(await keyOf()).jwk] });
+			if (request.method === 'GET' && pathname === USER_NAMES_PATH) {
+				// Refused as Keepr Accounts refuses: a signed-out visitor, and too long a question.
+				if (personaOf(request.headers.get('cookie')) === 'signed-out')
+					return new Response(null, { status: 401 });
+				const ids = askedUserIds(new URL(request.url));
+				if (ids.length > USER_NAMES_MAX_IDS) return new Response(null, { status: 400 });
+				const names: UserNamesAnswer['names'] = {};
+				for (const id of ids) {
+					const name = namesAnsweredAs.get(id);
+					if (name?.trim()) names[id] = name;
+				}
+				return Response.json({ names } satisfies UserNamesAnswer);
+			}
 			return new Response(
-				`The Accounts Stand-in answers only ${IDENTITY_PROOF_PATH} and ${PUBLIC_KEYS_PATH}, as the Local Developer User. To sign in for real, run Keepr Accounts beside the App instead (apps/accounts/README.md).`,
+				`The Accounts Stand-in answers only ${IDENTITY_PROOF_PATH}, ${PUBLIC_KEYS_PATH} and ${USER_NAMES_PATH}, as the Local Developer User. To sign in for real, run Keepr Accounts beside the App instead (apps/accounts/README.md).`,
 				{ status: 404 },
 			);
 		},

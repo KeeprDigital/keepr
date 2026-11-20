@@ -3,6 +3,8 @@ import type { H3Event } from 'h3';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { Socket } from 'node:net';
 import { createAccountsStandIn, standInCookie } from '@keepr/accounts-stand-in/standIn';
+import { IDENTITY_PROOF_PATH } from '@keepr/nuxt-layer/shared/utils/identityProof';
+import { askedUserIds, USER_NAMES_PATH } from '@keepr/nuxt-layer/shared/utils/userNames';
 import { createError, createEvent, getRequestURL } from 'h3';
 import { vi } from 'vitest';
 
@@ -30,6 +32,13 @@ export interface KeeprAccountsBinding {
 	asked: string[];
 	/** The `Cookie` header each of those questions carried, in the same order. */
 	askedWith: (string | null)[];
+	/** The User ids each question about names asked of, in order. */
+	askedToName: string[][];
+	/**
+	 * Has the stand-in answer as `persona` once, unrecorded: it names to an App
+	 * only a User it has answered as, as Keepr Accounts names only a User it holds.
+	 */
+	holds: (persona: StandInPersona) => Promise<void>;
 }
 
 /** The binding, answered by one Accounts Stand-in for as long as the test file runs. */
@@ -37,13 +46,24 @@ export function keeprAccountsBinding(): KeeprAccountsBinding {
 	const standIn = createAccountsStandIn();
 	const asked: string[] = [];
 	const askedWith: (string | null)[] = [];
+	const askedToName: string[][] = [];
 	return {
 		asked,
 		askedWith,
+		askedToName,
 		async fetch(input, init) {
-			asked.push(new URL(input).pathname);
+			const address = new URL(input);
+			asked.push(address.pathname);
 			askedWith.push(new Headers(init?.headers).get('cookie'));
+			if (address.pathname === USER_NAMES_PATH) askedToName.push(askedUserIds(address));
 			return await standIn.fetch(new Request(input, init));
+		},
+		async holds(persona) {
+			await standIn.fetch(
+				new Request(`https://accounts.keepr.digital${IDENTITY_PROOF_PATH}`, {
+					headers: { cookie: standInCookie(persona) },
+				}),
+			);
 		},
 	};
 }

@@ -224,7 +224,7 @@ function resolverFor<App extends AppId>(app: App): IdentityResolver<App> {
 }
 
 /** The connection to Keepr Accounts a Worker request was given, as its service binding. */
-function accountsConnectionOf(event: H3Event): AccountsConnection {
+export function accountsConnectionOf(event: H3Event): AccountsConnection {
 	const env = (event.context as { cloudflare?: { env?: Record<string, unknown> } }).cloudflare?.env;
 	const binding = env?.[KEEPR_ACCOUNTS_BINDING] as AccountsConnection | undefined;
 	if (!binding || typeof binding.fetch !== 'function')

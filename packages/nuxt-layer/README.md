@@ -13,8 +13,8 @@ export default defineNuxtConfig({
 | Path | Holds |
 |---|---|
 | `nuxt.config.ts` | The shell: client rendering, Nuxt UI, VueUse, the colour mode, strict TypeScript, the Cloudflare Workers target, and the release identity each build records (`build/releaseIdentity.ts`). |
-| `server/utils` | Errors a route reports, D1 parameter helpers, the request-body ceiling, shared-secret checks, error-log fields, the server time reading, the release identity (`release.ts`), who a request belongs to (`requestIdentity.ts`), the refusal of a cross-site write (`crossSiteMutation.ts`). Auto-imported by Nitro. |
-| `shared/` | What the server and the client both read: the state-conflict code, the body-limit route rule's types, the server time and release paths, clock time formatting and parsing, Intervals, the App registry, the Identity Proof's shape. |
+| `server/utils` | Errors a route reports, D1 parameter helpers, the request-body ceiling, shared-secret checks, error-log fields, the server time reading, the release identity (`release.ts`), who a request belongs to (`requestIdentity.ts`), what to call another User (`userNames.ts`), the refusal of a cross-site write (`crossSiteMutation.ts`). Auto-imported by Nitro. |
+| `shared/` | What the server and the client both read: the state-conflict code, the body-limit route rule's types, the server time and release paths, clock time formatting and parsing, Intervals, the App registry, the Identity Proof's shape, the User names question's. |
 | `app/composables`, `app/utils` | Request feedback, forms, unsaved changes, async actions, store helpers, who am I (`useIdentity`), server time, the Clock Projection scheduler and the Frame Clock, failure sentences. Auto-imported. |
 | `app/components/UI` | Confirm, empty, loading, search and tab components, as `<UI…>`. |
 | `test/` | Test kits an app's tests import, the SQLite D1 harness over an app's real migrations and the auth schema contract (`authSchemaContract.ts`) and the check of each Environment's Wrangler configuration against the deploy descriptor (`wranglerEnvironments.ts`) among them, and this layer's own tests. |
@@ -79,6 +79,16 @@ requireAppRole(identity, 'admin'); // or requireAppAccess(identity)
 ```
 
 Stream Keepr relies on it (ADR-0141, in `apps/stream/docs/adr`): its `server/utils/session.ts` is the one place that asks, and its Session boundary and page gate are built on these. An App that relies on it runs its `dev` script through the Accounts Stand-in, `keepr-accounts-stand-in -- nuxt dev` (`packages/accounts-stand-in`), and its previews, smoke runs and the servers of its integration and acceptance suites the same way (ADR-0113). Each such run keeps a Wrangler registry of its own, so two at once never meet (`packages/accounts-stand-in/README.md`). `NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN` points `useIdentity`'s sign-in at a local Keepr Accounts instead of `https://accounts.keepr.digital`.
+
+## What to call another User
+
+An App holds no Users (ADR-0112). It names the User a request belongs to from their Identity Proof, and asks Keepr Accounts what to call anyone else, from a route that has already asked who the request belongs to (ADR-0145, in the root `docs/adr`):
+
+```ts
+const names = await readUserNames(event, userIds); // { [userId]: name }
+```
+
+It forwards the request's cookie over the same binding, so Keepr Accounts answers for that Session: the names of Users who share an Organisation with its User. An id left out is unnamed, and the App shows the id. It never throws: with Keepr Accounts down, or of a Release with no such route, it answers no names. Answers are kept for five minutes. The Accounts Stand-in names the Local Developer User and whoever it has answered as since it started.
 
 ## Commands
 

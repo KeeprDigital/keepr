@@ -32,7 +32,7 @@ export interface IdentityProofSource {
 }
 
 /** Whether the admin add-on's ban is in force: no end, or an end still to come. */
-function isDisabled(user: { banned?: unknown; banExpires?: unknown }): boolean {
+export function isDisabled(user: { banned?: unknown; banExpires?: unknown }): boolean {
 	if (user.banned !== true) return false;
 	if (user.banExpires === null || user.banExpires === undefined) return true;
 	return new Date(user.banExpires as string | number | Date).getTime() > Date.now();
