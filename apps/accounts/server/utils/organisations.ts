@@ -1,11 +1,8 @@
 import type { IdentityDatabase } from '~~/server/db';
-import type { EmailSender } from '~~/server/email/sender';
 import type { AppRoles } from './appAccess';
 import { APIError } from 'better-auth/api';
 import { and, eq, notInArray, sql } from 'drizzle-orm';
 import { schema } from '~~/server/db';
-import { invitationEmail } from '~~/server/email/messages';
-import { invitationLink } from '~~/shared/utils/invitationLink';
 import { grantAppAccess, offeredAppRoles } from './appAccess';
 import { recordAudit } from './auditRecord';
 
@@ -141,41 +138,13 @@ async function unrecordedCancellations(
 }
 
 /**
- * The organisation add-on's email and hooks, as Keepr Accounts sets them. The
- * Invitation email names its link from the request's own origin, and Keepr
- * Accounts' otherwise; the library sends it after answering, and a failed send
- * leaves the Invitation standing, its link still offered to copy.
+ * The organisation add-on's hooks, as Keepr Accounts sets them. It sends no
+ * Invitation email: Keepr Accounts makes every Invitation itself, with the
+ * secret its emailed link carries (`issueInvitation`), so one the library made
+ * would have none, and nobody could answer it (ADR-0155).
  */
-export function organisationOptions({
-	email,
-	records,
-	fallbackOrigin,
-}: {
-	email: EmailSender;
-	records: OrganisationRecords;
-	fallbackOrigin: string;
-}) {
+export function organisationOptions({ records }: { records: OrganisationRecords }) {
 	return {
-		sendInvitationEmail: async (
-			invitation: {
-				id: string;
-				email: string;
-				organization: { name: string };
-				inviter: { user: { name: string } };
-			},
-			request?: Request,
-		) =>
-			await email.send(
-				invitationEmail({
-					to: invitation.email,
-					inviterName: invitation.inviter.user.name,
-					organisationName: invitation.organization.name,
-					link: invitationLink(
-						request ? new URL(request.url).origin : fallbackOrigin,
-						invitation.id,
-					),
-				}),
-			),
 		organizationHooks: {
 			afterCreateOrganization: async ({
 				organization,

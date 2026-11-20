@@ -4,9 +4,11 @@ import type { NewOrganisation } from '~~/server/utils/keeprAdministration';
 import type { TestAccounts } from '~~/test/helpers/keeprAccounts';
 import { decodeJwt } from 'jose';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { identityDatabase } from '~~/server/db';
+import { eq } from 'drizzle-orm';
+import { identityDatabase, schema } from '~~/server/db';
 import { requestActor } from '~~/server/utils/actor';
 import { acceptInvitationAsNewUser } from '~~/server/utils/invitationAcceptance';
+import { inviteMember } from '~~/server/utils/invitations';
 import {
 	createOrganisation,
 	disableUser,
@@ -18,6 +20,7 @@ import {
 import { listMembers } from '~~/server/utils/memberManagement';
 import {
 	createTestAccounts,
+	emailedInvitation,
 	fakeBreachedPasswordService,
 	PASSWORD,
 } from '~~/test/helpers/keeprAccounts';
@@ -92,16 +95,19 @@ describe('an Organisation a Keepr Administrator creates', () => {
 	});
 
 	it('is run by the first owner it names, once they accept the emailed Invitation', async () => {
-		const { organisation, invitationId, link } = await createClub({ stream: 'admin' });
+		const created = await createClub({ stream: 'admin' });
+		const emailed = emailedInvitation(accounts.email, FIRST_OWNER);
 
-		expect(accounts.email.sent).toEqual([
-			expect.objectContaining({ to: FIRST_OWNER, text: expect.stringContaining(link) }),
-		]);
-		await acceptInvitationAsNewUser(accounts.auth, {
-			invitationId,
+		expect(created).toEqual({
+			organisation: created.organisation,
+			invitationId: emailed.invitationId,
+		});
+		await acceptInvitationAsNewUser(accounts.auth, database, {
+			...emailed,
 			name: 'First Owner',
 			password: 'a-long-enough-password',
 		});
+		const { organisation } = created;
 		const { members } = await listMembers(database, await actorFor(ADMINISTRATOR), organisation.id);
 		expect(members).toEqual([
 			expect.objectContaining({ email: FIRST_OWNER, role: 'owner', apps: { stream: 'admin' } }),
@@ -310,6 +316,48 @@ describe('disabling a User', () => {
 			expect.objectContaining({ ...who, detail: { sessionsEnded: 2 } }),
 		]);
 		expect(await audited('user.enabled')).toEqual([expect.objectContaining(who)]);
+	});
+
+	it('cancels the Invitations they offered that are still open, in every Organisation', async () => {
+		const offered: string[] = [];
+		for (const slug of ['first', 'second']) {
+			const { organizationId } = await accounts.addMember(ada.id, slug, { role: 'owner' });
+			const { invitationId } = await inviteMember(
+				database,
+				await actorFor(ADA, 'POST'),
+				{ organizationId, email: `${slug}@example.com`, role: 'member' },
+				{ email: accounts.email, origin: ORIGIN },
+			);
+			offered.push(invitationId);
+		}
+		const actor = await administrator();
+
+		await disableUser(database, actor, ada.id);
+
+		const statuses = await database
+			.select({ status: schema.invitation.status })
+			.from(schema.invitation)
+			.where(eq(schema.invitation.inviterId, ada.id));
+		expect(statuses).toEqual([{ status: 'canceled' }, { status: 'canceled' }]);
+		expect(
+			(await audited('invitation.cancelled')).map(({ actorUserId, detail }) => ({
+				actorUserId,
+				detail,
+			})),
+		).toEqual(
+			expect.arrayContaining(
+				offered.map((invitationId, n) => ({
+					actorUserId: actor.userId,
+					detail: {
+						invitationId,
+						email: `${['first', 'second'][n]}@example.com`,
+						as: 'keepr-administrator',
+						because: 'inviter-disabled',
+					},
+				})),
+			),
+		);
+		expect(await audited('invitation.cancelled')).toHaveLength(2);
 	});
 
 	it.each<[string, string, () => Promise<TestActor>, () => string]>([

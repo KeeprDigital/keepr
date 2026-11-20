@@ -86,20 +86,17 @@ const createForm = reactive({
 });
 const creating = ref(false);
 const createRefusal = ref<string | null>(null);
-/** The Invitation link of the Organisation last created, to copy. */
-const createdLink = ref<string | null>(null);
-const copied = ref(false);
-const { copyToClipboard } = useCopyToClipboard();
+/** The address the first owner of the Organisation last created was invited at. */
+const invitedOwner = ref<string | null>(null);
 
 async function create() {
 	if (creating.value) return;
 	creating.value = true;
 	createRefusal.value = null;
-	createdLink.value = null;
-	copied.value = false;
+	invitedOwner.value = null;
 	signInAgain.value = false;
 	try {
-		const { link } = await $fetch<{ link: string }>('/api/platform/organisations', {
+		await $fetch('/api/platform/organisations', {
 			method: 'POST',
 			body: {
 				name: createForm.name,
@@ -107,7 +104,7 @@ async function create() {
 				appRoles: chosenAppRoles(createForm.appRoles),
 			},
 		});
-		createdLink.value = link;
+		invitedOwner.value = createForm.ownerEmail.trim();
 		Object.assign(createForm, { name: '', ownerEmail: '' });
 	} catch (failure) {
 		createRefusal.value = refusalOf(failure, 'Creating the organisation failed. Try again.');
@@ -116,10 +113,6 @@ async function create() {
 		creating.value = false;
 	}
 	await Promise.all([loadOrganisations(), loadAuditRecord()]);
-}
-
-async function copy() {
-	if (createdLink.value) copied.value = await copyToClipboard(createdLink.value);
 }
 
 // Finding a User, and disabling or enabling them.
@@ -261,16 +254,11 @@ function shownAt(at: string): string {
 							/>
 						</UFormField>
 						<UButton type="submit" color="primary" :loading="creating"> Create and invite </UButton>
-						<div v-if="createdLink" data-created class="flex flex-col gap-2">
-							<p class="text-sm">
-								Created, and the first owner invited. If the email does not arrive, send them this
-								link instead:
-							</p>
-							<UInput :model-value="createdLink" readonly class="w-full" />
-							<UButton color="neutral" variant="outline" block @click="copy">
-								{{ copied ? 'Copied' : 'Copy link' }}
-							</UButton>
-						</div>
+						<p v-if="invitedOwner" data-created class="text-sm">
+							Created, and its first owner's invitation emailed to {{ invitedOwner }}. Its link is
+							theirs alone: if it does not arrive, invite them again from the Organisation's
+							invitation screen.
+						</p>
 					</div>
 				</UForm>
 			</UCard>

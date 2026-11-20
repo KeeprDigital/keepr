@@ -2,7 +2,7 @@ import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqli
 
 /**
  * The identity schema: Better Auth's tables for the add-ons Keepr Accounts runs,
- * and three of its own. Written by hand and held to the library's own table
+ * and four of its own. Written by hand and held to the library's own table
  * definitions by `test/unit/server/db/identitySchema.test.ts`, which a library bump
  * that changes a field fails (ADR-0112).
  *
@@ -125,6 +125,8 @@ export const member = sqliteTable(
 	(table) => [
 		index('member_organization_id_idx').on(table.organizationId),
 		index('member_user_id_idx').on(table.userId),
+		// One membership per User and Organisation, so two accepts at once make one.
+		uniqueIndex('member_organization_user_idx').on(table.organizationId, table.userId),
 	],
 );
 
@@ -222,4 +224,16 @@ export const firstAdministratorClaim = sqliteTable('firstAdministratorClaim', {
 	createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 	consumedAt: integer('consumed_at', { mode: 'timestamp_ms' }),
 	consumedByUserId: text('consumed_by_user_id').references(() => user.id),
+});
+
+/**
+ * The secret an Invitation's emailed link carries, kept only as its SHA-256
+ * digest. Keepr Accounts' own table, which the library does not know, so none of
+ * its routes can answer it. An Invitation without one is never answered.
+ */
+export const invitationSecret = sqliteTable('invitationSecret', {
+	invitationId: text('invitation_id')
+		.primaryKey()
+		.references(() => invitation.id, { onDelete: 'cascade' }),
+	digest: text('digest').notNull(),
 });

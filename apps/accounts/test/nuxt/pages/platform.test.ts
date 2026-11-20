@@ -82,7 +82,6 @@ beforeEach(() => {
 		body: {
 			organisation: { id: 'new', name: 'New Club' },
 			invitationId: 'inv-1',
-			link: 'http://localhost:3000/invitation#id=inv-1',
 		},
 	};
 	ada = {
@@ -118,7 +117,7 @@ describe('the platform screen', () => {
 		expect(club.get('a').attributes('href')).toBe('/members?organisation=club');
 	});
 
-	it('creates an Organisation, inviting its first owner, and shows the link to copy', async () => {
+	it('creates an Organisation, inviting its first owner, and says to whom it was emailed', async () => {
 		const page = await opened();
 
 		await page.get('[data-create] input[name="name"]').setValue('New Club');
@@ -130,9 +129,7 @@ describe('the platform screen', () => {
 		expect(sentTo('POST', '/api/platform/organisations').map(({ body }) => body)).toEqual([
 			{ name: 'New Club', ownerEmail: 'owner@club.example', appRoles: { stream: 'admin' } },
 		]);
-		expect((page.get('[data-created] input').element as HTMLInputElement).value).toBe(
-			'http://localhost:3000/invitation#id=inv-1',
-		);
+		expect(page.get('[data-created]').text()).toContain('emailed to owner@club.example');
 	});
 
 	it('asks for a new sign-in when the server says the sign-in is too old', async () => {

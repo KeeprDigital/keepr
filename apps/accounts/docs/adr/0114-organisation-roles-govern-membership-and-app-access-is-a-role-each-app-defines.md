@@ -1,6 +1,6 @@
 # ADR-0114: Organisation roles govern membership; App access is a role each App defines
 
-Accepted · 2026-11-17 · #1228, #1250
+Accepted · 2026-11-17 · #1228, #1250 · Amended by ADR-0155: the link carries a secret emailed to the invitee alone, and is no longer shown to copy
 
 ### Decision
 

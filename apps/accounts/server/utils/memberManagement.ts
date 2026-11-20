@@ -7,6 +7,7 @@ import { isAppId, isAppRole } from '@keepr/nuxt-layer/shared/utils/appRegistry';
 import { isOrganisationRole } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { APP_ROLE_NOT_IN_REGISTRY } from './appAccess';
 import { recordAudit } from './auditRecord';
+import { cancelInvitationsOfferedBy } from './offeredInvitations';
 import { requireRecentSignIn } from './recentSignIn';
 import { KeeprRefusal } from './refusal';
 
@@ -85,7 +86,7 @@ export async function managingStanding(
  * The standing a change to `organizationId`'s members is made with: as
  * `managingStanding`, from a sign-in no older than ten minutes.
  */
-async function managingChange(
+export async function managingChange(
 	database: IdentityDatabase,
 	actor: Actor,
 	organizationId: string,
@@ -247,9 +248,9 @@ export async function changeOrganisationRole(
 }
 
 /**
- * Removes a member from the Organisation, with all their App access. Only an
- * owner, or a Keepr Administrator, removes an owner; and the last owner is never
- * removed.
+ * Removes a member from the Organisation, with all their App access and the
+ * Invitations they offered there that are still open. Only an owner, or a Keepr
+ * Administrator, removes an owner; and the last owner is never removed.
  */
 export async function removeMember(
 	database: IdentityDatabase,
@@ -280,6 +281,11 @@ export async function removeMember(
 			as: standing,
 		},
 	});
+	await cancelInvitationsOfferedBy(
+		database,
+		{ inviterId: target.userId, organizationId },
+		{ actorUserId: actor.userId, as: standing, because: 'inviter-removed' },
+	);
 }
 
 /** Takes a member's App access in `app` away; they stay a member, with any other. */

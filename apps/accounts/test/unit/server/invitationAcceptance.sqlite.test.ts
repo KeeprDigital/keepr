@@ -1,23 +1,25 @@
-import type { TestAccounts } from '~~/test/helpers/keeprAccounts';
+import type { InvitationKey, TestAccounts } from '~~/test/helpers/keeprAccounts';
 import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { identityDatabase, schema } from '~~/server/db';
 import {
 	acceptInvitationAsNewUser,
+	acceptInvitationSignedIn,
 	declineInvitation,
 	invitationOffer,
 } from '~~/server/utils/invitationAcceptance';
 import { cancelInvitation, inviteMember } from '~~/server/utils/invitations';
 import {
 	createTestAccounts,
+	emailedInvitation,
 	fakeBreachedPasswordService,
 	fakeBreachedPasswordServiceDown,
 	PASSWORD,
 } from '~~/test/helpers/keeprAccounts';
 
-// A person with no User accepts an Invitation by choosing a name and a password:
-// Keepr Accounts creates the User, signs them in and makes them a member, with the
-// App access the Invitation offered.
+// The invitee answers an Invitation with the secret its emailed link carries: with
+// no User, by choosing a name and a password; with one, signed in. The id alone,
+// which the inviter and every manager hold, answers nothing (ADR-0155).
 
 const OWNER = 'owner@keepr.digital';
 const INVITEE = 'newcomer@example.com';
@@ -35,17 +37,48 @@ beforeEach(async () => {
 
 afterEach(async () => await accounts.harness.close());
 
+/** Invites `email`: the Invitation as the link emailed to them names it. */
 async function invite(
 	appRoles: Record<string, string> = { stream: 'admin', score: 'member' },
 	email = INVITEE,
-) {
-	const { invitationId } = await inviteMember(
+): Promise<InvitationKey> {
+	await inviteMember(
 		database(),
 		await accounts.actor(OWNER),
 		{ organizationId: keepr.id, email, role: 'admin', appRoles },
 		{ email: accounts.email, origin: 'http://localhost:3000' },
 	);
-	return invitationId;
+	return emailedInvitation(accounts.email, email);
+}
+
+/** The Invitation's id, with a secret that is not its own: what its inviter or a manager holds. */
+function idAlone({ invitationId }: InvitationKey): InvitationKey {
+	return { invitationId, secret: '' };
+}
+
+function offer(key: InvitationKey) {
+	return invitationOffer(accounts.auth, database(), key);
+}
+
+function acceptAsNew(key: InvitationKey, name = 'Newcomer', password = PASSWORD) {
+	return acceptInvitationAsNewUser(accounts.auth, database(), { ...key, name, password });
+}
+
+/** A request the invitee's browser sends from Keepr Accounts' own page, with `cookie` when signed in. */
+function pageRequest(path: string, headers: Record<string, string> = {}) {
+	return new Request(`http://localhost:3000/api/invitation/${path}`, {
+		method: 'POST',
+		headers: { 'sec-fetch-site': 'same-origin', ...headers },
+	});
+}
+
+async function acceptSignedIn(key: InvitationKey, email: string) {
+	return await acceptInvitationSignedIn(
+		accounts.auth,
+		database(),
+		key,
+		pageRequest('accept-signed-in', { cookie: await accounts.signIn(email) }),
+	);
 }
 
 async function usersCalled(email: string) {
@@ -64,9 +97,9 @@ async function signedInAs(setCookie: string[]) {
 
 describe('the offer an invitee sees', () => {
 	it('names who invited them, to which Organisation, and with what', async () => {
-		const id = await invite();
+		const key = await invite();
 
-		expect(await invitationOffer(accounts.auth, id)).toEqual({
+		expect(await offer(key)).toEqual({
 			email: INVITEE,
 			organisationName: 'Keepr',
 			inviterName: 'owner',
@@ -76,8 +109,14 @@ describe('the offer an invitee sees', () => {
 		});
 	});
 
-	it('is refused for an id no Invitation has', async () => {
-		await expect(invitationOffer(accounts.auth, 'no-such-invitation')).rejects.toMatchObject({
+	it.each<[string, (key: InvitationKey) => InvitationKey]>([
+		['an id no Invitation has', () => ({ invitationId: 'no-such-invitation', secret: 'none' })],
+		['the id alone', idAlone],
+		['a secret not its own', (key) => ({ ...key, secret: `${key.secret}x` })],
+	])('is refused for %s, as for none', async (_case, presented) => {
+		const key = await invite();
+
+		await expect(offer(presented(key))).rejects.toMatchObject({
 			statusCode: 404,
 			code: 'INVITATION_NOT_FOUND',
 		});
@@ -86,13 +125,9 @@ describe('the offer an invitee sees', () => {
 
 describe('accepting as a new User', () => {
 	it('creates one User with a verified email, signed in, a member with App access', async () => {
-		const id = await invite();
+		const key = await invite();
 
-		const { setCookie } = await acceptInvitationAsNewUser(accounts.auth, {
-			invitationId: id,
-			name: 'Newcomer',
-			password: PASSWORD,
-		});
+		const { setCookie } = await acceptAsNew(key);
 
 		const users = await usersCalled(INVITEE);
 		expect(users).toEqual([expect.objectContaining({ name: 'Newcomer', emailVerified: true })]);
@@ -100,13 +135,9 @@ describe('accepting as a new User', () => {
 			user: { email: INVITEE },
 			session: { activeOrganizationId: keepr.id },
 		});
-		const database = identityDatabase(accounts.harness.database);
-		const [member] = await database
-			.select()
-			.from(schema.member)
-			.where(eq(schema.member.userId, users[0]!.id));
+		const member = await memberOf(INVITEE);
 		expect(member).toMatchObject({ organizationId: keepr.id, role: 'admin' });
-		const access = await database
+		const access = await database()
 			.select({ app: schema.appAccess.app, role: schema.appAccess.role })
 			.from(schema.appAccess)
 			.where(eq(schema.appAccess.memberId, member!.id));
@@ -117,43 +148,25 @@ describe('accepting as a new User', () => {
 	});
 
 	it('names the User as they chose, trimmed', async () => {
-		const id = await invite();
-
-		await acceptInvitationAsNewUser(accounts.auth, {
-			invitationId: id,
-			name: '  New Comer ',
-			password: PASSWORD,
-		});
+		await acceptAsNew(await invite(), '  New Comer ');
 
 		expect((await usersCalled(INVITEE)).map((user) => user.name)).toEqual(['New Comer']);
 	});
 
 	it('writes no App access for an App the Invitation left out', async () => {
-		const id = await invite({});
+		await acceptAsNew(await invite({}));
 
-		await acceptInvitationAsNewUser(accounts.auth, {
-			invitationId: id,
-			name: 'Newcomer',
-			password: PASSWORD,
-		});
-
-		const database = identityDatabase(accounts.harness.database);
-		expect(await database.select().from(schema.appAccess)).toEqual([]);
+		expect(await database().select().from(schema.appAccess)).toEqual([]);
 	});
 
-	it('is in the Audit Record, with who accepted and when', async () => {
-		const id = await invite({ stream: 'member' });
+	it('is in the Audit Record, with who accepted and when, and never the secret', async () => {
+		const key = await invite({ stream: 'member' });
 
-		await acceptInvitationAsNewUser(accounts.auth, {
-			invitationId: id,
-			name: 'Newcomer',
-			password: PASSWORD,
-		});
+		await acceptAsNew(key);
 
 		const [user] = await usersCalled(INVITEE);
-		const accepted = (await accounts.auditRecord()).filter(
-			(row) => row.action === 'invitation.accepted',
-		);
+		const record = await accounts.auditRecord();
+		const accepted = record.filter((row) => row.action === 'invitation.accepted');
 		expect(accepted).toEqual([
 			expect.objectContaining({
 				actorUserId: user!.id,
@@ -163,10 +176,11 @@ describe('accepting as a new User', () => {
 			}),
 		]);
 		expect(JSON.parse(accepted[0]!.detail!)).toEqual({
-			invitationId: id,
+			invitationId: key.invitationId,
 			role: 'admin',
 			appRoles: { stream: 'member' },
 		});
+		expect(JSON.stringify(record)).not.toContain(key.secret);
 	});
 
 	it('is admitted to an Organisation of more than the library’s hundred members', async () => {
@@ -175,13 +189,8 @@ describe('accepting as a new User', () => {
 			const { id } = await accounts.createUser(email);
 			await accounts.addMember(id, 'keepr');
 		}
-		const id = await invite();
 
-		await acceptInvitationAsNewUser(accounts.auth, {
-			invitationId: id,
-			name: 'Newcomer',
-			password: PASSWORD,
-		});
+		await acceptAsNew(await invite());
 
 		expect(await usersCalled(INVITEE)).toHaveLength(1);
 	});
@@ -193,38 +202,38 @@ describe('accepting as a new User is refused', () => {
 		['a password from a breach', BREACHED, 400, 'PASSWORD_COMPROMISED'],
 		['a blank name', PASSWORD, 400, 'NAME_REQUIRED'],
 	])('for %s, creating nobody', async (_case, password, statusCode, code) => {
-		const id = await invite();
+		const key = await invite();
 
 		await expect(
-			acceptInvitationAsNewUser(accounts.auth, {
-				invitationId: id,
-				name: code === 'NAME_REQUIRED' ? '  ' : 'Newcomer',
-				password,
-			}),
+			acceptAsNew(key, code === 'NAME_REQUIRED' ? '  ' : 'Newcomer', password),
 		).rejects.toMatchObject({ statusCode, code });
 		expect(await usersCalled(INVITEE)).toEqual([]);
 	});
 
 	it('while the breach check cannot be made, creating nobody', async () => {
-		const id = await invite();
+		const key = await invite();
 		fakeBreachedPasswordServiceDown();
 
-		await expect(
-			acceptInvitationAsNewUser(accounts.auth, {
-				invitationId: id,
-				name: 'Newcomer',
-				password: PASSWORD,
-			}),
-		).rejects.toMatchObject({ statusCode: 500 });
+		await expect(acceptAsNew(key)).rejects.toMatchObject({ statusCode: 500 });
 		expect(await usersCalled(INVITEE)).toEqual([]);
 	});
 
-	it('once the Invitation has been accepted', async () => {
-		const id = await invite();
-		const input = { invitationId: id, name: 'Newcomer', password: PASSWORD };
-		await acceptInvitationAsNewUser(accounts.auth, input);
+	it('to the holder of the id alone, creating nobody and leaving it open', async () => {
+		const key = await invite();
 
-		await expect(acceptInvitationAsNewUser(accounts.auth, input)).rejects.toMatchObject({
+		await expect(acceptAsNew(idAlone(key))).rejects.toMatchObject({
+			statusCode: 404,
+			code: 'INVITATION_NOT_FOUND',
+		});
+		expect(await usersCalled(INVITEE)).toEqual([]);
+		await expect(offer(key)).resolves.toMatchObject({ email: INVITEE });
+	});
+
+	it('once the Invitation has been accepted', async () => {
+		const key = await invite();
+		await acceptAsNew(key);
+
+		await expect(acceptAsNew(key)).rejects.toMatchObject({
 			statusCode: 410,
 			code: 'INVITATION_ACCEPTED',
 		});
@@ -233,21 +242,20 @@ describe('accepting as a new User is refused', () => {
 
 	it('for an address that already has a User, who signs in to accept', async () => {
 		await accounts.createUser(INVITEE);
-		const id = await invite();
 
-		await expect(
-			acceptInvitationAsNewUser(accounts.auth, {
-				invitationId: id,
-				name: 'Newcomer',
-				password: PASSWORD,
-			}),
-		).rejects.toMatchObject({ statusCode: 409, code: 'USER_ALREADY_EXISTS' });
+		await expect(acceptAsNew(await invite())).rejects.toMatchObject({
+			statusCode: 409,
+			code: 'USER_ALREADY_EXISTS',
+		});
 	});
 });
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-async function closeBy(how: 'expiring' | 'cancelling' | 'accepting' | 'declining', id: string) {
+async function closeBy(
+	how: 'expiring' | 'cancelling' | 'accepting' | 'declining',
+	key: InvitationKey,
+) {
 	switch (how) {
 		case 'expiring':
 			vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 8 * DAY_MS });
@@ -255,28 +263,19 @@ async function closeBy(how: 'expiring' | 'cancelling' | 'accepting' | 'declining
 		case 'cancelling':
 			await cancelInvitation(database(), await accounts.actor(OWNER), {
 				organizationId: keepr.id,
-				invitationId: id,
+				invitationId: key.invitationId,
 			});
 			return;
 		case 'accepting':
-			await acceptInvitationAsNewUser(accounts.auth, {
-				invitationId: id,
-				name: 'Newcomer',
-				password: PASSWORD,
-			});
+			await acceptAsNew(key);
 			return;
 		case 'declining':
-			await declineInvitation(accounts.auth, database(), id, declineRequest());
+			await declineInvitation(accounts.auth, database(), key, pageRequest('decline'));
 	}
 }
 
 function database() {
 	return identityDatabase(accounts.harness.database);
-}
-
-/** A decline the invitee's browser sends, from Keepr Accounts' own page unless `headers` say otherwise. */
-function declineRequest(headers: Record<string, string> = { 'sec-fetch-site': 'same-origin' }) {
-	return new Request('http://localhost:3000/api/invitation/decline', { method: 'POST', headers });
 }
 
 async function memberOf(email: string) {
@@ -297,13 +296,20 @@ describe('a closed Invitation', () => {
 		['accepting', 'INVITATION_ACCEPTED'],
 		['declining', 'INVITATION_DECLINED'],
 	] as const)('says, after %s, that it is closed and why', async (how, code) => {
-		const id = await invite();
+		const key = await invite();
 
-		await closeBy(how, id);
+		await closeBy(how, key);
 
-		await expect(invitationOffer(accounts.auth, id)).rejects.toMatchObject({
-			statusCode: 410,
-			code,
+		await expect(offer(key)).rejects.toMatchObject({ statusCode: 410, code });
+	});
+
+	it('says nothing of why to the holder of the id alone', async () => {
+		const key = await invite();
+		await closeBy('cancelling', key);
+
+		await expect(offer(idAlone(key))).rejects.toMatchObject({
+			statusCode: 404,
+			code: 'INVITATION_NOT_FOUND',
 		});
 	});
 });
@@ -314,13 +320,11 @@ describe('declining an Invitation', () => {
 		['an address that has a User', true],
 	])('from its link, for %s, closes it and is in the Audit Record', async (_case, hasUser) => {
 		const user = hasUser ? await accounts.createUser(INVITEE) : null;
-		const id = await invite();
+		const key = await invite();
 
-		await declineInvitation(accounts.auth, database(), id, declineRequest());
+		await declineInvitation(accounts.auth, database(), key, pageRequest('decline'));
 
-		await expect(invitationOffer(accounts.auth, id)).rejects.toMatchObject({
-			code: 'INVITATION_DECLINED',
-		});
+		await expect(offer(key)).rejects.toMatchObject({ code: 'INVITATION_DECLINED' });
 		const declined = (await accounts.auditRecord()).filter(
 			(row) => row.action === 'invitation.declined',
 		);
@@ -331,52 +335,48 @@ describe('declining an Invitation', () => {
 				organizationId: keepr.id,
 			}),
 		]);
-		expect(JSON.parse(declined[0]!.detail!)).toEqual({ invitationId: id, email: INVITEE });
+		expect(JSON.parse(declined[0]!.detail!)).toEqual({
+			invitationId: key.invitationId,
+			email: INVITEE,
+		});
 	});
 
-	it('signed in, through the library’s route, is in the Audit Record', async () => {
-		const { id: userId } = await accounts.createUser(INVITEE);
-		const id = await invite();
+	it('is refused to the holder of the id alone, leaving it open', async () => {
+		const key = await invite();
 
-		const response = await accounts.send('/organization/reject-invitation', {
-			body: { invitationId: id },
-			headers: { cookie: await accounts.signIn(INVITEE) },
-		});
-
-		expect(response.status).toBe(200);
-		const declined = (await accounts.auditRecord()).filter(
-			(row) => row.action === 'invitation.declined',
-		);
-		expect(declined).toEqual([expect.objectContaining({ actorUserId: userId })]);
+		await expect(
+			declineInvitation(accounts.auth, database(), idAlone(key), pageRequest('decline')),
+		).rejects.toMatchObject({ statusCode: 404, code: 'INVITATION_NOT_FOUND' });
+		await expect(offer(key)).resolves.toMatchObject({ email: INVITEE });
 	});
 
 	it('is refused once it has closed, leaving it as it was', async () => {
-		const id = await invite();
-		await closeBy('cancelling', id);
+		const key = await invite();
+		await closeBy('cancelling', key);
 
 		await expect(
-			declineInvitation(accounts.auth, database(), id, declineRequest()),
-		).rejects.toMatchObject({
-			statusCode: 410,
-			code: 'INVITATION_CANCELLED',
-		});
+			declineInvitation(accounts.auth, database(), key, pageRequest('decline')),
+		).rejects.toMatchObject({ statusCode: 410, code: 'INVITATION_CANCELLED' });
 		expect(
 			(await accounts.auditRecord()).filter((row) => row.action === 'invitation.declined'),
 		).toEqual([]);
 	});
 
 	it('sent by another origin’s page is refused 403, leaving it open', async () => {
-		const id = await invite();
+		const key = await invite();
 
 		await expect(
 			declineInvitation(
 				accounts.auth,
 				database(),
-				id,
-				declineRequest({ 'sec-fetch-site': 'same-site', origin: 'https://stream.keepr.digital' }),
+				key,
+				pageRequest('decline', {
+					'sec-fetch-site': 'same-site',
+					origin: 'https://stream.keepr.digital',
+				}),
 			),
 		).rejects.toMatchObject({ statusCode: 403, code: 'CROSS_SITE_REQUEST' });
-		await expect(invitationOffer(accounts.auth, id)).resolves.toMatchObject({ email: INVITEE });
+		await expect(offer(key)).resolves.toMatchObject({ email: INVITEE });
 	});
 });
 
@@ -385,15 +385,16 @@ describe('accepting as an existing User', () => {
 		const { id: userId } = await accounts.createUser(INVITEE);
 		// Signed in, they work in the Organisation they already belong to.
 		await accounts.addMember(userId, 'elsewhere');
-		const id = await invite({ stream: 'admin' });
+		const key = await invite({ stream: 'admin' });
 		const cookie = await accounts.signIn(INVITEE);
 
-		const response = await accounts.send('/organization/accept-invitation', {
-			body: { invitationId: id },
-			headers: { cookie },
-		});
+		await acceptInvitationSignedIn(
+			accounts.auth,
+			database(),
+			key,
+			pageRequest('accept-signed-in', { cookie }),
+		);
 
-		expect(response.status).toBe(200);
 		expect(await usersCalled(INVITEE)).toHaveLength(1);
 		const member = await memberOf(INVITEE);
 		expect(member).toMatchObject({ role: 'admin' });
@@ -408,21 +409,70 @@ describe('accepting as an existing User', () => {
 		});
 	});
 
-	it('is refused for a User signed in with another address, changing nothing', async () => {
+	it.each<[string, string, (key: InvitationKey) => InvitationKey, number, string]>([
+		[
+			'signed in with another address',
+			'someone-else@example.com',
+			(key) => key,
+			403,
+			'YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION',
+		],
+		['holding the id alone', INVITEE, idAlone, 404, 'INVITATION_NOT_FOUND'],
+	])('is refused to a User %s, changing nothing', async (_case, email, presented, status, code) => {
 		await accounts.createUser(INVITEE);
-		await accounts.createUser('someone-else@example.com');
-		const id = await invite();
+		if (email !== INVITEE) await accounts.createUser(email);
+		const key = await invite();
 
-		const response = await accounts.send('/organization/accept-invitation', {
-			body: { invitationId: id },
-			headers: { cookie: await accounts.signIn('someone-else@example.com') },
+		await expect(acceptSignedIn(presented(key), email)).rejects.toMatchObject({
+			statusCode: status,
+			code,
 		});
+		expect(await memberOf(email)).toBeUndefined();
+		await expect(offer(key)).resolves.toMatchObject({ email: INVITEE });
+	});
 
-		expect(response.status).toBe(403);
-		expect(await response.json()).toMatchObject({
-			code: 'YOU_ARE_NOT_THE_RECIPIENT_OF_THE_INVITATION',
+	it('sent by another origin’s page is refused 403, leaving it open', async () => {
+		await accounts.createUser(INVITEE);
+		const key = await invite();
+
+		await expect(
+			acceptInvitationSignedIn(
+				accounts.auth,
+				database(),
+				key,
+				pageRequest('accept-signed-in', {
+					cookie: await accounts.signIn(INVITEE),
+					'sec-fetch-site': 'same-site',
+					origin: 'https://stream.keepr.digital',
+				}),
+			),
+		).rejects.toMatchObject({ statusCode: 403, code: 'CROSS_SITE_REQUEST' });
+		expect(await memberOf(INVITEE)).toBeUndefined();
+	});
+
+	it('twice at once leaves one membership', async () => {
+		const { id } = await accounts.createUser(INVITEE);
+		const key = await invite();
+
+		await Promise.allSettled([acceptSignedIn(key, INVITEE), acceptSignedIn(key, INVITEE)]);
+
+		expect(
+			await database().select().from(schema.member).where(eq(schema.member.userId, id)),
+		).toHaveLength(1);
+	});
+});
+
+describe('a membership', () => {
+	// Held by the table itself, so no path that writes a member can make a second.
+	it('is one per User and Organisation', async () => {
+		const { id } = await accounts.createUser(INVITEE);
+		await accounts.addMember(id, 'keepr');
+
+		await expect(accounts.addMember(id, 'keepr')).rejects.toMatchObject({
+			cause: { message: expect.stringContaining('UNIQUE') },
 		});
-		expect(await memberOf('someone-else@example.com')).toBeUndefined();
-		expect((await invitationOffer(accounts.auth, id)).email).toBe(INVITEE);
+		expect(
+			await database().select().from(schema.member).where(eq(schema.member.userId, id)),
+		).toHaveLength(1);
 	});
 });

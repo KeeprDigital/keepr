@@ -1,10 +1,12 @@
 import type { IdentityDatabase } from '~~/server/db';
 import type { KeeprAuth } from './auth';
 import type { AppRoles } from './appAccess';
+import type { InvitationKey } from './invitationSecret';
 import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 import { offeredAppRoles } from './appAccess';
 import { refuseCrossSiteWrite } from './actor';
 import { browserHeaders } from './browserHeaders';
+import { holdsInvitationSecret } from './invitationSecret';
 import { organisationRecords } from './organisations';
 import { KeeprRefusal, refusalFromAuth } from './refusal';
 
@@ -48,15 +50,22 @@ const CLOSED: Record<string, [code: string, message: string]> = {
 };
 
 /**
- * The pending, unexpired Invitation `invitationId` names, or a refusal saying
- * why it is closed: 410 with the reason, or 404 for no such Invitation. Read
- * directly: the library's own read needs a Session, which an invitee has not got.
+ * The pending, unexpired Invitation `key` names, or a refusal saying why it is
+ * closed: 410 with the reason, or 404 for no such Invitation. A secret not its
+ * own is answered as no such Invitation, so the id alone learns nothing, not
+ * even whether it is open (ADR-0155). Read directly: the library's own read
+ * needs a Session, which an invitee has not got.
  */
-async function pendingInvitation(auth: KeeprAuth, invitationId: string): Promise<InvitationRow> {
+async function pendingInvitation(
+	auth: KeeprAuth,
+	database: IdentityDatabase,
+	key: InvitationKey,
+): Promise<InvitationRow> {
+	if (!(await holdsInvitationSecret(database, key))) throw notFound();
 	const { adapter } = await auth.$context;
 	const invitation = await adapter.findOne<InvitationRow>({
 		model: 'invitation',
-		where: [{ field: 'id', value: invitationId }],
+		where: [{ field: 'id', value: key.invitationId }],
 	});
 	if (!invitation) throw notFound();
 	if (invitation.status !== 'pending') {
@@ -69,19 +78,20 @@ async function pendingInvitation(auth: KeeprAuth, invitationId: string): Promise
 }
 
 /**
- * The invitee declines from the Invitation's link, signed in or not: the link
- * is the proof, as it is for accepting. Closes it and writes it in the Audit
- * Record, naming the address's User when it has one. A decline another origin's
- * page sent is refused 403 (`refuseCrossSiteWrite`).
+ * The invitee declines from the Invitation's link, signed in or not: the
+ * link's secret is the proof, as it is for accepting. Closes it and writes it in
+ * the Audit Record, naming the address's User when it has one. A decline another
+ * origin's page sent is refused 403 (`refuseCrossSiteWrite`).
  */
 export async function declineInvitation(
 	auth: KeeprAuth,
 	database: IdentityDatabase,
-	invitationId: string,
+	key: InvitationKey,
 	request: Request,
 ): Promise<void> {
 	refuseCrossSiteWrite(request);
-	const invitation = await pendingInvitation(auth, invitationId);
+	const { invitationId } = key;
+	const invitation = await pendingInvitation(auth, database, key);
 	const { adapter, internalAdapter } = await auth.$context;
 	const declined = await adapter.update<InvitationRow>({
 		model: 'invitation',
@@ -93,7 +103,7 @@ export async function declineInvitation(
 	});
 	if (!declined) {
 		// Answered or cancelled in between: say which.
-		await pendingInvitation(auth, invitationId);
+		await pendingInvitation(auth, database, key);
 		throw notFound();
 	}
 	const user = await internalAdapter.findUserByEmail(invitation.email);
@@ -105,11 +115,13 @@ export async function declineInvitation(
 	});
 }
 
+/** What the invitee is shown before accepting, to the holder of the link's secret. */
 export async function invitationOffer(
 	auth: KeeprAuth,
-	invitationId: string,
+	database: IdentityDatabase,
+	key: InvitationKey,
 ): Promise<InvitationOffer> {
-	const invitation = await pendingInvitation(auth, invitationId);
+	const invitation = await pendingInvitation(auth, database, key);
 	const { adapter, internalAdapter } = await auth.$context;
 	const [organisation, inviter, existing] = await Promise.all([
 		adapter.findOne<{ name: string }>({
@@ -130,8 +142,7 @@ export async function invitationOffer(
 	};
 }
 
-export interface NewUserAcceptance {
-	invitationId: string;
+export interface NewUserAcceptance extends InvitationKey {
 	name: string;
 	password: string;
 }
@@ -140,15 +151,17 @@ export interface NewUserAcceptance {
  * Creates the invitee's User and accepts the Invitation as them, answering the
  * cookies that sign their browser in. The Invitation's App roles are copied into
  * App access as it is accepted (`organisationOptions`). Refused before anything is
- * written unless the Invitation is open, the address has no User, the name is not
- * blank and the password is long enough and in no breach.
+ * written unless the link's secret is the Invitation's, it is open, the address
+ * has no User, the name is not blank and the password is long enough and in no
+ * breach.
  */
 export async function acceptInvitationAsNewUser(
 	auth: KeeprAuth,
-	{ invitationId, name, password }: NewUserAcceptance,
+	database: IdentityDatabase,
+	{ invitationId, secret, name, password }: NewUserAcceptance,
 	requestHeaders?: Headers,
 ): Promise<{ setCookie: string[] }> {
-	const invitation = await pendingInvitation(auth, invitationId);
+	const invitation = await pendingInvitation(auth, database, { invitationId, secret });
 	const { internalAdapter } = await auth.$context;
 	if (await internalAdapter.findUserByEmail(invitation.email))
 		throw new KeeprRefusal(
@@ -182,6 +195,30 @@ export async function acceptInvitationAsNewUser(
 			headers: new Headers({ cookie: setCookie.map((value) => value.split(';')[0]).join('; ') }),
 		});
 		return { setCookie };
+	} catch (error) {
+		throw refusalFromAuth(error);
+	}
+}
+
+/**
+ * The invitee who has a User accepts, signed in with the invited address and
+ * holding the link's secret: the Organisation and its App access are added to
+ * their User, and their Session works in it. Signed in with another address, it
+ * is refused 403 and nothing changes; so is an accept another origin's page sent.
+ */
+export async function acceptInvitationSignedIn(
+	auth: KeeprAuth,
+	database: IdentityDatabase,
+	key: InvitationKey,
+	request: Request,
+): Promise<void> {
+	refuseCrossSiteWrite(request);
+	await pendingInvitation(auth, database, key);
+	try {
+		await auth.api.acceptInvitation({
+			body: { invitationId: key.invitationId },
+			headers: request.headers,
+		});
 	} catch (error) {
 		throw refusalFromAuth(error);
 	}

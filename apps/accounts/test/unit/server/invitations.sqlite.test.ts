@@ -6,13 +6,18 @@ import type { OrganisationRole, TestAccounts } from '~~/test/helpers/keeprAccoun
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { identityDatabase, schema } from '~~/server/db';
 import { requestActor } from '~~/server/utils/actor';
-import { INVITATION_LIMIT } from '~~/server/utils/authOptions';
+import { INVITATION_LIMIT, INVITATIONS_PER_INVITER_PER_HOUR } from '~~/server/utils/authOptions';
 import {
 	cancelInvitation,
 	inviteMember,
 	listPendingInvitations,
 } from '~~/server/utils/invitations';
-import { createTestAccounts, fakeBreachedPasswordService } from '~~/test/helpers/keeprAccounts';
+import { RECENT_SIGN_IN_MS } from '~~/server/utils/recentSignIn';
+import {
+	createTestAccounts,
+	emailedInvitation,
+	fakeBreachedPasswordService,
+} from '~~/test/helpers/keeprAccounts';
 
 // An owner or admin, or a Keepr Administrator, invites an email address to an
 // Organisation with an Organisation role and an App role per App, sees its pending
@@ -133,16 +138,32 @@ describe('an Invitation', () => {
 		expect(row!.expiresAt.getTime()).toBe(Date.parse('2026-11-17T10:00:00Z') + 7 * DAY_MS);
 	});
 
-	it('is emailed to the invitee, naming who invited them, to what, and the link answered', async () => {
-		const { invitationId, link } = await invite(OWNER);
+	it('is emailed to the invitee, naming who invited them, to what, with its link', async () => {
+		const { invitationId } = await invite(OWNER);
 
-		expect(link).toBe(`${ORIGIN}/invitation#id=${invitationId}`);
 		expect(accounts.email.sent).toHaveLength(1);
 		const [sent] = accounts.email.sent;
 		expect(sent!.to).toBe(INVITEE);
 		expect(sent!.subject).toContain('Keepr');
 		expect(sent!.text).toContain('owner');
-		expect(sent!.text).toContain(link);
+		const { secret } = emailedInvitation(accounts.email, INVITEE);
+		expect(sent!.text).toContain(`${ORIGIN}/invitation#id=${invitationId}&secret=${secret}`);
+	});
+
+	// The secret is the invitee's proof: whoever else holds the id must not hold it.
+	it('keeps its link’s secret from the inviter, the managers’ listing and the Audit Record', async () => {
+		const answered = await invite(OWNER);
+		const { secret } = emailedInvitation(accounts.email, INVITEE);
+
+		const seen = JSON.stringify([
+			answered,
+			await pending(OWNER),
+			await accounts.auditRecord(),
+			await database.select().from(schema.invitationSecret),
+		]);
+
+		expect(secret.length).toBeGreaterThanOrEqual(32);
+		expect(seen).not.toContain(secret);
 	});
 
 	it('is created, its link answered, when sending the email fails', async () => {
@@ -204,6 +225,8 @@ describe('an Invitation is refused, and nothing is invited or emailed', () => {
 			400,
 		],
 		['to an address that is none', { email: 'nobody' }, 'INVALID_EMAIL', 400],
+		['to an address with no domain to mail', { email: 'a@b' }, 'INVALID_EMAIL', 400],
+		['to more than one address', { email: 'a,b@c.example' }, 'INVALID_EMAIL', 400],
 		[
 			'as an Organisation role there is none of',
 			{ role: 'chair' },
@@ -228,7 +251,8 @@ describe('an Invitation is refused, and nothing is invited or emailed', () => {
 			role: 'member',
 			status: 'pending',
 			expiresAt,
-			createdAt: now,
+			// Made over an hour ago, so the inviter's hourly cap leaves room.
+			createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000),
 			inviterId,
 		}));
 		for (let at = 0; at < rows.length; at += 500)
@@ -273,6 +297,8 @@ describe('the pending Invitations', () => {
 		vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-17T10:00:00Z') });
 		await invite(OWNER, { email: 'lapsed@example.com' });
 		vi.setSystemTime(new Date('2026-11-25T10:00:00Z'));
+		// A week on, they have signed in again.
+		actors.clear();
 		const { invitationId: gone } = await invite(OWNER, { email: 'gone@example.com' });
 		await cancel(OWNER, gone);
 		const { invitationId } = await invite(OWNER, { role: 'admin', appRoles: { stream: 'member' } });
@@ -400,5 +426,127 @@ describe('inviting an address again', () => {
 		});
 
 		expect(await audited('invitation.cancelled')).toHaveLength(2);
+	});
+});
+
+describe('inviting needs a recent sign-in', () => {
+	it.each([
+		['as old as the limit', RECENT_SIGN_IN_MS, null],
+		['older than the limit', RECENT_SIGN_IN_MS + 1, 'RECENT_SIGN_IN_REQUIRED'],
+	])('a sign-in %s is refused: %s', async (_case, age, refused) => {
+		const now = Date.now();
+		vi.useFakeTimers({ toFake: ['Date'], now });
+		const actor = await actorFor(OWNER);
+		vi.setSystemTime(now + age);
+
+		const answered = await outcome(
+			inviteMember(
+				database,
+				actor,
+				{ organizationId: keepr.id, email: INVITEE, role: 'member' },
+				{ email: accounts.email, origin: ORIGIN },
+			),
+		);
+
+		expect((answered as { refused?: string }).refused ?? null).toBe(refused);
+		expect(await invitations()).toBe(refused === null ? 1 : 0);
+	});
+});
+
+describe('an admin inviting an address again', () => {
+	it.each<[string, OrganisationRole, string | null, string]>([
+		['an owner’s offer to be a member', 'member', null, 'canceled'],
+		['an owner’s offer to be an owner', 'owner', 'OWNER_REQUIRED', 'pending'],
+	])('replacing %s is refused: %s', async (_case, offered, refused, earlierStatus) => {
+		const { invitationId: earlier } = await invite(OWNER, { role: offered });
+
+		const answered = await outcome(invite(await holding('admin'), { role: 'admin' }));
+
+		expect((answered as { refused?: string }).refused ?? null).toBe(refused);
+		expect(await invitationRow(earlier)).toMatchObject({ status: earlierStatus, role: offered });
+	});
+});
+
+/** An Invitation `inviterId` made to the Keepr Organisation at `at`, written as the library writes one. */
+function madeAt(inviterId: string, at: number, n: number) {
+	return {
+		id: `made-${at}-${n}`,
+		organizationId: keepr.id,
+		email: `earlier-${n}@example.com`,
+		role: 'member',
+		status: 'canceled',
+		expiresAt: new Date(at + 7 * DAY_MS),
+		createdAt: new Date(at),
+		inviterId,
+	};
+}
+
+describe('how many Invitations one inviter makes', () => {
+	it.each([
+		[
+			'one under the cap',
+			INVITATIONS_PER_INVITER_PER_HOUR - 1,
+			{ invitationId: expect.any(String) },
+		],
+		[
+			'at the cap',
+			INVITATIONS_PER_INVITER_PER_HOUR,
+			{ refused: 'TOO_MANY_INVITATIONS', statusCode: 429 },
+		],
+	])('in the last hour, %s, answers %o', async (_case, made, answer) => {
+		const now = Date.now();
+		const inviterId = await userIdOf(OWNER);
+		// Made more than an hour ago, so not counted.
+		await database.insert(schema.invitation).values(madeAt(inviterId, now - 61 * 60 * 1000, 0));
+		await database
+			.insert(schema.invitation)
+			.values(Array.from({ length: made }, (_, n) => madeAt(inviterId, now - 30 * 60 * 1000, n)));
+
+		const answered = await outcome(invite(OWNER));
+
+		expect(answered).toEqual(answer);
+	});
+
+	it('is counted per inviter, so another manager still invites', async () => {
+		const inviterId = await userIdOf(OWNER);
+		await database
+			.insert(schema.invitation)
+			.values(
+				Array.from({ length: INVITATIONS_PER_INVITER_PER_HOUR }, (_, n) =>
+					madeAt(inviterId, Date.now(), n),
+				),
+			);
+
+		expect(await outcome(invite(await holding('admin')))).toEqual({
+			invitationId: expect.any(String),
+		});
+	});
+});
+
+describe('an address invited', () => {
+	it('is kept lower-cased, as one plausible mailbox', async () => {
+		const { invitationId } = await invite(OWNER, {
+			email: ' First.Last+club@Mail.Example.co.uk ',
+		});
+
+		expect((await pending(OWNER)).find(({ id }) => id === invitationId)?.email).toBe(
+			'first.last+club@mail.example.co.uk',
+		);
+	});
+});
+
+describe('a stored Invitation whose App roles cannot be read', () => {
+	it('is listed offering none, and the others as they are', async () => {
+		const { invitationId } = await invite(OWNER, { appRoles: { stream: 'member' } });
+		await database.insert(schema.invitation).values({
+			...madeAt(await userIdOf(OWNER), Date.now(), 0),
+			id: 'unreadable',
+			status: 'pending',
+			appRoles: '{not json',
+		});
+
+		expect(
+			Object.fromEntries((await pending(OWNER)).map(({ id, appRoles }) => [id, appRoles])),
+		).toEqual({ unreadable: {}, [invitationId]: { stream: 'member' } });
 	});
 });

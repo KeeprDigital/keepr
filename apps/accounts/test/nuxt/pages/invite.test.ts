@@ -5,14 +5,13 @@ import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import InvitePage from '~/pages/invite.vue';
 
 // The page sends the address, the Organisation role and the App roles chosen to
-// the Organisation's invitation route, and shows the Invitation's link to copy;
-// the rules are the server's.
+// the Organisation's invitation route, and says it was emailed: its link goes to
+// the invitee alone. The rules are the server's.
 
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn<(to: string) => void>() }));
 mockNuxtImport('navigateTo', () => navigate);
 
 const INVITATIONS = '/api/organisations/keepr/invitations';
-const LINK = 'http://localhost:3000/invitation#id=the-invitation';
 
 const invited: { path: string; body: unknown }[] = [];
 let answer: { status: number; body: unknown };
@@ -74,7 +73,12 @@ async function invite(choose: (page: ReturnType<typeof mount>) => Promise<void>)
 	await choose(page);
 	await page.find('form').trigger('submit');
 	await expect
-		.poll(() => page.find('[data-invited]').exists() || page.find('[data-refusal]').exists())
+		.poll(
+			() =>
+				page.find('[data-invited]').exists() ||
+				page.find('[data-refusal]').exists() ||
+				page.find('[data-sign-in-again]').exists(),
+		)
 		.toBe(true);
 	return page;
 }
@@ -83,7 +87,8 @@ beforeEach(() => {
 	invited.length = 0;
 	cancelled.length = 0;
 	pending = [];
-	answer = { status: 200, body: { invitationId: 'the-invitation', link: LINK } };
+	answer = { status: 200, body: { invitationId: 'the-invitation' } };
+	navigate.mockClear();
 	standing = {
 		status: 200,
 		body: { organisation: { id: 'keepr', name: 'Keepr' }, standing: 'owner' },
@@ -132,7 +137,7 @@ describe('the pending Invitations', () => {
 });
 
 describe('the invite page', () => {
-	it('invites with the roles chosen, leaving out an App with no access, and shows the link', async () => {
+	it('invites with the roles chosen, leaving out an App with no access, and says it was emailed', async () => {
 		const page = await invite(async (page) => {
 			await page.get('select[data-organisation-role]').setValue('admin');
 			await page.get('select[data-app="stream"]').setValue('admin');
@@ -144,7 +149,7 @@ describe('the invite page', () => {
 				body: { email: 'newcomer@example.com', role: 'admin', appRoles: { stream: 'admin' } },
 			},
 		]);
-		expect((page.get('[data-link]').element as HTMLInputElement).value).toBe(LINK);
+		expect(page.get('[data-invited]').text()).toContain('emailed to newcomer@example.com');
 	});
 
 	// Story 48: a Keepr Administrator invites to an Organisation they are not in.
@@ -165,6 +170,16 @@ describe('the invite page', () => {
 
 		expect(page.get('[data-refusal]').text()).toContain('Only an owner can invite another owner');
 		expect(page.find('[data-invited]').exists()).toBe(false);
+	});
+
+	it('asks for a new sign-in when the server says the sign-in is too old', async () => {
+		answer = { status: 403, body: { code: 'RECENT_SIGN_IN_REQUIRED', message: 'old' } };
+
+		const page = await invite(async () => {});
+		await page.get('[data-sign-in-again] button').trigger('click');
+
+		expect(page.find('[data-invited]').exists()).toBe(false);
+		expect(navigate).toHaveBeenCalledWith(`/sign-in?returnTo=${encodeURIComponent('/invite')}`);
 	});
 
 	it('is closed to a User who does not manage the Organisation', async () => {

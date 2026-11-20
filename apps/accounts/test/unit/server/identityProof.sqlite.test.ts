@@ -1,6 +1,8 @@
 import type { TestAccounts } from '~~/test/helpers/keeprAccounts';
 import { createLocalJWKSet, decodeJwt, jwtVerify } from 'jose';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { identityDatabase } from '~~/server/db';
+import { removeMember } from '~~/server/utils/memberManagement';
 import { createTestAccounts, fakeBreachedPasswordService } from '~~/test/helpers/keeprAccounts';
 
 // Keepr Accounts mints an Identity Proof from the browser's cookie and publishes the
@@ -100,6 +102,32 @@ describe('an Identity Proof', () => {
 		const { token } = await identityProof(await accounts.signIn('ada@keepr.digital'));
 
 		expect(decodeJwt(token).apps).toEqual({ stream: 'member' });
+	});
+
+	// Removing a member reaches every App within one Identity Proof's life, before
+	// their Session ends: the next one names nothing of the Organisation.
+	it('for a removed member’s Session left open, names no Organisation and no App access', async () => {
+		const { id: ownerId } = await accounts.createUser('owner@keepr.digital');
+		const { id } = await accounts.createUser('ada@keepr.digital');
+		const { organizationId, memberId } = await accounts.addMember(id, 'keepr', {
+			role: 'admin',
+			apps: { stream: 'admin' },
+		});
+		await accounts.addMember(ownerId, 'keepr', { role: 'owner' });
+		const cookie = await accounts.signIn('ada@keepr.digital');
+		expect(decodeJwt((await identityProof(cookie)).token)).toMatchObject({ org: organizationId });
+
+		await removeMember(
+			identityDatabase(accounts.harness.database),
+			await accounts.actor('owner@keepr.digital'),
+			{ organizationId, memberId },
+		);
+
+		expect(decodeJwt((await identityProof(cookie)).token)).toMatchObject({
+			org: null,
+			orgRole: null,
+			apps: {},
+		});
 	});
 });
 
