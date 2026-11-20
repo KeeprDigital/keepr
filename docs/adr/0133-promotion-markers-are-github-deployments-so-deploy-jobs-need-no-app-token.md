@@ -1,6 +1,6 @@
 # ADR-0133: Promotion markers are GitHub Deployments, so deploy jobs need no App token
 
-Accepted · 2026-11-18 · [#1294](https://github.com/KeeprDigital/keepr/issues/1294) · Amends ADR-0119 and ADR-0124
+Accepted · 2026-11-18 · [#1294](https://github.com/KeeprDigital/keepr/issues/1294) · Amends ADR-0119 and ADR-0124 · Amended by ADR-0154: records that any workflow granted `deployments: write` can write a promotion marker
 
 ### Decision
 

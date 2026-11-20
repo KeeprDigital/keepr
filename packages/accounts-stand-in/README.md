@@ -71,7 +71,7 @@ An App's binding finds the stand-in through Wrangler's local registry: one direc
 
 ## Never deployed
 
-There is no deploy script, and Wrangler does not find `stand-in.wrangler.jsonc` by itself. `package.json` carries `keepr.undeployable`, which `keepr-deploy-guard` (`@keepr/tooling`) refuses: reading a Release runs the guard on every configuration its descriptor names, and a deploy runs it again on what it is about to upload (ADR-0119). The deploy tooling starts the stand-in around a binding App's build, to answer its Worker smoke run; it uploads nothing of it. Deployed under `keepr-accounts`, the stand-in would replace Keepr Accounts and sign anyone in.
+There is no deploy script, and Wrangler does not find `stand-in.wrangler.jsonc` by itself. `package.json` carries `keepr.undeployable`, which `keepr-deploy-guard` (`@keepr/tooling`) refuses: reading a Release runs the guard on every configuration its descriptor names, and a deploy runs it again on what it is about to upload (ADR-0119). The deploy tooling starts the stand-in around a binding App's build, to answer its Worker smoke run; it uploads nothing of it. Deployed under `keepr-accounts`, the stand-in would replace Keepr Accounts and sign anyone in. So it also fails closed without any of that (ADR-0154): its configuration names an account no one holds, and its Worker refuses every request unless the launcher started it with `--var KEEPR_ACCOUNTS_STAND_IN:launched`.
 
 ## Commands
 

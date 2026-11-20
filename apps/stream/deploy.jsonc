@@ -6,6 +6,9 @@
 	"app": "stream",
 	// Run once; every Environment deploys what they built.
 	"build": ["build", "worker:dry-run", "worker:smoke"],
+	// What makes a build the integration suite's (nuxt.config.ts): the build
+	// records it when set, and a deploy refuses that build.
+	"testFlags": ["STREAM_KEEPR_INTEGRATION"],
 	"output": ".output",
 	"worker": {
 		"source": "wrangler.jsonc",

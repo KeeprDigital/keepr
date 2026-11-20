@@ -6,6 +6,9 @@
 	// this file is not one Wrangler finds by itself. `keepr-deploy-guard` refuses its
 	// package; per-app deploy (#1258) will run the guard before every upload.
 	"name": "keepr-accounts",
+	// An account no one holds: a `wrangler deploy` of this file has nowhere to go.
+	// Started without its launcher's `--var`, the Worker refuses every request.
+	"account_id": "00000000000000000000000000000000",
 	"main": "src/worker.ts",
 	"compatibility_date": "2026-07-16",
 	"compatibility_flags": ["nodejs_compat", "no_nodejs_compat_v2"],

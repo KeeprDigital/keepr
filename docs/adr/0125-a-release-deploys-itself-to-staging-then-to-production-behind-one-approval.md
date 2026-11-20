@@ -1,6 +1,6 @@
 # ADR-0125: A Release deploys itself to staging, then to production behind one approval
 
-Accepted · 2026-11-18 · [#525](https://github.com/KeeprDigital/keepr/issues/525) · Amends ADR-0035, ADR-0036, ADR-0118, ADR-0119, ADR-0122 and ADR-0124, and the Deploy workflow's stated policy that deploys are "never merge- or release-triggered" · Amended by ADR-0129: the staging job runs every deployed acceptance gate, which signs in and writes, and production never runs one unattended
+Accepted · 2026-11-18 · [#525](https://github.com/KeeprDigital/keepr/issues/525) · Amends ADR-0035, ADR-0036, ADR-0118, ADR-0119, ADR-0122 and ADR-0124, and the Deploy workflow's stated policy that deploys are "never merge- or release-triggered" · Amended by ADR-0129: the staging job runs every deployed acceptance gate, which signs in and writes, and production never runs one unattended · Amended by ADR-0154: Keepr Accounts' production waits for every App's staging, and the D1 recovery point is read again immediately before the migration
 
 ### Decision
 

@@ -418,7 +418,7 @@ describe('deploy:verify against a local stand-in origin', () => {
 		});
 	});
 
-	describe("verifying an Installation: the Environment's URL, or KEEPR_DEPLOY_URL", () => {
+	describe("verifying an Installation: the Environment's URL, or an explicit target", () => {
 		const loopbackFetch = fetch;
 		const COMMIT = 'c'.repeat(40);
 
@@ -459,7 +459,7 @@ describe('deploy:verify against a local stand-in origin', () => {
 				release: release(verifies),
 				environment: 'production',
 				commit: COMMIT,
-				env: { KEEPR_DEPLOY_URL: target },
+				url: target,
 				fetchRequest,
 				log: (line: string) => void printed.push(line),
 				...fast,

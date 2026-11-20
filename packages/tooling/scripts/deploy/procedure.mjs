@@ -3,9 +3,11 @@
  *
  * 1. Build once, or place a downloaded artifact of that build: the descriptor's
  *    `build` scripts (build, wrangler dry run, Worker smoke) run here, and
- *    nowhere else. Then the deploy guard reads every Worker configuration it
- *    will upload, as built or placed: none may be under a package marked
- *    `keepr.undeployable`, the Accounts Stand-in's mark (ADR-0113).
+ *    nowhere else. The build must record this checkout's commit and no
+ *    test-only flag (`provenance.mjs`). Then the deploy guard reads every
+ *    Worker configuration it will upload, as built or placed: none may be
+ *    under a package marked `keepr.undeployable`, the Accounts Stand-in's
+ *    mark (ADR-0113).
  * 2. Refuse an Installation whose Workers lack a secret the descriptor
  *    requires (`secrets.mjs`, ADR-0128), read from Cloudflare, or have a
  *    secret named like a var their config sets (ADR-0132).
@@ -15,7 +17,10 @@
  *    and what it answers the app's markers record.
  * 5. Each part that the decision deploys, between its `pending` and `deployed`
  *    markers.
- * 6. The app: mark pending, migrate D1, deploy the Worker, verify, mark deployed.
+ * 6. `beforeMigration`: what is read immediately before D1 migrates (each
+ *    database's Time Travel bookmark, `recovery.mjs`), recorded in the app's
+ *    markers.
+ * 7. The app: mark pending, migrate D1, deploy the Worker, verify, mark deployed.
  *
  * A pending marker is the state a deploy leaves when it dies part-way: it
  * claims nothing, and the next decision does not trust it. Writing it first is
@@ -32,6 +37,7 @@
 import { join } from 'node:path';
 import { undeployableReason } from '../deploy-guard.mjs';
 import { formatMarker, markerName, parseMarker } from './markers.mjs';
+import { refuseUndeployableBuild } from './provenance.mjs';
 import { requireSecrets } from './secrets.mjs';
 
 const FINGERPRINT = /^sha256:[0-9a-f]{64}$/;
@@ -50,11 +56,13 @@ export const MODES = ['auto', 'always', 'never'];
  * `secretNames` reads, and changes nothing: the secret names set on the Worker
  * deployed from a configuration, null when it does not exist.
  * `sourceConfig` reads a source configuration as the Environment resolves it,
- * from the Release's checkout.
+ * from the Release's checkout. `builtFrom` reads what the build or artifact
+ * recorded of where it came from.
  *
  * @typedef {{
  *   build: () => void,
  *   placeArtifact: (path: string) => void,
+ *   builtFrom: () => import('./provenance.mjs').BuildRecord | undefined,
  *   fingerprint: (part: string) => string,
  *   secretNames: (config: string) => string[] | null,
  *   sourceConfig: (source: string) => import('./secrets.mjs').SourceConfig,
@@ -271,10 +279,13 @@ function refuseUndeployable({ app, appDir, descriptor }) {
  *   mode?: Mode,
  *   source: string,
  *   beforeRemoteChange?: BeforeRemoteChange,
+ *   beforeMigration?: BeforeRemoteChange,
  *   log?: (line: string) => void,
  * }} options `artifact`: a downloaded build of this Release, deployed instead
  *   of building it; `beforeRemoteChange` throws to refuse the deploy, or
- *   answers fields the app's markers record.
+ *   answers fields the app's markers record; `beforeMigration`, once the
+ *   parts are deployed and immediately before the app's pending marker and
+ *   D1's migration, the same, its fields recorded over the first's.
  * @returns {Promise<{ parts: Record<string, Decision>, verified: unknown }>}
  */
 export async function deployRelease({
@@ -286,6 +297,7 @@ export async function deployRelease({
 	mode = 'auto',
 	source,
 	beforeRemoteChange = () => {},
+	beforeMigration = () => {},
 	log = console.log,
 }) {
 	const { app, descriptor } = release;
@@ -296,6 +308,7 @@ export async function deployRelease({
 
 	if (artifact === undefined) steps.build();
 	else steps.placeArtifact(artifact);
+	refuseUndeployableBuild(steps.builtFrom(), store.head());
 	refuseUndeployable(release);
 	requireSecrets({
 		release,
@@ -324,7 +337,7 @@ export async function deployRelease({
 		log(`${marker}: deploy ${parts[part].deploy} (${parts[part].reason})`);
 	}
 
-	const recorded = (await beforeRemoteChange({ release, environment, store, log })) ?? {};
+	let recorded = (await beforeRemoteChange({ release, environment, store, log })) ?? {};
 
 	for (const [part, decision] of Object.entries(parts)) {
 		if (!decision.deploy) continue;
@@ -340,6 +353,7 @@ export async function deployRelease({
 		});
 	}
 
+	recorded = { ...recorded, ...(await beforeMigration({ release, environment, store, log })) };
 	markApp({ store, release, environment, state: 'pending', source, recorded });
 	for (const { binding } of descriptor.databases) steps.migrate(binding);
 	steps.deployWorker();

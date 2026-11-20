@@ -86,8 +86,8 @@ export function wranglerSourceConfig({ appDir, wranglerEnv }) {
  * deployed from `source` in an Environment: through the source configuration,
  * whose blocks name each account (ADR-0130), with the Environment's block, and
  * `--name` where the configuration leaves naming the Worker to the build. Never
- * the built configuration: with a login that reaches both accounts, its
- * `--env staging` reaches Production (`apps/stream/README.md` § Worker secrets).
+ * the built configuration, which exists only beside a build and may be another
+ * commit's (`apps/stream/README.md` § Worker secrets).
  *
  * @param {{
  *   app: string,

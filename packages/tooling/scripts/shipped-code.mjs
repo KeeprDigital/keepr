@@ -9,11 +9,19 @@
  * - the app's directory, and the directory of each workspace package its
  *   `dependencies` reach, one through another, each without `test/`, `docs/`
  *   and Markdown (the tooling and the test kits are dev dependencies);
- * - `pnpm-lock.yaml` and `pnpm-workspace.yaml`, for every app.
+ * - for every app, what every app's Release is built with: `pnpm-lock.yaml`
+ *   and `pnpm-workspace.yaml` (the versions), the root `package.json` (the
+ *   Node and pnpm it pins) and `tsconfig.base.json` (the packages' compiler
+ *   options). CI builds every Worker leg for each of these (`ci-scope.mjs`).
  */
 
-/** What every app ships: the versions it is built with. */
-const SHIPPED_BY_EVERY_APP = new Set(['pnpm-lock.yaml', 'pnpm-workspace.yaml']);
+/** What every app ships: what it is built with. */
+const SHIPPED_BY_EVERY_APP = new Set([
+	'pnpm-lock.yaml',
+	'pnpm-workspace.yaml',
+	'package.json',
+	'tsconfig.base.json',
+]);
 /** Inside a shipped directory, what no app ships. */
 const NOT_SHIPPED = /^(?:test|docs)\/|\.md$/;
 

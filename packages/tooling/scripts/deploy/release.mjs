@@ -48,6 +48,9 @@ export const DESCRIPTOR_FILE = 'deploy.jsonc';
  * - `parts`: Workers deployed from source beside the app, each with its own
  *   marker and fingerprint, deployed first when their fingerprint changed,
  *   and, optionally, the `secrets` it requires, as `worker.secrets`.
+ * - `testFlags`, optional: environment variables that make a build fit only
+ *   for tests (Stream Keepr's integration build). The build records each that
+ *   is set, and a deploy refuses such a build (`provenance.mjs`).
  * - `gates`, optional: the app's package scripts that are its acceptance
  *   gates against a deployed Installation, at `KEEPR_DEPLOY_URL`. The Deploy
  *   workflow runs them in the staging job with no person present, and never
@@ -64,6 +67,7 @@ export const DESCRIPTOR_FILE = 'deploy.jsonc';
  *   environments: Record<string, { url: string, wranglerEnv?: string }>,
  *   parts: Record<string, import('./fingerprint.mjs').Part>,
  *   gates?: string[],
+ *   testFlags?: string[],
  * }} Descriptor
  */
 
@@ -155,6 +159,8 @@ function descriptorProblems(descriptor, app) {
 		!(Array.isArray(descriptor.gates) && descriptor.gates.every((gate) => SCRIPT.test(gate)))
 	)
 		problems.push('gates is not a list of package script names');
+	if (!isSecretList(descriptor.testFlags))
+		problems.push('testFlags is not a list of environment variable names');
 	if (!isText(descriptor.output)) problems.push('output is not a directory');
 	if (!isText(descriptor.worker?.source)) problems.push('worker.source is not a path');
 	if (!isText(descriptor.worker?.config)) problems.push('worker.config is not a path');

@@ -207,6 +207,8 @@ function world() {
 	let checkout: Snapshot = A;
 	let dirty = false;
 	let output: Snapshot | undefined;
+	/** The test-only flags the build or the artifact was made with. */
+	let testFlags: string[] = [];
 	const store: MarkerStore = {
 		head: () => checkout.commit,
 		dirty: () => dirty,
@@ -253,6 +255,7 @@ function world() {
 				ran.push(`artifact ${path}`);
 				output = artifacts.get(path);
 			},
+			builtFrom: () => output && { commit: output.commit, testFlags },
 			fingerprint: () => snapshot.validator,
 			secretNames: () => installation.secrets,
 			sourceConfig: () => ({ name: 'stream' }),
@@ -277,7 +280,6 @@ function world() {
 					release: release(snapshot),
 					environment,
 					commit: store.head(),
-					env: {},
 					fetchRequest: fetchFrom(environment),
 					log: quiet,
 					attempts: 1,
@@ -301,10 +303,13 @@ function world() {
 			source?: string;
 			dirty?: boolean;
 			beforeRemoteChange?: Parameters<typeof deployRelease>[0]['beforeRemoteChange'];
+			beforeMigration?: Parameters<typeof deployRelease>[0]['beforeMigration'];
+			testFlags?: string[];
 		} = {},
 	) {
 		checkOut(snapshot, { dirty: options.dirty ?? false });
 		output = undefined;
+		testFlags = options.testFlags ?? [];
 		ran.length = 0;
 		const environment = options.environment ?? 'production';
 		return deployRelease({
@@ -317,6 +322,7 @@ function world() {
 			log: quiet,
 			...(options.artifact === undefined ? {} : { artifact: options.artifact }),
 			...(options.beforeRemoteChange ? { beforeRemoteChange: options.beforeRemoteChange } : {}),
+			...(options.beforeMigration ? { beforeMigration: options.beforeMigration } : {}),
 		});
 	}
 
@@ -550,15 +556,57 @@ describe('deploying a Release to an Environment', () => {
 			expect(w.marker('stream/production')).toMatchObject({ commit: B.commit, state: 'deployed' });
 		});
 
-		it("is caught by verify when it is not the Release's build", async () => {
+		it("is refused before any remote change when it records another commit than the Release's", async () => {
 			const w = world();
+			await w.deploy(A);
+			const tags = new Map(w.tags);
 			w.artifacts.set('/downloads/stream-output', A);
 
 			await expect(w.deploy(B, { artifact: '/downloads/stream-output' })).rejects.toThrow(
-				/names stream@1\.8\.0/,
+				new RegExp(`built from ${A.commit}.*checkout is at ${B.commit}`),
 			);
-			expect(w.marker('stream/production')).toMatchObject({ commit: B.commit, state: 'pending' });
+			expect(w.ran).toEqual(['artifact /downloads/stream-output']);
+			expect(w.tags).toEqual(tags);
 		});
+	});
+
+	it('refuses a build made with a test-only flag set, before any remote change', async () => {
+		const w = world();
+
+		await expect(w.deploy(A, { testFlags: ['STREAM_KEEPR_INTEGRATION'] })).rejects.toThrow(
+			/STREAM_KEEPR_INTEGRATION/,
+		);
+		expect(w.ran).toEqual(['build']);
+		expect(w.tags.size).toBe(0);
+	});
+
+	// A bookmark read before a long part deploy would restore past what ran in between.
+	it('reads the recovery point after the parts deploy and immediately before the migration, and records it', async () => {
+		const w = world();
+		const seen: string[][] = [];
+
+		await w.deploy(A, {
+			beforeMigration: () => {
+				seen.push([...w.ran]);
+				return { recovery: 'DB=bookmark-1' };
+			},
+		});
+
+		expect(seen).toEqual([
+			[
+				'build',
+				'marker stream/production-validator',
+				'deploy validator',
+				'marker stream/production-validator',
+			],
+		]);
+		expect(w.ran.slice(4)).toEqual([
+			'marker stream/production',
+			'migrate DB',
+			'deploy worker',
+			'marker stream/production',
+		]);
+		expect(w.marker('stream/production')).toMatchObject({ recovery: 'DB=bookmark-1' });
 	});
 
 	// Deploy order between apps (#1263) refuses here: after the build, before anything remote.
@@ -665,6 +713,8 @@ describe('deploying a Release to an Environment', () => {
 			'refuses %s under a package marked undeployable, with nothing remote touched',
 			async (_case, marked, options) => {
 				const w = world();
+				w.artifacts.set('/downloads/stream-output', B);
+				w.checkOut(B);
 				const appDir = mkdtempSync(join(tmpdir(), 'keepr-procedure-'));
 				appDirs.push(appDir);
 				const steps = w.steps(B, 'production');

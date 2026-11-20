@@ -18,6 +18,8 @@ export type FakeState = {
 	signedOut?: Partial<Record<'op' | 'wrangler' | 'gh', true>>;
 	/** Set to make `op item edit` exit 0 and store nothing. */
 	opDropsEdits?: true;
+	/** Set to make `wrangler secret bulk` fail though `secret list` answers. */
+	failsBulk?: true;
 };
 
 const STATE_IO = `
@@ -79,6 +81,7 @@ if (args[0] === 'secret' && args[1] === 'list' && at('--format') === 'json') {
 	save();
 	process.stdout.write(JSON.stringify(Object.keys(state.workers[worker]).map((name) => ({ name, type: 'secret_text' }))));
 } else if (args[0] === 'secret' && args[1] === 'bulk' && args[2]?.startsWith('-')) {
+	if (state.failsBulk) fail('✘ [ERROR] A request to the Cloudflare API failed.');
 	state.workers[worker] = { ...state.workers[worker], ...JSON.parse(stdin()) };
 	save();
 } else fail('fake wrangler: unexpected ' + args.join(' '));

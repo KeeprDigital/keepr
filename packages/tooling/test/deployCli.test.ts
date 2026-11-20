@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import {
 	chmodSync,
 	existsSync,
@@ -10,6 +10,8 @@ import {
 	writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -24,13 +26,26 @@ import {
 
 const CLI = join(import.meta.dirname, '../scripts/deploy/cli.mjs');
 
+const gitEnv = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
+const gitIn = (cwd: string, ...args: string[]) =>
+	execFileSync('git', ['-c', 'user.name=test', '-c', 'user.email=test@example.invalid', ...args], {
+		cwd,
+		encoding: 'utf8',
+		env: gitEnv,
+	}).trim();
+
 /**
- * `keepr-deploy`, as `pnpm run deploy` and the Deploy workflow run it. An empty
- * PATH means any git, pnpm or wrangler it tried to spawn would fail to start,
- * so these show what it refuses before it touches anything.
+ * `keepr-deploy`, as `pnpm run deploy` and the Deploy workflow run it. A PATH
+ * holding only git means any pnpm or wrangler it tried to spawn would fail to
+ * start, so these show what it refuses before it touches anything.
  */
 describe('the keepr-deploy command line', () => {
 	const roots: string[] = [];
+	const onlyGit = mkdtempSync(join(tmpdir(), 'keepr-cli-bin-'));
+	symlinkSync(
+		execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim(),
+		join(onlyGit, 'git'),
+	);
 
 	afterEach(() => {
 		for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
@@ -39,7 +54,7 @@ describe('the keepr-deploy command line', () => {
 	function run(args: string[], cwd = process.cwd(), env: Record<string, string> = {}) {
 		return spawnSync(process.execPath, [CLI, ...args], {
 			cwd,
-			env: { ...process.env, PATH: '', CLOUDFLARE_API_TOKEN: 'blocked-by-test-guard', ...env },
+			env: { ...gitEnv, PATH: onlyGit, CLOUDFLARE_API_TOKEN: 'blocked-by-test-guard', ...env },
 			encoding: 'utf8',
 		});
 	}
@@ -76,6 +91,7 @@ describe('the keepr-deploy command line', () => {
 		expect(result.stderr).toContain('usage: keepr-deploy');
 	});
 
+	/** A Release checkout holding `files`, committed. */
 	function workspace(files: Record<string, string>) {
 		const root = mkdtempSync(join(tmpdir(), 'keepr-cli-'));
 		roots.push(root);
@@ -83,7 +99,18 @@ describe('the keepr-deploy command line', () => {
 			mkdirSync(dirname(join(root, path)), { recursive: true });
 			writeFileSync(join(root, path), content);
 		}
+		gitIn(root, 'init', '-q', '-b', 'main');
+		gitIn(root, 'add', '.');
+		gitIn(root, 'commit', '-q', '--allow-empty', '-m', 'the Release');
 		return root;
+	}
+
+	/** What a build of `commit` leaves beside its output, in the app's output directory. */
+	function recordBuildOf(root: string, commit: string) {
+		writeFileSync(
+			join(root, 'apps/stream/.output/keepr-build.json'),
+			JSON.stringify({ commit, testFlags: [] }),
+		);
 	}
 
 	// CI's Worker leg: a part that would not bundle fails it before the app's build starts.
@@ -135,6 +162,7 @@ describe('the keepr-deploy command line', () => {
 			'apps/stream/node_modules/.bin/wrangler': `#!${process.execPath}\nconsole.log(JSON.stringify([{ name: 'NUXT_ABLY_API_KEY', type: 'secret_text' }]));\n`,
 		});
 		chmodSync(join(root, 'apps/stream/node_modules/.bin/wrangler'), 0o755);
+		recordBuildOf(root, gitIn(root, 'rev-parse', 'HEAD'));
 
 		const result = run(['check', '--app', 'stream', '--env', 'staging'], root);
 
@@ -143,6 +171,36 @@ describe('the keepr-deploy command line', () => {
 			"stream's Worker lacks NUXT_BETTER_AUTH_SECRET: set each with pnpm secrets:sync --app stream --env staging, or from apps/stream with wrangler secret put <NAME> --config wrangler.jsonc --env staging",
 		);
 		expect(result.stderr).not.toContain('pnpm run build');
+	});
+
+	// What each reads of the built configuration must be this checkout's build.
+	it.each<[string, string[], string | undefined, RegExp]>([
+		['mark-app', ['mark-app', 'deployed'], 'f'.repeat(40), /built from f{40}/],
+		['mark-app', ['mark-app', 'deployed'], undefined, /records no commit/],
+		['status', ['status'], 'f'.repeat(40), /built from f{40}/],
+		['check --env', ['check'], 'f'.repeat(40), /built from f{40}/],
+	])('%s refuses a build that is not of this checkout', (_case, command, builtFrom, message) => {
+		const root = workspace({
+			'pnpm-workspace.yaml': 'packages: []\n',
+			'apps/stream/package.json': JSON.stringify({ name: '@keepr/stream', version: '1.9.0' }),
+			'apps/stream/deploy.jsonc': JSON.stringify({
+				app: 'stream',
+				build: ['build'],
+				output: '.output',
+				worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
+				databases: [],
+				environments: { production: { url: 'https://stream.keepr.digital' } },
+				parts: {},
+			}),
+			'apps/stream/wrangler.jsonc': '{}',
+			'apps/stream/.output/server/wrangler.json': '{"name":"stream"}',
+		});
+		if (builtFrom) recordBuildOf(root, builtFrom);
+
+		const result = run([...command, '--app', 'stream', '--env', 'production'], root);
+
+		expect(result.status).toBe(1);
+		expect(result.stderr).toMatch(message);
 	});
 
 	// The Deploy workflow's build job: what it uploads is what every Environment deploys.
@@ -161,7 +219,7 @@ describe('the keepr-deploy command line', () => {
 			}),
 		};
 
-		it("copies the descriptor's output, as built, to the artifact directory", () => {
+		it("copies the descriptor's output, as built, to the artifact directory, with the commit it was built from", () => {
 			const root = workspace({
 				...release,
 				'apps/stream/.output/server/wrangler.json': '{"name":"stream"}',
@@ -174,6 +232,51 @@ describe('the keepr-deploy command line', () => {
 			expect(readFileSync(join(artifact, 'server/wrangler.json'), 'utf8')).toBe(
 				'{"name":"stream"}',
 			);
+			expect(JSON.parse(readFileSync(join(artifact, 'keepr-build.json'), 'utf8'))).toEqual({
+				commit: gitIn(root, 'rev-parse', 'HEAD'),
+				testFlags: [],
+			});
+		});
+
+		it('records each test-only flag the descriptor names that was set for the build', () => {
+			const root = workspace({
+				...release,
+				'apps/stream/deploy.jsonc': JSON.stringify({
+					...JSON.parse(release['apps/stream/deploy.jsonc']),
+					testFlags: ['STREAM_KEEPR_INTEGRATION', 'STREAM_KEEPR_OTHER'],
+				}),
+				'apps/stream/.output/server/wrangler.json': '{"name":"stream"}',
+			});
+			const artifact = join(root, 'artifact');
+
+			run(['build', '--app', 'stream', '--artifact', artifact], root, {
+				STREAM_KEEPR_INTEGRATION: 'true',
+				STREAM_KEEPR_OTHER: 'false',
+			});
+
+			expect(JSON.parse(readFileSync(join(artifact, 'keepr-build.json'), 'utf8'))).toMatchObject({
+				testFlags: ['STREAM_KEEPR_INTEGRATION'],
+			});
+		});
+
+		// Nuxt reads the app's `.env` into the build, so a flag there makes a test build too.
+		it("records a test-only flag set in the app's .env", () => {
+			const root = workspace({
+				...release,
+				'apps/stream/deploy.jsonc': JSON.stringify({
+					...JSON.parse(release['apps/stream/deploy.jsonc']),
+					testFlags: ['STREAM_KEEPR_INTEGRATION'],
+				}),
+				'apps/stream/.output/server/wrangler.json': '{"name":"stream"}',
+			});
+			writeFileSync(join(root, 'apps/stream/.env'), 'STREAM_KEEPR_INTEGRATION="true"\n');
+			const artifact = join(root, 'artifact');
+
+			run(['build', '--app', 'stream', '--artifact', artifact], root);
+
+			expect(JSON.parse(readFileSync(join(artifact, 'keepr-build.json'), 'utf8'))).toMatchObject({
+				testFlags: ['STREAM_KEEPR_INTEGRATION'],
+			});
 		});
 
 		it('fails when the build left no Worker configuration to deploy', () => {
@@ -387,7 +490,12 @@ describe('the keepr-deploy command line', () => {
 				},
 			).trim();
 
-		function releaseAheadOfAccounts({ databases = [] as { binding: string }[] } = {}) {
+		function releaseAheadOfAccounts({
+			databases = [] as { binding: string }[],
+			tag = true,
+			url = 'https://stream.keepr.digital',
+			wrangler = false,
+		} = {}) {
 			const root = mkdtempSync(join(tmpdir(), 'keepr-cli-order-'));
 			roots.push(root);
 			const [origin, checkout, artifact, bin] = ['origin', 'checkout', 'artifact', 'bin'].map(
@@ -426,21 +534,31 @@ describe('the keepr-deploy command line', () => {
 					output: '.output',
 					worker: { source: 'wrangler.jsonc', config: '.output/server/wrangler.json' },
 					databases,
-					environments: { production: { url: 'https://stream.keepr.digital' } },
+					environments: { production: { url } },
 					parts: {},
 				}),
 				'apps/stream/wrangler.jsonc': '{}',
-				'.gitignore': '.output/\n',
+				'.gitignore': '.output/\nnode_modules/\n',
 			});
 			git(checkout, 'add', '.');
 			git(checkout, 'commit', '-q', '-m', 'feat(accounts): what stream needs');
+			if (tag) git(checkout, 'tag', '@keepr/stream@1.9.0');
 			git(checkout, 'push', '-q', 'origin', 'main', 'accounts/production');
+			const head = git(checkout, 'rev-parse', 'HEAD');
 			write(artifact, {
 				'server/wrangler.json': JSON.stringify({
 					name: 'stream-keepr',
 					services: [{ binding: 'KEEPR_ACCOUNTS', service: 'keepr-accounts' }],
 				}),
+				'keepr-build.json': JSON.stringify({ commit: head, testFlags: [] }),
 			});
+			// The Release's Wrangler, which every Cloudflare step runs: it succeeds
+			// and changes nothing, and answers a bookmark and no secrets.
+			if (wrangler)
+				write(checkout, {
+					'apps/stream/node_modules/.bin/wrangler': `#!${process.execPath}\nif (process.argv.includes('time-travel')) console.log(JSON.stringify({ bookmark: 'bookmark-1' }));\nelse if (process.argv.includes('secret')) console.log('[]');\n`,
+				});
+			if (wrangler) chmodSync(join(checkout, 'apps/stream/node_modules/.bin/wrangler'), 0o755);
 			mkdirSync(bin);
 			symlinkSync(
 				execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim(),
@@ -450,7 +568,7 @@ describe('the keepr-deploy command line', () => {
 			writeGitHubState(github, emptyGitHub([git(checkout, 'rev-parse', 'HEAD')]));
 			writeFileSync(join(bin, 'gh'), fakeGhScript(github));
 			chmodSync(join(bin, 'gh'), 0o755);
-			const deploy = (...extra: string[]) =>
+			const deploy = (extra: string[] = [], env: Record<string, string> = {}) =>
 				spawnSync(
 					process.execPath,
 					[
@@ -470,21 +588,48 @@ describe('the keepr-deploy command line', () => {
 							...gitEnv,
 							PATH: bin,
 							CLOUDFLARE_API_TOKEN: 'blocked-by-test-guard',
+							...env,
 						},
 						encoding: 'utf8',
 					},
 				);
+			/** The same deploy, leaving this process free to answer it. */
+			const deployAsync = (extra: string[] = [], env: Record<string, string> = {}) =>
+				new Promise<{ status: number | null; output: string }>((resolve) => {
+					const child = spawn(
+						process.execPath,
+						[
+							CLI,
+							'deploy',
+							'--app',
+							'stream',
+							'--env',
+							'production',
+							'--artifact',
+							artifact,
+							...extra,
+						],
+						{
+							cwd: checkout,
+							env: { ...gitEnv, PATH: bin, CLOUDFLARE_API_TOKEN: 'blocked-by-test-guard', ...env },
+						},
+					);
+					let output = '';
+					child.stdout.on('data', (chunk) => (output += chunk));
+					child.stderr.on('data', (chunk) => (output += chunk));
+					child.on('close', (status) => resolve({ status, output }));
+				});
 			const marker = (name: string) => {
 				const [latest] = fakeGitHub(readGitHubState(github)).history(name);
 				return latest && { ...(latest.payload as object), statuses: latest.statuses };
 			};
-			return { deploy, marker };
+			return { deploy, deployAsync, marker, artifact, checkout };
 		}
 
 		it('runs the check with --override, and the marker records what it answered', () => {
 			const { deploy, marker } = releaseAheadOfAccounts();
 
-			deploy('--override', 'Keepr Accounts is down; #1300');
+			deploy(['--override', 'Keepr Accounts is down; #1300']);
 
 			expect(marker('stream/production')).toMatchObject({
 				statuses: ['in_progress'],
@@ -497,11 +642,90 @@ describe('the keepr-deploy command line', () => {
 		it('refuses without a D1 recovery point, after deploy order and before any marker moves', () => {
 			const { deploy, marker } = releaseAheadOfAccounts({ databases: [{ binding: 'DB' }] });
 
-			const result = deploy('--override', 'Keepr Accounts is down; #1300');
+			const result = deploy(['--override', 'Keepr Accounts is down; #1300']);
 
 			expect(result.status).toBe(1);
 			expect(result.stdout).toContain("no D1 recovery point for stream's DB in production");
 			expect(marker('stream/production')).toBeUndefined();
+		});
+
+		it('refuses a production deploy whose HEAD is no Release without --unreleased, and records the reason given', () => {
+			const { deploy, marker } = releaseAheadOfAccounts({ tag: false });
+			const override = ['--override', 'Keepr Accounts is down; #1300'];
+
+			const refused = deploy(override);
+
+			expect(refused.status).toBe(1);
+			expect(refused.stdout).toContain('HEAD is not @keepr/stream@1.9.0');
+			expect(marker('stream/production')).toBeUndefined();
+
+			deploy([...override, '--unreleased', 'hotfix ahead of its Release; #1301']);
+
+			expect(marker('stream/production')).toMatchObject({
+				unreleased: 'hotfix ahead of its Release; #1301',
+			});
+		});
+
+		it("refuses an artifact built from another commit than the Release's, before any marker moves", () => {
+			const { deploy, marker, artifact } = releaseAheadOfAccounts();
+			writeFileSync(
+				join(artifact, 'keepr-build.json'),
+				JSON.stringify({ commit: 'f'.repeat(40), testFlags: [] }),
+			);
+
+			const result = deploy(['--override', 'Keepr Accounts is down; #1300']);
+
+			expect(result.status).toBe(1);
+			expect(result.stdout).toContain(`built from ${'f'.repeat(40)}`);
+			expect(marker('stream/production')).toBeUndefined();
+		});
+
+		// KEEPR_DEPLOY_URL is `verify`'s alone: a deploy that read it would verify another Installation than it deployed.
+		it("verifies the Environment's URL whatever KEEPR_DEPLOY_URL says, and records the recovery point read before the migration", async () => {
+			/** A local origin answering `/api/release` with what `body` names when asked. */
+			const serve = (body: () => unknown) =>
+				new Promise<{ url: string; close: () => void }>((resolve) => {
+					const server = createServer((_request, response) => {
+						response.writeHead(200, { 'content-type': 'application/json' });
+						response.end(JSON.stringify(body()));
+					});
+					server.listen(0, '127.0.0.1', () => {
+						const { port } = server.address() as AddressInfo;
+						resolve({ url: `http://127.0.0.1:${port}`, close: () => server.close() });
+					});
+				});
+			let deployed = '';
+			const elsewhere = await serve(() => ({
+				app: 'stream',
+				version: '0.0.1',
+				commit: 'f'.repeat(40),
+			}));
+			const installation = await serve(() => ({
+				app: 'stream',
+				version: '1.9.0',
+				commit: deployed,
+			}));
+			try {
+				const { deployAsync, marker, checkout } = releaseAheadOfAccounts({
+					url: installation.url,
+					wrangler: true,
+					databases: [{ binding: 'DB' }],
+				});
+				deployed = git(checkout, 'rev-parse', 'HEAD');
+
+				const result = await deployAsync(['--override', 'Keepr Accounts is down; #1300'], {
+					KEEPR_DEPLOY_URL: elsewhere.url,
+				});
+
+				expect(result.status, result.output).toBe(0);
+				expect(marker('stream/production')).toMatchObject({
+					statuses: ['in_progress', 'success'],
+					recovery: 'DB=bookmark-1',
+				});
+			} finally {
+				elsewhere.close();
+				installation.close();
+			}
 		});
 	});
 });

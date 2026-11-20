@@ -1,6 +1,6 @@
 # ADR-0082: A push is checked in proportion to its change, and every heavy gate draws on one budget for the machine
 
-Accepted · 2026-11-12 · Amended by ADR-0147: CI skips a gate when the change affects no workspace project it checks, so it is no longer the full gate on every change · Amended by ADR-0148: from the root, `verify:quick` runs the quick gates of each project the change affects, and an app's re-run triggers match only the app and the packages it consumes
+Accepted · 2026-11-12 · Amended by ADR-0147: CI skips a gate when the change affects no workspace project it checks, so it is no longer the full gate on every change · Amended by ADR-0148: from the root, `verify:quick` runs the quick gates of each project the change affects, and an app's re-run triggers match only the app and the packages it consumes · Amended by ADR-0154: a holder keeps its slots while its process lives, and a waiter silent for a minute leaves the line
 
 ### Decision
 

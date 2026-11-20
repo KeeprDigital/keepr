@@ -355,12 +355,17 @@ describe('which revisions the change is measured between', () => {
  * like CI's (`fetch-depth: 2` of the event's revision), copied for each case
  * because the command fetches into it. Nothing remote.
  */
+const MOVED = 'apps/stream/server/time.ts';
+const MOVED_CONTENT = 'export const now = () => Date.now();\n'.repeat(20);
+
 describe("the scope job's command line", () => {
 	/** The two squashed PRs each merge group queues above main, by the file each changes. */
 	const QUEUED = {
 		codeThenDocs: ['apps/stream/server/api/time.get.ts', 'docs/second.md'],
 		docsOnly: ['docs/first.md', 'docs/second.md'],
 		testsOnly: ['apps/stream/test/time.test.ts', 'docs/second.md'],
+		// The first PR moves Stream Keepr's file into Score Keepr unchanged.
+		moved: [{ [MOVED]: null, 'apps/score/server/time.ts': MOVED_CONTENT }, 'docs/second.md'],
 	} as const;
 
 	let workspace: string;
@@ -375,11 +380,12 @@ describe("the scope job's command line", () => {
 
 	/**
 	 * A `git fast-import` commit adding `files` to `branch`, which forks from
-	 * `from` when new; each holds `message` unless given its content.
+	 * `from` when new; each holds `message` unless given its content, and a
+	 * file whose content is `null` is deleted.
 	 */
 	function commit(
 		branch: string,
-		files: string | Record<string, string>,
+		files: string | Readonly<Record<string, string | null>>,
 		message: string,
 		from?: string,
 	) {
@@ -391,12 +397,11 @@ describe("the scope job's command line", () => {
 			message,
 			'END',
 			...(from ? [`from refs/heads/${from}`] : []),
-			...Object.entries(contents).flatMap(([file, content]) => [
-				`M 100644 inline ${file}`,
-				'data <<END',
-				content,
-				'END',
-			]),
+			...Object.entries(contents).flatMap(([file, content]) =>
+				content === null
+					? [`D ${file}`]
+					: [`M 100644 inline ${file}`, 'data <<END', content, 'END'],
+			),
 			'',
 		].join('\n');
 	}
@@ -431,6 +436,8 @@ describe("the scope job's command line", () => {
 						'apps/stream/worker.jsonc': JSON.stringify({
 							services: [{ binding: 'KEEPR_ACCOUNTS', service: 'keepr-accounts' }],
 						}),
+						[MOVED]: MOVED_CONTENT,
+						'apps/score/package.json': JSON.stringify({ name: '@keepr/score' }),
 					},
 					'chore: the base',
 				),
@@ -441,14 +448,15 @@ describe("the scope job's command line", () => {
 				]),
 			].join('\n'),
 		});
-		const [base, codeThenDocs, docsOnly, testsOnly] = git(
+		const [base, codeThenDocs, docsOnly, testsOnly, moved] = git(
 			origin,
 			'rev-parse',
 			'main',
 			'queue/codeThenDocs',
 			'queue/docsOnly',
 			'queue/testsOnly',
-		).split('\n') as [string, string, string, string];
+			'queue/moved',
+		).split('\n') as [string, string, string, string, string];
 		groups = {
 			codeThenDocs: {
 				base,
@@ -464,6 +472,11 @@ describe("the scope job's command line", () => {
 				base,
 				head: testsOnly,
 				pristine: shallowCheckout(origin, testsOnly, join(workspace, 'testsOnly')),
+			},
+			moved: {
+				base,
+				head: moved,
+				pristine: shallowCheckout(origin, moved, join(workspace, 'moved')),
 			},
 		};
 	});
@@ -554,6 +567,18 @@ describe("the scope job's command line", () => {
 		);
 	});
 
+	it('a file moved between projects runs the gates of the project it left as well as the one it joined', () => {
+		const { checkout, base, head } = mergeGroup('moved');
+
+		expect(
+			scope(checkout, 'merge_group', {
+				merge_group: { base_sha: base, head_sha: head },
+			}).output,
+		).toBe(
+			'code=true\ndocs=false\ngates=["stream-typecheck","stream-unit","stream-nuxt","stream-integration","stream-browser","score"]\napps=[{"app":"stream","accounts":true}]\n',
+		);
+	});
+
 	it('a merge group of docs-only PRs skips the code gates and checks the docs', () => {
 		const { checkout, base, head } = mergeGroup('docsOnly');
 
@@ -564,7 +589,7 @@ describe("the scope job's command line", () => {
 		).toBe('code=false\ndocs=true\ngates=[]\napps=[]\n');
 	});
 
-	// The checkout holds Stream Keepr alone, so no change affects what the other gates check.
+	// The checkout holds Stream Keepr and Score Keepr, so no change affects what the other gates check.
 	// GitHub holds a PR run of the group's tree; ci-reuse.mjs decides whether it verifies the group.
 	it.each<[string, keyof typeof QUEUED, string[]]>([
 		[
