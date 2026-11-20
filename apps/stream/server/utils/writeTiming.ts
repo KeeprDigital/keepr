@@ -18,6 +18,9 @@ import { safeErrorLogPath } from '@keepr/nuxt-layer/server/utils/errorLogPath';
  * the clock moves only across I/O, which every timed step is, so each reads true
  * there; time spent computing shows only in the whole, and in the invocation's
  * own CPU time beside it in the log.
+ *
+ * A write that fails with a server error has the line too, whether or not it
+ * reached its object, naming the step whose call failed last (#1376).
  */
 
 /** The steps of a write the line times. */
@@ -50,7 +53,9 @@ export interface WriteTiming {
 	time: <T>(step: WriteStep, work: () => Promise<T>) => Promise<T>;
 	/** Records how the request's Identity Proof was had. */
 	identityProof: (source: IdentityProofSource) => void;
-	/** The log line, or `null` for a write that never called its Event's object. */
+	/** The step whose call failed last and has not since succeeded, or `null`. */
+	failedStep: () => WriteStep | null;
+	/** The log line, or `null` for a write that neither called its Event's object nor failed with a server error. */
 	fields: (request: TimedRequest) => ReturnType<typeof writeTimingFields> | null;
 }
 
@@ -59,6 +64,7 @@ function writeTimingFields(
 	totalMs: number,
 	steps: Record<WriteStep, StepTally>,
 	identityProof: IdentityProofSource | null,
+	failedStep: WriteStep | null,
 	isolateRequest: number,
 ) {
 	return {
@@ -74,6 +80,7 @@ function writeTimingFields(
 		publishMs: steps.publish.ms,
 		publishCalls: steps.publish.calls,
 		publishFailures: steps.publish.failures,
+		failedStep,
 		isolateRequest,
 	};
 }
@@ -93,15 +100,20 @@ export function createWriteTiming(
 		publish: { ms: 0, calls: 0, failures: 0 },
 	};
 	let identityProof: IdentityProofSource | null = null;
+	let failedStep: WriteStep | null = null;
 
 	return {
 		async time(step, work) {
 			const began = clock();
 			const tally = steps[step];
 			try {
-				return await work();
+				const result = await work();
+				// A call made once more that succeeds leaves its step standing.
+				if (failedStep === step) failedStep = null;
+				return result;
 			} catch (failure) {
 				tally.failures += 1;
+				failedStep = step;
 				throw failure;
 			} finally {
 				tally.ms += clock() - began;
@@ -111,9 +123,17 @@ export function createWriteTiming(
 		identityProof(source) {
 			identityProof = source;
 		},
+		failedStep: () => failedStep,
 		fields(request) {
-			if (steps.publish.calls === 0) return null;
-			return writeTimingFields(request, clock() - startedAt, steps, identityProof, isolateRequest);
+			if (steps.publish.calls === 0 && request.statusCode < 500) return null;
+			return writeTimingFields(
+				request,
+				clock() - startedAt,
+				steps,
+				identityProof,
+				failedStep,
+				isolateRequest,
+			);
 		},
 	};
 }
@@ -133,13 +153,19 @@ export function beginWriteTiming(event: H3Event, clock: () => number = Date.now)
 	event.context[WRITE_TIMING_CONTEXT_KEY] = createWriteTiming(isolateRequests, clock);
 }
 
-/** Logs the write's line once its response is sent, if it called its Event's object. */
-export function logWriteTiming(event: H3Event): void {
-	const fields = writeTimingOf(event)?.fields({
-		method: event.method,
-		path: event.path,
-		statusCode: event.node.res.statusCode,
-	});
+/**
+ * Logs the write's line, once: as its response is sent, or as it fails with
+ * `statusCode`, for a failure is answered by Nitro's error handler, which runs
+ * no `afterResponse` hook (`server/plugins/error-handler.ts`).
+ */
+export function logWriteTiming(
+	event: H3Event,
+	statusCode: number = event.node.res.statusCode,
+): void {
+	const timing = writeTimingOf(event);
+	if (!timing) return;
+	event.context[WRITE_TIMING_CONTEXT_KEY] = undefined;
+	const fields = timing.fields({ method: event.method, path: event.path, statusCode });
 	// Workers Logs indexes the object's fields.
 	if (fields) console.log(fields);
 }

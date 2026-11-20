@@ -1,8 +1,8 @@
-type Handler = (payload: never) => unknown;
+type Handler = (...payload: never[]) => unknown;
 
 /**
  * The hooks of a Nitro app, enough to install a server plugin and fire its hooks:
- * `callHook` awaits each handler in turn, as Nitro's does.
+ * `callHook` awaits each handler in turn with every argument, as Nitro's does.
  */
 export function createFakeNitroApp() {
 	const handlers = new Map<string, Handler[]>();
@@ -11,8 +11,8 @@ export function createFakeNitroApp() {
 			hook: (name: string, handler: Handler) => {
 				handlers.set(name, [...(handlers.get(name) ?? []), handler]);
 			},
-			callHook: async (name: string, payload?: unknown) => {
-				for (const handler of handlers.get(name) ?? []) await handler(payload as never);
+			callHook: async (name: string, ...payload: unknown[]) => {
+				for (const handler of handlers.get(name) ?? []) await handler(...(payload as never[]));
 			},
 		},
 	};
