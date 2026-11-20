@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.1.0
+
+### Features
+
+- **accounts:** The Evidence Ledger, the Operations Cockpit and a queue inspection show a User other than the reader by name again (ADR-0145). Stream Keepr asks Keepr Accounts what to call them as the page is read, with the reader's own Session, and is told the names of Users who share an Organisation with the reader: no other User's email is shown. Anyone Keepr Accounts does not name still shows as the id recorded: an id from before Stream Keepr relied on Keepr Accounts, a User outside the reader's Organisations, and a User with a blank name. While Keepr Accounts cannot be asked, or is a Release without the route, every page still reads, with ids. A name is kept for at most five minutes. There is no step beyond Deploy, and nothing to set. (#1357)
+
+### Fixes
+
+- **stream:** Deleting an Event now disconnects every realtime socket of its Event at once, its Screen Outputs' and its operators' pages', after the pages are told of the delete. Before, they stayed connected to an Event that no longer existed until each dropped, and a Screen Output still present kept the Event's realtime object waking about every 15 s. (#1370)
+- **stream:** A browser that was signed in to Stream Keepr before it relied on Keepr Accounts can sign in again. Stream Keepr's former sign-in cookie has the same name as Keepr Accounts' session cookie, and a browser still holding it sent both: Keepr Accounts read the old one, answered that nobody was signed in, and the browser was sent to sign in again without end. Stream Keepr now takes the old cookie out of such a request and expires it in the browser. Until this Release is live, clearing the site data for the Stream Keepr host gets a browser in. (#1358)
+
+### Other changes
+
+- **stream:** The Worker's log says where a write's time went on its way to its Event's realtime object (#1363). Each write that calls the object logs one `realtime_write_timed` line: the whole write, how long it spent learning who it belongs to and whether Keepr Accounts had to be asked for an Identity Proof while it waited, its time and queries in D1, its calls to the object and any that failed, and how many requests the Worker's isolate had served, a first being a cold start. There is no step beyond Deploy. (#1372)
+
 ## 4.0.0
 
 ### Operator steps

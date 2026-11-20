@@ -1,5 +1,19 @@
 # @keepr/accounts
 
+## 0.2.0
+
+### Features
+
+- **accounts:** Keepr Accounts tells an App what to call a User, at `GET /api/users/names?id=…` (ADR-0145). It answers the Session whose cookie the request carries, never an App for itself, with the name of each User asked about who shares an Organisation with that Session's User, and nothing else of them: no email, role or Organisation. An id no User has, a User in none of the asker's Organisations and a User with a blank name are left out alike. A Keepr Administrator is answered as anyone is. A request with no Session is refused 401, and one about more than 50 Users 400. There is no step beyond Deploy. (#1357)
+
+### Fixes
+
+- **accounts:** A User always has a name. Keepr Accounts refuses a blank one, empty once trimmed or not text, 400 `NAME_REQUIRED` on every path that sets a name: accepting an Invitation, claiming the first Keepr Administrator, and a change on the profile, where Better Auth's `/update-user` saved one until now. The profile says "Enter your name." beside the name, and a name is kept trimmed. No stored name is rewritten. (#1355)
+
+### Other changes
+
+- **stream:** The shared layer's identity resolver says, with each signed-in answer, whether its Identity Proof was held, held and being refreshed, or asked of Keepr Accounts while the request waited, for an App's log to name (#1363). Nothing Keepr Accounts does changes. There is no step beyond Deploy. (#1372)
+
 ## 0.1.0
 
 ### Features
