@@ -15,11 +15,14 @@ import {
 	KEEPR_ACCOUNTS_SERVICE,
 	PUBLIC_KEYS_PATH,
 } from '../../shared/utils/identityProof';
+import type { SharedIdentityRecords, SharedStore } from './sharedIdentityStore';
 import { ServiceConfigurationError, TemporarilyUnavailableError } from './errors';
+import { sharedIdentityRecords, workersCacheStore } from './sharedIdentityStore';
 
 /**
  * Who a request belongs to, asked of Keepr Accounts over the Worker-to-Worker
- * connection and checked here against its published keys (ADR-0112, ADR-0113).
+ * connection and checked here against its published keys (ADR-0112, ADR-0113),
+ * and shared across the Worker's isolates (ADR-0150).
  * An App calls `resolveRequestIdentity` from its own routes and middleware; the
  * layer registers neither.
  */
@@ -30,12 +33,13 @@ export interface AccountsConnection {
 }
 
 /**
- * How a signed-in answer's Identity Proof was had: one the resolver held
- * (`cached`), one it held and began refreshing in the background with this
- * answer (`refreshing`), or a fresh one Keepr Accounts was asked for while the
- * request waited (`asked`). Only `asked` costs the request a call to Keepr
- * Accounts, and a resolver's first also fetches its keys. An App's log names it
- * where a request's time matters (#1363).
+ * How a signed-in answer's Identity Proof was had: one the resolver held, or
+ * found shared by another isolate of its Worker (`cached`), one it held and
+ * began refreshing in the background with this answer (`refreshing`), or a
+ * fresh one Keepr Accounts was asked for while the request waited (`asked`).
+ * Only `asked` costs the request a call to Keepr Accounts, and a resolver's
+ * first also fetches its keys unless another isolate shared them. An App's log
+ * names it where a request's time matters (#1363).
  */
 export type IdentityProofSource = 'cached' | 'refreshing' | 'asked';
 
@@ -47,6 +51,8 @@ export type IdentityAnswer<App extends AppId> =
 	| { kind: 'unavailable'; reason: string; setCookie: string[] };
 
 interface CachedProof<App extends AppId> {
+	/** The Identity Proof as Keepr Accounts signed it: what the shared store is given. */
+	token: string;
 	identity: Identity<App>;
 	expiresAt: number;
 	refreshAfter: number;
@@ -57,41 +63,123 @@ interface CachedProof<App extends AppId> {
 
 type Verified<App extends AppId> =
 	| { kind: 'signed-in'; identity: Identity<App>; expiresAt: number; refreshAfter: number }
-	| { kind: 'refused'; reason: string };
+	| { kind: 'refused'; code: unknown; reason: string };
+
+type Defer = (promise: Promise<unknown>) => void;
 
 /** What the local dev registry answers for a service with nothing registered under its name. */
 const NOTHING_REGISTERED = /Worker ".*" not found/;
+
+/**
+ * How long a fresh isolate trusts Keepr Accounts' keys as another isolate
+ * fetched them. A key it does not hold is fetched again whatever this is.
+ */
+const SHARED_KEYS_SECONDS = 60 * 60;
+
+/** How long a request waits on the shared store before it does without it. */
+const SHARED_STORE_TIMEOUT_MS = 100;
 
 /**
  * A resolver for one App, holding the Identity Proofs and keys it has verified.
  * A cached Identity Proof answers until it expires, is refreshed in the
  * background once half its life has passed, and keeps answering while Keepr
  * Accounts is unreachable. Past expiry, only a fresh answer does.
+ *
+ * What it verifies it also shares with its Worker's other isolates through
+ * `sharedStore` (ADR-0150): the signed token, which each verifies again before
+ * answering from it, and Keepr Accounts' keys. Its own `Map` stays in front,
+ * and the store is read only when that holds nothing live. A store that fails
+ * or is slow is done without: the resolver then works as if it had none.
  */
 export function createIdentityResolver<App extends AppId>(
 	app: App,
-	{ cacheSize = 1000 }: { cacheSize?: number } = {},
+	{
+		cacheSize = 1000,
+		sharedStore = workersCacheStore(),
+		sharedTimeoutMs = SHARED_STORE_TIMEOUT_MS,
+	}: { cacheSize?: number; sharedStore?: SharedStore | undefined; sharedTimeoutMs?: number } = {},
 ) {
 	const proofs = new Map<string, CachedProof<App>>();
+	const shared = sharedStore && sharedIdentityRecords(sharedStore, app);
 	let keys: ReturnType<typeof createLocalJWKSet> | undefined;
 
-	async function publicKeys(accounts: AccountsConnection, refetch: boolean) {
-		if (!keys || refetch) {
-			const response = await accounts.fetch(`${KEEPR_ACCOUNTS_ORIGIN}${PUBLIC_KEYS_PATH}`);
-			if (!response.ok) throw new Error(`its keys answered ${response.status}`);
-			keys = createLocalJWKSet((await response.json()) as JSONWebKeySet);
+	function storeFailed(operation: string, error: unknown) {
+		console.warn(
+			JSON.stringify({
+				message: 'identity_store_failed',
+				operation,
+				reason: (error as Error)?.message ?? String(error),
+			}),
+		);
+	}
+
+	/** One call to the shared store: its answer, or `undefined` once it fails or is not answered in time. */
+	async function withShared<T>(
+		operation: string,
+		call: (records: SharedIdentityRecords) => Promise<T>,
+	): Promise<T | undefined> {
+		if (!shared) return undefined;
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const calling = call(shared).catch((error: unknown) => {
+			storeFailed(operation, error);
+			return undefined;
+		});
+		const late = new Promise<undefined>((resolve) => {
+			timer = setTimeout(resolve, sharedTimeoutMs, undefined);
+		});
+		try {
+			return await Promise.race([calling, late]);
+		} finally {
+			clearTimeout(timer);
 		}
+	}
+
+	/** A write to the shared store, kept alive past the response, that fails nothing it serves. */
+	function toShared(
+		operation: string,
+		write: (records: SharedIdentityRecords) => Promise<void>,
+		defer: Defer,
+	): Promise<void> {
+		const writing = withShared(operation, write).then(() => undefined);
+		defer(writing);
+		return writing;
+	}
+
+	function keySet(published: unknown) {
+		try {
+			return createLocalJWKSet(published as JSONWebKeySet);
+		} catch {
+			return undefined;
+		}
+	}
+
+	async function publicKeys(accounts: AccountsConnection, refetch: boolean, defer: Defer) {
+		if (keys && !refetch) return keys;
+		if (!refetch) {
+			const sharedKeys = keySet(await withShared('read keys', (records) => records.readKeys()));
+			if (sharedKeys) return (keys = sharedKeys);
+		}
+		const response = await accounts.fetch(`${KEEPR_ACCOUNTS_ORIGIN}${PUBLIC_KEYS_PATH}`);
+		if (!response.ok) throw new Error(`its keys answered ${response.status}`);
+		const published = (await response.json()) as JSONWebKeySet;
+		keys = createLocalJWKSet(published);
+		void toShared(
+			'write keys',
+			(records) => records.writeKeys(published, SHARED_KEYS_SECONDS),
+			defer,
+		);
 		return keys;
 	}
 
 	async function verify(
 		accounts: AccountsConnection,
 		token: string,
+		defer: Defer,
 		refetched = false,
 	): Promise<Verified<App>> {
 		let payload: JWTPayload;
 		try {
-			({ payload } = await jwtVerify(token, await publicKeys(accounts, refetched), {
+			({ payload } = await jwtVerify(token, await publicKeys(accounts, refetched, defer), {
 				issuer: KEEPR_ACCOUNTS_ORIGIN,
 				audience: IDENTITY_PROOF_AUDIENCE,
 				algorithms: [IDENTITY_PROOF_ALGORITHM],
@@ -101,9 +189,11 @@ export function createIdentityResolver<App extends AppId>(
 			const code = (error as { code?: unknown }).code;
 			// An unknown key may be a new one: Keepr Accounts rotated, or the
 			// Accounts Stand-in restarted. Its keys are fetched again, once.
-			if (code === 'ERR_JWKS_NO_MATCHING_KEY' && !refetched) return verify(accounts, token, true);
+			if (code === 'ERR_JWKS_NO_MATCHING_KEY' && !refetched)
+				return verify(accounts, token, defer, true);
 			return {
 				kind: 'refused',
+				code,
 				reason: `its Identity Proof could not be verified (${typeof code === 'string' ? `${code}: ` : ''}${(error as Error).message})`,
 			};
 		}
@@ -121,6 +211,7 @@ export function createIdentityResolver<App extends AppId>(
 	async function ask(
 		accounts: AccountsConnection,
 		cookie: string,
+		defer: Defer,
 	): Promise<{ answer: IdentityAnswer<App>; cached?: CachedProof<App> }> {
 		const unavailable = (reason: string, setCookie: string[] = []) => ({
 			answer: { kind: 'unavailable' as const, reason, setCookie },
@@ -154,7 +245,7 @@ export function createIdentityResolver<App extends AppId>(
 			return unavailable('it answered something other than an Identity Proof', setCookie);
 		let verified: Verified<App>;
 		try {
-			verified = await verify(accounts, token);
+			verified = await verify(accounts, token, defer);
 		} catch (error) {
 			return unavailable(`its keys could not be read (${(error as Error).message})`, setCookie);
 		}
@@ -162,6 +253,7 @@ export function createIdentityResolver<App extends AppId>(
 		return {
 			answer: { kind: 'signed-in', identity: verified.identity, setCookie, proof: 'asked' },
 			cached: {
+				token,
 				identity: verified.identity,
 				expiresAt: verified.expiresAt,
 				refreshAfter: verified.refreshAfter,
@@ -169,6 +261,53 @@ export function createIdentityResolver<App extends AppId>(
 				renewedCookies: [],
 			},
 		};
+	}
+
+	/**
+	 * The Identity Proof another isolate shared for `cookie`, verified here as if
+	 * Keepr Accounts had just answered it, or `undefined`. One that does not
+	 * verify, an expired one included, answers nobody, and the next ask
+	 * replaces it.
+	 */
+	async function fromOtherIsolates(
+		accounts: AccountsConnection,
+		cookie: string,
+		defer: Defer,
+	): Promise<CachedProof<App> | undefined> {
+		const record = await withShared('read proof', (records) => records.readProof(cookie));
+		if (!record) return undefined;
+		let verified: Verified<App>;
+		try {
+			verified = await verify(accounts, record.token, defer);
+		} catch {
+			return undefined;
+		}
+		if (verified.kind === 'refused') {
+			if (verified.code !== 'ERR_JWT_EXPIRED')
+				console.warn(
+					JSON.stringify({ message: 'identity_store_refused', reason: verified.reason }),
+				);
+			return undefined;
+		}
+		return {
+			token: record.token,
+			identity: verified.identity,
+			expiresAt: verified.expiresAt,
+			refreshAfter: verified.refreshAfter,
+			refreshing: false,
+			renewedCookies: record.renewedCookies,
+		};
+	}
+
+	/** Shares `proof` for as long as it lasts, with the renewed cookies no browser has been sent. */
+	function share(cookie: string, proof: CachedProof<App>, renewedCookies: string[], defer: Defer) {
+		const ttlSeconds = Math.floor((proof.expiresAt - Date.now()) / 1000);
+		if (ttlSeconds <= 0) return Promise.resolve();
+		return toShared(
+			'write proof',
+			(records) => records.writeProof(cookie, { token: proof.token, renewedCookies }, ttlSeconds),
+			defer,
+		);
 	}
 
 	function remember(cookie: string, proof: CachedProof<App>) {
@@ -180,17 +319,74 @@ export function createIdentityResolver<App extends AppId>(
 		}
 	}
 
-	async function refresh(accounts: AccountsConnection, cookie: string, proof: CachedProof<App>) {
-		const { answer, cached } = await ask(accounts, cookie);
-		if (cached) remember(cookie, { ...cached, renewedCookies: answer.setCookie });
-		else if (answer.kind === 'signed-out') proofs.delete(cookie);
+	async function refresh(
+		accounts: AccountsConnection,
+		cookie: string,
+		proof: CachedProof<App>,
+		defer: Defer,
+		{ sharedFirst }: { sharedFirst: boolean },
+	) {
+		// Another isolate may already have refreshed it: then that answers here too.
+		if (sharedFirst) {
+			const refreshed = await fromOtherIsolates(accounts, cookie, defer);
+			if (refreshed && Date.now() < refreshed.refreshAfter) {
+				remember(cookie, refreshed);
+				return;
+			}
+		}
+		const { answer, cached } = await ask(accounts, cookie, defer);
+		if (cached) {
+			remember(cookie, { ...cached, renewedCookies: answer.setCookie });
+			await share(cookie, cached, answer.setCookie, defer);
+		} else if (answer.kind === 'signed-out') {
+			proofs.delete(cookie);
+			await toShared('remove proof', (records) => records.removeProof(cookie), defer);
+		}
 		// Unreachable: the cached proof keeps answering until it expires.
 		else proof.refreshing = false;
 	}
 
 	/**
+	 * The cookies a refresh renewed, once. They are shared with the proof, so
+	 * whichever isolate answers the browser next passes them on; the shared
+	 * record then drops them, and another isolate holding them sends none. With
+	 * no shared record to ask, they are sent: twice is harmless, never is not.
+	 */
+	async function renewedCookiesOf(cookie: string, proof: CachedProof<App>, defer: Defer) {
+		const renewed = proof.renewedCookies;
+		if (renewed.length === 0) return [];
+		proof.renewedCookies = [];
+		const record = await withShared('read proof', (records) => records.readProof(cookie));
+		if (record?.token !== proof.token) return renewed;
+		if (record.renewedCookies.length === 0) return [];
+		void share(cookie, proof, [], defer);
+		return renewed;
+	}
+
+	async function answerFrom(
+		accounts: AccountsConnection,
+		cookie: string,
+		proof: CachedProof<App>,
+		defer: Defer,
+		{ sharedFirst }: { sharedFirst: boolean },
+	): Promise<IdentityAnswer<App>> {
+		const refreshes = Date.now() >= proof.refreshAfter && !proof.refreshing;
+		if (refreshes) {
+			proof.refreshing = true;
+			defer(refresh(accounts, cookie, proof, defer, { sharedFirst }));
+		}
+		return {
+			kind: 'signed-in',
+			identity: proof.identity,
+			setCookie: await renewedCookiesOf(cookie, proof, defer),
+			proof: refreshes ? 'refreshing' : 'cached',
+		};
+	}
+
+	/**
 	 * Who the request carrying `cookie` belongs to. `waitUntil` keeps a background
-	 * refresh alive past the response, as a Worker's `ctx.waitUntil` does.
+	 * refresh, and a write to the shared store, alive past the response, as a
+	 * Worker's `ctx.waitUntil` does.
 	 */
 	return async function resolve({
 		cookie = '',
@@ -201,27 +397,24 @@ export function createIdentityResolver<App extends AppId>(
 		accounts: AccountsConnection;
 		waitUntil?: ((promise: Promise<unknown>) => void) | undefined;
 	}): Promise<IdentityAnswer<App>> {
-		const now = Date.now();
-		const proof = proofs.get(cookie);
-		if (proof && now < proof.expiresAt) {
-			const refreshes = now >= proof.refreshAfter && !proof.refreshing;
-			if (refreshes) {
-				proof.refreshing = true;
-				const refreshed = refresh(accounts, cookie, proof);
-				if (waitUntil) waitUntil(refreshed);
-			}
-			const setCookie = proof.renewedCookies;
-			proof.renewedCookies = [];
-			return {
-				kind: 'signed-in',
-				identity: proof.identity,
-				setCookie,
-				proof: refreshes ? 'refreshing' : 'cached',
-			};
-		}
+		const defer: Defer = (promise) => waitUntil?.(promise);
+		const held = proofs.get(cookie);
+		if (held && Date.now() < held.expiresAt)
+			return await answerFrom(accounts, cookie, held, defer, { sharedFirst: true });
 		proofs.delete(cookie);
-		const { answer, cached } = await ask(accounts, cookie);
-		if (cached) remember(cookie, cached);
+
+		const sharedProof = await fromOtherIsolates(accounts, cookie, defer);
+		if (sharedProof) {
+			remember(cookie, sharedProof);
+			return await answerFrom(accounts, cookie, sharedProof, defer, { sharedFirst: false });
+		}
+
+		const { answer, cached } = await ask(accounts, cookie, defer);
+		if (cached) {
+			remember(cookie, cached);
+			// This answer passes its cookies on itself, so the shared record holds none.
+			void share(cookie, cached, [], defer);
+		}
 		return answer;
 	};
 }

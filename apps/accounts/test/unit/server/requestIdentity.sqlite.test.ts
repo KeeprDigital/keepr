@@ -1,8 +1,10 @@
 import type { TestAccounts } from '~~/test/helpers/keeprAccounts';
 import type { AccountsConnection } from '@keepr/nuxt-layer/server/utils/requestIdentity';
+import type { SharedStore } from '@keepr/nuxt-layer/server/utils/sharedIdentityStore';
 import { generateKeyPair, SignJWT } from 'jose';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createIdentityResolver } from '@keepr/nuxt-layer/server/utils/requestIdentity';
+import { sharedIdentityRecords } from '@keepr/nuxt-layer/server/utils/sharedIdentityStore';
 import {
 	IDENTITY_PROOF_AUDIENCE,
 	KEEPR_ACCOUNTS_ORIGIN,
@@ -23,6 +25,7 @@ let cookie: string;
 /** Whether the connection reaches Keepr Accounts, and what it has been asked. */
 let reachable: boolean;
 let proofRequests: number;
+let keyRequests: number;
 /** An Identity Proof to answer instead of the one Keepr Accounts mints. */
 let forged: string | undefined;
 /** While set, Keepr Accounts' Identity Proof waits for it. */
@@ -36,7 +39,9 @@ const connection: AccountsConnection = {
 				status: 503,
 			});
 		const request = new Request(input, init);
-		if (new URL(request.url).pathname === '/api/auth/token') {
+		const path = new URL(request.url).pathname;
+		if (path === '/api/auth/jwks') keyRequests += 1;
+		if (path === '/api/auth/token') {
 			proofRequests += 1;
 			await held;
 			if (forged) return Response.json({ token: forged });
@@ -58,6 +63,7 @@ beforeEach(async () => {
 	cookie = await accounts.signIn('ada@keepr.digital');
 	reachable = true;
 	proofRequests = 0;
+	keyRequests = 0;
 	forged = undefined;
 	held = undefined;
 	pending = [];
@@ -70,6 +76,19 @@ afterEach(async () => {
 
 function later(ms: number) {
 	vi.setSystemTime(Date.now() + ms);
+}
+
+/** An Identity Proof for this User, signed by a key Keepr Accounts never published. */
+async function signedByAnUnpublishedKey() {
+	const { privateKey } = await generateKeyPair('EdDSA', { crv: 'Ed25519' });
+	return await new SignJWT({ sid: 's', email: 'mallory@evil.example' })
+		.setProtectedHeader({ alg: 'EdDSA', kid: 'not-a-published-key' })
+		.setSubject(userId)
+		.setIssuer('https://accounts.keepr.digital')
+		.setAudience('https://keepr.digital')
+		.setIssuedAt()
+		.setExpirationTime('5m')
+		.sign(privateKey);
 }
 
 describe('a valid Identity Proof', () => {
@@ -172,17 +191,7 @@ describe('an Identity Proof that cannot be trusted', () => {
 		],
 		[
 			'signed by a key Keepr Accounts never published',
-			async () => {
-				const { privateKey } = await generateKeyPair('EdDSA', { crv: 'Ed25519' });
-				return await new SignJWT({ sid: 's', email: 'mallory@evil.example' })
-					.setProtectedHeader({ alg: 'EdDSA', kid: 'not-a-published-key' })
-					.setSubject(userId)
-					.setIssuer('https://accounts.keepr.digital')
-					.setAudience('https://keepr.digital')
-					.setIssuedAt()
-					.setExpirationTime('5m')
-					.sign(privateKey);
-			},
+			signedByAnUnpublishedKey,
 			'ERR_JWKS_NO_MATCHING_KEY',
 		],
 	])('is refused when %s', async (_case, forge, code) => {
@@ -319,5 +328,217 @@ describe('within five minutes, a request stops resolving for', () => {
 		const answer = await resolve({ cookie, accounts: connection, waitUntil });
 
 		expect(answer.kind).toBe('signed-out');
+	});
+});
+
+/**
+ * The shared store as a Worker's isolates meet it, faked at its boundary. It
+ * keeps what it is given past the time it is told, as a cache may: the
+ * resolver's own checks are what stop an expired record answering.
+ */
+function sharedStoreFake() {
+	const entries = new Map<string, string>();
+	let state: 'up' | 'failing' | 'silent' = 'up';
+	const reach = async () => {
+		if (state === 'failing') throw new Error('the cache refused');
+		if (state === 'silent') await new Promise(() => {});
+	};
+	const store: SharedStore = {
+		async get(key) {
+			await reach();
+			return entries.get(key);
+		},
+		async put(key, value) {
+			await reach();
+			entries.set(key, value);
+		},
+		async delete(key) {
+			await reach();
+			entries.delete(key);
+		},
+	};
+	return {
+		store,
+		entries,
+		/** Each proof record's key, in the order first written. */
+		proofKeys: () => [...entries.keys()].filter((key) => key.includes('/proof/')),
+		set: (next: typeof state) => void (state = next),
+	};
+}
+
+describe("an Identity Proof shared by the Worker's isolates", () => {
+	let shared: ReturnType<typeof sharedStoreFake>;
+	/** A resolver as one isolate of the Worker holds it. */
+	const isolate = () =>
+		createIdentityResolver('stream', { sharedStore: shared.store, sharedTimeoutMs: 20 });
+	async function ask(resolve: ReturnType<typeof isolate>, as: string = cookie) {
+		const answer = await resolve({ cookie: as, accounts: connection, waitUntil });
+		await Promise.all(pending);
+		return answer;
+	}
+	async function graceCookie() {
+		const grace = await accounts.createUser('grace@keepr.digital');
+		await accounts.addMember(grace.id, 'keepr', { apps: { stream: 'member' } });
+		return await accounts.signIn('grace@keepr.digital');
+	}
+
+	beforeEach(() => {
+		shared = sharedStoreFake();
+	});
+
+	it('answers another isolate without asking Keepr Accounts', async () => {
+		await ask(isolate());
+
+		const answer = await ask(isolate());
+
+		expect(answer).toMatchObject({
+			kind: 'signed-in',
+			proof: 'cached',
+			identity: { user: { id: userId } },
+		});
+		expect(proofRequests).toBe(1);
+	});
+
+	it('once half its life has passed, is refreshed once, and the refresh serves both', async () => {
+		const first = isolate();
+		await ask(first);
+		later(3 * MINUTE_MS);
+
+		expect(await ask(isolate())).toMatchObject({ kind: 'signed-in', proof: 'refreshing' });
+		expect(await ask(first)).toMatchObject({ kind: 'signed-in', proof: 'refreshing' });
+		expect(proofRequests).toBe(2);
+		// Good for five minutes from the one refresh, in a third isolate too.
+		later(4 * MINUTE_MS);
+		reachable = false;
+		expect((await ask(first)).kind).toBe('signed-in');
+		expect((await ask(isolate())).kind).toBe('signed-in');
+	});
+
+	it('answers no isolate once it has expired', async () => {
+		const first = isolate();
+		await ask(first);
+		later(5 * MINUTE_MS + 1000);
+		reachable = false;
+
+		expect((await ask(first)).kind).toBe('unavailable');
+		expect((await ask(isolate())).kind).toBe('unavailable');
+	});
+
+	it('is removed for every isolate when a refresh hears the Session has ended', async () => {
+		const first = isolate();
+		await ask(first);
+		await accounts.send('/sign-out', { body: {}, headers: { cookie } });
+		later(3 * MINUTE_MS);
+
+		expect((await ask(first)).kind).toBe('signed-in');
+		expect((await ask(isolate())).kind).toBe('signed-out');
+		expect((await ask(first)).kind).toBe('signed-out');
+	});
+
+	it.each([
+		[
+			'signed by a key Keepr Accounts never published',
+			async () =>
+				await sharedIdentityRecords(shared.store, 'stream').writeProof(
+					cookie,
+					{ token: await signedByAnUnpublishedKey(), renewedCookies: [] },
+					300,
+				),
+		],
+		[
+			"another Session's, put under this one's key",
+			async () => {
+				await ask(isolate());
+				await ask(isolate(), await graceCookie());
+				const [own, others] = shared.proofKeys();
+				shared.entries.set(own!, shared.entries.get(others!)!);
+			},
+		],
+	])('is refused when %s, and replaced', async (_case, plant) => {
+		await plant();
+		const asked = proofRequests;
+
+		const answer = await ask(isolate());
+
+		expect(answer).toMatchObject({
+			kind: 'signed-in',
+			proof: 'asked',
+			identity: { user: { id: userId } },
+		});
+		expect(proofRequests).toBe(asked + 1);
+		reachable = false;
+		expect(await ask(isolate())).toMatchObject({
+			kind: 'signed-in',
+			proof: 'cached',
+			identity: { user: { id: userId } },
+		});
+	});
+
+	it.each([
+		['fails', 'failing'],
+		['does not answer', 'silent'],
+	] as const)(
+		'when the store %s, each isolate asks for itself and keeps its own',
+		async (_case, state) => {
+			shared.set(state);
+			const first = isolate();
+
+			expect(await ask(first)).toMatchObject({ kind: 'signed-in', proof: 'asked' });
+			expect(await ask(first)).toMatchObject({ kind: 'signed-in', proof: 'cached' });
+			expect(await ask(isolate())).toMatchObject({ kind: 'signed-in', proof: 'asked' });
+			expect(proofRequests).toBe(2);
+		},
+	);
+
+	describe('a Session a refresh renewed', () => {
+		async function renewedByOneIsolate() {
+			const first = isolate();
+			// Keepr Accounts renews a Session once it is a day old: here, at the refresh.
+			later(DAY_MS - 2 * MINUTE_MS);
+			await ask(first);
+			later(3 * MINUTE_MS);
+			expect(await ask(first)).toMatchObject({ proof: 'refreshing', setCookie: [] });
+			return first;
+		}
+		const renewal = [expect.stringMatching(/better-auth\.session_token=.*Max-Age=604800/)];
+
+		it.each([
+			['another isolate, when that answers the browser next', false],
+			['the isolate that refreshed, when that answers next', true],
+		])('reaches the browser once, through %s', async (_case, refresherFirst) => {
+			const refresher = await renewedByOneIsolate();
+			const [next, then] = refresherFirst ? [refresher, isolate()] : [isolate(), refresher];
+
+			expect((await ask(next)).setCookie).toEqual(renewal);
+			expect((await ask(then)).setCookie).toEqual([]);
+		});
+
+		it('is kept in the store sealed, and under no cookie', async () => {
+			await renewedByOneIsolate();
+			const sessionToken = decodeURIComponent(cookie.slice(cookie.indexOf('=') + 1)).split('.')[0]!;
+
+			expect(JSON.stringify([...shared.entries])).not.toContain(sessionToken);
+		});
+	});
+
+	describe("Keepr Accounts' keys", () => {
+		it('verify in a fresh isolate without being fetched again', async () => {
+			await ask(isolate());
+
+			expect((await ask(isolate(), await graceCookie())).kind).toBe('signed-in');
+			expect(keyRequests).toBe(1);
+		});
+
+		it('are fetched again for a key they do not hold', async () => {
+			await ask(isolate());
+			// Keepr Accounts starts again with a new key, as after a rotation.
+			await identityDatabase(accounts.harness.database).delete(schema.jwks);
+
+			expect(await ask(isolate(), await graceCookie())).toMatchObject({
+				kind: 'signed-in',
+				identity: { appRole: 'member' },
+			});
+			expect(keyRequests).toBe(2);
+		});
 	});
 });
