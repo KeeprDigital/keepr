@@ -1,6 +1,6 @@
 import { asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { installRealtimeObjectFake } from '~~/test/helpers/realtimeObjectFake';
@@ -341,5 +341,68 @@ describe('an Event delete', () => {
 
 		expect(cleanedCards).toEqual([]);
 		expect(realtime.published).toEqual([]);
+		expect(realtime.disconnects).toEqual([]);
+	});
+
+	// ADR-0146: everyone in the Event's object, after the announcement an
+	// operator's page leaves on.
+	it('closes every realtime socket of the Event, after announcing the delete', async () => {
+		const eventId = await stageEvent();
+		let announcedFirst: boolean | undefined;
+		const disconnecting = realtime.env.REALTIME.getByName;
+		realtime.env.REALTIME.getByName = (scope: string) => {
+			const stub = disconnecting(scope);
+			return {
+				...stub,
+				disconnectAll: async () => {
+					announcedFirst ??= announced(eventId).length > 0;
+					return await stub.disconnectAll();
+				},
+			};
+		};
+
+		try {
+			await eventWriteModule().deleteEvent({ eventId });
+		} finally {
+			realtime.env.REALTIME.getByName = disconnecting;
+		}
+
+		expect(realtime.disconnects).toEqual([{ scope: `event:${eventId}` }]);
+		expect(announcedFirst).toBe(true);
+	});
+
+	describe('when the sockets cannot be closed', () => {
+		let logged: ReturnType<typeof vi.spyOn>;
+		beforeEach(() => {
+			logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+		afterEach(() => logged.mockRestore());
+
+		it('asks once more, and says nothing when that closes them', async () => {
+			const eventId = await stageEvent();
+			realtime.refuseDisconnect(1);
+
+			await eventWriteModule().deleteEvent({ eventId });
+
+			expect(realtime.disconnects).toHaveLength(2);
+			expect(logged).not.toHaveBeenCalled();
+		});
+
+		// The row is gone either way, so the delete answers.
+		it('deletes all the same, and logs which Event may still have sockets connected', async () => {
+			const eventId = await stageEvent();
+			realtime.refuseDisconnect();
+
+			const answered = await eventWriteModule().deleteEvent({ eventId });
+
+			expect(answered).toEqual({ success: true });
+			expect(await stored(eventId)).toBeUndefined();
+			expect(realtime.disconnects).toHaveLength(2);
+			expect(logged).toHaveBeenCalledTimes(1);
+			expect(JSON.parse(logged.mock.calls[0]![0] as string)).toMatchObject({
+				message: 'event_realtime_disconnect_failed',
+				eventId,
+			});
+		});
 	});
 });

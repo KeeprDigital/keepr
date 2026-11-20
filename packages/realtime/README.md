@@ -40,6 +40,8 @@ const [{ seq }] = await env.REALTIME.getByName(scope).publish([{ channel, name, 
 await env.REALTIME.getByName(scope).disconnect(tag);
 // When one replaces it: the holder's sockets close, but for the new credential's.
 await env.REALTIME.getByName(scope).disconnect(holder, { except: credential });
+// When the scope itself has ended: every socket closes, whatever its grant.
+await env.REALTIME.getByName(scope).disconnectAll();
 ```
 
 **`disconnect` withdraws, it does not only close.** For `withdrawalMs` after it,
@@ -51,9 +53,15 @@ otherwise outlive the credential that admitted it. A grant that also carries
 names what was withdrawn, not only who held it. The withdrawal is in the
 object's storage, and outlasts its sleep and its restart.
 
+**`disconnectAll` withdraws everyone**, for a scope the app has ended, as
+deleting what it names ends it. It closes every socket with `CLOSE_REFUSED`
+and ends every member's grace period, so nobody is left present or held and no
+alarm wakes the object for them. For `withdrawalMs` after it, the object lets
+in no socket at all, whatever its grant carries.
+
 | Export | What |
 | --- | --- |
-| `RealtimeObject` | The class. `publish(deliveries)` answers each delivery's `seq` on its channel and the `recipients` it was sent to; `disconnect(tag, { except })` answers how many sockets it closed. |
+| `RealtimeObject` | The class. `publish(deliveries)` answers each delivery's `seq` on its channel and the `recipients` it was sent to; `disconnect(tag, { except })` and `disconnectAll()` answer how many sockets they closed. |
 | `connectSocket(stub, request, grant)` | Hands a socket's upgrade to a scope's object with what the app grants it. The only way in. |
 | `refuseSocket()` | Answers an upgrade the app refuses: an accepted socket closed with `CLOSE_REFUSED`, which a page can read where it cannot read a 403. |
 | `Grant`, `Delivery`, `DisconnectOptions`, `PublishAnswer`, `RealtimeObjectOptions`, `RealtimeObjectStub` | Their types. |
@@ -162,7 +170,7 @@ export class BriefRealtime extends RealtimeObject<Env> {
 | `graceMs` | 5 s | How long a member whose socket closed is held |
 | `sweepMs` | 45 s | How long a member's pings may have stopped: three of a client's 15 s pings |
 | `askMs` | Two thirds of `sweepMs`: 30 s | How long a member's pings may have stopped before it is asked: two of those pings. At `sweepMs` or more, nobody is asked |
-| `withdrawalMs` | 60 s | How long a `disconnect` goes on refusing the sockets it withdrew: longer than a hand-off takes, from the app's port deciding a grant to the object accepting its socket |
+| `withdrawalMs` | 60 s | How long a `disconnect` or `disconnectAll` goes on refusing the sockets it withdrew: longer than a hand-off takes, from the app's port deciding a grant to the object accepting its socket |
 
 ### Its tests
 
@@ -283,7 +291,7 @@ await useRealtimeScope(event, `room:${room}`).publish([{ channel, name, data }])
 | --- | --- |
 | The Worker entry (`nuxt/server/worker/entry.ts`) | A production build's entry, wrapping Nitro's. It exports `RealtimeObject` and hands an upgrade on `socketPath` to a scope's object. Every other request is Nitro's. Only a build takes it: under `nuxt dev` it would replace Nitro's dev entry. |
 | `defineRealtimePort(port)` | The route that answers the app's port: given the event, a scope and a grant, or `null` to refuse. The layer registers no route, so the app exports this from a file of its own. |
-| `useRealtimeScope(event, scope)` | One scope's object on the app's own binding: `publish(deliveries)` and `disconnect(tag, { except })`, by RPC. Takes the Worker's bindings where there is no request, as in a scheduled handler. |
+| `useRealtimeScope(event, scope)` | One scope's object on the app's own binding: `publish(deliveries)`, `disconnect(tag, { except })` and `disconnectAll()`, by RPC. Takes the Worker's bindings where there is no request, as in a scheduled handler. |
 | The dev Worker (`nuxt/server/worker/dev.ts`) | Holds the class beside `nuxt dev` (below). |
 
 `defineRealtimePort` and `useRealtimeScope` are auto-imported from

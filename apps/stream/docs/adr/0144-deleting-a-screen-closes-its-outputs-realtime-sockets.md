@@ -1,6 +1,6 @@
 # ADR-0144: Deleting a Screen closes its outputs' realtime sockets
 
-Accepted · 2026-11-20 · [#1347](https://github.com/KeeprDigital/keepr/issues/1347), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310) · Amends ADR-0142
+Accepted · 2026-11-20 · [#1347](https://github.com/KeeprDigital/keepr/issues/1347), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310) · Amends ADR-0142 · Amended by ADR-0146
 
 ADR-0142 closed a Screen's realtime sockets when its Screen Output Asset Capability is regenerated, and recorded as a consequence that deleting the Screen did not: its Realtime Tickets go with it, so no output returns, but one already connected stayed on a channel of a Screen that no longer exists until its socket dropped.
 

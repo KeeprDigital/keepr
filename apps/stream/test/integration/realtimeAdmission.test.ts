@@ -19,7 +19,8 @@ import {
  * Who a realtime socket lets in, on a running server (ADR-0137, ADR-0142): a
  * Session and a Screen Output each hear what they may and are refused the rest
  * by the Event's object, a Realtime Ticket admits one socket, and regenerating
- * a Screen Output Asset Capability closes the sockets it admitted.
+ * a Screen Output Asset Capability closes the sockets it admitted, as deleting
+ * a Screen closes its outputs' and deleting an Event every one of its object.
  *
  * The port's branches are `test/unit/server/routes/realtime/port.sqlite.test.ts`
  * and a ticket's are `test/unit/server/modules/realtimeTicket.sqlite.test.ts`.
@@ -36,6 +37,8 @@ const OPERATOR_PAGE = operatorPage();
 
 /** What renaming an Event announces, on its Event's channel. */
 const EVENT_UPDATED = 'event:updated';
+/** What deleting an Event announces, on its Event's channel. */
+const EVENT_DELETED = 'event:deleted';
 /** What the `identify` command sends a Screen, on that Screen's channel. */
 const SCREEN_COMMANDED = 'screen:command:identify';
 
@@ -467,6 +470,31 @@ describe('deleting a Screen', () => {
 			otherOutput.socket.addEventListener('message', ({ data }) => resolve(data), { once: true }),
 		);
 		otherOutput.socket.send(PING);
+		expect(await stillThere).toBe(PONG);
+	});
+});
+
+describe('deleting an Event', () => {
+	it("closes its Screen Outputs' sockets and its operators' once they are told, and leaves another Event's", async () => {
+		const [eventId, otherEventId] = [await createEvent(), await createEvent()];
+		const screen = await createScreen(eventId);
+		const output = await open({ eventId, ticket: await ticket(eventId, screen.capability) });
+		const otherOperator = await open({ eventId: otherEventId }, OPERATOR_PAGE);
+		if (!output.admitted || !otherOperator.admitted) throw new Error('A socket was refused');
+		output.socket.send(JSON.stringify({ t: 'enter', channel: screen.channel, data: {} }));
+		const operator = connect(() => socketUrl({ eventId }), OPERATOR_PAGE);
+		const told = await hear(operator, eventRealtimeChannel(eventId), EVENT_DELETED);
+
+		await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
+
+		expect(await output.closed).toBe(CLOSE_REFUSED);
+		// A socket left open is never refused: its page has nothing to retry.
+		await until('the operator page to be refused', () => operator.refusal !== null);
+		expect(told).toEqual([expect.objectContaining({ eventId })]);
+		const stillThere = new Promise((resolve) =>
+			otherOperator.socket.addEventListener('message', ({ data }) => resolve(data), { once: true }),
+		);
+		otherOperator.socket.send(PING);
 		expect(await stillThere).toBe(PONG);
 	});
 });

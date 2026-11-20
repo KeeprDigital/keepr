@@ -264,6 +264,84 @@ describe('a disconnect by tag', () => {
 	});
 });
 
+// A scope the app has ended: everything it granted there is withdrawn.
+describe('a disconnect of everyone', () => {
+	it('closes every socket, whatever its grant, and leaves no alarm to wake the object', async () => {
+		const scope = server.scope();
+		const watching = scope.connect();
+		await watching.hello({ watch: ['news'] });
+		const present = scope.connect({ ...anyone, tags: ['key:1'] }, { client: 'client-1' });
+		await present.hello({ presence: { news: 1 } });
+		const hearing = scope.connect();
+		await hearing.hello({ attach: [{ channel: 'news' }] });
+		const alarmBefore = await scope.call<number | null>('alarmAt');
+
+		const closed = await scope.disconnectAll();
+
+		expect(alarmBefore).not.toBeNull();
+		expect(closed).toBe(3);
+		for (const each of [watching, present, hearing])
+			expect(await each.closed).toMatchObject({ code: CLOSE_REFUSED });
+		expect(await scope.call('alarmAt')).toBeNull();
+	});
+
+	// A grace period outlasts the withdrawal: a watcher let in after it would
+	// still see a member that was only held.
+	it('ends the grace period of a member whose socket had already closed', async () => {
+		const scope = server.scope('BRIEF_WITHDRAWAL');
+		const present = scope.connect(anyone, { client: 'client-1' });
+		await present.hello({ presence: { news: 1 } });
+		present.close();
+		await present.closed;
+
+		await scope.disconnectAll();
+		await sleep(BRIEF_WITHDRAWAL_MS + 100);
+		const watching = scope.connect();
+		await watching.hello({ watch: ['news'] });
+		await watching.sync();
+
+		expect(watching.members('news')).toEqual([]);
+	});
+
+	it('refuses a socket admitted before it that arrives after', async () => {
+		const scope = server.scope();
+		const ticket = await scope.admit();
+
+		await scope.disconnectAll();
+		const late = ticket.connect();
+
+		expect(await late.opened).toBe(true);
+		expect(await late.closed).toMatchObject({ code: CLOSE_REFUSED });
+	});
+
+	it.each([
+		{ grant: anyone, carrying: 'no tag' },
+		{ grant: { ...anyone, tags: ['key:1'] }, carrying: 'a tag' },
+	])('refuses a socket whose grant carries $carrying, through a restart', async ({ grant }) => {
+		const scope = server.scope();
+		await scope.disconnectAll();
+		await scope.restart();
+
+		const late = scope.connect(grant);
+
+		expect(await late.closed).toMatchObject({ code: CLOSE_REFUSED });
+	});
+
+	it('lets sockets in again once the withdrawal has ended', async () => {
+		const scope = server.scope('BRIEF_WITHDRAWAL');
+		await scope.disconnectAll();
+		const during = scope.connect();
+		expect(await during.closed).toMatchObject({ code: CLOSE_REFUSED });
+
+		await sleep(BRIEF_WITHDRAWAL_MS + 100);
+		const after = scope.connect();
+		await after.hello({ attach: [{ channel: 'news' }] });
+		const [answer] = await scope.publish({ channel: 'news', name: 'said', data: 1 });
+
+		expect(answer?.recipients).toBe(1);
+	});
+});
+
 // A replaced credential: `holder` is whose it is, `credential:n` which one.
 describe('a disconnect that spares a tag', () => {
 	const holding = (credential: number): Grant => ({

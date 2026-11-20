@@ -27,6 +27,11 @@ export interface RealtimeScope {
 	 * One whose grant also carries `except` is spared. Answers how many closed.
 	 */
 	disconnect(tag: string, options?: DisconnectOptions): Promise<number>;
+	/**
+	 * Close every socket of the scope, whatever its grant, and for a minute let
+	 * none in: for a scope the app has ended. Answers how many closed.
+	 */
+	disconnectAll(): Promise<number>;
 }
 
 interface ScopeNamespace {
