@@ -72,6 +72,33 @@ describe('requestIdentity', () => {
 		expect(accounts.askedWith[0]).toContain(`${name}=accounts`);
 	});
 
+	// A browser that signed in at Keepr Accounts and then held on to the retired
+	// cookie lists it after: this request is signed out, the retired cookie is
+	// expired with it, and the browser's next request signs in.
+	it("expires the former sign-in's cookie sent after Keepr Accounts', so the next request signs in", async () => {
+		const name = '__Secure-better-auth.session_token';
+		/** Keepr Accounts, reading the first session cookie it is sent. */
+		const readsTheFirst = {
+			fetch: async (input: string, init?: RequestInit) =>
+				new RegExp(`${name}=([^;]+)`).exec(new Headers(init?.headers).get('cookie') ?? '')?.[1] ===
+				'accounts'
+					? await accounts.fetch(input, init)
+					: new Response(null, { status: 401 }),
+		};
+		const asked = (cookie: string) => {
+			const event = workerRequest({ as: A_MEMBER, env: { KEEPR_ACCOUNTS: readsTheFirst } });
+			event.node.req.headers.cookie = `${event.node.req.headers.cookie}; ${cookie}`;
+			return event;
+		};
+		const first = asked(`${name}=accounts; ${name}=retired`);
+
+		expect(await requestIdentity(first)).toBeNull();
+		expect([first.node.res.getHeader('set-cookie')].flat()).toEqual([
+			expect.stringMatching(new RegExp(`^${name}=;.*Max-Age=0`)),
+		]);
+		expect(await requestIdentity(asked(`${name}=accounts`))).toMatchObject({ user: { id: 'ada' } });
+	});
+
 	it('answers nobody for a signed-out visitor, leaving the refusal to its caller', async () => {
 		expect(await requestIdentity(request(SIGNED_OUT))).toBeNull();
 	});

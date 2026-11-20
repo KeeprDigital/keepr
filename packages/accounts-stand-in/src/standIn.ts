@@ -16,7 +16,13 @@ import {
 	USER_NAMES_PATH,
 	type UserNamesAnswer,
 } from '@keepr/nuxt-layer/shared/utils/userNames';
-import { STAND_IN_COOKIE, STAND_IN_NO_APP_ACCESS, STAND_IN_SIGNED_OUT } from './cookie.mjs';
+import { STAND_IN_BUNDLE_MARK } from './bundleMark.mjs';
+import {
+	STAND_IN_COOKIE,
+	STAND_IN_NO_APP_ACCESS,
+	STAND_IN_NO_ORGANISATION,
+	STAND_IN_SIGNED_OUT,
+} from './cookie.mjs';
 
 export { STAND_IN_COOKIE, standInCookie, type StandInPersona } from './cookie.mjs';
 
@@ -52,11 +58,20 @@ function personaOf(header: string | null): StandInPersona | 'signed-out' {
 		const role = fields.get(app);
 		if (role !== null) apps[app] = role === STAND_IN_NO_APP_ACCESS ? null : role;
 	}
+	const org = fields.get('org');
+	const keeprAdmin = fields.get('keeprAdmin');
 	return {
 		user: fields.get('user') ?? undefined,
 		name: fields.get('name') ?? undefined,
 		session: fields.get('session') ?? undefined,
 		apps,
+		organisation:
+			org === null
+				? undefined
+				: org === STAND_IN_NO_ORGANISATION
+					? null
+					: { id: org, role: fields.get('orgRole') ?? 'owner' },
+		keeprAdministrator: keeprAdmin === null ? undefined : keeprAdmin === 'true',
 	};
 }
 
@@ -83,7 +98,7 @@ interface StandInKey {
  * It holds no Users. The ones it can name to an App (ADR-0145) are the Local
  * Developer User and whoever it has answered as since it started, by the name
  * it gave them last: locally a User exists once a request has named them.
- * Everyone works in the one Organisation, so each is named to anyone signed in.
+ * Each is named to anyone signed in, whatever Organisation their cookie names.
  */
 export function createAccountsStandIn(): AccountsStandIn {
 	const namesAnsweredAs = new Map<string, string>([[LOCAL_DEVELOPER.id, LOCAL_DEVELOPER.name]]);
@@ -96,7 +111,7 @@ export function createAccountsStandIn(): AccountsStandIn {
 			crv: 'Ed25519',
 			extractable: true,
 		});
-		const kid = `accounts-stand-in-${crypto.randomUUID()}`;
+		const kid = `${STAND_IN_BUNDLE_MARK}/${crypto.randomUUID()}`;
 		return {
 			privateKey,
 			kid,
@@ -113,15 +128,21 @@ export function createAccountsStandIn(): AccountsStandIn {
 			if (role === undefined) apps[app] = highestAppRole(app);
 			else if (role !== null) apps[app] = role;
 		}
-		const claims: IdentityProofClaims = {
+		const organisation =
+			persona.organisation === undefined
+				? { id: LOCAL_ORGANISATION_ID, role: 'owner' }
+				: persona.organisation;
+		const claims = {
 			sid: persona.session ?? `${user}-session`,
 			email: isLocalDeveloper ? LOCAL_DEVELOPER.email : `${user}@keepr.invalid`,
 			name: persona.name ?? (isLocalDeveloper ? LOCAL_DEVELOPER.name : user),
-			org: LOCAL_ORGANISATION_ID,
-			orgRole: 'owner',
+			org: organisation?.id ?? null,
+			// As the cookie names it: an Organisation role the layer does not know is
+			// read as none, as it would be from Keepr Accounts.
+			orgRole: (organisation?.role ?? null) as IdentityProofClaims['orgRole'],
 			apps,
-			keeprAdmin: true,
-		};
+			keeprAdmin: persona.keeprAdministrator ?? true,
+		} satisfies IdentityProofClaims;
 		namesAnsweredAs.set(user, claims.name);
 		const { privateKey, kid } = await keyOf();
 		return await new SignJWT({ ...claims })

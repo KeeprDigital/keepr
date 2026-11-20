@@ -1,7 +1,8 @@
 /**
  * `pnpm worker:dry-run` — bundle the built Worker exactly as `wrangler deploy`
  * would without promoting it, then assert the bundle compiles no Wasm at
- * runtime, and that the built CSS holds every declared application font face.
+ * runtime, carries no Accounts Stand-in (ADR-0113), and that the built CSS holds
+ * every declared application font face.
  *
  * The `--outdir` is absolute, and that is the whole point of this file.
  * Wrangler resolves a *relative* `--outdir` against the directory of its
@@ -28,6 +29,7 @@
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { standInScan } from '@keepr/accounts-stand-in/bundle-scan';
 import { dryRunEveryEnvironment } from '@keepr/tooling/scripts/deploy/dry-run.mjs';
 import { parseJsonc } from '@keepr/tooling/scripts/jsonc.mjs';
 import { builtFontsScan } from './assert-built-fonts.mjs';
@@ -49,6 +51,7 @@ try {
 
 const scans = [
 	...Object.values(bundles).map((outDir) => runtimeWasmScan(outDir)),
+	...Object.values(bundles).map((outDir) => standInScan(outDir)),
 	builtFontsScan(fileURLToPath(new URL(`../${PUBLIC_DIR}`, import.meta.url))),
 ];
 for (const scan of scans) {

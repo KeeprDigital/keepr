@@ -149,6 +149,38 @@ describe('the sign-in rate limit', () => {
 	});
 });
 
+// An App asks over its binding, which carries no client address. The library
+// counts every address-less caller in one bucket (loopback under test, a fixed
+// key in production), so a stranger's asks through any App would starve them all.
+describe("an App's questions over its binding", () => {
+	/** More than the library's default limit of 100 in ten seconds. */
+	const PAST_THE_LIMIT = 101;
+
+	it.each([['/token'], ['/jwks']])(
+		'%s is not counted for a caller with no address',
+		async (path) => {
+			const accounts = await withUser();
+			const cookie = await accounts.signIn(EMAIL);
+			for (let ask = 0; ask < PAST_THE_LIMIT; ask++) await accounts.send(path);
+
+			expect((await accounts.send(path, { headers: { cookie } })).status).toBe(200);
+		},
+	);
+
+	it.each([['/token'], ['/jwks']])(
+		'%s is still counted for a caller with an address',
+		async (path) => {
+			const accounts = await withUser();
+			for (let ask = 0; ask < PAST_THE_LIMIT; ask++)
+				await accounts.send(path, { headers: { 'cf-connecting-ip': CLIENT } });
+
+			expect((await accounts.send(path, { headers: { 'cf-connecting-ip': CLIENT } })).status).toBe(
+				429,
+			);
+		},
+	);
+});
+
 describe('the client address', () => {
 	async function sessionAddress(headers: Record<string, string>) {
 		const accounts = await withUser();

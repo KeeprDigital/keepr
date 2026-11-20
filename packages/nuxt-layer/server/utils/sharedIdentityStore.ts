@@ -70,6 +70,12 @@ export interface SharedProofRecord {
 	renewedCookies: string[];
 }
 
+/** Keepr Accounts' keys as an isolate fetched them, and when, in ms since the epoch. */
+export interface SharedKeysRecord {
+	keys: unknown;
+	fetchedAt: number;
+}
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -173,13 +179,22 @@ export function sharedIdentityRecords(store: SharedStore, app: AppId, origin: st
 		async removeProof(cookie: string) {
 			await store.delete(at((await slot(cookie)).key));
 		},
-		/** Keepr Accounts' keys as another isolate last fetched them, unchecked: the caller reads them as a key set. */
-		async readKeys(): Promise<unknown> {
+		/**
+		 * Keepr Accounts' keys as another isolate last fetched them, and when, or
+		 * `undefined`. The keys are unchecked: the caller reads them as a key set.
+		 */
+		async readKeys(): Promise<SharedKeysRecord | undefined> {
 			const kept = await store.get(at(`${app}/keys`));
-			return kept === undefined ? undefined : JSON.parse(kept);
+			if (kept === undefined) return undefined;
+			const record = JSON.parse(kept) as Partial<SharedKeysRecord> | null;
+			return typeof record?.fetchedAt === 'number' ? (record as SharedKeysRecord) : undefined;
 		},
-		async writeKeys(keys: JSONWebKeySet, ttlSeconds: number) {
-			await store.put(at(`${app}/keys`), JSON.stringify(keys), ttlSeconds);
+		async writeKeys(keys: JSONWebKeySet, fetchedAt: number, ttlSeconds: number) {
+			await store.put(
+				at(`${app}/keys`),
+				JSON.stringify({ keys, fetchedAt } satisfies SharedKeysRecord),
+				ttlSeconds,
+			);
 		},
 	};
 }

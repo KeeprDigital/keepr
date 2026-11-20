@@ -13,8 +13,8 @@ export default defineNuxtConfig({
 | Path | Holds |
 |---|---|
 | `nuxt.config.ts` | The shell: client rendering, Nuxt UI, VueUse, the colour mode, strict TypeScript, the Cloudflare Workers target, and the release identity each build records (`build/releaseIdentity.ts`). |
-| `server/utils` | Errors a route reports, D1 parameter helpers, the request-body ceiling, shared-secret checks, error-log fields, the server time reading, the release identity (`release.ts`), who a request belongs to (`requestIdentity.ts`), what to call another User (`userNames.ts`), the refusal of a cross-site write (`crossSiteMutation.ts`). Auto-imported by Nitro. |
-| `shared/` | What the server and the client both read: the state-conflict code, the body-limit route rule's types, the server time and release paths, clock time formatting and parsing, Intervals, the App registry, the Identity Proof's shape, the User names question's. |
+| `server/utils` | Errors a route reports, D1 parameter helpers, the request-body ceiling, error-log fields, the server time reading, the release identity (`release.ts`), who a request belongs to (`requestIdentity.ts`), what to call another User (`userNames.ts`), the refusal of a cross-site write (`crossSiteMutation.ts`). Auto-imported by Nitro. |
+| `shared/` | What the server and the client both read: the state-conflict code, the body-limit route rule's types, the server time and release paths, clock time formatting and parsing, Intervals, the App registry, the Identity Proof's shape, the User names question's, the Keepr domains (`keeprDomain.ts`). |
 | `app/composables`, `app/utils` | Request feedback, forms, unsaved changes, async actions, store helpers, who am I (`useIdentity`), server time, the Clock Projection scheduler and the Frame Clock, failure sentences. Auto-imported. |
 | `app/components/UI` | Confirm, empty, loading, search and tab components, as `<UI…>`. |
 | `test/` | Test kits an app's tests import, the SQLite D1 harness over an app's real migrations and the auth schema contract (`authSchemaContract.ts`) and the check of each Environment's Wrangler configuration against the deploy descriptor (`wranglerEnvironments.ts`) among them, and this layer's own tests. |
@@ -28,7 +28,7 @@ export default defineNuxtConfig({
 - **No route and no middleware.** An app registers its own, in its own order, and calls the layer's code.
 - **Nothing here knows a product.** If it names an Event, a Screen or a Tournament, it belongs in that app.
 - **A named module's term is in the root `GLOSSARY.md`**, under Platform. A module that moves here brings its term in the same change.
-- **It stands alone.** `pnpm typecheck` and `pnpm test` run here, with no app around it. A rule's tests live here with the rule, but for one: `resolveRequestIdentity` is tested in `apps/accounts` (`test/unit/server/requestIdentity.sqlite.test.ts`), against Keepr Accounts' real minting, which the layer cannot import (ADR-0113, in the root `docs/adr`). How a route meets it is tested here.
+- **It stands alone.** `pnpm typecheck` and `pnpm test` run here, with no app around it. A rule's tests live here with the rule. `resolveRequestIdentity`'s are here too, against Identity Proofs signed with keys a fake of Keepr Accounts publishes and withdraws (ADR-0163, in the root `docs/adr`), and again in `apps/accounts` (`test/unit/server/requestIdentity.sqlite.test.ts`), against Keepr Accounts' real minting, which the layer cannot import (ADR-0113).
 - **Something two apps need moves here, in the change that moves the first app onto it.** Do not copy a file between apps.
 - **Nothing here gives a Worker a binding, an entry of its own or a process in development.** That is a layer an app chooses (ADR-0138, in the root `docs/adr`), as realtime's is: `@keepr/realtime/nuxt`. This layer keeps what costs an app nothing when unused.
 

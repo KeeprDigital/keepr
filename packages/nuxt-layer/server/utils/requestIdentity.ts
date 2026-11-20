@@ -8,13 +8,16 @@ import { APP_REGISTRY } from '../../shared/utils/appRegistry';
 import {
 	IDENTITY_PROOF_ALGORITHM,
 	IDENTITY_PROOF_AUDIENCE,
+	IDENTITY_PROOF_LIFETIME_SECONDS,
 	IDENTITY_PROOF_PATH,
 	identityFromClaims,
 	KEEPR_ACCOUNTS_BINDING,
 	KEEPR_ACCOUNTS_ORIGIN,
 	KEEPR_ACCOUNTS_SERVICE,
+	keeprAccountsCookies,
 	PUBLIC_KEYS_PATH,
 } from '../../shared/utils/identityProof';
+import { keeprAccountsOriginFor } from '../../shared/utils/keeprDomain';
 import type { SharedIdentityRecords, SharedStore } from './sharedIdentityStore';
 import { ServiceConfigurationError, TemporarilyUnavailableError } from './errors';
 import { sharedIdentityRecords, workersCacheStore } from './sharedIdentityStore';
@@ -47,7 +50,10 @@ export type IdentityProofSource = 'cached' | 'refreshing' | 'asked';
 export type IdentityAnswer<App extends AppId> =
 	| { kind: 'signed-in'; identity: Identity<App>; setCookie: string[]; proof: IdentityProofSource }
 	| { kind: 'signed-out'; setCookie: string[] }
-	/** No Identity Proof this App can trust, and no answer that says why: refused. */
+	/**
+	 * No Identity Proof this App can trust, and no answer that says why: refused.
+	 * `reason` is the operator's, for the log; a caller is told one sentence.
+	 */
 	| { kind: 'unavailable'; reason: string; setCookie: string[] };
 
 interface CachedProof<App extends AppId> {
@@ -75,16 +81,39 @@ type Defer = (promise: Promise<unknown>) => void;
 interface Question {
 	defer: Defer;
 	shared: SharedIdentityRecords | undefined;
+	/** The Keepr Accounts of the App's Environment, which the request is asked of. */
+	accountsOrigin: string;
+}
+
+/** Keepr Accounts' keys as this isolate holds them, and when they were fetched. */
+/** Which Identity Proof keys are wanted for, which decides how fresh they must be (`publicKeys`). */
+type KeysFor = 'held' | 'asked' | 'refetch';
+
+interface HeldKeys {
+	keySet: ReturnType<typeof createLocalJWKSet>;
+	fetchedAt: number;
 }
 
 /** What the local dev registry answers for a service with nothing registered under its name. */
 const NOTHING_REGISTERED = /Worker ".*" not found/;
 
 /**
- * How long a fresh isolate trusts Keepr Accounts' keys as another isolate
- * fetched them. A key it does not hold is fetched again whatever this is.
+ * How long Keepr Accounts' keys are trusted once fetched, by this isolate or
+ * another: no longer than an Identity Proof lasts, so a key Keepr Accounts
+ * withdraws stops verifying anything within the time a revocation takes. A key
+ * it does not hold is fetched again whatever this is.
  */
-const SHARED_KEYS_SECONDS = 60 * 60;
+const KEYS_LIFETIME_SECONDS = IDENTITY_PROOF_LIFETIME_SECONDS;
+
+/** How long a question to Keepr Accounts is waited on before it is answered as unavailable. */
+const ASK_TIMEOUT_MS = 5000;
+
+/**
+ * How long a cookie Keepr Accounts said is signed out is answered so without
+ * asking again: briefly, so a stranger repeating it cannot keep Keepr Accounts
+ * busy, and a sign-in, which brings a new cookie, is never held up by it.
+ */
+const SIGNED_OUT_MS = 30 * 1000;
 
 /** How long a request waits on the shared store before it does without it. */
 const SHARED_STORE_TIMEOUT_MS = 100;
@@ -109,10 +138,20 @@ export function createIdentityResolver<App extends AppId>(
 		cacheSize = 1000,
 		sharedStore = workersCacheStore(),
 		sharedTimeoutMs = SHARED_STORE_TIMEOUT_MS,
-	}: { cacheSize?: number; sharedStore?: SharedStore | undefined; sharedTimeoutMs?: number } = {},
+		askTimeoutMs = ASK_TIMEOUT_MS,
+		signedOutMs = SIGNED_OUT_MS,
+	}: {
+		cacheSize?: number;
+		sharedStore?: SharedStore | undefined;
+		sharedTimeoutMs?: number;
+		askTimeoutMs?: number;
+		signedOutMs?: number;
+	} = {},
 ) {
 	const proofs = new Map<string, CachedProof<App>>();
-	let keys: ReturnType<typeof createLocalJWKSet> | undefined;
+	/** Cookies Keepr Accounts said are signed out, and until when that is answered without asking. */
+	const signedOut = new Map<string, number>();
+	let keys: HeldKeys | undefined;
 
 	function storeFailed(operation: string, error: unknown) {
 		console.warn(
@@ -165,33 +204,92 @@ export function createIdentityResolver<App extends AppId>(
 		}
 	}
 
-	async function publicKeys(accounts: AccountsConnection, refetch: boolean, question: Question) {
-		if (keys && !refetch) return keys;
-		if (!refetch) {
-			const sharedKeys = keySet(
-				await withShared(question, 'read keys', (records) => records.readKeys()),
-			);
-			if (sharedKeys) return (keys = sharedKeys);
+	/** `map` evicted down to `cacheSize`, the least recently set first. */
+	function bound(map: Map<string, unknown>) {
+		for (const oldest of map.keys()) {
+			if (map.size <= cacheSize) break;
+			map.delete(oldest);
 		}
-		const response = await accounts.fetch(`${KEEPR_ACCOUNTS_ORIGIN}${PUBLIC_KEYS_PATH}`);
+	}
+
+	/** One question to Keepr Accounts, refused once it has gone unanswered for `askTimeoutMs`. */
+	async function fetchInTime(
+		accounts: AccountsConnection,
+		address: string,
+		init: RequestInit = {},
+	): Promise<Response> {
+		const abort = new AbortController();
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const late = new Promise<never>((_, reject) => {
+			timer = setTimeout(() => {
+				abort.abort();
+				reject(new Error(`no answer within ${askTimeoutMs} ms`));
+			}, askTimeoutMs);
+		});
+		try {
+			return await Promise.race([accounts.fetch(address, { ...init, signal: abort.signal }), late]);
+		} finally {
+			clearTimeout(timer);
+		}
+	}
+
+	/** Whether keys fetched at `fetchedAt` are younger than `share` of their lifetime. */
+	const keysAreFresh = (fetchedAt: number, share = 1) =>
+		Date.now() - fetchedAt < KEYS_LIFETIME_SECONDS * 1000 * share;
+
+	/** The keys this isolate holds, or another shared, while younger than `share` of their lifetime. */
+	async function heldKeys(question: Question, share: number) {
+		if (keys && keysAreFresh(keys.fetchedAt, share)) return keys.keySet;
+		const shared = await withShared(question, 'read keys', (records) => records.readKeys());
+		const sharedKeys =
+			shared && keysAreFresh(shared.fetchedAt, share) ? keySet(shared.keys) : undefined;
+		if (!shared || !sharedKeys) return undefined;
+		keys = { keySet: sharedKeys, fetchedAt: shared.fetchedAt };
+		return sharedKeys;
+	}
+
+	async function fetchKeys(accounts: AccountsConnection, question: Question) {
+		const response = await fetchInTime(accounts, `${question.accountsOrigin}${PUBLIC_KEYS_PATH}`);
 		if (!response.ok) throw new Error(`its keys answered ${response.status}`);
 		const published = (await response.json()) as JSONWebKeySet;
-		keys = createLocalJWKSet(published);
+		const fetchedAt = Date.now();
+		keys = { keySet: createLocalJWKSet(published), fetchedAt };
 		void toShared(question, 'write keys', (records) =>
-			records.writeKeys(published, SHARED_KEYS_SECONDS),
+			records.writeKeys(published, fetchedAt, KEYS_LIFETIME_SECONDS),
 		);
-		return keys;
+		return keys.keySet;
+	}
+
+	/**
+	 * Keepr Accounts' keys, to verify an Identity Proof that is `held` (shared
+	 * by another isolate), `asked` (just answered by Keepr Accounts) or signed
+	 * by a key they lack (`refetch`). An asked proof renews keys past half their
+	 * lifetime, as a proof is refreshed, so keys stay fresh for every isolate
+	 * that verifies the proof it shares; one Keepr Accounts cannot answer then
+	 * keeps the keys it has.
+	 */
+	async function publicKeys(accounts: AccountsConnection, question: Question, keysFor: KeysFor) {
+		if (keysFor === 'refetch') return await fetchKeys(accounts, question);
+		const held = await heldKeys(question, keysFor === 'asked' ? 0.5 : 1);
+		if (held) return held;
+		try {
+			return await fetchKeys(accounts, question);
+		} catch (error) {
+			const stillFresh = keysFor === 'asked' ? await heldKeys(question, 1) : undefined;
+			if (stillFresh) return stillFresh;
+			throw error;
+		}
 	}
 
 	async function verify(
 		accounts: AccountsConnection,
 		token: string,
 		question: Question,
-		refetched = false,
+		keysFor: KeysFor,
 	): Promise<Verified<App>> {
 		let payload: JWTPayload;
 		try {
-			({ payload } = await jwtVerify(token, await publicKeys(accounts, refetched, question), {
+			({ payload } = await jwtVerify(token, await publicKeys(accounts, question, keysFor), {
 				issuer: KEEPR_ACCOUNTS_ORIGIN,
 				audience: IDENTITY_PROOF_AUDIENCE,
 				algorithms: [IDENTITY_PROOF_ALGORITHM],
@@ -201,8 +299,8 @@ export function createIdentityResolver<App extends AppId>(
 			const code = (error as { code?: unknown }).code;
 			// An unknown key may be a new one: Keepr Accounts rotated, or the
 			// Accounts Stand-in restarted. Its keys are fetched again, once.
-			if (code === 'ERR_JWKS_NO_MATCHING_KEY' && !refetched)
-				return verify(accounts, token, question, true);
+			if (code === 'ERR_JWKS_NO_MATCHING_KEY' && keysFor !== 'refetch')
+				return verify(accounts, token, question, 'refetch');
 			return {
 				kind: 'refused',
 				code,
@@ -230,7 +328,7 @@ export function createIdentityResolver<App extends AppId>(
 		});
 		let response: Response;
 		try {
-			response = await accounts.fetch(`${KEEPR_ACCOUNTS_ORIGIN}${IDENTITY_PROOF_PATH}`, {
+			response = await fetchInTime(accounts, `${question.accountsOrigin}${IDENTITY_PROOF_PATH}`, {
 				headers: cookie ? { cookie } : {},
 			});
 		} catch (error) {
@@ -257,7 +355,7 @@ export function createIdentityResolver<App extends AppId>(
 			return unavailable('it answered something other than an Identity Proof', setCookie);
 		let verified: Verified<App>;
 		try {
-			verified = await verify(accounts, token, question);
+			verified = await verify(accounts, token, question, 'asked');
 		} catch (error) {
 			return unavailable(`its keys could not be read (${(error as Error).message})`, setCookie);
 		}
@@ -290,7 +388,7 @@ export function createIdentityResolver<App extends AppId>(
 		if (!record) return undefined;
 		let verified: Verified<App>;
 		try {
-			verified = await verify(accounts, record.token, question);
+			verified = await verify(accounts, record.token, question, 'held');
 		} catch {
 			return undefined;
 		}
@@ -326,12 +424,17 @@ export function createIdentityResolver<App extends AppId>(
 	}
 
 	function remember(cookie: string, proof: CachedProof<App>) {
+		signedOut.delete(cookie);
 		proofs.delete(cookie);
 		proofs.set(cookie, proof);
-		for (const oldest of proofs.keys()) {
-			if (proofs.size <= cacheSize) break;
-			proofs.delete(oldest);
-		}
+		bound(proofs);
+	}
+
+	function rememberSignedOut(cookie: string) {
+		proofs.delete(cookie);
+		signedOut.delete(cookie);
+		signedOut.set(cookie, Date.now() + signedOutMs);
+		bound(signedOut);
 	}
 
 	async function refresh(
@@ -354,7 +457,7 @@ export function createIdentityResolver<App extends AppId>(
 			remember(cookie, { ...cached, renewedCookies: answer.setCookie });
 			await share(cookie, cached, answer.setCookie, question);
 		} else if (answer.kind === 'signed-out') {
-			proofs.delete(cookie);
+			rememberSignedOut(cookie);
 			await toShared(question, 'remove proof', (records) => records.removeProof(cookie));
 		}
 		// Unreachable: the cached proof keeps answering until it expires.
@@ -399,14 +502,16 @@ export function createIdentityResolver<App extends AppId>(
 	}
 
 	/**
-	 * Who the request carrying `cookie` belongs to. `waitUntil` keeps a background
-	 * refresh, and a write to the shared store, alive past the response, as a
-	 * Worker's `ctx.waitUntil` does. `origin` is the origin the Worker was
-	 * reached on, which the shared records are kept under; with none, the
-	 * resolver shares nothing.
+	 * Who the request carrying `cookie` belongs to, as Keepr Accounts says from
+	 * its own cookies in it: only those are sent, and only those tell one
+	 * Session from another here. `waitUntil` keeps a background refresh, and a
+	 * write to the shared store, alive past the response, as a Worker's
+	 * `ctx.waitUntil` does. `origin` is the origin the Worker was reached on:
+	 * which Environment's Keepr Accounts is asked, and where the shared records
+	 * are kept. With none, production's is asked and nothing is shared.
 	 */
 	return async function resolve({
-		cookie = '',
+		cookie: header,
 		accounts,
 		waitUntil,
 		origin,
@@ -416,13 +521,18 @@ export function createIdentityResolver<App extends AppId>(
 		waitUntil?: ((promise: Promise<unknown>) => void) | undefined;
 		origin?: string | undefined;
 	}): Promise<IdentityAnswer<App>> {
+		const cookie = keeprAccountsCookies(header);
 		const question: Question = {
 			defer: (promise) => waitUntil?.(promise),
 			shared: sharedStore && origin ? sharedIdentityRecords(sharedStore, app, origin) : undefined,
+			accountsOrigin: keeprAccountsOriginFor(origin),
 		};
+		if ((signedOut.get(cookie) ?? 0) > Date.now()) return { kind: 'signed-out', setCookie: [] };
 		const held = proofs.get(cookie);
-		if (held && Date.now() < held.expiresAt)
+		if (held && Date.now() < held.expiresAt) {
+			remember(cookie, held);
 			return await answerFrom(accounts, cookie, held, question, { sharedFirst: true });
+		}
 		proofs.delete(cookie);
 
 		const sharedProof = await fromOtherIsolates(accounts, cookie, question);
@@ -436,7 +546,7 @@ export function createIdentityResolver<App extends AppId>(
 			remember(cookie, cached);
 			// This answer passes its cookies on itself, so the shared record holds none.
 			void share(cookie, cached, [], question);
-		}
+		} else if (answer.kind === 'signed-out') rememberSignedOut(cookie);
 		return answer;
 	};
 }
@@ -492,11 +602,16 @@ function workerOriginOf(event: H3Event): string | undefined {
 	}
 }
 
+/** What a caller is told while there is no Identity Proof to trust. */
+const UNAVAILABLE_MESSAGE = 'Keepr Accounts could not be asked who you are. Try again in a moment.';
+
 /**
  * Who the request belongs to, as `app` sees them. An App's "who am I" route
  * answers with this, at `IDENTITY_PATH`. Passes any Session Keepr
  * Accounts renewed on to the browser. A signed-out visitor is refused 401; with
- * no Identity Proof to trust and no answer from Keepr Accounts, 503, naming why.
+ * no Identity Proof to trust and no answer from Keepr Accounts, 503 in one
+ * sentence. Why goes to the log: what failed upstream, or how to start the
+ * Accounts Stand-in, is the operator's to read, not every caller's.
  */
 export async function resolveRequestIdentity<App extends AppId>(
 	event: H3Event,
@@ -517,7 +632,10 @@ export async function resolveRequestIdentity<App extends AppId>(
 			message: 'Sign in to Keepr Accounts to continue.',
 			data: { code: 'SIGNED_OUT' },
 		});
-	throw new TemporarilyUnavailableError(`Keepr Accounts did not answer: ${answer.reason}.`);
+	console.warn(
+		JSON.stringify({ message: 'keepr_accounts_unavailable', app, reason: answer.reason }),
+	);
+	throw new TemporarilyUnavailableError(UNAVAILABLE_MESSAGE);
 }
 
 /** Refuses an Identity with no App access, 403, the same way in every App. */

@@ -14,19 +14,27 @@ export const STAND_IN_SIGNED_OUT = 'signed-out';
 /** The cookie's value for an App the User has no App access to. */
 export const STAND_IN_NO_APP_ACCESS = 'none';
 
+/** The cookie's `org` for a User in no Organisation. */
+export const STAND_IN_NO_ORGANISATION = 'none';
+
 /**
  * @typedef {{
  *   user?: string | undefined,
  *   name?: string | undefined,
  *   session?: string | undefined,
  *   apps?: Record<string, string | null> | undefined,
+ *   organisation?: { id: string, role: string } | null | undefined,
+ *   keeprAdministrator?: boolean | undefined,
  * }} StandInPersona
  *   Who the stand-in answers as. Whatever is left out is the Local Developer
  *   User's: full authority, in the one Session. `user`: the User's id; its
  *   Session, name and email follow from it unless named. `session`: the
  *   Session's id, where a second one is a second signed-in browser of the same
  *   User. `apps`: the App role held in each App named, or `null` for no App
- *   access; an App left out keeps its highest role.
+ *   access; an App left out keeps its highest role. `organisation`: the
+ *   active Organisation and the Organisation role in it, or `null` for none;
+ *   left out, the owner of the Keepr Organisation. `keeprAdministrator`:
+ *   whether the User is a Keepr Administrator; left out, they are.
  */
 
 /**
@@ -45,5 +53,12 @@ export function standInCookie(persona) {
 	if (persona.session !== undefined) fields.set('session', persona.session);
 	for (const [app, role] of Object.entries(persona.apps ?? {}))
 		fields.set(app, role ?? STAND_IN_NO_APP_ACCESS);
+	if (persona.organisation === null) fields.set('org', STAND_IN_NO_ORGANISATION);
+	else if (persona.organisation !== undefined) {
+		fields.set('org', persona.organisation.id);
+		fields.set('orgRole', persona.organisation.role);
+	}
+	if (persona.keeprAdministrator !== undefined)
+		fields.set('keeprAdmin', String(persona.keeprAdministrator));
 	return `${STAND_IN_COOKIE}=${fields.toString()}`;
 }

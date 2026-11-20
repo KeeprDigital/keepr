@@ -35,6 +35,26 @@ export const SIGN_IN_PATH = '/sign-in';
  */
 export const KEEPR_ACCOUNTS_SERVICE = 'keepr-accounts';
 
+/**
+ * The cookies Keepr Accounts reads: its own, under the prefix the library
+ * gives them on a built server or none on the dev server, and locally the
+ * Accounts Stand-in's, which stands in for a session cookie (ADR-0113).
+ */
+const KEEPR_ACCOUNTS_COOKIE = /^(?:(?:__Secure-)?better-auth\..+|keepr-stand-in)$/;
+
+/**
+ * The cookies of a `Cookie` header that are Keepr Accounts' own, in the order
+ * sent: all an App passes on when it asks, so no cookie of the App's own, or of
+ * another App on the Keepr domain, reaches Keepr Accounts. `''` for none.
+ */
+export function keeprAccountsCookies(header: string | undefined): string {
+	return (header ?? '')
+		.split(';')
+		.map((pair) => pair.trim())
+		.filter((pair) => KEEPR_ACCOUNTS_COOKIE.test(pair.split('=', 1)[0]!))
+		.join('; ');
+}
+
 /** The binding an App names the connection to Keepr Accounts by. */
 export const KEEPR_ACCOUNTS_BINDING = 'KEEPR_ACCOUNTS';
 
@@ -76,6 +96,18 @@ export interface Identity<App extends AppId = AppId> {
 	/** The App role held in the calling App, or `null` for no App access. */
 	appRole: AppRole<App> | null;
 	keeprAdministrator: boolean;
+}
+
+/**
+ * What an App's "who am I" route tells its pages (`IDENTITY_PATH`): the User and
+ * their App role. The Session, the Organisation and whether the User is a Keepr
+ * Administrator stay on the server, which is all that decides with them.
+ */
+export type PageIdentity<App extends AppId = AppId> = Pick<Identity<App>, 'user' | 'appRole'>;
+
+/** `identity` as a page is told it. */
+export function pageIdentityOf<App extends AppId>(identity: Identity<App>): PageIdentity<App> {
+	return { user: identity.user, appRole: identity.appRole };
 }
 
 /**

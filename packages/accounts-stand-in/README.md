@@ -6,7 +6,8 @@ The Accounts Stand-in (root `GLOSSARY.md`, ADR-0113): a Worker registered locall
 |---|---|
 | `src/standIn.ts` | The answers: an Identity Proof at `/api/auth/token`, its key at `/api/auth/jwks`, names at `/api/users/names`, and 404 for anything else. |
 | `src/cookie.mjs` | The `keepr-stand-in` cookie that names who it answers as: `@keepr/accounts-stand-in/cookie`, plain JavaScript a script or a test imports. |
-| `src/worker.ts` | The same, as a Worker. |
+| `src/worker.ts` | The same, as a Worker, answering only where its script started it. |
+| `src/bundleMark.mjs`, `src/bundleScan.mjs` | The mark its code carries into any bundle, and `@keepr/accounts-stand-in/bundle-scan`, which an App's build runs to refuse a Worker that holds it. |
 | `stand-in.wrangler.jsonc` | Its Wrangler configuration, under a name Wrangler does not find by itself. |
 | `scripts/stand-in.mjs` | `keepr-accounts-stand-in [-- <command>]`: starts it under `wrangler dev`, beside the command, and stops it when the command ends. |
 | `scripts/registry.mjs` | Where a run registers it: the Wrangler registry it uses, and what it tells the command. |
@@ -27,6 +28,9 @@ An App forwards a request's cookies to Keepr Accounts, and the stand-in reads on
 | `session=<id>` | Another Session of the User: a second signed-in browser. |
 | `<app>=<role>` | That App role in the App, such as `stream=member`. An App left out keeps its highest role. |
 | `<app>=none` | No App access to the App. |
+| `org=<id>&orgRole=<role>` | Active in another Organisation, with that Organisation role (`owner` unless named): someone from another Organisation. |
+| `org=none` | In no Organisation. |
+| `keeprAdmin=false` | No Keepr Administrator. |
 
 A test of a whole server builds the header with `standInCookie` from `@keepr/accounts-stand-in/cookie`:
 
@@ -36,6 +40,7 @@ import { standInCookie } from '@keepr/accounts-stand-in/cookie';
 standInCookie('signed-out'); // keepr-stand-in=signed-out
 standInCookie({ user: 'ada', apps: { stream: 'member' } }); // keepr-stand-in=user=ada&stream=member
 standInCookie({ apps: { stream: null } }); // keepr-stand-in=stream=none
+standInCookie({ user: 'eve', organisation: { id: 'elsewhere', role: 'member' }, keeprAdministrator: false });
 ```
 
 A browser is given it by hand, in its console: `document.cookie = 'keepr-stand-in=session=second'` makes that browser a second Session of the Local Developer User, which is how two local browsers are two editors.
@@ -70,6 +75,8 @@ An App's binding finds the stand-in through Wrangler's local registry: one direc
 - **`KEEPR_ACCOUNTS_STAND_IN=off`** starts none and sets nothing. A dev server that keeps a registry of its own, as one with realtime's layer does, then finds Keepr Accounts only when both were started under one `WRANGLER_REGISTRY_PATH`: `WRANGLER_REGISTRY_PATH=<directory> pnpm beside` in `apps/accounts`, and `WRANGLER_REGISTRY_PATH=<directory> KEEPR_ACCOUNTS_STAND_IN=off NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN=http://localhost:8790 pnpm dev` in the App. Run one such App at a time in a registry: a second would register its realtime dev Worker under the first's name.
 
 ## Never deployed
+
+The stand-in's key ids carry a mark of their own, and Stream Keepr's `worker:dry-run` refuses a built Worker that holds it, so nothing an App ships carries the stand-in (ADR-0163).
 
 There is no deploy script, and Wrangler does not find `stand-in.wrangler.jsonc` by itself. `package.json` carries `keepr.undeployable`, which `keepr-deploy-guard` (`@keepr/tooling`) refuses: reading a Release runs the guard on every configuration its descriptor names, and a deploy runs it again on what it is about to upload (ADR-0119). The deploy tooling starts the stand-in around a binding App's build, to answer its Worker smoke run; it uploads nothing of it. Deployed under `keepr-accounts`, the stand-in would replace Keepr Accounts and sign anyone in. So it also fails closed without any of that (ADR-0154): its configuration names an account no one holds, and its Worker refuses every request unless the launcher started it with `--var KEEPR_ACCOUNTS_STAND_IN:launched`.
 

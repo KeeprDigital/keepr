@@ -175,6 +175,8 @@ describe('what Keepr Accounts answered is kept', () => {
 
 // How an App's route meets the reader: the binding it reads and the cookie it forwards.
 describe('readUserNames', () => {
+	const GRACE = '__Secure-better-auth.session_token=grace';
+
 	async function namesFor(env: Record<string, unknown>) {
 		const app = createApp();
 		app.use(
@@ -185,22 +187,22 @@ describe('readUserNames', () => {
 		);
 		const response = await toWebHandler(app)(
 			new Request('https://stream.keepr.digital/api/reading', {
-				headers: { cookie: 'session=grace' },
+				headers: { cookie: `theme=dark; ${GRACE}` },
 			}),
 		);
 		return await response.json();
 	}
 
-	it('asks Keepr Accounts over the KEEPR_ACCOUNTS binding, with the request’s own cookie', async () => {
+	it('asks Keepr Accounts over the KEEPR_ACCOUNTS binding, with the request’s cookies that are its own', async () => {
 		const names = await namesFor({
-			KEEPR_ACCOUNTS: keeprAccounts({ 'session=grace': { ada: 'Ada Lovelace' } }),
+			KEEPR_ACCOUNTS: keeprAccounts({ [GRACE]: { ada: 'Ada Lovelace' } }),
 		});
 
 		expect(names).toEqual({ ada: 'Ada Lovelace' });
 		expect(questions).toEqual([
 			{
 				address: 'https://accounts.keepr.digital/api/users/names',
-				cookie: 'session=grace',
+				cookie: GRACE,
 				ids: ['ada'],
 			},
 		]);

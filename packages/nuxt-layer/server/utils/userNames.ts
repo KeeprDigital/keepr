@@ -4,14 +4,15 @@ import { getRequestHeader } from 'h3';
 import {
 	IDENTITY_PROOF_LIFETIME_SECONDS,
 	KEEPR_ACCOUNTS_ORIGIN,
+	keeprAccountsCookies,
 } from '../../shared/utils/identityProof';
 import { USER_NAMES_MAX_IDS, userNamesAddress } from '../../shared/utils/userNames';
 import { accountsConnectionOf } from './requestIdentity';
 
 /**
  * What to call a User other than the one a request belongs to, asked of Keepr
- * Accounts over the Worker-to-Worker connection with the request's own cookie
- * (ADR-0145). Keepr Accounts decides whose names that Session is told; an App
+ * Accounts over the Worker-to-Worker connection with those of the request's
+ * cookies that are Keepr Accounts' (ADR-0145). Keepr Accounts decides whose names that Session is told; an App
  * holds no Users, and sends no credential of its own.
  *
  * It answers what it could learn and never refuses: a page that shows who did
@@ -164,5 +165,9 @@ export async function readUserNames(
 		// No binding: nobody could have been recognised either, and nothing is named.
 		return {};
 	}
-	return await read({ cookie: getRequestHeader(event, 'cookie'), accounts, ids });
+	return await read({
+		cookie: keeprAccountsCookies(getRequestHeader(event, 'cookie')),
+		accounts,
+		ids,
+	});
 }

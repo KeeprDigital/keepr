@@ -113,6 +113,22 @@ describe('the Accounts Stand-in', () => {
 			});
 		});
 
+		it.each([
+			[
+				'someone from another Organisation',
+				{ user: 'eve', organisation: { id: 'elsewhere', role: 'member' } },
+				{ organisation: { id: 'elsewhere', role: 'member' }, keeprAdministrator: true },
+			],
+			['someone in no Organisation', { user: 'eve', organisation: null }, { organisation: null }],
+			[
+				'someone who is no Keepr Administrator',
+				{ user: 'eve', keeprAdministrator: false },
+				{ organisation: { id: 'keepr-local', role: 'owner' }, keeprAdministrator: false },
+			],
+		] as const)('answers as %s', async (_case, persona, identity) => {
+			expect(await as(persona)).toMatchObject({ kind: 'signed-in', identity });
+		});
+
 		it('answers a second Session of one User, and a User by the name given', async () => {
 			const [first, second] = await Promise.all([
 				as({ user: 'ada', name: 'Ada Lovelace' }),

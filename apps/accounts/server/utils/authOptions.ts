@@ -6,10 +6,12 @@ import { admin, haveIBeenPwned, jwt, organization } from 'better-auth/plugins';
 import {
 	IDENTITY_PROOF_AUDIENCE,
 	IDENTITY_PROOF_LIFETIME_SECONDS,
+	IDENTITY_PROOF_PATH,
 	KEEPR_ACCOUNTS_ORIGIN,
+	PUBLIC_KEYS_PATH,
 } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { passwordResetEmail } from '~~/server/email/messages';
-import { keeprDomainOf } from '~~/shared/utils/keeprDomain';
+import { keeprDomainOf } from '@keepr/nuxt-layer/shared/utils/keeprDomain';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 import { organisationOptions } from './organisations';
 import { userNameHooks } from './userName';
@@ -138,6 +140,33 @@ export const MEMBERSHIP_PATHS_CLOSED = [
 	'/organization/leave',
 ];
 
+/** Where the library's routes are served, which its rate limit's paths are relative to. */
+const AUTH_BASE_PATH = '/api/auth';
+
+/** The header Cloudflare writes on every request from the internet: the client's address. */
+const CLIENT_ADDRESS_HEADER = 'cf-connecting-ip';
+
+/**
+ * The library's paths an App asks over its `KEEPR_ACCOUNTS` binding: its
+ * Identity Proof and the keys it verifies against (ADR-0113).
+ */
+const APP_QUESTION_PATHS = [
+	IDENTITY_PROOF_PATH.replace(AUTH_BASE_PATH, ''),
+	PUBLIC_KEYS_PATH.replace(AUTH_BASE_PATH, ''),
+];
+
+/**
+ * An App's question is not counted. A binding's request carries no client
+ * address, and the library would count every address-less caller in one
+ * bucket, so a stranger's asks through any App would starve every App
+ * (#1386). Cloudflare writes the address on every request from the internet,
+ * so a request without one came over a binding: a browser asking directly is
+ * counted by its address as before.
+ */
+function countedUnlessFromABinding(request: Request, rule: { window: number; max: number }) {
+	return request.headers.has(CLIENT_ADDRESS_HEADER) ? rule : false;
+}
+
 export interface AuthOptionsInput {
 	sharedCookieDomain: string | undefined;
 	/** Where the email a request causes is sent. */
@@ -263,7 +292,7 @@ export function authOptions({
 			disableOriginCheck: false,
 			// Written by Cloudflare on every request, after anything the caller sent
 			// under that name is discarded: the one address a caller cannot choose.
-			ipAddress: { ipAddressHeaders: ['cf-connecting-ip'] },
+			ipAddress: { ipAddressHeaders: [CLIENT_ADDRESS_HEADER] },
 			// `Secure` and `__Secure-` on every built server; the dev server keeps
 			// the plain cookie a browser accepts over `http://localhost` (ADR-0012).
 			useSecureCookies: import.meta.dev !== true,
@@ -277,6 +306,9 @@ export function authOptions({
 		rateLimit: {
 			enabled: import.meta.dev !== true,
 			storage: 'database',
+			customRules: Object.fromEntries(
+				APP_QUESTION_PATHS.map((path) => [path, countedUnlessFromABinding]),
+			),
 		},
 		telemetry: { enabled: false },
 	} satisfies BetterAuthOptions;
