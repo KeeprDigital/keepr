@@ -1,5 +1,43 @@
 # Changelog
 
+## 4.0.0
+
+### Operator steps
+
+- **stream:** Stream Keepr's pages hear realtime through their Event's Durable Object, and Ably is removed (ADR-0137, ADR-0140, ADR-0143). A page opens one socket for the Event it is on, at `/realtime/socket` on the Installation's own host: an operator's page as its Session, and a Screen Output with a Realtime Ticket it is given for its Screen Output Asset Capability at `POST /api/realtime/ticket`. Ably's SDK, `GET /api/realtime/token` and every reader of `NUXT_ABLY_API_KEY` are gone, and a deploy no longer requires that secret. A page that is refused says "Live Updates Unauthorized" as soon as it is refused, where a token that could not be had took about 8 s to show. It ships in one Release with the server's publish to the object and with who a socket's caller is. (#1348)
+
+  Operator steps, for each Environment (staging, then production):
+
+  1. **Once this Release is live in an Installation**, reload every operator page and every Screen Output left open across the deploy, an OBS browser source included. A page loaded before it still listens on Ably, where nothing is published any more, and does not reload by itself.
+  2. **Once this Release is live in an Installation and you will not roll it back**, delete the Worker secret: `pnpm exec wrangler secret delete NUXT_ABLY_API_KEY --config .output/server/wrangler.json` (add `--env staging` for staging). Then remove the `NUXT_ABLY_API_KEY` field from the 1Password items `stream-staging` and `stream-production`.
+  3. **Then close the Ably apps** those two keys belonged to, and the Ably account if nothing else uses it.
+
+  Do not delete the secret before this Release is live. The Release it replaces signs every page's realtime token with it, so without it no page has live updates, and a deploy of that Release, a rollback included, refuses an Installation that lacks it. From this Release on nothing reads it: nothing breaks while it remains, and nothing breaks when it goes.
+- **stream:** Stream Keepr relies on Keepr Accounts, and its own sign-in is removed (ADR-0141). A User signs in at Keepr Accounts and is sent back; Stream Keepr's login, password reset and user administration pages, its first-admin bootstrap and its Better Auth are gone. Every route behind the Session boundary admits a request only on an Identity Proof from Keepr Accounts, refuses a User with no App access to `stream` 403, and admits a Graphics Administrator by the `admin` App role. The Worker binds `keepr-accounts` as `KEEPR_ACCOUNTS` in every Environment, so a deploy refuses an Environment whose Keepr Accounts is not deployed, or is behind (ADR-0120). The deploy's migration drops the `user`, `session`, `account`, `verification` and `rateLimit` tables: no Stream Keepr User is carried over. Nothing skips sign-in locally any more: the `:bypass` scripts are gone, and `pnpm dev` is answered by the Accounts Stand-in. (#1339)
+
+  Operator steps, for each Environment (staging, then production):
+
+  1. **Before this Release deploys**, check Keepr Accounts is deployed there. Stream Keepr's deploy refuses otherwise, before it changes anything.
+  2. **Before this Release deploys**, invite whoever needs Stream Keepr in that Environment's Keepr Accounts (`/invite`), with App access to `stream`: `admin` for a Graphics Administrator, `member` for anyone else. Until someone is invited, nobody can use the Installation.
+  3. **Before this Release's Deploy run, for staging**: the acceptance gates now sign in to Staging's Keepr Accounts. Invite their operator there with `admin` in `stream`, record that User's email and password as `STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL` and `STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD` in 1Password (item `github-staging`), and run `pnpm secrets:sync --github staging`. With the old operator's values the staging job fails and production does not deploy.
+  4. **Once this Release is live in an Installation**, delete the Worker secrets Stream Keepr no longer reads: `pnpm exec wrangler secret delete NUXT_BETTER_AUTH_SECRET --config .output/server/wrangler.json`, and the same for `NUXT_ADMIN_BOOTSTRAP_TOKEN` if it is set (add `--env staging` for staging). Then remove the `NUXT_BETTER_AUTH_SECRET` field from the 1Password items `stream-staging` and `stream-production`. Nothing reads either, so nothing breaks while they remain.
+
+  Every browser signs in again, at Keepr Accounts. Work recorded under a former User's id (an unfinished Graphics Ingestion Operation, an Evidence Ledger entry) keeps that id, which no User now has. A rollback of the Worker past this Release finds no sign-in tables: restore the deploy's D1 recovery point with it, or fix forward.
+
+### Features
+
+- **stream:** A Screen's actions offer "Show debug panel" and "Hide debug panel" in place of the one Debug item, on the Screens page and on a Screen's own page. Each asks every Screen Output of that Screen for the state it names, where Debug turned each output's panel over from wherever it stood. The page cannot read an output's panel, so it shows no state of its own: the confirmation says which was asked for. A Screen command whose delivery fails is now sent once more before it answers 502, as every other realtime message is, so a deploy that resets an Event's object no longer fails the command that meets it. There is no step beyond Deploy. An operator's page left open from before this Release has its Debug refused until it is reloaded. (#1348)
+- **stream:** A realtime socket on `/realtime/socket?eventId=<id>` is let in as a Session or as a Screen Output, and as nobody else (ADR-0137, ADR-0142). A Session's socket, opened by the app's own page, may hear its Event's channel and its Screens' and enter a Screen's presence. A Screen Output presents its Screen Output Asset Capability to `POST /api/realtime/ticket?eventId=<id>` and is given a Realtime Ticket that lasts 30 s and admits one socket, onto its own Screen's channel alone. Regenerating a Screen's capability closes the sockets its outputs hold at once. Everyone else is answered a socket closed with a code a page can read. The deploy's migration adds the `realtime_tickets` table: there is no step beyond Deploy. (#1348)
+
+### Fixes
+
+- **stream:** Deleting a Screen now disconnects its Screen Outputs at once, so they leave its presence with the delete. Before, an output already connected stayed until its socket dropped. (#1353)
+- **stream:** Rotating a Screen's asset access now warns the Operator when its Screen Outputs could not be disconnected, and says to rotate again. Before, only the server's log said so. (#1350)
+
+### Other changes
+
+- **stream:** The server publishes every realtime message by RPC to its Event's Durable Object, on the `REALTIME` binding, and nothing to Ably (ADR-0137, ADR-0140). There is no step beyond Deploy, and nothing to set. It ships in one Release with the pages' move onto the object. A publish that fails is logged as before, as `realtime_publish_failed`: its `reason` says why, and its `statusCode` and `errorCode` are null for a failure of the object. A Screen command that cannot be delivered still answers 502. (#1348)
+
 ## 3.0.2
 
 ### Other changes
