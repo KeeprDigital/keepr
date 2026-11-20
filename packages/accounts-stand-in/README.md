@@ -4,7 +4,7 @@ The Accounts Stand-in (root `GLOSSARY.md`, ADR-0113): a Worker registered locall
 
 | Path | What |
 |---|---|
-| `src/standIn.ts` | The answers: an Identity Proof at `/api/auth/token`, its key at `/api/auth/jwks`, and 404 for anything else. |
+| `src/standIn.ts` | The answers: an Identity Proof at `/api/auth/token`, its key at `/api/auth/jwks`, names at `/api/users/names`, and 404 for anything else. |
 | `src/cookie.mjs` | The `keepr-stand-in` cookie that names who it answers as: `@keepr/accounts-stand-in/cookie`, plain JavaScript a script or a test imports. |
 | `src/worker.ts` | The same, as a Worker. |
 | `stand-in.wrangler.jsonc` | Its Wrangler configuration, under a name Wrangler does not find by itself. |
@@ -41,6 +41,12 @@ standInCookie({ apps: { stream: null } }); // keepr-stand-in=stream=none
 A browser is given it by hand, in its console: `document.cookie = 'keepr-stand-in=session=second'` makes that browser a second Session of the Local Developer User, which is how two local browsers are two editors.
 
 The cookie adds no authority. The stand-in already answers anyone who reaches it as a User with full authority; the cookie can only ask for less, or for another name. Every refusal that follows is the App's own.
+
+### What it calls other Users
+
+An App asks Keepr Accounts what to call a User other than its reader, at `/api/users/names` (ADR-0145, in the root `docs/adr`). The stand-in holds no Users, so it names the Local Developer User and whoever it has answered as since it started, by the name it gave them last: a User exists locally once a request has named them. Everyone it answers as works in the one Organisation, so each is named to anyone signed in. An id it has not answered as, and a User given a blank name, come back unnamed, as an id no User has does from Keepr Accounts. It refuses as Keepr Accounts does: 401 to a signed-out visitor, 400 to a question about more than 50 ids.
+
+To see another User's name in a local browser, act as them first (`document.cookie = 'keepr-stand-in=user=ada&name=Ada Lovelace'`), then clear the cookie and read as the Local Developer User. Restarting the stand-in forgets them.
 
 ## Running it
 

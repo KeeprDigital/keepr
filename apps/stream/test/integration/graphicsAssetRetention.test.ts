@@ -3,6 +3,7 @@ import type {
 	GraphicAssetPurgeOutcome,
 	GraphicAssetRetentionView,
 	GraphicsAssetEvidencePage,
+	GraphicsAssetEvidenceReading,
 	GraphicsIngestionOperation,
 	GraphicsRetentionOverview,
 	GraphicsRetentionSweepResult,
@@ -17,7 +18,7 @@ import {
 import { GRAPHICS_RETENTION_GUARANTEES } from '../../shared/utils/graphicsAssetRetention';
 import { $fetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
-import { aUserWithoutTheRole } from './identities';
+import { anotherUser, aUserWithoutTheRole } from './identities';
 import { expectOperationResult } from './responseStatus';
 
 const transparentPixelPng = Uint8Array.from(
@@ -282,6 +283,35 @@ describe('the Graphics Asset Library retention API', () => {
 				}),
 			]),
 		);
+	});
+
+	// Wiring, through the Worker's own connection to Keepr Accounts, which the
+	// Accounts Stand-in answers: whose name is told is Keepr Accounts' rule (ADR-0145).
+	it('names another Graphics Administrator to the one reading the ledger', async () => {
+		const purger = 'retention-1341-purger';
+		const { assetId } = (await ingest('Named purge logo', 'retention-named-purge')).result!;
+		await $fetch(`/api/graphics-assets/${assetId}/lifecycle-actions`, {
+			method: 'POST',
+			headers: authorHeaders,
+			body: { action: 'trash' },
+		});
+		await $fetch<GraphicAssetPurgeOutcome>(`/api/admin/graphics-assets/${assetId}/purge`, {
+			method: 'POST',
+			headers: { cookie: await anotherUser(purger) },
+			body: { confirmation: 'purge-now' },
+		});
+
+		const ledger = await $fetch<GraphicsAssetEvidenceReading>(
+			'/api/admin/graphics-assets/evidence',
+			{ query: { actor: purger } },
+		);
+
+		expect(ledger.entries).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ actor: purger, subject: { kind: 'graphic-asset', id: assetId } }),
+			]),
+		);
+		expect(ledger.actorNames[purger]).toBe(`Integration ${purger}`);
 	});
 
 	it('reads the ledger by group, actor, correlation, and cursor', async () => {

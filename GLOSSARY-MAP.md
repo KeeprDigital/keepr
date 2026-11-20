@@ -19,7 +19,7 @@ Keepr has four vocabularies. Use each in its own code, and the shared one everyw
 
 ## Relationships
 
-- **Keepr → every App**: an App learns who a request belongs to from Keepr Accounts, as an Identity Proof. A User, Session, Organisation or App role means the same thing in every App, and in Keepr Accounts.
+- **Keepr → every App**: an App learns who a request belongs to from Keepr Accounts, as an Identity Proof, and holds no Users: what to call a User other than that one, it asks Keepr Accounts with the request's own cookie. A User, Session, Organisation or App role means the same thing in every App, and in Keepr Accounts.
 - **Keepr Accounts → every App**: none of its own words reach an App. Its Audit Record is not Stream Keepr's Evidence Ledger.
 - **Stream Keepr ↔ Score Keepr**: neither reads the other today. Stream Keepr's tournament data comes from Melee Sync and the TCG+ Import. The rows below are how the two would meet.
 - **Screen Output**: Stream Keepr's one identity that is not a User. A Screen Output is admitted by its Screen Output Asset Capability, in place of a Session.

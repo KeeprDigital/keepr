@@ -92,7 +92,8 @@ export default defineEventHandler(async (event): Promise<GraphicsAssetEvidenceRe
 		// The ledger records who acted, never what they were called at the time, so
 		// an actor is named as the page is read (#398, ADR-0010), for the User
 		// reading it (`server/utils/actorNames.ts`).
-		return withActorNames(
+		return await withActorNames(
+			event,
 			administrator,
 			page,
 			page.entries.map((entry) => entry.actor),
