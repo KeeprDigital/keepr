@@ -50,6 +50,7 @@ export default defineEventHandler(async (event) => {
 				'content-type': result.contentType,
 				'content-length': String(result.byteLength),
 				'cache-control': 'private, no-store',
+				'x-content-type-options': 'nosniff',
 			},
 		});
 	} catch (error) {

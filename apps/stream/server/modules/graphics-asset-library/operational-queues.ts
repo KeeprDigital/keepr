@@ -79,6 +79,7 @@ export interface GraphicsOperationalQueuesCatalogue {
 		operationId: UnreleasedStagedInput['operationId'],
 	) => Promise<UnreleasedStagedInput | undefined>;
 	countUnreleasedStagedInput: () => Promise<number>;
+	ingestionOperationExists: (operationId: UnreleasedStagedInput['operationId']) => Promise<boolean>;
 	summariseRetentionDeadlines: () => Promise<GraphicsRetentionDeadlineSummary>;
 	listTrashDeadlines: (input: { limit: number }) => Promise<GraphicsTrashDeadline[]>;
 	listRevisionRetention: (input: {

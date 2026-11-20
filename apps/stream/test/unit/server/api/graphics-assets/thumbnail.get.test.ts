@@ -62,6 +62,7 @@ describe('graphic Asset thumbnail delivery', () => {
 		expect(response.headers.get('content-type')).toBe('image/png');
 		expect(response.headers.get('content-length')).toBe('42');
 		expect(response.headers.get('cache-control')).toBe('private, no-store');
+		expect(response.headers.get('x-content-type-options')).toBe('nosniff');
 	});
 
 	it('answers an asset with no recorded preview with 404, which the error wrapper leaves alone', async () => {

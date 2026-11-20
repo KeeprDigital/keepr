@@ -252,6 +252,20 @@ describe('the Graphics Asset Library operational queues', () => {
 		expect(queueOf(swept, 'retryable-ingestion').totalCount).toBe(0);
 	});
 
+	// A finished operation is already how a retry would leave it; an id naming
+	// no operation at all is not found.
+	it('finds a finished operation unqueued, and an unknown one not at all', async () => {
+		const context = createQueuesLibrary();
+		const completed = await ingestAsset(context, { idempotencyKey: 'finished', name: 'Finished' });
+
+		await expect(
+			context.library.findQueuedIngestionOperation({ operationId: completed.id }),
+		).resolves.toBeUndefined();
+		await expect(
+			context.library.findQueuedIngestionOperation({ operationId: 'no-such-operation' as never }),
+		).rejects.toMatchObject({ code: 'ingestion-operation-not-found' });
+	});
+
 	it('offers exact-byte repair for unavailable content and nothing else for a quarantined object', async () => {
 		const context = createQueuesLibrary();
 		const published = await ingestAsset(context, {

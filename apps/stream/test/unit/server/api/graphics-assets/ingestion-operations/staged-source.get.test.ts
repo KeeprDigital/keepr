@@ -50,7 +50,7 @@ describe('staged Graphic Asset source delivery', () => {
 		mockRouterParam.mockReset().mockReturnValue('operation-1');
 	});
 
-	it('serves the staged bytes privately and uncacheably, scoped to the asking author', async () => {
+	it('serves the staged bytes privately, uncacheably and never rendered, scoped to the asking author', async () => {
 		mockResolveStagedGraphicAssetSource.mockResolvedValue({
 			outcome: 'available',
 			body: new ReadableStream(),
@@ -65,6 +65,8 @@ describe('staged Graphic Asset source delivery', () => {
 		expect(response.headers.get('content-length')).toBe('2048');
 		expect(response.headers.get('cache-control')).toBe('private, no-store');
 		expect(response.headers.get('vary')).toBe('cookie');
+		expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+		expect(response.headers.get('content-disposition')).toBe('attachment');
 		expect(mockResolveStagedGraphicAssetSource).toHaveBeenCalledWith({
 			operationId: 'operation-1',
 			initiatedBy: 'author-1',

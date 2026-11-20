@@ -44,6 +44,27 @@ vi.doMock('~~/server/utils/realtimePublish', () => ({
 	publishScreenCommand: async () => {},
 	getOriginConnectionId: () => undefined,
 }));
+/** Runs once, after the next Event Data load and before its command commits. */
+let afterBindingDataLoad: (() => Promise<void>) | undefined;
+vi.doMock('~~/server/services/graphicBindingData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('~~/server/services/graphicBindingData')>();
+	return {
+		...actual,
+		graphicBindingDataService: () => {
+			const service = actual.graphicBindingDataService();
+			return {
+				...service,
+				async load(...args: Parameters<typeof service.load>) {
+					const data = await service.load(...args);
+					const hook = afterBindingDataLoad;
+					afterBindingDataLoad = undefined;
+					await hook?.();
+					return data;
+				},
+			};
+		},
+	};
+});
 // No Broadcast Graphic here pins a Graphic Asset Revision, so the library is never asked.
 vi.doMock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	graphicsAssetLibraryForEvent: () => ({}),
@@ -129,6 +150,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	afterBindingDataLoad = undefined;
 	vi.useRealTimers();
 });
 
@@ -199,5 +221,35 @@ describe('an Update Graphic on a Broadcast Graphic with an authored update phase
 		const reloaded = await live.reload();
 		expect(reloaded.currentState.playout[GRAPHIC]).toEqual(accepted.currentState.playout[GRAPHIC]);
 		expect(reloaded.currentState.inputs[GRAPHIC]).toEqual(accepted.currentState.inputs[GRAPHIC]);
+	});
+});
+
+describe('a Take that loses its race to another operator', () => {
+	// The merge retry reduces onto the reloaded Live Session, so its bindings resolve
+	// against Event Data loaded for that state's selections, not the first read's.
+	it("resolves its bindings against the Graphic Source Selection the other operator's Select Source made", async () => {
+		const live = await liveControl({
+			id: GRAPHIC,
+			name: 'Lower third',
+			items: [],
+			inputs: [textInput('name', 'staged')],
+			sources: [{ key: 'player', label: 'Player', kind: 'player' }],
+			bindings: [{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' }],
+		});
+		const [first, second] = await db
+			.insert(schema.players)
+			.values([
+				{ eventId: live.eventId, name: 'Rae Okonjo' },
+				{ eventId: live.eventId, name: 'Ines Duarte' },
+			])
+			.returning({ id: schema.players.id });
+		await live.send('Select Source', { sourceKey: 'player', selectionId: first!.id });
+		afterBindingDataLoad = async () => {
+			await live.send('Select Source', { sourceKey: 'player', selectionId: second!.id });
+		};
+
+		const taken = await live.send('Take');
+
+		expect(taken.currentState.inputs[GRAPHIC]!.accepted).toEqual({ name: 'Ines Duarte' });
 	});
 });

@@ -1,4 +1,5 @@
 import type { DbScreen } from '~~/server/db/schema';
+import type { BroadcastGraphicsPlayoutFence } from '~~/server/modules/broadcast-graphics-live-session/playoutFence';
 import type { GraphicsAssetLibrary } from '~~/server/modules/graphics-asset-library';
 import type { ScreenOutputAssetCapabilityManager } from '~~/server/modules/screen-output-assets/manager';
 import type { CreateScreenInput, UpdateScreenInput } from '~~/server/schemas/api/screen';
@@ -362,16 +363,19 @@ export function screenWriteModule() {
 	 * Refuse a write of the Broadcast Graphics stack that edits a graphic on air
 	 * (ADR-0081): it would reach program at once. The editor refuses it first; this
 	 * holds for a stale client, a second tab, and a save that a Take overtook.
+	 *
+	 * Admitted, it answers the playout fence the write commits under, so a Take
+	 * committing between this read and the write refuses the write.
 	 */
 	async function refuseOnAirGraphicEdit(
 		existing: DbScreen,
 		nextConfigs: ModeConfigsMap | null | undefined,
-	): Promise<void> {
+	): Promise<BroadcastGraphicsPlayoutFence | undefined> {
 		const current = resolveScreenModeConfig(existing.modeConfigs, 'broadcast-graphics').graphics;
 		const next = resolveScreenModeConfig(nextConfigs, 'broadcast-graphics').graphics;
-		if (sameJson(current, next)) return;
-		const onAirIds = await broadcastGraphicsLiveSessionModule().onAirGraphicIds(existing);
-		const edited = editedOnAirBroadcastGraphic(current, next, onAirIds);
+		if (sameJson(current, next)) return undefined;
+		const onAir = await broadcastGraphicsLiveSessionModule().onAirGraphics(existing);
+		const edited = editedOnAirBroadcastGraphic(current, next, onAir.ids);
 		if (edited) {
 			throw createError({
 				statusCode: 409,
@@ -379,6 +383,7 @@ export function screenWriteModule() {
 				message: `Broadcast Graphic "${edited.name}" is on air and cannot be edited. Take it off air first.`,
 			});
 		}
+		return onAir.fence;
 	}
 
 	async function createScreen({
@@ -460,8 +465,10 @@ export function screenWriteModule() {
 			? await admitScreenGraphicsEditWrite(eventId, screenId, authoringSessionId)
 			: undefined;
 
-		if (data.modeConfigs !== undefined)
-			await refuseOnAirGraphicEdit(existingScreen, data.modeConfigs);
+		const playoutFence =
+			data.modeConfigs !== undefined
+				? await refuseOnAirGraphicEdit(existingScreen, data.modeConfigs)
+				: undefined;
 
 		await validateScreenModeConfigsReferences(eventId, data.modeConfigs);
 		rejectChangedGraphicAssetReferencesOnGenericUpdate(
@@ -517,6 +524,7 @@ export function screenWriteModule() {
 					stateVersion,
 					epochEnd?.statements,
 					leaseFence,
+					playoutFence,
 				),
 		);
 
@@ -641,11 +649,13 @@ export function screenWriteModule() {
 		if (mode === 'feature-match-overlay')
 			await requireFeatureMatchLayoutHeld(eventId, existing.modeConfigs?.[mode], config);
 
-		if (mode === 'broadcast-graphics')
-			await refuseOnAirGraphicEdit(
-				existing,
-				mergeScreenModeConfig(existing.modeConfigs ?? {}, mode, config),
-			);
+		const playoutFence =
+			mode === 'broadcast-graphics'
+				? await refuseOnAirGraphicEdit(
+						existing,
+						mergeScreenModeConfig(existing.modeConfigs ?? {}, mode, config),
+					)
+				: undefined;
 
 		if (isGraphicAssetReferencingScreenMode(mode)) {
 			const nextConfigs = mergeScreenModeConfig(existing.modeConfigs ?? {}, mode, config);
@@ -691,13 +701,16 @@ export function screenWriteModule() {
 			}
 		}
 
+		// Versioned on the read every check above was made against, so a patch that
+		// names no version cannot commit over a configuration nobody checked.
 		const updatedScreen = await screens.updateModeConfig(
 			screenId,
 			eventId,
 			mode,
 			config,
-			stateVersion,
+			stateVersion ?? existing.stateVersion,
 			leaseFence,
+			playoutFence,
 		);
 
 		if (!updatedScreen) {

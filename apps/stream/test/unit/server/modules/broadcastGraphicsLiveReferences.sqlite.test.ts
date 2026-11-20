@@ -1,5 +1,6 @@
 import type {
 	BroadcastGraphicsCommand,
+	BroadcastGraphicsCommandResult,
 	BroadcastGraphicsLiveSessionResponse,
 } from '~~/shared/types/broadcastGraphicsLiveSession';
 import type {
@@ -108,8 +109,14 @@ const TRANSPARENT_VIDEO: MediaGraphicInputValue = {
 /** A revision that exists but whose bytes the library cannot currently reach. */
 const UNREACHABLE_REVISION = 'revision-unreachable';
 
+/** A revision of a Retired Graphic Asset: it resolves, but no one may newly select it. */
+const RETIRED_REVISION = 'revision-retired';
+
 /** Revisions whose content stopped resolving after acceptance, so the playout path meets a refusal. */
 const graphicsAssetLibraryOutage = new Set<string>();
+
+/** Revisions purged after acceptance: the library answers them missing. */
+const purgedRevisions = new Set<string>();
 
 /** The library `Set Input` asks for a pinned revision's facts, answering for the revisions seeded below. */
 const graphicsAssetLibrary = {
@@ -122,6 +129,9 @@ const graphicsAssetLibrary = {
 			graphicsAssetLibraryOutage.has(input.revisionId)
 		)
 			return { outcome: 'unavailable', retryable: true };
+		if (purgedRevisions.has(input.revisionId)) return { outcome: 'missing' };
+		if (input.revisionId === RETIRED_REVISION)
+			return { outcome: 'available', lifecycleState: 'retired', kind: 'image' };
 		if (
 			input.assetId === TRANSPARENT_VIDEO.assetId &&
 			input.revisionId === TRANSPARENT_VIDEO.revisionId
@@ -182,6 +192,7 @@ function command(
 }
 
 interface LiveSession {
+	apply: (issued: BroadcastGraphicsCommand) => Promise<BroadcastGraphicsCommandResult>;
 	take: () => Promise<void>;
 	out: () => Promise<void>;
 	setInput: (key: string, value: MediaGraphicInputValue | null) => Promise<void>;
@@ -205,7 +216,7 @@ async function liveSession(): Promise<LiveSession> {
 	const session = await module.loadSession(eventId, screenId);
 	const authorizer = createD1ScreenOutputAssetAuthorizer(harness.database);
 
-	const apply = async (issued: BroadcastGraphicsCommand) => {
+	const apply = async (issued: BroadcastGraphicsCommand) =>
 		await module.applyCommand({
 			eventId,
 			screenId,
@@ -213,13 +224,18 @@ async function liveSession(): Promise<LiveSession> {
 			command: issued,
 			graphicsAssets: () => graphicsAssetLibrary,
 		});
-	};
 
 	return {
-		take: () => apply(command('Take', { graphicId: SLATE.id, cut: true })),
-		out: () => apply(command('Out', { graphicId: SLATE.id, cut: true })),
-		setInput: (key, value) =>
-			apply(command('Set Input', { graphicId: SLATE.id, inputKey: key, value })),
+		apply,
+		take: async () => {
+			await apply(command('Take', { graphicId: SLATE.id, cut: true }));
+		},
+		out: async () => {
+			await apply(command('Out', { graphicId: SLATE.id, cut: true }));
+		},
+		setInput: async (key, value) => {
+			await apply(command('Set Input', { graphicId: SLATE.id, inputKey: key, value }));
+		},
 		republish: () => module.republishLiveSessionReferences({ eventId, screenId }),
 		strandReferencesOfEndedEpoch: async () => {
 			await db
@@ -299,6 +315,7 @@ beforeEach(() => {
 	beforeReferenceWrite = undefined;
 	interleaving = false;
 	graphicsAssetLibraryOutage.clear();
+	purgedRevisions.clear();
 	vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -377,6 +394,42 @@ describe('a media selection the Graphics Asset Library refuses', () => {
 				inputKeys: [CLIP_A],
 			},
 		});
+	});
+
+	// A live selection is held to the rule an authored reference is: an active asset of
+	// the kind the Graphic Input declares.
+	it.each([
+		{ selection: 'a retired asset', inputKey: CLIP_A, value: clip(RETIRED_REVISION) },
+		{
+			selection: 'an image where silent video is declared',
+			inputKey: STING,
+			value: clip(REVISIONS[0]),
+		},
+	])('refuses $selection, choosing something else being the next move', async (row) => {
+		const live = await liveSession();
+		await live.take();
+		const before = await live.snapshot();
+
+		await expect(live.setInput(row.inputKey, row.value)).rejects.toMatchObject({
+			statusCode: 409,
+			data: { code: 'unselectable-asset-reference', inputKeys: [row.inputKey] },
+		});
+		expect(await live.snapshot()).toEqual(before);
+	});
+
+	// A retry of a committed command is a replay: it answers what was stored, and the
+	// library's view of the asset since then is not asked.
+	it('answers a network retry of a committed Take with the stored result after its asset was purged', async () => {
+		const live = await liveSession();
+		await live.setInput(CLIP_A, clip(REVISIONS[0]));
+		const taking = command('Take', { graphicId: SLATE.id, cut: true });
+		const taken = await live.apply(taking);
+		purgedRevisions.add(REVISIONS[0]);
+
+		const retried = await live.apply(taking);
+
+		expect(retried.sequence).toBe(taken.sequence);
+		expect(retried.currentState).toEqual(taken.currentState);
 	});
 
 	it('names a Take blocked by a pinned revision that has gone, rather than refusing bare', async () => {

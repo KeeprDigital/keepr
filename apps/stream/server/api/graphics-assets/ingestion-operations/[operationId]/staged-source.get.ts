@@ -45,6 +45,9 @@ export default defineEventHandler(async (event) => {
 				'content-length': String(staged.byteLength),
 				'cache-control': 'private, no-store',
 				vary: 'cookie',
+				// Unvalidated bytes: a browser must neither sniff nor render them.
+				'content-disposition': 'attachment',
+				'x-content-type-options': 'nosniff',
 			},
 		});
 	} catch (error) {

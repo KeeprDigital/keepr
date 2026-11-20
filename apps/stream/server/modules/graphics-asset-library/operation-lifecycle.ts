@@ -39,6 +39,33 @@ import { processStillImage } from './still-image';
 import { logGraphicsStoreFailure } from './store-failure-log';
 import { validationError } from './validation';
 
+/** How many attempts in a row may end in the same unclassified failure before it stops being retryable. */
+export const GRAPHICS_INGESTION_MAXIMUM_PROCESSING_ATTEMPTS = 3;
+
+/**
+ * The failure an attempt ends in when processing threw something it could not
+ * classify. Retryable, unless the attempt before it ended in this same failure
+ * often enough to show it recurs on every retry: then retrying would only spend
+ * the staged input's lifetime failing the same way.
+ */
+export function unclassifiedProcessingFailure(input: {
+	/** The failure the operation carried into this attempt, if it was a retry. */
+	prior: GraphicsIngestionOperation['failure'];
+	code: 'ingestion-processing-failed' | 'catalogue-publication-failed';
+	retryMessage: string;
+}): NonNullable<GraphicsIngestionOperation['failure']> {
+	const attempts = input.prior?.code === input.code ? (input.prior.attempts ?? 1) + 1 : 1;
+	const retryable = attempts < GRAPHICS_INGESTION_MAXIMUM_PROCESSING_ATTEMPTS;
+	return {
+		code: input.code,
+		retryable,
+		attempts,
+		message: retryable
+			? input.retryMessage
+			: `Processing failed the same way ${attempts} times in a row, so it will not be retried. Start a new import.`,
+	};
+}
+
 export interface GraphicsIngestionOperationLifecycleDependencies {
 	/** Refuses with `graphics-asset-library-unavailable` over a health-only catalogue. */
 	requireCatalogue: () => GraphicsIngestionOperationCatalogue & GraphicsStagedInputReleaseCatalogue;
@@ -64,6 +91,8 @@ export function createGraphicsIngestionOperationLifecycle(
 		dependencies;
 	const activeIngestionLeaseMilliseconds =
 		GRAPHICS_MULTIPART_PART_TRANSFER_TIMEOUT_MILLISECONDS + 30_000;
+	/** How long a processing attempt holds its operation unless it ends first. */
+	const processingLeaseMilliseconds = 15 * 60 * 1000;
 
 	function timestamp() {
 		return now().toISOString();
@@ -480,8 +509,42 @@ export function createGraphicsIngestionOperationLifecycle(
 		);
 	}
 
+	/**
+	 * Runs one attempt's processing of an operation while holding it, so a retry
+	 * cannot claim the operation from under an attempt that is still running,
+	 * however long since its last write: until the attempt ends, or until its
+	 * lease expires, which is how an attempt whose worker died gives it back.
+	 */
+	async function holdingProcessingLease<T>(
+		operation: Pick<GraphicsIngestionOperation, 'id' | 'initiatedBy'>,
+		process: () => Promise<T>,
+	): Promise<T> {
+		const catalogue = requireCatalogue();
+		const owner = { operationId: operation.id, initiatedBy: operation.initiatedBy };
+		const until = new Date(now().getTime() + processingLeaseMilliseconds).toISOString();
+		try {
+			await catalogue.holdIngestionProcessingLease({ ...owner, until });
+		} catch (error) {
+			throw new GraphicsAssetLibraryError(
+				'Graphics ingestion could not hold its operation because the catalogue is unavailable',
+				'graphics-asset-library-unavailable',
+				{ cause: error },
+			);
+		}
+		try {
+			return await process();
+		} finally {
+			// A lease that cannot be let go expires on its own.
+			await catalogue
+				.holdIngestionProcessingLease({ ...owner, until: null, releasing: until })
+				.catch(() => undefined);
+		}
+	}
+
 	return {
 		activeIngestionLeaseMilliseconds,
+		processingLeaseMilliseconds,
+		holdingProcessingLease,
 		initiateGraphicsOperation,
 		changedOperation,
 		SilentVideoValidationRuntimeError,

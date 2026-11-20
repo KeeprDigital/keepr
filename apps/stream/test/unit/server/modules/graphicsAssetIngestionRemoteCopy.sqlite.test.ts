@@ -1164,6 +1164,75 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 		).resolves.toMatchObject({ uploadId: stranded });
 	});
 
+	// A copy holds its operation while it runs: a second request meanwhile can
+	// neither abort the first's upload nor delete what it stages.
+	it('refuses a second copy request while the first is still copying, and leaves the first to finish', async () => {
+		let releaseBody!: () => void;
+		const bodyReleased = new Promise<void>((resolve) => (releaseBody = resolve));
+		let firstFetched!: () => void;
+		const fetched = new Promise<void>((resolve) => (firstFetched = resolve));
+		let fetches = 0;
+		const { ingestion } = createTestGraphicsIngestion({
+			catalogue: createD1GraphicsAssetCatalogue(harness.database),
+			start: '2026-07-30T04:00:00.000Z',
+			remoteSource: createGraphicsRemoteSourceFetcher({
+				resolver: { resolve: async () => ({ outcome: 'resolved', addresses: ['93.184.216.34'] }) },
+				async fetch() {
+					if (++fetches > 1) return new Response(transparentPixelPng);
+					firstFetched();
+					return new Response(
+						new ReadableStream<Uint8Array>({
+							async pull(controller) {
+								await bodyReleased;
+								controller.enqueue(transparentPixelPng);
+								controller.close();
+							},
+						}),
+					);
+				},
+			}),
+		});
+		const operation = await ingestion.initiateRemoteGraphicAssetCopy({
+			idempotencyKey: 'remote-copy-claimed',
+			initiatedBy: 'graphics-author-1',
+			name: 'Claimed remote source',
+			sourceFileName: 'scoreboard.png',
+		});
+		const request = {
+			operationId: operation.id,
+			initiatedBy: operation.initiatedBy,
+			sourceUrl: 'https://cdn.example.test/scoreboard.png',
+		};
+
+		const first = ingestion.copyRemoteGraphicAssetSource(request);
+		await fetched;
+		await expect(ingestion.copyRemoteGraphicAssetSource(request)).rejects.toMatchObject({
+			code: 'ingestion-operation-lease-held',
+		});
+		releaseBody();
+
+		await expect(first).resolves.toMatchObject({ stage: 'awaiting-confirmation' });
+		expect(fetches).toBe(1);
+	});
+
+	it('clears a remote copy checkpoint only for the upload it names', async () => {
+		const context = await strandRemoteCopyMultipartUpload('remote-checkpoint-compare');
+		const owner = {
+			operationId: context.operation.id,
+			initiatedBy: context.operation.initiatedBy,
+		};
+
+		await context.catalogue.checkpointRemoteCopyMultipartUpload({
+			...owner,
+			uploadId: null,
+			releasing: 'another-upload' as GraphicsMultipartUploadIdentity,
+		});
+
+		await expect(
+			context.catalogue.getGraphicAssetMultipartState(owner.operationId, owner.initiatedBy),
+		).resolves.toMatchObject({ uploadId: context.uploadId });
+	});
+
 	it('reports no client-transfer facts for a remote copy holding a checkpoint', async () => {
 		const stranded = await strandRemoteCopyMultipartUpload('remote-checkpoint-no-transfer');
 

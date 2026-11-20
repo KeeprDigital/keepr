@@ -1297,9 +1297,9 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 		await expect(storedAssets()).resolves.toEqual([]);
 	});
 
-	// One active attempt per operation: a retry takes a working operation only
-	// once its last write is a whole lease old, and the attempt it displaced
-	// publishes nothing.
+	// One active attempt per operation: an attempt holds its operation while it
+	// runs, however long since its last write, and a retry takes it only once
+	// that hold expires, as a dead worker's does; the displaced attempt publishes nothing.
 	it('refuses a retry while another attempt holds the operation, and takes it once that lease lapses', async () => {
 		const delegate = createD1GraphicsAssetCatalogue(harness.database);
 		let publications = 0;
@@ -1354,7 +1354,11 @@ describe('still-image ingestion at the Graphic Asset ingestion seam', () => {
 		advanceTo(new Date(lastWrite + lifecycle.activeIngestionLeaseMilliseconds - 1).toISOString());
 		await expect(retry()).rejects.toMatchObject({ code: 'ingestion-operation-lease-held' });
 
+		// Its last write is a whole lease old, but the attempt is still running.
 		advanceTo(new Date(lastWrite + lifecycle.activeIngestionLeaseMilliseconds).toISOString());
+		await expect(retry()).rejects.toMatchObject({ code: 'ingestion-operation-lease-held' });
+
+		advanceTo(new Date(lastWrite + lifecycle.processingLeaseMilliseconds).toISOString());
 		const retried = await retry();
 		expect(retried).toMatchObject({
 			stage: 'completed',

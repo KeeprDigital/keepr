@@ -31,8 +31,9 @@ export default defineEventHandler(
 			const library = graphicsAssetLibraryForEvent(event);
 			const queued = await library.findQueuedIngestionOperation({ operationId });
 			if (!queued) {
-				// Nothing unfinished under that identity: already published, cancelled,
-				// or swept away. Retrying it is the idempotent no-op it looks like.
+				// The operation is finished: published, cancelled or expired. Retrying
+				// it is the idempotent no-op it looks like. An identity no operation
+				// has was refused as not found by the lookup.
 				return { outcome: 'already-in-state' };
 			}
 			return {

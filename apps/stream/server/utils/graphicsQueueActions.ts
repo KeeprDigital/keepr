@@ -21,8 +21,8 @@ const LIBRARY_ERROR_OUTCOMES: Partial<
 	Record<GraphicsAssetLibraryError['code'], GraphicsQueueActionOutcome>
 > = {
 	// The subject moved on before the action arrived: purged, restored, or past
-	// the stage the action applies to.
-	'ingestion-operation-not-found': 'already-in-state',
+	// the stage the action applies to. An operation identity that names no
+	// operation at all is absent here: it is not found, never already-in-state.
 	'graphics-subject-not-found': 'already-in-state',
 	'ingestion-operation-not-uploadable': 'already-in-state',
 	'graphic-asset-lifecycle-action-not-allowed': 'already-in-state',

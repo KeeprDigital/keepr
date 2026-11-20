@@ -31,6 +31,15 @@ import {
 } from '~~/shared/modules/broadcast-graphics-live-session';
 
 /**
+ * What the reducer needs about the addressed Broadcast Graphic, read for the live
+ * state one commit attempt reduces onto: the first attempt's, or the state a merge
+ * retry reloaded.
+ */
+export type BroadcastGraphicsReductionContextSource = (
+	currentState: BroadcastGraphicsLiveState,
+) => Promise<Omit<BroadcastGraphicsReductionContext, 'acceptedAt'>>;
+
+/**
  * How a domain refusal reaches the operator.
  *
  * A stale acceptance, an Update Graphic on a graphic that is off, and a required
@@ -52,6 +61,7 @@ const REJECTION_STATUS: Record<BroadcastGraphicsCommandRejection['code'], number
 	'override-unbound': 409,
 	'missing-asset-reference': 409,
 	'unavailable-asset-content': 409,
+	'unselectable-asset-reference': 409,
 	'unknown-social-profile-projection': 404,
 	'social-profile-unavailable': 409,
 };
@@ -407,7 +417,7 @@ export function broadcastGraphicsStateService() {
 	 * can go stale. Closing over them for the one command that needs them keeps both
 	 * authoritative where they live.
 	 */
-	const liveStateFor = (context: Omit<BroadcastGraphicsReductionContext, 'acceptedAt'>) =>
+	const liveStateFor = (contextFor: BroadcastGraphicsReductionContextSource) =>
 		createSequencedLiveState<
 			BroadcastGraphicsLiveSessionRef,
 			DbBroadcastGraphicsLiveSession,
@@ -465,7 +475,10 @@ export function broadcastGraphicsStateService() {
 			 * commits it also replaces the state nobody could read. Reducing onto the raw
 			 * state instead would either throw or persist the corruption forward.
 			 */
-			reduce: (session, command) => {
+			reduce: async (session, command) => {
+				// Read for the state this attempt reduces onto, so a merge retry resolves
+				// bindings against the selections the reloaded state holds.
+				const context = await contextFor(session.currentState);
 				try {
 					return applyBroadcastGraphicsCommand(
 						recoveredBroadcastGraphicsLiveState(session.currentState),
@@ -565,7 +578,7 @@ export function broadcastGraphicsStateService() {
 		 * projects animation from it, so it has to come from the one place that decides
 		 * the authoritative order.
 		 */
-		context: Omit<BroadcastGraphicsReductionContext, 'acceptedAt'>,
+		context: BroadcastGraphicsReductionContextSource,
 		originConnectionId?: string,
 		options: Omit<SequencedLiveStateExecuteOptions, 'originConnectionId'> = {},
 	): Promise<BroadcastGraphicsCommandResult> => {
@@ -574,6 +587,20 @@ export function broadcastGraphicsStateService() {
 			originConnectionId,
 		});
 	};
+
+	/** The stored answer to a command already committed, or `undefined`. */
+	const replayCommand = async (
+		sessionId: number,
+		eventId: number,
+		command: BroadcastGraphicsCommand,
+		originConnectionId?: string,
+	): Promise<BroadcastGraphicsCommandResult | undefined> =>
+		// A replay reduces nothing, so it needs no reduction context.
+		await liveStateFor(() => Promise.reject(new Error('A replay reduces nothing'))).replay(
+			{ sessionId, eventId },
+			command,
+			{ publish: true, originConnectionId },
+		);
 
 	return {
 		findSessionById,
@@ -584,5 +611,6 @@ export function broadcastGraphicsStateService() {
 		endSessionOnLeavingBroadcastGraphics,
 		resetSessionForScreen,
 		applyCommand,
+		replayCommand,
 	};
 }

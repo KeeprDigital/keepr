@@ -1717,6 +1717,8 @@ export function createD1GraphicsAssetCatalogue(
 						parts: [],
 					}
 				: null;
+			// Clearing names the upload it released, so a checkpoint another
+			// attempt has since taken for its own upload is left in place.
 			const result = await database
 				.prepare(`
 				UPDATE graphics_ingestion_operations
@@ -1724,12 +1726,19 @@ export function createD1GraphicsAssetCatalogue(
 				WHERE id = ? AND initiated_by = ?
 					AND source = 'remote-copy'
 					AND (? IS NULL OR stage IN ('created', 'transferring'))
+					AND (
+						? IS NULL
+						OR json_extract(multipart_state, '$.uploadId') IS NULL
+						OR json_extract(multipart_state, '$.uploadId') = ?
+					)
 			`)
 				.bind(
 					state && JSON.stringify(state),
 					input.operationId,
 					input.initiatedBy,
 					input.uploadId ?? null,
+					input.releasing ?? null,
+					input.releasing ?? null,
 				)
 				.run();
 			// An unwritten checkpoint would strand the upload it was meant to name,
@@ -1959,6 +1968,9 @@ export function createD1GraphicsAssetCatalogue(
 				UPDATE graphics_ingestion_operations
 				SET stage = 'hashing', updated_at = ?
 				WHERE id = ? AND initiated_by = ? AND updated_at = ?
+					-- An attempt still processing holds the operation until it ends or
+					-- its lease expires, however long since its last write.
+					AND (processing_lease_expires_at IS NULL OR processing_lease_expires_at <= ?)
 					AND (
 						(stage = 'failed' AND json_extract(failure, '$.retryable') = 1)
 						-- A confirmed Template Package proposal is resting rather than
@@ -1979,6 +1991,7 @@ export function createD1GraphicsAssetCatalogue(
 					input.operation.id,
 					input.operation.initiatedBy,
 					new Date(input.operation.updatedAt).getTime(),
+					new Date(input.claimedAt).getTime(),
 					new Date(input.staleBefore).getTime(),
 				)
 				.run();
@@ -1989,6 +2002,24 @@ export function createD1GraphicsAssetCatalogue(
 				input.operation.id,
 				input.operation.initiatedBy,
 			);
+		},
+		async holdIngestionProcessingLease(input) {
+			const result = await database
+				.prepare(`
+				UPDATE graphics_ingestion_operations
+				SET processing_lease_expires_at = ?
+				WHERE id = ? AND initiated_by = ?
+					AND (? IS NULL OR processing_lease_expires_at = ?)
+			`)
+				.bind(
+					input.until === null ? null : new Date(input.until).getTime(),
+					input.operationId,
+					input.initiatedBy,
+					input.releasing === undefined ? null : new Date(input.releasing).getTime(),
+					input.releasing === undefined ? null : new Date(input.releasing).getTime(),
+				)
+				.run();
+			if (!result.success) throw new Error('Graphics ingestion processing lease could not be held');
 		},
 		async findReusableGraphicAsset(sourceDigest) {
 			const row = await database

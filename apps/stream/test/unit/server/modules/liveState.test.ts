@@ -186,6 +186,30 @@ describe('sequenced live state', () => {
 			expect(mockDb.batch).not.toHaveBeenCalled();
 		});
 
+		// Asked before a feature's own admission: only an exact committed command is a replay.
+		it.each([
+			{ stored: { commandType: 'Add', amount: 5 }, replayed: true },
+			{ stored: { commandType: 'Add', amount: 6 }, replayed: false },
+			{ stored: { commandType: 'Set', amount: 5 }, replayed: false },
+			{ stored: undefined, replayed: false },
+		])(
+			'answers replay with the snapshot only for the same committed command ($stored)',
+			async ({ stored, replayed }) => {
+				mockDb.query.liveStateCommandReceipts.findFirst.mockResolvedValue(
+					stored && {
+						commandType: stored.commandType,
+						contentKey: commandContentKey(stored.commandType, { amount: stored.amount }),
+					},
+				);
+				const port = createPort({ load: vi.fn(async () => counter({ sequence: 9, total: 40 })) });
+
+				const result = await createSequencedLiveState(port).replay(REF, add('cmd-1', 5));
+
+				expect(result).toEqual(replayed ? counter({ sequence: 9, total: 40 }) : undefined);
+				expect(mockDb.batch).not.toHaveBeenCalled();
+			},
+		);
+
 		it('rejects a command ID reused with different content', async () => {
 			mockDb.query.liveStateCommandReceipts.findFirst.mockResolvedValue({
 				commandType: 'Set',

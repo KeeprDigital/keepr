@@ -358,6 +358,12 @@ export const graphicsIngestionOperations = sqliteTable(
 		 */
 		transferCompletedAt: integer('transfer_completed_at', { mode: 'timestamp_ms' }),
 		cancelRequestedAt: integer('cancel_requested_at', { mode: 'timestamp_ms' }),
+		/**
+		 * Until when the attempt processing the operation holds it: set as the
+		 * attempt starts and cleared as it ends, so a retry cannot claim an
+		 * operation whose attempt is still running, however long since it last wrote.
+		 */
+		processingLeaseExpiresAt: integer('processing_lease_expires_at', { mode: 'timestamp_ms' }),
 		createdAt,
 		updatedAt,
 	},

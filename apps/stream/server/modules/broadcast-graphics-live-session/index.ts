@@ -10,6 +10,7 @@ import type {
 import type { BroadcastGraphicConfig, GraphicInputDeclaration } from '~~/shared/types/graphics';
 import type { BroadcastGraphicsModeConfig } from '~~/shared/types/screenConfig';
 import type { ScreenGraphicAssetReference } from '~~/shared/utils/graphicsAssetReferences';
+import type { BroadcastGraphicsPlayoutFence } from './playoutFence';
 import { mapBroadcastGraphicsLiveSessionToResponse } from '~~/server/mappers/broadcastGraphicsLiveSession';
 import { graphicAssetId, graphicAssetRevisionId } from '~~/server/modules/graphics-asset-library';
 import {
@@ -46,6 +47,7 @@ import {
 	sameScreenGraphicAssetReferences,
 } from '~~/shared/utils/graphicsAssetReferences';
 import { randomCommandId } from '~~/shared/utils/uuid';
+import { canonicalJson } from '@keepr/nuxt-layer/server/utils/canonicalJson';
 
 /**
  * A collaborator an operation needs, passed as a thunk and invoked at the point
@@ -76,6 +78,12 @@ import { randomCommandId } from '~~/shared/utils/uuid';
  * ask it nothing, and none of them should pay for a library. See #265.
  */
 type Provides<T> = () => T;
+
+const MEDIA_KIND_NOUNS: Record<'image' | 'silent-video' | 'font', string> = {
+	image: 'an image',
+	'silent-video': 'a silent video',
+	font: 'a font',
+};
 
 interface ApplyCommandParams {
 	eventId: number;
@@ -213,7 +221,9 @@ export function broadcastGraphicsLiveSessionModule() {
 	 * Selecting a revision that does not resolve is refused outright, because
 	 * creating a Graphic Asset Reference requires its exact revision to resolve — a
 	 * value naming a revision that is not there is a Missing Graphic Asset Reference
-	 * rather than a value an operator can be shown and correct. Nothing else is
+	 * rather than a value an operator can be shown and correct. A revision that
+	 * resolves is held to the rule every authored reference is: its asset is active
+	 * and of the kind the Graphic Input declares. Nothing else is
 	 * recorded on the value: Chromium is the only supported engine for transparent
 	 * video (ADR-0020), so no playback compatibility travels with it.
 	 *
@@ -253,6 +263,17 @@ export function broadcastGraphicsLiveSessionModule() {
 							`Graphic Asset Content for Graphic Input ${command.payload.inputKey} is temporarily unavailable`,
 							[command.payload.inputKey],
 						),
+			);
+		}
+		if (status.lifecycleState !== 'active' || status.kind !== declaration.mediaKind) {
+			throw broadcastGraphicsRejectionError(
+				new BroadcastGraphicsCommandRejection(
+					'unselectable-asset-reference',
+					status.lifecycleState !== 'active'
+						? `Graphic Asset for Graphic Input ${command.payload.inputKey} is ${status.lifecycleState}, so it cannot be selected`
+						: `Graphic Asset for Graphic Input ${command.payload.inputKey} is ${MEDIA_KIND_NOUNS[status.kind]}, not ${MEDIA_KIND_NOUNS[declaration.mediaKind]}`,
+					[command.payload.inputKey],
+				),
 			);
 		}
 
@@ -605,6 +626,11 @@ export function broadcastGraphicsLiveSessionModule() {
 			});
 		}
 
+		// A network retry of a committed command answers what was stored. Admission
+		// below asks the library, whose answer can have changed since the commit.
+		const replayed = await state.replayCommand(sessionId, eventId, command, originConnectionId);
+		if (replayed) return replayed;
+
 		if (command.type === 'Take') {
 			await requireResolvableGraphicAssets(
 				[
@@ -628,7 +654,7 @@ export function broadcastGraphicsLiveSessionModule() {
 			sessionId,
 			eventId,
 			admitted,
-			await reductionContextFor(eventId, screen, graphic, session.currentState, admitted),
+			(currentState) => reductionContextFor(eventId, screen, graphic, currentState, admitted),
 			originConnectionId,
 			{ publish: true },
 		);
@@ -775,7 +801,12 @@ export function broadcastGraphicsLiveSessionModule() {
 						session.id,
 						eventId,
 						command,
-						context,
+						// The context already read serves an attempt onto the same selections.
+						(currentState) =>
+							canonicalJson(broadcastGraphicSourceSelections(currentState, graphic.id)) ===
+							canonicalJson(broadcastGraphicSourceSelections(session.currentState, graphic.id))
+								? Promise.resolve(context)
+								: reductionContextFor(eventId, screen, graphic, currentState, command),
 						undefined,
 						{ publish: true },
 					);
@@ -801,15 +832,24 @@ export function broadcastGraphicsLiveSessionModule() {
 	 * The ids of the Screen's Broadcast Graphics on a program output now, an exiting
 	 * one included; none for a Screen outside Broadcast Graphics mode or with no
 	 * open epoch. Read on this server's clock, each against its own phase durations.
+	 *
+	 * With them, the fence a write acting on the answer commits under, so a Take
+	 * landing after this read refuses that write rather than outdating its answer.
 	 */
-	const onAirGraphicIds = async (screen: DbScreen): Promise<string[]> => {
-		if (screen.currentMode !== 'broadcast-graphics') return [];
+	const onAirGraphics = async (
+		screen: DbScreen,
+	): Promise<{ ids: string[]; fence: BroadcastGraphicsPlayoutFence }> => {
 		const session = await state.findActiveSessionByScreen(screen.id, screen.eventId);
-		if (!session) return [];
+		const fence: BroadcastGraphicsPlayoutFence = {
+			screenId: screen.id,
+			sessionId: session?.id ?? null,
+			sequence: session?.sequence ?? 0,
+		};
+		if (screen.currentMode !== 'broadcast-graphics' || !session) return { ids: [], fence };
 		const stack = authoredStack(screen);
 		const contexts = broadcastGraphicChannelContexts(stack);
 		const now = Date.now();
-		return onAirBroadcastGraphicIds(
+		const ids = onAirBroadcastGraphicIds(
 			recoveredBroadcastGraphicsLiveState(session.currentState),
 			stack.graphics,
 			(graphic) =>
@@ -819,11 +859,12 @@ export function broadcastGraphicsLiveSessionModule() {
 					contexts[graphic.id],
 				),
 		);
+		return { ids, fence };
 	};
 
 	return {
 		loadSession,
-		onAirGraphicIds,
+		onAirGraphics,
 		applyCommand,
 		refreshLiveBindings,
 		republishLiveSessionReferences,

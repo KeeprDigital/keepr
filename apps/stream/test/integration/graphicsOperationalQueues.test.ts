@@ -125,6 +125,17 @@ describe('the Graphics Asset Library operational queues API', () => {
 		expect(retry.status).toBe(403);
 	});
 
+	it.each(['retry', 'release-staged-input'])(
+		'answers %s of an operation that does not exist with 404',
+		async (action) => {
+			const response = await fetch(
+				`/api/admin/graphics-assets/ingestion-operations/no-such-operation/${action}`,
+				{ method: 'POST', headers: { 'content-type': 'application/json' } },
+			);
+			expect(response.status).toBe(404);
+		},
+	);
+
 	it('offers restoration alone, not every lifecycle transition', async () => {
 		const refused = await fetch('/api/admin/graphics-assets/anything/lifecycle-actions', {
 			method: 'POST',

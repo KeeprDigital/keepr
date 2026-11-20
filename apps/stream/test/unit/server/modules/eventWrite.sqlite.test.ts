@@ -31,6 +31,28 @@ vi.doMock('~~/server/services/card', () => ({
 	}),
 }));
 
+/** Runs once, after the write's Theme check answers and before the write commits. */
+let afterThemeCheck: (() => Promise<void>) | undefined;
+vi.doMock('~~/server/services/theme', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('~~/server/services/theme')>();
+	return {
+		...actual,
+		themeService: () => {
+			const service = actual.themeService();
+			return {
+				...service,
+				async findById(id: string) {
+					const found = await service.findById(id);
+					const hook = afterThemeCheck;
+					afterThemeCheck = undefined;
+					await hook?.();
+					return found;
+				},
+			};
+		},
+	};
+});
+
 const { eventWriteModule } = await import('~~/server/modules/event-write');
 const { featureMatchService } = await import('~~/server/services/featureMatch');
 
@@ -71,6 +93,7 @@ function announced(eventId: number) {
 beforeEach(() => {
 	realtime.reset();
 	cleanedCards.length = 0;
+	afterThemeCheck = undefined;
 });
 afterAll(async () => await harness.close());
 
@@ -223,6 +246,28 @@ describe('an Event update', () => {
 			input: { commentator1TalentId: own!.id },
 		});
 		expect((await stored(eventId))?.commentator1TalentId).toBe(own!.id);
+	});
+
+	// The check refuses a missing Theme; the foreign key, re-checked, refuses one deleted after it.
+	it.each([
+		{ theme: 'that does not exist', staged: false },
+		{ theme: 'deleted between its check and the write', staged: true },
+	])('refuses an Event Theme $theme as not found, storing nothing', async ({ staged }) => {
+		const eventId = await stageEvent();
+		const themeId = `theme-${staged ? 'deleted' : 'missing'}`;
+		if (staged) {
+			await db.insert(schema.themes).values({ id: themeId, name: 'Doomed' });
+			afterThemeCheck = async () => {
+				await db.delete(schema.themes).where(eq(schema.themes.id, themeId));
+			};
+		}
+
+		await expect(
+			eventWriteModule().updateEvent({ eventId, input: { name: 'Not stored', themeId } }),
+		).rejects.toMatchObject({ statusCode: 400, message: 'Theme not found' });
+
+		expect(await stored(eventId)).toMatchObject({ name: 'Event', themeId: null });
+		expect(announced(eventId)).toEqual([]);
 	});
 });
 

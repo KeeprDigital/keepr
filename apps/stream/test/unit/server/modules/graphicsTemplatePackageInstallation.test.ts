@@ -5,14 +5,18 @@ import { describe, expect, it } from 'vitest';
 import { graphicsObjectIdentity } from '~~/server/modules/graphics-asset-library/object-store';
 import { DEFAULT_GRAPHICS_STAGING_ALLOWANCE_BYTES } from '~~/shared/types/graphicsAsset';
 import { testGraphicAssetRevisionId } from '~~/test/helpers/graphicsAssetIdentities';
+import { createInMemoryStagingGraphicsObjectStore } from '~~/server/modules/graphics-asset-library/in-memory-object-store';
 import {
 	digestOf,
 	sixteenPixelPng,
 	pixelPng as transparentPixelPng,
+	vp9AlphaWebm,
+	vp9Webm,
 } from '~~/test/helpers/graphicsFixtures';
 import { webpPixel } from '~~/test/helpers/graphicsImageFixtures';
 import { addEvent, createSqliteGraphicsAssetCatalogue } from '~~/test/helpers/graphicsLibrary';
 import {
+	acceptStagedSilentVideo,
 	createPackageLibrary,
 	exportPackage,
 	ingestPackageImage as ingestImage,
@@ -108,7 +112,102 @@ describe('the Template Package installation contract', () => {
 		const left = await staging.list({ prefix: 'ingestion/' });
 		expect(
 			left.outcome === 'listed' && left.listing.objects.map((object) => object.identity).sort(),
-		).toEqual([`ingestion/${failed.id}-packaged-video/source`, `ingestion/${failed.id}/source`]);
+		).toEqual([
+			`ingestion/${failed.id}-packaged-video-${digestOf(vp9Webm)}/source`,
+			`ingestion/${failed.id}/source`,
+		]);
+
+		// Releasing the operation's staged input reclaims the copy with the archive.
+		await receiver.cancelGraphicsIngestion({
+			operationId: failed.id,
+			initiatedBy: failed.initiatedBy,
+		});
+		const released = await staging.list({ prefix: 'ingestion/' });
+		expect(released.outcome === 'listed' && released.listing.objects).toEqual([]);
+	});
+
+	// Each packaged video is validated from a copy of its own bytes, so a copy one
+	// attempt leaves behind is never read as another video's.
+	it('validates each of two packaged videos from its own bytes when a retry follows a stalled one', async () => {
+		const { library: sender } = await createPackageLibrary('sender');
+		const opaque = await ingestSilentVideo(sender, 'Opaque');
+		const transparent = await ingestSilentVideo(sender, 'Transparent', vp9AlphaWebm);
+		const archive = await exportPackage(sender, {
+			assets: [
+				{ slot: 'opaque', reference: opaque },
+				{ slot: 'transparent', reference: transparent },
+			],
+		});
+
+		const receiverStaging = createInMemoryStagingGraphicsObjectStore();
+		const proving = acceptStagedSilentVideo(receiverStaging);
+		let calls = 0;
+		const { library: receiver } = await createPackageLibrary('receiver', {
+			staging: receiverStaging,
+			silentVideoPlaybackValidator: {
+				// The second video's first validation has not answered yet.
+				validate: async (input) =>
+					++calls === 2
+						? { outcome: 'unavailable', retryable: true }
+						: await proving.validate(input),
+			},
+		});
+		const stalled = await preflight(receiver, archive);
+		expect(stalled.failure).toMatchObject({ code: 'validation-runtime-unavailable' });
+
+		const retried = await receiver.retryGraphicsIngestion({
+			operationId: stalled.id,
+			initiatedBy: stalled.initiatedBy,
+		});
+
+		expect(retried.failure).toBeUndefined();
+		expect(retried.stage).not.toBe('failed');
+	});
+
+	// Staged bytes are read in windows, not one small range per header and chunk:
+	// one read hashes the archive, and one window holds a small package whole.
+	it('reads a small package’s staged bytes a bounded number of times to preflight and to install', async () => {
+		const { library: sender } = await createLibrary('sender');
+		const backdrop = await ingestImage(sender, 'Backdrop');
+		const motion = await ingestSilentVideo(sender, 'Motion');
+		const archive = await exportPackage(sender, {
+			assets: [
+				{ slot: 'backdrop', reference: backdrop },
+				{ slot: 'motion', reference: motion },
+			],
+		});
+		const delegate = createInMemoryStagingGraphicsObjectStore();
+		let reads = 0;
+		const staging = {
+			...delegate,
+			async read(...args: Parameters<typeof delegate.read>) {
+				if (String(args[0]).endsWith('/source') && !String(args[0]).includes('packaged-video'))
+					reads += 1;
+				return await delegate.read(...args);
+			},
+		};
+		const { library: receiver } = await createPackageLibrary('receiver', {
+			staging,
+			silentVideoPlaybackValidator: acceptStagedSilentVideo(delegate),
+		});
+
+		let operation = await preflight(receiver, archive);
+		const preflightReads = reads;
+		if (operation.stage === 'awaiting-confirmation') {
+			operation = await receiver.confirmTemplatePackagePreflight({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				fingerprint: operation.templatePackagePreflight!.fingerprint,
+			});
+		}
+		reads = 0;
+		const installed = await receiver.installTemplatePackage({
+			operationId: operation.id,
+			initiatedBy: operation.initiatedBy,
+		});
+
+		expect(installed.stage).toBe('completed');
+		expect({ preflight: preflightReads, install: reads }).toEqual({ preflight: 2, install: 2 });
 	});
 
 	it('installs a Template and its assets into a library that holds neither', async () => {

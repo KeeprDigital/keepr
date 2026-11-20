@@ -17,7 +17,24 @@
  * best-effort against that window. See README.md → Remote HTTPS copy.
  */
 
+import { GRAPHICS_MULTIPART_PART_TRANSFER_TIMEOUT_MILLISECONDS } from '~~/shared/utils/graphicsAssetCompatibility';
+
 export const GRAPHICS_REMOTE_COPY_MAXIMUM_REDIRECTS = 3;
+
+/**
+ * How long one approved remote copy may take, name lookups, fetch and body
+ * together, and how long its body may go without delivering a byte. An origin
+ * that stalls otherwise holds the request, and the operation's lease, open.
+ * The total is a part transfer's timeout, so a copy ends inside the lease its
+ * claim holds and a later request never claims an operation still copying.
+ */
+export const GRAPHICS_REMOTE_COPY_DEADLINES = {
+	totalMilliseconds: GRAPHICS_MULTIPART_PART_TRANSFER_TIMEOUT_MILLISECONDS,
+	idleMilliseconds: 30 * 1000,
+} as const;
+
+/** A remote body that missed its idle or total deadline: retryable, like any lost transfer. */
+export class GraphicsRemoteSourceDeadlineError extends Error {}
 
 export type GraphicsRemoteSourceRejectionCode =
 	| 'remote-source-not-https'
@@ -222,13 +239,92 @@ export function remoteSourceOrigin(url: URL): string {
 	return `${url.protocol}//${url.host}`;
 }
 
+/**
+ * The opened body, failing with a deadline error once it goes quiet for the idle
+ * deadline or the copy's total deadline passes.
+ */
+function deadlineBoundedBody(
+	body: ReadableStream<Uint8Array>,
+	deadline: { signal: AbortSignal; settle: () => void },
+	idleMilliseconds: number,
+): ReadableStream<Uint8Array> {
+	const reader = body.getReader();
+	return new ReadableStream<Uint8Array>({
+		async pull(controller) {
+			let idleTimer: ReturnType<typeof setTimeout> | undefined;
+			let onAbort: (() => void) | undefined;
+			const expired = new Promise<never>((_, reject) => {
+				idleTimer = setTimeout(
+					() =>
+						reject(
+							new GraphicsRemoteSourceDeadlineError(
+								`The remote source sent nothing for ${idleMilliseconds} ms.`,
+							),
+						),
+					idleMilliseconds,
+				);
+				onAbort = () =>
+					reject(
+						new GraphicsRemoteSourceDeadlineError(
+							'The remote source did not finish within its deadline.',
+						),
+					);
+				if (deadline.signal.aborted) onAbort();
+				else deadline.signal.addEventListener('abort', onAbort, { once: true });
+			});
+			try {
+				const { done, value } = await Promise.race([reader.read(), expired]);
+				if (done) {
+					deadline.settle();
+					controller.close();
+				} else {
+					controller.enqueue(value);
+				}
+			} catch (error) {
+				deadline.settle();
+				await reader.cancel().catch(() => undefined);
+				controller.error(error);
+			} finally {
+				clearTimeout(idleTimer);
+				if (onAbort) deadline.signal.removeEventListener('abort', onAbort);
+			}
+		},
+		async cancel(reason) {
+			deadline.settle();
+			await reader.cancel(reason).catch(() => undefined);
+		},
+	});
+}
+
 export function createGraphicsRemoteSourceFetcher(dependencies: {
 	resolver: GraphicsRemoteHostResolver;
 	fetch?: (request: Request) => Promise<Response>;
+	deadlines?: { totalMilliseconds: number; idleMilliseconds: number };
 }): GraphicsRemoteSourceFetcher {
 	const request = dependencies.fetch ?? ((input: Request) => fetch(input));
+	const deadlines = dependencies.deadlines ?? GRAPHICS_REMOTE_COPY_DEADLINES;
 
-	async function validateDestination(url: URL): Promise<GraphicsRemoteSourceOutcome | undefined> {
+	/** `work`, or `undefined` once the copy's total deadline has passed. */
+	async function beforeDeadline<T>(signal: AbortSignal, work: Promise<T>): Promise<T | undefined> {
+		// Abandoned at the deadline, its later rejection is nobody's to handle.
+		work.catch(() => undefined);
+		if (signal.aborted) return undefined;
+		let onAbort: (() => void) | undefined;
+		const expired = new Promise<undefined>((resolve) => {
+			onAbort = () => resolve(undefined);
+			signal.addEventListener('abort', onAbort, { once: true });
+		});
+		try {
+			return await Promise.race([work, expired]);
+		} finally {
+			signal.removeEventListener('abort', onAbort!);
+		}
+	}
+
+	async function validateDestination(
+		url: URL,
+		signal: AbortSignal,
+	): Promise<GraphicsRemoteSourceOutcome | undefined> {
 		if (url.protocol !== 'https:') {
 			return rejection(
 				'remote-source-not-https',
@@ -259,7 +355,9 @@ export function createGraphicsRemoteSourceFetcher(dependencies: {
 						`${remoteSourceOrigin(url)} resolves to a non-public address.`,
 					);
 		}
-		const resolution = await dependencies.resolver.resolve(url.hostname);
+		const resolution =
+			(await beforeDeadline(signal, dependencies.resolver.resolve(url.hostname))) ??
+			({ outcome: 'unavailable' } as const);
 		if (resolution.outcome === 'unavailable') {
 			return {
 				outcome: 'unavailable',
@@ -280,8 +378,11 @@ export function createGraphicsRemoteSourceFetcher(dependencies: {
 				);
 	}
 
-	return {
-		async open(input) {
+	const withinDeadline = {
+		async open(
+			input: { sourceUrl: string; maximumByteLength: number },
+			signal: AbortSignal,
+		): Promise<GraphicsRemoteSourceOutcome> {
 			let url: URL;
 			try {
 				url = new URL(input.sourceUrl);
@@ -294,21 +395,28 @@ export function createGraphicsRemoteSourceFetcher(dependencies: {
 
 			const visited = new Set<string>();
 			for (let hop = 0; hop <= GRAPHICS_REMOTE_COPY_MAXIMUM_REDIRECTS; hop++) {
-				const invalid = await validateDestination(url);
+				const invalid = await validateDestination(url, signal);
 				if (invalid) return invalid;
 
-				let response: Response;
+				let response: Response | undefined;
 				try {
-					response = await request(
-						new Request(url, {
-							method: 'GET',
-							redirect: 'manual',
-							// No cookies, authorization, or reusable cloud credentials are
-							// supplied, and none are added when a hop redirects.
-							headers: { accept: '*/*' },
-						}),
+					response = await beforeDeadline(
+						signal,
+						request(
+							new Request(url, {
+								method: 'GET',
+								redirect: 'manual',
+								// No cookies, authorization, or reusable cloud credentials are
+								// supplied, and none are added when a hop redirects.
+								headers: { accept: '*/*' },
+								signal,
+							}),
+						),
 					);
 				} catch {
+					response = undefined;
+				}
+				if (!response) {
 					return {
 						outcome: 'unavailable',
 						message: `${remoteSourceOrigin(url)} could not be reached right now.`,
@@ -389,6 +497,29 @@ export function createGraphicsRemoteSourceFetcher(dependencies: {
 				'remote-source-redirect-limit-exceeded',
 				`An approved remote Graphic Asset source may follow at most ${GRAPHICS_REMOTE_COPY_MAXIMUM_REDIRECTS} redirects.`,
 			);
+		},
+	};
+
+	return {
+		async open(input) {
+			// One deadline for the whole copy, from the first lookup to the body's
+			// last byte, settled the moment the copy ends, however it ends.
+			const controller = new AbortController();
+			const totalTimer = setTimeout(() => controller.abort(), deadlines.totalMilliseconds);
+			const settle = () => clearTimeout(totalTimer);
+			const opened = await withinDeadline.open(input, controller.signal);
+			if (opened.outcome !== 'open') {
+				settle();
+				return opened;
+			}
+			return {
+				...opened,
+				body: deadlineBoundedBody(
+					opened.body,
+					{ signal: controller.signal, settle },
+					deadlines.idleMilliseconds,
+				),
+			};
 		},
 	};
 }

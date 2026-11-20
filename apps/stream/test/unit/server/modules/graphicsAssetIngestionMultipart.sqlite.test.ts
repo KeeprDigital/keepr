@@ -350,7 +350,22 @@ describe('resumable image ingestion at the Graphic Asset ingestion seam', () => 
 					maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
 				}),
 			}),
-		).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
+		).rejects.toMatchObject({
+			code: 'ingestion-operation-not-uploadable',
+			message: 'Multipart part 1 exhausted its retry allowance',
+		});
+		// The refusal holds: a fourth attempt is not counted as a new first one.
+		await expect(
+			ingestion.uploadGraphicAssetMultipartPart({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				partNumber: 1,
+				bytes: createBoundedByteStream(firstPart, {
+					byteLength: firstPart.byteLength,
+					maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
+				}),
+			}),
+		).rejects.toMatchObject({ message: 'Multipart part 1 exhausted its retry allowance' });
 
 		const cancelled = await ingestion.cancelGraphicsIngestion({
 			operationId: operation.id,

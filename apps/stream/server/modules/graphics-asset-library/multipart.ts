@@ -16,6 +16,11 @@ import { GraphicsAssetLibraryError } from './errors';
 export interface GraphicsAssetMultipartState {
 	version: number;
 	uploadId?: GraphicsMultipartUploadIdentity;
+	/**
+	 * The token this upload stamped on the object it assembles, so bytes found
+	 * at the staging key after an ambiguous completion are proven to be its own.
+	 */
+	attempt?: string;
 	cleanupPending: boolean;
 	parts: {
 		partNumber: number;

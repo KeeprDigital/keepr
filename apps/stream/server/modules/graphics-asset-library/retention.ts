@@ -33,7 +33,11 @@ import {
 	graphicsRetentionDeadline,
 } from '~~/shared/utils/graphicsAssetRetention';
 import { canonicalContentIdentity } from './canonical-integrity';
-import { stagedIngestionObjectIdentities } from './operation';
+import { GraphicsAssetLibraryError } from './errors';
+import {
+	stagedIngestionObjectIdentities,
+	templatePackageVideoWorkingCopyPrefix,
+} from './operation';
 
 /** How many candidates one scheduled sweep processes per retention stage. */
 export const GRAPHICS_RETENTION_STAGE_BATCH = 200;
@@ -171,6 +175,8 @@ export interface GraphicsAssetRetentionCatalogue {
 	findUnreleasedStagedInput: (
 		operationId: GraphicsIngestionOperationId,
 	) => Promise<UnreleasedStagedInput | undefined>;
+	/** Whether any Graphics Ingestion Operation, in any stage, has this identity. */
+	ingestionOperationExists: (operationId: GraphicsIngestionOperationId) => Promise<boolean>;
 	countUnreleasedStagedInput: () => Promise<number>;
 	/**
 	 * Removes pruning state from revisions that are reachable again — a new
@@ -254,7 +260,7 @@ export interface GraphicsAssetRetentionCatalogue {
 		digest: string;
 		claimedAt: string;
 	}) => Promise<boolean>;
-	/** Counts the revisions and derivatives that currently reach one content. */
+	/** Revisions and derivatives reaching the content, plus any operation that may still write it. */
 	countContentReachability: (input: { digest: string }) => Promise<number>;
 	/** Records content that became reachable again while its bytes were being deleted. */
 	markContentUnavailable: (input: {
@@ -363,6 +369,20 @@ async function releaseStagedIngestionObjects(
 		const deleted = await staging.delete(identity);
 		released = released && deleted.outcome !== 'unavailable';
 	}
+	// Packaged-video working copies are keyed by content, so they are found by listing.
+	let cursor: string | undefined;
+	do {
+		const page = await staging.list({
+			prefix: templatePackageVideoWorkingCopyPrefix(operationId),
+			cursor,
+		});
+		if (page.outcome === 'unavailable') return false;
+		for (const object of page.listing.objects) {
+			const deleted = await staging.delete(object.identity);
+			released = released && deleted.outcome !== 'unavailable';
+		}
+		cursor = page.listing.cursor;
+	} while (cursor);
 	return released;
 }
 
@@ -1220,7 +1240,16 @@ export function createGraphicsRetention(dependencies: GraphicsRetentionDependenc
 			actor: string;
 		}): Promise<StrandedStagedInputReleaseOutcome> {
 			const strand = await catalogue.findUnreleasedStagedInput(input.operationId);
-			if (!strand) return { outcome: 'already-in-state' };
+			if (!strand) {
+				// Already-in-state describes a subject; an id naming none is not found.
+				if (!(await catalogue.ingestionOperationExists(input.operationId))) {
+					throw new GraphicsAssetLibraryError(
+						'Graphics Ingestion Operation not found',
+						'ingestion-operation-not-found',
+					);
+				}
+				return { outcome: 'already-in-state' };
+			}
 			const released = await releaseOneStrand(strand);
 			if (released.outcome === 'unavailable') return { outcome: 'retryable-unavailable' };
 			// A sweep beat this action to the zeroing between the read and now.

@@ -348,6 +348,13 @@ export function createD1GraphicsAssetRetentionCatalogue(
 				.first<UnreleasedStagedInputRow>();
 			return row ? unreleasedStagedInputFromRow(row) : undefined;
 		},
+		async ingestionOperationExists(operationId) {
+			const row = await database
+				.prepare('SELECT 1 AS found FROM graphics_ingestion_operations WHERE id = ?')
+				.bind(operationId)
+				.first<{ found: number }>();
+			return row !== null;
+		},
 		async countUnreleasedStagedInput() {
 			const row = await database
 				.prepare(`
@@ -922,13 +929,18 @@ export function createD1GraphicsAssetRetentionCatalogue(
 				.prepare(`
 				SELECT (
 						SELECT COUNT(*) FROM graphic_asset_revisions revision
-						WHERE revision.content_digest = ?
+						WHERE revision.content_digest = ?1
 					) + (
 						SELECT COUNT(*) FROM graphics_derivatives derivative
-						WHERE derivative.content_digest = ?
+						WHERE derivative.content_digest = ?1
+					) + (
+						-- An operation that may still write these bytes needs them as much
+						-- as a revision does: the quarantine reconciliation spares the
+						-- same writers.
+						SELECT CASE WHEN ${claimedByPendingOperation('?1')} THEN 1 ELSE 0 END
 					) AS reachability
 			`)
-				.bind(input.digest, input.digest)
+				.bind(input.digest)
 				.first<{ reachability: number }>();
 			return row?.reachability ?? 0;
 		},

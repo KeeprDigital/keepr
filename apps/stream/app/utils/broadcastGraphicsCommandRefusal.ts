@@ -15,8 +15,11 @@ export interface BroadcastGraphicsCommandRefusal {
 	message: string;
 }
 
+/** A Graphic Asset refusal, by the operator's next move. */
+export type GraphicAssetRefusalOutcome = 'missing' | 'unavailable' | 'unselectable';
+
 /**
- * Which of the two Graphic Asset failures a refusal names, when it names one.
+ * Which of the Graphic Asset failures a refusal names, when it names one.
  *
  * The one decision every surface reporting a refused command has to make, and it was
  * being made twice: Live Control kept its own map from code to picker prose, and the
@@ -35,9 +38,10 @@ export interface BroadcastGraphicsCommandRefusal {
  */
 export function graphicAssetRefusalOutcome(
 	code: BroadcastGraphicsRejectionCode,
-): 'missing' | 'unavailable' | undefined {
+): GraphicAssetRefusalOutcome | undefined {
 	if (code === 'missing-asset-reference') return 'missing';
 	if (code === 'unavailable-asset-content') return 'unavailable';
+	if (code === 'unselectable-asset-reference') return 'unselectable';
 	return undefined;
 }
 
