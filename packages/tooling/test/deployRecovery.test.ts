@@ -43,13 +43,15 @@ describe("a deploy reads each D1 database's recovery point before it changes any
 		});
 
 		expect(recorded).toEqual({ recovery: `DB=${BOOKMARK} AUDIT=audit-bookmark` });
-		expect(lines.join('\n')).toContain(
-			`wrangler d1 time-travel restore DB --bookmark=${BOOKMARK} --config .output/server/wrangler.json`,
+		expect(lines).toContain(
+			`D1 recovery point for DB: bookmark ${BOOKMARK}. To restore it, from apps/stream: wrangler d1 time-travel restore DB --bookmark=${BOOKMARK} --config wrangler.jsonc`,
 		);
 	});
 
-	// The restore must select the same configuration block the deploy migrated.
-	it("names the Environment's Wrangler block in the restore", () => {
+	// The restore must select the same configuration block the deploy migrated,
+	// through the source configuration: a person runs it, and the built one's
+	// `--env staging` reaches Production.
+	it("names the source configuration and the Environment's Wrangler block in the restore", () => {
 		const lines: string[] = [];
 
 		recordRecoveryPoints({
@@ -60,7 +62,7 @@ describe("a deploy reads each D1 database's recovery point before it changes any
 		});
 
 		expect(lines.join('\n')).toContain(
-			`restore DB --bookmark=${BOOKMARK} --config .output/server/wrangler.json --env staging`,
+			`restore DB --bookmark=${BOOKMARK} --config wrangler.jsonc --env staging`,
 		);
 	});
 

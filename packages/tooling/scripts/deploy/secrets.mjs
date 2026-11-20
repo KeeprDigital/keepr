@@ -69,37 +69,80 @@ export function wranglerSecretNames({ wrangler, appDir, wranglerEnv }) {
 }
 
 /**
- * The vars each source Wrangler configuration in `appDir` sets for the
- * Environment's Wrangler block: the top level's, or the block's own, since
- * Wrangler does not inherit vars into one.
+ * Each source Wrangler configuration in `appDir`, as the Environment's Wrangler
+ * block resolves it: the top level, with the block's own fields over it.
  *
  * @param {{ appDir: string, wranglerEnv: string | undefined }} options
- * @returns {(source: string) => Record<string, unknown>}
+ * @returns {(source: string) => SourceConfig}
+ * @typedef {{ name?: unknown, vars?: Record<string, unknown> }} SourceConfig
  */
-export function wranglerVars({ appDir, wranglerEnv }) {
+export function wranglerSourceConfig({ appDir, wranglerEnv }) {
 	return (source) =>
-		resolveWranglerConfig(parseJsonc(readFileSync(join(appDir, source), 'utf8')), wranglerEnv)
-			.vars ?? {};
+		resolveWranglerConfig(parseJsonc(readFileSync(join(appDir, source), 'utf8')), wranglerEnv);
+}
+
+/**
+ * How a command a person runs, or `pnpm secrets:sync`, reaches the Worker
+ * deployed from `source` in an Environment: through the source configuration,
+ * whose blocks name each account (ADR-0130), with the Environment's block, and
+ * `--name` where the configuration leaves naming the Worker to the build. Never
+ * the built configuration: with a login that reaches both accounts, its
+ * `--env staging` reaches Production (`apps/stream/README.md` § Worker secrets).
+ *
+ * @param {{
+ *   app: string,
+ *   label: string,
+ *   source: string,
+ *   wranglerEnv: string | undefined,
+ *   config: SourceConfig,
+ *   name?: string,
+ * }} options `config`: `source` resolved for the Environment
+ *   (`wranglerSourceConfig`). `name`: the Worker's, where `source` names none
+ *   (the descriptor's `worker.name`).
+ * @returns {{ name: string, args: string[] }} the Worker's name, and the
+ *   arguments that reach it; it throws when neither names the Worker
+ */
+export function workerTarget({ app, label, source, wranglerEnv, config, name }) {
+	const configured = typeof config.name === 'string' ? config.name : undefined;
+	const worker = configured ?? name;
+	if (worker === undefined)
+		throw new Error(
+			`Neither apps/${app}/${source}${wranglerEnv === undefined ? '' : ` (env.${wranglerEnv})`} nor its deploy descriptor names ${label}.`,
+		);
+	// Wrangler names `--name x --env y` Worker x-y, so an env block names its own.
+	if (configured === undefined && wranglerEnv !== undefined)
+		throw new Error(`apps/${app}/${source}'s env.${wranglerEnv} names no Worker.`);
+	return {
+		name: worker,
+		args: [
+			'--config',
+			source,
+			...(wranglerEnv === undefined ? [] : ['--env', wranglerEnv]),
+			...(configured === undefined ? ['--name', worker] : []),
+		],
+	};
 }
 
 /**
  * Refuse unless every Worker the Release deploys to `environment` has every
  * secret its descriptor requires, and no secret named like a var its
  * configuration sets there. A Worker that requires no secret and sets no var
- * is not asked.
+ * is not asked. Each refusal names the command that mends it through the
+ * Worker's source configuration (`workerTarget`): the tooling reads through the
+ * built one under an Environment's own token, but a person runs the hint.
  *
  * @param {{
  *   release: import('./release.mjs').Release,
  *   environment: string,
  *   secretNames: (config: string) => string[] | null,
- *   configuredVars: (source: string) => Record<string, unknown>,
+ *   sourceConfig: (source: string) => SourceConfig,
  *   log: (line: string) => void,
  * }} options `secretNames`: the names set on the Worker deployed from a
  *   configuration, null when it does not exist; it throws when they cannot be
- *   read. `configuredVars`: the vars a source configuration sets for the
- *   Environment (`wranglerVars`).
+ *   read. `sourceConfig`: a source configuration as the Environment resolves
+ *   it (`wranglerSourceConfig`).
  */
-export function requireSecrets({ release, environment, secretNames, configuredVars, log }) {
+export function requireSecrets({ release, environment, secretNames, sourceConfig, log }) {
 	const { app, descriptor } = release;
 	const wranglerEnv = descriptor.environments[environment]?.wranglerEnv;
 	const workers = [
@@ -107,6 +150,7 @@ export function requireSecrets({ release, environment, secretNames, configuredVa
 			label: `${app}'s Worker`,
 			source: descriptor.worker.source,
 			config: descriptor.worker.config,
+			name: descriptor.worker.name,
 			required: descriptor.worker.secrets,
 			synced: true,
 		},
@@ -114,17 +158,18 @@ export function requireSecrets({ release, environment, secretNames, configuredVa
 			label: `${app}'s ${part}`,
 			source: config,
 			config,
+			name: undefined,
 			required: secrets,
 			synced: false,
 		})),
 	];
 	const refusals = [];
-	for (const { label, source, config, required = [], synced } of workers) {
-		const vars = Object.keys(configuredVars(source));
+	for (const { label, source, config, name, required = [], synced } of workers) {
+		const resolved = sourceConfig(source);
+		const vars = Object.keys(resolved.vars ?? {});
 		if (required.length === 0 && vars.length === 0) continue;
-		const flags = `--config ${config}` + (wranglerEnv === undefined ? '' : ` --env ${wranglerEnv}`);
 		// The app's Worker's secrets are set from 1Password (ADR-0134).
-		const put =
+		const put = (/** @type {string} */ flags) =>
 			(synced ? `with pnpm secrets:sync --app ${app} --env ${environment}, or ` : '') +
 			`from apps/${app} with wrangler secret put <NAME> ${flags}`;
 		let set;
@@ -136,22 +181,38 @@ export function requireSecrets({ release, environment, secretNames, configuredVa
 			);
 			continue;
 		}
+		/** @type {((flags: string) => string)[]} */
+		const found = [];
 		if (set === null) {
 			if (required.length > 0)
-				refusals.push(
-					`${label} does not exist in ${environment} yet, so it lacks ${required.join(', ')}: set each first, which creates it, ${put}`,
+				found.push(
+					(flags) =>
+						`${label} does not exist in ${environment} yet, so it lacks ${required.join(', ')}: set each first, which creates it, ${put(flags)}`,
 				);
+		} else {
+			const shadowed = vars.filter((key) => set.includes(key));
+			if (shadowed.length > 0)
+				found.push(
+					(flags) =>
+						`${label} has a secret and a var both named ${shadowed.join(', ')}: delete each secret from apps/${app} with wrangler secret delete <NAME> ${flags}`,
+				);
+			const missing = required.filter((secret) => !set.includes(secret));
+			if (missing.length > 0)
+				found.push((flags) => `${label} lacks ${missing.join(', ')}: set each ${put(flags)}`);
+			else if (required.length > 0)
+				log(`${label} has its ${required.length} required secrets in ${environment}.`);
+		}
+		if (found.length === 0) continue;
+		let flags;
+		try {
+			flags = workerTarget({ app, label, source, wranglerEnv, config: resolved, name }).args;
+		} catch (error) {
+			refusals.push(
+				`${label} is refused in ${environment}, and no command reaches it: ${/** @type {Error} */ (error).message.replace(/\.$/, '')}`,
+			);
 			continue;
 		}
-		const shadowed = vars.filter((name) => set.includes(name));
-		if (shadowed.length > 0)
-			refusals.push(
-				`${label} has a secret and a var both named ${shadowed.join(', ')}: delete each secret from apps/${app} with wrangler secret delete <NAME> ${flags}`,
-			);
-		const missing = required.filter((name) => !set.includes(name));
-		if (missing.length > 0) refusals.push(`${label} lacks ${missing.join(', ')}: set each ${put}`);
-		else if (required.length > 0)
-			log(`${label} has its ${required.length} required secrets in ${environment}.`);
+		refusals.push(...found.map((say) => say(flags.join(' '))));
 	}
 	if (refusals.length > 0)
 		throw new Error(

@@ -49,15 +49,15 @@ export const MODES = ['auto', 'always', 'never'];
  * What a deploy does to the world, each a step the procedure orders.
  * `secretNames` reads, and changes nothing: the secret names set on the Worker
  * deployed from a configuration, null when it does not exist.
- * `configuredVars` reads the vars a source configuration sets for the
- * Environment, from the Release's checkout.
+ * `sourceConfig` reads a source configuration as the Environment resolves it,
+ * from the Release's checkout.
  *
  * @typedef {{
  *   build: () => void,
  *   placeArtifact: (path: string) => void,
  *   fingerprint: (part: string) => string,
  *   secretNames: (config: string) => string[] | null,
- *   configuredVars: (source: string) => Record<string, unknown>,
+ *   sourceConfig: (source: string) => import('./secrets.mjs').SourceConfig,
  *   deployPart: (part: string) => void,
  *   migrate: (binding: string) => void,
  *   deployWorker: () => void,
@@ -301,7 +301,7 @@ export async function deployRelease({
 		release,
 		environment,
 		secretNames: steps.secretNames,
-		configuredVars: steps.configuredVars,
+		sourceConfig: steps.sourceConfig,
 		log,
 	});
 

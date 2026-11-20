@@ -1531,7 +1531,14 @@ reaches both accounts, `--env staging` there reaches Production: measured on
 2026-11-20, where it and no `--env` at all named the same latest deployment,
 and `wrangler.jsonc --env staging` named Staging's. The deploy tooling runs
 that config under each Environment's own API token, which reaches one
-account; a person's login reaches both.
+account; a person's login reaches both. So every command the tooling hands a
+person goes through `wrangler.jsonc` as above. A deploy refused for a missing
+or shadowed secret names `wrangler secret put|delete <NAME>` with
+`--config wrangler.jsonc --env staging` for Staging and
+`--config wrangler.jsonc --name stream` for Production, reaching the Worker as
+`secrets:sync` does, from one place (`workerTarget` in
+`packages/tooling/scripts/deploy/secrets.mjs`). The D1 restore it logs names
+`--config wrangler.jsonc`, with `--env staging` for Staging.
 
 Required: `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`,
 `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`. Never put any of

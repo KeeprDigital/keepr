@@ -255,7 +255,7 @@ function world() {
 			},
 			fingerprint: () => snapshot.validator,
 			secretNames: () => installation.secrets,
-			configuredVars: () => ({}),
+			sourceConfig: () => ({ name: 'stream' }),
 			deployPart: (part: string) => {
 				ran.push(`deploy ${part}`);
 				if (fail === 'validator') throw new Error('wrangler deploy failed');

@@ -4,37 +4,38 @@ import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Descriptor, Release } from '../scripts/deploy/release.mjs';
-import { requireSecrets, wranglerSecretNames, wranglerVars } from '../scripts/deploy/secrets.mjs';
+import {
+	requireSecrets,
+	wranglerSecretNames,
+	wranglerSourceConfig,
+} from '../scripts/deploy/secrets.mjs';
 
 const APP_CONFIG = '.output/server/wrangler.json';
 const VALIDATOR_CONFIG = 'workers/silent-video-validator/wrangler.jsonc';
 const REQUIRED = ['NUXT_BETTER_AUTH_SECRET', 'NUXT_ABLY_API_KEY'];
 
-/** The source Wrangler configs, by path: production's vars at the top level, staging's in its block. */
-type Configs = Record<
-	string,
-	{ vars?: Record<string, unknown>; staging?: Record<string, unknown> }
->;
+/** A source Wrangler config's top level, or its `env.staging` block. */
+type Block = { name?: string; vars?: Record<string, unknown> };
+/** The source Wrangler configs, by path: production's at the top level, staging's in its block. */
+type Configs = Record<string, Block & { staging?: Block }>;
 
+/** As apps/stream's: the build names production's Worker, and `env.staging` names its own. */
 const CONFIGS: Configs = {
 	'wrangler.jsonc': {
 		vars: { NUXT_KEY_VERSION: 'v2', NUXT_API_URL: 'https://api.example' },
-		staging: { NUXT_KEY_VERSION: '1' },
+		staging: { name: 'stream', vars: { NUXT_KEY_VERSION: '1' } },
 	},
-	[VALIDATOR_CONFIG]: {},
+	[VALIDATOR_CONFIG]: { name: 'stream-validator' },
 };
 
 function writeConfigs(dir: string, configs: Configs) {
-	for (const [path, { vars, staging }] of Object.entries(configs)) {
+	for (const [path, { staging = {}, ...topLevel }] of Object.entries(configs)) {
 		mkdirSync(dirname(join(dir, path)), { recursive: true });
-		writeFileSync(
-			join(dir, path),
-			JSON.stringify({ ...(vars && { vars }), env: { staging: staging ? { vars: staging } : {} } }),
-		);
+		writeFileSync(join(dir, path), JSON.stringify({ ...topLevel, env: { staging } }));
 	}
 }
 
-function release(appDir: string, parts: Descriptor['parts']): Release {
+function release(appDir: string, parts: Descriptor['parts'], name?: string): Release {
 	return {
 		app: 'stream',
 		appDir,
@@ -44,7 +45,12 @@ function release(appDir: string, parts: Descriptor['parts']): Release {
 			app: 'stream',
 			build: [],
 			output: '.output',
-			worker: { source: 'wrangler.jsonc', config: APP_CONFIG, secrets: REQUIRED },
+			worker: {
+				source: 'wrangler.jsonc',
+				config: APP_CONFIG,
+				...(name !== undefined && { name }),
+				secrets: REQUIRED,
+			},
 			databases: [{ binding: 'DB' }],
 			environments: {
 				production: { url: 'https://stream.keepr.digital' },
@@ -113,12 +119,20 @@ describe('the Worker secrets an Installation requires', () => {
 		{
 			environment = 'staging',
 			parts = { validator: { config: VALIDATOR_CONFIG } },
-		}: { environment?: string; parts?: Descriptor['parts'] } = {},
+			configs = CONFIGS,
+			name = 'stream',
+		}: {
+			environment?: string;
+			parts?: Descriptor['parts'];
+			configs?: Configs;
+			/** The descriptor's `worker.name`; null for none. */
+			name?: string | null;
+		} = {},
 	) {
 		const dir = mkdtempSync(join(tmpdir(), 'keepr-secrets-'));
 		dirs.push(dir);
-		writeConfigs(dir, CONFIGS);
-		const target = release(dir, parts);
+		writeConfigs(dir, configs);
+		const target = release(dir, parts, name ?? undefined);
 		const lines: string[] = [];
 		const run = () =>
 			requireSecrets({
@@ -129,7 +143,7 @@ describe('the Worker secrets an Installation requires', () => {
 					appDir: dir,
 					wranglerEnv: target.descriptor.environments[environment]?.wranglerEnv,
 				}),
-				configuredVars: wranglerVars({
+				sourceConfig: wranglerSourceConfig({
 					appDir: dir,
 					wranglerEnv: target.descriptor.environments[environment]?.wranglerEnv,
 				}),
@@ -154,16 +168,37 @@ describe('the Worker secrets an Installation requires', () => {
 		},
 	);
 
-	it('refuses naming each missing secret and the command that sets it, and not those set', () => {
-		const { run } = check({ [`${APP_CONFIG} staging`]: ['NUXT_ABLY_API_KEY'] });
+	/*
+	 * A person runs the hint, so it reaches the Worker as `pnpm secrets:sync`
+	 * does, through the source configuration: with a login that reaches both
+	 * accounts, the built one's `--env staging` reaches Production.
+	 */
+	it.each([
+		[
+			'Staging, whose env block names the Worker',
+			'staging',
+			`${APP_CONFIG} staging`,
+			'--config wrangler.jsonc --env staging',
+		],
+		[
+			'Production, named by the descriptor where the top level leaves it to the build',
+			'production',
+			`${APP_CONFIG} `,
+			'--config wrangler.jsonc --name stream',
+		],
+	])(
+		'refuses in %s naming each missing secret and the command that sets it, and not those set',
+		(_case, environment, key, flags) => {
+			const { run } = check({ [key]: ['NUXT_ABLY_API_KEY'] }, { environment });
 
-		expect(run).toThrow(
-			`stream's Worker lacks NUXT_BETTER_AUTH_SECRET: set each with pnpm secrets:sync --app stream --env staging, or from apps/stream with wrangler secret put <NAME> --config ${APP_CONFIG} --env staging`,
-		);
-		expect(run).not.toThrow(/NUXT_ABLY_API_KEY/);
-	});
+			expect(run).toThrow(
+				`stream's Worker lacks NUXT_BETTER_AUTH_SECRET: set each with pnpm secrets:sync --app stream --env ${environment}, or from apps/stream with wrangler secret put <NAME> ${flags}.`,
+			);
+			expect(run).not.toThrow(/NUXT_ABLY_API_KEY|\.output/);
+		},
+	);
 
-	it("names every Worker's missing secrets in one refusal, a part's with its own configuration", () => {
+	it("names every Worker's missing secrets in one refusal, a part's through its own configuration", () => {
 		const { run } = check(
 			{ [`${APP_CONFIG} `]: [], [`${VALIDATOR_CONFIG} `]: [] },
 			{
@@ -173,7 +208,7 @@ describe('the Worker secrets an Installation requires', () => {
 		);
 
 		expect(run).toThrow(
-			/stream's Worker lacks NUXT_BETTER_AUTH_SECRET, NUXT_ABLY_API_KEY: .*--config \.output\/server\/wrangler\.json;.*stream's validator lacks VALIDATOR_TOKEN: .*--config workers\/silent-video-validator\/wrangler\.jsonc\b/,
+			`stream's Worker lacks NUXT_BETTER_AUTH_SECRET, NUXT_ABLY_API_KEY: set each with pnpm secrets:sync --app stream --env production, or from apps/stream with wrangler secret put <NAME> --config wrangler.jsonc --name stream; stream's validator lacks VALIDATOR_TOKEN: set each from apps/stream with wrangler secret put <NAME> --config ${VALIDATOR_CONFIG}.`,
 		);
 	});
 
@@ -181,7 +216,7 @@ describe('the Worker secrets an Installation requires', () => {
 		const { run } = check({});
 
 		expect(run).toThrow(
-			/stream's Worker does not exist in staging yet, so it lacks NUXT_BETTER_AUTH_SECRET, NUXT_ABLY_API_KEY: set each first, which creates it, with pnpm secrets:sync --app stream --env staging, or .*wrangler secret put <NAME> --config \.output\/server\/wrangler\.json --env staging/,
+			`stream's Worker does not exist in staging yet, so it lacks NUXT_BETTER_AUTH_SECRET, NUXT_ABLY_API_KEY: set each first, which creates it, with pnpm secrets:sync --app stream --env staging, or from apps/stream with wrangler secret put <NAME> --config wrangler.jsonc --env staging.`,
 		);
 	});
 
@@ -199,15 +234,52 @@ describe('the Worker secrets an Installation requires', () => {
 	 * secret is deleted (ADR-0132).
 	 */
 	it.each([
-		['the top-level configuration', 'production', `${APP_CONFIG} `, ''],
-		["the Environment's Wrangler block", 'staging', `${APP_CONFIG} staging`, ' --env staging'],
+		[
+			'the top-level configuration',
+			'production',
+			`${APP_CONFIG} `,
+			'--config wrangler.jsonc --name stream',
+		],
+		[
+			"the Environment's Wrangler block",
+			'staging',
+			`${APP_CONFIG} staging`,
+			'--config wrangler.jsonc --env staging',
+		],
 	])(
 		'refuses a Worker secret named like a var %s sets, naming the command that deletes it',
-		(_case, environment, key, envFlag) => {
+		(_case, environment, key, flags) => {
 			const { run } = check({ [key]: [...REQUIRED, 'NUXT_KEY_VERSION'] }, { environment });
 
 			expect(run).toThrow(
-				`stream's Worker has a secret and a var both named NUXT_KEY_VERSION: delete each secret from apps/stream with wrangler secret delete <NAME> --config ${APP_CONFIG}${envFlag}`,
+				`stream's Worker has a secret and a var both named NUXT_KEY_VERSION: delete each secret from apps/stream with wrangler secret delete <NAME> ${flags}.`,
+			);
+		},
+	);
+
+	// Wrangler names `--name x --env y` Worker x-y, so no Worker's name is guessed.
+	it.each([
+		[
+			'an env block that names no Worker',
+			'staging',
+			`${APP_CONFIG} staging`,
+			{ configs: { ...CONFIGS, 'wrangler.jsonc': { staging: {} } } },
+			"apps/stream/wrangler.jsonc's env.staging names no Worker.",
+		],
+		[
+			'a top level and a descriptor that name none',
+			'production',
+			`${APP_CONFIG} `,
+			{ name: null },
+			"Neither apps/stream/wrangler.jsonc nor its deploy descriptor names stream's Worker.",
+		],
+	])(
+		'refuses a Worker lacking a secret, saying no command reaches it, through %s',
+		(_case, environment, key, options, why) => {
+			const { run } = check({ [key]: [] }, { environment, ...options });
+
+			expect(run).toThrow(
+				`stream's Worker is refused in ${environment}, and no command reaches it: ${why}`,
 			);
 		},
 	);

@@ -130,7 +130,7 @@ describe('the keepr-deploy command line', () => {
 				},
 				parts: {},
 			}),
-			'apps/stream/wrangler.jsonc': JSON.stringify({ env: { staging: {} } }),
+			'apps/stream/wrangler.jsonc': JSON.stringify({ env: { staging: { name: 'stream' } } }),
 			'apps/stream/.output/server/wrangler.json': '{"name":"stream"}',
 			'apps/stream/node_modules/.bin/wrangler': `#!${process.execPath}\nconsole.log(JSON.stringify([{ name: 'NUXT_ABLY_API_KEY', type: 'secret_text' }]));\n`,
 		});
@@ -140,7 +140,7 @@ describe('the keepr-deploy command line', () => {
 
 		expect(result.status).toBe(1);
 		expect(result.stderr).toContain(
-			"stream's Worker lacks NUXT_BETTER_AUTH_SECRET: set each with pnpm secrets:sync --app stream --env staging, or from apps/stream with wrangler secret put <NAME> --config .output/server/wrangler.json --env staging",
+			"stream's Worker lacks NUXT_BETTER_AUTH_SECRET: set each with pnpm secrets:sync --app stream --env staging, or from apps/stream with wrangler secret put <NAME> --config wrangler.jsonc --env staging",
 		);
 		expect(result.stderr).not.toContain('pnpm run build');
 	});
