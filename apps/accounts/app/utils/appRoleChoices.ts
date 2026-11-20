@@ -33,7 +33,9 @@ const ORGANISATION_ROLE_LABELS: Record<OrganisationRole, string> = {
 };
 
 /** The Organisation roles, lowest first. */
-export const ORGANISATION_ROLE_CHOICES = ORGANISATION_ROLES.map((role) => ({
-	label: ORGANISATION_ROLE_LABELS[role],
-	value: role,
-}));
+export const ORGANISATION_ROLE_CHOICES = ORGANISATION_ROLES.map(
+	(role): { label: string; value: string } => ({
+		label: ORGANISATION_ROLE_LABELS[role],
+		value: role,
+	}),
+);
