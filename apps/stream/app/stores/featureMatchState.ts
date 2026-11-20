@@ -37,7 +37,11 @@ interface OfferedSlot {
 }
 
 export const useFeatureMatchStateStore = defineStore('featureMatchState', () => {
-	const repo = useFeatureMatchSessionClient();
+	// A command claims the Session this page holds; one the client re-read after a refusal is offered as a read.
+	const repo = useFeatureMatchSessionClient({
+		heldSession: (slotId) => heldSession(slotId),
+		onReread: (session) => offerSlotSession({ id: session.slotId, activeSession: session }),
+	});
 	const { executeReporting } = useReportingAction();
 	const { getServerTime } = useServerTime();
 
@@ -58,6 +62,8 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 	const optimistic = createOptimisticState<FeatureMatchState>({
 		stateMap: featureMatchStates,
 		errorRef: error,
+		// A refusal rolls back to the Session the server last answered with.
+		serverState: (slotId) => heldSession(slotId)?.currentState,
 	});
 
 	// Player state batch (life totals, counters)
@@ -904,10 +910,14 @@ export const useFeatureMatchStateStore = defineStore('featureMatchState', () => 
 		return optimistic.run(
 			`overtime:start:${matchId}`,
 			matchId,
-			(current) => ({
-				...current,
-				overtime: { active: true, turnsRemaining: totalTurns, totalTurns },
-			}),
+			// Extra turns under way are not started again: the server changes nothing.
+			(current) =>
+				current.overtime
+					? null
+					: {
+							...current,
+							overtime: { active: true, turnsRemaining: totalTurns, totalTurns },
+						},
 			() => repo.startOvertime(eventId, matchId, totalTurns).then(settleCommandResult),
 		);
 	}

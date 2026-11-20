@@ -309,6 +309,96 @@ describe('a Commander Session', () => {
 			).toEqual(all.currentState);
 		});
 
+		it.each([
+			['Eliminated', commanderSnapshot(), [eliminate('player1')]],
+			['emptied', commanderSnapshot({ player1: null }), []],
+		] as const)(
+			'steps back across a first Seat since %s, to the turn before it',
+			(_case, later, after) => {
+				// Ana went first; the turn is Ben's second when her Seat leaves the order.
+				const played = play(commanderSnapshot(), goesFirst('player1'), step(5));
+				const left = [['SnapshotCorrected', { sourceSnapshot: later }], ...after].reduce(
+					(result, [type, payload]) =>
+						applyFeatureMatchSessionEvent(
+							result.currentState,
+							result.sourceSnapshot,
+							type as FeatureMatchCommandType,
+							payload as Record<string, unknown>,
+						),
+					played,
+				);
+				expect([left.currentState.activePlayer, left.currentState.turnNumber]).toEqual([
+					'player2',
+					2,
+				]);
+
+				const back = applyFeatureMatchSessionEvent(
+					left.currentState,
+					left.sourceSnapshot,
+					'StepTurn',
+					{ delta: -1 },
+				);
+				expect([back.currentState.activePlayer, back.currentState.turnNumber]).toEqual([
+					'player4',
+					1,
+				]);
+				// Not before the first turn: from Ben's first there is nowhere back to go.
+				const floor = applyFeatureMatchSessionEvent(
+					back.currentState,
+					back.sourceSnapshot,
+					'StepTurn',
+					{ delta: -3 },
+				);
+				expect([floor.currentState.activePlayer, floor.currentState.turnNumber]).toEqual([
+					'player2',
+					1,
+				]);
+			},
+		);
+
+		it('keeps counting rounds after the first Seat is emptied', () => {
+			const played = play(commanderSnapshot(), goesFirst('player1'), step());
+			const corrected = applyFeatureMatchSessionEvent(
+				played.currentState,
+				played.sourceSnapshot,
+				'SnapshotCorrected',
+				{ sourceSnapshot: commanderSnapshot({ player1: null }) },
+			);
+
+			const seen: [Seat | null | undefined, number][] = [];
+			let result = corrected;
+			for (let taken = 0; taken < 3; taken++) {
+				result = applyFeatureMatchSessionEvent(
+					result.currentState,
+					result.sourceSnapshot,
+					'StepTurn',
+					{
+						delta: 1,
+					},
+				);
+				seen.push([result.currentState.activePlayer, result.currentState.turnNumber]);
+			}
+			expect(seen).toEqual([
+				['player3', 1],
+				['player4', 1],
+				['player2', 2],
+			]);
+		});
+
+		// Only a reset changes the Seat that went first (ADR-0087).
+		it.each([
+			['re-selected', 'SelectFirstPlayer'],
+			['set', 'SetFirstPlayer'],
+		] as const)('refuses the first Seat %s once one went first', (_case, type) => {
+			const played = play(commanderSnapshot(), goesFirst('player1'), step(2));
+
+			expect(
+				applyFeatureMatchSessionEvent(played.currentState, played.sourceSnapshot, type, {
+					player: 'player3',
+				}).currentState,
+			).toBe(played.currentState);
+		});
+
 		it('cannot start from an empty Seat', () => {
 			const snapshot = commanderSnapshot({ player4: null });
 			const opened = createInitialFeatureMatchSessionStateFromSnapshot(snapshot);
@@ -345,6 +435,33 @@ describe('a Commander Session', () => {
 
 			expect(currentState.isComplete).toBe(false);
 			expect(currentState.outcome).toBeUndefined();
+		});
+
+		it('reopens when its winning Seat is emptied', () => {
+			const won = play(commanderSnapshot(), ['SetOutcome', { outcome: { winner: 'player3' } }]);
+
+			const { currentState } = applyFeatureMatchSessionEvent(
+				won.currentState,
+				won.sourceSnapshot,
+				'SnapshotCorrected',
+				{ sourceSnapshot: commanderSnapshot({ player3: null }) },
+			);
+
+			expect(currentState.outcome).toBeUndefined();
+			expect(currentState.isComplete).toBe(false);
+		});
+
+		it('keeps a draw when a Seat is emptied', () => {
+			const drawn = play(commanderSnapshot(), ['SetOutcome', { outcome: { winner: null } }]);
+
+			const { currentState } = applyFeatureMatchSessionEvent(
+				drawn.currentState,
+				drawn.sourceSnapshot,
+				'SnapshotCorrected',
+				{ sourceSnapshot: commanderSnapshot({ player3: null }) },
+			);
+
+			expect([currentState.outcome, currentState.isComplete]).toEqual([{ winner: null }, true]);
 		});
 
 		it('refuses an empty Seat as the winner', () => {
@@ -604,6 +721,28 @@ describe('a Commander Session', () => {
 			expect(sourceSnapshot.createdAt).toBe(played.sourceSnapshot.createdAt);
 		});
 
+		it('gives a Session opened before its Slot had Seats 3 and 4 the two it lacks', () => {
+			const snapshot = commanderSnapshot({ player3: null, player4: null });
+			const opened = play(snapshot, ['AdjustLife', { player: 'player1', delta: -6 }]);
+			const { player3: _three, player4: _four, ...twoSeated } = opened.currentState;
+
+			const { currentState } = applyFeatureMatchSessionEvent(
+				twoSeated,
+				opened.sourceSnapshot,
+				'SwapSeats',
+				{
+					seats: ['player1', 'player3'],
+					sourceSnapshot: commanderSnapshot({
+						player1: null,
+						player3: seatedPlayer('Ana', [ATRAXA]),
+						player4: null,
+					}),
+				},
+			);
+
+			expect(lifeOf(currentState)).toEqual([40, 40, 34, 40]);
+		});
+
 		it('moves a player to an empty Seat without that Seat joining afresh', () => {
 			const opened = play(commanderSnapshot({ player4: null }), [
 				'AdjustLife',
@@ -625,6 +764,75 @@ describe('a Commander Session', () => {
 
 			expect(lifeOf(currentState)).toEqual([40, 40, 40, 28]);
 		});
+	});
+});
+
+// Two setup saves land on the Slot in one order and reach its Session in the other.
+describe('a Slot write older than the one the Session holds', () => {
+	const at = (slotVersion: number, options: Parameters<typeof commanderSnapshot>[0] = {}) => ({
+		...commanderSnapshot(options),
+		slotVersion,
+	});
+
+	it.each([
+		['a snapshot correction', 'SnapshotCorrected', { sourceSnapshot: at(1, { player2: null }) }],
+		[
+			'a Swap Seats',
+			'SwapSeats',
+			{
+				seats: ['player1', 'player2'],
+				sourceSnapshot: at(1, {
+					player1: seatedPlayer('Ben', [TYMNA]),
+					player2: seatedPlayer('Ana', [ATRAXA]),
+				}),
+			},
+		],
+	] as const)('is ignored: %s', (_case, type, payload) => {
+		const newer = at(2, { player2: seatedPlayer('Bea', [TYMNA]) });
+		const opened = play(newer, ['AdjustLife', { player: 'player2', delta: -4 }]);
+
+		const result = applyFeatureMatchSessionEvent(
+			opened.currentState,
+			opened.sourceSnapshot,
+			type,
+			payload,
+		);
+
+		expect(result.sourceSnapshot).toBe(opened.sourceSnapshot);
+		expect(result.currentState).toBe(opened.currentState);
+	});
+
+	it('of the same version still lands', () => {
+		const opened = play(at(2));
+
+		const { sourceSnapshot } = applyFeatureMatchSessionEvent(
+			opened.currentState,
+			opened.sourceSnapshot,
+			'SnapshotCorrected',
+			{ sourceSnapshot: at(2, { player2: seatedPlayer('Bea', [TYMNA]) }) },
+		);
+
+		expect(sourceSnapshot.player2.data?.name).toBe('Bea');
+	});
+});
+
+describe("a Commander Session's Batch", () => {
+	it('is refused whole when one of its commands is', () => {
+		const opened = play(commanderSnapshot({ player4: null }));
+
+		const result = applyFeatureMatchSessionEvent(
+			opened.currentState,
+			opened.sourceSnapshot,
+			'Batch',
+			{
+				commands: [
+					{ type: 'SetLife', payload: { player: 'player1', lifeTotal: 12 } },
+					{ type: 'SetCardsKept', payload: { player: 'player4', cardsKept: 6 } },
+				],
+			},
+		);
+
+		expect(result.currentState).toBe(opened.currentState);
 	});
 });
 

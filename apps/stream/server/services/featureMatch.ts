@@ -141,6 +141,14 @@ export function observedSlotPairing(slot: DbFeatureMatch) {
 	);
 }
 
+/** The refusal of a setup save made from a form another save has moved the Slot past. */
+function slotMovedOn() {
+	return createError({
+		statusCode: 409,
+		message: 'This Slot was saved by someone else since you opened it: reload it and save again',
+	});
+}
+
 /** The Screens a Slot delete released: one both releases rewrote answers once, at the later version. */
 function releasedOnce(deckSourceScreens: DbScreen[], referenceScreens: DbScreen[]): DbScreen[] {
 	return [
@@ -345,6 +353,7 @@ export function featureMatchService() {
 			where: and(eq(featureMatches.id, id), eq(featureMatches.eventId, eventId)),
 		});
 		if (!current) return undefined;
+		if (data.version !== undefined && data.version !== current.version) throw slotMovedOn();
 
 		const manualData = toStoredSlotLeaders(pickManualWritable('featureMatchSlots', data));
 		const provenance =
@@ -366,12 +375,15 @@ export function featureMatchService() {
 			.set({
 				...manualData,
 				...provenance,
+				version: sql`${featureMatches.version} + 1`,
 			})
 			.where(
 				and(
 					eq(featureMatches.id, id),
 					eq(featureMatches.eventId, eventId),
 					observedSlotPairing(current),
+					// A save claiming a version lands only on the Slot it was made from.
+					data.version === undefined ? undefined : eq(featureMatches.version, data.version),
 				),
 			)
 			.returning();
@@ -382,6 +394,7 @@ export function featureMatchService() {
 				columns: { id: true },
 			});
 			if (!survivingSlot) return undefined;
+			if (data.version !== undefined) throw slotMovedOn();
 			throw new StateConflictError('Feature match slot', id);
 		}
 
@@ -395,8 +408,10 @@ export function featureMatchService() {
 	/**
 	 * Swap Seats (ADR-0087): two Seats' players change places in the Slot itself,
 	 * each with everything its Seat holds, and the active Session moves their
-	 * live state with them. One statement, which reads both Seats as they were
-	 * before it, so no save between a read and a write can be lost.
+	 * live state with them. The Slot's write and the Session's event commit in
+	 * one batch or not at all, so a failure leaves both as they were and a retry
+	 * swaps once: Slot and Session are never crossed. A Slot another write moved
+	 * since it was read is refused with a 409.
 	 */
 	const swapSeats = async (
 		id: number,
@@ -404,31 +419,70 @@ export function featureMatchService() {
 		first: Seat,
 		second: Seat,
 	): Promise<DbFeatureMatch | undefined> => {
+		const current = await db.query.featureMatches.findFirst({
+			where: and(eq(featureMatches.id, id), eq(featureMatches.eventId, eventId)),
+		});
+		if (!current) return undefined;
 		const firstKey = SLOT_SEAT_DATA_KEY[first];
 		const secondKey = SLOT_SEAT_DATA_KEY[second];
-		const [swapped] = await db
-			.update(featureMatches)
-			.set({
-				[firstKey]: sql`${featureMatches[secondKey]}`,
-				[secondKey]: sql`${featureMatches[firstKey]}`,
-			})
-			.where(and(eq(featureMatches.id, id), eq(featureMatches.eventId, eventId)))
-			.returning();
-		if (!swapped) return undefined;
+		const swapped: DbFeatureMatch = {
+			...current,
+			[firstKey]: current[secondKey],
+			[secondKey]: current[firstKey],
+			version: current.version + 1,
+		};
+		// The Slot holds the swap only if this write made it: its version and the two Seats as swapped.
+		const ofSwappedSlot = and(
+			eq(featureMatches.id, id),
+			eq(featureMatches.eventId, eventId),
+			eq(featureMatches.version, swapped.version),
+			observedValue(featureMatches[firstKey], swapped[firstKey]),
+			observedValue(featureMatches[secondKey], swapped[secondKey]),
+		);
 
 		// One Session event moves each player's live state with them and takes the
 		// Slot as it now stands, so no reader sees a player beside another's life.
 		const stateSvc = featureMatchStateService();
 		const snapshot = await stateSvc.buildSourceSnapshot(swapped);
-		await stateSvc.applyCommandToActiveSession(swapped.id, eventId, () => ({
-			commandId: randomCommandId('SwapSeats'),
-			type: 'SwapSeats',
-			payload: {
-				seats: [first, second],
-				sourceSnapshot: snapshot,
+		await stateSvc.applyCommandToActiveSession(
+			id,
+			eventId,
+			() => ({
+				commandId: randomCommandId('SwapSeats'),
+				type: 'SwapSeats',
+				payload: {
+					seats: [first, second],
+					sourceSnapshot: snapshot,
+				},
+			}),
+			undefined,
+			{
+				alongside: (sessionGuard) => ({
+					statements: [
+						db
+							.update(featureMatches)
+							.set({
+								[firstKey]: swapped[firstKey],
+								[secondKey]: swapped[secondKey],
+								version: swapped.version,
+							})
+							.where(
+								and(
+									eq(featureMatches.id, id),
+									eq(featureMatches.eventId, eventId),
+									eq(featureMatches.version, current.version),
+									// A Reverse Sync moves no version, so the Seats are held to what was read too.
+									observedValue(featureMatches[firstKey], current[firstKey]),
+									observedValue(featureMatches[secondKey], current[secondKey]),
+									sql`exists (select 1 ${sessionGuard})`,
+								),
+							),
+					],
+					holds: sql`exists (select 1 from ${featureMatches} where ${ofSwappedSlot})`,
+				}),
 			},
-		}));
-		return await findById(swapped.id, eventId);
+		);
+		return await findById(id, eventId);
 	};
 
 	/**
@@ -593,6 +647,7 @@ export function featureMatchService() {
 								sortOrder: sql`${lastSortOrder} + value + 1`,
 								playerDisplayMode: sql`'score'`,
 								activeSessionId: sql`null`,
+								version: sql`0`,
 								createdAt: sql`${now}`,
 								updatedAt: sql`${now}`,
 							},

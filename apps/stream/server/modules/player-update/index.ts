@@ -20,6 +20,8 @@ interface UpdatePlayerInputParams {
 	playerId: number;
 	input: UpdatePlayerInput;
 	originConnectionId?: string;
+	/** Slots the follow-on Reverse Sync leaves as they stand. */
+	exceptSlotIds?: readonly number[];
 }
 
 interface CreatePlayerInputParams {
@@ -51,6 +53,8 @@ interface PublishPlayerSnapshotUpdatesParams {
 	eventId: number;
 	playerIds: number[];
 	originConnectionId?: string;
+	/** Slots the Reverse Sync leaves as they stand. */
+	exceptSlotIds?: readonly number[];
 }
 
 type ReconcileDeckProjectionsParams = PublishPlayerSnapshotUpdatesParams;
@@ -103,6 +107,7 @@ export function playerUpdateModule() {
 		eventId,
 		playerIds,
 		originConnectionId,
+		exceptSlotIds,
 	}: PublishPlayerSnapshotUpdatesParams) {
 		// Every caller reaches here after its Player write has committed, so the
 		// reverse sync is a follow-on and a lost Session race must not become the
@@ -110,6 +115,7 @@ export function playerUpdateModule() {
 		const updatedMatchIds = await playerFeatureMatchSync.syncMatchesFromPlayersAfterCommit(
 			eventId,
 			playerIds,
+			{ exceptSlotIds },
 		);
 
 		await publication.featureMatchSlotsUpdated({
@@ -154,6 +160,7 @@ export function playerUpdateModule() {
 		playerId,
 		input,
 		originConnectionId,
+		exceptSlotIds,
 	}: UpdatePlayerInputParams): Promise<PlayerResponse> {
 		const game = await eventGame(eventId);
 		const written = withoutDeckListOwnedFields(game, withStoredNickname(input));
@@ -192,6 +199,7 @@ export function playerUpdateModule() {
 			eventId,
 			playerIds: [playerId],
 			originConnectionId,
+			exceptSlotIds,
 		});
 
 		return response;

@@ -98,7 +98,7 @@ export const PROVENANCE_ENTITIES = {
 			'playerDisplayMode',
 		],
 		meleeOwned: ['externalId', 'externalSource'],
-		serverManaged: ['id', 'eventId', 'createdAt', 'updatedAt', 'activeSessionId'],
+		serverManaged: ['id', 'eventId', 'createdAt', 'updatedAt', 'activeSessionId', 'version'],
 	},
 } as const satisfies Record<string, ProvenanceClassification>;
 

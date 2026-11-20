@@ -1,0 +1,5 @@
+---
+'@keepr/stream': patch
+---
+
+A Feature Match Session takes only what its Operator saw, once (#1377). A command claims the Session the page shows, so one sent from a view another Operator's command has moved past is refused and the page shows what it missed; two quick taps on one control both land; and a refused change rolls back to what the server last accepted. Extra turns start by the server's own reading of the clock, from any page open once it runs out, and never restart once under way. Swap Seats writes the Slot and its Session together or not at all, a setup save made from a form another save has moved past is refused rather than landing over it, a seated Player is renamed only once the Slot's save has landed, and a save naming a Commander Seat without its Commanders keeps them and its Deck List. A Commander game's first Seat changes only on a reset, and a game won by a Seat later emptied reopens. The migration adding each Slot's version runs with Deploy; there is no step beyond it.

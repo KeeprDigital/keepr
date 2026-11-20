@@ -203,7 +203,8 @@ export function commanderDeckListModule() {
 				originConnectionId,
 			});
 		} catch (error) {
-			await runCompensation(error, () => deckLists.remove(slotId, [deckListId]));
+			// Only a list the Slot does not name: the write may have failed after the Slot took it.
+			await runCompensation(error, () => deckLists.removeUnreferenced(slotId, [deckListId]));
 			throw error;
 		}
 		// A save of the same Seat that started first but landed later leaves its Deck List held by nothing.

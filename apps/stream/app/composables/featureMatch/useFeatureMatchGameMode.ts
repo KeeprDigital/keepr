@@ -154,12 +154,18 @@ export function useFeatureMatchGameMode(
 
 	// ── Auto-start overtime ──
 
-	watch(isClockExpired, (expired) => {
-		if (expired && extraTurnsEnabled.value && !matchState.value?.overtime) {
-			if (!eid()) return;
-			void featureMatchStateStore.startOvertime(eid()!, mid(), extraTurnsTotal.value);
-		}
-	});
+	// Any page that finds the clock run out asks, the one opened after it ran out
+	// too: the server starts extra turns once, by its own reading of the clock.
+	watch(
+		isClockExpired,
+		(expired) => {
+			if (expired && extraTurnsEnabled.value && !matchState.value?.overtime) {
+				if (!eid()) return;
+				void featureMatchStateStore.startOvertime(eid()!, mid(), extraTurnsTotal.value);
+			}
+		},
+		{ immediate: true },
+	);
 
 	// ── Action handlers ──
 

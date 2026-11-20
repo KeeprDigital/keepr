@@ -1,4 +1,5 @@
 import type { SQL } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type { CommandReceipt } from './receipts';
 import { db } from '~~/server/db';
@@ -20,12 +21,27 @@ export interface SequencedLiveStateExecuteOptions {
 	 * publish their own change notification opt out.
 	 */
 	publish?: boolean;
+	/**
+	 * A write of another row that commits with the command or not at all. Its
+	 * statements run first in the command's batch, each built against the
+	 * compare-and-swap guard it is handed; `holds` is true only once they have
+	 * applied, and the command's receipt and projection require it.
+	 */
+	alongside?: (guard: SQL) => SequencedLiveStateCompanion;
+}
+
+/** The statements committed in a command's own batch, and what holds once they apply. */
+export interface SequencedLiveStateCompanion {
+	statements: BatchItem<'sqlite'>[];
+	holds: SQL;
 }
 
 export interface SequencedLiveStateProjectionInput<TAggregate, TReduction> {
 	aggregate: TAggregate;
 	reduction: TReduction;
 	nextSequence: number;
+	/** A condition the projection's write must also require: a companion write's, or always true. */
+	holds: SQL;
 }
 
 /**
@@ -229,9 +245,13 @@ export function createSequencedLiveState<
 		ref: TRef,
 		aggregate: TAggregate,
 		command: TCommand,
+		alongside?: SequencedLiveStateExecuteOptions['alongside'],
 	): Promise<{ result: TResult; previous?: TAggregate }> {
 		const nextSequence = port.sequenceOf(aggregate) + 1;
 		const reduction = port.reduce(aggregate, command);
+		const guard = port.casGuard(aggregate);
+		const companion = alongside?.(guard);
+		const holds = companion?.holds ?? sql`1`;
 		const receipt: CommandReceipt = {
 			commandId: command.commandId,
 			commandType: command.type,
@@ -241,14 +261,15 @@ export function createSequencedLiveState<
 
 		try {
 			const statements: BatchItem<'sqlite'>[] = [
+				...(companion?.statements ?? []),
 				...commandReceiptStatements({
 					aggregateKind: port.aggregateKind,
 					aggregateId: port.aggregateIdOf(ref),
 					eventId: port.eventIdOf(ref),
 					receipt,
-					guard: port.casGuard(aggregate),
+					guard: sql`${guard} and ${holds}`,
 				}),
-				port.projection({ aggregate, reduction, nextSequence }),
+				port.projection({ aggregate, reduction, nextSequence, holds }),
 			];
 			const results = await db.batch(statements as [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]]);
 
@@ -306,7 +327,7 @@ export function createSequencedLiveState<
 
 		let committed: { result: TResult; previous?: TAggregate };
 		try {
-			committed = await commitOnce(ref, aggregate, command);
+			committed = await commitOnce(ref, aggregate, command, options.alongside);
 		} catch (error) {
 			if (!port.isMergeable(command)) throw error;
 
@@ -325,7 +346,7 @@ export function createSequencedLiveState<
 			// The merge retry reduces onto the reloaded aggregate, so that — not the one
 			// this attempt started from — is what a notification's difference is measured
 			// against.
-			committed = await commitOnce(ref, latest, command);
+			committed = await commitOnce(ref, latest, command, options.alongside);
 		}
 
 		return await announce(committed.result, options, committed.previous);

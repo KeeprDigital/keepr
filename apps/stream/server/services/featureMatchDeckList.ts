@@ -11,13 +11,14 @@ import type {
 	SavedCommanderDeckList,
 	SavedFeatureMatchDeckList,
 } from '~~/shared/types/featureMatchDeckList';
-import { and, asc, eq, lt, not } from 'drizzle-orm';
+import { and, asc, eq, lt, not, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import {
 	cards,
 	featureMatchDeckListEntries,
 	featureMatchDeckListMtgEntries,
 	featureMatchDeckLists,
+	featureMatchSlots,
 } from '~~/server/db/schema';
 import { opDeckListView } from '~~/server/modules/op-deck-list-write/paste';
 import {
@@ -37,6 +38,14 @@ export function deckListReferenceOf(
 	if (data?.gameData?.type !== 'op') return null;
 	return getOpGameData(data.gameData).featureMatchDeckList ?? null;
 }
+
+/** Every Seat's column of a Slot row, each of which may name a Deck List. */
+const SLOT_SEAT_COLUMNS = [
+	featureMatchSlots.player1Data,
+	featureMatchSlots.player2Data,
+	featureMatchSlots.player3Data,
+	featureMatchSlots.player4Data,
+];
 
 /**
  * Storage of Feature Match Deck Lists. A One Piece entry is a card number, its
@@ -265,6 +274,32 @@ export function featureMatchDeckListService() {
 			);
 	};
 
+	/**
+	 * Deletes those of `ids` no Seat of the Slot names, in one statement that
+	 * reads the Slot as it then stands: the compensation for a write that failed
+	 * after the Slot may already have taken the list.
+	 */
+	const removeUnreferenced = async (slotId: number, ids: readonly number[]): Promise<void> => {
+		if (ids.length === 0) return;
+		const named = sql.join(
+			SLOT_SEAT_COLUMNS.map(
+				(column) => sql`json_extract(${column}, '$.gameData.featureMatchDeckList.id')`,
+			),
+			sql`, `,
+		);
+		await db.delete(featureMatchDeckLists).where(
+			and(
+				eq(featureMatchDeckLists.slotId, slotId),
+				inJsonArray(featureMatchDeckLists.id, [...ids]),
+				sql`not exists (
+					select 1 from ${featureMatchSlots}
+					where ${featureMatchSlots.id} = ${slotId}
+						and ${featureMatchDeckLists.id} in (${named})
+				)`,
+			),
+		);
+	};
+
 	/** Deletes this Slot's Deck Lists older than `id` that no Seat's data holds. */
 	const removeUnheldBefore = async (
 		slotId: number,
@@ -294,6 +329,7 @@ export function featureMatchDeckListService() {
 		commanderCardsFor,
 		referencesFor,
 		remove,
+		removeUnreferenced,
 		removeUnheldBefore,
 	};
 }

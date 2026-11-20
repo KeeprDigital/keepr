@@ -499,6 +499,8 @@ export interface FeatureMatchResponse {
 	playerDisplayMode: PlayerDisplayMode;
 	activeSessionId: number | null;
 	activeSession?: FeatureMatchSessionResponse | null;
+	/** Goes up with each setup save and Swap Seats; a setup save names the one its form showed. */
+	version: number;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -521,6 +523,12 @@ export interface CreateFeatureMatchInput {
 export type UpdateFeatureMatchInput = Partial<CreateFeatureMatchInput> & {
 	player3Data?: ManualPlayerSlotData | null;
 	player4Data?: ManualPlayerSlotData | null;
+	/**
+	 * The Slot version the save's form showed. A Slot another save has moved
+	 * past refuses it with a 409, so one Operator's save never lands over a
+	 * newer one it never saw. Absent, the save claims no version.
+	 */
+	version?: number;
 };
 
 /** Swap Seats: the two Seats of a Commander Slot whose players change places (ADR-0087). */

@@ -279,6 +279,7 @@ export function createMockFeatureMatch(overrides?: Partial<DbFeatureMatch>): DbF
 		sortOrder: 0,
 		playerDisplayMode: 'score',
 		activeSessionId: null,
+		version: 0,
 		...defaultTimestamps(overrides),
 		...overrides,
 	};

@@ -62,6 +62,24 @@ function commanderSlotWrite(
 	return withCommanderSeats(input, options);
 }
 
+/**
+ * A save naming a Commander Seat with no game data at all, as a form editing
+ * only who sits there sends it, keeps the Commanders and Deck List the Seat
+ * holds; `gameData: null` is what clears them.
+ */
+function withHeldGameData(
+	current: DbFeatureMatch,
+	input: UpdateFeatureMatchInput,
+): UpdateFeatureMatchInput {
+	const output = { ...input };
+	for (const key of SEAT_DATA_KEYS) {
+		const data = input[key];
+		const held = current[key]?.gameData;
+		if (data && data.gameData === undefined && held) output[key] = { ...data, gameData: held };
+	}
+	return output;
+}
+
 /** Whether a write names a Seat, a Player or a Match: what the kind of Event decides. */
 function namesSeatOrMatch(input: UpdateFeatureMatchInput): boolean {
 	return input.matchId !== undefined || SEATING_KEYS.some((key) => Object.hasOwn(input, key));
@@ -188,9 +206,10 @@ export function featureMatchSlotWriteModule() {
 	/**
 	 * Writes a setup edit's name, pronouns and LGS to the Player seated on that
 	 * side (ADR-0045); records, deck and archetype stay Slot snapshot fields.
-	 * The Player write reverse-syncs every Slot seating them, so it runs before
-	 * the Slot write, which then lands the rest of this save on the edited Slot.
-	 * It is published with no origin: the saving client applied only the Slot.
+	 * It runs once the Slot write has committed, so a save the Slot refuses
+	 * writes no Player. Its Reverse Sync reaches every other Slot seating them
+	 * and leaves the edited Slot as the save left it, records included. It is
+	 * published with no origin: the saving client applied only the Slot.
 	 */
 	async function writeSeatedPlayerEdits(
 		eventId: number,
@@ -224,7 +243,12 @@ export function featureMatchSlotWriteModule() {
 			if (Object.hasOwn(data, 'lgs') && (data.lgs ?? null) !== player.lgs)
 				changes.lgs = data.lgs ?? null;
 			if (Object.keys(changes).length > 0)
-				await playerUpdate.updatePlayer({ eventId, playerId, input: changes });
+				await playerUpdate.updatePlayer({
+					eventId,
+					playerId,
+					input: changes,
+					exceptSlotIds: [current.id],
+				});
 		}
 	}
 
@@ -437,19 +461,19 @@ export function featureMatchSlotWriteModule() {
 
 		let settledInput = input;
 		if (kind === 'mtg-commander') {
+			const seated = current ? withHeldGameData(current, input) : input;
 			settledInput = commanderSlotWrite(
 				current
 					? await settleCommanderDeckLists(
 							current,
-							await settleDeckListReferences(current, input, SEAT_DATA_KEYS, 'mtg'),
+							await settleDeckListReferences(current, seated, SEAT_DATA_KEYS, 'mtg'),
 						)
-					: input,
+					: seated,
 				{ keepsDeckList: current !== undefined },
 			);
 		} else {
 			await catalogueLeaders(pickedLeaderSides(input, current));
 			if (current) {
-				await writeSeatedPlayerEdits(eventId, current, input);
 				const referenced = await settleDeckListReferences(current, input, SIDE_DATA_KEYS, 'op');
 				settledInput =
 					kind === 'op' ? await settleOpSides(eventId, current, referenced) : referenced;
@@ -462,11 +486,13 @@ export function featureMatchSlotWriteModule() {
 		}
 		if (current) await releaseDeckLists(current, updatedSlot);
 
-		return await publication.featureMatchSlotUpdated({
+		const featureMatch = await publication.featureMatchSlotUpdated({
 			eventId,
 			entity: updatedSlot,
 			originConnectionId,
 		});
+		if (current && kind !== 'mtg-commander') await writeSeatedPlayerEdits(eventId, current, input);
+		return featureMatch;
 	}
 
 	/**

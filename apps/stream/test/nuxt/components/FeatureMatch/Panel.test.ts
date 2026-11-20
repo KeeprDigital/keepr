@@ -323,7 +323,10 @@ describe('featureMatchPanel setup sides after a swap', () => {
 			await saveButton(wrapper).trigger('click');
 			await flushPromises();
 
-			expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, saved);
+			expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, {
+				...saved,
+				version: 0,
+			});
 		},
 	);
 
@@ -343,6 +346,7 @@ describe('featureMatchPanel setup sides after a swap', () => {
 		await saveButton(wrapper).trigger('click');
 		await flushPromises();
 		expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, {
+			version: 0,
 			player1Data: { name: 'Alicia' },
 		});
 	});
@@ -387,6 +391,7 @@ describe('featureMatchPanel setup save', () => {
 		await flushPromises();
 
 		expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, {
+			version: 0,
 			tableNumber: 12,
 		});
 		expect(mockToast.add).toHaveBeenCalledWith(
@@ -395,6 +400,22 @@ describe('featureMatchPanel setup save', () => {
 				color: 'success',
 			}),
 		);
+	});
+
+	// Another Operator's save of the Slot since refuses this one, so neither lands over the other unseen.
+	it('claims the Slot version its form shows', async () => {
+		mockFeatureMatchStore.updateFeatureMatch.mockResolvedValue(createMockFeatureMatch({ id: 1 }));
+		const wrapper = await mountComponent({ version: 7 });
+
+		await wrapper.get('[data-testid="edit-mode"]').trigger('click');
+		await wrapper.get('[data-testid="set-table"]').trigger('click');
+		await saveButton(wrapper).trigger('click');
+		await flushPromises();
+
+		expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, {
+			tableNumber: 12,
+			version: 7,
+		});
 	});
 
 	it('saves setup edits when a player form submits', async () => {
@@ -408,6 +429,7 @@ describe('featureMatchPanel setup save', () => {
 		await flushPromises();
 
 		expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, {
+			version: 0,
 			tableNumber: 12,
 		});
 	});
@@ -436,6 +458,7 @@ describe('featureMatchPanel setup save', () => {
 		await flushPromises();
 
 		expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, {
+			version: 0,
 			player1Data: { name: 'Alicia', pronouns: 'they/them' },
 		});
 	});
@@ -833,6 +856,7 @@ describe('featureMatchPanel setup Seats', () => {
 		await flushPromises();
 
 		expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, {
+			version: 0,
 			player3Data: { name: 'Cydney' },
 		});
 	});

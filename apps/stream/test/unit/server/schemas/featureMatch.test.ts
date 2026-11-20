@@ -3,6 +3,7 @@ import {
 	createFeatureMatchSchema,
 	featureMatchBatchSubCommandSchema,
 	featureMatchCommandSchema,
+	MAX_SEAT_COUNTERS,
 	updateFeatureMatchSchema,
 } from '~~/server/schemas/api/featureMatch';
 import { createPlayerSchema, updatePlayerSchema } from '~~/server/schemas/api/player';
@@ -193,6 +194,27 @@ describe('featureMatchCommandSchema', () => {
 				payload: { delta: 101 },
 			}).success,
 		).toBe(false);
+	});
+
+	// A Seat's counters ride every Session message, so their number is bounded.
+	it.each([
+		[MAX_SEAT_COUNTERS, true],
+		[MAX_SEAT_COUNTERS + 1, false],
+	])('takes %i counters on a Seat: %s', (count, accepted) => {
+		expect(
+			featureMatchCommandSchema.safeParse({
+				commandId: 'counters',
+				type: 'SetCounters',
+				baseSequence: 1,
+				payload: {
+					player: 'player1',
+					counters: Array.from({ length: count }, (_, index) => ({
+						type: `counter-${index}`,
+						value: 1,
+					})),
+				},
+			}).success,
+		).toBe(accepted);
 	});
 
 	it('requires baseSequence for non-mergeable commands', () => {

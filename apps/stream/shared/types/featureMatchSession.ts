@@ -55,6 +55,10 @@ export type FeatureMatchCommandType = Exclude<FeatureMatchSessionEventType, 'Ses
  * by the reverse sync from the database rather than accepted from a client, so
  * nothing here widens what an operator may send unsequenced.
  *
+ * `StartOvertime` qualifies because it changes nothing once extra turns are
+ * under way and is refused while the clock has time left, so every page that
+ * sees the clock run out may ask and the first to land starts them.
+ *
  * `SwapSeats` is server-only too, and follows a Slot write that has already
  * exchanged the two Seats: refusing it would leave each player's live state in
  * the Seat they left, so it re-reduces onto whatever landed first (ADR-0087).
@@ -65,6 +69,7 @@ export const MERGEABLE_FEATURE_MATCH_COMMAND_TYPES = [
 	'AdjustClock',
 	'StepTurn',
 	'StepOvertime',
+	'StartOvertime',
 	'AdjustCommanderDamage',
 	'SwapSeats',
 ] as const satisfies readonly FeatureMatchCommandType[];
@@ -154,6 +159,13 @@ export interface FeatureMatchSourceSnapshot {
 	 * a Session nobody has swapped, both of which mean Slot order.
 	 */
 	playersSwapped?: boolean;
+	/**
+	 * The version of the Slot row this snapshot was built from. A correction or
+	 * Swap Seats built from an older Slot than the one the Session holds is
+	 * ignored, so writes that reach the Session out of order leave the newer.
+	 * Absent on snapshots built before Slots had versions.
+	 */
+	slotVersion?: number;
 }
 
 export interface FeatureMatchSessionResponse {

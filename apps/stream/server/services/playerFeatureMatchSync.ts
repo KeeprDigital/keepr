@@ -73,6 +73,14 @@ function jsonValuesEqual(left: unknown, right: unknown): boolean {
  * Match → Player: When match player data is edited, write changes back to the players table.
  * Player → Match: When a player is updated (e.g. Melee sync), update match snapshots.
  */
+export interface ReverseSyncOptions {
+	/**
+	 * Slots this pass leaves as they stand: a setup save that writes its Player
+	 * once its own Slot write has committed, holding the save whole (ADR-0045).
+	 */
+	exceptSlotIds?: readonly number[];
+}
+
 export function playerFeatureMatchSyncService() {
 	/**
 	 * Player → Match reverse sync.
@@ -84,6 +92,7 @@ export function playerFeatureMatchSyncService() {
 	async function refreshMatchesFromPlayers(
 		eventId: number,
 		playerIds: number[],
+		{ exceptSlotIds = [] }: ReverseSyncOptions = {},
 	): Promise<{
 		updatedSlots: DbFeatureMatch[];
 		playersById: Map<number, DbPlayer>;
@@ -120,6 +129,7 @@ export function playerFeatureMatchSyncService() {
 					sortOrder: featureMatches.sortOrder,
 					playerDisplayMode: featureMatches.playerDisplayMode,
 					activeSessionId: featureMatches.activeSessionId,
+					version: featureMatches.version,
 					createdAt: featureMatches.createdAt,
 					updatedAt: featureMatches.updatedAt,
 					formatExternalId: phases.formatExternalId,
@@ -137,7 +147,7 @@ export function playerFeatureMatchSyncService() {
 						),
 					),
 				);
-			for (const row of rows) affectedById.set(row.id, row);
+			for (const row of rows) if (!exceptSlotIds.includes(row.id)) affectedById.set(row.id, row);
 		}
 		const affectedMatches = [...affectedById.values()];
 		if (affectedMatches.length === 0) {
@@ -367,12 +377,17 @@ export function playerFeatureMatchSyncService() {
 	 * Session moved after it was read is left alone, as a lost Session race is:
 	 * what it holds now was not what this pass computed for.
 	 */
-	async function syncMatchesFromPlayers(eventId: number, playerIds: number[]): Promise<number[]> {
+	async function syncMatchesFromPlayers(
+		eventId: number,
+		playerIds: number[],
+		options: ReverseSyncOptions = {},
+	): Promise<number[]> {
 		if (playerIds.length === 0) return [];
 
 		const { updatedSlots, playersById, commit } = await refreshMatchesFromPlayers(
 			eventId,
 			playerIds,
+			options,
 		);
 		const state = featureMatchStateService();
 		const defaults = updatedSlots.length > 0 ? await state.loadEventDefaults(eventId) : undefined;
@@ -440,9 +455,10 @@ export function playerFeatureMatchSyncService() {
 	async function syncMatchesFromPlayersAfterCommit(
 		eventId: number,
 		playerIds: number[],
+		options: ReverseSyncOptions = {},
 	): Promise<number[]> {
 		try {
-			return await syncMatchesFromPlayers(eventId, playerIds);
+			return await syncMatchesFromPlayers(eventId, playerIds, options);
 		} catch (error) {
 			if (!isStateConflictFailure(error)) throw error;
 			console.error(

@@ -1,6 +1,6 @@
 # ADR-0045: A Slot setup edit to a seated Player's identity is a Player write
 
-Accepted · 2026-10-26
+Accepted · 2026-10-26 · Amended by ADR-0151: the Player is written once the Slot's write has committed
 
 ### Decision
 

@@ -101,6 +101,7 @@ export const createFeatureMatchSchema = createInsertSchema(featureMatches)
 		createdAt: true,
 		updatedAt: true,
 		activeSessionId: true,
+		version: true,
 		externalId: true,
 		externalSource: true,
 		// Seats 3 and 4 are a Commander Event's, written by a setup save (ADR-0087).
@@ -149,6 +150,8 @@ export const updateFeatureMatchSchema = createUpdateSchema(featureMatches)
 		player2Data: updateFeatureMatchPlayerDataSchema,
 		player3Data: updateFeatureMatchPlayerDataSchema,
 		player4Data: updateFeatureMatchPlayerDataSchema,
+		// The version the form showed, claimed rather than written.
+		version: z.number().int().nonnegative().optional(),
 	})
 	.strict();
 
@@ -201,10 +204,12 @@ const setLifePayloadSchema = z
 		lifeTotal: z.number().int(),
 	})
 	.strict();
+/** The most counters one Seat holds: each rides every message its Session sends. */
+export const MAX_SEAT_COUNTERS = 20;
 const setCountersPayloadSchema = z
 	.object({
 		player: seatSchema,
-		counters: z.array(counterSchema),
+		counters: z.array(counterSchema).max(MAX_SEAT_COUNTERS),
 	})
 	.strict();
 const setCardsKeptPayloadSchema = z
