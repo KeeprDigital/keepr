@@ -12,6 +12,7 @@ import { passwordResetEmail } from '~~/server/email/messages';
 import { keeprDomainOf } from '~~/shared/utils/keeprDomain';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 import { organisationOptions } from './organisations';
+import { userNameHooks } from './userName';
 
 /**
  * Keepr Accounts' Better Auth configuration, everything but the database and the
@@ -221,6 +222,8 @@ export function authOptions({
 			haveIBeenPwned(),
 		],
 		databaseHooks: {
+			// A User always has a name, whichever route writes it (`userName.ts`).
+			user: userNameHooks,
 			session: {
 				create: {
 					// The organisation add-on leaves a new Session in no Organisation, so its

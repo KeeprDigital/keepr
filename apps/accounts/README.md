@@ -21,13 +21,14 @@ Its words are the root `GLOSSARY.md`'s and its own `GLOSSARY.md`'s; `RULES.md` s
 | `server/utils/profileOrganisations.ts` | A User's Organisations and App access, and the one their Session works in. Served by `server/api/profile`. |
 | `server/utils/firstAdministrator.ts` | Claiming the first Keepr Administrator. Served by `server/api/first-administrator`; the claim is written by `scripts/claim-first-administrator.mjs`. |
 | `server/utils/refusal.ts` | How Keepr Accounts' own routes refuse, in the shape Better Auth's do; `textField.ts` reads a request body's text. |
+| `server/utils/userName.ts` | A User always has a name: the rule, and the hooks that hold it wherever Better Auth writes a User. |
 | `shared/utils/returnAddress.ts` | Where a User may be sent after signing in. |
 | `shared/utils/keeprDomain.ts` | The Keepr domain of each Installation, `keepr.digital` or `keepr-staging.digital`, which its cookie, Return Addresses and sender keep to. |
 | `deploy.jsonc`, `wrangler.jsonc` | The deploy descriptor (ADR-0119) and the Worker's configuration for each Environment: account, host, database, email. `wrangler.dev.jsonc` is the local one. |
 | `scripts/worker-dry-run.mjs`, `scripts/worker-smoke.mjs` | The checks a deploy and CI's Worker leg run on the build: Wrangler's bundle for each Environment, then the built Worker on local workerd. |
 | `shared/utils/newPassword.ts` | The length a new password must be. |
 | `shared/utils/keeprAdministrator.ts` | Whether a User's role marks a Keepr Administrator; `server/utils/keeprAdministrator.ts` asks it of the database. |
-| `app/utils/refusal.ts` | What a page tells its User about a refusal, a refused new password's among it. |
+| `app/utils/refusal.ts` | What a page tells its User about a refusal, a refused name's and a refused new password's among it. |
 | `app/utils/appRoleChoices.ts` | The Organisation roles and each App's App roles, as a form offers them. |
 | `app/pages` | Signing in (`/sign-in?returnTo=…`), the profile (`/`), resetting a password (`/forgot-password`, then the emailed link to `/reset-password`), inviting and the pending Invitations (`/invite`), accepting or declining an Invitation (`/invitation`), and claiming the first Keepr Administrator (`/first-administrator`). |
 | `test/unit` | The server, request in and response out, on SQLite with the real migrations (`test/helpers/keeprAccounts.ts`). Also the shared layer's identity function against this real minting (`requestIdentity.sqlite.test.ts`), since the layer cannot import an app. |

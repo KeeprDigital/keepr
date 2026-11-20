@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NEW_PASSWORD_REFUSALS, refusalSentence } from '~/utils/refusal';
+import { NEW_PASSWORD_REFUSALS, refusalSentence, USER_NAME_REFUSALS } from '~/utils/refusal';
 import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 
 /**
@@ -51,7 +51,7 @@ async function claim() {
 				...NEW_PASSWORD_REFUSALS.codes,
 				CLAIM_NOT_FOUND: SPENT,
 				KEEPR_ADMINISTRATOR_EXISTS: SPENT,
-				NAME_REQUIRED: 'Enter your name.',
+				...USER_NAME_REFUSALS.codes,
 			},
 			otherwise: 'Claiming failed. Try again.',
 		});

@@ -19,13 +19,19 @@ let session: unknown;
 let sessions: { token: string; userAgent: string; updatedAt: string }[];
 const received: Record<string, unknown[]> = {};
 
+/** What the server refuses a path's request with, answering 400, when a test says it does. */
+const refusals: Record<string, { code: string; message: string }> = {};
+
 function route(path: string, method: 'GET' | 'POST', answer: () => unknown) {
 	registerEndpoint(`/api/auth${path}`, {
 		method,
 		handler: async (event) => {
-			const { readBody } = await import('h3');
+			const { readBody, setResponseStatus } = await import('h3');
 			(received[path] ??= []).push(method === 'POST' ? await readBody(event) : null);
-			return answer();
+			const refusal = refusals[path];
+			if (!refusal) return answer();
+			setResponseStatus(event, 400);
+			return refusal;
 		},
 	});
 }
@@ -56,6 +62,7 @@ let organisations: { active: string | null; organisations: unknown[] };
 
 beforeEach(() => {
 	organisations = { active: 'keepr', organisations: [KEEPR] };
+	for (const path of Object.keys(refusals)) delete refusals[path];
 	for (const path of Object.keys(received)) delete received[path];
 	session = {
 		user: { name: 'Ada', email: 'ada@keepr.digital' },
@@ -86,6 +93,18 @@ describe('the profile', () => {
 
 		await expect.poll(() => page.find('[data-profile="name"] [data-saved]').exists()).toBe(true);
 		expect(received['/update-user']).toEqual([{ name: 'Ada Lovelace' }]);
+	});
+
+	it('says a blank name is refused, beside the name', async () => {
+		refusals['/update-user'] = { code: 'NAME_REQUIRED', message: 'from the server' };
+		const page = await profile();
+
+		await page.get('[data-profile="name"] input').setValue('  ');
+		await page.get('[data-profile="name"] form').trigger('submit');
+
+		await expect.poll(() => page.find('[data-profile="name"] [data-refusal]').exists()).toBe(true);
+		expect(page.get('[data-profile="name"] [data-refusal]').text()).toContain('Enter your name');
+		expect(page.find('[data-profile="name"] [data-saved]').exists()).toBe(false);
 	});
 
 	it('changes the password, signing out everywhere else', async () => {

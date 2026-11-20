@@ -127,13 +127,16 @@ describe('an invitee with no User', () => {
 		expect(navigate).toHaveBeenCalledWith('/');
 	});
 
-	it('is told why acceptance was refused', async () => {
-		acceptAnswer = { status: 400, body: { code: 'PASSWORD_TOO_SHORT', message: 'short' } };
+	it.each([
+		['PASSWORD_TOO_SHORT', 'at least 8 characters'],
+		['NAME_REQUIRED', 'Enter your name'],
+	])('is told why acceptance was refused: %s', async (code, sentence) => {
+		acceptAnswer = { status: 400, body: { code, message: 'from the server' } };
 		const page = await open();
 
 		await acceptAsNewUser(page);
 
-		expect(page.get('[data-refusal]').text()).toContain('at least 8 characters');
+		expect(page.get('[data-refusal]').text()).toContain(sentence);
 		expect(navigate).not.toHaveBeenCalled();
 	});
 });
