@@ -1510,6 +1510,29 @@ key, and stops before setting anything if 1Password did not keep the new
 value (ADR-0135). Never set a value
 only on a Worker: it can never be read back.
 
+**By hand, always through `wrangler.jsonc`, and say which Environment.** To
+list, or to delete a secret nothing reads any more, from `apps/stream`:
+
+```bash
+pnpm exec wrangler secret list            --config wrangler.jsonc --env staging   # Staging
+pnpm exec wrangler secret delete <NAME>   --config wrangler.jsonc --env staging
+pnpm exec wrangler secret list            --config wrangler.jsonc --name stream   # Production
+pnpm exec wrangler secret delete <NAME>   --config wrangler.jsonc --name stream
+```
+
+`--env staging` reads the `env.staging` block, which names the Staging
+account; without it Wrangler uses the top-level account, Production's, and
+`--name stream` names the Worker, which the top level leaves to the build.
+Both Workers are called `stream`: the account is what tells them apart, so
+list before and after, and the name leaves one list and stays in the other.
+
+**Never against the built `.output/server/wrangler.json`.** With a login that
+reaches both accounts, `--env staging` there reaches Production: measured on
+2026-11-20, where it and no `--env` at all named the same latest deployment,
+and `wrangler.jsonc --env staging` named Staging's. The deploy tooling runs
+that config under each Environment's own API token, which reaches one
+account; a person's login reaches both.
+
 Required: `NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY`,
 `NUXT_MELEE_CREDENTIAL_ENCRYPTION_KEY`. Never put any of
 them in `wrangler.jsonc`, source control, or public runtime config. None is
