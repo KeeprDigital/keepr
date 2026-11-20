@@ -122,6 +122,9 @@ if (plan.start) {
 			'--show-interactive-dev-session=false',
 			'--log-level',
 			'warn',
+			// What lets the Worker answer at all (src/worker.ts): a deploy never sets it.
+			'--var',
+			'KEEPR_ACCOUNTS_STAND_IN:launched',
 		],
 		{ cwd: packageRoot, stdio: ['ignore', 'inherit', 'inherit'], env },
 	);

@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { checkRelease, pendingTags } from '../scripts/release-gate.mjs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import process from 'node:process';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { checkRelease, pendingTags, versionCommit } from '../scripts/release-gate.mjs';
 
 const RELEASE_COMMIT = 'c'.repeat(40);
 
@@ -146,5 +151,97 @@ describe('a release is cut only from a revision the merge queue verified', () =>
 		).resolves.toEqual([
 			`@keepr/accounts@0.1.0, @keepr/stream@1.7.0 would tag ${RELEASE_COMMIT}, which no successful merge-queue CI run verified.`,
 		]);
+	});
+});
+
+describe('a release tags only the commit that set its version', () => {
+	const LATER = 'e'.repeat(40);
+
+	it('tags HEAD when HEAD set the version', async () => {
+		await expect(
+			checkRelease(
+				{ ...release, setBy: new Map([['@keepr/stream@1.7.0', RELEASE_COMMIT]]) },
+				runsFor([ciRun()]),
+			),
+		).resolves.toEqual([]);
+	});
+
+	// A Version PR queued with another PR, a superseded pending run, or a
+	// manual retry after main moved: each leaves HEAD past the version commit.
+	it('refuses when HEAD is a later commit than the one that set the version, even one the queue verified', async () => {
+		await expect(
+			checkRelease(
+				{
+					tags: release.tags,
+					commit: LATER,
+					setBy: new Map([['@keepr/stream@1.7.0', RELEASE_COMMIT]]),
+				},
+				runsFor([ciRun({ head_sha: LATER })]),
+			),
+		).resolves.toEqual([
+			`@keepr/stream@1.7.0 would tag ${LATER}, but its version was set by ${RELEASE_COMMIT}: tag that commit by hand (apps/stream/README.md § Releases).`,
+		]);
+	});
+});
+
+describe("which commit set an app's version", () => {
+	let repo: string;
+	const gitEnv = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
+	const git = (...args: string[]) =>
+		execFileSync('git', args, { cwd: repo, encoding: 'utf8', env: gitEnv }).trim();
+	const commit = (files: Record<string, string>, message: string) => {
+		for (const [file, content] of Object.entries(files)) {
+			mkdirSync(join(repo, file, '..'), { recursive: true });
+			writeFileSync(join(repo, file), content);
+		}
+		git('add', '-A');
+		git('-c', 'user.name=t', '-c', 'user.email=t@example.invalid', 'commit', '-qm', message);
+		return git('rev-parse', 'HEAD');
+	};
+	const manifest = (version: string, extra = {}) =>
+		JSON.stringify({ name: '@keepr/stream', version, ...extra });
+
+	let versioned: string;
+
+	beforeAll(() => {
+		repo = mkdtempSync(join(tmpdir(), 'release-gate-'));
+		git('init', '-q', '-b', 'main');
+		commit({ 'apps/stream/package.json': manifest('1.6.0') }, 'chore: the base');
+		versioned = commit(
+			{ 'apps/stream/package.json': manifest('1.7.0'), 'apps/stream/CHANGELOG.md': '## 1.7.0\n' },
+			'chore(release): version apps',
+		);
+	});
+
+	afterAll(() => {
+		rmSync(repo, { recursive: true, force: true });
+	});
+
+	it('is HEAD right after the Version PR lands', () => {
+		expect(versionCommit(repo, 'apps/stream/package.json')).toBe(versioned);
+		expect(git('rev-parse', 'HEAD')).toBe(versioned);
+	});
+
+	it('refuses to answer from a shallow clone, where HEAD would seem to set every version', () => {
+		const clone = mkdtempSync(join(tmpdir(), 'release-gate-clone-'));
+		try {
+			execFileSync('git', ['clone', '-q', '--depth', '1', `file://${repo}`, clone], {
+				env: gitEnv,
+			});
+
+			expect(() => versionCommit(clone, 'apps/stream/package.json')).toThrow(/shallow/);
+		} finally {
+			rmSync(clone, { recursive: true, force: true });
+		}
+	});
+
+	it('stays the Version PR once main moves past it, its manifest touched or not', () => {
+		commit({ 'apps/stream/server/x.ts': 'export {};\n' }, 'fix: queued with the Version PR');
+		commit(
+			{ 'apps/stream/package.json': manifest('1.7.0', { private: true }) },
+			'chore: the manifest, not the version',
+		);
+
+		expect(versionCommit(repo, 'apps/stream/package.json')).toBe(versioned);
 	});
 });

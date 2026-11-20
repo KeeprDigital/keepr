@@ -43,7 +43,7 @@ export function recordRecoveryPoints({ release, environment, bookmark, log }) {
 				`no D1 recovery point for ${app}'s ${binding} in ${environment}: Time Travel answered no bookmark. Nothing was changed.`,
 			);
 		// A person runs it, so through the source configuration, whose blocks name
-		// each account: the built one's `--env staging` reaches Production.
+		// each account, and which needs no build of this checkout beside it.
 		log(
 			`D1 recovery point for ${binding}: bookmark ${point}. To restore it, from apps/${app}: ` +
 				`wrangler d1 time-travel restore ${binding} --bookmark=${point} --config ${descriptor.worker.source}` +

@@ -439,8 +439,9 @@ How `pnpm verify` runs:
   lint 3.8, cold typecheck 3.7, the unit suite 2.4), and two of them starved
   each other into timeouts. `KEEPR_RUN_SLOTS` sizes the pool by hand
   (`off` runs unqueued; its former name, `STREAM_KEEPR_RUN_SLOTS`, is still
-  read). A holder whose process is gone gives its slots back,
-  and so does one that has held them 30 minutes, which no gate takes.
+  read). A holder whose process is gone gives its slots back; one still
+  running keeps them, however long. A waiter that has not asked for a
+  minute leaves the line, though its pid may answer for another process.
 - **Each gate logs to `node_modules/.cache/verify/<gate>.log`.** The terminal
   shows one line per gate and the tail of the first failure.
 - **Typecheck is cached** (`node_modules/.cache/tsc/`), so an unchanged tree
@@ -814,6 +815,18 @@ app's `CHANGELOG.md`, and dispatches one Deploy run with every app it
 released, which deploys each to staging and then, once a person approves, to
 production ([Deploy](#deploy)).
 
+`changeset git-tag` tags `HEAD`, so the release gate
+(`packages/tooling/scripts/release-gate.mjs`) refuses when `HEAD` is not the
+commit that set the version it would tag: the Version PR merged in one queue
+push with a PR behind it, a release run superseded while pending, or a manual
+retry after `main` moved. The refusal names the Version PR's commit, which its
+own merge-group run verified; a maintainer tags that commit by hand
+(`git tag @keepr/<app>@<version> <commit>` and push it), then makes its
+GitHub Release and starts Deploy. The pinned `changesets/action` (v2.1.2)
+neither opens a Version PR nor publishes while only empty changesets wait on
+`main`: a Version PR merged with an empty changeset left beside it is tagged
+by hand the same way, before the next Version PR consumes it.
+
 Each Release's section of an app's `CHANGELOG.md`, and so its GitHub Release,
 groups its entries by bump (ADR-0126, ADR-0127): **Operator steps** (every
 major changeset: what the deploy needs beyond running Deploy), **Features**
@@ -976,8 +989,9 @@ your `wrangler login`. In order, stopping at the first failure:
 
 1. **Build once**: the descriptor's `build` scripts.
    1. `pnpm build`.
-   2. `pnpm worker:dry-run`: bundles what Wrangler would upload into
-      `.output/wrangler-dry-run/` and fails if it contains
+   2. `pnpm worker:dry-run`: bundles what Wrangler would upload, for every
+      Environment the descriptor names, into `.wrangler/dry-run/<environment>/`
+      (outside `.output`, which is what deploys), and fails if one contains
       `new WebAssembly.Module(`, which a deployed Worker refuses (every
       JPEG/WebP ingestion would fail, #302). It also fails if
       `.output/public`'s CSS lacks a
@@ -995,6 +1009,14 @@ your `wrangler login`. In order, stopping at the first failure:
    `--artifact <dir>` deploys a downloaded `.output/` of the same Release
    instead of building it: one build is what every Environment deploys.
 
+   The build records, in `.output/keepr-build.json`, the commit it was built
+   from and whether `STREAM_KEEPR_INTEGRATION` (the descriptor's
+   `testFlags`) was set. A deploy refuses a build or artifact of another
+   commit, or of an integration build, before anything remote changes
+   (ADR-0154). To production, a checkout that is dirty or whose `HEAD` is
+   not `@keepr/stream@<version>` is refused unless
+   `--unreleased "<reason>"` says why; the marker records it as `unreleased`.
+
    Then, before anything remote changes, **Worker secrets**
    ([Worker secrets](#worker-secrets)): the deploy reads the secret names set
    on the target Worker (`wrangler secret list`, against the built
@@ -1007,9 +1029,9 @@ your `wrangler login`. In order, stopping at the first failure:
    deploy reads D1 Time Travel's current bookmark for `DB`
    (`wrangler d1 time-travel info DB --json`, against the built configuration
    and the Environment's block) and stops if there is none (ADR-0125). It
-   logs how to restore that bookmark, and the app's marker records it as
-   `recovery`, so a failed migration has its restore point in the run that
-   failed.
+   reads it again immediately before the migration (step 3), logs how to
+   restore that bookmark, and the app's marker records it as `recovery`, so a
+   failed migration has its restore point in the run that failed (ADR-0154).
 
 2. **The validator**, when its fingerprint changed since the confirmed deploy
    its `stream/<environment>-validator` marker records
@@ -1029,8 +1051,9 @@ your `wrangler login`. In order, stopping at the first failure:
    answers, and another Release's identity, are retried; anything else fails at
    once. A name that does not resolve yet, as a first deploy's new custom
    domain may not, is waited for up to two minutes, asked of the zone's own
-   nameservers (ADR-0136). Set `KEEPR_DEPLOY_URL` only to verify a different
-   origin.
+   nameservers (ADR-0136). A deploy always verifies the Environment's URL;
+   `KEEPR_DEPLOY_URL` is read only by `keepr-deploy verify`, to verify a
+   different origin.
 
    A Release from before `/api/release` (`@keepr/stream@1.7.0` and earlier) is
    checked for **liveness only**, at `GET /api/time`, and the output says so.
@@ -1055,7 +1078,8 @@ below one, and the deploy tooling enforces it (ADR-0120) rather than the
 operator remembering it. An App **depends on Keepr Accounts** in an Environment
 when its built Worker configuration, as that Environment deploys it, binds the
 `keepr-accounts` service; nothing else declares it. Keepr Accounts' changes are
-the commits that change `apps/accounts`.
+the commits that change what it ships: `apps/accounts` and each workspace
+package its `dependencies` reach, without tests, docs and Markdown (ADR-0154).
 
 - **An App waits for Keepr Accounts.** Its deploy to an Environment refuses
   unless `accounts/<environment>` records a confirmed deploy whose commit
@@ -1104,8 +1128,9 @@ from, whether that checkout had uncommitted or untracked changes
 validator its **fingerprint**, and the app, Environment and Release version.
 An app marker also records `needs: accounts` when the Installation depends on
 Keepr Accounts, `override` with its reason when a deploy bypassed
-[deploy order](#deploy-order), and `recovery`, the D1 Time Travel bookmark
-read before the deploy changed anything (`DB=<bookmark>`). Its state is the
+[deploy order](#deploy-order), `unreleased` with its reason when a
+production deploy was not of a Release, and `recovery`, the D1 Time Travel
+bookmark read immediately before the migration (`DB=<bookmark>`). Its state is the
 latest deployment's latest status. Every deploy marks the app or part
 `pending` (a new deployment, `in_progress`) before it changes anything, and
 `deployed` (that deployment's `success`) once it succeeded. A deploy that died
@@ -1277,8 +1302,9 @@ mid-run names the Event it left behind; delete it before rerunning.
    --check` says so with no build, and what 1Password does not record
    ([Worker secrets](#worker-secrets)). No leftover `workerd` (`pnpm reap`).
 2. **Recovery point.** Each deploy reads D1 Time Travel's current bookmark
-   before it changes anything, refuses without one, and records it in its
-   step summary and its app marker ([Deploy](#deploy)); nothing is typed. To
+   before it changes anything, refuses without one, reads it again
+   immediately before the migration, and records that one in its step
+   summary and its app marker ([Deploy](#deploy)); nothing is typed. To
    see what will migrate, build and list the pending migrations:
 
    ```bash
@@ -1380,7 +1406,8 @@ same Environment (the same applies to staging, with `stream/staging` and
   it, then run `node <a main checkout>/packages/tooling/scripts/deploy/cli.mjs
   deploy --app stream --env production` from the release's root, as the Deploy
   workflow does, signed in to `gh`. It records its markers, `worktree: dirty`
-  included.
+  included; a dirty checkout, or one not at the Release's tag, needs
+  `--unreleased "<reason>"`.
 
 A `pending` validator marker means its deploy died part-way, so the next
 `auto` run always redeploys it, even at the same fingerprint. Each redeploy
@@ -1576,13 +1603,19 @@ account; without it Wrangler uses the top-level account, Production's, and
 Both Workers are called `stream`: the account is what tells them apart, so
 list before and after, and the name leaves one list and stays in the other.
 
-**Never against the built `.output/server/wrangler.json`.** With a login that
-reaches both accounts, `--env staging` there reaches Production: measured on
-2026-11-20, where it and no `--env` at all named the same latest deployment,
-and `wrangler.jsonc --env staging` named Staging's. The deploy tooling runs
-that config under each Environment's own API token, which reaches one
-account; a person's login reaches both. So every command the tooling hands a
-person goes through `wrangler.jsonc` as above. A deploy refused for a missing
+**Never against the built `.output/server/wrangler.json`.** It exists only
+beside a build, and that build may be another commit's: on 2026-11-20 a
+person's `--env staging` against one reached Production, where it and no
+`--env` at all named the same latest deployment. Re-measured the same day on
+a fresh build of this checkout, Wrangler's own reader resolves the built
+config's `--env staging` to the Staging account and no `--env` to
+Production's, as `wrangler.jsonc` does, so the first reading most likely came
+from a built config this checkout had not made (unconfirmed against
+Cloudflare: the re-measurement read the config, not a deployment). `keepr-deploy check --env`, `status` and
+`mark-app` now refuse a built config whose build record
+(`.output/keepr-build.json`) names another commit, and every command the
+tooling hands a person goes through `wrangler.jsonc` as above, which needs no
+build. A deploy refused for a missing
 or shadowed secret names `wrangler secret put|delete <NAME>` with
 `--config wrangler.jsonc --env staging` for Staging and
 `--config wrangler.jsonc --name stream` for Production, reaching the Worker as

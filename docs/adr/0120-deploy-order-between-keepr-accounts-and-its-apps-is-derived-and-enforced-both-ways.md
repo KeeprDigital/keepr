@@ -1,6 +1,6 @@
 # ADR-0120: Deploy order between Keepr Accounts and its Apps is derived and enforced both ways
 
-Accepted · 2026-11-17 · [#1263](https://github.com/KeeprDigital/keepr/issues/1263), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amends ADR-0119
+Accepted · 2026-11-17 · [#1263](https://github.com/KeeprDigital/keepr/issues/1263), part of [#1258](https://github.com/KeeprDigital/keepr/issues/1258) · Amends ADR-0119 · Amended by ADR-0154: deploy order compares over everything Keepr Accounts ships, not its directory alone
 
 ### Decision
 

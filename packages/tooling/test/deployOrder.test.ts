@@ -27,11 +27,32 @@ function git(cwd: string, ...args: string[]) {
 	}).trim();
 }
 
+/**
+ * The workspace's manifests: Keepr Accounts ships the shared layer; the
+ * Pairing Engine is beside it, shipped by no app here.
+ */
+const MANIFESTS = {
+	'apps/accounts/package.json': {
+		name: '@keepr/accounts',
+		dependencies: { '@keepr/nuxt-layer': 'workspace:*' },
+	},
+	'apps/stream/package.json': {
+		name: '@keepr/stream',
+		dependencies: { '@keepr/nuxt-layer': 'workspace:*' },
+	},
+	'packages/nuxt-layer/package.json': { name: '@keepr/nuxt-layer' },
+	'packages/pairing/package.json': { name: '@keepr/pairing' },
+};
+
 /** A real repository whose history the cases write, one commit per change. */
 function repository() {
 	const root = mkdtempSync(join(tmpdir(), 'keepr-order-'));
 	directories.push(root);
 	git(root, 'init', '-q', '-b', 'main');
+	for (const [file, manifest] of Object.entries(MANIFESTS)) {
+		mkdirSync(join(root, dirname(file)), { recursive: true });
+		writeFileSync(join(root, file), JSON.stringify(manifest));
+	}
 	return {
 		root,
 		/** Commit a change to `file`, and answer the commit. */
@@ -154,24 +175,31 @@ describe("whether a block's service bindings bind Keepr Accounts", () => {
 });
 
 describe('an App that binds Keepr Accounts', () => {
-	it('is refused when its Release holds a Keepr Accounts change the deployed Keepr Accounts lacks', () => {
-		const repo = repository();
-		const live = repo.change('apps/accounts/server/a.ts');
-		repo.change('apps/accounts/server/b.ts', 'feat(accounts): what stream now needs');
-		const head = repo.change('apps/stream/server/c.ts');
+	it.each([
+		['its own directory', 'apps/accounts/server/b.ts'],
+		['a package it ships', 'packages/nuxt-layer/server/b.ts'],
+	])(
+		'is refused when its Release holds a change to what Keepr Accounts ships, in %s, that the deployed Keepr Accounts lacks',
+		(_case, file) => {
+			const repo = repository();
+			const live = repo.change('apps/accounts/server/a.ts');
+			repo.change(file, 'feat(accounts): what stream now needs');
+			const head = repo.change('apps/stream/server/c.ts');
 
-		expect(() =>
-			check(
-				repo,
-				built(repo, 'stream', BINDS_ACCOUNTS),
-				markers(head, { 'accounts/production': appMarker({ app: 'accounts', commit: live }) }),
-			),
-		).toThrow(/accounts\/production.*lacks.*what stream now needs/s);
-	});
+			expect(() =>
+				check(
+					repo,
+					built(repo, 'stream', BINDS_ACCOUNTS),
+					markers(head, { 'accounts/production': appMarker({ app: 'accounts', commit: live }) }),
+				),
+			).toThrow(/accounts\/production.*lacks.*what stream now needs/s);
+		},
+	);
 
 	it.each([
 		['only its own changes since the deployed Keepr Accounts', 'apps/stream/server/d.ts'],
-		['a change beside Keepr Accounts, not under it', 'packages/nuxt-layer/server/e.ts'],
+		['a change to a package Keepr Accounts does not ship', 'packages/pairing/src/e.ts'],
+		["a change to Keepr Accounts' tests, which it does not ship", 'apps/accounts/test/e.test.ts'],
 	])(
 		'deploys when its Release holds %s, and records that it needs Keepr Accounts',
 		(_case, file) => {
@@ -304,7 +332,7 @@ describe('the history', () => {
 		directories.push(clone);
 		git(clone, 'clone', '-q', '--depth', '1', `file://${origin.root}`, '.');
 
-		expect(() => gitHistory({ cwd: clone }).missing('HEAD', behind, 'apps/accounts')).toThrow(
+		expect(() => gitHistory({ cwd: clone }).missing('HEAD', behind, ['apps/accounts'])).toThrow(
 			/full history/,
 		);
 	});

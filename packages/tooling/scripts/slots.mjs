@@ -20,6 +20,10 @@
  * worktree of a checkout shares and every one of them can write. SQLite's own
  * file lock makes each take or release atomic, and a holder that died (a
  * killed session) is dropped by the next reader, since its process is gone.
+ * A holder keeps its slots for as long as its process lives, however long it
+ * runs. A waiter asks the ledger several times a second and records when it
+ * last did; one that has not asked for a minute is dropped though its pid
+ * answers, since another process may have taken a dead waiter's pid.
  *
  * A broken ledger never blocks work: any failure to read or write it lets the
  * gate run unqueued, with one line saying so.
@@ -153,11 +157,11 @@ function processIsAlive(pid) {
 }
 
 /**
- * No gate runs this long: CI gives its longest job less. A holder past it is
- * taken for hung (a worker blocked where no test timeout can reach it), and
- * its slots go back, so one stuck run cannot hold every worktree's queue.
+ * How long a waiter may go without asking before it is taken for gone. A live
+ * one asks every quarter second; one whose last word is older died, and the
+ * process its pid names is someone else's.
  */
-const HOLD_LIMIT_MS = 30 * 60 * 1000;
+const WAITER_SILENCE_MS = 60 * 1000;
 
 function openLedger(path) {
 	const ledger = new DatabaseSync(path, { timeout: 10_000 });
@@ -179,6 +183,9 @@ function openLedger(path) {
 			since INTEGER NOT NULL
 		);
 	`);
+	// When the waiter last asked; a ledger an older revision made lacks it.
+	if (!ledger.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name = ?').get('waiters', 'seen'))
+		ledger.exec('ALTER TABLE waiters ADD COLUMN seen INTEGER');
 	return ledger;
 }
 
@@ -196,16 +203,15 @@ function transaction(ledger, work) {
 }
 
 /**
- * Drop every row whose process is gone, and every holder that has outlived any
- * gate. A waiter keeps its place for as long as its process lives.
+ * Drop every row whose process is gone, and every waiter that has stopped
+ * asking. A holder keeps its slots for as long as its process lives.
  */
 function dropTheDead(ledger, { isAlive, now }) {
-	for (const table of ['holders', 'waiters']) {
-		for (const row of ledger.prepare(`SELECT id, pid, since FROM ${table}`).all()) {
-			if (!isAlive(row.pid) || (table === 'holders' && now - row.since > HOLD_LIMIT_MS))
-				ledger.prepare(`DELETE FROM ${table} WHERE id = ?`).run(row.id);
-		}
-	}
+	for (const row of ledger.prepare('SELECT id, pid FROM holders').all())
+		if (!isAlive(row.pid)) ledger.prepare('DELETE FROM holders WHERE id = ?').run(row.id);
+	for (const row of ledger.prepare('SELECT id, pid, since, seen FROM waiters').all())
+		if (!isAlive(row.pid) || now - (row.seen ?? row.since) > WAITER_SILENCE_MS)
+			ledger.prepare('DELETE FROM waiters WHERE id = ?').run(row.id);
 }
 
 /**
@@ -329,10 +335,10 @@ export async function acquireRunSlots({
 				) {
 					waiterId = ledger
 						.prepare(
-							'INSERT INTO waiters (pid, slots, label, checkout, since) VALUES (?, ?, ?, ?, ?)',
+							'INSERT INTO waiters (pid, slots, label, checkout, since, seen) VALUES (?, ?, ?, ?, ?, ?)',
 						)
-						.run(pid, least, label, checkout, now).lastInsertRowid;
-				}
+						.run(pid, least, label, checkout, now, now).lastInsertRowid;
+				} else ledger.prepare('UPDATE waiters SET seen = ? WHERE id = ?').run(now, waiterId);
 				const head = ledger.prepare('SELECT MIN(id) AS id FROM waiters').get().id;
 				if (head !== waiterId) return undefined;
 				const held = ledger

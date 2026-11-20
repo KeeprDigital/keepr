@@ -1,4 +1,6 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import process from 'node:process';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { NO_LEG_WORKER_JOB, PROJECT_GATES } from '../scripts/ci-scope.mjs';
@@ -117,7 +119,80 @@ describe('every required check reports in the merge queue as well as on PRs', ()
 				.filter((id) => id !== 'passed')
 				.toSorted(),
 		);
-		expect(runs(passed)).toContain('map(select(.key != "record") | .value.result)');
+		expect(passed.steps).toHaveLength(1);
+		expect(passed.steps![0]!.env).toEqual({
+			NEEDS: '${{ toJSON(needs) }}',
+			CODE: '${{ needs.scope.outputs.code }}',
+			VERIFIED_BY: '${{ needs.scope.outputs.verified-by }}',
+		});
+	});
+
+	/**
+	 * `CI passed`'s own shell, run as GitHub runs a step (`bash -eo pipefail`)
+	 * over the results its `needs` hold. Every job succeeded unless a case says
+	 * otherwise.
+	 */
+	function ciPassed(
+		results: Record<string, string>,
+		{ code = 'true', verifiedBy = '' }: { code?: string; verifiedBy?: string } = {},
+	) {
+		const ids = Object.keys(ci.jobs).filter((id) => id !== 'passed');
+		const needs = Object.fromEntries(
+			ids.map((id) => [id, { result: results[id] ?? 'success', outputs: {} }]),
+		);
+		const result = spawnSync(
+			'bash',
+			['--noprofile', '--norc', '-eo', 'pipefail', '-c', runs(ci.jobs.passed!)],
+			{
+				encoding: 'utf8',
+				env: {
+					PATH: process.env.PATH,
+					NEEDS: JSON.stringify(needs),
+					CODE: code,
+					VERIFIED_BY: verifiedBy,
+				},
+			},
+		);
+		return { passed: result.status === 0, output: `${result.stdout}${result.stderr}` };
+	}
+
+	const skippedGates = Object.fromEntries(gates.map((id) => [id, 'skipped']));
+
+	it.each<[string, Record<string, string>, { code?: string; verifiedBy?: string }, boolean]>([
+		['every job passed', {}, {}, true],
+		['a gate failed', { 'stream-unit': 'failure' }, {}, false],
+		['a gate was cancelled', { tooling: 'cancelled' }, {}, false],
+		['only the record failed', { record: 'failure' }, {}, true],
+		[
+			'a docs-only change skipped every gate',
+			{ ...skippedGates, record: 'skipped' },
+			{ code: 'false' },
+			true,
+		],
+		[
+			'a merge group a PR run verified skipped every gate',
+			{ ...skippedGates, record: 'skipped' },
+			{ verifiedBy: 'https://ci.example/runs/1' },
+			true,
+		],
+		['code changed and no gate or lint ran', { ...skippedGates, record: 'skipped' }, {}, false],
+		[
+			'code changed and the lint ran but no gate',
+			{ ...skippedGates, checks: 'success' },
+			{},
+			false,
+		],
+		['code changed and a gate ran but not the lint', { checks: 'skipped' }, {}, false],
+		[
+			'a draft PR: the scope itself skipped',
+			{ ...skippedGates, scope: 'skipped', record: 'skipped' },
+			{ code: '' },
+			true,
+		],
+	])('`CI passed`: %s', (_case, results, scope, expected) => {
+		const { passed, output } = ciPassed(results, scope);
+
+		expect(passed, output).toBe(expected);
 	});
 
 	it('`Conventional Commit title` has no condition that could skip it in the queue', () => {

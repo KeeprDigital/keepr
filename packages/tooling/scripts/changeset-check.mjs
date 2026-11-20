@@ -8,6 +8,8 @@
  *
  * A changeset counts when the change adds, edits or consumes it, so the Version
  * PR, which bumps each app and deletes the changesets it released, passes. A
+ * deleted changeset is consumed only for an app whose version the change
+ * moves: deleting another change's pending changeset names no app. A
  * changeset may name only a versioned app (`scripts/versioned-apps.mjs`), and
  * only an app may carry a version the config does not ignore, since
  * `changeset git-tag` tags whatever does.
@@ -46,7 +48,8 @@ const MAX_LISTED_FILES = 5;
 
 /**
  * @typedef {import('./versioned-apps.mjs').WorkspacePackage} WorkspacePackage
- * @typedef {{ file: string, text: string }} ChangesetFile
+ * @typedef {{ file: string, text: string, deleted?: boolean }} ChangesetFile
+ *   a changeset the change adds, edits or (`deleted`) removes
  */
 
 /**
@@ -77,10 +80,11 @@ function releasesOf(text) {
  *   changesets: readonly ChangesetFile[],
  *   packages: Map<string, WorkspacePackage>,
  *   ignored: ReadonlySet<string>,
- * }} change the files it touches, the changesets it adds, edits or consumes, the workspace's packages, and what the config ignores
+ *   bumped?: ReadonlySet<string>,
+ * }} change the files it touches, the changesets it adds, edits or removes, the workspace's packages, what the config ignores, and the apps whose version it moves
  * @returns {string[]} one paragraph per problem
  */
-export function checkChange({ changed, changesets, packages, ignored }) {
+export function checkChange({ changed, changesets, packages, ignored, bumped = new Set() }) {
 	/** @type {string[]} */
 	const problems = [];
 	const apps = versionedApps(packages, ignored);
@@ -97,10 +101,18 @@ export function checkChange({ changed, changesets, packages, ignored }) {
 			problems.push(
 				`${app.name} is versioned, but its package.json has no version: give it one, or ignore it in .changeset/config.json.`,
 			);
-	for (const { file, text } of changesets) {
+	for (const { file, text, deleted } of changesets) {
 		const releases = releasesOf(text);
 		if (releases === undefined) {
-			problems.push(`${file} is not a changeset: it opens with no front matter between --- lines.`);
+			if (!deleted)
+				problems.push(
+					`${file} is not a changeset: it opens with no front matter between --- lines.`,
+				);
+			continue;
+		}
+		// Removed, it is consumed only for an app whose version the change moves.
+		if (deleted) {
+			for (const { name } of releases) if (bumped.has(name)) named.add(name);
 			continue;
 		}
 		if (releases.length === 0) empty = true;
@@ -154,9 +166,10 @@ function gitIn(cwd) {
  * @param {string} root
  * @param {string} base
  * @param {string} [head]
- * @returns {{ changed: string[], changesets: ChangesetFile[] }} the files, and the changesets with their text
+ * @param {Map<string, WorkspacePackage>} packages
+ * @returns {{ changed: string[], changesets: ChangesetFile[], bumped: Set<string> }} the files, the changesets with their text, and the apps whose version moved
  */
-function measure(git, root, base, head) {
+function measure(git, root, base, head, packages) {
 	const lines = git(['diff', '--name-status', '--no-renames', base, ...(head ? [head] : [])])
 		.split('\n')
 		.filter(Boolean)
@@ -171,6 +184,7 @@ function measure(git, root, base, head) {
 		.filter(({ file }) => CHANGESET.test(file))
 		.map(({ status, file }) => ({
 			file,
+			deleted: status === 'D',
 			text:
 				status === 'D'
 					? git(['show', `${base}:${file}`])
@@ -178,7 +192,33 @@ function measure(git, root, base, head) {
 						? git(['show', `${head}:${file}`])
 						: readFileSync(join(root, file), 'utf8'),
 		}));
-	return { changed: lines.map(({ file }) => file), changesets };
+	/** @param {string} text */
+	const versionOf = (text) => {
+		try {
+			return JSON.parse(text).version;
+		} catch {
+			return undefined;
+		}
+	};
+	const changed = lines.map(({ file }) => file);
+	const bumped = new Set();
+	for (const pkg of packages.values()) {
+		const manifest = `${pkg.dir}/package.json`;
+		if (!changed.includes(manifest)) continue;
+		/** @param {string | undefined} rev the revision, or the working tree */
+		const at = (rev) => {
+			try {
+				return versionOf(
+					rev ? git(['show', `${rev}:${manifest}`]) : readFileSync(join(root, manifest), 'utf8'),
+				);
+			} catch {
+				return undefined;
+			}
+		};
+		const after = at(head);
+		if (after !== undefined && after !== at(base)) bumped.add(pkg.name);
+	}
+	return { changed, changesets, bumped };
 }
 
 function main() {
@@ -204,9 +244,10 @@ function main() {
 		process.exitCode = 1;
 		return;
 	}
+	const packages = workspacePackages(root);
 	const problems = checkChange({
-		...measure(git, root, range.base, range.head),
-		packages: workspacePackages(root),
+		...measure(git, root, range.base, range.head, packages),
+		packages,
 		ignored: ignoredPackages(root),
 	});
 	if (problems.length === 0) {

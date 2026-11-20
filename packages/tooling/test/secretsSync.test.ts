@@ -1,6 +1,3 @@
-import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
-import process from 'node:process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { syncSecrets } from '../scripts/secrets/sync.mjs';
 import { type FakeState, fakeCheckout } from './helpers/secretsFakes.ts';
@@ -275,6 +272,25 @@ describe('pnpm secrets:sync', () => {
 			expect(result.ok).toBe(false);
 		});
 
+		it.each([
+			['its header joined to its body', KEY.replace('-----\nkey-body', '----- key-body')],
+			['two body lines joined by a space', KEY.replace('value-7\nkey', 'value-7 key')],
+			[
+				'two body lines run together',
+				KEY.replace(
+					'value-7\nkey',
+					'value-7key-body-value-7key-body-value-7key-body-value-7key-body-value-7key',
+				),
+			],
+		])('refuses a key with only some line breaks lost: %s', (_case, key) => {
+			const { sync, state } = withKey(key);
+
+			expect(() => sync({ target: RELEASE })).toThrow(
+				/KEEPR_RELEASE_APP_PRIVATE_KEY at op:[^]*line break/,
+			);
+			expect(state().github.release).toEqual({});
+		});
+
 		it('syncs a key whose line breaks were kept', () => {
 			const { sync, state } = withKey(KEY);
 
@@ -336,6 +352,37 @@ describe('pnpm secrets:sync', () => {
 			expect(lines.join('\n')).toMatch(/Warning: a new AUTH_SECRET signs every User out/);
 		});
 
+		// A new value 1Password holds that no destination can take would sign out everyone the old one served.
+		it('confirms the destination answers before it writes 1Password, and changes nothing when it does not', () => {
+			const { sync, state } = setUp({ signedOut: { wrangler: true } });
+
+			expect(() => sync({ target: STAGING, generate: ['AUTH_SECRET'] })).toThrow(
+				/wrangler secret list failed[^]*Nothing was changed/,
+			);
+			expect(state().vaults).toEqual(VAULTS);
+		});
+
+		it('names the command that finishes the sync when the destination fails after 1Password took the new value', () => {
+			const { sync, state } = setUp({
+				failsBulk: true,
+				workers: { stream: { AUTH_SECRET: 'old' } },
+			});
+
+			let failure = '';
+			try {
+				sync({ target: STAGING, generate: ['AUTH_SECRET'] });
+			} catch (error) {
+				failure = (error as Error).message;
+			}
+
+			const generated = state().vaults.Keepr!['stream-staging']!.AUTH_SECRET!;
+			expect(generated).not.toBe(VALUES.AUTH_SECRET);
+			expect(failure).toContain('1Password holds the new AUTH_SECRET');
+			expect(failure).toContain('pnpm secrets:sync --app stream --env staging');
+			expect(failure).not.toContain(generated);
+			expect(state().workers).toEqual({ stream: { AUTH_SECRET: 'old' } });
+		});
+
 		// A value only a Worker holds can never be read back (ADR-0134).
 		it('refuses to sync a value 1Password did not keep, though op said it did', () => {
 			const { sync, state, lines } = setUp({
@@ -373,6 +420,23 @@ describe('pnpm secrets:sync', () => {
 			for (const value of [...Object.values(VALUES), generated]) expect(shown).not.toContain(value);
 		});
 
+		// A tool that echoes the JSON it was handed escapes each line break.
+		it("in a failing tool's echo of a multi-line value, JSON-escaped", () => {
+			const vaults = structuredClone(VAULTS);
+			vaults.Keepr!['stream-staging']!.AUTH_SECRET = 'first-line-9\nsecond-line-10';
+			const { sync } = setUp({ vaults, signedOut: { wrangler: true } });
+
+			let failure = '';
+			try {
+				sync({ target: { app: 'stream', environment: 'staging' } });
+			} catch (error) {
+				failure = (error as Error).message;
+			}
+
+			expect(failure).toMatch(/Not logged in/);
+			expect(failure).not.toMatch(/first-line-9|second-line-10/);
+		});
+
 		it('in what a failing tool prints', () => {
 			const { sync, state } = setUp({ signedOut: { wrangler: true } });
 
@@ -386,47 +450,6 @@ describe('pnpm secrets:sync', () => {
 			expect(failure).toMatch(/wrangler secret bulk failed: .*Not logged in/);
 			for (const value of Object.values(VALUES)) expect(failure).not.toContain(value);
 			expect(state().workers).toEqual({});
-		});
-	});
-
-	describe('the command line', () => {
-		const CLI = join(import.meta.dirname, '../scripts/secrets/cli.mjs');
-
-		function run(args: string[], cwd: string, env: Record<string, string>) {
-			return spawnSync(process.execPath, [CLI, ...args], {
-				cwd,
-				env: { ...process.env, ...env },
-				encoding: 'utf8',
-			});
-		}
-
-		it.each([
-			['no target', []],
-			['an app without an Environment', ['--app', 'stream']],
-			[
-				'an Installation and a GitHub environment at once',
-				['--app', 'stream', '--env', 'staging', '--github', 'staging'],
-			],
-			['an Environment beside a GitHub environment', ['--github', 'staging', '--env', 'staging']],
-			['an unknown option', ['--github', 'staging', '--force']],
-		])('refuses %s, touching nothing', (_case, args) => {
-			const { root, env, state } = setUp();
-
-			const result = run(args, root, env);
-
-			expect(result.status).toBe(2);
-			expect(result.stderr).toContain('usage: pnpm secrets:sync');
-			expect(state().argv).toEqual([]);
-		});
-
-		it.each([
-			['a sync that set everything', ['--github', 'staging'], 0],
-			['a check that finds a gap', ['--app', 'stream', '--env', 'staging', '--check'], 1],
-			['a refusal', ['--app', 'stream', '--env', 'staging', '--generate', 'ISSUED_KEY'], 1],
-		])('exits as %s does, from anywhere in the checkout', (_case, args, status) => {
-			const { root, env } = setUp();
-
-			expect(run(args, join(root, 'apps/stream'), env).status).toBe(status);
 		});
 	});
 

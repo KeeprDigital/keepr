@@ -48,7 +48,9 @@
 # Keepr Accounts deploys to an Environment before any App does, and every
 # App's job there waits for it to succeed, because deploy order refuses an App
 # that Keepr Accounts' Installation does not allow (ADR-0120); the Apps deploy
-# side by side, and production waits for every App's staging. An app joins
+# side by side, and production, Keepr Accounts' included, waits for every
+# App's staging (packages/tooling/test/deployWorkflow.test.ts plays the job
+# graph out). An app joins
 # with its deploy descriptor: nothing here names it.
 #
 # Each Installation's app and parts have their own promotion marker, a GitHub
@@ -130,6 +132,8 @@ jobs:
           sparse-checkout: |
             packages/tooling/scripts/deploy/
             packages/tooling/scripts/jsonc.mjs
+            packages/tooling/scripts/shipped-code.mjs
+            packages/tooling/scripts/versioned-apps.mjs
           sparse-checkout-cone-mode: false
           persist-credentials: false
       # Only published GitHub Releases resolve; a v* tag, a draft or an
@@ -220,14 +224,17 @@ jobs:
 
   accounts-production:
     name: Keepr Accounts to production
-    needs: [plan, build, accounts-staging]
-    # After Keepr Accounts' staging passed, when the run deploys to staging.
+    needs: [plan, build, accounts-staging, apps-staging]
+    # After Keepr Accounts' staging and every App's passed, when the run
+    # deploys to staging (ADR-0125): an App that failed staging stops the
+    # whole run short of production, Keepr Accounts included.
     if: >-
       !cancelled()
       && needs.build.result == 'success'
       && needs.plan.outputs.accounts != ''
       && contains(fromJSON(needs.plan.outputs.environments), 'production')
       && (!contains(fromJSON(needs.plan.outputs.environments), 'staging') || needs.accounts-staging.result == 'success')
+      && (!contains(fromJSON(needs.plan.outputs.environments), 'staging') || needs.plan.outputs.apps == '[]' || needs.apps-staging.result == 'success')
     # The Installation writes its markers, GitHub Deployments, with GITHUB_TOKEN
     # (ADR-0133): a called workflow holds no more than this job grants.
     permissions:

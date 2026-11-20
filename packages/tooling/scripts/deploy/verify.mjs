@@ -36,11 +36,11 @@
  * silent-video validator. The deployed acceptance gates (`pnpm accept deployed`)
  * are what exercise those.
  *
- * The target is the Environment's URL in the descriptor, overridable for any
- * explicit target with `KEEPR_DEPLOY_URL`.
+ * The target is the Environment's URL in the descriptor, or an explicit
+ * `url`: `keepr-deploy verify` passes `KEEPR_DEPLOY_URL`; a deploy never does,
+ * so it verifies the Installation it deployed.
  */
 
-import process from 'node:process';
 import { fetchResolvingAtAuthority } from './authoritative-dns.mjs';
 
 export const RELEASE_PATH = '/api/release';
@@ -291,7 +291,7 @@ export async function verifyDeployment({
  *   release: import('./release.mjs').Release,
  *   environment: string,
  *   commit: string,
- *   env?: Record<string, string | undefined>,
+ *   url?: string,
  *   fetchRequest?: typeof fetch,
  *   log?: (line: string) => void,
  *   attempts?: number,
@@ -304,7 +304,7 @@ export async function verifyInstallation({
 	release,
 	environment,
 	commit,
-	env = process.env,
+	url: target,
 	fetchRequest = fetch,
 	log = console.log,
 	...probeOptions
@@ -312,7 +312,7 @@ export async function verifyInstallation({
 	const installation = release.descriptor.environments[environment];
 	if (!installation)
 		throw new DeployVerifyFailure(`${release.app} has no Installation in ${environment}.`);
-	const baseUrl = env.KEEPR_DEPLOY_URL || installation.url;
+	const baseUrl = target || installation.url;
 	if (release.verifies === 'release') {
 		const expected = { app: release.app, version: release.version, commit };
 		const { url } = await verifyDeployment({ baseUrl, expected, fetchRequest, ...probeOptions });

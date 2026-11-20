@@ -1,6 +1,6 @@
 # ADR-0123: A merge group with no Worker leg reuses a PR run that had none
 
-Accepted · 2026-11-18 · seen on [#1273](https://github.com/KeeprDigital/keepr/pull/1273) · Amends ADR-0036 and ADR-0121 · Amended by ADR-0147: a merge group accepts a PR run's skipped job whenever its own run would skip that job too, the Worker job among them
+Accepted · 2026-11-18 · seen on [#1273](https://github.com/KeeprDigital/keepr/pull/1273) · Amends ADR-0036 and ADR-0121 · Amended by ADR-0147: a merge group accepts a PR run's skipped job whenever its own run would skip that job too, the Worker job among them · Amended by ADR-0154: records that the `record` job mints its OIDC token from a PR branch's script, so no cloud role may trust this repository without a ref condition
 
 ### Decision
 

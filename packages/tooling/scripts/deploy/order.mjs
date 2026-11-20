@@ -8,10 +8,14 @@
  *   later deploy of Keepr Accounts knows what each Installation needs.
  * - **An App waits for Keepr Accounts**: its deploy to E refuses unless
  *   `accounts/E` records a confirmed deploy whose commit contains every change
- *   under `apps/accounts` the App's Release commit contains.
+ *   to Keepr Accounts' shipped code the App's Release commit contains.
  * - **Keepr Accounts cannot fall below its Apps**: its deploy to E refuses a
- *   commit lacking an `apps/accounts` change that the commit of some dependent
- *   Installation in E contains.
+ *   commit lacking a change to Keepr Accounts' shipped code that the commit of
+ *   some dependent Installation in E contains.
+ *
+ * Keepr Accounts' shipped code is its directory and each workspace package
+ * its `dependencies` reach, without `test/`, `docs/` and Markdown
+ * (`shipped-code.mjs`), as the Release checkout's manifests say.
  * - **Override**: a written reason bypasses either refusal, and the app marker
  *   records it as `override`.
  */
@@ -20,9 +24,11 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseJsonc } from '../jsonc.mjs';
+import { shippedDirectories } from '../shipped-code.mjs';
+import { workspacePackages } from '../versioned-apps.mjs';
 import { markerName, parseMarker } from './markers.mjs';
 
-/** Keepr Accounts: its app's name, the service an App binds, and where its changes are. */
+/** Keepr Accounts: its app's name, the service an App binds, and its directory. */
 export const KEEPR_ACCOUNTS = Object.freeze({
 	app: 'accounts',
 	service: 'keepr-accounts',
@@ -36,9 +42,10 @@ const MAX_LISTED = 5;
  * What the check reads of the repository's history.
  *
  * @typedef {{
- *   missing: (from: string, to: string, path: string) => string[],
+ *   missing: (from: string, to: string, directories: readonly string[]) => string[],
  * }} History `missing`: the commits reachable from `from` and not from `to`
- *   that change `path`, newest first, each `<short sha> <subject>`.
+ *   that change what is shipped of `directories` (not their `test/`, `docs/`
+ *   or Markdown), newest first, each `<short sha> <subject>`.
  */
 
 /**
@@ -59,12 +66,18 @@ export function gitHistory({ cwd }) {
 		return result.stdout;
 	};
 	return {
-		missing(from, to, path) {
+		missing(from, to, directories) {
 			if (git(['rev-parse', '--is-shallow-repository']).trim() === 'true')
 				throw new Error(
 					'the deploy order check needs the full history, and this checkout is shallow: fetch it with fetch-depth 0.',
 				);
-			return git(['log', '--format=%h %s', from, `^${to}`, '--', `:(top)${path}`])
+			const pathspecs = directories.flatMap((dir) => [
+				`:(top)${dir}`,
+				`:(top,exclude)${dir}/test`,
+				`:(top,exclude)${dir}/docs`,
+				`:(top,exclude,glob)${dir}/**/*.md`,
+			]);
+			return git(['log', '--format=%h %s', from, `^${to}`, '--', ...pathspecs])
 				.split('\n')
 				.filter(Boolean);
 		},
@@ -141,6 +154,20 @@ function listed(changes) {
 const short = (commit) => commit.slice(0, 12);
 
 /**
+ * The directories Keepr Accounts ships in the Release checkout holding
+ * `release`: its own, else its directory alone when the checkout has no
+ * manifest for it.
+ *
+ * @param {import('./release.mjs').Release} release
+ * @returns {string[]}
+ */
+function accountsShipped(release) {
+	const packages = workspacePackages(join(release.appDir, '..', '..'));
+	const accounts = [...packages.values()].find((pkg) => pkg.dir === KEEPR_ACCOUNTS.path);
+	return accounts ? shippedDirectories(accounts, packages) : [KEEPR_ACCOUNTS.path];
+}
+
+/**
  * Why `release` may not deploy to `environment` yet, if it may not.
  *
  * @param {{
@@ -161,7 +188,7 @@ function appRefusals({ release, environment, store, history }) {
 				text === undefined ? 'missing' : (accounts?.state ?? 'unreadable')
 			}): deploy Keepr Accounts to ${environment} first`,
 		];
-	const missing = history.missing(store.head(), accounts.commit, KEEPR_ACCOUNTS.path);
+	const missing = history.missing(store.head(), accounts.commit, accountsShipped(release));
 	if (missing.length === 0) return [];
 	return [
 		`${name} (${short(accounts.commit)}) lacks ${missing.length} Keepr Accounts change(s) this ${release.app} Release contains: ${listed(missing)}. Deploy Keepr Accounts to ${environment} first`,
@@ -175,13 +202,15 @@ function appRefusals({ release, environment, store, history }) {
  * Installation counts: either of its Releases may be serving.
  *
  * @param {{
+ *   release: import('./release.mjs').Release,
  *   environment: string,
  *   store: import('./markers.mjs').MarkerStore,
  *   history: History,
  * }} options
  * @returns {string[]}
  */
-function accountsRefusals({ environment, store, history }) {
+function accountsRefusals({ release, environment, store, history }) {
+	const shipped = accountsShipped(release);
 	const installation = new RegExp(`^([a-z]+(?:-[a-z]+)*)/${environment}$`);
 	const refusals = [];
 	for (const name of store.names().toSorted()) {
@@ -195,7 +224,7 @@ function accountsRefusals({ environment, store, history }) {
 			!(marker.needs ?? '').split(',').includes(KEEPR_ACCOUNTS.app)
 		)
 			continue;
-		const missing = history.missing(marker.commit, store.head(), KEEPR_ACCOUNTS.path);
+		const missing = history.missing(marker.commit, store.head(), shipped);
 		if (missing.length > 0)
 			refusals.push(
 				`${name} (${marker.state} ${short(marker.commit)}) needs Keepr Accounts and contains ${missing.length} Keepr Accounts change(s) this commit lacks: ${listed(missing)}. Deploy a Keepr Accounts Release that contains them`,
@@ -222,7 +251,7 @@ export function checkDeployOrder({ release, environment, store, history, overrid
 	const fields = neededBy(release, environment);
 	const refusals =
 		release.app === KEEPR_ACCOUNTS.app
-			? accountsRefusals({ environment, store, history })
+			? accountsRefusals({ release, environment, store, history })
 			: fields.needs
 				? appRefusals({ release, environment, store, history })
 				: [];

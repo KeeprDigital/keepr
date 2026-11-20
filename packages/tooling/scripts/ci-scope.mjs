@@ -18,6 +18,9 @@
  *   `HEAD^1`: a group holding several squashed PRs has one commit per PR above
  *   its base, so the first parent would measure only the last of them.
  *
+ * A moved file is both of its paths (`--no-renames`), so the project it left
+ * runs its gates too.
+ *
  * Anything it cannot tell runs everything: another event, a malformed event,
  * a failed fetch or diff, an empty diff, a file in no project.
  *
@@ -61,13 +64,13 @@ const OUTSIDE_CODE = /\.md$|^\.vscode\/|^\.github\/dependabot\.yml$/;
 const DOCUMENT = /\.md$/;
 /**
  * What builds every app's Worker leg, though no app ships it: CI's own
- * workflow and setup, the tooling's scripts the leg runs and the manifest
- * naming them, the Node and pnpm the root manifest pins, and the packages'
- * compiler options. Not the tooling's tests or documents: the leg runs
- * neither.
+ * workflow and setup, and the tooling's scripts the leg runs and the manifest
+ * naming them. Not the tooling's tests or documents: the leg runs neither.
+ * What every app ships (the root manifest, the compiler options, the
+ * lockfile) runs every leg as shipped code (`shipped-code.mjs`).
  */
 const BUILDS_EVERY_LEG =
-	/^(?:\.github\/workflows\/ci\.yml|\.github\/actions\/setup\/.+|packages\/tooling\/(?:scripts\/.+|package\.json)|package\.json|tsconfig\.base\.json)$/;
+	/^(?:\.github\/workflows\/ci\.yml|\.github\/actions\/setup\/.+|packages\/tooling\/(?:scripts\/.+|package\.json))$/;
 /** What an app binding Keepr Accounts runs its leg against (ADR-0113). */
 const STAND_IN = '@keepr/accounts-stand-in';
 
@@ -313,7 +316,9 @@ export async function scope({ eventName, event, cwd, verifiedRun }) {
 			if (range.fetch) {
 				git(cwd, ['fetch', '--no-tags', '--depth=1', 'origin', range.fetch]);
 			}
-			changed = git(cwd, ['diff', '--name-only', range.base, range.head])
+			// Both ends of a move: without rename detection a file moved between
+			// projects names the one it left as well as the one it joined.
+			changed = git(cwd, ['diff', '--name-only', '--no-renames', range.base, range.head])
 				.split('\n')
 				.filter(Boolean);
 			console.log(`Changed between ${range.base} and ${range.head}:\n${changed.join('\n')}`);

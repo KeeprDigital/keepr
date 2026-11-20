@@ -9,7 +9,10 @@
 #   - while a changeset naming an app waits in `.changeset/`, opens or
 #     refreshes the one Version PR for every app (`changeset version`: each
 #     app's new version and CHANGELOG.md, the changesets consumed). Empty
-#     changesets alone open none.
+#     changesets alone open none, and publish nothing either: checked in the
+#     pinned action's source (`src/index.ts`, "All changesets are empty"), so
+#     a Version PR merged with an empty changeset left beside it is tagged by
+#     hand (apps/stream/README.md § Releases).
 #   - once none waits, as when the Version PR has merged, runs the publish
 #     script (`pnpm release:publish`): the release gate, then
 #     `changeset git-tag`, which tags HEAD `<app>@<version>` for each app whose
@@ -32,7 +35,9 @@
 # The Version PR goes through the queue like any other, so the commit
 # `changeset git-tag` tags is the merge group's head, the exact tree CI passed
 # on. The gate refuses to tag a commit no merge-group CI run passed (one
-# merged around the queue), before anything is tagged. A group run that
+# merged around the queue), or a `HEAD` that is not the commit that set the
+# version (a Version PR queued with another PR, a superseded pending run, a
+# retry after main moved), before anything is tagged. A group run that
 # reused a PR run's verification of the byte-identical tree counts (ADR-0036).
 #
 # `workflow_dispatch` refreshes the Version PR, or retries a refused or failed
@@ -149,6 +154,8 @@ jobs:
           sparse-checkout: |
             packages/tooling/scripts/deploy/
             packages/tooling/scripts/jsonc.mjs
+            packages/tooling/scripts/shipped-code.mjs
+            packages/tooling/scripts/versioned-apps.mjs
           sparse-checkout-cone-mode: false
           persist-credentials: false
       # One run for every app released, to staging and then production

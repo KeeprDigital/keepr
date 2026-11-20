@@ -7,3 +7,10 @@ it('reads a Wrangler config: drops comments and trailing commas, and leaves stri
 		b: [1, 2],
 	});
 });
+
+it.each([
+	['a line comment', '{ "a": [1, // the last\n], }'],
+	['a block comment', '{ "a": [1, /* the last */ ], /* end */ }'],
+])('accepts a trailing comma followed by %s, as Wrangler does', (_case, text) => {
+	expect(parseJsonc(text)).toEqual({ a: [1] });
+});

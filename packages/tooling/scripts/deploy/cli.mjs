@@ -13,36 +13,46 @@
  *
  * Commands:
  *
- * - `deploy`: build once (or place `--artifact`), then for the Environment:
- *   parts by fingerprint (`--parts auto|always|never`), deploy order between
- *   Keepr Accounts and its Apps (`order.mjs`; `--override <reason>` bypasses
- *   it, and the app's marker records the reason), each D1 database's Time
- *   Travel bookmark (`recovery.mjs`; refused without one, and recorded in the
- *   app's marker), mark pending, migrate D1, deploy, verify, mark deployed
- *   (`procedure.mjs`).
+ * - `deploy`: build once (or place `--artifact`), refusing a build that
+ *   records another commit or a test-only flag (`provenance.mjs`), then for
+ *   the Environment: parts by fingerprint (`--parts auto|always|never`),
+ *   deploy order between Keepr Accounts and its Apps (`order.mjs`;
+ *   `--override <reason>` bypasses it, and the app's marker records the
+ *   reason), each D1 database's Time Travel bookmark (`recovery.mjs`; refused
+ *   without one before the first remote change, read again immediately before
+ *   the migration and recorded in the app's marker), mark pending, migrate D1,
+ *   deploy, verify the Environment's URL, mark deployed (`procedure.mjs`). To
+ *   production, a checkout that is dirty or whose `HEAD` is not the app's
+ *   Release tag is refused unless `--unreleased <reason>` says why; the
+ *   marker records it.
  * - `build [--artifact <dir>]`: the descriptor's build scripts only, into its
- *   output directory, copied to `--artifact` for a build job to upload: the
+ *   output directory, which then records the commit it was built from
+ *   (`provenance.mjs`), copied to `--artifact` for a build job to upload: the
  *   one build every Environment deploys (`deploy --artifact`).
  * - `check`: what CI checks of each deployable app's Worker: each part bundled
  *   as a deploy would upload it (no Docker, no credentials), then `build`.
  *   With `--env`, instead, what a deploy to that Environment would refuse its
  *   Installation for, building nothing: each Worker's required secrets
  *   (`secrets.mjs`), read from Cloudflare. The app's is read through its built
- *   configuration, so it needs a build (or a placed artifact) first.
- * - `verify`: check the Installation serves this checkout's Release.
+ *   configuration, so it needs a build of this checkout (or a placed
+ *   artifact of it) first.
+ * - `verify`: check the Installation serves this checkout's Release, at the
+ *   Environment's URL or at `KEEPR_DEPLOY_URL`, which only this command reads.
  * - `gates`: the descriptor's acceptance gates, each against the
  *   Environment's Installation (`KEEPR_DEPLOY_URL`), stopping at the first
  *   that fails: the staging job's, after its deploy, with no person present
  *   (ADR-0125, ADR-0129).
  * - `part <name>`: deploy one part between its markers, whatever its fingerprint.
  * - `mark-app <pending|deployed>`: write the app's marker by hand, recording
- *   whether its built Worker needs Keepr Accounts, as a deploy would.
+ *   whether its built Worker needs Keepr Accounts, as a deploy would, from a
+ *   build of this checkout.
  * - `status`: every marker of the app in the Environment, and what a deploy of
- *   this checkout would do with each part.
+ *   this checkout would do with each part; refused beside a build of another
+ *   commit.
  */
 
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
@@ -53,19 +63,27 @@ import { bundlePart, fingerprintPart } from './fingerprint.mjs';
 import { describeMarker, gitMarkerStore, markerName, markerStore } from './markers.mjs';
 import { checkDeployOrder, gitHistory, neededBy } from './order.mjs';
 import { MODES, decidePartDeploy, deployRelease, markApp, promotePart } from './procedure.mjs';
+import {
+	readBuildRecord,
+	recordBuild,
+	refuseForeignBuild,
+	testFlagsSet,
+	unreleasedRefusal,
+} from './provenance.mjs';
 import { recordRecoveryPoints } from './recovery.mjs';
 import { readRelease } from './release.mjs';
 import { requireSecrets, wranglerSecretNames, wranglerSourceConfig } from './secrets.mjs';
 import { DeployVerifyFailure, verifyInstallation } from './verify.mjs';
 
 const USAGE = `usage: keepr-deploy <command> --app <app> [--env <environment>]
-  deploy --env <env> [--parts auto|always|never] [--artifact <dir>] [--override <reason>]
+  deploy --env <env> [--parts auto|always|never] [--artifact <dir>] [--override <reason>] [--unreleased <reason>]
                                build once (or place the artifact), then deploy order, D1 recovery point, parts, D1, Worker, verify,
-                               each between markers; --override deploys out of order, its reason recorded
+                               each between markers; --override deploys out of order, --unreleased to production from a dirty
+                               checkout or one that is no Release, each reason recorded
   build [--artifact <dir>]     the descriptor's build scripts only, the output copied to <dir>
   check                        each part bundled as a deploy would, then build: CI's Worker leg
   check --env <env>            the Installation's required Worker secrets, read from Cloudflare; builds nothing
-  verify --env <env>           check the Installation serves this checkout's Release
+  verify --env <env>           check the Installation serves this checkout's Release (KEEPR_DEPLOY_URL overrides its URL)
   gates --env <env>            the app's acceptance gates, against the Installation
   part <name> --env <env>      deploy one part between its markers, whatever its fingerprint
   mark-app <pending|deployed> --env <env>
@@ -127,6 +145,24 @@ function read(command, args, cwd) {
 	return result.stdout;
 }
 
+/**
+ * The `KEY=value` lines of a `.env` file, as Nuxt reads them into a build;
+ * none when it does not exist.
+ *
+ * @param {string} path
+ * @returns {Record<string, string>}
+ */
+function dotEnv(path) {
+	if (!existsSync(path)) return {};
+	/** @type {Record<string, string>} */
+	const values = {};
+	for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+		const match = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(line);
+		if (match) values[match[1] ?? ''] = (match[2] ?? '').replace(/^(['"])(.*)\1$/, '$2');
+	}
+	return values;
+}
+
 /** @param {Record<string, string | undefined>} env */
 function deployer(env) {
 	return env.GITHUB_ACTIONS === 'true'
@@ -156,6 +192,11 @@ function realSteps({ release, environment, store, env, log }) {
 		// Beside the Accounts Stand-in when the app binds Keepr Accounts (`build.mjs`).
 		build: () => {
 			for (const { command, args } of buildCommands(release)) run(command, args, appDir);
+			// The build reads the app's `.env` too, so a flag set there counts.
+			recordBuild(release, {
+				commit: store.head(),
+				testFlags: testFlagsSet(descriptor, { ...dotEnv(join(appDir, '.env')), ...env }),
+			});
 		},
 		placeArtifact: (path) => {
 			const output = join(appDir, descriptor.output);
@@ -164,6 +205,7 @@ function realSteps({ release, environment, store, env, log }) {
 			if (!existsSync(join(appDir, descriptor.worker.config)))
 				throw new Error(`the artifact at ${path} has no ${descriptor.worker.config}.`);
 		},
+		builtFrom: () => readBuildRecord(release),
 		fingerprint: (part) => fingerprintPart({ appDir, part: descriptor.parts[part], wranglerEnv }),
 		secretNames: wranglerSecretNames({ wrangler, appDir, wranglerEnv }),
 		sourceConfig: wranglerSourceConfig({ appDir, wranglerEnv }),
@@ -204,7 +246,8 @@ function realSteps({ release, environment, store, env, log }) {
 			),
 		deployWorker: () =>
 			run(wrangler, ['deploy', '--config', descriptor.worker.config, ...envArgs], appDir),
-		verify: () => verifyInstallation({ release, environment, commit: store.head(), env, log }),
+		// The Environment's URL, never KEEPR_DEPLOY_URL: a deploy verifies what it deployed.
+		verify: () => verifyInstallation({ release, environment, commit: store.head(), log }),
 	};
 }
 
@@ -255,6 +298,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 				parts: { type: 'string', default: 'auto' },
 				artifact: { type: 'string' },
 				override: { type: 'string' },
+				unreleased: { type: 'string' },
 			},
 		});
 	} catch (error) {
@@ -265,14 +309,12 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 	const [command, argument, ...rest] = positionals;
 	const environment = values.env;
 	const needsEnv = command !== 'build' && command !== 'check';
-	const override = values.override;
+	const { override, unreleased } = values;
 	// A marker field is one line of text, and an override says why.
-	const overrideReadable =
-		override === undefined ||
-		(command === 'deploy' &&
-			override.trim() === override &&
-			override !== '' &&
-			!/[\r\n]/.test(override));
+	const reasonReadable = (/** @type {string | undefined} */ reason) =>
+		reason === undefined ||
+		(command === 'deploy' && reason.trim() === reason && reason !== '' && !/[\r\n]/.test(reason));
+	const overrideReadable = reasonReadable(override) && reasonReadable(unreleased);
 	const shapes = {
 		deploy: argument === undefined && MODES.includes(values.parts ?? ''),
 		build: argument === undefined,
@@ -337,6 +379,7 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 				throw new Error(
 					`the app's Worker secrets are read through ${descriptor.worker.config}: build this checkout first (keepr-deploy build).`,
 				);
+			refuseForeignBuild(readBuildRecord(release), gitMarkerStore({ cwd: appDir }).head());
 			const secretNames = wranglerSecretNames({
 				wrangler: join(appDir, 'node_modules/.bin/wrangler'),
 				appDir,
@@ -396,6 +439,15 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 	if (command === 'deploy') {
 		const steps = realSteps({ release, environment: target, store, env, log });
 		try {
+			const unreleasedField = unreleasedRefusal({
+				release,
+				environment: target,
+				dirty: store.dirty(),
+				tagsAtHead: read('git', ['tag', '--points-at', 'HEAD'], release.appDir)
+					.split('\n')
+					.filter(Boolean),
+				unreleased,
+			});
 			await deployRelease({
 				release,
 				environment: target,
@@ -404,15 +456,21 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 				...(values.artifact === undefined ? {} : { artifact: values.artifact }),
 				mode: /** @type {import('./procedure.mjs').Mode} */ (values.parts),
 				source,
-				// Deploy order, then the D1 recovery point: both before anything remote changes.
+				// Deploy order, then that a D1 recovery point exists: both before
+				// anything remote changes.
 				beforeRemoteChange: (context) => ({
+					...unreleasedField,
 					...checkDeployOrder({
 						...context,
 						history: gitHistory({ cwd: release.appDir }),
 						...(override === undefined ? {} : { override }),
 					}),
-					...recordRecoveryPoints({ ...context, bookmark: steps.bookmark }),
+					...recordRecoveryPoints({ ...context, log: () => {}, bookmark: steps.bookmark }),
 				}),
+				// The point the marker records and a restore returns to: read
+				// again once the parts are deployed, immediately before D1 migrates.
+				beforeMigration: (context) =>
+					recordRecoveryPoints({ ...context, bookmark: steps.bookmark }),
 				log,
 			});
 		} catch (error) {
@@ -431,7 +489,12 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 	}
 	if (command === 'verify') {
 		try {
-			await verifyInstallation({ release, environment: target, commit: store.head(), env });
+			await verifyInstallation({
+				release,
+				environment: target,
+				commit: store.head(),
+				...(env.KEEPR_DEPLOY_URL ? { url: env.KEEPR_DEPLOY_URL } : {}),
+			});
 			return 0;
 		} catch (error) {
 			if (!(error instanceof DeployVerifyFailure)) throw error;
@@ -488,6 +551,14 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 		const state = /** @type {'pending' | 'deployed'} */ (argument);
 		let recorded;
 		try {
+			refuseForeignBuild(readBuildRecord(release), store.head());
+		} catch (error) {
+			console.error(
+				`keepr-deploy: mark-app reads the built Worker: ${/** @type {Error} */ (error).message}`,
+			);
+			return 1;
+		}
+		try {
 			recorded = neededBy(release, target);
 		} catch (error) {
 			console.error(
@@ -502,6 +573,13 @@ export async function main(argv, { env = process.env, cwd = process.cwd() } = {}
 		return 0;
 	}
 	// status
+	if (existsSync(join(release.appDir, release.descriptor.worker.config)))
+		try {
+			refuseForeignBuild(readBuildRecord(release), store.head());
+		} catch (error) {
+			console.error(`keepr-deploy: ${/** @type {Error} */ (error).message}`);
+			return 1;
+		}
 	for (const line of markerLines(release, target, store)) console.log(line);
 	const steps = realSteps({ release, environment: target, store, env, log });
 	for (const part of Object.keys(release.descriptor.parts)) {

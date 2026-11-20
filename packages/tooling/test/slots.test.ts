@@ -182,29 +182,13 @@ describe('taking run slots', () => {
 		expect((await oneFile).slots).toBe(1);
 	});
 
-	// A hung run would otherwise hold every worktree's queue for as long as its process lives.
-	it.each([
-		{
-			holder: 'whose process is gone',
-			dead: [1],
-			minutesLater: 0,
-		},
-		{ holder: 'that has held them longer than any gate runs', dead: [], minutesLater: 31 },
-	])('takes back the slots of a gate $holder', async ({ dead, minutesLater }) => {
+	it('takes back the slots of a gate whose process is gone', async () => {
 		const { seams, held } = pool(4);
-		const since = Date.now();
-		await acquireRunSlots({
-			...seams,
-			clock: () => since,
-			pid: 1,
-			want: 'all',
-			label: 'stuck session',
-		});
+		await acquireRunSlots({ ...seams, pid: 1, want: 'all', label: 'killed session' });
 
 		const next = await acquireRunSlots({
 			...seams,
-			isAlive: (pid: number) => !dead.includes(pid),
-			clock: () => since + minutesLater * 60_000,
+			isAlive: (pid: number) => pid !== 1,
 			pid: 2,
 			want: 'all',
 			label: 'the next gate',
@@ -212,6 +196,71 @@ describe('taking run slots', () => {
 
 		expect(next.slots).toBe(4);
 		expect(held()).toEqual([[2, 4]]);
+	});
+
+	// A long run is not a hung one: its slots go back only when its process does.
+	it('leaves a gate that is still running its slots, however long it has held them', async () => {
+		const { seams, held, waiting } = pool(4);
+		const since = Date.now();
+		const long = await acquireRunSlots({
+			...seams,
+			clock: () => since,
+			pid: 1,
+			want: 'all',
+			label: 'a long suite',
+		});
+
+		const next = acquireRunSlots({
+			...seams,
+			clock: () => since + 90 * 60_000,
+			pid: 2,
+			want: 'all',
+			label: 'the next gate',
+		});
+		await severalTurns();
+
+		expect(held()).toEqual([[1, 4]]);
+		expect(waiting()).toEqual([2]);
+
+		long.release();
+
+		expect((await next).slots).toBe(4);
+	});
+
+	// A waiter killed outright leaves its row; its pid, reused by another process, must not keep its place.
+	it('lets a waiter that has stopped asking age out of the line, though a process has its pid', async () => {
+		const { seams, held, waiting } = pool(4);
+		const since = Date.now();
+		const running = await acquireRunSlots({
+			...seams,
+			clock: () => since,
+			pid: 1,
+			want: 'all',
+			label: 'running',
+		});
+		// Asks once, then never again.
+		void acquireRunSlots({
+			...seams,
+			clock: () => since,
+			sleep: () => new Promise<void>(() => {}),
+			pid: 2,
+			want: 'all',
+			label: 'killed waiter',
+		});
+		await severalTurns();
+		expect(waiting()).toEqual([2]);
+		running.release();
+
+		const next = await acquireRunSlots({
+			...seams,
+			clock: () => since + 2 * 60_000,
+			pid: 3,
+			want: 'all',
+			label: 'the next gate',
+		});
+
+		expect(next.slots).toBe(4);
+		expect(held()).toEqual([[3, 4]]);
 	});
 
 	// A gate started by a command that holds slots would otherwise wait on its own parent.

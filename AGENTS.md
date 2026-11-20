@@ -84,7 +84,8 @@ A change that touches a versioned app's shipped code carries a changeset
 naming that app (`pnpm changeset`), or an empty one (`pnpm changeset --empty`)
 for a change no Release should mention (ADR-0118). Shipped code is the app's
 directory and every workspace package its `dependencies` reach, without
-`test/`, `docs/` and Markdown, plus `pnpm-lock.yaml` and `pnpm-workspace.yaml`;
+`test/`, `docs/` and Markdown, plus `pnpm-lock.yaml`, `pnpm-workspace.yaml`,
+the root `package.json` and `tsconfig.base.json`;
 `.changeset/config.json` ignores the apps that are not versioned. The bump
 says what the operator deploying it must know:
 

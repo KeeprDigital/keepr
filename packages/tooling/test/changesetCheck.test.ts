@@ -67,6 +67,9 @@ describe("an app's shipped code", () => {
 		['a package it depends on', 'packages/nuxt-layer/src/index.ts'],
 		['a package reached through another', 'packages/engine-core/src/index.ts'],
 		['the lockfile, for every app', 'pnpm-lock.yaml'],
+		// What builds every Worker leg (ci-scope.mjs) builds every Release.
+		['the root manifest, pinning Node and pnpm', 'package.json'],
+		["the packages' compiler options", 'tsconfig.base.json'],
 	])('includes %s', (_case, file) => {
 		const [problem] = check([file]);
 
@@ -264,6 +267,18 @@ describe("the check's command line", () => {
 		);
 
 		expect(run(checkout).passed).toBe(true);
+	});
+
+	it("fails a branch that deletes another change's pending changeset but bumps no app", () => {
+		const { passed, output } = run(
+			branch(
+				{ 'packages/nuxt-layer/src/index.ts': 'export const a = 1;\n' },
+				{ remove: ['.changeset/old-one.md'] },
+			),
+		);
+
+		expect(passed).toBe(false);
+		expect(output).toContain('@keepr/stream ships this change');
 	});
 
 	it("on a PR, measures CI's test merge commit against its base", () => {

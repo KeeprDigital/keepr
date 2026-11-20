@@ -7,6 +7,7 @@ import { configBindsKeeprAccounts } from '../scripts/deploy/order.mjs';
 import { STAGING_THEN_PRODUCTION } from '../scripts/deploy/plan.mjs';
 import { deployableApps, readRelease, workerSourceConfig } from '../scripts/deploy/release.mjs';
 import { parseJsonc } from '../scripts/jsonc.mjs';
+import { playOut, type Result } from './helpers/jobGraph.ts';
 
 /**
  * The Deploy workflow is only as good as its wiring: these read the committed
@@ -22,6 +23,7 @@ interface Step {
 	run?: string;
 	if?: string;
 	'continue-on-error'?: unknown;
+	'timeout-minutes'?: number;
 	env?: Record<string, string>;
 	with?: Record<string, unknown>;
 }
@@ -40,6 +42,7 @@ interface Job {
 	env?: Record<string, string>;
 	steps?: Step[];
 	'continue-on-error'?: unknown;
+	'timeout-minutes'?: number;
 }
 interface Workflow {
 	on: Record<
@@ -94,8 +97,6 @@ const OPERATOR = [
 	'STREAM_KEEPR_ACCEPTANCE_OPERATOR_EMAIL',
 	'STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD',
 ];
-const ENVIRONMENTS = "contains(fromJSON(needs.plan.outputs.environments), '%s')";
-const runs = (environment: string) => ENVIRONMENTS.replace('%s', environment);
 
 /** `${{ name }}` in `template`, each replaced by its value; an unknown name stays. */
 function expand(template: unknown, values: Record<string, string>) {
@@ -104,10 +105,6 @@ function expand(template: unknown, values: Record<string, string>) {
 		(whole, name: string) => values[name] ?? whole,
 	);
 }
-
-/** An `if:` written over several lines, as its `&&` clauses. */
-const clauses = (condition: string | undefined) =>
-	(condition ?? '').split('&&').map((clause) => clause.trim());
 
 /** Every module `entry` imports, transitively, by its path from the repository's root. */
 function importedModules(entry: string, seen = new Set<string>()): Set<string> {
@@ -263,46 +260,93 @@ describe('Keepr Accounts reaches each Environment before the Apps, and productio
 		]);
 	});
 
-	// Each `if` names every way its job may run, and nothing after a failure or a cancel.
-	it.each([
-		['accounts-staging', ['build', 'plan'], ["needs.plan.outputs.accounts != ''", runs('staging')]],
+	/** The run's deploying jobs as GitHub plays them out, after the plan and the builds. */
+	function deployRun({ accounts, apps, environments }: Plan, ends: Record<string, Result> = {}) {
+		const results = playOut(deploy.jobs, {
+			ends,
+			outputs: {
+				plan: {
+					accounts: accounts ? '@keepr/accounts@0.2.0' : '',
+					apps: JSON.stringify(apps ? [{ app: 'stream', release: '@keepr/stream@1.7.0' }] : []),
+					environments: JSON.stringify(environments),
+				},
+			},
+		});
+		return Object.fromEntries(deploying.map(([id]) => [id, results[id]]));
+	}
+
+	interface Plan {
+		accounts: boolean;
+		apps: boolean;
+		environments: string[];
+	}
+	const BOTH = ['staging', 'production'];
+	const ALL_DEPLOYED: Record<string, Result> = {
+		'accounts-staging': 'success',
+		'apps-staging': 'success',
+		'accounts-production': 'success',
+		'apps-production': 'success',
+	};
+	const NOTHING: Record<string, Result> = {
+		'accounts-staging': 'skipped',
+		'apps-staging': 'skipped',
+		'accounts-production': 'skipped',
+		'apps-production': 'skipped',
+	};
+	const EVERY_APP: Plan = { accounts: true, apps: true, environments: BOTH };
+
+	it.each<[string, Plan, Record<string, Result>, Record<string, Result>]>([
+		['every job passes: each reaches both', EVERY_APP, {}, ALL_DEPLOYED],
 		[
-			'apps-staging',
-			['accounts-staging', 'build', 'plan'],
-			[
-				'!cancelled()',
-				"needs.build.result == 'success'",
-				"needs.plan.outputs.apps != '[]'",
-				runs('staging'),
-				"(needs.plan.outputs.accounts == '' || needs.accounts-staging.result == 'success')",
-			],
+			"an App's staging failed, so nothing reaches production, Keepr Accounts included",
+			EVERY_APP,
+			{ 'apps-staging': 'failure' },
+			{
+				...ALL_DEPLOYED,
+				'apps-staging': 'failure',
+				'accounts-production': 'skipped',
+				'apps-production': 'skipped',
+			},
 		],
 		[
-			'accounts-production',
-			['accounts-staging', 'build', 'plan'],
-			[
-				'!cancelled()',
-				"needs.build.result == 'success'",
-				"needs.plan.outputs.accounts != ''",
-				runs('production'),
-				`(!${runs('staging')} || needs.accounts-staging.result == 'success')`,
-			],
+			"Keepr Accounts' staging failed, so no App deploys anywhere",
+			EVERY_APP,
+			{ 'accounts-staging': 'failure' },
+			{ ...NOTHING, 'accounts-staging': 'failure' },
 		],
 		[
-			'apps-production',
-			['accounts-production', 'apps-staging', 'build', 'plan'],
-			[
-				'!cancelled()',
-				"needs.build.result == 'success'",
-				"needs.plan.outputs.apps != '[]'",
-				runs('production'),
-				`(!${runs('staging')} || needs.apps-staging.result == 'success')`,
-				"(needs.plan.outputs.accounts == '' || needs.accounts-production.result == 'success')",
-			],
+			"Keepr Accounts' production failed, so no App reaches production",
+			EVERY_APP,
+			{ 'accounts-production': 'failure' },
+			{ ...ALL_DEPLOYED, 'accounts-production': 'failure', 'apps-production': 'skipped' },
 		],
-	])('%s runs after %j, only when %j', (id, needs, condition) => {
-		expect([job(id).needs].flat().toSorted()).toEqual(needs);
-		expect(clauses(job(id).if)).toEqual(condition);
+		[
+			'Keepr Accounts alone reaches production after its own staging',
+			{ accounts: true, apps: false, environments: BOTH },
+			{},
+			{ ...ALL_DEPLOYED, 'apps-staging': 'skipped', 'apps-production': 'skipped' },
+		],
+		[
+			'the Apps alone reach production after their staging',
+			{ accounts: false, apps: true, environments: BOTH },
+			{},
+			{ ...ALL_DEPLOYED, 'accounts-staging': 'skipped', 'accounts-production': 'skipped' },
+		],
+		[
+			'production alone: Keepr Accounts, then the Apps',
+			{ accounts: true, apps: true, environments: ['production'] },
+			{},
+			{ ...ALL_DEPLOYED, 'accounts-staging': 'skipped', 'apps-staging': 'skipped' },
+		],
+		[
+			'staging alone: nothing reaches production',
+			{ accounts: true, apps: true, environments: ['staging'] },
+			{},
+			{ ...ALL_DEPLOYED, 'accounts-production': 'skipped', 'apps-production': 'skipped' },
+		],
+		['a build failed: nothing deploys', EVERY_APP, { build: 'failure' }, NOTHING],
+	])('%s', (_case, plan, ends, expected) => {
+		expect(deployRun(plan, ends)).toEqual(expected);
 	});
 
 	// One App's failure does not cancel another's deploy part-way.
@@ -407,6 +451,19 @@ describe('an Installation deploys through the tooling, which advances its marker
 			STREAM_KEEPR_ACCEPTANCE_ENVIRONMENT: '${{ inputs.environment }}',
 		});
 		expect(steps[gates]!['continue-on-error']).toBeUndefined();
+	});
+
+	// A gate that hangs must not spend the time the deploy has: each step has
+	// its own budget, and the job's outlasts both with room for the setup.
+	it("gives the deploy and the gates each a timeout of its own, inside the job's", () => {
+		const deployBudget = Number(steps[promote]!['timeout-minutes']);
+		const gatesBudget = Number(steps[gates]!['timeout-minutes']);
+
+		expect(deployBudget).toBeGreaterThan(0);
+		expect(gatesBudget).toBeGreaterThan(0);
+		expect(Number(deployJob['timeout-minutes'])).toBeGreaterThanOrEqual(
+			deployBudget + gatesBudget + 10,
+		);
 	});
 
 	// Job-level env reaches every step: the install's build scripts and the setup actions too.

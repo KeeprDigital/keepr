@@ -14,11 +14,14 @@
  * value (`openssl rand -base64 32`'s), written into 1Password first and read
  * back from it, then synced with the rest; one 1Password does not hold is
  * synced nowhere. Only a secret the map says may be generated is, and the
- * map's warning of what a new value does is logged first.
+ * map's warning of what a new value does is logged first. The destination
+ * must answer before 1Password is written, and a sync that fails after it was
+ * names the command that finishes it.
  *
- * A private key whose line breaks were lost, which is what the 1Password app
- * saves when a key is pasted into a concealed field, is refused before anything
- * is set, and `check` names it; `op` keeps a value's line breaks.
+ * A private key whose line breaks were lost, all or some, which is what the
+ * 1Password app saves when a key is pasted into a concealed field, is refused
+ * before anything is set, and `check` names it; `op` keeps a value's line
+ * breaks.
  *
  * No value is ever logged or left in an error. Each goes to its tool on stdin,
  * but a generated one, which `op` takes only as an argument (ADR-0135).
@@ -56,11 +59,17 @@ class Redactor {
 	/** @type {Set<string>} */
 	values = new Set();
 
-	/** @param {string} text */
+	/**
+	 * Each value as given, and as JSON escapes it, which is how a tool that
+	 * echoes the JSON it was handed prints a multi-line one.
+	 *
+	 * @param {string} text
+	 */
 	scrub(text) {
 		let scrubbed = text;
 		for (const value of this.values)
-			if (value !== '') scrubbed = scrubbed.split(value).join('<redacted>');
+			for (const form of new Set([value, JSON.stringify(value).slice(1, -1)]))
+				if (form !== '') scrubbed = scrubbed.split(form).join('<redacted>');
 		return scrubbed;
 	}
 }
@@ -255,10 +264,29 @@ const describe = (secret) =>
 
 /** A PEM block: a private key, which cannot be decoded without its line breaks. */
 const PEM = /-----BEGIN [^-]+-----.*-----END [^-]+-----/s;
+/** A PEM body line: base64 of at most 76 characters, or an encrypted key's header. */
+const PEM_BODY_LINE = /^(?:[^\s:]{1,76}|[A-Za-z-]+: .*)$/;
+
+/**
+ * Whether a PEM block kept every line break: its markers each on a line of
+ * their own, and no body line run into another.
+ *
+ * @param {string} value
+ */
+function pemIntact(value) {
+	const lines = (value.match(PEM)?.[0] ?? '').split(/\r?\n/);
+	const [first = '', ...rest] = lines;
+	const last = rest.pop() ?? '';
+	return (
+		/^-----BEGIN [^-]+-----$/.test(first) &&
+		/^-----END [^-]+-----$/.test(last) &&
+		rest.every((line) => line === '' || PEM_BODY_LINE.test(line))
+	);
+}
 
 /** @param {Secret} secret */
 const lostLineBreaks = (secret) =>
-	`${describe(secret)} is a PEM block with no line break, as the 1Password app saves one pasted into a concealed field. Write it with the CLI instead: op item edit ${secret.ref.item} --vault ${secret.ref.vault} "${secret.ref.field}[password]=$(cat key.pem)"`;
+	`${describe(secret)} is a PEM block that lost its line breaks (no line break, or not every one), as the 1Password app saves one pasted into a concealed field. Write it with the CLI instead: op item edit ${secret.ref.item} --vault ${secret.ref.vault} "${secret.ref.field}[password]=$(cat key.pem)"`;
 
 /**
  * Set every secret of `target` that 1Password records, or with `check`, only
@@ -331,10 +359,19 @@ export function syncSecrets({ root, target, check = false, generate = [], env = 
 	const values = new Map(secrets.map((secret) => [secret.name, vault.read(secret.ref)]));
 	const broken = secrets.filter((secret) => {
 		const value = /** @type {string} */ (values.get(secret.name));
-		return PEM.test(value) && !/[\r\n]/.test(value);
+		return PEM.test(value) && !pemIntact(value);
 	});
 	if (broken.length > 0 && !check)
 		throw new Error(`Refusing to sync: ${broken.map(lostLineBreaks).join('; ')}. Nothing was set.`);
+	if (generated.length > 0)
+		try {
+			destination.names();
+		} catch (error) {
+			throw new Error(
+				`${destination.label} does not answer, so nothing was generated: ${/** @type {Error} */ (error).message}. Nothing was changed.`,
+				{ cause: error },
+			);
+		}
 	for (const { secret, warn } of generated) {
 		log(`Warning: ${warn}.`);
 		vault.write(secret.ref, randomBytes(32).toString('base64'));
@@ -360,11 +397,23 @@ export function syncSecrets({ root, target, check = false, generate = [], env = 
 	} else {
 		const recorded = secrets.filter((secret) => values.get(secret.name) !== '');
 		if (recorded.length > 0) {
-			destination.set(
-				Object.fromEntries(
-					recorded.map((secret) => [secret.name, /** @type {string} */ (values.get(secret.name))]),
-				),
-			);
+			try {
+				destination.set(
+					Object.fromEntries(
+						recorded.map((secret) => [
+							secret.name,
+							/** @type {string} */ (values.get(secret.name)),
+						]),
+					),
+				);
+			} catch (error) {
+				if (generated.length === 0) throw error;
+				const { app, environment } = /** @type {{ app: string, environment: string }} */ (target);
+				throw new Error(
+					`${/** @type {Error} */ (error).message}. 1Password holds the new ${generated.map(({ secret }) => secret.name).join(', ')}, and ${destination.label} may not: finish with pnpm secrets:sync --app ${app} --env ${environment}, which sets what 1Password holds and generates nothing.`,
+					{ cause: error },
+				);
+			}
 			log(`Set ${recorded.map((secret) => secret.name).join(', ')} on ${destination.label}.`);
 		} else log('1Password records none of them, so nothing was set.');
 	}

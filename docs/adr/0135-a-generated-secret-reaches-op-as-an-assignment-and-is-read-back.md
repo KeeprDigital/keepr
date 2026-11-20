@@ -1,6 +1,6 @@
 # ADR-0135: A generated secret reaches 1Password as an assignment, and is read back before it is synced
 
-Accepted · 2026-11-19 · [#1290](https://github.com/KeeprDigital/keepr/issues/1290) · Amends ADR-0134
+Accepted · 2026-11-19 · [#1290](https://github.com/KeeprDigital/keepr/issues/1290) · Amends ADR-0134 · Amended by ADR-0154: the redactor also scrubs each value as JSON escapes it, and a PEM that lost some of its line breaks is refused
 
 ### Decision
 
