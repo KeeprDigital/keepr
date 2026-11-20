@@ -1,24 +1,30 @@
 /**
  * The Worker the object's tests drive: the class as an app exports it, the
- * same class under timings short enough to wait out, and a door that grants
- * whatever the test asks for. Only a test may be that trusting.
+ * same class on a clock a test moves, and a door that grants whatever the test
+ * asks for. Only a test may be that trusting.
  */
-import { TICKET_HEADER } from '../../../src/object/handOff.ts';
+import { REFUSED_HEADER, TICKET_HEADER } from '../../../src/object/handOff.ts';
 import { connectSocket, RealtimeObject, refuseSocket } from '../../../src/object/index.ts';
 import type { Grant, RealtimeObjectOptions } from '../../../src/object/index.ts';
-import {
-	ASKED_SWEEP_MS,
-	BRIEF_ASK_MS,
-	BRIEF_GRACE_MS,
-	BRIEF_RETENTION_MS,
-	BRIEF_SWEEP_MS,
-	BRIEF_WITHDRAWAL_MS,
-} from '../timings.ts';
 
 export { RealtimeObject };
 
 /** How many times each object was constructed, which is how often it woke. */
 const wakes = new Map<string, number>();
+
+/**
+ * Each object's clock, as a test moves it: from each moment of real time on, how
+ * far ahead of it the object's clock stands. Kept here, so a clock outlasts the
+ * object's sleep and restart as real time does.
+ */
+const clocks = new Map<string, { from: number; ahead: number }[]>();
+
+/** How far ahead an object's clock stood at real moment `at`. */
+function aheadAt(id: string, at: number): number {
+	let ahead = 0;
+	for (const step of clocks.get(id) ?? []) if (step.from <= at) ahead = step.ahead;
+	return ahead;
+}
 
 /** The object at its defaults, with what a test needs to see of it. */
 export class Observed extends RealtimeObject<Env> {
@@ -26,6 +32,46 @@ export class Observed extends RealtimeObject<Env> {
 		super(ctx, env, options);
 		const id = ctx.id.toString();
 		wakes.set(id, (wakes.get(id) ?? 0) + 1);
+	}
+
+	/** The object's clock: real time, and whatever a test moved it on by. */
+	protected override now(): number {
+		const real = Date.now();
+		return real + aheadAt(this.ctx.id.toString(), real);
+	}
+
+	/** A ping's time on the object's clock as it stood when the runtime answered it. */
+	protected override pingedAt(socket: WebSocket): number {
+		const real = super.pingedAt(socket);
+		return real === 0 ? 0 : real + aheadAt(this.ctx.id.toString(), real);
+	}
+
+	/**
+	 * Move the object's clock on by `ms`, and run the alarm as the runtime would
+	 * then, the alarm set taken off first as the runtime takes it. With `alarm`
+	 * false the clock moves and nothing runs.
+	 */
+	async advance(ms: number, alarm = true): Promise<void> {
+		const id = this.ctx.id.toString();
+		const steps = clocks.get(id) ?? [];
+		steps.push({ from: Date.now(), ahead: aheadAt(id, Date.now()) + ms });
+		clocks.set(id, steps);
+		if (!alarm) return;
+		await this.ctx.storage.deleteAlarm();
+		await this.alarm();
+	}
+
+	/** What the object keeps in storage, by table. */
+	stored(): { log: number; head: number; withdrawn: number; member: number; epoch: boolean } {
+		const count = (table: string): number =>
+			this.ctx.storage.sql.exec<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`).one().n;
+		return {
+			log: count('log'),
+			head: count('head'),
+			withdrawn: count('withdrawn'),
+			member: count('member'),
+			epoch: this.ctx.storage.kv.get('epoch') !== undefined,
+		};
 	}
 
 	wakes(): number {
@@ -39,36 +85,6 @@ export class Observed extends RealtimeObject<Env> {
 	/** Empty its storage, as a deleted object's would be. Evict it to see it start again. */
 	async wipe(): Promise<void> {
 		await this.ctx.storage.deleteAll();
-	}
-}
-
-export class BriefLog extends Observed {
-	constructor(ctx: DurableObjectState, env: Env) {
-		super(ctx, env, { retentionMs: BRIEF_RETENTION_MS });
-	}
-}
-
-export class BriefGrace extends Observed {
-	constructor(ctx: DurableObjectState, env: Env) {
-		super(ctx, env, { graceMs: BRIEF_GRACE_MS });
-	}
-}
-
-export class BriefSweep extends Observed {
-	constructor(ctx: DurableObjectState, env: Env) {
-		super(ctx, env, { sweepMs: BRIEF_SWEEP_MS });
-	}
-}
-
-export class BriefAsk extends Observed {
-	constructor(ctx: DurableObjectState, env: Env) {
-		super(ctx, env, { askMs: BRIEF_ASK_MS, sweepMs: ASKED_SWEEP_MS });
-	}
-}
-
-export class BriefWithdrawal extends Observed {
-	constructor(ctx: DurableObjectState, env: Env) {
-		super(ctx, env, { withdrawalMs: BRIEF_WITHDRAWAL_MS });
 	}
 }
 
@@ -100,7 +116,10 @@ export default {
 		if (door === 'ticket') {
 			const carrying = new Request(request);
 			carrying.headers.set(TICKET_HEADER, url.searchParams.get('ticket') ?? '');
-			return stub.fetch(carrying);
+			const answer = await stub.fetch(carrying);
+			// As `connectSocket` reads it, unless the test asks for the object's own answer.
+			if (url.searchParams.has('raw') || answer.headers.get(REFUSED_HEADER) === null) return answer;
+			return refuseSocket();
 		}
 		if (door === 'call' && method) {
 			const methods = stub as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;

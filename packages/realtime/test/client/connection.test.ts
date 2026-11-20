@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ConnectionState } from '../../src/client/index.ts';
-import { CLOSE_REFUSED, CLOSE_STALE, CLOSE_SUPERSEDED, PONG } from '../../src/protocol.ts';
+import {
+	CLOSE_CROWDED,
+	CLOSE_EXPIRED,
+	CLOSE_RATE_LIMITED,
+	CLOSE_REFUSED,
+	CLOSE_STALE,
+	CLOSE_SUPERSEDED,
+	CLOSE_TOO_LARGE,
+	PONG,
+} from '../../src/protocol.ts';
 import type { ServerFrame } from '../../src/protocol.ts';
 import { attached, message, rig, settle, UNOPENABLE } from './helpers/rig.ts';
 
@@ -58,14 +67,98 @@ describe('retries', () => {
 		expect(sockets).toHaveLength(2);
 	});
 
-	it('follow at once when a connected socket closes as stale, its pings having stopped', async () => {
+	// Each close the object gives a reason for, and what the client does next.
+	it.each([
+		{ close: 'as stale, its pings having stopped', code: CLOSE_STALE, wait: 0 },
+		{ close: 'as expired, to be judged again', code: CLOSE_EXPIRED, wait: 0 },
+		{ close: 'as crowded out by its newer sockets', code: CLOSE_CROWDED, wait: 5000 },
+		{ close: 'for a frame too large', code: CLOSE_TOO_LARGE, wait: 5000 },
+		{ close: 'for frames too fast', code: CLOSE_RATE_LIMITED, wait: 5000 },
+	])('follow $wait ms after a connected socket closes $close, and no refusal', async (row) => {
 		const { transport, clock, sockets, letIn } = rig();
 		transport.onMessage('a', 'note', () => {});
-		(await letIn()).drop(CLOSE_STALE);
+		(await letIn()).drop(row.code);
 
-		await clock.advance(0);
+		// Just short of the wait, or none at all where there is none.
+		await clock.advance(Math.max(0, row.wait - 1));
+		const before = sockets.length;
+		await clock.advance(row.wait > 0 ? 1 : 0);
+
+		expect([before, sockets.length]).toEqual([row.wait > 0 ? 1 : 2, 2]);
+		expect(transport.refusal).toBeNull();
+	});
+
+	// Clients cut together do not come back together: each wait is cut short by a random part of its fifth.
+	it.each([
+		{ random: 0, wait: 250 },
+		{ random: 0.999, wait: 200 },
+	])('carry jitter: with a draw of $random, the first follows $wait ms', async (row) => {
+		const { transport, clock, sockets, socket } = rig({ random: () => row.random });
+		transport.onMessage('a', 'note', () => {});
+		(await socket()).drop();
+
+		await clock.advance(row.wait - 1);
+		expect(sockets).toHaveLength(1);
+		await clock.advance(1);
 
 		expect(sockets).toHaveLength(2);
+	});
+
+	// Sockets accepted together expire together: their returns are spread over a second.
+	it.each([
+		{ random: 0, wait: 0 },
+		{ random: 0.5, wait: 500 },
+	])('after an expiry, with a draw of $random, follow $wait ms', async (row) => {
+		const { transport, clock, sockets, letIn } = rig({ random: () => row.random });
+		transport.onMessage('a', 'note', () => {});
+		(await letIn()).drop(CLOSE_EXPIRED);
+
+		await clock.advance(Math.max(0, row.wait - 1));
+		const before = sockets.length;
+		await clock.advance(row.wait > 0 ? 1 : 0);
+
+		expect([before, sockets.length]).toEqual([row.wait > 0 ? 1 : 2, 2]);
+	});
+
+	// A socket that only holds hears nothing but pongs; one that stayed up through a
+	// heartbeat was a connection all the same.
+	it.each([
+		{ up: 'through a heartbeat', ms: 15_000, wait: 250 },
+		{ up: 'for less than a heartbeat', ms: 14_999, wait: 2000 },
+	])('start again once a held socket has stayed up $up', async (row) => {
+		const { transport, clock, sockets, socket, letIn } = rig();
+		transport.hold();
+		for (const wait of [250, 500, 1000]) {
+			(await socket()).drop();
+			await clock.advance(wait);
+		}
+
+		const open = await letIn();
+		await clock.advance(row.ms);
+		open.hear(PONG);
+		open.drop();
+		await clock.advance(row.wait - 1);
+		expect(sockets).toHaveLength(4);
+		await clock.advance(1);
+
+		expect(sockets).toHaveLength(5);
+	});
+});
+
+describe('a change listener', () => {
+	it('that stops listening while told of a change is not told again, and the others are', async () => {
+		const { transport, letIn } = rig();
+		const told: string[] = [];
+		const stop = transport.onChange(() => {
+			told.push('stopping');
+			stop();
+		});
+		transport.onChange(() => told.push('staying'));
+
+		transport.onMessage('a', 'note', () => {});
+		(await letIn()).drop();
+
+		expect(told).toEqual(['stopping', 'staying', 'staying', 'staying']);
 	});
 });
 
@@ -392,8 +485,10 @@ describe('the times', () => {
 });
 
 describe('a socket a newer one of its own client replaced', () => {
-	it('is retried by itself from the slow rhythm, as a cut and not as a refusal', async () => {
-		const { transport, clock, sockets, letIn } = rig();
+	// Within the object's 5 s grace, so the place the late socket held for it is
+	// still there: no watcher sees it leave and come back.
+	it('is retried by itself after 2 s, as a cut and not as a refusal, then from the slow rhythm', async () => {
+		const { transport, clock, sockets, socket, letIn } = rig();
 		transport.onMessage('a', 'note', () => {});
 		const first = await letIn();
 		first.hear(attached('a', { seq: 3 }));
@@ -402,20 +497,27 @@ describe('a socket a newer one of its own client replaced', () => {
 
 		expect([transport.connectionState, transport.refusal]).toEqual(['disconnected', null]);
 		expect(transport.error).toBeInstanceOf(Error);
-		await clock.advance(4999);
+		await clock.advance(1999);
 		expect(sockets).toHaveLength(1);
 		await clock.advance(1);
 		const second = await letIn();
 		expect(second.frames[0]).toMatchObject({ t: 'hello', attach: [{ channel: 'a', since: 3 }] });
 		expect(transport.connectionState).toBe('connected');
 
-		// Replaced again as soon as it is back: the two change places once a step, no faster.
+		// Replaced again as soon as it is back: the two change places once in 2 s, no faster.
 		second.hear(attached('a', { resumed: true, seq: 3 }));
 		second.drop(CLOSE_SUPERSEDED);
-		await clock.advance(4999);
+		await clock.advance(1999);
 		expect(sockets).toHaveLength(2);
 		await clock.advance(1);
 		expect(sockets).toHaveLength(3);
+
+		// A cut that follows goes on along the slow rhythm, past its 5 s step.
+		(await socket()).drop();
+		await clock.advance(9999);
+		expect(sockets).toHaveLength(3);
+		await clock.advance(1);
+		expect(sockets).toHaveLength(4);
 	});
 
 	it('shows the fault once there has been no connection for 8 s, as any cut does', async () => {

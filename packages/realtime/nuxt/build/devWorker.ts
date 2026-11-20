@@ -86,11 +86,13 @@ async function leavingShutdownToTheDevServer<T>(start: () => Promise<T>): Promis
  */
 export async function startDevWorker({
 	portPath,
+	maxSocketAgeMs,
 	secret,
 	compatibilityDate,
 	registry,
 }: {
 	portPath: string;
+	maxSocketAgeMs: number;
 	secret: string;
 	compatibilityDate: string;
 	registry: string;
@@ -110,6 +112,7 @@ export async function startDevWorker({
 			bindings: {
 				OBJECT: { type: 'durable_object_namespace', class_name: 'RealtimeObject' },
 				PORT_PATH: { type: 'plain_text', value: portPath },
+				MAX_SOCKET_AGE_MS: { type: 'plain_text', value: String(maxSocketAgeMs) },
 				// The dev server, asked over the loopback at the address it listens on. The
 				// caller's host goes with the request, so the app's port compares an
 				// `Origin` with what the page sees, as the built Worker's does.

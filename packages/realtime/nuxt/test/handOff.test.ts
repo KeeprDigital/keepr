@@ -94,7 +94,7 @@ beforeAll(buildFixture, START_TIMEOUT_MS);
 describe.each([
 	['the built Worker', startBuiltWorker],
 	['nuxt dev', () => startDevServer()],
-])('under %s', (_name, start) => {
+])('under %s', (name, start) => {
 	let server: FixtureServer;
 
 	beforeAll(async () => {
@@ -146,6 +146,48 @@ describe.each([
 
 		await until('the failed attempt', () => transport.error !== null);
 		expect(transport.refusal).toBeNull();
+	});
+
+	it('an app that refuses by status, before its port, refuses by a socket a page can read', async () => {
+		const transport = connect(server, 'unauthorized');
+		transport.onMessage('room:unauthorized:chat', 'said', () => {});
+
+		await until('the refusal', () => transport.refusal !== null);
+		expect(transport.isConnected).toBe(false);
+	});
+
+	it.skipIf(name === 'nuxt dev')(
+		"the port is asked with the caller's Cloudflare properties",
+		async () => {
+			const room = `cf-${randomUUID()}`;
+			const transport = connect(server, room);
+
+			await hear(transport, `room:${room}:chat`);
+
+			expect(transport.refusal).toBeNull();
+		},
+	);
+
+	it.each([
+		{ how: 'by tag', query: 'tag=caller:ada', closed: 1 },
+		{ how: 'of everyone', query: 'all', closed: 1 },
+	])('the server withdraws a socket $how, which the page reads as a refusal', async (row) => {
+		const room = randomUUID();
+		const transport = connect(server, room);
+		await hear(transport, `room:${room}:chat`);
+
+		const response = await fetch(`${server.origin}/disconnect?room=${room}&${row.query}`, {
+			method: 'POST',
+		});
+
+		expect(await response.json()).toBe(row.closed);
+		await until('the refusal', () => transport.refusal !== null);
+	});
+
+	it("leaves the app's own route under the socket's path to the app", async () => {
+		const response = await fetch(`${server.origin}${SOCKET_PATH}/status`);
+
+		expect(await response.text()).toBe('the app');
 	});
 
 	it('answers the port to nobody but the hand-off', async () => {

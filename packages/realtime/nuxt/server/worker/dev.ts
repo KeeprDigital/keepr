@@ -9,14 +9,21 @@
  * `nuxt dev` starts it.
  */
 import { handSocket } from './handOff.ts';
-import { RealtimeObject } from '../../../src/object/index.ts';
-
-export { RealtimeObject };
+import { RealtimeObject as BaseRealtimeObject } from '../../../src/object/index.ts';
 
 interface Bindings {
 	OBJECT: DurableObjectNamespace<RealtimeObject>;
 	APP: Fetcher;
 	PORT_PATH: string;
+	/** The app's `realtime.maxSocketAgeMs`. */
+	MAX_SOCKET_AGE_MS: string;
+}
+
+/** The object's class at the options the app states under `realtime`, as the built Worker's is. */
+export class RealtimeObject extends BaseRealtimeObject<Bindings> {
+	constructor(ctx: DurableObjectState, env: Bindings) {
+		super(ctx, env, { maxAgeMs: Number(env.MAX_SOCKET_AGE_MS) });
+	}
 }
 
 export default {
@@ -25,6 +32,7 @@ export default {
 		if (new URL(request.url).pathname !== '/') return new Response('Not found', { status: 404 });
 		return handSocket(request, {
 			namespace: env.OBJECT,
+			binding: 'OBJECT',
 			portPath: env.PORT_PATH,
 			ask: (asked) => env.APP.fetch(asked),
 		});

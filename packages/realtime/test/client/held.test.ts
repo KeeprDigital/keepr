@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { SocketTransport } from '../../src/client/index.ts';
 import type { ClientFrame, HelloFrame, PresenceMember } from '../../src/protocol.ts';
-import { attached, presence, rig, settle } from './helpers/rig.ts';
+import { attached, presence, refused, rig, settle } from './helpers/rig.ts';
+import type { FakeSocket } from './helpers/rig.ts';
 
 const heldA = { channel: 'a', since: 3 };
 
@@ -237,6 +238,24 @@ describe('a presence watch', () => {
 
 		expect(seen).toEqual([[{ connectionId: 'one', data: { version: 1 } }], []]);
 		expect(elsewhere).toEqual([]);
+	});
+
+	// What was last heard is stale once the socket that heard it is gone or refused.
+	it.each([
+		{ after: 'a cut', end: (open: FakeSocket) => open.drop() },
+		{ after: 'a refused watch', end: (open: FakeSocket) => open.hear(refused('a', 'watch')) },
+	])('gives a later watcher nothing after $after', async (row) => {
+		const { transport, letIn } = rig();
+		transport.watchPresence('a', () => {});
+		const open = await letIn();
+		open.hear(presence('a', [{ connectionId: 'one' }]));
+		row.end(open);
+		const seen: PresenceMember[][] = [];
+
+		transport.watchPresence('a', (members) => seen.push(members));
+		await settle();
+
+		expect(seen).toEqual([]);
 	});
 
 	it.each([

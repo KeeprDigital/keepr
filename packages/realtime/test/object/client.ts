@@ -42,6 +42,8 @@ export interface TestClient {
 	asks(): number;
 	/** From now on, answer each ask as a client must: with a ping. */
 	answerAsks(): void;
+	/** Wait until every ping this socket sent, answers included, has its pong. */
+	answered(): Promise<void>;
 	waitFor<Found>(
 		what: string,
 		find: (frames: readonly ServerFrame[]) => Found | undefined | null | false,
@@ -70,6 +72,7 @@ export function openClient(url: URL): TestClient {
 		for (const waiter of [...waiters]) waiter();
 	};
 	let pongs = 0;
+	let pings = 0;
 	let answersAsks = false;
 	let isClosed = false;
 
@@ -94,7 +97,10 @@ export function openClient(url: URL): TestClient {
 		if (data === PONG) pongs += 1;
 		else {
 			const frame = JSON.parse(String(data)) as ServerFrame;
-			if (frame.t === 'ask' && answersAsks) socket.send(PING);
+			if (frame.t === 'ask' && answersAsks) {
+				pings += 1;
+				socket.send(PING);
+			}
 			if (frame.t !== 'msg' && frame.t !== 'ask' && frame.channel.startsWith(SYNC))
 				synced.add(frame.channel);
 			else frames.push(frame);
@@ -149,6 +155,7 @@ export function openClient(url: URL): TestClient {
 		},
 		async ping() {
 			const before = pongs;
+			pings += 1;
 			sendText(PING);
 			await until('a pong', () => pongs > before);
 		},
@@ -156,6 +163,7 @@ export function openClient(url: URL): TestClient {
 		answerAsks() {
 			answersAsks = true;
 		},
+		answered: () => until('every pong', () => pongs >= pings),
 		async waitFor(what, find, timeoutMs) {
 			let found: unknown;
 			await until(what, () => !!(found = find(frames)), timeoutMs);

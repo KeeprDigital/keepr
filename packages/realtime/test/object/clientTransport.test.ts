@@ -9,10 +9,12 @@ import type {
 import type { Grant } from '../../src/object/grant.ts';
 import { PING, PONG } from '../../src/protocol.ts';
 import type { AskFrame, PresenceMember } from '../../src/protocol.ts';
-import { sleep } from './client.ts';
 import { anyone, startServer } from './server.ts';
 import type { Scope, Server } from './server.ts';
-import { ASKED_SWEEP_MS } from './timings.ts';
+import { DEFAULT_SWEEP_MS } from '../../src/object/limits.ts';
+
+/** When the object asks a silent socket at its defaults: two thirds of the sweep. */
+const ASK_MS = (DEFAULT_SWEEP_MS * 2) / 3;
 
 let server: Server;
 const transports = new Set<SocketTransport>();
@@ -43,10 +45,11 @@ const NEVER_MS = 60 * 60 * 1000;
 const ASK = JSON.stringify({ t: 'ask' } satisfies AskFrame);
 
 /**
- * Node's WebSocket, with each ask held back until the test lets it through, so
- * the test can put the object to sleep between its ask and the answer.
+ * Node's WebSocket, counting pings and pongs, with each ask held back until the
+ * test lets it through, so the test can put the object to sleep between its ask
+ * and the answer. Unless told not to `hold`.
  */
-function gated() {
+function gated({ hold = true } = {}) {
 	const gate = { held: [] as (() => void)[], pings: 0, pongs: 0 };
 	class Gated implements SocketLike {
 		readonly #socket: WebSocket;
@@ -75,7 +78,7 @@ function gated() {
 			this.#socket.addEventListener(type, (heard: Event) => {
 				const event = heard as SocketEvent;
 				if (event.data === PONG) gate.pongs += 1;
-				if (event.data === ASK) gate.held.push(() => listener(event));
+				if (hold && event.data === ASK) gate.held.push(() => listener(event));
 				else listener(event);
 			});
 		}
@@ -130,7 +133,7 @@ describe('the client transport, against the object in local workerd', () => {
 	});
 
 	it('is told of a loss, once, when the log no longer covers what it missed', async () => {
-		const scope = server.scope('BRIEF_LOG');
+		const scope = server.scope();
 		const transport = connect(scope);
 		const news = hear(transport, 'news');
 		await attached(transport, 'news');
@@ -170,30 +173,41 @@ describe('the client transport, against the object in local workerd', () => {
 	});
 
 	it('stays in presence past the sweep though its heartbeat never fires, by answering the ask', async () => {
-		const scope = server.scope('BRIEF_ASK');
-		const watcher = connect(scope);
+		const scope = server.scope();
+		// Neither pings but in answer, so each answers before the sweep is looked for.
+		const { gate, WebSocket } = gated({ hold: false });
+		const watcher = connect(scope, () => anyone, { heartbeatMs: NEVER_MS, WebSocket });
 		const seen: PresenceMember[][] = [];
 		watcher.watchPresence('stage', (members) => seen.push(members));
-		const member = connect(scope, () => anyone, { heartbeatMs: NEVER_MS });
+		const heard = hear(watcher, 'stage');
+		const member = connect(scope, () => anyone, { heartbeatMs: NEVER_MS, WebSocket });
 		member.enterPresence('stage', { ready: true });
 		await vi.waitFor(() =>
 			expect(seen.at(-1)).toEqual([expect.objectContaining({ data: { ready: true } })]),
 		);
 		const told = seen.length;
+		const before = { ...gate };
 
-		await sleep(ASKED_SWEEP_MS * 1.5);
+		await scope.advance(ASK_MS);
+		await vi.waitFor(() => expect(gate.pongs).toBe(before.pongs + 2));
+		await scope.advance(DEFAULT_SWEEP_MS - ASK_MS);
+		// Heard after anything the sweep would have told it.
+		await scope.publish({ channel: 'stage', name: 'said', data: 1 });
+		await vi.waitFor(() => expect(heard.heard).toEqual([1]));
 
 		// Swept, it would have been told of as gone, closed as stale, and come back.
 		expect(seen).toHaveLength(told);
 		expect(member.connectionState).toBe('connected');
-	}, 15_000);
+	});
 
 	it('answers the ask without waking the object', async () => {
-		const scope = server.scope('BRIEF_ASK');
+		const scope = server.scope();
 		const { gate, WebSocket } = gated();
 		const member = connect(scope, () => anyone, { heartbeatMs: NEVER_MS, WebSocket });
 		member.enterPresence('stage', { ready: true });
-		await vi.waitFor(() => expect(gate.held).toHaveLength(1), ASKED_SWEEP_MS);
+		await vi.waitFor(() => expect(member.connectionId).toBeDefined());
+		await scope.advance(ASK_MS);
+		await vi.waitFor(() => expect(gate.held).toHaveLength(1));
 		const wakes = await scope.call<number>('wakes');
 		const before = { ...gate };
 
@@ -207,7 +221,7 @@ describe('the client transport, against the object in local workerd', () => {
 
 		expect(gate.pings).toBe(before.pings + 1);
 		expect(await scope.call<number>('wakes')).toBe(wakes + 1);
-	}, 15_000);
+	});
 
 	it('reads a refusal by the app, keeps retrying, and connects once it is let in', async () => {
 		const scope = server.scope();

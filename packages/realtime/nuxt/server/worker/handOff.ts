@@ -1,6 +1,6 @@
-import { connectSocket, refuseSocket } from '../../../src/object/index.ts';
-import type { Grant, RealtimeObjectStub } from '../../../src/object/index.ts';
-import { TICKET_HEADER } from '../../../src/object/handOff.ts';
+import { connectSocket, refuseSocket, TICKET_HEADER } from '../../../src/object/handOff.ts';
+import type { RealtimeObjectStub } from '../../../src/object/handOff.ts';
+import type { Grant } from '../../../src/object/grant.ts';
 import { HAND_OFF_HEADER, PORT_ANSWER_HEADER } from './headers.ts';
 
 /**
@@ -31,15 +31,18 @@ export interface ScopeNamespace {
 	getByName(scope: string): RealtimeObjectStub;
 }
 
+/** The statuses by which an app refuses a caller before its port is reached. */
+const REFUSING_STATUSES: ReadonlySet<number> = new Set([401, 403]);
+
 const isUpgrade = (request: Request): boolean =>
 	request.headers.get('upgrade')?.toLowerCase() === 'websocket';
 
 /**
  * The request the port is asked with: a plain `GET` of the port's path, with
- * the socket's query and the caller's own headers, so the app reads a cookie,
- * an `Origin` or a ticket as it reads them anywhere. Nothing of the upgrade
- * goes with it, and neither does a header the hand-off itself reads: a caller
- * that sends one gains nothing.
+ * the socket's query, the caller's own headers and its Cloudflare properties,
+ * so the app reads a cookie, an `Origin`, a ticket or the caller's country as
+ * it reads them anywhere. Nothing of the upgrade goes with it, and neither does
+ * a header the hand-off itself reads: a caller that sends one gains nothing.
  */
 export function portRequest(request: Request, portPath: string): Request {
 	const url = new URL(request.url);
@@ -50,23 +53,35 @@ export function portRequest(request: Request, portPath: string): Request {
 			headers.delete(name);
 	headers.delete(TICKET_HEADER);
 	headers.delete(HAND_OFF_HEADER);
-	return new Request(url, { headers });
+	const { cf } = request as { cf?: unknown };
+	return new Request(url, { headers, ...(cf !== undefined && { cf }) } as RequestInit);
 }
 
-/** Read the port's answer off the app's response to `portRequest`. */
+const noPort = (portPath: string, why: string): PortAnswer => ({
+	response: new Response(
+		`No port answered at ${portPath} (${why}): the app's route there is defineRealtimePort's.`,
+		{ status: 500 },
+	),
+});
+
+/**
+ * Read the port's answer off the app's response to `portRequest`. An app that
+ * answers 401 or 403 before its port is reached, as a middleware does, refuses
+ * the caller as the port's `null` does.
+ */
 export async function readPortAnswer(response: Response, portPath: string): Promise<PortAnswer> {
 	if (response.headers.get(PORT_ANSWER_HEADER) === null) {
-		// A refusal by status, a failure, or no route: the app's to explain.
+		if (REFUSING_STATUSES.has(response.status)) return { admission: null };
+		// A failure, or no route: the app's to explain.
 		if (response.status >= 400) return { response };
-		return {
-			response: new Response(
-				`No port answered at ${portPath}: the app's route there is defineRealtimePort's.`,
-				{ status: 500 },
-			),
-		};
+		return noPort(portPath, 'its answer carried no port header');
 	}
-	const { admission } = (await response.json()) as { admission: Admission | null };
-	return { admission };
+	try {
+		const { admission } = (await response.json()) as { admission: Admission | null };
+		return { admission: admission ?? null };
+	} catch {
+		return noPort(portPath, 'its answer was not one');
+	}
 }
 
 /**
@@ -79,15 +94,23 @@ export async function handSocket(
 	request: Request,
 	{
 		namespace,
+		binding,
 		portPath,
 		ask,
 	}: {
-		namespace: ScopeNamespace;
+		namespace: ScopeNamespace | undefined;
+		/** The binding's name, for the error that says it is missing. */
+		binding: string;
 		portPath: string;
 		ask: (asked: Request) => Promise<Response>;
 	},
 ): Promise<Response> {
 	if (!isUpgrade(request)) return new Response('Expected a WebSocket upgrade', { status: 426 });
+	if (!namespace)
+		return new Response(
+			`The Worker has no ${binding} binding: bind the realtime object in the app's Wrangler configuration.`,
+			{ status: 500 },
+		);
 	const answer = await readPortAnswer(await ask(portRequest(request, portPath)), portPath);
 	if ('response' in answer) return answer.response;
 	if (answer.admission === null) return refuseSocket();

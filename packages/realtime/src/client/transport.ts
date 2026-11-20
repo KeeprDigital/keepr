@@ -9,9 +9,13 @@
  */
 import {
 	CLIENT_ID_PARAM,
+	CLOSE_CROWDED,
+	CLOSE_EXPIRED,
+	CLOSE_RATE_LIMITED,
 	CLOSE_REFUSED,
 	CLOSE_STALE,
 	CLOSE_SUPERSEDED,
+	CLOSE_TOO_LARGE,
 	PING,
 	PONG,
 } from '../protocol.ts';
@@ -102,6 +106,11 @@ export interface SocketTransportOptions {
 	WebSocket?: SocketConstructor;
 	/** The timers. The runtime's own when not given. */
 	timers?: Timers;
+	/**
+	 * A draw in [0, 1) that cuts each retry's wait by up to a fifth of it, so
+	 * clients cut together do not come back together. `Math.random` when not given.
+	 */
+	random?: () => number;
 }
 
 export type MessageHandler = (data: unknown, frame: MessageFrame) => void;
@@ -175,8 +184,29 @@ export interface SocketTransport {
 /** The waits before each retry in turn; after the last, one every `RETRY_CEILING_MS`. */
 const RETRY_MS = [250, 500, 1000, 2000, 4000, 5000, 10_000, 20_000];
 const RETRY_CEILING_MS = 30_000;
-/** How many of `RETRY_MS` are the quick ones. A refused or replaced socket skips them. */
+/** How many of `RETRY_MS` are the quick ones. A socket closed for a cause of its own skips them. */
 const QUICK_RETRIES = 5;
+/** The most of each wait its jitter cuts, so no wait is longer than the rhythm says. */
+const RETRY_JITTER = 0.2;
+/**
+ * The wait after a socket a newer one of this client replaced: inside the
+ * object's 5 s grace, so the place the late socket held for it is still there.
+ */
+const SUPERSEDED_RETRY_MS = 2000;
+/**
+ * The most a return after an expiry waits: sockets accepted together expire
+ * together, so their returns to the app's port are spread over this, well
+ * inside the object's 5 s grace.
+ */
+const EXPIRED_SPREAD_MS = 1000;
+/** Closes the object gave a cause for that a quick retry would only meet again. */
+const SLOWLY: ReadonlySet<number> = new Set([
+	CLOSE_REFUSED,
+	CLOSE_SUPERSEDED,
+	CLOSE_CROWDED,
+	CLOSE_TOO_LARGE,
+	CLOSE_RATE_LIMITED,
+]);
 /** `WebSocket.OPEN`. */
 const OPEN = 1;
 
@@ -251,6 +281,7 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 	const connectTimeoutMs = options.connectTimeoutMs ?? 10_000;
 	const faultAfterMs = options.faultAfterMs ?? 8000;
 	const timers = options.timers ?? runtimeTimers;
+	const random = options.random ?? Math.random;
 	const clientId = randomId();
 
 	const channels = new Map<string, Channel>();
@@ -260,6 +291,12 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 	/** Each hold a caller has not released. */
 	const holds = new Set<Held<null>>();
 	const changeListeners = new Set<Held<() => void>>();
+	/**
+	 * How many attaches of each channel the socket in use has sent that the object
+	 * has not answered. The object answers in order, so of two answers in flight
+	 * only the last is to the channel as it now stands.
+	 */
+	const attaching = new Map<string, number>();
 
 	/** The connect in flight or the socket in use. Nothing of an earlier one is heard. */
 	let live: Attempt | null = null;
@@ -327,6 +364,14 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 		if (live?.socket?.readyState === OPEN) live.socket.send(JSON.stringify(frame));
 	}
 
+	/** Count an attach of `name` answered, and answer how many are still in flight. */
+	function answered(name: string): number {
+		const left = Math.max(0, (attaching.get(name) ?? 0) - 1);
+		if (left === 0) attaching.delete(name);
+		else attaching.set(name, left);
+		return left;
+	}
+
 	/** Forget the answer to something that is asked again, or no longer asked. */
 	function unrefuse(name: string, what: ChannelRefusal['what']) {
 		const refused = refusals.get(name);
@@ -362,6 +407,7 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 			if (live?.socket?.readyState === OPEN) {
 				const attach: AttachFrame = { t: 'attach', channel: name };
 				if (epoch !== undefined) attach.epoch = epoch;
+				attaching.set(name, (attaching.get(name) ?? 0) + 1);
 				send(attach);
 			} else connect();
 		}
@@ -387,6 +433,7 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 		retryTimer = connectTimer = heartbeatTimer = pongTimer = faultTimer = undefined;
 		leaving?.socket?.close(1000);
 		for (const held of channels.values()) held.attached = false;
+		attaching.clear();
 		failures = 0;
 		// Nothing is failing for anyone any more.
 		set({ state: 'closed', connectionId: undefined, error: null, refusal: null });
@@ -452,6 +499,8 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 				presence: Object.fromEntries(entries),
 			};
 			if (epoch !== undefined) hello.epoch = epoch;
+			attaching.clear();
+			for (const name of channels.keys()) attaching.set(name, 1);
 			send(hello);
 			// The first ping's answer is what says this client was let in.
 			beat(attempt);
@@ -491,16 +540,31 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 			held.attached = false;
 		}
 
-		// A refusal is not a blip: it goes straight to the slow rhythm. So does a
-		// socket a newer one of this client replaced. The client id is this
-		// transport's alone, so the newer one is an attempt it gave up that the object
-		// accepted late: it must come back by itself, and slowly, so that if two ever
-		// did hold one id they would change places once a step and no faster. A socket
-		// the object swept for silence was only slow to ping, and comes straight back.
-		if (closeCode === CLOSE_REFUSED || closeCode === CLOSE_SUPERSEDED)
+		// A refusal is not a blip: it goes straight to the slow rhythm, and so does
+		// any close the object gave a cause for that a quick retry would meet again.
+		// A socket a newer one of this client replaced is the exception, once: the
+		// client id is this transport's alone, so the newer one is an attempt it gave
+		// up that the object accepted late, and closed since. It comes back by itself,
+		// inside the grace that holds its place, and no faster, so that if two ever did
+		// hold one id they would change places only once in that time. A socket the
+		// object swept for silence was only slow to ping, and one that reached its age
+		// is to be judged again: both come straight back.
+		if (closeCode !== undefined && SLOWLY.has(closeCode))
 			failures = Math.max(failures, QUICK_RETRIES);
-		const wait = closeCode === CLOSE_STALE ? 0 : (RETRY_MS[failures] ?? RETRY_CEILING_MS);
+		const rhythm =
+			closeCode === CLOSE_SUPERSEDED
+				? SUPERSEDED_RETRY_MS
+				: (RETRY_MS[failures] ?? RETRY_CEILING_MS);
+		const wait =
+			closeCode === CLOSE_EXPIRED
+				? Math.round(EXPIRED_SPREAD_MS * random())
+				: closeCode === CLOSE_STALE
+					? 0
+					: Math.round(rhythm * (1 - RETRY_JITTER * random()));
 		failures += 1;
+		// What was last heard of a channel's members is no longer known.
+		for (const watch of watches.values()) watch.members = undefined;
+		attaching.clear();
 		if (state === 'connected') startFaultTimer();
 		retryTimer = timers.setTimeout(connect, wait);
 		set({
@@ -514,7 +578,12 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 	/** Ping now, and again every `heartbeatMs` for as long as this socket is the one in use. */
 	function beat(attempt: Attempt) {
 		ping(attempt);
-		heartbeatTimer = timers.setTimeout(() => beat(attempt), heartbeatMs);
+		heartbeatTimer = timers.setTimeout(() => {
+			// A socket that has stayed up through a heartbeat was a connection, though
+			// the object said nothing on it: a socket that only holds hears only pongs.
+			if (state === 'connected') failures = 0;
+			beat(attempt);
+		}, heartbeatMs);
 	}
 
 	function ping(attempt: Attempt) {
@@ -576,6 +645,12 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 		}
 
 		if (frame.t === 'refused') {
+			if (frame.what === 'attach') answered(frame.channel);
+			// Nothing it was told of the channel's members is known to stand.
+			if (frame.what === 'watch') {
+				const watch = watches.get(frame.channel);
+				if (watch) watch.members = undefined;
+			}
 			const asked = { attach: channels, watch: watches, enter: entries }[frame.what];
 			if (!asked?.has(frame.channel)) return;
 			const refused = refusals.get(frame.channel) ?? new Set();
@@ -585,6 +660,10 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 			changed();
 			return;
 		}
+
+		// An answer to an attach asked before the latest one is to a channel since
+		// forgotten and asked for anew: only the latest answer speaks for it.
+		if (frame.t === 'attached' && answered(frame.channel) > 0) return;
 
 		const held = channels.get(frame.channel);
 		if (!held) return;
@@ -597,13 +676,13 @@ export function createSocketTransport(options: SocketTransportOptions): SocketTr
 			held.continuity = 'held';
 			if (!frame.resumed || held.seq === null) held.seq = frame.seq;
 			set({ connectionId: frame.connectionId });
-			if (!wasAttached) {
-				const waiting = [...held.onNextAttach];
-				held.onNextAttach.clear();
-				tell(waiting);
-			}
+			const waiting = wasAttached ? [] : [...held.onNextAttach];
+			held.onNextAttach.clear();
+			tell(waiting);
 			// A first attach on an unbroken connection missed nothing anyone had yet.
 			if (!frame.resumed && before !== 'unstarted') tell(held.onLost);
+			// Told, a one-time listener asks nothing more of the channel.
+			if (waiting.length > 0) release(frame.channel);
 			return;
 		}
 
