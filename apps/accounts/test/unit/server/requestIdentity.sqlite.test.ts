@@ -366,13 +366,26 @@ function sharedStoreFake() {
 	};
 }
 
+/** The origin a Worker was reached on: an Installation's own. */
+const INSTALLATION = 'https://stream.keepr.digital';
+
 describe("an Identity Proof shared by the Worker's isolates", () => {
 	let shared: ReturnType<typeof sharedStoreFake>;
 	/** A resolver as one isolate of the Worker holds it. */
 	const isolate = () =>
 		createIdentityResolver('stream', { sharedStore: shared.store, sharedTimeoutMs: 20 });
-	async function ask(resolve: ReturnType<typeof isolate>, as: string = cookie) {
-		const answer = await resolve({ cookie: as, accounts: connection, waitUntil });
+	async function ask(
+		resolve: ReturnType<typeof isolate>,
+		as: string = cookie,
+		/** `null` for a request with no origin, as outside a Worker. */
+		origin: string | null = INSTALLATION,
+	) {
+		const answer = await resolve({
+			cookie: as,
+			accounts: connection,
+			waitUntil,
+			origin: origin ?? undefined,
+		});
 		await Promise.all(pending);
 		return answer;
 	}
@@ -386,17 +399,20 @@ describe("an Identity Proof shared by the Worker's isolates", () => {
 		shared = sharedStoreFake();
 	});
 
-	it('answers another isolate without asking Keepr Accounts', async () => {
+	// The origin only places a record; what keeps Sessions apart is the cookie's hash.
+	it.each([
+		['answers another isolate on the same origin, unasked', INSTALLATION, 'cached', 1],
+		['is not found under another origin', 'https://stream.keepr-staging.digital', 'asked', 2],
+		['is not looked for by a request with no origin', null, 'asked', 2],
+	] as const)('%s', async (_case, origin, proof, asks) => {
 		await ask(isolate());
 
-		const answer = await ask(isolate());
-
-		expect(answer).toMatchObject({
+		expect(await ask(isolate(), cookie, origin)).toMatchObject({
 			kind: 'signed-in',
-			proof: 'cached',
+			proof,
 			identity: { user: { id: userId } },
 		});
-		expect(proofRequests).toBe(1);
+		expect(proofRequests).toBe(asks);
 	});
 
 	it('once half its life has passed, is refreshed once, and the refresh serves both', async () => {
@@ -439,7 +455,7 @@ describe("an Identity Proof shared by the Worker's isolates", () => {
 		[
 			'signed by a key Keepr Accounts never published',
 			async () =>
-				await sharedIdentityRecords(shared.store, 'stream').writeProof(
+				await sharedIdentityRecords(shared.store, 'stream', INSTALLATION)!.writeProof(
 					cookie,
 					{ token: await signedByAnUnpublishedKey(), renewedCookies: [] },
 					300,

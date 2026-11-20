@@ -67,6 +67,16 @@ type Verified<App extends AppId> =
 
 type Defer = (promise: Promise<unknown>) => void;
 
+/**
+ * What one request's question carries beside its cookie: how to keep work
+ * alive past its response, and its Worker's shared records under the origin
+ * the request reached, or none.
+ */
+interface Question {
+	defer: Defer;
+	shared: SharedIdentityRecords | undefined;
+}
+
 /** What the local dev registry answers for a service with nothing registered under its name. */
 const NOTHING_REGISTERED = /Worker ".*" not found/;
 
@@ -86,8 +96,10 @@ const SHARED_STORE_TIMEOUT_MS = 100;
  * Accounts is unreachable. Past expiry, only a fresh answer does.
  *
  * What it verifies it also shares with its Worker's other isolates through
- * `sharedStore` (ADR-0150): the signed token, which each verifies again before
- * answering from it, and Keepr Accounts' keys. Its own `Map` stays in front,
+ * `sharedStore` (ADR-0150), under the origin each request reached the Worker
+ * on: the signed token, which each verifies again before answering from it,
+ * and Keepr Accounts' keys. A request with no origin shares nothing. Its own
+ * `Map` stays in front,
  * and the store is read only when that holds nothing live. A store that fails
  * or is slow is done without: the resolver then works as if it had none.
  */
@@ -100,7 +112,6 @@ export function createIdentityResolver<App extends AppId>(
 	}: { cacheSize?: number; sharedStore?: SharedStore | undefined; sharedTimeoutMs?: number } = {},
 ) {
 	const proofs = new Map<string, CachedProof<App>>();
-	const shared = sharedStore && sharedIdentityRecords(sharedStore, app);
 	let keys: ReturnType<typeof createLocalJWKSet> | undefined;
 
 	function storeFailed(operation: string, error: unknown) {
@@ -115,6 +126,7 @@ export function createIdentityResolver<App extends AppId>(
 
 	/** One call to the shared store: its answer, or `undefined` once it fails or is not answered in time. */
 	async function withShared<T>(
+		{ shared }: Question,
 		operation: string,
 		call: (records: SharedIdentityRecords) => Promise<T>,
 	): Promise<T | undefined> {
@@ -136,12 +148,12 @@ export function createIdentityResolver<App extends AppId>(
 
 	/** A write to the shared store, kept alive past the response, that fails nothing it serves. */
 	function toShared(
+		question: Question,
 		operation: string,
 		write: (records: SharedIdentityRecords) => Promise<void>,
-		defer: Defer,
 	): Promise<void> {
-		const writing = withShared(operation, write).then(() => undefined);
-		defer(writing);
+		const writing = withShared(question, operation, write).then(() => undefined);
+		question.defer(writing);
 		return writing;
 	}
 
@@ -153,20 +165,20 @@ export function createIdentityResolver<App extends AppId>(
 		}
 	}
 
-	async function publicKeys(accounts: AccountsConnection, refetch: boolean, defer: Defer) {
+	async function publicKeys(accounts: AccountsConnection, refetch: boolean, question: Question) {
 		if (keys && !refetch) return keys;
 		if (!refetch) {
-			const sharedKeys = keySet(await withShared('read keys', (records) => records.readKeys()));
+			const sharedKeys = keySet(
+				await withShared(question, 'read keys', (records) => records.readKeys()),
+			);
 			if (sharedKeys) return (keys = sharedKeys);
 		}
 		const response = await accounts.fetch(`${KEEPR_ACCOUNTS_ORIGIN}${PUBLIC_KEYS_PATH}`);
 		if (!response.ok) throw new Error(`its keys answered ${response.status}`);
 		const published = (await response.json()) as JSONWebKeySet;
 		keys = createLocalJWKSet(published);
-		void toShared(
-			'write keys',
-			(records) => records.writeKeys(published, SHARED_KEYS_SECONDS),
-			defer,
+		void toShared(question, 'write keys', (records) =>
+			records.writeKeys(published, SHARED_KEYS_SECONDS),
 		);
 		return keys;
 	}
@@ -174,12 +186,12 @@ export function createIdentityResolver<App extends AppId>(
 	async function verify(
 		accounts: AccountsConnection,
 		token: string,
-		defer: Defer,
+		question: Question,
 		refetched = false,
 	): Promise<Verified<App>> {
 		let payload: JWTPayload;
 		try {
-			({ payload } = await jwtVerify(token, await publicKeys(accounts, refetched, defer), {
+			({ payload } = await jwtVerify(token, await publicKeys(accounts, refetched, question), {
 				issuer: KEEPR_ACCOUNTS_ORIGIN,
 				audience: IDENTITY_PROOF_AUDIENCE,
 				algorithms: [IDENTITY_PROOF_ALGORITHM],
@@ -190,7 +202,7 @@ export function createIdentityResolver<App extends AppId>(
 			// An unknown key may be a new one: Keepr Accounts rotated, or the
 			// Accounts Stand-in restarted. Its keys are fetched again, once.
 			if (code === 'ERR_JWKS_NO_MATCHING_KEY' && !refetched)
-				return verify(accounts, token, defer, true);
+				return verify(accounts, token, question, true);
 			return {
 				kind: 'refused',
 				code,
@@ -211,7 +223,7 @@ export function createIdentityResolver<App extends AppId>(
 	async function ask(
 		accounts: AccountsConnection,
 		cookie: string,
-		defer: Defer,
+		question: Question,
 	): Promise<{ answer: IdentityAnswer<App>; cached?: CachedProof<App> }> {
 		const unavailable = (reason: string, setCookie: string[] = []) => ({
 			answer: { kind: 'unavailable' as const, reason, setCookie },
@@ -245,7 +257,7 @@ export function createIdentityResolver<App extends AppId>(
 			return unavailable('it answered something other than an Identity Proof', setCookie);
 		let verified: Verified<App>;
 		try {
-			verified = await verify(accounts, token, defer);
+			verified = await verify(accounts, token, question);
 		} catch (error) {
 			return unavailable(`its keys could not be read (${(error as Error).message})`, setCookie);
 		}
@@ -272,13 +284,13 @@ export function createIdentityResolver<App extends AppId>(
 	async function fromOtherIsolates(
 		accounts: AccountsConnection,
 		cookie: string,
-		defer: Defer,
+		question: Question,
 	): Promise<CachedProof<App> | undefined> {
-		const record = await withShared('read proof', (records) => records.readProof(cookie));
+		const record = await withShared(question, 'read proof', (records) => records.readProof(cookie));
 		if (!record) return undefined;
 		let verified: Verified<App>;
 		try {
-			verified = await verify(accounts, record.token, defer);
+			verified = await verify(accounts, record.token, question);
 		} catch {
 			return undefined;
 		}
@@ -300,13 +312,16 @@ export function createIdentityResolver<App extends AppId>(
 	}
 
 	/** Shares `proof` for as long as it lasts, with the renewed cookies no browser has been sent. */
-	function share(cookie: string, proof: CachedProof<App>, renewedCookies: string[], defer: Defer) {
+	function share(
+		cookie: string,
+		proof: CachedProof<App>,
+		renewedCookies: string[],
+		question: Question,
+	) {
 		const ttlSeconds = Math.floor((proof.expiresAt - Date.now()) / 1000);
 		if (ttlSeconds <= 0) return Promise.resolve();
-		return toShared(
-			'write proof',
-			(records) => records.writeProof(cookie, { token: proof.token, renewedCookies }, ttlSeconds),
-			defer,
+		return toShared(question, 'write proof', (records) =>
+			records.writeProof(cookie, { token: proof.token, renewedCookies }, ttlSeconds),
 		);
 	}
 
@@ -323,24 +338,24 @@ export function createIdentityResolver<App extends AppId>(
 		accounts: AccountsConnection,
 		cookie: string,
 		proof: CachedProof<App>,
-		defer: Defer,
+		question: Question,
 		{ sharedFirst }: { sharedFirst: boolean },
 	) {
 		// Another isolate may already have refreshed it: then that answers here too.
 		if (sharedFirst) {
-			const refreshed = await fromOtherIsolates(accounts, cookie, defer);
+			const refreshed = await fromOtherIsolates(accounts, cookie, question);
 			if (refreshed && Date.now() < refreshed.refreshAfter) {
 				remember(cookie, refreshed);
 				return;
 			}
 		}
-		const { answer, cached } = await ask(accounts, cookie, defer);
+		const { answer, cached } = await ask(accounts, cookie, question);
 		if (cached) {
 			remember(cookie, { ...cached, renewedCookies: answer.setCookie });
-			await share(cookie, cached, answer.setCookie, defer);
+			await share(cookie, cached, answer.setCookie, question);
 		} else if (answer.kind === 'signed-out') {
 			proofs.delete(cookie);
-			await toShared('remove proof', (records) => records.removeProof(cookie), defer);
+			await toShared(question, 'remove proof', (records) => records.removeProof(cookie));
 		}
 		// Unreachable: the cached proof keeps answering until it expires.
 		else proof.refreshing = false;
@@ -352,14 +367,14 @@ export function createIdentityResolver<App extends AppId>(
 	 * record then drops them, and another isolate holding them sends none. With
 	 * no shared record to ask, they are sent: twice is harmless, never is not.
 	 */
-	async function renewedCookiesOf(cookie: string, proof: CachedProof<App>, defer: Defer) {
+	async function renewedCookiesOf(cookie: string, proof: CachedProof<App>, question: Question) {
 		const renewed = proof.renewedCookies;
 		if (renewed.length === 0) return [];
 		proof.renewedCookies = [];
-		const record = await withShared('read proof', (records) => records.readProof(cookie));
+		const record = await withShared(question, 'read proof', (records) => records.readProof(cookie));
 		if (record?.token !== proof.token) return renewed;
 		if (record.renewedCookies.length === 0) return [];
-		void share(cookie, proof, [], defer);
+		void share(cookie, proof, [], question);
 		return renewed;
 	}
 
@@ -367,18 +382,18 @@ export function createIdentityResolver<App extends AppId>(
 		accounts: AccountsConnection,
 		cookie: string,
 		proof: CachedProof<App>,
-		defer: Defer,
+		question: Question,
 		{ sharedFirst }: { sharedFirst: boolean },
 	): Promise<IdentityAnswer<App>> {
 		const refreshes = Date.now() >= proof.refreshAfter && !proof.refreshing;
 		if (refreshes) {
 			proof.refreshing = true;
-			defer(refresh(accounts, cookie, proof, defer, { sharedFirst }));
+			question.defer(refresh(accounts, cookie, proof, question, { sharedFirst }));
 		}
 		return {
 			kind: 'signed-in',
 			identity: proof.identity,
-			setCookie: await renewedCookiesOf(cookie, proof, defer),
+			setCookie: await renewedCookiesOf(cookie, proof, question),
 			proof: refreshes ? 'refreshing' : 'cached',
 		};
 	}
@@ -386,34 +401,41 @@ export function createIdentityResolver<App extends AppId>(
 	/**
 	 * Who the request carrying `cookie` belongs to. `waitUntil` keeps a background
 	 * refresh, and a write to the shared store, alive past the response, as a
-	 * Worker's `ctx.waitUntil` does.
+	 * Worker's `ctx.waitUntil` does. `origin` is the origin the Worker was
+	 * reached on, which the shared records are kept under; with none, the
+	 * resolver shares nothing.
 	 */
 	return async function resolve({
 		cookie = '',
 		accounts,
 		waitUntil,
+		origin,
 	}: {
 		cookie?: string | undefined;
 		accounts: AccountsConnection;
 		waitUntil?: ((promise: Promise<unknown>) => void) | undefined;
+		origin?: string | undefined;
 	}): Promise<IdentityAnswer<App>> {
-		const defer: Defer = (promise) => waitUntil?.(promise);
+		const question: Question = {
+			defer: (promise) => waitUntil?.(promise),
+			shared: sharedStore && origin ? sharedIdentityRecords(sharedStore, app, origin) : undefined,
+		};
 		const held = proofs.get(cookie);
 		if (held && Date.now() < held.expiresAt)
-			return await answerFrom(accounts, cookie, held, defer, { sharedFirst: true });
+			return await answerFrom(accounts, cookie, held, question, { sharedFirst: true });
 		proofs.delete(cookie);
 
-		const sharedProof = await fromOtherIsolates(accounts, cookie, defer);
+		const sharedProof = await fromOtherIsolates(accounts, cookie, question);
 		if (sharedProof) {
 			remember(cookie, sharedProof);
-			return await answerFrom(accounts, cookie, sharedProof, defer, { sharedFirst: false });
+			return await answerFrom(accounts, cookie, sharedProof, question, { sharedFirst: false });
 		}
 
-		const { answer, cached } = await ask(accounts, cookie, defer);
+		const { answer, cached } = await ask(accounts, cookie, question);
 		if (cached) {
 			remember(cookie, cached);
 			// This answer passes its cookies on itself, so the shared record holds none.
-			void share(cookie, cached, [], defer);
+			void share(cookie, cached, [], question);
 		}
 		return answer;
 	};
@@ -455,6 +477,22 @@ function waitUntilOf(event: H3Event): ((promise: Promise<unknown>) => void) | un
 }
 
 /**
+ * The origin the Worker was reached on: the URL of the request Cloudflare
+ * routed to it, as Nitro hands it on, and never a header a client could set,
+ * such as `X-Forwarded-Host`. `undefined` outside a Worker, as under Node.
+ */
+function workerOriginOf(event: H3Event): string | undefined {
+	const request = (event.context as { cloudflare?: { request?: { url?: unknown } } }).cloudflare
+		?.request;
+	if (typeof request?.url !== 'string') return undefined;
+	try {
+		return new URL(request.url).origin;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
  * Who the request belongs to, as `app` sees them. An App's "who am I" route
  * answers with this, at `IDENTITY_PATH`. Passes any Session Keepr
  * Accounts renewed on to the browser. A signed-out visitor is refused 401; with
@@ -469,6 +507,7 @@ export async function resolveRequestIdentity<App extends AppId>(
 		cookie: getRequestHeader(event, 'cookie'),
 		accounts: accountsConnectionOf(event),
 		waitUntil: (promise) => waitUntilOf(event)?.(promise),
+		origin: workerOriginOf(event),
 	});
 	for (const value of answer.setCookie) appendResponseHeader(event, 'set-cookie', value);
 	if (answer.kind === 'signed-in') return answer.identity;

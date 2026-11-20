@@ -36,6 +36,10 @@ async function isolate() {
 async function readAs(requestIdentity: Awaited<ReturnType<typeof isolate>>) {
 	const pending: Promise<unknown>[] = [];
 	const event = workerRequest({ as: A_MEMBER, env: { KEEPR_ACCOUNTS: accounts } });
+	// The request Cloudflare routed to the Worker, as Nitro hands it on.
+	Object.assign(event.context.cloudflare as object, {
+		request: new Request('https://stream.keepr.digital/api/events'),
+	});
 	Object.assign(event, { waitUntil: (promise: Promise<unknown>) => void pending.push(promise) });
 	const identity = await requestIdentity(event);
 	await Promise.all(pending);

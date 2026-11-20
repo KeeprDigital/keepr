@@ -4,13 +4,13 @@ import type { AppId } from '../../shared/utils/appRegistry';
 /**
  * Where every isolate of one Worker shares what its identity resolver has
  * verified, so one isolate's ask of Keepr Accounts answers the others (ADR-0150,
- * in the root `docs/adr`). It holds text under a key, for no longer than it is
+ * in the root `docs/adr`). It holds text under a URL, for no longer than it is
  * told. Any call may fail or never answer: the resolver then does without it.
  */
 export interface SharedStore {
-	get: (key: string) => Promise<string | undefined>;
-	put: (key: string, value: string, ttlSeconds: number) => Promise<void>;
-	delete: (key: string) => Promise<void>;
+	get: (url: string) => Promise<string | undefined>;
+	put: (url: string, value: string, ttlSeconds: number) => Promise<void>;
+	delete: (url: string) => Promise<void>;
 }
 
 /** The part of a Worker's Cache API this reads: a named cache, keyed by URL. */
@@ -20,11 +20,11 @@ interface WorkersCache {
 	delete: (url: string) => Promise<boolean>;
 }
 
-/** Its own cache, not `caches.default`, which `fetch` reads through. */
+/**
+ * Its own cache, not `caches.default`, which `fetch` reads through: a record
+ * kept under the Installation's origin answers no request to that origin.
+ */
 const CACHE_NAME = 'keepr-identity';
-
-/** A cache key is a URL. This host is served by nothing, so no request can name one. */
-const KEY_ORIGIN = 'https://identity.keepr.invalid';
 
 /**
  * The Worker's Cache API, as a shared store: per data centre, with no binding,
@@ -44,22 +44,18 @@ export function workersCacheStore(): SharedStore | undefined {
 			opened = undefined;
 			throw error;
 		}));
-	const url = (key: string) => `${KEY_ORIGIN}/${key}`;
 	return {
-		async get(key) {
-			const hit = await (await cache()).match(url(key));
+		async get(url) {
+			const hit = await (await cache()).match(url);
 			return hit ? await hit.text() : undefined;
 		},
-		async put(key, value, ttlSeconds) {
+		async put(url, value, ttlSeconds) {
 			await (
 				await cache()
-			).put(
-				url(key),
-				new Response(value, { headers: { 'cache-control': `max-age=${ttlSeconds}` } }),
-			);
+			).put(url, new Response(value, { headers: { 'cache-control': `max-age=${ttlSeconds}` } }));
 		},
-		async delete(key) {
-			await (await cache()).delete(url(key));
+		async delete(url) {
+			await (await cache()).delete(url);
 		},
 	};
 }
@@ -105,14 +101,29 @@ function isRecord(value: unknown): value is SharedProofRecord {
 }
 
 /**
- * One App's records in a shared store. A Session's record is kept under a hash
- * of its cookie, never the cookie, and sealed (AES-GCM) with a key only that
- * same cookie derives, bound to the slot it is kept in: it opens for the
- * request that carries the cookie it was written for, and for no other. What
- * opens is still only a token, which the resolver verifies before it answers.
- * Keepr Accounts' keys are public, and kept as published.
+ * One App's records in a shared store, under the origin the Worker was reached
+ * on: an Installation's own, so records under one origin are never read under
+ * another. `undefined` for an origin that is not http or https, which shares
+ * nothing.
+ *
+ * A Session's record is kept under a hash of its cookie, never the cookie, and
+ * sealed (AES-GCM) with a key only that same cookie derives, bound to the slot
+ * it is kept in: it opens for the request that carries the cookie it was
+ * written for, and for no other. What opens is still only a token, which the
+ * resolver verifies before it answers. Keepr Accounts' keys are public, and
+ * kept as published.
  */
-export function sharedIdentityRecords(store: SharedStore, app: AppId) {
+export function sharedIdentityRecords(store: SharedStore, app: AppId, origin: string) {
+	let base: string;
+	try {
+		const url = new URL(origin);
+		if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined;
+		base = url.origin;
+	} catch {
+		return undefined;
+	}
+	const at = (key: string) => `${base}/${key}`;
+
 	async function slot(cookie: string) {
 		const key = `${app}/proof/${hex(await cookieDigest('key', app, cookie))}`;
 		const sealKey = await crypto.subtle.importKey(
@@ -129,7 +140,7 @@ export function sharedIdentityRecords(store: SharedStore, app: AppId) {
 		/** The record kept for `cookie`; `undefined` when there is none, or one that does not open for it. */
 		async readProof(cookie: string): Promise<SharedProofRecord | undefined> {
 			const { key, sealKey, additionalData } = await slot(cookie);
-			const sealed = await store.get(key);
+			const sealed = await store.get(at(key));
 			if (sealed === undefined) return undefined;
 			try {
 				const bytes = fromBase64(sealed);
@@ -157,20 +168,20 @@ export function sharedIdentityRecords(store: SharedStore, app: AppId) {
 			const bytes = new Uint8Array(IV_BYTES + sealed.length);
 			bytes.set(iv);
 			bytes.set(sealed, IV_BYTES);
-			await store.put(key, toBase64(bytes), ttlSeconds);
+			await store.put(at(key), toBase64(bytes), ttlSeconds);
 		},
 		async removeProof(cookie: string) {
-			await store.delete((await slot(cookie)).key);
+			await store.delete(at((await slot(cookie)).key));
 		},
 		/** Keepr Accounts' keys as another isolate last fetched them, unchecked: the caller reads them as a key set. */
 		async readKeys(): Promise<unknown> {
-			const kept = await store.get(`${app}/keys`);
+			const kept = await store.get(at(`${app}/keys`));
 			return kept === undefined ? undefined : JSON.parse(kept);
 		},
 		async writeKeys(keys: JSONWebKeySet, ttlSeconds: number) {
-			await store.put(`${app}/keys`, JSON.stringify(keys), ttlSeconds);
+			await store.put(at(`${app}/keys`), JSON.stringify(keys), ttlSeconds);
 		},
 	};
 }
 
-export type SharedIdentityRecords = ReturnType<typeof sharedIdentityRecords>;
+export type SharedIdentityRecords = NonNullable<ReturnType<typeof sharedIdentityRecords>>;

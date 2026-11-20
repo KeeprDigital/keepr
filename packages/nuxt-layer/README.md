@@ -78,7 +78,7 @@ const identity = await resolveRequestIdentity(event, 'stream');
 requireAppRole(identity, 'admin'); // or requireAppAccess(identity)
 ```
 
-What it verifies is shared by the Worker's isolates through the Worker's Cache API (`sharedIdentityStore.ts`, ADR-0150, in the root `docs/adr`), with no binding: on an Installation's custom domain and in local `workerd`. Under Node, as in `nuxt dev` and the tests, there is no Cache API, and each resolver keeps its own, as a test passes it a `sharedStore` to share.
+What it verifies is shared by the Worker's isolates through the Worker's Cache API (`sharedIdentityStore.ts`, ADR-0150, in the root `docs/adr`), with no binding: on an Installation's custom domain and in local `workerd`, under the origin the Worker was reached on. Under Node, as in `nuxt dev` and the tests, there is no Cache API, and each resolver keeps its own, as a test passes it a `sharedStore` to share.
 
 Stream Keepr relies on it (ADR-0141, in `apps/stream/docs/adr`): its `server/utils/session.ts` is the one place that asks, and its Session boundary and page gate are built on these. An App that relies on it runs its `dev` script through the Accounts Stand-in, `keepr-accounts-stand-in -- nuxt dev` (`packages/accounts-stand-in`), and its previews, smoke runs and the servers of its integration and acceptance suites the same way (ADR-0113). Each such run keeps a Wrangler registry of its own, so two at once never meet (`packages/accounts-stand-in/README.md`). `NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN` points `useIdentity`'s sign-in at a local Keepr Accounts instead of `https://accounts.keepr.digital`.
 
