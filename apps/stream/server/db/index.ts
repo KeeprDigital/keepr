@@ -2,6 +2,8 @@ import process from 'node:process';
 import { drizzle } from 'drizzle-orm/d1';
 import * as coreSchema from './schema';
 import * as graphicsAssetSchema from './schema/graphicsAsset';
+import { timeWriteStep } from '../utils/writeTiming';
+import { timedD1 } from './timedD1';
 
 /** Every table and relation Drizzle's relational queries (`db.query.*`) can reach. */
 export const schema = {
@@ -25,7 +27,11 @@ function connect(): Database {
 			(process.env as Record<string, unknown>).DB ||
 			(globalThis as { __env__?: { DB?: D1Database } }).__env__?.DB;
 		if (!binding) throw new Error('DB binding not found');
-		database = drizzle(binding as D1Database, { schema });
+		// Timed, so a write's log line says how long it spent in D1 (`server/utils/writeTiming.ts`).
+		database = drizzle(
+			timedD1(binding as D1Database, async (work) => await timeWriteStep('d1', work)),
+			{ schema },
+		);
 	}
 	return database;
 }

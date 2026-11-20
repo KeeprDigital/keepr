@@ -20,6 +20,7 @@ import {
 	screenCommandMessageTypes,
 } from '../types/messages';
 import { publishFailureFields, RealtimePublishError } from './realtimePublishFailure';
+import { timeWriteStep } from './writeTiming';
 
 /**
  * What the server publishes, and to where: every message goes by RPC to its
@@ -113,10 +114,13 @@ function delivery<T extends MessageType>(
  * `useRealtimeScope`: one call, whose deliveries the object sends in order. It
  * rejects when the Worker has no binding for the object, or the object could
  * not be reached or threw. Each call takes a stub of its own: one whose call
- * failed may answer nothing more.
+ * failed may answer nothing more. Each is timed as a call of the write's
+ * `publish` step (`writeTiming.ts`).
  */
 async function publishToEvent(eventId: number, deliveries: readonly Delivery[]): Promise<void> {
-	await useRealtimeScope(workerBindings(), eventRealtimeScope(eventId)).publish(deliveries);
+	await timeWriteStep('publish', async () => {
+		await useRealtimeScope(workerBindings(), eventRealtimeScope(eventId)).publish(deliveries);
+	});
 }
 
 /**
