@@ -2,11 +2,11 @@ import { IncomingMessage, ServerResponse } from 'node:http';
 import { Socket } from 'node:net';
 import { createEvent, getRequestHeader } from 'h3';
 import { describe, expect, it } from 'vitest';
-import handler from '~~/server/middleware/0-retired-sign-in-cookie';
+import { discardRetiredSignInCookie } from '~~/server/utils/retiredSignInCookie';
 
 const NAME = '__Secure-better-auth.session_token';
 
-/** A request as h3 hands one to a middleware, carrying `cookie`. */
+/** A request as h3 hands one to a route, carrying `cookie`. */
 function requestCarrying(cookie?: string) {
 	const request = new IncomingMessage(new Socket());
 	if (cookie !== undefined) request.headers.cookie = cookie;
@@ -20,7 +20,7 @@ describe("the cookie of Stream Keepr's former sign-in", () => {
 	it("is taken out of the request, so what asks Keepr Accounts next carries Keepr Accounts' alone", () => {
 		const { event } = requestCarrying(`${NAME}=retired; other=1; ${NAME}=accounts`);
 
-		handler(event);
+		discardRetiredSignInCookie(event);
 
 		expect(getRequestHeader(event, 'cookie')).toBe(`other=1; ${NAME}=accounts`);
 	});
@@ -28,7 +28,7 @@ describe("the cookie of Stream Keepr's former sign-in", () => {
 	it("is expired on this host, and never on the Keepr domain, where Keepr Accounts' own is", () => {
 		const { event, response } = requestCarrying(`${NAME}=retired; ${NAME}=accounts`);
 
-		handler(event);
+		discardRetiredSignInCookie(event);
 
 		const [expiry, ...more] = [response.getHeader('set-cookie')].flat();
 		expect(more).toEqual([]);
@@ -47,7 +47,7 @@ describe("the cookie of Stream Keepr's former sign-in", () => {
 	])('leaves a request with %s as it came, and writes nothing', (_case, cookie) => {
 		const { event, response } = requestCarrying(cookie);
 
-		expect(handler(event)).toBeUndefined();
+		discardRetiredSignInCookie(event);
 
 		expect(getRequestHeader(event, 'cookie')).toBe(cookie);
 		expect(response.getHeader('set-cookie')).toBeUndefined();

@@ -28,16 +28,21 @@ export interface KeeprAccountsBinding {
 	fetch: (input: string, init?: RequestInit) => Promise<Response>;
 	/** Each path Keepr Accounts was asked, in order: empty while nobody asked who a request belongs to. */
 	asked: string[];
+	/** The `Cookie` header each of those questions carried, in the same order. */
+	askedWith: (string | null)[];
 }
 
 /** The binding, answered by one Accounts Stand-in for as long as the test file runs. */
 export function keeprAccountsBinding(): KeeprAccountsBinding {
 	const standIn = createAccountsStandIn();
 	const asked: string[] = [];
+	const askedWith: (string | null)[] = [];
 	return {
 		asked,
+		askedWith,
 		async fetch(input, init) {
 			asked.push(new URL(input).pathname);
+			askedWith.push(new Headers(init?.headers).get('cookie'));
 			return await standIn.fetch(new Request(input, init));
 		},
 	};
