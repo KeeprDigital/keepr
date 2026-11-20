@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { NO_LEG_WORKER_JOB } from '../scripts/ci-reuse.mjs';
+import { NO_LEG_WORKER_JOB, PROJECT_GATES } from '../scripts/ci-scope.mjs';
 import { isConventionalTitle } from '../scripts/conventional-title.mjs';
+import { workspacePackages } from '../scripts/versioned-apps.mjs';
 
 /**
  * The merge queue (ADR-0036) is only as good as the workflows' wiring: these read
@@ -28,7 +29,7 @@ interface Job {
 	permissions?: Record<string, string>;
 	outputs?: Record<string, string>;
 	strategy?: { matrix?: Record<string, unknown> };
-	defaults?: unknown;
+	defaults?: { run?: { 'working-directory'?: string } };
 	steps?: Step[];
 	'continue-on-error'?: unknown;
 }
@@ -59,6 +60,8 @@ const FOR_CODE = "needs.scope.outputs.code == 'true'";
 const FOR_DOCS = "needs.scope.outputs.docs == 'true'";
 /** The Worker legs: one per deployable app the change ships in; none when it ships in none. */
 const FOR_WORKERS = "needs.scope.outputs.apps != '[]'";
+/** A gate that checks projects: when the change affects one of them (ADR-0147). */
+const forGate = (job: string) => `contains(fromJSON(needs.scope.outputs.gates), '${job}')`;
 
 function needs(job: Job) {
 	return [job.needs ?? []].flat().toSorted();
@@ -143,23 +146,48 @@ describe("the CI scope decides what a merge group can affect against the queue's
 		}
 	});
 
+	// The Lint job checks the whole workspace; every other gate is a project gate or the Worker job.
 	it.each(gates)(
 		"gate %s is skipped only on the scope job's decision, and reads no PR-only state",
 		(id) => {
 			const job = ci.jobs[id]!;
+			const conditions: Record<string, string> = {
+				checks: `${FOR_CODE} || ${FOR_DOCS}`,
+				'worker-guard': FOR_WORKERS,
+				...Object.fromEntries(PROJECT_GATES.map((gate) => [gate.job, forGate(gate.job)])),
+			};
 
 			expect(job.needs).toBe('scope');
-			expect(job.if).toBe(
-				{ checks: `${FOR_CODE} || ${FOR_DOCS}`, 'worker-guard': FOR_WORKERS }[id] ?? FOR_CODE,
-			);
+			expect(job.if).toBe(conditions[id]);
 			expect(JSON.stringify(job)).not.toContain('github.event.pull_request');
 		},
 	);
 
-	// A docs-only change skips the code gates, so `checks` runs what they check of a document instead.
+	// The reuse check knows a skipped gate by the name GitHub reports, its template for a matrix job.
+	// The scope runs a gate for the projects it names: an app's, in that app's directory; the
+	// packages', at the root through the scripts that run every package's.
+	it.each(PROJECT_GATES)(
+		'project gate $job is named as GitHub reports it skipped, and checks where it runs',
+		({ job, name, checks }) => {
+			const gate = ci.jobs[job]!;
+			const directory = gate.defaults?.run?.['working-directory'];
+			const projects = [...workspacePackages('../..').values()].map((pkg) => pkg.dir);
+			const checked = projects.filter((dir) => checks.test(dir));
+
+			expect(gate.name).toBe(name);
+			if (directory) expect(checked).toEqual([directory]);
+			else {
+				expect(checked).toEqual(projects.filter((dir) => dir.startsWith('packages/')));
+				for (const command of runs(gate).split('\n'))
+					expect(rootScripts[command.replace(/^pnpm /, '')]).toContain('"./packages/*"');
+			}
+		},
+	);
+
+	// A change that skips the Unit suite skips its documentation test, so `checks` runs it instead.
 	// The workflows are code, so their two linters run with the lint. Every step
-	// past the changeset check runs for exactly one of the two: one with no condition is missing here.
-	it('the checks job checks the changesets always, lints the code and the workflows only for code, and runs the docs checks only for a docs-only change', () => {
+	// past the changeset check runs on one of the two: one with no condition is missing here.
+	it('the checks job checks the changesets always, lints the code and the workflows only for code, and runs the docs checks only when the scope asks', () => {
 		const [checkout, setup, ...checks] = ci.jobs.checks!.steps ?? [];
 
 		expect([checkout?.uses?.replace(/@.*/, ''), setup?.uses]).toEqual([

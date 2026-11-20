@@ -59,9 +59,15 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
 Push once `pnpm verify:quick` passes. It checks what your checkout changes
 since `main`: its changesets (below), lint (which fails on unformatted code;
 `pnpm lint:fix` formats), typecheck, and the unit and Nuxt tests whose imports
-reach the files it changed. CI is the full gate, and runs everything. Open the PR
-as a draft, which CI skips, and mark it ready when the branch is done: that
-runs every gate `pnpm verify` runs, Worker build and workerd smoke included.
+reach the files it changed. CI is the gate that lands (ADR-0147): the lint,
+and every gate of each project the change affects, which is each app or
+package it touches and every one that depends on it, as their `package.json`
+files say. A project's own `*.test.ts` affects only that project. The
+lockfile, the workspace's configuration, the tooling's scripts, any
+`package.json` and CI's own workflow run everything, and so does anything
+CI cannot place. Open the PR as a draft, which CI skips, and mark it ready
+when the branch is done: that runs those gates, with a Worker build and
+workerd smoke for each deployable app the change ships in.
 No test needs a key for realtime. Reach for `pnpm verify` to reproduce a CI
 failure locally. A
 dependency's version lives in the named catalog of its group in

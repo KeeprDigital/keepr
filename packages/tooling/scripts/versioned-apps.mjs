@@ -15,7 +15,14 @@ import { join } from 'node:path';
 const WORKSPACE_DIRECTORIES = ['apps', 'packages'];
 
 /**
- * @typedef {{ name: string, dir: string, version?: string, dependencies: Record<string, string> }} WorkspacePackage
+ * @typedef {{
+ *   name: string,
+ *   dir: string,
+ *   version?: string,
+ *   dependencies: Record<string, string>,
+ *   devDependencies?: Record<string, string>,
+ *   exports?: unknown,
+ * }} WorkspacePackage
  */
 
 /**
@@ -48,6 +55,8 @@ export function workspacePackages(root) {
 				dir,
 				version: manifest.version,
 				dependencies: manifest.dependencies ?? {},
+				devDependencies: manifest.devDependencies ?? {},
+				exports: manifest.exports,
 			});
 		}
 	}

@@ -1,6 +1,6 @@
 # ADR-0082: A push is checked in proportion to its change, and every heavy gate draws on one budget for the machine
 
-Accepted · 2026-11-12
+Accepted · 2026-11-12 · Amended by ADR-0147: CI skips a gate when the change affects no workspace project it checks, so it is no longer the full gate on every change
 
 ### Decision
 
