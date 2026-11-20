@@ -63,7 +63,7 @@ pnpm bench:check              # packages/pairing: its speed targets
 pnpm bench 10001 15 --check   # packages/pairing: time a simulated event
 ```
 
-CI runs the typecheck, the tests and the speed targets in its `Packages` job (`.github/workflows/ci.yml`), on every pull request and in the merge queue.
+CI runs the typecheck, the tests and the speed targets in its `Packages: Engines` job (`.github/workflows/ci.yml`), for every pull request and merge group whose change affects an engine (ADR-0147, ADR-0149).
 
 ## Rules the setup enforces
 

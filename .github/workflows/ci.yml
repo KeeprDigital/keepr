@@ -24,7 +24,7 @@
 #   - Only the jobs a change can affect (ADR-0147): a gate only when the change
 #     affects a workspace project it checks, the project itself or one it
 #     depends on (its `package.json` says which); for docs alone, only the
-#     docs checks (`pnpm verify:docs`, in the `checks` job); a Worker build
+#     docs checks (`pnpm verify:docs`, in the Workspace checks job); a Worker build
 #     only for each deployable app the change ships in. The lockfile, the
 #     workspace's configuration, the tooling's scripts, this workflow and its
 #     setup run every gate. The `scope` job decides, measuring a PR against
@@ -41,10 +41,12 @@
 #   - A newer push cancels the PR run it supersedes. Every merge-group entry
 #     has its own ref, so the queue's runs never cancel each other.
 #
-# `CI passed` is a required status check, on PRs and merge groups alike. It
-# always reports, whatever was skipped, so a docs-only change is never left
-# waiting on a check that cannot arrive; a workflow-level `paths-ignore` would
-# do exactly that, and in the queue would hold the group until it timed out.
+# `CI passed` is a required status check, on PRs and merge groups alike, and
+# the only one this workflow has: it waits on every other job, so a job's name
+# can change without a change to the repository's settings. It always
+# reports, whatever was skipped, so a docs-only change is never left waiting
+# on a check that cannot arrive; a workflow-level `paths-ignore` would do
+# exactly that, and in the queue would hold the group until it timed out.
 #
 # Stream Keepr is `apps/stream`, Score Keepr `apps/score` and Keepr Accounts
 # `apps/accounts` (ADR-0091). Each job that runs an app's scripts runs them in
@@ -107,27 +109,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node packages/tooling/scripts/ci-scope.mjs
 
-  # Every gate `pnpm test` runs (verify.mjs --tests) appears below as its own step
-  # (apps/stream/test/unit/scripts/repoWiring.test.ts holds that), split across parallel
-  # jobs so the longest one, not the sum, sets the wall time. Lint, typecheck
-  # and the two suites were one job of 11 to 18 minutes, three times the next
-  # longest; each is its own job now, and the Nuxt suite sets the wall time.
+  # The gates, grouped by the workspace project each checks, the axis the
+  # scope cuts on (ADR-0149): the workspace's own checks, then Stream Keepr's,
+  # Score Keepr's, Keepr Accounts' and the packages', each package group named
+  # for what consumes it. Each gate but the Workspace checks runs only when
+  # the scope lists its job id in `gates`: when the change affects a project
+  # it checks (ADR-0147, `PROJECT_GATES` in packages/tooling/scripts/ci-scope.mjs).
   #
-  # Each gate but this one runs only when the scope lists it in `gates`: when
-  # the change affects a project it checks (ADR-0147). This one checks the
-  # whole workspace, so it runs for any change to the code.
+  # Every gate `pnpm test` runs (verify.mjs --tests) appears below as its own
+  # step (apps/stream/test/unit/scripts/repoWiring.test.ts holds that), split
+  # across parallel jobs so the longest one, not the sum, sets the wall time.
+  # Stream Keepr's lint, typecheck and two suites were one job of 11 to 18
+  # minutes, three times the next longest; each is its own job now, and the
+  # Nuxt suite sets the wall time (ADR-0082).
+
+  # The whole workspace, at its root, for any change to the code.
   checks:
-    name: Lint
+    name: Workspace checks
     needs: scope
     # Past the changeset check, the lint steps run for a change that can
     # affect the code, and the docs checks for a change to a document that
-    # the Unit suite, which runs them among its tests, does not check.
+    # Stream Keepr's Unit suite, which runs them among its tests, does not check.
     if: needs.scope.outputs.code == 'true' || needs.scope.outputs.docs == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: apps/stream
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -140,8 +145,8 @@ jobs:
       # a docs-only change too: a changeset is Markdown, and one naming an app
       # Changesets does not version would break the next Version PR.
       - name: Changeset check
-        working-directory: ${{ github.workspace }}
         run: node packages/tooling/scripts/changeset-check.mjs
+      # One run over every app and package (ADR-0089).
       - if: needs.scope.outputs.code == 'true'
         run: pnpm lint
       # The workflows are code nothing else reads before it runs. actionlint
@@ -159,8 +164,6 @@ jobs:
           # Dependabot does not see it: bump the two together by hand.
           ACTIONLINT_VERSION: 1.7.12
           ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
-        # The workflows are the repository's, not the app's.
-        working-directory: ${{ github.workspace }}
         run: |
           archive="$RUNNER_TEMP/actionlint.tar.gz"
           curl --fail --silent --show-error --location --retry 3 --output "$archive" \
@@ -182,19 +185,20 @@ jobs:
           advanced-security: false
           online-audits: false
           collect: workflows,actions
-      # A docs-only change skips the code gates, and a change that skips the
-      # Unit suite skips the documentation test with it, but that test
-      # follows every document's links: unchecked, a broken one would fail the
-      # next code change instead (#1028). A step of this job, not a job of its
-      # own, so that it adds no job a merge group's reuse must account for
-      # (packages/tooling/scripts/ci-reuse.mjs).
+      # A docs-only change skips the code gates, and a change that skips
+      # Stream Keepr's Unit suite skips the documentation test with it, but
+      # that test follows every document's links: unchecked, a broken one
+      # would fail the next code change instead (#1028). A step of this job,
+      # not a job of its own, so that it adds no job a merge group's reuse
+      # must account for (packages/tooling/scripts/ci-reuse.mjs).
       - if: needs.scope.outputs.docs == 'true'
-        run: pnpm verify:docs
+        run: pnpm --filter @keepr/stream verify:docs
 
-  typecheck:
-    name: Typecheck
+  # Stream Keepr: each kind of gate a job of its own, in the app's directory.
+  stream-typecheck:
+    name: 'Stream Keepr: Typecheck'
     needs: scope
-    if: contains(fromJSON(needs.scope.outputs.gates), 'typecheck')
+    if: contains(fromJSON(needs.scope.outputs.gates), 'stream-typecheck')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
@@ -211,10 +215,10 @@ jobs:
 
   # With --coverage, so the thresholds in apps/stream/vitest.shared.ts fail these jobs when
   # coverage drops below them (#469).
-  unit:
-    name: Unit suite
+  stream-unit:
+    name: 'Stream Keepr: Unit suite'
     needs: scope
-    if: contains(fromJSON(needs.scope.outputs.gates), 'unit')
+    if: contains(fromJSON(needs.scope.outputs.gates), 'stream-unit')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -227,10 +231,10 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm test:unit:coverage
 
-  nuxt:
-    name: Nuxt suite
+  stream-nuxt:
+    name: 'Stream Keepr: Nuxt suite'
     needs: scope
-    if: contains(fromJSON(needs.scope.outputs.gates), 'nuxt')
+    if: contains(fromJSON(needs.scope.outputs.gates), 'stream-nuxt')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -243,67 +247,10 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm test:nuxt:coverage
 
-  # The packages the apps share (ADR-0092), at the repository's root: each
-  # one's typecheck and tests, then the Pairing Engine's speed targets.
-  packages:
-    name: Packages
+  stream-integration:
+    name: 'Stream Keepr: Integration suite (${{ matrix.shard }}/2)'
     needs: scope
-    if: contains(fromJSON(needs.scope.outputs.gates), 'packages')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: pnpm typecheck:packages
-      - run: pnpm test:packages
-      - run: pnpm bench:packages
-
-  # Score Keepr (ADR-0093): its typecheck, its tests, and the build a Worker
-  # would be deployed from. It is scaffolded, not built, and deployed nowhere.
-  score:
-    name: Score Keepr
-    needs: scope
-    if: contains(fromJSON(needs.scope.outputs.gates), 'score')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: apps/score
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-
-  # Keepr Accounts (ADR-0112): its typecheck, its server and page tests, and its
-  # build. Its Worker's dry run and smoke are its `worker-guard` leg (#1255).
-  accounts:
-    name: Keepr Accounts
-    needs: scope
-    if: contains(fromJSON(needs.scope.outputs.gates), 'accounts')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: apps/accounts
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-
-  integration:
-    name: Integration suite (${{ matrix.shard }}/2)
-    needs: scope
-    if: contains(fromJSON(needs.scope.outputs.gates), 'integration')
+    if: contains(fromJSON(needs.scope.outputs.gates), 'stream-integration')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
@@ -323,10 +270,10 @@ jobs:
       # in the realtime dev Worker beside it, and need no key.
       - run: pnpm test:integration --run --shard=${{ matrix.shard }}/2
 
-  server-and-browser:
-    name: Browser gates
+  stream-browser:
+    name: 'Stream Keepr: Browser gates'
     needs: scope
-    if: contains(fromJSON(needs.scope.outputs.gates), 'server-and-browser')
+    if: contains(fromJSON(needs.scope.outputs.gates), 'stream-browser')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
@@ -342,6 +289,100 @@ jobs:
       - run: pnpm accept fonts
       - run: pnpm accept animation-effects
       - run: pnpm accept key-matte
+
+  # Score Keepr (ADR-0093): its typecheck, its tests, and the build a Worker
+  # would be deployed from. It is scaffolded, not built, and deployed nowhere,
+  # so no Worker leg builds it.
+  score:
+    name: Score Keepr
+    needs: scope
+    if: contains(fromJSON(needs.scope.outputs.gates), 'score')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/score
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  # Keepr Accounts (ADR-0112): its typecheck and its server and page tests.
+  # Its build, its Worker's dry run and its smoke are its `worker-guard` leg
+  # (#1255), which runs whenever the change ships in it: one build a run.
+  accounts:
+    name: Keepr Accounts
+    needs: scope
+    if: contains(fromJSON(needs.scope.outputs.gates), 'accounts')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/accounts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  # The packages (ADR-0092), in three groups by what consumes them, each
+  # group's typecheck and tests run at the root over exactly its packages,
+  # which the filter names. The engines, which only Score Keepr consumes,
+  # with the Pairing Engine's speed targets.
+  engines:
+    name: 'Packages: Engines'
+    needs: scope
+    if: contains(fromJSON(needs.scope.outputs.gates), 'engines')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter "./packages/{engine-core,pairing,standings,testkit,engine-integration}" typecheck
+      - run: pnpm --filter "./packages/{engine-core,pairing,standings,testkit,engine-integration}" --workspace-concurrency=1 test
+      - run: pnpm --filter "./packages/{engine-core,pairing,standings,testkit,engine-integration}" --if-present bench:check
+
+  # What the apps share: the Nuxt layer, realtime and the Accounts Stand-in.
+  shared-app-code:
+    name: 'Packages: Shared app code'
+    needs: scope
+    if: contains(fromJSON(needs.scope.outputs.gates), 'shared-app-code')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter "./packages/{nuxt-layer,realtime,accounts-stand-in}" typecheck
+      - run: pnpm --filter "./packages/{nuxt-layer,realtime,accounts-stand-in}" --workspace-concurrency=1 test
+
+  # The workspace's own tooling (ADR-0110): run slots, deploys, and CI's own
+  # scope and reuse.
+  tooling:
+    name: 'Packages: Tooling'
+    needs: scope
+    if: contains(fromJSON(needs.scope.outputs.gates), 'tooling')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/tooling
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm typecheck
+      - run: pnpm test
 
   # Each deployable app's Worker (an app with a deploy descriptor, ADR-0119),
   # built and checked by the deploy tooling as its deploy builds it: each part
@@ -394,14 +435,16 @@ jobs:
       [
         scope,
         checks,
-        typecheck,
-        unit,
-        nuxt,
-        packages,
+        stream-typecheck,
+        stream-unit,
+        stream-nuxt,
+        stream-integration,
+        stream-browser,
         score,
         accounts,
-        integration,
-        server-and-browser,
+        engines,
+        shared-app-code,
+        tooling,
         worker-guard,
       ]
     if: >-
@@ -444,14 +487,16 @@ jobs:
       [
         scope,
         checks,
-        typecheck,
-        unit,
-        nuxt,
-        packages,
+        stream-typecheck,
+        stream-unit,
+        stream-nuxt,
+        stream-integration,
+        stream-browser,
         score,
         accounts,
-        integration,
-        server-and-browser,
+        engines,
+        shared-app-code,
+        tooling,
         worker-guard,
         record,
       ]

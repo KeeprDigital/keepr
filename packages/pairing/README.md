@@ -53,7 +53,7 @@ What the Consumer must do around these calls is in `apps/score/RULES.md`.
 
 ## Scale
 
-The targets are 10,000 Entrants in 2 s and 20,000 in 10 s per round, on one thread. CI's `Packages` job runs `pnpm bench:packages`: a simulated event of 15 rounds at 10,001 and at 20,001 Entrants, failing if a round is over target or not proven best. Where exactness and speed conflict, exactness wins and the target loosens (ADR-0099).
+The targets are 10,000 Entrants in 2 s and 20,000 in 10 s per round, on one thread. CI's `Packages: Engines` job runs its `bench:check`: a simulated event of 15 rounds at 10,001 and at 20,001 Entrants, failing if a round is over target or not proven best. Where exactness and speed conflict, exactness wins and the target loosens (ADR-0099).
 
 Measured on Apple M4, Node 26, one thread, the whole call including input checks, a simulated event with drops, Starting Configuration:
 

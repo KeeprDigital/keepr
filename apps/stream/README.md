@@ -462,9 +462,12 @@ How `pnpm verify` runs:
   outlive the file that made them).
 
 CI (`.github/workflows/ci.yml`) runs the same gates as `pnpm verify` on PRs
-and in the merge queue, split across parallel jobs (lint, typecheck, the unit
-suite, the Nuxt suite, the workspace's packages, two integration shards,
-the browser gates, and a Worker leg per deployable app) so the longest job sets the wall time. The queue's run tests the exact tree that lands
+and in the merge queue, split across parallel jobs grouped by project
+(ADR-0149) so the longest job sets the wall time: the Workspace checks (lint,
+changesets, the workflow linters), this app's five (`Stream Keepr: Typecheck`,
+its unit and Nuxt suites, two integration shards and its browser gates), Score
+Keepr, Keepr Accounts, the packages in three groups (`Packages: Engines`,
+`Shared app code`, `Tooling`), and a Worker leg per deployable app. The queue's run tests the exact tree that lands
 ([Releases](#releases)). It skips draft PRs (marking one ready runs it). It
 runs a gate only when the change affects a project the gate checks (ADR-0147).
 A change affects each app or package it touches, and every one that depends
@@ -474,8 +477,8 @@ Accounts Stand-in, but not for one only to the engines, Score Keepr or Keepr
 Accounts. A project's own `*.test.ts` affects only that project. The lockfile,
 the workspace's configuration, the tooling's scripts, any `package.json`,
 `ci.yml` and anything CI cannot place run every gate
-(`packages/tooling/scripts/project-graph.mjs`). The lint runs for any change
-to the code. Each
+(`packages/tooling/scripts/project-graph.mjs`). The Workspace checks run for
+any change to the code. Each
 deployable app's Worker leg runs `keepr-deploy check`, the parts bundled and the
 descriptor's build (here `build`, `worker:dry-run`, `worker:smoke`), only when
 the change touches that app's shipped code or what builds the legs, so none
@@ -484,8 +487,8 @@ tooling starts the Accounts Stand-in around that build, since this app binds
 Keepr Accounts, and a change to the stand-in runs the leg too. A change
 that touches only docs skips the code gates and runs `pnpm verify:docs`
 instead: the documentation link test, the one thing those gates check of a
-document. A change to a document that skips the unit suite runs it in the lint
-job the same way (`packages/tooling/scripts/ci-scope.mjs` decides, against a
+document. A change to a document that skips the unit suite runs it in the
+Workspace checks the same way (`packages/tooling/scripts/ci-scope.mjs` decides, against a
 PR's base or the queue's base, and runs everything when it cannot tell). A
 merge group also skips the gates when its tree is byte-identical to one a
 green PR run verified, one PR with `main` unchanged since its PR run, and its
@@ -495,7 +498,7 @@ a GitHub-signed OIDC token naming the commit it ran on, and
 then name the run that verified the tree. Any doubt runs everything. A newer
 push cancels the older PR run. It is the full gate: before it,
 `pnpm verify:quick`.
-The lint job also lints the workflows, which `pnpm verify` does not:
+The Workspace checks also lint the workflows, which `pnpm verify` does not:
 [actionlint](https://github.com/rhysd/actionlint) checks that each is one
 GitHub will accept, its `run:` scripts through shellcheck, and
 [zizmor](https://docs.zizmor.sh) checks what each is trusted with, such as a

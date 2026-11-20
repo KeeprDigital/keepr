@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { NO_LEG_WORKER_JOB, PROJECT_GATES } from '../scripts/ci-scope.mjs';
 import { isConventionalTitle } from '../scripts/conventional-title.mjs';
+import { deployableApps } from '../scripts/deploy/release.mjs';
 import { workspacePackages } from '../scripts/versioned-apps.mjs';
 
 /**
@@ -62,6 +63,20 @@ const FOR_DOCS = "needs.scope.outputs.docs == 'true'";
 const FOR_WORKERS = "needs.scope.outputs.apps != '[]'";
 /** A gate that checks projects: when the change affects one of them (ADR-0147). */
 const forGate = (job: string) => `contains(fromJSON(needs.scope.outputs.gates), '${job}')`;
+/** Every project's directory, as the scope places a change in it. */
+const projects = [...workspacePackages('../..').values()].map((pkg) => pkg.dir);
+
+/** The directories a root command's `pnpm --filter "./dir"` or `"./parent/{a,b}"` selects, sorted. */
+function filtered(command: string) {
+	const [, parent, list, single] =
+		/^pnpm --filter "\.\/(?:([\w/-]+)\/\{([\w,-]+)\}|([\w/-]+))" /.exec(command) ?? [];
+	if (single) return [single];
+	return (list ?? '')
+		.split(',')
+		.filter(Boolean)
+		.map((name) => `${parent}/${name}`)
+		.toSorted();
+}
 
 function needs(job: Job) {
 	return [job.needs ?? []].flat().toSorted();
@@ -146,7 +161,7 @@ describe("the CI scope decides what a merge group can affect against the queue's
 		}
 	});
 
-	// The Lint job checks the whole workspace; every other gate is a project gate or the Worker job.
+	// The Workspace checks job checks the whole workspace; every other gate is a project gate or the Worker job.
 	it.each(gates)(
 		"gate %s is skipped only on the scope job's decision, and reads no PR-only state",
 		(id) => {
@@ -164,32 +179,39 @@ describe("the CI scope decides what a merge group can affect against the queue's
 	);
 
 	// The reuse check knows a skipped gate by the name GitHub reports, its template for a matrix job.
-	// The scope runs a gate for the projects it names: an app's, in that app's directory; the
-	// packages', at the root through the scripts that run every package's.
+	// The scope runs a gate for the projects it names, and the gate checks exactly those: in the
+	// one project's directory, or at the root with every command filtered to them (ADR-0149).
 	it.each(PROJECT_GATES)(
 		'project gate $job is named as GitHub reports it skipped, and checks where it runs',
 		({ job, name, checks }) => {
 			const gate = ci.jobs[job]!;
 			const directory = gate.defaults?.run?.['working-directory'];
-			const projects = [...workspacePackages('../..').values()].map((pkg) => pkg.dir);
-			const checked = projects.filter((dir) => checks.test(dir));
+			const checked = projects.filter((dir) => checks.test(dir)).toSorted();
 
 			expect(gate.name).toBe(name);
 			if (directory) expect(checked).toEqual([directory]);
-			else {
-				expect(checked).toEqual(projects.filter((dir) => dir.startsWith('packages/')));
+			else
 				for (const command of runs(gate).split('\n'))
-					expect(rootScripts[command.replace(/^pnpm /, '')]).toContain('"./packages/*"');
-			}
+					expect({ command, filtered: filtered(command) }).toEqual({ command, filtered: checked });
 		},
 	);
 
-	// A change that skips the Unit suite skips its documentation test, so `checks` runs it instead.
-	// The workflows are code, so their two linters run with the lint. Every step
-	// past the changeset check runs on one of the two: one with no condition is missing here.
-	it('the checks job checks the changesets always, lints the code and the workflows only for code, and runs the docs checks only when the scope asks', () => {
-		const [checkout, setup, ...checks] = ci.jobs.checks!.steps ?? [];
+	// A project no gate checks would never be typechecked or tested, whatever the change.
+	it('checks every project of the workspace in some project gate', () => {
+		expect(projects.filter((dir) => !PROJECT_GATES.some(({ checks }) => checks.test(dir)))).toEqual(
+			[],
+		);
+	});
 
+	// A change that skips Stream Keepr's Unit suite skips its documentation test, so `checks` runs
+	// it instead. The workflows are code, so their two linters run with the lint. Every step
+	// past the changeset check runs on one of the two: one with no condition is missing here.
+	it('the Workspace checks check the changesets always, lint the code and the workflows only for code, and run the docs checks only when the scope asks, all at the root', () => {
+		const job = ci.jobs.checks!;
+		const [checkout, setup, ...checks] = job.steps ?? [];
+
+		expect(job.name).toBe('Workspace checks');
+		expect(JSON.stringify(job)).not.toContain('working-directory');
 		expect([checkout?.uses?.replace(/@.*/, ''), setup?.uses]).toEqual([
 			'actions/checkout',
 			'./.github/actions/setup',
@@ -201,7 +223,7 @@ describe("the CI scope decides what a merge group can affect against the queue's
 			['pnpm lint', FOR_CODE],
 			['actionlint', FOR_CODE],
 			['zizmorcore/zizmor-action', FOR_CODE],
-			['pnpm verify:docs', FOR_DOCS],
+			['pnpm --filter @keepr/stream verify:docs', FOR_DOCS],
 		]);
 	});
 
@@ -210,7 +232,7 @@ describe("the CI scope decides what a merge group can affect against the queue's
 		const alone = (id: string) =>
 			(ci.jobs[id]!.steps ?? []).filter((step) => step.run).map((step) => step.run);
 
-		expect([alone('typecheck'), alone('unit'), alone('nuxt')]).toEqual([
+		expect([alone('stream-typecheck'), alone('stream-unit'), alone('stream-nuxt')]).toEqual([
 			['pnpm typecheck'],
 			['pnpm test:unit:coverage'],
 			['pnpm test:nuxt:coverage'],
@@ -229,6 +251,16 @@ describe("CI builds, dry runs and smokes each deployable app's Worker the way it
 			include: '${{ fromJSON(needs.scope.outputs.apps) }}',
 		});
 		expect(worker.if).toBe(FOR_WORKERS);
+	});
+
+	// The leg builds the app as its deploy does; a build in its project gate would only repeat it.
+	it.each(deployableApps('../..'))('builds %s in its Worker leg alone', (app) => {
+		const builders = Object.entries(ci.jobs)
+			.filter(([, job]) => job.defaults?.run?.['working-directory'] === `apps/${app}`)
+			.filter(([, job]) => /^pnpm build\b/m.test(runs(job)))
+			.map(([id]) => id);
+
+		expect(builders).toEqual([]);
 	});
 
 	// A skipped matrix job keeps its name's template: the reuse check knows it by that name alone.
