@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createIdentityResolver } from '@keepr/nuxt-layer/server/utils/requestIdentity';
+import { createUserNameReader } from '@keepr/nuxt-layer/server/utils/userNames';
 import { APP_REGISTRY } from '@keepr/nuxt-layer/shared/utils/appRegistry';
+import { USER_NAMES_MAX_IDS, userNamesAddress } from '@keepr/nuxt-layer/shared/utils/userNames';
 import {
 	type AccountsStandIn,
 	createAccountsStandIn,
@@ -123,6 +125,60 @@ describe('the Accounts Stand-in', () => {
 			expect(second).toMatchObject({
 				identity: { user: { id: 'ada' }, sessionId: 'second-browser' },
 			});
+		});
+	});
+
+	// What an App shows of a User other than its reader (ADR-0145), read by the
+	// layer's own reader. The stand-in holds no Users: it names who it has answered as.
+	describe('asked what to call other Users', () => {
+		const namesFor = async (standIn: AccountsStandIn, ids: string[], cookie?: string) =>
+			await createUserNameReader()({
+				cookie,
+				accounts: { fetch: async (input, init) => await standIn.fetch(new Request(input, init)) },
+				ids,
+			});
+
+		it('names the Local Developer User and whoever it has answered as, by the name it gave them', async () => {
+			const standIn = createAccountsStandIn();
+			await resolveThrough(standIn, 'stream', standInCookie({ user: 'ada', name: 'Ada Lovelace' }));
+
+			const names = await namesFor(
+				standIn,
+				['ada', 'local-developer', 'never-answered-as'],
+				standInCookie({ user: 'grace' }),
+			);
+
+			expect(names).toEqual({ ada: 'Ada Lovelace', 'local-developer': 'Local Developer' });
+		});
+
+		// Asked directly: the layer's reader would drop a blank name whoever answered it.
+		it('leaves a User it gave a blank name unnamed, as Keepr Accounts does', async () => {
+			const standIn = createAccountsStandIn();
+			await resolveThrough(standIn, 'stream', standInCookie({ user: 'blank', name: ' ' }));
+
+			const response = await standIn.fetch(
+				new Request(`https://accounts.keepr.digital${userNamesAddress(['blank'])}`),
+			);
+
+			expect(await response.json()).toEqual({ names: {} });
+		});
+
+		it.each([
+			['a signed-out visitor', ['local-developer'], standInCookie('signed-out'), 401],
+			[
+				'a longer question than Keepr Accounts takes',
+				Array.from({ length: USER_NAMES_MAX_IDS + 1 }, (_, index) => `user-${index}`),
+				'',
+				400,
+			],
+		])('refuses %s as Keepr Accounts does', async (_case, ids, cookie, status) => {
+			const response = await createAccountsStandIn().fetch(
+				new Request(`https://accounts.keepr.digital${userNamesAddress(ids)}`, {
+					headers: { cookie },
+				}),
+			);
+
+			expect(response.status).toBe(status);
 		});
 	});
 });

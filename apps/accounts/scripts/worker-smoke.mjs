@@ -107,6 +107,14 @@ async function probe(origin) {
 	});
 	if (refused.status !== 401) fail(`a sign-in with no User answered ${refused.status}, not 401`);
 	console.log('worker:smoke: a sign-in with no User is refused 401');
+
+	const names = await fetch(`${origin}/api/users/names?id=nobody`);
+	const { code } = /** @type {{ code?: unknown }} */ (
+		names.headers.get('content-type')?.includes('json') ? await names.json() : {}
+	);
+	if (names.status !== 401 || code !== 'SIGNED_OUT')
+		fail(`/api/users/names with no Session answered ${names.status}, not 401 SIGNED_OUT`);
+	console.log('worker:smoke: /api/users/names refuses a request with no Session 401');
 }
 
 async function main() {

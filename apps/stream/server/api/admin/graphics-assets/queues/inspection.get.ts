@@ -31,7 +31,7 @@ export default defineEventHandler(async (event): Promise<GraphicsQueueInspection
 
 		// Both places an inspection names somebody: the operation it is about, when
 		// it is about one, and every Evidence entry filtered to the subject (#398).
-		return withActorNames(administrator, inspection, [
+		return await withActorNames(event, administrator, inspection, [
 			...(inspection.detail.kind === 'graphics-ingestion-operation'
 				? [inspection.detail.operation.initiatedBy]
 				: []),

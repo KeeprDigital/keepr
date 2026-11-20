@@ -52,6 +52,16 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - A new Session works in the Organisation its User joined first, or in none. (ADR-0113)
 - A disabled User's Session mints no Identity Proof, even while it is open. (ADR-0113)
 
+## User names
+
+- `GET /api/users/names?id=…&id=…` answers `{ names }`: the name of each User asked about, by id, who shares an Organisation with the User of the Session whose cookie it is sent, whichever of their Organisations that Session works in. An App asks it with the cookie of the request it is answering, as it asks for an Identity Proof. (ADR-0145)
+- It answers a Session and nothing else: no App is answered for itself, and a request with no cookie, an ended Session or a disabled User's is refused 401 `SIGNED_OUT`, as no Identity Proof is minted. (ADR-0145)
+- Only a name is answered: never an email, a role, an Organisation or whether a User is disabled. A disabled User who is still a member is named. (ADR-0145)
+- An id no User has, a User who shares no Organisation with the asker and a User whose name is blank are left out alike, and nothing in the answer tells one from another. It lists nobody: a User is learnt of only by an id already held. (ADR-0145)
+- A Keepr Administrator is answered as anyone is: only those they share an Organisation with. They find any User at `/platform`. (ADR-0117, ADR-0145)
+- One question asks about at most 50 Users: more is refused 400 `TOO_MANY_USER_IDS`, and none answers no names. (ADR-0145)
+- It renews no Session. (ADR-0145)
+
 ## Organisation
 
 - An Organisation role governs only the Organisation's membership: owners and admins invite, a member cannot, and only an owner invites an owner. A User cannot create an Organisation: Keepr Accounts creates one on purpose, the Keepr Organisation with the first Keepr Administrator, and any other at a Keepr Administrator's request. The library's `/organization/create` is refused 403 to everyone, a Keepr Administrator included. (ADR-0114, ADR-0115, ADR-0117)
@@ -88,7 +98,7 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - Only an owner, or a Keepr Administrator, changes a member's Organisation role or removes an owner: an admin is refused 403 `OWNER_REQUIRED`. The last owner is never demoted or removed: 409 `LAST_OWNER`. (ADR-0116)
 - Each change needs a sign-in no older than ten minutes, counted from the Session's sign-in, which renewing it does not move. An older one is refused 403 `RECENT_SIGN_IN_REQUIRED` and asked to sign in again. Listing needs none. (ADR-0116)
 - The library's `/organization/update-member-role` and `/organization/remove-member` answer 404 to every request. (ADR-0116)
-- A member without administrative rights sees nobody else's access: the library's `/organization/list-members` and `/organization/get-full-organization`, which would answer every member's email and roles, answer 404 to every request. (#1228 story 40)
+- A member without administrative rights sees nobody else's access: the library's `/organization/list-members` and `/organization/get-full-organization`, which would answer every member's email and roles, answer 404 to every request. What a member learns of another is their name, by an id they already hold (User names). (#1228 story 40, ADR-0145)
 - Nobody leaves an Organisation of their own accord: the library's `/organization/leave` answers 404 to every request, and a member goes only by being removed, which is audited and never takes the last owner. (#1228 § Administration and audit)
 - A write to Keepr Accounts' own routes that needs a Session is refused 403 when another origin's page made the browser send it, as Stream Keepr's API boundary refuses one (ADR-0010, ADR-0116).
 

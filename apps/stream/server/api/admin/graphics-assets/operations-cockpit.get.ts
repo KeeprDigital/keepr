@@ -28,7 +28,8 @@ export default defineEventHandler(async (event): Promise<GraphicsOperationsCockp
 		// beside the id (#398, ADR-0010). The catalogue-unavailable reading names
 		// nobody because it carries no operations to name — an empty naming is the
 		// accurate answer there, not a missing one.
-		return withActorNames(
+		return await withActorNames(
+			event,
 			administrator,
 			cockpit,
 			cockpit.outcome === 'complete'
