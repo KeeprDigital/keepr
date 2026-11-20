@@ -1,6 +1,6 @@
 # Shared layer rules
 
-What each of the layer's named modules must do. What each term is, is in the root `GLOSSARY.md` (ADR-0095). Decisions cited as ADR-NNNN are files in `docs/adr` here; ADR-0010 and ADR-0078 are in `apps/stream/docs/adr`, and ADR-0112 and ADR-0113 in the root `docs/adr`, from the repository's root.
+What each of the layer's named modules must do. What each term is, is in the root `GLOSSARY.md` (ADR-0095). Decisions cited as ADR-NNNN are files in `docs/adr` here; ADR-0010 and ADR-0078 are in `apps/stream/docs/adr`, and ADR-0112, ADR-0113 and ADR-0145 in the root `docs/adr`, from the repository's root.
 
 ## Terms
 
@@ -27,6 +27,13 @@ An App reads who a request belongs to only from an Identity Proof, through `reso
 A verified proof answers until it expires; once half its life has passed it is refreshed in the background, and it keeps answering while Keepr Accounts is unreachable. Past expiry only a fresh answer admits the request: a signed-out visitor is refused 401, and an unreachable Keepr Accounts or an unverifiable proof 503, naming why, and naming the Accounts Stand-in when nothing is registered locally as `keepr-accounts`. A refresh that hears 401 drops the proof at once. Every cookie Keepr Accounts sets is passed on to the browser (ADR-0113).
 
 `requireAppAccess` refuses an Identity with no App access, and `requireAppRole` one below the role required, each 403 with a code, in every App alike; a Keepr Administrator is held to them like anyone else. `useIdentity` sends a signed-out visitor to Keepr Accounts' sign-in with the page they were on as the Return Address, and leaves any other refusal to its caller (ADR-0113).
+
+**User**:
+An App holds no Users. It names the User a request belongs to from their Identity Proof, and learns what to call any other from Keepr Accounts, through `readUserNames`: asked over the `KEEPR_ACCOUNTS` binding at `GET /api/users/names`, with the request's own cookie and no credential of the App's, in questions of at most 50 ids. Keepr Accounts decides whose names that Session is told; an id it leaves out is unnamed, and the App shows the id (ADR-0145).
+
+It never refuses a reading. While Keepr Accounts fails, refuses, does not answer within two seconds, or answers anything but names, as a Release with no such route answers its page, the ids asked about come back unnamed, and the next reading asks again. A name not text, blank, or for an id not asked about is ignored (ADR-0145).
+
+What Keepr Accounts answered is kept for five minutes, an Identity Proof's life, under the cookie it was given to, a User it left unnamed included, and never longer while Keepr Accounts cannot be asked. So a name reaches only a request Keepr Accounts gave it to, and a User who stops sharing an Organisation with a reader stops being named to them within five minutes (ADR-0145).
 
 ## Server
 

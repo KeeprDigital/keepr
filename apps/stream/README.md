@@ -1599,9 +1599,13 @@ asked for.
   Administrator). Being a Keepr Administrator grants no App access by itself.
 - **Names.** A Graphics Authoring Lease notice names its holder as Keepr
   Accounts named them when they took the lease. An administrator reading (the
-  Operations Cockpit, a queue inspection, the Evidence Ledger) names only its
-  reader; any other User shows as the id recorded, since Stream Keepr holds no
-  Users to look up (ADR-0141).
+  Operations Cockpit, a queue inspection, the Evidence Ledger) names its
+  reader from their Identity Proof and asks Keepr Accounts what to call any
+  other User, which it tells of those who share an Organisation with the
+  reader. Anyone else shows as the id recorded, and so does everyone but the
+  reader while Keepr Accounts cannot be asked (ADR-0145, in the root
+  `docs/adr`). Locally the Accounts Stand-in names whoever it has answered as
+  since it started (`packages/accounts-stand-in/README.md`).
 
 Screen Outputs use capabilities, not Sessions, so none of the above affects
 them.
