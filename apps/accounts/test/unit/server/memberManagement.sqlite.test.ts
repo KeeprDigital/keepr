@@ -2,9 +2,11 @@ import type { IdentityDatabase } from '~~/server/db';
 import type { Actor } from '~~/server/utils/actor';
 import type { KeeprRefusal } from '~~/server/utils/refusal';
 import type { OrganisationRole, TestAccounts } from '~~/test/helpers/keeprAccounts';
+import { eq, inArray } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { identityDatabase } from '~~/server/db';
+import { identityDatabase, schema } from '~~/server/db';
 import { requestActor } from '~~/server/utils/actor';
+import { inviteMember } from '~~/server/utils/invitations';
 import {
 	changeOrganisationRole,
 	listMembers,
@@ -364,6 +366,125 @@ describe('removing a member', () => {
 
 		expect(refusedWith(removing)).toBe(refusal);
 		expect((await listed(memberId)) !== undefined).toBe(refusal !== null);
+	});
+
+	it('cancels the Invitations they offered there that are still open, each in the Audit Record', async () => {
+		const admin = await memberWithRole('admin');
+		const adminActor = await actorFor(admin.email, 'POST');
+		const { organizationId: elsewhere } = await accounts.addMember(adminActor.userId, 'elsewhere', {
+			role: 'owner',
+		});
+		const offered = await invitationBy(adminActor, keepr.id, 'by-the-admin@example.com');
+		const theirsElsewhere = await invitationBy(adminActor, elsewhere, 'elsewhere@example.com');
+		const theOwners = await invitationBy(
+			await actorFor(OWNER, 'POST'),
+			keepr.id,
+			'by-the-owner@example.com',
+		);
+		const actor = await actorFor(OWNER, 'DELETE');
+
+		await removeMember(database, actor, { organizationId: keepr.id, memberId: admin.memberId });
+
+		expect(await statusOf(offered, theirsElsewhere, theOwners)).toEqual([
+			'canceled',
+			'pending',
+			'pending',
+		]);
+		expect(await audited('invitation.cancelled')).toEqual([
+			expect.objectContaining({
+				actorUserId: actor.userId,
+				organizationId: keepr.id,
+				detail: {
+					invitationId: offered,
+					email: 'by-the-admin@example.com',
+					as: 'owner',
+					because: 'inviter-removed',
+				},
+			}),
+		]);
+	});
+});
+
+/** An Invitation `actor` makes to `organizationId`, for `email`: its id. */
+async function invitationBy(actor: Actor, organizationId: string, email: string) {
+	const { invitationId } = await inviteMember(
+		database,
+		actor,
+		{ organizationId, email, role: 'member' },
+		{ email: accounts.email, origin: 'http://localhost:3000' },
+	);
+	return invitationId;
+}
+
+async function statusOf(...invitationIds: string[]) {
+	const rows = await database
+		.select({ id: schema.invitation.id, status: schema.invitation.status })
+		.from(schema.invitation)
+		.where(inArray(schema.invitation.id, invitationIds));
+	return invitationIds.map((id) => rows.find((row) => row.id === id)?.status);
+}
+
+// A member is changed only through the Organisation they belong to: one named
+// under another Organisation is none, even to one who manages both.
+describe('a member of another Organisation, named under this one', () => {
+	it.each<[string, (actor: Actor, memberId: string) => Promise<unknown>]>([
+		[
+			'setting App access',
+			async (actor, memberId) =>
+				await setAppAccess(database, actor, {
+					organizationId: keepr.id,
+					memberId,
+					app: 'score',
+					role: 'member',
+				}),
+		],
+		[
+			'removing App access',
+			async (actor, memberId) =>
+				await removeAppAccess(database, actor, {
+					organizationId: keepr.id,
+					memberId,
+					app: 'stream',
+				}),
+		],
+		[
+			'changing an Organisation role',
+			async (actor, memberId) =>
+				await changeOrganisationRole(database, actor, {
+					organizationId: keepr.id,
+					memberId,
+					role: 'owner',
+				}),
+		],
+		[
+			'removing a member',
+			async (actor, memberId) =>
+				await removeMember(database, actor, { organizationId: keepr.id, memberId }),
+		],
+	])('is refused for %s, changing nothing', async (_case, changing) => {
+		const { id } = await accounts.createUser('elsewhere@example.com');
+		const { memberId } = await accounts.addMember(id, 'elsewhere', {
+			role: 'member',
+			apps: { stream: 'admin' },
+		});
+		const actor = await actorFor(OWNER, 'PUT');
+		await accounts.addMember(actor.userId, 'elsewhere', { role: 'owner' });
+
+		await expect(changing(actor, memberId)).rejects.toMatchObject({
+			statusCode: 404,
+			code: 'MEMBER_NOT_FOUND',
+		});
+		const [held] = await database
+			.select({ role: schema.member.role })
+			.from(schema.member)
+			.where(eq(schema.member.id, memberId));
+		expect(held).toEqual({ role: 'member' });
+		expect(
+			await database
+				.select({ app: schema.appAccess.app, role: schema.appAccess.role })
+				.from(schema.appAccess)
+				.where(eq(schema.appAccess.memberId, memberId)),
+		).toEqual([{ app: 'stream', role: 'admin' }]);
 	});
 });
 

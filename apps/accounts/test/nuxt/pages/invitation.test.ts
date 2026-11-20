@@ -5,8 +5,8 @@ import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import InvitationPage from '~/pages/invitation.vue';
 
 // The page shows the offer its link names, or why it is closed, and sends the
-// invitee's answer: accept, as a new User or signed in, or decline. The rules are
-// the server's.
+// invitee's answer with the link's secret: accept, as a new User or signed in,
+// or decline. The rules are the server's.
 
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn<(to: string) => void>() }));
 mockNuxtImport('navigateTo', () => navigate);
@@ -36,7 +36,7 @@ const ok = (body: unknown) => () => ({ status: 200, body });
 route('/api/invitation/offer', () => offerAnswer);
 route('/api/invitation/accept', () => acceptAnswer);
 route('/api/invitation/decline', ok({ declined: true }));
-route('/api/auth/organization/accept-invitation', ok({ invitation: {}, member: {} }));
+route('/api/invitation/accept-signed-in', ok({ accepted: true }));
 registerEndpoint('/api/auth/get-session', { method: 'GET', handler: () => session });
 
 function offer(hasUser: boolean) {
@@ -57,8 +57,12 @@ function signedInAs(email: string) {
 	session = { user: { name: 'Someone', email }, session: { token: 'token' } };
 }
 
-async function open(settled = '[data-offer]') {
-	window.history.replaceState(null, '', '/invitation#id=the-invitation');
+/** The link's fragment: the Invitation's id and the secret only the invitee is emailed. */
+const FRAGMENT = 'id=the-invitation&secret=the-secret';
+const KEY = { invitationId: 'the-invitation', secret: 'the-secret' };
+
+async function open(settled = '[data-offer]', fragment = FRAGMENT) {
+	window.history.replaceState(null, '', `/invitation#${fragment}`);
 	const page = mount(InvitationPage, { global: { stubs: nuxtUiStubs } });
 	await expect.poll(() => page.find(settled).exists()).toBe(true);
 	await flushPromises();
@@ -85,10 +89,10 @@ beforeEach(() => {
 });
 
 describe('the invitation page', () => {
-	it('shows who invited whom, to which Organisation and App, from the id in its link', async () => {
+	it('shows who invited whom, to which Organisation and App, from the id and secret in its link', async () => {
 		const page = await open();
 
-		expect(received['/api/invitation/offer']).toEqual([{ invitationId: 'the-invitation' }]);
+		expect(received['/api/invitation/offer']).toEqual([KEY]);
 		expect(page.get('[data-offer]').text()).toContain('Ada has invited newcomer@example.com');
 		expect(page.get('[data-app="stream"]').text()).toContain('Stream Keepr: admin');
 	});
@@ -111,7 +115,14 @@ describe('the invitation page', () => {
 		await page.get('[data-decline]').trigger('click');
 
 		await expect.poll(() => page.find('[data-declined]').exists()).toBe(true);
-		expect(received['/api/invitation/decline']).toEqual([{ invitationId: 'the-invitation' }]);
+		expect(received['/api/invitation/decline']).toEqual([KEY]);
+	});
+
+	it('asks nothing of a link with no secret, and says it is not open', async () => {
+		const page = await open('[data-no-offer]', 'id=the-invitation');
+
+		expect(received['/api/invitation/offer']).toBeUndefined();
+		expect(page.get('[data-no-offer]').text()).toContain('Check the link');
 	});
 });
 
@@ -122,7 +133,7 @@ describe('an invitee with no User', () => {
 		await acceptAsNewUser(page);
 
 		expect(received['/api/invitation/accept']).toEqual([
-			{ invitationId: 'the-invitation', name: 'Newcomer', password: 'a-brand-new-password' },
+			{ ...KEY, name: 'Newcomer', password: 'a-brand-new-password' },
 		]);
 		expect(navigate).toHaveBeenCalledWith('/');
 	});
@@ -150,7 +161,7 @@ describe('an invitee who has a User', () => {
 		const page = await open('[data-has-user]');
 
 		expect(page.get('[data-sign-in]').attributes('href')).toBe(
-			`/sign-in?returnTo=${encodeURIComponent('/invitation#id=the-invitation')}`,
+			`/sign-in?returnTo=${encodeURIComponent(`/invitation#${FRAGMENT}`)}`,
 		);
 		expect(page.find('[data-accept]').exists()).toBe(false);
 	});
@@ -162,9 +173,7 @@ describe('an invitee who has a User', () => {
 		await page.get('[data-accept]').trigger('click');
 
 		await expect.poll(() => navigate.mock.calls).toEqual([['/']]);
-		expect(received['/api/auth/organization/accept-invitation']).toEqual([
-			{ invitationId: 'the-invitation' },
-		]);
+		expect(received['/api/invitation/accept-signed-in']).toEqual([KEY]);
 	});
 
 	it('signed in with another address, is told the invitation is not theirs', async () => {

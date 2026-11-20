@@ -3,11 +3,16 @@ import { answerRoute } from '~~/server/utils/actorRoute';
 import { declineInvitation } from '~~/server/utils/invitationAcceptance';
 import { textField } from '~~/server/utils/textField';
 
-/** The invitee declines, from the Invitation's link, signed in or not. */
+/** The invitee declines, holding the link's secret, signed in or not. */
 export default defineEventHandler(async (event) => {
-	const body = await readBody<{ invitationId?: unknown }>(event);
+	const body = await readBody<{ invitationId?: unknown; secret?: unknown }>(event);
 	return await answerRoute(event, async ({ auth, database, request }) => {
-		await declineInvitation(auth, database, textField(body?.invitationId), request);
+		await declineInvitation(
+			auth,
+			database,
+			{ invitationId: textField(body?.invitationId), secret: textField(body?.secret) },
+			request,
+		);
 		return { declined: true };
 	});
 });

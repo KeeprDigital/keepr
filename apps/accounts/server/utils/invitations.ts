@@ -10,8 +10,13 @@ import { invitationEmail } from '~~/server/email/messages';
 import { invitationLink } from '~~/shared/utils/invitationLink';
 import { offeredAppRoles } from './appAccess';
 import { recordAudit } from './auditRecord';
-import { INVITATION_EXPIRES_IN_SECONDS, INVITATION_LIMIT } from './authOptions';
-import { managingStanding, ownerRequired } from './memberManagement';
+import {
+	INVITATION_EXPIRES_IN_SECONDS,
+	INVITATION_LIMIT,
+	INVITATIONS_PER_INVITER_PER_HOUR,
+} from './authOptions';
+import { newInvitationSecret } from './invitationSecret';
+import { managingChange, managingStanding, ownerRequired } from './memberManagement';
 import { KeeprRefusal, refusalFromAuth } from './refusal';
 
 /**
@@ -30,16 +35,16 @@ export interface InvitationSending {
 	afterResponse?: (work: Promise<unknown>) => unknown;
 }
 
+/** An Invitation made. Its link is emailed to the invitee alone, and answered to nobody. */
 export interface CreatedInvitation {
 	invitationId: string;
-	/** The Invitation's link, emailed and shown to copy. */
-	link: string;
 }
 
 /**
  * Invites `email` to `organisation`: the address's pending Invitation there is
- * replaced, each replacement a cancellation in the Audit Record, and the email
- * is sent after answering. A failed send leaves the Invitation standing.
+ * replaced, each replacement a cancellation in the Audit Record, and the email,
+ * whose link carries the Invitation's secret, is sent after answering. A failed
+ * send leaves the Invitation standing.
  */
 export async function issueInvitation(
 	database: IdentityDatabase,
@@ -70,20 +75,28 @@ export async function issueInvitation(
 				eq(schema.invitation.organizationId, organisation.id),
 				eq(schema.invitation.email, email),
 				eq(schema.invitation.status, 'pending'),
+				// Checked before (`pendingOwnerOffer`), and held here: an admin never
+				// replaces an offer to an owner, even one made in between.
+				as === 'admin' ? ne(schema.invitation.role, 'owner') : undefined,
 			),
 		)
 		.returning({ id: schema.invitation.id });
-	await database.insert(schema.invitation).values({
-		id: invitationId,
-		organizationId: organisation.id,
-		email,
-		role,
-		status: 'pending',
-		expiresAt: new Date(now.getTime() + INVITATION_EXPIRES_IN_SECONDS * 1000),
-		createdAt: now,
-		inviterId,
-		appRoles: JSON.stringify(appRoles),
-	});
+	const { secret, digest } = await newInvitationSecret();
+	// One write, so no Invitation stands without its secret.
+	await database.batch([
+		database.insert(schema.invitation).values({
+			id: invitationId,
+			organizationId: organisation.id,
+			email,
+			role,
+			status: 'pending',
+			expiresAt: new Date(now.getTime() + INVITATION_EXPIRES_IN_SECONDS * 1000),
+			createdAt: now,
+			inviterId,
+			appRoles: JSON.stringify(appRoles),
+		}),
+		database.insert(schema.invitationSecret).values({ invitationId, digest }),
+	]);
 	await recordAudit(database, {
 		action: 'invitation.created',
 		actorUserId: inviterId,
@@ -98,7 +111,6 @@ export async function issueInvitation(
 			detail: { invitationId: id, email, replacedBy: invitationId, as },
 		});
 
-	const link = invitationLink(origin, invitationId);
 	const [inviter] = await database
 		.select({ name: schema.user.name })
 		.from(schema.user)
@@ -109,17 +121,28 @@ export async function issueInvitation(
 				to: email,
 				inviterName: inviter?.name ?? 'Someone',
 				organisationName: organisation.name,
-				link,
+				link: invitationLink(origin, invitationId, secret),
 			}),
 		),
 	);
-	return { invitationId, link };
+	return { invitationId };
 }
+
+/**
+ * One mailbox, as `local@domain.tld`: no list of addresses, no display name, a
+ * domain of dot-separated labels. Plausible, not proven: the emailed link proves
+ * it.
+ */
+const SINGLE_ADDRESS =
+	/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/;
+
+/** The longest address a mailbox can have. */
+const MAX_ADDRESS_LENGTH = 254;
 
 /** An email address as an Invitation is made to it, or `null` for one that is none. */
 export function invitedAddress(email: string): string | null {
 	const address = email.trim().toLowerCase();
-	return /^[^\s@]+@[^\s@]+$/.test(address) ? address : null;
+	return address.length <= MAX_ADDRESS_LENGTH && SINGLE_ADDRESS.test(address) ? address : null;
 }
 
 export interface NewInvitation {
@@ -132,8 +155,9 @@ export interface NewInvitation {
 
 /**
  * Invites an address to an Organisation, by an owner, an admin or a Keepr
- * Administrator; only an owner or a Keepr Administrator invites an owner. Refused,
- * nothing is invited or emailed.
+ * Administrator, from a recent sign-in; only an owner or a Keepr Administrator
+ * invites an owner, or replaces an offer to one. Refused, nothing is invited or
+ * emailed.
  */
 export async function inviteMember(
 	database: IdentityDatabase,
@@ -141,12 +165,16 @@ export async function inviteMember(
 	{ organizationId, email, role, appRoles }: NewInvitation,
 	sending: InvitationSending,
 ): Promise<CreatedInvitation> {
-	const { organisation, standing } = await managingStanding(database, actor, organizationId);
+	const { organisation, standing } = await managingChange(database, actor, organizationId);
 	const address = invitedAddress(email);
 	if (!address) throw new KeeprRefusal(400, 'INVALID_EMAIL', 'Enter an email address.');
 	if (!isOrganisationRole(role))
 		throw new KeeprRefusal(400, 'ORGANISATION_ROLE_NOT_KNOWN', `No Organisation role is ${role}.`);
 	if (role === 'owner' && standing === 'admin') throw ownerRequired();
+	// Inviting again replaces the address's offer: an admin may not replace an owner's.
+	if (standing === 'admin' && (await pendingOwnerOffer(database, organizationId, address)))
+		throw ownerRequired();
+	await refuseOverHourlyCap(database, organizationId, actor.userId);
 	let offered: AppRoles;
 	try {
 		offered = offeredAppRoles(appRoles);
@@ -190,6 +218,56 @@ export async function inviteMember(
 		sending,
 	);
 }
+
+/** Whether `address` holds a pending, unexpired offer to be an owner of `organizationId`. */
+async function pendingOwnerOffer(
+	database: IdentityDatabase,
+	organizationId: string,
+	address: string,
+): Promise<boolean> {
+	const [offer] = await database
+		.select({ id: schema.invitation.id })
+		.from(schema.invitation)
+		.where(
+			and(
+				eq(schema.invitation.organizationId, organizationId),
+				eq(schema.invitation.email, address),
+				eq(schema.invitation.status, 'pending'),
+				eq(schema.invitation.role, 'owner'),
+				gt(schema.invitation.expiresAt, new Date()),
+			),
+		);
+	return offer !== undefined;
+}
+
+/**
+ * Refuses 429 an inviter who has made `INVITATIONS_PER_INVITER_PER_HOUR`
+ * Invitations to the Organisation in the last hour, whatever became of them.
+ */
+async function refuseOverHourlyCap(
+	database: IdentityDatabase,
+	organizationId: string,
+	inviterId: string,
+): Promise<void> {
+	const [{ made } = { made: 0 }] = await database
+		.select({ made: count() })
+		.from(schema.invitation)
+		.where(
+			and(
+				eq(schema.invitation.organizationId, organizationId),
+				eq(schema.invitation.inviterId, inviterId),
+				gt(schema.invitation.createdAt, new Date(Date.now() - HOUR_MS)),
+			),
+		);
+	if (made >= INVITATIONS_PER_INVITER_PER_HOUR)
+		throw new KeeprRefusal(
+			429,
+			'TOO_MANY_INVITATIONS',
+			`One person makes at most ${INVITATIONS_PER_INVITER_PER_HOUR} invitations to an Organisation an hour. Try again later.`,
+		);
+}
+
+const HOUR_MS = 60 * 60 * 1000;
 
 /** An Invitation still open to accept, as those who manage its Organisation see it. */
 export interface PendingInvitation {
@@ -235,10 +313,22 @@ export async function listPendingInvitations(
 		id: row.id,
 		email: row.email,
 		role: row.role ?? 'member',
-		appRoles: offeredAppRoles(row.appRoles),
+		appRoles: readableAppRoles(row.appRoles),
 		inviterName: row.inviterName ?? 'Someone',
 		expiresAt: row.expiresAt.toISOString(),
 	}));
+}
+
+/**
+ * The App roles a stored Invitation offers, or none when they cannot be read:
+ * one such Invitation must not close the listing of every other.
+ */
+function readableAppRoles(stored: string | null): AppRoles {
+	try {
+		return offeredAppRoles(stored);
+	} catch {
+		return {};
+	}
 }
 
 /**

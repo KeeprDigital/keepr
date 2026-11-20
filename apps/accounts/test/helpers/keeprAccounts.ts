@@ -4,6 +4,7 @@ import type { EmailRecorder } from '~~/server/email/recorder';
 import type { EmailSender } from '~~/server/email/sender';
 import type { Actor } from '~~/server/utils/actor';
 import type { KeeprAuth } from '~~/server/utils/auth';
+import type { InvitationKey } from '~~/server/utils/invitationSecret';
 import { eq, sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
@@ -63,7 +64,7 @@ export interface TestAccounts {
 	) => Promise<{ organizationId: string; memberId: string }>;
 }
 
-export type { OrganisationRole };
+export type { InvitationKey, OrganisationRole };
 
 /**
  * Keepr Accounts' Better Auth, configured as the server configures it, over a
@@ -191,6 +192,15 @@ export async function createTestAccounts(
 			return { organizationId, memberId };
 		},
 	};
+}
+
+/** The Invitation the latest email to `to` links to, read from the link as the invitee's page reads it. */
+export function emailedInvitation(email: EmailRecorder, to: string): InvitationKey {
+	const sent = email.sent.findLast((message) => message.to === to);
+	const fragment = sent?.text.match(/\/invitation#(\S+)/)?.[1];
+	if (!fragment) throw new Error(`no Invitation emailed to ${to}`);
+	const params = new URLSearchParams(fragment);
+	return { invitationId: params.get('id') ?? '', secret: params.get('secret') ?? '' };
 }
 
 /** The `name=value` pairs a response sets, as a browser would send them back. */

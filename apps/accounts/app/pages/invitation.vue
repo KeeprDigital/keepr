@@ -6,15 +6,18 @@ import {
 	refusalSentence,
 	USER_NAME_REFUSALS,
 } from '~/utils/refusal';
+import type { InvitationKey } from '~~/shared/utils/invitationLink';
+import { invitationInFragment, invitationLink } from '~~/shared/utils/invitationLink';
 import { MIN_PASSWORD_LENGTH } from '~~/shared/utils/newPassword';
 
 /**
  * Where an Invitation's link lands. The invitee sees who invited them, to which
  * Organisation and with what, or why the Invitation is closed. They decline, or
  * accept: with no User, by choosing a name and a password; with one, signed in
- * with the invited address. The id is in the fragment, so no request line
- * carries it; the way to sign in and back is a navigation inside the page, so no
- * request line carries it either.
+ * with the invited address. Each answer carries the link's secret, which only
+ * the invitee is emailed (ADR-0155). The id and secret are in the fragment, so
+ * no request line carries them; the way to sign in and back is a navigation
+ * inside the page, so no request line carries them either.
  */
 
 interface Offer {
@@ -40,7 +43,8 @@ const CLOSED: Record<string, string> = {
 };
 const NOT_FOUND = 'There is no such invitation. Check the link, or ask whoever invited you.';
 
-const invitationId = ref<string | null>();
+/** The Invitation the link names, `null` once read that it names none. */
+const invitation = ref<InvitationKey | null>();
 /** The offer, `null` once the server said there is none open. */
 const offer = ref<Offer | null>();
 /** Why there is no offer, as the server's code. */
@@ -49,12 +53,12 @@ const closed = ref<string | null>(null);
 const signedIn = ref<SignedIn | null>();
 
 onMounted(async () => {
-	invitationId.value = new URLSearchParams(window.location.hash.slice(1)).get('id') || null;
-	if (!invitationId.value) return;
+	invitation.value = invitationInFragment(window.location.hash);
+	if (!invitation.value) return;
 	try {
 		offer.value = await $fetch<Offer>('/api/invitation/offer', {
 			method: 'POST',
-			body: { invitationId: invitationId.value },
+			body: invitation.value,
 		});
 	} catch (failure) {
 		closed.value = readRefusal(failure).code ?? null;
@@ -75,10 +79,11 @@ const apps = computed(() =>
 	})),
 );
 
-/** Signs in and comes back here, the id still in the fragment. */
-const signInLink = computed(
-	() => `/sign-in?returnTo=${encodeURIComponent(`/invitation#id=${invitationId.value ?? ''}`)}`,
-);
+/** Signs in and comes back here, the id and secret still in the fragment. */
+const signInLink = computed(() => {
+	const { invitationId = '', secret = '' } = invitation.value ?? {};
+	return `/sign-in?returnTo=${encodeURIComponent(invitationLink('', invitationId, secret))}`;
+});
 const signedInAsInvitee = computed(
 	() =>
 		!!signedIn.value &&
@@ -112,7 +117,7 @@ const ANSWER_REFUSALS = {
 
 /** Sends one answer at a time, and says why it was refused. */
 async function answer(send: () => Promise<unknown>): Promise<boolean> {
-	if (submitting.value || !invitationId.value) return false;
+	if (submitting.value || !invitation.value) return false;
 	submitting.value = true;
 	refusal.value = null;
 	try {
@@ -132,7 +137,7 @@ async function acceptAsNewUser() {
 		async () =>
 			await $fetch('/api/invitation/accept', {
 				method: 'POST',
-				body: { invitationId: invitationId.value, name: form.name, password: form.password },
+				body: { ...invitation.value, name: form.name, password: form.password },
 			}),
 	);
 	if (accepted) await navigateTo('/');
@@ -141,9 +146,9 @@ async function acceptAsNewUser() {
 async function acceptSignedIn() {
 	const accepted = await answer(
 		async () =>
-			await $fetch('/api/auth/organization/accept-invitation', {
+			await $fetch('/api/invitation/accept-signed-in', {
 				method: 'POST',
-				body: { invitationId: invitationId.value },
+				body: invitation.value,
 			}),
 	);
 	if (accepted) await navigateTo('/');
@@ -154,7 +159,7 @@ async function decline() {
 		async () =>
 			await $fetch('/api/invitation/decline', {
 				method: 'POST',
-				body: { invitationId: invitationId.value },
+				body: invitation.value,
 			}),
 	);
 }
@@ -169,7 +174,7 @@ async function signOut() {
 	<div class="flex min-h-screen items-center justify-center p-4">
 		<UCard class="w-full max-w-sm">
 			<div
-				v-if="invitationId === null || offer === null"
+				v-if="invitation === null || offer === null"
 				data-no-offer
 				:data-closed="closed ?? undefined"
 				class="flex flex-col gap-4"

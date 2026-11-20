@@ -6,24 +6,26 @@ import {
 	noAppAccess,
 	ORGANISATION_ROLE_CHOICES,
 } from '~/utils/appRoleChoices';
-import { refusalSentence } from '~/utils/refusal';
+import { readRefusal, refusalSentence } from '~/utils/refusal';
+import { RECENT_SIGN_IN_REQUIRED } from '~~/shared/utils/recentSignIn';
 
 /**
  * An Organisation's owners and admins, or a Keepr Administrator, invite an email
  * address to it, with an Organisation role and an App role per App from the App
  * registry: the Organisation worked in, or the one `?organisation=` names. The
- * Invitation is emailed; its link is shown to copy as well, for when the email
- * does not arrive. Below, the Organisation's pending Invitations, each to cancel;
+ * Invitation is emailed, and its link goes to the invitee alone: it carries the
+ * secret that accepts it (ADR-0155). Inviting needs a sign-in from the last ten
+ * minutes. Below, the Organisation's pending Invitations, each to cancel;
  * inviting an address again replaces its earlier one.
  */
 
 const form = reactive({ email: '', role: 'member', appRoles: noAppAccess() });
 const submitting = ref(false);
 const refusal = ref<string | null>(null);
-/** The link to the Invitation last made, to copy. */
-const link = ref<string | null>(null);
-const copied = ref(false);
-const { copyToClipboard } = useCopyToClipboard();
+/** The address the Invitation last made was emailed to. */
+const emailedTo = ref<string | null>(null);
+/** An Invitation the server refused for a sign-in more than ten minutes old. */
+const signInAgain = ref(false);
 
 interface PendingInvitation {
 	id: string;
@@ -41,9 +43,12 @@ const pendingRefusal = ref<string | null>(null);
 
 // Closed to anyone who does not manage the Organisation's members.
 const named = useRoute().query.organisation;
-const { state, managed } = useManagedOrganisation({
-	organisationId: typeof named === 'string' && named.length > 0 ? named : undefined,
-});
+const organisationId = typeof named === 'string' && named.length > 0 ? named : undefined;
+const { state, managed } = useManagedOrganisation({ organisationId });
+
+const signInAgainLink = `/sign-in?returnTo=${encodeURIComponent(
+	organisationId ? `/invite?organisation=${encodeURIComponent(organisationId)}` : '/invite',
+)}`;
 
 const invitationsPath = computed(
 	() => `/api/organisations/${encodeURIComponent(managed.value!.organisation.id)}/invitations`,
@@ -95,31 +100,33 @@ async function invite() {
 	if (submitting.value) return;
 	submitting.value = true;
 	refusal.value = null;
-	link.value = null;
-	copied.value = false;
+	emailedTo.value = null;
+	signInAgain.value = false;
+	const email = form.email.trim();
 	try {
-		({ link: link.value } = await $fetch<{ link: string }>(invitationsPath.value, {
+		await $fetch(invitationsPath.value, {
 			method: 'POST',
-			body: { email: form.email, role: form.role, appRoles: chosenAppRoles(form.appRoles) },
-		}));
-	} catch (failure) {
-		refusal.value = refusalSentence(failure, {
-			codes: {
-				OWNER_REQUIRED: 'Only an owner can invite another owner.',
-				ALREADY_A_MEMBER: 'That address is already a member.',
-				INVALID_EMAIL: 'Enter an email address.',
-			},
-			otherwise: 'Inviting failed. Try again.',
+			body: { email, role: form.role, appRoles: chosenAppRoles(form.appRoles) },
 		});
+		emailedTo.value = email;
+	} catch (failure) {
+		if (readRefusal(failure).code === RECENT_SIGN_IN_REQUIRED) signInAgain.value = true;
+		else
+			refusal.value = refusalSentence(failure, {
+				codes: {
+					OWNER_REQUIRED:
+						'Only an owner can invite another owner, or invite again an address offered an owner’s role.',
+					ALREADY_A_MEMBER: 'That address is already a member.',
+					INVALID_EMAIL: 'Enter one email address.',
+					TOO_MANY_INVITATIONS: 'You have sent a lot of invitations this hour. Try again later.',
+				},
+				otherwise: 'Inviting failed. Try again.',
+			});
 		return;
 	} finally {
 		submitting.value = false;
 	}
 	await loadPending();
-}
-
-async function copy() {
-	if (link.value) copied.value = await copyToClipboard(link.value);
 }
 </script>
 
@@ -137,6 +144,14 @@ async function copy() {
 					<h1 class="text-lg font-semibold">Invite someone</h1>
 					<p data-organisation class="text-sm text-muted">To {{ managed.organisation.name }}</p>
 
+					<UAlert
+						v-if="signInAgain"
+						data-sign-in-again
+						color="warning"
+						variant="subtle"
+						description="Inviting needs a sign-in from the last ten minutes. Sign in again, then send the invitation."
+						:actions="[{ label: 'Sign in again', onClick: () => navigateTo(signInAgainLink) }]"
+					/>
 					<UAlert
 						v-if="refusal"
 						data-refusal
@@ -185,15 +200,10 @@ async function copy() {
 						Send invitation
 					</UButton>
 
-					<div v-if="link" data-invited class="flex flex-col gap-2">
-						<p class="text-sm">
-							Invitation sent. If the email does not arrive, send them this link instead:
-						</p>
-						<UInput :model-value="link" readonly data-link class="w-full" />
-						<UButton color="neutral" variant="outline" block @click="copy">
-							{{ copied ? 'Copied' : 'Copy link' }}
-						</UButton>
-					</div>
+					<p v-if="emailedTo" data-invited class="text-sm">
+						Invitation emailed to {{ emailedTo }}. Its link is theirs alone: if it does not arrive,
+						check the address and invite them again.
+					</p>
 				</div>
 			</UForm>
 		</UCard>

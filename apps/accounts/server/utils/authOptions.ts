@@ -39,6 +39,9 @@ export const INVITATION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7;
 export const MEMBERSHIP_LIMIT = 10_000;
 export const INVITATION_LIMIT = 10_000;
 
+/** How many Invitations one inviter makes to one Organisation in an hour. */
+export const INVITATIONS_PER_INVITER_PER_HOUR = 50;
+
 /** How long an emailed reset link works: one hour, and once. */
 export const RESET_LINK_EXPIRES_IN_SECONDS = 60 * 60;
 
@@ -107,6 +110,13 @@ export const MEMBER_PATHS_KEEPR_SERVES = [
 	'/organization/invite-member',
 	'/organization/list-invitations',
 	'/organization/cancel-invitation',
+	// `invitationAcceptance.ts`: these would read, accept or decline an Invitation
+	// by its id alone, which its inviter and every manager hold; Keepr Accounts'
+	// own ask for the secret only the invitee is emailed (ADR-0155).
+	'/organization/get-invitation',
+	'/organization/list-user-invitations',
+	'/organization/accept-invitation',
+	'/organization/reject-invitation',
 ];
 
 /**
@@ -198,11 +208,7 @@ export function authOptions({
 						},
 					},
 				},
-				...organisationOptions({
-					email,
-					records: organisations,
-					fallbackOrigin: KEEPR_ACCOUNTS_ORIGIN,
-				}),
+				...organisationOptions({ records: organisations }),
 			}),
 			// The Identity Proof: `GET /api/auth/token` mints it from the session cookie,
 			// and `GET /api/auth/jwks` publishes the keys it verifies against (ADR-0113).

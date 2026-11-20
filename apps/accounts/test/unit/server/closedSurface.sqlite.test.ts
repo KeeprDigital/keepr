@@ -176,3 +176,50 @@ describe('the library’s membership reads and leaving', () => {
 		expect(response.status).toBe(404);
 	});
 });
+
+// An Invitation is read, accepted or declined only with the secret its emailed
+// link carries (ADR-0155): the library's routes would take its id alone.
+describe('the library’s routes that answer an Invitation by its id', () => {
+	let invitations: TestAccounts;
+	let invitationId: string;
+	let inviteeCookie: string;
+
+	beforeAll(async () => {
+		invitations = await createTestAccounts();
+		await invitations.createUser('owner@keepr.digital');
+		const { id: organizationId } = await invitations.createOrganisation(
+			'invitations',
+			'owner@keepr.digital',
+		);
+		await invitations.createUser('invitee@keepr.digital');
+		({ id: invitationId } = await invitations.auth.api.createInvitation({
+			body: { email: 'invitee@keepr.digital', role: 'member', organizationId },
+			headers: new Headers({ cookie: await invitations.signIn('owner@keepr.digital') }),
+		}));
+		inviteeCookie = await invitations.signIn('invitee@keepr.digital');
+	});
+
+	afterAll(async () => await invitations.harness.close());
+
+	it.each([
+		['GET', '/organization/get-invitation'],
+		['GET', '/organization/list-user-invitations'],
+		['POST', '/organization/accept-invitation'],
+		['POST', '/organization/reject-invitation'],
+	])('%s %s answers 404 to the invitee, leaving it open', async (method, path) => {
+		const response = await invitations.send(
+			method === 'GET' ? `${path}?id=${invitationId}` : path,
+			{
+				method,
+				headers: { cookie: inviteeCookie },
+				...(method === 'GET' ? {} : { body: { invitationId } }),
+			},
+		);
+
+		expect(response.status).toBe(404);
+		const { adapter } = await invitations.auth.$context;
+		expect(
+			await adapter.findOne({ model: 'invitation', where: [{ field: 'id', value: invitationId }] }),
+		).toMatchObject({ status: 'pending' });
+	});
+});

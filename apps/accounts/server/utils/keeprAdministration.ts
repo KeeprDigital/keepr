@@ -9,6 +9,7 @@ import { schema } from '~~/server/db';
 import { offeredAppRoles } from './appAccess';
 import { recordAudit } from './auditRecord';
 import { invitedAddress, issueInvitation } from './invitations';
+import { cancelInvitationsOfferedBy } from './offeredInvitations';
 import { userIsKeeprAdministrator } from './keeprAdministrator';
 import { requireRecentSignIn } from './recentSignIn';
 import { KeeprRefusal, refusalFromAuth } from './refusal';
@@ -117,9 +118,8 @@ export interface NewOrganisation {
 
 export interface CreatedOrganisation {
 	organisation: { id: string; name: string };
+	/** The first owner's Invitation, whose link is emailed to them alone. */
 	invitationId: string;
-	/** The Invitation's link, emailed and shown to copy. */
-	link: string;
 }
 
 /** A slug for `name`: its letters and digits, hyphenated. */
@@ -170,7 +170,7 @@ export async function createOrganisation(
 		organizationId: organisation.id,
 		detail: { name: named, as: 'keepr-administrator' },
 	});
-	const { invitationId, link } = await issueInvitation(
+	const { invitationId } = await issueInvitation(
 		database,
 		{
 			organisation,
@@ -182,7 +182,7 @@ export async function createOrganisation(
 		},
 		sending,
 	);
-	return { organisation, invitationId, link };
+	return { organisation, invitationId };
 }
 
 /** A User or Organisation an Audit Record row names, as it is now; `null` for none or gone. */
@@ -265,8 +265,9 @@ async function userOf(database: IdentityDatabase, userId: string) {
 
 /**
  * Disables a User and ends every Session they have, so they are signed out of
- * Keepr Accounts at once and of every App when its Identity Proof lapses. A
- * Keepr Administrator cannot disable themselves.
+ * Keepr Accounts at once and of every App when its Identity Proof lapses, and
+ * cancels the Invitations they offered that are still open. A Keepr
+ * Administrator cannot disable themselves.
  */
 export async function disableUser(
 	database: IdentityDatabase,
@@ -298,6 +299,11 @@ export async function disableUser(
 		subjectUserId: target.id,
 		detail: { sessionsEnded: ended.length },
 	});
+	await cancelInvitationsOfferedBy(
+		database,
+		{ inviterId: target.id },
+		{ actorUserId: actor.userId, as: 'keepr-administrator', because: 'inviter-disabled' },
+	);
 }
 
 /** Enables a disabled User again: they sign in as before. */

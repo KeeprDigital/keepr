@@ -8,6 +8,13 @@
       "when": 1794888897613,
       "tag": "0000_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795167031961,
+      "tag": "0001_invitation_secret",
+      "breakpoints": true
     }
   ]
 }

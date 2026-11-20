@@ -1,6 +1,6 @@
 # ADR-0116: Keepr Accounts manages members through its own routes, from a recent sign-in
 
-Accepted · 2026-11-17 · #1228, #1252
+Accepted · 2026-11-17 · #1228, #1252 · Amended by ADR-0155: inviting needs a recent sign-in, and an admin cannot replace an owner’s offer
 
 ### Decision
 
