@@ -39,7 +39,7 @@ const [{ seq }] = await env.REALTIME.getByName(scope).publish([{ channel, name, 
 // When a credential is withdrawn:
 await env.REALTIME.getByName(scope).disconnect(tag);
 // When one replaces it: the holder's sockets close, but for the new credential's.
-await env.REALTIME.getByName(scope).disconnect(holder, { except: credential });
+await env.REALTIME.getByName(scope).disconnect(holder, { except: credential, version });
 // When the scope itself has ended: every socket closes, whatever its grant.
 await env.REALTIME.getByName(scope).disconnectAll();
 ```
@@ -50,20 +50,32 @@ with `CLOSE_REFUSED`. This is for the socket whose grant the app decided just
 before the disconnect and which reaches the object just after, which would
 otherwise outlive the credential that admitted it. A grant that also carries
 `except` is spared, then and after. So a tag that must be usable again at once
-names what was withdrawn, not only who held it. The withdrawal is in the
-object's storage, and outlasts its sleep and its restart.
+names what was withdrawn, not only who held it. Where credentials are
+numbered, `version` says which one `except` is: of two disconnects of one tag,
+the one that spares the higher version stands, whichever reaches the object
+last, so two regenerations whose disconnects cross never leave the older
+credential let in. The withdrawal is in the object's storage, and outlasts its
+sleep and its restart.
+
+A socket the object refuses for a withdrawal is never the object's: it answers
+with no socket, and `connectSocket`, in the app's Worker, answers the caller
+with a socket closed with `CLOSE_REFUSED`. So a peer that never completes the
+close holds no object awake.
 
 **`disconnectAll` withdraws everyone**, for a scope the app has ended, as
 deleting what it names ends it. It closes every socket with `CLOSE_REFUSED`
-and ends every member's grace period, so nobody is left present or held and no
-alarm wakes the object for them. For `withdrawalMs` after it, the object lets
-in no socket at all, whatever its grant carries.
+and ends every member's grace period, so nobody is left present or held. For
+`withdrawalMs` after it, the object lets in no socket at all, whatever its
+grant carries. Then the alarm releases what the scope stored: its log, its
+heads, its withdrawals and its epoch.
 
 | Export | What |
 | --- | --- |
-| `RealtimeObject` | The class. `publish(deliveries)` answers each delivery's `seq` on its channel and the `recipients` it was sent to; `disconnect(tag, { except })` and `disconnectAll()` answer how many sockets they closed. |
+| `RealtimeObject` | The class. `publish(deliveries)` answers each delivery's `seq` on its channel and the `recipients` it was sent to; `disconnect(tag, { except, version })` and `disconnectAll()` answer how many sockets they closed. |
 | `connectSocket(stub, request, grant)` | Hands a socket's upgrade to a scope's object with what the app grants it. The only way in. |
 | `refuseSocket()` | Answers an upgrade the app refuses: an accepted socket closed with `CLOSE_REFUSED`, which a page can read where it cannot read a 403. |
+| `DeliveryError` | What `publish` throws for a delivery it will not publish, before it publishes any. |
+| `MAX_MESSAGE_BYTES`, `MAX_CLIENT_FRAME_LENGTH`, `MAX_HELLO_ENTRIES`, `FRAME_BURST`, `FRAMES_PER_SECOND`, the `DEFAULT_*` timings | The limits below. |
 | `Grant`, `Delivery`, `DisconnectOptions`, `PublishAnswer`, `RealtimeObjectOptions`, `RealtimeObjectStub` | Their types. |
 
 ### The grant
@@ -92,7 +104,14 @@ is answered 403. The URL carries only the client's id (`CLIENT_ID_PARAM`).
 
 - **Fan-out and order.** A publish gives each delivery the next sequence of its
   channel and sends it to the sockets attached there. One call's deliveries, and
-  every call's, are heard in the order published, across channels.
+  every call's, are heard in the order published, across channels. A socket
+  silent past `sweepMs` is no recipient, and is not counted as one.
+- **A publish is all or nothing.** Each delivery names a channel and a name,
+  and its data stays within 64 KiB as JSON (`MAX_MESSAGE_BYTES`, ADR-0137).
+  Every delivery is checked first: a call with one that is not is refused with a
+  `DeliveryError`, and none of its deliveries is numbered, logged or sent.
+- **The log is pruned** by a publish, and by the alarm, so a scope that goes
+  quiet does not keep its last burst past `retentionMs`.
 - **Catch-up.** An attach that carries the sequence it held and the epoch it
   came from is replayed what followed, marked `replayed`. It is `resumed` only
   when nothing between that sequence and the head was pruned and the epoch is
@@ -107,7 +126,26 @@ is answered 403. The URL carries only the client's id (`CLIENT_ID_PARAM`).
   earlier socket (closed with `CLOSE_SUPERSEDED`) and stands where that stood,
   under its connection id, until its `hello` says what it wants. No watcher is
   told unless what it holds changes. It keeps only the places its new grant
-  lets it enter.
+  lets it enter, and none that would not fit in its socket beside that grant.
+- **A `hello` may be sent again**: each replaces whatever the socket held, as
+  the first did.
+- **A deploy keeps a socket only if the object was hibernating.** The runtime
+  carries a hibernated object's sockets over to the new code; an object awake
+  at the deploy is restarted, which closes them (below).
+
+**What one socket can cost is bounded** (ADR-0159). Each limit closes the
+socket with a code of its own, which the client transport reads:
+
+| Limit | What exceeds it | Closed with |
+| --- | --- | --- |
+| A frame of `MAX_CLIENT_FRAME_LENGTH` characters, 32 Ki: twice what a socket can hold | A longer frame, before it is parsed | `CLOSE_TOO_LARGE` |
+| A `hello` of `MAX_HELLO_ENTRIES` entries, 256, attaches, watches and entries together | One of more, before any log is read. A channel a `hello` names more than once is attached, and its log read, once | `CLOSE_TOO_LARGE` |
+| `FRAME_BURST` frames, 120, refilled at `FRAMES_PER_SECOND`, 20. A ping is the runtime's, and not counted | A frame past the budget | `CLOSE_RATE_LIMITED` |
+| `socketsPerIdentity` sockets of one identity in the scope | A newer socket retires the identity's oldest | `CLOSE_CROWDED` |
+| `maxAgeMs`, an hour, from the socket's accept | The alarm closes it, and its client comes back within a second to be judged again by the app's port. Its member is held for the grace period, as a closed socket's is | `CLOSE_EXPIRED` |
+
+A socket that holds more than the runtime's 16 KiB attachment is refused the
+attach, watch or entry that would put it past it, and keeps what it held.
 
 A presence entry ends in one of three ways:
 
@@ -119,20 +157,23 @@ A presence entry ends in one of three ways:
 
 **The object asks before it sweeps** (ADR-0139). A page's heartbeat is a timer,
 and a browser slows a hidden page's timers but not its message handlers. So
-when a member has sent no ping for `askMs`, the alarm sends its socket an `ask`
-frame, once for that silence. A client answers with a `ping` from the handler
-the frame arrived in. The runtime answers that ping as any other, so the answer
-does not wake the object: the alarm reads it when it next looks. A member that
+when a socket has sent no ping for `askMs`, the alarm sends it an `ask` frame,
+once for that silence. A client answers with a `ping` from the handler the
+frame arrived in. The runtime answers that ping as any other, so the answer
+does not wake the object: the alarm reads it when it next looks. A socket that
 answered is kept and no watcher is told; one that did not is swept at
-`sweepMs`. The object remembers whom it asked in memory and writes nothing; one
-that slept since may ask a second time.
+`sweepMs`. Every socket is asked and swept so, present or not (ADR-0159): a
+peer that vanished costs its socket, and every frame sent it, until it is. The
+object remembers whom it asked in memory and writes nothing; one that slept
+since may ask a second time.
 
-The alarm is set only while a member is present or held, for the first moment
-one of them could need asking or telling of: a grace period's end, the ask of a
-member not yet asked, or the limit of one that was. While every member pings
-every 15 s that is one alarm every 15 to 30 s. A member that only answers has
-two alarms of its own every 30 s: its ask, and 15 s later the look that finds it
-answered.
+The alarm is set while any socket is open, anyone is held, the log holds a
+message or an ended scope has storage to release, for the first moment one of
+them could need doing: a grace period's end, the ask of a socket not yet asked,
+the limit of one that was, a socket's age, the oldest message leaving the log,
+or the end of `disconnectAll`'s withdrawal. While every socket pings every 15 s
+that is one alarm every 15 to 30 s. A socket that only answers has two alarms
+of its own every 30 s: its ask, and 15 s later the look that finds it answered.
 
 **A restart of the object is a closed socket for every member at once**, and
 no close reaches the object: the runtime stops it, its sockets end, and their
@@ -152,9 +193,10 @@ After a sleep the sockets are still there, so nobody is held. Telling the two
 apart costs one read of that table each time the object starts, and none on a
 publish.
 
-### Timings
+### Timings and limits
 
-A subclass states the timings it changes; nothing reads a variable.
+A subclass states the options it changes; nothing reads a variable. An app on
+the Nuxt layer states `maxAgeMs` as `realtime.maxSocketAgeMs` instead.
 
 ```ts
 export class BriefRealtime extends RealtimeObject<Env> {
@@ -167,17 +209,26 @@ export class BriefRealtime extends RealtimeObject<Env> {
 | Option | Default | What |
 | --- | --- | --- |
 | `retentionMs` | 2 minutes | How long a channel's log answers a reattach |
-| `graceMs` | 5 s | How long a member whose socket closed is held |
-| `sweepMs` | 45 s | How long a member's pings may have stopped: three of a client's 15 s pings |
-| `askMs` | Two thirds of `sweepMs`: 30 s | How long a member's pings may have stopped before it is asked: two of those pings. At `sweepMs` or more, nobody is asked |
+| `graceMs` | 5 s | How long a member whose socket closed is held. Under 2 s, a client replaced by its own late socket returns after its place is gone, and watchers see it leave |
+| `sweepMs` | 45 s | How long a socket's pings may have stopped: three of a client's 15 s pings |
+| `askMs` | Two thirds of `sweepMs`: 30 s | How long a socket's pings may have stopped before it is asked: two of those pings. At `sweepMs` or more, nobody is asked |
 | `withdrawalMs` | 60 s | How long a `disconnect` or `disconnectAll` goes on refusing the sockets it withdrew: longer than a hand-off takes, from the app's port deciding a grant to the object accepting its socket |
+| `maxAgeMs` | An hour | How long a socket is kept before it is closed with `CLOSE_EXPIRED`, so its caller is judged again |
+| `socketsPerIdentity` | 32 | How many sockets one identity may hold in the scope |
 
 ### Its tests
 
 `test/object` runs the class in local `workerd` with no credential: Wrangler's
-test harness serves `test/object/worker`, a Worker that exports the class at its
-defaults and under timings short enough to wait out, and grants whatever a test
-asks for. It is never deployed. The tests drive it from Node over `WebSocket`.
+test harness serves `test/object/worker`, a Worker that exports the class, and
+the class again on a clock a test moves, and grants whatever a test asks for.
+It is never deployed. The tests drive it from Node over `WebSocket`.
+
+**No test waits out a timing.** The test class reads the object's clock
+(`now()`, and a ping's time through `pingedAt()`) as real time plus what the
+test moved it on by, and `advance(ms)` moves it and runs the alarm as the
+runtime would. A test of a grace period, a sweep, the log's retention, a
+ticket's or a socket's age moves the clock past it at the defaults, so a busy
+machine cannot outlast one between two steps.
 
 The Workers runtime's types are `test/object/worker/worker-configuration.d.ts`,
 generated and committed. `pnpm typecheck` fails while it is stale: after
@@ -211,7 +262,7 @@ transport.onContinuityLost('some-channel', () => {
 | Rule | What the transport does |
 | --- | --- |
 | The address | Asked for on every connect. One that throws, rejects or is slow is a failed attempt like any other. The transport adds its client id (`CLIENT_ID_PARAM`) to the query, the same for its whole life, so the object replaces the socket it lost. |
-| Retries | Without limit: the first after 250 ms, doubling to 4 s, then 5, 10 and 20 s, then one every 30 s. The rhythm starts again once the object has answered on a socket; a socket that answered only its ping leaves it where it was. |
+| Retries | Without limit: the first after 250 ms, doubling to 4 s, then 5, 10 and 20 s, then one every 30 s. Each wait is cut by a random part of up to a fifth of it (`random`), so clients cut together do not come back together, and no wait is longer than the rhythm says. The rhythm starts again once the object has answered on a socket, or once a socket has stayed up through a heartbeat, as one that only holds does; a socket that answered only its first ping leaves it where it was. |
 | Connect timeout | 10 s from asking for the address to the socket opening (`connectTimeoutMs`). |
 | Heartbeat | A `ping` as the socket opens and every 15 s (`heartbeatMs`). A socket that sends nothing in the 5 s after one (`pongTimeoutMs`) is given up, and a late close or frame from it is not heard. |
 | An `ask` | Answered with a `ping` at once, from the handler it arrived in, whatever the heartbeat is doing. No timer sends it and it waits for no pong, so a hidden page whose timers are slowed still answers. As a frame heard, the ask ends a wait for a pong like any other. |
@@ -219,10 +270,12 @@ transport.onContinuityLost('some-channel', () => {
 | The fault | `connectionState` is `suspended` once there has been no connection for 8 s (`faultAfterMs`), counted from the cut or from the first connect, whatever the count of retries. It clears on connect. `error` says why there is no connection. |
 | A refusal | A socket closed with `CLOSE_REFUSED` sets `refusal`, which a dead network never does. So does an `address` that rejects with a `RefusedError`, for a caller refused where its ticket is given; the error it rejected with is the refusal's `cause`. Any other rejection is a failed attempt. Retries go on from the 5 s step, and the refusal clears on connect. |
 | A refused channel | A `refused` frame is in `channelRefusals` until the next socket asks again or the consumer ends what it asked. What was asked stays wanted, and is in every `hello`. |
-| `CLOSE_STALE` | Reconnects at once. |
-| `CLOSE_SUPERSEDED` | A cut like any other, retried from the 5 s step and no refusal. A client id is one transport's alone, so the newer socket is an attempt it gave up that the object accepted late, and it must come back by itself. From the 5 s step, two holders of one id could change places only once a step. |
-| Continuity | A reattach the object resumes delivers what was missed once and in order, and tells nobody. One it cannot, a first attach the connection dropped before, and a sequence skipped while attached each tell the channel's `onContinuityLost` listeners once. `onceAttached` tells of a channel's next attach. |
-| Presence | An entry also attaches its channel. A watcher is told its channel's members whole; one that comes later is told the members last heard. |
+| `CLOSE_STALE` | Reconnects at once: the socket was only slow to ping. |
+| `CLOSE_EXPIRED` | Reconnects within a second, at a random moment: the socket is to be judged again, and the sockets accepted with it expired with it. |
+| `CLOSE_CROWDED`, `CLOSE_TOO_LARGE`, `CLOSE_RATE_LIMITED` | A cut, retried from the 5 s step, and no refusal: a quick retry would only meet the limit again. |
+| `CLOSE_SUPERSEDED` | A cut like any other, retried after 2 s and then from the 5 s step, and no refusal. A client id is one transport's alone, so the newer socket is an attempt it gave up that the object accepted late, and closed since: it must come back by itself, and inside the object's 5 s grace, so the place that socket held for it is still there and no watcher sees it leave. Two holders of one id could change places only once in 2 s. |
+| Continuity | A reattach the object resumes delivers what was missed once and in order, and tells nobody. One it cannot, a first attach the connection dropped before, and a sequence skipped while attached each tell the channel's `onContinuityLost` listeners once. A channel asked for, forgotten and asked for again before the object has answered is answered twice in order, and only the last answer speaks for it: it tells of no loss. `onceAttached` tells of a channel's next attach, and then asks nothing more of it: a channel nothing else asks for is forgotten. |
+| Presence | An entry also attaches its channel. A watcher is told its channel's members whole; one that comes later is told the members last heard, unless the socket that heard them has since been cut or the watch refused. |
 | `checkNow()` | Pings an open socket, or cuts the wait before the next retry. `checkOnPageEvents` calls it on a page's `online` and on its `visibilitychange` to visible, and does nothing where there is no page. |
 | Nothing asked of it | The socket closes and `connectionState` is `closed`; the next thing asked connects again. |
 | `hold()` | Keeps the socket though nothing else is asked, until the function it returns is called: for a caller whose consumers come and go, where each socket costs an address. A hold is a need like any other, which asks the object for nothing: it connects when there is no connection, is retried through a cut, and shows the fault and a refusal as any other does. Each hold is its own, so the socket is kept until every one is released; the last released with nothing asked closes it. A channel is still forgotten with the last thing asked of it, and is a first attach for whoever asks next. |
@@ -285,13 +338,14 @@ await useRealtimeScope(event, `room:${room}`).publish([{ channel, name, data }])
 | --- | --- | --- |
 | `binding` | `REALTIME` | The Durable Object binding the app's Wrangler configuration gives `RealtimeObject`. |
 | `socketPath` | `/realtime/socket` | Where a page opens its socket: one path under `nuxt dev` and in the built Worker. |
-| `portPath` | `/realtime/port` | Where the app's route answers the port. Not a path that starts with `socketPath`, which the dev proxy takes whole. |
+| `portPath` | `/realtime/port` | Where the app's route answers the port. Not `socketPath` itself. |
+| `maxSocketAgeMs` | An hour | How long the object keeps a socket before it closes it, to have its caller judged again by the port (`maxAgeMs`). |
 
 | Piece | What |
 | --- | --- |
-| The Worker entry (`nuxt/server/worker/entry.ts`) | A production build's entry, wrapping Nitro's. It exports `RealtimeObject` and hands an upgrade on `socketPath` to a scope's object. Every other request is Nitro's. Only a build takes it: under `nuxt dev` it would replace Nitro's dev entry. |
+| The Worker entry (`nuxt/server/worker/entry.ts`) | A production build's entry, wrapping Nitro's. It exports `RealtimeObject`, at the app's `maxSocketAgeMs`, and hands an upgrade on `socketPath` to a scope's object. Every other request is Nitro's. Only a build takes it: under `nuxt dev` it would replace Nitro's dev entry. |
 | `defineRealtimePort(port)` | The route that answers the app's port: given the event, a scope and a grant, or `null` to refuse. The layer registers no route, so the app exports this from a file of its own. |
-| `useRealtimeScope(event, scope)` | One scope's object on the app's own binding: `publish(deliveries)`, `disconnect(tag, { except })` and `disconnectAll()`, by RPC. Takes the Worker's bindings where there is no request, as in a scheduled handler. |
+| `useRealtimeScope(event, scope)` | One scope's object on the app's own binding: `publish(deliveries)`, `disconnect(tag, { except, version })` and `disconnectAll()`, by RPC. Takes the Worker's bindings where there is no request, as in a scheduled handler. |
 | The dev Worker (`nuxt/server/worker/dev.ts`) | Holds the class beside `nuxt dev` (below). |
 
 `defineRealtimePort` and `useRealtimeScope` are auto-imported from
@@ -302,17 +356,20 @@ await useRealtimeScope(event, `room:${room}`).publish([{ channel, name, data }])
 
 An upgrade on `socketPath` is put to the app's port before any object sees it.
 The port is asked with a plain `GET` of `portPath` that carries the socket's
-query and the caller's headers, so the app reads a cookie, an `Origin` or a
-ticket as it does anywhere, and its own middleware runs first. Nothing of the
-upgrade goes with it.
+query, the caller's headers and its Cloudflare properties (`cf`), so the app
+reads a cookie, an `Origin`, a ticket or the caller's country as it does
+anywhere, and its own middleware runs first. Nothing of the upgrade goes with
+it.
 
 | The port answers | The caller gets |
 | --- | --- |
 | A scope and a grant | Its socket, handed to that scope's object with that grant (`connectSocket`) |
 | `null` | A socket closed with `CLOSE_REFUSED` (`refuseSocket`), which a page can read |
-| Nothing: a middleware answered first, the port threw, or no route is there | The app's own response. A page reads it as a failed attempt, so an app refuses in its port |
+| Nothing, and 401 or 403: a middleware refused the caller first, or the port threw one | A socket closed with `CLOSE_REFUSED`, as for `null` |
+| Nothing otherwise: a middleware answered first, the port failed, or no route is there | The app's own response, which a page reads as a failed attempt and retries. An answer of the app's that is no error and no port's is a 500 that says so |
 
-A request for `socketPath` that is no upgrade is answered 426.
+A request for `socketPath` that is no upgrade is answered 426, and one the
+Worker has no `binding` for is a 500 that names it.
 
 **The port's route is no way in, and no way to ask.** Only the hand-off reaches
 it; any other request is answered 404.
@@ -332,7 +389,11 @@ it; any other request is answered 404.
 `nuxt dev` runs the server in Node, which cannot hold a Durable Object. So the
 layer starts a Worker beside it in local `workerd`, which holds the class, and
 Nitro's dev proxy (`ws: true`) sends `socketPath` there. A page opens the same
-path it opens on the built Worker. The dev Worker asks the app's port through
+path it opens on the built Worker. The proxy takes every path that starts with
+its route, so its route is one of the layer's own, and the dev server sends a
+request for `socketPath` itself, and nothing else, there before anything else
+hears it (`nuxt/build/paths.ts`): an app's route that only starts like the
+socket's path stays the app's, as it does in the built Worker. The dev Worker asks the app's port through
 the dev server and hands off as the entry does.
 
 **The dev server itself starts it**, from the layer's module. So an app's
@@ -381,7 +442,11 @@ reconnects.
 `extends` line, and its port lets a caller with a cookie into the room its query
 names. It is never deployed. `nuxt/test/handOff.test.ts` builds it, then holds
 each rule above twice: on the built Worker in local `workerd`, and under
-`nuxt dev`, on one path, driven from Node by the client transport. It then
+`nuxt dev`, on one path, driven from Node by the client transport, the
+server's `disconnect` and `disconnectAll` over each binding among them. The
+port's question and the reading of its answer are held alone in
+`nuxt/test/portRequest.test.ts`, and the dev proxy's path in
+`nuxt/test/paths.test.ts`. `handOff.test.ts` then
 runs two dev servers at once, and holds that neither hears the other's
 publishes. Last it stops a dev server by `SIGTERM` and by `SIGINT` to its
 process alone, and holds that nothing it started is left running. That server

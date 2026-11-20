@@ -193,6 +193,8 @@ export function rig({ answer, ...options }: RigOptions = {}): Rig {
 		},
 		WebSocket: Socket,
 		timers: clock,
+		// No jitter unless a test draws one: each wait is the rhythm's own.
+		random: () => 0,
 		...options,
 	});
 	const socket = async () => {

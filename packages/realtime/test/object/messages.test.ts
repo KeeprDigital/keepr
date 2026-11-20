@@ -1,9 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { sleep } from './client.ts';
 import type { TestClient } from './client.ts';
 import { startServer } from './server.ts';
 import type { Delivery, Server } from './server.ts';
-import { BRIEF_RETENTION_MS } from './timings.ts';
+import { DEFAULT_RETENTION_MS, MAX_MESSAGE_BYTES } from '../../src/object/limits.ts';
 
 let server: Server;
 beforeAll(async () => {
@@ -82,6 +81,67 @@ describe('a publish', () => {
 		expect(answer?.recipients).toBe(0);
 		expect(client.messages('news')).toEqual([]);
 	});
+});
+
+describe('a publish that cannot be made whole', () => {
+	/** A delivery whose data is `bytes` long as JSON: a string, and its quotes. */
+	const sized = (bytes: number): Delivery => ({
+		channel: 'news',
+		name: 'said',
+		data: 'x'.repeat(bytes - 2),
+	});
+
+	it.each([
+		{ bytes: MAX_MESSAGE_BYTES, published: true },
+		{ bytes: MAX_MESSAGE_BYTES + 1, published: false },
+	])('of $bytes bytes is published: $published', async ({ bytes, published }) => {
+		const scope = server.scope();
+
+		const outcome = await scope.publish(sized(bytes)).then(
+			([answer]) => answer?.seq,
+			(refused: Error) => refused.message,
+		);
+
+		expect(String(outcome)).toMatch(published ? /^1$/ : /at most/);
+	});
+
+	// All or nothing: the third is refused, and none of them is heard, logged or numbered.
+	it.each([
+		{ why: 'too large', third: sized(MAX_MESSAGE_BYTES + 1) },
+		{ why: 'on no channel', third: { channel: '', name: 'said', data: 3 } },
+	])('publishes nothing of a batch whose third delivery is $why', async ({ third }) => {
+		const scope = server.scope();
+		const client = scope.connect();
+		await client.hello({ attach: [{ channel: 'news' }] });
+
+		await expect(scope.publish(said('news', 1), said('news', 2), third)).rejects.toThrow(
+			/Delivery 2/,
+		);
+		const [next] = await scope.publish(said('news', 3));
+		await client.sync();
+
+		expect(next?.seq).toBe(1);
+		expect(heard(client, 'news')).toEqual([[1, 3]]);
+		expect(await scope.call('stored')).toMatchObject({ log: 1 });
+	});
+});
+
+describe('the log', () => {
+	// A scope that goes quiet does not keep its last burst.
+	it.each([
+		{ after: DEFAULT_RETENTION_MS - 5000, kept: 1 },
+		{ after: DEFAULT_RETENTION_MS, kept: 0 },
+	])(
+		'keeps $kept message(s) $after ms after a publish, with none since',
+		async ({ after, kept }) => {
+			const scope = server.scope();
+			await scope.publish(said('news', 1));
+
+			await scope.advance(after);
+
+			expect(await scope.call('stored')).toMatchObject({ log: kept });
+		},
+	);
 });
 
 describe('an attach', () => {
@@ -166,11 +226,11 @@ describe('an attach', () => {
 	])(
 		'holding $since of 4, after the log pruned up to 3, resumes: $resumed',
 		async ({ since, resumed, replayed }) => {
-			const scope = server.scope('BRIEF_LOG');
+			const scope = server.scope();
 			const first = scope.connect();
 			await first.hello({ attach: [{ channel: 'news' }] });
 			await scope.publish(said('news', 1), said('news', 2), said('news', 3));
-			await sleep(BRIEF_RETENTION_MS + 100);
+			await scope.advance(DEFAULT_RETENTION_MS);
 			await scope.publish(said('news', 4));
 
 			const back = scope.connect();

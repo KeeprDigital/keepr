@@ -15,9 +15,17 @@ import { handSocket } from './handOff.ts';
 import type { ScopeNamespace } from './handOff.ts';
 import { markHandOff } from './mark.ts';
 
-export { RealtimeObject } from '../../../src/object/index.ts';
+import { RealtimeObject as BaseRealtimeObject } from '../../../src/object/index.ts';
 
 type Bindings = Record<string, unknown>;
+
+/** The object's class at the options the app states under `realtime` (`../../module.ts`). */
+export class RealtimeObject extends BaseRealtimeObject<Bindings> {
+	constructor(ctx: DurableObjectState, env: Bindings) {
+		const { maxSocketAgeMs } = useRuntimeConfig().realtime;
+		super(ctx, env, { maxAgeMs: maxSocketAgeMs });
+	}
+}
 /** Nitro types its handler by a package this workspace does not install, so it arrives untyped. */
 const nitro: ExportedHandler<Bindings> = nitroHandler;
 
@@ -29,7 +37,8 @@ export default {
 		const { binding, socketPath, portPath } = useRuntimeConfig().realtime;
 		if (new URL(request.url).pathname !== socketPath) return toNitro(request);
 		return handSocket(request, {
-			namespace: env[binding] as ScopeNamespace,
+			namespace: env[binding] as ScopeNamespace | undefined,
+			binding,
 			portPath,
 			// Through Nitro, as a request like any other, so the app's middleware and
 			// its route answer it. The mark is what lets the port answer this one.

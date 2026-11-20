@@ -8,6 +8,13 @@ import type { Grant } from './grant.ts';
  */
 export const TICKET_HEADER = 'x-realtime-ticket';
 
+/**
+ * Set on the object's answer to an upgrade it refuses, as a withdrawn grant's.
+ * `connectSocket` answers the caller with a refused socket of its own, so the
+ * object never holds one.
+ */
+export const REFUSED_HEADER = 'x-realtime-refused';
+
 /** What `connectSocket` asks of a scope's object: its stub, as the app's binding gives it. */
 export interface RealtimeObjectStub {
 	admit(grant: Grant, clientId?: string): Promise<string>;
@@ -34,7 +41,8 @@ export async function connectSocket(
 	const ticket = await object.admit(grant, clientId ?? undefined);
 	const upgrade = new Request(request);
 	upgrade.headers.set(TICKET_HEADER, ticket);
-	return object.fetch(upgrade);
+	const answer = await object.fetch(upgrade);
+	return answer.headers.get(REFUSED_HEADER) === null ? answer : refuseSocket();
 }
 
 /**

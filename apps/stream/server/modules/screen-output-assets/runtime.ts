@@ -62,7 +62,12 @@ export function screenOutputAssetCapabilityManagerForEvent(event: H3Event) {
 		disconnectOutputs: async ({ eventId, screenId, capabilityVersion }) =>
 			await useRealtimeScope(event, eventRealtimeScope(eventId)).disconnect(
 				screenOutputRealtimeClientId(screenId),
-				{ except: screenOutputCapabilityRealtimeTag(screenId, capabilityVersion) },
+				// The version, so two regenerations whose disconnects arrive out of order
+				// leave the later capability's sockets let in.
+				{
+					except: screenOutputCapabilityRealtimeTag(screenId, capabilityVersion),
+					version: capabilityVersion,
+				},
 			),
 	});
 }

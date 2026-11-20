@@ -1,9 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Grant } from '../../src/object/grant.ts';
 import { CLOSE_REFUSED, CLOSE_SUPERSEDED } from '../../src/protocol.ts';
-import { sleep } from './client.ts';
 import { anyone, startServer } from './server.ts';
-import { BRIEF_WITHDRAWAL_MS } from './timings.ts';
+import { DEFAULT_WITHDRAWAL_MS } from '../../src/object/limits.ts';
 import type { Server } from './server.ts';
 
 let server: Server;
@@ -224,6 +223,18 @@ describe('a disconnect by tag', () => {
 		expect(await late.closed).toMatchObject({ code: CLOSE_REFUSED });
 	});
 
+	// The refused socket is the Worker's, so a peer that never completes its
+	// close holds no object awake.
+	it('is told by the object with no socket of its own, which the hand-off answers', async () => {
+		const scope = server.scope();
+		const ticket = await scope.admit({ ...anyone, tags: ['key:1'] });
+
+		await scope.disconnect('key:1');
+		const late = ticket.connect({ raw: true });
+
+		expect(await late.opened).toBe(false);
+	});
+
 	it('refuses a socket whose grant carries it and reaches the object after, and no other', async () => {
 		const scope = server.scope();
 		await scope.disconnect('key:1');
@@ -250,12 +261,12 @@ describe('a disconnect by tag', () => {
 	});
 
 	it('lets its tag in again once the withdrawal has ended', async () => {
-		const scope = server.scope('BRIEF_WITHDRAWAL');
+		const scope = server.scope();
 		await scope.disconnect('key:1');
 		const during = scope.connect({ ...anyone, tags: ['key:1'] });
 		expect(await during.closed).toMatchObject({ code: CLOSE_REFUSED });
 
-		await sleep(BRIEF_WITHDRAWAL_MS + 100);
+		await scope.advance(DEFAULT_WITHDRAWAL_MS);
 		const after = scope.connect({ ...anyone, tags: ['key:1'] });
 		await after.hello({ attach: [{ channel: 'news' }] });
 		const [answer] = await scope.publish({ channel: 'news', name: 'said', data: 1 });
@@ -266,7 +277,7 @@ describe('a disconnect by tag', () => {
 
 // A scope the app has ended: everything it granted there is withdrawn.
 describe('a disconnect of everyone', () => {
-	it('closes every socket, whatever its grant, and leaves no alarm to wake the object', async () => {
+	it('closes every socket, whatever its grant, and holds nobody', async () => {
 		const scope = server.scope();
 		const watching = scope.connect();
 		await watching.hello({ watch: ['news'] });
@@ -274,28 +285,61 @@ describe('a disconnect of everyone', () => {
 		await present.hello({ presence: { news: 1 } });
 		const hearing = scope.connect();
 		await hearing.hello({ attach: [{ channel: 'news' }] });
-		const alarmBefore = await scope.call<number | null>('alarmAt');
 
 		const closed = await scope.disconnectAll();
 
-		expect(alarmBefore).not.toBeNull();
 		expect(closed).toBe(3);
 		for (const each of [watching, present, hearing])
 			expect(await each.closed).toMatchObject({ code: CLOSE_REFUSED });
-		expect(await scope.call('alarmAt')).toBeNull();
+		expect(await scope.call('stored')).toMatchObject({ member: 0 });
 	});
+
+	// An ended scope keeps nothing once nothing it kept can be asked for.
+	it.each([
+		{ after: DEFAULT_WITHDRAWAL_MS - 1000, released: false },
+		{ after: DEFAULT_WITHDRAWAL_MS, released: true },
+	])(
+		'releases its log, heads, withdrawals and epoch: $released, $after ms after',
+		async ({ after, released }) => {
+			const scope = server.scope();
+			await scope.connect().hello({ attach: [{ channel: 'news' }] });
+			await scope.publish({ channel: 'news', name: 'said', data: 1 });
+			await scope.disconnect('key:1');
+
+			await scope.disconnectAll();
+			await scope.advance(after);
+
+			expect(await scope.call('stored')).toEqual(
+				released
+					? { log: 0, head: 0, withdrawn: 0, member: 0, epoch: false }
+					: { log: 1, head: 1, withdrawn: 1, member: 0, epoch: true },
+			);
+		},
+	);
 
 	// A grace period outlasts the withdrawal: a watcher let in after it would
 	// still see a member that was only held.
+	it('releases no withdrawal of a tag that outlasts its own', async () => {
+		const scope = server.scope();
+		await scope.disconnectAll();
+		await scope.advance(DEFAULT_WITHDRAWAL_MS / 2, { alarm: false });
+		await scope.disconnect('key:1');
+
+		await scope.advance(DEFAULT_WITHDRAWAL_MS / 2);
+		const late = scope.connect({ ...anyone, tags: ['key:1'] });
+
+		expect(await late.closed).toMatchObject({ code: CLOSE_REFUSED });
+	});
+
 	it('ends the grace period of a member whose socket had already closed', async () => {
-		const scope = server.scope('BRIEF_WITHDRAWAL');
+		const scope = server.scope();
 		const present = scope.connect(anyone, { client: 'client-1' });
 		await present.hello({ presence: { news: 1 } });
 		present.close();
 		await present.closed;
 
 		await scope.disconnectAll();
-		await sleep(BRIEF_WITHDRAWAL_MS + 100);
+		await scope.advance(DEFAULT_WITHDRAWAL_MS);
 		const watching = scope.connect();
 		await watching.hello({ watch: ['news'] });
 		await watching.sync();
@@ -328,12 +372,12 @@ describe('a disconnect of everyone', () => {
 	});
 
 	it('lets sockets in again once the withdrawal has ended', async () => {
-		const scope = server.scope('BRIEF_WITHDRAWAL');
+		const scope = server.scope();
 		await scope.disconnectAll();
 		const during = scope.connect();
 		expect(await during.closed).toMatchObject({ code: CLOSE_REFUSED });
 
-		await sleep(BRIEF_WITHDRAWAL_MS + 100);
+		await scope.advance(DEFAULT_WITHDRAWAL_MS);
 		const after = scope.connect();
 		await after.hello({ attach: [{ channel: 'news' }] });
 		const [answer] = await scope.publish({ channel: 'news', name: 'said', data: 1 });
@@ -413,6 +457,37 @@ describe('a disconnect that spares a tag', () => {
 		const [answer] = await scope.publish({ channel: 'news', name: 'said', data: 1 });
 
 		expect(await second.closed).toMatchObject({ code: CLOSE_REFUSED });
+		expect(answer?.recipients).toBe(1);
+	});
+
+	// Two regenerations whose disconnects reach the object out of order.
+	it.each([
+		{ order: 'in order', versions: [2, 3] },
+		{ order: 'out of order', versions: [3, 2] },
+	])('of numbered versions, $order, spares the highest', async ({ versions }) => {
+		const scope = server.scope();
+		for (const version of versions)
+			await scope.disconnect('holder', { except: `credential:${version}`, version });
+
+		const second = scope.connect(holding(2));
+		const third = scope.connect(holding(3));
+		await third.hello({ attach: [{ channel: 'news' }] });
+		const [answer] = await scope.publish({ channel: 'news', name: 'said', data: 1 });
+
+		expect(await second.closed).toMatchObject({ code: CLOSE_REFUSED });
+		expect(answer?.recipients).toBe(1);
+	});
+
+	it('of an older version closes no socket of the newer one already here', async () => {
+		const scope = server.scope();
+		await scope.disconnect('holder', { except: 'credential:3', version: 3 });
+		const third = scope.connect(holding(3));
+		await third.hello({ attach: [{ channel: 'news' }] });
+
+		const closed = await scope.disconnect('holder', { except: 'credential:2', version: 2 });
+		const [answer] = await scope.publish({ channel: 'news', name: 'said', data: 1 });
+
+		expect(closed).toBe(0);
 		expect(answer?.recipients).toBe(1);
 	});
 });

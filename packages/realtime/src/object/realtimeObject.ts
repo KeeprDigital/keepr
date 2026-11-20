@@ -1,5 +1,15 @@
 import { DurableObject } from 'cloudflare:workers';
-import { CLOSE_REFUSED, CLOSE_STALE, CLOSE_SUPERSEDED, PING, PONG } from '../protocol.ts';
+import {
+	CLOSE_CROWDED,
+	CLOSE_EXPIRED,
+	CLOSE_RATE_LIMITED,
+	CLOSE_REFUSED,
+	CLOSE_STALE,
+	CLOSE_SUPERSEDED,
+	CLOSE_TOO_LARGE,
+	PING,
+	PONG,
+} from '../protocol.ts';
 import type {
 	AttachRequest,
 	HelloFrame,
@@ -10,7 +20,21 @@ import type {
 import { isChannel, readClientFrame } from './frames.ts';
 import { allows, holdGrant } from './grant.ts';
 import type { DisconnectOptions, Grant, HeldGrant } from './grant.ts';
-import { refuseSocket, TICKET_HEADER } from './handOff.ts';
+import { REFUSED_HEADER, TICKET_HEADER } from './handOff.ts';
+import {
+	DEFAULT_GRACE_MS,
+	DEFAULT_MAX_AGE_MS,
+	DEFAULT_RETENTION_MS,
+	DEFAULT_SOCKETS_PER_IDENTITY,
+	DEFAULT_SWEEP_MS,
+	DEFAULT_WITHDRAWAL_MS,
+	FRAME_BURST,
+	FRAMES_PER_SECOND,
+	MAX_CLIENT_FRAME_LENGTH,
+	MAX_HELLO_ENTRIES,
+	MAX_MESSAGE_BYTES,
+	TICKET_MS,
+} from './limits.ts';
 
 /** One message for one channel. */
 export interface Delivery {
@@ -26,49 +50,49 @@ export interface PublishAnswer {
 	recipients: number;
 }
 
-/** The object's timings, each in milliseconds. A subclass states the ones it changes. */
+/** The object's timings, each in milliseconds, and its limits. A subclass states the ones it changes. */
 export interface RealtimeObjectOptions {
 	/** How long a channel's log answers a reattach. */
 	retentionMs?: number;
 	/** How long a member whose socket closed is held before watchers are told. */
 	graceMs?: number;
-	/** How long a member's pings may have stopped before it is swept. */
+	/** How long a socket's pings may have stopped before it is swept. */
 	sweepMs?: number;
 	/**
-	 * How long a member's pings may have stopped before it is asked whether it is
+	 * How long a socket's pings may have stopped before it is asked whether it is
 	 * there. Two thirds of `sweepMs` when left out: two of its three missed pings.
 	 */
 	askMs?: number;
 	/** How long a disconnect goes on turning away the sockets it withdrew. */
 	withdrawalMs?: number;
+	/**
+	 * How long a socket is kept before it is closed with `CLOSE_EXPIRED`, which a
+	 * client answers by connecting again at once, to be judged again by the app.
+	 */
+	maxAgeMs?: number;
+	/** How many sockets one identity may hold in the scope. A newer one retires the oldest. */
+	socketsPerIdentity?: number;
 }
 
-export const DEFAULT_RETENTION_MS: number = 2 * 60 * 1000;
-export const DEFAULT_GRACE_MS: number = 5000;
-/** Three missed pings of a client that sends one every 15 s. */
-export const DEFAULT_SWEEP_MS: number = 45_000;
-/**
- * Longer than a hand-off takes, from the app's port deciding a grant to the
- * object accepting its socket: a grant decided before a disconnect reaches the
- * object within this of it, or not at all.
- */
-export const DEFAULT_WITHDRAWAL_MS: number = 60_000;
+/** A delivery the object will not publish: the whole call publishes nothing. */
+export class DeliveryError extends RangeError {
+	override name = 'DeliveryError';
+}
 
-/** What a silent member is sent before it is swept. It says nothing else, so it is one text. */
+/** What a silent socket is sent before it is swept. It says nothing else, so it is one text. */
 const ASK: string = JSON.stringify({ t: 'ask' } satisfies ServerFrame);
 
 /** Where `disconnectAll` keeps the end of its withdrawal, which every grant is refused until. */
 const EVERYONE_WITHDRAWN_UNTIL = 'everyoneWithdrawnUntil';
 
-/** How long a ticket waits for its socket: the upgrade follows it in the same call. */
-const TICKET_MS = 10_000;
-
 /** What a socket holds, kept in its attachment so it outlasts the object's sleep. */
 interface Attachment extends HeldGrant {
 	connectionId: string;
+	/** A digest of the identity its grant named, by which one identity's sockets are counted. */
+	identity?: string;
 	/** The tag its client's sockets share, when the client named itself. */
 	client?: string;
-	/** When it was accepted: the floor of its last sign of life. */
+	/** When it was accepted: the floor of its last sign of life, and the start of its age. */
 	since: number;
 	channels: string[];
 	watches: string[];
@@ -83,8 +107,15 @@ interface Open {
 /** A grant waiting for its socket. */
 interface Admission {
 	grant: HeldGrant;
+	identity: string;
 	client?: string;
 	until: number;
+}
+
+/** What is left of a socket's frames: a bucket refilled with time. */
+interface Budget {
+	frames: number;
+	at: number;
 }
 
 /**
@@ -103,15 +134,21 @@ type LogRow = { seq: number; name: string; data: string; at: number };
 
 const grantTag = (tag: string): string => `tag:${tag}`;
 
-/** One tag for a client's sockets, and only its own identity's: 256 characters hold neither name. */
-async function clientTag(identity: string, clientId: string): Promise<string> {
+async function digestOf(value: unknown): Promise<string> {
 	const digest = await crypto.subtle.digest(
 		'SHA-256',
-		new TextEncoder().encode(JSON.stringify([identity, clientId])),
+		new TextEncoder().encode(JSON.stringify(value)),
 	);
-	const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0'));
-	return `client:${hex.join('')}`;
+	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
+
+/** One tag for a client's sockets, and only its own identity's: 256 characters hold neither name. */
+async function clientTag(identity: string, clientId: string): Promise<string> {
+	return `client:${await digestOf([identity, clientId])}`;
+}
+
+const encoder = new TextEncoder();
+const bytesOf = (text: string): number => encoder.encode(text).length;
 
 const same = (one: unknown, other: unknown): boolean =>
 	JSON.stringify(one) === JSON.stringify(other);
@@ -127,21 +164,24 @@ const same = (one: unknown, other: unknown): boolean =>
  * that could return is also in storage, which a restart leaves.
  */
 export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
-	readonly #epoch: string;
 	readonly #retentionMs: number;
 	readonly #graceMs: number;
 	readonly #sweepMs: number;
 	readonly #askMs: number;
 	readonly #withdrawalMs: number;
+	readonly #maxAgeMs: number;
+	readonly #socketsPerIdentity: number;
 	/** In memory: a ticket is spent by the request that follows the call that made it. */
 	readonly #admissions = new Map<string, Admission>();
 	/**
-	 * The members asked and not heard from since: each connection id with the last
+	 * The sockets asked and not heard from since: each connection id with the last
 	 * sign of life it was asked at. In memory, so an ask writes nothing. An object
-	 * that slept between a member's ask and its sweep has forgotten it asked; if
+	 * that slept between a socket's ask and its sweep has forgotten it asked; if
 	 * anything wakes it in that time it asks once more, which costs a frame.
 	 */
 	#asked = new Map<string, number>();
+	/** Each socket's frames left. In memory: a sleep forgives it, and it costs no write. */
+	readonly #budgets = new WeakMap<WebSocket, Budget>();
 
 	constructor(ctx: DurableObjectState, env: Env, options: RealtimeObjectOptions = {}) {
 		super(ctx, env);
@@ -151,6 +191,8 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		// An ask no earlier than the sweep is never sent: the sweep comes first.
 		this.#askMs = Math.min(options.askMs ?? Math.round((this.#sweepMs * 2) / 3), this.#sweepMs);
 		this.#withdrawalMs = options.withdrawalMs ?? DEFAULT_WITHDRAWAL_MS;
+		this.#maxAgeMs = options.maxAgeMs ?? DEFAULT_MAX_AGE_MS;
+		this.#socketsPerIdentity = options.socketsPerIdentity ?? DEFAULT_SOCKETS_PER_IDENTITY;
 		ctx.storage.sql.exec(
 			`CREATE TABLE IF NOT EXISTS log (
 				channel TEXT NOT NULL, seq INTEGER NOT NULL, name TEXT NOT NULL,
@@ -170,21 +212,44 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 				tags TEXT NOT NULL, until INTEGER
 			) WITHOUT ROWID`,
 		);
-		// Each tag a disconnect withdrew, and the tag it spared, until the withdrawal
-		// ends. In storage, so the object's sleep or restart does not end it early.
+		// Each tag a disconnect withdrew, the tag it spared and that tag's version,
+		// until the withdrawal ends. In storage, so the object's sleep or restart does
+		// not end it early.
 		ctx.storage.sql.exec(
-			'CREATE TABLE IF NOT EXISTS withdrawn (tag TEXT PRIMARY KEY, spared TEXT, until INTEGER NOT NULL) WITHOUT ROWID',
+			'CREATE TABLE IF NOT EXISTS withdrawn (tag TEXT PRIMARY KEY, spared TEXT, until INTEGER NOT NULL, version INTEGER) WITHOUT ROWID',
 		);
-		// A wiped object starts a new epoch, so a client holding a sequence from the
-		// old one is told it lost continuity instead of being replayed nothing.
-		let epoch = ctx.storage.kv.get<string>('epoch');
-		if (!epoch) {
-			epoch = crypto.randomUUID();
-			ctx.storage.kv.put('epoch', epoch);
+		// An object made before a withdrawal carried a version has the table without it.
+		try {
+			ctx.storage.sql.exec('SELECT version FROM withdrawn LIMIT 0');
+		} catch {
+			ctx.storage.sql.exec('ALTER TABLE withdrawn ADD COLUMN version INTEGER');
 		}
-		this.#epoch = epoch;
 		ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(PING, PONG));
 		this.#holdTheLost();
+	}
+
+	/** The object's clock. A test's subclass moves it; nothing else overrides it. */
+	protected now(): number {
+		return Date.now();
+	}
+
+	/** When the runtime last answered the socket's ping, on the object's clock; 0 for never. */
+	protected pingedAt(socket: WebSocket): number {
+		return this.ctx.getWebSocketAutoResponseTimestamp(socket)?.getTime() ?? 0;
+	}
+
+	/**
+	 * The epoch the stored sequences belong to. A wiped or released object starts
+	 * a new one, so a client holding a sequence from the old one is told it lost
+	 * continuity instead of being replayed nothing.
+	 */
+	#epoch(): string {
+		let epoch = this.ctx.storage.kv.get<string>('epoch');
+		if (!epoch) {
+			epoch = crypto.randomUUID();
+			this.ctx.storage.kv.put('epoch', epoch);
+		}
+		return epoch;
 	}
 
 	/**
@@ -201,7 +266,7 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		const here = new Set(this.#sockets().map(({ attachment }) => attachment.client));
 		const lost = stored.filter(({ client }) => !here.has(client));
 		if (lost.length === 0) return;
-		const until = Date.now() + this.#graceMs;
+		const until = this.now() + this.#graceMs;
 		for (const { client } of lost)
 			this.ctx.storage.sql.exec('UPDATE member SET until = ? WHERE client = ?', until, client);
 		void this.ctx.blockConcurrencyWhile(() => this.#schedule());
@@ -214,12 +279,14 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 	async admit(grant: Grant, clientId?: string): Promise<string> {
 		const held = holdGrant(grant);
 		const client = clientId ? await clientTag(grant.identity, clientId) : undefined;
-		const now = Date.now();
+		const identity = await digestOf(grant.identity);
+		const now = this.now();
 		for (const [ticket, admission] of this.#admissions)
 			if (admission.until <= now) this.#admissions.delete(ticket);
 		const ticket = crypto.randomUUID();
 		this.#admissions.set(ticket, {
 			grant: held,
+			identity,
 			until: now + TICKET_MS,
 			...(client !== undefined && { client }),
 		});
@@ -233,13 +300,13 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		if (ticket !== null) this.#admissions.delete(ticket);
 		if (
 			!admission ||
-			admission.until <= Date.now() ||
+			admission.until <= this.now() ||
 			request.headers.get('upgrade')?.toLowerCase() !== 'websocket'
 		)
 			return new Response('A socket reaches this object through connectSocket.', { status: 403 });
-		const { grant, client } = admission;
+		const { grant, client, identity } = admission;
 		// Its grant was decided before a disconnect that has since withdrawn it.
-		if (this.#isWithdrawn(grant.tags)) return refuseSocket();
+		if (this.#isWithdrawn(grant.tags)) return this.#refuse();
 
 		// The client's earlier socket, if it is still here, is one the client gave
 		// up on; one that closed is held. The new one stands where that stood, under
@@ -260,6 +327,16 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 				connectionId ??= held.connectionId;
 			}
 		}
+		// One identity holds so many sockets in the scope: the newest retires the oldest.
+		const own = this.#sockets()
+			.filter(({ attachment }) => attachment.identity === identity)
+			.sort((one, other) => one.attachment.since - other.attachment.since);
+		const crowded: Attachment[] = [];
+		for (const { socket } of own.slice(0, Math.max(0, own.length - this.#socketsPerIdentity + 1))) {
+			const was = this.#retire(socket, CLOSE_CROWDED, 'crowded');
+			if (was) crowded.push(was);
+		}
+
 		// It keeps only the places its own grant lets it enter.
 		const kept = Object.entries(inherited).filter(([channel]) => allows(grant.enter, channel));
 		const left = Object.keys(inherited).filter((channel) => !allows(grant.enter, channel));
@@ -273,8 +350,9 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		const attachment: Attachment = {
 			...grant,
 			connectionId: connectionId ?? crypto.randomUUID(),
+			identity,
 			...(client !== undefined && { client }),
-			since: Date.now(),
+			since: this.now(),
 			channels: [],
 			watches: [],
 			presence: Object.fromEntries(kept),
@@ -287,33 +365,65 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		// The place it stood in is now this socket's, or nobody's.
 		if (Object.keys(inherited).length > 0) this.#record(attachment);
 		this.#tellWatchers(left);
-		if (kept.length > 0) await this.#schedule();
+		for (const was of crowded) await this.#closed(was);
+		await this.#schedule();
 		return new Response(null, { status: 101, webSocket: pair[0] });
 	}
 
 	/**
-	 * Publish each delivery in order. Answers each one's sequence on its channel,
-	 * and how many sockets it was sent to.
+	 * Answer an upgrade the object refuses with no socket: `connectSocket`, in
+	 * the app's Worker, answers the caller with the refused socket it can read.
+	 * A socket the object accepted would hold it awake for as long as a peer
+	 * took to complete the close, which is forever for one that never does.
 	 */
-	publish(deliveries: readonly Delivery[]): PublishAnswer[] {
-		const now = Date.now();
-		const sockets = this.#sockets();
-		const answers = deliveries.map(({ channel, name, data = null }) => {
-			const { seq } = this.ctx.storage.sql
-				.exec<{ seq: number }>(
-					`INSERT INTO head (channel, seq) VALUES (?, 1)
-					ON CONFLICT (channel) DO UPDATE SET seq = seq + 1 RETURNING seq`,
-					channel,
-				)
-				.one();
-			this.ctx.storage.sql.exec(
-				'INSERT INTO log (channel, seq, name, data, at) VALUES (?, ?, ?, ?, ?)',
-				channel,
-				seq,
-				name,
-				JSON.stringify(data),
-				now,
-			);
+	#refuse(): Response {
+		return new Response('Withdrawn', { status: 403, headers: { [REFUSED_HEADER]: '1' } });
+	}
+
+	/**
+	 * Publish each delivery in order. Answers each one's sequence on its channel,
+	 * and how many sockets it was sent to. All or nothing: a delivery that is not
+	 * one, or whose data is over `MAX_MESSAGE_BYTES` as JSON, throws a
+	 * `DeliveryError` before any delivery is numbered, logged or sent.
+	 */
+	async publish(deliveries: readonly Delivery[]): Promise<PublishAnswer[]> {
+		const now = this.now();
+		const read = deliveries.map(({ channel, name, data = null }, index) => {
+			if (!isChannel(channel) || typeof name !== 'string' || name === '')
+				throw new DeliveryError(`Delivery ${index} names no channel and name.`);
+			const json = JSON.stringify(data) ?? 'null';
+			const bytes = bytesOf(json);
+			if (bytes > MAX_MESSAGE_BYTES)
+				throw new DeliveryError(
+					`Delivery ${index} on ${channel} is ${bytes} bytes; a message is at most ${MAX_MESSAGE_BYTES}.`,
+				);
+			return { channel, name, data, json };
+		});
+		const numbered = this.ctx.storage.transactionSync(() =>
+			read.map((delivery) => {
+				const { seq } = this.ctx.storage.sql
+					.exec<{ seq: number }>(
+						`INSERT INTO head (channel, seq) VALUES (?, 1)
+						ON CONFLICT (channel) DO UPDATE SET seq = seq + 1 RETURNING seq`,
+						delivery.channel,
+					)
+					.one();
+				this.ctx.storage.sql.exec(
+					'INSERT INTO log (channel, seq, name, data, at) VALUES (?, ?, ?, ?, ?)',
+					delivery.channel,
+					seq,
+					delivery.name,
+					delivery.json,
+					now,
+				);
+				return { ...delivery, seq };
+			}),
+		);
+		// A socket silent past the sweep is no recipient: the alarm closes it next.
+		const sockets = this.#sockets().filter(
+			({ socket, attachment }) => this.#lastSeen(socket, attachment) + this.#sweepMs > now,
+		);
+		const answers = numbered.map(({ channel, name, data, seq }) => {
 			const frame = JSON.stringify({
 				t: 'msg',
 				channel,
@@ -327,9 +437,14 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 				if (attachment.channels.includes(channel) && this.#send(socket, frame)) recipients += 1;
 			return { channel, seq, recipients };
 		});
-		// The log is pruned where it grows.
-		this.ctx.storage.sql.exec('DELETE FROM log WHERE at < ?', now - this.#retentionMs);
+		// The log is pruned where it grows, and by the alarm where it has stopped.
+		this.#prune(now);
+		await this.#schedule();
 		return answers;
+	}
+
+	#prune(now: number): void {
+		this.ctx.storage.sql.exec('DELETE FROM log WHERE at <= ?', now - this.#retentionMs);
 	}
 
 	/**
@@ -342,19 +457,36 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 	 *
 	 * A grant that also carries `except` is spared, here and for as long: so an
 	 * app that replaces a credential names the holder as `tag` and the new
-	 * credential as `except`, and the new one's sockets are let in at once.
+	 * credential as `except`, and the new one's sockets are let in at once. With
+	 * a `version`, of two disconnects of one tag the one sparing the higher
+	 * version stands, in whichever order they arrive.
 	 */
-	disconnect(tag: string, { except }: DisconnectOptions = {}): number {
-		const now = Date.now();
+	disconnect(tag: string, { except, version }: DisconnectOptions = {}): number {
+		const now = this.now();
 		this.ctx.storage.sql.exec('DELETE FROM withdrawn WHERE until <= ?', now);
+		let spare: { tag: string; version: number | null } | null =
+			except === undefined ? null : { tag: except, version: version ?? null };
+		const standing = this.ctx.storage.sql
+			.exec<{
+				spared: string | null;
+				version: number | null;
+			}>('SELECT spared, version FROM withdrawn WHERE tag = ?', tag)
+			.toArray()[0];
+		if (
+			spare?.version != null &&
+			standing?.spared != null &&
+			standing.version != null &&
+			standing.version > spare.version
+		)
+			spare = { tag: standing.spared, version: standing.version };
 		this.ctx.storage.sql.exec(
-			'INSERT OR REPLACE INTO withdrawn (tag, spared, until) VALUES (?, ?, ?)',
+			'INSERT OR REPLACE INTO withdrawn (tag, spared, until, version) VALUES (?, ?, ?, ?)',
 			tag,
-			except ?? null,
+			spare?.tag ?? null,
 			now + this.#withdrawalMs,
+			spare?.version ?? null,
 		);
-		const spared = (tags: readonly string[]): boolean =>
-			except !== undefined && tags.includes(except);
+		const spared = (tags: readonly string[]): boolean => spare !== null && tags.includes(spare.tag);
 		const left = new Set<string>();
 		let closed = 0;
 		for (const socket of this.ctx.getWebSockets(grantTag(tag))) {
@@ -380,41 +512,67 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 	 * tag's, whatever each grant carries: close every socket with
 	 * `CLOSE_REFUSED`, end every member's grace period, and for `withdrawalMs`
 	 * let in no socket at all. For a scope the app has ended, whose sockets
-	 * nothing should hold: with nobody present or held, no alarm is left to
-	 * wake the object. Answers how many sockets it closed.
+	 * nothing should hold. Once the withdrawal has run its time, the alarm
+	 * releases what the scope stored: its log, heads, withdrawals and epoch.
+	 * Answers how many sockets it closed.
 	 */
 	async disconnectAll(): Promise<number> {
-		this.ctx.storage.kv.put(EVERYONE_WITHDRAWN_UNTIL, Date.now() + this.#withdrawalMs);
+		this.ctx.storage.kv.put(EVERYONE_WITHDRAWN_UNTIL, this.now() + this.#withdrawalMs);
 		let closed = 0;
 		for (const socket of this.ctx.getWebSockets())
 			if (this.#retire(socket, CLOSE_REFUSED, 'refused')) closed += 1;
 		// Every watcher's socket closed with the rest, so there is nobody to tell.
 		this.ctx.storage.sql.exec('DELETE FROM member');
 		this.#asked.clear();
-		await this.ctx.storage.deleteAlarm();
+		await this.#schedule();
 		return closed;
+	}
+
+	/** Forget what a scope the app ended stored, once its withdrawal is over. */
+	#release(now: number): void {
+		this.ctx.storage.transactionSync(() => {
+			for (const table of ['log', 'head']) this.ctx.storage.sql.exec(`DELETE FROM ${table}`);
+			// A tag withdrawn since goes on being refused for as long as it was told to.
+			this.ctx.storage.sql.exec('DELETE FROM withdrawn WHERE until <= ?', now);
+			this.ctx.storage.kv.delete('epoch');
+			this.ctx.storage.kv.delete(EVERYONE_WITHDRAWN_UNTIL);
+		});
 	}
 
 	/** Whether a disconnect still standing withdrew a grant of `tags`. */
 	#isWithdrawn(tags: readonly string[]): boolean {
-		if ((this.ctx.storage.kv.get<number>(EVERYONE_WITHDRAWN_UNTIL) ?? 0) > Date.now()) return true;
+		const now = this.now();
+		if ((this.ctx.storage.kv.get<number>(EVERYONE_WITHDRAWN_UNTIL) ?? 0) > now) return true;
 		if (tags.length === 0) return false;
 		return this.ctx.storage.sql
 			.exec<{
 				tag: string;
 				spared: string | null;
-			}>('SELECT tag, spared FROM withdrawn WHERE until > ?', Date.now())
+			}>('SELECT tag, spared FROM withdrawn WHERE until > ?', now)
 			.toArray()
 			.some(({ tag, spared }) => tags.includes(tag) && !(spared !== null && tags.includes(spared)));
 	}
 
 	override async webSocketMessage(socket: WebSocket, raw: string | ArrayBuffer): Promise<void> {
-		if (typeof raw !== 'string') return;
 		const attachment = this.#read(socket);
 		if (!attachment) return;
+		if (!this.#withinBudget(socket))
+			return this.#closed(this.#retire(socket, CLOSE_RATE_LIMITED, 'rate limited'));
+		if (typeof raw !== 'string') return;
+		if (raw.length > MAX_CLIENT_FRAME_LENGTH)
+			return this.#closed(this.#retire(socket, CLOSE_TOO_LARGE, 'too large'));
 		const frame = readClientFrame(raw);
 		if (!frame) return;
-		if (frame.t === 'hello') return this.#hello(socket, attachment, frame);
+		if (frame.t === 'hello') {
+			const entries =
+				(frame.attach?.length ?? 0) +
+				(frame.watch?.length ?? 0) +
+				Object.keys(frame.presence ?? {}).length;
+			// Before any log is read.
+			if (entries > MAX_HELLO_ENTRIES)
+				return this.#closed(this.#retire(socket, CLOSE_TOO_LARGE, 'too large'));
+			return this.#hello(socket, attachment, frame);
+		}
 
 		const { channel } = frame;
 		const refuse = (what: RefusedFrame['what']): void => {
@@ -423,9 +581,10 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		switch (frame.t) {
 			case 'attach': {
 				if (!allows(attachment.hear, channel)) return refuse('attach');
-				const answer = this.#attach(attachment, frame, frame.epoch);
+				if (!attachment.channels.includes(channel)) attachment.channels.push(channel);
+				// Held before its log is read: what a socket cannot hold costs no read.
 				if (!this.#keep(socket, attachment)) return refuse('attach');
-				for (const each of answer) this.#send(socket, each);
+				for (const each of this.#attached(attachment, frame, frame.epoch)) this.#send(socket, each);
 				return;
 			}
 			case 'watch': {
@@ -491,8 +650,23 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 			this.#record({ ...attachment, presence: {} });
 			return this.#tellWatchers(channels);
 		}
-		this.#record(attachment, Date.now() + this.#graceMs);
+		this.#record(attachment, this.now() + this.#graceMs);
 		await this.#schedule();
+	}
+
+	/** Whether the socket may send one more frame now. */
+	#withinBudget(socket: WebSocket): boolean {
+		const now = this.now();
+		const budget = this.#budgets.get(socket) ?? { frames: FRAME_BURST, at: now };
+		budget.frames = Math.min(
+			FRAME_BURST,
+			budget.frames + (Math.max(0, now - budget.at) / 1000) * FRAMES_PER_SECOND,
+		);
+		budget.at = now;
+		this.#budgets.set(socket, budget);
+		if (budget.frames < 1) return false;
+		budget.frames -= 1;
+		return true;
 	}
 
 	/**
@@ -518,13 +692,18 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 	}
 
 	/**
-	 * Runs only while anyone is present or held: tells watchers of the members
-	 * whose grace period ended, asks those whose pings have stopped whether they
-	 * are there, and sweeps those whose pings stopped a sweep ago, whose sockets
-	 * never closed. A member that answers its ask pings, so it is not swept.
+	 * Runs while any socket is open, anyone is held, the log holds anything, or
+	 * a scope the app ended has storage to release. It tells watchers of the
+	 * members whose grace period ended, closes sockets past their age, asks the
+	 * sockets whose pings have stopped whether they are there, sweeps those
+	 * whose pings stopped a sweep ago, whose sockets never closed, and prunes
+	 * the log. A socket that answers its ask pings, so it is not swept.
 	 */
 	override async alarm(): Promise<void> {
-		const now = Date.now();
+		const now = this.now();
+		const everyoneUntil = this.ctx.storage.kv.get<number>(EVERYONE_WITHDRAWN_UNTIL);
+		if (everyoneUntil !== undefined && everyoneUntil <= now) this.#release(now);
+		this.#prune(now);
 		const left = new Set<string>();
 		const ended = this.ctx.storage.sql
 			.exec<{
@@ -533,9 +712,15 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 			.toArray();
 		for (const { presence } of ended)
 			for (const channel of Object.keys(JSON.parse(presence) as object)) left.add(channel);
+		const expired: Attachment[] = [];
 		const asked = new Map<string, number>();
 		for (const { socket, attachment } of this.#sockets()) {
-			if (Object.keys(attachment.presence).length === 0) continue;
+			if (attachment.since + this.#maxAgeMs <= now) {
+				// Its client comes straight back, so its member is held as a closed one's is.
+				const was = this.#retire(socket, CLOSE_EXPIRED, 'expired');
+				if (was) expired.push(was);
+				continue;
+			}
 			const seen = this.#lastSeen(socket, attachment);
 			if (seen + this.#sweepMs <= now) {
 				this.#retire(socket, CLOSE_STALE, 'stale');
@@ -544,7 +729,7 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 				continue;
 			}
 			if (seen + this.#askMs > now) continue;
-			// Asked once for each silence: an alarm that runs for another member's
+			// Asked once for each silence: an alarm that runs for another socket's
 			// sake finds this one already asked.
 			if (this.#asked.get(attachment.connectionId) !== seen) this.#send(socket, ASK);
 			asked.set(attachment.connectionId, seen);
@@ -552,6 +737,7 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		// Whoever answered, was swept or left is no longer waited on.
 		this.#asked = asked;
 		this.#tellWatchers(left);
+		for (const was of expired) await this.#closed(was);
 		await this.#schedule();
 	}
 
@@ -562,18 +748,23 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		const refuse = (channel: string, what: RefusedFrame['what']): void => {
 			refused.push({ t: 'refused', channel, what });
 		};
-		const attach = frame.attach ?? [];
-		const watch = frame.watch ?? [];
+		// Each channel once, however often it is named, as it was first named.
+		const named = new Map<string, AttachRequest>();
+		for (const request of frame.attach ?? [])
+			if (!named.has(request.channel)) named.set(request.channel, request);
+		const attach = [...named.values()];
+		const watch = [...new Set(frame.watch ?? [])];
 		const enter = Object.entries(frame.presence ?? {}).filter(([channel]) => isChannel(channel));
 
-		const answers: string[] = [];
+		const granted: AttachRequest[] = [];
 		attachment.channels = [];
 		for (const request of attach)
-			if (allows(attachment.hear, request.channel))
-				answers.push(...this.#attach(attachment, request, frame.epoch));
-			else refuse(request.channel, 'attach');
+			if (allows(attachment.hear, request.channel)) {
+				attachment.channels.push(request.channel);
+				granted.push(request);
+			} else refuse(request.channel, 'attach');
 		attachment.watches = [];
-		for (const channel of new Set(watch))
+		for (const channel of watch)
 			if (allows(attachment.hear, channel)) attachment.watches.push(channel);
 			else refuse(channel, 'watch');
 		attachment.presence = {};
@@ -581,11 +772,15 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 			if (allows(attachment.enter, channel)) attachment.presence[channel] = data ?? null;
 			else refuse(channel, 'enter');
 
-		if (!this.#keep(socket, attachment)) {
+		// Held before any log is read: what a socket cannot hold costs no read.
+		const answers: string[] = [];
+		if (this.#keep(socket, attachment))
+			for (const request of granted)
+				answers.push(...this.#attached(attachment, request, frame.epoch));
+		else {
 			// More than a socket can hold: it holds nothing, and is told so of each.
 			Object.assign(attachment, { channels: [], watches: [], presence: {} });
 			socket.serializeAttachment(attachment);
-			answers.length = 0;
 			refused.length = 0;
 			for (const { channel } of attach) refuse(channel, 'attach');
 			for (const channel of watch) refuse(channel, 'watch');
@@ -606,20 +801,20 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 		for (const each of refused) this.#send(socket, JSON.stringify(each));
 		if (changed.size > 0) this.#record(attachment);
 		this.#tellWatchers(changed);
-		if (Object.keys(attachment.presence).length > 0) await this.#schedule();
+		await this.#schedule();
 	}
 
 	/**
-	 * Attach to a channel, and answer the frames that say so: `attached`, then
-	 * what the socket missed when its sequence still joins the log.
+	 * The frames that say a channel the socket now holds is attached: `attached`,
+	 * then what the socket missed when its sequence still joins the log.
 	 */
-	#attach(attachment: Attachment, request: AttachRequest, epoch: string | undefined): string[] {
+	#attached(attachment: Attachment, request: AttachRequest, epoch: string | undefined): string[] {
 		const { channel, since } = request;
-		if (!attachment.channels.includes(channel)) attachment.channels.push(channel);
 		const head = this.#head(channel);
+		const current = this.#epoch();
 		let replay: LogRow[] = [];
 		let resumed = false;
-		if (since !== undefined && epoch === this.#epoch && since <= head) {
+		if (since !== undefined && epoch === current && since <= head) {
 			replay = this.ctx.storage.sql
 				.exec<LogRow>(
 					'SELECT seq, name, data, at FROM log WHERE channel = ? AND seq > ? ORDER BY seq',
@@ -636,7 +831,7 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 				channel,
 				resumed,
 				seq: head,
-				epoch: this.#epoch,
+				epoch: current,
 				connectionId: attachment.connectionId,
 			},
 		];
@@ -759,28 +954,39 @@ export class RealtimeObject<Env = unknown> extends DurableObject<Env> {
 
 	/** A socket's last sign of life: its last ping, or its accept. */
 	#lastSeen(socket: WebSocket, attachment: Attachment): number {
-		const pinged = this.ctx.getWebSocketAutoResponseTimestamp(socket)?.getTime() ?? 0;
-		return Math.max(pinged, attachment.since);
+		return Math.max(this.pingedAt(socket), attachment.since);
 	}
 
 	/**
-	 * Set the alarm for the first moment a member could need asking or telling
-	 * of: a grace period ending, the ask of whoever was heard from longest ago, or
-	 * the sweep limit of whoever was asked. With no one present or held there is
-	 * nothing to wait for, and no alarm.
+	 * Set the alarm for the first moment anything could need doing: a grace
+	 * period ending, a socket reaching its age, the ask of whoever was heard from
+	 * longest ago, the sweep limit of whoever was asked, the oldest logged
+	 * message leaving the log, or a scope the app ended being released. With no
+	 * socket, nobody held, an empty log and nothing to release, there is nothing
+	 * to wait for and no alarm.
 	 */
 	async #schedule(): Promise<void> {
-		let next = this.ctx.storage.sql
+		const needs: number[] = [];
+		const { until } = this.ctx.storage.sql
 			.exec<{ until: number | null }>('SELECT MIN(until) AS until FROM member')
-			.one().until;
+			.one();
+		if (until !== null) needs.push(until);
+		const { at } = this.ctx.storage.sql
+			.exec<{ at: number | null }>('SELECT MIN(at) AS at FROM log')
+			.one();
+		if (at !== null) needs.push(at + this.#retentionMs);
+		const everyoneUntil = this.ctx.storage.kv.get<number>(EVERYONE_WITHDRAWN_UNTIL);
+		if (everyoneUntil !== undefined) needs.push(everyoneUntil);
 		for (const { socket, attachment } of this.#sockets()) {
-			if (Object.keys(attachment.presence).length === 0) continue;
 			const seen = this.#lastSeen(socket, attachment);
 			const wasAsked = this.#asked.get(attachment.connectionId) === seen;
-			const need = seen + (wasAsked ? this.#sweepMs : this.#askMs);
-			next = next === null ? need : Math.min(next, need);
+			needs.push(
+				seen + (wasAsked ? this.#sweepMs : this.#askMs),
+				attachment.since + this.#maxAgeMs,
+			);
 		}
-		if (next === null) return;
+		if (needs.length === 0) return;
+		const next = Math.min(...needs);
 		const set = await this.ctx.storage.getAlarm();
 		if (set === null || set > next) await this.ctx.storage.setAlarm(next);
 	}

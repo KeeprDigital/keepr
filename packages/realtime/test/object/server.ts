@@ -10,15 +10,8 @@ import { CLIENT_ID_PARAM } from '../../src/protocol.ts';
 import { openClient } from './client.ts';
 import type { TestClient } from './client.ts';
 
-/** The test Worker's bindings: the class as exported, at its defaults, and under each brief timing. */
-export type Binding =
-	| 'PLAIN'
-	| 'DEFAULTS'
-	| 'BRIEF_LOG'
-	| 'BRIEF_GRACE'
-	| 'BRIEF_SWEEP'
-	| 'BRIEF_ASK'
-	| 'BRIEF_WITHDRAWAL';
+/** The test Worker's bindings: the class as exported, and at its defaults on a clock a test moves. */
+export type Binding = 'PLAIN' | 'DEFAULTS';
 
 export interface Delivery {
 	channel: string;
@@ -45,7 +38,8 @@ export interface ConnectOptions {
 /** A ticket as `admit` answers it, carried to the object as `connectSocket` carries its own. */
 export interface Ticketed {
 	readonly ticket: string;
-	connect(): TestClient;
+	/** With `raw`, the object's own answer reaches the socket, unread by `connectSocket`. */
+	connect(options?: { raw?: boolean }): TestClient;
 	/** The same, asked for no socket: a plain request. */
 	request(): Promise<Response>;
 }
@@ -67,6 +61,8 @@ export interface Scope {
 	carry(ticket: Ticketed): Ticketed;
 	/** Any other method of the object, by RPC. */
 	call<Answer>(method: string, ...args: unknown[]): Promise<Answer>;
+	/** Move the object's clock on by `ms`, and run its alarm as it would run then, unless told not to. */
+	advance(ms: number, options?: { alarm?: boolean }): Promise<void>;
 	/** Put the object to sleep as the runtime does, its sockets kept. */
 	hibernate(): Promise<void>;
 	/** Stop the object and close its sockets, so it starts again from its storage. */
@@ -113,8 +109,9 @@ export async function startServer(): Promise<Server> {
 				url.searchParams.set('ticket', ticket);
 				return {
 					ticket,
-					connect() {
+					connect({ raw = false } = {}) {
 						const socket = new URL(url);
+						if (raw) socket.searchParams.set('raw', '1');
 						socket.protocol = 'ws:';
 						const opened = openClient(socket);
 						clients.add(opened);
@@ -143,6 +140,7 @@ export async function startServer(): Promise<Server> {
 				admit: async (grant = anyone) => carry(await call<string>('admit', grant)),
 				carry: ({ ticket }) => carry(ticket),
 				call,
+				advance: (ms, { alarm = true } = {}) => call('advance', ms, alarm),
 				hibernate: () => evict('hibernate'),
 				restart: () => evict('close'),
 			};

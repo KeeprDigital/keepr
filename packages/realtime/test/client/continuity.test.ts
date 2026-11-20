@@ -142,6 +142,43 @@ describe('a first attach', () => {
 	});
 });
 
+describe('a channel asked for again within one round trip', () => {
+	// Subscribe, unsubscribe and subscribe again before the object has answered:
+	// both attaches are answered, and the first answer is not the second's.
+	it('tells of no loss, and hears what follows the attach it last asked for', async () => {
+		const { transport, letIn } = rig();
+		transport.hold();
+		const open = await letIn();
+		transport.onMessage('a', 'note', () => {})();
+		const heard = listen(transport, 'a');
+
+		open.hear(attached('a', { seq: 4 }));
+		open.hear(message('a', 5, 'between'));
+		open.hear(attached('a', { seq: 5 }));
+		open.hear(message('a', 6, 'after'));
+
+		expect(open.frames.map(({ t }) => t)).toEqual(['hello', 'attach', 'detach', 'attach']);
+		expect(heard).toEqual({ data: ['after'], lost: 0, firstAttach: 1 });
+	});
+});
+
+describe('a one-time attach listener', () => {
+	it('releases its channel once told: with nothing else asked, the socket closes', async () => {
+		const { transport, letIn } = rig();
+		let told = 0;
+		transport.onceAttached('a', () => {
+			told += 1;
+		});
+		const open = await letIn();
+
+		open.hear(attached('a'));
+
+		expect(told).toBe(1);
+		expect(open.frames.at(-1)).toEqual({ t: 'detach', channel: 'a' });
+		expect([open.closed, transport.connectionState]).toEqual([{ code: 1000 }, 'closed']);
+	});
+});
+
 describe('a channel while attached', () => {
 	it.each([
 		{ frame: 'a sequence already heard', seq: 5, data: [5], lost: 0 },

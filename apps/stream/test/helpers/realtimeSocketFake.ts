@@ -220,7 +220,8 @@ export function socketRealtimeRig(
 			asked.push(eventId);
 			return options.address?.(eventId) ?? `wss://stream.test/events/${eventId}/realtime`;
 		},
-		socket: { WebSocket: Socket, timers: clock },
+		// No jitter: each retry follows the rhythm's own wait.
+		socket: { WebSocket: Socket, timers: clock, random: () => 0 },
 		page,
 	});
 	const socket = async (eventId?: number) => {

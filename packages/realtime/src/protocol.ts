@@ -22,6 +22,20 @@ export const CLOSE_SUPERSEDED = 4000;
 /** The client's pings stopped, and it was swept. */
 export const CLOSE_STALE = 4001;
 /**
+ * The socket reached its maximum age. The client comes back at once, and its
+ * caller is judged again as any new socket's is.
+ */
+export const CLOSE_EXPIRED = 4002;
+/**
+ * Its identity opened more sockets in the scope than the object holds for one,
+ * and this was the oldest.
+ */
+export const CLOSE_CROWDED = 4003;
+/** A frame was longer, or a `hello` asked for more, than the object takes. */
+export const CLOSE_TOO_LARGE = 4413;
+/** The client sent frames faster than the object takes them. */
+export const CLOSE_RATE_LIMITED = 4429;
+/**
  * The caller may not connect, or may no longer. A page cannot read a refused
  * upgrade's status, so a refusal is an accepted socket closed with this.
  */
@@ -34,8 +48,11 @@ export interface AttachRequest {
 }
 
 /**
- * Everything a client wants, sent once as its socket opens. It replaces
- * whatever the socket held, an inherited presence included.
+ * Everything a client wants, sent as its socket opens. It replaces whatever
+ * the socket held, an inherited presence included, and may be sent again to
+ * replace it once more. A channel is attached once however often it is named;
+ * a `hello` of more entries than the object takes closes the socket with
+ * `CLOSE_TOO_LARGE` before any channel's log is read.
  */
 export interface HelloFrame {
 	t: 'hello';

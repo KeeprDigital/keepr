@@ -1,6 +1,6 @@
 # ADR-0139: The object asks a silent member before it sweeps it
 
-Accepted · 2026-11-19 · [#1329](https://github.com/KeeprDigital/keepr/issues/1329), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310) · Amends ADR-0137
+Accepted · 2026-11-19 · [#1329](https://github.com/KeeprDigital/keepr/issues/1329), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310) · Amends ADR-0137 · Amended by ADR-0159: every socket is asked and swept, present or not, and the alarm runs while any socket is open
 
 ADR-0137 sweeps a member whose pings stopped 45 s ago and closes its socket as stale. The client transport's ping is a timer, and a browser slows a hidden page's timers. A hidden member would be swept and reconnect about once a minute, and whoever watches it would see it leave and come back.
 

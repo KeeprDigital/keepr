@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { TICKET_MS } from '../../src/object/limits.ts';
 import { startServer } from './server.ts';
 import type { Server } from './server.ts';
 
@@ -8,11 +9,6 @@ beforeAll(async () => {
 }, 60_000);
 afterEach(() => server.closeSockets());
 afterAll(() => server.close());
-
-/** Longer than a ticket waits for its socket (`TICKET_MS`, 10 s). */
-const PAST_A_TICKET_MS = 10_500;
-
-const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 // A ticket is what stands between a request and the object: `connectSocket`
 // asks for one by RPC and spends it at once. Here a test holds it instead.
@@ -61,19 +57,18 @@ describe('a ticket', () => {
 		expect(await elsewhere.opened).toBe(false);
 	});
 
-	// The object is kept awake throughout: asleep it forgets the ticket, which is
-	// the restart's case below, and would hide a ticket that never ran out.
+	// The object never sleeps here: asleep it forgets the ticket, which is the
+	// restart's case below, and would hide a ticket that never ran out.
 	it('admits no socket once its time has passed, though the object never slept', async () => {
 		const scope = server.scope();
 		const ticket = await scope.admit();
 
-		for (const until = Date.now() + PAST_A_TICKET_MS; Date.now() < until; await wait(1000))
-			await scope.call('wakes');
+		await scope.advance(TICKET_MS);
 		const late = ticket.connect();
 
 		expect(await late.opened).toBe(false);
 		expect(await scope.call('wakes')).toBe(1);
-	}, 30_000);
+	});
 
 	it("is not kept through the object's restart", async () => {
 		const scope = server.scope();

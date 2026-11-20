@@ -1,9 +1,10 @@
-import type { Server } from 'node:http';
+import type { IncomingMessage, Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { defineNuxtModule } from 'nuxt/kit';
 import { devRegistry, startDevWorker } from './build/devWorker';
-import { assertRealtimePaths } from './build/paths';
+import { DEFAULT_MAX_AGE_MS } from '../src/object/limits.ts';
+import { assertRealtimePaths, DEV_PROXY_ROUTE, devProxyUrl } from './build/paths';
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
@@ -15,10 +16,14 @@ export interface RealtimeOptions {
 	socketPath: string;
 	/**
 	 * Where the app's own route answers the port (`defineRealtimePort`). Only the
-	 * hand-off reaches it. Not a path that starts with `socketPath`, which the dev
-	 * proxy takes whole.
+	 * hand-off reaches it. Not `socketPath` itself.
 	 */
 	portPath: string;
+	/**
+	 * How long the object keeps a socket before it closes it to have its caller
+	 * judged again by the port. An hour, the object's own default.
+	 */
+	maxSocketAgeMs: number;
 }
 
 /** The Workers runtime the dev Worker runs as: the workspace's compatibility date. */
@@ -47,6 +52,7 @@ export default defineNuxtModule<RealtimeOptions>({
 		binding: 'REALTIME',
 		socketPath: '/realtime/socket',
 		portPath: '/realtime/port',
+		maxSocketAgeMs: DEFAULT_MAX_AGE_MS,
 	},
 	async setup(options, nuxt) {
 		assertRealtimePaths(options);
@@ -68,16 +74,24 @@ export default defineNuxtModule<RealtimeOptions>({
 		runtime.handOffSecret = randomUUID();
 		const worker = await startDevWorker({
 			portPath: options.portPath,
+			maxSocketAgeMs: options.maxSocketAgeMs,
 			secret: runtime.handOffSecret,
 			compatibilityDate: DEV_WORKER_COMPATIBILITY_DATE,
 			registry: devRegistry(nuxt.options),
 		});
 		nuxt.options.nitro.devProxy = {
 			...nuxt.options.nitro.devProxy,
-			[options.socketPath]: { target: worker.url, ws: true },
+			[DEV_PROXY_ROUTE]: { target: worker.url, ws: true },
 		};
 		nuxt.hook('listen', (server, listener: { https?: unknown }) => {
 			worker.appListensAt(loopbackOrigin(server, Boolean(listener.https)));
+			// Before anything else hears it: the socket's path itself, and no route that
+			// only starts like it, goes to the dev proxy's own route.
+			const toTheProxy = (request: IncomingMessage): void => {
+				request.url = devProxyUrl(request.url ?? '/', options.socketPath);
+			};
+			server.prependListener('request', toTheProxy);
+			server.prependListener('upgrade', toTheProxy);
 		});
 		nuxt.hook('close', () => worker.stop());
 	},

@@ -532,6 +532,8 @@ describe("the realtime transport over an Event's object", () => {
 			const rig = socketRealtimeRig();
 			const first = vi.fn();
 			const late = vi.fn();
+			// Held by a subscription: told, a one-time listener asks nothing more of it.
+			rig.realtime.onChannel(EVENT, 'player:updated', vi.fn());
 			rig.realtime.onceAttached(EVENT, first);
 			const socket = await rig.open(1, EVENT);
 

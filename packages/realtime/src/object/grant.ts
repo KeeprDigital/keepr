@@ -31,6 +31,12 @@ export interface DisconnectOptions {
 	 * replaced the ones withdrawn, where `tag` names their holder.
 	 */
 	except?: string;
+	/**
+	 * Which version of `except` this is, where credentials are numbered: of two
+	 * disconnects of one tag, the one that spares the higher version stands,
+	 * whichever reaches the object last.
+	 */
+	version?: number;
 }
 
 /** A grant as the object holds it. */
