@@ -171,6 +171,19 @@ describe('usePlayerListStore', () => {
 
 			expect(store.membersByListId.get(42)).toEqual([5, 10, 15]);
 		});
+
+		// A List whose members could not be read is not an empty List.
+		it('marks a List whose members it could not load, until a load succeeds', async () => {
+			mockRepo.getMemberIds.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce([5]);
+
+			await store.loadListMembers(1, 42);
+
+			expect(store.memberLoadFailed(42)).toBe(true);
+			expect(store.getCachedMemberIds(42)).toBeUndefined();
+			await store.loadListMembers(1, 42);
+			expect(store.memberLoadFailed(42)).toBe(false);
+			expect(store.getCachedMemberIds(42)).toEqual([5]);
+		});
 	});
 
 	describe.each([

@@ -5,6 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, reactive, ref } from 'vue';
 import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 
 interface StandingsAnswer {
 	standings: Array<{
@@ -74,11 +75,18 @@ mockNuxtImport('usePhaseStore', () => () => ({
 	isLoaded: true,
 	getPhaseById: () => undefined,
 }));
-mockNuxtImport('usePlayerListStore', () => () => ({
+const playerListStore = reactive({
 	isLoaded: true,
-	lists: [],
+	lists: [] as Array<{ id: number }>,
+	unread: new Set<number>(),
 	getCachedMemberIds: () => undefined,
-}));
+	memberLoadFailed: (listId: number) => playerListStore.unread.has(listId),
+	loadListMembers: vi.fn(async (_eventId: number, listId: number) => {
+		playerListStore.unread.add(listId);
+		return null;
+	}),
+});
+mockNuxtImport('usePlayerListStore', () => () => playerListStore);
 const meleeStore = reactive({
 	syncingRound: false,
 	lastOperation: null as { status: string; title: string; description: string } | null,
@@ -298,5 +306,32 @@ describe('players page — Round sync', () => {
 				},
 			],
 		]);
+	});
+});
+
+// A List whose members could not be read is not an empty List: the page says so and reads again.
+describe('players page — a Player List it could not read', () => {
+	it('says so and reads the members again on retry', async () => {
+		const wrapper = await mountPage({
+			PlayerListTabs: defineComponent({
+				emits: ['select'],
+				template:
+					'<button type="button" data-list-tab @click="$emit(\'select\', 7)">Top 8</button>',
+			}),
+			UAlert: nuxtUiStubs.UAlert,
+		});
+
+		await wrapper.get('[data-list-tab]').trigger('click');
+		await flushPromises();
+		const alert = wrapper.get('[role="alert"]');
+		expect(alert.text()).toContain("This list's members could not be loaded.");
+
+		await alert
+			.findAll('button')
+			.find((button) => button.text() === 'Retry')!
+			.trigger('click');
+		await flushPromises();
+		expect(playerListStore.loadListMembers).toHaveBeenCalledTimes(2);
+		wrapper.unmount();
 	});
 });

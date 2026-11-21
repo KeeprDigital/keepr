@@ -5,6 +5,7 @@ import type {
 } from '~~/shared/api';
 import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
 import { playerListService } from '~~/server/services/playerList';
+import { refuseOnCommanderEvent } from '~~/server/utils/commanderEventRefusal';
 
 interface CreatePlayerListParams {
 	eventId: number;
@@ -48,6 +49,7 @@ export function playerListWriteModule() {
 		input,
 		originConnectionId,
 	}: CreatePlayerListParams): Promise<PlayerListResponse> {
+		await refuseOnCommanderEvent(eventId, 'Player Lists');
 		const newList = await lists.create(eventId, input);
 
 		return await publication.playerListCreated({
@@ -63,6 +65,7 @@ export function playerListWriteModule() {
 		input,
 		originConnectionId,
 	}: UpdatePlayerListParams): Promise<PlayerListResponse> {
+		await refuseOnCommanderEvent(eventId, 'Player Lists');
 		const updatedList = await lists.update(listId, eventId, input);
 
 		if (!updatedList) {
@@ -108,6 +111,7 @@ export function playerListWriteModule() {
 		playerIds,
 		originConnectionId,
 	}: ChangeMembersParams) {
+		await refuseOnCommanderEvent(eventId, 'Player Lists');
 		const result = await lists.addMembers(listId, eventId, playerIds);
 		const memberCount = await lists.getMemberCount(listId, eventId);
 
@@ -178,6 +182,7 @@ export function playerListWriteModule() {
 		playerIds,
 		originConnectionId,
 	}: ChangeMembersParams) {
+		await refuseOnCommanderEvent(eventId, 'Player Lists');
 		const result = await lists.reorderMembers(listId, eventId, playerIds);
 		const memberCount = await lists.getMemberCount(listId, eventId);
 

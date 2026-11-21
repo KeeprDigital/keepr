@@ -25,6 +25,7 @@ import {
 	throwFeatureMatchNoteDiscardRequired,
 } from '~~/server/utils/featureMatchNoteDiscard';
 import { decidePromotion } from './decision';
+import { refuseOnCommanderEvent } from '~~/server/utils/commanderEventRefusal';
 
 /**
  * Whether a write failed because two Feature Match Slots would have held one
@@ -72,6 +73,7 @@ export function featureMatchPromotionModule() {
 		confirmedNoteDiscards = [],
 		originConnectionId,
 	}: PromoteMatchToSlotInput): Promise<FeatureMatchPromotionResponse> {
+		await refuseOnCommanderEvent(eventId, 'Matches to promote');
 		const match = await matches.findById(matchId, eventId);
 		if (!match) {
 			throw createError({ statusCode: 404, message: 'Match not found' });

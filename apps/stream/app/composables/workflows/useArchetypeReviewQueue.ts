@@ -2,6 +2,7 @@ import type { Ref } from 'vue';
 import type { PlayerDeckResponse, PlayerDeckSummaryResponse } from '~~/shared/types/metagame';
 import type { Player } from '~/types';
 import { isReviewedPlayerDeck } from '~~/shared/utils/playerDeck';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 export type QueueFilter = 'unreviewed' | 'reviewed' | 'all';
 
@@ -25,7 +26,7 @@ export function useArchetypeReviewQueue() {
 	const playerStore = usePlayerStore();
 	const eventStore = useEventStore();
 	const playerDeckStore = usePlayerDeckStore();
-	const { fetchDeck } = usePlayerDeckCache();
+	const { readDeck } = usePlayerDeckCache();
 
 	const queueFilter = ref<QueueFilter>('unreviewed');
 	/** The deck shown, by id: it stays shown while the Event holds it, whichever list it moves to. */
@@ -107,34 +108,61 @@ export function useArchetypeReviewQueue() {
 	// ── Deck loading — separate from queue entries to avoid circular reactivity ──
 
 	/**
-	 * Active deck for the current entry. Reset to null immediately on navigation;
-	 * populated once fetchDeck resolves. Kept separate from allEntries so that
-	 * updating it cannot cause currentEntry to re-evaluate and re-trigger the watcher.
+	 * Active deck for the current entry. Cleared the moment another deck is shown,
+	 * so the deck left never shows beside the next one's form; populated once its
+	 * read lands. Kept separate from allEntries so that updating it cannot cause
+	 * currentEntry to re-evaluate and re-trigger the watcher.
 	 */
 	const activeDeck = ref<PlayerDeckResponse | null>(null);
 	const deckLoading = ref(false);
-	let activeDeckRequestId = 0;
+	/** Why the deck shown could not be loaded, or null. */
+	const deckError = ref<string | null>(null);
+	const deckReads = createGuardedSequence();
 
-	watch(
-		currentEntry,
-		async (entry) => {
-			const requestId = ++activeDeckRequestId;
-			if (!entry || !eventStore.eventId) {
-				activeDeck.value = null;
-				deckLoading.value = false;
-				return;
-			}
+	async function loadActiveDeck() {
+		const read = deckReads.begin();
+		const entry = currentEntry.value;
+		deckError.value = null;
+		if (!entry || !eventStore.eventId) {
+			activeDeck.value = null;
+			deckLoading.value = false;
+			return;
+		}
 
-			deckLoading.value = true;
-			const deck = await fetchDeck(entry.player.id, eventStore.eventId, entry.player.updatedAt, {
+		deckLoading.value = true;
+		try {
+			const deck = await readDeck(entry.player.id, eventStore.eventId, entry.player.updatedAt, {
 				deckId: entry.deck.id,
 			});
-			if (requestId !== activeDeckRequestId) return;
+			if (read.stale) return;
 			activeDeck.value = deck;
-			deckLoading.value = false;
+		} catch {
+			if (read.stale) return;
+			deckError.value = 'This deck could not be loaded.';
+		}
+		deckLoading.value = false;
+	}
+
+	// The queue rebuilds its entries on every Player or deck message: only another
+	// deck, or a change to its Player, reads again.
+	watch(
+		() => {
+			const entry = currentEntry.value;
+			return entry ? `${entry.deck.id}:${String(entry.player.updatedAt)}` : null;
+		},
+		(_key, previousKey) => {
+			const deckId = currentEntry.value?.deck.id ?? null;
+			if (previousKey === undefined || previousKey?.split(':')[0] !== String(deckId))
+				activeDeck.value = null;
+			void loadActiveDeck();
 		},
 		{ immediate: true },
 	);
+
+	/** Reads the deck shown again, after a failed read. */
+	function retryDeck() {
+		void loadActiveDeck();
+	}
 
 	// A filter change keeps the deck shown when the new list holds it, and
 	// otherwise shows that list's first deck, or none for an empty list.
@@ -261,6 +289,8 @@ export function useArchetypeReviewQueue() {
 		currentEntry,
 		activeDeck,
 		deckLoading,
+		deckError,
+		retryDeck,
 		totalDecks,
 		reviewedCount,
 		progressPercent,

@@ -108,11 +108,12 @@ export interface MappedMeleePlayer {
 	externalStatus: number | null;
 	name: string;
 	pronouns: string | null;
-	wins: number | null;
-	losses: number | null;
-	draws: number | null;
-	position: number | null;
-	points: number | null;
+	/** Absent when the standings answer holds no record for the Player: the stored one stands. */
+	wins?: number | null;
+	losses?: number | null;
+	draws?: number | null;
+	position?: number | null;
+	points?: number | null;
 	deckLists: ParsedDeckList[] | undefined;
 }
 
@@ -401,7 +402,21 @@ export function mapMeleePlayersToDb(
 	const standingsMap = new Map(standings.map((standing) => [standing.TeamId, standing]));
 
 	return players
-		.map((player) => mapMeleePlayerToDb(player, standingsMap.get(player.TeamId)))
+		.map((player): MappedMeleePlayer => {
+			const standing = standingsMap.get(player.TeamId);
+			// Before Round 1 no Player has a standing and each has played nothing. Once
+			// Melee reports standings, one missing a Player says nothing of their record.
+			if (standing || standings.length === 0) return mapMeleePlayerToDb(player, standing);
+			const {
+				wins: _w,
+				losses: _l,
+				draws: _d,
+				position: _p,
+				points: _pts,
+				...identity
+			} = mapMeleePlayerToDb(player);
+			return identity;
+		})
 		.sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity));
 }
 

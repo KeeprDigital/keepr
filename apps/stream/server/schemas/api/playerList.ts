@@ -31,29 +31,37 @@ export const updatePlayerListSchema = createUpdateSchema(playerLists)
 
 // ── Member Management Schemas ──
 
-const playerIdListSchema = z
-	.array(z.number().int().positive())
-	.min(1)
-	.max(500)
-	.refine((playerIds) => new Set(playerIds).size === playerIds.length, {
-		message: 'playerIds must not contain duplicates',
-	});
+/**
+ * The most Players a reorder names. A reorder names every member, and a list
+ * grows past the 500 one add takes, so it is bounded by an Event's field.
+ */
+export const PLAYER_LIST_REORDER_MAX_MEMBERS = 5000;
+
+function playerIdListSchema(max: number) {
+	return z
+		.array(z.number().int().positive())
+		.min(1)
+		.max(max)
+		.refine((playerIds) => new Set(playerIds).size === playerIds.length, {
+			message: 'playerIds must not contain duplicates',
+		});
+}
 
 export const addMembersSchema = z
 	.object({
-		playerIds: playerIdListSchema,
+		playerIds: playerIdListSchema(500),
 	})
 	.strict();
 
 export const batchRemoveMembersSchema = z
 	.object({
-		playerIds: playerIdListSchema,
+		playerIds: playerIdListSchema(500),
 	})
 	.strict();
 
 export const reorderMembersSchema = z
 	.object({
-		playerIds: playerIdListSchema,
+		playerIds: playerIdListSchema(PLAYER_LIST_REORDER_MAX_MEMBERS),
 	})
 	.strict();
 

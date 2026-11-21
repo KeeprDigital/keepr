@@ -5,6 +5,8 @@ const props = defineProps<{
 	nameInput: string;
 	colorsInput: string[];
 	saving: boolean;
+	/** The deck shown is still loading: picking an Archetype now would judge a deck not yet seen. */
+	deckLoading?: boolean;
 	isEditMode: boolean;
 	isNameValid: boolean;
 	matchesExistingArchetype: Archetype | null;
@@ -145,12 +147,13 @@ const filteredArchetypes = computed(() => {
 					v-for="archetype in filteredArchetypes"
 					:key="archetype.id"
 					type="button"
-					class="relative w-full px-2 py-2.5 rounded-md text-left transition-colors hover:bg-elevated overflow-hidden"
+					class="relative w-full px-2 py-2.5 rounded-md text-left transition-colors hover:bg-elevated overflow-hidden disabled:pointer-events-none disabled:opacity-50"
 					:class="
 						archetype.id === matchingArchetypeId
 							? 'before:absolute before:left-0 before:inset-y-0 before:w-0.5 before:bg-primary before:rounded-full'
 							: ''
 					"
+					:disabled="saving || deckLoading"
 					@click="emit('chipClick', archetype)"
 				>
 					<!-- Line 1: name + mana symbols + deck count -->

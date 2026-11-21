@@ -22,6 +22,7 @@ import {
 	removeImportedStructure,
 } from '~~/server/services/importedStructure';
 import { requireMeleeService } from '~~/server/services/meleeIntegration';
+import { findFeaturedByMatches, matchService } from '~~/server/services/match';
 import { mtgCardService } from '~~/server/services/mtgCard';
 import { phaseService } from '~~/server/services/phase';
 import { playerService } from '~~/server/services/player';
@@ -285,6 +286,21 @@ export function createMeleeSyncWorkflows() {
 			)
 			.map((phase) => phase.id);
 		if (staleRoundIds.length > 0 || stalePhaseIds.length > 0) {
+			// Read before the removal: deleting a stale Round's Matches unlinks each
+			// Slot showing one and drops its Assignments, by foreign key.
+			const featured = await findFeaturedByMatches(
+				eventId,
+				(
+					await Promise.all(
+						staleRoundIds.map(
+							async (roundId) => await matchService().findByRoundId(eventId, roundId),
+						),
+					)
+				)
+					.flat()
+					.filter((match) => match.externalSource === 'melee')
+					.map((match) => match.id),
+			);
 			// A stale Phase or Round still holding manual structure is kept as
 			// manual structure rather than deleted through it (ADR-0040).
 			const removal = await removeImportedStructure(eventId, {
@@ -301,6 +317,23 @@ export function createMeleeSyncWorkflows() {
 			// client never received these Screens back (ADR-0060).
 			for (const screen of removal.clearedScreens)
 				await publication.screenUpdated({ eventId, entity: screen });
+			// Neither is named by the structure's announcement. With no origin: the
+			// syncing client's response carries neither.
+			const deletedMatchIds = new Set(removal.deletedMatchIds);
+			const unlinkedSlotIds = featured.slots
+				.filter((slot) => slot.matchId != null && deletedMatchIds.has(slot.matchId))
+				.map((slot) => slot.id);
+			if (unlinkedSlotIds.length > 0)
+				await publishAfterCommit(warnings, async () => {
+					await publication.featureMatchSlotsUpdated({ eventId, slotIds: unlinkedSlotIds });
+				});
+			for (const assignment of featured.assignments)
+				if (deletedMatchIds.has(assignment.matchId))
+					await publishAfterCommit(
+						warnings,
+						async () =>
+							await publication.featureMatchAssignmentDeleted({ eventId, id: assignment.id }),
+					);
 		}
 
 		if (hasStructureChanges(changes)) {

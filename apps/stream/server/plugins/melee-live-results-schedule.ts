@@ -17,7 +17,7 @@ export default defineNitroPlugin((nitroApp) => {
 		if (controller.cron !== LIVE_RESULTS_CRON) return;
 		try {
 			// Each tick's outcome is in the Event's poll state; only failures log.
-			await runDueLiveResultsTicks(new Date());
+			await runDueLiveResultsTicks();
 		} catch (error) {
 			// A failed run must never take down the Worker: the next minute's run
 			// reads the same due Events from D1.

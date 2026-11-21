@@ -49,6 +49,7 @@ export const usePlayerListStore = defineStore('playerList', () => {
 	const batchRemoveMembers = memberRuntime.batchRemoveMembers;
 	const reorderMembers = memberRuntime.reorderMembers;
 	const loadListMembers = memberRuntime.loadListMembers;
+	const memberLoadFailed = memberRuntime.memberLoadFailed;
 	const getCachedMemberIds = memberRuntime.getCachedMemberIds;
 
 	async function loadByEventId(eventId: number, load?: EventDataLoadOptions) {
@@ -139,6 +140,7 @@ export const usePlayerListStore = defineStore('playerList', () => {
 		batchRemoveMembers,
 		reorderMembers,
 		loadListMembers,
+		memberLoadFailed,
 		getCachedMemberIds,
 		applyRemoteCreated,
 		applyRemoteUpdated,

@@ -61,6 +61,19 @@ describe('mapMeleePlayersToDb', () => {
 		});
 	});
 
+	// Once Melee reports standings, one missing a Player says nothing of their
+	// record: the sync leaves the stored one alone rather than resetting it.
+	it('leaves the record of a Player absent from a standings answer unset', () => {
+		const [, absent] = mapMeleePlayersToDb(
+			[meleePlayer(1), meleePlayer(2)],
+			[meleeStanding(1, { Rank: 1 })],
+		);
+
+		expect(absent).toMatchObject({ externalId: '2' });
+		for (const field of ['wins', 'losses', 'draws', 'position', 'points'] as const)
+			expect(absent).not.toHaveProperty(field);
+	});
+
 	it('rejects team payloads that would collapse multiple players into one TeamId', () => {
 		const team = [
 			meleePlayer(10, { PlayerName: 'Team Member One' }),
@@ -96,7 +109,7 @@ describe('mapMeleePlayersToDb', () => {
 			[meleeStanding(1, { Rank: 3 }), meleeStanding(2, { Rank: 1 }), meleeStanding(3, { Rank: 2 })],
 		);
 
-		expect(result.map((player) => [player.name, player.position])).toEqual([
+		expect(result.map((player) => [player.name, player.position ?? null])).toEqual([
 			['First', 1],
 			['Second', 2],
 			['Third', 3],

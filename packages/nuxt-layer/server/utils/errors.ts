@@ -1,4 +1,5 @@
 import { isError } from 'h3';
+import { STATE_CONFLICT_CODE } from '../../shared/utils/stateConflict';
 
 export class StateConflictError extends Error {
 	statusCode = 409;
@@ -19,11 +20,10 @@ export class StateConflictError extends Error {
  */
 export function isStateConflictFailure(error: unknown): boolean {
 	if (error instanceof StateConflictError) return true;
-	return (
-		typeof error === 'object' &&
-		error !== null &&
-		(error as { statusCode?: unknown }).statusCode === 409
-	);
+	// Only a 409 marked as a lost race is one: any other 409 is a refusal.
+	if (typeof error !== 'object' || error === null) return false;
+	const failure = error as { statusCode?: unknown; data?: { code?: unknown } };
+	return failure.statusCode === 409 && failure.data?.code === STATE_CONFLICT_CODE;
 }
 
 /**

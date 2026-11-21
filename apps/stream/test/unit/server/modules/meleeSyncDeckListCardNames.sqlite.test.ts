@@ -38,6 +38,8 @@ vi.stubGlobal('createError', (input: { statusCode: number; message?: string }) =
 );
 
 const { meleeSyncModule } = await import('~~/server/modules/melee-sync');
+const { IMPORTED_CARD_NAMED_LOOKUPS_PER_SYNC } =
+	await import('~~/server/services/importedMtgCardResolver');
 
 afterAll(async () => await harness.close());
 
@@ -111,4 +113,58 @@ describe('importing a Deck List holding a card and another card that has its nam
 			]);
 		},
 	);
+});
+
+describe('the Scryfall requests a Deck List sync makes', () => {
+	// Each per-name lookup is a subrequest of the sync's Worker invocation: a
+	// front face the collection answered costs none, an unknown name one at most
+	// once, and a sync asks for no more than its cap.
+	it('looks each unknown name up once, within the cap, and accepts a front face the collection answered', async () => {
+		const scryfall = createScryfallFake(Object.values(FACE_NAME_COLLISIONS));
+		vi.stubGlobal('fetch', scryfall.fetch);
+		const [event] = await db
+			.insert(schema.events)
+			.values({
+				name: 'Melee Championship',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+				meleeEnabled: true,
+				meleeEventId: 'melee-1',
+			})
+			.returning({ id: schema.events.id });
+		const unknown = Array.from({ length: 60 }, (_, index) => `Unknown Card ${index}`);
+		melee.fetchPlayers.mockResolvedValue([
+			meleePlayer(1, {
+				Decklists: [
+					{
+						Guid: 'deck-1',
+						FormatId: 'standard',
+						DecklistName: 'Brew',
+						Records: [
+							deckRecord('Delver of Secrets', 'Creature'),
+							deckRecord('Scheming Silvertongue', 'Creature'),
+							...unknown.map((name) => deckRecord(name, 'Sorcery')),
+						],
+						Attributes: [],
+					},
+				],
+			}),
+		]);
+
+		await meleeSyncModule().syncDeckLists(stubH3Event(), event!.id);
+
+		expect(scryfall.namedLookups).toHaveLength(IMPORTED_CARD_NAMED_LOOKUPS_PER_SYNC);
+		expect(scryfall.namedLookups).not.toContain('Delver of Secrets');
+		expect(scryfall.namedLookups).not.toContain('Scheming Silvertongue');
+		expect((await mainboardOf(event!.id)).map((card) => card.name)).toEqual([
+			FACE_NAME_COLLISIONS.delverOfSecrets.name,
+			schemingSilvertongue.name,
+		]);
+
+		scryfall.namedLookups.length = 0;
+		await meleeSyncModule().syncDeckLists(stubH3Event(), event!.id);
+
+		expect(scryfall.namedLookups).toEqual([]);
+		expect(scryfall.collectionBatches).toHaveLength(2);
+	});
 });

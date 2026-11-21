@@ -7,12 +7,10 @@ import { eventService } from '~~/server/services/event';
 import { requireMeleeService } from '~~/server/services/meleeIntegration';
 import { MeleeTransportError } from '~~/server/services/meleeTransport';
 import { errorNameOf } from '@keepr/nuxt-layer/server/utils/errorLogFields';
-import {
-	isStateConflictFailure,
-	toPublicOperationalError,
-} from '@keepr/nuxt-layer/server/utils/errors';
+import { toPublicOperationalError } from '@keepr/nuxt-layer/server/utils/errors';
 import {
 	acquireMeleeSyncLease,
+	isMeleeSyncLeaseUnavailable,
 	LIVE_RESULTS_COMMAND,
 	releaseMeleeSyncLease,
 	renewMeleeSyncLease,
@@ -71,7 +69,7 @@ export async function runLiveResultsTick(
 			durationMs: LIVE_RESULTS_LEASE_MS,
 		});
 	} catch (error) {
-		if (isStateConflictFailure(error)) return { outcome: 'skipped' };
+		if (isMeleeSyncLeaseUnavailable(error)) return { outcome: 'skipped' };
 		throw error;
 	}
 

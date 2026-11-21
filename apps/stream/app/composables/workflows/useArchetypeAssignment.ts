@@ -203,20 +203,26 @@ export function useArchetypeAssignment({
 		{ immediate: true },
 	);
 
-	watch(archetypeForAssignment, (val) => {
-		if (val?.keyCards?.length) {
-			selectedKeyCards.value = new Set(val.keyCards.map((kc) => kc.name));
-		} else if (!isEditMode.value) {
-			selectedKeyCards.value.clear();
-		}
-	});
+	// By id: a peer's update to the same Archetype, or this save's own, is no
+	// new pick, and must not revert the key cards the reviewer toggled.
+	watch(
+		() => archetypeForAssignment.value?.id,
+		() => {
+			const val = archetypeForAssignment.value;
+			if (val?.keyCards?.length) {
+				selectedKeyCards.value = new Set(val.keyCards.map((kc) => kc.name));
+			} else if (!isEditMode.value) {
+				selectedKeyCards.value.clear();
+			}
+		},
+	);
 
 	// ── Helpers ──
 
-	async function saveKeyCards(archetypeId: number) {
+	async function saveKeyCards(archetypeId: number, keyCards: string[]) {
 		if (!eventId.value) throw new Error('Event not loaded');
 
-		await archetypeStore.setKeyCards(eventId.value, archetypeId, [...selectedKeyCards.value]);
+		await archetypeStore.setKeyCards(eventId.value, archetypeId, keyCards);
 	}
 
 	async function updateArchetypeColors(archetype: Archetype) {
@@ -316,24 +322,24 @@ export function useArchetypeAssignment({
 			async () => {
 				const name = nameInput.value.trim();
 				const colors = colorsInput.value.length > 0 ? colorsInput.value.join('') : null;
+				// Read before any write: the write changes the Archetype these compare with.
+				const keyCards = [...selectedKeyCards.value];
+				const keyCardsChanged = hasKeyCardChanges.value;
 
 				const renamed = currentArchetype.value;
 				if (intent === 'rename' && renamed) {
-					const keyCardsChanged = hasKeyCardChanges.value;
 					const updated = await archetypeStore.updateArchetype(currentEventId, renamed.id, {
 						name,
 						colors,
 					});
 					if (!updated) throw new Error(archetypeStore.error ?? 'Failed to rename archetype');
-					if (keyCardsChanged) await saveKeyCards(renamed.id);
+					if (keyCardsChanged) await saveKeyCards(renamed.id, keyCards);
 					return true;
 				}
 
 				const existing = matchesExistingArchetype.value;
 				if (existing) {
-					if (hasKeyCardChanges.value) {
-						await saveKeyCards(existing.id);
-					}
+					if (keyCardsChanged) await saveKeyCards(existing.id, keyCards);
 					await applyAssignment(existing);
 					return true;
 				}
@@ -341,9 +347,7 @@ export function useArchetypeAssignment({
 				const sameName = existingArchetypeByName.value;
 				if (sameName) {
 					const updated = await updateArchetypeColors(sameName);
-					if (hasKeyCardChanges.value) {
-						await saveKeyCards(updated.id);
-					}
+					if (keyCardsChanged) await saveKeyCards(updated.id, keyCards);
 					await applyAssignment(updated);
 					return true;
 				}
@@ -353,9 +357,7 @@ export function useArchetypeAssignment({
 				if (!created) throw new Error(archetypeStore.error ?? 'Failed to create archetype');
 
 				// Save key cards for new archetype
-				if (selectedKeyCards.value.size > 0) {
-					await saveKeyCards(created.id);
-				}
+				if (keyCards.length > 0) await saveKeyCards(created.id, keyCards);
 				await applyAssignment(created);
 				return true;
 			},

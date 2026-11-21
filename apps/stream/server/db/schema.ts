@@ -1019,7 +1019,8 @@ export const archetypes = sqliteTable(
 	},
 	(table) => [
 		index('archetypes_event_id_idx').on(table.eventId),
-		uniqueIndex('archetypes_event_name_idx').on(table.eventId, table.name),
+		// One Archetype per name, ignoring case and surrounding spaces, as `sameArchetypeName` compares.
+		uniqueIndex('archetypes_event_name_key_idx').on(table.eventId, sql`lower(trim(${table.name}))`),
 		uniqueIndex('archetypes_event_leader_idx')
 			.on(table.eventId, table.leaderCardNumber)
 			.where(sql`${table.leaderCardNumber} is not null`),

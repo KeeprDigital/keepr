@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { EVENT_PAGE_OFFERED_TO, eventKind } from '~~/shared/config/games';
 import { getMtgGameData } from '~~/shared/utils/gameData';
 import { LazyMtgCardHistory, LazyOpCardHistory } from '#components';
@@ -312,9 +313,13 @@ watch(
 	{ immediate: true },
 );
 
+// A Round picked again before this one's load lands supersedes it: its
+// Matches are no longer the ones on show, so it picks none of them.
+const roundPicks = createGuardedSequence();
 watch(
 	[() => eventStore.eventId, deckListRoundId],
 	async ([eventId, roundId], previous, onCleanup) => {
+		const pick = roundPicks.begin();
 		if (!eventId || !roundId) return;
 		const releaseRound = assignmentStore.consumeRound(eventId, roundId);
 		onCleanup(releaseRound);
@@ -322,6 +327,7 @@ watch(
 			matchStore.loadMatchesByRoundId(eventId, roundId),
 			assignmentStore.loadAssignments(eventId, roundId),
 		]);
+		if (pick.stale) return;
 		// A Slot shown on arrival stays; picking another Round shows that Round's Matches.
 		const roundPicked = previous?.[1] != null && previous[1] !== roundId;
 		if (deckListMatchup.value?.kind === 'slot' && !roundPicked) return;

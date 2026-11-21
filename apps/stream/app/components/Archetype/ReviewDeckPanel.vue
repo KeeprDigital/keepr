@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { PlayerDeckCardEntry, PlayerDeckResponse } from '~~/shared/types/metagame';
 import type { ReviewEntry } from '~/composables/workflows/useArchetypeReviewQueue';
-import type { MtgCard } from '~/types/card/mtg';
 import { useElementSize } from '@vueuse/core';
 import { getDeckColumnCount, splitDeckGroupsIntoColumns } from '~~/shared/utils/deckColumns';
 import {
@@ -15,21 +14,20 @@ import {
 	formatHighlanderIssueSummary,
 	formatHighlanderPointsLabel,
 } from '~~/shared/utils/highlander';
-import {
-	createDeckLookupCards,
-	getDeckCardImageUrl,
-	isReviewedPlayerDeck,
-} from '~~/shared/utils/playerDeck';
+import { getDeckCardImageUrl, isReviewedPlayerDeck } from '~~/shared/utils/playerDeck';
 
 const props = defineProps<{
 	entry: ReviewEntry | null;
 	activeDeck: PlayerDeckResponse | null;
 	loading?: boolean;
+	/** Why the deck could not be loaded, or null. */
+	error?: string | null;
 	selectedKeyCards: Set<string>;
 }>();
 
 const emit = defineEmits<{
 	(e: 'toggleKeyCard', name: string): void;
+	(e: 'retry'): void;
 }>();
 
 // ── View mode ──
@@ -38,19 +36,7 @@ const viewMode = ref<'list' | 'grid'>('list');
 
 // ── Scryfall card data ──
 
-const { fetchScryfallCards } = useScryfallBatch();
-const cardDataMap = shallowRef(new Map<string, MtgCard>());
-
-watch(
-	() => props.activeDeck,
-	async (deck) => {
-		cardDataMap.value = new Map();
-		if (!deck) return;
-		const lookupCards = createDeckLookupCards(deck.cards, deck.companion);
-		cardDataMap.value = (await fetchScryfallCards(lookupCards)).cards;
-	},
-	{ immediate: true },
-);
+const cardDataMap = useDeckCardData(() => props.activeDeck);
 
 function getCardImageUrl(card: PlayerDeckCardEntry): string | null {
 	return getDeckCardImageUrl(cardDataMap.value, card);
@@ -285,7 +271,18 @@ const pipData = computed(() => formatPips(calculateDeckPips(cards.value)));
 					<UILoadingSpinner size="sm" label="Loading next deck..." />
 				</div>
 			</div>
-			<div v-if="activeDeck" class="flex flex-col gap-8">
+			<UAlert
+				v-if="error && !loading"
+				color="error"
+				variant="subtle"
+				icon="i-lucide-triangle-alert"
+				:title="error"
+				role="alert"
+				:actions="[
+					{ label: 'Retry', color: 'neutral', variant: 'outline', onClick: () => emit('retry') },
+				]"
+			/>
+			<div v-else-if="activeDeck" class="flex flex-col gap-8">
 				<!-- LIST VIEW -->
 				<div v-if="viewMode === 'list'" class="flex flex-col gap-8">
 					<!-- Mainboard -->
@@ -389,7 +386,7 @@ const pipData = computed(() => formatPips(calculateDeckPips(cards.value)));
 			</div>
 
 			<!-- No deck list -->
-			<div v-else class="flex items-center justify-center py-16 text-center">
+			<div v-else-if="!loading" class="flex items-center justify-center py-16 text-center">
 				<p class="text-sm text-muted">No deck list available for this player.</p>
 			</div>
 		</div>

@@ -1,3 +1,4 @@
+import { canonicalJson } from '@keepr/nuxt-layer/server/utils/canonicalJson';
 import type { SQL } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type {
@@ -231,6 +232,8 @@ export function playerDeckService() {
 			reviewedAt: Date | null;
 			archetypeName: string | null;
 			archetypeColors: string | null;
+			storedArchetypeId: number | null;
+			holdsMeleeDeck: number;
 		}> = [];
 		for (const payload of targetPayloads) {
 			const primaryExternalId = sql<string | null>`(
@@ -249,6 +252,13 @@ export function playerDeckService() {
 						reviewedAt: playerDecks.reviewedAt,
 						archetypeName: archetypes.name,
 						archetypeColors: archetypes.colors,
+						storedArchetypeId: players.archetypeId,
+						holdsMeleeDeck: sql<number>`exists (
+							select 1 from player_decks held
+							where held.event_id = ${eventId}
+								and held.player_id = ${players.id}
+								and held.external_source = 'melee'
+						)`,
 					})
 					.from(players)
 					.leftJoin(
@@ -615,12 +625,14 @@ export function playerDeckService() {
 		const projectionByPlayerId = new Map(
 			projections.map((projection) => [projection.playerId, projection]),
 		);
-		const playerProjectionRows = replacements.map((replacement) => {
+		const playerProjectionRows = replacements.flatMap((replacement) => {
 			const projection = projectionByPlayerId.get(replacement.playerId)!;
 			const primary =
 				replacement.snapshots.find((snapshot) => snapshot.deck.isPrimary) ??
 				replacement.snapshots[0] ??
 				null;
+			// A Player Melee never held a Deck List for keeps what an Operator set by hand.
+			if (primary == null && !projection.holdsMeleeDeck) return [];
 			const reviewInvalidated =
 				projection.deckId != null && changedReviewedDeckIds.has(projection.deckId);
 			const reviewed =
@@ -638,11 +650,14 @@ export function playerDeckService() {
 				: projection.gameData?.type === 'mtg'
 					? { ...projection.gameData, deckName: null, deckColors: null }
 					: (projection.gameData ?? null);
-			return {
-				playerId: replacement.playerId,
-				archetypeId: primary && !reviewInvalidated ? (projection.archetypeId ?? null) : null,
-				gameData,
-			};
+			const archetypeId = primary && !reviewInvalidated ? (projection.archetypeId ?? null) : null;
+			const storedArchetypeId = projection.storedArchetypeId ?? null;
+			if (
+				archetypeId === storedArchetypeId &&
+				canonicalJson(gameData) === canonicalJson(projection.gameData ?? null)
+			)
+				return [];
+			return [{ playerId: replacement.playerId, archetypeId, gameData }];
 		});
 		for (const payload of chunkJsonRows(playerProjectionRows)) {
 			const incoming = sql`(

@@ -63,6 +63,24 @@ describe('archetype review assignment panel', () => {
 		expect(button(mountPanel(props), label)).toBeUndefined();
 	});
 
+	// A chip assigns the deck shown: never one the reviewer has not seen yet.
+	it.each([
+		{ state: 'while the next deck loads', props: { deckLoading: true }, disabled: true },
+		{ state: 'while saving', props: { saving: true }, disabled: true },
+		{ state: 'once the deck is shown', props: {}, disabled: false },
+	])('offers the Archetype chips $state: disabled $disabled', async ({ props, disabled }) => {
+		const burn = { id: 5, name: 'Burn', colors: 'R', keyCards: [] };
+		const wrapper = mountPanel({ ...props, isEditMode: false, sortedArchetypes: [burn] });
+
+		const chip = wrapper
+			.findAll('button')
+			.find((candidate) => candidate.text().startsWith('Burn'))!;
+		await chip.trigger('click');
+
+		expect(chip.attributes('disabled') !== undefined).toBe(disabled);
+		expect(wrapper.emitted('chipClick')?.length ?? 0).toBe(disabled ? 0 : 1);
+	});
+
 	it('says what else the save changes, when it changes more than this deck', () => {
 		const note = 'Also updates “Control” for 3 other decks.';
 

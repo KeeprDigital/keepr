@@ -5,6 +5,7 @@ import { defineComponent, reactive, ref } from 'vue';
 import { ATRAXA, TYMNA, typedSeat } from '~~/test/helpers/commanders';
 import { NAMI, opDeckListEntry, opSlotSide, ZORO } from '~~/test/helpers/opCards';
 import { createFollowedFeatureMatchSessions } from '~~/test/nuxt/helpers/followedFeatureMatchSession';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 
 const { mockFetch } = vi.hoisted(() => ({
@@ -115,7 +116,7 @@ const phaseStore = {
 };
 const assignmentStore = {
 	consumeRound: () => () => {},
-	loadAssignments: vi.fn(async () => {}),
+	loadAssignments: vi.fn(async (_eventId: number, _roundId: number) => {}),
 	assignmentsForRound: () => [],
 	isRemoteChanged: () => false,
 	updateAssignment: vi.fn(),
@@ -232,6 +233,12 @@ describe('cards page matchup Deck Lists', () => {
 
 	beforeEach(() => {
 		useCardStore().$reset();
+		assignmentStore.loadAssignments.mockImplementation(async () => {});
+		matchStore.loadMatchesByRoundId.mockImplementation(
+			async (_eventId: number, roundId: number) => {
+				matchStore.matches = matchesByRound.get(roundId) ?? [];
+			},
+		);
 	});
 
 	afterEach(() => {
@@ -277,6 +284,36 @@ describe('cards page matchup Deck Lists', () => {
 		await vi.waitFor(() =>
 			expect(useRoute().query).toEqual({ mode: 'match-decklist', roundId: '4', matchId: '9' }),
 		);
+	});
+
+	// A Round picked and then picked away from must not pick its Match once its load lands.
+	it('ignores a Round pick the operator has since replaced', async () => {
+		wrapper = await openCardsPage();
+		const round4Assignments = deferred();
+		const round3Matches = deferred();
+		assignmentStore.loadAssignments.mockImplementation(
+			async (_eventId: number, roundId: number) => {
+				if (roundId === 4) await round4Assignments.promise;
+			},
+		);
+		matchStore.loadMatchesByRoundId.mockImplementation(
+			async (_eventId: number, roundId: number) => {
+				if (roundId === 3) await round3Matches.promise;
+				matchStore.matches = matchesByRound.get(roundId) ?? [];
+			},
+		);
+
+		await pickers(wrapper).round.find('select').setValue('4');
+		await flushPromises();
+		await pickers(wrapper).round.find('select').setValue('3');
+		await flushPromises();
+		round4Assignments.resolve();
+		await flushPromises();
+
+		expect(pickedMatchId(wrapper)).not.toBe(9);
+		round3Matches.resolve();
+		await flushPromises();
+		expect(pickedMatchId(wrapper)).toBe(SHARED_ID);
 	});
 });
 

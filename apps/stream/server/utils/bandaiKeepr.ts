@@ -23,6 +23,8 @@ const REQUEST_TIMEOUT_MS = 10_000;
 /** A Card changes only when bandai-keepr rescrapes, so a number lookup is cached this long. */
 const CARD_CACHE_SECONDS = 300;
 const CARD_CACHE_NAME = 'bandai-keepr-cards';
+/** The most an answer may hold; a search page or a 1,000-card bulk answer is well inside it. */
+export const BANDAI_KEEPR_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
 /** `POST /cards/collection` takes at most this many identifiers a request. */
 const COLLECTION_CHUNK_SIZE = 1000;
 
@@ -76,19 +78,20 @@ export async function searchOpCards(
 	url.searchParams.set('limit', String(query.limit));
 	url.searchParams.set('offset', String(query.offset));
 
-	const response = await request(config, url);
-	// Every parameter is checked here first, so bandai-keepr refuses only text
-	// with no words to search for (e.g. `!!`): that matches no cards.
-	if (response.status === 400) {
-		await response.body?.cancel().catch(() => undefined);
-		return { items: [], total: 0 };
-	}
-	if (!response.ok) throw await upstreamFailure(response, 'search');
-	const page = await parse(response, bandaiKeeprCardPageSchema, 'search');
-	return {
-		items: page.items.map(toSummary),
-		total: page.total,
-	};
+	return await request(config, url, {}, async (response, readJson) => {
+		// Every parameter is checked here first, so bandai-keepr refuses only text
+		// with no words to search for (e.g. `!!`): that matches no cards.
+		if (response.status === 400) {
+			await response.body?.cancel().catch(() => undefined);
+			return { items: [], total: 0 };
+		}
+		if (!response.ok) throw await upstreamFailure(response, 'search');
+		const page = parse(await readJson('search'), bandaiKeeprCardPageSchema, 'search');
+		return {
+			items: page.items.map(toSummary),
+			total: page.total,
+		};
+	});
 }
 
 /** The Card a number names, with every Printing; `null` when bandai-keepr does not know it. */
@@ -101,15 +104,23 @@ export async function lookupOpCard(
 	// The key is the URL alone: the credential travels in a header, never in the key.
 	const cacheKey = url.href;
 	const hit = await cache?.match(cacheKey).catch(() => undefined);
-	if (hit) return toDetail(await parse(hit, bandaiKeeprCardDetailSchema, 'cached lookup'));
-
-	const response = await request(config, url);
-	if (response.status === 404) {
-		await response.body?.cancel().catch(() => undefined);
-		return null;
+	if (hit) {
+		// An answer cached under an older schema is asked for again, not failed
+		// on for the rest of its cache lifetime.
+		const stored = bandaiKeeprCardDetailSchema.safeParse(await hit.json().catch(() => undefined));
+		if (stored.success) return toDetail(stored.data);
+		await cache?.delete(cacheKey).catch(() => undefined);
 	}
-	if (!response.ok) throw await upstreamFailure(response, 'lookup');
-	const card = await parse(response, bandaiKeeprCardDetailSchema, 'lookup');
+
+	const card = await request(config, url, {}, async (response, readJson) => {
+		if (response.status === 404) {
+			await response.body?.cancel().catch(() => undefined);
+			return null;
+		}
+		if (!response.ok) throw await upstreamFailure(response, 'lookup');
+		return parse(await readJson('lookup'), bandaiKeeprCardDetailSchema, 'lookup');
+	});
+	if (!card) return null;
 	await cache
 		?.put(
 			cacheKey,
@@ -139,15 +150,21 @@ export async function lookUpOpCards(
 	const answer: OpCardBulkLookupAnswer = { cards: [], notFound: [] };
 	for (let start = 0; start < numbers.length; start += COLLECTION_CHUNK_SIZE) {
 		const chunk = numbers.slice(start, start + COLLECTION_CHUNK_SIZE);
-		const response = await request(config, new URL(`${config.apiUrl}/cards/collection`), {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				identifiers: chunk.map((number) => ({ number })),
-			}),
-		});
-		if (!response.ok) throw await upstreamFailure(response, 'bulk lookup');
-		const { results } = await parse(response, bandaiKeeprCollectionSchema, 'bulk lookup');
+		const { results } = await request(
+			config,
+			new URL(`${config.apiUrl}/cards/collection`),
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					identifiers: chunk.map((number) => ({ number })),
+				}),
+			},
+			async (response, readJson) => {
+				if (!response.ok) throw await upstreamFailure(response, 'bulk lookup');
+				return parse(await readJson('bulk lookup'), bandaiKeeprCollectionSchema, 'bulk lookup');
+			},
+		);
 		const byIndex = new Map(results.map((result) => [result.index, result]));
 		chunk.forEach((number, index) => {
 			const result = byIndex.get(index);
@@ -172,31 +189,97 @@ async function openCardCache(): Promise<Cache | null> {
 	}
 }
 
-async function request(
+/**
+ * One request to bandai-keepr. Its deadline holds until `use` returns, so the
+ * body `readJson` reads, bounded in size, is under it too.
+ */
+async function request<T>(
 	config: BandaiKeeprConfig,
 	url: URL,
-	init: { method?: string; headers?: Record<string, string>; body?: string } = {},
-): Promise<Response> {
+	init: { method?: string; headers?: Record<string, string>; body?: string },
+	use: (response: Response, readJson: (operation: string) => Promise<unknown>) => Promise<T>,
+): Promise<T> {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 	try {
-		return await fetch(url, {
-			method: init.method,
-			body: init.body,
-			headers: {
-				...init.headers,
-				Accept: 'application/json',
-				Authorization: `Bearer ${config.apiKey}`,
-			},
-			signal: controller.signal,
-		});
-	} catch (error) {
-		throw new BandaiKeeprRequestError(
-			controller.signal.aborted ? 'bandai-keepr request timed out' : 'bandai-keepr request failed',
-			{ cause: error },
+		let response: Response;
+		try {
+			response = await fetch(url, {
+				method: init.method,
+				body: init.body,
+				headers: {
+					...init.headers,
+					Accept: 'application/json',
+					Authorization: `Bearer ${config.apiKey}`,
+				},
+				signal: controller.signal,
+			});
+		} catch (error) {
+			throw new BandaiKeeprRequestError(
+				controller.signal.aborted
+					? 'bandai-keepr request timed out'
+					: 'bandai-keepr request failed',
+				{ cause: error },
+			);
+		}
+		return await use(
+			response,
+			async (operation) => await readBoundedJson(response, controller.signal, operation),
 		);
 	} finally {
 		clearTimeout(timeout);
+	}
+}
+
+async function readBoundedJson(
+	response: Response,
+	signal: AbortSignal,
+	operation: string,
+): Promise<unknown> {
+	const tooLarge = () => new BandaiKeeprRequestError(`bandai-keepr ${operation}: answer too large`);
+	const timedOut = () => new BandaiKeeprRequestError(`bandai-keepr ${operation}: answer timed out`);
+	const declared = response.headers.get('Content-Length');
+	if (declared && Number(declared) > BANDAI_KEEPR_MAX_RESPONSE_BYTES) {
+		await response.body?.cancel().catch(() => undefined);
+		throw tooLarge();
+	}
+	const reader = response.body?.getReader();
+	if (!reader) throw new BandaiKeeprRequestError(`bandai-keepr ${operation}: empty answer`);
+	const abort = () => void reader.cancel().catch(() => undefined);
+	signal.addEventListener('abort', abort, { once: true });
+	const chunks: Uint8Array[] = [];
+	let size = 0;
+	try {
+		while (true) {
+			if (signal.aborted) throw timedOut();
+			const { done, value } = await reader.read();
+			if (signal.aborted) throw timedOut();
+			if (done) break;
+			size += value.byteLength;
+			if (size > BANDAI_KEEPR_MAX_RESPONSE_BYTES) {
+				await reader.cancel().catch(() => undefined);
+				throw tooLarge();
+			}
+			chunks.push(value);
+		}
+	} catch (error) {
+		if (error instanceof BandaiKeeprRequestError) throw error;
+		throw signal.aborted
+			? timedOut()
+			: new BandaiKeeprRequestError(`bandai-keepr ${operation}: answer failed`, { cause: error });
+	} finally {
+		signal.removeEventListener('abort', abort);
+	}
+	const bytes = new Uint8Array(size);
+	let offset = 0;
+	for (const chunk of chunks) {
+		bytes.set(chunk, offset);
+		offset += chunk.byteLength;
+	}
+	try {
+		return JSON.parse(new TextDecoder().decode(bytes));
+	} catch (error) {
+		throw new BandaiKeeprRequestError(`bandai-keepr ${operation}: invalid JSON`, { cause: error });
 	}
 }
 
@@ -210,13 +293,7 @@ async function upstreamFailure(
 	});
 }
 
-async function parse<T>(response: Response, schema: z.ZodType<T>, operation: string): Promise<T> {
-	let body: unknown;
-	try {
-		body = await response.json();
-	} catch (error) {
-		throw new BandaiKeeprRequestError(`bandai-keepr ${operation}: invalid JSON`, { cause: error });
-	}
+function parse<T>(body: unknown, schema: z.ZodType<T>, operation: string): T {
 	const parsed = schema.safeParse(body);
 	if (!parsed.success)
 		throw new BandaiKeeprRequestError(`bandai-keepr ${operation}: unexpected answer`, {

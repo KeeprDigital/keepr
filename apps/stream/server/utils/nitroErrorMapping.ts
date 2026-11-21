@@ -10,6 +10,7 @@ import {
 	TemporarilyUnavailableError,
 } from '@keepr/nuxt-layer/server/utils/errors';
 import { RealtimePublishError } from './realtimePublishFailure';
+import { isUniqueConstraintViolation } from '~~/server/utils/uniqueConstraint';
 
 export interface MappableNitroError {
 	statusCode: number;
@@ -64,7 +65,7 @@ export function mapPublicNitroError(error: MappableNitroError): void {
 		error.message = (cause as Error).message;
 		hasMappedPublicServerMessage = true;
 		mappedOperationalError = true;
-	} else if (cause instanceof Error && cause.message?.includes('UNIQUE constraint failed')) {
+	} else if (isUniqueConstraintViolation(cause)) {
 		error.statusCode = 409;
 		error.statusMessage = 'Conflict';
 		error.message = 'Resource already exists';

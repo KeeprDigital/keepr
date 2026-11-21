@@ -28,20 +28,27 @@ const VueDraggableStub = defineComponent({
 	template: '<div><slot /></div>',
 });
 
-async function mountPane() {
+async function mountPane(
+	allPlayers: Array<{ id: number; name: string }> = [
+		{ id: 1, name: 'Alice' },
+		{ id: 2, name: 'Bob' },
+	],
+	initialMemberIds: number[] = [1],
+) {
 	return mount(ListMembersPane, {
 		props: {
 			listId: 5,
-			allPlayers: [
-				{ id: 1, name: 'Alice' },
-				{ id: 2, name: 'Bob' },
-			] as any,
-			initialMemberIds: [1],
+			allPlayers: allPlayers as any,
+			initialMemberIds,
 		},
 		global: {
 			stubs: {
 				UButton: UButtonStub,
-				UCheckbox: true,
+				UCheckbox: defineComponent({
+					emits: ['update:modelValue'],
+					template:
+						'<input type="checkbox" v-bind="$attrs" @click="$emit(\'update:modelValue\', true)" />',
+				}),
 				UInput: true,
 				UDropdownMenu: true,
 				UIcon: true,
@@ -69,5 +76,32 @@ describe('playerListMembersPane', () => {
 
 		expect(playerListStore.reorderMembers).not.toHaveBeenCalled();
 		expect(playerListStore.loadListMembers).not.toHaveBeenCalled();
+	});
+
+	// One add or removal request takes at most 500 Players; a List may hold more.
+	it.each([
+		{ change: 'adds', members: false, header: 0, action: 'Add 1201', write: 'addMembers' as const },
+		{
+			change: 'removes',
+			members: true,
+			header: 1,
+			action: 'Remove 1201',
+			write: 'batchRemoveMembers' as const,
+		},
+	])('$change more than 500 members in requests of 500 at most', async (row) => {
+		const players = Array.from({ length: 1201 }, (_, index) => ({
+			id: index + 1,
+			name: `Player ${index + 1}`,
+		}));
+		const wrapper = await mountPane(players, row.members ? players.map((player) => player.id) : []);
+		const selectAll = wrapper.findAll('input[type="checkbox"]:not([aria-label])')[row.header]!;
+		await selectAll.trigger('click');
+		await wrapper.get(`button[label="${row.action}"]`).trigger('click');
+
+		await (wrapper.vm as any).save();
+
+		expect(playerListStore[row.write].mock.calls.map(([, , ids]) => ids.length)).toEqual([
+			500, 500, 201,
+		]);
 	});
 });

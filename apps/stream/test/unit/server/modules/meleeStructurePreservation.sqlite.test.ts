@@ -290,6 +290,45 @@ describe('melee Sync structure reconciliation keeps manual descendants', () => {
 		);
 	});
 
+	// The stale Round's Matches go, and take a Slot's link and an Assignment with
+	// them: peers are told of both, as a Round snapshot tells them.
+	it('announces the Slot and the Assignment a removed stale Round held a featured Match for', async () => {
+		const eventId = await createEvent();
+		const livePhase = await insertPhase(eventId, 'Swiss', '500');
+		const staleRound = await insertRound(eventId, livePhase.id, 'Round 5', 'round-stale');
+		const featured = await insertMatch(eventId, staleRound.id, 'match-stale');
+		const [slot] = await db
+			.insert(schema.featureMatches)
+			.values({ eventId, matchId: featured.id })
+			.returning();
+		const [assignment] = await db
+			.insert(schema.featureMatchAssignments)
+			.values({ eventId, roundId: staleRound.id, slotId: slot!.id, matchId: featured.id })
+			.returning();
+
+		await createMeleeSyncWorkflows().syncEventStructure(
+			syncContext,
+			eventId,
+			meleeEventData,
+			upstream([
+				{ ID: 500, Name: 'Swiss', FormatId: 'modern', SortOrder: 0, Rounds: [] },
+			] as MeleeEventParsed['Phases']),
+		);
+
+		expect(
+			await db.query.featureMatches.findFirst({
+				where: (table, { eq }) => eq(table.id, slot!.id),
+			}),
+		).toMatchObject({ matchId: null });
+		expect(publishMessage.mock.calls.map(([, type, payload]) => [type, payload])).toEqual([
+			[
+				'featureMatch:updated',
+				{ featureMatch: expect.objectContaining({ id: slot!.id, matchId: null }) },
+			],
+			['featureMatchAssignment:deleted', { featureMatchAssignmentId: assignment!.id }],
+		]);
+	});
+
 	it('removes imported-only stale structure, and a repeated sync changes nothing and warns nothing', async () => {
 		const eventId = await createEvent();
 		const mixedPhase = await insertPhase(eventId, 'Day 1', 'phase-day-1');

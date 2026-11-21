@@ -11,6 +11,10 @@ vi.mock('~~/server/services/eventCardNameOverride', () => ({
 	}),
 }));
 
+vi.mock('~~/server/services/playerDeckUnresolvedCard', () => ({
+	playerDeckUnresolvedCardService: () => ({ listNamesByEventId: async () => [] }),
+}));
+
 const { ImportedMtgCardLookupError, importedMtgCardResolverService } =
 	await import('~~/server/services/importedMtgCardResolver');
 

@@ -513,6 +513,8 @@ export async function batchLookupScryfallIds(
 	let providerFailed = false;
 	const totalBatches = Math.ceil(identifiers.length / COLLECTION_BATCH_SIZE);
 
+	const frontFaceKeys = new Set<string>();
+
 	// Process in batches of 75 (Scryfall limit)
 	for (let i = 0; i < identifiers.length; i += COLLECTION_BATCH_SIZE) {
 		const batchIndex = Math.floor(i / COLLECTION_BATCH_SIZE) + 1;
@@ -529,8 +531,21 @@ export async function batchLookupScryfallIds(
 
 				// Also set without set code for fallback lookups
 				const nameOnlyKey = createCardKey(card.name, null);
-				if (!results.has(nameOnlyKey)) {
+				if (!results.has(nameOnlyKey) || frontFaceKeys.has(nameOnlyKey)) {
 					results.set(nameOnlyKey, cardData);
+					frontFaceKeys.delete(nameOnlyKey);
+				}
+			}
+			// A card asked for by its front face alone is answered under its full
+			// name: the answer stands for the front face too, so it needs no lookup
+			// of its own. A card of exactly that name, in any batch, wins.
+			for (const card of response.data) {
+				if (!card.name.includes(' // ')) continue;
+				const frontFace = card.name.split(' // ')[0]!.trim();
+				for (const key of [createCardKey(frontFace, card.set), createCardKey(frontFace, null)]) {
+					if (results.has(key)) continue;
+					results.set(key, mapScryfallCardData(card));
+					frontFaceKeys.add(key);
 				}
 			}
 

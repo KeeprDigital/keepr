@@ -466,6 +466,24 @@ async function handleBulkRemoveFromList() {
 			</UAlert>
 
 			<UAlert
+				v-if="activeListId !== null && playerListStore.memberLoadFailed(activeListId)"
+				color="error"
+				variant="subtle"
+				icon="i-lucide-circle-alert"
+				title="This list's members could not be loaded."
+				role="alert"
+				class="mb-4"
+				:actions="[
+					{
+						label: 'Retry',
+						color: 'neutral',
+						variant: 'outline',
+						onClick: () => void handleSelectList(activeListId),
+					},
+				]"
+			/>
+
+			<UAlert
 				v-if="standingsError"
 				color="error"
 				variant="subtle"

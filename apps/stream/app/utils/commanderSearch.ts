@@ -33,9 +33,20 @@ async function search(query: Record<string, string>): Promise<Commander[]> {
 	}
 }
 
+/**
+ * The text as one quoted name term, so search syntax in it is part of the name.
+ * Scryfall escapes nothing inside quotes: a name holding a double quote is
+ * single-quoted, and one holding both loses its double quotes.
+ */
+function nameTerm(text: string): string {
+	if (!text.includes('"')) return `name:"${text}"`;
+	if (!text.includes("'")) return `name:'${text}'`;
+	return `name:"${text.replaceAll('"', '')}"`;
+}
+
 /** The cards whose name the text is part of, each as its default printing. */
 export function searchCommanderCards(text: string): Promise<Commander[]> {
-	return search({ q: `${text} game:paper`, unique: 'cards' });
+	return search({ q: `${nameTerm(text)} game:paper`, unique: 'cards' });
 }
 
 /**

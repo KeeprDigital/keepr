@@ -269,6 +269,13 @@ async function syncRoundSnapshot(
 	}
 	const complete = isRoundComplete(meleeMatches.map(meleeMatchResultState), nextPaired);
 	const standings = complete ? await melee.fetchStandingsByRound(meleeRoundId) : null;
+	// A complete Round with Matches has standings. Melee listing none is an
+	// upstream fault: taken as the snapshot it would erase the Round's standings.
+	if (standings?.length === 0) {
+		throw new InvalidMeleeRoundSnapshotError(
+			`Melee.gg listed no standings for completed ${round.name}; its stored standings are kept`,
+		);
+	}
 
 	const playerMap = new Map(
 		allPlayers

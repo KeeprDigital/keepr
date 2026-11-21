@@ -1,0 +1,5 @@
+---
+'@keepr/stream': patch
+---
+
+A Melee Sync no longer erases what an Operator set: a Deck List sync keeps the Archetype and deck an Operator gave a Player Melee holds no Deck List for, a Player missing from Melee's standings keeps their record, and a complete Round Melee lists no standings for keeps its stored ones. Live Results runs stay inside their minute, card lookups per sync are capped, and a stale cached One Piece card is fetched again. Merging or deleting an Archetype now updates every Player who held it and their Feature Match Slots; Archetype names are unique ignoring case in the database, so two at once cannot both be created (an Event already holding two names differing only by case has the later one renamed with its id by the deploy's migration), and a Screen slug race answers 409. A Commander Event refuses Player, Round, Match, Assignment, Player List and Archetype writes; a Player List over 500 members can be reordered and a deactivated member removed; a Commander card search takes the typed text as a name.

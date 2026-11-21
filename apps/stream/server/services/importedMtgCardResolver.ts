@@ -1,6 +1,11 @@
 import type { DbMtgCard } from '~~/server/db/schema';
 import type { ScryfallCardData } from '~~/server/utils/scryfall';
 import { eventCardNameOverrideService } from '~~/server/services/eventCardNameOverride';
+import { playerDeckUnresolvedCardService } from '~~/server/services/playerDeckUnresolvedCard';
+import {
+	normalizeImportedCardName,
+	normalizeImportedSetCode,
+} from '~~/server/utils/cardNameNormalization';
 import {
 	batchLookupScryfallIds,
 	createCardKey,
@@ -35,6 +40,17 @@ export type ImportedMtgCardResolution = ImportedMtgCardResolved | ImportedMtgCar
 
 export interface ResolveImportedMtgCardsResult {
 	resolutions: Map<string, ImportedMtgCardResolution>;
+}
+
+/**
+ * The names a sync looks up one at a time, after the collection lookup missed
+ * them. Each costs a subrequest or two, so a sync asks for these at most and
+ * leaves the rest unresolved, for a later sync or the Operator.
+ */
+export const IMPORTED_CARD_NAMED_LOOKUPS_PER_SYNC = 25;
+
+function storedNameKey(name: string, setCode: string | null): string {
+	return `${normalizeImportedCardName(name)}\u0000${normalizeImportedSetCode(setCode)}`;
 }
 
 export class ImportedMtgCardLookupError extends Error {
@@ -102,7 +118,14 @@ export function importedMtgCardResolverService() {
 			uniqueCards.set(createCardKey(card.name, card.setCode), card);
 		}
 
-		const overrides = await eventCardNameOverrideService().listResolvedByEvent(eventId);
+		const [overrides, storedUnresolved] = await Promise.all([
+			eventCardNameOverrideService().listResolvedByEvent(eventId),
+			playerDeckUnresolvedCardService().listNamesByEventId(eventId),
+		]);
+		// A name a sync already stored as unresolved was looked up by name then.
+		const lookedUpBefore = new Set(
+			storedUnresolved.map((row) => `${row.normalizedOriginalName}\u0000${row.normalizedSetCode}`),
+		);
 		const overrideMap = new Map<string, DbMtgCard>();
 		for (const override of overrides) {
 			overrideMap.set(
@@ -150,6 +173,17 @@ export function importedMtgCardResolverService() {
 				continue;
 			}
 
+			if (
+				lookedUpBefore.has(storedNameKey(card.name, card.setCode)) ||
+				fuzzyLookups.length >= IMPORTED_CARD_NAMED_LOOKUPS_PER_SYNC
+			) {
+				resolutions.set(createCardKey(card.name, card.setCode), {
+					status: 'unresolved',
+					inputName: card.name,
+					inputSetCode: card.setCode,
+				});
+				continue;
+			}
 			fuzzyLookups.push(card);
 		}
 

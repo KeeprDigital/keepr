@@ -50,6 +50,8 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 	 */
 	const { executeReporting } = useReportingAction();
 	const membersByListId = ref<Map<number, number[]>>(new Map());
+	/** The Lists whose members the last read could not load: unknown, not empty. */
+	const failedMemberLoads = ref<Set<number>>(new Set());
 	/** Per List, only the re-read its latest remote change asked for lands. */
 	const memberReReads = createKeyedGuardedSequence<number>();
 
@@ -236,11 +238,25 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 		return executeReporting(
 			async () => {
 				const memberIds = await state.repository.getMemberIds(eventId, listId);
-				if (flight.current) membersByListId.value.set(listId, memberIds);
+				if (flight.current) {
+					membersByListId.value.set(listId, memberIds);
+					failedMemberLoads.value.delete(listId);
+				}
 				return memberIds;
 			},
-			{ errorRef: state.error, flight },
+			{
+				errorRef: state.error,
+				flight,
+				onError: () => {
+					if (flight.current) failedMemberLoads.value.add(listId);
+				},
+			},
 		);
+	}
+
+	/** Whether the last read of a List's members failed, so the List shows as unread. */
+	function memberLoadFailed(listId: number): boolean {
+		return failedMemberLoads.value.has(listId);
 	}
 
 	function getCachedMemberIds(listId: number): number[] | undefined {
@@ -278,6 +294,7 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 
 	function reset() {
 		membersByListId.value.clear();
+		failedMemberLoads.value.clear();
 	}
 
 	return {
@@ -290,6 +307,7 @@ export function usePlayerListMembersRuntime(state: PlayerListMembersState) {
 		batchRemoveMembers,
 		reorderMembers,
 		loadListMembers,
+		memberLoadFailed,
 		getCachedMemberIds,
 		applyRemoteMembersChanged,
 		reset,

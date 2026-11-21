@@ -247,6 +247,74 @@ describe('an Archetype write', () => {
 	);
 });
 
+// The Player write can give a Player an Archetype with no Deck List. A merge or
+// delete changes theirs too: peers re-read them, and a Slot seating one re-syncs.
+describe('an Archetype merged or deleted from under a Player with no Deck List', () => {
+	it.each([
+		{
+			write: 'merge',
+			act: async (eventId: number, archetypeId: number) => {
+				const [survivor] = await db
+					.insert(schema.archetypes)
+					.values({ eventId, name: 'Azorius Tempo' })
+					.returning();
+				await archetypeWriteModule().mergeArchetype({
+					eventId,
+					archetypeId,
+					intoArchetypeId: survivor!.id,
+					originConnectionId: ORIGIN,
+				});
+				return survivor!.id;
+			},
+		},
+		{
+			write: 'delete',
+			act: async (eventId: number, archetypeId: number) => {
+				await archetypeWriteModule().deleteArchetype({
+					eventId,
+					archetypeId,
+					originConnectionId: ORIGIN,
+				});
+				return null;
+			},
+		},
+	])('a $write announces them with the rest and re-syncs their Slot', async ({ act }) => {
+		const { eventId, archetypeId, playerIds } = await stage(1);
+		const [deckless] = await db
+			.insert(schema.players)
+			.values({ eventId, name: 'Deckless', archetypeId })
+			.returning();
+		const [slot] = await db
+			.insert(schema.featureMatches)
+			.values({
+				eventId,
+				player1Id: deckless!.id,
+				player1Data: { name: 'Deckless', archetypeId } as never,
+			})
+			.returning();
+
+		const heldAfter = await act(eventId, archetypeId);
+
+		const [stored] = await db
+			.select()
+			.from(schema.featureMatches)
+			.where(eq(schema.featureMatches.id, slot!.id));
+		expect(stored!.player1Data).toMatchObject({ archetypeId: heldAfter });
+		expect(
+			announced(eventId).flatMap(([type, payload]) =>
+				type === PROJECTIONS_CHANGED
+					? [[type, payload.playerIds]]
+					: type === 'featureMatch:updated'
+						? [[type, (payload.featureMatch as { id: number }).id]]
+						: [],
+			),
+		).toEqual([
+			[PROJECTIONS_CHANGED, [...playerIds, deckless!.id]],
+			['featureMatch:updated', slot!.id],
+		]);
+	});
+});
+
 describe('a re-projection of more Players than one message can name', () => {
 	/** No staged Event's id, so the publish reads no Screen. */
 	const EVENT_ID = 900;
