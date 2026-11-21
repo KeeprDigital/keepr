@@ -4,7 +4,7 @@ import type { Actor } from './actor';
 import type { KeeprAuth } from './auth';
 import { getRequestHost, toWebRequest } from 'h3';
 import { db } from '~~/server/db';
-import { requestActor } from './actor';
+import { refuseCrossSiteWrite, requestActor } from './actor';
 import { serverAuth } from './auth';
 import { answerRefusals } from './refusal';
 
@@ -16,17 +16,17 @@ export interface RouteContext {
 	request: Request;
 }
 
-/** Runs the work of one of Keepr Accounts' own routes, answering a refusal with its status and code. */
+/**
+ * Runs the work of one of Keepr Accounts' own routes, answering a refusal with
+ * its status and code. A write another origin's page made the browser send is
+ * refused 403 first, on every route, signed in or not (`refuseCrossSiteWrite`).
+ */
 export async function answerRoute<T>(event: H3Event, work: (context: RouteContext) => Promise<T>) {
-	return await answerRefusals(
-		event,
-		async () =>
-			await work({
-				auth: serverAuth(getRequestHost(event)),
-				database: db(),
-				request: toWebRequest(event),
-			}),
-	);
+	return await answerRefusals(event, async () => {
+		const request = toWebRequest(event);
+		refuseCrossSiteWrite(request);
+		return await work({ auth: serverAuth(getRequestHost(event)), database: db(), request });
+	});
 }
 
 /**

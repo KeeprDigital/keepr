@@ -1,5 +1,7 @@
 import type { BetterAuthOptions } from 'better-auth';
 import { APIError } from 'better-auth/api';
+import { hasControlCharacter } from '~~/shared/utils/controlCharacter';
+import { MAX_USER_NAME_LENGTH } from '~~/shared/utils/userName';
 import { textField } from './textField';
 
 /**
@@ -9,13 +11,25 @@ import { textField } from './textField';
 
 /**
  * The name `value` gives a User, trimmed. Blank once trimmed, or no text at all,
- * it is refused 400 `NAME_REQUIRED`, as Better Auth refuses, so its own routes
- * and Keepr Accounts' answer it alike (`refusalFromAuth`).
+ * it is refused 400 `NAME_REQUIRED`; longer than `MAX_USER_NAME_LENGTH`
+ * `NAME_TOO_LONG`; carrying a control character `NAME_INVALID`. Each is refused
+ * as Better Auth refuses, so its own routes and Keepr Accounts' answer it alike
+ * (`refusalFromAuth`).
  */
 export function userName(value: unknown): string {
 	const name = textField(value).trim();
 	if (name.length === 0)
 		throw APIError.from('BAD_REQUEST', { code: 'NAME_REQUIRED', message: 'Enter your name.' });
+	if (name.length > MAX_USER_NAME_LENGTH)
+		throw APIError.from('BAD_REQUEST', {
+			code: 'NAME_TOO_LONG',
+			message: `Enter a name of at most ${MAX_USER_NAME_LENGTH} characters.`,
+		});
+	if (hasControlCharacter(name))
+		throw APIError.from('BAD_REQUEST', {
+			code: 'NAME_INVALID',
+			message: 'Enter your name on one line, without special characters.',
+		});
 	return name;
 }
 

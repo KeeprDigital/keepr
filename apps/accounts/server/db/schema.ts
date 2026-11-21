@@ -42,7 +42,7 @@ export const session = sqliteTable(
 		userId: text('user_id')
 			.references(() => user.id, { onDelete: 'cascade' })
 			.notNull(),
-		// The admin add-on's. Its impersonation route is closed (`CLOSED_PATHS`).
+		// The admin add-on's. Its impersonation route is closed (`OPEN_AUTH_ROUTES`).
 		impersonatedBy: text('impersonated_by'),
 		// The organisation add-on: the Organisation this Session is working in.
 		activeOrganizationId: text('active_organization_id'),

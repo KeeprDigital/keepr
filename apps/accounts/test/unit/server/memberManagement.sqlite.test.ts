@@ -488,6 +488,77 @@ describe('a member of another Organisation, named under this one', () => {
 	});
 });
 
+// Each change is written in one batch with its row in the Audit Record: a failure
+// between the two leaves neither.
+describe('a change that fails before its Audit Record is written', () => {
+	const change = { organizationId: '', memberId: '' };
+	it.each<[string, (actor: Actor) => Promise<unknown>]>([
+		[
+			'setting App access',
+			async (actor) =>
+				await setAppAccess(database, actor, { ...change, app: 'stream', role: 'member' }),
+		],
+		[
+			'removing App access',
+			async (actor) => await removeAppAccess(database, actor, { ...change, app: 'stream' }),
+		],
+		[
+			'changing an Organisation role',
+			async (actor) => await changeOrganisationRole(database, actor, { ...change, role: 'admin' }),
+		],
+		['removing a member', async (actor) => await removeMember(database, actor, change)],
+	])('%s changes nothing', async (_case, changing) => {
+		Object.assign(change, { organizationId: keepr.id, memberId: member.memberId });
+		const actor = await actorFor(OWNER, 'PUT');
+		await accounts.failInsertsInto('auditRecord');
+
+		await expect(changing(actor)).rejects.toThrow(/injected failure/);
+
+		expect(await listed(member.memberId)).toMatchObject({
+			role: 'member',
+			apps: { stream: 'admin' },
+		});
+	});
+});
+
+// The last owner is kept in the write itself, so of two demotions or removals
+// made at once, of the last two owners, one is refused.
+describe('the last two owners, changed at once', () => {
+	it.each<[string, (actor: Actor, memberId: string) => Promise<unknown>]>([
+		[
+			'demoted',
+			async (actor, memberId) =>
+				await changeOrganisationRole(database, actor, {
+					organizationId: keepr.id,
+					memberId,
+					role: 'admin',
+				}),
+		],
+		[
+			'removed',
+			async (actor, memberId) =>
+				await removeMember(database, actor, { organizationId: keepr.id, memberId }),
+		],
+	])('%s, leave one owner', async (_case, changing) => {
+		const first = await owner();
+		const second = await memberWithRole('owner');
+		const actor = await actorFor(await keeprAdministrator(), 'PUT');
+
+		const outcomes = await Promise.all([
+			outcome(changing(actor, first.memberId)),
+			outcome(changing(actor, second.memberId)),
+		]);
+
+		expect(outcomes.map(refusedWith).filter((code) => code !== null)).toEqual(['LAST_OWNER']);
+		const { members } = await listMembers(database, actor, keepr.id);
+		expect(members.filter(({ role }) => role === 'owner')).toHaveLength(1);
+		expect([
+			...(await audited('member.role-changed')),
+			...(await audited('member.removed')),
+		]).toHaveLength(1);
+	});
+});
+
 // Each change asks for a recent sign-in (`requireRecentSignIn`); listing does not.
 describe('a change made eleven minutes after signing in', () => {
 	const change = { organizationId: '', memberId: '' };

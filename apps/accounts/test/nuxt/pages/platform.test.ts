@@ -56,6 +56,10 @@ route('POST', '/api/platform/users/ada/disable', () => {
 	ada = { ...ada, disabled: true };
 	return ok({ disabled: true });
 });
+route('POST', '/api/platform/users/ada/keepr-administrator', () => {
+	ada = { ...ada, keeprAdministrator: true };
+	return ok({ keeprAdministrator: true });
+});
 route('GET', '/api/platform/audit-record', () =>
 	ok([
 		{
@@ -161,6 +165,20 @@ describe('the platform screen', () => {
 			{ q: 'ada' },
 		]);
 		expect(sentTo('POST', '/api/platform/users/ada/disable')).toHaveLength(1);
+	});
+
+	it('makes a found User a Keepr Administrator, and offers it no more once they are', async () => {
+		const page = await opened();
+
+		await page.get('[data-users] input[name="query"]').setValue('ada');
+		await page.get('[data-users] form').trigger('submit');
+		await expect.poll(() => page.find('[data-user="ada"]').exists()).toBe(true);
+		await page.get('[data-user="ada"] [data-grant-keepr-administrator]').trigger('click');
+		await expect
+			.poll(() => page.find('[data-user="ada"] [data-grant-keepr-administrator]').exists())
+			.toBe(false);
+
+		expect(sentTo('POST', '/api/platform/users/ada/keepr-administrator')).toHaveLength(1);
 	});
 
 	it('shows the Audit Record', async () => {

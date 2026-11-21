@@ -57,7 +57,7 @@ The one App role, or none, that a member of an Organisation holds in an App.
 _Avoid_: permission, entitlement, grant
 
 **Keepr Administrator**:
-A User marked as running the platform: they create Organisations, can find any User, and see the record of administrative actions. It is separate from every Organisation role and App role, and gives no access to an Organisation's data inside an App.
+A User marked as running the platform: they create Organisations, can find any User, see the record of administrative actions, and make another User one. It is separate from every Organisation role and App role, and gives no access to an Organisation's data inside an App.
 _Avoid_: admin (an Organisation role), superuser, Graphics Administrator (a Stream Keepr App role)
 
 **Identity Proof**:

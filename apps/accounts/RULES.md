@@ -1,22 +1,30 @@
 # Keepr Accounts rules
 
-What Keepr Accounts makes true for a User, an operator and every App. Its words are the root `GLOSSARY.md`'s, under Identity and access, and its own `GLOSSARY.md`'s; the reasons are in the decisions cited: ADR-0114 to ADR-0117 and ADR-0155 in this app's `docs/adr`, ADR-0010 and ADR-0012 in `apps/stream/docs/adr`, and the rest in the root `docs/adr`.
+What Keepr Accounts makes true for a User, an operator and every App. Its words are the root `GLOSSARY.md`'s, under Identity and access, and its own `GLOSSARY.md`'s; the reasons are in the decisions cited: ADR-0114 to ADR-0117, ADR-0155, ADR-0156 and ADR-0157 in this app's `docs/adr`, ADR-0010 and ADR-0012 in `apps/stream/docs/adr`, and the rest in the root `docs/adr`.
 
 ## Identity
 
 - Keepr Accounts alone opens the identity database, holds the sign-in secret and runs Better Auth. No App binds the database. (ADR-0112)
 - A blank `NUXT_BETTER_AUTH_SECRET` answers 503 naming it, and nobody can sign in. (ADR-0112)
-- The identity schema is Better Auth's tables for its chosen add-ons, held to the library's own definitions by a test, plus App access, the Audit Record and the First Administrator Claim. The adapter runs without transactions. (ADR-0112)
+- The identity schema is Better Auth's tables for its chosen add-ons, held to the library's own definitions by a test, plus App access, the Audit Record and the First Administrator Claim. The library's adapter runs without transactions; Keepr Accounts' own writes that must stand or fall together are one batch (§ Audit Record). (ADR-0112, #1385)
 - Keepr Accounts answers on `accounts.keepr.digital` in Production and `accounts.keepr-staging.digital` in Staging, each Installation in its Environment's account, and on loopback locally. Each Installation keeps to its own Keepr domain, `keepr.digital` or `keepr-staging.digital`: its cookie, its Return Addresses and its email. Served on neither, it keeps to `keepr.digital`'s Return Addresses and sender. (ADR-0122, #1255)
+
+## Request surface
+
+- Every response carries a Content Security Policy that forbids framing (`frame-ancestors 'none'`), `<base>`, forms to another origin and plugins; `X-Frame-Options: DENY`; HSTS for a year with its subdomains; `X-Content-Type-Options: nosniff`; and `Referrer-Policy: strict-origin-when-cross-origin`. Every answer under `/api` is `Cache-Control: no-store`. (#1385)
+- Better Auth's routes are closed but for a checked-in list (`OPEN_AUTH_ROUTES`): signing in and out, the Session, the profile's name, password, Sessions and Organisation, a password reset, the Identity Proof and its keys. Every other route the library ships, any a later version adds included, answers 404 to every request. (#1385)
+- No open route tells a signed-in User which Organisations exist: switching the Organisation a Session works in names it by id, never by slug (400 `ORGANISATION_ID_REQUIRED`), and answers one they are not in as one there is not. (#1385)
+- Every one of Keepr Accounts' own routes refuses 403 `CROSS_SITE_REQUEST` a write another origin's page made the browser send, signed in or not: accepting an Invitation and claiming the First Administrator Claim as much as any. (ADR-0010, #1385)
 
 ## User
 
 - Nobody signs themselves up. A User is created by Keepr Accounts itself. (ADR-0112)
-- A User always has a name. No path creates a User with a blank one, or saves one: a name that is empty once trimmed, or is not text, is refused 400 `NAME_REQUIRED`, and the page says so where it was typed. A name is kept trimmed. The rule is held where the library writes a User, so its own routes are bound by it as Keepr Accounts' are. Nothing rewrites a name saved before this rule: one the library's `/update-user` saved blank stands until its User enters a name. (#1354)
+- A User always has a name. No path creates a User with a blank one, or saves one: a name that is empty once trimmed, or is not text, is refused 400 `NAME_REQUIRED`, and the page says so where it was typed. A name is kept trimmed. It has at most 100 characters once trimmed, or is refused 400 `NAME_TOO_LONG`, and no control character (a line break or tab among them), or is refused 400 `NAME_INVALID`. The rule is held where the library writes a User, so its own routes are bound by it as Keepr Accounts' are. Nothing rewrites a name saved before this rule: one the library's `/update-user` saved blank stands until its User enters a name. (#1354)
 - A disabled User cannot sign in, and is told the account has been disabled and to ask a Keepr Administrator. (ADR-0112)
+- A disabled User is refused on every route that reads a Session, not only where an Identity Proof is minted: a Session of theirs left open is ended the first time it is used, and the request answered as signed out, 401 or no Session. (#1385)
 - Repeated sign-ins from one client are refused: a fourth within ten seconds answers 429 with a retry delay, the right password included. The count is kept in the database, keyed on the address Cloudflare vouches for (`cf-connecting-ip`), and is off only under `nuxt dev`. (ADR-0012, ADR-0112)
 - An App's questions over its binding, an Identity Proof (`/api/auth/token`) and the keys it verifies against (`/api/auth/jwks`), are not counted: a request with no `cf-connecting-ip` came over a binding, as Cloudflare writes it on every request from the internet. A request to either that carries it is counted by its address. (ADR-0158)
-- The library's administrator routes answer 404 to every request, a Keepr Administrator's included. (ADR-0112)
+- The library's administrator routes answer 404 to every request, a Keepr Administrator's included, as every route not left open does. (ADR-0112, #1385)
 
 ## Session
 
@@ -45,6 +53,7 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 
 - A User signs in at `/sign-in`, and is sent afterwards to the Return Address named by `?returnTo=` when it is accepted, and to Keepr Accounts' home otherwise, told that the address was outside Keepr. (ADR-0112)
 - Accepted: a path of Keepr Accounts itself, or an https address on its Installation's Keepr domain or any host under it, carrying no credentials: Staging sends nobody to Production, nor Production to Staging. A loopback address is accepted only when Keepr Accounts is itself served from one. (ADR-0112)
+- An address carrying a control character is refused whole, a tab, line break or carriage return among them: a browser drops those, so `/\t/elsewhere` would read as `//elsewhere`. (#1385)
 
 ## Identity Proof
 
@@ -53,6 +62,7 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - It names the User (`sub`, `email`, `name`), the Session (`sid`), the active Organisation (`org`) and the User's Organisation role in it (`orgRole`), their App role in each App they have access to in that Organisation (`apps`), and whether they are a Keepr Administrator (`keeprAdmin`). (ADR-0113)
 - A new Session works in the Organisation its User joined first, or in none. (ADR-0113)
 - A disabled User's Session mints no Identity Proof, even while it is open. (ADR-0113)
+- The key it is signed with is not rotated on a schedule; an operator rotates it by expiring it, and the expired key stays published for thirty days. (ADR-0157)
 
 ## User names
 
@@ -66,12 +76,12 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 
 ## Organisation
 
-- An Organisation role governs only the Organisation's membership: owners and admins invite, a member cannot, and only an owner invites an owner. A User cannot create an Organisation: Keepr Accounts creates one on purpose, the Keepr Organisation with the first Keepr Administrator, and any other at a Keepr Administrator's request. The library's `/organization/create` is refused 403 to everyone, a Keepr Administrator included. (ADR-0114, ADR-0115, ADR-0117)
+- An Organisation role governs only the Organisation's membership: owners and admins invite, a member cannot, and only an owner invites an owner. A User cannot create an Organisation: Keepr Accounts creates one on purpose, the Keepr Organisation with the first Keepr Administrator, and any other at a Keepr Administrator's request. The library's `/organization/create` answers 404 to everyone, a Keepr Administrator included. (ADR-0114, ADR-0115, ADR-0117)
 - Nothing renames or deletes an Organisation: the library's `/organization/update` and `/organization/delete` answer 404 to every request. (ADR-0117)
 - A User is a member of an Organisation once, or not: two accepts made at once leave one membership. (ADR-0155)
 - A member holds one App role, or none, in each App: App access, one row per member and App, naming an App and a role from the App registry. (ADR-0114)
 - An Organisation admits 10,000 members and 10,000 pending Invitations: a further Invitation is refused 403 `INVITATION_LIMIT_REACHED`. (ADR-0114)
-- No two Organisations share a name: names are compared by their slug, their letters and digits hyphenated, so `The Club` and `the-club` are one. (ADR-0117)
+- No two Organisations share a name: names are compared by their slug, their letters and digits in any script, lower-cased and hyphenated, so `The Club` and `the-club` are one, `日本` is refused a second time, and `Škoda` is not `koda`. A name of no letter or digit is its own slug. (ADR-0117, #1385)
 
 ## Invitation
 
@@ -86,12 +96,12 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - An invitee with no User accepts by choosing a name, which is not blank, and a password of 8 to 128 characters in no breach. Keepr Accounts creates exactly one User, its email verified, signs them in, makes them a member with the Organisation role offered, and gives them App access in each App the Invitation named. An address that already has a User is told to sign in to accept. (ADR-0114)
 - Accepting copies the Invitation's App roles into App access, whoever accepts. (ADR-0114)
 - An invitee who has a User signs in with the invited address, through `/sign-in` and back to the Invitation, and accepts through Keepr Accounts' own route: the Organisation and its App access are added to their User, and their Session works in it. Signed in with any other address, accepting is refused 403 and nothing changes. (ADR-0114, ADR-0155)
-- The invitee may decline from the Invitation's link, signed in or not: the link's secret proves the address, as it does for accepting. A decline another origin's page made the browser send is refused 403 `CROSS_SITE_REQUEST`, and the Invitation stays open. (#1228 § Invitations, ADR-0010)
+- The invitee may decline from the Invitation's link, signed in or not: the link's secret proves the address, as it does for accepting. A decline or an acceptance another origin's page made the browser send is refused 403 `CROSS_SITE_REQUEST`, and the Invitation stays open. (#1228 § Invitations, ADR-0010, #1385)
 - An Invitation that is not open says why, answering 410 with `INVITATION_EXPIRED`, `INVITATION_CANCELLED`, `INVITATION_ACCEPTED` or `INVITATION_DECLINED`; an id no Invitation has answers 404 `INVITATION_NOT_FOUND`. A replaced Invitation reads as cancelled. (#1228 § Invitations)
 - Those who manage an Organisation's members see its pending, unexpired Invitations at `/invite`, soonest to lapse first, and cancel one. One whose stored App roles cannot be read is listed offering none, and the rest as they are. An admin is not shown an offer to an owner, and cancelling one is refused 403 `OWNER_REQUIRED`; anyone else is refused 403 `NOT_A_MANAGER`. Only a pending Invitation is cancelled: any other answers 400 `INVITATION_NOT_PENDING`, and one the Organisation does not have 404 `INVITATION_NOT_FOUND`. (ADR-0114, ADR-0116)
-- The library's `/organization/invite-member`, `/organization/list-invitations` and `/organization/cancel-invitation` answer 404 to every request. (ADR-0116) So do `/organization/get-invitation`, `/organization/list-user-invitations`, `/organization/accept-invitation` and `/organization/reject-invitation`. The library sends no Invitation email. (ADR-0155)
+- The library's `/organization/invite-member`, `/organization/list-invitations` and `/organization/cancel-invitation` answer 404 to every request. (ADR-0116) So do `/organization/get-invitation`, `/organization/list-user-invitations`, `/organization/accept-invitation`, `/organization/reject-invitation` and `/organization/check-slug`. The library sends no Invitation email. (ADR-0155, #1385)
 - Inviting an address that has a pending Invitation to the Organisation cancels it, and the new one alone stands. An admin who invites an address holding a pending, unexpired offer to be an owner is refused 403 `OWNER_REQUIRED`, and the owner's offer stands. (ADR-0114, ADR-0155)
-- An Invitation stands no longer than its inviter's standing: removing a member cancels the Invitations they offered to that Organisation that are still open, and disabling a User those they offered to any. (ADR-0155)
+- An Invitation stands no longer than its inviter's standing: removing a member cancels the Invitations they offered to that Organisation that are still open, and disabling a User those they offered to any, in the same batch as the removal or the disabling. (ADR-0155, #1385)
 - An Invitation open before its link carried a secret was cancelled when the change was deployed; its invitee is invited again. (ADR-0155)
 
 ## Profile
@@ -105,12 +115,12 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - An owner or admin of an Organisation lists its members at `/members`, each with their Organisation role and App roles, for the Organisation they are working in, or the one `?organisation=` names; a Keepr Administrator manages any Organisation as its owner would. The profile links each Organisation a User manages to its member screen, and the one they work in to `/invite`. Anyone else is refused 403 `NOT_A_MANAGER`, and finds the member and Invitation screens closed. (ADR-0116)
 - They give a member an App role in one App, or take that App's access away while the member stays; an App or role the App registry does not name is refused 400 `APP_ROLE_NOT_IN_REGISTRY`. They remove a member, with all their App access and the Invitations they offered there that are still open. A member named under an Organisation they are not a member of is refused 404 `MEMBER_NOT_FOUND`, whoever asks. (ADR-0114, ADR-0116, ADR-0155)
 - A removed member's Session stays open, but its next Identity Proof names no Organisation and no App access of the one they left. (ADR-0113)
-- Only an owner, or a Keepr Administrator, changes a member's Organisation role or removes an owner: an admin is refused 403 `OWNER_REQUIRED`. The last owner is never demoted or removed: 409 `LAST_OWNER`. (ADR-0116)
+- Only an owner, or a Keepr Administrator, changes a member's Organisation role or removes an owner: an admin is refused 403 `OWNER_REQUIRED`. The last owner is never demoted or removed: 409 `LAST_OWNER`; of two demotions or removals of the last two owners made at once, one is refused, and one owner stays. (ADR-0116, #1385)
 - Each change needs a sign-in no older than ten minutes, counted from the Session's sign-in, which renewing it does not move. An older one is refused 403 `RECENT_SIGN_IN_REQUIRED` and asked to sign in again. Listing needs none. (ADR-0116)
 - The library's `/organization/update-member-role` and `/organization/remove-member` answer 404 to every request. (ADR-0116)
 - A member without administrative rights sees nobody else's access: the library's `/organization/list-members` and `/organization/get-full-organization`, which would answer every member's email and roles, answer 404 to every request. What a member learns of another is their name, by an id they already hold (User names). (#1228 story 40, ADR-0145)
 - Nobody leaves an Organisation of their own accord: the library's `/organization/leave` answers 404 to every request, and a member goes only by being removed, which is audited and never takes the last owner. (#1228 § Administration and audit)
-- A write to Keepr Accounts' own routes that needs a Session is refused 403 when another origin's page made the browser send it, as Stream Keepr's API boundary refuses one (ADR-0010, ADR-0116).
+- A write to Keepr Accounts' own routes is refused 403 when another origin's page made the browser send it, as Stream Keepr's API boundary refuses one (ADR-0010, ADR-0116, § Request surface).
 
 ## Keepr Administrator
 
@@ -119,18 +129,23 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - They create an Organisation by naming it and its first owner's address, with an App role per App for them. Keepr Accounts invites that address as the Organisation's owner, emailed as any Invitation is, its link shown to nobody else; the Keepr Administrator becomes no member of it, and it has none until the invitee accepts. A name another Organisation has is refused 409 `ORGANISATION_EXISTS`; a blank name 400 `NAME_REQUIRED`; an address that is none 400 `INVALID_EMAIL`; an App role the App registry does not name 400 `APP_ROLE_NOT_IN_REGISTRY`. Refused, nothing is created, invited or emailed. (ADR-0114, ADR-0117)
 - They find any User whose name or email contains what they type, ignoring case, each shown with whether they are disabled or a Keepr Administrator; at most 50 at once. (ADR-0117)
 - They disable a User, which ends every Session that User has at once and cancels the Invitations they offered that are still open, and enable them again. A Keepr Administrator cannot disable themselves: 409 `CANNOT_DISABLE_SELF`. An id no User has answers 404 `USER_NOT_FOUND`. (ADR-0113, ADR-0117)
-- Creating an Organisation, disabling a User and enabling one need a sign-in no older than ten minutes, as a change to a member does: older, it is refused 403 `RECENT_SIGN_IN_REQUIRED` and changes nothing. Listing, finding and reading need none. (ADR-0116, ADR-0117)
-- They read the Audit Record's latest 200 rows, newest first, each naming who acted, on whom and in which Organisation. (ADR-0117)
+- They make another User a Keepr Administrator, so that one who is compromised can be disabled by another; one who is already is refused 409 `ALREADY_A_KEEPR_ADMINISTRATOR`. Nothing takes the role away: a Keepr Administrator who must stop is disabled. (ADR-0156)
+- Creating an Organisation, disabling a User, enabling one and making one a Keepr Administrator need a sign-in no older than ten minutes, as a change to a member does: older, it is refused 403 `RECENT_SIGN_IN_REQUIRED` and changes nothing. Listing, finding and reading need none. (ADR-0116, ADR-0117)
+- They read the Audit Record's latest 200 rows, newest written first, each naming who acted, on whom and in which Organisation. (ADR-0117)
 - Being a Keepr Administrator grants no App access, and no Organisation role, by itself: their Identity Proof names only the Organisations they joined. (ADR-0117)
 
 ## First Administrator Claim
 
-- No request creates a Keepr Administrator. `pnpm claim-first-administrator <email>` writes a First Administrator Claim, and prints the link that claims it, only while no Keepr Administrator exists. (ADR-0115)
+- No request creates the first Keepr Administrator. `pnpm claim-first-administrator <email>` writes a First Administrator Claim, and prints the link that claims it, only while no Keepr Administrator exists. (ADR-0115)
 - The claim page, `/first-administrator`, works once, and only while no Keepr Administrator exists. Claiming creates the address's User as a Keepr Administrator, email verified, with the name chosen, which is not blank, and the password chosen under the same rules as any new password; creates the Keepr Organisation with them as its owner; consumes the claim; and signs them in. A refused name or password leaves the claim to try again. (ADR-0115, #1354)
+- A claim works for a day from its writing; after, it is refused 410 `CLAIM_EXPIRED`. (#1385)
+- A claim is taken before its User is created, so of two claims made at once only one makes a Keepr Administrator; the other is refused 409 `KEEPR_ADMINISTRATOR_EXISTS`. A claim taken by a request that never created its User holds off every other for five minutes, then is free again. (ADR-0115, #1385)
+- The User is made a Keepr Administrator in one batch with the Keepr Organisation, its ownership, the claim consumed and the Audit Record. A failure once the User is created removes the User and leaves the claim to try again: no Keepr Administrator exists without the Keepr Organisation. (#1385)
 
 ## Audit Record
 
 - Each of these is a row, with who acted and when, the Organisation and the User it touched where there is one: a First Administrator Claim made (by the command, naming the operator's login) and consumed, an Organisation created, an Invitation created and accepted. (ADR-0114, ADR-0115)
 - An Invitation created is a row with what it offers and whether an owner, an admin or a Keepr Administrator made it, never its secret. Every cancellation is a row naming who cancelled it and as what; one replaced by inviting the address again names the inviter and the Invitation that replaced it; one cancelled with its inviter says why (`inviter-removed`, `inviter-disabled`); one cancelled for having no secret names nobody (`no-secret`). An Invitation declined is a row naming the invitee's User when the address has one. (ADR-0114, ADR-0116)
 - So is each change to a member: an App role set or removed, an Organisation role changed, a member removed; with what they had before and whether an owner, an admin or a Keepr Administrator made it. (ADR-0116)
-- So is each Keepr Administrator's action: an Organisation created, with its first owner's Invitation; a User disabled; the Sessions disabling them ended, a row of its own (`user.sessions-ended`) with how many; a User enabled. (ADR-0117)
+- So is each Keepr Administrator's action: an Organisation created, with its first owner's Invitation; a User disabled; the Sessions disabling them ended, a row of its own (`user.sessions-ended`) with how many; a User enabled; a User made a Keepr Administrator. (ADR-0117, ADR-0156)
+- Each change is written in one batch with its rows: disabling or enabling a User, creating an Organisation with its first Invitation, inviting (and the Invitation it replaces), App access granted on accepting, each change to a member, and making a Keepr Administrator. A failure between them leaves neither. (#1385)

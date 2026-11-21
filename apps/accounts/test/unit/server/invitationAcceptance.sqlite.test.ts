@@ -183,6 +183,15 @@ describe('accepting as a new User', () => {
 		expect(JSON.stringify(record)).not.toContain(key.secret);
 	});
 
+	it('that fails before its Audit Record is written grants no App access', async () => {
+		const key = await invite();
+		await accounts.failInsertsInto('auditRecord');
+
+		await expect(acceptAsNew(key)).rejects.toThrow(/injected failure/);
+
+		expect(await database().select().from(schema.appAccess)).toEqual([]);
+	});
+
 	it('is admitted to an Organisation of more than the library’s hundred members', async () => {
 		for (let n = 0; n < 100; n++) {
 			const email = `member-${n}@keepr.digital`;
@@ -270,7 +279,7 @@ async function closeBy(
 			await acceptAsNew(key);
 			return;
 		case 'declining':
-			await declineInvitation(accounts.auth, database(), key, pageRequest('decline'));
+			await declineInvitation(accounts.auth, database(), key);
 	}
 }
 
@@ -322,7 +331,7 @@ describe('declining an Invitation', () => {
 		const user = hasUser ? await accounts.createUser(INVITEE) : null;
 		const key = await invite();
 
-		await declineInvitation(accounts.auth, database(), key, pageRequest('decline'));
+		await declineInvitation(accounts.auth, database(), key);
 
 		await expect(offer(key)).rejects.toMatchObject({ code: 'INVITATION_DECLINED' });
 		const declined = (await accounts.auditRecord()).filter(
@@ -344,9 +353,10 @@ describe('declining an Invitation', () => {
 	it('is refused to the holder of the id alone, leaving it open', async () => {
 		const key = await invite();
 
-		await expect(
-			declineInvitation(accounts.auth, database(), idAlone(key), pageRequest('decline')),
-		).rejects.toMatchObject({ statusCode: 404, code: 'INVITATION_NOT_FOUND' });
+		await expect(declineInvitation(accounts.auth, database(), idAlone(key))).rejects.toMatchObject({
+			statusCode: 404,
+			code: 'INVITATION_NOT_FOUND',
+		});
 		await expect(offer(key)).resolves.toMatchObject({ email: INVITEE });
 	});
 
@@ -354,29 +364,13 @@ describe('declining an Invitation', () => {
 		const key = await invite();
 		await closeBy('cancelling', key);
 
-		await expect(
-			declineInvitation(accounts.auth, database(), key, pageRequest('decline')),
-		).rejects.toMatchObject({ statusCode: 410, code: 'INVITATION_CANCELLED' });
+		await expect(declineInvitation(accounts.auth, database(), key)).rejects.toMatchObject({
+			statusCode: 410,
+			code: 'INVITATION_CANCELLED',
+		});
 		expect(
 			(await accounts.auditRecord()).filter((row) => row.action === 'invitation.declined'),
 		).toEqual([]);
-	});
-
-	it('sent by another origin’s page is refused 403, leaving it open', async () => {
-		const key = await invite();
-
-		await expect(
-			declineInvitation(
-				accounts.auth,
-				database(),
-				key,
-				pageRequest('decline', {
-					'sec-fetch-site': 'same-site',
-					origin: 'https://stream.keepr.digital',
-				}),
-			),
-		).rejects.toMatchObject({ statusCode: 403, code: 'CROSS_SITE_REQUEST' });
-		await expect(offer(key)).resolves.toMatchObject({ email: INVITEE });
 	});
 });
 
@@ -429,25 +423,6 @@ describe('accepting as an existing User', () => {
 		});
 		expect(await memberOf(email)).toBeUndefined();
 		await expect(offer(key)).resolves.toMatchObject({ email: INVITEE });
-	});
-
-	it('sent by another origin’s page is refused 403, leaving it open', async () => {
-		await accounts.createUser(INVITEE);
-		const key = await invite();
-
-		await expect(
-			acceptInvitationSignedIn(
-				accounts.auth,
-				database(),
-				key,
-				pageRequest('accept-signed-in', {
-					cookie: await accounts.signIn(INVITEE),
-					'sec-fetch-site': 'same-site',
-					origin: 'https://stream.keepr.digital',
-				}),
-			),
-		).rejects.toMatchObject({ statusCode: 403, code: 'CROSS_SITE_REQUEST' });
-		expect(await memberOf(INVITEE)).toBeUndefined();
 	});
 
 	it('twice at once leaves one membership', async () => {

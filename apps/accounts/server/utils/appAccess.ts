@@ -39,12 +39,11 @@ export function offeredAppRoles(json: unknown): AppRoles {
 	return roles;
 }
 
-/** Gives a member the App access `roles` names: one row per App. */
-export async function grantAppAccess(
-	database: IdentityDatabase,
-	memberId: string,
-	roles: AppRoles,
-): Promise<void> {
+/**
+ * The statements that give a member the App access `roles` names, one row per
+ * App, for a batch beside its row in the Audit Record: none when it names none.
+ */
+export function appAccessGrants(database: IdentityDatabase, memberId: string, roles: AppRoles) {
 	const now = new Date();
 	const rows = Object.entries(roles).map(([app, role]) => ({
 		id: crypto.randomUUID(),
@@ -54,5 +53,6 @@ export async function grantAppAccess(
 		createdAt: now,
 		updatedAt: now,
 	}));
-	if (rows.length > 0) await database.insert(schema.appAccess).values(rows);
+	if (rows.length === 0) return [] as const;
+	return [database.insert(schema.appAccess).values(rows)] as const;
 }
