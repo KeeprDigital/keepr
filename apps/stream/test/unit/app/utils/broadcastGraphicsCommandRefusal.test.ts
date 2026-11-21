@@ -69,9 +69,10 @@ describe('the domain refusal a failed Broadcast Graphics command carries', () =>
 		).toBeUndefined();
 	});
 
-	it('classifies the two Graphic Asset refusals once, for every surface that reports one', () => {
+	it('classifies the three Graphic Asset refusals once, for every surface that reports one', () => {
 		expect(graphicAssetRefusalOutcome('missing-asset-reference')).toBe('missing');
 		expect(graphicAssetRefusalOutcome('unavailable-asset-content')).toBe('unavailable');
+		expect(graphicAssetRefusalOutcome('unselectable-asset-reference')).toBe('unselectable');
 	});
 
 	it('classifies a refusal about the show as no Graphic Asset failure at all', () => {

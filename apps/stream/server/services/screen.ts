@@ -1,6 +1,7 @@
 import type { SQL, SQLWrapper } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type { DbScreen, ScreenMode } from '~~/server/db/schema';
+import type { BroadcastGraphicsPlayoutFence } from '~~/server/modules/broadcast-graphics-live-session/playoutFence';
 import type { GraphicsAuthoringLeaseFence } from '~~/server/modules/graphics-authoring-lease';
 import type { PersistedScreenOutputAssetCapability } from '~~/server/modules/screen-output-assets/manager';
 import type { CreateScreenInput, UpdateScreenInput } from '~~/shared/api';
@@ -25,6 +26,11 @@ import {
 	updateScreenModeConfigWithGraphicAssetReferences,
 	updateScreenThemeOverridesWithGraphicAssetReferences,
 } from '~~/server/modules/screen-graphic-asset-references';
+import {
+	broadcastGraphicsPlayoutFenceCondition,
+	broadcastGraphicsPlayoutFenceRefused,
+	broadcastGraphicsPlayoutMovedConflict,
+} from '~~/server/modules/broadcast-graphics-live-session/playoutFence';
 import { mapDeckSourceConflict } from '~~/server/utils/deckSourceErrors';
 import { StateConflictError } from '@keepr/nuxt-layer/server/utils/errors';
 import { SCREEN_MODES } from '~~/shared/screenModes';
@@ -344,6 +350,7 @@ export function screenService() {
 		currentVersion: number,
 		companions: readonly BatchItem<'sqlite'>[] = [],
 		leaseFence?: GraphicsAuthoringLeaseFence,
+		playoutFence?: BroadcastGraphicsPlayoutFence,
 	): Promise<DbScreen | undefined> => {
 		let written;
 		try {
@@ -357,6 +364,7 @@ export function screenService() {
 							eq(screens.eventId, eventId),
 							eq(screens.stateVersion, currentVersion),
 							leaseFence ? graphicsAuthoringLeaseFenceCondition(leaseFence, Date.now()) : undefined,
+							playoutFence ? broadcastGraphicsPlayoutFenceCondition(playoutFence) : undefined,
 						),
 					)
 					.returning(),
@@ -372,10 +380,13 @@ export function screenService() {
 		const screen = await findById(id, eventId);
 		if (!screen) return undefined;
 
-		// With the version still standing, the fence is the only other condition
-		// the statement had.
-		if (leaseFence && screen.stateVersion === currentVersion)
-			throw graphicsAuthoringLeaseConflict();
+		// With the version still standing, a fence is the only other condition the
+		// statement had: playout moving under the write, or else the lease.
+		if (screen.stateVersion === currentVersion) {
+			if (playoutFence && (await broadcastGraphicsPlayoutFenceRefused(playoutFence)))
+				throw broadcastGraphicsPlayoutMovedConflict();
+			if (leaseFence) throw graphicsAuthoringLeaseConflict();
+		}
 		throw new StateConflictError('Screen', id);
 	};
 
@@ -400,8 +411,10 @@ export function screenService() {
 		 */
 		companions?: readonly BatchItem<'sqlite'>[],
 		leaseFence?: GraphicsAuthoringLeaseFence,
+		/** Commit only while the Screen's playout is the one the write's checks read. */
+		playoutFence?: BroadcastGraphicsPlayoutFence,
 	): Promise<DbScreen | undefined> => {
-		return versionedWrite(id, eventId, data, stateVersion, companions, leaseFence);
+		return versionedWrite(id, eventId, data, stateVersion, companions, leaseFence, playoutFence);
 	};
 
 	const remove = async (id: number, eventId: number): Promise<boolean> => {
@@ -415,6 +428,7 @@ export function screenService() {
 		partialConfig: Record<string, unknown>,
 		stateVersion?: number,
 		leaseFence?: GraphicsAuthoringLeaseFence,
+		playoutFence?: BroadcastGraphicsPlayoutFence,
 	): Promise<DbScreen | undefined> => {
 		// A graphics mode's configuration and its Graphic Asset Reference index are
 		// one write, so a Screen Output can never resolve a revision the Screen no
@@ -427,6 +441,7 @@ export function screenService() {
 				partialConfig,
 				stateVersion,
 				leaseFence,
+				playoutFence,
 			});
 		}
 
@@ -442,6 +457,7 @@ export function screenService() {
 			stateVersion ?? screen.stateVersion,
 			[],
 			leaseFence,
+			playoutFence,
 		);
 	};
 

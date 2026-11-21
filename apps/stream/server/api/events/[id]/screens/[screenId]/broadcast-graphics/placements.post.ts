@@ -7,6 +7,7 @@ import { screenService } from '~~/server/services/screen';
 import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 import { optionalBrowserSessionId } from '~~/server/utils/session';
 import { placeBroadcastGraphicTemplate } from '~~/shared/modules/graphics';
+import { templatePlacementError } from '~~/server/utils/templatePlacementError';
 import { randomUuid } from '~~/shared/utils/uuid';
 
 /**
@@ -85,46 +86,15 @@ export default defineEventHandler(async (event) => {
 		setResponseStatus(event, 201);
 		return { screen: updated, graphic };
 	} catch (error) {
-		throw templateOrientedPlacementError(error, template, graphic.id, idMap);
+		throw templatePlacementError(error, {
+			artifact: 'Broadcast Graphic Template',
+			templateName: template.name,
+			placedToTemplateIds: new Map([
+				[graphic.id, template.document.id],
+				...[...idMap].map(
+					([templateItemId, placedItemId]) => [placedItemId, templateItemId] as const,
+				),
+			]),
+		});
 	}
 });
-
-/**
- * Restate a Screen write failure in terms of the template that was placed.
- *
- * The Screen's write path refuses a Graphic Asset Reference that is not selectable
- * now, and names the slot that carries it — which for a placement is composed
- * entirely of ids generated microseconds earlier, on a Broadcast Graphic that was
- * never written. An author reading `graphics.<uuid>.items.<uuid>.asset` has nothing
- * to look for, so the ids are translated back to the template's own and the template
- * is named. This is the branch's most consequential inherited behaviour: a template
- * whose asset has since been retired cannot be placed, and the operator has to be
- * able to tell *which design* is unplaceable and *which item* in it to repair.
- */
-function templateOrientedPlacementError(
-	error: unknown,
-	template: { id: string; name: string; document: { id: string } },
-	placedGraphicId: string,
-	idMap: Map<string, string>,
-): unknown {
-	const failure = error as { statusCode?: number; message?: string };
-	if (failure?.statusCode !== 409 || typeof failure.message !== 'string') return error;
-	if (!failure.message.startsWith('Graphic Asset Reference at ')) return error;
-
-	const toTemplateId = new Map([
-		[placedGraphicId, template.document.id],
-		...[...idMap].map(([templateItemId, placedItemId]) => [placedItemId, templateItemId] as const),
-	]);
-	const slot = failure.message
-		.slice('Graphic Asset Reference at '.length)
-		.replace(/ is not selectable$/, '')
-		.split('.')
-		.map((segment) => toTemplateId.get(segment) ?? segment)
-		.join('.');
-
-	return createError({
-		statusCode: 409,
-		statusMessage: 'Conflict',
-		message: `Broadcast Graphic Template "${template.name}" cannot be placed: the Graphic Asset Revision at ${slot} is no longer selectable`,
-	});
-}

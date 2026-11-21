@@ -1,6 +1,7 @@
 import type { SQL } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type { DbScreen } from '~~/server/db/schema';
+import type { BroadcastGraphicsPlayoutFence } from '~~/server/modules/broadcast-graphics-live-session/playoutFence';
 import type { GraphicsAuthoringLeaseFence } from '~~/server/modules/graphics-authoring-lease';
 import type { StoredThemeTokens } from '~~/shared/modules/theme';
 import type {
@@ -23,6 +24,11 @@ import {
 	graphicsAuthoringLeaseFenceClause,
 	graphicsAuthoringLeaseModule,
 } from '~~/server/modules/graphics-authoring-lease';
+import {
+	broadcastGraphicsPlayoutFenceClause,
+	broadcastGraphicsPlayoutFenceRefused,
+	broadcastGraphicsPlayoutMovedConflict,
+} from '~~/server/modules/broadcast-graphics-live-session/playoutFence';
 import { mapDeckSourceConflict } from '~~/server/utils/deckSourceErrors';
 import { StateConflictError } from '@keepr/nuxt-layer/server/utils/errors';
 import { storedThemeTokenGraphicAssetReferences } from '~~/shared/themeAssetReferences';
@@ -96,6 +102,8 @@ export async function updateScreenModeConfigWithGraphicAssetReferences(input: {
 	stateVersion?: number;
 	/** Commit only while no other Session holds the Edit workspace's lease (#607). */
 	leaseFence?: GraphicsAuthoringLeaseFence;
+	/** Commit only while the Screen's playout is the one the write's checks read. */
+	playoutFence?: BroadcastGraphicsPlayoutFence;
 }): Promise<DbScreen | undefined> {
 	const screen = await findScreen(input.id, input.eventId);
 	if (!screen) return undefined;
@@ -130,6 +138,9 @@ export async function updateScreenModeConfigWithGraphicAssetReferences(input: {
 	const fence = input.leaseFence
 		? graphicsAuthoringLeaseFenceClause(input.leaseFence, now)
 		: undefined;
+	const playout = input.playoutFence
+		? broadcastGraphicsPlayoutFenceClause(input.playoutFence)
+		: undefined;
 	const client = db.$client;
 	const statements: D1PreparedStatement[] = [
 		client
@@ -140,6 +151,7 @@ export async function updateScreenModeConfigWithGraphicAssetReferences(input: {
 			WHERE id = ? AND event_id = ? AND state_version = ?
 				${REQUIRED_GRAPHIC_ASSET_REFERENCES_RESOLVE}
 				${fence ? `AND ${fence.sql}` : ''}
+				${playout ? `AND ${playout.sql}` : ''}
 		`)
 			.bind(
 				JSON.stringify(mergedConfigs),
@@ -150,6 +162,7 @@ export async function updateScreenModeConfigWithGraphicAssetReferences(input: {
 				expectedVersion,
 				boundFacts,
 				...(fence?.params ?? []),
+				...(playout?.params ?? []),
 			),
 		// Scoped to this mode's own owner-slot namespace. A Screen may hold a
 		// configuration for every mode at once, so an unscoped delete would clear
@@ -231,6 +244,13 @@ export async function updateScreenModeConfigWithGraphicAssetReferences(input: {
 		// read — and that is a different conflict from a concurrent Screen edit,
 		// which the client's own reload-and-restate does converge on. All are 409;
 		// only the last is worth restating.
+		if (
+			current.stateVersion === expectedVersion &&
+			input.playoutFence &&
+			(await broadcastGraphicsPlayoutFenceRefused(input.playoutFence))
+		) {
+			throw broadcastGraphicsPlayoutMovedConflict();
+		}
 		if (
 			current.stateVersion === expectedVersion &&
 			input.leaseFence &&

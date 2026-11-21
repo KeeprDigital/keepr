@@ -57,6 +57,13 @@ export const BROADCAST_GRAPHICS_REJECTION_CODES = [
 	 * right thing to do.
 	 */
 	'unavailable-asset-content',
+	/**
+	 * A live media selection named a revision that resolves but that no one may newly
+	 * select: its Graphic Asset is retired or trashed, or is not of the kind the
+	 * Graphic Input declares. The rule an authored reference is held to; the next
+	 * move is to choose something else.
+	 */
+	'unselectable-asset-reference',
 	'unknown-social-profile-projection',
 	'social-profile-unavailable',
 ] as const;

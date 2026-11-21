@@ -6,6 +6,7 @@ import type {
 	GraphicPlayoutState,
 } from '~~/shared/types/graphics';
 import type { Screen } from '~/types';
+import type { GraphicAssetRefusalOutcome } from '~/utils/broadcastGraphicsCommandRefusal';
 import { graphicChannelGroups, graphicChannelHandoffPolicy } from '~~/shared/modules/graphics';
 import { LazyUIConfirmActionModal } from '#components';
 
@@ -97,10 +98,11 @@ const {
 const ASSET_REFUSAL_TITLES = {
 	missing: 'Missing Graphic Asset Reference',
 	unavailable: 'Unavailable Graphic Asset Content',
+	unselectable: 'Graphic Asset cannot be selected',
 } as const;
 
 const ASSET_REFUSAL_ALERTS: Record<
-	'missing' | 'unavailable',
+	GraphicAssetRefusalOutcome,
 	{
 		title: string;
 		color: 'error' | 'warning';
@@ -110,6 +112,8 @@ const ASSET_REFUSAL_ALERTS: Record<
 	missing: { title: ASSET_REFUSAL_TITLES.missing, color: 'error' },
 	// The bytes come back, so this one is worth trying again.
 	unavailable: { title: ASSET_REFUSAL_TITLES.unavailable, color: 'warning' },
+	// Retired or of another kind: choose something else.
+	unselectable: { title: ASSET_REFUSAL_TITLES.unselectable, color: 'error' },
 };
 
 /**

@@ -167,18 +167,29 @@ export function usePaginatedScreenMode<M extends PageRotationMode, TRow>(
 	const screenStore = useScreenStore();
 	const declaration = screenModePageRotation(options.mode);
 	const rotation = computed<PageRotationConfig>(() => options.config.value);
+	const { runRequest } = useRequestFeedback();
 
+	/** Writes a page selection; one the server refuses is reported to the Operator. */
 	function persist(patch: Partial<PageRotationConfig>) {
 		if (interactive.value && screen.value && eventId.value) {
-			void Promise.resolve(
+			const [writeEventId, screenId] = [eventId.value, screen.value.id];
+			void runRequest(
 				// Every paginated mode's config carries the rotation fields, so a patch of them is a patch of it.
-				screenStore.updateModeConfig(
-					eventId.value,
-					screen.value.id,
-					options.mode,
-					patch as ScreenModeConfigPatch<M>,
-				),
-			).catch(() => {});
+				async () =>
+					await screenStore.updateModeConfig(
+						writeEventId,
+						screenId,
+						options.mode,
+						patch as ScreenModeConfigPatch<M>,
+					),
+				{
+					error: ({ message }) => ({
+						title: 'Page change refused',
+						description: message,
+						color: 'error',
+					}),
+				},
+			);
 		}
 	}
 

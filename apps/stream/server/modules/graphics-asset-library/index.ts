@@ -125,7 +125,10 @@ import {
 	readableBytes,
 } from './object-store';
 import { templatePackageVideoWorkingCopyOperationId } from './operation';
-import { createGraphicsIngestionOperationLifecycle } from './operation-lifecycle';
+import {
+	createGraphicsIngestionOperationLifecycle,
+	unclassifiedProcessingFailure,
+} from './operation-lifecycle';
 import { createGraphicsOperationalQueues } from './operational-queues';
 import { readGraphicsOperationsCockpit } from './operations-cockpit';
 import { sha256Hex, sha256HexStream } from './png';
@@ -141,6 +144,7 @@ import {
 	SilentVideoInspectionSourceError,
 } from './silent-video';
 import { createUnavailableSilentVideoPlaybackValidator } from './silent-video-playback-validator';
+import { logGraphicsStoreFailure } from './store-failure-log';
 import {
 	groupTemplatePackageRequirements,
 	inspectTemplateDocument,
@@ -151,6 +155,7 @@ import {
 } from './template-package';
 import {
 	readTemplatePackageArchive,
+	windowedArchiveSource,
 	TemplatePackageArchiveSourceError,
 } from './template-package-archive';
 import {
@@ -202,6 +207,8 @@ const MAXIMUM_PACKAGE_DOCUMENT_BYTES = 8 * 1024 * 1024;
 
 /** How much of an archive entry is resident while its digest is recomputed. */
 const PACKAGE_ENTRY_READ_CHUNK_BYTES = 1024 * 1024;
+/** How much of a staged archive one staging read fetches. */
+const PACKAGE_STAGED_READ_WINDOW_BYTES = 8 * 1024 * 1024;
 
 export interface GraphicsAssetCatalogueHealth {
 	checkHealth: () => Promise<{ outcome: 'healthy' }>;
@@ -682,6 +689,8 @@ export interface GraphicsAssetLibrary extends GraphicsAssetDelivery, GraphicsAss
 	 * One unfinished Graphics Ingestion Operation by identity, without the owner
 	 * scope every author-facing read applies. An administrator acting from a
 	 * queue needs to know whose operation it is before acting on their behalf.
+	 * A finished operation answers `undefined`; an identity no operation has is
+	 * refused as not found.
 	 */
 	findQueuedIngestionOperation: (input: {
 		operationId: GraphicsIngestionOperationId;
@@ -930,6 +939,7 @@ export function createGraphicsAssetLibrary(
 	});
 	const {
 		activeIngestionLeaseMilliseconds,
+		holdingProcessingLease,
 		initiateGraphicsOperation,
 		changedOperation,
 		SilentVideoValidationRuntimeError,
@@ -1280,6 +1290,7 @@ export function createGraphicsAssetLibrary(
 		'listUnreleasedStagedInput',
 		'findUnreleasedStagedInput',
 		'countUnreleasedStagedInput',
+		'ingestionOperationExists',
 		'summariseRetentionDeadlines',
 		'listTrashDeadlines',
 		'listRevisionRetention',
@@ -1533,12 +1544,13 @@ export function createGraphicsAssetLibrary(
 		>;
 	}) {
 		const staging = requireStaging();
-		const workingCopyOperationId = templatePackageVideoWorkingCopyOperationId(input.operation.id);
+		const workingCopyOperationId = templatePackageVideoWorkingCopyOperationId(
+			input.operation.id,
+			input.report.facts.sha256,
+		);
 		const workingCopy = graphicsObjectIdentity(`ingestion/${workingCopyOperationId}/source`);
-		// Create-if-absent, and a copy already there is this entry's: one video is
-		// validated at a time, a settled one's copy is removed below, and a retry
-		// re-derives the same archive in the same order. The runtime checks the
-		// bytes against the digest it is given either way.
+		// Create-if-absent, and a copy already there holds these very bytes: it is
+		// keyed by their digest. The runtime checks them against it either way.
 		const staged = await staging.createImmutable({
 			identity: workingCopy,
 			bytes: {
@@ -2160,6 +2172,15 @@ export function createGraphicsAssetLibrary(
 		initialOperation: GraphicsIngestionOperation,
 		options: { install: boolean } = { install: false },
 	): Promise<GraphicsIngestionOperation> {
+		return await holdingProcessingLease(initialOperation, () =>
+			processTemplatePackagePreflight(initialOperation, options),
+		);
+	}
+
+	async function processTemplatePackagePreflight(
+		initialOperation: GraphicsIngestionOperation,
+		options: { install: boolean },
+	): Promise<GraphicsIngestionOperation> {
 		const catalogue = requireCatalogue();
 		const staging = requireStaging();
 		const canonical = requireCanonical();
@@ -2186,7 +2207,7 @@ export function createGraphicsAssetLibrary(
 		}
 
 		/** Reads an exact window of the staged archive, or reports it unreadable. */
-		async function readStagedRange(offset: number, length: number): Promise<Uint8Array> {
+		async function readStagedRangeFromStore(offset: number, length: number): Promise<Uint8Array> {
 			const range = await staging.read(stagingIdentity, { offset, length });
 			if (
 				range.outcome !== 'available' ||
@@ -2211,6 +2232,12 @@ export function createGraphicsAssetLibrary(
 				);
 			}
 		}
+		// Every read of the staged archive goes through one window, so its headers
+		// and an entry's chunks cost a few large staging reads rather than many small.
+		const readStagedRange = windowedArchiveSource(
+			{ byteLength: operation.declaredByteLength, read: readStagedRangeFromStore },
+			PACKAGE_STAGED_READ_WINDOW_BYTES,
+		).read;
 
 		/**
 		 * Publishes one confirmed proposal.
@@ -2605,6 +2632,11 @@ export function createGraphicsAssetLibrary(
 					message: 'Trusted silent-video playback validation is temporarily unavailable.',
 				});
 			}
+			logGraphicsStoreFailure(
+				'graphics_ingestion_processing_failed',
+				{ operationId: operation.id, stage: operation.stage },
+				error,
+			);
 			let authoritative: GraphicsIngestionOperation | undefined;
 			try {
 				authoritative = await catalogue.getIngestionOperation(operation.id, operation.initiatedBy);
@@ -2622,11 +2654,16 @@ export function createGraphicsAssetLibrary(
 				return authoritative;
 			}
 			if (authoritative && authoritative.updatedAt !== operation.updatedAt) return authoritative;
-			return await failOperation(catalogue, authoritative ?? operation, {
-				code: 'ingestion-processing-failed',
-				retryable: true,
-				message: 'Template Package preflight was interrupted and can be retried from staged bytes.',
-			});
+			return await failOperation(
+				catalogue,
+				authoritative ?? operation,
+				unclassifiedProcessingFailure({
+					prior: initialOperation.failure,
+					code: 'ingestion-processing-failed',
+					retryMessage:
+						'Template Package preflight was interrupted and can be retried from staged bytes.',
+				}),
+			);
 		}
 	}
 
@@ -3036,9 +3073,10 @@ export function createGraphicsAssetLibrary(
 				'Graphic Asset restoration could not be completed',
 			);
 			if (transition.outcome === 'not-found') {
+				// Purged since it was queued: the subject has moved on.
 				throw new GraphicsAssetLibraryError(
 					'Graphic Asset not found',
-					'ingestion-operation-not-found',
+					'graphics-subject-not-found',
 				);
 			}
 			if (transition.outcome !== 'updated') {
@@ -3341,14 +3379,23 @@ export function createGraphicsAssetLibrary(
 			);
 		},
 		async findQueuedIngestionOperation(input) {
-			return await catalogueRequest(
-				() =>
-					requireQueuesCatalogue().findIngestionAttentionItem({
-						now: now().toISOString(),
-						operationId: input.operationId,
-					}),
-				'Graphics ingestion state is temporarily unavailable',
-			);
+			const found = await catalogueRequest(async () => {
+				const catalogue = requireQueuesCatalogue();
+				const queued = await catalogue.findIngestionAttentionItem({
+					now: now().toISOString(),
+					operationId: input.operationId,
+				});
+				if (queued) return { queued };
+				return { exists: await catalogue.ingestionOperationExists(input.operationId) };
+			}, 'Graphics ingestion state is temporarily unavailable');
+			if ('queued' in found) return found.queued;
+			if (!found.exists) {
+				throw new GraphicsAssetLibraryError(
+					'Graphics Ingestion Operation not found',
+					'ingestion-operation-not-found',
+				);
+			}
+			return undefined;
 		},
 		async getRetentionOverview() {
 			return await catalogueRequest(async () => {

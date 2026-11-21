@@ -51,6 +51,7 @@ export default defineEventHandler(async (event) => {
 		'cache-control': 'private, max-age=0, must-revalidate',
 		etag: etag,
 		vary: 'cookie',
+		'x-content-type-options': 'nosniff',
 	} as const;
 	try {
 		const library = graphicsAssetLibraryForEvent(event);

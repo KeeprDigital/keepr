@@ -64,6 +64,10 @@
 	"triggers": {
 		"crons": ["17 * * * *", "* * * * *"]
 	},
+	// A Template Package of up to the advertised 1 GiB is preflighted and
+	// installed in one request, which needs more CPU than the default allows.
+	// Every Environment inherits it.
+	"limits": { "cpu_ms": 300000 },
 	"services": [
 		{
 			// Trusted silent-video playback validation runtime. Deploy the

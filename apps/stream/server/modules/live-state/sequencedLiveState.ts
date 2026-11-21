@@ -101,8 +101,13 @@ export interface SequencedLiveStatePort<
 	 * concurrent editing of disjoint fields into spurious conflicts.
 	 */
 	isMergeable: (command: TCommand) => boolean;
-	/** Pure domain reduction of the command onto the aggregate. */
-	reduce: (aggregate: TAggregate, command: TCommand) => TReduction;
+	/**
+	 * Domain reduction of the command onto the aggregate. It may first load what
+	 * reduction reads about the aggregate it is handed — the merge retry hands it a
+	 * reloaded one, whose facts can differ from the first attempt's — but writes
+	 * nothing.
+	 */
+	reduce: (aggregate: TAggregate, command: TCommand) => TReduction | Promise<TReduction>;
 	/**
 	 * The `from … where …` tail of a select yielding exactly one row while the
 	 * aggregate still sits at the sequence its reduction was computed from. The
@@ -156,6 +161,17 @@ export interface SequencedLiveState<TRef, TAggregate, TCommand, TResult> {
 		command: TCommand,
 		options?: SequencedLiveStateExecuteOptions,
 	) => Promise<TResult>;
+	/**
+	 * The answer to a command already committed under this ID with this content,
+	 * announced as `execute` announces a replay; `undefined` for any other. A
+	 * feature whose own admission asks something that can change after a commit
+	 * asks this first, so a network retry answers what was stored.
+	 */
+	replay: (
+		ref: TRef,
+		command: TCommand,
+		options?: SequencedLiveStateExecuteOptions,
+	) => Promise<TResult | undefined>;
 }
 
 /**
@@ -248,7 +264,7 @@ export function createSequencedLiveState<
 		alongside?: SequencedLiveStateExecuteOptions['alongside'],
 	): Promise<{ result: TResult; previous?: TAggregate }> {
 		const nextSequence = port.sequenceOf(aggregate) + 1;
-		const reduction = port.reduce(aggregate, command);
+		const reduction = await port.reduce(aggregate, command);
 		const guard = port.casGuard(aggregate);
 		const companion = alongside?.(guard);
 		const holds = companion?.holds ?? sql`1`;
@@ -362,8 +378,29 @@ export function createSequencedLiveState<
 		return result;
 	}
 
+	async function replay(
+		ref: TRef,
+		command: TCommand,
+		options: SequencedLiveStateExecuteOptions = {},
+	): Promise<TResult | undefined> {
+		const receipt = await findCommandReceipt(
+			port.aggregateKind,
+			port.aggregateIdOf(ref),
+			command.commandId,
+		);
+		if (
+			!receipt ||
+			receipt.commandType !== command.type ||
+			receipt.contentKey !== commandContentKey(command.type, command.payload)
+		)
+			return undefined;
+		const replayed = await currentSnapshot(ref, receipt.commandType);
+		return replayed && (await announce(replayed, options, undefined));
+	}
+
 	return {
 		load: port.load,
 		execute,
+		replay,
 	};
 }

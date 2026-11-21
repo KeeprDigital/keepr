@@ -114,6 +114,7 @@ describe('authenticated exact Graphic Asset Revision content delivery', () => {
 		expect(response.headers.get('content-type')).toBe('video/webm');
 		expect(response.headers.get('content-length')).toBe('1000');
 		expect(response.headers.get('cache-control')).toBe('private, max-age=0, must-revalidate');
+		expect(response.headers.get('x-content-type-options')).toBe('nosniff');
 		expect(await bytesOf(response)).toEqual(contentBytes);
 		expect(bodyReads).toHaveBeenCalledTimes(1);
 	});

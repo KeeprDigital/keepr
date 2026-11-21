@@ -874,6 +874,36 @@ describe('a mode configuration write that selects Graphic Asset Revisions', () =
 		expect(library.asked).toEqual([[PLATE_REPICKED]]);
 		expect(await indexedRevisions(screen.id)).toEqual([PLATE_REPICKED.revisionId]);
 	});
+
+	// A patch naming no version is checked (the byte total among them) against one
+	// read, so it commits over that read or not at all: two cannot both pass the cap.
+	it('naming no state version, is refused when another write lands after the read it was checked against', async () => {
+		const screen = await stageScreen({ currentMode: 'feature-match-overlay' });
+		const library = libraryAnswering([SELECTABLE_IMAGE]);
+		const interleaved = () => {
+			const provided = library.provide();
+			return {
+				inspectGraphicAssetRevisions: async (
+					question: Parameters<typeof provided.inspectGraphicAssetRevisions>[0],
+				) => {
+					await screenWriteModule().updateModeConfig({
+						authoringSessionId: undefined,
+						eventId,
+						screenId: screen.id,
+						mode: 'standings',
+						config: { showHeader: false },
+						graphicsAssets: provideUnusedGraphicsAssets as never,
+					});
+					return await provided.inspectGraphicAssetRevisions(question);
+				},
+			};
+		};
+
+		await expect(writeLayout(screen.id, layoutPinning(PLATE), interleaved)).rejects.toMatchObject({
+			statusCode: 409,
+		});
+		expect((await stored(screen.id))?.modeConfigs).toEqual({ standings: { showHeader: false } });
+	});
 });
 
 // Leaving the mode ends the epoch in the same commit: `screenEpochEndAtomicity.sqlite.test.ts`.

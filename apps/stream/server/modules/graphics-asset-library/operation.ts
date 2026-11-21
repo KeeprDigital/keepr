@@ -39,6 +39,17 @@ export interface GraphicsIngestionOperationCatalogue {
 		claimedAt: string;
 		staleBefore: string;
 	}) => Promise<GraphicsIngestionOperation | undefined>;
+	/**
+	 * Holds the operation for the attempt processing it until `until`, or lets
+	 * it go with `null`. A claim is refused while the lease stands.
+	 */
+	holdIngestionProcessingLease: (input: {
+		operationId: GraphicsIngestionOperationId;
+		initiatedBy: string;
+		until: string | null;
+		/** Letting go, the lease this attempt took: one a later attempt took is kept. */
+		releasing?: string;
+	}) => Promise<void>;
 	recordCanonicalWrites: (input: {
 		operation: GraphicsIngestionOperation;
 		contents: readonly { digest: string; byteLength: number }[];
@@ -77,27 +88,36 @@ export function stagedIngestionObjectIdentities(operationId: GraphicsIngestionOp
 	return [
 		graphicsObjectIdentity(`ingestion/${operationId}/source`),
 		graphicsObjectIdentity(`ingestion/${operationId}/video-poster`),
-		graphicsObjectIdentity(
-			`ingestion/${templatePackageVideoWorkingCopyOperationId(operationId)}/source`,
-		),
+		// The one working copy an earlier version staged for every video.
+		graphicsObjectIdentity(`ingestion/${operationId}-packaged-video/source`),
 	];
 }
 
 /**
- * The staged working copy of the one packaged silent video a Template Package
- * operation is validating.
+ * The staged working copy of one packaged silent video a Template Package
+ * operation is validating, keyed by the video's content digest.
  *
  * The pinned validation runtime reads the whole staged source of the operation
  * it is given, and a package's staged source is the archive, not the video. So
- * each video entry is copied out under this reserved operation name, where the
- * runtime reads it exactly as it reads an uploaded one. The copy is one of the
- * objects the package operation owns, so every release of its staged input
- * reclaims a copy an interrupted preflight left behind.
+ * each video entry is copied out under a reserved operation name of its own,
+ * where the runtime reads it exactly as it reads an uploaded one. Keyed by
+ * content, a copy an interrupted attempt left can only ever be read as the
+ * video it holds. The copies are objects the package operation owns, under
+ * `templatePackageVideoWorkingCopyPrefix`, so every release of its staged input
+ * reclaims those an interrupted preflight left behind.
  */
 export function templatePackageVideoWorkingCopyOperationId(
 	operationId: GraphicsIngestionOperationId,
+	contentDigest: string,
 ): GraphicsIngestionOperationId {
-	return `${operationId}-packaged-video` as GraphicsIngestionOperationId;
+	return `${operationId}-packaged-video-${contentDigest}` as GraphicsIngestionOperationId;
+}
+
+/** Where every packaged-video working copy of one operation is staged. */
+export function templatePackageVideoWorkingCopyPrefix(
+	operationId: GraphicsIngestionOperationId,
+): string {
+	return `ingestion/${operationId}-packaged-video-`;
 }
 
 /**

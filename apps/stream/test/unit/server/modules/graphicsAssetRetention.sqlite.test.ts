@@ -10,7 +10,10 @@ import type {
 import type { SqliteD1Harness } from '@keepr/nuxt-layer/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
-import { createInMemoryStagingGraphicsObjectStore } from '~~/server/modules/graphics-asset-library/in-memory-object-store';
+import {
+	createInMemoryCanonicalGraphicsObjectStore,
+	createInMemoryStagingGraphicsObjectStore,
+} from '~~/server/modules/graphics-asset-library/in-memory-object-store';
 import { graphicsObjectIdentity } from '~~/server/modules/graphics-asset-library/object-store';
 import { createGraphicsRemoteSourceFetcher } from '~~/server/modules/graphics-asset-library/remote-source';
 import { GRAPHICS_MULTIPART_PART_BYTES } from '~~/shared/utils/graphicsAssetCompatibility';
@@ -1177,7 +1180,7 @@ describe('scheduled Graphics Asset Library retention', () => {
 				}),
 			).resolves.toEqual([]);
 			await expect(context.library.restoreGraphicAsset({ assetId })).rejects.toMatchObject({
-				code: 'ingestion-operation-not-found',
+				code: 'graphics-subject-not-found',
 			});
 
 			const purgeEvidence = await evidenceOf(context.library, {
@@ -1629,6 +1632,71 @@ describe('scheduled Graphics Asset Library retention', () => {
 					revisionId: reingested.result!.revisionId,
 				}),
 			).resolves.toMatchObject({ outcome: 'available' });
+		});
+
+		// The recheck after a delete counts every way the content may be needed:
+		// a revision published meanwhile, or an operation still due to write it.
+		it.each([
+			{
+				meanwhile: 'a revision published while the bytes were deleted',
+				reach: async (context: TestGraphicsLibrary) => {
+					await ingestAsset(context, {
+						idempotencyKey: 'reached-during-deletion',
+						name: 'Published meanwhile',
+					});
+				},
+			},
+			{
+				meanwhile: 'an operation that may still write them',
+				reach: async (context: TestGraphicsLibrary) => {
+					const pending = await initiateImage(context, {
+						...author,
+						idempotencyKey: 'pending-writer-during-deletion',
+						name: 'Pending writer',
+					});
+					await harness.client.execute({
+						sql: `INSERT INTO graphics_canonical_write_candidates
+							(operation_id, digest, byte_length, created_at) VALUES (?, ?, ?, ?)`,
+						args: [pending.id, digestOf(pixelPng), pixelPng.byteLength, Date.now()],
+					});
+				},
+			},
+		])('records a deletion conflict for $meanwhile', async ({ reach }) => {
+			const sourceObject = graphicsObjectIdentity(`sha256/${digestOf(pixelPng)}`);
+			const canonical = createInMemoryCanonicalGraphicsObjectStore();
+			let reachDuringDelete: (() => Promise<void>) | undefined;
+			const context = createRetentionLibrary({
+				canonical: {
+					...canonical,
+					async delete(identity) {
+						if (identity === sourceObject && reachDuringDelete) {
+							const run = reachDuringDelete;
+							reachDuringDelete = undefined;
+							await run();
+						}
+						return await canonical.delete(identity);
+					},
+				},
+			});
+			const published = await ingestAsset(context, {
+				idempotencyKey: 'deleted-under-a-writer',
+				name: 'Deleted bytes',
+			});
+			await purgeNow(context, published.result!.assetId);
+			await context.library.runGraphicsRetention();
+			context.advance(7 * DAY);
+			reachDuringDelete = () => reach(context);
+
+			await context.library.runGraphicsRetention();
+
+			await expect(
+				evidenceOf(context.library, { categories: ['content-deletion-conflict'] }),
+			).resolves.toEqual([
+				expect.objectContaining({
+					outcome: 'content-unavailable',
+					reason: 'became-reachable-during-deletion',
+				}),
+			]);
 		});
 
 		it('reclaims a pruned revision derivative without touching the retained revision', async () => {

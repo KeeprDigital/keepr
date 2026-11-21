@@ -104,6 +104,7 @@ function publicHeaders(headers: Headers): Headers {
 	const result = new Headers(headers);
 	result.set('cache-control', 'private, no-store');
 	result.set('vary', 'authorization, cookie');
+	result.set('x-content-type-options', 'nosniff');
 	result.delete('cache-tag');
 	return result;
 }

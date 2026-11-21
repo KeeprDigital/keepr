@@ -32,6 +32,30 @@ vi.doMock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => undefined,
 }));
 
+/** Commits a Take between a save's on-air read and its commit; fired once. */
+let afterOnAirRead: (() => Promise<void>) | undefined;
+
+vi.doMock('~~/server/modules/broadcast-graphics-live-session', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('~~/server/modules/broadcast-graphics-live-session')>();
+	return {
+		...actual,
+		broadcastGraphicsLiveSessionModule: () => {
+			const module = actual.broadcastGraphicsLiveSessionModule();
+			return {
+				...module,
+				async onAirGraphics(...args: Parameters<typeof module.onAirGraphics>) {
+					const read = await module.onAirGraphics(...args);
+					const hook = afterOnAirRead;
+					afterOnAirRead = undefined;
+					await hook?.();
+					return read;
+				},
+			};
+		},
+	};
+});
+
 const { screenWriteModule } = await import('~~/server/modules/screen-write');
 const { broadcastGraphicsLiveSessionModule } =
 	await import('~~/server/modules/broadcast-graphics-live-session');
@@ -85,6 +109,7 @@ async function patch(config: Record<string, unknown>) {
 }
 
 beforeEach(async () => {
+	afterOnAirRead = undefined;
 	const seeded = await seedBroadcastGraphicsScreen(db, {
 		stack: { graphics: STACK },
 	});
@@ -132,6 +157,37 @@ describe('a Broadcast Graphics stack write while graphics are on air', () => {
 		});
 
 		expect(await storedIds()).toEqual(stored);
+	});
+
+	// The save's on-air read is fenced on the Live Session it read, so a Take that
+	// commits in between refuses the save rather than taking the edit to program.
+	it.each([
+		{
+			path: 'mode config patch',
+			save: () => patch({ graphics: [slate, graphic('bug', 'Renamed'), lowerThird] }),
+		},
+		{
+			path: 'generic Screen write',
+			save: async () =>
+				screenWriteModule().updateScreen({
+					eventId,
+					screenId,
+					input: {
+						stateVersion: (await screenRow()).stateVersion,
+						modeConfigs: {
+							'broadcast-graphics': { graphics: [slate, graphic('bug', 'Renamed'), lowerThird] },
+						},
+					} as never,
+					authoringSessionId: 'author',
+				}),
+		},
+	])('is refused through the $path when a Take of the edited graphic interleaves', async (row) => {
+		afterOnAirRead = () => take('bug');
+
+		await expect(row.save()).rejects.toMatchObject({ statusCode: 409 });
+
+		const stored = (await screenRow()).modeConfigs!['broadcast-graphics']!.graphics!;
+		expect(stored.find((entry) => entry.id === 'bug')?.name).toBe('bug');
 	});
 
 	it('is refused through the generic Screen write too', async () => {

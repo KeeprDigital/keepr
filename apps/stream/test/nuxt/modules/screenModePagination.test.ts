@@ -37,6 +37,8 @@ const { screenStore } = vi.hoisted(() => ({
 	},
 }));
 mockNuxtImport('useScreenStore', () => () => screenStore);
+const { toast } = vi.hoisted(() => ({ toast: { add: vi.fn() } }));
+mockNuxtImport('useToast', () => () => toast);
 
 function rows(count: number) {
 	return computed(() => Array.from({ length: count }, (_, i) => i));
@@ -345,6 +347,7 @@ describe('usePaginatedScreenMode', () => {
 			mockIsSynced.value = true;
 			mockServerNow = 1_000_000;
 			screenStore.updateModeConfig.mockReset();
+			toast.add.mockReset();
 		});
 		afterEach(() => {
 			scopes.splice(0).forEach((scope) => scope.stop());
@@ -496,5 +499,25 @@ describe('usePaginatedScreenMode', () => {
 				);
 			},
 		);
+
+		// A page selection the server refuses is the Operator's to know about, never swallowed.
+		it.each([
+			{ refusal: 'rejects', answer: () => Promise.reject(new Error('Screen version moved')) },
+			{ refusal: 'finds no Screen', answer: () => Promise.resolve(null) },
+		])('reports a page selection the Screen store $refusal', async ({ answer }) => {
+			screenStore.updateModeConfig.mockImplementation(answer);
+			const { paging } = rendering({
+				interactive: true,
+				config: { autoPageEnabled: false, currentPage: 1 },
+			});
+
+			paging.setPage(2);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(toast.add).toHaveBeenCalledOnce();
+			expect(toast.add).toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Page change refused', color: 'error' }),
+			);
+		});
 	});
 });

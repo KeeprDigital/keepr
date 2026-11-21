@@ -392,6 +392,11 @@ export interface GraphicsIngestionFailure {
 		| 'remote-source-rejected';
 	retryable: boolean;
 	message: string;
+	/**
+	 * How many attempts in a row ended in this same unclassified failure, where
+	 * it is one: a failure that recurs on every retry stops being retryable.
+	 */
+	attempts?: number;
 }
 
 /**

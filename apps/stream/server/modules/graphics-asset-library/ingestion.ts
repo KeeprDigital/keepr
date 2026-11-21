@@ -52,6 +52,8 @@ import {
 	processSilentVideoFromRandomAccess,
 	SilentVideoInspectionSourceError,
 } from './silent-video';
+import { unclassifiedProcessingFailure } from './operation-lifecycle';
+import { logGraphicsStoreFailure } from './store-failure-log';
 import {
 	GraphicAssetValidationError,
 	rejectedValidationReport,
@@ -133,6 +135,8 @@ export interface GraphicsAssetIngestionCatalogue extends GraphicsIngestionOperat
 		operationId: GraphicsIngestionOperationId;
 		initiatedBy: string;
 		uploadId: GraphicsMultipartUploadIdentity | null;
+		/** When clearing, the upload released: a checkpoint naming another is kept. */
+		releasing?: GraphicsMultipartUploadIdentity;
 	}) => Promise<void>;
 	recordGraphicAssetMultipartCleanupComplete: (
 		operationId: GraphicsIngestionOperationId,
@@ -325,6 +329,7 @@ export function createGraphicsAssetIngestion(
 	const { now, generateIdentity, recordSupersession, continueTemplatePackage } = dependencies;
 	const {
 		activeIngestionLeaseMilliseconds,
+		holdingProcessingLease,
 		initiateGraphicsOperation,
 		changedOperation,
 		SilentVideoValidationRuntimeError,
@@ -509,12 +514,26 @@ export function createGraphicsAssetIngestion(
 		 * it, so the caller's record of it has to be durable before the first part
 		 * is sent and may only be dropped once there is nothing left to abort.
 		 */
-		onMultipartCheckpoint?: (uploadId: GraphicsMultipartUploadIdentity | null) => Promise<void>;
+		onMultipartCheckpoint?: (
+			uploadId: GraphicsMultipartUploadIdentity | null,
+			releasing?: GraphicsMultipartUploadIdentity,
+		) => Promise<void>;
 	}): Promise<StageRemoteSourceOutcome> {
+		// Stamped on what this copy stages, so bytes an earlier attempt left at the
+		// key are never taken for this copy's by their length alone.
+		const attempt = generateIdentity();
 		const metadata = {
 			contentType: 'application/octet-stream',
-			custom: { operationId: input.operationId },
+			custom: { operationId: input.operationId, attempt },
 		} as const;
+		const left = await input.staging.readMetadata(input.identity);
+		if (left.outcome === 'unavailable') return { outcome: 'unavailable' };
+		if (left.outcome === 'available') {
+			const released = await input.staging.delete(input.identity);
+			if (released.outcome === 'unavailable') return { outcome: 'unavailable' };
+		}
+		const ours = (object: { customMetadata: Readonly<Record<string, string>> }) =>
+			object.customMetadata.attempt === attempt;
 
 		if (input.declaredByteLength !== undefined) {
 			let staged: Awaited<ReturnType<typeof input.staging.createImmutable>>;
@@ -532,7 +551,8 @@ export function createGraphicsAssetIngestion(
 					? { outcome: 'length-mismatch', declaredByteLength: input.declaredByteLength }
 					: { outcome: 'unavailable' };
 			}
-			if (staged.outcome === 'unavailable') return { outcome: 'unavailable' };
+			if (staged.outcome === 'unavailable' || !ours(staged.object))
+				return { outcome: 'unavailable' };
 			return staged.object.byteLength === input.declaredByteLength
 				? { outcome: 'staged', byteLength: staged.object.byteLength }
 				: { outcome: 'length-mismatch', declaredByteLength: input.declaredByteLength };
@@ -570,7 +590,8 @@ export function createGraphicsAssetIngestion(
 			// can only find it while the caller's checkpoint still names it. An
 			// upload the store no longer holds needs no sweep, so its checkpoint is
 			// cleared too: only `unavailable` is a reason to keep one.
-			if (aborted.outcome !== 'unavailable') await input.onMultipartCheckpoint?.(null);
+			if (aborted.outcome !== 'unavailable')
+				await input.onMultipartCheckpoint?.(null, upload.uploadId);
 		}
 
 		try {
@@ -633,7 +654,8 @@ export function createGraphicsAssetIngestion(
 				}),
 				metadata,
 			});
-			if (staged.outcome === 'unavailable') return { outcome: 'unavailable' };
+			if (staged.outcome === 'unavailable' || !ours(staged.object))
+				return { outcome: 'unavailable' };
 			return { outcome: 'staged', byteLength: staged.object.byteLength };
 		}
 		const uploadedTail = await input.staging.uploadPart({
@@ -651,10 +673,10 @@ export function createGraphicsAssetIngestion(
 		parts.push(uploadedTail.part);
 		const completed = await input.staging.completeMultipart({ upload, parts });
 		if (completed.outcome === 'unavailable') return { outcome: 'unavailable' };
-		await input.onMultipartCheckpoint?.(null);
+		await input.onMultipartCheckpoint?.(null, upload.uploadId);
 		// The source declared no length to contradict, so a store that assembles a
 		// different total is a staging integrity failure, not a remote rejection.
-		return completed.object.byteLength === totalByteLength
+		return completed.object.byteLength === totalByteLength && ours(completed.object)
 			? { outcome: 'staged', byteLength: completed.object.byteLength }
 			: { outcome: 'unavailable' };
 	}
@@ -664,6 +686,14 @@ export function createGraphicsAssetIngestion(
 	): Promise<GraphicsIngestionOperation> {
 		if (initialOperation.source === 'template-package')
 			return await continueTemplatePackage(initialOperation);
+		return await holdingProcessingLease(initialOperation, () =>
+			processGraphicsIngestion(initialOperation),
+		);
+	}
+
+	async function processGraphicsIngestion(
+		initialOperation: GraphicsIngestionOperation,
+	): Promise<GraphicsIngestionOperation> {
 		const catalogue = requireCatalogue();
 		const staging = requireStaging();
 		const canonical = requireCanonical();
@@ -1108,7 +1138,12 @@ export function createGraphicsAssetIngestion(
 				});
 			}
 			return completed;
-		} catch {
+		} catch (unexpected) {
+			logGraphicsStoreFailure(
+				'graphics_ingestion_processing_failed',
+				{ operationId: operation.id, stage: operation.stage },
+				unexpected,
+			);
 			let authoritative: GraphicsIngestionOperation | undefined;
 			try {
 				authoritative = await catalogue.getIngestionOperation(operation.id, operation.initiatedBy);
@@ -1129,17 +1164,19 @@ export function createGraphicsAssetIngestion(
 			return await failOperation(
 				catalogue,
 				authoritative ?? operation,
-				{
-					code:
-						operation.stage === 'publishing'
-							? 'catalogue-publication-failed'
-							: 'ingestion-processing-failed',
-					retryable: true,
-					message:
-						operation.stage === 'publishing'
-							? 'The Graphic Asset catalogue could not publish atomically.'
-							: 'Graphics ingestion processing was interrupted and can be retried from staged bytes.',
-				},
+				unclassifiedProcessingFailure({
+					prior: initialOperation.failure,
+					...(operation.stage === 'publishing'
+						? {
+								code: 'catalogue-publication-failed',
+								retryMessage: 'The Graphic Asset catalogue could not publish atomically.',
+							}
+						: {
+								code: 'ingestion-processing-failed',
+								retryMessage:
+									'Graphics ingestion processing was interrupted and can be retried from staged bytes.',
+							}),
+				}),
 				operation.report,
 			);
 		}
@@ -1277,11 +1314,12 @@ export function createGraphicsAssetIngestion(
 				return await this.getIngestionOperation(input);
 			}
 
+			const attempt = generateIdentity();
 			const started = await staging.beginMultipart({
 				identity: stagingIdentity,
 				metadata: {
 					contentType: 'application/octet-stream',
-					custom: { operationId: operation.id },
+					custom: { operationId: operation.id, attempt },
 				},
 			});
 			if (started.outcome === 'unavailable') {
@@ -1294,6 +1332,7 @@ export function createGraphicsAssetIngestion(
 			const state: GraphicsAssetMultipartState = {
 				version: initialVersion + 1,
 				uploadId: started.upload.uploadId,
+				attempt,
 				cleanupPending: false,
 				parts: existing?.parts ?? [],
 			};
@@ -1610,8 +1649,16 @@ export function createGraphicsAssetIngestion(
 			let stagedByteLength =
 				completed.outcome === 'created' ? completed.object.byteLength : undefined;
 			if (stagedByteLength === undefined) {
+				// An ambiguous completion may still have assembled the object. Bytes at
+				// the key are adopted only when this upload stamped them: an earlier
+				// attempt's of the same length are not this transfer's source.
 				const metadata = await staging.readMetadata(upload.identity);
-				if (metadata.outcome === 'available') stagedByteLength = metadata.object.byteLength;
+				if (
+					metadata.outcome === 'available' &&
+					state.attempt !== undefined &&
+					metadata.object.customMetadata.attempt === state.attempt
+				)
+					stagedByteLength = metadata.object.byteLength;
 			}
 			if (stagedByteLength !== operation.declaredByteLength) {
 				throw new GraphicsAssetLibraryError(
@@ -1720,14 +1767,20 @@ export function createGraphicsAssetIngestion(
 				'Graphics ingestion transfer could not be started',
 			);
 			const stagingIdentity = graphicsObjectIdentity(`ingestion/${operation.id}/source`);
+			const attempt = generateIdentity();
 			let staged: Awaited<ReturnType<typeof staging.createImmutable>>;
 			try {
+				// Bytes an earlier attempt left at the key are not this upload's, whatever
+				// their length: they are released first, so the create below writes ours.
+				const left = await staging.readMetadata(stagingIdentity);
+				if (left.outcome === 'available' && left.object.customMetadata.attempt !== attempt)
+					await staging.delete(stagingIdentity);
 				staged = await staging.createImmutable({
 					identity: stagingIdentity,
 					bytes: input.bytes,
 					metadata: {
 						contentType: 'application/octet-stream',
-						custom: { operationId: operation.id },
+						custom: { operationId: operation.id, attempt },
 					},
 				});
 			} catch {
@@ -1744,7 +1797,10 @@ export function createGraphicsAssetIngestion(
 					message: 'Staging byte storage is temporarily unavailable.',
 				});
 			}
-			if (staged.object.byteLength !== operation.declaredByteLength) {
+			if (
+				staged.object.byteLength !== operation.declaredByteLength ||
+				staged.object.customMetadata.attempt !== attempt
+			) {
 				return await failOperation(catalogue, operation, {
 					code: 'staging-unavailable',
 					retryable: true,
@@ -1810,6 +1866,65 @@ export function createGraphicsAssetIngestion(
 				);
 			}
 
+			// The copy holds the operation while it runs. A copy still running moved
+			// it to `transferring` within the lease, and a second request then must
+			// neither abort that copy's upload nor delete what it stages; claiming
+			// by compare-and-set settles which of two simultaneous requests runs.
+			if (
+				operation.stage === 'transferring' &&
+				operation.updatedAt >
+					new Date(now().getTime() - activeIngestionLeaseMilliseconds).toISOString()
+			) {
+				throw new GraphicsAssetLibraryError(
+					'An approved remote Graphic Asset copy is already running for this operation',
+					'ingestion-operation-lease-held',
+				);
+			}
+			const unclaimed = operation;
+			try {
+				operation = await catalogue.updateIngestionOperation(
+					changedOperation(operation, {
+						stage: 'transferring',
+						failure: undefined,
+						report: undefined,
+					}),
+					operation.updatedAt,
+				);
+			} catch (error) {
+				// Lost to another request only if the operation moved; otherwise the
+				// catalogue could not answer, which is an outage, not a running copy.
+				const current = await catalogue
+					.getIngestionOperation(operation.id, operation.initiatedBy)
+					.catch(() => undefined);
+				throw new GraphicsAssetLibraryError(
+					current && current.updatedAt !== operation.updatedAt
+						? 'An approved remote Graphic Asset copy is already running for this operation'
+						: 'Approved remote Graphic Asset copy could not be started',
+					current && current.updatedAt !== operation.updatedAt
+						? 'ingestion-operation-lease-held'
+						: 'graphics-asset-library-unavailable',
+					{ cause: error },
+				);
+			}
+
+			/**
+			 * Gives the operation back as it was claimed, for a refusal that copied
+			 * nothing: the next request may then start at once, not after the lease.
+			 */
+			const releaseCopyClaim = async (refusal: GraphicsAssetLibraryError) => {
+				await catalogue
+					.updateIngestionOperation(
+						changedOperation(operation!, {
+							stage: unclaimed.stage,
+							failure: unclaimed.failure,
+							report: unclaimed.report,
+						}),
+						operation!.updatedAt,
+					)
+					.catch(() => undefined);
+				return refusal;
+			};
+
 			const stagingIdentity = graphicsObjectIdentity(`ingestion/${operation.id}/source`);
 			// An earlier attempt may have died holding a multipart upload. Its
 			// checkpoint is the only record of that upload, and this attempt would
@@ -1831,9 +1946,11 @@ export function createGraphicsAssetIngestion(
 				// that could not answer stops it: the previous upload may still be
 				// held, and starting a second one is what would strand the first.
 				if (aborted.outcome === 'unavailable') {
-					throw new GraphicsAssetLibraryError(
-						'Graphics Asset staging byte store could not release a previous approved remote Graphic Asset copy attempt',
-						'graphics-asset-library-unavailable',
+					throw await releaseCopyClaim(
+						new GraphicsAssetLibraryError(
+							'Graphics Asset staging byte store could not release a previous approved remote Graphic Asset copy attempt',
+							'graphics-asset-library-unavailable',
+						),
 					);
 				}
 				await catalogueRequest(
@@ -1842,6 +1959,7 @@ export function createGraphicsAssetIngestion(
 							operationId: operation!.id,
 							initiatedBy: operation!.initiatedBy,
 							uploadId: null,
+							releasing: stranded.uploadId!,
 						}),
 					'Approved remote Graphic Asset copy checkpoint could not be recorded',
 				);
@@ -1854,7 +1972,9 @@ export function createGraphicsAssetIngestion(
 				maximumByteLength: policy.maximumByteLength,
 			});
 			if (opened.outcome === 'unavailable') {
-				throw new GraphicsAssetLibraryError(opened.message, 'graphics-asset-library-unavailable');
+				throw await releaseCopyClaim(
+					new GraphicsAssetLibraryError(opened.message, 'graphics-asset-library-unavailable'),
+				);
 			}
 			if (opened.outcome === 'rejected') {
 				return await failOperation(
@@ -1880,18 +2000,6 @@ export function createGraphicsAssetIngestion(
 				);
 			}
 
-			operation = await catalogueRequest(
-				() =>
-					catalogue.updateIngestionOperation(
-						changedOperation(operation!, {
-							stage: 'transferring',
-							failure: undefined,
-							report: undefined,
-						}),
-						operation!.updatedAt,
-					),
-				'Approved remote Graphic Asset copy could not be started',
-			);
 			const staged = await stageRemoteSource({
 				staging,
 				identity: stagingIdentity,
@@ -1899,13 +2007,14 @@ export function createGraphicsAssetIngestion(
 				body: opened.body,
 				maximumByteLength: policy.maximumByteLength,
 				declaredByteLength: opened.byteLength,
-				onMultipartCheckpoint: (uploadId) =>
+				onMultipartCheckpoint: (uploadId, releasing) =>
 					catalogueRequest(
 						() =>
 							catalogue.checkpointRemoteCopyMultipartUpload({
 								operationId: operation!.id,
 								initiatedBy: operation!.initiatedBy,
 								uploadId,
+								releasing,
 							}),
 						'Approved remote Graphic Asset copy checkpoint could not be recorded',
 					),

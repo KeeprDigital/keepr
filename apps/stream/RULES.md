@@ -369,7 +369,7 @@ It renders in the Overlay and Fill Outputs, never the Key Output.
 Templates are not live Screen state. Each has a stable identity and managed revision; placing or importing one creates an independent copy with no update link.
 
 **Broadcast Graphics Live Session**:
-It survives reloads, disconnections, and restarts, and ends when the Screen leaves Broadcast Graphics mode or its live state is explicitly reset. Commands from an ended Live Session never affect a later one. Reading a Screen's Live Session, a Screen Output's read included, opens one when the Screen has none, without announcing it (ADR-0022, ADR-0029).
+It survives reloads, disconnections, and restarts, and ends when the Screen leaves Broadcast Graphics mode or its live state is explicitly reset. Commands from an ended Live Session never affect a later one. Reading a Screen's Live Session, a Screen Output's read included, opens one when the Screen has none, without announcing it (ADR-0022, ADR-0029). A retried command it already committed answers what was stored, whatever its admission would answer now. A save of the Screen's stack commits only while the Live Session is at the sequence its on-air check read, so a Take landing in between refuses the save (ADR-0081).
 
 **Broadcast Graphics Live State Change**:
 A peer at the immediately preceding sequence applies it; a peer offered none (too large, a recognised repeat, or indescribable) reloads the authoritative snapshot (ADR-0004).
@@ -378,7 +378,7 @@ A peer at the immediately preceding sequence applies it; a peer offered none (to
 It is derived on every read; while it stands, readers act on a state with nothing on air, and the first accepted command — in practice an explicit Take — clears it. A stale animation start time is not a fault.
 
 **Graphic Input**:
-It may be entered manually or resolved from a type-compatible Event Data field, but never exposes a whole Event Data entity.
+It may be entered manually or resolved from a type-compatible Event Data field, but never exposes a whole Event Data entity. A media value chosen live names an active Graphic Asset of the kind the Graphic Input declares, as an authored reference does.
 
 **Graphic Source Selection**:
 It resolves from the current Event, an operator selection, or a fixed relationship from another Graphic Source Selection; it is not a collection query.
@@ -469,7 +469,7 @@ Unsupported content is rejected; previews are separate Graphics Derivatives. A f
 Each Graphic Asset Revision records the profile it was accepted under.
 
 **Graphics Ingestion Operation**:
-Its provisional content is never discoverable or referenceable. It has at most one active attempt at a time (ADR-0073).
+Its provisional content is never discoverable or referenceable. It has at most one active attempt at a time (ADR-0073): an attempt holds it until the attempt ends or its lease expires, and an approved remote copy holds it while it copies, within a total and an idle deadline. Bytes found at its staging key are its source only when the attempt that wrote them is the one reading them. A failure processing cannot classify stops being retryable once three attempts in a row end in it.
 
 **Graphics Retention Sweep**:
 A missed sweep only retains state longer.

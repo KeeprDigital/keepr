@@ -11,6 +11,7 @@ import type {
 	GraphicAssetReferenceStatus,
 } from '~~/shared/types/graphicsAsset';
 import type { Screen } from '~/types';
+import type { GraphicAssetRefusalOutcome } from '~/utils/broadcastGraphicsCommandRefusal';
 import {
 	resolveSocialProfileProjectionAcceptances,
 	sameSocialProfileProjectionAcceptance,
@@ -381,9 +382,11 @@ function mediaSelectionKey(inputKey: string): string {
  * choose something else, or retry the same thing — is the one the words already
  * imply.
  */
-const MEDIA_REFUSALS: Record<'missing' | 'unavailable', string> = {
+const MEDIA_REFUSALS: Record<GraphicAssetRefusalOutcome, string> = {
 	missing:
 		'Missing Graphic Asset Reference — that revision no longer exists, so it was not staged.',
+	unselectable:
+		'That Graphic Asset is retired, trashed or of another kind, so it was not staged. Choose another.',
 	unavailable:
 		'Unavailable Graphic Asset Content — that revision’s bytes are temporarily unavailable, so it was not staged. Try again.',
 };
@@ -422,7 +425,11 @@ function mediaRefusal(inputKey: string): string | undefined {
  * and the alternative, sending it and reporting the 409, would name a failure of the
  * command rather than a fact about the revision.
  */
-async function selectMedia(key: string, reference: GraphicAssetReference) {
+async function selectMedia(
+	key: string,
+	reference: GraphicAssetReference,
+	mediaKind: GraphicMediaKind,
+) {
 	const flight = mediaSelectionFlights.begin(mediaSelectionKey(key));
 	let status: GraphicAssetReferenceStatus;
 	try {
@@ -449,6 +456,10 @@ async function selectMedia(key: string, reference: GraphicAssetReference) {
 
 	if (status.outcome !== 'available') {
 		refuseMedia(key, MEDIA_REFUSALS[status.outcome]);
+		return;
+	}
+	if (status.lifecycleState !== 'active' || status.kind !== mediaKind) {
+		refuseMedia(key, MEDIA_REFUSALS.unselectable);
 		return;
 	}
 
@@ -893,7 +904,10 @@ watch(
 						:asset-kind="mediaKindOf(trace)"
 						:disabled="disconnected"
 						:data-testid="`live-control-media-${trace.declaration.key}`"
-						@select="(_asset, reference) => selectMedia(trace.declaration.key, reference)"
+						@select="
+							(_asset, reference) =>
+								selectMedia(trace.declaration.key, reference, mediaKindOf(trace))
+						"
 					/>
 					<p
 						v-if="mediaRefusal(trace.declaration.key)"

@@ -7,6 +7,7 @@ import { eventService } from '~~/server/services/event';
 import { screenService } from '~~/server/services/screen';
 import { getOriginConnectionId } from '~~/server/utils/realtimePublish';
 import { optionalBrowserSessionId } from '~~/server/utils/session';
+import { templatePlacementError } from '~~/server/utils/templatePlacementError';
 import { eventKind } from '~~/shared/config/games';
 import {
 	isFeatureMatchLayoutOfferedTo,
@@ -108,33 +109,9 @@ export default defineEventHandler(async (event) => {
 		setResponseStatus(event, 201);
 		return { screen: updated, layout };
 	} catch (error) {
-		throw templateOrientedPlacementError(error, template.name);
+		throw templatePlacementError(error, {
+			artifact: 'Feature Match Layout Template',
+			templateName: template.name,
+		});
 	}
 });
-
-/**
- * Restate a Screen write failure in terms of the template that was placed.
- *
- * The Screen's write path refuses a Graphic Asset Reference that is not selectable
- * now, and names the slot carrying it. A layout's slots are the template's own —
- * nothing is regenerated when a layout is placed, because a layout has one Frame,
- * one Source Item list, and one composition whose ids are the design's — so the slot
- * already points at something the author can find. What it does not say is *which
- * design* is unplaceable, and with a library of layouts that is the first thing they
- * need.
- */
-function templateOrientedPlacementError(error: unknown, templateName: string): unknown {
-	const failure = error as { statusCode?: number; message?: string };
-	if (failure?.statusCode !== 409 || typeof failure.message !== 'string') return error;
-	if (!failure.message.startsWith('Graphic Asset Reference at ')) return error;
-
-	const slot = failure.message
-		.slice('Graphic Asset Reference at '.length)
-		.replace(/ is not selectable$/, '');
-
-	return createError({
-		statusCode: 409,
-		statusMessage: 'Conflict',
-		message: `Feature Match Layout Template "${templateName}" cannot be placed: the Graphic Asset Revision at ${slot} is no longer selectable`,
-	});
-}

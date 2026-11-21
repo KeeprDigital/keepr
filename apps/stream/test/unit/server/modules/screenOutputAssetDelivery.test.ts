@@ -112,6 +112,7 @@ describe('screen Output exact Graphic Asset Revision delivery', () => {
 		expect(result.response.headers.get('accept-ranges')).toBe('bytes');
 		expect(result.response.headers.get('cache-control')).toBe('private, no-store');
 		expect(result.response.headers.get('vary')).toBe('authorization, cookie');
+		expect(result.response.headers.get('x-content-type-options')).toBe('nosniff');
 		expect(result.response.headers.get('etag')).toMatch(/^"sk-[\w-]{43}"$/);
 		expect(result.response.headers.get('etag')).not.toContain('asset-1');
 		expect(match).toHaveBeenCalledWith(

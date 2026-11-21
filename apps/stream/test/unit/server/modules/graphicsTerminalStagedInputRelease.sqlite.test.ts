@@ -90,6 +90,18 @@ async function unreleasedQueue(context: Context) {
 }
 
 describe('terminal staged input release', () => {
+	// Already-in-state is a claim about a subject; an id naming none is not found.
+	it('reports an operation that never existed as not found, not as already released', async () => {
+		const context = createLibrary();
+
+		await expect(
+			context.library.releaseStrandedStagedInput({
+				operationId: 'no-such-operation' as never,
+				actor: 'graphics-admin',
+			}),
+		).rejects.toMatchObject({ code: 'ingestion-operation-not-found' });
+	});
+
 	it("keeps a completed ingestion's unreleased staged input on the books and queued, then releases it on a later sweep", async () => {
 		const context = createLibrary();
 		context.staging.injectTransientFailure('delete', 2);

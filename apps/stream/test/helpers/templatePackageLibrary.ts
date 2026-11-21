@@ -78,7 +78,11 @@ export function acceptStagedSilentVideo(
 					factsDigest: input.factsDigest,
 				};
 			}
-			return await accepting.validate(input);
+			const accepted = await accepting.validate(input);
+			// It renders a transparent video transparent, as Chromium does.
+			return accepted.outcome === 'accepted'
+				? { ...accepted, transparencyRendered: input.inspectedFacts.hasAlpha }
+				: accepted;
 		},
 	};
 }
@@ -188,6 +192,7 @@ export async function replacePackageImage(
 export async function ingestPackageSilentVideo(
 	library: PackageLibrary,
 	name: string,
+	bytes: Uint8Array = vp9Webm,
 ): Promise<GraphicAssetReference> {
 	const operation = await library.initiateGraphicsIngestion({
 		idempotencyKey: `ingest-${name}-${++sequence}`,
@@ -195,14 +200,14 @@ export async function ingestPackageSilentVideo(
 		name,
 		sourceFileName: `${name}.webm`,
 		declaredMime: 'video/webm',
-		declaredByteLength: vp9Webm.byteLength,
+		declaredByteLength: bytes.byteLength,
 	});
 	return published(
 		await library.uploadGraphicAsset({
 			operationId: operation.id,
 			initiatedBy: operation.initiatedBy,
 			declaredMime: 'video/webm',
-			bytes: boundedBytes(vp9Webm),
+			bytes: boundedBytes(bytes),
 		}),
 	);
 }

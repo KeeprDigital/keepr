@@ -53,6 +53,41 @@ export interface TemplatePackageArchiveSource {
 	read: (offset: number, length: number) => Promise<Uint8Array>;
 }
 
+/**
+ * The source read through one window at a time: a read inside the window last
+ * fetched is answered from it, and any other fetches a window from where it
+ * starts, or ending where the source ends. The archive's headers, names and descriptors sit together and an
+ * entry streams in chunks, so a few large reads replace many small ones. A
+ * read larger than the window is fetched whole and becomes the window.
+ */
+export function windowedArchiveSource(
+	source: TemplatePackageArchiveSource,
+	windowByteLength: number,
+): TemplatePackageArchiveSource {
+	let window: { offset: number; bytes: Uint8Array } | undefined;
+	return {
+		byteLength: source.byteLength,
+		async read(offset, length) {
+			// A read the archive cannot satisfy is the source's to refuse, never a short answer.
+			if (offset < 0 || length < 0 || offset + length > source.byteLength)
+				return await source.read(offset, length);
+			if (
+				!window ||
+				offset < window.offset ||
+				offset + length > window.offset + window.bytes.byteLength
+			) {
+				// Placed to end no later than the source does, so a read near the end
+				// (the archive is read from its end record back) takes in what precedes it.
+				const windowLength = Math.min(Math.max(length, windowByteLength), source.byteLength);
+				const start = Math.max(0, Math.min(offset, source.byteLength - windowLength));
+				window = { offset: start, bytes: await source.read(start, windowLength) };
+			}
+			const start = offset - window.offset;
+			return window.bytes.subarray(start, start + length);
+		},
+	};
+}
+
 export interface TemplatePackageArchiveEntry {
 	name: string;
 	byteLength: number;

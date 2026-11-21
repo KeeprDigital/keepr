@@ -1,0 +1,1 @@
+ALTER TABLE `graphics_ingestion_operations` ADD `processing_lease_expires_at` integer;
