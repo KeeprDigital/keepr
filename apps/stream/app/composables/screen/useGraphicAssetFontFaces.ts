@@ -3,6 +3,7 @@ import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
 import type { ScreenGraphicAssetReference } from '~~/shared/utils/graphicsAssetReferences';
 import { graphicAssetFontFaceFamily } from '~~/shared/modules/graphics/typography';
 import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
+import { withinFontLoadTimeout } from '~/composables/screen/useApplicationFontFaces';
 
 export interface GraphicAssetFontSource {
 	family: string;
@@ -25,7 +26,8 @@ export interface GraphicAssetFontSource {
  * arrives. Hiding is the lesser failure: a Screen Output that is briefly blank is
  * a Screen Output an operator can see is not ready, and `data-font-ready` says so
  * for anything watching. A layout naming no library font is ready immediately and
- * never waits.
+ * never waits, and a load that has not settled within `FONT_LOAD_TIMEOUT_MS`
+ * fails, so the hiding cannot outlast a load that never ends.
  *
  * A revision whose bytes cannot be resolved is reported rather than substituted.
  * A Missing Graphic Asset Reference is an integrity failure, and quietly painting
@@ -154,30 +156,35 @@ export function useGraphicAssetFontFaces(
 			if (pending.length === 0 || !settled) return;
 
 			const faces: FontFace[] = [];
-			try {
+			/** Set once the load has timed out: whatever it still adds is taken back off. */
+			let abandoned = false;
+			const gone = () => flight.stale || abandoned;
+			async function loadAll(): Promise<boolean> {
 				for (const { family, url } of pending) {
+					if (gone()) return false;
 					if (!url) throw new Error('Exact font revision content is unavailable.');
 					const face = new FontFace(family, `url("${url.replaceAll('"', '%22')}")`);
 					faces.push(face);
 					document.fonts.add(face);
 					await face.load();
-					if (flight.stale) {
-						discard(faces);
-						return;
-					}
+					if (gone()) return false;
 					// Asking the document as well as the face: a face that loaded is not yet a
 					// face the renderer will use, and the sample covers the digits and letters
 					// a scoreboard actually paints.
 					await document.fonts.load(`48px "${family}"`, 'Aa 012 Player Name');
-					if (flight.stale) {
-						discard(faces);
-						return;
-					}
+					if (gone()) return false;
 					if (!document.fonts.check(`48px "${family}"`, 'Aa 012 Player Name'))
 						throw new Error('Exact font revision is not ready.');
 				}
 				await document.fonts.ready;
-				if (flight.stale) {
+				return !gone();
+			}
+			try {
+				// A load that never settles fails at the timeout, so its display shows.
+				const loaded = await withinFontLoadTimeout(loadAll()).finally(() => {
+					abandoned = true;
+				});
+				if (!loaded) {
 					discard(faces);
 					return;
 				}

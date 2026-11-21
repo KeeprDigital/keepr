@@ -1,17 +1,14 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
-import { createMockEvent, createMockPlayer, createMockUiArchetype } from '~~/test/helpers/fixtures';
+import { createMockEvent } from '~~/test/helpers/fixtures';
 import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
-import { realtimeHandlersFor } from '~~/test/nuxt/helpers/realtimeEventSession';
 
 const { mockFetch } = vi.hoisted(() => ({
 	mockFetch: vi.fn(),
 }));
 mockNuxtImport('$fetch', () => mockFetch);
-
-const { deliver } = realtimeHandlersFor();
 
 function makeSummaryData() {
 	return {
@@ -159,45 +156,6 @@ describe('useMetagameStore', () => {
 			expect(store.scopeQuery).toEqual({ scope: 'all' });
 			expect(store.summaryData).toBeNull();
 			expect(store.invalidationVersion).toBe(version + 1);
-		});
-
-		// Each message has a handler of its own, so each is heard, or not, by itself.
-		it.each([
-			[
-				'player:created',
-				{
-					player: createMockPlayer({ id: 2 }),
-				},
-			],
-			[
-				'player:updated',
-				{
-					player: createMockPlayer({ id: 1 }),
-				},
-			],
-			['player:deleted', { playerId: 1 }],
-			[
-				'archetype:created',
-				{
-					archetype: createMockUiArchetype({ id: 1 }),
-				},
-			],
-			['archetype:keyCardsUpdated', { archetypeId: 1, keyCards: [] }],
-			[
-				'playerList:membersChanged',
-				{
-					listId: 1,
-					action: 'added',
-					playerIds: [],
-					memberCount: 0,
-				},
-			],
-		])("follows a peer's %s", (type, payload) => {
-			store.summaryData = makeSummaryData();
-
-			deliver(type as never, payload as never);
-
-			expect(store.summaryData).toBeNull();
 		});
 	});
 });

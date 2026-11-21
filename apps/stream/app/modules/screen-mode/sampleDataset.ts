@@ -690,9 +690,19 @@ const ANSWERS = {
 	card: { card: SAMPLE_SCREEN_CARD, revision: 1 },
 	liveSession: SAMPLE_LIVE_SESSION,
 	standings: {
-		players: SAMPLE_PLAYERS,
+		// Every sample Player, with every column a Standings Screen can show.
+		rows: SAMPLE_PLAYERS.map(({ id, name, position, wins, losses, draws, points }, index) => ({
+			id,
+			name,
+			position,
+			wins,
+			losses,
+			draws,
+			points,
+			deckName: deckOf(index).name,
+			deckColors: deckOf(index).colors,
+		})),
 		round: null,
-		roundStandings: null,
 		watchlist: null,
 		previousRoundPositions: {
 			roundId: ROUND_7.id,

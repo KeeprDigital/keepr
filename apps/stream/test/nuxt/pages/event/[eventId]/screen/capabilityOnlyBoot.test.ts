@@ -868,9 +868,8 @@ describe('a capability-only Screen Output', () => {
 		[
 			'answers no Players',
 			() => ({
-				players: [],
+				rows: [],
 				round: null,
-				roundStandings: null,
 				watchlist: null,
 				previousRoundPositions: null,
 			}),
@@ -889,14 +888,14 @@ describe('a capability-only Screen Output', () => {
 		// Nothing appears to wait on, so the read's answer settles to render.
 		await settleOutput();
 
-		const { players } = await useSampleScreenOutputReadRepository('mtg').standings({
+		const { rows } = await useSampleScreenOutputReadRepository('mtg').standings({
 			eventId: 42,
 			screenId: 7,
 		});
 		expect(standingsRead()).toBe(true);
-		expect(players.map(({ name }) => name).filter((name) => wrapper.text().includes(name))).toEqual(
-			[],
-		);
+		expect(
+			rows.flatMap(({ name }) => (name && wrapper.text().includes(name) ? [name] : [])),
+		).toEqual([]);
 	});
 
 	/** What a rendering of the sample Screen Card or sample Broadcast Graphic would put on air. */
@@ -1237,9 +1236,8 @@ describe("a capability-only output's Theme", () => {
 			[
 				'/api/screen-output/events/42/screens/7/standings',
 				() => ({
-					players: [],
+					rows: [],
 					round: null,
-					roundStandings: null,
 					watchlist: null,
 					previousRoundPositions: null,
 				}),

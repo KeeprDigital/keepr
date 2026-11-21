@@ -1,6 +1,6 @@
 # ADR-0053: Program holds what it shows until what replaces it is ready
 
-Accepted · 2026-10-28 · Amended 2026-11-13 ([#1168](https://github.com/KeeprDigital/stream-keepr/issues/1168)): application fonts settle before ready, and hold readiness only, never a display · Amended 2026-11-14 ([#1201](https://github.com/KeeprDigital/stream-keepr/issues/1201)): a Deck List waits only for the art its shown boards draw · Amended 2026-11-15 ([#1201](https://github.com/KeeprDigital/stream-keepr/issues/1201)): a Deck List draws each board's art from the smallest Scryfall image its cards need
+Accepted · 2026-10-28 · Amended 2026-11-13 ([#1168](https://github.com/KeeprDigital/stream-keepr/issues/1168)): application fonts settle before ready, and hold readiness only, never a display · Amended 2026-11-14 ([#1201](https://github.com/KeeprDigital/stream-keepr/issues/1201)): a Deck List waits only for the art its shown boards draw · Amended 2026-11-15 ([#1201](https://github.com/KeeprDigital/stream-keepr/issues/1201)): a Deck List draws each board's art from the smallest Scryfall image its cards need · Amended by ADR-0160 (#1380): a font load and an image preload each fail at 8 s of their own, so neither waits only on the ready timeout
 
 ### Decision
 

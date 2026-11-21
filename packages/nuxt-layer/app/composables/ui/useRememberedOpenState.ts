@@ -1,4 +1,5 @@
 import { useLocalStorage } from '@vueuse/core';
+import { isPlainRecord } from '../../../shared/utils/plainObject';
 
 function rememberedOpenState(storageKey: string): Ref<Record<string, boolean>> {
 	try {
@@ -20,12 +21,19 @@ function rememberedOpenState(storageKey: string): Ref<Record<string, boolean>> {
 export function useRememberedOpenState(storageKey: string) {
 	const stored = rememberedOpenState(storageKey);
 
+	/** What storage holds, as panel ids to booleans: anything else there is no memory. */
+	function remembered(): Record<string, unknown> {
+		const value: unknown = stored.value;
+		return isPlainRecord(value) ? value : {};
+	}
+
 	function isOpen(id: string, defaultOpen = true): boolean {
-		return stored.value[id] ?? defaultOpen;
+		const entry = remembered()[id];
+		return typeof entry === 'boolean' ? entry : defaultOpen;
 	}
 
 	function setOpen(id: string, open: boolean) {
-		stored.value = { ...stored.value, [id]: open };
+		stored.value = { ...(remembered() as Record<string, boolean>), [id]: open };
 	}
 
 	return { isOpen, setOpen };

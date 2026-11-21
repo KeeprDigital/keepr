@@ -17,7 +17,8 @@ const publication = {
 };
 
 vi.doMock('~~/server/db', () => ({ db }));
-vi.doMock('~~/server/modules/event-data-publication', () => ({
+vi.doMock('~~/server/modules/event-data-publication', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	eventDataPublicationModule: () => publication,
 }));
 vi.doMock('~~/server/utils/realtimePublish', () => ({

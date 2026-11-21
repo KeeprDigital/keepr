@@ -13,8 +13,70 @@ vi.stubGlobal('getRequestHeader', mockGetRequestHeader);
 vi.stubGlobal('getRequestWebStream', mockGetRequestWebStream);
 vi.stubGlobal('readBody', mockReadBody);
 
-const { assertJsonPayloadSize, jsonPayloadByteLength, readJsonPayloadLimited } =
-	await import('../../../../server/utils/payloadLimits');
+const {
+	assertJsonPayloadSize,
+	getBoundedRequestBodyStream,
+	jsonPayloadByteLength,
+	readJsonPayloadLimited,
+} = await import('../../../../server/utils/payloadLimits');
+
+function streamOf(...chunks: string[]) {
+	const encoder = new TextEncoder();
+	return new ReadableStream<Uint8Array>({
+		start(controller) {
+			for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+			controller.close();
+		},
+	});
+}
+
+/** `{"v":"…"}` is eight bytes around its value. */
+const bodyOf = (bytes: number) => `{"v":"${'x'.repeat(bytes - 8)}"}`;
+
+describe('a payload exactly at its bound', () => {
+	beforeEach(() => {
+		mockGetRequestHeader.mockReturnValue(null);
+		mockGetRequestWebStream.mockReturnValue(undefined);
+	});
+
+	it.each([
+		['a value of exactly the bound', 32, true],
+		['one byte over', 33, false],
+	])('accepts a persisted payload of %s only', (_label, bytes, accepted) => {
+		const value = JSON.parse(bodyOf(bytes)) as unknown;
+		const check = () => assertJsonPayloadSize(value, 32, 'Config');
+		if (accepted) expect(check).not.toThrow();
+		else expect(check).toThrowError(expect.objectContaining({ statusCode: 413 }));
+	});
+
+	it.each([
+		['a declared length of exactly the bound', '32', bodyOf(32), true],
+		['one byte over', '33', bodyOf(32), false],
+		['a streamed body of exactly the bound', null, bodyOf(32), true],
+		['a streamed body one byte over', null, bodyOf(33), false],
+	])('reads %s only', async (_label, declared, body, accepted) => {
+		mockGetRequestHeader.mockReturnValue(declared);
+		mockGetRequestWebStream.mockReturnValue(streamOf(body.slice(0, 5), body.slice(5)));
+
+		const read = readJsonPayloadLimited({} as any, 32, 'Config');
+		if (accepted) await expect(read).resolves.toEqual(JSON.parse(body));
+		else await expect(read).rejects.toMatchObject({ statusCode: 413 });
+	});
+});
+
+describe('getBoundedRequestBodyStream', () => {
+	const original = streamOf('original');
+	const bounded = streamOf('bounded');
+
+	it.each([
+		['the middleware’s bounded stream', { _requestBody: bounded }, bounded],
+		['the request’s own stream without one', {}, original],
+		['the request’s own stream when the slot holds no stream', { _requestBody: '{}' }, original],
+	])('answers %s', (_label, event, stream) => {
+		mockGetRequestWebStream.mockReturnValue(original);
+		expect(getBoundedRequestBodyStream(event as any)).toBe(stream);
+	});
+});
 
 describe('json payload limits', () => {
 	beforeEach(() => {

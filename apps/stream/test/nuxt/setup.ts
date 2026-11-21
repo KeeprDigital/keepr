@@ -20,12 +20,14 @@ import { readonly, ref } from 'vue';
 vi.mock('@keepr/nuxt-layer/app/composables/core/useServerTime', () => {
 	const serverTimeOffset = readonly(ref(0));
 	const isSynced = readonly(ref(false));
+	const doubt = readonly(ref(null));
 	const lastSyncedAt = readonly(ref<number | null>(null));
 
 	return {
 		useServerTime: () => ({
 			serverTimeOffset,
 			isSynced,
+			doubt,
 			lastSyncedAt,
 			getServerTime: () => Date.now(),
 			deviceDelayFor: (serverMs: number) => serverMs,

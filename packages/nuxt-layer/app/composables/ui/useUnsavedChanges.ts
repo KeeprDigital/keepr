@@ -1,4 +1,6 @@
 import type { ComputedRef, InjectionKey, Ref } from 'vue';
+import type { RouteLocationNormalized } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 import { LazyUIUnsavedChangesModal } from '#components';
 
 const UNSAVED_CHANGES_KEY: InjectionKey<{
@@ -11,13 +13,42 @@ interface UseUnsavedChangesReturn {
 	bypassGuard: () => void;
 }
 
+/** A guard asked before navigation; `to` and `from` are absent when the asker has no route. */
+type NavigationDiscardGuard = (
+	to?: RouteLocationNormalized,
+	from?: RouteLocationNormalized,
+) => Promise<boolean>;
+
+const navigationGuards = new Set<NavigationDiscardGuard>();
+
+/**
+ * True once navigation may leave every guarded page and open guarded modal:
+ * none holds an unsaved edit, or the operator chose to discard each.
+ *
+ * An app's route middleware that resets state an edit saves against asks this
+ * first. A `router.beforeEach`, or a page's `onBeforeRouteUpdate`, runs after
+ * that middleware, so "Keep editing" would return to a form whose state is
+ * already gone.
+ */
+export async function confirmDiscardBeforeNavigation(
+	to?: RouteLocationNormalized,
+	from?: RouteLocationNormalized,
+): Promise<boolean> {
+	for (const confirmDiscard of [...navigationGuards]) {
+		if (!(await confirmDiscard(to, from))) return false;
+	}
+	return true;
+}
+
 /**
  * Page-level composable for managing unsaved changes navigation guards.
  *
- * Sets up:
- * - Vue Router onBeforeRouteLeave guard (shows confirmation modal)
- * - Browser beforeunload listener (shows native dialog)
- * - Provides registerDirtyState for child components via inject
+ * Asks before a dirty page is left or shown for other route params, never for
+ * a query or hash change on the same path; each navigation is asked once,
+ * however many guards consult it. Sets up the route guards, the browser's
+ * beforeunload listener, and provides registerDirtyState to child components.
+ * `bypassGuard` lets the next navigation through unasked; once that navigation
+ * settles, landed or cancelled, the guard asks again.
  *
  * @example
  * // In page component
@@ -34,18 +65,30 @@ export function useUnsavedChanges(): UseUnsavedChangesReturn {
 		return () => dirtyStates.value.delete(dirty);
 	};
 
-	// Vue Router guard
 	const overlay = useOverlay();
 	const confirmModal = overlay.create(LazyUIUnsavedChangesModal);
 
-	onBeforeRouteLeave(async () => {
-		if (shouldBypass.value || !isDirty.value) {
-			return true;
-		}
+	/** Each navigation's answer, so the guards that consult it ask the operator once. */
+	const answers = new WeakMap<RouteLocationNormalized, Promise<boolean>>();
 
-		const confirmed = await confirmModal.open({}).result;
-		return confirmed === true;
+	const confirmNavigation: NavigationDiscardGuard = (to, from) => {
+		if (to && from && to.path === from.path) return Promise.resolve(true);
+		if (shouldBypass.value || !isDirty.value) return Promise.resolve(true);
+		const asked = to && answers.get(to);
+		if (asked) return asked;
+		const answer = confirmModal.open({}).result.then((confirmed: unknown) => confirmed === true);
+		if (to) answers.set(to, answer);
+		return answer;
+	};
+
+	onBeforeRouteLeave((to, from) => confirmNavigation(to, from));
+	onBeforeRouteUpdate((to, from) => confirmNavigation(to, from));
+	navigationGuards.add(confirmNavigation);
+	onScopeDispose(() => navigationGuards.delete(confirmNavigation));
+	const stopBypassReset = useRouter()?.afterEach(() => {
+		shouldBypass.value = false;
 	});
+	if (stopBypassReset) onScopeDispose(stopBypassReset);
 
 	useBeforeUnloadGuard(isDirty);
 
@@ -59,30 +102,13 @@ export function useUnsavedChanges(): UseUnsavedChangesReturn {
 	return { isDirty, registerDirtyState, bypassGuard };
 }
 
-const openModalGuards = new Set<() => Promise<boolean>>();
-
-/**
- * True once navigation may leave every open guarded modal: none holds an
- * unsaved edit, or the operator chose to discard each.
- *
- * The Event route middleware asks this before it resets the Event stores. A
- * `router.beforeEach` of the modal's own would run after that middleware, so
- * "Keep editing" would return to a form whose Event is already gone.
- */
-export async function confirmDiscardInOpenModals(): Promise<boolean> {
-	for (const confirmDiscard of [...openModalGuards]) {
-		if (!(await confirmDiscard())) return false;
-	}
-	return true;
-}
-
 /**
  * Unsaved-changes guard for a form in an overlay modal.
  *
  * An overlay modal renders outside the page that opened it, so it can neither
  * register with the page's guard nor use `onBeforeRouteLeave`. It guards
- * itself instead: navigation while it is open (asked by the Event route
- * middleware through `confirmDiscardInOpenModals`), a browser unload, and —
+ * itself instead: navigation while it is open (asked by an app's route
+ * middleware through `confirmDiscardBeforeNavigation`), a browser unload, and —
  * through `confirmDiscard` — its own close.
  *
  * @example
@@ -102,8 +128,8 @@ export function useModalUnsavedChanges(dirty: Ref<boolean> | ComputedRef<boolean
 		return (await confirmModal.open({}).result) === true;
 	}
 
-	openModalGuards.add(confirmDiscard);
-	onUnmounted(() => openModalGuards.delete(confirmDiscard));
+	navigationGuards.add(confirmDiscard);
+	onUnmounted(() => navigationGuards.delete(confirmDiscard));
 	useBeforeUnloadGuard(computed(() => unref(dirty)));
 
 	return { confirmDiscard };

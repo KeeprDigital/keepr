@@ -1,7 +1,8 @@
 /**
  * Calls `callback` when the user presses Enter, unless the event originates
  * from a context where Enter has its own meaning (textarea, focused button,
- * open listbox/menu/combobox, or an element marked with data-enter-submit-ignore).
+ * open listbox/menu/combobox, or an element marked with data-enter-submit-ignore),
+ * confirms an input method's composition, or repeats while held.
  *
  * Designed for non-form modals (confirmation dialogs, action modals) where
  * there is no `<UForm>` / `<form>` element to provide native Enter-to-submit.
@@ -49,6 +50,8 @@ export function useEnterToSubmit(
 
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key !== 'Enter') return;
+		// Enter that confirms an input method's composition, or a held key, submits nothing.
+		if (e.isComposing || e.keyCode === 229 || e.repeat) return;
 
 		// Only the topmost enabled instance should respond.
 		if (getTopEnabledEntry()?.id !== id) return;

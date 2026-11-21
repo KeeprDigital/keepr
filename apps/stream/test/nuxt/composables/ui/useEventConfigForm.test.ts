@@ -13,7 +13,6 @@ mockNuxtImport('useOverlay', () => () => ({
 		}),
 	}),
 }));
-mockNuxtImport('onBeforeRouteLeave', () => () => {});
 
 /** The Event as the store holds it; a save that lands writes its answer here. */
 const event = reactive({ name: 'Regional', cardTimeout: 10 });

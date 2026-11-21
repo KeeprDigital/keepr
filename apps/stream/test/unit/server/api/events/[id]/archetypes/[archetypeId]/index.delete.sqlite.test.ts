@@ -30,6 +30,7 @@ vi.doMock('~~/server/modules/player-update', () => ({
 }));
 vi.doMock('~~/server/modules/event-data-publication', () => ({
 	eventDataPublicationModule: () => ({ archetypeDeleted: mockArchetypeDeleted }),
+	asOneEventDataChange: async <T>(work: () => Promise<T>) => await work(),
 }));
 vi.doMock('~~/server/utils/realtimePublish', () => ({
 	getOriginConnectionId: () => 'origin-1',

@@ -18,8 +18,8 @@ import { createMiniflareD1Harness } from '~~/test/helpers/miniflare-d1';
 
 /*
  * The authored Screen Mode configuration write carries one precondition per
- * Graphic Asset Reference, so it runs on real D1, whose 100-parameter limit libSQL
- * does not enforce (#303). Asserted at the old failing count, well past it, and at
+ * Graphic Asset Reference, so it runs on real D1 and its own 100-parameter
+ * limit (#303). Asserted at the old failing count, well past it, and at
  * the Screen's whole Graphic Item cap in one batch (#315).
  */
 

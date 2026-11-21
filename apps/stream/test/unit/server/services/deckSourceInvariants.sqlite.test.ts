@@ -16,6 +16,7 @@ const mockPublication = {
 	eventUpdated: vi.fn(async ({ entity }: { entity: unknown }) => entity),
 };
 vi.doMock('~~/server/modules/event-data-publication', () => ({
+	asOneEventDataChange: async <T>(work: () => Promise<T>) => await work(),
 	eventDataPublicationModule: () => mockPublication,
 }));
 vi.doMock('~~/server/services/card', () => ({

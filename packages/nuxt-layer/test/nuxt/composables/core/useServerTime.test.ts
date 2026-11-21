@@ -14,6 +14,19 @@ mockNuxtImport('$fetch', () => mockFetch);
 // test/nuxt/setup.ts stubs `useServerTime` for every suite; this file tests the real one.
 vi.unmock('../../../../app/composables/core/useServerTime');
 
+/**
+ * How far the device's clock has been changed from its monotonic clock, which
+ * otherwise runs with it: `performance.now()` follows the time that passes,
+ * never a change to the device's clock.
+ */
+let deviceClockChanged = 0;
+
+/** Changes the device's clock, as its user or a time service does, leaving its monotonic clock. */
+function changeDeviceClockBy(change: number) {
+	deviceClockChanged += change;
+	vi.setSystemTime(Date.now() + change);
+}
+
 /** A `/api/time` answer that takes `rtt` ms and reports a server clock `offset` ms ahead. */
 function sample(rtt: number, offset: number) {
 	return async () => {
@@ -80,7 +93,7 @@ function deviceClock() {
 		changeDeviceClock(change: number, drop = 0) {
 			deviceAhead += change;
 			unanswered = drop;
-			vi.setSystemTime(Date.now() + change);
+			changeDeviceClockBy(change);
 		},
 	};
 }
@@ -98,6 +111,8 @@ describe('useServerTime', () => {
 
 	beforeEach(async () => {
 		vi.useFakeTimers({ now: 1_000_000 });
+		deviceClockChanged = 0;
+		vi.spyOn(performance, 'now').mockImplementation(() => Date.now() - deviceClockChanged);
 		// A use while the shared sync is stopped restarts it, on this fake clock;
 		// let that settle on a clean, synced state so each test drives `sync` alone.
 		// From unsynced, so it steps to zero rather than easing there through the test.
@@ -196,6 +211,102 @@ describe('useServerTime', () => {
 		const serverTime = await syncWith(...answers);
 
 		expect(serverTime.serverTimeOffset.value).toBe(offset);
+	});
+
+	// The device's clock can be changed mid-request; the monotonic clock cannot,
+	// so a round trip is timed on it, and one that reads negative is no sample.
+	it.each([
+		{
+			name: 'times a round trip on the monotonic clock through a device clock set back mid-request',
+			answer: async () => {
+				const sentAt = Date.now();
+				vi.setSystemTime(sentAt + 20);
+				changeDeviceClockBy(-3_000);
+				return { serverTime: sentAt + 10 };
+			},
+			synced: true,
+			offset: 3_000,
+		},
+		{
+			name: 'takes no sample whose round trip reads negative',
+			answer: async () => {
+				deviceClockChanged += 50;
+				return { serverTime: Date.now() };
+			},
+			synced: false,
+			offset: 0,
+		},
+	])('$name', async ({ answer, synced, offset }) => {
+		useState('serverTimeSynced').value = false;
+
+		const serverTime = await syncWith(answer, dropped, dropped);
+
+		expect(serverTime.isSynced.value).toBe(synced);
+		expect(serverTime.serverTimeOffset.value).toBe(offset);
+	});
+
+	// An offset from a slow round trip may be wrong by half of it, and one taken
+	// before the device's clock was changed is wrong by the change: either is held,
+	// but never read as synced until a sync answers well.
+	it.each([
+		{
+			name: 'doubts an offset taken from a sample above the ceiling',
+			held: false,
+			answers: [sample(1_002, 5_000), dropped, dropped],
+			doubt: 'slow-network',
+		},
+		{
+			name: 'does not doubt an offset taken at the ceiling',
+			held: false,
+			answers: [sample(1_000, 5_000), dropped, dropped],
+			doubt: null,
+		},
+		{
+			name: 'does not doubt the offset it keeps when every sample is above the ceiling',
+			held: true,
+			answers: [sample(1_002, 5_000), dropped, dropped],
+			doubt: null,
+		},
+	])('$name', async ({ held, answers, doubt }) => {
+		await syncWith(sample(20, 800), sample(20, 800), sample(20, 800));
+		useState('serverTimeSynced').value = held;
+
+		const serverTime = await syncWith(...answers);
+
+		expect(serverTime.isSynced.value).toBe(true);
+		expect(serverTime.doubt.value).toBe(doubt);
+	});
+
+	it('clears its doubt once a sync answers within the ceiling', async () => {
+		useState('serverTimeSynced').value = false;
+		await syncWith(sample(1_002, 5_000), dropped, dropped);
+
+		const serverTime = await syncWith(sample(20, 800), dropped, dropped);
+
+		expect(serverTime.doubt.value).toBeNull();
+	});
+
+	it.each([
+		{
+			name: 'doubts its offset while a device clock change goes unanswered',
+			unanswered: Infinity,
+			doubt: 'device-clock-changed',
+		},
+		{
+			name: 'clears its doubt once the re-sync after a change answers',
+			unanswered: 0,
+			doubt: null,
+		},
+	])('$name', async ({ unanswered, doubt }) => {
+		const { changeDeviceClock } = deviceClock();
+		const serverTime = await restartSync();
+		await vi.advanceTimersByTimeAsync(6_000);
+
+		changeDeviceClock(2_000, unanswered);
+		await vi.advanceTimersByTimeAsync(2_000);
+
+		expect(serverTime.isSynced.value).toBe(true);
+		expect(serverTime.doubt.value).toBe(doubt);
 	});
 
 	// A correction applied as a step can show one digit twice, or skip one. Eased
@@ -350,6 +461,35 @@ describe('useServerTime', () => {
 			expect(serverTime.lastSyncedAt.value! > syncedAt).toBe(keepsSyncing);
 		},
 	);
+
+	// A page restored from the back/forward cache was hidden, so the sync stopped
+	// with it; restored, it syncs again at once and every minute after.
+	it.each([
+		{
+			name: 'restarts the sync when the page is restored from the back/forward cache',
+			persisted: true,
+			resyncs: true,
+		},
+		{
+			name: 'does not restart the sync on a page shown for the first time',
+			persisted: false,
+			resyncs: false,
+		},
+	])('$name', async ({ persisted, resyncs }) => {
+		mockFetch.mockImplementation(sample(0, 0));
+		const serverTime = await restartSync();
+		window.dispatchEvent(new Event('pagehide'));
+		await vi.advanceTimersByTimeAsync(10_000);
+		const syncedAt = serverTime.lastSyncedAt.value!;
+
+		window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted }));
+		await vi.advanceTimersByTimeAsync(1_000);
+		const restoredSync = serverTime.lastSyncedAt.value!;
+		await vi.advanceTimersByTimeAsync(60_000);
+
+		expect(restoredSync > syncedAt).toBe(resyncs);
+		expect(serverTime.lastSyncedAt.value! > restoredSync).toBe(resyncs);
+	});
 
 	// A hidden tab's timers are throttled and an offline device's sync goes
 	// unanswered, so a page coming back asks at once rather than at the next minute.

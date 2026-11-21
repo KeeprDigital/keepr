@@ -1,5 +1,4 @@
 import type { ScreenOutputStandingsResponse } from '~~/shared/types/screenOutputReads';
-import { mapPlayerToResponse } from '~~/server/mappers/player';
 import { mapRoundToResponse } from '~~/server/mappers/round';
 import { playerService } from '~~/server/services/player';
 import { playerListService } from '~~/server/services/playerList';
@@ -7,13 +6,15 @@ import { playerRoundStandingsService } from '~~/server/services/playerRoundStand
 import { roundService } from '~~/server/services/round';
 import { requireScreenOutputModeRead } from '~~/server/utils/screenOutputRead';
 import { isColumnVisible } from '~~/shared/screenModeConfigs/subShapes';
+import { standingsRows } from '~~/shared/utils/standingsRows';
 
 /**
- * Everything this Screen's Standings mode renders from, derived from its saved
- * configuration (#604): the roster, the Round it is fixed at, the watchlist it
- * filters to, and, while its Position Change column shows, the previous
- * Round's positions (#755). One read, so an output never assembles standings
- * from reads its capability does not reach.
+ * The rows this Screen's Standings mode shows, derived from its saved
+ * configuration (#604): at the Round it is fixed at, filtered to its watchlist
+ * or range, each with only the fields its visible columns show (#1380), and,
+ * while its Position Change column shows, those rows' positions in the previous
+ * Round (#755). One read, so an output never assembles standings from reads its
+ * capability does not reach, and is never sent a Player field it has no use for.
  */
 export default defineEventHandler(async (event): Promise<ScreenOutputStandingsResponse> => {
 	const { eventId, config } = await requireScreenOutputModeRead(event, 'standings');
@@ -33,21 +34,18 @@ export default defineEventHandler(async (event): Promise<ScreenOutputStandingsRe
 	// rather than refusing the whole Standings read.
 	const watchlistPlayerIds = list
 		? await playerListService().getMemberPlayerIds(list.id, eventId)
-		: [];
+		: null;
+
+	const rows = standingsRows({ players, roundStandings, watchlistPlayerIds, config });
+	const shown = new Set(rows.map((row) => row.id));
 
 	return {
-		players: players.map(mapPlayerToResponse),
+		rows,
 		round: round ? mapRoundToResponse(round) : null,
-		roundStandings:
-			roundStandings?.map((standing) => ({
-				playerId: standing.playerId,
-				wins: standing.wins,
-				losses: standing.losses,
-				draws: standing.draws,
-				position: standing.position,
-				points: standing.points,
-			})) ?? null,
-		watchlist: list ? { name: list.name, playerIds: watchlistPlayerIds } : null,
-		previousRoundPositions,
+		watchlist: list ? { name: list.name } : null,
+		previousRoundPositions: previousRoundPositions && {
+			roundId: previousRoundPositions.roundId,
+			positions: previousRoundPositions.positions.filter(({ playerId }) => shown.has(playerId)),
+		},
 	};
 });

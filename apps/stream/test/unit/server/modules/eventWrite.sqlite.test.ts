@@ -21,6 +21,15 @@ vi.doMock('~~/server/db', () => ({ db }));
 
 const realtime = await installRealtimeObjectFake();
 
+/** Each Event whose Graphic Input Bindings were re-resolved, in order. */
+const reResolved: number[] = [];
+vi.doMock('~~/server/modules/broadcast-graphics-live-session', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	refreshBroadcastGraphicsBindings: async (eventId: number) => {
+		reResolved.push(eventId);
+	},
+}));
+
 /** Each Screen Card the write cleaned out of the key-value store, as `[eventId, screenId]`. */
 const cleanedCards: [number, number][] = [];
 vi.doMock('~~/server/services/card', () => ({
@@ -94,6 +103,7 @@ beforeEach(() => {
 	realtime.reset();
 	cleanedCards.length = 0;
 	afterThemeCheck = undefined;
+	reResolved.length = 0;
 });
 afterAll(async () => await harness.close());
 
@@ -322,6 +332,67 @@ describe('an Event update and its Feature Match Slots', () => {
 		expect(slotNotices(eventId)).toEqual(
 			slots.map((slot) => ({ slotId: slot.id, origin: undefined })),
 		);
+	});
+
+	/** Each active Session's snapshot of its Slot's best of and Event's count-up limit, by Slot. */
+	async function sessionSnapshots(eventId: number) {
+		const sessions = await db.query.featureMatchSessions.findMany({
+			where: eq(schema.featureMatchSessions.eventId, eventId),
+		});
+		return sessions
+			.filter((session) => session.status === 'active')
+			.map((session) => ({
+				slotId: session.slotId,
+				bestOf: session.sourceSnapshot.bestOf,
+				countUpLimit: session.sourceSnapshot.defaults.countUpLimit,
+			}))
+			.toSorted((a, b) => a.slotId - b.slotId);
+	}
+
+	/** The round trips to the database a settings save makes, for an Event of so many Slots. */
+	async function roundTripsOfSave(slotCount: number, input: Parameters<typeof save>[1]) {
+		const eventId = await stageEvent({ featureMatchDefaultBestOf: 3 });
+		await featureMatchService().syncFeatureMatches(eventId, slotCount);
+		const before = harness.roundTrips();
+		await save(eventId, input);
+		return { eventId, roundTrips: harness.roundTrips() - before };
+	}
+
+	async function save(eventId: number, input: Record<string, unknown>) {
+		await eventWriteModule().updateEvent({ eventId, input, originConnectionId: 'origin-1' });
+	}
+
+	// A save corrected each Slot's Session one by one: hundreds of sequential queries at fifty Slots.
+	it.each([
+		['the best of', { featureMatchDefaultBestOf: 5 }, { bestOf: 5, countUpLimit: null }],
+		[
+			'another Feature Match default',
+			{ featureMatchDefaultCountUpAfterCountdown: true, featureMatchDefaultCountUpLimit: 10 },
+			{ bestOf: 3, countUpLimit: 10 },
+		],
+	])(
+		"corrects every Slot's Session to %s in as many round trips, however many Slots it has",
+		async (_, input, snapshot) => {
+			const few = await roundTripsOfSave(1, input);
+			const many = await roundTripsOfSave(6, input);
+
+			expect(many.roundTrips).toBe(few.roundTrips);
+			const corrected = await sessionSnapshots(many.eventId);
+			expect(corrected).toHaveLength(6);
+			for (const session of corrected) expect(session).toMatchObject(snapshot);
+		},
+	);
+
+	it('re-resolves Graphic Input Bindings once for a save changing its Slots and the Event', async () => {
+		const eventId = await stageEventWithSlots();
+
+		await save(eventId, {
+			name: 'Renamed',
+			featureMatchDefaultBestOf: 5,
+			featureMatchDefaultCountUpLimit: 10,
+		});
+
+		expect(reResolved).toEqual([eventId]);
 	});
 
 	it('leaves the Slots alone, and announces none, for a write naming no Feature Match default', async () => {

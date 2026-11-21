@@ -3,7 +3,10 @@ import type { CreateArchetypeInput, UpdateArchetypeInput } from '~~/shared/api';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { cards, events, players } from '~~/server/db/schema';
-import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
+import {
+	asOneEventDataChange,
+	eventDataPublicationModule,
+} from '~~/server/modules/event-data-publication';
 import { playerUpdateModule } from '~~/server/modules/player-update';
 import { archetypeService } from '~~/server/services/archetype';
 import { archetypeCardService } from '~~/server/services/archetypeCard';
@@ -248,8 +251,11 @@ export function archetypeWriteModule() {
 		]);
 
 		// No origin, because the deleting client never received these Screens back.
-		for (const screen of clearedScreens)
-			await publication.screenUpdated({ eventId, entity: screen });
+		// The Screens told once for every one released, not once per Screen.
+		await asOneEventDataChange(async () => {
+			for (const screen of clearedScreens)
+				await publication.screenUpdated({ eventId, entity: screen });
+		});
 
 		if (deletedArchetypes.length === 0) {
 			throw createError({
@@ -332,8 +338,11 @@ export function archetypeWriteModule() {
 		]);
 
 		// No origin, because the merging client never received these Screens back.
-		for (const screen of repointedScreens)
-			await publication.screenUpdated({ eventId, entity: screen });
+		// The Screens told once for every one released, not once per Screen.
+		await asOneEventDataChange(async () => {
+			for (const screen of repointedScreens)
+				await publication.screenUpdated({ eventId, entity: screen });
+		});
 
 		await playerUpdateModule().reconcileDeckProjections({
 			eventId,
@@ -374,8 +383,11 @@ export function archetypeWriteModule() {
 		]);
 
 		// No origin, because the removing client never received these Screens back.
-		for (const screen of clearedScreens)
-			await publication.screenUpdated({ eventId, entity: screen });
+		// The Screens told once for every one released, not once per Screen.
+		await asOneEventDataChange(async () => {
+			for (const screen of clearedScreens)
+				await publication.screenUpdated({ eventId, entity: screen });
+		});
 
 		for (const archetype of removed) {
 			await publication.archetypeDeleted({

@@ -3,7 +3,8 @@ import type { Flight } from '../../utils/guardedSequence';
 /**
  * Shared helpers for CRUD store patterns.
  * Provides optimistic update and delete with automatic rollback,
- * wrapping `useAsyncAction` for consistent error handling.
+ * wrapping `useAsyncAction` for consistent error handling. A rollback never
+ * overwrites what replaced the prediction since: a newer update's, or a reload's.
  */
 
 interface OptimisticUpdateConfig<T, TUpdates extends object = Partial<T>> {
@@ -34,6 +35,24 @@ interface OptimisticDeleteConfig<T> {
 	flight?: Flight;
 }
 
+/**
+ * Each failed prediction, to what it replaced. A rollback to a prediction that
+ * has since failed itself goes on to what that one replaced.
+ */
+const failedPredictions = new WeakMap<object, object>();
+
+function beforeFailedPredictions<T extends object>(item: T): T {
+	let restored = item;
+	for (
+		let earlier = failedPredictions.get(restored);
+		earlier;
+		earlier = failedPredictions.get(restored)
+	) {
+		restored = earlier as T;
+	}
+	return restored;
+}
+
 export function useStoreHelpers() {
 	const { executeAction } = useAsyncAction();
 
@@ -62,13 +81,12 @@ export function useStoreHelpers() {
 			return null;
 		}
 
-		const original = structuredClone(toRaw(items.value[index]!));
-		items.value[index] = {
-			...items.value[index]!,
-			...updates,
-		};
+		const original = toRaw(items.value[index]!);
+		const predicted: T = { ...original, ...updates };
+		items.value[index] = predicted;
 
-		return executeAction(
+		let landed = false;
+		const result = await executeAction(
 			async () => {
 				const updated = await apiCall();
 				if (flight.stale) return updated;
@@ -77,18 +95,25 @@ export function useStoreHelpers() {
 					return idx === -1 ? updated : items.value[idx]!;
 				}
 				if (idx !== -1) items.value[idx] = updated;
-				onSuccess?.();
+				landed = true;
 				return updated;
 			},
 			{
 				errorRef,
 				flight,
 				onError: () => {
+					failedPredictions.set(predicted, original);
+					// Only this update's prediction is rolled back: a newer one, or a reload, stands.
 					const idx = items.value.findIndex((item) => item.id === id);
-					if (idx !== -1) items.value[idx] = original;
+					if (idx !== -1 && toRaw(items.value[idx]) === predicted) {
+						items.value[idx] = beforeFailedPredictions(original);
+					}
 				},
 			},
 		);
+		// Outside the request: a throwing callback is the caller's fault, not a failed write.
+		if (landed) onSuccess?.();
+		return result;
 	}
 
 	/**
@@ -109,22 +134,24 @@ export function useStoreHelpers() {
 		const removed = structuredClone(toRaw(items.value[index]!));
 		items.value.splice(index, 1);
 
-		return executeAction(
+		const result = await executeAction(
 			async () => {
 				await apiCall();
-				if (flight.current) onSuccess?.();
 				return true;
 			},
 			{
 				errorRef,
 				flight,
 				onError: () => {
-					// Re-find safe insertion point (list may have shifted during async call)
-					const insertIdx = Math.min(index, items.value.length);
-					items.value.splice(insertIdx, 0, removed);
+					// A reload during the call may have brought the item back already.
+					if (items.value.some((item) => item.id === id)) return;
+					items.value.splice(Math.min(index, items.value.length), 0, removed);
 				},
 			},
 		);
+		// Outside the request: a throwing callback is the caller's fault, not a failed delete.
+		if (result && flight.current) onSuccess?.();
+		return result;
 	}
 
 	return { optimisticUpdate, optimisticDelete };

@@ -5,7 +5,7 @@ import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { beginWriteTiming, writeTimingOf } from '~~/server/utils/writeTiming';
 import { GraphicsAssetLibraryError } from '~~/server/modules/graphics-asset-library/errors';
 import { errorLogFields } from '@keepr/nuxt-layer/server/utils/errorLogFields';
-import { safeErrorLogPath } from '@keepr/nuxt-layer/server/utils/errorLogPath';
+import { safeErrorLogPath } from '~~/server/utils/errorLogPath';
 import {
 	ServiceConfigurationError,
 	StateConflictError,

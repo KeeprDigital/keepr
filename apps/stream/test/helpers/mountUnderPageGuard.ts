@@ -33,15 +33,15 @@ export interface PageGuardMount<W> {
  * composable, and hands back the page's `isDirty` so a test can assert that the
  * component's own dirty state reaches it.
  *
- * Callers must mock two auto-imports themselves, because `mockNuxtImport` is
+ * Callers must mock `useOverlay` themselves, because `mockNuxtImport` is
  * hoisted per test file and cannot be applied from here — the page composable
- * reaches for both while installing itself:
+ * reaches for it while installing itself. Mounted outside a router, the page
+ * installs no route guard:
  *
  * ```ts
  * mockNuxtImport('useOverlay', () => () => ({
  *   create: () => ({ open: () => ({ result: Promise.resolve(true) }) }),
  * }));
- * mockNuxtImport('onBeforeRouteLeave', () => () => {});
  * ```
  *
  * @example

@@ -4,7 +4,7 @@ import type { DbLiveStateCommandReceipt } from '~~/server/db/schema';
 import { and, eq, inArray, lte, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { liveStateCommandReceipts } from '~~/server/db/schema';
-import { canonicalJson } from '@keepr/nuxt-layer/server/utils/canonicalJson';
+import { canonicalJson } from '@keepr/nuxt-layer/shared/utils/canonicalJson';
 import { selectForInsert } from '@keepr/nuxt-layer/server/utils/db';
 
 /**

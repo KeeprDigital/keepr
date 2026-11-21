@@ -1,4 +1,4 @@
-import { canonicalJson } from '@keepr/nuxt-layer/server/utils/canonicalJson';
+import { canonicalJson } from '@keepr/nuxt-layer/shared/utils/canonicalJson';
 import type { SQL } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type {

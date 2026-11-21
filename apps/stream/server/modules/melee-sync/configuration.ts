@@ -1,6 +1,9 @@
 import type { H3Event } from 'h3';
 import type { MeleeConfigInput } from '~~/server/schemas/api/event';
-import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
+import {
+	asOneEventDataChange,
+	eventDataPublicationModule,
+} from '~~/server/modules/event-data-publication';
 import { inspectMeleeGameCompatibility } from '~~/server/modules/melee-sync/gameCompatibility';
 import { eventService } from '~~/server/services/event';
 import { describeKeptStructure } from '~~/server/services/importedStructure';
@@ -191,8 +194,11 @@ export async function updateMeleeConfiguration({
 		// Ahead of the reset, so a Deck List Screen that showed a deleted Player
 		// is already reloading its Screen when the reset arrives. No origin,
 		// because the configuring client never received these Screens back.
-		for (const screen of updated.clearedScreens)
-			await publication.screenUpdated({ eventId, entity: screen });
+		// The Screens told once for every one released, not once per Screen.
+		await asOneEventDataChange(async () => {
+			for (const screen of updated.clearedScreens)
+				await publication.screenUpdated({ eventId, entity: screen });
+		});
 		if (resetReason) {
 			await publication.meleeDataReset({
 				eventId,

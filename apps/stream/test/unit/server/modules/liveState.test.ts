@@ -500,6 +500,60 @@ describe('sequenced live state', () => {
 		});
 	});
 
+	// Commands the server mints commit together: one round trip however many there are.
+	describe('minted commands', () => {
+		const first = counter({ id: 7, sequence: 3, total: 10 });
+		const second = counter({ id: 8, sequence: 5, total: 20 });
+		const entries = [
+			{ ref: { id: 7, eventId: 1 }, aggregate: first, command: set('cmd-1', 1) },
+			{ ref: { id: 8, eventId: 1 }, aggregate: second, command: set('cmd-2', 2) },
+		];
+
+		/** Each entry's projection returns the row given, or none where its guard did not hold. */
+		function stageBatch(...committed: Array<Counter | null>) {
+			mockDb.batch.mockResolvedValue(committed.flatMap((row) => [[], [], row ? [row] : []]));
+		}
+
+		it('commits every one in one batch, each at its own next sequence', async () => {
+			const port = createPort();
+			stageBatch({ ...first, sequence: 4, total: 1 }, { ...second, sequence: 6, total: 2 });
+
+			const results = await createSequencedLiveState(port).executeMinted(entries);
+
+			expect(mockDb.batch).toHaveBeenCalledOnce();
+			expect(results).toEqual([
+				{ id: 7, sequence: 4, total: 1 },
+				{ id: 8, sequence: 6, total: 2 },
+			]);
+		});
+
+		it('answers none for one whose aggregate moved on, and commits the rest', async () => {
+			const port = createPort();
+			stageBatch(null, { ...second, sequence: 6, total: 2 });
+
+			const results = await createSequencedLiveState(port).executeMinted(entries, {
+				publish: true,
+			});
+
+			expect(results).toEqual([null, { id: 8, sequence: 6, total: 2 }]);
+			expect(port.publish).toHaveBeenCalledOnce();
+		});
+
+		it('writes none when one is inadmissible', async () => {
+			const port = createPort({
+				admit: vi.fn((aggregate: Counter) => {
+					if (aggregate.id === 8)
+						throw createError({ statusCode: 409, message: 'Counter is closed' });
+				}),
+			});
+
+			await expect(createSequencedLiveState(port).executeMinted(entries)).rejects.toMatchObject({
+				statusCode: 409,
+			});
+			expect(mockDb.batch).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('command content keys', () => {
 		it('ignores key order so a re-serialized retry still matches', () => {
 			expect(commandContentKey('Set', { a: 1, b: 2 })).toBe(

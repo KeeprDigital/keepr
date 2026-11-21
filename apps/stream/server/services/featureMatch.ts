@@ -499,18 +499,10 @@ export function featureMatchService() {
 			.returning();
 		if (changed.length === 0) return [];
 
-		const stateSvc = featureMatchStateService();
-		const defaults = await stateSvc.loadEventDefaults(eventId);
-		for (const slot of changed) {
-			if (slot.activeSessionId === null) continue;
-			const snapshot = await stateSvc.buildSourceSnapshot(slot, defaults);
-			await stateSvc.applyCommandToActiveSession(slot.id, eventId, (session) => ({
-				commandId: randomCommandId('SnapshotCorrected'),
-				type: 'SnapshotCorrected',
-				payload: { sourceSnapshot: snapshot },
-				baseSequence: session.sequence,
-			}));
-		}
+		await featureMatchStateService().correctSessionSnapshots(
+			eventId,
+			changed.filter((slot) => slot.activeSessionId !== null),
+		);
 
 		return changed.map((slot) => slot.id);
 	};
@@ -527,17 +519,7 @@ export function featureMatchService() {
 		});
 		if (slots.length === 0) return [];
 
-		const stateSvc = featureMatchStateService();
-		const defaults = await stateSvc.loadEventDefaults(eventId);
-		for (const slot of slots) {
-			const snapshot = await stateSvc.buildSourceSnapshot(slot, defaults);
-			await stateSvc.applyCommandToActiveSession(slot.id, eventId, (session) => ({
-				commandId: randomCommandId('SnapshotCorrected'),
-				type: 'SnapshotCorrected',
-				payload: { sourceSnapshot: snapshot },
-				baseSequence: session.sequence,
-			}));
-		}
+		await featureMatchStateService().correctSessionSnapshots(eventId, slots);
 
 		return slots.map((slot) => slot.id);
 	};

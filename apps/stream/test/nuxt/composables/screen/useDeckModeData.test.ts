@@ -6,6 +6,7 @@ import { createContinuitySignal } from '~~/test/helpers/realtime-mock';
 import { stubImageLoading } from '~~/test/nuxt/helpers/imageLoading';
 import { screenContextOf } from '~~/test/nuxt/helpers/screenContext';
 import { SCREEN_MODE_REREAD_MS } from '~/modules/screen-mode/freshness';
+import { IMAGE_PRELOAD_TIMEOUT_MS } from '~/utils/preloadImage';
 
 /** The server's two halves of the Screen Output Player read (#604). */
 const mockReadPlayer = vi.fn();
@@ -571,6 +572,33 @@ describe('useDeckModeData', () => {
 			expect(result.cardDataDegraded.value).toBe(false);
 			expect(result.pendingSwapVersion.value).toBe(2);
 		});
+	});
+
+	// A card image that never loads must not hold a newly sent deck off program.
+	it('swaps to a newly sent deck whose card image never loads, degraded', async () => {
+		vi.useFakeTimers();
+		const hungUrl = 'https://img.test/hung.jpg';
+		mockBroadcastDeckListId.value = 23;
+		mockGetSelectedBroadcastDeckList
+			.mockResolvedValueOnce(createBroadcastList(1, 'On air'))
+			.mockResolvedValue(createBroadcastList(2, 'New revision', [broadcastEntry(1, 'Bolt')]));
+		mockBuildDeckListArrays.mockImplementation((cards: Array<{ name: string }>) => ({
+			mainboard: cards.map((card) =>
+				createEnrichedCard(card.name, card.name === 'Bolt' ? hungUrl : undefined),
+			),
+			sideboard: [],
+		}));
+		const result = mountDeckModeData();
+		await vi.advanceTimersByTimeAsync(0);
+		images.hold(hungUrl);
+
+		deliver('broadcastDeckList:updated', { listId: 23, revision: 2 });
+		await vi.advanceTimersByTimeAsync(IMAGE_PRELOAD_TIMEOUT_MS);
+
+		expect(result.pendingSwapVersion.value).toBe(1);
+		expect(result.cardDataDegraded.value).toBe(true);
+		result.commitPendingDeck();
+		expect(result.primaryHeader.value).toBe('New revision');
 	});
 
 	describe('staged swaps', () => {

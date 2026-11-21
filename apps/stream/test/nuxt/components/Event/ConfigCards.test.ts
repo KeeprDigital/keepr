@@ -27,7 +27,6 @@ mockNuxtImport('useOverlay', () => () => ({
 		}),
 	}),
 }));
-mockNuxtImport('onBeforeRouteLeave', () => () => {});
 
 // The Theme library the Theme picker offers.
 mockNuxtImport('useThemeRepository', () => () => ({

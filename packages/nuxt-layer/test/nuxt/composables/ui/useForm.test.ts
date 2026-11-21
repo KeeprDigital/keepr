@@ -71,6 +71,17 @@ describe('useForm', () => {
 		expect(changes).toEqual({ name: 'Bob' });
 	});
 
+	it('getChanges reports a key removed from the form, as undefined', () => {
+		const { formData, isDirty, getChanges } = useForm<{ name: string; nickname?: string }>({
+			initialData: { name: 'Alice', nickname: 'Al' },
+		});
+
+		delete formData.value.nickname;
+
+		expect(isDirty.value).toBe(true);
+		expect(getChanges()).toStrictEqual({ nickname: undefined });
+	});
+
 	it('getChanges returns empty object when no changes', () => {
 		const { getChanges } = useForm({
 			initialData: { name: 'Alice' },

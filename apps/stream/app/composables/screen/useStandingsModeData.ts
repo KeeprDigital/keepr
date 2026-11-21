@@ -1,28 +1,14 @@
 import type { StandingsColumnKey } from '~~/shared/types/enums';
 import type { ScreenOutputStandingsResponse } from '~~/shared/types/screenOutputReads';
+import type { StandingsRow } from '~~/shared/utils/standingsRows';
 import type { PositionChange } from '~~/shared/utils/standingsPositionChange';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
-import type { Player } from '~/types';
 import { isColumnVisible } from '~~/shared/screenModeConfigs/subShapes';
-import { getMtgGameData } from '~~/shared/utils/gameData';
 import { formatPlayerRecord } from '~~/shared/utils/playerRecord';
 import { formatPositionChange, positionChange } from '~~/shared/utils/standingsPositionChange';
 import { useScreenModeFreshness } from '~/modules/screen-mode/freshness';
 import { useScreenModeHearing } from '~/modules/screen-mode/hearing';
 import { usePaginatedScreenMode } from '~/modules/screen-mode/pagination';
-
-/**
- * Placed Players by position, unplaced ones last, ties by id: a total order, so
- * a re-read cannot reorder (and, under a moving `row-motion`, visibly move) rows that
- * did not change, whatever order the read answers them in.
- */
-function byStandingsPosition(a: Player, b: Player): number {
-	return (
-		Number(a.position == null) - Number(b.position == null) ||
-		(a.position ?? 0) - (b.position ?? 0) ||
-		a.id - b.id
-	);
-}
 
 /**
  * The Standings read's answer, and whether it was read with the Position
@@ -41,16 +27,20 @@ export function useStandingsModeData(context: ScreenContext) {
 
 	// ── Data Loading ──
 	/**
-	 * One Screen Output read answers everything Standings renders from, derived
-	 * on the server from the saved configuration (#604). It is held here, never
-	 * in the Player store, so an operator's roster cannot stand in for it (#603).
+	 * One Screen Output read answers the rows Standings shows, derived on the
+	 * server from the saved configuration (#604, #1380), so an edit of what
+	 * selects or shapes them reads again. It is held here, never in the Player
+	 * store, so an operator's roster cannot stand in for it (#603).
 	 */
 	const freshness = useScreenModeFreshness<StandingsRead>({
 		hearing: useScreenModeHearing(context, 'standings', () => config.value),
-		source: () =>
-			outputReads.scopeKey.value
-				? `${outputReads.scopeKey.value}:${config.value.viewMode}:${config.value.playerListId}:${config.value.roundId}:${showsPositionChange()}`
-				: null,
+		source: () => {
+			if (!outputReads.scopeKey.value) return null;
+			const { viewMode, playerListId, roundId, rangeStart, rangeEnd, revealCount, columns } =
+				config.value;
+			const shown = columns.flatMap((column) => (column.visible ? [column.key] : [])).join(',');
+			return `${outputReads.scopeKey.value}:${viewMode}:${playerListId}:${roundId}:${rangeStart}-${rangeEnd}:${revealCount}:${shown}`;
+		},
 		read: async () => {
 			const readPositionChange = showsPositionChange();
 			return {
@@ -59,9 +49,8 @@ export function useStandingsModeData(context: ScreenContext) {
 			};
 		},
 		initialData: {
-			players: [],
+			rows: [],
 			round: null,
-			roundStandings: null,
 			watchlist: null,
 			previousRoundPositions: null,
 			readPositionChange: false,
@@ -72,13 +61,6 @@ export function useStandingsModeData(context: ScreenContext) {
 	const error = freshness.error;
 	const round = computed(() => freshness.data.value.round);
 	const watchlist = computed(() => freshness.data.value.watchlist);
-	const watchlistPlayerIds = computed(() => new Set(watchlist.value?.playerIds ?? []));
-	const roundSnapshotMap = computed(() => {
-		const standings = freshness.data.value.roundStandings;
-		return standings
-			? new Map(standings.map(({ playerId, ...snapshot }) => [playerId, snapshot]))
-			: null;
-	});
 	const previousRoundPositionMap = computed(() => {
 		const previous = freshness.data.value.previousRoundPositions;
 		return previous
@@ -89,66 +71,23 @@ export function useStandingsModeData(context: ScreenContext) {
 	// ── Header ──
 	const headerText = computed(() => computeHeaderText());
 	const visibleColumns = computed(() => config.value.columns.filter((c) => c.visible));
-	const standingsRows = computed(() => {
-		const selectedRoundId = config.value.roundId;
-		const rows: Player[] = [...freshness.data.value.players];
 
-		if (!selectedRoundId) {
-			return rows.sort(byStandingsPosition);
-		}
-
-		const snapshotMap = roundSnapshotMap.value;
-		if (!snapshotMap || snapshotMap.size === 0) {
-			return [] as Player[];
-		}
-
-		return rows
-			.map((player) => {
-				const snapshot = snapshotMap.get(player.id);
-				if (!snapshot) {
-					return null;
-				}
-
-				return {
-					...player,
-					wins: snapshot.wins,
-					losses: snapshot.losses,
-					draws: snapshot.draws,
-					position: snapshot.position,
-					points: snapshot.points,
-				};
-			})
-			.filter((player): player is Player => player !== null)
-			.sort(byStandingsPosition);
-	});
-
-	// ── Display Rows (view mode filtering + reveal logic) ──
+	// ── Display Rows ──
+	/**
+	 * The rows the read answers, in its order. A reveal's are the rows it can
+	 * reveal, of which it shows those revealed so far: stepping through them is
+	 * the rendering's, so a reveal never waits on a read.
+	 */
 	const displayRows = computed(() => {
-		const mode = config.value.viewMode;
-		let rows = [...standingsRows.value];
+		const rows = freshness.data.value.rows;
+		if (config.value.viewMode !== 'reveal') return rows;
 
-		if (mode === 'range') {
-			// A Player without a position counts from its place in the order, after
-			// every placed Player, so a range still shows rows before standings exist.
-			rows = rows.filter((p, index) => {
-				const position = p.position ?? index + 1;
-				return position >= config.value.rangeStart && position <= config.value.rangeEnd;
-			});
-		} else if (mode === 'watchlist') {
-			rows = rows.filter((p) => watchlistPlayerIds.value.has(p.id));
-		} else if (mode === 'reveal') {
-			rows = rows.slice(0, config.value.revealCount);
-			const revealed = config.value.revealedCount;
-			if (config.value.revealOrder === 'bottomUp') {
-				// Show last N revealed (e.g., revealed=3 of 8: show positions 6,7,8)
-				rows = rows.slice(Math.max(0, rows.length - revealed));
-			} else {
-				// Show first N revealed
-				rows = rows.slice(0, revealed);
-			}
-		}
-
-		return rows;
+		const revealable = rows.slice(0, config.value.revealCount);
+		const revealed = config.value.revealedCount;
+		return config.value.revealOrder === 'bottomUp'
+			? // The last N revealed (e.g., revealed=3 of 8: positions 6, 7 and 8).
+				revealable.slice(Math.max(0, revealable.length - revealed))
+			: revealable.slice(0, revealed);
 	});
 
 	// ── Pagination ──
@@ -188,28 +127,27 @@ export function useStandingsModeData(context: ScreenContext) {
 	);
 
 	/** How far a row's Player moved since the previous Round (#755). */
-	function positionChangeOf(player: Player): PositionChange {
-		return positionChange(player.id, player.position, previousRoundPositionMap.value);
+	function positionChangeOf(row: StandingsRow): PositionChange {
+		return positionChange(row.id, row.position, previousRoundPositionMap.value);
 	}
 
 	// ── Cell Formatting ──
-	function formatCell(player: Player, key: StandingsColumnKey): string {
+	function formatCell(row: StandingsRow, key: StandingsColumnKey): string {
 		const event = eventStore.displayEvent;
 
 		switch (key) {
 			case 'position':
-				return player.position != null ? String(player.position) : '-';
+				return row.position != null ? String(row.position) : '-';
 			case 'name':
-				return player.name;
+				return row.name ?? '';
 			case 'record':
-				return formatPlayerRecord(player, event);
+				return formatPlayerRecord(row, event);
 			case 'points':
-				return player.points != null ? String(player.points) : '-';
-			case 'deck': {
-				return getMtgGameData(player.gameData).deckName ?? '-';
-			}
+				return row.points != null ? String(row.points) : '-';
+			case 'deck':
+				return row.deckName ?? '-';
 			case 'positionChange':
-				return formatPositionChange(positionChangeOf(player));
+				return formatPositionChange(positionChangeOf(row));
 		}
 	}
 

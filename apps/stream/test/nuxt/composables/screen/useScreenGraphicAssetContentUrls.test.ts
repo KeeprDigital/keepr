@@ -31,14 +31,18 @@ function mountOutput(references: Ref<GraphicAssetReference[]>) {
 	};
 	const Child = defineComponent({
 		setup() {
-			const { contentUrl } = useScreenGraphicAssetContentUrls(references);
+			const { contentUrl, contentUrlsSettled } = useScreenGraphicAssetContentUrls(references);
 			return () =>
-				references.value.map((item) =>
-					h('video', {
-						key: item.assetId,
-						'data-asset': item.assetId,
-						src: contentUrl(item),
-					}),
+				h(
+					'div',
+					{ 'data-settled': String(contentUrlsSettled.value) },
+					references.value.map((item) =>
+						h('video', {
+							key: item.assetId,
+							'data-asset': item.assetId,
+							src: contentUrl(item),
+						}),
+					),
 				);
 		},
 	});
@@ -52,6 +56,7 @@ function mountOutput(references: Ref<GraphicAssetReference[]>) {
 	);
 	return {
 		src: (asset: string) => wrapper.get(`[data-asset="${asset}"]`).attributes('src'),
+		settled: () => wrapper.get('[data-settled]').attributes('data-settled') === 'true',
 	};
 }
 
@@ -106,6 +111,23 @@ describe('useScreenGraphicAssetContentUrls', () => {
 		await flushPromises();
 
 		expect(output.src('video-asset')).toBe(videoUrl);
+	});
+
+	// A font that fell back on the refusal would otherwise hide its display for
+	// the length of every retry: a retry asks the same question again.
+	it('stays settled while a retry after a refused capability session is out', async () => {
+		vi.useFakeTimers();
+		vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 503 }));
+		const output = mountOutput(ref([reference]));
+		await flushPromises();
+		const retry = deferred<Response>();
+		vi.mocked(fetch).mockReturnValueOnce(retry.promise);
+
+		await vi.advanceTimersByTimeAsync(SCREEN_MODE_REREAD_MS);
+		await flushPromises();
+
+		expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2);
+		expect(output.settled()).toBe(true);
 	});
 
 	beforeEach(() => {

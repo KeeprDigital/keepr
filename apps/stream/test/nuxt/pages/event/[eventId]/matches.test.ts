@@ -2,6 +2,18 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, nextTick, reactive, ref, watch } from 'vue';
+import {
+	createMockEvent,
+	createMockMatch,
+	createWireMockRound,
+	toWire,
+} from '~~/test/helpers/fixtures';
+
+/*
+ * The Matches page on the real stores, faking the network and the router: it
+ * shows the viewed Round's Matches and Assignments, reads Matches only per
+ * Round, and re-reads what a Round sync changed.
+ */
 
 const route = reactive({
 	params: { eventId: '1' },
@@ -22,24 +34,24 @@ function buildFullPath() {
 
 const router = {
 	currentRoute: ref(route),
-	beforeEach: vi.fn(() => () => {}),
-	afterEach: vi.fn(() => () => {}),
-	beforeResolve: vi.fn(() => () => {}),
-	onError: vi.fn(() => () => {}),
-	resolve: vi.fn((to?: { path?: string }) => ({
+	beforeEach: () => () => {},
+	afterEach: () => () => {},
+	beforeResolve: () => () => {},
+	onError: () => () => {},
+	resolve: (to?: { path?: string }) => ({
 		fullPath: to?.path ?? route.fullPath,
 		path: to?.path ?? route.path,
 		href: to?.path ?? route.fullPath,
 		matched: [],
-	})),
+	}),
 	options: {
 		history: {
 			state: {},
 			base: '/',
 		},
 	},
-	push: vi.fn(),
-	replace: vi.fn(async ({ query }: { query: Record<string, string | undefined> }) => {
+	push: async () => {},
+	replace: async ({ query }: { query: Record<string, string | undefined> }) => {
 		for (const key of Object.keys(route.query)) delete route.query[key];
 
 		for (const [key, value] of Object.entries(query)) {
@@ -50,158 +62,78 @@ const router = {
 		router.currentRoute.value = route;
 
 		await nextTick();
-	}),
+	},
 };
 
-const mockEventStore = reactive({
-	eventId: 1,
-	event: null as { meleeEnabled?: boolean } | null,
-	loadEvent: vi.fn(),
-	$reset: vi.fn(),
-});
+type Wired = Record<string, unknown>;
 
-const mockMatchStore = reactive({
-	matches: [] as Array<{ id: number; roundId: number; hasResult?: boolean; isBye?: boolean }>,
-	isLoaded: true,
-	loadMatchesByRoundId: vi.fn(),
-	$reset: vi.fn(),
-});
+/** What the server holds for Event 1, and every read and write it was sent. */
+const server = vi.hoisted(() => ({
+	rounds: [] as Wired[],
+	matchesByRound: new Map<number, Wired[]>(),
+	assignmentsByRound: new Map<number, Wired[]>(),
+	/** Whether the Event re-read after a sync fails, leaving the browser behind. */
+	eventReadFails: false,
+	requests: [] as string[],
+}));
 
-const mockRoundStore = reactive({
-	rounds: [] as Array<{
-		id: number;
-		phaseId: number;
-		name: string;
-		lastSyncedAt?: string | Date | null;
-		externalSource?: string;
-	}>,
-	isLoaded: true,
-	loadRoundsByEventId: vi.fn(),
-	getRoundById: vi.fn((id: number) => mockRoundStore.rounds.find((round) => round.id === id)),
-	$reset: vi.fn(),
-});
+function requestKey(url: string, init?: { method?: string; query?: Record<string, unknown> }) {
+	const query = init?.query ? `?${new URLSearchParams(init.query as never).toString()}` : '';
+	return `${init?.method ?? 'GET'} ${url}${query}`;
+}
 
-const mockFeatureMatchStore = reactive({
-	featureMatches: [] as Array<{ id: number; matchId: number | null }>,
-	isLoaded: true,
-	loadFeatureMatchesByEventId: vi.fn(),
-	$reset: vi.fn(),
-});
+const { mockFetch } = vi.hoisted(() => ({
+	mockFetch: vi.fn(),
+}));
+mockNuxtImport('$fetch', () => mockFetch);
 
-const mockFeatureMatchPromotion = {
-	promote: vi.fn(),
-};
+async function answer(
+	url: string,
+	init?: { method?: string; query?: Record<string, unknown>; body?: { roundId?: number } },
+) {
+	server.requests.push(requestKey(url, init));
+	const roundId = Number(init?.query?.roundId);
+	switch (url) {
+		case '/api/events/1':
+			if (server.eventReadFails) throw Object.assign(new Error('Unavailable'), { statusCode: 503 });
+			return toWire({ ...createMockEvent({ id: 1, meleeEnabled: true }), talents: [] });
+		case '/api/events/1/rounds':
+			return server.rounds;
+		case '/api/events/1/matches':
+			return { matches: server.matchesByRound.get(roundId) ?? [] };
+		case '/api/events/1/feature-match-assignments':
+			return { featureMatchAssignments: server.assignmentsByRound.get(roundId) ?? [] };
+		case '/api/events/1/melee/sync-round': {
+			const round = server.rounds.find(({ id }) => id === init?.body?.roundId)!;
+			return {
+				round: { id: round.id, name: round.name },
+				matchCount: 0,
+				created: 0,
+				updated: 0,
+				staleDeleted: 0,
+				warnings: [],
+			};
+		}
+		default:
+			return [];
+	}
+}
 
-const releaseAssignmentRound = vi.fn();
-const assignmentsByRound = new Map<
-	number,
-	Array<{ id: number; roundId: number; note: string | null }>
->();
-const mockFeatureMatchAssignmentStore = reactive({
-	consumeRound: vi.fn(() => releaseAssignmentRound),
-	loadAssignments: vi.fn(),
-	assignmentsForRound: vi.fn((roundId: number) => assignmentsByRound.get(roundId) ?? []),
-	isRemoteChanged: vi.fn(() => false),
-	updateAssignment: vi.fn(),
-});
-
-const mockPlayerStore = reactive({
-	players: [] as Array<{ id: number; name: string; updatedAt: string }>,
-	isLoaded: true,
-	loadPlayersByEventId: vi.fn(),
-	$reset: vi.fn(),
-});
-
-const mockPhaseStore = reactive({
-	isLoaded: true,
-	loadPhasesByEventId: vi.fn(),
-	getPhaseById: vi.fn(() => undefined),
-	$reset: vi.fn(),
-});
-
-const mockToast = {
-	add: vi.fn(),
-};
-
-const mockOverlay = {
-	create: vi.fn(() => ({
-		open: vi.fn(),
-	})),
-};
-
-const mockPlayerDeckCache = {
-	getDeckLists: vi.fn(() => []),
-	fetchDeck: vi.fn(),
-};
-
-const mockMeleeStore = reactive({
-	syncingRound: false,
-	lastOperation: null as { status: string; title: string; description: string } | null,
-	syncSpecificRound: vi.fn(async () => ({ success: true })),
-	$reset: vi.fn(),
-});
-
-// The page reads Matches through the Match store only. This spy proves it makes
-// no Event-wide Match list request of its own (#646).
-const mockMatchRepository = {
-	list: vi.fn(),
-};
-
-const eventId = ref(1);
 const storesLoading = ref(false);
 
 mockNuxtImport('useRoute', () => () => route);
 mockNuxtImport('useRouter', () => () => router);
-mockNuxtImport('useEventStore', () => () => mockEventStore);
-mockNuxtImport('useMatchStore', () => () => mockMatchStore);
-mockNuxtImport('useMatchRepository', () => () => mockMatchRepository);
-mockNuxtImport('useRoundStore', () => () => mockRoundStore);
-mockNuxtImport('useFeatureMatchStore', () => () => mockFeatureMatchStore);
-mockNuxtImport('useFeatureMatchPromotion', () => () => mockFeatureMatchPromotion);
-mockNuxtImport('useFeatureMatchAssignmentStore', () => () => mockFeatureMatchAssignmentStore);
-mockNuxtImport('useFeatureMatchStateStore', () => () => ({
-	$reset: vi.fn(),
-}));
-mockNuxtImport('usePlayerStore', () => () => mockPlayerStore);
-mockNuxtImport('useArchetypeStore', () => () => ({
-	$reset: vi.fn(),
-}));
-mockNuxtImport('useMetagameStore', () => () => ({
-	$reset: vi.fn(),
-}));
-mockNuxtImport('usePlayerListStore', () => () => ({
-	$reset: vi.fn(),
-}));
-mockNuxtImport('usePhaseStore', () => () => mockPhaseStore);
-mockNuxtImport('useToast', () => () => mockToast);
-mockNuxtImport('useOverlay', () => () => mockOverlay);
-mockNuxtImport('usePlayerDeckCache', () => () => mockPlayerDeckCache);
 mockNuxtImport('useEventPageLoading', () => () => ({
-	eventId,
+	eventId: ref(1),
 	initialLoading: storesLoading,
 	initialError: ref(null),
-	retry: vi.fn(),
+	retry: () => {},
 }));
-mockNuxtImport('useScreenStore', () => () => ({
-	$reset: vi.fn(),
-}));
-mockNuxtImport('useCardStore', () => () => ({
-	$reset: vi.fn(),
-}));
-mockNuxtImport('useMeleeStore', () => () => mockMeleeStore);
-mockNuxtImport('clearPlayerDeckCache', () => vi.fn());
-mockNuxtImport('navigateTo', () => vi.fn());
 mockNuxtImport('watchDebounced', () => (source: any, callback: any) => watch(source, callback));
 
 const NuxtLayoutStub = defineComponent({
-	props: {
-		flush: {
-			type: Boolean,
-			default: false,
-		},
-	},
 	template: `
-		<div :data-flush="flush ? 'true' : 'false'">
+		<div>
 			<div data-testid="actions"><slot name="actions" /></div>
 			<div data-testid="toolbar"><slot name="toolbar" /></div>
 			<slot />
@@ -275,6 +207,21 @@ const UContainerStub = defineComponent({
 
 const mountedPages: Array<ReturnType<typeof mount>> = [];
 
+/** Rounds the server holds, each named by its id, and the Round store holds as loaded. */
+function holdRounds(rounds: Array<Partial<Parameters<typeof createWireMockRound>[0]>>) {
+	server.rounds = rounds.map((round) =>
+		createWireMockRound({ phaseId: 1, name: `Round ${round?.id}`, ...round }),
+	) as Wired[];
+	useRoundStore().rounds = structuredClone(server.rounds) as never;
+}
+
+function holdMatches(roundId: number, ids: number[], overrides: Partial<Wired>[] = []) {
+	server.matchesByRound.set(
+		roundId,
+		ids.map((id, index) => toWire(createMockMatch({ id, roundId, ...overrides[index] })) as Wired),
+	);
+}
+
 async function mountPage() {
 	const pagePath = '../../../../../app/pages/event/[eventId]/matches.vue';
 	const { default: MatchesPage } = await import(pagePath);
@@ -297,28 +244,33 @@ async function mountPage() {
 	return wrapper;
 }
 
+/** The reads of Matches the page sent, by their query. */
+const matchReads = () => server.requests.filter((request) => request.includes('/matches'));
+
+async function syncFromEmptyState(wrapper: ReturnType<typeof mount>) {
+	await wrapper
+		.get('[data-testid="empty-state"]')
+		.findAll('button')
+		.find((button) => button.text().includes('Sync Matches'))!
+		.trigger('click');
+	await flushPromises();
+}
+
 describe('matches page', () => {
 	beforeEach(() => {
 		for (const key of Object.keys(route.query)) delete route.query[key];
-
-		mockMatchStore.matches = [];
-		mockRoundStore.rounds = [];
-		mockFeatureMatchStore.featureMatches = [];
-		assignmentsByRound.clear();
-		mockPlayerStore.players = [];
+		buildFullPath();
+		resetAllEventStores();
+		useEventStore().event = createMockEvent({ id: 1 }) as never;
+		server.rounds = [];
+		server.matchesByRound.clear();
+		server.assignmentsByRound.clear();
+		server.eventReadFails = false;
+		server.requests = [];
+		mockFetch.mockReset();
+		mockFetch.mockImplementation(answer);
+		useToast().clear();
 		storesLoading.value = false;
-		mockEventStore.event = null;
-		mockMeleeStore.syncSpecificRound.mockClear();
-		mockMeleeStore.lastOperation = null;
-		mockRoundStore.loadRoundsByEventId.mockClear();
-		mockMatchStore.loadMatchesByRoundId.mockClear();
-		mockFeatureMatchAssignmentStore.consumeRound.mockClear();
-		mockFeatureMatchAssignmentStore.loadAssignments.mockClear();
-		releaseAssignmentRound.mockClear();
-		mockMatchRepository.list.mockReset();
-		mockOverlay.create.mockClear();
-		router.replace.mockClear();
-		mockToast.add.mockClear();
 	});
 
 	afterEach(() => {
@@ -336,14 +288,7 @@ describe('matches page', () => {
 	});
 
 	it('shows an empty state when rounds exist but none of them have matches', async () => {
-		mockRoundStore.rounds = [
-			{
-				id: 2,
-				phaseId: 1,
-				name: 'Round 1',
-				lastSyncedAt: null,
-			},
-		];
+		holdRounds([{ id: 2 }]);
 
 		const wrapper = await mountPage();
 		await flushPromises();
@@ -351,66 +296,27 @@ describe('matches page', () => {
 		expect(wrapper.get('[data-testid="empty-state"]').text()).toContain(
 			'Create a match to get started.',
 		);
-		expect(mockMatchStore.loadMatchesByRoundId).toHaveBeenCalledWith(1, 2);
 	});
 
 	it('prefers the most recently synced round when no query or current round exists', async () => {
-		mockRoundStore.rounds = [
-			{
-				id: 2,
-				phaseId: 1,
-				name: 'Round 1',
-				lastSyncedAt: '2026-04-10T10:00:00.000Z',
-			},
-			{
-				id: 3,
-				phaseId: 1,
-				name: 'Round 2',
-				lastSyncedAt: '2026-04-10T11:00:00.000Z',
-			},
-			{
-				id: 4,
-				phaseId: 1,
-				name: 'Round 3',
-				lastSyncedAt: null,
-			},
-		];
+		holdRounds([
+			{ id: 2, lastSyncedAt: new Date('2026-04-10T10:00:00.000Z') },
+			{ id: 3, lastSyncedAt: new Date('2026-04-10T11:00:00.000Z') },
+			{ id: 4, lastSyncedAt: null },
+		]);
+		holdMatches(2, [21]);
+		holdMatches(3, [31]);
+		holdMatches(4, [41]);
 
-		await mountPage();
+		const wrapper = await mountPage();
 		await flushPromises();
 
-		expect(mockMatchStore.loadMatchesByRoundId).toHaveBeenCalledWith(1, 3);
+		expect(wrapper.get('[data-testid="match-list"]').text()).toBe('Match list: 31');
 	});
 
 	it('shows all matches for the selected round', async () => {
-		mockRoundStore.rounds = [
-			{
-				id: 2,
-				phaseId: 1,
-				name: 'Round 1',
-				lastSyncedAt: null,
-			},
-		];
-		mockMatchStore.matches = [
-			{
-				id: 11,
-				roundId: 2,
-				hasResult: false,
-				isBye: false,
-			},
-			{
-				id: 12,
-				roundId: 2,
-				hasResult: true,
-				isBye: false,
-			},
-			{
-				id: 13,
-				roundId: 2,
-				hasResult: false,
-				isBye: true,
-			},
-		];
+		holdRounds([{ id: 2 }]);
+		holdMatches(2, [11, 12, 13], [{ hasResult: false }, { hasResult: true }, { isBye: true }]);
 
 		const wrapper = await mountPage();
 		await flushPromises();
@@ -419,161 +325,95 @@ describe('matches page', () => {
 		expect(wrapper.get('[data-testid="match-list"]').text()).toContain('Match list: 11,12,13');
 	});
 
-	it('passes only the selected previous Round Assignments to the Matches list and releases it on unmount', async () => {
+	it("shows only the viewed Round's Assignments, and stops following that Round once it unmounts", async () => {
 		route.query.roundId = '3';
-		mockRoundStore.rounds = [
-			{
-				id: 2,
-				phaseId: 1,
-				name: 'Round 1',
-				lastSyncedAt: null,
-			},
-			{
-				id: 3,
-				phaseId: 1,
-				name: 'Round 2',
-				lastSyncedAt: null,
-			},
-		];
-		mockMatchStore.matches = [
-			{
-				id: 13,
-				roundId: 3,
-				hasResult: false,
-				isBye: false,
-			},
-		];
-		assignmentsByRound.set(2, [{ id: 20, roundId: 2, note: 'Wrong Round' }]);
-		assignmentsByRound.set(3, [{ id: 30, roundId: 3, note: 'Selected Round Note' }]);
+		buildFullPath();
+		holdRounds([{ id: 2 }, { id: 3 }]);
+		holdMatches(3, [13]);
+		server.assignmentsByRound.set(2, [{ id: 20, roundId: 2, note: 'Wrong Round' }]);
+		server.assignmentsByRound.set(3, [{ id: 30, roundId: 3, note: 'Selected Round Note' }]);
 
 		const wrapper = await mountPage();
 		await flushPromises();
 
-		expect(mockFeatureMatchAssignmentStore.consumeRound).toHaveBeenCalledWith(1, 3);
 		expect(wrapper.get('[data-testid="match-list"]').attributes('data-assignment-notes')).toBe(
 			'Selected Round Note',
 		);
+
 		wrapper.unmount();
-		expect(releaseAssignmentRound).toHaveBeenCalledOnce();
+		server.requests = [];
+		await useFeatureMatchAssignmentStore().reloadConsumedRounds();
+		expect(server.requests).toEqual([]);
 	});
 
 	it('makes no Event-wide Match list request on load', async () => {
-		mockRoundStore.rounds = [
-			{
-				id: 2,
-				phaseId: 1,
-				name: 'Round 1',
-				lastSyncedAt: null,
-			},
-		];
+		holdRounds([{ id: 2 }]);
 
 		await mountPage();
 		await flushPromises();
 
-		expect(mockMatchStore.loadMatchesByRoundId).toHaveBeenCalledWith(1, 2);
-		expect(mockMatchRepository.list).not.toHaveBeenCalled();
+		expect(matchReads()).toEqual(['GET /api/events/1/matches?roundId=2']);
 	});
 
 	it('holds the loading state and the Round choice until the Rounds load, then keeps the queried Round', async () => {
 		route.query.roundId = '3';
 		buildFullPath();
 		storesLoading.value = true;
+		holdMatches(2, [21]);
+		holdMatches(3, [31]);
 
 		const wrapper = await mountPage();
 		await flushPromises();
 
 		expect(wrapper.find('[data-testid="empty-state"]').exists()).toBe(false);
-		expect(router.replace).not.toHaveBeenCalled();
+		expect(route.fullPath).toBe('/event/1/matches?roundId=3');
 
-		mockRoundStore.rounds = [
-			{
-				id: 2,
-				phaseId: 1,
-				name: 'Round 1',
-				lastSyncedAt: '2026-04-10T11:00:00.000Z',
-			},
-			{
-				id: 3,
-				phaseId: 1,
-				name: 'Round 2',
-				lastSyncedAt: null,
-			},
-		];
+		holdRounds([
+			{ id: 2, lastSyncedAt: new Date('2026-04-10T11:00:00.000Z') },
+			{ id: 3, lastSyncedAt: null },
+		]);
 		storesLoading.value = false;
 		await flushPromises();
 
-		expect(router.replace).not.toHaveBeenCalled();
-		expect(route.query.roundId).toBe('3');
-		expect(mockMatchStore.loadMatchesByRoundId).toHaveBeenCalledWith(1, 3);
+		expect(route.fullPath).toBe('/event/1/matches?roundId=3');
+		expect(wrapper.get('[data-testid="match-list"]').text()).toBe('Match list: 31');
 	});
 
-	it("re-reads the synced Round's Matches and the Rounds after a Round sync, without an Event-wide Match list", async () => {
-		mockEventStore.event = { meleeEnabled: true };
-		mockRoundStore.rounds = [
-			{
-				id: 2,
-				phaseId: 1,
-				name: 'Round 1',
-				lastSyncedAt: null,
-				externalSource: 'melee',
-			},
-		];
-
-		const wrapper = await mountPage();
-		await flushPromises();
-		mockMatchStore.loadMatchesByRoundId.mockClear();
-
-		const syncButton = wrapper
-			.get('[data-testid="empty-state"]')
-			.findAll('button')
-			.find((button) => button.text().includes('Sync Matches'));
-		expect(syncButton).toBeDefined();
-		await syncButton!.trigger('click');
-		await flushPromises();
-
-		expect(mockMeleeStore.syncSpecificRound).toHaveBeenCalledWith(2);
-		expect(mockMatchStore.loadMatchesByRoundId).toHaveBeenCalledWith(1, 2);
-		expect(mockRoundStore.loadRoundsByEventId).toHaveBeenCalledWith(1);
-		expect(mockMatchRepository.list).not.toHaveBeenCalled();
-	});
-
-	it('tells the operator what the Melee store recorded of a Round sync, as the Sync page does', async () => {
-		mockEventStore.event = { meleeEnabled: true };
-		mockRoundStore.rounds = [
-			{
-				id: 2,
-				phaseId: 1,
-				name: 'Round 1',
-				lastSyncedAt: null,
-				externalSource: 'melee',
-			},
-		];
-		mockMeleeStore.syncSpecificRound.mockImplementationOnce(async () => {
-			mockMeleeStore.lastOperation = {
-				status: 'warning',
-				title: 'Round Synced — Reload Needed',
-				description: 'Round 1 synced successfully. Reload the page before retrying the sync.',
-			};
-			return { success: true };
+	describe('a Round sync from its empty state', () => {
+		beforeEach(() => {
+			useEventStore().event = createMockEvent({ id: 1, meleeEnabled: true }) as never;
+			holdRounds([{ id: 2, externalSource: 'melee' }]);
 		});
-		const wrapper = await mountPage();
-		await flushPromises();
 
-		await wrapper
-			.get('[data-testid="empty-state"]')
-			.findAll('button')
-			.find((button) => button.text().includes('Sync Matches'))!
-			.trigger('click');
-		await flushPromises();
+		it("re-reads the synced Round's Matches and the Rounds, without an Event-wide Match list", async () => {
+			const wrapper = await mountPage();
+			await flushPromises();
+			holdMatches(2, [21, 22]);
+			server.requests = [];
 
-		expect(mockToast.add.mock.calls).toEqual([
-			[
-				{
-					title: 'Round Synced — Reload Needed',
-					description: 'Round 1 synced successfully. Reload the page before retrying the sync.',
-					color: 'warning',
-				},
-			],
-		]);
+			await syncFromEmptyState(wrapper);
+
+			expect(wrapper.get('[data-testid="match-list"]').text()).toBe('Match list: 21,22');
+			expect(server.requests).toEqual(
+				expect.arrayContaining([
+					'POST /api/events/1/melee/sync-round',
+					'GET /api/events/1/rounds',
+					'GET /api/events/1/matches?roundId=2',
+				]),
+			);
+			expect(matchReads().every((request) => request.includes('?roundId='))).toBe(true);
+		});
+
+		it('tells the operator what the Melee store recorded of a Round sync, as the Sync page does', async () => {
+			server.eventReadFails = true;
+			const wrapper = await mountPage();
+			await flushPromises();
+
+			await syncFromEmptyState(wrapper);
+
+			expect(useToast().toasts.value.map(({ title, color }) => ({ title, color }))).toEqual([
+				{ title: 'Round Synced — Reload Needed', color: 'warning' },
+			]);
+		});
 	});
 });

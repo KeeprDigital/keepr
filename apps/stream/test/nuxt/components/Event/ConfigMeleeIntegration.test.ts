@@ -54,7 +54,6 @@ mockNuxtImport('useMeleeDataRefresh', () => () => ({
 // The page guard installs a route leave hook. What it does with it is its own
 // composable's test; here it only has to exist so a test can mount this card the
 // way its page does.
-mockNuxtImport('onBeforeRouteLeave', () => () => {});
 
 // Attached, so pressing Save — a submit button — submits the form.
 const mountOptions = {

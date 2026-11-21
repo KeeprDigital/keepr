@@ -20,6 +20,13 @@ const CLOCK_CHECK_INTERVAL_MS = 1000;
 /** A device clock moved by more than this since its offset was taken is wrong on air, as a correction over it is. */
 const CLOCK_CHANGE_THRESHOLD_MS = STEP_CORRECTION_THRESHOLD_MS;
 
+/**
+ * Why an offset held is known to be possibly wrong: it came from a round trip
+ * over the ceiling, or the device's clock has been changed since it was taken
+ * and no sync has answered since.
+ */
+export type ServerTimeDoubt = 'slow-network' | 'device-clock-changed';
+
 /** A correction being eased in: from the offset `from`, applied since device time `startedAt`. */
 interface EasedCorrection {
 	from: number;
@@ -31,6 +38,8 @@ let syncIntervalId: ReturnType<typeof setInterval> | null = null;
 let correctionEndId: ReturnType<typeof setTimeout> | null = null;
 let syncsInFlight = 0;
 let stopReturnListeners: (() => void) | null = null;
+/** Removes the page's pagehide/pageshow listeners, which outlive a stop; null while none are held. */
+let stopPageLifecycle: (() => void) | null = null;
 let clockCheckId: ReturnType<typeof setInterval> | null = null;
 /** The device's clock and its monotonic clock as the sync that took the offset held began; null before one. */
 let offsetTakenAt: { device: number; monotonic: number } | null = null;
@@ -44,6 +53,7 @@ export function useServerTime() {
 	const lastSyncedAt = useState<number | null>('serverTimeLastSyncedAt', () => null);
 	/** Null once `serverTimeOffset` is applied in full. */
 	const correction = useState<EasedCorrection | null>('serverTimeCorrection', () => null);
+	const doubt = useState<ServerTimeDoubt | null>('serverTimeDoubt', () => null);
 
 	/** The offset server time is read at now: `serverTimeOffset`, less what a correction has yet to ease in. */
 	function appliedOffset(): number {
@@ -93,18 +103,17 @@ export function useServerTime() {
 	 * Fetch a single time sample with RTT compensation
 	 */
 	async function fetchTimeSample(): Promise<{ offset: number; rtt: number }> {
-		const clientSendTime = Date.now();
+		// Timed on the monotonic clock: the device's may be changed mid-request.
+		const sentAt = performance.now();
 		const response = await $fetch<ServerTimeReading>(SERVER_TIME_PATH, {
 			// One request per sample: a retry would count the failed attempt as latency.
 			retry: 0,
 			timeout: REQUEST_TIMEOUT_MS,
 		});
-		const clientReceiveTime = Date.now();
-
-		const rtt = clientReceiveTime - clientSendTime;
+		const rtt = performance.now() - sentAt;
 		// Estimate server time at the midpoint of the request
 		const estimatedServerTime = response.serverTime + rtt / 2;
-		const offset = estimatedServerTime - clientReceiveTime;
+		const offset = estimatedServerTime - Date.now();
 
 		return { offset, rtt };
 	}
@@ -136,10 +145,12 @@ export function useServerTime() {
 				}
 			}
 
+			// A round trip that reads negative, or not at all, measures nothing.
+			const measured = samples.filter((sample) => Number.isFinite(sample.rtt) && sample.rtt >= 0);
 			// A slow sample would replace a good offset with a loose one, so it counts
 			// only while no offset is held, when it still beats an unknown clock.
-			const trusted = samples.filter((sample) => sample.rtt <= MAX_SAMPLE_RTT_MS);
-			const usable = trusted.length > 0 || isSynced.value ? trusted : samples;
+			const trusted = measured.filter((sample) => sample.rtt <= MAX_SAMPLE_RTT_MS);
+			const usable = trusted.length > 0 || isSynced.value ? trusted : measured;
 
 			// A round trip bounds its sample's error to half of itself, so the
 			// shortest is the best estimate; averaging would only add the others' error.
@@ -160,6 +171,7 @@ export function useServerTime() {
 
 			applyOffset(best.offset);
 			offsetTakenAt = began;
+			doubt.value = best.rtt > MAX_SAMPLE_RTT_MS ? 'slow-network' : null;
 			isSynced.value = true;
 			hasWarned.value = false;
 			lastSyncedAt.value = Date.now();
@@ -230,6 +242,8 @@ export function useServerTime() {
 		const deviceElapsed = Date.now() - offsetTakenAt.device;
 		const monotonicElapsed = monotonicNow - offsetTakenAt.monotonic;
 		if (Math.abs(deviceElapsed - monotonicElapsed) <= CLOCK_CHANGE_THRESHOLD_MS) return;
+		// Server time is read off the device's clock, so it is wrong by the change until a sync answers.
+		doubt.value = 'device-clock-changed';
 		if (lastSyncBeganAt !== null && monotonicNow - lastSyncBeganAt < RESYNC_MIN_GAP_MS) return;
 		resyncUnlessRecent();
 	}
@@ -277,17 +291,34 @@ export function useServerTime() {
 		globalSyncActive = false;
 	}
 
+	/** A page restored from the back/forward cache was stopped as it was hidden: it syncs again. */
+	function restartWhenRestored(event: PageTransitionEvent) {
+		if (event.persisted) startSync();
+	}
+
 	// Auto-start on client side (lazy singleton — first consumer triggers sync)
 	if (import.meta.client && !globalSyncActive) {
 		startSync();
-		// `pagehide`, not `beforeunload`, which also fires for an unload the operator cancels.
-		window.addEventListener('pagehide', stopSync, { once: true });
-		import.meta.hot?.dispose(() => stopSync());
+		if (stopPageLifecycle === null) {
+			// `pagehide`, not `beforeunload`, which also fires for an unload the operator cancels.
+			window.addEventListener('pagehide', stopSync);
+			window.addEventListener('pageshow', restartWhenRestored);
+			stopPageLifecycle = () => {
+				window.removeEventListener('pagehide', stopSync);
+				window.removeEventListener('pageshow', restartWhenRestored);
+				stopPageLifecycle = null;
+			};
+		}
+		import.meta.hot?.dispose(() => {
+			stopSync();
+			stopPageLifecycle?.();
+		});
 	}
 
 	return {
 		serverTimeOffset: readonly(serverTimeOffset),
 		isSynced: readonly(isSynced),
+		doubt: readonly(doubt),
 		lastSyncedAt: readonly(lastSyncedAt),
 		getServerTime,
 		deviceDelayFor,

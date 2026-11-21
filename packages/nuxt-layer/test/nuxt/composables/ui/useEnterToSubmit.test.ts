@@ -48,6 +48,26 @@ describe('useEnterToSubmit', () => {
 		expect(event.defaultPrevented).toBe(true);
 	});
 
+	it.each([
+		['while an input method is composing', { isComposing: true }],
+		['for the keyCode an input method sends', { keyCode: 229 }],
+		['when the key repeats', { repeat: true }],
+	])('ignores Enter %s', (_, init) => {
+		const cb = vi.fn();
+		register(cb);
+		const event = new KeyboardEvent('keydown', {
+			key: 'Enter',
+			bubbles: true,
+			cancelable: true,
+			...init,
+		});
+
+		document.dispatchEvent(event);
+
+		expect(cb).not.toHaveBeenCalled();
+		expect(event.defaultPrevented).toBe(false);
+	});
+
 	it('ignores other keys', () => {
 		const cb = vi.fn();
 		register(cb);

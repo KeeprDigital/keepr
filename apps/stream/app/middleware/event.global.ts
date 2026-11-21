@@ -2,10 +2,11 @@ import { eventKind, isOfferedToEvent } from '~~/shared/config/games';
 import { isScreenOutputPage } from '~/modules/access/pageGate';
 import { resetAllEventStores } from '~/utils/eventStores';
 
-export default defineNuxtRouteMiddleware(async (to) => {
-	// Asked first: everything below may reset the Event an open modal's unsaved
-	// edit saves against, and "Keep editing" has to find that Event still held.
-	if (!(await confirmDiscardInOpenModals())) return false;
+export default defineNuxtRouteMiddleware(async (to, from) => {
+	// Asked first: everything below may reset the Event a page's or an open
+	// modal's unsaved edit saves against, and "Keep editing" has to find that
+	// Event still held.
+	if (!(await confirmDiscardBeforeNavigation(to, from))) return false;
 
 	// A Screen Output holds no Session, so the operator's Event read would refuse
 	// it and this would send program to the home page and on to sign in (#604).

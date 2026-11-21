@@ -40,7 +40,8 @@ const pageData = ref<any[]>([
 		losses: 2,
 		draws: 1,
 		points: 37,
-		gameData: { type: 'mtg', deckName: 'Grixis', deckColors: 'UBR' },
+		deckName: 'Grixis',
+		deckColors: 'UBR',
 	},
 ]);
 
@@ -66,7 +67,7 @@ mockNuxtImport('useStandingsModeData', () => () => ({
 			case 'name':
 				return player.name;
 			case 'deck':
-				return player.gameData?.deckName ?? '-';
+				return player.deckName ?? '-';
 			case 'positionChange':
 				return player.id === 1 ? '▲2' : 'new';
 			default:
@@ -127,7 +128,8 @@ describe('screenStandingsDisplay', () => {
 				losses: 2,
 				draws: 1,
 				points: 37,
-				gameData: { type: 'mtg', deckName: 'Grixis', deckColors: 'UBR' },
+				deckName: 'Grixis',
+				deckColors: 'UBR',
 			},
 		];
 	});
@@ -208,7 +210,6 @@ describe('screenStandingsDisplay', () => {
 				id: 2,
 				name: 'Newcomer',
 				position: 2,
-				gameData: null,
 			},
 		];
 

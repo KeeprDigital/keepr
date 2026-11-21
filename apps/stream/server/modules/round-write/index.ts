@@ -1,6 +1,9 @@
 import type { UpdateRoundInput } from '~~/server/schemas/api/round';
 import type { CreateRoundInput, RoundResponse } from '~~/shared/api';
-import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
+import {
+	asOneEventDataChange,
+	eventDataPublicationModule,
+} from '~~/server/modules/event-data-publication';
 import { roundService } from '~~/server/services/round';
 import { requirePhaseInEvent } from '~~/server/utils/routeGuards';
 import { refuseOnCommanderEvent } from '~~/server/utils/commanderEventRefusal';
@@ -97,8 +100,11 @@ export function roundWriteModule() {
 
 		// Even for a Round already gone: the release committed either way (ADR-0060).
 		// No origin, because the deleting client never received these Screens back.
-		for (const screen of clearedScreens)
-			await publication.screenUpdated({ eventId, entity: screen });
+		// The Screens told once for every one released, not once per Screen.
+		await asOneEventDataChange(async () => {
+			for (const screen of clearedScreens)
+				await publication.screenUpdated({ eventId, entity: screen });
+		});
 
 		if (!deleted) {
 			throw createError({ statusCode: 404, message: 'Round not found' });

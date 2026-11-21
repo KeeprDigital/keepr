@@ -1,113 +1,142 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { enableAutoUnmount, mount } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, ref } from 'vue';
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 
-// Capture the route leave guard callback so tests can invoke it directly
-let capturedRouteLeaveGuard: (() => Promise<boolean>) | null = null;
-const mockOpenFn = vi.fn(() => ({
-	result: Promise.resolve(true),
-}));
-const mockOverlay = {
-	create: vi.fn(() => ({
-		open: mockOpenFn,
-	})),
-};
+// The page guard on a real router: which navigations it asks about, and what a bypass covers.
 
-mockNuxtImport('useOverlay', () => () => mockOverlay);
-mockNuxtImport('onBeforeRouteLeave', () => (fn: any) => {
-	capturedRouteLeaveGuard = fn;
+/** The operator's answers to the confirmation, in order: true discards. */
+const answers: boolean[] = [];
+const openModal = vi.fn(() => ({ result: Promise.resolve(answers.shift() ?? false) }));
+mockNuxtImport('useOverlay', () => () => ({ create: () => ({ open: openModal }) }));
+
+let page: ReturnType<typeof useUnsavedChanges>;
+
+const EditPage = defineComponent({
+	setup() {
+		page = useUnsavedChanges();
+		return () => h('p', 'editing');
+	},
 });
+
+async function mountAt(path: string) {
+	const router = createRouter({
+		history: createMemoryHistory(),
+		routes: [
+			{ path: '/', component: { render: () => h('p', 'home') } },
+			{ path: '/event/:eventId', component: EditPage },
+		],
+	});
+	await router.push(path);
+	await router.isReady();
+	mount(RouterView, { global: { plugins: [router] } });
+	return router;
+}
+
+enableAutoUnmount(afterEach);
 
 describe('useUnsavedChanges', () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
-		capturedRouteLeaveGuard = null;
-		mockOpenFn.mockReturnValue({
-			result: Promise.resolve(true),
-		});
+		answers.length = 0;
+		openModal.mockClear();
 	});
 
-	it('starts not dirty', () => {
-		const { isDirty } = useUnsavedChanges();
-		expect(isDirty.value).toBe(false);
-	});
+	it('is dirty while any registered dirty state is, until it is unregistered', async () => {
+		await mountAt('/event/1');
+		const first = ref(false);
+		const second = ref(false);
+		page.registerDirtyState(first);
+		const unregister = page.registerDirtyState(second);
+		expect(page.isDirty.value).toBe(false);
 
-	it('becomes dirty when a registered dirty state is true', () => {
-		const { isDirty, registerDirtyState } = useUnsavedChanges();
-		const dirty = ref(false);
-		registerDirtyState(dirty);
+		second.value = true;
+		expect(page.isDirty.value).toBe(true);
 
-		expect(isDirty.value).toBe(false);
-		dirty.value = true;
-		expect(isDirty.value).toBe(true);
-	});
-
-	it('returns to clean when dirty state resets', () => {
-		const { isDirty, registerDirtyState } = useUnsavedChanges();
-		const dirty = ref(true);
-		registerDirtyState(dirty);
-
-		expect(isDirty.value).toBe(true);
-		dirty.value = false;
-		expect(isDirty.value).toBe(false);
-	});
-
-	it('unregisters dirty state with returned function', () => {
-		const { isDirty, registerDirtyState } = useUnsavedChanges();
-		const dirty = ref(true);
-		const unregister = registerDirtyState(dirty);
-
-		expect(isDirty.value).toBe(true);
 		unregister();
-		expect(isDirty.value).toBe(false);
+		expect(page.isDirty.value).toBe(false);
 	});
 
-	it('tracks multiple dirty states', () => {
-		const { isDirty, registerDirtyState } = useUnsavedChanges();
-		const dirty1 = ref(false);
-		const dirty2 = ref(false);
-		registerDirtyState(dirty1);
-		registerDirtyState(dirty2);
+	it.each([
+		['to another page, and stays when refused', '/', false, '/event/1'],
+		['to another page, and leaves when confirmed', '/', true, '/'],
+		['for other route params, and stays when refused', '/event/2', false, '/event/1'],
+	])('asks before a dirty page navigates %s', async (_, target, confirmed, landed) => {
+		const router = await mountAt('/event/1');
+		page.registerDirtyState(ref(true));
+		answers.push(confirmed);
 
-		expect(isDirty.value).toBe(false);
-		dirty2.value = true;
-		expect(isDirty.value).toBe(true);
+		await router.push(target);
+
+		expect(openModal).toHaveBeenCalledOnce();
+		expect(router.currentRoute.value.fullPath).toBe(landed);
 	});
 
-	// ── onBeforeRouteLeave guard ──
+	it.each([
+		['a clean page leaves', '/', false],
+		['a query-only change on a dirty page lands', '/event/1?tab=players', true],
+	])('does not ask when %s', async (_, target, dirty) => {
+		const router = await mountAt('/event/1');
+		page.registerDirtyState(ref(dirty));
 
-	describe('route leave guard', () => {
-		it.each([
-			['confirms', true],
-			['cancels', false],
-		])(
-			'asks before leaving a dirty page, and leaves only when the operator confirms (%s)',
-			async (_, confirmed) => {
-				mockOpenFn.mockReturnValueOnce({
-					result: Promise.resolve(confirmed),
-				});
-				const { registerDirtyState } = useUnsavedChanges();
-				registerDirtyState(ref(true));
+		await router.push(target);
 
-				await expect(capturedRouteLeaveGuard!()).resolves.toBe(confirmed);
-				expect(mockOpenFn).toHaveBeenCalledOnce();
-			},
-		);
+		expect(openModal).not.toHaveBeenCalled();
+		expect(router.currentRoute.value.fullPath).toBe(target);
+	});
 
-		it('leaves a clean page without asking', async () => {
-			useUnsavedChanges().registerDirtyState(ref(false));
+	it('lets a bypassed navigation through unasked', async () => {
+		const router = await mountAt('/event/1');
+		page.registerDirtyState(ref(true));
 
-			await expect(capturedRouteLeaveGuard!()).resolves.toBe(true);
-			expect(mockOpenFn).not.toHaveBeenCalled();
+		page.bypassGuard();
+		await router.push('/');
+
+		expect(openModal).not.toHaveBeenCalled();
+		expect(router.currentRoute.value.fullPath).toBe('/');
+	});
+
+	it.each([
+		['was cancelled', true, '/event/1'],
+		['changed params on the page it stayed on', false, '/event/2'],
+	])('asks again once a bypassed navigation %s', async (_, cancelled, stayedAt) => {
+		const router = await mountAt('/event/1');
+		page.registerDirtyState(ref(true));
+		const removeCancel = router.beforeEach(() => !cancelled);
+
+		page.bypassGuard();
+		await router.push('/event/2');
+		removeCancel();
+		await router.push('/event/3');
+
+		expect(openModal).toHaveBeenCalledOnce();
+		expect(router.currentRoute.value.fullPath).toBe(stayedAt);
+	});
+
+	it('asks once for a navigation that middleware asked about first', async () => {
+		const router = await mountAt('/event/1');
+		page.registerDirtyState(ref(true));
+		router.beforeEach((to, from) => confirmDiscardBeforeNavigation(to, from));
+		answers.push(true);
+
+		await router.push('/');
+
+		expect(openModal).toHaveBeenCalledOnce();
+		expect(router.currentRoute.value.fullPath).toBe('/');
+	});
+
+	it('answers middleware for a param change before the page is updated', async () => {
+		const router = await mountAt('/event/1');
+		page.registerDirtyState(ref(true));
+		const middlewareRan = vi.fn();
+		router.beforeEach(async (to, from) => {
+			if (!(await confirmDiscardBeforeNavigation(to, from))) return false;
+			middlewareRan();
 		});
 
-		it('leaves a dirty page without asking once the guard is bypassed', async () => {
-			const { registerDirtyState, bypassGuard } = useUnsavedChanges();
-			registerDirtyState(ref(true));
+		await router.push('/event/2');
 
-			bypassGuard();
-
-			await expect(capturedRouteLeaveGuard!()).resolves.toBe(true);
-			expect(mockOpenFn).not.toHaveBeenCalled();
-		});
+		expect(middlewareRan).not.toHaveBeenCalled();
+		expect(router.currentRoute.value.fullPath).toBe('/event/1');
 	});
 });

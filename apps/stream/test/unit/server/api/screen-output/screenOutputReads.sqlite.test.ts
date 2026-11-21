@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3';
 import type { ScreenMode } from '~~/shared/types/enums';
+import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
@@ -302,9 +303,9 @@ async function refusal(route: Handler, screen: Staged, presented: Presented = {}
 }
 
 beforeAll(async () => {
-	const [event, otherEvent, opEvent] = await db
-		.insert(schema.events)
-		.values([
+	// One insert each: an Event row binds more of D1's hundred parameters than two fit.
+	const [event, otherEvent, opEvent] = await Promise.all(
+		[
 			{
 				name: 'Screen Output Reads',
 				game: 'mtg',
@@ -317,8 +318,14 @@ beforeAll(async () => {
 			},
 			{ name: 'Other Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
 			{ name: 'One Piece Event', game: 'op', featureMatchOrientation: 'horizontal' },
-		] as never)
-		.returning({ id: schema.events.id });
+		].map(async (values) => {
+			const [row] = await db
+				.insert(schema.events)
+				.values(values as never)
+				.returning({ id: schema.events.id });
+			return row;
+		}),
+	);
 	ids.event = event!.id;
 	ids.otherEvent = otherEvent!.id;
 	ids.opEvent = opEvent!.id;
@@ -843,21 +850,33 @@ describe("a Screen's own live state", () => {
 });
 
 describe('standings', () => {
-	it('reads the whole roster and nothing else while its configuration names nothing', async () => {
+	/** A row as a Standings Screen showing its default columns reads it: no other Player field. */
+	const unplacedRow = (id: number, name: string) => ({
+		id,
+		position: null,
+		name,
+		wins: null,
+		losses: null,
+		draws: null,
+		points: null,
+	});
+
+	it('reads only the rows and columns it shows, and nothing else while its configuration names nothing', async () => {
 		const answer = await asOutput(read.standings, await showing('standings', { viewMode: 'all' }));
 
-		expect(answer.players.map((player: { id: number }) => player.id)).toEqual(
-			expect.arrayContaining([ids.alice, ids.bob, ids.carol]),
-		);
-		expect(answer).toMatchObject({
+		expect(answer).toEqual({
+			rows: [
+				unplacedRow(ids.alice, 'Alice'),
+				unplacedRow(ids.bob, 'Bob'),
+				unplacedRow(ids.carol, 'Carol'),
+			],
 			round: null,
-			roundStandings: null,
 			watchlist: null,
 			previousRoundPositions: null,
 		});
 	});
 
-	it('reads the fixed Round with its Round Standings, and the watchlist it filters to', async () => {
+	it("reads the fixed Round and the watchlist it filters to: only the list's members, at that Round", async () => {
 		const answer = await asOutput(
 			read.standings,
 			await showing('standings', {
@@ -869,23 +888,9 @@ describe('standings', () => {
 
 		expect(answer).toMatchObject({
 			round: { id: ids.roundOne, name: 'Round 1' },
-			watchlist: {
-				name: 'Watch',
-				playerIds: [ids.bob],
-			},
+			watchlist: { name: 'Watch' },
+			rows: [{ id: ids.bob, name: 'Bob', wins: 1, losses: 0, draws: 0, position: 1, points: 3 }],
 		});
-		expect(answer.roundStandings).toEqual(
-			expect.arrayContaining([
-				{
-					playerId: ids.bob,
-					wins: 1,
-					losses: 0,
-					draws: 0,
-					position: 1,
-					points: 3,
-				},
-			]),
-		);
 	});
 
 	it.each<[string, () => Record<string, unknown>]>([
@@ -903,34 +908,49 @@ describe('standings', () => {
 		expect(answer.watchlist).toBeNull();
 	});
 
-	// The previous Round's positions are read only while the Position Change column shows (#755).
+	// The previous Round's positions are read only while the Position Change column shows (#755),
+	// and only for the rows it shows.
 	it.each([
-		[true, "the previous Round's positions"],
+		[true, "the previous Round's positions of the rows it shows"],
 		[false, 'none'],
 	])('with its Position Change column visible: %s, reads %s', async (visible) => {
-		const answer = await asOutput(
-			read.standings,
-			await showing('standings', {
-				viewMode: 'all',
-				roundId: ids.roundTwo,
-				columns: [
-					{ key: 'name', visible: true },
-					{ key: 'positionChange', visible },
-				],
-			}),
-		);
+		await db.insert(schema.playerRoundStandings).values({
+			eventId: ids.event,
+			roundId: ids.roundTwo,
+			playerId: ids.bob,
+			wins: 2,
+			losses: 0,
+			draws: 0,
+			position: 1,
+			points: 6,
+		});
+		try {
+			const answer = await asOutput(
+				read.standings,
+				await showing('standings', {
+					viewMode: 'all',
+					roundId: ids.roundTwo,
+					columns: [
+						{ key: 'name', visible: true },
+						{ key: 'positionChange', visible },
+					],
+				}),
+			);
 
-		expect(answer.previousRoundPositions).toEqual(
-			visible
-				? {
-						roundId: ids.roundOne,
-						positions: [
-							{ playerId: ids.bob, position: 1 },
-							{ playerId: ids.alice, position: 2 },
-						],
-					}
-				: null,
-		);
+			expect(answer.rows).toEqual([{ id: ids.bob, position: 1, name: 'Bob' }]);
+			expect(answer.previousRoundPositions).toEqual(
+				visible ? { roundId: ids.roundOne, positions: [{ playerId: ids.bob, position: 1 }] } : null,
+			);
+		} finally {
+			await db
+				.delete(schema.playerRoundStandings)
+				.where(
+					and(
+						eq(schema.playerRoundStandings.roundId, ids.roundTwo),
+						eq(schema.playerRoundStandings.playerId, ids.bob),
+					),
+				);
+		}
 	});
 });
 

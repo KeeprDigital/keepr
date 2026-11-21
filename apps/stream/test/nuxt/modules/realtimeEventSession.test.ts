@@ -316,17 +316,6 @@ describe("a peer's message", () => {
 		}).toEqual({ reads: [], metagameInvalidations: 0 });
 	});
 
-	it('playerDeck:cardsResolved invalidates the metagame', () => {
-		const version = useMetagameStore().invalidationVersion;
-
-		deliver('playerDeck:cardsResolved', {
-			deckIds: [10],
-			playerIds: [PLAYER_ID],
-		});
-
-		expect(useMetagameStore().invalidationVersion - version).toBe(1);
-	});
-
 	// Only the deletion of the Event this client is on ends its Event Lifetime.
 	it.each([
 		{

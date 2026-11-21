@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3';
 import type { IdentityProofSource } from '@keepr/nuxt-layer/server/utils/requestIdentity';
-import { safeErrorLogPath } from '@keepr/nuxt-layer/server/utils/errorLogPath';
+import { safeErrorLogPath } from '~~/server/utils/errorLogPath';
 
 /**
  * Where a write's time went on its way to its Event's object, as one log line

@@ -1,7 +1,10 @@
 import type { GraphicsAssetLibrary } from '~~/server/modules/graphics-asset-library';
 import type { CreateTalentInput, UpdateTalentInput } from '~~/shared/api';
 import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
-import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
+import {
+	asOneEventDataChange,
+	eventDataPublicationModule,
+} from '~~/server/modules/event-data-publication';
 import { TalentPhotoReferenceConflict, talentService } from '~~/server/services/talent';
 import { assertGraphicsTemplateReferencesSelectable } from '~~/server/utils/graphicsTemplateReferences';
 import { TALENT_PHOTO_SLOT } from '~~/shared/utils/graphicsAssetReferences';
@@ -109,8 +112,11 @@ export function talentWriteModule() {
 		const { deleted, clearedScreens } = await talents.remove(talentId, eventId);
 
 		// No origin, because the deleting client never received these Screens back (ADR-0060).
-		for (const screen of clearedScreens)
-			await publication.screenUpdated({ eventId, entity: screen });
+		// The Screens told once for every one released, not once per Screen.
+		await asOneEventDataChange(async () => {
+			for (const screen of clearedScreens)
+				await publication.screenUpdated({ eventId, entity: screen });
+		});
 
 		if (!deleted) {
 			throw createError({

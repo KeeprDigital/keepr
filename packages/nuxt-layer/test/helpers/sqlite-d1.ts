@@ -17,11 +17,16 @@
  * written against, whether the pin detects it (#211). That is a record of the mutations
  * considered, not a claim that no other mutation escapes.
  *
- * What it is *not* is a substitute for D1 itself. Two known differences are handled
- * elsewhere rather than here: D1's hundred-bound-parameter ceiling, which libSQL
- * does not enforce and Stream Keepr's `miniflare-d1.ts` exists to test against, and anything about
- * D1's storage or replication. `raw()` below is the seam where the two are most
- * easily confused, and it carries its own note.
+ * It refuses what D1 refuses and libSQL would accept, so a query that fails its first
+ * production run fails here first: a value D1 cannot bind (a `Date`, a `BigInt`,
+ * `undefined`, an object), more than a hundred bound parameters, a statement over
+ * 100,000 bytes or a string or byte array over 2,000,000, and several statements in one
+ * `prepare`. And it answers `changes` after `RETURNING` as D1 does, where libSQL
+ * answers none. The same test pins each.
+ *
+ * What it is *not* is a substitute for D1 itself: anything about D1's storage or
+ * replication, and a row's size as a whole, are D1's alone. `raw()` below is the seam
+ * where the two are most easily confused, and it carries its own note.
  */
 
 import type { Client, InStatement, ResultSet } from '@libsql/client';
@@ -70,7 +75,104 @@ function plainRows<T>(result: ResultSet): T[] {
 	});
 }
 
-function d1Result<T>(result: ResultSet) {
+/** D1's documented limits (developers.cloudflare.com/d1/platform/limits). */
+const D1_MAX_BOUND_PARAMETERS = 100;
+const D1_MAX_STATEMENT_BYTES = 100_000;
+const D1_MAX_VALUE_BYTES = 2_000_000;
+
+const utf8 = new TextEncoder();
+
+/** What D1's `bind` throws on, synchronously, in D1's own words. */
+function refuseUnbindable(values: readonly unknown[]) {
+	for (const value of values) {
+		if (value === null) continue;
+		if (['string', 'number', 'boolean'].includes(typeof value)) continue;
+		if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) continue;
+		throw new Error(
+			// D1's own message renders the value as a template literal would.
+			// oxlint-disable-next-line typescript/no-base-to-string
+			`D1_TYPE_ERROR: Type '${typeof value}' not supported for value '${String(value)}'`,
+		);
+	}
+}
+
+function byteLength(value: unknown) {
+	if (typeof value === 'string') return utf8.encode(value).byteLength;
+	if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) return value.byteLength;
+	return 0;
+}
+
+/** What D1 refuses when a statement runs: alone, or anywhere in a batch, which then runs none. */
+function refuseOverD1Limits({ sql, args }: PreparedStatement) {
+	if (utf8.encode(sql).byteLength > D1_MAX_STATEMENT_BYTES)
+		throw new Error('D1_ERROR: statement too long: SQLITE_TOOBIG');
+	if (args.length > D1_MAX_BOUND_PARAMETERS)
+		throw new Error('D1_ERROR: too many SQL variables: SQLITE_ERROR');
+	if (args.some((value) => byteLength(value) > D1_MAX_VALUE_BYTES))
+		throw new Error('D1_ERROR: string or blob too big: SQLITE_TOOBIG');
+	if (holdsSeveralStatements(sql))
+		throw new Error(
+			'D1_ERROR: the harness prepares one statement at a time; libSQL would run only the first of these',
+		);
+}
+
+const QUOTE_CLOSERS: Record<string, string> = { "'": "'", '"': '"', '`': '`', '[': ']' };
+
+/**
+ * Whether anything but whitespace and comments follows a `;` outside a quoted
+ * string or identifier. A trailing `;` is one statement, as D1 has it.
+ */
+function holdsSeveralStatements(sql: string) {
+	let ended = false;
+	let index = 0;
+	while (index < sql.length) {
+		const character = sql[index]!;
+		if (sql.startsWith('--', index)) {
+			const end = sql.indexOf('\n', index);
+			index = end === -1 ? sql.length : end + 1;
+		} else if (sql.startsWith('/*', index)) {
+			const end = sql.indexOf('*/', index + 2);
+			index = end === -1 ? sql.length : end + 2;
+		} else if (character === ';') {
+			ended = true;
+			index++;
+		} else if (/\s/.test(character)) {
+			index++;
+		} else if (ended) {
+			return true;
+		} else if (character in QUOTE_CLOSERS) {
+			index = closingQuoteAfter(sql, index, QUOTE_CLOSERS[character]!) + 1;
+		} else {
+			index++;
+		}
+	}
+	return false;
+}
+
+/** Where a quoted run opened at `start` closes, a doubled closer being an escaped one. */
+function closingQuoteAfter(sql: string, start: number, closer: string) {
+	let index = start + 1;
+	while (index < sql.length) {
+		const end = sql.indexOf(closer, index);
+		if (end === -1) return sql.length;
+		if (closer !== ']' && sql[end + 1] === closer) index = end + 2;
+		else return end;
+	}
+	return sql.length;
+}
+
+/**
+ * libSQL answers no rows affected after `RETURNING`; D1 answers SQLite's own count,
+ * which is a row returned for every row a write changed.
+ */
+function changesOf(sql: string, result: ResultSet) {
+	if (result.rowsAffected > 0) return result.rowsAffected;
+	const returningWrite = /\bRETURNING\b/i.test(sql) && !/^\s*SELECT\b/i.test(sql);
+	return returningWrite ? result.rows.length : 0;
+}
+
+function d1Result<T>(sql: string, result: ResultSet) {
+	const changes = changesOf(sql, result);
 	return {
 		success: true as const,
 		results: plainRows<T>(result),
@@ -78,10 +180,10 @@ function d1Result<T>(result: ResultSet) {
 			duration: 0,
 			size_after: 0,
 			rows_read: result.rows.length,
-			rows_written: result.rowsAffected,
+			rows_written: changes,
 			last_row_id: Number(result.lastInsertRowid ?? 0),
-			changed_db: result.rowsAffected > 0,
-			changes: result.rowsAffected,
+			changed_db: changes > 0,
+			changes,
 		},
 	};
 }
@@ -98,15 +200,17 @@ function createPreparedStatement(
 	args: unknown[],
 ) {
 	const client = {
-		execute(statement: InStatement) {
+		async execute(statement: InStatement) {
+			refuseOverD1Limits({ sql, args });
 			counter.count++;
-			return source.execute(statement);
+			return await source.execute(statement);
 		},
 	};
 	const statement = {
 		sql,
 		args,
 		bind(...values: unknown[]) {
+			refuseUnbindable(values);
 			return createPreparedStatement(source, counter, sql, values);
 		},
 		async first<T>(column?: string) {
@@ -116,10 +220,10 @@ function createPreparedStatement(
 			return (column === undefined ? row : row[column]) as T;
 		},
 		async run<T>() {
-			return d1Result<T>(await client.execute(toStatement({ sql, args })));
+			return d1Result<T>(sql, await client.execute(toStatement({ sql, args })));
 		},
 		async all<T>() {
-			return d1Result<T>(await client.execute(toStatement({ sql, args })));
+			return d1Result<T>(sql, await client.execute(toStatement({ sql, args })));
 		},
 		async raw<T>() {
 			const result = await client.execute(toStatement({ sql, args }));
@@ -286,9 +390,10 @@ function harnessOver(
 			return createPreparedStatement(client, counter, sql, []);
 		},
 		async batch<T>(statements: ReturnType<typeof createPreparedStatement>[]) {
+			for (const statement of statements) refuseOverD1Limits(statement);
 			counter.count++;
 			const results = await client.batch(statements.map(toStatement), 'write');
-			return results.map((result) => d1Result<T>(result));
+			return results.map((result, index) => d1Result<T>(statements[index]!.sql, result));
 		},
 		async exec(sql: string) {
 			const statements = sql

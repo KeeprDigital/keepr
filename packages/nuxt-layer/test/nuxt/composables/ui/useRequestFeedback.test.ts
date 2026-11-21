@@ -1,5 +1,6 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { deferred } from '../../../helpers/deferred';
 import { transportFailure } from '../../../helpers/transportFailure';
 
 const mockToast = {
@@ -328,6 +329,46 @@ describe('useRequestFeedback', () => {
 
 		expect(onSuccess).toHaveBeenCalledOnce();
 		expect(onSuccess).toHaveBeenCalledWith('new');
+		expect(loading.value).toBe(false);
+	});
+
+	it('keeps a shared loading flag up while a superseded request is still in flight', async () => {
+		const loading = ref(false);
+		const older = deferred<string>();
+		const { runRequest } = useRequestFeedback();
+
+		const first = runRequest(() => older.promise, {
+			latestKey: 'metagame',
+			loadingRef: loading,
+			success: false,
+		});
+		await runRequest(async () => 'new', { loadingRef: loading, success: false });
+		expect(loading.value).toBe(true);
+
+		older.resolve('old');
+		await first;
+		expect(loading.value).toBe(false);
+	});
+
+	it('does not report a request as failed when its success callback throws', async () => {
+		const loading = ref(false);
+		const errorRef = ref<string | null>(null);
+		const onFailure = vi.fn();
+		const { runRequest } = useRequestFeedback();
+
+		const run = runRequest(async () => ({ id: 1 }), {
+			loadingRef: loading,
+			errorRef,
+			onFailure,
+			onSuccess: () => {
+				throw new Error('callback fault');
+			},
+		});
+
+		await expect(run).rejects.toThrow('callback fault');
+		expect(errorRef.value).toBeNull();
+		expect(onFailure).not.toHaveBeenCalled();
+		expect(mockToast.add).not.toHaveBeenCalledWith(expect.objectContaining({ color: 'error' }));
 		expect(loading.value).toBe(false);
 	});
 });
