@@ -1,5 +1,0 @@
----
-'@keepr/stream': patch
----
-
-Broadcast Graphics refuses what a Screen Output could not show, and the Graphics Asset Library finishes or cleanly fails every ingestion it starts. A live media selection must name an active Graphic Asset of the kind its Graphic Input declares; a Screen save whose on-air check a Take overtook is refused; a merge retry resolves bindings against the selections it reduces onto; a network retry of a committed Take answers what was stored; and a refused page change is reported to the Operator. An ingestion holds its operation while it runs, an approved remote copy holds its own and has total and idle deadlines, staged bytes are adopted only from the attempt that wrote them, each packaged video is validated from a copy keyed by its content, a failure that recurs on every retry stops being retried, and a staged Template Package is read in large windows. Byte routes send `X-Content-Type-Options: nosniff`, staged source bytes download as an attachment, and a multi-range or malformed `Range` answers the whole body.
