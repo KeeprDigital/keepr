@@ -109,12 +109,14 @@ describe('opening the Session a run works under', () => {
 			return new Response(null, { status, headers });
 		});
 
-	it('sends a local run no credential and makes no request', async () => {
+	// An App asks Keepr Accounts nothing for a request with no cookie of its own
+	// (ADR-0158), so a local run says it is the Local Developer User.
+	it("sends a local run the Accounts Stand-in's cookie and makes no request", async () => {
 		const fetchRequest = signedIn([]);
 
 		expect(
 			await openOperatorSession('http://127.0.0.1:8787', { env: CREDENTIALS, fetchRequest }),
-		).toEqual([]);
+		).toEqual(['keepr-stand-in=']);
 		expect(fetchRequest).not.toHaveBeenCalled();
 	});
 

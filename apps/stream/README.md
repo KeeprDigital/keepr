@@ -312,15 +312,23 @@ far slower than later ones.
 
 ### Local sign-in
 
-Nobody signs in locally, and nothing skips sign-in either. Stream Keepr asks
-Keepr Accounts who each request belongs to, over its `KEEPR_ACCOUNTS` binding
-to the `keepr-accounts` service, and locally the **Accounts Stand-in**
+No password is needed locally, and nothing skips sign-in either. Stream Keepr
+asks Keepr Accounts who each request belongs to, over its `KEEPR_ACCOUNTS`
+binding to the `keepr-accounts` service, and locally the **Accounts Stand-in**
 (`packages/accounts-stand-in` at the repository's root, ADR-0113) is registered
-under that name. It answers every request as the **Local Developer User**: a
-Keepr Administrator with the highest App role in every App, so every page
-opens, `/admin/**` included. The server runs the code it runs deployed; only
-which Worker answers the binding differs. No setting, variable, header or
-query turns the question off (ADR-0141).
+under that name. A browser's first visit has no cookie, so it is signed out:
+the page gate sends it to the stand-in's sign-in, on this machine, which gives
+it the `keepr-stand-in` cookie and sends it straight back (ADR-0158). That
+cookie is the **Local Developer User**: a Keepr Administrator with the highest
+App role in every App, so every page opens, `/admin/**` included. The server
+runs the code it runs deployed; only which Worker answers the binding differs.
+No setting, variable, header or query turns the question off (ADR-0141).
+
+- **The stand-in's sign-in answers on a port its launcher picks**, and the
+  launcher names it to the server as `NUXT_PUBLIC_KEEPR_ACCOUNTS_ORIGIN`
+  (`http://localhost:<port>`) unless that is set already; `pnpm preview` passes
+  it to the built Worker as a var. It returns a browser only to a page on this
+  machine (`localhost` or `127.0.0.1`, where it listens).
 
 - **`pnpm dev`, `pnpm dev:local`, `pnpm preview` and `pnpm worker:smoke` start
   the stand-in themselves**, through `keepr-accounts-stand-in -- <command>`,
@@ -352,8 +360,10 @@ query turns the question off (ADR-0141).
 
 **`pnpm dev:local` gives every machine that can reach yours the Local Developer
 User's access.** It exists for testing from a phone, tablet, or the broadcast
-machine. Use it only on a trusted network and stop it when done (ADR-0018,
-ADR-0141).
+machine. The stand-in's sign-in returns only to this machine, so another one
+sets the cookie by hand: `document.cookie = 'keepr-stand-in='`. Anyone on the
+network can do the same: use it only on a trusted network and stop it when done
+(ADR-0018, ADR-0141, ADR-0158).
 
 ## Testing
 

@@ -15,6 +15,7 @@ What Keepr Accounts makes true for a User, an operator and every App. Its words 
 - A User always has a name. No path creates a User with a blank one, or saves one: a name that is empty once trimmed, or is not text, is refused 400 `NAME_REQUIRED`, and the page says so where it was typed. A name is kept trimmed. The rule is held where the library writes a User, so its own routes are bound by it as Keepr Accounts' are. Nothing rewrites a name saved before this rule: one the library's `/update-user` saved blank stands until its User enters a name. (#1354)
 - A disabled User cannot sign in, and is told the account has been disabled and to ask a Keepr Administrator. (ADR-0112)
 - Repeated sign-ins from one client are refused: a fourth within ten seconds answers 429 with a retry delay, the right password included. The count is kept in the database, keyed on the address Cloudflare vouches for (`cf-connecting-ip`), and is off only under `nuxt dev`. (ADR-0012, ADR-0112)
+- An App's questions over its binding, an Identity Proof (`/api/auth/token`) and the keys it verifies against (`/api/auth/jwks`), are not counted: a request with no `cf-connecting-ip` came over a binding, as Cloudflare writes it on every request from the internet. A request to either that carries it is counted by its address. (ADR-0158)
 - The library's administrator routes answer 404 to every request, a Keepr Administrator's included. (ADR-0112)
 
 ## Session

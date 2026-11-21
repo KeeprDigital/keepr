@@ -7,10 +7,10 @@
  * depends on where the run is pointed, and that is a stated choice, never
  * inferred:
  *
- * - **A local run needs no credential.** The installation it targets was started
- *   through the Accounts Stand-in (`pnpm preview`, `pnpm dev`), which answers
- *   every request as the Local Developer User (ADR-0113). The harness sends no
- *   cookie, and says it is nobody with the stand-in's own cookie.
+ * - **A local run needs no password.** The installation it targets was started
+ *   through the Accounts Stand-in (`pnpm preview`, `pnpm dev`), whose cookie
+ *   names the Local Developer User (ADR-0113, ADR-0158). The harness sends that
+ *   cookie, and says it is nobody with the stand-in's signed-out one.
  * - **A deployed run signs in to Keepr Accounts**, as the operator named in the
  *   environment. A User signs in only there (ADR-0112): the harness posts the
  *   credentials to the Installation's Keepr Accounts and carries the Session
@@ -21,7 +21,7 @@
  */
 
 import process from 'node:process';
-import { standInCookie } from '@keepr/accounts-stand-in/cookie';
+import { LOCAL_DEVELOPER_COOKIE, standInCookie } from '@keepr/accounts-stand-in/cookie';
 import { AcceptanceFailure } from './evidence.mjs';
 
 /** Where a deployed run says who it signs in as. */
@@ -39,9 +39,9 @@ const ACCOUNTS_HOST_LABEL = 'accounts';
 const SIGN_IN_ROUTE = '/api/auth/sign-in/email';
 
 /**
- * What a local run sends to ask as a signed-out visitor: a local installation's
- * Accounts Stand-in answers a request carrying no cookie as the Local Developer
- * User, so "no Session" has to be said.
+ * What a local run sends to ask as a signed-out visitor: the Accounts
+ * Stand-in's own word for it, which reaches the stand-in as a request with no
+ * cookie at all would not (ADR-0158).
  */
 export const LOCAL_SIGNED_OUT_COOKIE = standInCookie('signed-out');
 
@@ -145,8 +145,8 @@ export function sessionCookiePairs(response) {
 
 /**
  * Open the run's Session, returning its cookie pairs, which every later request
- * carries: none for a local run, whose installation's Accounts Stand-in vouches
- * for a request with no cookie.
+ * carries: for a local run the Accounts Stand-in's cookie, which names the
+ * Local Developer User, as a request with none is signed out (ADR-0158).
  *
  * A deployed run posts its credentials to Keepr Accounts and nowhere else, with
  * the `Origin` a page of Keepr Accounts would send: a write to its sign-in is
@@ -163,7 +163,7 @@ export async function openOperatorSession(
 	{ deployed = false, env = process.env, fetchRequest = fetch } = {},
 ) {
 	const plan = operatorCredentialPlan({ deployed, env });
-	if (plan.kind === 'stand-in') return [];
+	if (plan.kind === 'stand-in') return [LOCAL_DEVELOPER_COOKIE];
 
 	const accountsOrigin = keeprAccountsOriginOf(origin, env);
 	const signIn = await fetchRequest(`${accountsOrigin}${SIGN_IN_ROUTE}`, {

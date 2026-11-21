@@ -1,4 +1,4 @@
-import { installationDomainOf } from './keeprDomain';
+import { installationDomainOf } from '@keepr/nuxt-layer/shared/utils/keeprDomain';
 
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1']);
 

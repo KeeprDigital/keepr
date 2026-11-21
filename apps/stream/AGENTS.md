@@ -10,14 +10,18 @@ operations. Paths in this file are relative to `apps/stream`.
   header, a query or a build flag that admits a request without one, in the
   app, a script or a test: a deployed Installation carrying it would serve the
   app to anyone.
-- Local work is served by the Accounts Stand-in, which answers as the Local
-  Developer User. `pnpm dev`, `pnpm preview` and `pnpm worker:smoke` start it
-  themselves, and the integration suite starts one for each of its servers. A
-  test of a whole server that needs someone else, or nobody, says so with the
+- Local work is served by the Accounts Stand-in (ADR-0158). A request with no
+  Keepr Accounts cookie is signed out; a local browser signs in once at the
+  stand-in's `/sign-in`, which sets its cookie for the Local Developer User.
+  `pnpm dev`, `pnpm preview` and `pnpm worker:smoke` start it themselves, and
+  the integration suite starts one for each of its servers. A test or script
+  that needs someone signed in, someone else, or nobody, says so with the
   stand-in's cookie (`@keepr/accounts-stand-in/cookie`), never with a change
   to the app.
-- `pnpm dev:local` binds the LAN, and gives every machine that can reach it
-  the Local Developer User's access. Use it only on a network you trust.
+- `pnpm dev:local` binds the LAN. Any machine that can reach it and sets the
+  stand-in's cookie has the Local Developer User's access, since the
+  stand-in's sign-in returns only to `localhost`. Use it only on a network you
+  trust.
 - A 503 naming `keepr-accounts` means no stand-in is registered where the
   server looks: start the server through its `package.json` script, not
   `nuxt dev` alone.

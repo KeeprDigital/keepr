@@ -82,18 +82,9 @@ describe('the Session boundary', () => {
 	});
 
 	// Nothing admits a request Keepr Accounts did not vouch for: with nobody to
-	// ask, the answer is a 503 that names why, never an admission.
+	// ask, the answer is a 503, never an admission. What it says is the layer's.
 	it.each([
 		['is not bound', {}, 'KEEPR_ACCOUNTS is not bound'],
-		[
-			'has nothing registered under its name locally',
-			{
-				KEEPR_ACCOUNTS: {
-					fetch: async () => new Response('Worker "keepr-accounts" not found', { status: 503 }),
-				},
-			},
-			'Accounts Stand-in',
-		],
 		[
 			'cannot be reached',
 			{
@@ -103,7 +94,7 @@ describe('the Session boundary', () => {
 					},
 				},
 			},
-			'Keepr Accounts did not answer',
+			'Keepr Accounts could not be asked who you are',
 		],
 	])('refuses everyone while Keepr Accounts %s, 503', async (_case, env, says) => {
 		const refusal = await answered({ user: 'nobody-asked-before' }, { env });
@@ -123,6 +114,20 @@ describe('the Session boundary', () => {
 	])('does not ask who %s belongs to, rather than asking and allowing', async (path, method) => {
 		expect(await answered(SIGNED_OUT, { path, method })).toBe('admitted');
 		expect(accounts.asked).toEqual([]);
+	});
+
+	// The router matches the path as sent, and the URL parser resolves dot
+	// segments, percent-encoded ones included, and reads `\` as `/`. A spelling
+	// either of them reads as private is private.
+	it.each([
+		['a percent-encoded climb from a private path to an exempt one', '/api/events/%2e%2e/time'],
+		['a mixed-case percent-encoded climb', '/api/events/.%2E/time'],
+		['a backslash climb from a private path to an exempt one', '/api/events\\..\\time'],
+		['a percent-encoded climb out of an exempt surface', '/api/screen-output/%2e%2e/events/1'],
+		['a backslash climb out of an exempt surface', '/api/screen-output\\..\\events/1'],
+		['backslashes for slashes', '/api\\events\\1\\players'],
+	])('refuses %s with no Identity Proof, 401', async (_case, path) => {
+		expect(await answered(SIGNED_OUT, { path })).toMatchObject({ statusCode: 401 });
 	});
 
 	// The Screen Output Link exchange carries its credential in its body: OBS's

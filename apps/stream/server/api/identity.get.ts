@@ -1,8 +1,11 @@
+import { pageIdentityOf } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { requestIdentity } from '~~/server/utils/session';
 
 /**
  * Who the browser is, as its Identity Proof says: what the layer's
- * `useIdentity` reads (`IDENTITY_PATH`), and the page gate with it.
+ * `useIdentity` reads (`IDENTITY_PATH`), and the page gate with it. Only the
+ * User and their App role: the rest of the proof is the server's
+ * (`pageIdentityOf`).
  *
  * Behind the Session boundary like any other route, so it answers only a User
  * with App access to Stream Keepr. The boundary's 401 is what sends a
@@ -22,5 +25,5 @@ export default defineEventHandler(async (event) => {
 
 	// Named for one browser, and renewed with its Session: never a shared cache's to keep.
 	setResponseHeader(event, 'cache-control', 'private, no-store');
-	return identity;
+	return pageIdentityOf(identity);
 });

@@ -24,7 +24,6 @@ Its words are the root `GLOSSARY.md`'s and its own `GLOSSARY.md`'s; `RULES.md` s
 | `server/utils/refusal.ts` | How Keepr Accounts' own routes refuse, in the shape Better Auth's do; `textField.ts` reads a request body's text. |
 | `server/utils/userName.ts` | A User always has a name: the rule, and the hooks that hold it wherever Better Auth writes a User. |
 | `shared/utils/returnAddress.ts` | Where a User may be sent after signing in. |
-| `shared/utils/keeprDomain.ts` | The Keepr domain of each Installation, `keepr.digital` or `keepr-staging.digital`, which its cookie, Return Addresses and sender keep to. |
 | `deploy.jsonc`, `wrangler.jsonc` | The deploy descriptor (ADR-0119) and the Worker's configuration for each Environment: account, host, database, email. `wrangler.dev.jsonc` is the local one. |
 | `scripts/worker-dry-run.mjs`, `scripts/worker-smoke.mjs` | The checks a deploy and CI's Worker leg run on the build: Wrangler's bundle for each Environment, then the built Worker on local workerd. |
 | `shared/utils/newPassword.ts` | The length a new password must be. |

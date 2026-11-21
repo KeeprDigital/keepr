@@ -1,3 +1,4 @@
+import { LOCAL_DEVELOPER_COOKIE } from '@keepr/accounts-stand-in/cookie';
 import { describe, expect, it } from 'vitest';
 import { $fetch, anonymousFetch, fetch, url } from './client';
 import { INTEGRATION_OPERATOR_ID } from './environment';
@@ -117,18 +118,24 @@ describe('the API boundary', () => {
 		expect(identity).toMatchObject({ user: { id: INTEGRATION_OPERATOR_ID }, appRole: 'admin' });
 	});
 
-	// What `pnpm dev` gives a browser that has never signed in anywhere: this
-	// server was started as `pnpm dev` starts one, through the Accounts Stand-in,
-	// and a request that carries no cookie at all is the Local Developer User's.
-	// `globalThis.fetch`, because the suite's client always says who asks.
-	it('recognises the Local Developer User on a request that says nothing about who asks', async () => {
-		const response = await globalThis.fetch(url('/api/identity'));
+	// What `pnpm dev` gives a browser: this server was started as `pnpm dev`
+	// starts one, through the Accounts Stand-in. With no cookie it is signed out,
+	// and its page gate sends it to the stand-in's sign-in, which gives it the
+	// cookie that names the Local Developer User (ADR-0158). `globalThis.fetch`,
+	// because the suite's client always says who asks.
+	it.each([
+		['refuses a request that carries no cookie at all, 401', {}, 401, { message: REFUSAL }],
+		[
+			"recognises the Local Developer User on the cookie the stand-in's sign-in gives",
+			{ cookie: LOCAL_DEVELOPER_COOKIE },
+			200,
+			{ user: { id: 'local-developer', name: 'Local Developer' }, appRole: 'admin' },
+		],
+	])('%s', async (_case, headers, status, body) => {
+		const response = await globalThis.fetch(url('/api/identity'), { headers });
 
-		expect(response.status).toBe(200);
-		expect(await response.json()).toMatchObject({
-			user: { id: 'local-developer', name: 'Local Developer' },
-			appRole: 'admin',
-		});
+		expect(response.status).toBe(status);
+		expect(await response.json()).toMatchObject(body);
 	});
 
 	// The same way everywhere: a read, a write, an admin route and "who am I".

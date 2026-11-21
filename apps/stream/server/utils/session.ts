@@ -48,7 +48,7 @@ const SIGNED_OUT_STATUS = 401;
  * `requireAppAccess`, so no caller can hold an Identity that has none: the
  * refusal is the same on every route, and the same in every App. With no
  * Identity Proof to trust and no answer from Keepr Accounts it raises the
- * layer's 503, which names why.
+ * layer's 503, and logs why.
  *
  * The promise is kept, not the answer, so two questions asked at once share
  * one. Any Session cookie Keepr Accounts renewed is passed on to the browser by

@@ -4,7 +4,8 @@
  * and it holds no credential of its own:
  *
  * - **As a signed-in page**: the Session a person signed in to at Keepr
- *   Accounts, or locally the one the Accounts Stand-in vouches for (ADR-0141).
+ *   Accounts, or locally the Local Developer User's, by the Accounts
+ *   Stand-in's cookie (ADR-0141, ADR-0158).
  *   It reads the Event's Screens, is handed each Screen Output's URL as the
  *   Output Hand-out is, and makes the write.
  * - **As a Screen Output**: the URL it was handed, and nothing else. It reads
@@ -15,6 +16,7 @@
  */
 
 import { readFile } from 'node:fs/promises';
+import { LOCAL_DEVELOPER_COOKIE } from '@keepr/accounts-stand-in/cookie';
 import { RefusedError } from '@keepr/realtime/client';
 import { parseJsonc } from '@keepr/tooling/scripts/jsonc.mjs';
 import { screenCommandMessageTypes } from '../../shared/types/messages.ts';
@@ -108,8 +110,9 @@ export function probeTarget(origin, environments, saidBy) {
 }
 
 /**
- * The Session the run works in, as the cookie its requests carry: none
- * locally, where the Accounts Stand-in vouches for a request with no cookie.
+ * The Session the run works in, as the cookie its requests carry: locally the
+ * Accounts Stand-in's, which names the Local Developer User. A request with
+ * none is signed out without anyone being asked (ADR-0158).
  *
  * Anywhere else the person running the probe signs in, as they do in a
  * browser: their email and password go to the Installation's Keepr Accounts
@@ -121,7 +124,7 @@ export function probeTarget(origin, environments, saidBy) {
  * @param {{ env?: Record<string, string | undefined>, fetchRequest?: typeof fetch }} [options]
  */
 export async function openSession(origin, { env = process.env, fetchRequest = fetch } = {}) {
-	if (isLoopbackOrigin(origin)) return '';
+	if (isLoopbackOrigin(origin)) return LOCAL_DEVELOPER_COOKIE;
 	let accounts;
 	try {
 		accounts = keeprAccountsOriginOf(origin, env);

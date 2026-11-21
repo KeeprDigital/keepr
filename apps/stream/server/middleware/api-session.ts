@@ -1,5 +1,5 @@
 import { requestIsCrossSiteMutation } from '@keepr/nuxt-layer/server/utils/crossSiteMutation';
-import { apiPathRequiresSession } from '~~/server/utils/apiBoundary';
+import { apiRequestRequiresSession } from '~~/server/utils/apiBoundary';
 import { requestIdentity } from '~~/server/utils/session';
 
 /**
@@ -51,7 +51,7 @@ import { requestIdentity } from '~~/server/utils/session';
  */
 export default defineEventHandler(async (event) => {
 	const url = getRequestURL(event);
-	if (!apiPathRequiresSession(url.pathname)) return;
+	if (!apiRequestRequiresSession(event.path, url.pathname)) return;
 
 	// Before the Session is read: a Session cookie on a state-changing request
 	// another site's page made is the thing being refused, so whether it is a
@@ -79,7 +79,7 @@ export default defineEventHandler(async (event) => {
 	// behind it reuses: a route asks the same request who the User is and which
 	// Session they are in, and the question is put to Keepr Accounts once. It
 	// refuses a User with no App access itself, 403, and raises the 503 that
-	// names why when Keepr Accounts cannot be asked.
+	// logs why when Keepr Accounts cannot be asked.
 	const identity = await requestIdentity(event);
 
 	if (!identity) {

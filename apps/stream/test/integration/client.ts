@@ -143,10 +143,10 @@ export const $fetch: typeof unsigned$Fetch = (async (
  * The same two helpers asking as a signed-out visitor, for the suite that tests
  * the boundary itself.
  *
- * They say so with the stand-in's cookie: a request carrying none would be
- * answered as the Local Developer User, and a boundary test that sent one would
- * pass against a boundary that admitted everybody. Recorded like the signed
- * pair, so a stall here is named too.
+ * They say so with the stand-in's cookie, so Keepr Accounts' stand-in is asked
+ * and says no: a boundary test is then a test of the answer, not of a request
+ * nobody asked about. Recorded like the signed pair, so a stall here is named
+ * too.
  */
 export const anonymousFetch: typeof unsignedFetch = async (path, options) => {
 	const headers = asking(path, options?.headers, INTEGRATION_SIGNED_OUT_COOKIE);

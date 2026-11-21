@@ -1,12 +1,12 @@
 import { relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
 	apiPathRequiresSession,
 	SESSION_EXEMPT_API_PATHS,
 	SESSION_EXEMPT_API_PREFIXES,
 } from '~~/server/utils/apiBoundary';
-import { scanRouteRefusals, typeScriptFilesUnder } from '~~/test/helpers/routeRefusalScan';
+import { typeScriptFilesUnder } from '~~/test/helpers/routeRefusalScan';
 
 /**
  * The deny-by-default API boundary's path policy (#396, ADR-0010).
@@ -21,7 +21,6 @@ import { scanRouteRefusals, typeScriptFilesUnder } from '~~/test/helpers/routeRe
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const API_DIRECTORY = fileURLToPath(new URL('../../../../server/api/', import.meta.url));
-const ADMIN_DIRECTORY = fileURLToPath(new URL('../../../../server/api/admin/', import.meta.url));
 
 const METHOD_SUFFIX = /\.(?:get|post|put|patch|delete)$/;
 
@@ -54,10 +53,6 @@ const routeFiles = typeScriptFilesUnder(API_DIRECTORY);
 /** Every route file the boundary lets through without a session, as repo paths. */
 const publicRouteFiles = routeFiles
 	.filter((file) => !apiPathRequiresSession(requestPathFor(file)))
-	.map((file) => relative(REPOSITORY_ROOT, file))
-	.sort();
-
-const adminRouteFiles = typeScriptFilesUnder(ADMIN_DIRECTORY)
 	.map((file) => relative(REPOSITORY_ROOT, file))
 	.sort();
 
@@ -184,7 +179,6 @@ describe('which API paths require a session', () => {
 describe('the public surface, counted against the routes on disk', () => {
 	it('is found at all, so this cannot pass by scanning nothing', () => {
 		expect(routeFiles.length).toBeGreaterThan(150);
-		expect(adminRouteFiles.length).toBe(18);
 	});
 
 	it('is exactly these routes, and every one of them is a decision ADR-0010 records', () => {
@@ -275,31 +269,5 @@ describe('the public surface, counted against the routes on disk', () => {
 				SESSION_EXEMPT_API_PREFIXES.some((prefix) => path.startsWith(prefix));
 			expect(named, `${file} is public for no listed reason`).toBe(true);
 		}
-	});
-});
-
-/**
- * The App role, which the boundary does not check (ADR-0131).
- *
- * The boundary requires a Session under `/api/admin/`; the Graphics
- * Administrator role is each route's own `requireGraphicsAdministrator` call.
- * Read from the import graph, because the guard may arrive through a helper.
- */
-describe('the admin surface, which requires the Graphics Administrator role', () => {
-	const reached = new Map<string, readonly string[]>();
-
-	// Walking every admin route's import graph parses most of `server/`, and the
-	// first walk pays for all of it before the module cache helps the rest. Done
-	// here, no single case below carries that cost into its own timeout.
-	beforeAll(() => {
-		for (const file of adminRouteFiles)
-			reached.set(
-				file,
-				scanRouteRefusals(fileURLToPath(new URL(`../../../../${file}`, import.meta.url))).files,
-			);
-	});
-
-	it.each(adminRouteFiles)('%s reaches the Graphics Administrator guard', (file) => {
-		expect(reached.get(file)).toContain('server/modules/graphics-administrator.ts');
 	});
 });

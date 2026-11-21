@@ -126,18 +126,11 @@ function isApiPath(path: string): boolean {
 }
 
 /**
- * Whether this request must present a Session.
+ * Whether a request on this path must present a Session.
  *
  * `false` for everything outside `/api/**`, so the caller does not have to ask
- * two questions; the middleware's whole decision is this function.
- *
- * Give it the **normalised** pathname — `getRequestURL(event).pathname`, which
- * the WHATWG URL parser has already resolved `..` out of. That is the safe
- * direction of the one disagreement with Nitro's router, which matches the raw
- * path: `/api/screen-output/../events/1/players` normalises to a private path
- * here (session required) and matches no route there (404), while
- * `/api/events/../time` normalises to an exempt path here and again matches no
- * route there. Neither spelling reaches a private handler unauthenticated.
+ * two questions. The middleware asks it of both spellings of a request's path
+ * (`apiRequestRequiresSession`).
  */
 export function apiPathRequiresSession(pathname: string): boolean {
 	const path = canonicalPath(pathname);
@@ -147,4 +140,22 @@ export function apiPathRequiresSession(pathname: string): boolean {
 	if (SESSION_EXEMPT_API_PATHS.includes(path)) return false;
 
 	return !SESSION_EXEMPT_API_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+/**
+ * Whether a request must present a Session, read from its path as sent
+ * (`event.path`) and as the URL parser resolved it (`getRequestURL`).
+ *
+ * Nitro's router matches the path as sent, and the parser resolves dot
+ * segments, percent-encoded ones included, and reads `\` as `/`. Read in one
+ * form only, `/api/events/%2e%2e/time` would be the exempt `/api/time` here
+ * and a private `events/[id]/time` route there. So a path either form reads as
+ * private requires a Session.
+ */
+export function apiRequestRequiresSession(sentPath: string, resolvedPathname: string): boolean {
+	const query = sentPath.indexOf('?');
+	return (
+		apiPathRequiresSession(query === -1 ? sentPath : sentPath.slice(0, query)) ||
+		apiPathRequiresSession(resolvedPathname)
+	);
 }

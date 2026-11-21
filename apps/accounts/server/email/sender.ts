@@ -5,7 +5,7 @@
  * real person.
  */
 
-import { installationDomainOf } from '~~/shared/utils/keeprDomain';
+import { installationDomainOf } from '@keepr/nuxt-layer/shared/utils/keeprDomain';
 
 /** One message to one person, from Keepr (`keeprSenderFor`). */
 export interface Email {

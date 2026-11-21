@@ -394,8 +394,7 @@ describe('a Realtime Ticket', () => {
 		const eventId = await createEvent();
 		const screen = await createScreen(eventId);
 
-		// No cookie, as an output sends none: this server's Accounts Stand-in would
-		// vouch for it as a User, and the ticket is still what decides.
+		// No cookie, as an output sends none: the ticket is what decides.
 		expect(await open(await query(eventId, await ticket(eventId, screen.capability)))).toEqual(
 			REFUSED,
 		);

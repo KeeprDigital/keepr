@@ -9,6 +9,7 @@ import {
 	IDENTITY_PROOF_PATH,
 	KEEPR_ACCOUNTS_ORIGIN,
 	PUBLIC_KEYS_PATH,
+	SIGN_IN_PATH,
 } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import {
 	askedUserIds,
@@ -16,9 +17,57 @@ import {
 	USER_NAMES_PATH,
 	type UserNamesAnswer,
 } from '@keepr/nuxt-layer/shared/utils/userNames';
-import { STAND_IN_COOKIE, STAND_IN_NO_APP_ACCESS, STAND_IN_SIGNED_OUT } from './cookie.mjs';
+import { STAND_IN_BUNDLE_MARK } from './bundleMark.mjs';
+import {
+	LOCAL_DEVELOPER_COOKIE,
+	STAND_IN_COOKIE,
+	STAND_IN_NO_APP_ACCESS,
+	STAND_IN_NO_ORGANISATION,
+	STAND_IN_SIGNED_OUT,
+} from './cookie.mjs';
 
-export { STAND_IN_COOKIE, standInCookie, type StandInPersona } from './cookie.mjs';
+export {
+	LOCAL_DEVELOPER_COOKIE,
+	STAND_IN_COOKIE,
+	standInCookie,
+	type StandInPersona,
+} from './cookie.mjs';
+
+/** The hosts a browser on this machine reaches a local App on: all its sign-in returns to. */
+const LOOPBACK_HOSTNAMES = ['localhost', '127.0.0.1'];
+
+/**
+ * Its sign-in, as Keepr Accounts' is reached from an App's page gate: gives the
+ * browser the cookie that names the Local Developer User and sends it back to
+ * `returnTo`. Only to a page on this machine (ADR-0158): it signs nobody in
+ * anywhere else, and sends no browser away. A cookie is kept per host whatever
+ * the port, so a browser returning to another local host than the one it
+ * asked on is sent to this sign-in on that host first.
+ */
+function signIn(request: Request): Response {
+	const here = new URL(request.url);
+	const returnTo = URL.parse(here.searchParams.get('returnTo') ?? '');
+	if (
+		!returnTo ||
+		!['http:', 'https:'].includes(returnTo.protocol) ||
+		!LOOPBACK_HOSTNAMES.includes(returnTo.hostname)
+	)
+		return new Response('The Accounts Stand-in returns only to a page on this machine.', {
+			status: 400,
+		});
+	if (returnTo.hostname !== here.hostname) {
+		const there = new URL(here);
+		there.hostname = returnTo.hostname;
+		return Response.redirect(there.toString(), 302);
+	}
+	return new Response(null, {
+		status: 302,
+		headers: {
+			location: returnTo.toString(),
+			'set-cookie': `${LOCAL_DEVELOPER_COOKIE}; Path=/; SameSite=Lax`,
+		},
+	});
+}
 
 /** The Local Developer User, as the Accounts Stand-in names them. */
 export const LOCAL_DEVELOPER = {
@@ -52,11 +101,20 @@ function personaOf(header: string | null): StandInPersona | 'signed-out' {
 		const role = fields.get(app);
 		if (role !== null) apps[app] = role === STAND_IN_NO_APP_ACCESS ? null : role;
 	}
+	const org = fields.get('org');
+	const keeprAdmin = fields.get('keeprAdmin');
 	return {
 		user: fields.get('user') ?? undefined,
 		name: fields.get('name') ?? undefined,
 		session: fields.get('session') ?? undefined,
 		apps,
+		organisation:
+			org === null
+				? undefined
+				: org === STAND_IN_NO_ORGANISATION
+					? null
+					: { id: org, role: fields.get('orgRole') ?? 'owner' },
+		keeprAdministrator: keeprAdmin === null ? undefined : keeprAdmin === 'true',
 	};
 }
 
@@ -72,10 +130,11 @@ interface StandInKey {
 }
 
 /**
- * Answers as Keepr Accounts does for an App, without anyone signing in: every
+ * Answers as Keepr Accounts does for an App, without a password: its sign-in
+ * gives a local browser its `keepr-stand-in` cookie (ADR-0158), and every
  * Identity Proof names the Local Developer User, a Keepr Administrator who owns
  * the Keepr Organisation and holds the highest App role in every App (ADR-0113),
- * unless the request's `keepr-stand-in` cookie names someone else, or nobody.
+ * unless that cookie names someone else, or nobody.
  * It signs with the production issuer and audience, so an App's verifier has
  * no development branch, and with a key of its own, made on its first request, which
  * Keepr Accounts never publishes.
@@ -83,7 +142,7 @@ interface StandInKey {
  * It holds no Users. The ones it can name to an App (ADR-0145) are the Local
  * Developer User and whoever it has answered as since it started, by the name
  * it gave them last: locally a User exists once a request has named them.
- * Everyone works in the one Organisation, so each is named to anyone signed in.
+ * Each is named to anyone signed in, whatever Organisation their cookie names.
  */
 export function createAccountsStandIn(): AccountsStandIn {
 	const namesAnsweredAs = new Map<string, string>([[LOCAL_DEVELOPER.id, LOCAL_DEVELOPER.name]]);
@@ -96,7 +155,7 @@ export function createAccountsStandIn(): AccountsStandIn {
 			crv: 'Ed25519',
 			extractable: true,
 		});
-		const kid = `accounts-stand-in-${crypto.randomUUID()}`;
+		const kid = `${STAND_IN_BUNDLE_MARK}/${crypto.randomUUID()}`;
 		return {
 			privateKey,
 			kid,
@@ -113,15 +172,21 @@ export function createAccountsStandIn(): AccountsStandIn {
 			if (role === undefined) apps[app] = highestAppRole(app);
 			else if (role !== null) apps[app] = role;
 		}
-		const claims: IdentityProofClaims = {
+		const organisation =
+			persona.organisation === undefined
+				? { id: LOCAL_ORGANISATION_ID, role: 'owner' }
+				: persona.organisation;
+		const claims = {
 			sid: persona.session ?? `${user}-session`,
 			email: isLocalDeveloper ? LOCAL_DEVELOPER.email : `${user}@keepr.invalid`,
 			name: persona.name ?? (isLocalDeveloper ? LOCAL_DEVELOPER.name : user),
-			org: LOCAL_ORGANISATION_ID,
-			orgRole: 'owner',
+			org: organisation?.id ?? null,
+			// As the cookie names it: an Organisation role the layer does not know is
+			// read as none, as it would be from Keepr Accounts.
+			orgRole: (organisation?.role ?? null) as IdentityProofClaims['orgRole'],
 			apps,
-			keeprAdmin: true,
-		};
+			keeprAdmin: persona.keeprAdministrator ?? true,
+		} satisfies IdentityProofClaims;
 		namesAnsweredAs.set(user, claims.name);
 		const { privateKey, kid } = await keyOf();
 		return await new SignJWT({ ...claims })
@@ -137,6 +202,7 @@ export function createAccountsStandIn(): AccountsStandIn {
 	return {
 		async fetch(request: Request): Promise<Response> {
 			const { pathname } = new URL(request.url);
+			if (request.method === 'GET' && pathname === SIGN_IN_PATH) return signIn(request);
 			if (request.method === 'GET' && pathname === IDENTITY_PROOF_PATH) {
 				const persona = personaOf(request.headers.get('cookie'));
 				// As Keepr Accounts answers a request with no Session.
@@ -159,7 +225,7 @@ export function createAccountsStandIn(): AccountsStandIn {
 				return Response.json({ names } satisfies UserNamesAnswer);
 			}
 			return new Response(
-				`The Accounts Stand-in answers only ${IDENTITY_PROOF_PATH}, ${PUBLIC_KEYS_PATH} and ${USER_NAMES_PATH}, as the Local Developer User. To sign in for real, run Keepr Accounts beside the App instead (apps/accounts/README.md).`,
+				`The Accounts Stand-in answers only ${SIGN_IN_PATH}, ${IDENTITY_PROOF_PATH}, ${PUBLIC_KEYS_PATH} and ${USER_NAMES_PATH}, as the Local Developer User. To sign in for real, run Keepr Accounts beside the App instead (apps/accounts/README.md).`,
 				{ status: 404 },
 			);
 		},
