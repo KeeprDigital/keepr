@@ -9,6 +9,7 @@
  * deployed Worker is untouched: the route exists only under `wrangler dev`.
  */
 
+import { LOCAL_ORGANISATION_ID } from '@keepr/accounts-stand-in/cookie';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import process from 'node:process';
@@ -88,6 +89,10 @@ export async function runPreviewWorker({
 			'--persist-to',
 			'.wrangler/state/built-worker',
 			'--test-scheduled',
+			// The Organisation a local Installation serves: the Accounts Stand-in's,
+			// whom `pnpm preview` runs beside (ADR-0161). A build names none.
+			'--var',
+			`NUXT_INSTALLATION_ORGANISATION_ID:${LOCAL_ORGANISATION_ID}`,
 			'--port',
 			String(port),
 			...(env[ACCOUNTS_ORIGIN_ENV]

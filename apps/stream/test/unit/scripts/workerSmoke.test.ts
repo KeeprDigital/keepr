@@ -254,7 +254,7 @@ describe('the built Worker smoke runner', () => {
 
 	/** Who a request asks as, read from the cookie the Accounts Stand-in would read. */
 	type Asked = {
-		who: 'nobody' | 'outsider' | 'member' | 'administrator';
+		who: 'nobody' | 'outsider' | 'elsewhere' | 'member' | 'administrator';
 		method: string;
 		path: string;
 		crossSite: boolean;
@@ -282,9 +282,11 @@ describe('the built Worker smoke runner', () => {
 						? 'nobody'
 						: persona.get('stream') === 'none'
 							? 'outsider'
-							: persona.get('stream') === 'member'
-								? 'member'
-								: 'administrator',
+							: persona.has('org')
+								? 'elsewhere'
+								: persona.get('stream') === 'member'
+									? 'member'
+									: 'administrator',
 				method: init.method ?? 'GET',
 				path: url.pathname,
 				crossSite: headers.get('sec-fetch-site') === 'cross-site',
@@ -295,7 +297,8 @@ describe('the built Worker smoke runner', () => {
 			if (asked.path === '/')
 				return new Response(readFileSync(join(repositoryRoot, '.output/server/.env'), 'utf8'));
 			if (asked.who === 'nobody') return new Response(null, { status: 401 });
-			if (asked.who === 'outsider' || asked.crossSite) return new Response(null, { status: 403 });
+			if (asked.who === 'outsider' || asked.who === 'elsewhere' || asked.crossSite)
+				return new Response(null, { status: 403 });
 			if (asked.path.startsWith('/api/admin/') && asked.who !== 'administrator')
 				return new Response(null, { status: 403 });
 			if (asked.path === '/api/identity')
@@ -349,6 +352,12 @@ describe('the built Worker smoke runner', () => {
 			({ who, path }) => who === 'outsider' && path.startsWith('/api/admin/'),
 			admitted,
 			'no-app-access-admin-route',
+		],
+		[
+			'admits a User of another Organisation',
+			({ who }) => who === 'elsewhere',
+			admitted,
+			'another-organisation',
 		],
 		[
 			'refuses a User whose App role is member',

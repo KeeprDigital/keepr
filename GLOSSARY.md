@@ -49,7 +49,7 @@ An offer to an email address to join an Organisation with stated roles, which do
 _Avoid_: invite link, sign-up
 
 **App role**:
-A named grant an App defines in the App registry, which a member of an Organisation holds in that App or does not. Operator is one of Stream Keepr's; Organiser is one of Score Keepr's.
+A named grant an App defines in the App registry, which a member of an Organisation holds in that App or does not. Operator is one of Stream Keepr's; Organiser is one of Score Keepr's. It reaches only the data of the Organisation that granted it: a Stream Keepr Installation honours it only from the Organisation the Installation serves (ADR-0161).
 _Avoid_: permission, job title; role alone where an Organisation role could be meant
 
 **App access**:
@@ -87,7 +87,7 @@ Where Installations run: Production, which serves Users, or Staging, which prove
 _Avoid_: stage, env; staging for Stream Keepr's ingestion staging store or Graphics Staging Allowance, which are always written in full
 
 **Installation**:
-One app deployed in one Environment, and the data it holds. Stream Keepr's Staging Installation shares nothing with its Production Installation.
+One app deployed in one Environment, and the data it holds. Stream Keepr's Staging Installation shares nothing with its Production Installation. A Stream Keepr Installation serves one Organisation, which it names, and admits no User working in another, whatever App role that Organisation gave them (ADR-0161).
 _Avoid_: instance, tenant, deployment (the act of deploying)
 
 **Deploy descriptor**:

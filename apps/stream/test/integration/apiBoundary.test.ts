@@ -2,7 +2,7 @@ import { LOCAL_DEVELOPER_COOKIE } from '@keepr/accounts-stand-in/cookie';
 import { describe, expect, it } from 'vitest';
 import { $fetch, anonymousFetch, fetch, url } from './client';
 import { INTEGRATION_OPERATOR_ID } from './environment';
-import { aUserWithoutAccess, aUserWithoutTheRole } from './identities';
+import { aUserOfAnotherOrganisation, aUserWithoutAccess, aUserWithoutTheRole } from './identities';
 
 /**
  * The deny-by-default Session boundary as a request meets it (#396, ADR-0010,
@@ -154,6 +154,25 @@ describe('the API boundary', () => {
 		expect(response.status).toBe(403);
 		expect(body.data?.code).toBe('NO_APP_ACCESS');
 	});
+
+	// ADR-0161: the Installation serves one Organisation. The operator every other
+	// request asks as works in it, and is admitted throughout this suite.
+	it.each([
+		['POST', '/api/events'],
+		['GET', '/api/admin/graphics-assets/health'],
+	])(
+		'refuses a User of another Organisation, with the highest App role: %s %s',
+		async (method, path) => {
+			const response = await fetch(path, {
+				method,
+				headers: { cookie: await aUserOfAnotherOrganisation('api-boundary-elsewhere') },
+			});
+			const body = (await response.json()) as { data?: { code?: string } };
+
+			expect(response.status).toBe(403);
+			expect(body.data?.code).toBe('NO_APP_ACCESS');
+		},
+	);
 
 	it('admits a User whose App role is member, who is no Graphics Administrator', async () => {
 		const response = await fetch('/api/events', {

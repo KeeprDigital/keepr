@@ -47,6 +47,19 @@ export async function aUserWithoutAccess(label: string): Promise<string> {
 	return standInCookie({ user: label, name: `Integration ${label}`, apps: { stream: null } });
 }
 
+/**
+ * A User of another Organisation, with the highest App role that Organisation
+ * can give: what every route refuses 403, as it refuses a User with no App
+ * access (ADR-0161).
+ */
+export async function aUserOfAnotherOrganisation(label: string): Promise<string> {
+	return standInCookie({
+		user: label,
+		name: `Integration ${label}`,
+		organisation: { id: `${label}-org`, role: 'owner' },
+	});
+}
+
 let browsers = 1;
 
 /**

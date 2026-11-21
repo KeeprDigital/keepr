@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { eventRealtimeChannel, screenRealtimeChannel } from '../../shared/utils/realtimeChannels';
 import { $fetch, fetch } from './client';
 import { INTEGRATION_SIGNED_OUT_COOKIE } from './environment';
-import { aUserWithoutAccess } from './identities';
+import { aUserOfAnotherOrganisation, aUserWithoutAccess } from './identities';
 import { executeIntegrationD1 } from './integrationD1';
 import {
 	connectRealtime,
@@ -239,6 +239,13 @@ describe('a Session', () => {
 		[
 			'its User has no App access to Stream Keepr',
 			async () => ({ ...OPERATOR_PAGE, cookie: await aUserWithoutAccess('realtime-outsider') }),
+		],
+		[
+			'its User works in another Organisation',
+			async () => ({
+				...OPERATOR_PAGE,
+				cookie: await aUserOfAnotherOrganisation('realtime-elsewhere'),
+			}),
 		],
 	])('is refused its socket when %s, and let in otherwise', async (_case, headers) => {
 		const eventId = await createEvent();

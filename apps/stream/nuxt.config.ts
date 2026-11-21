@@ -1,4 +1,5 @@
 import type { MutationBodyMethod } from '@keepr/nuxt-layer/shared/utils/requestBodyLimits';
+import { LOCAL_ORGANISATION_ID } from '@keepr/accounts-stand-in/cookie';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { APPLICATION_FONTS_OPTIONS, dropFontAssetsFromManifest } from './build/applicationFonts';
@@ -65,6 +66,16 @@ export default defineNuxtConfig({
 		meleeCredentialEncryptionKey: '',
 		meleeCredentialKeyVersion: '',
 		meleeCredentialEncryptionPreviousKeys: '',
+		// The Organisation this Installation serves (ADR-0161): a Worker secret
+		// each Installation sets, and unset, every request is refused.
+		installationOrganisationId: '',
+	},
+
+	// `nuxt dev`, and the integration servers it runs, name the Accounts
+	// Stand-in's Organisation, so the Local Developer User is admitted. A build
+	// never does: a deployed Installation names its own.
+	$development: {
+		runtimeConfig: { installationOrganisationId: LOCAL_ORGANISATION_ID },
 	},
 
 	modules: [

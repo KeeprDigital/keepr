@@ -2,7 +2,11 @@ import type { StandInPersona } from '@keepr/accounts-stand-in/standIn';
 import type { H3Event } from 'h3';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { Socket } from 'node:net';
-import { createAccountsStandIn, standInCookie } from '@keepr/accounts-stand-in/standIn';
+import {
+	createAccountsStandIn,
+	LOCAL_ORGANISATION_ID,
+	standInCookie,
+} from '@keepr/accounts-stand-in/standIn';
 import { IDENTITY_PROOF_PATH } from '@keepr/nuxt-layer/shared/utils/identityProof';
 import { askedUserIds, USER_NAMES_PATH } from '@keepr/nuxt-layer/shared/utils/userNames';
 import { createError, createEvent, getRequestURL } from 'h3';
@@ -95,8 +99,26 @@ export function workerRequest({
 	return event;
 }
 
+/**
+ * The runtime configuration server code reads: the Installation's Organisation
+ * is the stand-in's, as every local Installation names it.
+ */
+const runtimeConfig: { installationOrganisationId?: string } = {
+	installationOrganisationId: LOCAL_ORGANISATION_ID,
+};
+
+/** Names `value` as the Installation's Organisation; answers what puts it back. */
+export function nameInstallationOrganisation(value: string | undefined): () => void {
+	const before = runtimeConfig.installationOrganisationId;
+	runtimeConfig.installationOrganisationId = value;
+	return () => {
+		runtimeConfig.installationOrganisationId = before;
+	};
+}
+
 /** The h3 names Nitro auto-imports into server code, as the real ones. */
 export function stubServerGlobals() {
+	vi.stubGlobal('useRuntimeConfig', () => runtimeConfig);
 	vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
 	vi.stubGlobal('getRequestURL', getRequestURL);
 	vi.stubGlobal('createError', createError);

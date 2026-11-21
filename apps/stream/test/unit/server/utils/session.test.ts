@@ -3,6 +3,7 @@ import { beginWriteTiming, logWriteTiming, writeTimingOf } from '~~/server/utils
 import {
 	A_MEMBER,
 	AN_OUTSIDER,
+	nameInstallationOrganisation,
 	type Asker,
 	keeprAccountsBinding,
 	SIGNED_OUT,
@@ -111,6 +112,40 @@ describe('requestIdentity', () => {
 		});
 	});
 
+	// ADR-0161: one Installation serves one Organisation. A User working in any
+	// other, or in none, is refused as one with no App access, whatever their App role.
+	it.each([
+		['another Organisation', { id: 'elsewhere', role: 'owner' }],
+		['no Organisation', null],
+	] as const)(
+		'refuses a User with the highest App role working in %s',
+		async (_case, organisation) => {
+			const event = request({ user: 'mallory', organisation, apps: { stream: 'admin' } });
+
+			await expect(requestIdentity(event)).rejects.toMatchObject({
+				statusCode: 403,
+				data: { code: 'NO_APP_ACCESS' },
+			});
+		},
+	);
+
+	// Unset, it admits no Organisation, rather than every one.
+	it.each([
+		['unset', undefined],
+		['blank', '  '],
+	])(
+		'refuses everyone, 503, while the Installation names no Organisation: %s',
+		async (_case, value) => {
+			const restore = nameInstallationOrganisation(value);
+			try {
+				expect(await statusOf(requestIdentity(request(A_MEMBER)))).toBe(503);
+				expect(await statusOf(requestIdentity(request(SIGNED_OUT)))).toBe(503);
+			} finally {
+				restore();
+			}
+		},
+	);
+
 	// Nothing a request carries stands in for an Identity Proof.
 	it.each([
 		['a header naming a User', { 'x-user-id': 'ada', authorization: 'Bearer ada' }],
@@ -156,6 +191,10 @@ describe('optionalIdentity, for a route another credential may admit', () => {
 			() => request({ user: 'cut-off' }, UNREACHABLE),
 		],
 		['anyone while Keepr Accounts is not bound', () => request({ user: 'unbound' }, {})],
+		[
+			'a User of another Organisation',
+			() => request({ user: 'mallory', organisation: { id: 'elsewhere', role: 'owner' } }),
+		],
 	])('answers nobody for %s', async (_case, event) => {
 		expect(await optionalIdentity(event())).toBeNull();
 	});
