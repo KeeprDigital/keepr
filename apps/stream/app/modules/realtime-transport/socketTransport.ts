@@ -23,6 +23,13 @@ export interface SocketRealtimeTransportOptions {
 	 * with `RefusedError` says this client was refused, which `tokenError` reports.
 	 */
 	address: (eventId: number) => string | PromiseLike<string>;
+	/**
+	 * What the page presents for its sockets now, read as it asks for anything: a
+	 * Screen Output Asset Capability, or `null` for its Session. A change cuts the
+	 * Event's socket, so it is admitted afresh on what the page now holds
+	 * (ADR-0162). None given: the page's credential never changes.
+	 */
+	credential?: () => string | null;
 	/** What each Event's client transport is made with besides: a test's socket, clock and timings. */
 	socket?: Omit<SocketTransportOptions, 'address'>;
 	/** The page whose `online` and `visibilitychange` cut the wait before a retry. The runtime's own when not given. */
@@ -40,6 +47,8 @@ interface EventSocket {
 	readonly stopCheckingOnPageEvents: () => void;
 	/** The error last reported for the channels its object refused, kept while they are the same. */
 	channelRefusal: Error | null;
+	/** What the page presented when this socket was last asked for. */
+	credential: string | null;
 }
 
 /**
@@ -69,8 +78,13 @@ function randomId(): string {
  *   a Screen Output is a ticket fetched. The page is on an Event from the first
  *   thing asked of it, its room included, until it asks something of another
  *   Event, leaves that Event's room for none, or goes away. An Event it has left
- *   closes its socket with the last thing still asked there, and keeps its
- *   client transport for a return.
+ *   closes its socket and forgets everything asked there (ADR-0162). Asking
+ *   something of an Event left does not take the page back there: a component
+ *   of the page it left may still be tearing down. Only `setRoom` does, and
+ *   what was asked of the Event meanwhile is made then.
+ * - **A page whose credential changes** is admitted afresh: a Screen Output
+ *   that changes Screen, or a navigation that gains or loses a capability, cuts
+ *   its Event's socket and asks its address again, keeping what it asked.
  * - **A page on no Event is standing by**, `initialized`, where the client
  *   transport says `closed`: it has lost nothing. Only `dispose` reports
  *   `closed`. `suspended` is the client transport's fault, reported once it has
@@ -91,7 +105,19 @@ export function createSocketRealtimeTransport(
 	/** The Event last asked for, whose socket the port reports. */
 	let current: EventSocket | null = null;
 	/** The Event the page is on, and what ends the hold that keeps its socket. */
-	let stayed: { readonly socket: EventSocket; readonly release: () => void } | null = null;
+	let stayed: {
+		readonly eventId: number;
+		readonly socket: EventSocket;
+		readonly release: () => void;
+	} | null = null;
+	/** The Events the page has left, which only `setRoom` takes it back to. */
+	const left = new Set<number>();
+	/**
+	 * What was asked of each Event left, since it was left: made once the room
+	 * takes the page back there, so a component that mounts before its page's
+	 * room is set is not left deaf, and never otherwise.
+	 */
+	const waiting = new Map<number, Set<() => void>>();
 	let disposed = false;
 	/** Read by every reported value and written when any may have changed, so each is reactive. */
 	const reported = shallowRef(0);
@@ -110,12 +136,25 @@ export function createSocketRealtimeTransport(
 		return (eventId == null ? undefined : sockets.get(eventId)) ?? null;
 	}
 
-	/** The page is on `socket`'s Event, or on none: hold that socket open, and let go of the one it was on. */
-	function stayOn(socket: EventSocket | null) {
+	/**
+	 * The page is on the Event of `eventId`, or on none: hold its socket open, and
+	 * end the Event it was on, its socket and everything asked there.
+	 */
+	function stayOn(eventId: number | null, socket: EventSocket | null) {
 		if (stayed?.socket === socket) return;
-		const left = stayed;
-		stayed = socket && { socket, release: socket.transport.hold() };
-		left?.release();
+		const leaving = stayed;
+		stayed =
+			socket && eventId !== null ? { eventId, socket, release: socket.transport.hold() } : null;
+		if (!leaving) return;
+		leaving.release();
+		left.add(leaving.eventId);
+		sockets.delete(leaving.eventId);
+		leaving.socket.stopCheckingOnPageEvents();
+		leaving.socket.transport.dispose();
+		if (current === leaving.socket) {
+			current = null;
+			report();
+		}
 	}
 
 	/**
@@ -131,6 +170,9 @@ export function createSocketRealtimeTransport(
 			console.warn(`Realtime channel "${channel}" names no Event, so nothing is heard on it`);
 			return null;
 		}
+		// What is left behind is asked of no more: only the room takes the page back.
+		if (left.has(eventId)) return null;
+		const credential = options.credential?.() ?? null;
 		let socket = sockets.get(eventId);
 		if (!socket) {
 			const transport = createSocketTransport({
@@ -141,17 +183,42 @@ export function createSocketRealtimeTransport(
 				transport,
 				stopCheckingOnPageEvents: checkOnPageEvents(transport, options.page),
 				channelRefusal: null,
+				credential,
 			};
 			sockets.set(eventId, socket);
 			transport.onChange(report);
+		} else if (socket.credential !== credential) {
+			socket.credential = credential;
+			socket.transport.reconnect();
 		}
 		const answer = of(socket.transport);
-		stayOn(socket);
+		// Reported first, so what is reported goes from one Event to the next.
 		if (current !== socket) {
 			current = socket;
 			report();
 		}
+		stayOn(eventId, socket);
 		return answer;
+	}
+
+	/**
+	 * Ask for something its consumer later ends, of the Event `channel` names. Of
+	 * an Event the page has left, it waits for the room to take the page back.
+	 */
+	function subscribe(channel: string, of: (socket: SocketTransport) => Unsubscribe): Unsubscribe {
+		const eventId = realtimeChannelEventId(channel);
+		if (disposed || eventId == null || !left.has(eventId)) return ask(channel, of) ?? (() => {});
+		let stop: Unsubscribe | null = null;
+		const start = () => {
+			stop = ask(channel, of);
+		};
+		let pending = waiting.get(eventId);
+		if (!pending) waiting.set(eventId, (pending = new Set()));
+		pending.add(start);
+		return () => {
+			waiting.get(eventId)?.delete(start);
+			stop?.();
+		};
 	}
 
 	function connectionState(): RealtimeConnectionState['connectionState'] {
@@ -177,13 +244,11 @@ export function createSocketRealtimeTransport(
 		type: T,
 		handler: RealtimeHandler<T>,
 	): Unsubscribe {
-		return (
-			ask(channel, (socket) =>
-				socket.onMessage(channel, type, (data, frame) =>
-					// The server publishes a message whole, as `createMessage` builds it.
-					handler(data as MessageData<T>, frame),
-				),
-			) ?? (() => {})
+		return subscribe(channel, (socket) =>
+			socket.onMessage(channel, type, (data, frame) =>
+				// The server publishes a message whole, as `createMessage` builds it.
+				handler(data as MessageData<T>, frame),
+			),
 		);
 	}
 
@@ -226,20 +291,29 @@ export function createSocketRealtimeTransport(
 		},
 
 		setRoom(room) {
-			if (currentRoom === room) return;
-			const left = [...roomSubscriptions.values()].flat();
+			const roomEventId = room ? realtimeChannelEventId(room) : null;
+			// The same room again is nothing new, unless the page has since left its Event.
+			if (currentRoom === room && (roomEventId == null || !left.has(roomEventId))) return;
+			const leftSubscriptions = [...roomSubscriptions.values()].flat();
 			const leftRoom = currentRoom;
 			roomSubscriptions.clear();
 			currentRoom = room;
 			if (room) {
+				// The room is the page's own word: it may take the page back to an Event it left.
+				if (roomEventId != null) left.delete(roomEventId);
 				for (const owner of roomHandlers.keys()) joinRoom(owner);
 				// The room is declared intent: the page is on its Event before any handler is.
 				ask(room, () => {});
+				const returned = roomEventId == null ? undefined : waiting.get(roomEventId);
+				if (returned) {
+					waiting.delete(roomEventId!);
+					for (const start of returned) start();
+				}
 			}
 			// Left only once the new room is joined, so a move within an Event keeps its socket.
-			for (const unsubscribe of left) unsubscribe();
+			for (const unsubscribe of leftSubscriptions) unsubscribe();
 			// In no room, the page has left the Event its room was in.
-			if (!room && leftRoom && stayed?.socket === socketOf(leftRoom)) stayOn(null);
+			if (!room && leftRoom && stayed && stayed.socket === socketOf(leftRoom)) stayOn(null, null);
 		},
 
 		onRoom(owner, handlers: Partial<RealtimeRoomHandlers>) {
@@ -260,11 +334,11 @@ export function createSocketRealtimeTransport(
 		onChannel: hear,
 
 		onContinuityLost(channel, handler) {
-			return ask(channel, (socket) => socket.onContinuityLost(channel, handler)) ?? (() => {});
+			return subscribe(channel, (socket) => socket.onContinuityLost(channel, handler));
 		},
 
 		onceAttached(channel, handler) {
-			return ask(channel, (socket) => socket.onceAttached(channel, handler)) ?? (() => {});
+			return subscribe(channel, (socket) => socket.onceAttached(channel, handler));
 		},
 
 		// The client transport holds an entry it cannot make yet, so none of these
@@ -285,15 +359,13 @@ export function createSocketRealtimeTransport(
 			channel: string,
 			callback: RealtimePresenceCallback<Data>,
 		) {
-			return (
-				ask(channel, (socket) =>
-					socket.watchPresence(channel, (members) =>
-						// The one place the presence payload is asserted rather than checked: the
-						// wire carries whatever a member entered with. Declared partial, so every
-						// reader still has to look.
-						callback(members as RealtimePresenceMessage<Data>[]),
-					),
-				) ?? (() => {})
+			return subscribe(channel, (socket) =>
+				socket.watchPresence(channel, (members) =>
+					// The one place the presence payload is asserted rather than checked: the
+					// wire carries whatever a member entered with. Declared partial, so every
+					// reader still has to look.
+					callback(members as RealtimePresenceMessage<Data>[]),
+				),
 			);
 		},
 
@@ -309,6 +381,8 @@ export function createSocketRealtimeTransport(
 			roomSubscriptions.clear();
 			current = null;
 			stayed = null;
+			left.clear();
+			waiting.clear();
 			currentRoom = null;
 			report();
 		},

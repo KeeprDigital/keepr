@@ -366,6 +366,49 @@ function sharedStoreFake() {
 	};
 }
 
+// A socket's upgrade is answered by the runtime, so its port cannot pass a
+// renewed Session on: it asks without taking the renewal, which the next
+// request the browser makes is then sent (ADR-0162).
+describe('a question that cannot pass cookies on', () => {
+	const renewal = [expect.stringMatching(/better-auth\.session_token=.*Max-Age=604800/)];
+	type Resolve = ReturnType<typeof createIdentityResolver<'stream'>>;
+
+	it.each<[string, (resolve: Resolve) => Promise<void>]>([
+		[
+			'Keepr Accounts renews as it is asked',
+			async (resolve) => {
+				await resolve({ cookie, accounts: connection, waitUntil });
+				later(2 * DAY_MS);
+			},
+		],
+		[
+			'a refresh in the background renewed',
+			async (resolve) => {
+				// Keepr Accounts renews a Session once it is a day old: here, at the refresh.
+				later(DAY_MS - 2 * MINUTE_MS);
+				await resolve({ cookie, accounts: connection, waitUntil });
+				later(3 * MINUTE_MS);
+				expect(await resolve({ cookie, accounts: connection, waitUntil })).toMatchObject({
+					proof: 'refreshing',
+					setCookie: [],
+				});
+				await Promise.all(pending);
+			},
+		],
+	])('leaves a Session %s for the next answer that can pass it on', async (_case, renew) => {
+		const resolve = createIdentityResolver('stream');
+		await renew(resolve);
+
+		const socket = await resolve({ cookie, accounts: connection, waitUntil, passesCookies: false });
+		const next = await resolve({ cookie, accounts: connection, waitUntil });
+		const then = await resolve({ cookie, accounts: connection, waitUntil });
+
+		expect(socket).toMatchObject({ kind: 'signed-in', setCookie: [] });
+		expect(next.setCookie).toEqual(renewal);
+		expect(then.setCookie).toEqual([]);
+	});
+});
+
 /** The origin a Worker was reached on: an Installation's own. */
 const INSTALLATION = 'https://stream.keepr.digital';
 

@@ -13,6 +13,22 @@ const REALTIME_TICKET_PATH = '/api/realtime/ticket';
 /** The statuses by which the ticket's route says this output may not, as distinct from could not be answered. */
 const REFUSED_STATUSES = [401, 403];
 
+/** How many refusals in a row are asked about each time the transport retries. */
+const REFUSALS_ASKED_EACH_TIME = 4;
+/** The wait after the first refusal past those, doubled after each later one. */
+const REFUSED_ASK_FIRST_WAIT_MS = 60_000;
+/** The longest a refused capability waits before its ticket is asked for again. */
+const REFUSED_ASK_CEILING_MS = 10 * 60_000;
+
+/** How long a capability refused `refusals` times in a row waits before it is asked about again. */
+function refusedAskWaitMs(refusals: number): number {
+	if (refusals <= REFUSALS_ASKED_EACH_TIME) return 0;
+	return Math.min(
+		REFUSED_ASK_FIRST_WAIT_MS * 2 ** (refusals - REFUSALS_ASKED_EACH_TIME - 1),
+		REFUSED_ASK_CEILING_MS,
+	);
+}
+
 /** The HTTP status a failed `$fetch` carries, when the server answered at all. */
 function answeredStatus(error: unknown): number | undefined {
 	const { statusCode, response } = error as {
@@ -55,6 +71,17 @@ export default defineNuxtPlugin({
 		}
 
 		/**
+		 * What each capability's ticket route last refused, by Event. An output
+		 * that can never be let in, its Screen deleted or its capability
+		 * regenerated, is refused again without a request until its wait is out
+		 * (ADR-0162): the transport's every-30-s retries cost the server nothing.
+		 */
+		const refused = new Map<
+			string,
+			{ refusals: number; askAfter: number; refusal: RefusedError }
+		>();
+
+		/**
 		 * A Realtime Ticket for one socket of `eventId`, for the capability this page holds.
 		 *
 		 * Refused (401, 403) rejects with `RefusedError`, which the transport
@@ -64,6 +91,9 @@ export default defineNuxtPlugin({
 		 * may not hear.
 		 */
 		async function ticketFor(eventId: number, capability: string): Promise<string> {
+			const key = `${eventId}\n${capability}`;
+			const held = refused.get(key);
+			if (held && Date.now() < held.askAfter) throw held.refusal;
 			let answer: { ticket?: unknown };
 			try {
 				answer = await $fetch<{ ticket?: unknown }>(REALTIME_TICKET_PATH, {
@@ -73,12 +103,24 @@ export default defineNuxtPlugin({
 				});
 			} catch (error) {
 				const status = answeredStatus(error);
-				if (status !== undefined && REFUSED_STATUSES.includes(status))
-					throw new RefusedError(`No Realtime Ticket for this Screen Output (${status})`, {
-						cause: error,
+				if (status !== undefined && REFUSED_STATUSES.includes(status)) {
+					const refusal = new RefusedError(
+						`No Realtime Ticket for this Screen Output (${status})`,
+						{
+							cause: error,
+						},
+					);
+					const refusals = (held?.refusals ?? 0) + 1;
+					refused.set(key, {
+						refusals,
+						askAfter: Date.now() + refusedAskWaitMs(refusals),
+						refusal,
 					});
+					throw refusal;
+				}
 				throw error;
 			}
+			refused.delete(key);
 			// An answer with no ticket is the server's defect, not its refusal.
 			if (typeof answer?.ticket !== 'string' || answer.ticket === '')
 				throw new Error('The Realtime Ticket route answered with no ticket');
@@ -92,7 +134,11 @@ export default defineNuxtPlugin({
 			return `${socketAddress(eventId)}&ticket=${encodeURIComponent(ticket)}`;
 		}
 
-		const transport = createSocketRealtimeTransport({ address });
+		// A page that changes what it holds is admitted afresh on it (ADR-0162).
+		const transport = createSocketRealtimeTransport({
+			address,
+			credential: () => screenOutputAssetCapabilityFromHash(window.location.hash) ?? null,
+		});
 
 		// `pagehide`, not `beforeunload`: the latter also fires when the operator
 		// then picks "Stay" on the unsaved-changes prompt, and the page that stays

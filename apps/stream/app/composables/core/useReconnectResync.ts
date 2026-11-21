@@ -83,7 +83,6 @@ export function useReconnectResync(
 		return (
 			realtime.connectionState === 'disconnected' ||
 			realtime.connectionState === 'suspended' ||
-			realtime.connectionState === 'failed' ||
 			realtime.connectionState === 'closed'
 		);
 	});

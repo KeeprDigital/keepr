@@ -383,7 +383,9 @@ describe("a publish on the Event's channel whose call fails", () => {
 		},
 	);
 
-	// Refused twice and no more: a third attempt would be answered, and deliver.
+	// Twice failed with nothing to finish after the answer (a scheduled tick):
+	// the write stands, no page is told, and the log line is the only witness,
+	// until a page's next resync or an output's healthy re-read (ADR-0162).
 	it.each(HELPERS)(
 		'is attempted twice by $helper and never a third time, then fails as it does',
 		async ({ strict }) => {
@@ -414,6 +416,65 @@ describe("a publish on the Event's channel whose call fails", () => {
 			);
 		},
 	);
+});
+
+// A deploy resets an object for longer than two calls in a row take. Where the
+// request can finish work after its answer, the write answers and the publish
+// is tried again behind it, waiting longer each time (ADR-0162).
+describe('a publish that failed twice, in a request that can finish after its answer', () => {
+	let finishing: Promise<unknown>[];
+	beforeEach(() => {
+		vi.useFakeTimers();
+		finishing = [];
+		const request = stubH3Event({
+			context: {
+				cloudflare: { context: { waitUntil: (work: Promise<unknown>) => finishing.push(work) } },
+			},
+		});
+		vi.stubGlobal('useEvent', () => request);
+		return () => {
+			vi.useRealTimers();
+			Reflect.deleteProperty(globalThis, 'useEvent');
+		};
+	});
+
+	async function publishTwiceFailed(failures: number) {
+		realtime.refuse('event:7', failures);
+		const { publishMessage } = await import('~~/server/utils/realtimePublish');
+		const { PUBLISH_RETRY_AFTER_ANSWER_MS } = await import('~~/server/utils/realtimeRetry');
+		await publishMessage(7, 'event:deleted', { eventId: 7 });
+		return PUBLISH_RETRY_AFTER_ANSWER_MS;
+	}
+
+	it('answers after two calls, and delivers on a later one, each after a longer wait', async () => {
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const waits = await publishTwiceFailed(3);
+		expect(realtime.calls).toHaveLength(2);
+		expect(waits[1]!).toBeGreaterThan(waits[0]!);
+
+		await vi.advanceTimersByTimeAsync(waits[0]! - 1);
+		expect(realtime.calls).toHaveLength(2);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(realtime.calls).toHaveLength(3);
+		await vi.advanceTimersByTimeAsync(waits[1]!);
+		await Promise.all(finishing);
+
+		expect(realtime.calls).toHaveLength(4);
+		expect(realtime.on('event:7')).toHaveLength(1);
+		expect(errorSpy.mock.calls.filter(isPublishFailureLine)).toEqual([]);
+	});
+
+	it('gives up after its last wait, and logs the failure once', async () => {
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const waits = await publishTwiceFailed(Number.POSITIVE_INFINITY);
+
+		await vi.advanceTimersByTimeAsync(waits.reduce((total, ms) => total + ms, 0));
+		await Promise.all(finishing);
+
+		expect(realtime.calls).toHaveLength(2 + waits.length);
+		expect(realtime.published).toEqual([]);
+		expect(errorSpy.mock.calls.filter(isPublishFailureLine)).toHaveLength(1);
+	});
 });
 
 // ──────────────── the oversized-message diagnostic ────────────────

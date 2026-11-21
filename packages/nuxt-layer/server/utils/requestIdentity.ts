@@ -83,6 +83,8 @@ interface Question {
 	shared: SharedIdentityRecords | undefined;
 	/** The Keepr Accounts of the App's Environment, which the request is asked of. */
 	accountsOrigin: string;
+	/** Whether its answer reaches the browser: a socket's port's never does. */
+	passesCookies: boolean;
 }
 
 /** Keepr Accounts' keys as this isolate holds them, and when they were fetched. */
@@ -496,7 +498,8 @@ export function createIdentityResolver<App extends AppId>(
 		return {
 			kind: 'signed-in',
 			identity: proof.identity,
-			setCookie: await renewedCookiesOf(cookie, proof, question),
+			// Left for the next answer that reaches the browser.
+			setCookie: question.passesCookies ? await renewedCookiesOf(cookie, proof, question) : [],
 			proof: refreshes ? 'refreshing' : 'cached',
 		};
 	}
@@ -509,17 +512,22 @@ export function createIdentityResolver<App extends AppId>(
 	 * `ctx.waitUntil` does. `origin` is the origin the Worker was reached on:
 	 * which Environment's Keepr Accounts is asked, and where the shared records
 	 * are kept. With none, production's is asked and nothing is shared.
+	 * `passesCookies` is false for a request whose answer never reaches the
+	 * browser, as a realtime socket's port's does not: it is sent no cookie, and
+	 * a Session Keepr Accounts renewed is kept for the next answer that is.
 	 */
 	return async function resolve({
 		cookie: header,
 		accounts,
 		waitUntil,
 		origin,
+		passesCookies = true,
 	}: {
 		cookie?: string | undefined;
 		accounts: AccountsConnection;
 		waitUntil?: ((promise: Promise<unknown>) => void) | undefined;
 		origin?: string | undefined;
+		passesCookies?: boolean | undefined;
 	}): Promise<IdentityAnswer<App>> {
 		const cookie = keeprAccountsCookies(header);
 		// Keepr Accounts knows nobody without a cookie of its own: not worth asking (ADR-0158).
@@ -528,6 +536,7 @@ export function createIdentityResolver<App extends AppId>(
 			defer: (promise) => waitUntil?.(promise),
 			shared: sharedStore && origin ? sharedIdentityRecords(sharedStore, app, origin) : undefined,
 			accountsOrigin: keeprAccountsOriginFor(origin),
+			passesCookies,
 		};
 		if ((signedOut.get(cookie) ?? 0) > Date.now()) return { kind: 'signed-out', setCookie: [] };
 		const held = proofs.get(cookie);
@@ -544,6 +553,15 @@ export function createIdentityResolver<App extends AppId>(
 		}
 
 		const { answer, cached } = await ask(accounts, cookie, question);
+		if (!passesCookies) {
+			// Nothing this answers reaches the browser: what Keepr Accounts renewed
+			// waits with the proof for the next answer that does.
+			if (cached) {
+				remember(cookie, { ...cached, renewedCookies: answer.setCookie });
+				void share(cookie, cached, answer.setCookie, question);
+			} else if (answer.kind === 'signed-out') rememberSignedOut(cookie);
+			return { ...answer, setCookie: [] };
+		}
 		if (cached) {
 			remember(cookie, cached);
 			// This answer passes its cookies on itself, so the shared record holds none.
@@ -610,7 +628,9 @@ const UNAVAILABLE_MESSAGE = 'Keepr Accounts could not be asked who you are. Try 
 /**
  * Who the request belongs to, as `app` sees them. An App's "who am I" route
  * answers with this, at `IDENTITY_PATH`. Passes any Session Keepr
- * Accounts renewed on to the browser. A signed-out visitor is refused 401; with
+ * Accounts renewed on to the browser, unless `passesCookies` says its answer
+ * never reaches one, as a realtime socket's port's does not. A signed-out
+ * visitor is refused 401; with
  * no Identity Proof to trust and no answer from Keepr Accounts, 503 in one
  * sentence. Why goes to the log: what failed upstream, or how to start the
  * Accounts Stand-in, is the operator's to read, not every caller's.
@@ -619,12 +639,14 @@ export async function resolveRequestIdentity<App extends AppId>(
 	event: H3Event,
 	app: App,
 	resolver: IdentityResolver<App> = resolverFor(app),
+	{ passesCookies = true }: { passesCookies?: boolean } = {},
 ): Promise<Identity<App>> {
 	const answer = await resolver({
 		cookie: getRequestHeader(event, 'cookie'),
 		accounts: accountsConnectionOf(event),
 		waitUntil: (promise) => waitUntilOf(event)?.(promise),
 		origin: workerOriginOf(event),
+		passesCookies,
 	});
 	for (const value of answer.setCookie) appendResponseHeader(event, 'set-cookie', value);
 	if (answer.kind === 'signed-in') return answer.identity;

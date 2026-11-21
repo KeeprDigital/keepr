@@ -34,7 +34,7 @@ const accounts = keeprAccountsBinding();
 
 describe('the admin surface', () => {
 	it('is found at all, so this cannot pass by running nothing', () => {
-		expect(adminRouteFiles.length).toBe(18);
+		expect(adminRouteFiles.length).toBe(19);
 	});
 
 	it.each(adminRouteFiles)('%s refuses a member, 403', async (file) => {

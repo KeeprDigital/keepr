@@ -16,6 +16,33 @@ import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequen
 export const SCREEN_MODE_REREAD_MS = 15_000;
 
 /**
+ * How often a mode re-reads while realtime is healthy. A publish can be lost
+ * after its retries (ADR-0162), and then nothing announces what it carried:
+ * this bounds how long program can show it stale.
+ */
+export const SCREEN_MODE_HEALTHY_REREAD_MS = 120_000;
+
+/** How many reads in a row may fail before the slow cadence starts to stretch: a minute of them. */
+const FAILURES_AT_THE_SLOW_CADENCE = 4;
+
+/** The longest a mode waits between re-reads, however long its reads have failed. */
+export const SCREEN_MODE_REREAD_CEILING_MS = 300_000;
+
+/**
+ * The wait before the next re-read after `failures` reads failed in a row: the
+ * slow cadence for the first minute, then twice as long each time, up to the
+ * ceiling. An output that can never read again, its Screen deleted or its
+ * capability regenerated, stops asking every 15 s (ADR-0162).
+ */
+function slowRereadMs(failures: number): number {
+	if (failures <= FAILURES_AT_THE_SLOW_CADENCE) return SCREEN_MODE_REREAD_MS;
+	return Math.min(
+		SCREEN_MODE_REREAD_MS * 2 ** (failures - FAILURES_AT_THE_SLOW_CADENCE),
+		SCREEN_MODE_REREAD_CEILING_MS,
+	);
+}
+
+/**
  * Whether one message on the channel a mode hears touches what it holds, per
  * message type. `true` means every such message does.
  */
@@ -82,7 +109,10 @@ export interface ScreenModeFreshnessOptions<T> {
  *   before anything listened, and that attach reports no continuity loss
  *   (ADR-0023, #733);
  * - **retry** — on the same slow cadence after the latest read failed, because
- *   the change that asked for it will not be announced again.
+ *   the change that asked for it will not be announced again; after a minute of
+ *   failures, ever more rarely, up to every five minutes;
+ * - **healthy re-read** — every two minutes otherwise, because a publish lost
+ *   after its retries is announced to nobody (ADR-0162).
  *
  * A message or the first attach heard while a read is in flight asks for one
  * follow-up once that read settles rather than superseding it, so a burst
@@ -101,13 +131,30 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 	const display = useBroadcastDisplayData<T>({ initialData: options.initialData });
 	let refreshQueued = false;
 	const reads = createGuardedSequence();
-	let retry: ReturnType<typeof setTimeout> | null = null;
+	/** The next re-read, of whichever cadence applies now. */
+	let next: ReturnType<typeof setTimeout> | null = null;
+	/** How many reads in a row have failed. */
+	let failures = 0;
+	/** Whether realtime cannot tell the mode about changes just now: set below. */
+	let degraded = () => false;
 
-	function stopRetry() {
-		if (retry !== null) {
-			clearTimeout(retry);
-			retry = null;
+	function stopNext() {
+		if (next !== null) {
+			clearTimeout(next);
+			next = null;
 		}
+	}
+
+	/**
+	 * Re-read after the wait that applies now, counted from this moment: the
+	 * slow cadence while degraded or after a failed read, the healthy one
+	 * otherwise. One timer for every cadence, so none doubles another.
+	 */
+	function scheduleNext() {
+		stopNext();
+		if (options.source() == null) return;
+		const ms = failures > 0 || degraded() ? slowRereadMs(failures) : SCREEN_MODE_HEALTHY_REREAD_MS;
+		next = setTimeout(queueRefresh, ms);
 	}
 
 	/** The read in flight: when it began, and whether a load asked for it. */
@@ -126,7 +173,7 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 
 	/** Reads now, superseding any read in flight. */
 	function refresh(load = false) {
-		stopRetry();
+		stopNext();
 		stopOverdue();
 		followUpAsked = null;
 		reading = null;
@@ -145,6 +192,8 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 			overdue = null;
 			if (flight.current && reading && followUpAsked) refresh();
 		}, SCREEN_MODE_REREAD_MS);
+		// A read can hang: the next is due all the same.
+		scheduleNext();
 		void display
 			.refresh(async () => {
 				try {
@@ -155,11 +204,12 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 					// so a steady stream of messages still renders. A first attach
 					// does not: what the load answered is most likely current, so it
 					// renders, and the follow-up only confirms it.
+					if (flight.current) failures = 0;
 					if (flight.current && followUpAsked === 'message' && load) refresh();
 					return answer;
 				} catch (cause) {
 					// Only the latest read's failure leaves program behind.
-					if (flight.current) retry = setTimeout(queueRefresh, SCREEN_MODE_REREAD_MS);
+					if (flight.current) failures += 1;
 					throw cause;
 				}
 			}, options.errorMessage)
@@ -169,6 +219,7 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 				reading = null;
 				stopOverdue();
 				if (followUpAsked) refresh();
+				else scheduleNext();
 			});
 	}
 
@@ -242,29 +293,16 @@ export function useScreenModeFreshness<T>(options: ScreenModeFreshnessOptions<T>
 		if (wasWaiting && !waiting) queueRefresh();
 	});
 
-	// Degraded refetch.
-	let cadence: ReturnType<typeof setInterval> | null = null;
-	function stopCadence() {
-		if (cadence !== null) {
-			clearInterval(cadence);
-			cadence = null;
-		}
-	}
-	watch(
-		() => disconnected.value || waitingOnToken.value,
-		(degraded) => {
-			stopCadence();
-			if (degraded) {
-				cadence = setInterval(queueRefresh, SCREEN_MODE_REREAD_MS);
-			}
-		},
-		{ immediate: true },
-	);
+	// Degraded refetch: the slow cadence from the moment realtime degrades, and
+	// the healthy one again once it recovers, while no read is in flight.
+	degraded = () => disconnected.value || waitingOnToken.value;
+	watch(degraded, () => {
+		if (!reading) scheduleNext();
+	});
 
 	onScopeDispose(() => {
 		unsubscribe();
-		stopCadence();
-		stopRetry();
+		stopNext();
 		stopOverdue();
 		reads.supersede();
 	});

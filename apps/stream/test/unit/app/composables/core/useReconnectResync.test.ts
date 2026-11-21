@@ -63,14 +63,13 @@ describe('useReconnectResync', () => {
 		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
-	// A page's first moments are not a lost connection, so only these four report one.
+	// A page's first moments are not a lost connection, so only these three report one.
 	it.each<[ConnectionState, boolean]>([
 		['initialized', false],
 		['connecting', false],
 		['connected', false],
 		['disconnected', true],
 		['suspended', true],
-		['failed', true],
 		['closed', true],
 	])('a %s connection is disconnected: %s', async (state, expected) => {
 		const { disconnected, connection } = harness();

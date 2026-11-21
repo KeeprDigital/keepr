@@ -1,6 +1,6 @@
 # ADR-0143: A page hears realtime through its Event's object alone, and a refusal replaces the token wait
 
-Accepted · 2026-11-19 · [#1317](https://github.com/KeeprDigital/keepr/issues/1317), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310) · Amends ADR-0010, ADR-0023, ADR-0028 and ADR-0141
+Accepted · 2026-11-19 · [#1317](https://github.com/KeeprDigital/keepr/issues/1317), part of [#1310](https://github.com/KeeprDigital/keepr/issues/1310) · Amends ADR-0010, ADR-0023, ADR-0028 and ADR-0141 · Amended by ADR-0162
 
 ADR-0137 moved realtime onto a Durable Object per Event, and ADR-0140 made the move one cut with no flag: the server's half is #1316, who a socket's caller is #1315, and the pages' half is this. Until now a page connected to Ably with a token from `GET /api/realtime/token`, which covered one Event, so its transport minted, tracked what a token covered, and held each Realtime Subscription until one did. ADR-0023 and ADR-0028 are written in those terms. ADR-0137 said the token-wait clauses become the refusal and left the particulars to the change that made them true.
 

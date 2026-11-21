@@ -96,9 +96,9 @@ export class FakeSocket implements SocketLike {
 		for (const listener of this.listeners.get(type) ?? []) listener(event);
 	}
 
-	/** The Event whose address this socket was opened to. */
+	/** The Event whose address this socket was opened to, as the realtime plugin names it (`?eventId=`). */
 	get eventId(): number {
-		return Number(/\/events\/(\d+)\//.exec(this.url)?.[1]);
+		return Number(new URL(this.url).searchParams.get('eventId'));
 	}
 
 	/** The upgrade is accepted, and the first ping answered: the client is let in. */
@@ -203,7 +203,7 @@ export interface SocketRealtimeRig {
 
 /** The realtime transport over an Event's object, on a fake socket, clock and page. */
 export function socketRealtimeRig(
-	options: Partial<Pick<SocketRealtimeTransportOptions, 'address'>> = {},
+	options: Partial<Pick<SocketRealtimeTransportOptions, 'address' | 'credential'>> = {},
 ): SocketRealtimeRig {
 	const clock = new FakeClock();
 	const sockets: FakeSocket[] = [];
@@ -218,11 +218,12 @@ export function socketRealtimeRig(
 	const realtime = createSocketRealtimeTransport({
 		address: (eventId) => {
 			asked.push(eventId);
-			return options.address?.(eventId) ?? `wss://stream.test/events/${eventId}/realtime`;
+			return options.address?.(eventId) ?? `wss://stream.test/realtime/socket?eventId=${eventId}`;
 		},
 		// No jitter: each retry follows the rhythm's own wait.
 		socket: { WebSocket: Socket, timers: clock, random: () => 0 },
 		page,
+		...(options.credential && { credential: options.credential }),
 	});
 	const socket = async (eventId?: number) => {
 		await settle();

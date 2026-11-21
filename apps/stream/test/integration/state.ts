@@ -70,3 +70,10 @@ export async function resetIntegrationWranglerState(
 		force: true,
 	});
 }
+
+/**
+ * The age at which an integration server's objects close a socket, in place of
+ * Stream Keepr's five minutes, so the admission suite can watch one expire.
+ * Long enough that no other suite's socket meets it mid-case.
+ */
+export const INTEGRATION_REALTIME_SOCKET_MAX_AGE_MS = 15_000;

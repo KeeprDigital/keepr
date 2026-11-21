@@ -66,6 +66,7 @@ function createRealtimeObjectFake() {
 	let asked: { naming: Naming; tell: () => void } | null = null;
 	const disconnects: RealtimeDisconnectCall[] = [];
 	let refusingDisconnects = 0;
+	let disconnecting: ((call: RealtimeDisconnectCall) => unknown) | null = null;
 
 	async function publish(scope: string, sent: readonly Delivery[]): Promise<PublishAnswer[]> {
 		// An RPC's arguments cross as a structured clone, or the call is refused.
@@ -107,6 +108,7 @@ function createRealtimeObjectFake() {
 					const disconnect = async (call: RealtimeDisconnectCall) => {
 						if (broken) throw new Error('This stub is broken: a call on it failed');
 						disconnects.push(call);
+						await disconnecting?.(call);
 						if (refusingDisconnects > 0) {
 							refusingDisconnects -= 1;
 							broken = true;
@@ -136,6 +138,10 @@ function createRealtimeObjectFake() {
 		published,
 		/** Every `disconnect` and `disconnectAll` call made, in order, refused or not. */
 		disconnects,
+		/** Run `listener` as each `disconnect` or `disconnectAll` call arrives, before it answers. */
+		onDisconnect(listener: (call: RealtimeDisconnectCall) => unknown) {
+			disconnecting = listener;
+		},
 		/** Fail the next `times` `disconnect` or `disconnectAll` calls. */
 		refuseDisconnect(times = Number.POSITIVE_INFINITY) {
 			refusingDisconnects = times;
@@ -165,6 +171,7 @@ function createRealtimeObjectFake() {
 			published.length = 0;
 			disconnects.length = 0;
 			refusingDisconnects = 0;
+			disconnecting = null;
 			heads.clear();
 			refusing = [];
 			held = null;

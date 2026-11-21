@@ -977,6 +977,24 @@ describe('deleting a Screen', () => {
 		]);
 	});
 
+	// ADR-0144: once the row is gone, or a closed output is let straight back in;
+	// and first of what follows, so a failure there leaves no socket open.
+	it('closes them once the row is gone, before its Card is cleaned out or the delete announced', async () => {
+		const screen = await stageScreen();
+		const atDisconnect: unknown[] = [];
+		realtime.onDisconnect(async () =>
+			atDisconnect.push({
+				row: await stored(screen.id),
+				cleaned: cleanedCards.length,
+				announced: announced().length,
+			}),
+		);
+
+		await screenWriteModule().deleteScreen({ eventId, screenId: screen.id });
+
+		expect(atDisconnect).toEqual([{ row: undefined, cleaned: 0, announced: 0 }]);
+	});
+
 	describe('when the sockets cannot be closed', () => {
 		let logged: ReturnType<typeof vi.spyOn>;
 		beforeEach(() => {

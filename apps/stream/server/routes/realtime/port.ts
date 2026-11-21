@@ -97,7 +97,9 @@ async function admitSession(event: H3Event, eventId: number): Promise<Admission 
  */
 async function sessionUserId(event: H3Event): Promise<string | null> {
 	try {
-		return (await requestIdentity(event))?.user.id ?? null;
+		// The upgrade's answer is the runtime's, so no cookie reaches the browser
+		// from here: a Session renewed now is left for its next request (ADR-0162).
+		return (await requestIdentity(event, { passesCookies: false }))?.user.id ?? null;
 	} catch (refusal) {
 		if ((refusal as { statusCode?: unknown }).statusCode === 403) return null;
 		throw refusal;

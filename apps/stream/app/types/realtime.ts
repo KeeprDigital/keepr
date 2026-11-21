@@ -13,15 +13,14 @@ export type RealtimeRoomHandlers = {
 
 export interface RealtimeConnectionState {
 	isConnected: boolean;
+	/** The client transport's states (`@keepr/realtime/client`), as the port reports them. */
 	connectionState:
 		| 'initialized'
 		| 'connecting'
 		| 'connected'
 		| 'disconnected'
 		| 'suspended'
-		| 'closing'
-		| 'closed'
-		| 'failed';
+		| 'closed';
 	error: Error | null;
 }
 

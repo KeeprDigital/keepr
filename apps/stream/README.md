@@ -716,7 +716,12 @@ D1's other prefix, as `d1_type_error`) for another D1 refusal, `timeout` for
 another timeout, and `null` where nothing says.
 
 A step's time is the sum of its calls. What no step accounts for is the
-Worker's own computing, which its CPU time shows. To match a probe's `late`
+Worker's own computing, which its CPU time shows. The line is written as the
+response leaves, so it counts only what the write did before answering: the
+notices its Screens are told after the answer (`waitUntil`,
+`server/modules/screen-output-publication`), and a publish retried after it
+(ADR-0162), are in no line. A failure among them logs its own
+`realtime_publish_failed`. To match a probe's `late`
 line, tail Staging's Worker beside the run, from this directory, and keep
 the lines whose `totalMs` is over the mark:
 
@@ -816,6 +821,26 @@ local stores you will reset. Once a deployed installation has applied it,
 correct it forward with a new migration. An in-place edit would leave that
 installation on the old SQL while fresh replays get the new, and nothing would
 report the difference.
+
+### Ending every Event's realtime
+
+A wipe, a new database or a restore hands out again Event ids the database
+issued before, and an Event's realtime object is named by its id. A socket
+still open on that object would hear the new row's channels. So before any of
+them, while the database still knows the highest id it issued, a Graphics
+Administrator ends every Event's realtime, as deleting each Event does: its
+object is sent `event:deleted`, which an operator's page leaves on, and closes
+every socket, refusing every socket for a minute after (ADR-0146, ADR-0162).
+From a signed-in browser on the Installation, in its console:
+
+```js
+await $fetch('/api/admin/realtime/end-events', { method: 'POST', body: {} });
+// → { from: 1, through: <n>, highestEventId: <n> }; past 200 Events, a range at a time:
+await $fetch('/api/admin/realtime/end-events', { method: 'POST', body: { from: 201, through: 400 } });
+```
+
+Then wipe or restore at once. An Event's page or Screen Output left open
+across it is refused until an Event takes its id again.
 
 ## Releases
 
@@ -1335,7 +1360,9 @@ mid-run names the Event it left behind; delete it before rerunning.
    `0000_baseline_2` replaces the history v1.5.0 applied and cannot run over
    it ([Database](#database), ADR-0083). Everything in the database is
    discarded; that is decided (#1121). With nothing on air, and after the
-   recovery point above, a human does one of:
+   recovery point above, a human first
+   [ends every Event's realtime](#ending-every-events-realtime), and then
+   does one of:
 
    - **Replace the database (preferred).** Create a new D1
      (`pnpm exec wrangler d1 create <name>`) and put its id in `wrangler.jsonc`
@@ -1382,7 +1409,9 @@ mid-run names the Event it left behind; delete it before rerunning.
    `wrangler rollback`), then restore any applied migration to the bookmark
    the run recorded
    (`wrangler d1 time-travel restore DB --bookmark=<bookmark>`, as its step
-   summary says). The `stream/<environment>` marker stays `pending` until the
+   summary says), having first
+   [ended every Event's realtime](#ending-every-events-realtime) while the
+   database still knows the ids it issued since. The `stream/<environment>` marker stays `pending` until the
    next deploy confirms one, which is accurate: the rollback is not recorded.
    Then follow
    [Recovering from a partial promotion](#recovering-from-a-partial-promotion).

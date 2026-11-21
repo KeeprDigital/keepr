@@ -20,6 +20,7 @@ import {
 	screenCommandMessageTypes,
 } from '../types/messages';
 import { publishFailureFields, RealtimePublishError } from './realtimePublishFailure';
+import { retryAfterAnswer } from './realtimeRetry';
 import { timeWriteStep } from './writeTiming';
 
 /**
@@ -191,14 +192,16 @@ export async function disconnectDeletedScreenOutputs(screen: {
  * The delete has committed and nothing here can undo it, so a failure is not
  * the delete's: the call is made once more on a stub of its own, and then
  * logged with the Event, because its Screen Outputs and its operators' pages
- * stay connected to an Event that no longer exists until they drop.
+ * stay connected to an Event that no longer exists until they drop. Answers
+ * whether the sockets were closed.
  */
-export async function disconnectDeletedEvent(eventId: number): Promise<void> {
+export async function disconnectDeletedEvent(eventId: number): Promise<boolean> {
 	// Asynchronous, so a Worker with no realtime binding rejects like any other failure.
 	const attempt = async () =>
 		await useRealtimeScope(workerBindings(), eventRealtimeScope(eventId)).disconnectAll();
 	try {
 		await attempt().catch(attempt);
+		return true;
 	} catch (failure) {
 		console.error(
 			JSON.stringify({
@@ -210,6 +213,7 @@ export async function disconnectDeletedEvent(eventId: number): Promise<void> {
 				errorMessage: failure instanceof Error ? failure.message : String(failure),
 			}),
 		);
+		return false;
 	}
 }
 
@@ -328,13 +332,11 @@ export async function publishMessage<T extends MessageType>(
 	payload?: MessagePayload<T>,
 	originConnectionId?: string,
 ): Promise<void> {
-	try {
-		await publishOnEventChannel(eventId, messageType, payload, originConnectionId);
-	} catch (error) {
-		// Realtime delivery is best-effort for this API, so this line is the only
-		// witness that the publish was attempted, twice, and failed. It carries the
-		// bounded routing identifiers and the last failure's own account of itself,
-		// and nothing else.
+	// Realtime delivery is best-effort for this API, so this line is the only
+	// witness that the publish was attempted and failed. It carries the bounded
+	// routing identifiers and the last failure's own account of itself, and
+	// nothing else.
+	const giveUp = (error: unknown) =>
 		console.error(
 			JSON.stringify({
 				message: 'realtime_publish_failed',
@@ -343,6 +345,29 @@ export async function publishMessage<T extends MessageType>(
 				...publishFailureFields(error),
 			}),
 		);
+	try {
+		await publishOnEventChannel(eventId, messageType, payload, originConnectionId);
+	} catch (error) {
+		// Tried again behind the answer where the request can take it, so a
+		// reset that outlasts two calls still reaches the pages (ADR-0162).
+		const afterAnswer = requestAfterAnswer();
+		if (afterAnswer)
+			retryAfterAnswer(
+				afterAnswer,
+				async () =>
+					await publishToEvent(eventId, [
+						delivery(
+							eventRealtimeChannel(eventId),
+							eventId,
+							messageType,
+							payload,
+							originConnectionId,
+						),
+					]),
+				giveUp,
+				error,
+			);
+		else giveUp(error);
 	}
 	await tellScreenOutputs(eventId, messageType, payload, originConnectionId);
 }

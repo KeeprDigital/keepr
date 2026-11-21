@@ -12,7 +12,8 @@ import {
 	MAX_SILENT_VIDEO_INGESTION_BYTES,
 	MAX_STILL_IMAGE_INGESTION_BYTES,
 } from './shared/utils/graphicsAssetCompatibility';
-import { REALTIME_SOCKET_PATH } from './shared/utils/realtimeChannels';
+import { REALTIME_SOCKET_MAX_AGE_MS, REALTIME_SOCKET_PATH } from './shared/utils/realtimeChannels';
+import { INTEGRATION_REALTIME_SOCKET_MAX_AGE_MS } from './test/integration/state';
 import { MUTATION_BODY_METHODS } from '@keepr/nuxt-layer/shared/utils/requestBodyLimits';
 import { TCGPLUS_IMPORT_MAX_BODY_BYTES } from './shared/utils/tcgPlusImportLimits';
 
@@ -43,8 +44,15 @@ export default defineNuxtConfig({
 	extends: ['@keepr/nuxt-layer', '@keepr/realtime/nuxt'],
 
 	// Where a page opens an Event's socket: the path the Worker's entry and the
-	// dev proxy take, and the one `app/plugins/realtime.client.ts` asks for.
-	realtime: { socketPath: REALTIME_SOCKET_PATH },
+	// dev proxy take, and the one `app/plugins/realtime.client.ts` asks for. And
+	// how long a socket lasts before its caller is judged again (ADR-0162); an
+	// integration server's are short enough to watch one expire.
+	realtime: {
+		socketPath: REALTIME_SOCKET_PATH,
+		maxSocketAgeMs: isIntegration
+			? INTEGRATION_REALTIME_SOCKET_MAX_AGE_MS
+			: REALTIME_SOCKET_MAX_AGE_MS,
+	},
 
 	// Nothing but `nuxt prepare` may rewrite `.nuxt` while other gates run:
 	// the root tsconfig extends it, so every Vite and TypeScript consumer reads it.
