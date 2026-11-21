@@ -92,10 +92,13 @@ describe('where the probe may run', () => {
 });
 
 describe('the Session the probe works in', () => {
-	it('is the one the Accounts Stand-in vouches for locally: no cookie, and nobody is asked', async () => {
+	// An App asks Keepr Accounts nothing for a request with no cookie of its own (ADR-0158).
+	it("is the Local Developer User's locally, by the Accounts Stand-in's cookie, and nobody is asked", async () => {
 		const { fetchRequest } = answering(() => json({}));
 
-		expect(await openSession('http://127.0.0.1:8787', { env: CREDENTIALS, fetchRequest })).toBe('');
+		expect(await openSession('http://127.0.0.1:8787', { env: CREDENTIALS, fetchRequest })).toBe(
+			'keepr-stand-in=',
+		);
 		expect(fetchRequest).not.toHaveBeenCalled();
 	});
 

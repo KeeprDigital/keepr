@@ -145,8 +145,8 @@ export function sessionCookiePairs(response) {
 
 /**
  * Open the run's Session, returning its cookie pairs, which every later request
- * carries: none for a local run, whose installation's Accounts Stand-in vouches
- * for a request with no cookie.
+ * carries: for a local run the Accounts Stand-in's cookie, which names the
+ * Local Developer User, as a request with none is signed out (ADR-0158).
  *
  * A deployed run posts its credentials to Keepr Accounts and nowhere else, with
  * the `Origin` a page of Keepr Accounts would send: a write to its sign-in is
